@@ -58,11 +58,11 @@ CENSUS: list[Claim] = [
     Claim(
         name="total effective git files",
         globs=None,
-        claimed=1350,
+        claimed=1351,
         anchors=[
-            ("README.md", "1350 files in the effective git file set"),
-            ("00-overview.mmd", "1350 files in the effective git file set"),
-            ("00-overview.mmd", "file census (1350 total)"),
+            ("README.md", "1351 files in the effective git file set"),
+            ("00-overview.mmd", "1351 files in the effective git file set"),
+            ("00-overview.mmd", "file census (1351 total)"),
         ],
     ),
     Claim(
@@ -150,10 +150,10 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/exact_dot_agents/",
         globs=["home/exact_dot_agents/*"],
-        claimed=116,
+        claimed=117,
         anchors=[
-            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (116)"),
-            ("00-overview.mmd", "agents 116"),
+            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (117)"),
+            ("00-overview.mmd", "agents 117"),
         ],
     ),
     Claim(

@@ -5,9 +5,9 @@ description: "Use for local/ad-hoc audits of low-risk self-authored changes; esc
 
 # Light Review
 
-A proportional-depth review for a self-authored changeset you want checked and fixed in place.
-It shares the same judging engine as the full `k-review` skill but drops PR/GitHub scaffolding when that scaffolding is not needed.
-Reduced scaffolding is not reduced rigor: the SOP rules about internal time/effort estimates still apply, and any finding that needs base context, state-machine verification, or heavier evidence must trigger escalation instead of being skipped.
+A light-rigor review for a low-risk self-authored changeset you want checked and fixed in place.
+It uses the same review machinery as `k-review`, but trims PR/GitHub scaffolding, live-UI work, broad base-context gathering, and multi-lane diversity when those are not needed.
+Light does not mean inline-only: use one read-only `change-auditor` worker plus adversarial refutation when the active harness can launch them.
 
 Load `~/.agents/skills/k-review/references/judging_core.md` and apply its Coverage Checklist, Severity, the relevant gates (Deletion-Safety / Historical-Rationale / State-Machine / Product-Flow / Signal-Quality / Systemic-Risk when triggered), and — foregrounded for this skill — the **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage**.
 
@@ -32,11 +32,12 @@ The change is **light-eligible** only when **none** of these escalation triggers
 - **Deletion or replacement:** the diff deletes files/exports or replaces/migrates an implementation, test, or helper (`git diff --diff-filter=D --stat` non-empty, or removed `export`s).
 - **State-machine behavior:** parser/tokenizer/formatter, routing/matching, retry/workflow, permission-matrix, or multi-flag control flow (the State-Machine Verification Gate would run with full rigor).
 - **Base context beyond direct local reads:** a finding's correctness depends on base behavior that `git show <base>:<path>` + `rg` or local file reads cannot settle (mandatory SCSI base-context).
+- **Live UI/runtime evidence needed:** the diff changes UI, runtime behavior, or browser-visible flows where local static reads cannot prove the finding or fix.
 
 If any trigger holds, stop and escalate to `~/.agents/skills/k-review/SKILL.md` (its Role Detection owns the authorship procedure);
 do not edit code here. If a trigger surfaces mid-pass, stop and switch to `k-review` rather than half-doing the heavy machinery.
 
-## Workflow (verify and fix in place)
+## Workflow (agent-assisted verify and fix in place)
 
 1. **Scope.**
    Inspect `git status --porcelain=v1 -b` and the diff (`git diff`, `git diff --staged`, or `git diff <range>` / `git log --oneline <range>`).
@@ -44,8 +45,22 @@ do not edit code here. If a trigger surfaces mid-pass, stop and switch to `k-rev
 2. **Base context (opt-in).** Default off.
    Establish base context when a finding's correctness genuinely depends on how base behaves today;
    use the most direct sufficient source (`git show <base>:<path>` + `rg`, or local file reads).
-   Do not omit needed base context because SCSI would be heavier; escalate to the full `k-review` skill when direct local reads are not enough.
-3. **Run the Verify-and-Fix Loop** (`judging_core.md`): build the findings queue → Candidate Refutation Ladder → Findings-Set Audit → fix in the working tree → quality gates → Post-Review Stage over the fix diff.
+   Do not omit needed base context because SCSI would be heavier; escalate to `k-review` when direct local reads are not enough.
+3. **Candidate audit.**
+   Launch one read-only `change-auditor` worker when the harness supports subagents;
+   otherwise run the same read/judge pass inline and report `agent_lane=inline-degraded`.
+   The worker returns candidate findings and proposed fixes only; the parent owns edits.
+4. **Controller findings audit.**
+   Inline the Findings-Set Audit from `judging_core.md` over the candidate set:
+   remove duplicates, unsupported claims, gaps, overengineering, and unactionable fixes before adversarial work.
+   Report `findings_audit=inline`.
+5. **Final adversarial refutation.**
+   If the audited candidate set is empty, skip adversarial work and report `Adversarial verification: skipped (no candidates after findings audit)`.
+   Otherwise, run `adversarial-verifier` over the audited candidate set when the harness supports it;
+   if not, run the Candidate Refutation Ladder inline and report `adversarial=inline-degraded`.
+   No finding may be fixed or reported until it survives this final pass.
+6. **Fix survivors.**
+   Apply the Verify-and-Fix Loop's fix, quality-gate, and Post-Review Stage steps from `judging_core.md` over the surviving findings.
    The **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage** are foregrounded for this skill.
    Do not commit or push unless explicitly asked.
 

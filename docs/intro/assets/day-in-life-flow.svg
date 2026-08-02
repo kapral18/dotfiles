@@ -16,6 +16,6 @@
   <path class="line" d="M715 188 H775"/>
   <rect class="box" x="775" y="135" width="185" height="105"/><text class="text" x="807" y="176">Agent task</text><text class="small" x="807" y="206">agent, codex, pi</text>
   <path class="line" d="M960 188 H1020"/>
-  <rect class="box" x="1020" y="135" width="185" height="105"/><text class="text" x="1052" y="176">Review</text><text class="small" x="1052" y="206">agent-review or tuicr</text>
+  <rect class="box" x="1020" y="135" width="185" height="105"/><text class="text" x="1052" y="176">Review</text><text class="small" x="1052" y="206">k-review or tuicr</text>
   <path class="line" d="M1112 240 V300 H138 V240"/>
 </svg>

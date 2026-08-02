@@ -64,7 +64,7 @@ Worker contract: [`k-build/references/criteria-verifier.md`](../../../home/exact
 
 The lane owns refutation order (claim truth → criterion truth → reachability → durability), a scope audit against the packet's binding out-of-scope list, and missing-criteria candidates.
 
-Per-harness profiles are rendered from the same `agent_review_models` registry the review verifier uses. Cursor, Copilot, Gemini, Codex, and Pi ship a `criteria-verifier` profile.
+Per-harness profiles are rendered from the same `agent_review_models` registry the review verifier uses. Cursor, Copilot, Gemini, Codex, Pi, and OMP ship a `criteria-verifier` profile.
 
 Claude runs the lane degraded on the session model with refutation framing, reported as `families=same (degraded)`. This mirrors the adversarial-verifier convention in [Cross-harness subagents](subagents.md).
 
@@ -74,7 +74,7 @@ When any acceptance criterion's evidence is visual — a `judgment:` criterion n
 
 It is the creation-side sibling of the review flow's `live-ui-review`: same runtime machinery, opposite direction. `live-ui-review` compares PR/head against base to find regressions; `k-ui-proof` verifies the **built** runtime head-only against its **intended visual** and captures the screenshot set that proves it.
 
-Both share one mode-neutral contract — [`k-agent-review/references/live-ui-runtime.md`](../../../home/exact_dot_agents/exact_skills/exact_k-agent-review/exact_references/readonly_live-ui-runtime.md) — for target-packet resolution, Playwriter preflight, readiness, runtime start, the data/setup ladder, screenshot artifacts, and the runtime safety boundary.
+Both share one mode-neutral contract — [`k-review/references/live-ui-runtime.md`](../../../home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_live-ui-runtime.md) — for target-packet resolution, Playwriter preflight, readiness, runtime start, the data/setup ladder, screenshot artifacts, and the runtime safety boundary.
 
 Each mode file adds only its oracle, comparison model, and return shape.
 

@@ -29,17 +29,17 @@ or for local work that needs base-branch context: `review my branch against main
 
 What you get that rung 1 doesn't: exhaustive PR context intake (every comment thread, linked issue, CI check — read in full, not previews), base-branch verification (what does `main` actually do today), and for stateful logic a disposable verification harness under `/tmp`. On your own PR it can apply fixes; on someone else's it drafts comments and **never posts without showing you the exact payload first** — publication is always human-gated.
 
-## Rung 3 — `/k-agent-review`: independent lanes + adversarial verification
+## Rung 3 — `/k-deep-review`: independent lanes + adversarial verification
 
 ```text
-/k-agent-review PR #4321
+/k-deep-review PR #4321
 ```
 
-The controller launches several reviewer subagents in parallel (each with a different focus — correctness, tests, security…), plus a blind "fresh eyes" lane that sees zero PR context, then sends every candidate finding to a **different-family model whose only job is to refute it**.
+The controller launches a bounded reviewer roster: one sighted `correctness-regressions` lane for simple single-surface diffs, evidence-triggered extra lanes for independent risk classes, and a blind "fresh eyes" lane only when the diff has comprehension-risk signals. Each lane is a real expert lens with its own checks and, where one exists, its own quality skill — not a generalist told to emphasize a keyword. After lane merge/dedup, applicable UI/runtime candidates get live UI evidence first; the audited candidate set then goes to a **different-family model whose only job is to refute it**, which also returns a short sweep of what every lane missed.
 
-Findings that survive get a live UI check when the diff touches one. Expect a structured report: roster, verdict counts (`confirmed/refuted/undecidable`), kept/dropped findings with reasons, draft comments awaiting your go-ahead, and UI evidence attachments for UI feedback.
+Expect a structured report: roster, lane yield (what each lane returned versus what survived), live UI status when applicable, findings-audit status, verifier verdict counts (`confirmed/refuted/undecidable`), miss-sweep counts, kept/dropped findings with reasons, draft comments awaiting your go-ahead, and UI evidence attachments for UI feedback.
 
-Use it when the change is risky enough to fund five readers; it costs accordingly.
+Use it when the change needs independent review plus cross-family refutation. It scales from one sighted lane + verifier to extra lanes only when scope evidence warrants them.
 
 ## Reading any review's output
 

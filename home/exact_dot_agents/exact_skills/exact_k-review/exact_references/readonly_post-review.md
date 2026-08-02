@@ -1,4 +1,4 @@
-# Agent Review Post-Review Contract
+# Review Post-Review Contract
 
 Shared contract for delegated post-review subagents. Load this file only for the matching worker role.
 

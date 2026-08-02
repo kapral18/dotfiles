@@ -37,12 +37,11 @@ This file carries only the PR/SCSI/GitHub-delivery rules layered on top of that 
 
 - External truth applies: verify behavior under review (tests, repros, `/tmp` simulations) before asserting when practical.
 - Code changes:
-  - **Read-only delegated workers**:
-    - never edit or run side effects
-    - may run non-mutating verification at whatever depth is needed; use `/tmp` or isolated copies for disposable artifacts and do not write repo-local caches, start shared services, seed data, or mutate shared runtime state
-    - do not skip useful full suites, deep searches, or heavyweight analysis only because they are expensive or another lane may also run them
-    - if verification requires mutation or a shared/exclusive runtime, return the exact `verification_needed` to the parent/controller for serial handling
-    - return proposed fixes to the parent controller
+  - **Read-only delegated workers**: their full contract is `~/.agents/skills/k-review/references/reviewer-worker.md`;
+    do not restate it here. Controller-side obligations it creates:
+    - run repo-wide suites, full builds, and whole-suite test runs **once** in the controller and pass the result into every lane's scope packet; lanes are told not to repeat them
+    - resolve each returned `verification_needed` serially, or record why it stayed open
+    - lanes return proposed fixes only; the controller owns every edit and side effect
   - **Local changes mode with `authorship: self`** and **PR fix mode when edits are permitted**:
     - find issues and fix them in the working tree immediately
     - code changes are expected as part of the workflow
@@ -146,7 +145,7 @@ Goal: compare the diff against how base (usually `main`) works today.
 - Keep explanations simple; prefer tiny examples, pseudocode, or ASCII sketches.
 - Avoid redundant "Ref:" links when the comment is already attached to the exact line.
 - Do not mention anchoring/tooling limitations in the comment body ("can't anchor inline", "not in diff hunks").
-- For UI-related comments, replies, or PR-level feedback drafted after `/k-agent-review` or `live-ui-review`, keep the screenshot handoff outside the body as UI evidence attachments.
+- For UI-related comments, replies, or PR-level feedback drafted after `/k-deep-review` or `live-ui-review`, keep the screenshot handoff outside the body as UI evidence attachments.
   If screenshot evidence is missing without a valid blocker or non-applicability result, block/rerun instead of drafting text-only UI feedback.
   Never put local screenshot paths in GitHub comment, reply, review, or PR-level bodies.
 - In review comment bodies, whenever you reference code, use a clickable source link to the exact location on the PR head SHA.

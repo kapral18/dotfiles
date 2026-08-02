@@ -653,7 +653,7 @@ def start_kibana_on_trigger(
     """Wait for the ES setup trigger, ensure trial license, then launch Kibana.
 
     When Kibana is launched into a tmux pane, poll its /api/status afterwards and
-    flip the registry ``ready`` flag so an agent running ``/k-agent-review`` from the
+    flip the registry ``ready`` flag so an agent running ``/k-deep-review`` from the
     same worktree can discover the interactively-started stack. The poll runs in
     this background thread, so it never blocks the foreground ES log stream.
     """

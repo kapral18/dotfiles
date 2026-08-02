@@ -1,6 +1,6 @@
-# Agent Review Fresh-Eyes Worker Contract
+# Review Fresh-Eyes Worker Contract
 
-Blind clarity lane for `/k-agent-review`. Load this file only for the fresh-eyes role.
+Blind clarity lane for review flows. Load this file only for the fresh-eyes role.
 
 ## Role: Fresh-eyes reviewer
 
@@ -62,7 +62,8 @@ Do not return raw diffs or logs. If the changed content is only generated/vendor
 - Claude Code: a general-purpose `Task` carrying this contract; `model_required=inherit`.
 - Cursor: a generic subagent type with `readonly: false`, passing the registry lane model (the same value the deployed `review-worker` profile carries).
 - Copilot CLI: a generic task agent type is correct here by design; pass the registry lane model explicitly and record `fallback_reason=blind-by-design`.
-- Pi: launch the `fresh-eyes` agent profile (a thin shim of this file that carries no skills);
-  Pi launches subagents only through named profiles.
-- Worker selection line: `phase=fresh-eyes`, `profile=n/a` (Pi: `fresh-eyes`), `model_required=<registry lanes value|inherit|default>`, `model_used=<launch-confirmed model>`, `model_status=exact`.
+- Pi/OMP: launch the `fresh-eyes` agent profile (a thin shim of this file that carries no skills and uses the registry lane model);
+  those harnesses launch this lane through named profiles.
+- Worker selection line: `phase=fresh-eyes`, `profile=n/a` (Pi/OMP named profile:
+  `fresh-eyes`), `model_required=<registry lanes value|inherit|default>`, `model_used=<launch-confirmed model>`, `model_status=exact`.
 - Never include prior findings, PR intent, or controller narrative in the prompt — including on re-runs after new context or applied fixes.

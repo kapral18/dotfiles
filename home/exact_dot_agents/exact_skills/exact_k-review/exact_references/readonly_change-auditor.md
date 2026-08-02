@@ -1,4 +1,4 @@
-# Agent Review Change Auditor Contract
+# Review Change Auditor Contract
 
 Shared contract for delegated change-auditor subagents. Load this file only for the matching worker role.
 
@@ -11,8 +11,10 @@ For PRs, others' code, or risky/stateful changes use the reviewer worker instead
 You run in an isolated read-only context.
 Audit the self-authored changeset directly from files and commands; do not rely on conversation history.
 
-Load and follow `~/.agents/skills/k-light-review/SKILL.md` end to end (it loads the shared `~/.agents/skills/k-review/references/judging_core.md` judging engine).
-Run the read/judge phase only and return structured findings; the parent owns any fixes.
+Load `~/.agents/skills/k-review/references/judging_core.md`.
+Use `~/.agents/skills/k-light-review/SKILL.md` only for the Light-Eligibility Predicate;
+do not run its parent workflow or launch subagents from this worker.
+Run the read/judge phase only and return structured findings; the parent owns adversarial refutation and any fixes.
 
 ## Scope
 

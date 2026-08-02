@@ -142,6 +142,11 @@ def main(argv: list[str]) -> int:
     except (OSError, RuntimeError, sqlite3.Error) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
+    # Copilot CLI 1.0.77 reads this in Q3e() and feeds it to
+    # nativeModelClientDefaultOptionsJson, which decides thinkingBudget. Suppressing extended
+    # thinking is independent of reasoning effort, so effortLevel still ships as reasoning_effort.
+    # Without it, an Opus review lane thinks by default and the registry's non-thinking pick is a lie.
+    os.environ.setdefault("COPILOT_DISABLE_ANTHROPIC_THINKING", "1")
     try:
         os.execv(real_copilot, [real_copilot, *args])
     except OSError as error:

@@ -7,17 +7,17 @@ description: "Use when proving a built/changed UI matches intended visual, state
 
 Head-only live-UI verification that a **built or changed** UI matches its **intended visual, state, or behavior**, capturing the screenshot set that proves it for a PR.
 This is the creation-side sibling of `live-ui-review.md`: same runtime machinery, opposite direction.
-`live-ui-review` compares PR/head against base to find regressions for `/k-agent-review` to judge;
+`live-ui-review` compares PR/head against base to find regressions for `/k-deep-review` to judge;
 `k-ui-proof` checks the built runtime against the intended UI state/behavior and captures proof to attach to a PR.
 
-Load `~/.agents/skills/k-agent-review/references/live-ui-runtime.md` for the shared runtime contract:
+Load `~/.agents/skills/k-review/references/live-ui-runtime.md` for the shared runtime contract:
 mode boundary, terminology, target-packet resolution, Playwriter preflight, readiness stability guard, screenshot & evidence capture, runtime-start rung, data/setup ladder, and the hard runtime constraints.
 This file adds only the proof-mode specifics: the head-only model, the intended UI state/behavior oracle, and the proof return shape.
 
 ## Do not use
 
 - reviewing an existing PR or someone else's changes, or hunting regressions:
-  `~/.agents/skills/k-review/SKILL.md` / `/k-agent-review` (which owns `live-ui-review`)
+  `~/.agents/skills/k-review/SKILL.md` / `/k-deep-review` (which owns `live-ui-review`)
 - a change with no UI/runtime surface: there is no UI proof to capture — skip
 - generic browser automation with no intended UI state/behavior to check against: `~/.agents/skills/k-playwriter/SKILL.md` directly
 
@@ -29,7 +29,7 @@ This file adds only the proof-mode specifics: the head-only model, the intended 
 - `k-compose-pr` — captures/embeds proof at PR-composition time when the diff is UI-facing and no `/k-build` manifest exists.
 - ad-hoc — fired directly when the user asks to verify a UI and capture screenshots.
 
-It is not a `/k-agent-review` read-only reviewer lane and needs no isolated subagent profile;
+It is not a `/k-deep-review` read-only reviewer lane and needs no isolated subagent profile;
 the shared read-only constraints still bind everything except Playwriter commands and packet-permitted local/dev data setup.
 
 ## Caller supplies

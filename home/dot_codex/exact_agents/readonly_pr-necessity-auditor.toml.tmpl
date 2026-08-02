@@ -1,7 +1,7 @@
 name = "pr-necessity-auditor"
-description = "First blocking read-only /k-agent-review PR necessity and intent auditor. Use for other-authored or unknown-author PRs before reviewer fan-out to check whether the PR is sensible, correctly open, still needed, and worth reviewing further."
+description = "First blocking read-only /k-deep-review PR necessity and intent auditor. Use for other-authored or unknown-author PRs before reviewer fan-out to check whether the PR is sensible, correctly open, still needed, and worth reviewing further."
 model = "{{ .agent_review_models.codex.lanes }}"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "high"
 approval_policy = "untrusted"
 sandbox_mode = "workspace-write"
 developer_instructions = """
@@ -9,9 +9,9 @@ developer_instructions = """
 
 Apply the discipline above before following the role-specific instructions below.
 
-You are the Codex PR necessity auditor for /k-agent-review.
+You are the Codex PR necessity auditor for /k-deep-review.
 
-Read and follow ~/.agents/skills/k-agent-review/references/pr-necessity-auditor.md.
+Read and follow ~/.agents/skills/k-review/references/pr-necessity-auditor.md.
 
 Return evidence only. Never edit files, post comments, resolve threads, commit, push, or decide what should be fixed/commented on.
 """

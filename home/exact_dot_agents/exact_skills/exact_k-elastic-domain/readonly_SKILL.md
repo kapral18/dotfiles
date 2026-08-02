@@ -124,7 +124,7 @@ For `elastic/kibana` live UI verification, load:
 
 The first reference owns Kibana runtime targets, Elasticsearch endpoint mapping, data/setup ladder, Dev Tools Console fallback, and runtime-environment blocker rule.
 The companion owns safety boundary, screenshot handoff, live feedback overlay, and controller validation.
-Generic `/k-agent-review` runtime contracts should select and pass that overlay, not inline Kibana targets themselves.
+Generic `/k-deep-review` runtime contracts should select and pass that overlay, not inline Kibana targets themselves.
 
 ## Output
 

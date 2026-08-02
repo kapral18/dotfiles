@@ -95,7 +95,12 @@ Iteration contract:
    - which invariant(s) it was optimizing for
    - where it might be overfitting or making types worse downstream
 
-6. Choose a response type (one per thread):
+6. Run the Findings-Set Audit from `judging_core.md` over this thread's candidate set before choosing reply/fix/ask.
+   - If the audited set is empty, skip adversarial work and report `Adversarial verification: skipped (no candidates after findings audit)`.
+   - Otherwise, run `adversarial-verifier` over the audited candidate set before applying a fix or drafting a reply;
+     if no verifier lane is available, run the Candidate Refutation Ladder inline and report `adversarial=inline-degraded`.
+
+7. Choose a response type (one per thread):
 
    **Reply-only** (no code change needed):
    - clarify a misunderstanding with evidence
@@ -110,7 +115,7 @@ Iteration contract:
    **Ask** (blocking ambiguity):
    - ask exactly one blocking question (include the default assumption)
 
-7. Scope guardrail (reduce review noise):
+8. Scope guardrail (reduce review noise):
    - If the reviewer request is a "clarity" ask (add comment, rename, tiny refactor), prefer the smallest localized change that satisfies the request.
    - If the reviewer request is out-of-scope cleanup, you may treat it as a "graceful gesture" only when:
      - it is cheap
@@ -118,7 +123,7 @@ Iteration contract:
      - it reduces future confusion
    - Otherwise: reply proposing a follow-up (do not expand the change-set).
 
-8. If you chose code change — quality gates (required after each change):
+9. If you chose code change — quality gates (required after each change):
    - Run lint + type_check + tests.
    - Discover the correct commands from the repo (do not guess):
      - check `package.json` scripts (or equivalent build tooling) for `lint`, `typecheck`, `test`
@@ -126,18 +131,18 @@ Iteration contract:
      - if you cannot determine the commands from repo sources, stop and ask the user
    - If checks fail or types get worse, back out or adjust and repeat.
 
-9. Draft the reply for that thread (and only that thread).
-   - Before drafting, compare the reply/fix note with any current-account pending review, submitted review comment, or prior reply discovered by Existing Pending Review Reconciliation.
-   - If the same point is already pending, merge the reply intent into the pending-review replacement plan instead of creating a competing comment.
-   - If prior current-account content is stale or contradicted by current head, draft one correction/replacement path;
-     do not publish both versions.
-   - If the thread asked for code comments/documentation:
-     - make the change in code
-     - reply with a short `Fixed in <commit URL>` message
-     - avoid long explanations in the thread
-     - use full clickable GitHub URLs for commits
-     - never use bare hashes
-   - If your fix ended up elsewhere (different file/thread): reply with a clickable link to the canonical commit/thread rather than re-explaining.
+10. Draft the reply for that thread (and only that thread).
+    - Before drafting, compare the reply/fix note with any current-account pending review, submitted review comment, or prior reply discovered by Existing Pending Review Reconciliation.
+    - If the same point is already pending, merge the reply intent into the pending-review replacement plan instead of creating a competing comment.
+    - If prior current-account content is stale or contradicted by current head, draft one correction/replacement path;
+      do not publish both versions.
+    - If the thread asked for code comments/documentation:
+      - make the change in code
+      - reply with a short `Fixed in <commit URL>` message
+      - avoid long explanations in the thread
+      - use full clickable GitHub URLs for commits
+      - never use bare hashes
+    - If your fix ended up elsewhere (different file/thread): reply with a clickable link to the canonical commit/thread rather than re-explaining.
 
 ### Reply Style
 
@@ -223,7 +228,7 @@ Loop control:
   - proposed change
   - verification run: lint / type_check / tests (what you ran, pass/fail, key error signal if failed)
 - Draft reply body
-- `ui_evidence_attachments` when the reply is UI-related and drafted after `/k-agent-review` or `live-ui-review`:
+- `ui_evidence_attachments` when the reply is UI-related and drafted after `/k-deep-review` or `live-ui-review`:
   screenshot handoff paths/descriptions/placement, or the blocker/non-applicability reason screenshots are absent.
   Do not put local screenshot paths in the reply body.
 - Recommendation: `resolve` | `keep_open`
@@ -245,7 +250,8 @@ Do not use the original PR diff as the subject.
 - Resolve each hygiene finding in the working tree and re-run quality gates for changed artifacts when applicable.
 - Follow the Post-Review Stage fixed-point rule until clean or blocked.
 - If post-review cleanup changed any in-scope artifact, rerun current-head outcome verification for affected threads before completion.
-- This is distinct from "verify the outcome against current head" (step 9): that confirms the fix _works_; this confirms the fix is _clean_.
+- This is distinct from "verify the outcome against current head" (step 10): that confirms the fix _works_;
+  this confirms the fix is _clean_.
 - If no code was changed this session (reply-only threads), skip this stage.
 
 ## Boundaries

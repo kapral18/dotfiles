@@ -692,55 +692,538 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "ThreadPoolExecutor(max_workers=min(2, len(dates)))",
         )
 
-    def test_agent_review_dedups_restated_worker_descriptions_keeps_controller_validation(self):
+    def test_deep_review_dedups_restated_worker_descriptions_keeps_controller_validation(self):
         self.assert_file_not_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-agent-review/readonly_SKILL.md",
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
             "is part of the default flow after the blocking PR necessity gate",
             "is part of the PR-mode flow for other-authored or unknown-author PRs",
         )
         self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-agent-review/readonly_SKILL.md",
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
             "Controller validation: reject and rerun any `live-ui-review` result that:",
             "uses the controller cwd or base/main runtime as the PR/head target for an explicit PR/branch review without proving that checkout is on the reviewed PR/head branch/sha",
             "Do not reject or rerun a result that reports a valid Playwriter harness blocker:",
-            "`~/.agents/skills/k-agent-review/references/pr-necessity-auditor.md`",
-            "`~/.agents/skills/k-agent-review/references/live-ui-review.md`",
+            "`~/.agents/skills/k-review/references/pr-necessity-auditor.md`",
+            "`~/.agents/skills/k-review/references/live-ui-review.md`",
         )
         self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-agent-review/exact_references/readonly_pr-necessity-auditor.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr-necessity-auditor.md",
             "Strictly read-only: never edit files, never run state-changing commands, never post or submit to GitHub.",
         )
         self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-agent-review/exact_references/readonly_live-ui-review.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_live-ui-review.md",
             "### Playwriter comparison",
         )
 
-    def test_agent_review_fresh_eyes_uses_registry_lane_model(self):
+    def test_deep_review_fresh_eyes_uses_registry_lane_model(self):
         self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-agent-review/readonly_SKILL.md",
-            "generic fresh-eyes is the only lane launch that passes the registry lane model at runtime",
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
+            "named fresh-eyes profiles and generic fresh-eyes launches both use the registry lane model",
             "model_required=<registry value|inherit|default>",
         )
         self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-agent-review/exact_references/readonly_runtime-harnesses.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_runtime-harnesses.md",
             "Generic fresh-eyes launches must pass the registry lane model as the profile-equivalent model",
+            "named fresh-eyes profiles carry the same registry-rendered frontmatter",
             "never let the runtime pick an implicit default",
         )
         self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-agent-review/exact_references/readonly_fresh-eyes.md",
-            "pass the registry lane model explicitly",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_fresh-eyes.md",
+            "Pi/OMP: launch the `fresh-eyes` agent profile",
             "model_required=<registry lanes value|inherit|default>",
             "model_status=exact",
         )
+        self.assert_file_contains(
+            "home/dot_pi/agent/exact_agents/fresh-eyes.md.tmpl",
+            'model: "{{ .agent_review_models.pi.lanes }}"',
+        )
+        self.assert_file_contains(
+            "home/dot_omp/private_agent/exact_agents/fresh-eyes.md.tmpl",
+            'model: "{{ .agent_review_models.omp.lanes }}"',
+        )
         self.assert_file_not_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-agent-review/exact_references/readonly_fresh-eyes.md",
+            "home/dot_pi/agent/exact_agents/fresh-eyes.md.tmpl",
+            ".model_tier_map.pi.review.model",
+        )
+        self.assert_file_not_contains(
+            "home/dot_omp/private_agent/exact_agents/fresh-eyes.md.tmpl",
+            ".model_tier_map.omp.review.model",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_fresh-eyes.md",
             "model_required=n/a",
             "model_status=n/a",
         )
 
+    def test_findings_audit_precedes_final_adversarial_verification(self):
+        # The audit narrows the candidate set and the cross-family verifier then refutes only
+        # what survived. Reverting to the old parallel/adversarial-first order silently doubles
+        # verifier work and lets refuted candidates reach the audit.
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
+            "5. findings audit, inline or delegated by the findings-audit delegation conditions",
+            "6. final cross-family adversarial verification over the audited candidate set",
+            "4. **Run controller findings audit on candidate findings.**",
+            "5. **Run final adversarial verification.**",
+            "Launch one to three sighted lanes by default.",
+        )
+        for mode_file, ordering in (
+            (
+                "exact_k-review/exact_references/readonly_local_changes.md",
+                "Run the Findings-Set Audit from `judging_core.md` in the controller over the candidate set before adversarial verification.",
+            ),
+            (
+                "exact_k-review/exact_references/readonly_pr_review.md",
+                "Before adversarial verification, run the candidate queue through the Findings-Set Audit",
+            ),
+            (
+                "exact_k-review/exact_references/readonly_plan_review.md",
+                "before adversarial verification",
+            ),
+            ("exact_k-light-review/readonly_SKILL.md", "before adversarial work"),
+        ):
+            self.assert_file_contains(
+                f"home/exact_dot_agents/exact_skills/{mode_file}",
+                ordering,
+            )
+        for controller in (
+            "home/dot_pi/agent/exact_agents/review-controller.md.tmpl",
+            "home/dot_omp/private_agent/exact_agents/review-controller.md.tmpl",
+        ):
+            self.assert_file_contains(
+                controller,
+                "## Phase 4 — Findings audit (delegate, read-only)",
+                "## Phase 5 — Final adversarial verification (delegate, cross-family)",
+            )
+            # The audit runs before the verifier, so it cannot consume adversarial verdicts;
+            # applying those verdicts belongs to the later reconcile phase.
+            self.assert_file_not_contains(
+                controller,
+                "Findings audit reconciles adversarial and live-UI outputs",
+            )
+
+    def test_copilot_subagent_settings_match_the_review_model_registry(self):
+        # Copilot resolves subagent models from ~/.copilot/settings.json, which a merge script
+        # reads as source JSON, so it cannot be a chezmoi template over the registry. It is
+        # hand-synced and has drifted before; this asserts it against agent_review_models.
+        import ai_models
+
+        registry = ai_models.load_agent_review_models(REPO / "home/.chezmoidata/ai_models.yaml")
+        copilot = registry["copilot"]
+        agents = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text(encoding="utf-8"))["subagents"][
+            "agents"
+        ]
+
+        lane_roles = (
+            "deep-review",
+            "review-worker",
+            "findings-auditor",
+            "pr-necessity-auditor",
+            "live-ui-review",
+        )
+        # criteria-verifier is /k-build's refutation lane and shares the review verifier pick.
+        verifier_roles = ("adversarial-verifier", "criteria-verifier")
+
+        for role in lane_roles:
+            assert agents[role]["model"] == copilot["lanes"], (
+                f"copilot settings.json {role} model {agents[role]['model']!r} != "
+                f"agent_review_models.copilot.lanes {copilot['lanes']!r}"
+            )
+        for role in verifier_roles:
+            assert agents[role]["model"] == copilot["verifier"], (
+                f"copilot settings.json {role} model {agents[role]['model']!r} != "
+                f"agent_review_models.copilot.verifier {copilot['verifier']!r}"
+            )
+        # gpt-5.5 is only ever run at high effort, and Opus review lanes are pinned high too.
+        for role in lane_roles + verifier_roles:
+            assert agents[role]["effortLevel"] == "high", (
+                f"copilot settings.json {role} effortLevel is {agents[role]['effortLevel']!r}, expected 'high'"
+            )
+
+    def test_model_tier_map_agrees_with_the_review_registry(self):
+        # Two registries describe the same review picks: model_tier_map's review buckets and
+        # agent_review_models. Only the latter is templated into agent profiles on most harnesses,
+        # so a tier-map row can quietly describe a policy nothing implements. Pin them together.
+        import ai_models
+
+        path = REPO / "home/.chezmoidata/ai_models.yaml"
+        tier_map = ai_models.load_model_tier_map(path)
+        registry = ai_models.load_agent_review_models(path)
+        # The tier map spells the Claude harness claude_code; the review registry spells it claude.
+        registry_name = {"claude_code": "claude"}
+
+        for harness, buckets in tier_map.items():
+            roles = registry.get(registry_name.get(harness, harness))
+            if roles is None:
+                continue
+            review = buckets.get("review", {}).get("model", "")
+            verifier_bucket = buckets.get("adversarial_verification", {}).get("model", "")
+
+            # Claude sessions launch on a deliberately chosen model, so its registry entry is
+            # "inherit" and cannot be compared. No other harness may claim that exemption.
+            if roles.get("lanes") == "inherit":
+                assert harness == "claude_code", (
+                    f"{harness} review registry is 'inherit'; only claude_code may be unpinned"
+                )
+            else:
+                assert review == roles["lanes"], (
+                    f"model_tier_map.{harness}.review is {review!r} but "
+                    f"agent_review_models.{registry_name.get(harness, harness)}.lanes is {roles['lanes']!r}"
+                )
+                assert verifier_bucket == roles["verifier"], (
+                    f"model_tier_map.{harness}.adversarial_verification is {verifier_bucket!r} but "
+                    f"agent_review_models.{registry_name.get(harness, harness)}.verifier is {roles['verifier']!r}"
+                )
+
+            # The audit lanes read the same diff as the review lanes; they track the review pick.
+            for bucket in ("findings_audit", "post_act_verification"):
+                model = buckets.get(bucket, {}).get("model", "")
+                assert model == review, f"model_tier_map.{harness}.{bucket} is {model!r} but review is {review!r}"
+
+    def test_model_tier_map_orchestration_matches_real_harness_config(self):
+        # The orchestration rows are the ones that reach a real config file. Claude Code's is
+        # jq-patched into settings.json at apply time and Codex's is a hand-kept literal, so a
+        # wrong row here ships silently to the session default.
+        import ai_models
+
+        tier_map = ai_models.load_model_tier_map(REPO / "home/.chezmoidata/ai_models.yaml")
+
+        for profile in ("personal", "work"):
+            row = tier_map["claude_code"][f"orchestration_{profile}"]
+            settings = json.loads((REPO / f"home/dot_claude/settings.{profile}.json").read_text(encoding="utf-8"))
+            assert settings["model"] == row["model"], (
+                f"claude settings.{profile}.json model {settings['model']!r} != "
+                f"model_tier_map.claude_code.orchestration_{profile}.model {row['model']!r}"
+            )
+            assert settings["effortLevel"] == row["effort"], (
+                f"claude settings.{profile}.json effortLevel {settings['effortLevel']!r} != "
+                f"model_tier_map.claude_code.orchestration_{profile}.effort {row['effort']!r}"
+            )
+
+            codex_row = tier_map["codex"]["orchestration"]
+            config = (REPO / f"home/dot_codex/private_config.{profile}.toml").read_text(encoding="utf-8")
+            model = re.search(r'^model\s*=\s*"([^"]+)"', config, re.M)
+            effort = re.search(r'^model_reasoning_effort\s*=\s*"([^"]+)"', config, re.M)
+            assert model and model.group(1) == codex_row["model"], (
+                f"codex private_config.{profile}.toml model "
+                f"{(model.group(1) if model else None)!r} != "
+                f"model_tier_map.codex.orchestration.model {codex_row['model']!r}"
+            )
+            assert effort and effort.group(1) == codex_row["effort"], (
+                f"codex private_config.{profile}.toml model_reasoning_effort "
+                f"{(effort.group(1) if effort else None)!r} != "
+                f"model_tier_map.codex.orchestration.effort {codex_row['effort']!r}"
+            )
+
+    def test_claude_code_models_are_claude_family_selectors(self):
+        # Claude Code does not remap unknown model ids: they reach the API and come back as
+        # "API model not found". A cross-vendor id here (e.g. a shared gpt-5.5 orchestration
+        # default) silently breaks every native session once the merge script patches settings.json.
+        import ai_models
+
+        aliases = {"default", "opus", "opusplan", "sonnet", "haiku"}
+
+        def claude_family(model: str) -> bool:
+            base = re.sub(r"\[.*\]$", "", model)  # strip param suffixes like [1m]
+            return base in aliases or base.startswith("claude-")
+
+        def wrong_version_spelling(model: str) -> bool:
+            # Claude Code hyphenates point versions. Its own 404 troubleshooting text names
+            # `claude-sonnet-4.6` as the typo for `claude-sonnet-4-6`. Other harnesses (Copilot,
+            # Cursor) do use the dotted form, so this spelling is only wrong on this harness.
+            return bool(re.search(r"claude-\w+-\d+\.\d+", model))
+
+        def check(where: str, model: str) -> None:
+            assert claude_family(model), f"{where} is {model!r}, which Claude Code cannot run"
+            hyphenated = re.sub(r"(claude-\w+-\d+)\.(\d+)", r"\1-\2", model)
+            assert not wrong_version_spelling(model), (
+                f"{where} is {model!r}; Claude Code hyphenates point versions "
+                f"(expected {hyphenated!r}) and 404s on the dotted form"
+            )
+
+        tier_map = ai_models.load_model_tier_map(REPO / "home/.chezmoidata/ai_models.yaml")
+        for bucket, row in tier_map["claude_code"].items():
+            check(f"model_tier_map.claude_code.{bucket}", row.get("model", ""))
+
+        for profile in ("personal", "work"):
+            settings = json.loads((REPO / f"home/dot_claude/settings.{profile}.json").read_text(encoding="utf-8"))
+            check(f"claude settings.{profile}.json model", settings.get("model", ""))
+
+    def test_gpt55_is_always_pinned_at_high_effort(self):
+        # Standing policy: gpt-5.5 is only ever run at high effort, in every harness and bucket.
+        # The effort lives in a different place per harness (a yaml `effort`, a model-id suffix,
+        # a `:thinking` suffix, model_reasoning_effort, effortLevel), so drift is easy and silent.
+        import ai_models
+
+        offenders: list[str] = []
+
+        def check(where: str, model: str, effort: str | None) -> None:
+            if "gpt-5.5" not in model or "gpt-5.5-codex" in model:
+                return
+            # Cursor bakes effort into the id; Pi/OMP use a `:level` suffix.
+            suffix = re.search(r"gpt-5\.5[-:]([a-z-]+)", model)
+            if suffix and suffix.group(1) not in ("high",):
+                offenders.append(f"{where}: model {model!r} is not high effort")
+            if effort is not None and effort != "high":
+                offenders.append(f"{where}: effort {effort!r} is not high (model {model!r})")
+
+        tier_map = ai_models.load_model_tier_map(REPO / "home/.chezmoidata/ai_models.yaml")
+        for harness, buckets in tier_map.items():
+            for bucket, row in buckets.items():
+                check(f"model_tier_map.{harness}.{bucket}", row.get("model", ""), row.get("effort"))
+                fallback = row.get("fallback")
+                if isinstance(fallback, dict):
+                    check(
+                        f"model_tier_map.{harness}.{bucket}.fallback",
+                        fallback.get("model", ""),
+                        fallback.get("effort"),
+                    )
+
+        registry = ai_models.load_agent_review_models(REPO / "home/.chezmoidata/ai_models.yaml")
+        for harness, roles in registry.items():
+            for role, model in roles.items():
+                check(f"agent_review_models.{harness}.{role}", model, None)
+
+        copilot = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text(encoding="utf-8"))
+        for name, agent in copilot["subagents"]["agents"].items():
+            check(f"copilot settings.json {name}", agent.get("model", ""), agent.get("effortLevel"))
+
+        for profile in ("personal", "work"):
+            claude = json.loads((REPO / f"home/dot_claude/settings.{profile}.json").read_text(encoding="utf-8"))
+            check(f"claude settings.{profile}", claude.get("model", ""), claude.get("effortLevel"))
+
+            codex = (REPO / f"home/dot_codex/private_config.{profile}.toml").read_text(encoding="utf-8")
+            model = re.search(r'^model\s*=\s*"([^"]+)"', codex, re.M)
+            effort = re.search(r'^model_reasoning_effort\s*=\s*"([^"]+)"', codex, re.M)
+            if model:
+                check(
+                    f"codex private_config.{profile}.toml",
+                    model.group(1),
+                    effort.group(1) if effort else None,
+                )
+
+        assert not offenders, "gpt-5.5 must always run at high effort:\n  " + "\n  ".join(offenders)
+
+    def test_model_tier_map_is_short_context_by_default(self):
+        # Standing policy: short context everywhere. `long` is allowed only where the harness
+        # publishes no short variant of the wanted model, which today is Cursor alone — it ships
+        # Opus 5, Sonnet 5 and GPT-5.5 exclusively as 1M ids. Any other `long` row is drift, and
+        # an empty value is worse: it reads as "nobody decided" and hides which window is in play.
+        import ai_models
+
+        cursor_1m_only = ("claude-opus-5", "claude-sonnet-5", "gpt-5.5")
+        offenders: list[str] = []
+
+        def check(where: str, harness: str, model: str, context: str | None) -> None:
+            # Order matters: a 1M-only Cursor row claiming "short" is a lie about the window it
+            # gets, so the forced-long case is checked before the short-by-default case.
+            if harness == "cursor" and any(model.startswith(name) for name in cursor_1m_only):
+                if context != "long":
+                    offenders.append(
+                        f"{where}: {model!r} is 1M-only on Cursor, so context must be 'long', got {context!r}"
+                    )
+                return
+            if context != "short":
+                offenders.append(f"{where}: context is {context!r}, expected 'short' (model {model!r})")
+
+        tier_map = ai_models.load_model_tier_map(REPO / "home/.chezmoidata/ai_models.yaml")
+        for harness, buckets in tier_map.items():
+            for bucket, row in buckets.items():
+                check(f"model_tier_map.{harness}.{bucket}", harness, row.get("model", ""), row.get("context"))
+                fallback = row.get("fallback")
+                if isinstance(fallback, dict):
+                    check(
+                        f"model_tier_map.{harness}.{bucket}.fallback",
+                        harness,
+                        fallback.get("model", ""),
+                        fallback.get("context"),
+                    )
+
+        # Copilot's contextTier is the only dial that turns the policy into a runtime request.
+        copilot = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text(encoding="utf-8"))
+        for name, agent in copilot["subagents"]["agents"].items():
+            tier = agent.get("contextTier")
+            if tier != "default":
+                offenders.append(f"copilot settings.json {name}: contextTier is {tier!r}, expected 'default'")
+
+        # `[1m]` is the Claude Code selector that swaps a bare id onto the gateway's 1M window.
+        for relative in ("home/exact_bin/executable_,claude-litellm", "home/dot_config/fish/readonly_config.fish.tmpl"):
+            source = (REPO / relative).read_text(encoding="utf-8")
+            code = "\n".join(line for line in source.splitlines() if not line.lstrip().startswith("#"))
+            if "[1m]" in code:
+                offenders.append(f"{relative}: carries a [1m] extended-context selector")
+
+        assert not offenders, "short context is the default everywhere:\n  " + "\n  ".join(offenders)
+
+    def test_gruntwork_runs_the_codex_tier_wherever_the_catalog_has_it(self):
+        # Gruntwork is the cheap bucket, so it takes gpt-5.3-codex at high effort on every harness
+        # whose catalog carries it. Claude Code and Gemini are single-vendor and cannot, and native
+        # Codex has no gpt-5.3-codex-spark, so each keeps its own pick — spelled out here so a
+        # future edit cannot quietly downgrade a harness that could have run the codex tier.
+        import ai_models
+
+        expected = {
+            "claude_code": "claude-sonnet-4-6",  # Anthropic-only catalog
+            "codex": "gpt-5.4",  # no gpt-5.3-codex-spark in the 0.146.0 catalog
+            "copilot": "gpt-5.3-codex",
+            "cursor": "gpt-5.3-codex-high",  # Cursor bakes effort into the id
+            "gemini": "gemini-3.6-flash",  # Google-only catalog
+            "pi": "openrouter/openai/gpt-5.3-codex:high",
+            "omp": "github-copilot/gpt-5.3-codex:high",
+        }
+
+        tier_map = ai_models.load_model_tier_map(REPO / "home/.chezmoidata/ai_models.yaml")
+        assert set(tier_map) == set(expected), (
+            f"harness set changed: {sorted(set(tier_map) ^ set(expected))}; add its gruntwork pick here"
+        )
+        for harness, model in expected.items():
+            row = tier_map[harness]["gruntwork"]
+            assert row["model"] == model, (
+                f"model_tier_map.{harness}.gruntwork.model is {row['model']!r}, expected {model!r}"
+            )
+            assert row["effort"] == "high", (
+                f"model_tier_map.{harness}.gruntwork.effort is {row['effort']!r}, expected 'high'"
+            )
+
+        # Copilot's explore/task subagents are the deployed gruntwork lanes.
+        copilot = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text(encoding="utf-8"))[
+            "subagents"
+        ]["agents"]
+        for name in ("explore", "task"):
+            assert copilot[name]["model"] == expected["copilot"], (
+                f"copilot settings.json {name} model {copilot[name]['model']!r} != {expected['copilot']!r}"
+            )
+            assert copilot[name]["effortLevel"] == "high", (
+                f"copilot settings.json {name} effortLevel is {copilot[name]['effortLevel']!r}, expected 'high'"
+            )
+
+    def test_claude_settings_keep_thinking_disabled(self):
+        # model_tier_map.claude_code declares thinking "off" for every Anthropic bucket. The only
+        # thing enforcing that is alwaysThinkingEnabled: false, which makes Hye() return false so
+        # thinkingConfig resolves to {type:"disabled"} instead of {type:"adaptive"}. Dropping it
+        # silently turns Opus 5 review lanes back into thinking lanes.
+        for profile in ("personal", "work"):
+            settings = json.loads((REPO / f"home/dot_claude/settings.{profile}.json").read_text(encoding="utf-8"))
+            assert settings.get("alwaysThinkingEnabled") is False, (
+                f"claude settings.{profile}.json must set alwaysThinkingEnabled: false, "
+                f"got {settings.get('alwaysThinkingEnabled')!r}"
+            )
+            # CLAUDE_CODE_DISABLE_THINKING defeats the hard disable: the request builder only
+            # sends {type:"disabled"} when that env var is absent (`!bn`). It belongs on the
+            # non-first-party ,claude-litellm route, never in native settings.
+            assert "CLAUDE_CODE_DISABLE_THINKING" not in settings.get("env", {}), (
+                f"claude settings.{profile}.json sets CLAUDE_CODE_DISABLE_THINKING, which forces "
+                "the omit path and lets adaptive models keep thinking"
+            )
+
+    def test_copilot_launcher_disables_anthropic_thinking(self):
+        # Opus 5 thinks by default on Copilot. The registry pins Opus for review lanes as the
+        # non-thinking pick, which is only true while the launcher exports this env var:
+        # app.js Q3e() feeds it to nativeModelClientDefaultOptionsJson, which sets thinkingBudget.
+        self.assert_file_contains(
+            "home/exact_lib/exact_,copilot/main.py",
+            'os.environ.setdefault("COPILOT_DISABLE_ANTHROPIC_THINKING", "1")',
+        )
+
+    def test_reviewer_lanes_stay_off_the_controller_context(self):
+        # A lane's payload is paid N times per review. Loading the router, shared_rules,
+        # pr_common, or a mode file roughly doubles it for instructions a read-only lane is
+        # forbidden to act on, so the worker contract must stay self-contained.
+        worker = "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_reviewer-worker.md"
+        self.assert_file_contains(
+            worker,
+            "`~/.agents/skills/k-review/references/judging_core.md`",
+            "Do not load `k-review/SKILL.md`, `shared_rules.md`, `pr_common.md`, `lanes.md`, or a mode file.",
+            "Do not run repo-wide suites, full builds, or whole-suite test runs.",
+        )
+        # The controller must actually own the shared work the lanes were told to skip.
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
+            "Run any repo-wide suite, full build, or whole-suite test run **once here**",
+            "Lanes deliberately do not load `k-review/SKILL.md`, `shared_rules.md`, `pr_common.md`, `lanes.md`, or a mode file.",
+        )
+        # Three harnesses can put the router back into a lane through profile frontmatter,
+        # each by a different mechanism, so the payload cut has to be asserted per harness.
+        # Pi `skills:` injects a name/description/location catalog (pi-subagents
+        # src/agents/skills.ts buildSkillInjection) that re-invites the router.
+        self.assert_file_not_contains(
+            "home/dot_pi/agent/exact_agents/reviewer.md.tmpl",
+            "skills: k-review",
+        )
+        # OMP `autoloadSkills` injects the skill body itself. Check the frontmatter block,
+        # not the whole file, so the prose explaining the omission does not trip the assert.
+        omp_reviewer = REPO / "home/dot_omp/private_agent/exact_agents/reviewer.md.tmpl"
+        omp_frontmatter = omp_reviewer.read_text(encoding="utf-8").split("---")[1]
+        assert "autoloadSkills" not in omp_frontmatter, (
+            "OMP reviewer frontmatter must not autoload a skill: it injects the skill body, "
+            "and k-review would re-add the router that reviewer-worker.md forbids"
+        )
+        # Claude `skills:` is an allowlist where omitting loads every discovered skill,
+        # so it must stay present and stay narrowed to the lens set.
+        claude_reviewer = "home/dot_claude/exact_agents/reviewer.md.tmpl"
+        self.assert_file_contains(claude_reviewer, "skills:", "  - k-code-quality")
+        self.assert_file_not_contains(claude_reviewer, "  - k-review")
+        # Every harness lane profile still points at the one shared contract.
+        for profile in (
+            "home/dot_cursor/exact_agents/readonly_review-worker.md.tmpl",
+            "home/dot_codex/exact_agents/readonly_review-worker.toml.tmpl",
+            "home/dot_gemini/exact_agents/readonly_review-worker.md.tmpl",
+            "home/private_dot_copilot/exact_agents/readonly_review-worker.agent.md.tmpl",
+            "home/dot_claude/exact_agents/reviewer.md.tmpl",
+            "home/dot_pi/agent/exact_agents/reviewer.md.tmpl",
+            "home/dot_omp/private_agent/exact_agents/reviewer.md.tmpl",
+        ):
+            self.assert_file_contains(profile, "k-review/references/reviewer-worker.md")
+
+    def test_expert_lane_registry_is_the_single_roster_source(self):
+        lanes = "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_lanes.md"
+        self.assert_file_contains(
+            lanes,
+            "### `correctness-regressions`",
+            "### `security-authz`",
+            "### `deletion-replacement`",
+            "### `docs-contract-drift`",
+            "~/.agents/skills/k-code-quality-tests/SKILL.md",
+            "~/.agents/skills/k-codebase-design/SKILL.md",
+        )
+        # Every wired lens skill must exist, or the lane silently loads nothing.
+        body = (REPO / lanes).read_text(encoding="utf-8")
+        wired = set(re.findall(r"~/\.agents/skills/(k-[a-z0-9-]+)/SKILL\.md", body))
+        assert wired, "lanes.md wires no lens skills"
+        for skill in sorted(wired):
+            target = REPO / f"home/exact_dot_agents/exact_skills/exact_{skill}/readonly_SKILL.md"
+            assert target.is_file(), f"lanes.md wires a missing lens skill: {skill}"
+        # Tiers select from the registry instead of re-listing angles inline.
+        for tier in (
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_review.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_local_changes.md",
+        ):
+            self.assert_file_contains(tier, "lanes.md")
+
+    def test_adversarial_verifier_runs_a_bounded_cross_family_miss_sweep(self):
+        # The verifier is the only different-family read of the diff. Refutation-only wastes it.
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_adversarial-verifier.md",
+            "## Cross-family miss sweep (bounded, after the verdicts)",
+            "Return at most three, marked `new-candidate`",
+            "the controller re-audits them before judgment",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_adversarial-verifier.md",
+            "Do not generate new findings; the finder lanes own discovery.",
+        )
+        # Sweep candidates bypass the audit unless each controller re-audits them inline.
+        for controller in (
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
+            "home/dot_pi/agent/exact_agents/review-controller.md.tmpl",
+            "home/dot_omp/private_agent/exact_agents/review-controller.md.tmpl",
+        ):
+            self.assert_file_contains(controller, "new-candidate", "Findings-Set Audit")
+
     def test_live_ui_windows_is_manual_only_and_purged_from_automatic_flows(self):
         # The Windows/VirtualBox environment is a standalone manual-only skill now;
-        # `/k-agent-review`, `/k-build`, `live-ui-review`, and `ui-proof` must carry none of its
+        # `/k-deep-review`, `/k-build`, `live-ui-review`, and `ui-proof` must carry none of its
         # auto-inference or environment-selection machinery.
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/readonly_SKILL.md",
@@ -753,7 +1236,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "Never install Guest Additions or otherwise modify guest OS configuration",
         )
         self.assert_file_not_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-agent-review/exact_references/readonly_live-ui-runtime.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_live-ui-runtime.md",
             "Environment selection",
             "windows_additional",
             "windows_only",
@@ -762,7 +1245,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "VirtualBox",
         )
         self.assert_file_not_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-agent-review/exact_references/readonly_live-ui-review.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_live-ui-review.md",
             "windows verification requirement",
             "environments_checked",
         )
@@ -772,11 +1255,11 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "environments_checked",
         )
         self.assert_file_not_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-agent-review/readonly_SKILL.md",
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
             "Resolve the Windows/VirtualBox verification requirement once",
         )
         self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-agent-review/readonly_SKILL.md",
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
             "Windows/VirtualBox coverage is out of scope for this flow: `live-ui-review` verifies the local browser only.",
             "add the manual `~/.agents/skills/k-live-ui-windows/SKILL.md` skill to this turn's work by hand",
         )

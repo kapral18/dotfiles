@@ -1,7 +1,7 @@
 # Live UI Runtime Contract (shared)
 
 Mode-neutral runtime machinery shared by the live-UI workers.
-Both the review-mode contract (`~/.agents/skills/k-agent-review/references/live-ui-review.md`) and the proof-mode contract (`~/.agents/skills/k-ui-proof/SKILL.md`) load this file.
+Both the review-mode contract (`~/.agents/skills/k-review/references/live-ui-review.md`) and the proof-mode contract (`~/.agents/skills/k-ui-proof/SKILL.md`) load this file.
 It owns target-packet resolution, Playwriter preflight, readiness, runtime start, data/setup, screenshot artifacts, and the runtime safety boundary.
 The loading mode file owns its oracle (what evidence is judged against), its caller inputs, its comparison model, and its return shape.
 
@@ -88,7 +88,7 @@ Run readiness before any UI observation.
 - Prefer selector state, URL, title, and focused DOM/accessibility observations before snapshots or screenshots.
   Do not capture full page snapshots/screenshots unless they are needed to decide or explain the finding or proof under capture.
 - Capture concrete evidence: URLs, steps, observed state, uncertainty, and screenshots/paths when required by the caller or useful.
-- UI-related review findings that may become drafted feedback after `/k-agent-review` or `live-ui-review` need screenshot proof as supporting evidence.
+- UI-related review findings that may become drafted feedback after `/k-deep-review` or `live-ui-review` need screenshot proof as supporting evidence.
   Capture the smallest useful screenshot set unless a valid blocker or non-applicability result prevents it.
 - Observable UI blockers and uncertainty states should include screenshot proof when it materially explains the blocker;
   pre-navigation blockers must record why no screenshot exists.

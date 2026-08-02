@@ -13,8 +13,8 @@
   "defaults": {
     "harnesses": {
       "claude": {
-        "personal": "gpt-5.5",
-        "work": "gpt-5.5"
+        "personal": "claude-opus-5",
+        "work": "claude-opus-5"
       },
       "codex": {
         "personal": "gpt-5.5",
@@ -44,13 +44,13 @@
           "model": "openai/gpt-5.5",
           "provider": "openrouter",
           "selector": "openrouter/openai/gpt-5.5",
-          "thinking": "medium"
+          "thinking": "high"
         },
         "work": {
           "model": "openai/gpt-5.5",
           "provider": "openrouter",
           "selector": "openrouter/openai/gpt-5.5",
-          "thinking": "medium"
+          "thinking": "high"
         }
       }
     }
@@ -98,7 +98,7 @@
       "curated": {
         "complete": true,
         "models": [
-          "gpt-5.5"
+          "claude-opus-5"
         ],
         "provenance": [
           {
@@ -125,7 +125,7 @@
       "recommended": {
         "complete": true,
         "models": [
-          "gpt-5.5"
+          "claude-opus-5"
         ],
         "provenance": [
           {
@@ -251,8 +251,8 @@
         "complete": true,
         "models": [
           "auto",
-          "gpt-5.5",
-          "claude-opus-5"
+          "claude-opus-5",
+          "gpt-5.5"
         ],
         "provenance": [
           {
@@ -277,8 +277,8 @@
         "complete": true,
         "models": [
           "auto",
-          "gpt-5.5",
-          "claude-opus-5"
+          "claude-opus-5",
+          "gpt-5.5"
         ],
         "provenance": [
           {

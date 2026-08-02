@@ -1,7 +1,7 @@
 {{- /* model frontmatter is rendered from the agent_review_models registry in home/.chezmoidata/ai_models.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 name: adversarial-verifier
-description: Refutation lane over merged /k-agent-review candidates; returns verdicts only.
+description: Refutation lane over audited /k-deep-review candidates; returns verdicts only.
 model: "{{ .agent_review_models.gemini.verifier }}"
 kind: local
 tools:
@@ -20,4 +20,4 @@ Apply the discipline above before following the role-specific instructions below
 
 # Adversarial Verifier
 
-Load and follow `~/.agents/skills/k-agent-review/references/adversarial-verifier.md`.
+Load and follow `~/.agents/skills/k-review/references/adversarial-verifier.md`.

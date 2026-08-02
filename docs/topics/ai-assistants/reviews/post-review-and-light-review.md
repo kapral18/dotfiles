@@ -13,8 +13,8 @@ The review system audits both findings and fixes. Before acting, it tries to ref
 
 | Pass                        | Runs when                                                   | Looks at                              | Purpose                                                               |
 | --------------------------- | ----------------------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------- |
-| Candidate refutation ladder | before keeping any finding                                  | each candidate                        | try to kill the claim before acting                                   |
-| Findings-set audit          | before fixing or drafting                                   | surviving findings and proposed fixes | collapse duplicate, verbose, unactionable, or overengineered feedback |
+| Findings-set audit          | before final refutation or acting                           | candidate findings and proposed fixes | collapse duplicate, verbose, unactionable, or overengineered feedback |
+| Candidate refutation ladder | final pass over the audited candidate set                   | each audited candidate                | try to kill the claim before acting                                   |
 | Post-review stage           | after a change-producing flow edits the working tree        | the fix diff, not the original diff   | catch hygiene problems introduced by the fix                          |
 | Light review                | before choosing full review for low-risk self-authored work | local diff / branch-delta scope       | run proportional depth without PR machinery                           |
 
@@ -54,15 +54,15 @@ Post-review behavior:
 
 Two engine passes run _before_ fixing or drafting, distinct from the post-review stage that runs _after_.
 
-**Candidate refutation ladder** runs before keeping any finding. The deciding agent tries to kill the finding in order: claim truth, reachability, severity, proposed fix, already-covered.
+**Findings-set audit** runs before final refutation or acting. The same four dimensions apply to the _finding list and its proposed fixes_, not the fix diff: collapse same-root-cause duplicates, trim verbose findings, and drop unanchored, unactionable, or overengineered items.
+
+In `/k-deep-review`, this is the `findings-auditor`'s job when the candidate set is non-trivial.
+
+**Candidate refutation ladder** runs as the final pass over the audited candidate set. The deciding agent tries to kill each remaining finding in order: claim truth, reachability, severity, proposed fix, already-covered.
 
 A candidate survives only when refutation fails with evidence. Every kept finding states reachability, and an unreachable path loses its severity.
 
-Direct `k-review`/`k-light-review` run this as single-model self-refutation. In `/k-agent-review`, the cross-family adversarial lane owns it and read-only finder lanes only return candidates plus reachability.
-
-**Findings-set audit** runs before acting on the survivors. The same four dimensions apply to the _finding list and its proposed fixes_, not the fix diff: collapse same-root-cause duplicates, trim verbose findings, and drop unanchored, unactionable, or overengineered items.
-
-In `/k-agent-review`, this is the `findings-auditor`'s job.
+Direct `k-review`/`k-light-review` run `adversarial-verifier` when the harness supports it; otherwise they run the ladder inline and report the degraded path. In `/k-deep-review`, the cross-family adversarial lane owns it after findings audit, and read-only finder lanes only return candidates plus reachability.
 
 ## Reference: light review
 
@@ -90,6 +90,6 @@ Any trigger escalates to full `k-review`. The router applies the same predicate 
 
 `change-auditor` (Claude + Pi) is the read-only delegated form.
 
-Both `k-light-review` and `k-review`'s local-changes mode run the shared **Verify-and-Fix Loop** in `judging_core.md`: build queue → refutation ladder → findings-set audit → fix → quality gates → post-review stage.
+Both `k-light-review` and `k-review`'s local-changes mode run the shared **Verify-and-Fix Loop** in `judging_core.md`: build queue → findings-set audit → final refutation → fix → quality gates → post-review stage.
 
 Each mode only adds its own base-context stance and scaffolding on top.

@@ -4,7 +4,6 @@ name: reviewer
 description: Read-only review worker for one review-controller fan-out angle; returns findings only.
 model: "{{ .agent_review_models.omp.lanes }}"
 tools: read, grep, glob, bash
-autoloadSkills: k-review
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}
@@ -13,6 +12,8 @@ Apply the discipline above before following the role-specific instructions below
 
 # Review Worker
 
-Load and follow `~/.agents/skills/k-agent-review/references/reviewer-worker.md`.
+Load and follow `~/.agents/skills/k-review/references/reviewer-worker.md`.
 
-Pi note: you are a single-angle worker invoked by `review-controller` in a parallel fan-out (one task per angle, all on the configured default model); the controller owns aggregation and the act phase.
+You are a single selected-lane worker invoked by `review-controller`; your profile model is rendered from `agent_review_models.omp.lanes`, and the controller owns aggregation and the act phase.
+
+No `autoloadSkills` is declared here on purpose: it injects a skill's body into the lane, and `k-review` would re-add the router and mode files that `reviewer-worker.md` forbids. Every skill stays discoverable, and a lane reads the files its contract names by absolute path.

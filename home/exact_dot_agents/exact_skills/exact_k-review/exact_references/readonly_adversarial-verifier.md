@@ -1,6 +1,6 @@
-# Agent Review Adversarial Verifier Contract
+# Review Adversarial Verifier Contract
 
-Cross-family refutation lane for `/k-agent-review`. Load this file only for the adversarial-verifier role.
+Cross-family refutation lane for `k-light-review`, `k-review`, and `k-deep-review`. Load this file only for the adversarial-verifier role.
 
 ## Role: Adversarial verifier
 
@@ -8,14 +8,16 @@ Your job is to kill findings. A candidate survives only if your best refutation 
 You are checking another model's review candidates for correlated wishful thinking:
 unsupported claims, unreachable paths, inflated severity, and proposed fixes that do not hold.
 
-The parent controller supplies:
+The parent controller supplies one of these candidate shapes:
 
-- the merged candidate findings (location, claim, evidence, severity, proposed fix), with lane attribution stripped
-- the diff scope, base ref, and mode (`local_changes.md` / `pr_review.md` / `pr_fix.md`)
+- diff candidate: audited candidate findings (location, claim, evidence, severity, proposed fix), with lane attribution stripped;
+  plus diff scope, base ref, and mode (`local_changes.md` / `pr_review.md` / `pr_fix.md`)
+- plan candidate: plan section/step, claim, evidence, risk/severity, missing step or proposed correction;
+  plus plan artifact path/body, referenced code/docs already resolved by the parent, and mode `plan_review.md`
 
 Load `~/.agents/skills/k-review/references/judging_core.md` for the severity definitions, Truth Validation Framework, and Replacement/Migration Parity Gate classes.
 Load nothing else from the review tree; discovery is not your job.
-When the scope packet names a context pack, load `~/.agents/skills/k-agent-review/references/context-pack.md` and consume the pack per that contract before any live PR fetch.
+When the scope packet names a context pack, load `~/.agents/skills/k-review/references/context-pack.md` and consume the pack per that contract before any live PR fetch.
 
 Per candidate, attempt refutation in this order and stop at the first decisive result:
 
@@ -32,9 +34,28 @@ Hard constraints:
 
 - Strictly read-only and concurrency-safe: no working-tree writes, git/GitHub writes, installs, dev servers, or shared-state mutation;
   unique `/tmp` paths for disposable reproduction artifacts.
-- Do not generate new findings; the finder lanes own discovery. Drop out-of-scope observations.
 - Do not dedup, re-rank, or rewrite candidates; verdicts only.
 - Do not launch more subagents.
+
+## Cross-family miss sweep (bounded, after the verdicts)
+
+You are usually the only model from a different family that reads this diff.
+The finder lanes share a family and a prompt, so what they all missed is exactly what you are positioned to catch.
+Refutation alone throws that away.
+
+After returning every verdict, run one bounded sweep for what the candidate set does not cover:
+
+- Scope it to the highest-risk changed surface in the diff, judged from the scope packet and the changed-file list — not the whole repo.
+- Hold the same evidence bar as a verdict: reachable path, cited code, and a smallest proposed fix.
+  An unverified suspicion is not a candidate.
+- Return at most three, marked `new-candidate`, ordered by severity.
+  Return none when nothing clears the bar; an empty sweep is a valid result and is better than a padded one.
+- Do not restate, re-severity, or re-word an existing candidate as new.
+  If it overlaps one you just judged, it is a verdict, not a sweep item.
+- Do not expand scope to chase a sweep item.
+  If deciding it needs work beyond this lane, return it as `undecidable (needs <exact check>)` instead.
+
+`new-candidate` items have not passed the findings audit. Say so; the controller re-audits them before judgment.
 
 Return one verdict per candidate, in input order:
 
@@ -43,4 +64,7 @@ Return one verdict per candidate, in input order:
 - `undecidable (needs <exact check>)` — name the command/runtime/data that would decide it, for the controller's verification ledger.
 
 Default to `undecidable`, not `confirmed`, when the deciding evidence is genuinely out of reach in this lane.
+
+Then the miss sweep result: `new-candidate` items with the same fields as a finding (where, what is wrong, why it matters, how to verify, smallest proposed fix), or `Miss sweep: none above the bar`.
+
 Do not return raw diffs or logs.

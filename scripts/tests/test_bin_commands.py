@@ -2034,18 +2034,18 @@ class TestLitellmWrappers(unittest.TestCase):
         assert 'export CLAUDE_CODE_DISABLE_THINKING="${CLAUDE_CODE_DISABLE_THINKING:-1}"' in source
         assert 'export CLAUDE_CODE_EFFORT_LEVEL="${CLAUDE_CODE_EFFORT_LEVEL:-high}"' in source
 
-    def test_SHOULD_apply_1m_selector_to_native_1m_defaults_only(self):
-        # Claude Code short-circuits BM(e) -> 1e6 when the model id ends in
-        # `[1m]`. Without it, `llm-gateway/`-prefixed ids miss the client
-        # registry and fall back to ~200k (autocompact fires at ~180k). Haiku
-        # 4.5 is NOT in the recognized [1m] set, so it must stay bare.
+    def test_SHOULD_leave_every_model_default_on_the_short_context_selector(self):
+        # `[1m]` is the only way to reach the gateway's 1M window: Claude Code
+        # short-circuits BM(e) -> 1e6 on that suffix, and bare `llm-gateway/`
+        # ids fall back to ~200k. The model_tier_map policy is short context by
+        # default, so no default here may carry the suffix.
         source = (REPO / "home/exact_bin/executable_,claude-litellm").read_text()
-        assert "ANTHROPIC_DEFAULT_OPUS_MODEL:-llm-gateway/claude-opus-4-8[1m]" in source
-        assert "ANTHROPIC_DEFAULT_SONNET_MODEL:-llm-gateway/claude-sonnet-5[1m]" in source
-        assert "CLAUDE_CODE_SUBAGENT_MODEL:-inherit" in source
-        assert "CLAUDE_CODE_SUBAGENT_MODEL:-llm-gateway/claude-opus-4-8[1m]" not in source
+        assert "ANTHROPIC_DEFAULT_OPUS_MODEL:-llm-gateway/claude-opus-4-8}" in source
+        assert "ANTHROPIC_DEFAULT_SONNET_MODEL:-llm-gateway/claude-sonnet-5}" in source
         assert "ANTHROPIC_DEFAULT_HAIKU_MODEL:-llm-gateway/claude-haiku-4-5}" in source
-        assert "claude-haiku-4-5[1m]" not in source
+        assert "CLAUDE_CODE_SUBAGENT_MODEL:-inherit" in source
+        code = "\n".join(line for line in source.splitlines() if not line.lstrip().startswith("#"))
+        assert "[1m]" not in code
 
     def test_SHOULD_strip_openai_v1_suffix_before_claude_appends_messages_path(self):
         with tempfile.TemporaryDirectory() as tmp:

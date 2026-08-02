@@ -2,7 +2,7 @@
 ---
 name: fresh-eyes
 description: Blind zero-context clarity lane for one review-controller fan-out; returns clarity findings only.
-model: "{{ .model_tier_map.pi.review.model }}"
+model: "{{ .agent_review_models.pi.lanes }}"
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: true
@@ -15,6 +15,6 @@ Apply the discipline above before following the role-specific instructions below
 
 # Fresh-Eyes Worker
 
-Load and follow `~/.agents/skills/k-agent-review/references/fresh-eyes.md`.
+Load and follow `~/.agents/skills/k-review/references/fresh-eyes.md`.
 
-Pi note: this profile deliberately carries no skills — the blind lane must not load the `k-review` skill or any PR context. Pi launches subagents only through named profiles, so this thin shim exists where other harnesses use a generic task.
+This profile deliberately carries no skills — the blind lane must not load the `k-review` skill or any PR context. It exists because this harness launches the lane through a named profile; generic-task harnesses carry the same contract in the task prompt.

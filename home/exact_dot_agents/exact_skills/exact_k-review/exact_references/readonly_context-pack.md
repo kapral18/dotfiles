@@ -1,6 +1,6 @@
-# Agent Review Context Pack Contract
+# Deep Review Context Pack Contract
 
-Shared read-only intake contract for `/k-agent-review` workers. Load this file when the parent scope packet names a context pack.
+Shared read-only intake contract for `/k-deep-review` workers. Load this file when the parent scope packet names a context pack.
 The blind fresh-eyes lane is the one exception: its own contract restricts it to `diff.patch`, `files/`, and `base/` and forbids pack metadata and live fallbacks.
 
 A context pack is an optimization and consistency boundary, not a new source of truth.
@@ -11,13 +11,13 @@ It lets stateless lanes consume the same complete PR snapshot without re-fetchin
 PR modes use:
 
 ```text
-/tmp/agent-review/<owner>-<repo>-pr<number>/
+/tmp/deep-review/<owner>-<repo>-pr<number>/
 ```
 
 Local modes use:
 
 ```text
-/tmp/agent-review/local-<workspace-hash>-<base>..<head>/
+/tmp/deep-review/local-<workspace-hash>-<base>..<head>/
 ```
 
 Treat the pack as read-only. Never write into it, refresh it in place, delete files from it, or add worker notes beside it.

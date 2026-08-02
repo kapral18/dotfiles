@@ -73,7 +73,7 @@ STRONG_CORRECTIONS = [
 ]
 
 NEUTRAL_PROMPTS = [
-    "/k-agent-review https://github.com/elastic/kibana/pull/277247",
+    "/k-deep-review https://github.com/elastic/kibana/pull/277247",
     "submit as pending review and tell me where to add each image",
     "there should be a way to drag and drop images in, there has to be via playwriter i cna't believe there isnt",
     "listen there should be a way maybe we should first find a way to upload the images to get the links…",

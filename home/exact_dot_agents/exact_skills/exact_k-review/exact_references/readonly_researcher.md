@@ -1,4 +1,4 @@
-# Agent Review Researcher Contract
+# Review Researcher Contract
 
 Shared contract for delegated researcher subagents. Load this file only for the matching worker role.
 

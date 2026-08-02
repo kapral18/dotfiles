@@ -1,10 +1,10 @@
 {{- /* model frontmatter is rendered from the model registries in home/.chezmoidata/ai_models.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 name: findings-auditor
-description: Read-only /k-agent-review findings auditor for non-trivial post-live-UI audits.
+description: Read-only /k-deep-review findings auditor for non-trivial post-live-UI audits.
 model: "{{ .agent_review_models.omp.lanes }}"
 tools: read, grep, glob, bash
-autoloadSkills: k-agent-review, k-review
+autoloadSkills: k-deep-review, k-review
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}
@@ -13,4 +13,4 @@ Apply the discipline above before following the role-specific instructions below
 
 # Findings Auditor
 
-Load and follow `~/.agents/skills/k-agent-review/references/findings-auditor.md`.
+Load and follow `~/.agents/skills/k-review/references/findings-auditor.md`.

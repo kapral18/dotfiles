@@ -2,17 +2,18 @@
 # Keep OMP native guidance/features as the base; this file only pins user policy.
 # {{ if eq .isWork true }}
 modelRoles:
-  default: openai-codex/gpt-5.5:high
-  smol: openai-codex/gpt-5.3-codex-spark:xhigh
-  vision: openai-codex/gpt-5.5:high
-  slow: openai-codex/gpt-5.5:high
-  plan: openai-codex/gpt-5.5:high
-  task: openai-codex/gpt-5.5:high
-  advisor: openai-codex/gpt-5.5:high
+  default: cursor/claude-opus-5-high:high
+  smol: cursor/gpt-5.3-codex-high:high
+  vision: cursor/claude-opus-5-high:high
+  slow: cursor/claude-opus-5-high:high
+  plan: cursor/claude-opus-5-high:high
+  task: cursor/claude-opus-5-high:high
+  advisor: cursor/gpt-5.5-high:high
 
 modelProviderOrder:
-  - openai-codex
+  - cursor
   - github-copilot
+  - openai-codex
   - openrouter
   - anthropic
   - openai
@@ -39,7 +40,7 @@ advisor:
   syncBacklog: 1
   immuneTurns: 0
 
-defaultThinkingLevel: medium
+defaultThinkingLevel: high
 
 memory:
   backend: off

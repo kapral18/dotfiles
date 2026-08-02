@@ -1,15 +1,15 @@
 ---
 sidebar_position: 1
-title: Agent-review topology
+title: Deep-review topology
 ---
 
 # Multi-agent topology
 
-`/k-agent-review` is the orchestration entrypoint. Cursor, Copilot, Claude, Codex, and Gemini bridge it through their native isolation mechanisms where available.
+`/k-deep-review` is the orchestration entrypoint. Cursor, Copilot, Claude, Codex, and Gemini bridge it through their native isolation mechanisms where available.
 
 The flow is a phased investigation pipeline, not a loose collection of agents. The key invariant is phase ownership: workers investigate; the controller judges and performs any gated side effect.
 
-![Agent-review phase order: route, blocking PR necessity, parallel registry-model angle lanes, lane merge/dedup, cross-family adversarial verification concurrent with live UI, findings audit, controller judgment, and gated action](../assets/agent-review-flow.svg)
+![Deep-review phase order: route, blocking PR necessity, bounded registry-model reviewer roster, lane merge/dedup, conditional live UI, findings audit, final cross-family adversarial verification, controller judgment, and gated action](../assets/deep-review-flow.svg)
 
 ## Mental model: phase ownership
 
@@ -19,9 +19,9 @@ The flow is a phased investigation pipeline, not a loose collection of agents. T
 | PR necessity / intent | route says PR + other/unknown author, or local changes need PR intent | whether the PR is worth implementation review and whether intent artifacts are current        | PR is blocked, superseded, unclear, not needed, incorrectly open, or intent is unclear |
 | Reviewer fan-out      | PR necessity/intent greenlight or non-applicable skip                 | read-only candidate findings and `verification_needed` from the shared context pack when used | every launched lane finishes; individual blockers become controller input              |
 | Lane merge/dedup      | every reviewer lane returned                                          | one merged candidate set and UI/runtime applicability trigger                                 | merged candidate set is empty (later phases report skipped)                            |
-| Adversarial verify    | lane merge/dedup returns candidates                                   | per-candidate confirmed/refuted/undecidable verdicts on a cross-family model                  | verifier cannot complete or produces unusable evidence                                 |
 | Live UI               | lane merge/dedup returns and UI/runtime is relevant                   | UI reality, required screenshot handoff for feedback candidates, target/runtime/data blockers | target packet, runtime, data, or required screenshots are blocked                      |
-| Findings audit        | verifier + live UI outputs exist or are explicitly skipped            | actionability, duplication, gaps, overengineering, verification-ledger audit                  | audit finds no actionable surviving finding or reports blocker                         |
+| Findings audit        | reviewer lanes and live UI outputs exist or are explicitly skipped    | actionability, duplication, gaps, overengineering, verification-ledger audit                  | audit finds no actionable surviving finding or reports blocker                         |
+| Final adversarial     | findings audit returns audited candidates                             | per-candidate verdicts plus a bounded cross-family miss sweep, on a cross-family model        | verifier cannot complete or produces unusable evidence                                 |
 | Controller judgment   | all investigation phases are complete                                 | keep/drop, serial verification ledger, PR pending-review reconciliation                       | unsupported or conflicting payload would be produced                                   |
 | Act                   | judgment is complete and blocking ledger items are resolved           | fixes, drafts, gated posting                                                                  | human-visible gate or quality gate blocks                                              |
 | Post-act verification | the working tree was edited this flow                                 | quality gates, fix-diff four-dimension stage, carried `verification_needed`                   | setup itself fails or the toolchain is genuinely unavailable                           |
@@ -46,15 +46,19 @@ Review greenlight is separate from merge readiness. Unknown mergeability or fail
 
 ### Reviewer fan-out
 
-After any required PR necessity greenlight, the controller builds an **angle roster** from scope-level evidence: changed paths and diff stats, never code reading. It launches two to five read-only reviewer lanes in parallel, all on the **registry lane model** for the harness.
+After any required PR necessity greenlight, the controller builds a **bounded angle roster** from scope-level evidence: changed paths and diff stats, never code reading. It launches one to three sighted read-only reviewer lanes by default, all on the **registry lane model** for the harness. Four or five sighted lanes are reserved for explicit maximum-rigor requests or multiple high-risk classes in the same diff.
 
-Before that fan-out, the controller materializes a read-only context pack for PR metadata, comments, reviews, checks, diff, and changed-file/base snapshots, then includes the pack root and expected `head_sha` in every worker scope packet. Workers consume it through `context-pack.md`, verify `manifest.head_sha`, and report `pack_used`, `pack_stale`, or `pack_missing`.
+Before that roster launches, the controller materializes a read-only context pack for PR metadata, comments, reviews, checks, diff, and changed-file/base snapshots, then includes the pack root and expected `head_sha` in every worker scope packet. Workers consume it through `context-pack.md`, verify `manifest.head_sha`, and report `pack_used`, `pack_stale`, or `pack_missing`.
 
-Correctness/regressions always runs. Additional implicated angles include tests, types/API, security, performance, deletion-safety, state-machine, product flow, observability, and simplicity.
+`correctness-regressions` always runs. A single-surface diff with no independent risk trigger uses that one sighted lane; the cross-family adversarial verifier supplies the independent refutation pass after findings audit.
 
-Angles focus attention but are not ownership boundaries. Verified out-of-angle findings return marked, never dropped.
+Which lenses exist, when each is implicated, and what each one checks live in one place: `k-review/references/lanes.md`. It defines sixteen lenses — correctness, tests, design/modularity, API contracts, security/authz, data persistence, concurrency/state, error and failure modes, performance, deletion/replacement, product flow, frontend rendering, accessibility, observability, dependency/config, and docs/contract drift — and wires the ones with a matching expert skill (`k-code-quality`, `-tests`, `-react`, `-web`, `k-codebase-design`) to load it. Availability is free; only launched lanes cost tokens.
 
-A **blind fresh-eyes clarity lane** joins the same batch for PR-review and local-changes modes when the diff touches human-maintained code. It receives only the diff scope — no PR body, commit messages, issue text, or prior findings, including on re-runs — loads none of the review methodology, and returns clarity-only findings capped at MEDIUM.
+The controller pastes the selected lane's lens skill and check list into that worker's scope packet. Workers never load `lanes.md`, so growing the catalog does not grow any lane's context.
+
+Lenses focus attention but are not ownership boundaries. Verified out-of-angle findings return marked, never dropped. Lanes are told not to hunt outside their lens, because speculative breadth is what makes parallel lanes return the same shallow findings.
+
+A **blind fresh-eyes clarity lane** joins the same batch only when PR-review or local-changes mode touches human-maintained code/docs and scope-level evidence shows comprehension risk: public interface/naming changes, AI-facing or user-facing prose, state-machine/replacement/deletion work, more than 500 changed lines, or more than 10 changed files. It receives only the diff scope — no PR body, commit messages, issue text, or prior findings, including on re-runs — loads none of the review methodology, and returns clarity-only findings capped at MEDIUM.
 
 Context that explains confusing code does not refute a fresh-eyes finding. It confirms the context lives in the wrong place, and the controller uses it to pick the fix.
 
@@ -70,17 +74,9 @@ The controller tracks those entries in a verification ledger. A ledger item that
 
 Findings audit can recommend a disposition, but it cannot erase the dependency or turn an unresolved fork into "not needed" by assuming one branch.
 
-### Adversarial verification
-
-After every lane returns, the controller merges duplicate candidates and runs **adversarial verification**. One cross-family worker receives only the merged candidates, with lane attribution stripped, and tries to refute each claim by testing truth, reachability, severity, proposed fix, and already-covered status.
-
-Verdicts (`confirmed`/`refuted`/`undecidable`) feed the verification ledger. A refutation becomes a hard drop reason only after the controller checks its evidence addresses the candidate's actual claim.
-
-On single-family harnesses (Claude, Codex, Gemini), the phase runs on the lane model with refutation framing and reports `families=same (degraded)`. That degraded state is reported, never silent.
-
 ### Live UI and evidence handoff
 
-`live-ui-review` starts after lane merge/dedup, concurrently with adversarial verification when UI/runtime is relevant, and checks applicable candidates with Playwriter against a controller-supplied target packet. Any UI-related finding that may become review feedback needs screenshot handoff evidence, unless the worker returns a valid blocker or non-applicability result.
+`live-ui-review` starts after lane merge/dedup when UI/runtime is relevant and checks applicable candidates with Playwriter against a controller-supplied target packet. Any UI-related finding that may become review feedback needs screenshot handoff evidence, unless the worker returns a valid blocker or non-applicability result.
 
 Live UI can return:
 
@@ -91,17 +87,27 @@ Live UI can return:
 | `Not applicable`    | target does not apply to the introduced surface                                                                                                                                                        |
 | blocker             | target, branch, runtime, data setup, or screenshot capture is blocked                                                                                                                                  |
 
-For UI-facing PR findings, the controller keeps image paths out of GitHub review bodies and reports a separate `UI evidence attachments:` handoff. That handoff includes local paths, descriptions, target branch/URL, suggested comment placement, md5s, dimensions, and whether the controller viewed the image before human-visible use. If adversarial verification refutes a candidate, any matching UI evidence is discarded as moot.
+For UI-facing PR findings, the controller keeps image paths out of GitHub review bodies and reports a separate `UI evidence attachments:` handoff. That handoff includes local paths, descriptions, target branch/URL, suggested comment placement, md5s, dimensions, and whether the controller viewed the image before human-visible use.
 
 If a kept UI finding lacks screenshots without a valid blocker or non-applicability result, the controller reruns live UI or blocks instead of drafting text-only feedback.
 
-### Findings audit and controller judgment
+### Findings audit
 
-The findings audit runs after live UI and before any action. The controller audits inline for trivial sets: zero or one straightforward finding with no disagreement, blocker, or fix diff.
+The findings audit runs after live UI and before final adversarial verification. The controller audits inline for trivial sets: zero or one straightforward finding with no disagreement, blocker, or fix diff.
 
 For non-trivial sets, including material `verification_needed`, the controller delegates to `findings-auditor`. It flags redundancy, verbosity, semantic + logical duplication, gaps, actionability problems, overengineered proposed fixes, and verification-ledger disposition problems.
 
 When two or more reviewer lanes report the same root cause, the audit should merge/dedupe it into one candidate unless hard evidence proves a drop reason.
+
+### Final adversarial verification
+
+After findings audit, the controller runs **final adversarial verification**. One cross-family worker receives only the audited candidates, with lane attribution stripped, and tries to refute each claim by testing truth, reachability, severity, proposed fix, and already-covered status.
+
+Verdicts (`confirmed`/`refuted`/`undecidable`) feed the verification ledger. A refutation becomes a hard drop reason only after the controller checks its evidence addresses the candidate's actual claim.
+
+The verifier then runs a **bounded cross-family miss sweep**. It is usually the only model from a different family that reads the diff, and the finder lanes share a family and a prompt, so what they all missed is what it is best positioned to catch. Refutation alone discards that. The sweep is scoped to the highest-risk changed surface, holds the same evidence bar as a verdict, and returns at most three `new-candidate` items or `none above the bar`. Because they have not passed the findings audit, the controller re-audits them inline before judgment and reports produced-versus-survived counts.
+
+On harnesses where the registry pairs the same family for both roles (Claude, Codex, Gemini, and now Pi/OMP), the phase runs on the lane model with refutation framing and reports `families=same (degraded)`. That degraded state is reported, never silent.
 
 The controller aggregates the investigation outputs, then judges what to fix or draft through mode-correct review rules. For each ledger item, it either resolves it with evidence, runs the check serially when needed for judgment, marks it not needed with evidence, or reports the exact blocker/uncertainty.
 
@@ -117,26 +123,26 @@ It merges still-valid pending feedback with net-new findings into one payload, d
 
 ### Reviewer lane mapping
 
-| Runtime        | Worker lanes                                                                        |
-| -------------- | ----------------------------------------------------------------------------------- |
-| Cursor/Copilot | `review-worker` once per angle (registry lane model)                                |
-| Claude         | `reviewer` once per angle through `Task` with `model: inherit`                      |
-| Codex          | `spawn_agent` `review-worker` agents, one per angle (registry: config default)      |
-| Gemini         | `review-worker` once per angle (registry: config default)                           |
-| any (blind)    | fresh-eyes via a generic read-only task (Pi: thin `fresh-eyes` profile)             |
-| verify (cross) | `adversarial-verifier` on the registry verifier model (different family than lanes) |
+| Runtime        | Worker lanes                                                                            |
+| -------------- | --------------------------------------------------------------------------------------- |
+| Cursor/Copilot | `review-worker` once per selected sighted angle (registry lane model)                   |
+| Claude         | `reviewer` once per selected sighted angle through `Task` with `model: inherit`         |
+| Codex          | `spawn_agent` `review-worker` agents, one per selected sighted angle                    |
+| Gemini         | `review-worker` once per selected sighted angle                                         |
+| any (blind)    | conditional fresh-eyes via a generic read-only task (Pi/OMP: thin `fresh-eyes` profile) |
+| verify (cross) | `adversarial-verifier` on the registry verifier model (different family than lanes)     |
 
 ### Model policy
 
 Model selection is registry-driven and deterministic.
 
-| Lane                                       | Model                                                                                                                                             |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| angle lanes, fresh-eyes, auditors, live UI | `agent_review_models.<harness>.lanes` rendered into profile frontmatter; generic fresh-eyes passes the same value as the profile-equivalent model |
-| adversarial verifier                       | `agent_review_models.<harness>.verifier` — a different family than lanes, by review                                                               |
-| verifier on single-family harnesses        | registry leaves it empty/inherit; runs on the lane model as `families=same (degraded)`                                                            |
+| Lane                                       | Model                                                                                                                                                      |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| angle lanes, fresh-eyes, auditors, live UI | `agent_review_models.<harness>.lanes` rendered into profile frontmatter; generic fresh-eyes passes the same registry value as the profile-equivalent model |
+| adversarial verifier                       | `agent_review_models.<harness>.verifier` — a different family than lanes, by review                                                                        |
+| verifier on single-family harnesses        | registry leaves it empty/inherit; runs on the lane model as `families=same (degraded)`                                                                     |
 
-Every profile's `model` frontmatter is a chezmoi template over the single `agent_review_models` block in `ai_models.yaml`. Updating a model is a one-line registry edit, and neither skills nor controllers steer models at runtime; the only runtime pass-through is generic fresh-eyes (table above), which cannot use a context-bearing profile.
+Every repo-owned review profile's `model` frontmatter is a chezmoi template over the single `agent_review_models` block in `ai_models.yaml`. Updating a model is a one-line registry edit, and neither skills nor controllers steer models at runtime; generic fresh-eyes is the only runtime pass-through, used only where no named fresh-eyes profile exists.
 
 The review's diversity comes from angles plus the cross-family verify pass; the registry keeps the family pairing a human decision instead of a launch-time inference.
 
@@ -164,12 +170,14 @@ Controller responsibilities:
 - materialize a read-only context pack and pass its path plus expected `head_sha` in worker packets.
 - run PR necessity gate when required.
 - fan out after greenlight.
-- run live UI concurrently with adversarial verification after lane merge/dedup when UI/runtime is relevant.
-- audit findings inline or by delegation.
+- run live UI after lane merge/dedup when UI/runtime is relevant.
+- audit findings inline or by delegation, then run final adversarial verification, then re-audit the verifier's miss-sweep candidates inline.
+- run repo-wide suites and full builds once, before the lane batch, and pass the result into every scope packet; lanes are told not to repeat shared work.
+- report lane yield (candidates returned versus findings kept) so an unproductive trigger can be pruned from later runs.
 - aggregate, filter, and reconcile pending-review context.
 - act after normal gates: apply fixes when `fix_authorized: yes` (own, assigned, adopted PR, or local-changes self flow), otherwise draft only.
 - run post-act verification whenever the working tree was edited: quality gates plus the fix-diff four-dimension stage.
-- restart from the earliest invalidated phase when the user supplies new context that changes target, intent, or accepted behavior; if leaving `/k-agent-review`, state that downgrade before editing.
+- restart from the earliest invalidated phase when the user supplies new context that changes target, intent, or accepted behavior; if leaving `/k-deep-review`, state that downgrade before editing.
 - block completion while decisive verification-ledger items, intent dependencies, pending-review reconciliation blockers, required live-UI triggers without valid blockers, or post-act verification items remain unresolved.
 
 Worker profiles are read-only, concurrency-safe, and recursion-safe. They load review methodology in isolated contexts and return candidate findings plus `verification_needed`.

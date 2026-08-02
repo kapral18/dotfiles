@@ -15,10 +15,10 @@ The major flows have hands-on playbooks — what to type, what you'll see, what 
 
 Two invocation kinds matter throughout:
 
-| Invocation kind      | Meaning                                                                                                                 |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Model-invoked skills | Fire on their own when your prompt matches, such as "debug this".                                                       |
-| Manual skills        | Fire only when you type them, such as `/k-build` or `/k-agent-review`. High-blast-radius flows are deliberately manual. |
+| Invocation kind      | Meaning                                                                                                                |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Model-invoked skills | Fire on their own when your prompt matches, such as "debug this".                                                      |
+| Manual skills        | Fire only when you type them, such as `/k-build` or `/k-deep-review`. High-blast-radius flows are deliberately manual. |
 
 ## Build something
 
@@ -34,15 +34,15 @@ Two invocation kinds matter throughout:
 
 ## Check something
 
-| You want to…                                      | Flow                                                                                                         | Start it                                                                   | Deeper                                                                                  |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Quick audit of your own uncommitted work          | `k-light-review` — proportional depth, fixes in place                                                        | `/k-light-review` (also model-invoked)                                     | [Playbook](flows/review-your-changes.md)                                                |
-| Full review of a PR or risky change               | `k-review` — modes: pr_review, pr_fix, local_changes, plan_review                                            | "review PR #N" (model-invoked)                                             | [Playbook](flows/review-your-changes.md) · [architecture](reviews/index.md)             |
-| Maximum-rigor multi-agent review                  | `/k-agent-review` — angle lanes, cross-family adversarial verify, live UI                                    | `/k-agent-review` (manual)                                                 | [Playbook](flows/review-your-changes.md) · [topology](reviews/agent-review-topology.md) |
-| Adversarial review of a plan/spec before building | `k-review` plan mode — judges the contract, not code                                                         | "review this plan/packet"                                                  | [Review workflow](reviews/index.md)                                                     |
-| Produce a durable receipt for freeform work       | `k-proof` — repo-external criteria/evidence/assessment ledger with a finalized seal                          | explicit receipt, auditable risky effect, or named handoff/resume consumer | row in [skills](skills/memory-and-orchestration.md)                                     |
-| Verify a change actually works end-to-end         | `verify`-style live drive; UI via `k-playwriter`, or `k-ui-proof` for screenshot proof of an intended visual | "verify this works" / "screenshot the UI for the PR"                       | rows in [skills](skills/external-tools-and-media.md)                                    |
-| Review what an agent produced (you as reviewer)   | staged-diff reading discipline                                                                               | —                                                                          | [Reviewing agent diffs](reviewing-diffs.md)                                             |
+| You want to…                                      | Flow                                                                                                         | Start it                                                                   | Deeper                                                                                 |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Quick audit of your own uncommitted work          | `k-light-review` — proportional depth, fixes in place                                                        | `/k-light-review` (also model-invoked)                                     | [Playbook](flows/review-your-changes.md)                                               |
+| Full review of a PR or risky change               | `k-review` — modes: pr_review, pr_fix, local_changes, plan_review                                            | "review PR #N" (model-invoked)                                             | [Playbook](flows/review-your-changes.md) · [architecture](reviews/index.md)            |
+| Deep review of a PR or risky change               | `/k-deep-review` — scoped reviewer roster, cross-family adversarial verify, live UI                          | `/k-deep-review` (manual)                                                  | [Playbook](flows/review-your-changes.md) · [topology](reviews/deep-review-topology.md) |
+| Adversarial review of a plan/spec before building | `k-review` plan mode — judges the contract, not code                                                         | "review this plan/packet"                                                  | [Review workflow](reviews/index.md)                                                    |
+| Produce a durable receipt for freeform work       | `k-proof` — repo-external criteria/evidence/assessment ledger with a finalized seal                          | explicit receipt, auditable risky effect, or named handoff/resume consumer | row in [skills](skills/memory-and-orchestration.md)                                    |
+| Verify a change actually works end-to-end         | `verify`-style live drive; UI via `k-playwriter`, or `k-ui-proof` for screenshot proof of an intended visual | "verify this works" / "screenshot the UI for the PR"                       | rows in [skills](skills/external-tools-and-media.md)                                   |
+| Review what an agent produced (you as reviewer)   | staged-diff reading discipline                                                                               | —                                                                          | [Reviewing agent diffs](reviewing-diffs.md)                                            |
 
 ## Understand something
 
@@ -91,7 +91,7 @@ The heavier arrows are contracts: the target consumes an artifact. The lighter a
              in-session     publishable text + packet
                 │
                 ▼
-             k-light-review over the result … escalates to → k-review → /k-agent-review
+             k-light-review over the result … escalates to → k-review → /k-deep-review
 
    k-diagnosing-bugs ──"no correct seam / architectural cause"──► k-codebase-design
         │ writing the regression test                              │ design settled
@@ -103,12 +103,12 @@ When to pivot, concretely:
 
 - **spec → prototype and back.** A fork you cannot close by asking, such as "which ordering feels right?", is empirical. Build the throwaway, observe, and let the verdict — not an opinion — close the fork in the packet. The prototype is deleted; the decision survives in the packet's Context line.
 - **/k-build → spec (re-gate).** Mid-build evidence contradicting the packet, such as a wrong premise or wrong scope, stops the build. Revise the packet and re-approve. Never let a build quietly implement a different spec than the one you signed.
-- **k-light-review → k-review → /k-agent-review.** Escalate when the target turns out to be a PR/others' code, needs base-branch context, or is risky/stateful. That is light→full review. Escalate to `/k-agent-review` when you want independent lanes and cross-family adversarial verification instead of one reviewer's judgment. Escalation is mid-pass: stop, switch, don't half-do the heavy machinery in the light flow.
+- **k-light-review → k-review → /k-deep-review.** Escalate when the target turns out to be a PR/others' code, needs base-branch context, or is risky/stateful. That is light→full review. Escalate to `/k-deep-review` when you want a bounded independent reviewer roster plus cross-family adversarial verification instead of one reviewer's judgment. Escalation is mid-pass: stop, switch, don't half-do the heavy machinery in the light flow.
 - **k-diagnosing-bugs → k-codebase-design.** Two triggers: no correct seam exists for the regression test, meaning the architecture is preventing the bug from being locked down; or the post-mortem answer to "what would have prevented this?" is architectural. Hand off after the fix, with specifics.
 - **anything → k-compose-issue.** Work that should be recorded rather than done now — a bug found mid-review, a packet worth filing upstream — becomes issue text; publication stays human-gated.
 
 ## Efficiency defaults
 
 - Smallest flow that fits: direct SOP work → `k-light-review` to check it.
-- Reach for `/k-agent-review` when the change is big enough to warrant independent readers.
+- Reach for `/k-deep-review` when the change is big enough to warrant independent readers.
 - Which model/effort a task runs on, and whether it belongs inline or in a subagent, follows [Model tiering](model-tiering.md) — the two are the same decision, keyed off task complexity rather than scenario alone.

@@ -1,7 +1,7 @@
 {{- /* model frontmatter is rendered from the agent_review_models registry in home/.chezmoidata/ai_models.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 name: adversarial-verifier
-description: Cross-family refutation lane over merged review-controller candidates; returns verdicts only.
+description: Cross-family refutation lane over audited review-controller candidates; returns verdicts only.
 model: "{{ .agent_review_models.pi.verifier }}"
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
@@ -15,5 +15,5 @@ Apply the discipline above before following the role-specific instructions below
 
 # Adversarial Verifier
 
-Load and follow `~/.agents/skills/k-agent-review/references/adversarial-verifier.md`.
+Load and follow `~/.agents/skills/k-review/references/adversarial-verifier.md`.
 

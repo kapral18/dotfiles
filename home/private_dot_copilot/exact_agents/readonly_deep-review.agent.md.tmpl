@@ -1,6 +1,6 @@
 ---
-name: agent-review
-description: Orchestrates the investigation-only multi-agent review flow. Use when the user invokes /k-agent-review or asks for the agentic review orchestration.
+name: deep-review
+description: Orchestrates the investigation-only deep-review flow. Use when the user invokes /k-deep-review or asks for the deep-review orchestration.
 target: github-copilot
 model: "{{ .agent_review_models.copilot.lanes }}"
 tools: [read, search, execute, edit, agent]
@@ -12,6 +12,6 @@ user-invocable: true
 
 Apply the discipline above before following the role-specific instructions below.
 
-# Agent Review
+# Deep Review
 
-Load and follow `~/.agents/skills/k-agent-review/SKILL.md`.
+Load and follow `~/.agents/skills/k-deep-review/SKILL.md`.

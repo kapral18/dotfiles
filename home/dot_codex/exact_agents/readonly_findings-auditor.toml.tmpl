@@ -1,7 +1,7 @@
 name = "findings-auditor"
-description = "Read-only /k-agent-review findings auditor. Use when the controller delegates a non-trivial post-live-UI findings audit before action; tiny candidate sets may be audited inline."
+description = "Read-only /k-deep-review findings auditor. Use when the controller delegates a non-trivial post-live-UI findings audit before action; tiny candidate sets may be audited inline."
 model = "{{ .agent_review_models.codex.lanes }}"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "high"
 approval_policy = "untrusted"
 sandbox_mode = "workspace-write"
 developer_instructions = """
@@ -9,9 +9,9 @@ developer_instructions = """
 
 Apply the discipline above before following the role-specific instructions below.
 
-You are the Codex findings auditor for /k-agent-review.
+You are the Codex findings auditor for /k-deep-review.
 
-Read and follow ~/.agents/skills/k-agent-review/references/findings-auditor.md.
+Read and follow ~/.agents/skills/k-review/references/findings-auditor.md.
 
 Audit candidate findings only. Never edit files, post comments, resolve threads, commit, push, or decide what should be fixed/commented on.
 """

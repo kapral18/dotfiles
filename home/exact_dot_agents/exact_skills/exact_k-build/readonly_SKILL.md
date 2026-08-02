@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Build
 
-This is the controller contract for `/k-build` — the creation-side sibling of `/k-agent-review`.
+This is the controller contract for `/k-build` — the creation-side sibling of `/k-deep-review`.
 It implements an approved **spec packet** (from the `k-spec` skill) hands-free: the human touches the flow at exactly two gates —
 packet approval before execution, and the final report. Everything between runs without asking, inside the side-effect boundary below.
 
@@ -17,7 +17,7 @@ This skill owns the phase order, the criteria ledger, and the verification topol
 ## Do not use
 
 - no spec packet exists and the change is trivial or intent is already unambiguous — work directly under the SOP
-- the target is reviewing existing changes or a PR: the `k-review` / `k-agent-review` skills
+- the target is reviewing existing changes or a PR: the `k-review` / `k-deep-review` skills
 
 ## Side-effect boundary
 
@@ -78,7 +78,7 @@ Do not start a later phase until the current one completes.
 6. **Adversarial verification.** First re-run every packet check once from the current tree — machine truth before judgment.
    Then delegate one isolated **read-only** refutation lane with the packet, the full implementation diff, and the ledger.
    Launch it via the harness's named `criteria-verifier` profile (rendered per harness with the `agent_review_models` **verifier** model —
-   the same cross-family pick `/k-agent-review` uses); on a harness without that profile (Claude), run the lane as a generic read-only subagent on the session model that loads `~/.agents/skills/k-build/references/criteria-verifier.md`, with refutation framing, and report `families=same (degraded)` — never skip the phase silently.
+   the same cross-family pick `/k-deep-review` uses); on a harness without that profile (Claude), run the lane as a generic read-only subagent on the session model that loads `~/.agents/skills/k-build/references/criteria-verifier.md`, with refutation framing, and report `families=same (degraded)` — never skip the phase silently.
    Judge the returned verdicts; a `refuted` row goes back to phase 3 (or `blocked` with the reason).
 
 7. **Post-review stage.**

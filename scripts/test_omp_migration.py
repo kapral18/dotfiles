@@ -42,15 +42,18 @@ class TestOmpMigration(unittest.TestCase):
 
     def test_config_renders_profile_specific_model_roles(self):
         expected_values = {
+            # Work routes the reasoning roles through Cursor, which is the only provider that
+            # publishes a non-thinking Opus 5 as its own id. OMP resolves `<provider>/<id>`; a
+            # `cursor:<id>` spelling fails with "Model not found" exactly like an unknown provider.
             True: (
-                "default: openai-codex/gpt-5.5:high",
-                "smol: openai-codex/gpt-5.3-codex-spark:xhigh",
-                "vision: openai-codex/gpt-5.5:high",
-                "slow: openai-codex/gpt-5.5:high",
-                "plan: openai-codex/gpt-5.5:high",
-                "task: openai-codex/gpt-5.5:high",
-                "advisor: openai-codex/gpt-5.5:high",
-                "modelProviderOrder:\n  - openai-codex\n  - github-copilot\n  - openrouter\n  - anthropic\n  - openai\n",
+                "default: cursor/claude-opus-5-high:high",
+                "smol: cursor/gpt-5.3-codex-high:high",
+                "vision: cursor/claude-opus-5-high:high",
+                "slow: cursor/claude-opus-5-high:high",
+                "plan: cursor/claude-opus-5-high:high",
+                "task: cursor/claude-opus-5-high:high",
+                "advisor: cursor/gpt-5.5-high:high",
+                "modelProviderOrder:\n  - cursor\n  - github-copilot\n  - openai-codex\n  - openrouter\n  - anthropic\n  - openai\n",
             ),
             False: (
                 "default: openai-codex/gpt-5.5:high",
@@ -66,7 +69,7 @@ class TestOmpMigration(unittest.TestCase):
         shared_values = (
             "modelRoles:\n",
             "advisor:\n  enabled: true\n  subagents: true\n  syncBacklog: 1\n  immuneTurns: 0\n",
-            "defaultThinkingLevel: medium\n",
+            "defaultThinkingLevel: high\n",
             "memory:\n  backend: off\n",
             "autolearn:\n  enabled: false\n  autoContinue: false\n",
             "dev:\n  autoqaConsent: granted\n",

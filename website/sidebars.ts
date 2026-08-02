@@ -111,7 +111,7 @@ const sidebars: SidebarsConfig = {
           label: '🔎 Review workflow',
           link: { type: 'doc', id: 'topics/ai-assistants/reviews/index' },
           items: [
-            'topics/ai-assistants/reviews/agent-review-topology',
+            'topics/ai-assistants/reviews/deep-review-topology',
             'topics/ai-assistants/reviews/base-context-and-truth',
             'topics/ai-assistants/reviews/post-review-and-light-review',
             'topics/ai-assistants/reviews/replies-publication-and-history',

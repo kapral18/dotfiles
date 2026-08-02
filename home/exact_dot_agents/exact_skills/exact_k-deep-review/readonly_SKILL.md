@@ -1,12 +1,12 @@
 ---
-name: k-agent-review
-description: "Manual-only controller contract for /k-agent-review multi-agent review fan-out, findings aggregation, and gated fixes/comments."
+name: k-deep-review
+description: "Manual-only controller contract for /k-deep-review deep-review fan-out, findings aggregation, and gated fixes/comments."
 disable-model-invocation: true
 ---
 
-# Agent Review
+# Deep Review
 
-This is the controller contract for `/k-agent-review`.
+This is the controller contract for `/k-deep-review`.
 
 The controller:
 
@@ -17,7 +17,7 @@ The controller:
 - performs gated side effects
 
 The substantive review work happens in isolated reviewer workers that load the shared `k-review` skill themselves.
-Two exceptions: the blind fresh-eyes clarity lane loads none of it (`references/fresh-eyes.md`), and the adversarial verifier loads only `judging_core.md` (`references/adversarial-verifier.md`).
+Two exceptions: the blind fresh-eyes clarity lane loads only `k-review/references/fresh-eyes.md`, and the adversarial verifier loads only `judging_core.md` through `k-review/references/adversarial-verifier.md`.
 
 The reviewer-worker lanes are read-only:
 
@@ -61,14 +61,14 @@ The controller owns:
   - applies to local flows with a PR-intent dependency
 - materializing the read-only review context pack before reviewer fan-out and putting the pack path plus manifest `head_sha` in every scope packet
 - launching the reviewer workers after any required PR necessity greenlight: the angle lanes plus the conditional blind fresh-eyes clarity lane
-- running the cross-family adversarial verification pass over the merged candidate set after every reviewer lane returns
-- running conditional `live-ui-review` verification after lane merge/dedup, concurrently with adversarial verification
+- running conditional `live-ui-review` verification after lane merge/dedup, before the findings audit
   - applies when changed paths or merged candidate findings touch UI/runtime behavior
   - requires applicable runtime evidence
   - requires screenshot handoff evidence for any UI-related finding that may become draft review feedback, unless live UI returns a valid blocker or non-applicability result
-- running the findings audit phase after live UI returns evidence/non-applicability/blocker or is explicitly skipped;
-  delegate to `findings-auditor` only when a step 5 delegation condition is true
-- aggregating worker outputs, `pr-necessity-auditor` status, reviewer findings, adversarial verification verdicts, live UI status/evidence/artifacts/skip reason, and audit output
+- running the controller findings audit phase after live UI returns evidence/non-applicability/blocker or is explicitly skipped;
+  delegate to `findings-auditor` only when a findings-audit delegation condition is true
+- running the final cross-family adversarial verification pass over the audited candidate set
+- aggregating worker outputs, `pr-necessity-auditor` status, reviewer findings, live UI status/evidence/artifacts/skip reason, audit output, and final adversarial verification verdicts
 - deciding which worker-reported `verification_needed` items deserve serial controller verification
 - judging kept/dropped findings after aggregation
 - reconciling PR-mode draft payloads before preparing or posting final review feedback
@@ -109,20 +109,22 @@ Do not rerun the coverage checklist, base-context investigation, or worker revie
 
 Reviewer workers own the full investigation methodology.
 
-- Role-specific runtime contracts live under `~/.agents/skills/k-agent-review/references/`.
-- Load inside each worker context:
-  - `~/.agents/skills/k-review/SKILL.md`
+- Role-specific runtime contracts live under `~/.agents/skills/k-review/references/`.
+- A reviewer lane loads only:
+  - `~/.agents/skills/k-review/references/reviewer-worker.md`
   - `~/.agents/skills/k-review/references/judging_core.md`
-  - `~/.agents/skills/k-review/references/shared_rules.md`
-  - selected mode file under `~/.agents/skills/k-review/references/`
-  - `~/.agents/skills/k-review/references/pr_common.md` for PR modes
+  - `~/.agents/skills/k-review/references/context-pack.md`, when the scope packet names a pack
+  - the lens skill named by its pasted lane entry, when that entry names one
+- Lanes deliberately do not load `k-review/SKILL.md`, `shared_rules.md`, `pr_common.md`, `lanes.md`, or a mode file.
+  Those carry routing, drafting, posting, verdict, and pending-review reconciliation rules only the controller may act on, and they roughly double a lane's context for instructions it is forbidden to use.
+  Anything a lane genuinely needs from them belongs in its scope packet, which the controller owns.
 - Return only evidence, candidate findings, and any `verification_needed` entries that were unsafe or required shared-state mutation/contention inside a parallel lane.
 - Never edit, post, resolve, commit, push, or decide what should be fixed/commented on.
-- The blind fresh-eyes lane is the exception to the load list above: it loads only `~/.agents/skills/k-agent-review/references/fresh-eyes.md` and must not load the `k-review` skill or any PR context.
+- The blind fresh-eyes lane is a further exception: it loads only `~/.agents/skills/k-review/references/fresh-eyes.md` and must not load the `k-review` skill or any PR context.
 
 The active harness owns subagent discovery and invocation.
 
-- Read `~/.agents/skills/k-agent-review/references/runtime-harnesses.md` only for capability caveats.
+- Read `~/.agents/skills/k-review/references/runtime-harnesses.md` only for capability caveats.
 - Never invent a custom-agent layer the harness does not expose.
 
 ## Default orchestration
@@ -130,14 +132,15 @@ The active harness owns subagent discovery and invocation.
 The phase order is strict:
 
 1. route and scope
-2. blocking PR necessity/intent gate, only when step 2 triggers
-3. the reviewer angle fan-out in parallel (registry-model angle lanes plus the blind fresh-eyes clarity lane when it applies)
-4. lane merge/dedup, then cross-family adversarial verification and conditional live UI verification in parallel over the merged candidate set
-5. findings audit, inline or delegated by the step 5 delegation conditions, reconciling adversarial verdicts with any live UI evidence
-6. controller aggregation, judgment, PR-mode pending-review reconciliation, and action
-7. post-act verification, only for any flow that edited the working tree (gates + fix-diff Post-Review Stage)
+2. blocking PR necessity/intent gate, only when the mode and authorship resolved in step 1 trigger it
+3. the reviewer lane roster (one sighted baseline lane plus evidence-triggered angle/fresh-eyes lanes, launched in parallel when more than one lane applies)
+4. lane merge/dedup plus conditional live UI verification over the merged candidate set
+5. findings audit, inline or delegated by the findings-audit delegation conditions
+6. final cross-family adversarial verification over the audited candidate set
+7. controller aggregation, judgment, PR-mode pending-review reconciliation, and action
+8. post-act verification, only for any flow that edited the working tree (gates + fix-diff Post-Review Stage)
 
-Do not start a later phase until the current phase returns, except that live UI starts immediately after lane merge/dedup and runs concurrently with adversarial verification.
+Do not start a later phase until the current phase returns; the final adversarial verifier is the last investigation subagent before controller judgment/action.
 In blocking phases, do not poll background workers with long waits just to check status;
 wait for completion notifications or use the harness's synchronous/blocking mechanism.
 If the harness cannot await background workers by id (for example Cursor), apply `runtime-harnesses.md`;
@@ -169,7 +172,7 @@ This line is part of the audit trail.
 If a runtime export hides task arguments, the worker selection line must still prove whether the controller used named profiles.
 It must also show any fallback such as `general-purpose`.
 A worker launch is invalid when `model_required` differs from `model_used` or `model_status` is not `exact`, unless the phase is explicitly `n/a` for model selection.
-The fresh-eyes phase is not `n/a`: generic fresh-eyes is the only lane launch that passes the registry lane model at runtime because no named profile carries its model frontmatter.
+The fresh-eyes phase is not `n/a`: named fresh-eyes profiles and generic fresh-eyes launches both use the registry lane model, and worker selection must prove that exact value.
 
 1. **Route and scope.** Build a scope packet with:
    - mode: `local_changes.md`, `pr_review.md`, or `pr_fix.md`
@@ -217,7 +220,7 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
 Run durable-memory recall before fan-out with task-shaped queries, not the raw user prompt. At minimum run:
 
 ```bash
-,ai-kb search "agent-review <mode> pitfalls gotchas" --limit 5 --json
+,ai-kb search "deep-review <mode> pitfalls gotchas" --limit 5 --json
 ,ai-kb search "<target repo/domain> review live-ui evidence gotchas" --limit 5 --json
 ```
 
@@ -225,7 +228,7 @@ Fold relevant capsule lessons into the scope packet as constraints, and cite cap
 This preflight is mandatory because slash-command prompts often contain too little semantic content for per-turn recall to surface the right capsules.
 
 Materialize the read-only context pack before reviewer fan-out.
-The pack roots, `manifest.json` fields, and the full artifact inventory (PR metadata/discussion/checks JSON snapshots, `body.md`, `diff.patch`, `files/<path>` head content, `base/<path>` base content) are owned by `~/.agents/skills/k-agent-review/references/context-pack.md`; load it and produce every artifact it names that exists for the mode.
+The pack roots, `manifest.json` fields, and the full artifact inventory (PR metadata/discussion/checks JSON snapshots, `body.md`, `diff.patch`, `files/<path>` head content, `base/<path>` base content) are owned by `~/.agents/skills/k-review/references/context-pack.md`; load it and produce every artifact it names that exists for the mode.
 
 All JSON collections must be complete and paginated, not previews. Scope packets MUST include the pack path and manifest `head_sha`.
 Workers consult the pack first and fall back to live commands only for facts the pack lacks or when the manifest `head_sha` mismatches their expected head.
@@ -239,12 +242,12 @@ The measured reason for this controller cache is concrete: one real review had 4
      - mode is `local_changes.md`,
      - the local changes are attached to, assigned from, or adopted from a PR, and
      - PR intent/scope artifacts are needed to decide whether a local change is correct, stale, or fixable.
-   - Invoking `/k-agent-review` is the request for this PR meta-audit; do not require a second user opt-in.
+   - Invoking `/k-deep-review` is the request for this PR meta-audit; do not require a second user opt-in.
    - Skip it for local changes and self-authored PRs only when PR intent/scope is not needed for controller judgment.
    - This worker is read-only and evidence-only.
    - Give it the scope packet plus the PR URL/number, base/head refs, changed paths, directly referenced issues/PRs, and any already-known user constraints.
      Include linked Slack/design artifacts already known to the controller.
-   - It must follow `~/.agents/skills/k-agent-review/references/pr-necessity-auditor.md`.
+   - It must follow `~/.agents/skills/k-review/references/pr-necessity-auditor.md`.
    - It returns one of:
      - `Not applicable`
      - greenlight evidence that the PR is sensible enough to review further
@@ -262,32 +265,30 @@ The measured reason for this controller cache is concrete: one real review had 4
      Do not launch reviewer workers, live UI, or findings audit unless the user explicitly asks to continue anyway.
    - Do not rely on the auditor to decide or post. The controller judges and gates any draft feedback.
 
-2. **Launch the reviewer angle fan-out in parallel.**
-   - Build the angle roster from scope-level evidence only (mode, changed paths, `git diff --stat`, `--diff-filter=D` status);
-     roster selection is not implementation analysis — do not read code bodies for it.
-     - Always include `correctness/regressions`.
-     - Add each angle the change surface implicates:
-       - tests/validation: test files touched, or risky logic changed with no test changes
-       - simplicity/maintainability: large refactors, renames, or structural churn
-       - types/API contracts: public API/type-surface paths
-       - security: auth/permission/input-handling/crypto/secret paths
-       - performance: hot paths, queries, data-volume loops
-       - deletion-safety: deleted files/exports (`git diff --diff-filter=D --stat` non-empty)
-       - state-machine behavior: parser/workflow/retry/permission-matrix/multi-flag paths
-       - product flow/user-visible behavior: UI components, routes, user-state, API handlers serving UI
-       - observability/signal quality: alerting/monitoring/threshold/telemetry/query-generation paths
-     - Launch two to five angle lanes — always at least two, even for a single-concern diff (pick the two most load-bearing angles), so no finding class depends on one lane.
-     - If more angles are implicated than five, fold the extras into the closest launched lane as stated secondary emphases.
-     - State the roster and the scope-level evidence for each selection in the output.
-   - Lane model selection is declarative, never steered at runtime: every deployed profile's `model` frontmatter is rendered from the single `agent_review_models` registry in the chezmoi model data (a concrete id, `inherit`, or omitted for the harness config default).
+2. **Launch the reviewer lane roster.**
+   - Select lanes from `~/.agents/skills/k-review/references/lanes.md`, which owns the lens catalog, each lens's trigger, and its checks.
+     Do not re-list angles here or invent a lane that file does not define.
+     Follow its selection procedure: scope-level evidence only (mode, changed paths, `git diff --stat`, `--diff-filter=D` status, context pack manifest); roster selection is not implementation analysis — do not read code bodies for it.
+     - Always include `correctness-regressions`.
+       For a single-surface diff with no independent risk trigger, that one sighted lane is enough:
+       expert lenses own recall, and cross-family checking happens in final adversarial verification after findings audit.
+     - Launch one to three sighted lanes by default.
+       Use four or five only when the user explicitly asks for maximum rigor or when multiple high-risk classes are present at once (security/auth, persisted data/migration, public API, state-machine behavior, deletion/replacement, or user-visible product flow).
+     - Paste each selected lane's `Lens skill` line and `Checks` list verbatim into that worker's scope packet.
+       Workers never load `lanes.md`; pasting the entry costs a few lines instead of the whole registry.
+     - If more lenses are implicated than the budget allows, fold the extras into the closest launched lane as named secondary emphases and say which were folded.
+     - State the roster and the scope-level evidence for each selected lane in the output.
+   - Run any repo-wide suite, full build, or whole-suite test run **once here**, before the launch batch, and put the result in every scope packet.
+     Lanes are instructed not to repeat shared work; if the controller skips it, no lane covers it.
+   - Lane model selection is declarative, never steered at runtime: every repo-owned review profile's `model` frontmatter is rendered from the single `agent_review_models` registry in the chezmoi model data (a concrete id, `inherit`, or omitted for the harness config default).
      The controller launches named profiles as-is and never passes lane model overrides;
-     the exception is the blind generic fresh-eyes task, which must pass the same registry lane value as the profile-equivalent model because it cannot use the named reviewer profiles.
+     generic fresh-eyes launches pass the same registry lane value as the profile-equivalent model because they cannot use a context-bearing reviewer profile.
      A wrong or stale model is fixed in the registry, not the launch.
      The angles are this phase's diversity axis; cross-family checking is owned by the adversarial verification phase.
    - Emit all reviewer-lane launches, fresh-eyes included when it applies, in one message (a single tool-call batch).
    - Use the harness's native reviewer worker profiles or task mechanism (`review-worker`/`reviewer` profiles, or a generic task type carrying `reviewer-worker.md`); read `runtime-harnesses.md` for per-harness launch and model-inheritance caveats.
    - Hard-read-only caveat: for Cursor, follow `runtime-harnesses.md`.
-     Cursor Task launches and Cursor profile shims for `/k-agent-review` must use `readonly: false`.
+     Cursor Task launches and Cursor profile shims for `/k-deep-review` must use `readonly: false`.
      If a worker reports Ask/read-only mode blocked shell/git/`gh`/SCSI/Playwriter, discard that launch result and rerun with `readonly: false`.
    - Cursor Task background caveat: reviewer, PR-necessity, live-UI, and findings-audit workers should remain real Cursor background subagents.
      Use Cursor Task `run_in_background=true` for those launches when the active Cursor Task schema exposes it.
@@ -308,37 +309,24 @@ The measured reason for this controller cache is concrete: one real review had 4
    - Each candidate finding must include a reachability statement for the claimed path.
      If the claimed UI/API/state path may be unreachable, the worker must verify reachability before assigning severity or mark it as a hypothesis for the controller to verify/drop.
    - **Blind fresh-eyes clarity lane (conditional, same launch batch).**
-     - Launch an additional read-only worker on `~/.agents/skills/k-agent-review/references/fresh-eyes.md` when the mode is `pr_review.md` or `local_changes.md` and the diff adds or changes human-maintained code or docs.
-     - Skip it for `pr_fix.md` (thread-driven), and when the diff touches only generated/vendored/lockfile content; record the skip reason.
+     - Launch an additional read-only worker on `~/.agents/skills/k-review/references/fresh-eyes.md` only when the mode is `pr_review.md` or `local_changes.md`, the diff adds or changes human-maintained code or docs, and scope-level evidence shows comprehension risk: public interface/naming changes, AI-facing or user-facing prose, state-machine/replacement/deletion work, more than 500 changed lines, or more than 10 changed files.
+     - Skip it for `pr_fix.md`, generated/vendored/lockfile-only diffs, and human-maintained diffs without one of those comprehension-risk signals; record the skip reason.
      - Blindness is this lane's diversity axis.
        Its packet is only the diff scope (base ref, changed paths, or an explicit diff command) —
        never the PR number/title/body, commit messages, issue text, thread content, prior findings, or controller narrative.
      - Launch mechanics, allowed reads, and the worker selection line fields are owned by `fresh-eyes.md`;
        do not launch it through the named reviewer profiles, which preload the `k-review` skill and PR context.
-     - This lane is part of the phase-3 barrier: adversarial verification, live UI, findings audit, and judgment wait for it like any reviewer output.
+     - This lane is part of the phase-3 barrier: live UI, findings audit, final adversarial verification, and judgment wait for it like any reviewer output.
 
-3. **Merge candidates and launch adversarial verification.**
+3. **Merge candidates and run conditional live UI verification.**
    - After every launched reviewer lane returns, collapse same-root-cause/same-anchor duplicates into one merged candidate each (merge/dedup only; no new controller investigation).
-   - If the merged set is empty, skip adversarial verification and report `Adversarial verification: skipped (no candidates)`.
-   - Launch one adversarial-verifier worker following `~/.agents/skills/k-agent-review/references/adversarial-verifier.md`.
-     Give it the merged candidates with lane attribution stripped, plus the diff scope, base ref, and mode.
-   - Model rule — the one lane where model identity matters: the `agent_review_models` registry assigns each harness a verifier model from a different family than its lane model (the pairing is reviewed by a human in the registry, not inferred at runtime), and the deployed `adversarial-verifier` profile carries it (Pi: the controller passes the rendered registry value per task).
-     Harnesses whose registry entry is empty/`inherit` (single-family surface) run the verifier on the lane model with the contract's refutation framing and report `families=same (degraded)`.
-     Degradation must be reported, never silent; do not skip the phase because cross-family is unavailable.
-   - Verdicts are evidence, not decisions: when recording each `confirmed` / `refuted` / `undecidable (needs <check>)` in the verification ledger, check that a `refuted` verdict's evidence addresses the candidate's actual claim; record it as `undecidable` otherwise.
-     "Non-refuted" downstream means not validly refuted after that check.
-   - This phase is no longer blocking before live UI. The live-UI lane's input is the merged candidate set, not adversarial verdicts.
-     If adversarial verification later refutes a candidate, the controller MAY send the running live-UI worker a descope note.
-     The findings audit reconciles both outputs; live-UI evidence for a refuted candidate is discarded as moot.
-     The tradeoff is possible wasted UI verification on later-refuted candidates versus measured serialization cost:
-     one real review lost about 13.5 minutes on a 93-minute review by launching live UI only after adversarial verification, while 0 of 9 candidates were refuted, so expected waste is low.
-
-4. **Run conditional live UI verification.**
+   - If the merged set is empty, skip live UI, findings audit, and final adversarial verification;
+     report the skip reason and continue to action/output with no findings.
    - Immediately after lane merge/dedup, and after the blocking PR necessity gate has passed when it applies, apply a read-only controller parity filter to replacement/test-migration candidates:
      - apply the Replacement/Migration Parity Gate from `judging_core.md` to replacement/test-migration candidates
      - drop candidates classified as `preserved_limitation` or `prose_drift`
      - do not treat test-only UI code as live-UI applicability by itself
-   - Launch `live-ui-review` concurrently with adversarial verification when changed paths or any merged candidate touch UI/runtime behavior and runtime evidence is applicable.
+   - Launch `live-ui-review` when changed paths or any merged candidate touch UI/runtime behavior and runtime evidence is applicable.
      For replacement/test-migration candidates, only `parity_gap`, `new_regression`, and `scope_expansion` can be kept candidates for this trigger.
    - A deterministic, unit, integration, or other-layer proof does NOT discharge a live-UI trigger when the runtime is startable.
      Examples include a resolution/compile harness, a passing test, or a static trace;
@@ -394,9 +382,9 @@ The measured reason for this controller cache is concrete: one real review had 4
      That case is the runtime-start rung, not a terminal blocker; have the runtime started and rerun rather than surfacing it as remaining uncertainty.
    - A read-only/Ask-mode Playwriter block is a valid blocker to surface.
 
-5. **Run findings audit on candidate findings.**
-   - Run this phase only after the PR necessity gate, every launched reviewer-lane output (fresh-eyes included when launched), the adversarial verification verdicts or skip status, and the live UI result or explicit live-UI skip reason are available.
-   - Always audit kept reviewer findings (fresh-eyes clarity candidates included), adversarial verification verdicts, worker-reported `verification_needed`, live UI evidence/artifacts/blockers or skip reason, and kept PR necessity draft concerns.
+4. **Run controller findings audit on candidate findings.**
+   - Run this phase only after the PR necessity gate, every launched reviewer-lane output (fresh-eyes included when launched), and the live UI result or explicit live-UI skip reason are available.
+   - Always audit kept reviewer findings (fresh-eyes clarity candidates included), worker-reported `verification_needed`, live UI evidence/artifacts/blockers or skip reason, and kept PR necessity draft concerns.
      Include only PR necessity concerns kept after the greenlight gate.
    - Maintain a verification ledger for every worker-reported `verification_needed` and every live UI / PR necessity blocker that can affect keep/drop/action.
      The findings audit may recommend dispositions, but it must not erase a ledger item by assuming one branch of an unresolved fork.
@@ -405,10 +393,10 @@ The measured reason for this controller cache is concrete: one real review had 4
    - Inline the audit in the controller when the remaining set is trivial:
      - no candidate findings, or
      - one straightforward evidence-backed finding with no lane disagreement, no live UI blocker, no PR-necessity concern kept after greenlight, and no fix diff to audit.
-   - Delegate to `findings-auditor` when the remaining set is non-trivial:
+   - Keep the audit in the controller by default; delegate to `findings-auditor` only when the remaining set is non-trivial:
      - two or more candidate findings
      - any HIGH/CRITICAL candidate
-     - lane disagreement (including finder-vs-verifier disagreement) or likely duplication
+     - disagreement among reviewer lanes, live UI evidence, or PR necessity concerns, or likely duplication
      - any worker-reported `verification_needed` required to decide whether to keep or drop a candidate
      - any PR necessity concern kept after greenlight
      - live UI comparison/blocker evidence or screenshot handoff needed to decide whether to keep or drop a candidate
@@ -424,8 +412,25 @@ The measured reason for this controller cache is concrete: one real review had 4
    - This is still investigation, not a decision, even when inlined in the controller.
    - If inlined, still report the audit result in the final output as `Findings audit: inline ...`.
    - For fix-capable own/self-review flows, this pre-action audit does not replace the normal post-review stage over the actual fix diff after fixes are applied.
+
+5. **Run final adversarial verification.**
+   - If the audited set is empty, skip adversarial verification and report `Adversarial verification: skipped (no candidates after findings audit)`.
+   - Otherwise, launch one adversarial-verifier worker following `~/.agents/skills/k-review/references/adversarial-verifier.md`.
+     Give it the audited candidates with lane attribution stripped, plus the findings-audit result, verification ledger, live UI status/evidence/artifacts/skip reason, diff scope, base ref, and mode.
+   - Model rule — the one lane where model identity matters: the `agent_review_models` registry assigns each harness its verifier model, paired against the lane model by a human in the registry rather than inferred at runtime, and the deployed `adversarial-verifier` profile carries it (named-profile controllers such as Pi/OMP pass the rendered registry value per task).
+     Report `families=cross` only when the registry's verifier model is genuinely a different family than its lane model.
+     Report `families=same (degraded)` whenever it is not — whether because the entry is empty/`inherit`, because the harness is single-vendor, or because the registry deliberately pins the same family for both roles on a harness that cannot express the wanted lane model.
+     Degradation must be reported, never silent; do not skip the phase because cross-family is unavailable.
+   - Verdicts are evidence, not decisions: when recording each `confirmed` / `refuted` / `undecidable (needs <check>)` in the verification ledger, check that a `refuted` verdict's evidence addresses the candidate's actual claim; record it as `undecidable` otherwise.
+     "Non-refuted" downstream means not validly refuted after that check.
+   - The verifier also returns a bounded cross-family miss sweep (`new-candidate` items, at most three, or `Miss sweep: none above the bar`).
+     These are the only cross-family look at the code, so do not drop them for arriving late;
+     they have also not passed the findings audit, so do not send them straight to judgment.
+     Run the `judging_core.md` Findings-Set Audit over them inline, then merge the survivors into the kept set.
+     Report how many the sweep produced and how many survived. Do not relaunch the verifier over its own sweep items.
+
 6. **Aggregate.**
-   Combine `pr-necessity-auditor` greenlight/skip status, each angle lane's output, fresh-eyes output or its skip reason, the adversarial verification verdicts and family status, the verification ledger, live UI evidence/status/artifacts, and the findings audit result.
+   Combine `pr-necessity-auditor` greenlight/skip status, each angle lane's output, fresh-eyes output or its skip reason, the verification ledger, live UI evidence/status/artifacts, findings audit result, and final adversarial verification verdicts/family status.
 7. **Judge in the controller.**
    - Apply mode-correct reconciliation:
      - all modes: collapse duplicate worker findings, apply the severity model, and keep findings that are implementation-verified, not covered by existing evidence, and not dropped by the parity/deduplication filters.
@@ -475,7 +480,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      If a verified domain overlay applies to the target repo/org (e.g. `~/.agents/skills/k-elastic-domain/SKILL.md` for `elastic/kibana`), load it too for repo-specific wording/footer rules before drafting.
    - `fix_authorized: yes` (own / assigned / adopted PR, or local-changes self flow):
      - apply the selected fixes in the working tree; no separate "fix" keyword is required
-     - then run the step-10 post-act verification phase (an adopted/assigned PR is a change-producing flow;
+     - then run the post-act verification phase (an adopted/assigned PR is a change-producing flow;
        do not skip the fix-diff Post-Review Stage just because the PR was originally other-authored)
      - for PR-fix/thread modes, still draft thread replies/suggestions per `pr_fix.md` for anything not fixed in code;
        human-visible publishing (commit/push/post/resolve) stays on its own explicit-approval gate
@@ -500,7 +505,7 @@ The measured reason for this controller cache is concrete: one real review had 4
        Never fold an un-run gate into a closing summary as if verification were complete.
    - **Fix-diff Post-Review Stage (the four dimensions).**
      Run the Post-Review Stage in `~/.agents/skills/k-review/references/judging_core.md` with the **fix diff** as the subject (this flow's `git diff` / staged set / commit range), never the original PR diff.
-     This is the controller's own work; the pre-action findings audit in step 5 audits candidate findings and does NOT replace it.
+     This is the controller's own work; the pre-action controller findings audit phase audits candidate findings and does NOT replace it.
      Apply the four canonical dimensions by name — redundancy, verbosity, semantic + logical duplication, gaps —
      anchor each finding in an exact location, resolve each in the working tree, and re-run the quality gates if the cleanup touched code.
    - **Resolve carried `verification_needed`.**
@@ -511,10 +516,10 @@ The measured reason for this controller cache is concrete: one real review had 4
 
 ## Premise corrections and completion gate
 
-If the user supplies new context that changes the target, intent, accepted behavior, or relevant artifacts after `/k-agent-review` has started or after it has produced a conclusion, rebuild the scope packet and restart from the earliest invalidated phase.
-If the controller intentionally leaves `/k-agent-review` mode for direct verification/editing, state that downgrade explicitly before making edits and do not reuse the stale agent-review judgment as if the flow remained complete.
+If the user supplies new context that changes the target, intent, accepted behavior, or relevant artifacts after `/k-deep-review` has started or after it has produced a conclusion, rebuild the scope packet and restart from the earliest invalidated phase.
+If the controller intentionally leaves `/k-deep-review` mode for direct verification/editing, state that downgrade explicitly before making edits and do not reuse the stale deep-review judgment as if the flow remained complete.
 
-Do not declare `/k-agent-review` complete while any decisive verification-ledger item, intent dependency, pending-review reconciliation blocker, required live-UI trigger without a valid blocker, or post-act verification item is unresolved.
+Do not declare `/k-deep-review` complete while any decisive verification-ledger item, intent dependency, pending-review reconciliation blocker, required live-UI trigger without a valid blocker, or post-act verification item is unresolved.
 The final output may report blockers or remaining uncertainty, but it must not present the flow as completed when an unresolved item can change the action or verdict.
 
 ## PR necessity audit
@@ -522,13 +527,12 @@ The final output may report blockers or remaining uncertainty, but it must not p
 `pr-necessity-auditor` is the blocking PR-mode/intent worker from orchestration step 2:
 evidence-only, never decides, posts, resolves, edits, commits, or pushes.
 Orchestration step 2 owns when it runs and how its result gates reviewer fan-out.
-Full audit scope (author intent, correctly-open checks, duplicate/superseding-work search) and hard constraints live in `~/.agents/skills/k-agent-review/references/pr-necessity-auditor.md`.
+Full audit scope (author intent, correctly-open checks, duplicate/superseding-work search) and hard constraints live in `~/.agents/skills/k-review/references/pr-necessity-auditor.md`.
 
 ## Live UI review
 
-`live-ui-review` is the conditional UI/runtime verifier from orchestration step 4:
-applicability trigger, mode boundary, target-packet selection, worktree identity, and required runtime config are owned there.
-Full worker-facing procedure lives in `~/.agents/skills/k-agent-review/references/live-ui-review.md`, which loads the shared runtime contract `~/.agents/skills/k-agent-review/references/live-ui-runtime.md` (preflight, readiness stability guard, runtime-start rung, data/setup ladder, hard runtime constraints); `live-ui-review.md` adds the base-vs-head Playwriter comparison and the exact return shape.
+`live-ui-review` is the conditional UI/runtime verifier from the "Merge candidates and run conditional live UI verification" orchestration phase: applicability trigger, mode boundary, target-packet selection, worktree identity, and required runtime config are owned there.
+Full worker-facing procedure lives in `~/.agents/skills/k-review/references/live-ui-review.md`, which loads the shared runtime contract `~/.agents/skills/k-review/references/live-ui-runtime.md` (preflight, readiness stability guard, runtime-start rung, data/setup ladder, hard runtime constraints); `live-ui-review.md` adds the base-vs-head Playwriter comparison and the exact return shape.
 
 Controller validation: reject and rerun any `live-ui-review` result that:
 
@@ -561,8 +565,12 @@ Return:
 
 - `Base context:` line from the review methodology.
 - Worker selection summary for each delegated phase, including any fallback reason.
-- Reviewer roster: the angle lanes launched and the scope-level evidence for each selection.
+- Reviewer roster: the lanes launched, the scope-level evidence for each selection, and any lenses folded into another lane.
+- Lane yield: for each launched lane, `candidates returned -> findings kept after judgment`, plus the shared suites the controller ran once for all lanes.
+  A lane that returned nothing kept is not a failure, but it is the evidence for dropping that trigger next time —
+  report it plainly rather than hiding it in the investigation summary.
 - Adversarial verification: families used (`<session-family> vs <verifier-family>` or `same (degraded)`), verdict counts (confirmed/refuted/undecidable), or `skipped (no candidates)`.
+- Miss sweep: `new-candidate` count returned by the verifier, how many survived the inline re-audit, or `none above the bar`.
 - PR necessity audit summary: report greenlight, merge-readiness/status blockers or uncertainty, skipped-with-reason, or blocker status.
 - Investigation summary: what each reviewer found (fresh-eyes lane included, or its skip reason), what the live UI reviewer found, and what the findings audit found, including whether the audit was inline or delegated.
 - Serial verification: any `verification_needed` returned by reviewer lanes and whether the controller ran, skipped, or blocked on it.

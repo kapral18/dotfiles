@@ -32,20 +32,20 @@ Use the scenario router first when you know the job but not the subsystem:
 
 Use the subsystem pages when you already know the layer you are changing or debugging:
 
-| Subsystem                              | Page                                            |
-| -------------------------------------- | ----------------------------------------------- |
-| Scenario router (start here)           | [Choose your flow](scenarios.md)                |
-| System prompt / SOP                    | [System Prompt (SOP)](system-prompt/index.md)   |
-| Skills list and routing contract       | [Skills](skills/index.md)                       |
-| Subagent runtime profiles              | [Cross-harness subagents](subagents.md)         |
-| Review skill and agent-review topology | [Review workflow](reviews/index.md)             |
-| Spec packets and hands-free builds     | [Creation workflow](creation-workflow.md)       |
-| Hook memory + durable AI KB            | [Agent memory](knowledge-base/index.md)         |
-| Canonical MCP registry                 | [MCP servers](mcp.md)                           |
-| Model registry and routing             | [Model registry & routing](model-registry.md)   |
-| Per-tool config rendering              | [Tool configs](tool-configs/index.md)           |
-| Local llama.cpp inference              | [llama.cpp local inference](llama-cpp/index.md) |
-| Reviewing agent diffs                  | [Reviewing agent diffs](reviewing-diffs.md)     |
+| Subsystem                             | Page                                            |
+| ------------------------------------- | ----------------------------------------------- |
+| Scenario router (start here)          | [Choose your flow](scenarios.md)                |
+| System prompt / SOP                   | [System Prompt (SOP)](system-prompt/index.md)   |
+| Skills list and routing contract      | [Skills](skills/index.md)                       |
+| Subagent runtime profiles             | [Cross-harness subagents](subagents.md)         |
+| Review skill and deep-review topology | [Review workflow](reviews/index.md)             |
+| Spec packets and hands-free builds    | [Creation workflow](creation-workflow.md)       |
+| Hook memory + durable AI KB           | [Agent memory](knowledge-base/index.md)         |
+| Canonical MCP registry                | [MCP servers](mcp.md)                           |
+| Model registry and routing            | [Model registry & routing](model-registry.md)   |
+| Per-tool config rendering             | [Tool configs](tool-configs/index.md)           |
+| Local llama.cpp inference             | [llama.cpp local inference](llama-cpp/index.md) |
+| Reviewing agent diffs                 | [Reviewing agent diffs](reviewing-diffs.md)     |
 
 ## Governance layer
 

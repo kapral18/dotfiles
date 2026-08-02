@@ -1,11 +1,11 @@
 ---
 name: k-review
-description: "Use when reviewing local changes, PRs, review threads, PR fixes, or a plan/design before implementation."
+description: "Use for standard-rigor review of local changes, PRs, review threads, PR fixes, or plans."
 ---
 
 # Review Router
 
-Goal: route "review" requests to the correct mode while keeping shared rules loaded once.
+Goal: route standard-rigor review requests to the correct mode while keeping shared rules loaded once.
 
 Contract:
 
@@ -27,6 +27,12 @@ Contract:
   - keep the review router primary
   - draft/verify through review mode first
   - invoke the `k-github` skill via the Skill tool only for the posting step
+
+Standard review uses a bounded reviewer roster as an execution mechanism, not as a separate skill tier:
+
+- finder work is delegated when the active harness can launch workers
+- every mode runs adversarial/refutation before acting or drafting
+- live UI runs only when UI/runtime evidence is needed; use `k-deep-review` when the user asks for maximum rigor, mandatory deep orchestration, fresh-eyes/context-pack treatment, or the full PR necessity/controller graph
 
 ## Secondary Skill Escalation
 
@@ -104,50 +110,25 @@ Pick exactly one mode. If ambiguous, ask one fork-closing question and state a d
 
 ### Mode: PR fix (address reviewer feedback)
 
-- Use when the user asks to:
-  - reply to reviewer comments
-  - address conversations
-  - resolve existing review threads
-  - apply requested changes from reviewer feedback by iterating on code with verification
-- Example phrases:
-  - "apply the requested changes"
-  - "let's fix review comments"
-  - "one comment at a time until resolved"
-  - "address threads"
-  - "reply to reviewers"
+- Use when the user asks to reply to reviewer comments, address conversations, resolve review threads, or apply requested changes with verification.
 - Then open: `~/.agents/skills/k-review/references/pr_fix.md`
 
 ### Mode: PR review (initial or continued)
 
-- Use when the user wants:
-  - an initial full PR review
-  - to continue a review with the next comment
-  - to recheck/verify whether a PR fix resolves a bug
-- Example phrases:
-  - "review this PR"
-  - "what's the next comment"
-  - "continue the review"
-  - "does this PR fix it"
-  - "can you recheck"
-  - "verify this fix"
-- Role modifies behavior: see Role Detection above and `pr_review.md` for details.
+- Use when the user wants an initial PR review, continued review, or verification that a PR fix resolves a bug.
+- Role modifies behavior: see Role Detection above and `pr_review.md`.
 - Then open: `~/.agents/skills/k-review/references/pr_review.md`
 
 ### Mode: Local changes review (working tree, branch delta, or commit range)
 
-- Use when: the user asks to review local changes/diff, review a specific commit range, or when there is no PR for the current branch and the user still wants a review.
-- This mode verifies and fixes: findings are resolved in the working tree immediately, not drafted as comments.
-- Then open: `~/.agents/skills/k-review/references/local_changes.md`
+- Use when: the user asks to review local changes/diff, a commit range, or a no-PR branch delta.
+- If no PR is involved, check `k-light-review`'s Light-Eligibility Predicate before opening `local_changes.md`.
+  When self-authored and trigger-free, route to `k-light-review` unless the user explicitly requested full/deep review;
+  it is cheaper, not weaker. Otherwise open `~/.agents/skills/k-review/references/local_changes.md`.
 
 ### Mode: Plan review (before implementation)
 
-- Use when the user asks to review a plan, design doc, implementation proposal, or RFC —
-  a document, issue body, or pasted text rather than a diff.
-- Example phrases:
-  - "review this plan"
-  - "check my implementation plan"
-  - "poke holes in this design"
-- Authorship and fix gating do not apply (no code target); the output is plan feedback.
+- Use when the user asks to review a plan, design doc, implementation proposal, RFC, issue body, or pasted text rather than a diff.
 - Then open: `~/.agents/skills/k-review/references/plan_review.md`
 
 ## Disambiguation (If Still Unclear)
@@ -167,5 +148,4 @@ If the user's intent is still unclear, resolve via local context (do not guess):
   - If only local changes exist: local changes mode.
   - If only a PR exists: PR review mode.
   - If neither exists: local changes mode (branch delta).
-  - Downward routing: when local changes mode applies and no PR exists, check the Light-Eligibility Predicate in `~/.agents/skills/k-light-review/SKILL.md`.
-    If the change is self-authored and none of its escalation triggers hold, note that `k-light-review` is the cheaper equivalent (opt-in base context, no PR/GitHub scaffolding) and offer it before running the full local-changes machinery.
+  - Downward routing: when local changes mode applies with no PR, apply the Light-Eligibility Predicate above.

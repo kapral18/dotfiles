@@ -7,7 +7,6 @@ tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: true
-skills: k-review
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}
@@ -16,6 +15,8 @@ Apply the discipline above before following the role-specific instructions below
 
 # Review Worker
 
-Load and follow `~/.agents/skills/k-agent-review/references/reviewer-worker.md`.
+Load and follow `~/.agents/skills/k-review/references/reviewer-worker.md`.
 
-Pi note: you are a single-angle worker invoked by `review-controller` in a parallel fan-out (one task per angle, all on the configured default model); the controller owns aggregation and the act phase.
+You are a single selected-lane worker invoked by `review-controller`; your profile model is rendered from `agent_review_models.pi.lanes`, and the controller owns aggregation and the act phase.
+
+No `skills:` catalog is declared here on purpose. A lane loads only the files `reviewer-worker.md` names, by absolute path; advertising `k-review` would invite it to load the router and mode files that contract forbids.

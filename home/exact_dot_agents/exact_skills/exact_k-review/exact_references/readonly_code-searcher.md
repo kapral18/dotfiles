@@ -1,4 +1,4 @@
-# Agent Review Code Searcher Contract
+# Review Code Searcher Contract
 
 Shared contract for delegated code-searcher subagents. Load this file only for the matching worker role.
 

@@ -1,6 +1,6 @@
 # Kibana Live UI Overlay
 
-Kibana live UI target packet for verified `elastic/kibana` `/k-agent-review`, `live-ui-review`, `k-ui-proof`, and (when manually invoked) `k-live-ui-windows` flows.
+Kibana live UI target packet for verified `elastic/kibana` `/k-deep-review`, `live-ui-review`, `k-ui-proof`, and (when manually invoked) `k-live-ui-windows` flows.
 Use it when no explicit parent/user/repo target packet was supplied.
 The runtime targets, preflight, and data/setup ladder below are mode-neutral:
 review flows compare PR/head against base, and `k-ui-proof` verifies the built runtime head-only against its intended visual.

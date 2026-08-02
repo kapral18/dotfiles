@@ -10,12 +10,12 @@ Use these pages when continuing a review, addressing review threads, rechecking 
 
 ## The moving parts
 
-| Navigation slice                                                        | Owns                                                                                     |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| [Agent-review topology](agent-review-topology.md)                       | `/k-agent-review` phases, worker ownership, live UI handoff, controller responsibilities |
-| [Base context and truth validation](base-context-and-truth.md)          | SCSI/base-branch context, strict verification, PR intake, necessity audit                |
-| [Post-review and light review](post-review-and-light-review.md)         | four-dimension hygiene lens and proportional self-review                                 |
-| [Replies, publication, and history](replies-publication-and-history.md) | reply style, router behavior, human-visible gate, deletion/history safeguards            |
+| Navigation slice                                                        | Owns                                                                                    |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [Deep-review topology](deep-review-topology.md)                         | `/k-deep-review` phases, worker ownership, live UI handoff, controller responsibilities |
+| [Base context and truth validation](base-context-and-truth.md)          | SCSI/base-branch context, strict verification, PR intake, necessity audit               |
+| [Post-review and light review](post-review-and-light-review.md)         | four-dimension hygiene lens and proportional self-review                                |
+| [Replies, publication, and history](replies-publication-and-history.md) | reply style, router behavior, human-visible gate, deletion/history safeguards           |
 
 ## Using it
 
@@ -23,8 +23,8 @@ Pick the direction first; it decides which workflow rules apply.
 
 | Direction                   | Tooling                                                                                                                                                              |
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Agent reviews your diff     | `k-review` skill: [`home/exact_dot_agents/exact_skills/exact_k-review`](../../../../home/exact_dot_agents/exact_skills/exact_k-review)                               |
-| Agent reviews a plan/spec   | `k-review` plan mode (`references/plan_review.md`) — judges a design doc or [spec packet](../creation-workflow.md) before any implementation; no diff, no authorship |
+| Review your diff            | `k-review` skill: [`home/exact_dot_agents/exact_skills/exact_k-review`](../../../../home/exact_dot_agents/exact_skills/exact_k-review)                               |
+| Review a plan/spec          | `k-review` plan mode (`references/plan_review.md`) — judges a design doc or [spec packet](../creation-workflow.md) before any implementation; no diff, no authorship |
 | You review the agent's diff | [Reviewing agent diffs](../reviewing-diffs.md)                                                                                                                       |
 
 ## Related

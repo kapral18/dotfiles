@@ -25,7 +25,7 @@ Use in every non-trivial review.
   - lint + type_check + tests (discover the correct commands from the repo; do not guess).
 - Keep an evidence log per comment/thread: what base does, what changed, what you tested, and what you observed.
 
-## Candidate Refutation Ladder (Run Before Keeping Any Finding)
+## Candidate Refutation Ladder (Run Before Reporting Or Acting)
 
 Owned by the agent that decides keep/drop and acts (k-light-review, direct review modes, or a controller).
 Fan-out: the dedicated cross-family adversarial lane owns this pass; read-only finder lanes only return candidates plus a reachability statement and do not self-refute.
@@ -224,13 +224,13 @@ For each dimension, anchor any finding in evidence: exact file + location, dupli
 
 Do not assert a hygiene problem you have not pointed at.
 
-## Findings-Set Audit (Run Before Acting On The Finding Set)
+## Findings-Set Audit (Run Before Final Refutation Or Acting)
 
 Subject: candidate findings and proposed fixes — not the fix diff (Post-Review Stage) or original diff.
-Owned by the deciding agent (k-light-review, the direct review modes, or a controller);
-in fan-out orchestration this is the findings-auditor's job.
+Owned by the deciding agent (k-light-review, the direct review modes, or a controller).
+In deeper fan-out orchestration, keep this in the controller by default and delegate to `findings-auditor` only for non-trivial sets.
 
-Before fixing, drafting, or presenting findings, run the four dimensions (Post-Review Lens) over the finding set:
+Before final adversarial refutation, fixing, drafting, or presenting findings, run the four dimensions (Post-Review Lens) over the finding set:
 
 - **Redundancy / semantic + logical duplication:** collapse two findings with the same root cause or anchor region into one;
   do not present the same issue twice under different wording.
@@ -261,8 +261,10 @@ Shared verify-and-fix spine for self-authored, fix-authorized review surfaces. E
 Read-only lanes report precise fixes for the parent to apply instead of editing.
 
 1. **Build the findings queue.** Walk the whole diff against the Coverage Checklist, ordered by severity.
-2. **Refute.** Run the Candidate Refutation Ladder; keep only survivors, record reachability, and drop refuted/unverified findings.
-3. **Audit the set.** Run the Findings-Set Audit over survivors and proposed fixes before acting.
+2. **Audit the set.** Run the Findings-Set Audit over candidate findings and proposed fixes.
+3. **Final refutation.**
+   Run the Candidate Refutation Ladder or the available adversarial-verifier lane over the audited set;
+   keep only survivors, record reachability, and drop refuted/unverified findings.
 4. **Fix each finding** highest severity first: verify from evidence, apply the smallest correct change, and do not commit/push unless asked.
    For non-trivial or ambiguous fixes, state options and proceed with the recommended default unless the user intervenes.
 5. **Quality gates.** Run repo lint + type_check + tests; fix until green or report what remains and why.

@@ -31,8 +31,8 @@ Check Role Detection from the router (`SKILL.md`):
   - draft comments/suggestions
   - do not change code
   - run the PR Necessity + Correctly-Open Audit in `pr_context_audits.md`
-  - apply the Post-Review Lens (`judging_core.md`) to the PR diff
-  - surface redundancy / verbosity / semantic + logical duplication / gaps as read-only findings
+  - apply the Findings-Set Audit (`judging_core.md`) to surviving PR-diff candidate findings before drafting
+  - surface redundancy / verbosity / semantic + logical duplication / gaps as read-only finding-set findings
 - **Self-review (user is the author):**
   - find issues and fix them in the working tree immediately
   - follow local changes mode behavior
@@ -70,11 +70,20 @@ On later turns (iterative/continued):
 
 Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 
-## Review Contract
+## Agent-Assisted Review Contract
 
-- Build a complete internal findings queue ordered by severity.
-- Before drafting, run the queue through the Deduplication + Truth Filter and Existing Pending Review Reconciliation in `pr_common.md`;
-  only implementation-verified findings that are not covered, not duplicated, and not dropped by the Replacement/Migration Parity Gate remain, and any current-account pending review is merged into one final payload.
+- Launch one `reviewer`/`review-worker` `correctness-regressions` lane for the PR diff when the harness supports subagents;
+  add one extra lane only for an independently evidenced risk class.
+  Select both from `lanes.md` and paste the chosen lane's `Lens skill` line and `Checks` list into the worker's scope packet;
+  workers never load `lanes.md`.
+  Run any repo-wide suite or full build once here and pass the result into every scope packet — lanes are told not to repeat shared work.
+  If the harness cannot delegate, run the finder pass inline and report `agent_lane=inline-degraded`.
+- Run live UI only when UI/runtime evidence is needed for a candidate and a startable runtime is available;
+  use `k-deep-review` for the full live-UI target-packet/controller graph.
+- Before adversarial verification, run the candidate queue through the Findings-Set Audit, Deduplication + Truth Filter, and Existing Pending Review Reconciliation; only implementation-verified findings that are not covered, not duplicated, and not dropped by the Replacement/Migration Parity Gate remain, and any current-account pending review is merged into one final payload.
+- If the audited candidate set is empty, skip adversarial work and report `Adversarial verification: skipped (no candidates after findings audit)`.
+- Otherwise, run `adversarial-verifier` over the audited candidate set before drafting;
+  if no verifier lane is available, run the Candidate Refutation Ladder inline and report `adversarial=inline-degraded`.
 - Draft highest-risk items first.
 
 ## Output Mode
@@ -93,7 +102,7 @@ Return a `Pending review draft` containing:
   - Why it matters (1-2 lines)
   - How to verify (minimal)
   - Proposed fix (smallest change)
-- `ui_evidence_attachments`: for UI-related findings drafted after `/k-agent-review` or `live-ui-review`, screenshot handoff paths/descriptions/placement for the upload step, or the blocker/non-applicability reason screenshots are absent.
+- `ui_evidence_attachments`: for UI-related findings drafted after `/k-deep-review` or `live-ui-review`, screenshot handoff paths/descriptions/placement for the upload step, or the blocker/non-applicability reason screenshots are absent.
   Do not put local screenshot paths in comment bodies.
 - `pr_necessity_audit` (for other-authored/unknown PRs): classifications and any draft feedback/questions about intent, correctly-open status, need, or overlapping work
 - `summary_comment` (optional): short PR-level comment
@@ -111,7 +120,7 @@ If the user says "one at a time", "next comment", or "continue the review":
   - Why it matters (impact)
   - How to verify (minimal repro/test)
   - Proposed fix (smallest change)
-  - `ui_evidence_attachments` when the comment is UI-related and drafted after `/k-agent-review` or `live-ui-review`:
+  - `ui_evidence_attachments` when the comment is UI-related and drafted after `/k-deep-review` or `live-ui-review`:
     screenshot handoff paths/descriptions/placement, or the blocker/non-applicability reason screenshots are absent.
     Do not put local screenshot paths in the comment body.
 - If you need to reply to an existing review thread instead of creating a new comment, switch to PR fix mode for that thread.

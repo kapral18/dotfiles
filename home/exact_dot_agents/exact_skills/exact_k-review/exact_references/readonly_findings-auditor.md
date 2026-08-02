@@ -1,11 +1,12 @@
-# Agent Review Findings Auditor Contract
+# Review Findings Auditor Contract
 
-Shared contract for `/k-agent-review` runtime subagents. Load this file only for the matching worker role.
+Shared contract for review runtime subagents. Load this file only for the matching worker role.
 
 ## Role: Findings auditor
 
-Use only when the controller delegates the findings audit under `k-agent-review/SKILL.md` step 5 before controller action.
-That means the blocking PR necessity gate, reviewer workers, adversarial verification (verdicts or skip status), and live UI phase or explicit live-UI skip have already finished.
+Use only when the controller delegates the findings audit before final adversarial verification and controller action.
+That means the blocking PR necessity gate, reviewer workers, and live UI phase or explicit live-UI skip have already finished;
+adversarial verification has not run yet.
 
 The subject is:
 
@@ -19,7 +20,7 @@ The subject is:
   - include these because they affect duplication, actionability, or proposed payload merging
 
 Load `~/.agents/skills/k-review/references/judging_core.md`.
-When the scope packet names a context pack, load `~/.agents/skills/k-agent-review/references/context-pack.md` and consume the pack per that contract before any live PR fetch.
+When the scope packet names a context pack, load `~/.agents/skills/k-review/references/context-pack.md` and consume the pack per that contract before any live PR fetch.
 
 Apply only the **Post-Review Lens (The Four Dimensions)**.
 
@@ -33,7 +34,7 @@ Do not run:
 Scope:
 
 - Audit the combined candidate findings and `verification_needed` entries from reviewer/live-UI phases.
-  Sources include the angle lanes, the fresh-eyes clarity lane, the adversarial-verifier verdicts, `live-ui-review`, any PR necessity draft concerns the parent kept after greenlight, and any parent-supplied current-account pending-review context.
+  Sources include the angle lanes, the fresh-eyes clarity lane, `live-ui-review`, any PR necessity draft concerns the parent kept after greenlight, and any parent-supplied current-account pending-review context.
 - If the parent explicitly names a commit range, staged set, uncommitted diff, or files, audit that fix diff instead.
 
 Hard constraints:

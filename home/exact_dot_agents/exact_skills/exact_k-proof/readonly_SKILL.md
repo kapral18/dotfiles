@@ -26,7 +26,7 @@ Do not use:
 - "are you sure?", "is it done?", "verify this", or "how do you know?" when re-running and citing the relevant evidence inline answers the question
 - ordinary answer-only, docs, wording, mechanical, or code work whose final answer can cite evidence directly
 - formal `/k-build` flows that already carry a criteria ledger, unless the user asks for a separate freeform proof receipt
-- `k-review`, `k-light-review`, `/k-agent-review`, or PR-fix flows unless the user explicitly asks for a separate freeform proof receipt
+- `k-review`, `k-light-review`, `/k-deep-review`, or PR-fix flows unless the user explicitly asks for a separate freeform proof receipt
 - human-visible publication; compose/posting skills own publication packets and may consume an already-finalized receipt
 - evidence likely to contain secrets, tokens, private customer data, or paste-only local paths that would be unsafe in a handoff
 - because the task merely feels "non-trivial"

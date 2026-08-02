@@ -11,7 +11,7 @@ Connects Playwriter to a Windows guest's browser running in VirtualBox over CDP 
 
 ## Manual only — never automatic
 
-`/k-agent-review`, `live-ui-review`, `/k-build`, and `k-ui-proof` verify the local browser only.
+`/k-deep-review`, `live-ui-review`, `/k-build`, and `k-ui-proof` verify the local browser only.
 None of them resolve, infer, or accept a Windows/VirtualBox requirement anymore —
 that entire environment-selection concept was purged from those flows and lives only here.
 
@@ -21,7 +21,7 @@ If the user wants Windows coverage alongside an in-flight `k-ui-proof` or `live-
 
 ## Load first
 
-Load `~/.agents/skills/k-agent-review/references/live-ui-runtime.md` for target-packet resolution (including the `elastic/kibana` fallback via `~/.agents/skills/k-elastic-domain/references/kibana-live-ui.md`), Playwriter preflight, the readiness stability guard, screenshot & evidence capture, the data/setup ladder, and the hard runtime constraints.
+Load `~/.agents/skills/k-review/references/live-ui-runtime.md` for target-packet resolution (including the `elastic/kibana` fallback via `~/.agents/skills/k-elastic-domain/references/kibana-live-ui.md`), Playwriter preflight, the readiness stability guard, screenshot & evidence capture, the data/setup ladder, and the hard runtime constraints.
 This skill adds only the guest-connection rung below, the URL translation lookup, and its own hard constraints.
 
 Resolve the target packet and required runtime config the same way `k-ui-proof`'s ad-hoc mode does when no controller supplies them;

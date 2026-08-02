@@ -1,9 +1,9 @@
-# Agent Review Runtime Harness Caveats
+# Review Runtime Harness Caveats
 
 This file is not a subagent registry.
 
 - The active harness owns discovery and invocation for its configured agents, tasks, or native isolation tools.
-- `/k-agent-review` uses those native mechanisms plus the role-specific contracts in `references/`.
+- `/k-deep-review` uses those native mechanisms plus the role-specific contracts in `references/`.
 
 Read this file only for capability caveats that affect orchestration.
 
@@ -11,12 +11,13 @@ Read this file only for capability caveats that affect orchestration.
 
 - Model selection is **registry-driven and deterministic**: every repo-owned profile's `model` frontmatter is rendered from the single `agent_review_models` block in the chezmoi model registry (`home/.chezmoidata/ai_models.yaml`).
   Updating a model is a one-line registry edit plus `chezmoi apply`; model ids never live hand-written in profile files.
-- Registry values per harness: `lanes` (angle lanes, auditors, controller, and generic fresh-eyes launches) and `verifier` (the adversarial verifier — a **different model family than `lanes`**, paired by human review in the registry, not inferred at launch).
-  Generic fresh-eyes launches must pass the registry lane model as the profile-equivalent model.
+- Registry values per harness: `lanes` (angle lanes, auditors, controller, named fresh-eyes profiles, and generic fresh-eyes launches) and `verifier` (the adversarial verifier — a **different model family than `lanes`**, paired by human review in the registry, not inferred at launch).
+  Generic fresh-eyes launches must pass the registry lane model as the profile-equivalent model;
+  named fresh-eyes profiles carry the same registry-rendered frontmatter.
   Any harness-served generic/default subagent must also receive that model; never let the runtime pick an implicit default when the registry has a concrete lane value.
 - Empty registry value = the profile omits the field and the harness config default applies; `inherit` = harness-native parent inheritance.
   Empty is allowed only for a deliberately documented default path.
-  Current `/k-agent-review` registry values are concrete for Cursor, Copilot, Codex, Gemini, and Pi;
+  Current review-lane registry values are concrete for Cursor, Copilot, Codex, Gemini, Pi, and OMP;
   launches that omit a model in those harnesses are a bug because they bypass the matrix.
   Claude uses `inherit` intentionally because Claude sessions are launched on a deliberate model and the installed Task resolver has been verified to inherit from the parent.
 - A model unavailable in the active runtime is a fail-visible launch error to surface; fix the registry, never substitute at launch.
@@ -36,12 +37,12 @@ Claude subagent model overrides are limited to the installed SDK schema (`sonnet
 
 Codex's model surface is OpenAI-only, so the adversarial verifier is `families=same (degraded)` here.
 Launch angle lanes as `review-worker` agents; the verifier as the `adversarial-verifier` agent.
-Registry: both values are concrete (`gpt-5.5` at medium effort via profile `model` + `model_reasoning_effort`).
+Registry: both values are concrete (`gpt-5.5` at high effort via profile `model` + `model_reasoning_effort`).
 Never launch a native Codex `spawn_agent`/generic subagent without a model: the installed catalog does not make omitted defaults auditable, and uncataloged slugs can pass through with fallback metadata.
 
 ## Gemini CLI
 
-Gemini subagents cannot call other subagents, so run `/k-agent-review` in the main Gemini session.
+Gemini subagents cannot call other subagents, so run `/k-deep-review` in the main Gemini session.
 Do not run the controller itself as a Gemini subagent.
 The model surface is Gemini-only: the adversarial verifier is `families=same (degraded)`; launch it as the `adversarial-verifier` profile.
 Registry: both values are concrete (`gemini-3.1-pro-preview`).
@@ -62,7 +63,7 @@ Profiles carry registry-rendered `model` frontmatter; do not rely on the configu
 - When the active Task schema exposes only generic subagent types, pass the same registry values as explicit `model` arguments —
   the registry stays the single source either way.
   Generic fresh-eyes launches pass the registry lane model; never let Cursor `auto` choose the model for review workers.
-- Cursor's `readonly` flag is a hard tool restriction, not the `/k-agent-review` behavior-level read-only boundary.
+- Cursor's `readonly` flag is a hard tool restriction, not the `/k-deep-review` behavior-level read-only boundary.
   Cursor source shows `readonly: true` blocks shell, write, delete, and MCP operations.
   Keep Cursor profile frontmatter and Task launches at `readonly: false`; the worker contracts enforce no-mutation behavior.
 - If a Cursor worker reports Ask/read-only mode blocked shell/git/`gh`/SCSI/Playwriter, discard that launch result and rerun with `readonly: false` before accepting `verification_needed`.
@@ -80,9 +81,11 @@ Profiles carry registry-rendered `model` frontmatter; do not rely on the configu
 - Launch angle lanes as the `review-worker` agent type (model-invocable, not user-invocable).
   Do not use `general-purpose` unless a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason.
 
-## Pi
+## Pi and OMP
 
-- Pi launches subagents through named profiles; per-task/per-profile `model` is honored over the worker default, and thinking is encoded as a `:<thinking>` suffix on the model string.
+- Pi and OMP launch subagents through named profiles; per-task/per-profile `model` is honored over the worker default, and Pi thinking is encoded as a `:<thinking>` suffix on the model string.
 - Registry: both `lanes` and `verifier` are concrete.
-  Review workers use `openrouter/anthropic/claude-opus-5:high`; adversarial/criteria verifier use `openrouter/openai/gpt-5.5:medium`.
-- Other repo-owned Pi profiles are pinned from `model_tier_map` so they do not fall through to `defaultProvider`/`defaultModel` unless a future profile deliberately omits `model` and documents why.
+  Pi review workers, fresh-eyes, and adversarial/criteria verifiers all use `openrouter/openai/gpt-5.5:high`:
+  Pi's single dial makes `:high` mean thinking-high, so pinning Opus there would buy thinking rather than the wanted non-thinking high effort.
+  OMP review workers, fresh-eyes, and adversarial/criteria verifiers all use `github-copilot/gpt-5.5:high`, for the same single-dial reason as Pi; both harnesses therefore report `families=same (degraded)`.
+  Other repo-owned Pi/OMP profiles are pinned from `model_tier_map` so they do not fall through to `defaultProvider`/`defaultModel` unless a future profile deliberately omits `model` and documents why.

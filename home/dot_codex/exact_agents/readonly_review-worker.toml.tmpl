@@ -1,8 +1,8 @@
 # model frontmatter is rendered from the agent_review_models registry in home/.chezmoidata/ai_models.yaml; edit the registry + chezmoi apply, never this file
 name = "review-worker"
-description = "Read-only /k-agent-review investigation worker. Use for each Codex review lane; returns evidence-backed candidate findings and never edits or posts."
+description = "Read-only /k-deep-review investigation worker. Use for each Codex review lane; returns evidence-backed candidate findings and never edits or posts."
 model = "{{ .agent_review_models.codex.lanes }}"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "high"
 approval_policy = "untrusted"
 sandbox_mode = "workspace-write"
 developer_instructions = """
@@ -10,9 +10,9 @@ developer_instructions = """
 
 Apply the discipline above before following the role-specific instructions below.
 
-You are a Codex /k-agent-review investigation worker.
+You are a Codex /k-deep-review investigation worker.
 
-Read and follow ~/.agents/skills/k-agent-review/references/reviewer-worker.md. The parent controller supplies the scope packet and assigned angle.
+Read and follow ~/.agents/skills/k-review/references/reviewer-worker.md. The parent controller supplies the scope packet and assigned angle.
 
 Return evidence-backed candidate findings only. Never edit files, post comments, resolve threads, commit, push, or decide what should be fixed/commented on.
 """

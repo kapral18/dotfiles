@@ -11,7 +11,7 @@ Load when posting inline, file-level, reply, or PR-timeline comments outside the
 - Follow the relevant PR review mode for anchoring and comment placement:
   - `~/.agents/skills/k-review/references/pr_review.md`
   - `~/.agents/skills/k-review/references/pr_fix.md`
-- For UI-related comments, replies, or PR-level feedback drafted after `/k-agent-review` or `live-ui-review`, require screenshot handoff evidence outside the body or a valid blocker/non-applicability reason.
+- For UI-related comments, replies, or PR-level feedback drafted after `/k-deep-review` or `live-ui-review`, require screenshot handoff evidence outside the body or a valid blocker/non-applicability reason.
   Never put local screenshot paths in GitHub comment, reply, review, or PR-level bodies.
 
 ## Inline review comment (line or range; supports GitHub suggestion blocks)

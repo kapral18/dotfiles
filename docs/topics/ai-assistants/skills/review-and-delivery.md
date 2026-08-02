@@ -15,18 +15,18 @@ These skills govern review methodology, GitHub side effects, and human-readable 
 | Source   | [`exact_k-review`](../../../../home/exact_dot_agents/exact_skills/exact_k-review/)               |
 | Related  | [Review workflow](../reviews/index.md)                                                           |
 
-## `k-agent-review`
+## `k-deep-review`
 
-| Field    | Value                                                                                          |
-| -------- | ---------------------------------------------------------------------------------------------- |
-| Use when | multi-agent review orchestration, reviewer fan-out, findings aggregation                       |
-| Source   | [`exact_k-agent-review`](../../../../home/exact_dot_agents/exact_skills/exact_k-agent-review/) |
-| Routing  | manual                                                                                         |
-| Related  | [Agent-review topology](../reviews/agent-review-topology.md)                                   |
+| Field    | Value                                                                                        |
+| -------- | -------------------------------------------------------------------------------------------- |
+| Use when | bounded deep-review orchestration, reviewer rostering, findings aggregation                  |
+| Source   | [`exact_k-deep-review`](../../../../home/exact_dot_agents/exact_skills/exact_k-deep-review/) |
+| Routing  | manual                                                                                       |
+| Related  | [Deep-review topology](../reviews/deep-review-topology.md)                                   |
 
 The controller now materializes a read-only context pack before fan-out and puts its path plus `head_sha` in every worker scope packet. Workers load `context-pack.md`, verify the manifest freshness gate, and report `pack_used`, `pack_stale`, or `pack_missing` instead of re-fetching PR artifacts already present in the pack.
 
-After lane merge/dedup, adversarial verification and applicable `live-ui-review` run concurrently. Findings audit reconciles both outputs, and any UI evidence attached to refuted candidates is discarded as moot.
+After lane merge/dedup, applicable `live-ui-review` runs first, then findings audit cleans the candidate set, then final adversarial verification tries to refute the audited findings and sweeps for what every lane missed. The sighted reviewer roster is bounded: one baseline lane for simple single-surface diffs, extra lanes only for scope-evidenced independent risk. Lenses, triggers, and checks come from `k-review/references/lanes.md`, and the controller pastes the selected entry into the packet so a lane never loads the catalog, the router, or the mode files.
 
 Controller preflight includes task-shaped `,ai-kb search` recall; relevant capsule lessons are folded into scope packets. Closeout records durable lessons with `,ai-kb remember` or task anti-patterns with `,agent-memory note anti_pattern`. Worker lifecycle is supervised: delivery acknowledgements are not progress, request-too-large or empty turns mark a worker dead, follow-ups are budgeted, and worker prose numbers are treated as self-reports until independently verified. Any worker image used in a human-visible packet must be opened/viewed by the controller first.
 
