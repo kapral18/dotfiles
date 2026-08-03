@@ -11,10 +11,7 @@ import sys
 from pathlib import Path
 
 provider_aliases = {
-    "cloudflare": "cloudflare-workers-ai",
-    "cloudflare-openai": "cloudflare-openai",
     "codex": "codex",
-    "litellm": "litellm",
     "openrouter": "openrouter",
     "vertex": "vertex",
 }

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Minimal YAML parser for this project's data files.
 
-Handles the specific list-of-dicts structure used by mcp_servers.yaml and
-litellm_models.yaml.  Intentionally avoids external dependencies (no PyYAML).
+Handles the specific list-of-dicts structure used by mcp_servers.yaml and the
+ai_models/ registry files.  Intentionally avoids external dependencies (no PyYAML).
 
 Supported subset:
   - Top-level key followed by a list of dicts (sequence of mappings)

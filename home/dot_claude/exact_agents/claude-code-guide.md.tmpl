@@ -1,7 +1,7 @@
 ---
 name: claude-code-guide
 description: Source-first guide for Claude Code, Claude API, Claude Agent SDK, and Claude in Slack questions.
-model: "{{ .model_tier_map.claude_code.routine_edit.model }}"
+model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claude_code" "agent" "claude-code-guide") }}"
 tools: Bash, Read, WebFetch, WebSearch
 ---
 

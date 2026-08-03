@@ -13,23 +13,6 @@ from _test_support import FIXTURES, REPO
 class TestAiModels(unittest.TestCase):
     """WHEN loading AI models from YAML."""
 
-    def test_load_litellm_models(self):
-        from ai_models import load_litellm
-
-        models = load_litellm(str(FIXTURES / "ai_models.yaml"))
-        assert len(models) == 2
-        assert models[0]["id"] == "llm-gateway/model-a"
-        assert models[0]["reasoning"] is True
-        assert models[0]["cost"]["input"] == 5
-        assert models[1]["reasoning"] is False
-        assert models[1]["cost"]["input"] == 0.5
-
-    def test_load_azure_models_empty(self):
-        from ai_models import load_azure
-
-        models = load_azure(str(FIXTURES / "ai_models.yaml"))
-        assert len(models) == 0
-
     def test_load_model_mirror_policy_sections(self):
         from ai_models import (
             load_agent_review_models,
@@ -38,7 +21,7 @@ class TestAiModels(unittest.TestCase):
             load_provider_models,
         )
 
-        path = FIXTURES / "ai_models.yaml"
+        path = FIXTURES / "ai_models"
         cursor = load_cursor_models(path)
         pi = load_pi_extra_models(path)
         providers = load_provider_models(path)
@@ -57,77 +40,101 @@ class TestAiModels(unittest.TestCase):
         from ai_models import load_cursor_models
 
         cases = {
-            "missing": "litellm_models:\n  - id: model-a\n",
-            "empty": "cursor_models:\nlitellm_models:\n",
+            "missing": "copilot_models:\n  - id: model-a\n",
+            "empty": "cursor_models:\ncopilot_models:\n",
             "unrecognized": "cursor_models:\n  models: cursor-model-a\n",
+            "absent file": None,
         }
         for name, contents in cases.items():
             with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
-                path = Path(directory) / "ai_models.yaml"
-                path.write_text(contents)
+                if contents is not None:
+                    (Path(directory) / "harness-catalogs.yaml").write_text(contents)
                 with self.assertRaisesRegex(ValueError, "cursor_models"):
-                    load_cursor_models(path)
+                    load_cursor_models(directory)
 
-    def test_load_model_tier_map(self):
-        from ai_models import load_model_tier_map
+    def test_load_model_bands(self):
+        from ai_models import load_model_bands
 
-        tiers = load_model_tier_map(str(FIXTURES / "ai_models.yaml"))
-        assert set(tiers.keys()) == {"claude_code"}
-        assert tiers["claude_code"]["gruntwork"] == {
+        bands = load_model_bands(str(FIXTURES / "ai_models"))
+        assert set(bands.keys()) == {"claude_code"}
+        assert bands["claude_code"]["cheap"] == {
             "model": "model-b",
             "effort": "high",
             "thinking": "no",
             "context": "short",
-            "band": "cheap",
         }
-        assert tiers["claude_code"]["orchestration"] == {
+        assert bands["claude_code"]["max"] == {
             "model": "model-a",
             "effort": "high",
             "thinking": "off",
             "context": "long",
-            "band": "max",
-            "fallback": {
-                "model": "model-fallback",
+            "counter": {
+                "model": "model-counter",
                 "effort": "medium",
                 "context": "long",
             },
         }
 
-    def test_parse_flow_map_nested(self):
-        from ai_models import _parse_flow_map
+    def test_load_agent_categories_and_bindings(self):
+        from ai_models import load_agent_bindings, load_agent_categories
 
-        assert _parse_flow_map('{ model: "x", effort: "high", fallback: { model: "y", effort: "medium" } }') == {
-            "model": "x",
-            "effort": "high",
-            "fallback": {"model": "y", "effort": "medium"},
+        path = str(FIXTURES / "ai_models")
+        assert load_agent_categories(path)["refute"] == {"band": "max", "family": "counter"}
+        assert load_agent_bindings(path) == {
+            "code-searcher": "search",
+            "reviewer": "review",
+            "adversarial-verifier": "refute",
         }
 
-    def test_parse_flow_map_trailing_comment(self):
-        from ai_models import _parse_flow_map
+    def test_resolve_agent_model_reports_a_missing_counter_as_degraded(self):
+        from ai_models import resolve_agent_model
 
-        assert _parse_flow_map('{ model: "x", effort: "high" }') == {
-            "model": "x",
-            "effort": "high",
-        }
+        path = str(FIXTURES / "ai_models")
+        assert resolve_agent_model(path, "claude_code", "code-searcher")["model"] == "model-b"
 
-    def test_parse_flow_map_empty_string_scalar(self):
-        from ai_models import _parse_flow_map
+        refuter = resolve_agent_model(path, "claude_code", "adversarial-verifier")
+        assert refuter["model"] == "model-counter"
+        assert refuter["degraded"] is False
 
-        assert _parse_flow_map('{ model: "x", effort: "", context: "" }') == {
-            "model": "x",
-            "effort": "",
-            "context": "",
-        }
+        # An unbound agent has no category, so there is no band to pin it to.
+        assert resolve_agent_model(path, "claude_code", "not-an-agent") is None
 
-    def test_bucket_line_with_trailing_comment_is_parsed(self):
-        from ai_models import load_model_tier_map
+    def test_band_entries_keep_empty_strings_and_trailing_comments(self):
+        from ai_models import load_model_bands
 
-        content = 'model_tier_map:\n  claude_code:\n    gruntwork: { model: "x", effort: "high" } # trailing comment\n'
+        content = (
+            "model_bands:\n"
+            "  claude_code:\n"
+            "    cheap:\n"
+            '      model: "x" # trailing comment\n'
+            '      effort: ""\n'
+            '      context: ""\n'
+            "agent_bindings:\n"
+            "  other: search\n"
+        )
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "ai_models.yaml"
-            path.write_text(content)
-            tiers = load_model_tier_map(str(path))
-        assert tiers == {"claude_code": {"gruntwork": {"model": "x", "effort": "high"}}}
+            (Path(directory) / "tiering.yaml").write_text(content)
+            bands = load_model_bands(directory)
+        assert bands == {"claude_code": {"cheap": {"model": "x", "effort": "", "context": ""}}}
+
+    def test_a_flow_map_band_is_not_silently_read_as_a_pick(self):
+        from ai_models import load_model_bands
+
+        content = 'model_bands:\n  claude_code:\n    cheap: { model: "x", effort: "high" }\n'
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory) / "tiering.yaml").write_text(content)
+            bands = load_model_bands(directory)
+        assert bands["claude_code"]["cheap"] == '{ model: "x", effort: "high" }'
+
+    def test_sections_resolve_to_their_own_file(self):
+        from ai_models import SECTION_FILES, section_path
+
+        assert section_path("/registry", "model_bands").name == "tiering.yaml"
+        assert section_path("/registry", "cursor_models").name == "harness-catalogs.yaml"
+        with self.assertRaisesRegex(ValueError, "unknown registry section"):
+            section_path("/registry", "not_a_section")
+        for name in SECTION_FILES.values():
+            assert (FIXTURES / "ai_models" / name).is_file()
 
     def test_claude_builtin_agent_shadows_are_declared(self):
         agents = REPO / "home/dot_claude/exact_agents"
@@ -144,11 +151,10 @@ class TestAiModels(unittest.TestCase):
                 assert name_line in text
                 assert "model:" in text
 
-    def test_claude_litellm_does_not_override_subagent_models_by_default(self):
-        wrapper = (REPO / "home/exact_bin/executable_,claude-litellm").read_text()
+    def test_claude_openrouter_pins_subagent_models(self):
+        wrapper = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()
 
-        assert "CLAUDE_CODE_SUBAGENT_MODEL:-inherit" in wrapper
-        assert "CLAUDE_CODE_SUBAGENT_MODEL:-llm-gateway/claude-opus-4-8[1m]" not in wrapper
+        assert 'export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_MODEL"' in wrapper
 
 
 if __name__ == "__main__":

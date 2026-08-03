@@ -13,6 +13,13 @@
         "timeout": 10
       }
     ],
+    "preToolUse": [
+      {
+        "command": "AGENT_BAND_HARNESS=cursor $HOME/.agents/hooks/band_gate.py",
+        "matcher": "Task|Agent|spawn_agent|subagent",
+        "timeout": 10
+      }
+    ],
     "afterShellExecution": [
       {
         "command": "$HOME/.agents/hooks/worklog_dispatcher.sh",

@@ -32,7 +32,7 @@ try:
 except Exception:  # pragma: no cover - fail-open if deployed without the sibling module.
     correction_detector = None
 
-# Balanced constants mirror home/dot_pi/agent/extensions/ai-kb-recall.ts exactly.
+# Balanced constants mirror home/dot_pi/agent/exact_extensions/ai-kb-recall.ts exactly.
 PERTURN_LIMIT = 3
 SEARCH_FETCH = 6
 QUERY_MAX_CHARS = 600

@@ -164,9 +164,9 @@ Non-trivial logic belongs in colocated scripts written in an appropriate languag
 - **Colocate helper scripts in `scripts/`**: name them after the data or task they handle (e.g., `generate_mcp_configs.py`, `merge_claude_mcp.py`).
   The shell `.tmpl` script calls them, passing file paths or piped data.
 - **No external dependencies in helper scripts**: use only the standard library of the chosen language.
-  The existing `litellm_models.py` and `generate_mcp_configs.py` hand-parse YAML without PyYAML — follow that precedent.
+  The existing `ai_models.py` and `generate_mcp_configs.py` hand-parse YAML without PyYAML — follow that precedent.
 - **Existing precedent**: `scripts/chezmoi_lib.sh` (shared shell helpers), `scripts/generate_mcp_configs.py`, and `scripts/merge_claude_mcp.py`.
-  Also see `scripts/generate_pi_models.py` and `scripts/litellm_models.py`.
+  Also see `scripts/generate_agent_bands.py` and `scripts/ai_models.py`.
 
 **When writing or modifying a chezmoi script** (`home/.chezmoiscripts/`):
 

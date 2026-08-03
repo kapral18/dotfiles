@@ -13,7 +13,7 @@ local ft_js = {
 }
 
 local runtime_extension_path_markers = {
-  "/home/dot_pi/agent/extensions/",
+  "/home/dot_pi/agent/exact_extensions/",
   "/home/dot_omp/private_agent/extensions/",
   "/.pi/agent/extensions/",
   "/.omp/agent/extensions/",

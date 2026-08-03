@@ -32,21 +32,16 @@ CAPABILITIES_REL = Path("scripts/model_capabilities.v1.json")
 MIRROR_REL = Path("home/dot_config/ai/readonly_model-mirrors.v1.json")
 HARNESSES = ("cursor", "claude", "codex", "gemini", "opencode", "pi", "copilot")
 PROVIDERS = (
-    "azure-foundry",
-    "cloudflare-openai",
-    "cloudflare-workers-ai",
-    "litellm",
-    "litellm-anthropic",
     "llama-cpp",
     "openrouter",
     "vertex",
 )
-EXPLICIT_POLICY_PROVIDERS = ("openrouter", "cloudflare-workers-ai", "cloudflare-openai", "vertex")
+EXPLICIT_POLICY_PROVIDERS = ("openrouter", "vertex")
 MODEL_ID_RE = re.compile(r"^[A-Za-z0-9@~][A-Za-z0-9@~+._:/\[\]=-]*$")
 CURSOR_MODEL_ROW_RE = re.compile(r"^([a-z0-9][a-z0-9._-]*) - .+$")
 MAX_COMMAND_OUTPUT_BYTES = 4 * 1024 * 1024
 MAX_HTTP_RESPONSE_BYTES = 8 * 1024 * 1024
-AI_MODELS_SOURCE = "home/.chezmoidata/ai_models.yaml"
+AI_MODELS_REGISTRY = "home/.chezmoidata/ai_models"
 
 
 class CommandOutputTooLarge(RuntimeError):
@@ -314,11 +309,7 @@ def _provider_model_selectors(
     return [f"{provider_name}/{model_id}" for model_id in models]
 
 
-def _load_opencode_policy(
-    repo_root: Path,
-    litellm_models: list[dict[str, Any]],
-    azure_models: list[dict[str, Any]],
-) -> tuple[list[str], list[str], dict[str, Any]]:
+def _load_opencode_policy(repo_root: Path) -> tuple[list[str], list[str], dict[str, Any]]:
     profiles = {
         "work": _read_jsonc(repo_root / "home/dot_config/opencode/readonly_opencode.work.jsonc"),
         "personal": _read_jsonc(repo_root / "home/dot_config/opencode/readonly_opencode.personal.jsonc"),
@@ -342,26 +333,15 @@ def _load_opencode_policy(
             if isinstance(provider, dict):
                 curated.extend(_provider_model_selectors(provider_name, provider))
 
-    for model in litellm_models:
-        provider = "litellm-anthropic" if _is_anthropic(model["id"]) else "litellm"
-        curated.append(f"{provider}/{model['id']}")
-    curated.extend(f"azure-foundry/{model['id']}" for model in azure_models)
     return _unique(curated), _unique(recommended), defaults
 
 
 def _load_pi_policy(
     repo_root: Path,
-    litellm_models: list[dict[str, Any]],
     extras: list[dict[str, Any]],
 ) -> tuple[list[str], list[str], dict[str, Any]]:
-    curated = [model["id"] for model in litellm_models] + [model["id"] for model in extras]
-    excluded_recommended = (
-        "llm-gateway/gpt-5.6-sol",
-        "llm-gateway/gpt-5.6-terra",
-        "llm-gateway/claude-fable-5",
-    )
-    recommended = [model["id"] for model in litellm_models if not model["id"].startswith(excluded_recommended)]
-    recommended.extend(model["id"] for model in extras if model.get("recommended") is True)
+    curated = [model["id"] for model in extras]
+    recommended = [model["id"] for model in extras if model.get("recommended") is True]
     defaults = {}
     for profile in ("work", "personal"):
         settings = _read_json(repo_root / f"home/dot_pi/agent/readonly_settings.{profile}.json")
@@ -447,20 +427,10 @@ def _live_probe(supported: bool, **fields: Any) -> dict[str, Any]:
 
 
 def _provider_entries(
-    litellm: list[dict[str, Any]],
-    azure: list[dict[str, Any]],
     explicit: dict[str, list[dict[str, Any]]],
     llama_models: list[str],
 ) -> dict[str, dict[str, Any]]:
-    litellm_ids = [model["id"] for model in litellm]
-    anthropic_ids = [model_id for model_id in litellm_ids if _is_anthropic(model_id)]
-    azure_ids = [model["id"] for model in azure]
-    policies = {
-        "litellm": litellm_ids,
-        "litellm-anthropic": anthropic_ids,
-        "azure-foundry": azure_ids,
-        "llama-cpp": llama_models,
-    }
+    policies: dict[str, list[str]] = {"llama-cpp": llama_models}
     recommendations = dict(policies)
     for provider in EXPLICIT_POLICY_PROVIDERS:
         policies[provider] = [entry["id"] for entry in explicit[provider]]
@@ -495,9 +465,6 @@ def _provider_entries(
 def _provider_probe(provider: str) -> dict[str, Any]:
     adapters = {
         "openrouter": "openrouter-models",
-        "litellm": "litellm-models",
-        "cloudflare-workers-ai": "cloudflare-workers-models",
-        "cloudflare-openai": "cloudflare-openai-models",
         "llama-cpp": "llama-cpp-models",
     }
     if provider in adapters:
@@ -514,12 +481,10 @@ def _provider_probe(provider: str) -> dict[str, Any]:
 
 def build_static_mirror(repo_root: str | Path) -> dict[str, Any]:
     root = Path(repo_root).resolve()
-    registry_path = root / "home/.chezmoidata/ai_models.yaml"
+    registry_path = root / AI_MODELS_REGISTRY
     capabilities = _read_json(root / CAPABILITIES_REL)
     observed_at = capabilities["observed_at"]
 
-    litellm = ai_models.load_litellm(registry_path)
-    azure = ai_models.load_azure(registry_path)
     cursor_policy = _validate_cursor_policy(ai_models.load_cursor_models(registry_path))
     pi_extras = ai_models.load_pi_extra_models(registry_path)
     provider_policy = _group_provider_policy(ai_models.load_provider_models(registry_path))
@@ -542,8 +507,8 @@ def build_static_mirror(repo_root: str | Path) -> dict[str, Any]:
     claude_curated, claude_recommended, claude_defaults = _load_claude_policy(root)
     codex_curated, codex_recommended, codex_defaults = _load_codex_policy(root)
     gemini_curated, gemini_recommended, gemini_defaults = _load_gemini_policy(root)
-    opencode_curated, opencode_recommended, opencode_defaults = _load_opencode_policy(root, litellm, azure)
-    pi_curated, pi_recommended, pi_defaults = _load_pi_policy(root, litellm, pi_extras)
+    opencode_curated, opencode_recommended, opencode_defaults = _load_opencode_policy(root)
+    pi_curated, pi_recommended, pi_defaults = _load_pi_policy(root, pi_extras)
     copilot_curated, copilot_recommended, copilot_defaults = _load_copilot_policy(agent_review)
     copilot_available = _load_copilot_available(registry_path)
 
@@ -601,7 +566,7 @@ def build_static_mirror(repo_root: str | Path) -> dict[str, Any]:
             "generator": "scripts/model_mirrors.py",
             "network": "forbidden",
             "sources": [
-                "home/.chezmoidata/ai_models.yaml",
+                f"{AI_MODELS_REGISTRY}/",
                 "scripts/model_capabilities.v1.json",
                 "home harness configs",
             ],
@@ -609,8 +574,6 @@ def build_static_mirror(repo_root: str | Path) -> dict[str, Any]:
         "harnesses": harnesses,
         "kind": MIRROR_KIND,
         "providers": _provider_entries(
-            litellm,
-            azure,
             provider_policy,
             _load_llama_models(root),
         ),
@@ -621,7 +584,8 @@ def build_static_mirror(repo_root: str | Path) -> dict[str, Any]:
 
 
 def _registry_provenance(section: str) -> dict[str, Any]:
-    return _provenance("registry", AI_MODELS_SOURCE, section=section)
+    file_name = ai_models.SECTION_FILES[section]
+    return _provenance("registry", f"{AI_MODELS_REGISTRY}/{file_name}", section=section)
 
 
 def _harness_policy_provenance(harness: str, set_name: str) -> list[dict[str, Any]]:
@@ -643,20 +607,9 @@ def _harness_policy_provenance(harness: str, set_name: str) -> list[dict[str, An
     if harness == "cursor":
         return [_registry_provenance("cursor_models")]
     if harness == "opencode":
-        sources = list(profile_sources[harness])
-        if set_name == "curated":
-            sources.extend(
-                [
-                    _registry_provenance("litellm_models"),
-                    _registry_provenance("azure_models"),
-                ]
-            )
-        return sources
+        return list(profile_sources[harness])
     if harness == "pi":
-        return [
-            _registry_provenance("litellm_models"),
-            _registry_provenance("pi_extra_models"),
-        ]
+        return [_registry_provenance("pi_extra_models")]
     if harness == "copilot":
         if set_name == "available":
             return [_registry_provenance("copilot_models")]
@@ -667,12 +620,7 @@ def _harness_policy_provenance(harness: str, set_name: str) -> list[dict[str, An
 def _provider_policy_provenance(provider: str) -> list[dict[str, Any]]:
     if provider == "llama-cpp":
         return [_provenance("config", "home/dot_pi/agent/readonly_models.json")]
-    section = {
-        "azure-foundry": "azure_models",
-        "litellm": "litellm_models",
-        "litellm-anthropic": "litellm_models",
-    }.get(provider, "provider_models")
-    return [_registry_provenance(section)]
+    return [_registry_provenance("provider_models")]
 
 
 def render_static_mirror(repo_root: str | Path) -> str:
@@ -754,9 +702,7 @@ def parse_pi_catalog(output: str) -> list[str] | None:
         if len(columns) < 6 or not MODEL_ID_RE.fullmatch(columns[0]) or not MODEL_ID_RE.fullmatch(columns[1]):
             return None
         provider, model = columns[:2]
-        if provider == "litellm" and model.startswith("llm-gateway/"):
-            models.append(model)
-        elif model.startswith(f"{provider}/"):
+        if model.startswith(f"{provider}/"):
             models.append(model)
         else:
             models.append(f"{provider}/{model}")
@@ -793,18 +739,6 @@ def _parse_openai_models(payload: dict[str, Any]) -> list[str] | None:
     models = []
     for model in payload["data"]:
         model_id = _payload_model_id(model, "id")
-        if model_id is None:
-            return None
-        models.append(model_id)
-    return sorted(set(models)) or None
-
-
-def _parse_cloudflare_workers(payload: dict[str, Any]) -> list[str] | None:
-    if not isinstance(payload, dict) or not isinstance(payload.get("result"), list):
-        return None
-    models = []
-    for model in payload["result"]:
-        model_id = _payload_model_id(model, "name")
         if model_id is None:
             return None
         models.append(model_id)
@@ -863,9 +797,7 @@ def _parse_command_output(adapter: str, output: str) -> list[str] | None:
 def _parse_payload(adapter: str, payload: dict[str, Any]) -> list[str] | None:
     if adapter == "openrouter-models":
         return _parse_openrouter(payload)
-    if adapter == "cloudflare-workers-models":
-        return _parse_cloudflare_workers(payload)
-    if adapter in {"litellm-models", "cloudflare-openai-models", "llama-cpp-models"}:
+    if adapter == "llama-cpp-models":
         return _parse_openai_models(payload)
     return None
 
@@ -915,43 +847,6 @@ def _command_live_state(
 def _provider_request(adapter: str) -> tuple[str, dict[str, str]] | None:
     if adapter == "openrouter-models":
         return "https://openrouter.ai/api/v1/models", {}
-    if adapter == "litellm-models":
-        base = os.environ.get("LITELLM_API_BASE", "").rstrip("/")
-        token = os.environ.get("LITELLM_PROXY_KEY", "")
-        if not base or not token:
-            return None
-        if not base.endswith("/v1"):
-            base += "/v1"
-        return f"{base}/models", {"Authorization": f"Bearer {token}"}
-    if adapter == "cloudflare-workers-models":
-        account = os.environ.get("CLOUDFLARE_WORKERS_AI_ACCOUNT_ID") or os.environ.get("CLOUDFLARE_ACCOUNT_ID")
-        token = (
-            os.environ.get("CLOUDFLARE_WORKERS_AI_API_KEY")
-            or os.environ.get("CLOUDFLARE_API_KEY")
-            or os.environ.get("CLOUDFLARE_API_TOKEN")
-        )
-        if not account or not token:
-            return None
-        query = urllib.parse.urlencode({"per_page": 100, "task": "Text Generation"})
-        return (
-            f"https://api.cloudflare.com/client/v4/accounts/{account}/ai/models/search?{query}",
-            {"Authorization": f"Bearer {token}"},
-        )
-    if adapter == "cloudflare-openai-models":
-        account = os.environ.get("CLOUDFLARE_ACCOUNT_ID") or os.environ.get("CLOUDFLARE_WORKERS_AI_ACCOUNT_ID")
-        gateway = os.environ.get("CLOUDFLARE_GATEWAY_ID", "default")
-        token = (
-            os.environ.get("CLOUDFLARE_API_TOKEN")
-            or os.environ.get("CLOUDFLARE_WORKERS_AI_API_KEY")
-            or os.environ.get("CLOUDFLARE_API_KEY")
-        )
-        if not account or not token:
-            return None
-        bearer = token if token.startswith("Bearer ") else f"Bearer {token}"
-        return (
-            f"https://gateway.ai.cloudflare.com/v1/{account}/{gateway}/openai/models",
-            {"cf-aig-authorization": bearer},
-        )
     if adapter == "llama-cpp-models":
         base = os.environ.get("LLAMA_CPP_API_BASE", "http://127.0.0.1:8080/v1").rstrip("/")
         return f"{base}/models", {}

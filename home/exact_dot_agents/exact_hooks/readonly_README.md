@@ -7,7 +7,7 @@ Those scripts cover session context, resident-embedder warm-up and per-turn reca
 Each adapter passes its native session ID so topic selection, worklogs, and recall dedupe use the same binding.
 PR review anchor verification is instruction-owned by the review/GitHub skills, not enforced by a shell hook.
 Pi does not use this `hooks.json`-style lifecycle; it has its own TypeScript extension API.
-Pi's durable-memory recall therefore lives in a pi extension (`home/dot_pi/agent/extensions/ai-kb-recall.ts`) rather than here.
+Pi's durable-memory recall therefore lives in a pi extension (`home/dot_pi/agent/exact_extensions/ai-kb-recall.ts`) rather than here.
 That extension reuses the same `/tmp/specs` topic resolution (via `,agent-memory status --json --session-id <id>`) and the same `,ai-kb` retrieval, and forwards `tool_result` events to `worklog_dispatcher.sh` so pi sessions feed the shared worklog trail.
 This keeps behavior consistent across runtimes — see the AI knowledge base doc for the cross-runtime retrieval table.
 

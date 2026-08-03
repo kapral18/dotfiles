@@ -1,4 +1,4 @@
-// Managed by chezmoi (source: home/dot_pi/agent/extensions/ai-kb-recall.ts).
+// Managed by chezmoi (source: home/dot_pi/agent/exact_extensions/ai-kb-recall.ts).
 // Shared session context and durable-memory recall for Pi.
 //
 // Integration extension:

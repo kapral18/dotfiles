@@ -1315,7 +1315,7 @@ console.log(calls[0][0]);
             assert payload["session_id"] == "opencode-session"
 
     def test_pi_recall_injects_shared_session_context_once_per_session_start(self):
-        extension = REPO / "home/dot_pi/agent/extensions/ai-kb-recall.ts"
+        extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp) / "home"
             hooks_dir = home / ".agents" / "hooks"
@@ -1463,7 +1463,7 @@ console.log(JSON.stringify({
 
     def test_runtime_extensions_enable_search_tools_and_gate_git_mutation(self):
         extension_cases = [
-            REPO / "home/dot_pi/agent/extensions/runtime-parity.ts",
+            REPO / "home/dot_pi/agent/exact_extensions/runtime-parity.ts",
             REPO / "home/dot_omp/private_agent/extensions/runtime-parity.ts",
         ]
         for extension in extension_cases:
@@ -1602,7 +1602,7 @@ console.log(JSON.stringify({
                     assert payload["explicit"] == ["read", "bash", "edit", "write"]
 
     def test_pi_recall_uses_session_binding_and_persists_seen_capsules(self):
-        extension = REPO / "home/dot_pi/agent/extensions/ai-kb-recall.ts"
+        extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"
         with tempfile.TemporaryDirectory() as tmp:
             spec_file = Path(tmp) / "pi-memory.txt"
             spec_file.write_text("target: persist pi recall dedupe\n")
@@ -1735,7 +1735,7 @@ console.log(JSON.stringify({ first, second, seen, statusCalls }));
         # (executable_perturn_recall.py): pi's applyRelevanceFloor must observe the same
         # per-turn hybrid contract — gate on the BEST cosine across all fused rows (not
         # rows[0]), and never reorder the surviving rows by cosine.
-        extension = REPO / "home/dot_pi/agent/extensions/ai-kb-recall.ts"
+        extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"
         with tempfile.TemporaryDirectory() as tmp:
             # seenFileFor derives the recall-seen path from dirname(specFile), so route it
             # into this test's own tmpdir rather than a fixed path shared across test runs
@@ -1866,6 +1866,236 @@ console.log(JSON.stringify({ result }));
                 "--workspace-gate",
                 "--json",
             ]
+
+
+class BandGateTests(unittest.TestCase):
+    """The pre-tool-use gate that pins a delegated agent to its category's band.
+
+    Each harness gets its own request and response shape, all four verified against the running
+    binaries, so the adapters are tested against a fixed projection rather than the deployed one:
+    these assertions are about the wire contract, not about today's model picks.
+    """
+
+    PROJECTION = {
+        "harnesses": {
+            "claude_code": {
+                "agents": {
+                    "Explore": {"band": "cheap", "model": "claude-sonnet-4-6", "alias": "sonnet"},
+                    "searcher": {"band": "cheap", "model": "claude-haiku-4-5", "alias": "haiku"},
+                    "reviewer": {"band": "max", "model": "claude-opus-5", "alias": "opus"},
+                }
+            },
+            "cursor": {"agents": {"bugbot": {"band": "max", "model": "claude-opus-5-high"}}},
+            "codex": {"agents": {"explorer": {"band": "cheap", "model": "gpt-5.4", "effort": "high"}}},
+            "copilot": {
+                "agents": {
+                    "explore": {
+                        "band": "cheap",
+                        "model": "gpt-5.3-codex",
+                        "effort": "high",
+                    }
+                }
+            },
+            "gemini": {"agents": {"codebase_investigator": {"band": "cheap", "model": "gemini-3.6-flash"}}},
+        }
+    }
+
+    def gate(
+        self,
+        harness: str,
+        payload: dict,
+        projection: dict | None = None,
+        override: dict[str, str] | None = None,
+    ) -> dict:
+        with tempfile.TemporaryDirectory() as tmp:
+            bands = Path(tmp) / "agent-bands.v1.json"
+            bands.write_text(json.dumps(self.PROJECTION if projection is None else projection))
+            env = {
+                key: value
+                for key, value in os.environ.items()
+                if key not in {"AGENT_BAND_MODEL_OVERRIDE", "AGENT_BAND_EFFORT_OVERRIDE"}
+            }
+            env.update(override or {})
+            env["AGENT_BAND_HARNESS"] = harness
+            env["AGENT_BANDS_FILE"] = str(bands)
+            result = subprocess.run(
+                [sys.executable, str(HOOKS / "executable_band_gate.py")],
+                input=json.dumps(payload),
+                capture_output=True,
+                text=True,
+                cwd=str(REPO),
+                env=env,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            return json.loads(result.stdout or "{}")
+
+    def test_codex_rewrites_spawn_agent_model_and_effort_with_an_allow_decision(self):
+        # codex 0.146.0 drops updatedInput unless permissionDecision is allow.
+        answer = self.gate(
+            "codex",
+            {"tool_name": "spawn_agent", "tool_input": {"agent_type": "explorer", "message": "go"}},
+        )
+        specific = answer["hookSpecificOutput"]
+        self.assertEqual(specific["permissionDecision"], "allow")
+        self.assertEqual(specific["updatedInput"]["model"], "gpt-5.4")
+        self.assertEqual(specific["updatedInput"]["reasoning_effort"], "high")
+        self.assertEqual(specific["updatedInput"]["message"], "go")
+
+    def test_cursor_echoes_the_whole_input_because_updated_input_replaces_it(self):
+        answer = self.gate(
+            "cursor",
+            {"tool_name": "Task", "tool_input": {"subagent_type": "bugbot", "prompt": "p", "model": "cheap-thing"}},
+        )
+        self.assertEqual(
+            answer["updated_input"],
+            {"subagent_type": "bugbot", "prompt": "p", "model": "claude-opus-5-high"},
+        )
+
+    def test_claude_clamps_a_cross_family_override_to_the_band_alias(self):
+        answer = self.gate(
+            "claude_code",
+            {"tool_name": "Agent", "tool_input": {"subagent_type": "Explore", "model": "opus"}},
+        )
+        self.assertEqual(answer["hookSpecificOutput"]["updatedInput"]["model"], "sonnet")
+
+    def test_claude_leaves_an_unqualified_call_alone_so_the_profile_keeps_the_exact_id(self):
+        # Both sonnet bands share one alias, so writing it unasked would promote the cheap band to
+        # whatever ANTHROPIC_DEFAULT_SONNET_MODEL resolves to.
+        self.assertEqual(
+            self.gate("claude_code", {"tool_name": "Agent", "tool_input": {"subagent_type": "Explore"}}),
+            {},
+        )
+
+    def test_claude_clamps_an_upward_alias_escape_on_the_cheap_band(self):
+        # `sonnet` is not the cheap band's alias, so it is an escape upward even though it is not a
+        # different family. Comparing rank, not equality, is what catches it: an `asked == alias`
+        # early return only guarded the exact alias and let every promotion above it through.
+        for asked in ("sonnet", "opus"):
+            with self.subTest(asked=asked):
+                answer = self.gate(
+                    "claude_code",
+                    {"tool_name": "Agent", "tool_input": {"subagent_type": "searcher", "model": asked}},
+                )
+                self.assertEqual(answer["hookSpecificOutput"]["updatedInput"]["model"], "haiku")
+
+    def test_claude_leaves_a_downward_alias_choice_alone(self):
+        # Bands are cost ceilings, not floors: a caller asking for something cheaper than the band
+        # is not the leak this gate exists to close.
+        self.assertEqual(
+            self.gate(
+                "claude_code",
+                {"tool_name": "Agent", "tool_input": {"subagent_type": "reviewer", "model": "haiku"}},
+            ),
+            {},
+        )
+
+    def test_claude_cannot_separate_the_sonnet_bands_and_says_so(self):
+        # standard (claude-sonnet-4-6) and max (claude-sonnet-5) both project to `sonnet`, so an
+        # explicit `model: "sonnet"` on a standard-band agent is indistinguishable from its own
+        # band and passes. This is the Agent-tool alias schema limit, not a gate bug; the profile
+        # frontmatter's exact id is what holds the band whenever no `model` argument is passed.
+        self.assertEqual(
+            self.gate(
+                "claude_code",
+                {"tool_name": "Agent", "tool_input": {"subagent_type": "Explore", "model": "sonnet"}},
+            ),
+            {},
+        )
+
+    def test_copilot_answers_with_modified_args(self):
+        answer = self.gate(
+            "copilot",
+            {"tool_name": "task", "tool_input": {"agent_type": "explore", "prompt": "p"}},
+        )
+        self.assertEqual(
+            answer["modifiedArgs"],
+            {
+                "agent_type": "explore",
+                "prompt": "p",
+                "model": "gpt-5.3-codex",
+                "reasoning_effort": "high",
+            },
+        )
+
+    def test_copilot_tool_args_arrive_as_a_json_string(self):
+        # copilot 1.0.77 serialises toolArgs before handing them to the extension hook; without
+        # parsing them the gate silently no-ops and the caller's model wins.
+        answer = self.gate(
+            "copilot",
+            {
+                "tool_name": "task",
+                "tool_input": json.dumps({"agent_type": "explore", "mode": "sync", "model": "claude-opus-5"}),
+            },
+        )
+        self.assertEqual(
+            answer["modifiedArgs"],
+            {
+                "agent_type": "explore",
+                "mode": "sync",
+                "model": "gpt-5.3-codex",
+                "reasoning_effort": "high",
+            },
+        )
+
+    def test_a_single_model_route_overrides_every_band_including_unbound_agents(self):
+        # A BYOK launcher sells one provider model; a band id that is not that model reaches the
+        # provider as its own wire model, so the override has to cover agents with no binding too.
+        override = {"AGENT_BAND_MODEL_OVERRIDE": "openai/gpt-5.2", "AGENT_BAND_EFFORT_OVERRIDE": "high"}
+        copilot = self.gate(
+            "copilot",
+            {"tool_name": "task", "tool_input": {"agent_type": "not-in-any-band", "prompt": "p"}},
+            override=override,
+        )
+        self.assertEqual(copilot["modifiedArgs"]["model"], "openai/gpt-5.2")
+        self.assertEqual(copilot["modifiedArgs"]["reasoning_effort"], "high")
+
+        codex = self.gate(
+            "codex",
+            {"tool_name": "spawn_agent", "tool_input": {"agent_type": "explorer", "message": "go"}},
+            override=override,
+        )
+        updated = codex["hookSpecificOutput"]["updatedInput"]
+        self.assertEqual(updated["model"], "openai/gpt-5.2")
+        self.assertEqual(updated["reasoning_effort"], "high")
+
+    def test_claude_ignores_the_override_because_its_agent_tool_takes_only_family_aliases(self):
+        # The alias resolves through ANTHROPIC_DEFAULT_*_MODEL, which the launcher already points
+        # at the route's model; writing a raw id here fails updatedInput schema validation.
+        answer = self.gate(
+            "claude_code",
+            {"tool_name": "Agent", "tool_input": {"subagent_type": "Explore", "model": "opus"}},
+            override={"AGENT_BAND_MODEL_OVERRIDE": "openai/gpt-5.2"},
+        )
+        self.assertEqual(answer["hookSpecificOutput"]["updatedInput"]["model"], "sonnet")
+
+    def test_gemini_has_no_adapter_because_invoke_agent_takes_no_model(self):
+        self.assertEqual(
+            self.gate(
+                "gemini",
+                {"tool_name": "invoke_agent", "tool_input": {"agent_name": "codebase_investigator", "prompt": "p"}},
+            ),
+            {},
+        )
+
+    def test_the_gate_fails_open_rather_than_blocking_a_delegation(self):
+        cases = [
+            ("codex", {"tool_name": "Read", "tool_input": {"path": "x"}}, None),
+            ("codex", {"tool_name": "spawn_agent", "tool_input": {"agent_type": "not-bound"}}, None),
+            ("codex", {"tool_name": "spawn_agent", "tool_input": {"message": "no agent named"}}, None),
+            ("nosuchharness", {"tool_name": "spawn_agent", "tool_input": {"agent_type": "explorer"}}, None),
+            ("codex", {"tool_name": "spawn_agent", "tool_input": {"agent_type": "explorer"}}, {}),
+        ]
+        for harness, payload, projection in cases:
+            with self.subTest(harness=harness, payload=payload, projection=projection):
+                self.assertEqual(self.gate(harness, payload, projection), {})
+
+    def test_a_task_name_is_not_mistaken_for_the_role(self):
+        # Codex's spawn_agent carries both; task_name is a free-text label.
+        answer = self.gate(
+            "codex",
+            {"tool_name": "spawn_agent", "tool_input": {"task_name": "bugbot", "agent_type": "explorer"}},
+        )
+        self.assertEqual(answer["hookSpecificOutput"]["updatedInput"]["model"], "gpt-5.4")
 
 
 if __name__ == "__main__":

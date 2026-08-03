@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { mkdtempSync, writeFileSync, chmodSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, chmodSync, rmSync, existsSync } from "node:fs";
 
 process.env.COPILOT_AGENT_MEMORY_EXTENSION_TEST = "1";
 
@@ -138,6 +138,81 @@ test("recallContext surfaces a successful hook's non-empty additionalContext", a
         writeFileSync(stub, "#!/bin/sh\ncat >/dev/null\nprintf '%s' '{\"additionalContext\":\"recalled\"}'\n");
         chmodSync(stub, 0o755);
         assert.equal(await mod.recallContext(stub, { prompt: "x" }), "recalled");
+    } finally {
+        rmSync(scratch, { recursive: true, force: true });
+    }
+});
+
+test("preToolUsePayload carries the tool name and args the band gate keys on", () => {
+    const payload = mod.preToolUsePayload(
+        {
+            sessionId: "copilot-session",
+            workingDirectory: "/tmp/workspace",
+            toolName: "task",
+            toolArgs: { agent_type: "explore", prompt: "find it", model: "claude-opus-5" },
+        },
+        { sessionId: "invocation-session" },
+    );
+    assert.equal(payload.hook_event_name, "PreToolUse");
+    assert.equal(payload.session_id, "copilot-session");
+    assert.equal(payload.tool_name, "task");
+    assert.equal(payload.tool_input.agent_type, "explore");
+    assert.equal(payload.tool_input.model, "claude-opus-5");
+});
+
+test("bandModifiedArgs returns the gate's modifiedArgs and passes the harness through the env", async () => {
+    const scratch = mkdtempSync(join(here, "band-ok-"));
+    try {
+        const stub = join(scratch, "hook.sh");
+        writeFileSync(
+            stub,
+            "#!/bin/sh\ncat >/dev/null\nprintf '{\"modifiedArgs\":{\"harness\":\"%s\"}}' \"$AGENT_BAND_HARNESS\"\n",
+        );
+        chmodSync(stub, 0o755);
+        const modifiedArgs = await mod.bandModifiedArgs(stub, { tool_name: "task" });
+        assert.deepEqual(modifiedArgs, { harness: "copilot" });
+    } finally {
+        rmSync(scratch, { recursive: true, force: true });
+    }
+});
+
+test("bandModifiedArgs fails open on a missing gate, a nonzero exit, and an empty answer", async () => {
+    const payload = { tool_name: "task" };
+    assert.equal(await mod.bandModifiedArgs(join(here, "no-such-band-gate.py"), payload), undefined);
+    const scratch = mkdtempSync(join(here, "band-fail-"));
+    try {
+        const failing = join(scratch, "fail.sh");
+        writeFileSync(failing, "#!/bin/sh\ncat >/dev/null\nexit 7\n");
+        chmodSync(failing, 0o755);
+        assert.equal(await mod.bandModifiedArgs(failing, payload), undefined);
+
+        const silent = join(scratch, "silent.sh");
+        writeFileSync(silent, "#!/bin/sh\ncat >/dev/null\nprintf '%s' '{}'\n");
+        chmodSync(silent, 0o755);
+        assert.equal(await mod.bandModifiedArgs(silent, payload), undefined);
+    } finally {
+        rmSync(scratch, { recursive: true, force: true });
+    }
+});
+
+test("bandModifiedArgs never spawns the gate for a non-delegation tool", async () => {
+    // The Copilot SDK exposes no matcher on onPreToolUse, so without this filter every Read/Grep/
+    // Edit in a session pays for a Python spawn that band_gate.py then no-ops on anyway. The stub
+    // writes a marker file, so its absence proves nothing ran.
+    const scratch = mkdtempSync(join(here, "band-filter-"));
+    try {
+        const marker = join(scratch, "ran");
+        const stub = join(scratch, "hook.sh");
+        writeFileSync(stub, `#!/bin/sh\ncat >/dev/null\ntouch ${marker}\nprintf '%s' '{"modifiedArgs":{"model":"x"}}'\n`);
+        chmodSync(stub, 0o755);
+
+        for (const toolName of [ "Read", "Grep", "Edit", "bash", undefined ]) {
+            assert.equal(await mod.bandModifiedArgs(stub, { tool_name: toolName }), undefined);
+            assert.equal(existsSync(marker), false, `${toolName} spawned the gate`);
+        }
+
+        assert.deepEqual(await mod.bandModifiedArgs(stub, { tool_name: "task" }), { model: "x" });
+        assert.equal(existsSync(marker), true);
     } finally {
         rmSync(scratch, { recursive: true, force: true });
     }

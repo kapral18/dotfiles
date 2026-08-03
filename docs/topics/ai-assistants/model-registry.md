@@ -12,41 +12,29 @@ This is the model-side counterpart to the [MCP registry](mcp.md). Use it when ad
 
 | Piece                                                                                                             | Role                                                                        |
 | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| [`home/.chezmoidata/ai_models.yaml`](../../../home/.chezmoidata/ai_models.yaml)                                   | Canonical model registry and policy sections                                |
+| [`home/.chezmoidata/ai_models/`](../../../home/.chezmoidata/ai_models)                                            | Canonical model registry and policy sections, split across three files      |
 | [`scripts/ai_models.py`](../../../scripts/ai_models.py)                                                           | Dependency-free parser for the registry sections                            |
-| [`scripts/model_display.py`](../../../scripts/model_display.py)                                                   | Shared display-name format: `<name> [reasoning-emoji] [(cost)] (LiteLLM)`   |
-| Pi/OpenCode generators                                                                                            | Render registry models into per-tool configs at apply time                  |
 | [`home/dot_config/ai/readonly_model-mirrors.v1.json`](../../../home/dot_config/ai/readonly_model-mirrors.v1.json) | Committed generated mirror deployed to `~/.config/ai/model-mirrors.v1.json` |
 | [`scripts/model_mirrors.py`](../../../scripts/model_mirrors.py)                                                   | Generates/verifies the static mirror and runs explicit live drift probes    |
 
-## Registry: `ai_models.yaml`
+## Registry: `.chezmoidata/ai_models/`
 
-Source of truth: [`home/.chezmoidata/ai_models.yaml`](../../../home/.chezmoidata/ai_models.yaml). Its sections have distinct policy roles:
+Source of truth: [`home/.chezmoidata/ai_models/`](../../../home/.chezmoidata/ai_models). The sections are split across three files for navigation only — chezmoi merges every file under `.chezmoidata/` (subdirectories included) into one flat data namespace, so templates still read `.cursor_models` and `.model_bands` directly. [`scripts/ai_models.py`](../../../scripts/ai_models.py) holds the section → file map (`SECTION_FILES`) and takes the registry directory, never a single file.
 
-| Section               | Canonical policy                                                                                                                |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `litellm_models`      | LiteLLM model definitions rendered into Pi/OpenCode                                                                             |
-| `azure_models`        | Azure Foundry model definitions rendered into Pi/OpenCode                                                                       |
-| `cursor_models`       | Curated Cursor aliases; `recommended: true` is the narrower preferred set                                                       |
-| `pi_extra_models`     | Non-LiteLLM Pi selectors retained for Pi-specific launch paths                                                                  |
-| `provider_models`     | Static provider-route choices for shell completion; Vertex entries also own adapter wire/capability metadata                    |
-| `agent_review_models` | Per-harness review `lanes`/`verifier` pairs; the verifier-family pairing is reviewed here rather than inferred or auto-promoted |
-| `model_tier_map`      | Per-harness, per-work-type-bucket model/effort picks; see [Model tiering](model-tiering.md) for the full policy and rationale   |
+| Section               | File                    | Canonical policy                                                                                                                  |
+| --------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `cursor_models`       | `harness-catalogs.yaml` | Curated Cursor aliases; `recommended: true` is the narrower preferred set                                                         |
+| `pi_extra_models`     | `harness-catalogs.yaml` | Pi's curated picker; every entry is provider-routed through Pi's built-in OpenRouter provider                                     |
+| `copilot_models`      | `harness-catalogs.yaml` | Probed Copilot CLI catalog; the mirror's copilot `available` set                                                                  |
+| `provider_models`     | `provider-routes.yaml`  | Static provider-route choices for shell completion; Vertex entries also own adapter wire/capability metadata                      |
+| `agent_review_models` | `tiering.yaml`          | Per-harness review `lanes`/`verifier` pairs; the verifier-family pairing is reviewed here rather than inferred or auto-promoted   |
+| `agent_categories`    | `tiering.yaml`          | Portable category → `{band, family}`; the same table on every harness                                                             |
+| `agent_bindings`      | `tiering.yaml`          | Every delegable agent name → its category, built-ins included                                                                     |
+| `model_bands`         | `tiering.yaml`          | Per-harness `cheap`/`standard`/`max` picks (+ `counter` on `max`); see [Model tiering](model-tiering.md) for policy and rationale |
+
+Adding a section means adding it to `SECTION_FILES` as well: the parser resolves a section by name, so an unmapped section raises rather than being searched for across files.
 
 Recommended Cursor entries use `recommendation_rank` to preserve the deliberate TUI picker order independently of the broader curated registry order.
-
-The LiteLLM/Azure model-dict fields are:
-
-| Field                     | Purpose                                                            |
-| ------------------------- | ------------------------------------------------------------------ |
-| `id`                      | Provider-qualified model id, such as `llm-gateway/claude-opus-4-7` |
-| `name`                    | Human-readable display label                                       |
-| `reasoning`               | Whether the model supports a thinking/reasoning budget             |
-| `supportsReasoningEffort` | Whether clients may send an explicit reasoning-effort control      |
-| `thinkingBudgets`         | Named token budgets (`minimal`/`low`/`medium`/`high`/`xhigh`)      |
-| `contextWindow`           | Max context tokens                                                 |
-| `maxTokens`               | Max output tokens                                                  |
-| `cost`                    | Per-model `input`/`output`/`cacheRead`/`cacheWrite` pricing        |
 
 Vertex entries keep the adapter's routing contract in the same canonical section: `backend` selects Gemini Chat Completions or Claude publisher raw prediction, `wire_model` is the exact upstream ID, `efforts` and `supports_no_thinking` define accepted reasoning controls, and one `adapter_default` selects the no-argument model. `home/dot_config/vertex-adapter/readonly_models.json.tmpl` projects the registry into `~/.config/vertex-adapter/models.json`; the deployed adapter filters the `vertex` provider and fails if the default or model IDs are ambiguous.
 
@@ -83,27 +71,14 @@ python3 scripts/model_mirrors.py probe \
 
 ## Generators
 
-| Generator                                                                                                                       | Output                                                                                 |
-| ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| [`scripts/generate_pi_models.py`](../../../scripts/generate_pi_models.py)                                                       | Builds Pi `models.json` from a shared base plus work-only LiteLLM/Azure providers      |
-| [`scripts/merge_opencode_models.py`](../../../scripts/merge_opencode_models.py)                                                 | Merges LiteLLM/Azure models into the OpenCode JSONC config                             |
-| [`scripts/model_mirrors.py`](../../../scripts/model_mirrors.py)                                                                 | Generates/verifies the v1 static mirror and runs explicit live drift probes            |
-| [`home/dot_config/vertex-adapter/readonly_models.json.tmpl`](../../../home/dot_config/vertex-adapter/readonly_models.json.tmpl) | Renders provider metadata consumed by the three per-session Vertex wrappers            |
-| [`scripts/probe_litellm_prompt_cache.py`](../../../scripts/probe_litellm_prompt_cache.py)                                       | Diagnostic: probes repeated-prompt and tool-schema cache signals across LiteLLM models |
+| Generator                                                                                                                       | Output                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [`scripts/model_mirrors.py`](../../../scripts/model_mirrors.py)                                                                 | Generates/verifies the v1 static mirror and runs explicit live drift probes |
+| [`home/dot_config/vertex-adapter/readonly_models.json.tmpl`](../../../home/dot_config/vertex-adapter/readonly_models.json.tmpl) | Renders provider metadata consumed by the three per-session Vertex wrappers |
 
-The Pi/OpenCode generators run inside their per-tool merge hooks: `run_onchange_after_07-merge-pi-config.sh.tmpl` and `run_onchange_after_07-merge-opencode-config.sh.tmpl`.
+Pi and OpenCode no longer generate model blocks: both harnesses resolve `openrouter/` selectors through their own built-in provider, so `run_onchange_after_07-merge-pi-config.sh.tmpl` installs the profile's static `models.json` and `run_onchange_after_07-merge-opencode-config.sh.tmpl` only injects MCP servers.
 
 The mirror is a committed generated artifact verified by tests and `make check`. Diagnostic probes are operator initiated. See [Tool configs](tool-configs/index.md).
-
-The prompt-cache probe keeps the repeated-prompt sequence as its default. `--tool-schema-change` runs four calls with identical model, messages, and generation options: baseline, unchanged repeat, changed tool schema, and unchanged changed-schema repeat. The JSON output labels each call and reports provider usage fields without treating missing cache counters as proof of a miss.
-
-### Azure reasoning-effort compatibility
-
-The Azure AI-backed GPT-5.5 and GPT-5.6 LiteLLM groups return reasoning output but reject Chat Completions requests that combine function tools with an explicit `reasoning_effort`.
-
-Their registry entries therefore set `supportsReasoningEffort: false`. Pi renders `compat.supportsReasoningEffort: false`, while the templated OpenCode plugin [`litellm-compat.ts.tmpl`](../../../home/dot_config/opencode/plugins/litellm-compat.ts.tmpl) renders the same model set, removes the unsupported effort option, and asks LiteLLM to drop unsupported compatibility parameters such as `tool_choice`.
-
-This matches `,copilot-litellm`, whose working tool-call payload omits `reasoning_effort`.
 
 ## Generated mirror v1
 
@@ -125,7 +100,7 @@ Each catalog carries `status`, `models`, `complete`, `reason`, and `provenance`.
 
 `unknown`/`error` catalogs must have no models, `complete: null`, and a reason, so a failed probe can never look like a successful empty catalog.
 
-Provenance enumerates every contributing config or registry source. Registry entries also name the source section, such as `ai_models.yaml` → `agent_review_models` for Copilot policy.
+Provenance enumerates every contributing config or registry source. Registry entries also name the source section, such as `ai_models/tiering.yaml` → `agent_review_models` for Copilot policy.
 
 The mirror also records exact installed harness identity/version evidence and consumer adapters.
 
@@ -145,9 +120,9 @@ Command consumers keep policy in their own config and use the mirror only for bo
 
 ## Opt-in live drift
 
-Locally verified adapters cover Cursor (`cursor-agent --list-models`), Pi (`pi --offline --list-models`), OpenCode (`opencode models`), OpenRouter, LiteLLM, Cloudflare Workers AI, Cloudflare's OpenAI-compatible gateway, and llama.cpp.
+Locally verified adapters cover Cursor (`cursor-agent --list-models`), Pi (`pi --offline --list-models`), OpenCode (`opencode models`), OpenRouter, Vertex, and llama.cpp.
 
-Claude, Codex, Gemini, Copilot, Azure Foundry, and the LiteLLM Anthropic route remain explicitly unsupported until a complete local adapter is verified.
+Claude, Codex, Gemini, and Copilot remain explicitly unsupported until a complete local adapter is verified.
 
 Probe limits and failure rules:
 
@@ -168,17 +143,12 @@ Fixture probes use a JSON `target_cases` map such as [`scripts/tests/fixtures/mo
 
 The same mirror/probe seam is available for non-mutating live catalog diagnostics.
 
-## LiteLLM integration (work profile)
+## OpenRouter routing
 
-Fish exports these values from `pass` when the entries exist, as defined in [`home/dot_config/fish/readonly_config.fish.tmpl`](../../../home/dot_config/fish/readonly_config.fish.tmpl):
+`OPENROUTER_API_KEY` comes from the `openrouter/api/token` pass entry, exported by [`home/dot_config/fish/readonly_config.fish.tmpl`](../../../home/dot_config/fish/readonly_config.fish.tmpl). Both Pi and OpenCode resolve `openrouter/` selectors through their own built-in provider, so neither carries a generated provider block.
 
-| Variable            | Pass path           | Notes                      |
-| ------------------- | ------------------- | -------------------------- |
-| `LITELLM_PROXY_KEY` | `litellm/api/token` | API authentication         |
-| `LITELLM_API_BASE`  | `litellm/api/base`  | Normalized to end in `/v1` |
-
-- **OpenCode**: the work config ([`home/dot_config/opencode/readonly_opencode.work.jsonc`](../../../home/dot_config/opencode/readonly_opencode.work.jsonc)) uses Google Vertex Gemini as the primary default (`litellm/google-vertex/gemini-flash-latest`); additional LiteLLM aliases remain available for explicit selection.
-- **Pi**: the work config is rendered by `run_onchange_after_07-merge-pi-config.sh.tmpl` into `~/.pi/agent/`, starting from the shared base and adding work-only LiteLLM/Azure providers.
+- **OpenCode**: both profiles run `main`, every configured worker, and the `small_model` route on `openrouter/openai/gpt-5.2`. The provider-level model options also pin lightweight background calls to `high` effort.
+- **Pi**: `defaultProvider` is `openrouter` in both profiles, and `pi_extra_models` exposes only `openrouter/openai/gpt-5.2`.
 
 ## Local inference
 

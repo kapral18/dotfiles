@@ -1,6 +1,6 @@
 %% ============================================================================
-%% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (82 thin commands)
-%% plus deployed internals in home/exact_lib/ (75 command/shared library files).
+%% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (77 thin commands)
+%% plus deployed internals in home/exact_lib/ (73 command/shared library files).
 %% executable_,* → ~/bin/,* (comma-prefixed user commands); home/exact_lib/exact_,name/
 %% → ~/lib/,name/. verify-bin-surface keeps each command covered by fish
 %% completions, docs, catalog, and non-orphaned command libraries.
@@ -21,7 +21,7 @@ flowchart TB
     end
 
     subgraph AIC["AI / agents / KB"]
-        A[",ai (model view + depth/execution/connectivity → harness leaf) · ,ai-kb (→ ~/lib/,ai-kb/main.py)<br/>,agent-memory (/tmp/specs status/select/wipe topic buckets) · ,proof (durable freeform receipts)<br/>,artifact (cache HTML/live overlay + pollers) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,claude-litellm · ,codex-litellm<br/>,claude-codex · ,copilot-codex (→ ~/lib/,codex-adapter)<br/>,claude-copilot · ,codex-copilot (→ ~/lib/,copilot-adapter)<br/>,claude-vertex · ,codex-vertex · ,copilot-vertex (→ ~/lib/,vertex-adapter)<br/>,pi-cloudflare · ,opencode-cloudflare · ,codex-cloudflare<br/>,copilot · ,copilot-cloudflare · ,copilot-litellm · ,copilot-openrouter · ,llama-cpp<br/>,codex · ,cursor · ,mcp-token &lt;server&gt;<br/>,tg · ,youtube-search · ,letsfg-docker"]:::ai
+        A[",ai (model view + depth/execution/connectivity → harness leaf; Pi OpenRouter → gpt-5.2 high) · ,ai-kb (→ ~/lib/,ai-kb/main.py)<br/>,agent-memory (/tmp/specs status/select/wipe topic buckets) · ,proof (durable freeform receipts)<br/>,artifact (cache HTML/live overlay + pollers) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,claude-openrouter · ,codex-openrouter<br/>,claude-codex · ,copilot-codex (→ ~/lib/,codex-adapter)<br/>,claude-copilot · ,codex-copilot (→ ~/lib/,copilot-adapter)<br/>,claude-vertex · ,codex-vertex · ,copilot-vertex (→ ~/lib/,vertex-adapter)<br/>,copilot · ,copilot-openrouter · ,llama-cpp<br/>,codex · ,cursor · ,mcp-token &lt;server&gt;<br/>,tg · ,youtube-search · ,letsfg-docker"]:::ai
     end
 
     subgraph FZFC["fzf / search helpers"]

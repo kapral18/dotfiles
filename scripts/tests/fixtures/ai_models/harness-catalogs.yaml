@@ -1,0 +1,8 @@
+cursor_models:
+  - id: "cursor-model-a"
+    recommended: true
+  - id: "cursor-model-b"
+
+pi_extra_models:
+  - id: "openrouter/model-a"
+    recommended: true

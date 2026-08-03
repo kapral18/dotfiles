@@ -6,6 +6,9 @@ const HOOK_TIMEOUT_MS = 10_000;
 const SESSION_CONTEXT_HOOK = "session_context.py";
 const WORKLOG_RECORDER_HOOK = "worklog_dispatcher.sh";
 const PERTURN_RECALL_HOOK = "perturn_recall.py";
+const BAND_GATE_HOOK = "band_gate.py";
+// Kept in sync BY HAND with DELEGATION_TOOLS in ~/.agents/hooks/band_gate.py.
+const DELEGATION_TOOLS = new Set([ "Task", "Agent", "spawn_agent", "subagent", "task" ]);
 const EXTENSION_INFO = { source: "user", name: "agent-memory" };
 
 function hookPath(name) {
@@ -60,6 +63,17 @@ export function postToolUseFailurePayload(input, invocation = {}) {
     };
 }
 
+export function preToolUsePayload(input, invocation = {}) {
+    return {
+        hook_event_name: "PreToolUse",
+        session_id: sessionIdFrom(input, invocation),
+        cwd: input?.workingDirectory,
+        workspace_roots: workspaceRoots(input),
+        tool_name: input?.toolName,
+        tool_input: input?.toolArgs,
+    };
+}
+
 export function userPromptSubmittedPayload(input, invocation = {}) {
     return {
         hook_event_name: "UserPromptSubmit",
@@ -92,6 +106,28 @@ export async function recallContext(scriptPath, payload) {
     }
 }
 
+// The band gate pins a delegated agent to its category's model. It must fail open for the same
+// reason it does inside band_gate.py itself: a stale or missing projection should cost the right
+// model, never the delegation. Returns the modifiedArgs object, or undefined to leave args alone.
+export async function bandModifiedArgs(scriptPath, payload) {
+    // band_gate.py no-ops on anything that is not a delegation, but only after Node has spawned a
+    // Python interpreter that reads and parses the whole band projection. The Copilot SDK exposes
+    // no matcher on onPreToolUse, so the same filter band_gate.py applies internally has to be
+    // mirrored here — otherwise every Read/Grep/Edit in a session pays for that spawn.
+    if (!DELEGATION_TOOLS.has(payload?.tool_name)) {
+        return undefined;
+    }
+    try {
+        const result = await runHookScript(scriptPath, payload, HOOK_TIMEOUT_MS, {
+            AGENT_BAND_HARNESS: "copilot",
+        });
+        const modifiedArgs = result?.modifiedArgs;
+        return modifiedArgs && typeof modifiedArgs === "object" ? modifiedArgs : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 export async function recordWorklog(scriptPath, payload) {
     try {
         await runHookScript(scriptPath, payload);
@@ -100,9 +136,12 @@ export async function recordWorklog(scriptPath, payload) {
     }
 }
 
-export function runHookScript(scriptPath, payload, timeoutMs = HOOK_TIMEOUT_MS) {
+export function runHookScript(scriptPath, payload, timeoutMs = HOOK_TIMEOUT_MS, env = undefined) {
     return new Promise((resolve, reject) => {
-        const child = spawn(scriptPath, [], { stdio: [ "pipe", "pipe", "pipe" ] });
+        const child = spawn(scriptPath, [], {
+            stdio: [ "pipe", "pipe", "pipe" ],
+            ...(env ? { env: { ...process.env, ...env } } : {}),
+        });
         let stdout = "";
         let stderr = "";
         let settled = false;
@@ -171,6 +210,13 @@ async function main() {
                     userPromptSubmittedPayload(input, invocation),
                 );
                 return additionalContext ? { additionalContext } : undefined;
+            },
+            onPreToolUse: async (input, invocation) => {
+                const modifiedArgs = await bandModifiedArgs(
+                    hookPath(BAND_GATE_HOOK),
+                    preToolUsePayload(input, invocation),
+                );
+                return modifiedArgs ? { modifiedArgs } : undefined;
             },
             onPostToolUse: async (input, invocation) => {
                 await recordWorklog(

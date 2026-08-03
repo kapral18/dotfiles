@@ -42,28 +42,27 @@ class TestOmpMigration(unittest.TestCase):
 
     def test_config_renders_profile_specific_model_roles(self):
         expected_values = {
-            # Work routes the reasoning roles through Cursor, which is the only provider that
-            # publishes a non-thinking Opus 5 as its own id. OMP resolves `<provider>/<id>`; a
-            # `cursor:<id>` spelling fails with "Model not found" exactly like an unknown provider.
+            # OMP WORK pins primary roles to Cursor gpt-5.2-high, uses composer-2.5 for smol, and
+            # uses Claude Sonnet 5 for vision. Personal matches work on the same Cursor pins.
             True: (
-                "default: cursor/claude-opus-5-high:high",
-                "smol: cursor/gpt-5.3-codex-high:high",
-                "vision: cursor/claude-opus-5-high:high",
-                "slow: cursor/claude-opus-5-high:high",
-                "plan: cursor/claude-opus-5-high:high",
-                "task: cursor/claude-opus-5-high:high",
-                "advisor: cursor/gpt-5.5-high:high",
-                "modelProviderOrder:\n  - cursor\n  - github-copilot\n  - openai-codex\n  - openrouter\n  - anthropic\n  - openai\n",
+                "default: cursor/gpt-5.2-high:high",
+                "smol: cursor/composer-2.5:high",
+                "vision: cursor/claude-sonnet-5-high:high",
+                "slow: cursor/gpt-5.2-high:high",
+                "plan: cursor/gpt-5.2-high:high",
+                "task: cursor/gpt-5.2-high:high",
+                "advisor: cursor/gpt-5.2-high:high",
+                "modelProviderOrder:\n  - cursor\n  - openrouter\n  - github-copilot\n  - openai-codex\n  - anthropic\n  - openai\n",
             ),
             False: (
-                "default: openai-codex/gpt-5.5:high",
-                "smol: openai-codex/gpt-5.3-codex-spark:xhigh",
-                "vision: openai-codex/gpt-5.5:high",
-                "slow: openai-codex/gpt-5.5:high",
-                "plan: openai-codex/gpt-5.5:high",
-                "task: openai-codex/gpt-5.5:high",
-                "advisor: openai-codex/gpt-5.5:high",
-                "modelProviderOrder:\n  - openai-codex\n  - github-copilot\n  - openrouter\n  - anthropic\n  - openai\n",
+                "default: cursor/gpt-5.2-high:high",
+                "smol: cursor/composer-2.5:high",
+                "vision: cursor/claude-sonnet-5-high:high",
+                "slow: cursor/gpt-5.2-high:high",
+                "plan: cursor/gpt-5.2-high:high",
+                "task: cursor/gpt-5.2-high:high",
+                "advisor: cursor/gpt-5.2-high:high",
+                "modelProviderOrder:\n  - cursor\n  - openai-codex\n  - github-copilot\n  - openrouter\n  - anthropic\n  - openai\n",
             ),
         }
         shared_values = (
@@ -144,8 +143,15 @@ class TestOmpMigration(unittest.TestCase):
                 self.assertNotIn(marker, text, f"{path} has legacy frontmatter {marker}")
             self.assertIn("name:", text)
             self.assertIn("description:", text)
-            self.assertIn(".omp", text)
-            self.assertNotIn(".pi", text)
+            # Review roles read `.agent_review_models.omp`; the rest resolve a band through
+            # agent-model.partial. Either way the harness is named, and a Pi copy-paste is the
+            # failure this guards against.
+            self.assertTrue(
+                ".agent_review_models.omp" in text or '"harness" "omp"' in text,
+                f"{path} does not resolve its model from an omp registry entry",
+            )
+            self.assertNotIn(".agent_review_models.pi", text)
+            self.assertNotIn('"harness" "pi"', text)
 
 
 if __name__ == "__main__":

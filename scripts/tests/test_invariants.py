@@ -7,6 +7,7 @@ import ast
 import hashlib
 import json
 import re
+import sys
 import unittest
 from pathlib import Path
 
@@ -214,6 +215,20 @@ class TestAgentInstructionInvariants(unittest.TestCase):
                 "~/.local/share/yarn/global/node_modules/pi-mcp-adapter",
                 "~/.local/share/yarn/global/node_modules/pi-subagents",
             ]
+
+    def test_pi_extensions_directory_prunes_unmanaged_drops(self):
+        # Pi auto-loads every entry under ~/.pi/agent/extensions and aborts the whole session
+        # when one fails to import. A hand-dropped pi-subagents clone with no node_modules did
+        # exactly that ("Cannot find module 'yaml'") while the yarn package in `packages` was
+        # fine. `exact_` is the guard: chezmoi apply deletes anything not in the source tree.
+        managed = REPO / "home/dot_pi/agent/exact_extensions"
+        assert managed.is_dir(), (
+            "home/dot_pi/agent/exact_extensions must keep the exact_ prefix so chezmoi prunes "
+            "unmanaged extension drops instead of letting them break every Pi session"
+        )
+        assert not (REPO / "home/dot_pi/agent/extensions").exists(), (
+            "a non-exact home/dot_pi/agent/extensions directory would stop pruning again"
+        )
 
     def test_proof_access_requires_a_receipt_consumer_or_audit_need(self):
         self.assert_file_contains(
@@ -808,7 +823,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         # hand-synced and has drifted before; this asserts it against agent_review_models.
         import ai_models
 
-        registry = ai_models.load_agent_review_models(REPO / "home/.chezmoidata/ai_models.yaml")
+        registry = ai_models.load_agent_review_models(REPO / "home/.chezmoidata/ai_models")
         copilot = registry["copilot"]
         agents = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text(encoding="utf-8"))["subagents"][
             "agents"
@@ -834,30 +849,58 @@ class TestAgentInstructionInvariants(unittest.TestCase):
                 f"copilot settings.json {role} model {agents[role]['model']!r} != "
                 f"agent_review_models.copilot.verifier {copilot['verifier']!r}"
             )
-        # gpt-5.5 is only ever run at high effort, and Opus review lanes are pinned high too.
+        # Copilot review lanes and the cross-family verifier are all pinned at high effort.
         for role in lane_roles + verifier_roles:
             assert agents[role]["effortLevel"] == "high", (
                 f"copilot settings.json {role} effortLevel is {agents[role]['effortLevel']!r}, expected 'high'"
             )
 
-    def test_model_tier_map_agrees_with_the_review_registry(self):
-        # Two registries describe the same review picks: model_tier_map's review buckets and
-        # agent_review_models. Only the latter is templated into agent profiles on most harnesses,
-        # so a tier-map row can quietly describe a policy nothing implements. Pin them together.
+    def test_copilot_policy_models_exist_in_the_copilot_catalog(self):
+        # When calibrating models, do not assume cross-harness availability. Copilot's effective
+        # "available model set" is a captured catalog snapshot (copilot_models); any policy model
+        # outside that set is an unverified assumption and must fail fast.
         import ai_models
 
-        path = REPO / "home/.chezmoidata/ai_models.yaml"
-        tier_map = ai_models.load_model_tier_map(path)
+        registry = REPO / "home/.chezmoidata/ai_models"
+        available = {row["id"] for row in ai_models.load_copilot_models(registry)}
+
+        bands = ai_models.load_model_bands(registry)["copilot"]
+        review = ai_models.load_agent_review_models(registry)["copilot"]
+
+        used: set[str] = set()
+        for band, row in bands.items():
+            model = row.get("model")
+            if model:
+                used.add(model)
+            counter = row.get("counter")
+            if isinstance(counter, dict) and counter.get("model"):
+                used.add(counter["model"])
+
+        for role, model in review.items():
+            if model and model != "inherit":
+                used.add(model)
+
+        missing = sorted(model for model in used if model not in available)
+        assert not missing, f"copilot policy names models not in copilot_models: {missing}"
+
+    def test_review_bands_agree_with_the_review_registry(self):
+        # Two registries describe the same review picks: the `max` band (what the hook and the
+        # generated rosters enforce) and agent_review_models (what agent profile frontmatter
+        # renders). Either can drift into describing a policy the other does not implement.
+        import ai_models
+
+        path = REPO / "home/.chezmoidata/ai_models"
+        bands = ai_models.load_model_bands(path)
         registry = ai_models.load_agent_review_models(path)
-        # The tier map spells the Claude harness claude_code; the review registry spells it claude.
+        # model_bands spells the Claude harness claude_code; the review registry spells it claude.
         registry_name = {"claude_code": "claude"}
 
-        for harness, buckets in tier_map.items():
+        for harness, harness_bands in bands.items():
             roles = registry.get(registry_name.get(harness, harness))
             if roles is None:
                 continue
-            review = buckets.get("review", {}).get("model", "")
-            verifier_bucket = buckets.get("adversarial_verification", {}).get("model", "")
+            top = harness_bands["max"]
+            counter = top.get("counter") or top
 
             # Claude sessions launch on a deliberately chosen model, so its registry entry is
             # "inherit" and cannot be compared. No other harness may claim that exemption.
@@ -865,55 +908,226 @@ class TestAgentInstructionInvariants(unittest.TestCase):
                 assert harness == "claude_code", (
                     f"{harness} review registry is 'inherit'; only claude_code may be unpinned"
                 )
-            else:
-                assert review == roles["lanes"], (
-                    f"model_tier_map.{harness}.review is {review!r} but "
-                    f"agent_review_models.{registry_name.get(harness, harness)}.lanes is {roles['lanes']!r}"
-                )
-                assert verifier_bucket == roles["verifier"], (
-                    f"model_tier_map.{harness}.adversarial_verification is {verifier_bucket!r} but "
-                    f"agent_review_models.{registry_name.get(harness, harness)}.verifier is {roles['verifier']!r}"
-                )
+                continue
 
-            # The audit lanes read the same diff as the review lanes; they track the review pick.
-            for bucket in ("findings_audit", "post_act_verification"):
-                model = buckets.get(bucket, {}).get("model", "")
-                assert model == review, f"model_tier_map.{harness}.{bucket} is {model!r} but review is {review!r}"
+            assert top["model"] == roles["lanes"], (
+                f"model_bands.{harness}.max.model is {top['model']!r} but "
+                f"agent_review_models.{registry_name.get(harness, harness)}.lanes is {roles['lanes']!r}"
+            )
+            if harness == "cursor":
+                # Cursor's Task subagents are whitelist-bounded and the policy may intentionally run
+                # review + verifier same-family (degraded refutation) by omitting a counter.
+                assert roles["verifier"] == roles["lanes"], (
+                    f"cursor registry verifier {roles['verifier']!r} != lanes {roles['lanes']!r}"
+                )
+                continue
+            assert counter["model"] == roles["verifier"], (
+                f"model_bands.{harness}.max counter is {counter['model']!r} but "
+                f"agent_review_models.{registry_name.get(harness, harness)}.verifier is {roles['verifier']!r}"
+            )
 
-    def test_model_tier_map_orchestration_matches_real_harness_config(self):
-        # The orchestration rows are the ones that reach a real config file. Claude Code's is
-        # jq-patched into settings.json at apply time and Codex's is a hand-kept literal, so a
-        # wrong row here ships silently to the session default.
+    def test_orchestrate_band_matches_real_harness_config(self):
+        # `orchestrate` is the session's own category, and it is the one band that reaches a real
+        # config file. Claude Code's is jq-patched into settings.json at apply time and Codex's is
+        # a hand-kept literal, so a wrong band ships silently to the session default.
         import ai_models
 
-        tier_map = ai_models.load_model_tier_map(REPO / "home/.chezmoidata/ai_models.yaml")
+        path = REPO / "home/.chezmoidata/ai_models"
+        categories = ai_models.load_agent_categories(path)
+        bands = ai_models.load_model_bands(path)
+        orchestrate = categories["orchestrate"]["band"]
 
-        for profile in ("personal", "work"):
-            row = tier_map["claude_code"][f"orchestration_{profile}"]
+        claude_band = bands["claude_code"][orchestrate]
+        codex_band = bands["codex"][orchestrate]
+
+        for profile in ("work", "personal"):
             settings = json.loads((REPO / f"home/dot_claude/settings.{profile}.json").read_text(encoding="utf-8"))
-            assert settings["model"] == row["model"], (
+            assert settings["model"] == claude_band["model"], (
                 f"claude settings.{profile}.json model {settings['model']!r} != "
-                f"model_tier_map.claude_code.orchestration_{profile}.model {row['model']!r}"
+                f"model_bands.claude_code.{orchestrate}.model {claude_band['model']!r}"
             )
-            assert settings["effortLevel"] == row["effort"], (
+            assert settings["effortLevel"] == claude_band["effort"], (
                 f"claude settings.{profile}.json effortLevel {settings['effortLevel']!r} != "
-                f"model_tier_map.claude_code.orchestration_{profile}.effort {row['effort']!r}"
+                f"model_bands.claude_code.{orchestrate}.effort {claude_band['effort']!r}"
             )
 
-            codex_row = tier_map["codex"]["orchestration"]
             config = (REPO / f"home/dot_codex/private_config.{profile}.toml").read_text(encoding="utf-8")
             model = re.search(r'^model\s*=\s*"([^"]+)"', config, re.M)
             effort = re.search(r'^model_reasoning_effort\s*=\s*"([^"]+)"', config, re.M)
-            assert model and model.group(1) == codex_row["model"], (
+            assert model and model.group(1) == codex_band["model"], (
                 f"codex private_config.{profile}.toml model "
                 f"{(model.group(1) if model else None)!r} != "
-                f"model_tier_map.codex.orchestration.model {codex_row['model']!r}"
+                f"model_bands.codex.{orchestrate}.model {codex_band['model']!r}"
             )
-            assert effort and effort.group(1) == codex_row["effort"], (
+            assert effort and effort.group(1) == codex_band["effort"], (
                 f"codex private_config.{profile}.toml model_reasoning_effort "
                 f"{(effort.group(1) if effort else None)!r} != "
-                f"model_tier_map.codex.orchestration.effort {codex_row['effort']!r}"
+                f"model_bands.codex.{orchestrate}.effort {codex_band['effort']!r}"
             )
+
+    def test_every_bound_agent_resolves_on_every_harness(self):
+        # The three-table lookup is only useful if it is total: an agent bound to a category that
+        # a harness cannot price resolves to None, and both the template partial and the hook then
+        # fall through to whatever the caller asked for. Silent, and exactly the leak being closed.
+        import ai_models
+
+        path = REPO / "home/.chezmoidata/ai_models"
+        categories = ai_models.load_agent_categories(path)
+        bindings = ai_models.load_agent_bindings(path)
+        bands = ai_models.load_model_bands(path)
+
+        for category, spec in categories.items():
+            assert spec["family"] in ("primary", "counter"), (
+                f"agent_categories.{category}.family is {spec['family']!r}, expected primary or counter"
+            )
+            for harness, harness_bands in bands.items():
+                assert spec["band"] in harness_bands, (
+                    f"agent_categories.{category} wants band {spec['band']!r}, "
+                    f"which model_bands.{harness} does not define"
+                )
+
+        for agent, category in bindings.items():
+            assert category in categories, f"agent_bindings.{agent} names unknown category {category!r}"
+            for harness in bands:
+                pick = ai_models.resolve_agent_model(path, harness, agent)
+                assert pick is not None and pick["model"], f"{agent} does not resolve to a model on {harness}"
+
+    def test_the_counter_band_changes_family_or_reports_itself_degraded(self):
+        # `refute` exists to break a conclusion, and a refuter from the lanes' own family is worth
+        # much less. Where a harness can field a second family it must be a different one; where it
+        # cannot, resolution has to say `degraded` so the controller reports the weaker refutation
+        # instead of presenting it as a real cross-family pass.
+        import ai_models
+
+        path = REPO / "home/.chezmoidata/ai_models"
+        bands = ai_models.load_model_bands(path)
+
+        def family(model: str) -> str:
+            base = model.rsplit("/", 1)[-1].lstrip("@")
+            for name in ("claude", "gpt", "gemini", "grok", "composer", "kimi", "glm"):
+                if name in base:
+                    return name
+            return base
+
+        for harness, harness_bands in bands.items():
+            top = harness_bands["max"]
+            counter = top.get("counter")
+            pick = ai_models.resolve_agent_model(path, harness, "adversarial-verifier")
+            if counter is None:
+                assert pick["degraded"] is True, (
+                    f"model_bands.{harness} has no counter, so refutation must resolve degraded"
+                )
+                continue
+            assert pick["degraded"] is False, f"model_bands.{harness} has a counter but resolution says degraded"
+            assert family(top["model"]) != family(counter["model"]), (
+                f"model_bands.{harness}.max counter {counter['model']!r} shares a family with {top['model']!r}"
+            )
+
+    def test_the_band_gate_only_spawns_for_delegation_tools(self) -> None:
+        # band_gate.py no-ops on non-delegation tools, but only after a Python interpreter has
+        # spawned and parsed the whole projection. Every wiring must filter before that cost:
+        # hooks.json files via a matcher, and the Copilot extension (whose SDK exposes no matcher)
+        # via its own copy of DELEGATION_TOOLS, which has to stay in sync with the hook's.
+        hook = (REPO / "home/exact_dot_agents/exact_hooks/executable_band_gate.py").read_text(encoding="utf-8")
+        tools = re.search(r"^DELEGATION_TOOLS = \{([^}]+)\}", hook, re.M)
+        assert tools, "band_gate.py no longer declares DELEGATION_TOOLS"
+        expected = set(re.findall(r'"([^"]+)"', tools.group(1)))
+
+        extension = (
+            REPO / "home/private_dot_copilot/exact_extensions/exact_agent-memory/readonly_extension.mjs"
+        ).read_text(encoding="utf-8")
+        mirrored = re.search(r"^const DELEGATION_TOOLS = new Set\(\[([^\]]+)\]\)", extension, re.M)
+        assert mirrored, "the Copilot extension no longer mirrors DELEGATION_TOOLS"
+        assert set(re.findall(r'"([^"]+)"', mirrored.group(1))) == expected, (
+            "readonly_extension.mjs DELEGATION_TOOLS has drifted from band_gate.py's"
+        )
+        assert "DELEGATION_TOOLS.has(payload?.tool_name)" in extension, (
+            "the Copilot extension spawns band_gate.py without filtering by tool name first"
+        )
+
+        for path, key in (
+            ("home/dot_cursor/hooks.json", "preToolUse"),
+            ("home/dot_claude/settings.personal.json", "PreToolUse"),
+            ("home/dot_claude/settings.work.json", "PreToolUse"),
+        ):
+            settings = json.loads((REPO / path).read_text(encoding="utf-8"))
+            entries = settings.get("hooks", {}).get(key, [])
+            for entry in entries:
+                commands = [entry.get("command", "")] + [h.get("command", "") for h in entry.get("hooks", [])]
+                if not any("band_gate.py" in command for command in commands):
+                    continue
+                assert entry.get("matcher"), f"{path} {key} wires band_gate.py with no matcher"
+
+    def test_the_band_gate_is_wired_on_every_claude_profile(self) -> None:
+        # The band gate is the only thing enforcing per-call cost bands on Claude Code, and
+        # `chezmoi apply` installs the picked profile whole (07-merge-claude-code-settings patches
+        # only .model/.effortLevel). A gate present on one profile and absent on the other means
+        # the whole band system is silently unenforced on that machine, and
+        # readonly_harness-capabilities.v1.json claims hook_support="mutation" for both.
+        for profile in ("personal", "work"):
+            settings = json.loads((REPO / f"home/dot_claude/settings.{profile}.json").read_text(encoding="utf-8"))
+            entries = settings.get("hooks", {}).get("PreToolUse", [])
+            commands = [
+                hook.get("command", "")
+                for entry in entries
+                for hook in entry.get("hooks", [])
+                if entry.get("matcher") == "Agent|Task"
+            ]
+            assert any("band_gate.py" in command for command in commands), (
+                f"claude settings.{profile}.json has no PreToolUse 'Agent|Task' band_gate.py hook, "
+                "so delegation bands are unenforced on that profile"
+            )
+
+    def test_the_omp_advisor_role_is_not_sold_as_a_second_family(self) -> None:
+        # OMP names roles, not models, so a `counter: "@advisor"` band would be a cross-family
+        # claim that only readonly_config.yml.tmpl can settle. While both profiles resolve
+        # `advisor` to the same id as `default`, OMP must carry no counter and refute degraded.
+        import ai_models
+
+        path = REPO / "home/.chezmoidata/ai_models"
+        counter = ai_models.load_model_bands(path)["omp"]["max"].get("counter")
+        roles = self._omp_model_roles()
+
+        assert set(roles) == {"work", "personal"}, f"unexpected OMP profiles {sorted(roles)}"
+        for profile, mapping in roles.items():
+            if mapping["advisor"] == mapping["default"]:
+                assert counter is None, (
+                    f"omp {profile} modelRoles resolves advisor to the lanes' own model "
+                    f"({mapping['advisor']!r}), so model_bands.omp.max must carry no counter"
+                )
+                continue
+            assert counter is not None, (
+                f"omp {profile} modelRoles now has a distinct advisor ({mapping['advisor']!r} vs "
+                f"{mapping['default']!r}); add the counter back so refutation stops reporting degraded"
+            )
+
+    @staticmethod
+    def _omp_model_roles() -> dict[str, dict[str, str]]:
+        """Parse the per-profile `modelRoles` blocks out of OMP's config template."""
+        source = (REPO / "home/dot_omp/private_agent/readonly_config.yml.tmpl").read_text(encoding="utf-8")
+        profiles: dict[str, dict[str, str]] = {}
+        current: dict[str, str] | None = None
+        profile = "work"  # the template opens on `{{ if eq .isWork true }}`
+        for line in source.splitlines():
+            if ".isWork" in line:
+                profile = "work"
+                continue
+            if line.strip() in ("# {{ else }}", "{{ else }}"):
+                profile = "personal"
+                continue
+            if line.startswith("modelRoles:"):
+                current = {}
+                profiles[profile] = current
+                continue
+            if current is None:
+                continue
+            match = re.match(r"^  ([\w-]+):\s*(\S+)\s*$", line)
+            if match:
+                current[match.group(1)] = match.group(2)
+            elif line.strip() and not line.startswith("  "):
+                current = None
+        assert profiles, "no modelRoles block found in OMP's config template"
+        return profiles
 
     def test_claude_code_models_are_claude_family_selectors(self):
         # Claude Code does not remap unknown model ids: they reach the API and come back as
@@ -941,9 +1155,9 @@ class TestAgentInstructionInvariants(unittest.TestCase):
                 f"(expected {hyphenated!r}) and 404s on the dotted form"
             )
 
-        tier_map = ai_models.load_model_tier_map(REPO / "home/.chezmoidata/ai_models.yaml")
-        for bucket, row in tier_map["claude_code"].items():
-            check(f"model_tier_map.claude_code.{bucket}", row.get("model", ""))
+        bands = ai_models.load_model_bands(REPO / "home/.chezmoidata/ai_models")
+        for band, row in bands["claude_code"].items():
+            check(f"model_bands.claude_code.{band}", row.get("model", ""))
 
         for profile in ("personal", "work"):
             settings = json.loads((REPO / f"home/dot_claude/settings.{profile}.json").read_text(encoding="utf-8"))
@@ -967,19 +1181,19 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             if effort is not None and effort != "high":
                 offenders.append(f"{where}: effort {effort!r} is not high (model {model!r})")
 
-        tier_map = ai_models.load_model_tier_map(REPO / "home/.chezmoidata/ai_models.yaml")
-        for harness, buckets in tier_map.items():
-            for bucket, row in buckets.items():
-                check(f"model_tier_map.{harness}.{bucket}", row.get("model", ""), row.get("effort"))
-                fallback = row.get("fallback")
-                if isinstance(fallback, dict):
+        bands = ai_models.load_model_bands(REPO / "home/.chezmoidata/ai_models")
+        for harness, harness_bands in bands.items():
+            for band, row in harness_bands.items():
+                check(f"model_bands.{harness}.{band}", row.get("model", ""), row.get("effort"))
+                counter = row.get("counter")
+                if isinstance(counter, dict):
                     check(
-                        f"model_tier_map.{harness}.{bucket}.fallback",
-                        fallback.get("model", ""),
-                        fallback.get("effort"),
+                        f"model_bands.{harness}.{band}.counter",
+                        counter.get("model", ""),
+                        counter.get("effort"),
                     )
 
-        registry = ai_models.load_agent_review_models(REPO / "home/.chezmoidata/ai_models.yaml")
+        registry = ai_models.load_agent_review_models(REPO / "home/.chezmoidata/ai_models")
         for harness, roles in registry.items():
             for role, model in roles.items():
                 check(f"agent_review_models.{harness}.{role}", model, None)
@@ -1004,14 +1218,14 @@ class TestAgentInstructionInvariants(unittest.TestCase):
 
         assert not offenders, "gpt-5.5 must always run at high effort:\n  " + "\n  ".join(offenders)
 
-    def test_model_tier_map_is_short_context_by_default(self):
+    def test_bands_are_short_context_by_default(self):
         # Standing policy: short context everywhere. `long` is allowed only where the harness
         # publishes no short variant of the wanted model, which today is Cursor alone — it ships
-        # Opus 5, Sonnet 5 and GPT-5.5 exclusively as 1M ids. Any other `long` row is drift, and
-        # an empty value is worse: it reads as "nobody decided" and hides which window is in play.
+        # Opus 5, Sonnet 5, GPT-5.5 and GPT-5.6 Sol exclusively as 1M ids. Any other `long` row is
+        # drift, and an empty value is worse: it reads as "nobody decided" and hides the window.
         import ai_models
 
-        cursor_1m_only = ("claude-opus-5", "claude-sonnet-5", "gpt-5.5")
+        cursor_1m_only = ("claude-opus-5", "claude-sonnet-5", "gpt-5.5", "gpt-5.6-sol", "gpt-5.6-terra")
         offenders: list[str] = []
 
         def check(where: str, harness: str, model: str, context: str | None) -> None:
@@ -1026,17 +1240,17 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             if context != "short":
                 offenders.append(f"{where}: context is {context!r}, expected 'short' (model {model!r})")
 
-        tier_map = ai_models.load_model_tier_map(REPO / "home/.chezmoidata/ai_models.yaml")
-        for harness, buckets in tier_map.items():
-            for bucket, row in buckets.items():
-                check(f"model_tier_map.{harness}.{bucket}", harness, row.get("model", ""), row.get("context"))
-                fallback = row.get("fallback")
-                if isinstance(fallback, dict):
+        bands = ai_models.load_model_bands(REPO / "home/.chezmoidata/ai_models")
+        for harness, harness_bands in bands.items():
+            for band, row in harness_bands.items():
+                check(f"model_bands.{harness}.{band}", harness, row.get("model", ""), row.get("context"))
+                counter = row.get("counter")
+                if isinstance(counter, dict):
                     check(
-                        f"model_tier_map.{harness}.{bucket}.fallback",
+                        f"model_bands.{harness}.{band}.counter",
                         harness,
-                        fallback.get("model", ""),
-                        fallback.get("context"),
+                        counter.get("model", ""),
+                        counter.get("context"),
                     )
 
         # Copilot's contextTier is the only dial that turns the policy into a runtime request.
@@ -1046,8 +1260,11 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             if tier != "default":
                 offenders.append(f"copilot settings.json {name}: contextTier is {tier!r}, expected 'default'")
 
-        # `[1m]` is the Claude Code selector that swaps a bare id onto the gateway's 1M window.
-        for relative in ("home/exact_bin/executable_,claude-litellm", "home/dot_config/fish/readonly_config.fish.tmpl"):
+        # `[1m]` is the Claude Code selector that swaps a bare id onto a provider's 1M window.
+        for relative in (
+            "home/exact_bin/executable_,claude-openrouter",
+            "home/dot_config/fish/readonly_config.fish.tmpl",
+        ):
             source = (REPO / relative).read_text(encoding="utf-8")
             code = "\n".join(line for line in source.splitlines() if not line.lstrip().startswith("#"))
             if "[1m]" in code:
@@ -1055,50 +1272,197 @@ class TestAgentInstructionInvariants(unittest.TestCase):
 
         assert not offenders, "short context is the default everywhere:\n  " + "\n  ".join(offenders)
 
-    def test_gruntwork_runs_the_codex_tier_wherever_the_catalog_has_it(self):
-        # Gruntwork is the cheap bucket, so it takes gpt-5.3-codex at high effort on every harness
-        # whose catalog carries it. Claude Code and Gemini are single-vendor and cannot, and native
-        # Codex has no gpt-5.3-codex-spark, so each keeps its own pick — spelled out here so a
-        # future edit cannot quietly downgrade a harness that could have run the codex tier.
+    def test_openrouter_routes_are_pinned_to_gpt_5_2_at_high_effort(self):
+        import ai_models
+        import model_mirrors
+
+        model = "openai/gpt-5.2"
+        selector = f"openrouter/{model}"
+        registry = REPO / "home/.chezmoidata/ai_models"
+        provider_models = [
+            row["id"] for row in ai_models.load_provider_models(registry) if row["provider"] == "openrouter"
+        ]
+        self.assertEqual([model], provider_models)
+        self.assertEqual([{"id": selector, "recommended": True}], ai_models.load_pi_extra_models(registry))
+
+        for profile in ("work", "personal"):
+            settings = json.loads((REPO / f"home/dot_pi/agent/readonly_settings.{profile}.json").read_text())
+            self.assertEqual("openrouter", settings["defaultProvider"])
+            self.assertEqual(model, settings["defaultModel"])
+            self.assertEqual("high", settings["defaultThinkingLevel"])
+
+            opencode = model_mirrors._read_jsonc(REPO / f"home/dot_config/opencode/readonly_opencode.{profile}.jsonc")
+            self.assertEqual(selector, opencode["small_model"])
+            for name, agent in opencode["agent"].items():
+                if isinstance(agent, dict) and agent.get("model", "").startswith("openrouter/"):
+                    self.assertEqual(selector, agent["model"], name)
+                    self.assertEqual("high", agent["reasoning_effort"], name)
+            options = opencode["provider"]["openrouter"]["models"][model]["options"]
+            self.assertEqual("high", options["reasoningEffort"])
+
+        review = ai_models.load_agent_review_models(registry)["pi"]
+        self.assertEqual(f"{selector}:high", review["lanes"])
+        self.assertEqual(f"{selector}:high", review["verifier"])
+        for band, row in ai_models.load_model_bands(registry)["pi"].items():
+            self.assertEqual(f"{selector}:high", row["model"], band)
+            self.assertEqual("high", row["effort"], band)
+
+        for relative in (
+            "home/exact_bin/executable_,claude-openrouter",
+            "home/exact_bin/executable_,codex-openrouter",
+            "home/exact_bin/executable_,copilot-openrouter",
+        ):
+            source = (REPO / relative).read_text()
+            self.assertIn(f'readonly OPENROUTER_MODEL="{model}"', source)
+            self.assertIn('readonly OPENROUTER_EFFORT="high"', source)
+
+        neovim = (
+            REPO / "home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_summarize-commit.lua"
+        ).read_text()
+        self.assertIn(f'local OPENROUTER_DEFAULT_MODEL = "{model}"', neovim)
+        self.assertIn('reasoning = { effort = "high" }', neovim)
+        for variable in ("OPENROUTER_MODEL", "OPENROUTER_NITRO", "OPENROUTER_THINKING", "OPENROUTER_REASONING_EFFORT"):
+            self.assertNotIn(variable, neovim)
+
+        omp = (REPO / "home/dot_omp/private_agent/readonly_config.yml.tmpl").read_text()
+        # OMP lists OpenRouter as an available provider, but its work-profile modelRoles do not
+        # have to route through OpenRouter for this pinned route to be enforced elsewhere.
+        self.assertIn("  - openrouter\n", omp)
+
+    def test_the_cheap_band_runs_the_codex_tier_wherever_the_catalog_has_it(self):
+        # `cheap` carries judgment-free `search` and `mechanical` work, so it takes gpt-5.3-codex at
+        # high effort on every harness whose catalog has it. Five cannot: Claude Code and Gemini are
+        # single-vendor, native Codex has no gpt-5.3-codex-spark, Cursor's Task tool takes only its
+        # own eight-slug whitelist, and Pi reaches models only through OpenRouter, where every route
+        # is pinned to the pinned gpt-5.2. Each exception is spelled out so a future edit cannot
+        # quietly downgrade a harness that could have run the codex tier.
         import ai_models
 
         expected = {
-            "claude_code": "claude-sonnet-4-6",  # Anthropic-only catalog
-            "codex": "gpt-5.4",  # no gpt-5.3-codex-spark in the 0.146.0 catalog
-            "copilot": "gpt-5.3-codex",
-            "cursor": "gpt-5.3-codex-high",  # Cursor bakes effort into the id
-            "gemini": "gemini-3.6-flash",  # Google-only catalog
-            "pi": "openrouter/openai/gpt-5.3-codex:high",
-            "omp": "github-copilot/gpt-5.3-codex:high",
+            "claude_code": ("claude-sonnet-4-6", "high"),  # Anthropic-only; user pin, opus ban not applied here
+            "codex": ("gpt-5.4", "high"),  # no gpt-5.3-codex-spark in the 0.146.0 catalog
+            "copilot": ("claude-haiku-4.5", "high"),
+            "cursor": ("composer-2.5", "high"),  # no codex id in the Task whitelist; `-fast` costs 6x
+            "gemini": ("gemini-3.6-flash", "high"),  # Google-only catalog
+            "pi": ("openrouter/openai/gpt-5.2:high", "high"),  # OpenRouter-only; pinned route
+            "omp": ("@smol", "high"),  # a role token; the concrete pick is asserted below
         }
 
-        tier_map = ai_models.load_model_tier_map(REPO / "home/.chezmoidata/ai_models.yaml")
-        assert set(tier_map) == set(expected), (
-            f"harness set changed: {sorted(set(tier_map) ^ set(expected))}; add its gruntwork pick here"
+        path = REPO / "home/.chezmoidata/ai_models"
+        bands = ai_models.load_model_bands(path)
+        assert set(bands) == set(expected), (
+            f"harness set changed: {sorted(set(bands) ^ set(expected))}; add its cheap-band pick here"
         )
-        for harness, model in expected.items():
-            row = tier_map[harness]["gruntwork"]
-            assert row["model"] == model, (
-                f"model_tier_map.{harness}.gruntwork.model is {row['model']!r}, expected {model!r}"
-            )
-            assert row["effort"] == "high", (
-                f"model_tier_map.{harness}.gruntwork.effort is {row['effort']!r}, expected 'high'"
+        for harness, (model, effort) in expected.items():
+            row = bands[harness]["cheap"]
+            assert row["model"] == model, f"model_bands.{harness}.cheap.model is {row['model']!r}, expected {model!r}"
+            assert row["effort"] == effort, (
+                f"model_bands.{harness}.cheap.effort is {row['effort']!r}, expected {effort!r}"
             )
 
-        # Copilot's explore/task subagents are the deployed gruntwork lanes.
+        # `composer-2.5-fast` is a speed tier with the same intelligence at 6x the price
+        # ($3/$15 against $0.5/$2.5, cursor.com/docs/models), so no band may reach for it.
+        for band, row in bands["cursor"].items():
+            assert row["model"] != "composer-2.5-fast", (
+                f"model_bands.cursor.{band} is composer-2.5-fast; composer-2.5 is the same model for a sixth"
+            )
+
+        # OMP resolves its bands through modelRoles; @smol is deliberately composer-2.5 in both
+        # profiles (policy override), even though a codex-tier id is available in the catalog.
+        roles = self._omp_model_roles()
+        assert "composer-2.5" in roles["work"]["smol"], (
+            f"omp work modelRoles.smol is {roles['work']['smol']!r}, expected composer-2.5"
+        )
+        assert "composer-2.5" in roles["personal"]["smol"], (
+            f"omp personal modelRoles.smol is {roles['personal']['smol']!r}, expected composer-2.5"
+        )
+
+        # Copilot is the one harness where the cheap band reaches a deployed file rather than a
+        # rendered profile, so check the band actually landed on every cheap-bound built-in.
+        #
+        # Copilot may legitimately have none: `search` narrowed to judgment-free work only (see the
+        # investigation note in tiering.yaml agent_bindings), and Copilot ships no such built-in —
+        # `explore` forms conclusions, so it is `research`. An empty set means the cheap band is
+        # simply unreachable on this harness, not that a pin was dropped, so the loop below is a
+        # no-op rather than a failure. If a cheap-bound Copilot agent is ever added, it is checked.
+        bindings = ai_models.load_agent_bindings(path)
+        categories = ai_models.load_agent_categories(path)
         copilot = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text(encoding="utf-8"))[
             "subagents"
         ]["agents"]
-        for name in ("explore", "task"):
-            assert copilot[name]["model"] == expected["copilot"], (
-                f"copilot settings.json {name} model {copilot[name]['model']!r} != {expected['copilot']!r}"
+        cheap_agents = [name for name in copilot if categories.get(bindings.get(name, ""), {}).get("band") == "cheap"]
+        copilot_model, copilot_effort = expected["copilot"]
+        for name in cheap_agents:
+            assert copilot[name]["model"] == copilot_model, (
+                f"copilot settings.json {name} model {copilot[name]['model']!r} != {copilot_model!r}"
             )
-            assert copilot[name]["effortLevel"] == "high", (
-                f"copilot settings.json {name} effortLevel is {copilot[name]['effortLevel']!r}, expected 'high'"
+            assert copilot[name]["effortLevel"] == copilot_effort, (
+                f"copilot settings.json {name} effortLevel is {copilot[name]['effortLevel']!r}, expected {copilot_effort!r}"
             )
 
+    def test_generated_subagent_rosters_match_the_band_registry(self):
+        # Copilot's settings.json and Gemini's agents.overrides both pin subagent models inside a
+        # file the harness rewrites at runtime, so neither can be a chezmoi template over the
+        # registry: scripts/generate_subagent_models.py reconciles them instead. Copilot's has
+        # drifted before, and Gemini's was unguarded entirely.
+        import subprocess
+
+        result = subprocess.run(
+            [sys.executable, str(REPO / "scripts/generate_subagent_models.py"), "check"],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO),
+        )
+        assert result.returncode == 0, (
+            "Copilot/Gemini subagent rosters diverge from model_bands; run "
+            f"`python3 scripts/generate_subagent_models.py write`:\n{result.stderr}"
+        )
+
+    def test_the_deployed_band_projection_is_current(self):
+        # The hook runs from ~/.agents/hooks with no access to this repo, so it reads a flattened
+        # projection instead of resolving anything. A stale projection is a silently wrong model on
+        # every harness the hook enforces.
+        import subprocess
+
+        result = subprocess.run(
+            [sys.executable, str(REPO / "scripts/generate_agent_bands.py"), "check"],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO),
+        )
+        assert result.returncode == 0, result.stderr
+
+    def test_cursor_bands_stay_inside_the_task_tool_whitelist(self):
+        # cursor-agent 2026.07.23 resolves a subagent model against a far narrower list than
+        # `cursor-agent models` (197 ids): anything else fails the spawn with "Invalid model
+        # selection". Since Cursor has no loadable agent files, the band hook is the only tiering
+        # surface there, and a slug outside this list breaks delegation rather than repricing it.
+        import ai_models
+
+        whitelist = {
+            "claude-fable-5-medium",
+            "claude-opus-5-high",
+            "claude-sonnet-5-thinking-max",
+            "composer-2.5",
+            "composer-2.5-fast",
+            "cursor-grok-4.5-high-fast",
+            "gpt-5.6-sol-xhigh",
+            "gpt-5.6-terra-max",
+        }
+
+        bands = ai_models.load_model_bands(REPO / "home/.chezmoidata/ai_models")["cursor"]
+        for band, row in bands.items():
+            for label, pick in (("", row), (".counter", row.get("counter") or {})):
+                model = pick.get("model")
+                if not model:
+                    continue
+                assert model in whitelist, (
+                    f"model_bands.cursor.{band}{label} is {model!r}, which the Task tool cannot resolve; "
+                    f"pick one of {sorted(whitelist)}"
+                )
+
     def test_claude_settings_keep_thinking_disabled(self):
-        # model_tier_map.claude_code declares thinking "off" for every Anthropic bucket. The only
+        # model_bands.claude_code declares thinking "off" for every Anthropic bucket. The only
         # thing enforcing that is alwaysThinkingEnabled: false, which makes Hye() return false so
         # thinkingConfig resolves to {type:"disabled"} instead of {type:"adaptive"}. Dropping it
         # silently turns Opus 5 review lanes back into thinking lanes.
@@ -1110,7 +1474,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             )
             # CLAUDE_CODE_DISABLE_THINKING defeats the hard disable: the request builder only
             # sends {type:"disabled"} when that env var is absent (`!bn`). It belongs on the
-            # non-first-party ,claude-litellm route, never in native settings.
+            # non-first-party ,claude-openrouter route, never in native settings.
             assert "CLAUDE_CODE_DISABLE_THINKING" not in settings.get("env", {}), (
                 f"claude settings.{profile}.json sets CLAUDE_CODE_DISABLE_THINKING, which forces "
                 "the omit path and lets adaptive models keep thinking"

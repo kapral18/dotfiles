@@ -26,9 +26,8 @@ local SYSTEM_MESSAGE =
   "You are a conventional commit message specialist. Classify the header by the most meaningful behavior change, not by file paths. Use docs only for documentation-only diffs. Return only valid commit message text in the requested format. Do not include reasoning."
 
 local DEFAULT_MAX_OUTPUT_TOKENS = 2048
-local CLOUDFLARE_DEFAULT_MODEL = "@cf/zai-org/glm-5.2"
 local GEMINI_DEFAULT_MODEL = "gemini-flash-latest"
-local OPENROUTER_DEFAULT_MODEL = "z-ai/glm-5.2"
+local OPENROUTER_DEFAULT_MODEL = "openai/gpt-5.2"
 local OPENROUTER_CONTEXT_COMPRESSION_PLUGIN = { id = "context-compression" }
 
 -- ───────────────────────────── HELPERS (provider-agnostic) ─────────────────────
@@ -471,26 +470,6 @@ local function env_number(name)
   return n
 end
 
-local function is_kimi_model(model)
-  if type(model) ~= "string" then
-    return false
-  end
-  model = model:lower()
-  return model:find("kimi", 1, true) ~= nil or model:find("moonshot", 1, true) ~= nil
-end
-
-local function openrouter_model_id()
-  local model = env_trim("OPENROUTER_MODEL") or OPENROUTER_DEFAULT_MODEL
-  local nitro = env_bool_or_string("OPENROUTER_NITRO")
-  if nitro == nil then
-    nitro = true
-  end
-  if nitro and is_kimi_model(model) and not model:find(":", 1, true) then
-    model = model .. ":nitro"
-  end
-  return model
-end
-
 local function extract_commit_from_reasoning(text)
   if type(text) ~= "string" or text == "" then
     return nil
@@ -537,69 +516,6 @@ end
 
 -- ───────────────────────────────── PROVIDER CONFIG ─────────────────────────────
 local providers = {
-  -- Cloudflare Workers AI
-  cloudflare = {
-    required_env = { "CLOUDFLARE_WORKERS_AI_ACCOUNT_ID", "CLOUDFLARE_WORKERS_AI_API_KEY" },
-    timeout = 90,
-    url = function()
-      local account_id = env_trim("CLOUDFLARE_WORKERS_AI_ACCOUNT_ID") or ""
-      return ("https://api.cloudflare.com/client/v4/accounts/%s/ai/v1/chat/completions"):format(account_id)
-    end,
-    headers = function()
-      return {
-        "Authorization: Bearer " .. (os.getenv("CLOUDFLARE_WORKERS_AI_API_KEY") or ""),
-        "Content-Type: application/json",
-      }
-    end,
-    payload = function(diff)
-      local thinking = env_bool_or_string("CLOUDFLARE_THINKING")
-      if thinking == nil then
-        thinking = false
-      end
-
-      local reasoning_effort = env_trim("CLOUDFLARE_REASONING_EFFORT")
-      if reasoning_effort ~= nil then
-        local allowed = { low = true, medium = true, high = true }
-        if not allowed[reasoning_effort:lower()] then
-          reasoning_effort = nil
-        end
-      end
-
-      local model = env_trim("CLOUDFLARE_WORKERS_AI_MODEL") or CLOUDFLARE_DEFAULT_MODEL
-      local payload = {
-        model = model,
-        messages = {
-          { role = "system", content = SYSTEM_MESSAGE },
-          { role = "user", content = diff },
-        },
-        chat_template_kwargs = {
-          thinking = thinking,
-        },
-        max_tokens = DEFAULT_MAX_OUTPUT_TOKENS,
-        temperature = 0,
-        stream = false,
-      }
-
-      if reasoning_effort ~= nil then
-        payload.reasoning_effort = reasoning_effort
-      end
-
-      return payload
-    end,
-    extract_path = { "choices", 1, "message", "content" },
-    extract_fallbacks = {
-      { "choices", 1, "message", "content" },
-      { "result" }, -- some models return plain strings
-      { "result", "response" }, -- older/non-chat schema
-      { "result", "answer" },
-      { "result", "text" },
-      { "result", "output_text" },
-      { "result", "message", "content" },
-      { "result", "choices", 1, "message", "content" },
-      { "result", "messages", 1, "content" },
-    },
-  },
-
   -- OpenRouter (OpenAI-compatible Chat Completions)
   openrouter = {
     url = "https://openrouter.ai/api/v1/chat/completions", -- POST body uses OpenAI chat schema
@@ -615,41 +531,14 @@ local providers = {
       }
     end,
     payload = function(diff)
-      local thinking = env_bool_or_string("OPENROUTER_THINKING")
-      if thinking == nil then
-        thinking = false
-      end
-
-      local reasoning
-      if thinking then
-        local effort = env_trim("OPENROUTER_REASONING_EFFORT") or "low"
-        local allowed = {
-          xhigh = true,
-          high = true,
-          medium = true,
-          low = true,
-          minimal = true,
-        }
-        if not allowed[effort:lower()] then
-          effort = "low"
-        end
-        reasoning = { effort = effort }
-      else
-        reasoning = { effort = "none" }
-      end
-
-      local model = openrouter_model_id()
       local payload = {
-        model = model,
+        model = OPENROUTER_DEFAULT_MODEL,
         messages = {
           { role = "system", content = SYSTEM_MESSAGE },
           { role = "user", content = diff },
         },
-        reasoning = reasoning,
+        reasoning = { effort = "high" },
         plugins = { OPENROUTER_CONTEXT_COMPRESSION_PLUGIN },
-        chat_template_kwargs = {
-          thinking = thinking,
-        },
         max_tokens = DEFAULT_MAX_OUTPUT_TOKENS,
         temperature = 0,
         stream = false,
@@ -833,12 +722,7 @@ local function summarize_with(provider_key)
     local text = extract_text_with_fallbacks(parsed, cfg.extract_path, cfg.extract_fallbacks)
     if type(text) ~= "string" or text == "" then
       local reasoning_text
-      if provider_key == "cloudflare" then
-        reasoning_text = normalize_text(json_at_path(parsed, { "choices", 1, "message", "reasoning_content" }))
-          or normalize_text(json_at_path(parsed, { "choices", 1, "message", "reasoning" }))
-          or normalize_text(json_at_path(parsed, { "result", "choices", 1, "message", "reasoning_content" }))
-          or normalize_text(json_at_path(parsed, { "result", "choices", 1, "message", "reasoning" }))
-      elseif provider_key == "openrouter" then
+      if provider_key == "openrouter" then
         reasoning_text = normalize_text(json_at_path(parsed, { "choices", 1, "message", "reasoning" }))
           or normalize_text(json_at_path(parsed, { "choices", 1, "message", "reasoning_content" }))
       end
@@ -874,9 +758,6 @@ local function summarize_with(provider_key)
 end
 
 -- ────────────────────────── PUBLIC COMMANDS ───────────────────────────────────
-M.summarize_commit_cf = function()
-  summarize_with("cloudflare")
-end
 M.summarize_commit_openrouter = function()
   summarize_with("openrouter")
 end

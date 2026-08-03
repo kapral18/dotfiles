@@ -44,7 +44,7 @@ Verified discovery anchors:
 | Codex CLI   | `$CODEX_HOME/agents/*.toml` plus `multi_agent.spawn_agent` / `wait`; source `openai/codex@45f603302c45`                   |
 | Gemini CLI  | `.gemini/agents/*.md`, `@name` forcing, and no subagent-to-subagent calls; source `google-gemini/gemini-cli@f741d0328209` |
 
-Profile `model` frontmatter for `/k-deep-review` lanes is rendered from the `agent_review_models` registry. See [Model registry](model-registry.md) for policy and [Deep-review topology](reviews/deep-review-topology.md) for review-flow usage. General-purpose subagent profiles (gruntwork/routine-edit investigation, not review lanes) are instead pinned from `model_tier_map` — see [Model tiering](model-tiering.md).
+Profile `model` frontmatter for `/k-deep-review` lanes is rendered from the `agent_review_models` registry. See [Model registry](model-registry.md) for policy and [Deep-review topology](reviews/deep-review-topology.md) for review-flow usage. Every other profile renders through `agent-model.partial`, which resolves the agent's category to a per-harness band, and a shared pre-tool-use gate re-applies that band to delegation calls no profile can reach — see [Model tiering](model-tiering.md).
 
 Pi encodes reasoning effort in model slug suffixes such as `:xhigh` on its per-task registry value.
 

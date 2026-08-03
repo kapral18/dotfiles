@@ -1,7 +1,7 @@
 ---
 name: general-purpose
 description: General-purpose agent for multi-step searches and delegated implementation support.
-model: "{{ .model_tier_map.claude_code.gruntwork.model }}"
+model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claude_code" "agent" "general-purpose") }}"
 tools: "*"
 ---
 

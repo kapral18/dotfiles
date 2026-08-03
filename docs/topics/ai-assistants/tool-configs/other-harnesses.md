@@ -51,7 +51,7 @@ Repeated MCP tool approvals live as `mcp_servers.<server>.tools.<tool>.approval_
 
 `scsi-main` and `scsi-local` are generated with `default_tools_approval_mode = "approve"` so their read-analysis tools do not depend on the flaky MCP approval persistence path. Slack is only auto-approved for read/search tools (`slack_read_*` and `slack_search_*`), while send/create/update/schedule tools stay prompted/auto-reviewed.
 
-Both interactive profiles pin `service_tier = "default"` so `gpt-5.5` starts on standard routing instead of priority/legacy `fast` routing.
+Both interactive profiles pin `service_tier = "default"` so `gpt-5.6-terra` starts on standard routing instead of priority/legacy `fast` routing.
 
 ### Codex reconciliation
 
@@ -66,66 +66,33 @@ Codex reconciliation rebuilds from the selected profile and generated MCP regist
 
 All unrelated live tables and invalid values are discarded. Matching source tables remain authoritative. Hook trust hashes are not baked into `home/dot_codex/private_config.*.toml`.
 
-### OpenCode Cloudflare provider
-
-Personal OpenCode exposes Cloudflare.
-
-| Provider                | Env                                                                 | Models                                                               |
-| ----------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `cloudflare-workers-ai` | `CLOUDFLARE_WORKERS_AI_ACCOUNT_ID`, `CLOUDFLARE_WORKERS_AI_API_KEY` | `@cf/zai-org/glm-5.2`, `@cf/moonshotai/kimi-k2.7-code`, `minimax/m3` |
-
-`,opencode-cloudflare` wraps that provider with Fish-completable model choices.
-
 ### Provider wrappers
-
-Codex Cloudflare wrapper:
-
-| Wrapper             | Target                                          |
-| ------------------- | ----------------------------------------------- |
-| `,codex-cloudflare` | Cloudflare AI Gateway OpenAI Responses endpoint |
-
-The wrapper uses the Gateway OpenAI provider with:
-
-- `CLOUDFLARE_GATEWAY_ID` (default `default`)
-- `CLOUDFLARE_API_TOKEN`
-
-It does not target Workers AI's `@cf/...` Chat Completions endpoint. Chat Completions wire mode is not a supported Codex target.
 
 Other provider wrappers:
 
 - `,codex-llama-cpp`
-- `,codex-litellm`
+- `,codex-openrouter`
 - `,opencode-llama-cpp`
-- `,claude-litellm`
-- `,copilot-cloudflare`
-- `,copilot-litellm`
+- `,claude-openrouter`
 - `,copilot-openrouter`
 
 Copilot custom providers are BYOK environment variables only, so its wrappers set those variables for OpenAI-compatible endpoints. The provider wrappers `exec ,copilot` rather than `copilot` to keep one stable entry point.
 
-The three `*-litellm` wrappers use `LITELLM_API_BASE` / `LITELLM_PROXY_KEY`, falling back to the `litellm/api/base` and `litellm/api/token` pass entries when the environment is not already populated. `,claude-litellm` removes a trailing `/v1` because Claude's Anthropic SDK appends `/v1/messages`; it defaults Opus to `llm-gateway/claude-opus-4-8`, Sonnet to `llm-gateway/claude-sonnet-5`, Haiku to `llm-gateway/claude-haiku-4-5`, and subagents to `inherit`. Every id is bare, matching the short-context policy in [Model tiering](../model-tiering.md): appending the `[1m]` selector is what triggers Claude Code's `BM(e)` short-circuit that sets the model window to 1e6 for autocompact math, and bare `llm-gateway/`-prefixed ids instead miss the client registry and fall back to the ~200k default (autocompact fires at ~180k). The wrapper also disables thinking, selects high effort, sets `ANTHROPIC_AUTH_TOKEN`, and clears `ANTHROPIC_API_KEY`. Each model or behavior default remains overridable through its corresponding environment variable. `,codex-litellm` configures a per-invocation Responses provider and starts a loopback shim (`~/lib/,codex-litellm/main.py`), described next.
+The three OpenRouter wrappers read `OPENROUTER_API_KEY`, falling back to the `openrouter/api/token` pass entry when the environment is not already populated.
 
-`,codex-litellm` launches Codex with a Codex-family client slug (`gpt-5.2-codex`, override `CODEX_LITELLM_CLIENT_MODEL`) and routes it through a loopback shim that rewrites `/responses` bodies before they reach the gateway. The client slug is deliberate: Codex only attaches its built-in tool set (`exec_command`, `apply_patch`, …) when the `--model` slug resolves to a Codex-family model, so launching with a `gpt-5.6-*` slug attaches zero tools and the model reports "no shell tool available". The shim rewrites the `model` field to the real gateway target, so the family slug never reaches the gateway. It also, on tool turns against the gpt-5.x `azure_ai` deployments (which bridge `/responses` down to chat-completions): sets `drop_params: true` when `tool_choice` is present; removes `client_metadata`; removes `reasoning` when `tools` are present; coerces `type:"custom"` tools (freeform `apply_patch`) into `type:"function"` tools taking a single `input` string; drops tool types the bridge rejects (`namespace`, `tool_search`, `web_search`); and reorders each `function_call_output` to immediately follow its `function_call` (Codex interleaves an assistant message between them, which detaches the tool output across the bridge). Each rewrite corresponds to a `400` the bridge would otherwise return.
+All OpenRouter entry points are a strict one-model route: `openai/gpt-5.2` at `high` effort. The wrappers reject direct model, effort, and configuration overrides instead of treating the pin as a default.
 
-Pick the upstream model with `,codex-litellm --target <tier|slug>`: a bare tier (`sol`/`terra`/`luna` → `gpt-5.6-<tier>`), a bare id (`gpt-5.2`, `gpt-5.2-codex`, `gpt-5.6-terra`), or a full `llm-gateway/...` slug. It defaults to `sol` (override the default with `CODEX_LITELLM_MODEL`). `gpt-5.5` is not offered because it has no `/responses` (or `/chat/completions`) deployment on the gateway. Because tool attachment is decided from the client slug before the shim runs, switching to a `gpt-5.6-*` entry in Codex's in-TUI `/model` picker silently drops tools — relaunch with `--target` instead of switching in the picker.
+`,claude-openrouter` points `ANTHROPIC_BASE_URL` at `https://openrouter.ai/api` with no `/v1` suffix, because Claude's Anthropic SDK appends `/v1/messages`. It pins the root model, all three family defaults, and `CLAUDE_CODE_SUBAGENT_MODEL` to GPT-5.2; it also passes `--effort high`, sets `ANTHROPIC_AUTH_TOKEN`, and clears `ANTHROPIC_API_KEY`.
 
-Because Codex's banner and `/status` print the _client_ slug (`gpt-5.2-codex`), not the upstream, the wrapper names the provider after the target so `provider:` reveals it — e.g. `provider: gateway-gpt-5-6-terra` (dots become dashes because a `-c model_providers.<id>.*` key splits on the first dot). It also echoes one line before launch, e.g. `,codex-litellm → target llm-gateway/gpt-5.6-terra (client gpt-5.2-codex, effort high)`. The launch line scrolls off; the `provider:` line persists as the in-TUI signal of which model is actually answering.
+`,codex-openrouter` configures a per-invocation Responses provider (`model_providers.openrouter`, `wire_api="responses"`, `env_key="OPENROUTER_API_KEY"`) and pins both `--model` and `model_reasoning_effort`. No loopback shim is involved: OpenRouter answers `/api/v1/responses` natively.
 
-`gpt-5.2` and `gpt-5.2-codex` differ from the `gpt-5.6-*` deployments: Codex recognizes them as tool-capable client slugs directly, so the wrapper uses each as the client slug (the banner/picker show the true model) rather than the `gpt-5.2-codex` disguise it uses for `gpt-5.6-*`. The shim still rewrites the wire `model` to the fully-qualified `llm-gateway/...` id in every case — the gateway key's allowlist rejects a bare `gpt-5.2` with `401` (surfacing in Codex as `Reconnecting…`), while the client slug must stay bare for tool attachment. Per-target quirks the wrapper and shim handle: `gpt-5.2-codex` is a native Responses model that accepts `xhigh` effort (the wrapper defaults it to `xhigh`) but requires `text.verbosity=medium` and `400`s on anything else (the shim forces `medium` for that target); `gpt-5.2` is azure_ai-bridged and caps at `high` like the `gpt-5.6-*` tiers.
+`,copilot-openrouter` uses the cache-capable `COPILOT_PROVIDER_TYPE=anthropic` client against `https://openrouter.ai/api` with no `/v1` suffix.
 
-Reasoning effort defaults to `high` and is overridable with `CODEX_LITELLM_EFFORT`, a `-c model_reasoning_effort="..."` flag, or the in-TUI picker's effort suffix. The `azure_ai` deployments cap effort at `high`: they `400` on `xhigh`, `max`, and `minimal`, accepting only `none`/`low`/`medium`/`high`. The wrapper defaults to `high` so the picker/banner reflect that ceiling, and the shim clamps any `xhigh`/`max` down to `high` as a safety net (so selecting `xhigh` in the picker degrades to `high` rather than erroring). Note that on tool turns the shim removes `reasoning` entirely — the bridged chat-completions path rejects function tools and `reasoning_effort` together — so the effort setting affects only tool-free turns.
+This matters because Copilot CLI's BYOK client only sets `enableCacheControl: true` and injects Anthropic `cache_control` breakpoints for `COPILOT_PROVIDER_TYPE=anthropic`. Its `openai`-type client builds the request with no cache-control flag at all, so prompt caching never activates there for an Anthropic model: a wire capture of the same Opus 5 session shows four `cache_control` blocks and a 72,458-token cache read on `/v1/messages`, against zero breakpoints and zero cached tokens on `/chat/completions`.
 
-Select a LiteLLM model with `,copilot-litellm <llm-gateway/model>` or `,copilot-litellm --model <llm-gateway/model>`. The wrapper keeps the gateway slug as Copilot's wire model and maps known slugs such as `llm-gateway/claude-opus-4-7` to Copilot's internal `claude-opus-4.7` spelling for model metadata.
+The client kind is fixed when the session starts. The OpenAI client has no cache-control support, so the wrapper does not permit it as a fallback.
 
-`,copilot-litellm` also starts a loopback shim (`~/lib/,copilot-litellm/main.py`) on an ephemeral `127.0.0.1` port and points `COPILOT_PROVIDER_BASE_URL` at it. The shim forwards every request to the LiteLLM gateway verbatim, except that on `/chat/completions` requests carrying `tool_choice` it merges `tool_choice` into `allowed_openai_params` before forwarding. Copilot's Background compaction sends `tool_choice` on every retry; without the shim, LiteLLM's Azure AI backend returns `400 UnsupportedParamsError` and compaction loops until the session is unusable. The shim resolves this client-side; the wrapper's bash shell parents the shim and reaps it via `trap EXIT` when Copilot exits.
-
-`,copilot-openrouter` routes `anthropic/*` and `~anthropic/*` models through `COPILOT_PROVIDER_TYPE=anthropic` against `https://openrouter.ai/api` with no `/v1` suffix. It does this instead of the default `openai`-type client against `https://openrouter.ai/api/v1`.
-
-This matters because Copilot CLI's BYOK client only sets `enableCacheControl: true` and injects Anthropic `cache_control` breakpoints for `COPILOT_PROVIDER_TYPE=anthropic`. The default `openai`-type client always sends `enableCacheControl: false`, so prompt caching never activates for it regardless of what the upstream model supports.
-
-Every other OpenRouter model, including GLM, DeepSeek, Qwen, Kimi, GPT, and Gemini, still uses the `openai`-type client. OpenRouter's public model-endpoints API currently reports `supports_implicit_caching: false` for all providers, so there is no caching benefit to gain there.
-
-Setting `COPILOT_PROVIDER_TYPE` explicitly before invoking the wrapper always overrides this auto-detection.
+Delegated lanes need their own pin. The Codex and Copilot wrappers export `AGENT_BAND_MODEL_OVERRIDE` and `AGENT_BAND_EFFORT_OVERRIDE`, so [the band gate](../model-tiering.md) resolves every delegated agent — bound or not — to GPT-5.2 at `high`. Copilot's live `task` schema accepts both `model` and `reasoning_effort`; the gate rewrites both. Claude Code applies the same pin through its root, family-default, and subagent environment variables.
 
 ### Repo-owned Codex subscription adapter
 
@@ -170,17 +137,13 @@ The three local frontends map to the two Vertex transports:
 | `,copilot-vertex` | OpenAI Chat Completions | Gemini OpenAI Chat Completions or Claude publisher `rawPredict`/`streamRawPredict` |
 | `,claude-vertex`  | Anthropic Messages      | Gemini OpenAI Chat Completions or Claude publisher `rawPredict`/`streamRawPredict` |
 
-The canonical `provider_models` entries in `home/.chezmoidata/ai_models.yaml` own the four allowed IDs, backend wire IDs, token limits, and effort matrix. `home/dot_config/vertex-adapter/readonly_models.json.tmpl` renders that data for the deployed core in `~/lib/,vertex-adapter/`. For Codex, the launcher also renders an owner-only, per-session `model_catalog_json` from the same registry and removes it on exit; the loopback `/v1/models` route exposes the equivalent Codex schema so these non-OpenAI IDs use their declared context, effort, shell, and freeform `apply_patch` metadata instead of fallback metadata.
+The canonical `provider_models` entries in `home/.chezmoidata/ai_models/provider-routes.yaml` own the four allowed IDs, backend wire IDs, token limits, and effort matrix. `home/dot_config/vertex-adapter/readonly_models.json.tmpl` renders that data for the deployed core in `~/lib/,vertex-adapter/`. For Codex, the launcher also renders an owner-only, per-session `model_catalog_json` from the same registry and removes it on exit; the loopback `/v1/models` route exposes the equivalent Codex schema so these non-OpenAI IDs use their declared context, effort, shell, and freeform `apply_patch` metadata instead of fallback metadata.
 
 All wrappers use `gemini-3.6-flash` unless `--model`/`-m` selects `gemini-3.1-pro-preview`, `claude-opus-4-6`, or `claude-opus-4-7`. `--thinking` enables the model's declared default, `--effort` selects a supported level, and `--no-thinking` is accepted only for the Claude models. Gemini 3.6 Flash's closest low-reasoning mode is `--effort minimal`; Gemini 3.1 Pro cannot disable thinking.
 
 Streaming text and parallel function/custom tools are translated incrementally. Gemini tool-call thought signatures and Claude signed thinking blocks that cannot cross another protocol directly are stored by call ID in owner-only runtime state under `${XDG_STATE_HOME:-~/.local/state}/vertex-adapter/`; no user prompts, credentials, or general conversation transcript are added to that store.
 
 Cursor is intentionally absent: Cursor Agent has no custom model-provider/base-URL route, so a `,cursor-vertex` command would not make Cursor use Vertex. Native `vlaude` also remains unchanged for direct Claude Code → Vertex Claude use.
-
-### Claude Code and Cloudflare
-
-Claude Code is not wired to Cloudflare. The Codex subscription adapter above is provider-specific and does not create a general Claude-to-Cloudflare path, so there is still no `,claude-cloudflare` wrapper.
 
 ### Codex hosted MCP token bridges
 
@@ -199,26 +162,28 @@ The bridge injects a freshly selected bearer per request, rotating through curso
 
 ### Managed configuration
 
-`readonly_config.yml.tmpl` is the complete declarative OMP contract. Both profile branches prefer OMP's native Codex subscription provider while keeping the work providers as fallback routes. `omp config list --json` reports the effective typed settings; inspect all model-role pins together with `omp config get modelRoles`, not with dotted child keys.
+`readonly_config.yml.tmpl` is the complete declarative OMP contract. Both profiles pin main roles to Cursor `gpt-5.2-high`, use `composer-2.5` for `smol`, and use Cursor `claude-sonnet-5-high` for `vision`. `omp config list --json` reports the effective typed settings; inspect all model-role pins together with `omp config get modelRoles`, not with dotted child keys.
 
-| Setting                                                                                | Work value                               | Personal value                           |
-| -------------------------------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------- |
-| `modelRoles.default`                                                                   | `openai-codex/gpt-5.5:high`              | `openai-codex/gpt-5.5:high`              |
-| `modelRoles.smol`                                                                      | `openai-codex/gpt-5.3-codex-spark:xhigh` | `openai-codex/gpt-5.3-codex-spark:xhigh` |
-| `modelRoles.vision`, `modelRoles.slow`, `modelRoles.plan`                              | `openai-codex/gpt-5.5:high`              | `openai-codex/gpt-5.5:high`              |
-| `modelRoles.task`, `modelRoles.advisor`                                                | `openai-codex/gpt-5.5:high`              | `openai-codex/gpt-5.5:high`              |
-| `modelProviderOrder`                                                                   | `openai-codex`, then the work providers  | `openai-codex`, then the work providers  |
-| `advisor.enabled`, `advisor.subagents`, `advisor.syncBacklog`, `advisor.immuneTurns`   | `true`, `true`, `1`, `0`                 | `true`, `true`, `1`, `0`                 |
-| `defaultThinkingLevel`                                                                 | `medium`                                 | `medium`                                 |
-| `memory.backend`                                                                       | `off`                                    | `off`                                    |
-| `autolearn.enabled`, `autolearn.autoContinue`                                          | `false`, `false`                         | `false`, `false`                         |
-| `dev.autoqaConsent`                                                                    | `granted`                                | `granted`                                |
-| `skills.enabled`, `skills.enableSkillCommands`                                         | `true`, `true`                           | `true`, `true`                           |
-| `task.isolation.mode`, `task.enableEffort`, `task.enableLsp`, `task.maxRecursionDepth` | `auto`, `true`, `true`, `2`              | `auto`, `true`, `true`, `2`              |
-| `retry.enabled`, `retry.maxRetries`                                                    | `true`, `5`                              | `true`, `5`                              |
-| `symbolPreset`, `theme.dark`, `setupVersion`                                           | `nerd`, `titanium`, `1`                  | `nerd`, `titanium`, `1`                  |
+| Setting                                                                                | Work value                         | Personal value                     |
+| -------------------------------------------------------------------------------------- | ---------------------------------- | ---------------------------------- |
+| `modelRoles.default`                                                                   | `cursor/gpt-5.2-high:high`         | `cursor/gpt-5.2-high:high`         |
+| `modelRoles.smol`                                                                      | `cursor/composer-2.5:high`         | `cursor/composer-2.5:high`         |
+| `modelRoles.vision`                                                                    | `cursor/claude-sonnet-5-high:high` | `cursor/claude-sonnet-5-high:high` |
+| `modelRoles.slow`, `modelRoles.plan`                                                   | `cursor/gpt-5.2-high:high`         | `cursor/gpt-5.2-high:high`         |
+| `modelRoles.task`                                                                      | `cursor/gpt-5.2-high:high`         | `cursor/gpt-5.2-high:high`         |
+| `modelRoles.advisor`                                                                   | `cursor/gpt-5.2-high:high`         | `cursor/gpt-5.2-high:high`         |
+| `modelProviderOrder`                                                                   | `cursor`, then the work providers  | `cursor`, then the work providers  |
+| `advisor.enabled`, `advisor.subagents`, `advisor.syncBacklog`, `advisor.immuneTurns`   | `true`, `true`, `1`, `0`           | `true`, `true`, `1`, `0`           |
+| `defaultThinkingLevel`                                                                 | `high`                             | `high`                             |
+| `memory.backend`                                                                       | `off`                              | `off`                              |
+| `autolearn.enabled`, `autolearn.autoContinue`                                          | `false`, `false`                   | `false`, `false`                   |
+| `dev.autoqaConsent`                                                                    | `granted`                          | `granted`                          |
+| `skills.enabled`, `skills.enableSkillCommands`                                         | `true`, `true`                     | `true`, `true`                     |
+| `task.isolation.mode`, `task.enableEffort`, `task.enableLsp`, `task.maxRecursionDepth` | `auto`, `true`, `true`, `2`        | `auto`, `true`, `true`, `2`        |
+| `retry.enabled`, `retry.maxRetries`                                                    | `true`, `5`                        | `true`, `5`                        |
+| `symbolPreset`, `theme.dark`, `setupVersion`                                           | `nerd`, `titanium`, `1`            | `nerd`, `titanium`, `1`            |
 
-These native defaults are distinct from the explicit `model_tier_map.omp` selections used by repo-managed custom agent profiles; OMP GPT-5.5 custom-profile verifier/design/fallback pins use `github-copilot/gpt-5.5:high`.
+`modelRoles` is also what prices OMP's bands: repo-managed agent profiles carry `@role` tokens (`@smol`, `@task`, `@default`, `@advisor`) that `model_bands.omp` names, so the work and personal role tables above decide what each band costs. See [Model tiering](../model-tiering.md).
 
 The OMP advisor is enabled for primary turns and spawned agents. It uses the configured `modelRoles.advisor` model to inject actionable notes as `<advisory>` context. `syncBacklog: 1` pauses the primary for up to 30 seconds at every pending advisor review, waiting for the backlog to clear before continuing. `immuneTurns: 0` keeps every later `concern` or `blocker` eligible for steering instead of downgrading it to a non-interrupting aside. These settings make advisor recommendations reach the primary promptly; OMP still marks them as `guidance="weigh, don't blindly obey"`, so it does not mechanically enforce compliance.
 

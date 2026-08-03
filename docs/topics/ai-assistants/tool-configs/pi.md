@@ -32,14 +32,12 @@ Pi globals are installed via yarn from [`home/readonly_dot_default-yarn-pkgs`](.
 
 ### Profile defaults
 
-| Profile  | Default                         | Extra providers/models  |
-| -------- | ------------------------------- | ----------------------- |
-| work     | `openrouter` / `openai/gpt-5.5` | configured work models  |
-| personal | `openrouter` / `openai/gpt-5.5` | `cloudflare-workers-ai` |
+| Profile  | Default                         | Extra providers/models |
+| -------- | ------------------------------- | ---------------------- |
+| work     | `openrouter` / `openai/gpt-5.2` | configured work models |
+| personal | `openrouter` / `openai/gpt-5.2` | `llama-cpp`            |
 
-Personal Cloudflare uses `CLOUDFLARE_WORKERS_AI_ACCOUNT_ID` and `CLOUDFLARE_WORKERS_AI_API_KEY`. Selectable models include `@cf/zai-org/glm-5.2` and `@cf/moonshotai/kimi-k2.7-code`.
-
-The work-profile LiteLLM provider, the personal Cloudflare Workers AI provider, and the local llama.cpp provider for Pi are covered in [Model registry & routing](../model-registry.md) and [llama.cpp local inference](../llama-cpp/index.md).
+The local llama.cpp provider for Pi is covered in [Model registry & routing](../model-registry.md) and [llama.cpp local inference](../llama-cpp/index.md).
 
 ### Shared settings
 
@@ -60,7 +58,7 @@ Automatic context compaction triggers when context exceeds `contextWindow − re
 
 `keepRecentTokens` is raised from Pi's `20000` default to preserve far more high-fidelity recent context before any lossy summarization. The setting is global, not per-model.
 
-`80000` is sized for the smallest window in play: the local Qwen3.6 model at 262144 tokens, ~30% recent-verbatim. It stays safe on the larger OpenRouter default `openai/gpt-5.5` with a 272000-token window.
+`80000` is sized for the smallest window in play: the local Qwen3.6 model at 262144 tokens, ~30% recent-verbatim. It remains below the configured OpenRouter default's context limit.
 
 ### Prompt-cache and compaction diagnostics
 

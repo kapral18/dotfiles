@@ -1,4 +1,4 @@
-// Managed by chezmoi (source: home/dot_pi/agent/extensions/runtime-parity.ts).
+// Managed by chezmoi (source: home/dot_pi/agent/exact_extensions/runtime-parity.ts).
 // Pi runtime defaults and safety hooks that mirror the shared Cursor contracts.
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"

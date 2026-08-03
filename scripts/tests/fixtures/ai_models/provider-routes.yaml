@@ -1,0 +1,4 @@
+provider_models:
+  - provider: "openrouter"
+    id: "provider-model-a"
+    recommended: true

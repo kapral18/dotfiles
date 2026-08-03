@@ -29,6 +29,9 @@ ALIASES = {
 }
 DEPTH_EFFORT = {"fast": "low", "balanced": "medium", "deep": "high"}
 MODEL_MIRROR_DISPLAY_PATH = "~/.config/ai/model-mirrors.v1.json"
+OPENROUTER_PROVIDER = "openrouter"
+OPENROUTER_MODEL = "openai/gpt-5.2"
+OPENROUTER_SELECTOR = f"{OPENROUTER_PROVIDER}/{OPENROUTER_MODEL}"
 
 
 class PlanError(ValueError):
@@ -639,6 +642,51 @@ def _depth_transport(
     return Transport("advisory", note=note), selection.model
 
 
+def _enforce_openrouter_selection(
+    command: ParsedCommand,
+    selection: AvailabilitySelection,
+    depth: ResolvedField,
+) -> tuple[AvailabilitySelection, bool]:
+    """Return a pinned Pi selection and whether the Pi thinking flag must be emitted."""
+    # The pin is Pi's *default* route, not a claim over every provider-less launch: Pi still ships
+    # the llama-cpp `local`/`local-max` models, and a bare `,ai pi` must keep its depth dial. Only
+    # an explicit OpenRouter provider, or an unconstrained launch with neither model nor depth,
+    # takes the pin; anything else falls through to normal resolution.
+    pi = command.harness == "pi"
+    openrouter_asked = selection.provider == OPENROUTER_PROVIDER or selection.model in {
+        OPENROUTER_MODEL,
+        OPENROUTER_SELECTOR,
+    }
+    unconstrained = selection.provider is None and selection.model is None and not depth.explicit
+    if pi and (openrouter_asked or unconstrained):
+        if selection.model not in {None, OPENROUTER_MODEL, OPENROUTER_SELECTOR}:
+            raise PlanError(f"OpenRouter is pinned to {OPENROUTER_MODEL}; use another provider for {selection.model!r}")
+        if depth.explicit:
+            raise PlanError("OpenRouter is pinned to high effort; --depth cannot override it")
+        policy = Provenance("route-policy", "OpenRouter GPT-5.2 pin")
+        return (
+            AvailabilitySelection(
+                model=OPENROUTER_MODEL,
+                provider=OPENROUTER_PROVIDER,
+                model_provenance=policy,
+                provider_provenance=policy,
+                model_is_explicit=False,
+                provider_is_explicit=False,
+                availability=selection.availability,
+            ),
+            True,
+        )
+
+    if selection.model is not None and selection.model.startswith(f"{OPENROUTER_PROVIDER}/"):
+        if selection.model != OPENROUTER_SELECTOR:
+            raise PlanError(
+                f"OpenRouter is pinned to {OPENROUTER_SELECTOR}; use another provider for {selection.model!r}"
+            )
+        if depth.explicit:
+            raise PlanError("OpenRouter is pinned to high effort; --depth cannot override it")
+    return selection, False
+
+
 def _hard_transport(
     harness: str,
     field: ResolvedField,
@@ -707,7 +755,16 @@ def resolve_plan(
     selection = adapter.resolve(command.harness, command.model, command.provider)
     fields = {name: _resolve_axis(command, name) for name in DEFAULT_AXES}
 
-    depth_transport, model = _depth_transport(command, fields["depth"], selection, capability)
+    selection, pin_pi_effort = _enforce_openrouter_selection(command, selection, fields["depth"])
+    if pin_pi_effort:
+        depth_transport = Transport(
+            "applied",
+            argv=("--thinking", "high"),
+            note="OpenRouter route pins Pi thinking=high",
+        )
+        model = selection.model
+    else:
+        depth_transport, model = _depth_transport(command, fields["depth"], selection, capability)
     execution_transport = _hard_transport(command.harness, fields["execution"], capability.execution)
     connectivity_transport = _connectivity_transport(command.harness, fields["connectivity"], capability)
     fields["depth"] = _with_transport(fields["depth"], depth_transport)

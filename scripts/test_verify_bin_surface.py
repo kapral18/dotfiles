@@ -58,7 +58,7 @@ class TestVerifyBinSurface(unittest.TestCase):
         import verify_bin_surface
 
         assert verify_bin_surface._mermaid_mentions_command('L[",w/main.sh"]\n', "w")
-        assert not verify_bin_surface._mermaid_mentions_command('A[",copilot-cloudflare"]\n', "copilot")
+        assert not verify_bin_surface._mermaid_mentions_command('A[",copilot-openrouter"]\n', "copilot")
 
     def test_accepts_command_library_with_matching_command(self):
         import verify_bin_surface
@@ -147,7 +147,7 @@ class TestVerifyBinSurface(unittest.TestCase):
                 "complete -c ,copilot --no-files\n"
             )
             (root / "docs/topics/workflow/custom-commands/catalog.md").write_text(
-                "| `,copilot-cloudflare` | Variant |\n"
+                "| `,copilot-openrouter` | Variant |\n"
             )
             (root / ".mermaids/07c-bin-commands.mmd").write_text('A[",copilot"]\n')
 
@@ -170,7 +170,7 @@ class TestVerifyBinSurface(unittest.TestCase):
                 "complete -c ,copilot --no-files\n"
             )
             (root / "docs/topics/workflow/custom-commands/catalog.md").write_text("| `,copilot` | Base |\n")
-            (root / ".mermaids/07c-bin-commands.mmd").write_text('A[",copilot-cloudflare"]\n')
+            (root / ".mermaids/07c-bin-commands.mmd").write_text('A[",copilot-openrouter"]\n')
 
             failures = verify_bin_surface.check_bin_surface(root)
 

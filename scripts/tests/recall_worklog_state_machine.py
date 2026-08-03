@@ -380,7 +380,7 @@ def main() -> int:
         "slug": "depth-recall-worklog-queue",
         "target_files": [
             "home/exact_dot_agents/exact_hooks/executable_perturn_recall.py",
-            "home/dot_pi/agent/extensions/ai-kb-recall.ts",
+            "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts",
             "scripts/worklog_queue.py",
             "home/exact_dot_agents/exact_hooks/executable_worklog_recorder.py",
             "home/exact_dot_agents/exact_hooks/executable_worklog_dispatcher.sh",

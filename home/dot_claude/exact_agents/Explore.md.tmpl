@@ -1,7 +1,7 @@
 ---
 name: Explore
 description: Read-only search agent for broad fan-out searches; locates code and reports conclusions without editing.
-model: "{{ .model_tier_map.claude_code.gruntwork.model }}"
+model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claude_code" "agent" "Explore") }}"
 tools: Read, Grep, Glob, Bash
 ---
 

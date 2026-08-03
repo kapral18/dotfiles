@@ -1,8 +1,8 @@
-{{- /* model frontmatter is rendered from the model registries in home/.chezmoidata/ai_models.yaml; edit the registry + chezmoi apply, never this file */ -}}
+{{- /* model frontmatter is rendered from the model registries in home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 name: researcher
 description: Delegate source-first investigation of an EXTERNAL/public GitHub repo, library, or tool to an isolated context. Use when the question is "how does <third-party project> work" or the user gives a repo/file/directory URL to inspect. Not for the current repo/worktree and not for product/account/runtime state.
-model: "{{ .model_tier_map.pi.routine_edit.model }}"
+model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "pi" "agent" "researcher") }}"
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: false

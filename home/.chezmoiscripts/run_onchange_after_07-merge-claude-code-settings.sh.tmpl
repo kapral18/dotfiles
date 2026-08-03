@@ -10,11 +10,10 @@ set -euo pipefail
 # chezmoi_lib.sh hash: {{ include "../scripts/chezmoi_lib.sh" | sha256sum }}
 # managed_config_manifest.py hash: {{ include "../scripts/managed_config_manifest.py" | sha256sum }}
 # generated_artifact_ledger.py hash: {{ include "../scripts/generated_artifact_ledger.py" | sha256sum }}
-{{- if eq .isWork true }}
-# model_tier_map.claude_code.orchestration_work hash: {{ .model_tier_map.claude_code.orchestration_work | toJson | sha256sum }}
-{{- else }}
-# model_tier_map.claude_code.orchestration_personal hash: {{ .model_tier_map.claude_code.orchestration_personal | toJson | sha256sum }}
-{{- end }}
+{{- /* shfmt parses this file as shell, and a parenthesised template call trips its lexer. */}}
+{{- $orchestrate := .agent_categories.orchestrate }}
+{{- $band := index .model_bands.claude_code $orchestrate.band }}
+# model_bands.claude_code orchestrate band hash: {{ $band | toJson | sha256sum }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh
@@ -24,19 +23,15 @@ is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
 profile="{{ if eq .isWork true }}work{{ else }}personal{{ end }}"
 src="$(chezmoi_pick_src "$is_work" "$source_dir" "dot_claude/settings.work.json" "dot_claude/settings.personal.json")"
 
-# The orchestrator's own default model/effort is centrally declared in
-# ai_models.yaml's model_tier_map (see docs/topics/ai-assistants/model-tiering.md)
-# rather than hand-maintained separately in each static settings.*.json. Patch both
-# fields from the rendered registry values before installing. include() does not
-# recursively render .tmpl content, so this substitution happens here, at apply time,
-# not by making settings.*.json themselves .tmpl files.
-{{- if eq .isWork true }}
-tier_model="{{ .model_tier_map.claude_code.orchestration_work.model }}"
-tier_effort="{{ .model_tier_map.claude_code.orchestration_work.effort }}"
-{{- else }}
-tier_model="{{ .model_tier_map.claude_code.orchestration_personal.model }}"
-tier_effort="{{ .model_tier_map.claude_code.orchestration_personal.effort }}"
-{{- end }}
+# The main session is the `orchestrate` category, so its own default model/effort resolves
+# through .chezmoidata/ai_models/tiering.yaml (see docs/topics/ai-assistants/model-tiering.md)
+# rather than being hand-maintained in each static settings.*.json. Work and personal used to
+# carry separate rows that never differed; both now read the same band. Patch both fields from
+# the rendered registry values before installing. include() does not recursively render .tmpl
+# content, so this substitution happens here, at apply time, not by making settings.*.json
+# themselves .tmpl files.
+tier_model="{{ $band.model }}"
+tier_effort="{{ $band.effort }}"
 patched="$(mktemp)"
 trap 'rm -f "$patched"' EXIT
 jq --arg model "$tier_model" --arg effort "$tier_effort" \

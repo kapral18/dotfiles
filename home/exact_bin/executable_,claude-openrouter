@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Description: Launch Claude Code through OpenRouter's Anthropic-Messages endpoint.
+
+set -euo pipefail
+
+if ! command -v claude >/dev/null 2>&1; then
+  echo "Error: claude CLI not found on PATH." >&2
+  exit 127
+fi
+
+api_key="${OPENROUTER_API_KEY:-}"
+if [[ -z "$api_key" ]] && command -v pass >/dev/null 2>&1; then
+  api_key="$(pass show openrouter/api/token 2>/dev/null | tr -d '\n')"
+fi
+if [[ -z "$api_key" ]]; then
+  echo "Error: set OPENROUTER_API_KEY or pass entry openrouter/api/token." >&2
+  exit 1
+fi
+
+readonly OPENROUTER_MODEL="openai/gpt-5.2"
+readonly OPENROUTER_EFFORT="high"
+
+args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --model | -m | --model=* | --effort | --effort=* | --fallback-model | --fallback-model=* | --agents | --agents=*)
+    echo "Error: ,claude-openrouter pins OpenRouter to $OPENROUTER_MODEL at $OPENROUTER_EFFORT effort; $1 is not supported." >&2
+    exit 2
+    ;;
+  --)
+    args+=("$1")
+    shift
+    args+=("$@")
+    break
+    ;;
+  *)
+    args+=("$1")
+    shift
+    ;;
+  esac
+done
+
+# Claude Code appends /v1/messages, so the base URL stops at /api. OpenRouter answers
+# that path with the Anthropic Messages schema, usage block included.
+# All tier and delegated-agent aliases resolve to the same discounted model. This wrapper is a
+# strict route, so inherited environment variables and CLI model/effort flags cannot escape it.
+export ANTHROPIC_MODEL="$OPENROUTER_MODEL"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_MODEL"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="$OPENROUTER_MODEL"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OPENROUTER_MODEL"
+export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_MODEL"
+export CLAUDE_CODE_DISABLE_THINKING=1
+export CLAUDE_CODE_EFFORT_LEVEL="$OPENROUTER_EFFORT"
+export ANTHROPIC_BASE_URL="https://openrouter.ai/api"
+export ANTHROPIC_AUTH_TOKEN="$api_key"
+export ANTHROPIC_API_KEY=""
+unset ANTHROPIC_CUSTOM_HEADERS
+
+exec claude --model "$OPENROUTER_MODEL" --effort "$OPENROUTER_EFFORT" "${args[@]}"

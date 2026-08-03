@@ -108,15 +108,20 @@ class TestMergeCopilotSettings(unittest.TestCase):
                 self.assertIn("Error:", result.stderr)
 
     def test_SHOULD_declare_builtin_agent_model_overrides(self):
+        # Copilot has no agent files, so settings.json is the only place a built-in's band lands.
+        # The picks themselves come from the model registry; what this asserts is that the merged
+        # settings still carry an override for every built-in the band registry prices.
+        import ai_models
+
+        registry = REPO / "home/.chezmoidata/ai_models"
         settings = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text())
         agents = settings["subagents"]["agents"]
 
-        self.assertEqual(agents["explore"]["model"], "gpt-5.3-codex")
-        self.assertEqual(agents["task"]["model"], "gpt-5.3-codex")
-        self.assertEqual(agents["general-purpose"]["model"], "gpt-5.5")
-        self.assertEqual(agents["research"]["model"], "gpt-5.5")
-        self.assertEqual(agents["code-review"]["model"], "claude-opus-5")
-        self.assertEqual(agents["security-review"]["model"], "claude-opus-5")
+        for name in ("explore", "task", "general-purpose", "research", "code-review", "security-review"):
+            pick = ai_models.resolve_agent_model(registry, "copilot", name)
+            self.assertIsNotNone(pick, f"{name} is not bound to a category")
+            self.assertEqual(agents[name]["model"], pick["model"])
+            self.assertEqual(agents[name]["effortLevel"], pick["effort"])
 
     def test_SHOULD_wire_the_typed_reconciler_into_the_hash_gated_hook(self):
         hook = (REPO / "home/.chezmoiscripts/run_onchange_after_07-merge-copilot-config.sh.tmpl").read_text()

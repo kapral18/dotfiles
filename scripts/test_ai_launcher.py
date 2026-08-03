@@ -104,17 +104,17 @@ class TestAiLauncher(unittest.TestCase):
             self.assertFalse(marker.exists())
 
     def test_when_aliases_expand_they_preserve_axis_semantics(self) -> None:
-        plan = self.dry_plan("pi", "--alias", "audit")
-        unsupported_offline = self.run_ai("pi", "--alias", "offline", "--dry-run")
+        plan = self.dry_plan("codex", "--alias", "audit")
+        unsupported_offline = self.run_ai("codex", "--alias", "offline", "--dry-run")
 
         self.assertEqual("deep", plan["fields"]["depth"]["value"])
         self.assertEqual("readonly", plan["fields"]["execution"]["value"])
         self.assertEqual("online", plan["fields"]["connectivity"]["value"])
         self.assertEqual("alias", plan["fields"]["depth"]["provenance"]["kind"])
         self.assertEqual("alias:audit", plan["fields"]["execution"]["provenance"]["source"])
-        self.assertIn("read,grep,find,ls", plan["leaf"]["argv"])
+        self.assertIn("--ask-for-approval", plan["leaf"]["argv"])
         self.assertEqual(2, unsupported_offline.returncode)
-        self.assertIn("pi does not support explicit connectivity=offline", unsupported_offline.stderr)
+        self.assertIn("codex does not support explicit connectivity=offline", unsupported_offline.stderr)
 
     def test_when_an_explicit_value_matches_an_alias_it_wins_provenance(self) -> None:
         plan = self.dry_plan(
@@ -254,6 +254,8 @@ class TestAiLauncher(unittest.TestCase):
             "codex": ([], "applied", 'model_reasoning_effort="low"'),
             "gemini": ([], "advisory", None),
             "opencode": ([], "advisory", None),
+            # Pi's OpenRouter pin owns the *default* route only, so an explicit --depth still
+            # reaches Pi's --thinking flag; only an explicit OpenRouter provider rejects it.
             "pi": ([], "applied", "--thinking"),
             "copilot": ([], "applied", "--effort"),
         }
@@ -273,32 +275,44 @@ class TestAiLauncher(unittest.TestCase):
         self.assertIn("explicit model", plan["fields"]["depth"]["transport"]["note"])
         self.assertNotIn("--model", plan["leaf"]["argv"])
 
+    def test_when_pi_names_a_non_openrouter_model_the_pin_does_not_claim_it(self) -> None:
+        # The pin is the default route, not a claim over every provider-less launch: pi still ships
+        # the llama-cpp `local`/`local-max` models, so naming one must not be read as OpenRouter.
+        for model in ("local", "local-max"):
+            with self.subTest(model=model):
+                plan = self.dry_plan("pi", "--model", model)
+
+                self.assertEqual(model, plan["selection"]["model"]["value"])
+                self.assertNotIn("openai/gpt-5.2", plan["leaf"]["argv"])
+
     def test_when_provider_is_explicit_only_verified_harness_support_is_used(self) -> None:
-        pi = self.dry_plan("pi", "--provider", "openrouter", "--model", "openai/gpt-5.5")
-        missing_model = self.run_ai("pi", "--provider", "openrouter", "--dry-run")
+        pi = self.dry_plan("pi", "--provider", "openrouter")
+        other_model = self.run_ai("pi", "--provider", "openrouter", "--model", "openai/gpt-5.5", "--dry-run")
         empty_model = self.run_ai("pi", "--provider", "openrouter", "--model", "", "--dry-run")
         unsupported = self.run_ai("claude", "--provider", "openrouter", "--dry-run")
 
         self.assertEqual(
-            [",ai-selection", "--provider", "openrouter", "--model", "openai/gpt-5.5"],
+            [",ai-selection", "--provider", "openrouter", "--model", "openai/gpt-5.2"],
             pi["selection"]["transport_trace"],
         )
         self.assertIn("--provider", pi["leaf"]["argv"])
-        self.assertEqual(2, missing_model.returncode)
-        self.assertIn("pi explicit provider requires a concrete model", missing_model.stderr)
+        self.assertIn("--thinking", pi["leaf"]["argv"])
+        self.assertIn("high", pi["leaf"]["argv"])
+        self.assertEqual(2, other_model.returncode)
+        self.assertIn("OpenRouter is pinned", other_model.stderr)
         self.assertEqual(2, empty_model.returncode)
-        self.assertIn("pi explicit provider requires a concrete model", empty_model.stderr)
+        self.assertIn("OpenRouter is pinned", empty_model.stderr)
         self.assertEqual(2, unsupported.returncode)
         self.assertIn("claude does not accept an explicit provider", unsupported.stderr)
 
-    def test_when_availability_adapter_supplies_pi_model_provider_provenance_is_preserved(self) -> None:
+    def test_when_availability_adapter_supplies_pi_model_the_openrouter_policy_wins(self) -> None:
         core = load_core()
 
         class FakeAvailability:
             def resolve(self, harness, requested_model, requested_provider):
                 self.request = (harness, requested_model, requested_provider)
                 return core.AvailabilitySelection(
-                    model="openai/gpt-5.5",
+                    model="openai/gpt-5.2",
                     provider=requested_provider,
                     model_provenance=core.Provenance("adapter", "deterministic-model"),
                     provider_provenance=core.Provenance("option", "--provider"),
@@ -312,11 +326,29 @@ class TestAiLauncher(unittest.TestCase):
 
         self.assertEqual(("pi", None, "openrouter"), adapter.request)
         self.assertEqual(
-            ("--provider", "openrouter", "--model", "openai/gpt-5.5"),
+            ("--provider", "openrouter", "--model", "openai/gpt-5.2"),
             plan.selection.transport_args,
         )
-        self.assertEqual("deterministic-model", plan.selection.model_provenance.source)
+        self.assertEqual("OpenRouter GPT-5.2 pin", plan.selection.model_provenance.source)
         self.assertFalse(plan.selection.model_is_explicit)
+        self.assertIn("--thinking", plan.actual_argv)
+        self.assertIn("high", plan.actual_argv)
+
+    def test_when_openrouter_is_selected_depth_and_non_terra_models_are_rejected(self) -> None:
+        # Only an *explicit* OpenRouter selection is pinned. A bare `,ai pi --depth` is not a
+        # request for OpenRouter, so it keeps Pi's own --thinking dial instead of failing.
+        depth = self.run_ai("pi", "--provider", "openrouter", "--depth", "deep", "--dry-run")
+        other_opencode_model = self.run_ai(
+            "opencode",
+            "--model",
+            "openrouter/openai/gpt-5.5",
+            "--dry-run",
+        )
+
+        self.assertEqual(2, depth.returncode)
+        self.assertIn("OpenRouter is pinned to high effort", depth.stderr)
+        self.assertEqual(2, other_opencode_model.returncode)
+        self.assertIn("OpenRouter is pinned to openrouter/openai/gpt-5.2", other_opencode_model.stderr)
 
     def test_when_availability_adapter_supplies_a_model_the_core_uses_the_seam(self) -> None:
         core = load_core()

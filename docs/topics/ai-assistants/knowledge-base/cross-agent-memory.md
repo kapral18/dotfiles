@@ -82,5 +82,5 @@ Unset/invalid → `balanced`.
 ## Sources and verification
 
 - [`exact_k-ai-kb/readonly_SKILL.md`](../../../../home/exact_dot_agents/exact_skills/exact_k-ai-kb/readonly_SKILL.md)
-- [`ai-kb-recall.ts`](../../../../home/dot_pi/agent/extensions/ai-kb-recall.ts), `~/.agents/hooks/perturn_recall.py`
+- [`ai-kb-recall.ts`](../../../../home/dot_pi/agent/exact_extensions/ai-kb-recall.ts), `~/.agents/hooks/perturn_recall.py`
 - [`scripts/tests/recall_worklog_state_machine.py`](../../../../scripts/tests/recall_worklog_state_machine.py)

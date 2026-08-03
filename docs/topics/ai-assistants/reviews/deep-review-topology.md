@@ -107,7 +107,7 @@ Verdicts (`confirmed`/`refuted`/`undecidable`) feed the verification ledger. A r
 
 The verifier then runs a **bounded cross-family miss sweep**. It is usually the only model from a different family that reads the diff, and the finder lanes share a family and a prompt, so what they all missed is what it is best positioned to catch. Refutation alone discards that. The sweep is scoped to the highest-risk changed surface, holds the same evidence bar as a verdict, and returns at most three `new-candidate` items or `none above the bar`. Because they have not passed the findings audit, the controller re-audits them inline before judgment and reports produced-versus-survived counts.
 
-On harnesses where the registry pairs the same family for both roles (Claude, Codex, Gemini, and now Pi/OMP), the phase runs on the lane model with refutation framing and reports `families=same (degraded)`. That degraded state is reported, never silent.
+On harnesses where the registry pairs the same family for both roles, the phase runs on the lane model with refutation framing and reports `families=same (degraded)`. That degraded state is reported, never silent. After the cost-driven ban (closed 2026-08-03) that is every harness except Copilot, which is the only one whose `max` band still carries a counter (`claude-sonnet-4.6` against OpenAI lanes).
 
 The controller aggregates the investigation outputs, then judges what to fix or draft through mode-correct review rules. For each ledger item, it either resolves it with evidence, runs the check serially when needed for judgment, marks it not needed with evidence, or reports the exact blocker/uncertainty.
 
@@ -142,7 +142,7 @@ Model selection is registry-driven and deterministic.
 | adversarial verifier                       | `agent_review_models.<harness>.verifier` — a different family than lanes, by review                                                                        |
 | verifier on single-family harnesses        | registry leaves it empty/inherit; runs on the lane model as `families=same (degraded)`                                                                     |
 
-Every repo-owned review profile's `model` frontmatter is a chezmoi template over the single `agent_review_models` block in `ai_models.yaml`. Updating a model is a one-line registry edit, and neither skills nor controllers steer models at runtime; generic fresh-eyes is the only runtime pass-through, used only where no named fresh-eyes profile exists.
+Every repo-owned review profile's `model` frontmatter is a chezmoi template over the single `agent_review_models` block in `.chezmoidata/ai_models/tiering.yaml`. Updating a model is a one-line registry edit, and neither skills nor controllers steer models at runtime; generic fresh-eyes is the only runtime pass-through, used only where no named fresh-eyes profile exists.
 
 The review's diversity comes from angles plus the cross-family verify pass; the registry keeps the family pairing a human decision instead of a launch-time inference.
 

@@ -144,7 +144,7 @@ class TestRegistryAndArguments(unittest.TestCase):
     def test_SHOULD_render_runtime_registry_from_the_canonical_provider_section(self):
         import ai_models
 
-        entries = ai_models.load_provider_models(REPO / "home/.chezmoidata/ai_models.yaml")
+        entries = ai_models.load_provider_models(REPO / "home/.chezmoidata/ai_models")
         vertex = [entry for entry in entries if entry.get("provider") == "vertex"]
 
         self.assertEqual(

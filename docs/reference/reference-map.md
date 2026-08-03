@@ -120,7 +120,7 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 
 | Script                              | Purpose                                                                                                                         |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `chezmoi_lib.sh`                    | Shared shell library for merge/apply hooks (source selection, atomic writes, checksums, LiteLLM base)                           |
+| `chezmoi_lib.sh`                    | Shared shell library for merge/apply hooks (source selection, atomic writes, checksums, artifact ledger)                        |
 | `verify_templates.py`               | Render every chezmoi `*.tmpl` via `execute-template` to catch errors early                                                      |
 | `verify_mermaids.py`                | Check `.mermaids/` file-census counts against the effective git file set (part of `make check`)                                 |
 | `verify_bin_surface.py`             | Check comma-command completions, docs tokens, catalog tokens, and library ownership                                             |
@@ -133,17 +133,13 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 | `inject_mcp_into_codex_toml.py`     | Inject MCP servers into Codex TOML at a marker line                                                                             |
 | `inject_mcp_into_opencode_jsonc.py` | Inject MCP servers into an OpenCode JSONC placeholder                                                                           |
 | `merge_claude_mcp.py`               | Surgically update only `mcpServers` in `~/.claude.json`                                                                         |
-| `merge_opencode_models.py`          | Merge LiteLLM/Azure models into OpenCode JSONC                                                                                  |
 | `merge_copilot_settings.py`         | Typed declared-over-live merge for Copilot `settings.json` (exact `subagents.agents`)                                           |
 | `managed_config_manifest.py`        | Declared-key manifests shared by the config merge hooks                                                                         |
 | `generated_artifact_ledger.py`      | Record/evaluate generated artifacts for semantic drift (backs `,doctor ai`)                                                     |
-| `ai_models.py`                      | Parse the `litellm_models` / `azure_models` sections of `ai_models.yaml`                                                        |
+| `ai_models.py`                      | Parse the registry sections under `home/.chezmoidata/ai_models/`                                                                |
 | `model_mirrors.py`                  | Generate/verify the committed model-mirror JSON + Go artifacts from the registry sources                                        |
 | `model_mirror_consumer.py`          | Stdlib fail-closed consumer views of the model mirror for deployed commands such as `,ai`                                       |
 | `model_capabilities.v1.json`        | Hand-verified harness capability snapshot consumed by model-mirror generation                                                   |
-| `generate_pi_models.py`             | Build Pi `models.json` from the shared base plus LiteLLM/Azure providers                                                        |
-| `model_display.py`                  | Shared display-name formatting for LiteLLM model entries                                                                        |
-| `probe_litellm_prompt_cache.py`     | Probe repeated-prompt and tool-schema cache signals across LiteLLM models                                                       |
 | `analyze_pi_session.py`             | Report privacy-safe token/cache/compaction/re-read metrics from one Pi v3 session                                               |
 | `ai_kb.py`                          | Local markdown + SQLite FTS5/vector knowledge base for agent runs                                                               |
 | `embed.py`                          | Stdlib embedding-service abstraction: one-shot `embed_runner.py` runs plus connect-only resident dispatch via `embed_client.py` |

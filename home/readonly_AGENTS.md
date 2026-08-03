@@ -203,6 +203,31 @@ Make success observable. Reframe tasks into observable checks when practical:
 - These loops do not override Compatibility, External Truth, Runtime Truth, or Minimal Edit Scope.
   Test-first framing does not license touching code outside the request.
 
+### 3.5 Delegation Categories
+
+Delegable work is classified before it is delegated, and the category — not a model name — is what you choose.
+Categories map to cost bands centrally, so naming one correctly is the whole cost decision; the harness resolves the model.
+
+- `search` — read-only recon: locate code, enumerate call sites, gather files. No edits, no judgment calls.
+- `mechanical` — deterministic edits with a stated rule: renames, import fixes, mechanical migrations, formatting the tool cannot do.
+- `research` — external sources and synthesis: upstream repos, docs, release notes, cross-source claims.
+- `implement` — writing or changing code where the approach is settled but the details are not.
+- `orchestrate` — holding a multi-step plan, sequencing delegations, and judging their results. The main session's own default.
+- `review` — judging a change against intent, risk, and repository rules.
+- `refute` — trying to break a conclusion. This is the only category that must not share a model family with the work it audits.
+
+Rules:
+
+- Do not run in a higher category than the work needs, and do not run below it to save tokens.
+  Miscategorized delegation is a defect in both directions: an under-banded reviewer misses defects, an over-banded search burns budget for nothing.
+- Classify by the work, not by the caller. Being invoked from an `orchestrate` session does not make a file search `orchestrate`.
+- Delegate rather than inline whenever the work is bounded, has a clear input and output, and does not need the caller's accumulated context.
+  Recon and mechanical edits are the usual wins; anything needing the full thread is not.
+- `refute` requires a different model family than the lanes it audits.
+  When the harness cannot field a second family, run it anyway with refutation framing and report the degradation;
+  never skip the phase and never hide it.
+- A skill that names a category owns that choice. Do not override a skill's category to make a run cheaper or faster.
+
 ### 3.6 Human-Visible Publication
 
 Gate every external action that emits human-visible content or mutates human-visible state:

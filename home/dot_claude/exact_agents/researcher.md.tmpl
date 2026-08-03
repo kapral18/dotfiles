@@ -1,7 +1,7 @@
 ---
 name: researcher
 description: Delegate source-first investigation of external public GitHub repos, libraries, or tools.
-model: "{{ .model_tier_map.claude_code.routine_edit.model }}"
+model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claude_code" "agent" "researcher") }}"
 readonly: false
 tools: Read, Grep, Glob, Bash
 skills:

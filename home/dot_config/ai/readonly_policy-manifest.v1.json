@@ -1,8 +1,8 @@
 {
   "version": 1,
   "output_path": "home/readonly_AGENTS.md",
-  "output_sha256": "ae584c316170fdad326b7701a757953daf48d748376b89b115a3c8af83a93219",
-  "output_bytes": 23515,
+  "output_sha256": "ab4aef7f4979dcd3cf14da7b5757f054f103b9116ca5b14691e9986f55c0f19a",
+  "output_bytes": 25536,
   "rules": [
     {
       "id": "sop.0.binding-contract",
@@ -177,6 +177,17 @@
       "consumer": "home/readonly_AGENTS.md",
       "risk_tier": "safety",
       "eval_ref": "sop.3.4.verification-loops.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.3.5.delegation-categories",
+      "sha256": "f0efa06a959476f9ff3ac639bbc35105707516210ee0ef9745e7c586b0c7edb8",
+      "bytes": 2021,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.3.5.delegation-categories.stage1-opaque",
       "model_scope": "*",
       "harness_scope": "*"
     },

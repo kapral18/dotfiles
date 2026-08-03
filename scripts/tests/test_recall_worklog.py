@@ -20,7 +20,7 @@ from _test_support import REPO
 
 SCRIPTS = REPO / "scripts"
 HOOKS = REPO / "home" / "exact_dot_agents" / "exact_hooks"
-PI_EXTENSION = REPO / "home" / "dot_pi" / "agent" / "extensions" / "ai-kb-recall.ts"
+PI_EXTENSION = REPO / "home" / "dot_pi" / "agent" / "exact_extensions" / "ai-kb-recall.ts"
 
 
 def _test_root(test_case: unittest.TestCase, prefix: str) -> Path:

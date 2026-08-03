@@ -1,0 +1,45 @@
+agent_review_models:
+  cursor:
+    lanes: "cursor-model-a"
+    verifier: "cursor-model-b"
+  copilot:
+    lanes: "gpt-model"
+    verifier: "claude-model"
+
+model_bands:
+  claude_code:
+    cheap:
+      model: "model-b"
+      effort: "high"
+      thinking: "no"
+      context: "short"
+    standard:
+      model: "model-c"
+      effort: "high"
+      thinking: "off"
+      context: "short"
+    max:
+      model: "model-a"
+      effort: "high"
+      thinking: "off"
+      context: "long"
+      counter:
+        model: "model-counter"
+        effort: "medium"
+        context: "long"
+
+agent_categories:
+  search:
+    band: "cheap"
+    family: "primary"
+  review:
+    band: "max"
+    family: "primary"
+  refute:
+    band: "max"
+    family: "counter"
+
+agent_bindings:
+  code-searcher: search
+  reviewer: review
+  adversarial-verifier: refute

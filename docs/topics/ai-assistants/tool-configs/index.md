@@ -19,7 +19,7 @@ Per-assistant config is generated from a small set of source registries and prof
 | Concern                | Source of truth                                                                        |
 | ---------------------- | -------------------------------------------------------------------------------------- |
 | MCP servers            | [`home/.chezmoidata/mcp_servers.yaml`](../../../../home/.chezmoidata/mcp_servers.yaml) |
-| Model registry         | [`home/.chezmoidata/ai_models.yaml`](../../../../home/.chezmoidata/ai_models.yaml)     |
+| Model registry         | [`home/.chezmoidata/ai_models/`](../../../../home/.chezmoidata/ai_models)              |
 | Profile merges         | explicit `.work.*` / `.personal.*` files plus merge hooks                              |
 | Shared operating rules | `~/AGENTS.md` symlink fan-out plus `~/.agents/skills/`                                 |
 

@@ -16,6 +16,7 @@
     "sop.3.2.ownership-gate",
     "sop.3.3.requirements-reset",
     "sop.3.4.verification-loops",
+    "sop.3.5.delegation-categories",
     "sop.3.5.state-machine-verification",
     "sop.3.6.human-visible-publication",
     "sop.3.workflow-and-side-effects",

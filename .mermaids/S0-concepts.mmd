@@ -19,7 +19,7 @@ graph TB
     %% ---- C2 Canonical registries (single source per concern) ---------------
     C2{{"C2 · ONE REGISTRY PER CONCERN<br/>data is declared once, consumed many ways"}}:::concept
     C2 --> I2["INVARIANT: MCP servers, AI models, packages each have<br/>exactly ONE declarative source; tool-specific configs are<br/>GENERATED, never hand-authored per tool."]:::inv
-    I2 --> R2[".chezmoidata/mcp_servers.yaml · ai_models.yaml<br/>readonly_dot_default-* lists<br/>→ scripts/ generators fan out to every tool"]:::realize
+    I2 --> R2[".chezmoidata/mcp_servers.yaml · ai_models/<br/>readonly_dot_default-* lists<br/>→ scripts/ generators fan out to every tool"]:::realize
 
     %% ---- C3 Work/Personal duality ------------------------------------------
     C3{{"C3 · isWork DUALITY<br/>one machine identity forks all behavior"}}:::concept

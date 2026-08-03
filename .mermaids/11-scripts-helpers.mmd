@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 11-scripts-helpers.mmd — Every file in scripts/ (112). Repo-side Python
+%% 11-scripts-helpers.mmd — Every file in scripts/ (101). Repo-side Python
 %% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
 %% Grouped by consumer. Shared parsers feed the generators/mergers.
 %% ============================================================================
@@ -12,9 +12,9 @@ flowchart TB
 
     subgraph SHARED["Shared parsers / libs"]
         YP["yaml_parser.py (minimal YAML, parse_scalar)"]:::shared
-        AM["ai_models.py (parse ai_models.yaml)"]:::shared
+        AM["ai_models.py (parse .chezmoidata/ai_models/*.yaml via SECTION_FILES;<br/>resolve_agent_model joins agent_bindings → agent_categories → model_bands per harness)"]:::shared
         MC["model_mirror_consumer.py (consumer_view.v1<br/>shared by repo generators and deployed ,ai)"]:::shared
-        MD["model_display.py · jsonc_dump.py (JSONC writer)"]:::shared
+        MD["jsonc_dump.py (JSONC writer)"]:::shared
         CL["chezmoi_lib.sh (thin hook interface)<br/>managed_config_manifest.py (generic literal checksum ledger)<br/>generated_artifact_ledger.py (AI ownership-aware effective state + ,doctor ai)"]:::shared
         TS["_test_support.py (puts scripts/ on sys.path for direct script tests)<br/>test_runner.py (file-sharded parallel unittest runner for make test;<br/>per-file AGENT_MEMORY_SPEC_ROOT isolation)"]:::shared
     end
@@ -32,14 +32,18 @@ flowchart TB
         MCS["merge_copilot_settings.py (recursive policy merge;<br/>exact subagents.agents ownership)"]:::mcp
     end
 
+    subgraph BANDGEN["Category model tiering (band registry projections)"]
+        GAB["generate_agent_bands.py (flattens agent_bindings × agent_categories × model_bands<br/>into dot_config/ai/readonly_agent-bands.v1.json for the band_gate hook; check|write)"]:::model
+        GSM["generate_subagent_models.py (writes the harnesses with no agent files:<br/>copilot settings.json subagents.agents + gemini settings.json agents.overrides; check|write)"]:::model
+    end
+    AM --> GAB & GSM
+    GSM --> MCS
+
     subgraph MODELGEN["Model catalog generation"]
-        GPM["generate_pi_models.py (hook 07-merge-pi → dot_pi/agent/models.json)"]:::model
-        MOM["merge_opencode_models.py (LiteLLM aliases into opencode jsonc)"]:::model
         MM["model_mirrors.py + model_capabilities.v1.json<br/>deterministic v1 available/curated/recommended mirror<br/>+ complete source provenance + fail-closed bounded live drift adapters"]:::model
-        PLP["probe_litellm_prompt_cache.py (runtime probe;<br/>repeated-prompt default + tool-schema change sequence)"]:::model
         APS["analyze_pi_session.py (offline Pi v3 active-branch aggregate:<br/>tokens/cache/compactions + structured post-compaction re-reads;<br/>privacy-safe JSON + optional failing thresholds)"]:::model
     end
-    AM --> GPM & MOM & MM
+    AM --> MM
     MC --> MM
 
     subgraph AIKB["AI knowledgebase + embeddings"]
@@ -61,7 +65,7 @@ flowchart TB
 
     subgraph POLICY["SOP policy compiler (make verify-agent-policy; Stage 1: byte-for-byte)"]
         PIR["ai_policy_ir.py (Rule dataclass + split_legacy_sop/render;<br/>one opaque rule per numbered SOP heading)"]:::ai
-        PCAP["ai_harness_capabilities.py (HarnessCapability snapshot loader;<br/>fails closed on unsupported hook/pinned-model claims)"]:::ai
+        PCAP["ai_harness_capabilities.py (HarnessCapability snapshot loader;<br/>ordered hook levels none &lt; advisory &lt; blocking &lt; mutation, mutation must name its scope;<br/>fails closed on unsupported hook/pinned-model claims)"]:::ai
         PCOMP["compile_ai_policy.py (generate/verify/verify-budgets/audit-coverage/explain/measure;<br/>atomic write-if-changed; provenance manifest emission)"]:::ai
         PEVAL["eval_ai_policy.py (plan emits cross-product cell count/cost estimate;<br/>verify-routing/verify-behavior report every cell blocked — no live requests)"]:::ai
     end
@@ -69,9 +73,9 @@ flowchart TB
     PCAP --> PCOMP
 
     subgraph TESTS["Tests + fixtures"]
-        TTOP["top-level tests: test_{agent_memory,ai_kb,ai_launcher,ai_models,analyze_pi_session,chezmoi_lib,embed,<br/>generate_mcp_configs,generate_pi_models,generated_artifact_ledger,inject_mcp_into_codex_toml,<br/>inject_mcp_into_opencode_jsonc,mcp_registry,merge_copilot_settings,merge_opencode_models,model_display,<br/>model_mirrors,pre_commit,probe_litellm_prompt_cache,runner,verify_agent_file_sizes,<br/>verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py<br/>test_omp_migration.py (OMP install/config/agents/extensions migration contract)"]:::shared
-        IT["scripts/tests/: __init__.py · copilot_agent_memory_extension.test.mjs<br/>recall_worklog_state_machine.py · test_{agent_hooks,codex_adapter,copilot_adapter,correction_detector,recall_worklog,bin_commands,codex_litellm_shim,copilot_litellm_shim,gh_picker_dispatch_state,gh_picker_lock,gh_picker_review_requests,git_gate,invariants}.py<br/>test_ai_policy_compiler.py (IR/capability/compiler offline contract tests)<br/>test_{plain_session_removal,proof_cli,session_github_cache,tmux_handoff_lifecycle,<br/>tmux_handoff_namespace,tmux_pickers,vertex_adapter,wh,worktree_delete_boundaries}.py"]:::shared
-        FX["fixtures/: {ai_models,ai_models_with_claude,mcp_servers,mcp_servers_exclude}.yaml<br/>codex_base.toml · golden_codex_personal.toml · golden_mcp_{personal,work}.json<br/>golden_opencode_{models,models_with_claude,personal}.jsonc · golden_pi_models.json<br/>model_probe_cases.json · opencode_{base,work_base}.jsonc<br/>ai_policy_eval/matrix.yaml (routing/behavioral scenario fixture, one triple per compiled rule)"]:::shared
+        TTOP["top-level tests: test_{agent_memory,ai_kb,ai_launcher,ai_models,analyze_pi_session,chezmoi_lib,embed,<br/>generate_mcp_configs,generated_artifact_ledger,inject_mcp_into_codex_toml,<br/>inject_mcp_into_opencode_jsonc,mcp_registry,merge_copilot_settings,<br/>model_mirrors,pre_commit,runner,verify_agent_file_sizes,<br/>verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py<br/>test_omp_migration.py (OMP install/config/agents/extensions migration contract)"]:::shared
+        IT["scripts/tests/: __init__.py · copilot_agent_memory_extension.test.mjs<br/>recall_worklog_state_machine.py · test_{agent_hooks,codex_adapter,copilot_adapter,correction_detector,recall_worklog,bin_commands,gh_picker_dispatch_state,gh_picker_lock,gh_picker_review_requests,git_gate,invariants}.py<br/>test_ai_policy_compiler.py (IR/capability/compiler offline contract tests)<br/>test_{plain_session_removal,proof_cli,session_github_cache,tmux_handoff_lifecycle,<br/>tmux_handoff_namespace,tmux_pickers,vertex_adapter,wh,worktree_delete_boundaries}.py"]:::shared
+        FX["fixtures/: ai_models/ + ai_models_with_claude/ (split registry dirs) · {mcp_servers,mcp_servers_exclude}.yaml<br/>codex_base.toml · golden_codex_personal.toml · golden_mcp_{personal,work}.json<br/>golden_opencode_{models,models_with_claude,personal}.jsonc · golden_pi_models.json<br/>model_probe_cases.json · opencode_{base,work_base}.jsonc<br/>ai_policy_eval/matrix.yaml (routing/behavioral scenario fixture, one triple per compiled rule)"]:::shared
     end
     MCPGEN -.verified by golden.-> TESTS
     RECON -.verified by focused tests.-> TESTS

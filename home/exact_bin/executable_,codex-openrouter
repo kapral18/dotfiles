@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Description: Launch Codex against OpenRouter's OpenAI Responses endpoint.
+
+set -euo pipefail
+
+codex_bin="${CODEX_WRAPPER_BIN:-$HOME/bin/,codex}"
+if [[ ! -x "$codex_bin" ]]; then
+  echo "Error: ,codex wrapper not found at $codex_bin. Run chezmoi apply --no-tty ~/bin/,codex." >&2
+  exit 127
+fi
+
+api_key="${OPENROUTER_API_KEY:-}"
+if [[ -z "$api_key" ]] && command -v pass >/dev/null 2>&1; then
+  api_key="$(pass show openrouter/api/token 2>/dev/null | tr -d '\n')"
+fi
+if [[ -z "$api_key" ]]; then
+  echo "Error: set OPENROUTER_API_KEY or pass entry openrouter/api/token." >&2
+  exit 1
+fi
+export OPENROUTER_API_KEY="$api_key"
+
+readonly OPENROUTER_MODEL="openai/gpt-5.2"
+readonly OPENROUTER_EFFORT="high"
+
+cli_args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --model | -m | --model=* | --effort | --reasoning-effort | --thinking | --effort=* | --reasoning-effort=* | --thinking=* | --no-thinking | -c | -c=* | --config | --config=* | --profile | --profile=*)
+    echo "Error: ,codex-openrouter pins OpenRouter to $OPENROUTER_MODEL at $OPENROUTER_EFFORT effort; $1 is not supported." >&2
+    exit 2
+    ;;
+  --)
+    cli_args+=("$1")
+    shift
+    cli_args+=("$@")
+    break
+    ;;
+  *)
+    cli_args+=("$1")
+    shift
+    ;;
+  esac
+done
+
+# OpenRouter answers /api/v1/responses, and Codex 0.146.0 attaches its full built-in tool set
+# behind a provider-prefixed slug there, so no wire rewriting is needed on this route.
+args=(
+  -c "model_providers.openrouter.base_url=\"https://openrouter.ai/api/v1\""
+  -c "model_providers.openrouter.name=\"OpenRouter\""
+  -c "model_providers.openrouter.env_key=\"OPENROUTER_API_KEY\""
+  -c "model_providers.openrouter.wire_api=\"responses\""
+  -c "model_provider=\"openrouter\""
+  -c "model_reasoning_effort=\"$OPENROUTER_EFFORT\""
+  --model "$OPENROUTER_MODEL"
+)
+
+# spawn_agent otherwise carries the native codex band ids, which reach OpenRouter unprefixed.
+export AGENT_BAND_MODEL_OVERRIDE="$OPENROUTER_MODEL"
+export AGENT_BAND_EFFORT_OVERRIDE="$OPENROUTER_EFFORT"
+
+exec "$codex_bin" "${args[@]}" "${cli_args[@]}"

@@ -33,11 +33,6 @@ class TestStaticModelMirrors(unittest.TestCase):
         self.assertEqual(
             set(mirror["providers"]),
             {
-                "azure-foundry",
-                "cloudflare-openai",
-                "cloudflare-workers-ai",
-                "litellm",
-                "litellm-anthropic",
                 "llama-cpp",
                 "openrouter",
                 "vertex",
@@ -72,9 +67,7 @@ class TestStaticModelMirrors(unittest.TestCase):
             set(gemini["curated"]["models"]),
         )
         self.assertNotIn("new-live", cursor["curated"]["models"])
-        self.assertIn("llm-gateway/gpt-5.6-luna", pi_recommended)
-        self.assertNotIn("llm-gateway/gpt-5.6-sol", pi_recommended)
-        self.assertNotIn("llm-gateway/claude-fable-5", pi_recommended)
+        self.assertEqual(["openrouter/openai/gpt-5.2"], pi_recommended)
 
     def test_SHOULD_encode_unknown_and_error_without_empty_success(self):
         import model_mirrors
@@ -118,17 +111,22 @@ class TestStaticModelMirrors(unittest.TestCase):
         import model_mirrors
 
         mirror = model_mirrors.build_static_mirror(REPO)
-        litellm_ids = {model["id"] for model in ai_models.load_litellm(REPO / "home/.chezmoidata/ai_models.yaml")}
+        registry = REPO / "home/.chezmoidata/ai_models"
+        pi_ids = {model["id"] for model in ai_models.load_pi_extra_models(registry)}
+        openrouter_ids = {
+            model["id"] for model in ai_models.load_provider_models(registry) if model["provider"] == "openrouter"
+        }
 
-        self.assertTrue(litellm_ids)
-        self.assertLessEqual(litellm_ids, set(mirror["providers"]["litellm"]["curated"]["models"]))
-        self.assertLessEqual(litellm_ids, set(mirror["harnesses"]["pi"]["curated"]["models"]))
+        self.assertTrue(pi_ids)
+        self.assertTrue(openrouter_ids)
+        self.assertLessEqual(pi_ids, set(mirror["harnesses"]["pi"]["curated"]["models"]))
+        self.assertLessEqual(openrouter_ids, set(mirror["providers"]["openrouter"]["curated"]["models"]))
 
     def test_SHOULD_keep_pi_review_policy_pins_in_pi_catalogs(self):
         import ai_models
         import model_mirrors
 
-        registry = REPO / "home/.chezmoidata/ai_models.yaml"
+        registry = REPO / "home/.chezmoidata/ai_models"
         mirror = model_mirrors.build_static_mirror(REPO)
         pi_curated = set(mirror["harnesses"]["pi"]["curated"]["models"])
         openrouter_curated = set(mirror["providers"]["openrouter"]["curated"]["models"])
@@ -143,11 +141,11 @@ class TestStaticModelMirrors(unittest.TestCase):
             ai_models.load_agent_review_models(registry)["pi"]["lanes"],
             ai_models.load_agent_review_models(registry)["pi"]["verifier"],
         ]
-        for bucket in ai_models.load_model_tier_map(registry)["pi"].values():
-            pins.append(bucket["model"])
-            fallback = bucket.get("fallback")
-            if fallback:
-                pins.append(fallback["model"])
+        for band in ai_models.load_model_bands(registry)["pi"].values():
+            pins.append(band["model"])
+            counter = band.get("counter")
+            if counter:
+                pins.append(counter["model"])
 
         for model in {catalog_id(pin) for pin in pins}:
             with self.subTest(model=model):
@@ -178,7 +176,7 @@ class TestStaticModelMirrors(unittest.TestCase):
         cases = {
             "typo": [{"id": "real-model", "provider": "openrouterr"}],
             "missing_provider": [{"id": "real-model"}],
-            "known_but_unrouted": [{"id": "real-model", "provider": "litellm"}],
+            "known_but_unrouted": [{"id": "real-model", "provider": "llama-cpp"}],
         }
         for name, policy in cases.items():
             with (
@@ -200,18 +198,26 @@ class TestStaticModelMirrors(unittest.TestCase):
                 if item["kind"] in {"config", "registry"}
             }
 
-        registry = "home/.chezmoidata/ai_models.yaml"
+        # Provenance names the split file that actually holds the section, not the registry dir.
+        def registry(section: str) -> tuple[str, str]:
+            owner = {
+                "pi_extra_models": "harness-catalogs.yaml",
+                "copilot_models": "harness-catalogs.yaml",
+                "agent_review_models": "tiering.yaml",
+            }[section]
+            return (f"home/.chezmoidata/ai_models/{owner}", section)
+
         self.assertEqual(
             sources("copilot", "curated"),
-            {(registry, "agent_review_models")},
+            {registry("agent_review_models")},
         )
         self.assertEqual(
             sources("copilot", "recommended"),
-            {(registry, "agent_review_models")},
+            {registry("agent_review_models")},
         )
         self.assertEqual(
             sources("copilot", "available"),
-            {(registry, "copilot_models")},
+            {registry("copilot_models")},
         )
 
         expected = {
@@ -226,13 +232,8 @@ class TestStaticModelMirrors(unittest.TestCase):
             "opencode": {
                 ("home/dot_config/opencode/readonly_opencode.work.jsonc", None),
                 ("home/dot_config/opencode/readonly_opencode.personal.jsonc", None),
-                (registry, "litellm_models"),
-                (registry, "azure_models"),
             },
-            "pi": {
-                (registry, "litellm_models"),
-                (registry, "pi_extra_models"),
-            },
+            "pi": {registry("pi_extra_models")},
         }
         for harness, expected_sources in expected.items():
             with self.subTest(harness=harness):
@@ -243,7 +244,10 @@ class TestStaticModelMirrors(unittest.TestCase):
         settings = json.loads((REPO / "home/dot_gemini/settings.json").read_text())
         overrides = settings["agents"]["overrides"]
 
-        self.assertEqual(overrides["codebase_investigator"]["modelConfig"]["model"], "gemini-3.6-flash")
+        # codebase_investigator is `research`, not `search`: it forms and reports conclusions, which
+        # is the judgment `search` excludes, so it takes the standard band. cli_help reads `--help`
+        # and reports what it says, which is the one genuinely judgment-free job here.
+        self.assertEqual(overrides["codebase_investigator"]["modelConfig"]["model"], "gemini-3.1-pro-preview")
         self.assertEqual(overrides["cli_help"]["modelConfig"]["model"], "gemini-3.6-flash")
         self.assertEqual(overrides["generalist"]["modelConfig"]["model"], "gemini-3.1-pro-preview")
         self.assertEqual(overrides["browser_agent"]["modelConfig"]["model"], "gemini-3.1-pro-preview")
@@ -260,7 +264,7 @@ class TestStaticModelMirrors(unittest.TestCase):
         fish_source = (REPO / "home/dot_config/fish/functions/readonly___comma_provider_models.fish").read_text()
 
         self.assertIn("model-mirrors.v1.json", fish_source)
-        for provider in ("openrouter", "cloudflare-workers-ai", "cloudflare-openai", "vertex"):
+        for provider in ("openrouter", "vertex"):
             for model in mirror["providers"][provider]["curated"]["models"]:
                 self.assertNotIn(model, fish_source)
 
@@ -439,10 +443,7 @@ class TestLiveModelMirrorDrift(unittest.TestCase):
                     },
                 ]
             },
-            "provider:litellm": lambda value: {"data": [{"id": "valid-model"}, {"id": value}]},
-            "provider:cloudflare-openai": lambda value: {"data": [{"id": "valid-model"}, {"id": value}]},
             "provider:llama-cpp": lambda value: {"data": [{"id": "valid-model"}, {"id": value}]},
-            "provider:cloudflare-workers-ai": lambda value: {"result": [{"name": "@cf/valid-model"}, {"name": value}]},
         }
         for target, payload in payloads.items():
             for invalid_id in ("not a model id", 42):
@@ -548,29 +549,27 @@ class TestLiveModelMirrorDrift(unittest.TestCase):
 
         mirror = model_mirrors.build_static_mirror(REPO)
         self.assertEqual(
-            mirror["providers"]["litellm"]["live_probe"]["max_response_bytes"],
+            mirror["providers"]["openrouter"]["live_probe"]["max_response_bytes"],
             model_mirrors.MAX_HTTP_RESPONSE_BYTES,
         )
         fetch = mock.Mock(side_effect=RuntimeError("transport leaked SENSITIVE-FIXTURE-TEXT"))
         with mock.patch.dict(
             os.environ,
             {
-                "LITELLM_API_BASE": "https://litellm.invalid/v1",
-                "LITELLM_PROXY_KEY": "SENSITIVE-FIXTURE-TEXT",
+                "OPENROUTER_API_KEY": "SENSITIVE-FIXTURE-TEXT",
             },
             clear=False,
         ):
             result = model_mirrors.probe_target(
                 mirror,
-                "provider:litellm",
+                "provider:openrouter",
                 fetch_json=fetch,
             )
 
         self.assertEqual(result["status"], "unknown")
         self.assertNotIn("SENSITIVE-FIXTURE-TEXT", json.dumps(result))
         args, _kwargs = fetch.call_args
-        self.assertEqual(args[0], "https://litellm.invalid/v1/models")
-        self.assertEqual(args[1]["Authorization"], "Bearer SENSITIVE-FIXTURE-TEXT")
+        self.assertEqual(args[0], "https://openrouter.ai/api/v1/models")
         self.assertLessEqual(args[2], 10)
 
         response = mock.MagicMock()

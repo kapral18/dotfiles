@@ -28,6 +28,7 @@ from unittest import mock
 from urllib.request import Request, urlopen
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
+import ai_models
 from _test_support import (
     ARTIFACT_COMMAND,
     CODEX_COMMAND,
@@ -37,6 +38,9 @@ from _test_support import (
     REPO,
     modern_bash,
 )
+
+# Every OpenRouter route runs this one model; see docs/topics/ai-assistants/tool-configs/other-harnesses.md.
+OPENROUTER_PIN = "openai/gpt-5.2"
 
 
 def _load_artifact_command():
@@ -2023,144 +2027,211 @@ class TestVertexWrappers(unittest.TestCase):
                     ]
 
 
-class TestLitellmWrappers(unittest.TestCase):
-    """WHEN launching Claude or Codex through the LiteLLM gateway."""
+class TestOpenRouterWrappers(unittest.TestCase):
+    """WHEN launching Claude or Codex through OpenRouter."""
 
     def test_SHOULD_clear_claude_api_credentials(self):
-        source = (REPO / "home/exact_bin/executable_,claude-litellm").read_text()
+        source = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()
         assert 'export ANTHROPIC_API_KEY=""' in source
-        assert 'export ANTHROPIC_AUTH_TOKEN="$litellm_api_key"' in source
+        assert 'export ANTHROPIC_AUTH_TOKEN="$api_key"' in source
         assert "unset ANTHROPIC_CUSTOM_HEADERS" in source
-        assert 'export CLAUDE_CODE_DISABLE_THINKING="${CLAUDE_CODE_DISABLE_THINKING:-1}"' in source
-        assert 'export CLAUDE_CODE_EFFORT_LEVEL="${CLAUDE_CODE_EFFORT_LEVEL:-high}"' in source
+        assert "export CLAUDE_CODE_DISABLE_THINKING=1" in source
+        assert 'export CLAUDE_CODE_EFFORT_LEVEL="$OPENROUTER_EFFORT"' in source
 
-    def test_SHOULD_leave_every_model_default_on_the_short_context_selector(self):
-        # `[1m]` is the only way to reach the gateway's 1M window: Claude Code
-        # short-circuits BM(e) -> 1e6 on that suffix, and bare `llm-gateway/`
-        # ids fall back to ~200k. The model_tier_map policy is short context by
-        # default, so no default here may carry the suffix.
-        source = (REPO / "home/exact_bin/executable_,claude-litellm").read_text()
-        assert "ANTHROPIC_DEFAULT_OPUS_MODEL:-llm-gateway/claude-opus-4-8}" in source
-        assert "ANTHROPIC_DEFAULT_SONNET_MODEL:-llm-gateway/claude-sonnet-5}" in source
-        assert "ANTHROPIC_DEFAULT_HAIKU_MODEL:-llm-gateway/claude-haiku-4-5}" in source
-        assert "CLAUDE_CODE_SUBAGENT_MODEL:-inherit" in source
-        code = "\n".join(line for line in source.splitlines() if not line.lstrip().startswith("#"))
-        assert "[1m]" not in code
+    def test_SHOULD_pin_every_claude_tier_to_the_discounted_openrouter_model(self):
+        # All three tiers name one id on purpose: an unpinned tier would route a background
+        # task to a list-price model while the rest of the session runs the discounted one.
+        source = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()
+        for tier in ("OPUS", "SONNET", "HAIKU"):
+            assert f'export ANTHROPIC_DEFAULT_{tier}_MODEL="$OPENROUTER_MODEL"' in source
+        assert 'export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_MODEL"' in source
 
-    def test_SHOULD_strip_openai_v1_suffix_before_claude_appends_messages_path(self):
+    def test_SHOULD_stop_the_claude_base_url_before_the_messages_path(self):
+        # Claude Code appends /v1/messages, and OpenRouter answers that path with the
+        # Anthropic Messages schema, so the exported base URL must end at /api.
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp)
             claude = bindir / "claude"
             claude.write_text('#!/usr/bin/env bash\nprintf "%s" "$ANTHROPIC_BASE_URL"\n', encoding="utf-8")
             claude.chmod(0o755)
             result = subprocess.run(
-                [modern_bash(), str(REPO / "home/exact_bin/executable_,claude-litellm")],
+                [modern_bash(), str(REPO / "home/exact_bin/executable_,claude-openrouter")],
                 capture_output=True,
                 text=True,
                 env={
                     **os.environ,
                     "PATH": f"{bindir}:{os.environ['PATH']}",
-                    "LITELLM_API_BASE": "https://litellm.invalid/v1/",
-                    "LITELLM_PROXY_KEY": "fixture-key",
+                    "OPENROUTER_API_KEY": "fixture-key",
                 },
             )
 
         assert result.returncode == 0, result.stderr
-        assert result.stdout == "https://litellm.invalid"
+        assert result.stdout == "https://openrouter.ai/api"
 
-    def test_SHOULD_configure_codex_with_the_gateway_key(self):
-        source = (REPO / "home/exact_bin/executable_,codex-litellm").read_text()
-        assert 'model_providers.${provider_id}.wire_api=\\"responses\\"' in source
-        assert 'model_providers.${provider_id}.env_key=\\"CODEX_LITELLM_API_KEY\\"' in source
-        assert 'model_provider=\\"${provider_id}\\"' in source
+    def test_SHOULD_configure_codex_with_the_openrouter_responses_route(self):
+        source = (REPO / "home/exact_bin/executable_,codex-openrouter").read_text()
+        assert 'model_providers.openrouter.base_url=\\"https://openrouter.ai/api/v1\\"' in source
+        assert 'model_providers.openrouter.env_key=\\"OPENROUTER_API_KEY\\"' in source
+        assert 'model_providers.openrouter.wire_api=\\"responses\\"' in source
+        assert 'model_provider=\\"openrouter\\"' in source
 
-    def test_SHOULD_encode_target_in_provider_id_for_visibility(self):
-        # Codex's banner/`/status` print the provider id, not the upstream model,
-        # so the wrapper names the provider after the target (dots -> dashes so
-        # the -c config key does not split) and echoes a launch line.
-        source = (REPO / "home/exact_bin/executable_,codex-litellm").read_text()
-        assert "provider_id_for_target()" in source
-        assert "printf 'gateway-%s' \"${1//./-}\"" in source
-        assert ",codex-litellm → target ${gateway_model}" in source
+    def test_SHOULD_pin_every_openrouter_launcher_to_one_model_at_high_effort(self):
+        # The route is strict rather than defaulted: inherited environment variables and direct
+        # flags cannot escape the pinned model and effort.
+        for relative in (
+            "home/exact_bin/executable_,claude-openrouter",
+            "home/exact_bin/executable_,codex-openrouter",
+            "home/exact_bin/executable_,copilot-openrouter",
+        ):
+            with self.subTest(command=relative):
+                source = (REPO / relative).read_text()
+                assert f'readonly OPENROUTER_MODEL="{OPENROUTER_PIN}"' in source
+                assert 'readonly OPENROUTER_EFFORT="high"' in source
+                assert "is not supported." in source
 
-    def test_SHOULD_route_codex_through_the_drop_params_loopback_shim(self):
-        # Codex sends tool_choice on /responses, which LiteLLM's azure_ai
-        # backend rejects for gpt-5.x. Neither drop_params server-side (not our
-        # proxy) nor a Codex request-body knob is available, so the launcher
-        # points base_url at a local shim that injects drop_params:true.
-        source = (REPO / "home/exact_bin/executable_,codex-litellm").read_text()
-        assert "CODEX_LITELLM_SHIM_MAIN:-$HOME/lib/,codex-litellm/main.py" in source
-        assert 'model_providers.${provider_id}.base_url=\\"${shim_base_url}\\"' in source
-        assert 'shim_base_url="http://127.0.0.1:${shim_port}/v1"' in source
-        # Must not exec: the EXIT trap needs to run to kill the shim.
-        assert "exec ,codex" not in source
-
-    def test_SHOULD_launch_codex_with_a_codex_family_client_slug(self):
-        # Tools attach only for a Codex-family client slug. gpt-5.2/gpt-5.2-codex
-        # are family-recognized and used directly; the gpt-5.6-* deployments ride
-        # behind a gpt-5.2-codex disguise (they attach zero tools as a client).
-        source = (REPO / "home/exact_bin/executable_,codex-litellm").read_text()
-        assert "CODEX_LITELLM_CLIENT_MODEL:-$default_client" in source
-        assert "gpt-5.2 | gpt-5.2-codex) printf '%s'" in source
-        assert "*) printf 'gpt-5.2-codex'" in source
-
-    def test_SHOULD_always_remap_wire_model_to_qualified_slug(self):
-        # The gateway key only accepts llm-gateway/-prefixed ids (a bare gpt-5.2
-        # 401s), while Codex's client slug is bare, so the shim always rewrites
-        # `model` to the fully-qualified target.
-        source = (REPO / "home/exact_bin/executable_,codex-litellm").read_text()
-        assert 'shim_target="$gateway_model"' in source
-        assert '"$upstream_origin" "$shim_target" "$effort_ceiling"' in source
-
-    def test_SHOULD_select_gateway_target_via_target_flag(self):
-        # --target picks the upstream (sol/terra/luna, gpt-5.2*, or a full slug)
-        # while tools stay attached; the flag is stripped before ,codex.
-        source = (REPO / "home/exact_bin/executable_,codex-litellm").read_text()
-        assert "--target)" in source
-        assert "--target=*)" in source
-        assert "sol | terra | luna) printf 'llm-gateway/gpt-5.6-%s'" in source
-
-    def test_SHOULD_reject_empty_gateway_target(self):
-        # An empty --target would otherwise normalize to llm-gateway/ and hit the
-        # gateway with a nonsense model id; fail closed before starting the shim.
-        source = REPO / "home/exact_bin/executable_,codex-litellm"
-        for argv in (["--target="], ["--target", ""]):
+    def test_SHOULD_hard_pin_claude_route_over_environment_values(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bindir = Path(tmp)
+            claude = bindir / "claude"
+            claude.write_text(
+                """#!/usr/bin/env bash
+printf 'model=%s\\neffort=%s\\nsubagent=%s\\nargs=%s\\n' \
+  "$ANTHROPIC_MODEL" "$CLAUDE_CODE_EFFORT_LEVEL" "$CLAUDE_CODE_SUBAGENT_MODEL" "$*"
+""",
+                encoding="utf-8",
+            )
+            claude.chmod(0o755)
             result = subprocess.run(
-                [modern_bash(), str(source), *argv],
+                [modern_bash(), str(REPO / "home/exact_bin/executable_,claude-openrouter"), "-p", "review"],
                 capture_output=True,
                 text=True,
                 env={
                     **os.environ,
-                    "LITELLM_API_BASE": "https://litellm.invalid/v1",
-                    "LITELLM_PROXY_KEY": "fixture-key",
+                    "PATH": f"{bindir}:{os.environ['PATH']}",
+                    "OPENROUTER_API_KEY": "fixture-key",
+                    "ANTHROPIC_MODEL": "other-model",
+                    "CLAUDE_CODE_EFFORT_LEVEL": "low",
+                    "CLAUDE_CODE_SUBAGENT_MODEL": "other-model",
                 },
             )
-            assert result.returncode == 2, (argv, result.stderr)
-            assert "--target requires a value" in result.stderr
 
-    def test_SHOULD_complete_gateway_target_instead_of_client_model(self):
-        completion = (REPO / "home/dot_config/fish/completions/readonly_,codex-litellm.fish").read_text()
-        assert "-l target" in completion
-        assert "sol terra luna gpt-5.2 gpt-5.2-codex" in completion
-        assert "llm-gateway/gpt-5.6-luna" in completion
-        assert "gpt-5.5" not in completion
-        assert "claude-" not in completion
-        assert "-l model" not in completion
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == [
+            f"model={OPENROUTER_PIN}",
+            "effort=high",
+            f"subagent={OPENROUTER_PIN}",
+            f"args=--model {OPENROUTER_PIN} --effort high -p review",
+        ]
 
-    def test_SHOULD_cap_effort_at_the_target_ceiling(self):
-        # gpt-5.2-codex accepts xhigh; every other deployment caps at high.
-        source = (REPO / "home/exact_bin/executable_,codex-litellm").read_text()
-        assert "gpt-5.2-codex) printf 'xhigh'" in source
-        assert "*) printf 'high'" in source
-        assert 'effort="${CODEX_LITELLM_EFFORT:-$effort_ceiling}"' in source
+    def test_SHOULD_hard_pin_codex_and_copilot_routes_over_environment_values(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bindir = Path(tmp)
+            codex = bindir / "codex"
+            codex.write_text(
+                """#!/usr/bin/env bash
+printf 'band-model=%s\\nband-effort=%s\\nargs=%s\\n' \
+  "$AGENT_BAND_MODEL_OVERRIDE" "$AGENT_BAND_EFFORT_OVERRIDE" "$*"
+""",
+                encoding="utf-8",
+            )
+            codex.chmod(0o755)
+            copilot = bindir / "copilot"
+            copilot.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            copilot.chmod(0o755)
+            copilot_wrapper = bindir / ",copilot"
+            copilot_wrapper.write_text(
+                """#!/usr/bin/env bash
+printf 'type=%s\\nmodel=%s\\nwire=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
+  "$COPILOT_PROVIDER_TYPE" "$COPILOT_MODEL" "$COPILOT_PROVIDER_WIRE_MODEL" \
+  "$AGENT_BAND_MODEL_OVERRIDE" "$AGENT_BAND_EFFORT_OVERRIDE" "$*"
+echo "base=$COPILOT_PROVIDER_BASE_URL"
+""",
+                encoding="utf-8",
+            )
+            copilot_wrapper.chmod(0o755)
+            env = {
+                **os.environ,
+                "PATH": f"{bindir}:{os.environ['PATH']}",
+                "OPENROUTER_API_KEY": "fixture-key",
+                "AGENT_BAND_MODEL_OVERRIDE": "other-model",
+                "AGENT_BAND_EFFORT_OVERRIDE": "low",
+            }
+            codex_result = subprocess.run(
+                [
+                    modern_bash(),
+                    str(REPO / "home/exact_bin/executable_,codex-openrouter"),
+                    "--ask-for-approval",
+                    "on-request",
+                ],
+                capture_output=True,
+                text=True,
+                env={**env, "CODEX_WRAPPER_BIN": str(codex), "CODEX_OPENROUTER_MODEL": "other-model"},
+            )
+            copilot_result = subprocess.run(
+                [modern_bash(), str(REPO / "home/exact_bin/executable_,copilot-openrouter"), "-p", "review"],
+                capture_output=True,
+                text=True,
+                env={
+                    **env,
+                    "COPILOT_PROVIDER_TYPE": "openai",
+                    "COPILOT_PROVIDER_BASE_URL": "https://other.example/api",
+                    "COPILOT_OPENROUTER_MODEL": "other-model",
+                },
+            )
 
-    def test_SHOULD_force_verbosity_medium_for_gpt_5_2_codex(self):
-        # gpt-5.2-codex 400s on any text.verbosity but medium; the wrapper passes
-        # a per-target override to the shim (empty for other models).
-        source = (REPO / "home/exact_bin/executable_,codex-litellm").read_text()
-        assert "verbosity_for_target()" in source
-        assert "gpt-5.2-codex) printf 'medium'" in source
-        assert '"$effort_ceiling" "$verbosity"' in source
+        assert codex_result.returncode == 0, codex_result.stderr
+        assert codex_result.stdout.splitlines()[:2] == [f"band-model={OPENROUTER_PIN}", "band-effort=high"]
+        assert f"--model {OPENROUTER_PIN}" in codex_result.stdout
+        assert 'model_reasoning_effort="high"' in codex_result.stdout
+        assert copilot_result.returncode == 0, copilot_result.stderr
+        assert copilot_result.stdout.splitlines() == [
+            "type=anthropic",
+            f"model={OPENROUTER_PIN}",
+            f"wire={OPENROUTER_PIN}",
+            f"band-model={OPENROUTER_PIN}",
+            "band-effort=high",
+            f"args=--model {OPENROUTER_PIN} --effort high -p review",
+            "base=https://openrouter.ai/api",
+        ]
+
+    def test_SHOULD_reject_direct_model_and_effort_overrides(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bindir = Path(tmp)
+            for command in ("claude", "copilot", ",copilot"):
+                fake = bindir / command
+                fake.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+                fake.chmod(0o755)
+            codex = bindir / "codex"
+            codex.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            codex.chmod(0o755)
+            wrappers = {
+                "home/exact_bin/executable_,claude-openrouter": {},
+                "home/exact_bin/executable_,codex-openrouter": {"CODEX_WRAPPER_BIN": str(codex)},
+                "home/exact_bin/executable_,copilot-openrouter": {},
+            }
+            for relative, extra_env in wrappers.items():
+                for flag in ("--model", "--effort"):
+                    with self.subTest(command=relative, flag=flag):
+                        result = subprocess.run(
+                            [modern_bash(), str(REPO / relative), flag, "other"],
+                            capture_output=True,
+                            text=True,
+                            env={
+                                **os.environ,
+                                **extra_env,
+                                "PATH": f"{bindir}:{os.environ['PATH']}",
+                                "OPENROUTER_API_KEY": "fixture-key",
+                            },
+                        )
+                        assert result.returncode == 2
+                        assert "pins OpenRouter" in result.stderr
+
+    def test_SHOULD_fail_closed_without_an_openrouter_key(self):
+        for relative in ("home/exact_bin/executable_,claude-openrouter", "home/exact_bin/executable_,codex-openrouter"):
+            with self.subTest(command=relative):
+                source = (REPO / relative).read_text()
+                assert "pass show openrouter/api/token" in source
+                assert "Error: set OPENROUTER_API_KEY or pass entry openrouter/api/token." in source
 
 
 class TestCopilotWrapper(unittest.TestCase):

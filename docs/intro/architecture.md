@@ -79,16 +79,15 @@ The same pattern applies to model definitions. For the full picture see [MCP ser
 
 All `run_onchange_after_07-merge-*` scripts source a shared shell library at [`scripts/chezmoi_lib.sh`](../../scripts/chezmoi_lib.sh) for common operations:
 
-| Function                       | Purpose                                               |
-| ------------------------------ | ----------------------------------------------------- |
-| `chezmoi_pick_src`             | Resolve work vs personal source path                  |
-| `chezmoi_write_if_changed`     | Atomic string write, skip if content unchanged        |
-| `chezmoi_install_if_changed`   | File copy via `install(1)`, skip if content unchanged |
-| `chezmoi_get_litellm_api_base` | Fetch and normalize LiteLLM URL from `pass`           |
-| `chezmoi_record_checksum`      | Record one literal target and sha256 in the manifest  |
-| `chezmoi_forget_checksum`      | Retire one literal target from the manifest           |
-| `chezmoi_record_artifact`      | Record one ownership-aware generated AI artifact      |
-| `chezmoi_forget_artifact`      | Retire one generated AI artifact id                   |
+| Function                     | Purpose                                               |
+| ---------------------------- | ----------------------------------------------------- |
+| `chezmoi_pick_src`           | Resolve work vs personal source path                  |
+| `chezmoi_write_if_changed`   | Atomic string write, skip if content unchanged        |
+| `chezmoi_install_if_changed` | File copy via `install(1)`, skip if content unchanged |
+| `chezmoi_record_checksum`    | Record one literal target and sha256 in the manifest  |
+| `chezmoi_forget_checksum`    | Retire one literal target from the manifest           |
+| `chezmoi_record_artifact`    | Record one ownership-aware generated AI artifact      |
+| `chezmoi_forget_artifact`    | Retire one generated AI artifact id                   |
 
 Two independent runtime ledgers serve different questions:
 

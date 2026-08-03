@@ -15,7 +15,7 @@ flowchart TD
     INIT[".chezmoi.toml.tmpl (init prompts)<br/>is1PasswordReady(exit1 if no) · isWork · primaryEmail<br/>primary/secondaryPublicSshKey · pgpCacheTtl<br/>homebrewPrefix(by arch) · downloadLlamaCppModels(once)"]:::data
 
     subgraph INPUTS["Static inputs (read during render)"]
-        DATA[[".chezmoidata/ai_models.yaml (litellm catalog)<br/>.chezmoidata/mcp_servers.yaml (MCP registry)"]]:::data
+        DATA[[".chezmoidata/ai_models/ (gateway · harness-catalogs · provider-routes · tiering)<br/>.chezmoidata/mcp_servers.yaml (MCP registry)"]]:::data
         EXT[[".chezmoiexternal.toml → fetched into $HOME<br/>tpm · EmmyLua.spoon · lowfi data · bat themes · yazi flavors"]]:::data
         IGN[[".chezmoiignore (skip patterns)<br/>+ per-dir .chezmoiignore (bat/btop/lazygit/nvim/karabiner/<br/>ssh/gnupg/history/hooks/codex skills)"]]:::data
     end

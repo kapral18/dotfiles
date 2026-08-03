@@ -37,17 +37,13 @@ Per-tool config sources and the `run_onchange_after_07-*` hooks that render them
 
 ## Model registry
 
-Single source of truth for LiteLLM/Azure definitions, curated Cursor models, Pi extras, provider routes, and review-lane model policy; per-tool model configs and the generated mirror derive from it. See [Model registry & routing](../topics/ai-assistants/model-registry.md).
+Single source of truth for curated Cursor models, Pi extras, provider routes, and review-lane model policy; per-tool model configs and the generated mirror derive from it. See [Model registry & routing](../topics/ai-assistants/model-registry.md).
 
-| Component               | Source path                                                                            |
-| ----------------------- | -------------------------------------------------------------------------------------- |
-| Model definitions       | [`home/.chezmoidata/ai_models.yaml`](../../home/.chezmoidata/ai_models.yaml)           |
-| YAML reader             | [`scripts/ai_models.py`](../../scripts/ai_models.py)                                   |
-| Pi models generator     | [`scripts/generate_pi_models.py`](../../scripts/generate_pi_models.py)                 |
-| OpenCode models merge   | [`scripts/merge_opencode_models.py`](../../scripts/merge_opencode_models.py)           |
-| Display-name formatting | [`scripts/model_display.py`](../../scripts/model_display.py)                           |
-| Prompt-cache probe      | [`scripts/probe_litellm_prompt_cache.py`](../../scripts/probe_litellm_prompt_cache.py) |
-| Pi session analyzer     | [`scripts/analyze_pi_session.py`](../../scripts/analyze_pi_session.py)                 |
+| Component           | Source path                                                            |
+| ------------------- | ---------------------------------------------------------------------- |
+| Model definitions   | [`home/.chezmoidata/ai_models/`](../../home/.chezmoidata/ai_models)    |
+| YAML reader         | [`scripts/ai_models.py`](../../scripts/ai_models.py)                   |
+| Pi session analyzer | [`scripts/analyze_pi_session.py`](../../scripts/analyze_pi_session.py) |
 
 ## MCP
 
