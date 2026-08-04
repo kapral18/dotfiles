@@ -1,8 +1,8 @@
 {
   "version": 1,
   "output_path": "home/readonly_AGENTS.md",
-  "output_sha256": "ab4aef7f4979dcd3cf14da7b5757f054f103b9116ca5b14691e9986f55c0f19a",
-  "output_bytes": 25536,
+  "output_sha256": "a853f2ef572267864f268c827ebfe51d76851fbb5528209a4c9e6d8f4df86101",
+  "output_bytes": 27252,
   "rules": [
     {
       "id": "sop.0.binding-contract",
@@ -50,8 +50,8 @@
     },
     {
       "id": "sop.2.1.external-truth",
-      "sha256": "4d6876b5f34282ed8c7ff2724022d29df04cdb491c1f8a084aaa0e5435c670e7",
-      "bytes": 1663,
+      "sha256": "b4ef8fdf6eea868979f72628bde7277e59883fc7a8c91df8948dae29bbb5a8bb",
+      "bytes": 2050,
       "disposition": "core",
       "consumer": "home/readonly_AGENTS.md",
       "risk_tier": "standard",
@@ -67,6 +67,17 @@
       "consumer": "home/readonly_AGENTS.md",
       "risk_tier": "standard",
       "eval_ref": "sop.2.1a.mechanism-claims-feasibility-assertions.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.2.1b.self-claims-falsification-before-assertion",
+      "sha256": "0f2ce98058755e33c4f4746fa1a661b37de12f3c245443e5253f2619bfac55ea",
+      "bytes": 1329,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.2.1b.self-claims-falsification-before-assertion.stage1-opaque",
       "model_scope": "*",
       "harness_scope": "*"
     },

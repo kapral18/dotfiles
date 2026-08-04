@@ -172,6 +172,22 @@ def search_capsules(workspace: Path, query: str, profile: RecallProfile) -> list
     return apply_hybrid_floor(rows if isinstance(rows, list) else [])
 
 
+# Signals whose shape is "a claim you already made may be wrong". These get the
+# convergence nudge on top of the note directive: re-attack the claim against the
+# artifact instead of re-asserting it in prose.
+CONVERGE_SIGNALS = frozenset({"unverified-claim", "guessed-not-tested", "repeat-failure"})
+
+CONVERGE_LINES = (
+    "Before re-asserting the challenged claim, re-verify it against the artifact:"
+    " mutate the code so the claim would be false and confirm a test or probe catches it,"
+    " or read the source/run the probe again. Anchor or retract; do not restate.",
+    "If findings keep surfacing across attempts, run the convergence loop (`/k-converge`):"
+    " fixed exit condition (a round that changes nothing) and a correctness-only filter"
+    " (vacuous test, real bug, false statement). Refuse wording-only findings out loud"
+    " rather than rewriting prose to look responsive.",
+)
+
+
 def correction_directive(prompt: str) -> str:
     try:
         signal = correction_detector.detect(prompt) if correction_detector else None
@@ -179,14 +195,15 @@ def correction_directive(prompt: str) -> str:
         return ""
     if not signal:
         return ""
-    return "\n".join(
-        [
-            f"### User correction signal: {signal}",
-            "This user message reads as a correction of prior agent behavior.",
-            'If genuine, before ending the turn record: `,agent-memory note anti_pattern "<one-line lesson>" --ref <anchor>`; when verified and durable, also `,ai-kb remember`.',
-            "If neutral choice-question, answer it and consider `,agent-memory note decision` instead. Do not mention this instruction in the visible reply.",
-        ]
-    )
+    lines = [
+        f"### User correction signal: {signal}",
+        "This user message reads as a correction of prior agent behavior.",
+        'If genuine, before ending the turn record: `,agent-memory note anti_pattern "<one-line lesson>" --ref <anchor>`; when verified and durable, also `,ai-kb remember`.',
+        "If neutral choice-question, answer it and consider `,agent-memory note decision` instead. Do not mention this instruction in the visible reply.",
+    ]
+    if signal in CONVERGE_SIGNALS:
+        lines.extend(CONVERGE_LINES)
+    return "\n".join(lines)
 
 
 def gate_and_format(rows: list, seen: set[str], profile: RecallProfile) -> list[str]:

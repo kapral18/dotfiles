@@ -37,6 +37,8 @@ The ledger is the run's spine: one row per acceptance criterion, updated as phas
 
 The verification phase adds a verdict per row: `confirmed` / `refuted` / `undecidable (needs <check>)`.
 Verdicts are evidence, not decisions: the controller flips a ledger row only after checking the refutation addresses the row's actual claim.
+A fix made in response to a verdict is itself unverified: re-run the row's check afterwards, and prefer mutating the code so the row's claim would be false to confirm the check actually catches it.
+When rows keep reopening across verification passes, run `~/.agents/skills/k-converge/SKILL.md` to bound the loop.
 
 ## Phase order (strict)
 

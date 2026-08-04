@@ -174,6 +174,22 @@ class TestPerturnRecallCorrectionInjection(unittest.TestCase):
 
         self.assertEqual(result, {})
 
+    def test_when_claim_is_challenged_should_add_convergence_nudge(self):
+        result = _run_perturn_recall(self.root, "did you really measure that?")
+
+        context = result["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("re-verify it against the artifact", context)
+        self.assertIn("/k-converge", context)
+
+    def test_when_correction_is_not_claim_shaped_should_omit_convergence_nudge(self):
+        # An unrequested-action correction is about conduct, not about a claim being wrong,
+        # so the note directive fires without the (more expensive) convergence nudge.
+        result = _run_perturn_recall(self.root, "i didn't ask you to refactor that")
+
+        context = result["hookSpecificOutput"]["additionalContext"]
+        self.assertIn(",agent-memory note anti_pattern", context)
+        self.assertNotIn("/k-converge", context)
+
     def test_when_detector_raises_should_fail_open_with_valid_hook_output(self):
         root = self.root
         workspace = root / "workspace"

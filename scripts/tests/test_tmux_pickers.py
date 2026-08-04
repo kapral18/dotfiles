@@ -577,6 +577,43 @@ exit 1
             not in result.stdout
         )
 
+    def test_pick_url_joins_url_wrapped_across_three_lines(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        expected = (
+            "https://github.com/elastic/elasticsearch/blob/"
+            "b29b887de18091afa054ada3536e2fd076aa228b/x-pack/plugin/transform/src/main/java/org/"
+            "elasticsearch/xpack/transform/action/TransformPrivilegeChecker.java#L160-L183"
+        )
+        # The third segment (`va#L160-L183.`) carries no `/`, `?`, or `#` of its
+        # own beyond the anchor, so a continuation guard keyed on those
+        # characters stops after the second segment and yields a truncated URL.
+        payload = (
+            "  │ patterns were satisfied and only the dest were missing. See TransformPrivilegeChecker:\n"
+            "  │ https://github.com/elastic/elasticsearch/blob/b29b887de18091afa054ada3536e2fd076aa228b/x-pack/plu\n"
+            "  │ gin/transform/src/main/java/org/elasticsearch/xpack/transform/action/TransformPrivilegeChecker.ja\n"
+            "  │ va#L160-L183.\n"
+        )
+
+        result = subprocess.run(
+            ["python3", str(strip_cr), "--extract-candidates"], input=payload, capture_output=True, text=True
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == [expected]
+
+    def test_pick_url_keeps_bordered_prose_off_a_line_ending_url(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        # Border evidence alone cannot tell a wrap from prose that merely ends
+        # on a URL, so a plain word after the border must not be glued on.
+        payload = "│ See https://ex.com/docs   │\n│ Then run the installer    │\n"
+
+        result = subprocess.run(
+            ["python3", str(strip_cr), "--extract-candidates"], input=payload, capture_output=True, text=True
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == ["https://ex.com/docs"]
+
     def test_pick_url_canonicalizes_discussion_anchor_offset_variants(self):
         strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
         canonical = "https://github.com/elastic/kibana/pull/281262#discussion_r3669015246"

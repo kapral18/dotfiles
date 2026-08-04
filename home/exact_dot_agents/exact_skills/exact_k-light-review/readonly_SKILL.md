@@ -59,6 +59,7 @@ do not edit code here. If a trigger surfaces mid-pass, stop and switch to `k-rev
    Otherwise, run `adversarial-verifier` over the audited candidate set when the harness supports it;
    if not, run the Candidate Refutation Ladder inline and report `adversarial=inline-degraded`.
    No finding may be fixed or reported until it survives this final pass.
+   If a fix here reopens findings and a further round is warranted, hand off to `~/.agents/skills/k-converge/SKILL.md` rather than looping ad hoc.
 6. **Fix survivors.**
    Apply the Verify-and-Fix Loop's fix, quality-gate, and Post-Review Stage steps from `judging_core.md` over the surviving findings.
    The **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage** are foregrounded for this skill.

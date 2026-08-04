@@ -6,6 +6,7 @@
     "sop.2.0.compatibility-gate",
     "sop.2.1.external-truth",
     "sop.2.1a.mechanism-claims-feasibility-assertions",
+    "sop.2.1b.self-claims-falsification-before-assertion",
     "sop.2.2.runtime-truth",
     "sop.2.3.completion",
     "sop.2.4.complete-artifacts",

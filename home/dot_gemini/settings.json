@@ -50,6 +50,16 @@
             "timeout": 10000
           }
         ]
+      },
+      {
+        "matcher": "run_shell_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.agents/hooks/premise_nudge.py",
+            "timeout": 10000
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -80,6 +90,16 @@
           {
             "type": "command",
             "command": "$HOME/.agents/hooks/worklog_dispatcher.sh",
+            "timeout": 10000
+          }
+        ]
+      },
+      {
+        "matcher": "run_shell_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.agents/hooks/premise_nudge.py",
             "timeout": 10000
           }
         ]

@@ -272,6 +272,99 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "runtime/UI/external/security/data/destructive claims, failed attempts, blockers, or multi-evidence changes",
         )
 
+    def test_converge_loop_is_manual_only_and_wired_into_sdlc_flows(self):
+        # k-converge owns the bounded re-attack loop: a fixed exit condition (a round that
+        # changes nothing) plus a correctness-only filter so rounds terminate instead of
+        # degenerating into prose churn. It stays manual-only because the model-visible
+        # description budget is effectively full; the per-turn hook carries the autonomous nudge.
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-converge/readonly_SKILL.md",
+            "disable-model-invocation: true",
+            "zero changes to code, tests, or published text",
+            "Mutate before you argue",
+            "refused, not deferred",
+            "no-op revert",
+        )
+        # The autonomous half: a challenged claim gets a re-verify + converge nudge.
+        # Every harness that reimplements the correction directive must carry it, or the
+        # nudge silently fires on one harness and not the others.
+        for impl in (
+            "home/exact_dot_agents/exact_hooks/executable_perturn_recall.py",
+            "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts",
+            "home/dot_omp/private_agent/extensions/ai-kb-recall.ts",
+        ):
+            self.assert_file_contains(
+                impl,
+                "CONVERGE_SIGNALS",
+                "unverified-claim",
+                "guessed-not-tested",
+                "repeat-failure",
+                "re-verify it against the artifact",
+                "/k-converge",
+            )
+        # Shared discipline block carries the mechanism for every harness.
+        self.assert_file_contains(
+            "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
+            "Prefer mutation over argument",
+            "/k-converge",
+        )
+        # Every SDLC surface that already runs adversarial work points at the bounded loop.
+        # Assert the load-bearing handoff phrase, not the bare token: a passing mention in a
+        # comment or changelog line would otherwise satisfy this while the wiring was gone.
+        for skill, pointer in (
+            ("k-review", "switch to `~/.agents/skills/k-converge/SKILL.md`"),
+            ("k-light-review", "hand off to `~/.agents/skills/k-converge/SKILL.md`"),
+            ("k-build", "run `~/.agents/skills/k-converge/SKILL.md`"),
+        ):
+            self.assert_file_contains(
+                f"home/exact_dot_agents/exact_skills/exact_{skill}/readonly_SKILL.md",
+                pointer,
+            )
+        # Test-quality and debugging own the mutation/no-op-revert mechanics.
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-code-quality-tests/readonly_SKILL.md",
+            "has failed for the right reason",
+            "stashes nothing",
+        )
+        # k-code-quality-tests owns the no-op-revert mechanic; debugging only points at it.
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-diagnosing-bugs/readonly_SKILL.md",
+            "revert the fix in place",
+        )
+
+    def test_every_wired_hook_command_has_a_chezmoi_source_file(self):
+        # A harness config can name `$HOME/.agents/hooks/<x>.py` for a file that was never
+        # written: the config parses, the census counts drift, and the hook silently no-ops or
+        # errors per harness at runtime. Nothing else in the suite ties the reference to the file,
+        # so this walks every config that wires hooks and resolves each command back to its
+        # chezmoi source (`exact_hooks/<x>` deploys as `~/.agents/hooks/<x>`, minus the
+        # `executable_`/`readonly_` attribute prefixes).
+        hooks_dir = REPO / "home/exact_dot_agents/exact_hooks"
+        available = set()
+        for entry in hooks_dir.iterdir():
+            name = entry.name
+            for prefix in ("executable_", "readonly_", "private_"):
+                if name.startswith(prefix):
+                    name = name[len(prefix) :]
+            available.add(name.removesuffix(".tmpl"))
+
+        configs = (
+            "home/dot_claude/settings.personal.json",
+            "home/dot_claude/settings.work.json",
+            "home/dot_claude/settings.llama-cpp.json",
+            "home/dot_codex/hooks.json.tmpl",
+            "home/dot_cursor/hooks.json",
+            "home/dot_gemini/settings.json",
+        )
+        referenced = re.compile(r"\.agents/hooks/([A-Za-z0-9_.-]+\.(?:py|sh))")
+        checked = 0
+        for config in configs:
+            text = (REPO / config).read_text(encoding="utf-8")
+            for name in referenced.findall(text):
+                checked += 1
+                assert name in available, f"{config} wires ~/.agents/hooks/{name}, which has no source in {hooks_dir}"
+        assert checked, "no hook references found; the regex or the config list is stale"
+
     def test_ai_docs_track_current_runtime_contracts(self):
         self.assert_file_contains(
             "docs/topics/ai-assistants/tool-configs/other-harnesses.md",

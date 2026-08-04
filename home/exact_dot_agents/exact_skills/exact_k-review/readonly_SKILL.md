@@ -32,6 +32,8 @@ Standard review uses a bounded reviewer roster as an execution mechanism, not as
 
 - finder work is delegated when the active harness can launch workers
 - every mode runs adversarial/refutation before acting or drafting
+- when refutation keeps yielding findings round after round, switch to `~/.agents/skills/k-converge/SKILL.md`:
+  it fixes the exit condition and the correctness-only filter so rounds terminate instead of turning into prose churn
 - live UI runs only when UI/runtime evidence is needed; use `k-deep-review` when the user asks for maximum rigor, mandatory deep orchestration, fresh-eyes/context-pack treatment, or the full PR necessity/controller graph
 
 ## Secondary Skill Escalation

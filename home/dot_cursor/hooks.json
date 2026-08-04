@@ -24,6 +24,10 @@
       {
         "command": "$HOME/.agents/hooks/worklog_dispatcher.sh",
         "timeout": 10
+      },
+      {
+        "command": "$HOME/.agents/hooks/premise_nudge.py",
+        "timeout": 10
       }
     ],
     "postToolUse": [
@@ -49,6 +53,10 @@
         "command": "$HOME/.agents/hooks/gemini-git-gate.py",
         "matcher": "\\bgit\\b",
         "failClosed": true
+      },
+      {
+        "command": "$HOME/.agents/hooks/premise_nudge.py",
+        "timeout": 10
       }
     ]
   }

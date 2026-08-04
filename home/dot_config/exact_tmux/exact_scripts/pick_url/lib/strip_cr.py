@@ -27,6 +27,7 @@ WWW_RE = re.compile(r"www\.[^\s|│┃║]+")
 IP_RE = re.compile(r"[0-9]{1,3}(?:\.[0-9]{1,3}){3}(?::[0-9]{1,5})?(?:/[^\s|│┃║]+)?")
 GIT_RE = re.compile(r"(?:ssh://)?git@[^\s|│┃║]+")
 GH_SHORTHAND_RE = re.compile(r"['\"]([_A-Za-z0-9-]*/[_.A-Za-z0-9-]*)['\"]")
+PLAIN_WORD_RE = re.compile(r"^[A-Za-z]+[.,;:!?]?$")
 TRAILING_PUNCT = "])>}`\"'.,;:!?\\"
 CODE_CITATION_SUFFIX_RE = re.compile(r"(?::\d+(?:-\d+)?){1,2}:[^/\s]*/[^\s]*$")
 LINE_RANGE_SUFFIX_RE = re.compile(r"^((?:https?|ftp|file)://.*/[^?#\s:]+):\d+(?:-\d+)?$")
@@ -67,8 +68,12 @@ def _join_wrapped_urls(text: str) -> str:
             part = next_match.group("part")
             if re.match(r"(?:https?|ftp|file)://", part):
                 break
-            url_so_far = url_match.group("url")
-            if not ("/" in part or url_so_far.endswith("/") or "?" in url_so_far or "#" in url_so_far):
+            # A render-time wrap splits a URL at an arbitrary column, so the
+            # continuation is a bare URL fragment (`gin/transform/...`, `va#L1`)
+            # rather than a word. Rejecting plain words keeps bordered prose
+            # that merely happens to end on a URL from being glued on, without
+            # requiring the fragment to carry a `/`, `?`, or `#` of its own.
+            if PLAIN_WORD_RE.match(part):
                 break
             line = f"{line[: url_match.start('trail')]}{part}{next_match.group('rest')}"
             i += 1

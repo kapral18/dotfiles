@@ -59,6 +59,10 @@ Treat unverified external behavior as unknown; never use memory, similarity, or 
 6. Resolve material unknowns before proceeding: local probes/source/tests, official docs fetched live.
 7. Ask only when required truth cannot be verified locally.
 8. Any locally verifiable assumption or guess must be verified via probes.
+   The trigger is the step that depends on it, not the moment you state it out loud:
+   a premise carried silently inside a command, a revert, a mock, a path, or a flag still needs its probe.
+   When a step's outcome would be indistinguishable between "it worked" and "the premise was wrong", verify the premise first —
+   that indistinguishability is the signal, not your confidence.
 9. Anchor every visible factual/runtime claim with a file, command/probe output, fetched doc, or explicit `Unknown because ...`.
 10. Web/doc claims need a primary-source URL and exact quote; every numeric literal in the claim must occur verbatim in that quote.
 11. Synthesize only independently verified claims; reject the unverifiable claim, not the source or entity.
@@ -74,6 +78,26 @@ Confidence-by-association is not evidence: M doing X in context A does not prove
 Verify the exact mechanism, call pattern, and local source.
 If unverified, state it as open ("X might be possible via M — unverified"), never as a basis for choosing options.
 If a design decision depends on the claim, verify it _before presenting the options_.
+
+### 2.1b Self-Claims (Falsification Before Assertion)
+
+A claim about your own work is external behavior too: "this is fixed", "the tests cover it", "I verified X", "that is not reachable", "this is blocked".
+Before asserting one, name what would make it false and check that. State the falsifier you ran, not the conclusion alone.
+
+- **Negative claims need a probe, not an argument.**
+  "Cannot happen", "not reachable", "unrelated to my change" are the easiest claims to believe and the hardest to earn.
+  Construct the case that would violate it.
+- **A test passing is not evidence the test would catch a defect.** For "the tests cover this", break the code and confirm a test fails.
+  A green suite over correct code discriminates nothing.
+- **A verification step needs its own verification.**
+  Confirm the revert actually reverted, the mutation actually applied, the flag actually took effect.
+  A no-op check reports success while testing nothing.
+- **"Blocked" is a claim.**
+  Before reporting a blocker, name the specific thing that fails and what you tried;
+  a missing version, binary, or credential is usually obtainable.
+
+Applies at assertion time, not at end of task: an unfalsified claim must not gate the next step.
+When the falsifier is not locally runnable, label the claim `unverified` and do not build on it.
 
 ### 2.2 Runtime Truth
 

@@ -105,7 +105,8 @@ Done when each ranked hypothesis is confirmed or refuted by a recorded probe res
 Write the regression test **before the fix**, but only if there is a **correct seam** —
 one where the test exercises the real bug pattern as it occurs at the call site. A too-shallow seam gives false confidence.
 **If no correct seam exists, that itself is the finding** — note it; the architecture is preventing the bug from being locked down, and it is a candidate for `~/.agents/skills/k-codebase-design/SKILL.md`.
-If a correct seam exists: turn the minimised repro into a failing test, watch it fail, apply the fix, watch it pass, then re-run the Phase 1 loop against the original (un-minimised) scenario.
+If a correct seam exists: turn the minimised repro into a failing test, watch it fail (revert the fix in place —
+see `k-code-quality-tests`), apply the fix, watch it pass, then re-run the Phase 1 loop against the original (un-minimised) scenario.
 For stateful/branch-heavy fixes, load `k-code-quality` and verify against base behaviour buckets with its state-machine verification harness.
 
 ## Phase 6 — Cleanup + post-mortem

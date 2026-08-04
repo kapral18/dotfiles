@@ -33,6 +33,12 @@ The SOP still owns required verification loops and the rule that test-first fram
 ## Validation
 
 - Run the smallest relevant test first, then broader checks when the blast radius warrants it.
+- A passing test proves nothing until it has failed for the right reason.
+  Before claiming a test covers a change, mutate the code it covers so the assertion should break, and confirm it does —
+  and that unrelated tests do not.
+- Revert/mutate **in place** from a copy.
+  `git stash` on a file whose change is already committed stashes nothing, so the suite passes vacuously and "verified by reverting" is false.
+- Waiting for async work: prefer a wait that settles the whole chain (yield a macrotask, or await the real signal) over a fixed number of ticks; a fixed count silently stops reaching the assertion when a step is added, turning every test in the block green-but-vacuous.
 - With multiple worktrees/checkouts in play, name the worktree and branch in the run description and confirm the run targets the intended one before interpreting results.
 - If a test cannot be run, state why and what evidence was verified instead.
 - Do not add snapshots or golden files unless they protect a meaningful contract.
