@@ -398,6 +398,28 @@ fi
 if [ ${#pending_wt_paths[@]} -gt 0 ]; then
   mapfile -t pending_wt_paths < <(printf '%s\n' "${pending_wt_paths[@]}" | sed '/^$/d' | LC_ALL=C sort -u)
 fi
+
+# Preflight worktrees for unsaved work (dirty files, unpushed commits) BEFORE
+# any destructive step below: session kills, pending/tombstone writes, and the
+# backgrounded `,w remove` all assume the removal will happen. Skipped paths
+# stay visible in the picker and keep their sessions.
+declare -A unsafe_wt=()
+if [ ${#pending_wt_paths[@]} -gt 0 ] && command -v ,w > /dev/null 2>&1; then
+  while IFS= read -r _p; do
+    [ -n "$_p" ] || continue
+    unsafe_wt["$_p"]=1
+  done < <(,w remove --preflight --paths "${pending_wt_paths[@]}" 2> /dev/null || true)
+  if [ ${#unsafe_wt[@]} -gt 0 ]; then
+    declare -a _safe_wt=()
+    for _p in "${pending_wt_paths[@]}"; do
+      [ -n "${unsafe_wt[$_p]+x}" ] || _safe_wt+=("$_p")
+    done
+    pending_wt_paths=(${_safe_wt[@]+"${_safe_wt[@]}"})
+    if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
+      tmux display-message -d 6000 "pick_session: skipped ${#unsafe_wt[@]} worktree(s) with unsaved work (dirty/unpushed); remove manually with ,w remove --force" 2> /dev/null || true
+    fi
+  fi
+fi
 # pending_plain_dirs is intentionally left unsorted/un-deduped: it stays
 # row-aligned with pending_plain_dir_sessions (dispatch below iterates both by
 # index). A path selected via two distinct sessions may thus appear twice;
@@ -445,6 +467,13 @@ if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
       continue
     fi
     mapfile -t paths < <(printf '%s\n' "${worktree_paths_by_root[$root]}" | sed '/^$/d' | sort -u)
+    # Drop paths the preflight above marked unsafe (keys are realpath'd the
+    # same way both lists were built, via realpath_or_self).
+    declare -a _dispatch_paths=()
+    for p in "${paths[@]}"; do
+      [ -n "${unsafe_wt[$p]+x}" ] || _dispatch_paths+=("$p")
+    done
+    paths=(${_dispatch_paths[@]+"${_dispatch_paths[@]}"})
     if [ ${#paths[@]} -gt 0 ]; then
       remove_paths_in_background "$root" "${paths[@]}"
     fi

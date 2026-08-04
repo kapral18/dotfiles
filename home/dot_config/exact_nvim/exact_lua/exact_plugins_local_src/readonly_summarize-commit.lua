@@ -43,32 +43,137 @@ local function split_lines(text)
   return lines
 end
 
-local function run(argv)
-  local ok, job_or_err = pcall(vim.system, argv, { text = true })
-  if not ok or not job_or_err then
-    return {
-      ok = false,
-      stdout_lines = {},
-      stderr_lines = { tostring(job_or_err or "Failed to start command") },
-    }
-  end
+-- Diffs larger than this are replaced with stat+hunk-headers to avoid token overflow.
+local DIFF_SIZE_LIMIT = 200000
 
-  local result = job_or_err:wait()
-  if not result then
-    return {
-      ok = false,
-      stdout_lines = {},
-      stderr_lines = { "Command terminated unexpectedly" },
-    }
+-- Insert lines into the captured buffer+row; validates buffer is still a gitcommit buffer.
+local function insert_into_buf(bufnr, row, lines)
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return
   end
+  if vim.bo[bufnr].filetype ~= "gitcommit" then
+    vim.notify("summarize-commit: buffer is no longer a gitcommit buffer", vim.log.levels.WARN)
+    return
+  end
+  -- Capture cursors first: nvim_buf_set_lines auto-shifts window cursors for
+  -- inserts above them, so adjusting afterwards would double-count.
+  local wins = {}
+  for _, win in ipairs(vim.fn.win_findbuf(bufnr)) do
+    wins[win] = vim.api.nvim_win_get_cursor(win)
+  end
+  vim.api.nvim_buf_set_lines(bufnr, row - 1, row - 1, false, lines)
+  local last = vim.api.nvim_buf_line_count(bufnr)
+  for win, cur in pairs(wins) do
+    if cur[1] >= row then
+      vim.api.nvim_win_set_cursor(win, { math.min(cur[1] + #lines, last), cur[2] })
+    end
+  end
+end
 
-  return {
-    ok = result.code == 0,
-    stdout_lines = split_lines(result.stdout),
-    stderr_lines = split_lines(result.stderr),
-    exit_code = result.code,
-    signal = result.signal,
+-- Async: run `git diff --cached`, apply size guard, call on_done(diff_text) or on_done(nil).
+-- on_done is called via vim.schedule so vim.api.* is safe inside it.
+local function get_staged_diff_async(on_done)
+  vim.system({ "git", "diff", "--cached" }, { text = true }, function(result)
+    vim.schedule(function()
+      if result.code ~= 0 then
+        vim.notify("Failed to get git diff", vim.log.levels.ERROR)
+        on_done(nil)
+        return
+      end
+
+      local out = result.stdout or ""
+
+      if #out > DIFF_SIZE_LIMIT then
+        vim.notify(
+          ("summarize-commit: diff is %d bytes (limit %d); using stat+headers instead"):format(#out, DIFF_SIZE_LIMIT),
+          vim.log.levels.WARN
+        )
+        vim.system(
+          { "git", "diff", "--cached", "--stat", "--stat-name-width=80" },
+          { text = true },
+          function(stat_result)
+            vim.schedule(function()
+              local stat_text = (stat_result.code == 0 and stat_result.stdout) or ""
+              local headers = {}
+              for line in vim.gsplit(out, "\n", { plain = true }) do
+                if
+                  line:match("^diff %-%-git ")
+                  or line:match("^%-%-%- ")
+                  or line:match("^%+%+%+ ")
+                  or line:match("^@@")
+                then
+                  table.insert(headers, line)
+                end
+              end
+              local compact = stat_text .. "\n-- hunk headers --\n" .. table.concat(headers, "\n")
+              on_done(compact)
+            end)
+          end
+        )
+        return
+      end
+
+      on_done(out)
+    end)
+  end)
+end
+
+local function read_file_lines(path)
+  local ok, lines = pcall(vim.fn.readfile, path)
+  if not ok then
+    return nil
+  end
+  return lines
+end
+
+-- Async curl POST. on_done(resp_table) is called via vim.schedule.
+local function curl_post_json_async(url, headers, payload_file, timeout, on_done)
+  timeout = timeout or 30
+
+  local body_file = os.tmpname()
+  local argv = {
+    "curl",
+    "-sS",
+    "-X",
+    "POST",
+    "--max-time",
+    tostring(timeout),
+    url,
   }
+
+  for _, hdr in ipairs(headers or {}) do
+    table.insert(argv, "-H")
+    table.insert(argv, hdr)
+  end
+
+  table.insert(argv, "--data-binary")
+  table.insert(argv, "@" .. payload_file)
+
+  table.insert(argv, "--output")
+  table.insert(argv, body_file)
+
+  table.insert(argv, "--write-out")
+  table.insert(argv, "__CURLMETA__%{http_code}|%{content_type}")
+
+  vim.system(argv, { text = true }, function(result)
+    vim.schedule(function()
+      local body_lines = read_file_lines(body_file) or {}
+      pcall(os.remove, body_file)
+
+      local stdout = result.stdout or ""
+      local status, content_type = stdout:match("__CURLMETA__(%d%d%d)|([^\r\n]*)")
+
+      on_done({
+        ok = result.code == 0,
+        exit_code = result.code,
+        signal = result.signal,
+        status = tonumber(status),
+        content_type = content_type,
+        body_lines = body_lines,
+        stderr_lines = split_lines(result.stderr),
+      })
+    end)
+  end)
 end
 
 local function write_tmp_json(tbl)
@@ -84,14 +189,6 @@ local function write_tmp_json(tbl)
     return nil
   end
   return path
-end
-
-local function read_file_lines(path)
-  local ok, lines = pcall(vim.fn.readfile, path)
-  if not ok then
-    return nil
-  end
-  return lines
 end
 
 local function take_first(lines, n)
@@ -120,21 +217,6 @@ local function truncate(text, max_len)
     return text
   end
   return text:sub(1, max_len - 3) .. "..."
-end
-
-local function insert_at_cursor(lines)
-  local row = vim.api.nvim_win_get_cursor(0)[1]
-  vim.api.nvim_buf_set_lines(0, row - 1, row - 1, false, lines)
-  vim.api.nvim_win_set_cursor(0, { row + #lines, 0 })
-end
-
-local function get_staged_diff()
-  local out = vim.fn.system("git diff --cached")
-  if vim.v.shell_error ~= 0 then
-    vim.notify("Failed to get git diff", vim.log.levels.ERROR)
-    return nil
-  end
-  return out
 end
 
 local function json_at_path(obj, path)
@@ -180,52 +262,6 @@ local function normalize_text(v)
   end
 
   return nil
-end
-
-local function curl_post_json(url, headers, payload_file, timeout)
-  timeout = timeout or 30
-
-  local body_file = os.tmpname()
-  local argv = {
-    "curl",
-    "-sS",
-    "-X",
-    "POST",
-    "--max-time",
-    tostring(timeout),
-    url,
-  }
-
-  for _, hdr in ipairs(headers or {}) do
-    table.insert(argv, "-H")
-    table.insert(argv, hdr)
-  end
-
-  table.insert(argv, "--data-binary")
-  table.insert(argv, "@" .. payload_file)
-
-  table.insert(argv, "--output")
-  table.insert(argv, body_file)
-
-  table.insert(argv, "--write-out")
-  table.insert(argv, "__CURLMETA__%{http_code}|%{content_type}")
-
-  local result = run(argv)
-  local body_lines = read_file_lines(body_file) or {}
-  pcall(os.remove, body_file)
-
-  local meta = table.concat(result.stdout_lines or {}, "\n")
-  local status, content_type = meta:match("__CURLMETA__(%d%d%d)|([^\r\n]*)")
-
-  return {
-    ok = result.ok,
-    exit_code = result.exit_code,
-    signal = result.signal,
-    status = tonumber(status),
-    content_type = content_type,
-    body_lines = body_lines,
-    stderr_lines = result.stderr_lines or {},
-  }
 end
 
 local function format_curl_transport_error(resp, timeout)
@@ -638,19 +674,28 @@ end
 
 -- ───────────────────────────── GENERIC WORKFLOW ───────────────────────────────
 local function summarize_with(provider_key)
-  local ok, err = pcall(function()
-    local cfg = providers[provider_key]
-    if not cfg then
-      vim.notify("Unknown provider: " .. tostring(provider_key), vim.log.levels.ERROR)
+  local cfg = providers[provider_key]
+  if not cfg then
+    vim.notify("Unknown provider: " .. tostring(provider_key), vim.log.levels.ERROR)
+    return
+  end
+
+  if cfg.required_env and not require_env(provider_key, cfg.required_env) then
+    return
+  end
+
+  -- Capture insertion target now, before async work; validated again at insert time.
+  local bufnr = vim.api.nvim_get_current_buf()
+  local row = vim.api.nvim_win_get_cursor(0)[1]
+
+  vim.notify("Generating commit summary...", vim.log.levels.INFO)
+
+  get_staged_diff_async(function(diff)
+    if diff == nil then
+      -- get_staged_diff_async already notified the failure.
       return
     end
-
-    if cfg.required_env and not require_env(provider_key, cfg.required_env) then
-      return
-    end
-
-    local diff = get_staged_diff()
-    if not diff or diff == "" then
+    if diff == "" then
       vim.notify("No staged changes to summarize", vim.log.levels.WARN)
       return
     end
@@ -663,98 +708,105 @@ local function summarize_with(provider_key)
       return
     end
 
-    local url = type(cfg.url) == "function" and cfg.url() or cfg.url
-    local headers = type(cfg.headers) == "function" and cfg.headers() or cfg.headers
-    local resp = curl_post_json(url, headers, payload_file, cfg.timeout)
-    pcall(os.remove, payload_file)
-
-    local parsed = decode_json(resp.body_lines)
-    if not parsed and not resp.ok then
-      local msg = ("Failed to generate summary with %s (%s)"):format(
-        provider_key,
-        format_curl_transport_error(resp, cfg.timeout)
-      )
-      vim.notify(msg, vim.log.levels.ERROR)
-      local err_preview = table.concat(take_first(resp.stderr_lines, 10), "\n")
-      if err_preview ~= "" then
-        print(err_preview)
-      end
+    local ok_setup, url_or_err, headers = pcall(function()
+      local u = type(cfg.url) == "function" and cfg.url() or cfg.url
+      local h = type(cfg.headers) == "function" and cfg.headers() or cfg.headers
+      return u, h
+    end)
+    if not ok_setup then
+      pcall(os.remove, payload_file)
+      vim.notify("Error during summarization: " .. tostring(url_or_err), vim.log.levels.ERROR)
       return
     end
+    local url = url_or_err
 
-    if not parsed then
-      local preview = table.concat(take_first(resp.body_lines, 30), "\n")
-      vim.notify(
-        ("Invalid JSON from %s (HTTP %s, %s). See :messages for body preview."):format(
+    curl_post_json_async(url, headers, payload_file, cfg.timeout, function(resp)
+      pcall(os.remove, payload_file)
+
+      local parsed = decode_json(resp.body_lines)
+      if not parsed and not resp.ok then
+        local msg = ("Failed to generate summary with %s (%s)"):format(
           provider_key,
-          tostring(resp.status or "?"),
-          tostring(resp.content_type or "?")
-        ),
-        vim.log.levels.ERROR
-      )
-      if preview ~= "" then
-        print(preview)
-      end
-      return
-    end
-
-    if resp.status and resp.status >= 400 then
-      local msg = format_api_errors(parsed) or format_generic_error(parsed) or "HTTP error"
-      vim.notify(("%s HTTP %d: %s"):format(provider_key, resp.status, msg), vim.log.levels.ERROR)
-      return
-    end
-
-    if parsed.success == false then
-      local msg = format_api_errors(parsed) or format_generic_error(parsed) or "Unknown API error"
-      vim.notify(
-        ("%s API error (HTTP %s): %s"):format(provider_key, tostring(resp.status or "?"), msg),
-        vim.log.levels.ERROR
-      )
-      return
-    end
-
-    if parsed.error ~= nil then
-      local msg = format_generic_error(parsed) or "Unknown error"
-      vim.notify(("%s API error: %s"):format(provider_key, msg), vim.log.levels.ERROR)
-      return
-    end
-
-    local text = extract_text_with_fallbacks(parsed, cfg.extract_path, cfg.extract_fallbacks)
-    if type(text) ~= "string" or text == "" then
-      local reasoning_text
-      if provider_key == "openrouter" then
-        reasoning_text = normalize_text(json_at_path(parsed, { "choices", 1, "message", "reasoning" }))
-          or normalize_text(json_at_path(parsed, { "choices", 1, "message", "reasoning_content" }))
-      end
-      if reasoning_text then
-        local extracted = extract_commit_from_reasoning(reasoning_text)
-        if type(extracted) == "string" and extracted ~= "" then
-          extracted = force_non_docs_header(normalize_commit_output(extracted), diff)
-          insert_at_cursor(vim.split(extracted, "\n"))
-          return
+          format_curl_transport_error(resp, cfg.timeout)
+        )
+        vim.notify(msg, vim.log.levels.ERROR)
+        local err_preview = table.concat(take_first(resp.stderr_lines, 10), "\n")
+        if err_preview ~= "" then
+          print(err_preview)
         end
+        return
       end
 
-      vim.notify(
-        ("Invalid response format from %s (HTTP %s). See :messages for parsed.result preview."):format(
-          provider_key,
-          tostring(resp.status or "?")
-        ),
-        vim.log.levels.ERROR
-      )
-      print(vim.inspect(parsed.result))
-      return
-    end
+      if not parsed then
+        local preview = table.concat(take_first(resp.body_lines, 30), "\n")
+        vim.notify(
+          ("Invalid JSON from %s (HTTP %s, %s). See :messages for body preview."):format(
+            provider_key,
+            tostring(resp.status or "?"),
+            tostring(resp.content_type or "?")
+          ),
+          vim.log.levels.ERROR
+        )
+        if preview ~= "" then
+          print(preview)
+        end
+        return
+      end
 
-    text = normalize_commit_output(text)
-    text = force_non_docs_header(text, diff)
+      if resp.status and resp.status >= 400 then
+        local msg = format_api_errors(parsed) or format_generic_error(parsed) or "HTTP error"
+        vim.notify(("%s HTTP %d: %s"):format(provider_key, resp.status, msg), vim.log.levels.ERROR)
+        return
+      end
 
-    insert_at_cursor(vim.split(text, "\n"))
+      if parsed.success == false then
+        local msg = format_api_errors(parsed) or format_generic_error(parsed) or "Unknown API error"
+        vim.notify(
+          ("%s API error (HTTP %s): %s"):format(provider_key, tostring(resp.status or "?"), msg),
+          vim.log.levels.ERROR
+        )
+        return
+      end
+
+      if parsed.error ~= nil then
+        local msg = format_generic_error(parsed) or "Unknown error"
+        vim.notify(("%s API error: %s"):format(provider_key, msg), vim.log.levels.ERROR)
+        return
+      end
+
+      local text = extract_text_with_fallbacks(parsed, cfg.extract_path, cfg.extract_fallbacks)
+      if type(text) ~= "string" or text == "" then
+        local reasoning_text
+        if provider_key == "openrouter" then
+          reasoning_text = normalize_text(json_at_path(parsed, { "choices", 1, "message", "reasoning" }))
+            or normalize_text(json_at_path(parsed, { "choices", 1, "message", "reasoning_content" }))
+        end
+        if reasoning_text then
+          local extracted = extract_commit_from_reasoning(reasoning_text)
+          if type(extracted) == "string" and extracted ~= "" then
+            extracted = force_non_docs_header(normalize_commit_output(extracted), diff)
+            insert_into_buf(bufnr, row, vim.split(extracted, "\n"))
+            return
+          end
+        end
+
+        vim.notify(
+          ("Invalid response format from %s (HTTP %s). See :messages for parsed.result preview."):format(
+            provider_key,
+            tostring(resp.status or "?")
+          ),
+          vim.log.levels.ERROR
+        )
+        print(vim.inspect(parsed.result))
+        return
+      end
+
+      text = normalize_commit_output(text)
+      text = force_non_docs_header(text, diff)
+
+      insert_into_buf(bufnr, row, vim.split(text, "\n"))
+    end)
   end)
-
-  if not ok then
-    vim.notify("Error during summarization: " .. tostring(err), vim.log.levels.ERROR)
-  end
 end
 
 -- ────────────────────────── PUBLIC COMMANDS ───────────────────────────────────

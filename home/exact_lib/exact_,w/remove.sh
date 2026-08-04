@@ -75,6 +75,8 @@ Interactively remove git worktrees.
 Options:
   -h, --help        Show this help message
   --paths           Remove specific worktree path(s) (skip interactive picker)
+  --force           Skip the unsaved-work preflight (dirty files, unpushed commits)
+  --preflight       With --paths: only print paths that would be skipped, remove nothing
   --tmux-notify     If running inside tmux, show progress via tmux messages
 
 Description:
@@ -96,6 +98,8 @@ EOF
 
 tmux_notify=0
 paths_mode=0
+force_remove=0
+preflight_mode=0
 paths=()
 
 while [ $# -gt 0 ]; do
@@ -106,6 +110,14 @@ while [ $# -gt 0 ]; do
       ;;
     --tmux-notify)
       tmux_notify=1
+      shift
+      ;;
+    --force)
+      force_remove=1
+      shift
+      ;;
+    --preflight)
+      preflight_mode=1
       shift
       ;;
     --paths)
@@ -135,11 +147,6 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-default_branch="$(_comma_w_detect_default_branch)"
-
-parent_dir=$(_get_worktree_parent_dir)
-parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
-
 notify() {
   local msg="$1"
   echo "$msg"
@@ -147,6 +154,68 @@ notify() {
     tmux display-message -d 6000 "$msg" 2> /dev/null || true
   fi
 }
+
+_check_worktree_safe_to_remove() {
+  local path="$1"
+  local detached="$2"
+  local issues=()
+
+  # -unormal (git's default) so untracked-but-not-ignored files count as unsaved
+  # work too; -uno would silently allow deleting a worktree of only new files.
+  local dirty_files
+  dirty_files="$(git -C "$path" status --porcelain -unormal 2> /dev/null || true)"
+  if [ -n "$dirty_files" ]; then
+    local count
+    count="$(printf '%s\n' "$dirty_files" | wc -l | tr -d ' ')"
+    issues+=("dirty: $count uncommitted or untracked file(s)")
+  fi
+
+  # With zero remotes, --not --remotes excludes nothing and every commit would
+  # count as unpushed, permanently blocking removal; skip the check instead.
+  if [ "$detached" != "1" ] && [ -n "$(git -C "$path" remote 2> /dev/null)" ]; then
+    local unpushed
+    unpushed="$(git -C "$path" rev-list HEAD --not --remotes 2> /dev/null || true)"
+    if [ -n "$unpushed" ]; then
+      local count
+      count="$(printf '%s\n' "$unpushed" | wc -l | tr -d ' ')"
+      issues+=("unpushed: $count commit(s) not present on any remote")
+    fi
+  fi
+
+  if [ ${#issues[@]} -gt 0 ]; then
+    notify "Skipping worktree with unsaved work: $path (use --force to override)"
+    for issue in "${issues[@]}"; do
+      echo "  $issue" >&2
+    done
+    return 1
+  fi
+  return 0
+}
+
+# --preflight: report-only mode for callers (e.g. the tmux picker) that need to
+# know which paths would be skipped BEFORE they take their own destructive
+# steps (killing sessions, tombstoning picker rows). Prints each unsafe input
+# path to stdout, one per line, and exits without removing anything. Runs
+# before any repo-context detection so it works from any cwd.
+if [ "$preflight_mode" -eq 1 ]; then
+  if [ "$paths_mode" -ne 1 ]; then
+    echo "--preflight requires --paths" >&2
+    exit 1
+  fi
+  for p in "${paths[@]}"; do
+    wp="$(realpath "$p" 2> /dev/null || printf '%s' "$p")"
+    [ -d "$wp" ] || continue
+    if ! _check_worktree_safe_to_remove "$wp" 0 2> /dev/null > /dev/null; then
+      printf '%s\n' "$p"
+    fi
+  done
+  exit 0
+fi
+
+default_branch="$(_comma_w_detect_default_branch)"
+
+parent_dir=$(_get_worktree_parent_dir)
+parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
 
 selectable_worktrees=()
 while IFS= read -r _line; do
@@ -287,6 +356,12 @@ _infer_remote_from_prefixed_branch() {
 
 for worktree in "${worktrees[@]}"; do
   IFS=$'\t' read -r worktree_path worktree_branch worktree_detached <<< "$worktree"
+
+  if [ "$force_remove" -eq 0 ]; then
+    if ! _check_worktree_safe_to_remove "$worktree_path" "${worktree_detached:-0}"; then
+      continue
+    fi
+  fi
 
   if [ -n "${worktree_detached:-}" ] && [ "$worktree_detached" = "1" ]; then
     notify "Removing detached worktree: $worktree_path"

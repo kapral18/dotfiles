@@ -8,28 +8,41 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$script_dir/../shared/bash_utils_lib.sh"
 
 current_branch=$(git branch --show-current)
-fork_upstream=$(git reflog show "$current_branch" | grep 'branch: Created from' | awk '{print $NF}')
+upstream_remote=""
+upstream_branch=""
 
-# if the fork_upstream is empty or HEAD, it means the branch was created locally
-# so we need to find the upstream branch on origin
-if [ -z "$fork_upstream" ] || [ "$fork_upstream" = "HEAD" ]; then
-  fork_upstream=$(git branch -r | grep "$current_branch" | grep 'origin/' | grep -v 'HEAD' | awk '{print $1}')
+# 1. Use tracking config (@{upstream}) — unambiguous, no grep needed.
+# A slashless result means the branch tracks a local branch (branch.X.remote=".");
+# fall through to step 2, which handles the "." remote correctly.
+fork_upstream=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2> /dev/null || true)
+if [ -n "$fork_upstream" ] && [ "$fork_upstream" != "@{upstream}" ] && [ "${fork_upstream#*/}" != "$fork_upstream" ]; then
+  upstream_remote="${fork_upstream%%/*}"
+  upstream_branch="${fork_upstream#*/}"
+fi
 
-  # if the fork_upstream is empty, try to git fetch the upstream branch
-  if [ -z "$fork_upstream" ]; then
-    echo "Could not find the forked upstream branch, trying to fetch it from origin"
-    git fetch origin "$current_branch"
-    fork_upstream=$(git branch -r | grep "$current_branch" | grep 'origin/' | grep -v 'HEAD' | awk '{print $1}')
+# 2. Fall back to branch.*.remote / branch.*.merge config.
+if [ -z "$upstream_remote" ] || [ -z "$upstream_branch" ]; then
+  cfg_remote=$(git config "branch.${current_branch}.remote" 2> /dev/null || true)
+  cfg_merge=$(git config "branch.${current_branch}.merge" 2> /dev/null || true)
+  if [ -n "$cfg_remote" ] && [ -n "$cfg_merge" ]; then
+    upstream_remote="$cfg_remote"
+    upstream_branch="${cfg_merge#refs/heads/}"
   fi
 fi
 
-if [ -z "$fork_upstream" ]; then
-  echo "Could not find the forked upstream branch"
-  exit 1
+# 3. Last resort: reflog (grep -m1 avoids multi-line matches).
+if [ -z "$upstream_remote" ] || [ -z "$upstream_branch" ]; then
+  fork_upstream=$(git reflog show "$current_branch" 2> /dev/null | grep -m1 'branch: Created from' | awk '{print $NF}' || true)
+  # Only usable when it names an actual remote-tracking ref; a branch created
+  # from a local ref yields a slashless name (e.g. "main"), which would
+  # otherwise be misread as remote="main" branch="main".
+  if [ -n "$fork_upstream" ] && [ "$fork_upstream" != "HEAD" ] && [ "${fork_upstream#*/}" != "$fork_upstream" ]; then
+    if git remote get-url "${fork_upstream%%/*}" > /dev/null 2>&1; then
+      upstream_remote="${fork_upstream%%/*}"
+      upstream_branch="${fork_upstream#*/}"
+    fi
+  fi
 fi
-
-upstream_remote=$(echo "$fork_upstream" | cut -d'/' -f1)
-upstream_branch=$(echo "$fork_upstream" | cut -d'/' -f2-)
 
 if [ -z "$upstream_remote" ] || [ -z "$upstream_branch" ]; then
   echo "Could not find $fork_upstream remote or branch"
