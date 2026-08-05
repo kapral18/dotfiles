@@ -66,8 +66,8 @@ Consumers: `/k-build` (in-session hands-free implementation), `~/.agents/skills/
    One packet in flight per topic: consumers (build lanes and plan review) read this file mid-flow, so do not author the next packet until the current one's outcome is recorded in the `.txt` chain; parallel work belongs on separate topics.
    Never store secrets in it; `/tmp` is best-effort.
 
-5. **Hand off.** The packet is text only — this skill implements nothing and publishes nothing.
-   Name the consumer moves and stop for the user's pick:
+5. **Hand off.** The packet is text only — this skill implements nothing and publishes nothing. Name the consumer moves.
+   Stop for the user's pick only when the consumer is not already determined; if the user named it (e.g. "spec then build"), proceed with that consumer:
    - `/k-build` — hands-free implementation in this session, gated on this packet
    - `k-compose-issue` / `k-compose-pr` — publishable text from the packet (that skill owns sanitization and handoff packet)
    - `k-review` skill plan mode — adversarial review of the packet before any implementation, for high-stakes changes

@@ -67,7 +67,7 @@ class TestStaticModelMirrors(unittest.TestCase):
             set(gemini["curated"]["models"]),
         )
         self.assertNotIn("new-live", cursor["curated"]["models"])
-        self.assertEqual(["openrouter/openai/gpt-5.2"], pi_recommended)
+        self.assertEqual(["openrouter/moonshotai/kimi-k3"], pi_recommended)
 
     def test_SHOULD_encode_unknown_and_error_without_empty_success(self):
         import model_mirrors

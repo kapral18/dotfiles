@@ -283,7 +283,7 @@ class TestAiLauncher(unittest.TestCase):
                 plan = self.dry_plan("pi", "--model", model)
 
                 self.assertEqual(model, plan["selection"]["model"]["value"])
-                self.assertNotIn("openai/gpt-5.2", plan["leaf"]["argv"])
+                self.assertNotIn("moonshotai/kimi-k3", plan["leaf"]["argv"])
 
     def test_when_provider_is_explicit_only_verified_harness_support_is_used(self) -> None:
         pi = self.dry_plan("pi", "--provider", "openrouter")
@@ -292,7 +292,7 @@ class TestAiLauncher(unittest.TestCase):
         unsupported = self.run_ai("claude", "--provider", "openrouter", "--dry-run")
 
         self.assertEqual(
-            [",ai-selection", "--provider", "openrouter", "--model", "openai/gpt-5.2"],
+            [",ai-selection", "--provider", "openrouter", "--model", "moonshotai/kimi-k3"],
             pi["selection"]["transport_trace"],
         )
         self.assertIn("--provider", pi["leaf"]["argv"])
@@ -312,7 +312,7 @@ class TestAiLauncher(unittest.TestCase):
             def resolve(self, harness, requested_model, requested_provider):
                 self.request = (harness, requested_model, requested_provider)
                 return core.AvailabilitySelection(
-                    model="openai/gpt-5.2",
+                    model="moonshotai/kimi-k3",
                     provider=requested_provider,
                     model_provenance=core.Provenance("adapter", "deterministic-model"),
                     provider_provenance=core.Provenance("option", "--provider"),
@@ -326,7 +326,7 @@ class TestAiLauncher(unittest.TestCase):
 
         self.assertEqual(("pi", None, "openrouter"), adapter.request)
         self.assertEqual(
-            ("--provider", "openrouter", "--model", "openai/gpt-5.2"),
+            ("--provider", "openrouter", "--model", "moonshotai/kimi-k3"),
             plan.selection.transport_args,
         )
         self.assertEqual("OpenRouter GPT-5.2 pin", plan.selection.model_provenance.source)
@@ -348,7 +348,7 @@ class TestAiLauncher(unittest.TestCase):
         self.assertEqual(2, depth.returncode)
         self.assertIn("OpenRouter is pinned to high effort", depth.stderr)
         self.assertEqual(2, other_opencode_model.returncode)
-        self.assertIn("OpenRouter is pinned to openrouter/openai/gpt-5.2", other_opencode_model.stderr)
+        self.assertIn("OpenRouter is pinned to openrouter/moonshotai/kimi-k3", other_opencode_model.stderr)
 
     def test_when_availability_adapter_supplies_a_model_the_core_uses_the_seam(self) -> None:
         core = load_core()

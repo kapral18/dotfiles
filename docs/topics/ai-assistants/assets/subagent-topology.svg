@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1360" height="610" viewBox="0 0 1360 610" role="img" aria-labelledby="title desc">
   <title id="title">Cross-harness subagent topology</title>
-  <desc id="desc">Shared skills feed per-runtime profiles. The controller delegates to a bounded registry-model reviewer roster, an optional blind fresh-eyes lane, live UI, findings auditor workers, and a final cross-family adversarial verifier, receives their evidence, and alone performs the act phase.</desc>
+  <desc id="desc">Shared skills feed per-runtime profiles. The controller delegates to a bounded registry-model reviewer roster, an optional blind fresh-eyes lane, live UI, findings auditor workers, and a final adversarial verifier (cross-family preferred at equal capability), receives their evidence, and alone performs the act phase.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#a7f3d0"/></marker>
     <style>

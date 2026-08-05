@@ -107,11 +107,14 @@ bk job log JOB_UUID -p SLUG -b BUILD_NUMBER | grep -iE '(ERR!|could not resolve|
 **Diagnosis:**
 
 ```bash
-# Rebuild to confirm flakiness
+# Rebuild to confirm flakiness (org-visible; a user ask to confirm flakiness covers it)
 bk build rebuild BUILD_NUMBER -p SLUG
 
 # Compare logs between failing and passing runs
 ```
+
+`bk build rebuild` creates an org-visible build and updates the PR's CI status (SOP §3.6):
+a user request to confirm flakiness or rebuild covers it; otherwise propose it first.
 
 **Action:** Fix timing dependencies, add retries for external service calls, quarantine flaky tests.
 
@@ -147,6 +150,7 @@ bk job log JOB_UUID -p SLUG -b BUILD_NUMBER | grep -iE '(403|401|forbidden|unaut
 ## Tips
 
 - **Start with the last 50 lines** of a failed job log — the error summary is usually at the end.
+  The tail is orientation only: recover the full log before drawing any conclusion, since SOP §2.4 requires complete artifacts for build debugging.
 - **Compare with last passing build** — diff the logs to find what changed.
 - **Check the commit diff** — the failure is usually in the code that changed between the last green build and this one.
 - **Use `bk api`** for detailed job metadata if standard commands are insufficient.

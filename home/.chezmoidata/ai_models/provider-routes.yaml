@@ -10,7 +10,7 @@ provider_models:
   # OpenRouter is a strict single-model route. Keeping alternate provider entries here would expose them through
   # generated pickers and bypass the route policy.
   - provider: "openrouter"
-    id: "openai/gpt-5.2"
+    id: "moonshotai/kimi-k3"
     recommended: true
   - provider: "vertex"
     id: "gemini-3.6-flash"

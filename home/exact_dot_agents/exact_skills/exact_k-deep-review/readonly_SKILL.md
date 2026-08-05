@@ -67,7 +67,7 @@ The controller owns:
   - requires screenshot handoff evidence for any UI-related finding that may become draft review feedback, unless live UI returns a valid blocker or non-applicability result
 - running the controller findings audit phase after live UI returns evidence/non-applicability/blocker or is explicitly skipped;
   delegate to `findings-auditor` only when a findings-audit delegation condition is true
-- running the final cross-family adversarial verification pass over the audited candidate set
+- running the final adversarial verification pass (cross-family preferred at equal capability, SOP §3.5) over the audited candidate set
 - aggregating worker outputs, `pr-necessity-auditor` status, reviewer findings, live UI status/evidence/artifacts/skip reason, audit output, and final adversarial verification verdicts
 - deciding which worker-reported `verification_needed` items deserve serial controller verification
 - judging kept/dropped findings after aggregation
@@ -136,7 +136,7 @@ The phase order is strict:
 3. the reviewer lane roster (one sighted baseline lane plus evidence-triggered angle/fresh-eyes lanes, launched in parallel when more than one lane applies)
 4. lane merge/dedup plus conditional live UI verification over the merged candidate set
 5. findings audit, inline or delegated by the findings-audit delegation conditions
-6. final cross-family adversarial verification over the audited candidate set
+6. final adversarial verification (cross-family preferred at equal capability, SOP §3.5) over the audited candidate set
 7. controller aggregation, judgment, PR-mode pending-review reconciliation, and action
 8. post-act verification, only for any flow that edited the working tree (gates + fix-diff Post-Review Stage)
 
@@ -201,6 +201,7 @@ It is `yes` when any of these hold:
 
 When `fix_authorized: yes`, the fix step does NOT require a separate "fix" keyword —
 an adopted/assigned/own PR is fix-authorized by virtue of ownership, not phrasing.
+Explicitly invoking this skill on an own/adopted/assigned PR is itself the fix request, so the SOP §1 assess-vs-act gate is satisfied by the invocation.
 When none of the above hold (`authorship: other`/`unknown` and no assignee/takeover signal), `fix_authorized: no`:
 draft-only, never edit code. Record `fix_authorized` in the scope packet; the Act step branches on it.
 `fix_authorized` governs only working-tree edits and verification mutations.
@@ -289,7 +290,7 @@ The measured reason for this controller cache is concrete: one real review had 4
    - Use the harness's native reviewer worker profiles or task mechanism (`review-worker`/`reviewer` profiles, or a generic task type carrying `reviewer-worker.md`); read `runtime-harnesses.md` for per-harness launch and model-inheritance caveats.
    - Hard-read-only caveat: for Cursor, follow `runtime-harnesses.md`.
      Cursor Task launches and Cursor profile shims for `/k-deep-review` must use `readonly: false`.
-     If a worker reports Ask/read-only mode blocked shell/git/`gh`/SCSI/Playwriter, discard that launch result and rerun with `readonly: false`.
+     If a worker reports Ask/read-only mode blocked shell/git/`gh`/Playwriter, discard that launch result and rerun with `readonly: false`.
    - Cursor Task background caveat: reviewer, PR-necessity, live-UI, and findings-audit workers should remain real Cursor background subagents.
      Use Cursor Task `run_in_background=true` for those launches when the active Cursor Task schema exposes it.
      Do not use shell `Await`/`AwaitShell` with Cursor subagent ids; wait through a Cursor-native subagent completion signal.
@@ -299,7 +300,7 @@ The measured reason for this controller cache is concrete: one real review had 4
    - This phase is blocking as a phase.
      After the reviewer workers are launched, do not start adversarial verification, live UI verification, findings audit, or controller judgment until every launched lane's output is available, fresh-eyes included when it was launched.
    - Keep the parallel lanes concurrency-safe:
-     - Prefer file reads, local source inspection, SCSI/base-context queries, `git show`/`git diff` reads, isolated `/tmp` reproductions, and verification commands.
+     - Prefer file reads, local source inspection, context-pack reads, `git show`/`git diff` reads, isolated `/tmp` reproductions, and verification commands.
        The verification commands should improve finding validity or coverage.
      - Allow non-mutating verification at whatever depth is needed, including expensive static analysis or full suites.
        Outputs/caches must be read-only or isolated away from shared repo/runtime state.
@@ -337,7 +338,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      If the runtime is startable (runtime-start rung), start it and verify.
    - Hard runtime read-only/sandbox modes are not the review safety boundary.
      Use harness permissions that allow the lane's permitted verification tools, and enforce no-mutation behavior through the role contract.
-   - Use those permissions only for the lane's permitted verification tools: read-only shell/git/`gh`/SCSI for investigation workers, or Playwriter commands for `live-ui-review`.
+   - Use those permissions only for the lane's permitted verification tools: read-only shell/git/`gh` for investigation workers, or Playwriter commands for `live-ui-review`.
      `live-ui-review` may also run explicit local/dev runtime data setup against verified targets.
    - Mode boundary: default `live-ui-review` is verification-only.
    - Keep behavior-level read-only constraints in the prompt:
@@ -419,19 +420,22 @@ The measured reason for this controller cache is concrete: one real review had 4
      Give it the audited candidates with lane attribution stripped, plus the findings-audit result, verification ledger, live UI status/evidence/artifacts/skip reason, diff scope, base ref, and mode.
    - Model rule — the one lane where model identity matters: the `agent_review_models` registry assigns each harness its verifier model, paired against the lane model by a human in the registry rather than inferred at runtime, and the deployed `adversarial-verifier` profile carries it (named-profile controllers such as Pi/OMP pass the rendered registry value per task).
      Report `families=cross` only when the registry's verifier model is genuinely a different family than its lane model.
-     Report `families=same (degraded)` whenever it is not — whether because the entry is empty/`inherit`, because the harness is single-vendor, or because the registry deliberately pins the same family for both roles on a harness that cannot express the wanted lane model.
-     Degradation must be reported, never silent; do not skip the phase because cross-family is unavailable.
+     Report `families=same (degraded)` when the harness cannot field a second family (empty/`inherit` entry or single-vendor surface).
+     When the registry deliberately pairs the same family at equal capability, report `families=same (reduced independence)` instead —
+     capability outranks family diversity (SOP §3.5).
+     Degradation or reduced independence must be reported, never silent; do not skip the phase because cross-family is unavailable.
    - Verdicts are evidence, not decisions: when recording each `confirmed` / `refuted` / `undecidable (needs <check>)` in the verification ledger, check that a `refuted` verdict's evidence addresses the candidate's actual claim; record it as `undecidable` otherwise.
      "Non-refuted" downstream means not validly refuted after that check.
-   - The verifier also returns a bounded cross-family miss sweep (`new-candidate` items, at most three, or `Miss sweep: none above the bar`).
-     These are the only cross-family look at the code, so do not drop them for arriving late;
-     they have also not passed the findings audit, so do not send them straight to judgment.
-     Run the `judging_core.md` Findings-Set Audit over them inline, then merge the survivors into the kept set.
-     Report how many the sweep produced and how many survived. Do not relaunch the verifier over its own sweep items.
 
-6. **Aggregate.**
+- The verifier also returns a bounded miss sweep (`new-candidate` items, at most three, or `Miss sweep: none above the bar`).
+  These are the verifier's only look at the code, so do not drop them for arriving late;
+  they have also not passed the findings audit, so do not send them straight to judgment.
+  Run the `judging_core.md` Findings-Set Audit over them inline, then merge the survivors into the kept set.
+  Report how many the sweep produced and how many survived. Do not relaunch the verifier over its own sweep items.
+
+1. **Aggregate.**
    Combine `pr-necessity-auditor` greenlight/skip status, each angle lane's output, fresh-eyes output or its skip reason, the verification ledger, live UI evidence/status/artifacts, findings audit result, and final adversarial verification verdicts/family status.
-7. **Judge in the controller.**
+2. **Judge in the controller.**
    - Apply mode-correct reconciliation:
      - all modes: collapse duplicate worker findings, apply the severity model, and keep findings that are implementation-verified, not covered by existing evidence, and not dropped by the parity/deduplication filters.
        If a candidate is not yet implementation-verified because verification was unsafe, mutating, or required a shared/exclusive resource, carry its `verification_needed` in the ledger instead of dropping it.
@@ -470,7 +474,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      prefer native search/listing tools for first-pass broad searches, and use shell `rg` only with a path, glob, or exact-symbol scope.
    - A `verification_needed` that can flip a kept/dropped finding, fix decision, or draft payload is blocking until it is `resolved` or `run`.
      Do not let findings audit or stale PR-intent assumptions convert it to `not needed`.
-8. **Act only after judgment.**
+3. **Act only after judgment.**
    Branch strictly on `fix_authorized` and the mode recorded in step 1; never infer fix authorization from the fact that the change is merely checked out locally (a locally-checked-out other-authored branch with no assignee/takeover signal is still `fix_authorized: no`).
    - Do not act while a blocking verification-ledger item or intent dependency remains unresolved.
      Either resolve it first, or stop/draft with explicit remaining uncertainty according to the mode.
@@ -489,7 +493,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      - do not edit code
      - do not run fixes
      - do not post
-9. **Post-act verification (only when the working tree was edited this flow).**
+4. **Post-act verification (only when the working tree was edited this flow).**
    This phase is mandatory after any applied fix from the Act step, including self-review and adopted/assigned PR takeovers.
    Do not declare the change done, and do not treat the final summary as a substitute for this phase.
    Because the working tree was edited, `fix_authorized` is `yes`, which carries full verification-mutation permission:

@@ -62,8 +62,9 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 Iteration contract:
 
 - Pick exactly one reviewer thread/comment.
-- Do not move to the next thread/comment until you and the user agree on what to do.
-- Exception: switch to Drain Mode when the user explicitly asks to batch.
+- While fixes are not yet authorized, do not move to the next thread/comment until you and the user agree on what to do.
+  Once the user has authorized fixing the batch (e.g. "address the review threads"), that is Drain Mode:
+  proceed thread to thread without waiting, surfacing only genuine decision forks.
 - Batch/repeat phrases include:
   - "repeat the process"
   - "same procedure"

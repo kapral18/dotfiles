@@ -147,8 +147,8 @@ The same mirror/probe seam is available for non-mutating live catalog diagnostic
 
 `OPENROUTER_API_KEY` comes from the `openrouter/api/token` pass entry, exported by [`home/dot_config/fish/readonly_config.fish.tmpl`](../../../home/dot_config/fish/readonly_config.fish.tmpl). Both Pi and OpenCode resolve `openrouter/` selectors through their own built-in provider, so neither carries a generated provider block.
 
-- **OpenCode**: both profiles run `main`, every configured worker, and the `small_model` route on `openrouter/openai/gpt-5.2`. The provider-level model options also pin lightweight background calls to `high` effort.
-- **Pi**: `defaultProvider` is `openrouter` in both profiles, and `pi_extra_models` exposes only `openrouter/openai/gpt-5.2`.
+- **OpenCode**: both profiles run `main`, every configured worker, and the `small_model` route on `openrouter/moonshotai/kimi-k3`. The provider-level model options also pin lightweight background calls to `high` effort.
+- **Pi**: `defaultProvider` is `openrouter` in both profiles, and `pi_extra_models` exposes only `openrouter/moonshotai/kimi-k3`.
 
 ## Local inference
 

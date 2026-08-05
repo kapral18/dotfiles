@@ -70,11 +70,11 @@ def _override(harness: str) -> dict[str, Any] | None:
 
 def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]) -> dict[str, Any]:
     # Claude's Agent tool constrains `model` to the family aliases sonnet|opus|haiku|fable
-    # (claude-code 2.1.220; anything else fails updatedInput schema validation), and each alias
+    # (claude-code 2.1.222; anything else fails updatedInput schema validation), and each alias
     # resolves through one ANTHROPIC_DEFAULT_*_MODEL. The alias is a lossy projection of the band:
-    # standard (claude-sonnet-4-6) and max (claude-sonnet-5) both spell `sonnet`, so the alias
-    # cannot separate them and the hook cannot hold a standard-band agent below max Sonnet — the
-    # profile frontmatter's exact id is what does that, and it wins whenever no `model` is passed.
+    # all three bands (claude-fable-5) spell `fable`, so the alias cannot separate them and the
+    # hook cannot hold a cheap-band agent below medium-effort Fable — the profile frontmatter's
+    # exact id is what does that, and it wins whenever no `model` is passed.
     #
     # What the hook can still enforce is the ceiling: clamp whenever the asked alias is MORE
     # capable than the band's. Comparing rank rather than equality is what stops

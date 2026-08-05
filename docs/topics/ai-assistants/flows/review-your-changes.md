@@ -39,7 +39,7 @@ The controller launches a bounded reviewer roster: one sighted `correctness-regr
 
 Expect a structured report: roster, lane yield (what each lane returned versus what survived), live UI status when applicable, findings-audit status, verifier verdict counts (`confirmed/refuted/undecidable`), miss-sweep counts, kept/dropped findings with reasons, draft comments awaiting your go-ahead, and UI evidence attachments for UI feedback.
 
-Use it when the change needs independent review plus cross-family refutation. It scales from one sighted lane + verifier to extra lanes only when scope evidence warrants them.
+Use it when the change needs independent review plus adversarial refutation (cross-family preferred at equal capability, SOP §3.5). It scales from one sighted lane + verifier to extra lanes only when scope evidence warrants them.
 
 ## Reading any review's output
 

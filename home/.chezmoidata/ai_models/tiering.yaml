@@ -6,17 +6,19 @@
 
 # Review-lane model registry: the single source for k-review/k-deep-review model selection (C2: declare once, generate per tool).
 # Profile frontmatter is TEMPLATED from this block; edit here and `chezmoi apply` — never hand-edit model ids in profiles.
-# lanes = generation angle lanes + auditors + controller. verifier = cross-family adversarial verifier
-# (must be a different model family than lanes; pairing is reviewed by a human here, not inferred at runtime).
+# lanes = generation angle lanes + auditors + controller. verifier = adversarial verifier, preferring a
+# different model family than lanes at equal capability (capability outranks diversity, SOP §3.5;
+# pairing is reviewed by a human here, not inferred at runtime).
 # Empty value = the profile omits the field (harness config default). inherit = harness-native parent inheritance.
 agent_review_models:
   cursor:
-    # Composer is gruntwork-only. Terra is reserved for max; standard uses GPT-5.6 Sol.
-    # Cursor Task subagents are whitelist-bound; whitelist verified live 2026-08-03:
-    # claude-fable-5-medium, claude-opus-5-high, claude-sonnet-5-thinking-max, composer-2.5,
-    # composer-2.5-fast, cursor-grok-4.5-high-fast, gpt-5.6-sol-xhigh, gpt-5.6-terra-max.
-    lanes: "gpt-5.6-terra-max"
-    verifier: "gpt-5.6-terra-max" # single-model review policy (degraded refutation)
+    # GPT-5.6 is off Cursor entirely (user call, 2026-08-05); Fable 5 medium is the only spawnable
+    # non-GPT lane — `claude-fable-5-low`/`claude-fable-5-max` exist in the main catalog but not the
+    # Task whitelist, and fable ids are NO ZDR. Task subagents are whitelist-bound; whitelist verified
+    # live 2026-08-05: claude-fable-5-medium, claude-opus-5-high, claude-sonnet-5-thinking-max,
+    # composer-2.5, composer-2.5-fast, cursor-grok-4.5-high-fast, gpt-5.6-sol-xhigh, gpt-5.6-terra-max.
+    lanes: "claude-fable-5-medium"
+    verifier: "claude-fable-5-medium" # single-model review policy (reduced independence, SOP §3.5)
   copilot:
     # Cost-driven pin (closed 2026-08-03): opus-5 and gpt-5.5 are punitively expensive for regular
     # lanes. Copilot's catalog has no glm-5.2 or kimi, so lanes run OpenAI terra (priority #2).
@@ -40,19 +42,26 @@ agent_review_models:
   pi:
     # Pi reaches models only through OpenRouter here. Pi's `:<level>` suffix is one dial (thinking
     # level and effort at once), so this spells both model and effort.
-    lanes: "openrouter/openai/gpt-5.2:high"
-    verifier: "openrouter/openai/gpt-5.2:high" # single-model review policy (degraded refutation)
+    lanes: "openrouter/moonshotai/kimi-k3:high"
+    verifier: "openrouter/moonshotai/kimi-k3:high" # single-model review policy (degraded refutation)
   omp:
     # OMP resolves bands through its own `modelRoles`, so the review lanes name roles rather than
     # model ids and readonly_config.yml.tmpl decides what each role costs on work vs personal.
     # Cost-driven pin (closed 2026-08-03): opus-5 and gpt-5.5 are punitively expensive for
     # regular lanes, and glm-5.2 is unusable, so both profiles route main reasoning roles through
-    # cursor/gpt-5.2-high. `advisor` resolves to that same id, so there is no second family to
-    # refute with: the verifier names `@default` and refutation is `families=same (degraded)`,
-    # matching model_bands.omp.max carrying no counter. Do not restore `@advisor` here without
-    # first pointing modelRoles.advisor at a genuinely different family.
+    # cursor/kimi-k3-high (user call 2026-08-05: kimi-k3 replaces gpt-5.2 everywhere).
+    #
+    # The verifier is the deliberate exception (user call, 2026-08-05): adversarial-verifier and
+    # criteria-verifier pin concrete `cursor/kimi-k3-max:high` — the 2x cursor effort tier is
+    # spent only on the falsification lanes, not on routine review. The concrete id bypasses
+    # modelRoles per-profile pricing on purpose: the pin is identical on work and personal.
+    # kimi-k3-max is the same family at higher effort, so refutation stays
+    # `families=same (reduced independence)` — a capability-first pairing (SOP §3.5) — and
+    # model_bands.omp.max still carries no counter because modelRoles.advisor resolves to the
+    # lanes' own id. Do not point `@advisor` at a different id: the invariant reads that as a
+    # cross-family counter that does not exist.
     lanes: "@default"
-    verifier: "@default" # single-model review policy (degraded refutation)
+    verifier: "cursor/kimi-k3-max:high" # 2x tier on falsification lanes only (user call 2026-08-05)
 
 # Model tiering is two independent tables, kept apart on purpose. `agent_categories` says what a
 # kind of work needs and is portable — whether a findings audit needs max reasoning is a fact about
@@ -69,9 +78,9 @@ agent_review_models:
 # exists so "high" on a cheap-band model and "high" on a max-band model are not read as equivalent
 # effort just because the label string matches.
 #
-# `family` is primary or counter. Only `refute` is counter: the whole point of a refutation lane is
-# that it does not share a family with the work it is auditing, because same-family reviewers
-# inherit the same blind spots and the same context contamination.
+# `family` is primary or counter. Only `refute` is counter: a refutation lane preferably
+# does not share a family with the work it audits — at equal capability — since same-family reviewers
+# inherit the same blind spots and the same context contamination; capability still outranks diversity (SOP §3.5).
 agent_categories:
   search:
     band: "cheap"
@@ -181,49 +190,50 @@ model_bands:
     # so no cross-vendor counter is expressible here. alwaysThinkingEnabled:false keeps the
     # max-band model non-thinking; that is what `thinking: "off"` means on this harness.
     #
-    # The cost-driven ban on opus-5 (closed 2026-08-03) is deliberately NOT applied to this
-    # harness: user decision, Claude Code only. Standard and max both run Opus; cheap is the
-    # cost rung and stays on Sonnet 4.6. Claude Code is Anthropic-only, so the glm/terra/kimi
-    # substitution chain does not apply here and the verifier stays families=same (degraded).
-    # Do not propagate this to codex/cursor/copilot/omp — the ban still holds there.
+    # Every band runs Fable 5 (user call, 2026-08-05, following the Cursor GPT-5.6 exit): cheap at
+    # low effort, standard and max at medium effort. `claude-fable-5` is verified inside the
+    # installed 2.1.222 bundle and `fable` is a first-class Agent-tool alias there. The API-key
+    # route short-circuits on billing before model validation, so a live `-p` probe cannot prove
+    # id validity on this machine. The cost-driven opus-5 ban exemption (closed 2026-08-03) is
+    # superseded — opus is off this harness too. Claude Code is Anthropic-only, so the glm/terra/
+    # kimi substitution chain does not apply here and the verifier stays families=same (degraded).
     #
-    # Probed 2.1.220 on the login route: `claude -p --model claude-haiku-4-5` answers, while a bogus
-    # `claude-haiku-9-9` is refused with "It may not exist or you may not have access to it".
-    # standard and max share the `opus` alias, so the Claude gate's alias projection cannot
-    # separate them; the profile frontmatter's exact id is what holds each band. That is the same
-    # collision the two sonnet bands used to have, documented in band_gate.py `_claude`.
+    # All three bands share the `fable` alias, so the Claude gate's alias projection cannot
+    # separate any of them; the profile frontmatter's exact id is what holds each band. That is the
+    # same collision the two sonnet bands used to have, documented in band_gate.py `_claude`.
     cheap:
-      model: "claude-sonnet-4-6"
-      effort: "high"
+      model: "claude-fable-5"
+      effort: "low"
       thinking: "off"
       context: "short"
     standard:
-      model: "claude-opus-5"
-      effort: "high"
+      model: "claude-fable-5"
+      effort: "medium"
       thinking: "off"
       context: "short"
     max:
-      model: "claude-opus-5"
-      effort: "high"
+      model: "claude-fable-5"
+      effort: "medium"
       thinking: "off"
       context: "short"
   codex:
-    # Cheap is gpt-5.4 (the cheapest usable tier in the 0.146.0 catalog). `gpt-5.6-terra` is
-    # reserved for the max band; standard uses `gpt-5.6-sol`. OpenAI-only, hence no counter
-    # (families=same degraded).
+    # Cheap is gpt-5.4 (the cheapest usable tier in the 0.146.0 catalog). standard and max both run
+    # `gpt-5.6-terra` at max effort (user call, 2026-08-05); `max` is a real codex effort level
+    # (verified via `codex debug models`: low/medium/high/xhigh/max/ultra). OpenAI-only, hence no
+    # counter (families=same degraded).
     cheap:
       model: "gpt-5.4"
       effort: "high"
       thinking: ""
       context: "short"
     standard:
-      model: "gpt-5.6-sol"
-      effort: "high"
+      model: "gpt-5.6-terra"
+      effort: "max"
       thinking: ""
       context: "short"
     max:
       model: "gpt-5.6-terra"
-      effort: "high"
+      effort: "max"
       thinking: ""
       context: "short"
   copilot:
@@ -255,18 +265,22 @@ model_bands:
         context: "short"
   cursor:
     # Cursor is the only harness that splits effort and thinking into separate ids, so
-    # `claude-opus-5-high` is exactly "Opus 5, high effort, non-thinking" (thinking is spelled
-    # `claude-opus-5-thinking-*`). Opus 5 and the GPT-5.6 ids exist only as 1M ids here.
+    # `claude-fable-5-medium` is exactly "Fable 5, medium effort, non-thinking" (thinking is spelled
+    # `claude-fable-5-thinking-*`). Opus 5, Fable 5 and the GPT-5.6 ids exist only as 1M ids here.
     #
     # These bands are read by the band hook alone, and the Task tool takes a far narrower whitelist
     # than `cursor-agent models` (197 ids): only claude-fable-5-medium, claude-opus-5-high,
     # claude-sonnet-5-thinking-max, composer-2.5, composer-2.5-fast, cursor-grok-4.5-high-fast,
-    # gpt-5.6-sol-xhigh, gpt-5.6-terra-max resolve for a subagent. Anything else fails the spawn
-    # with "Invalid model selection", so bands here must stay inside that list even where a better
-    # id exists for a main session. Gemini 3.6 Flash is sellable to a Cursor main session but is not
-    # on that whitelist, so it cannot be a subagent's cheap pick here.
+    # gpt-5.6-sol-xhigh, gpt-5.6-terra-max resolve for a subagent (re-verified live 2026-08-05 via
+    # spawn probe). Anything else fails the spawn with "Invalid model selection", so bands here must
+    # stay inside that list even where a better id exists for a main session: kimi-k3 and
+    # claude-fable-5-low/-max are sellable to a main session but are not on that whitelist.
     #
-    # cheap and standard are the same id deliberately. `-fast` is a speed tier, not a cheaper model:
+    # GPT-5.6 is off Cursor entirely (user call, 2026-08-05): standard and max both run
+    # claude-fable-5-medium, the only spawnable non-GPT lane above gruntwork tier. Max-band work
+    # therefore runs at medium effort — the whitelist offers no higher fable dial.
+    #
+    # cheap and standard were once the same id deliberately. `-fast` is a speed tier, not a cheaper model:
     # cursor.com/docs/models prices Composer 2.5 at $0.5/$2.5 and calls the fast variant "A faster
     # variant with the same intelligence ... at $3/M input and $15/M output tokens". Pinning cheap to
     # `-fast` charged 6x for the band that is supposed to cost least.
@@ -276,13 +290,13 @@ model_bands:
       thinking: ""
       context: "short"
     standard:
-      model: "gpt-5.6-sol-xhigh"
-      effort: "xhigh"
+      model: "claude-fable-5-medium"
+      effort: "medium"
       thinking: ""
       context: "long"
     max:
-      model: "gpt-5.6-terra-max"
-      effort: "max"
+      model: "claude-fable-5-medium"
+      effort: "medium"
       thinking: ""
       context: "long"
   gemini:
@@ -310,17 +324,17 @@ model_bands:
     # The `:<level>` suffix is Pi's single dial (thinking level and reasoning effort at once).
     # Pi exposes no context tier at all, so every band is short by construction.
     cheap:
-      model: "openrouter/openai/gpt-5.2:high"
+      model: "openrouter/moonshotai/kimi-k3:high"
       effort: "high"
       thinking: ""
       context: "short"
     standard:
-      model: "openrouter/openai/gpt-5.2:high"
+      model: "openrouter/moonshotai/kimi-k3:high"
       effort: "high"
       thinking: ""
       context: "short"
     max:
-      model: "openrouter/openai/gpt-5.2:high"
+      model: "openrouter/moonshotai/kimi-k3:high"
       effort: "high"
       thinking: ""
       context: "short"
@@ -329,9 +343,12 @@ model_bands:
     # `@role` tokens and readonly_config.yml.tmpl's `modelRoles` resolves them per profile. That
     # is what lets each profile decide what a role costs.
     # No counter is offered: readonly_config.yml.tmpl resolves `advisor` to the same
-    # cursor/gpt-5.2-high:high as `default` on both profiles, so a counter here would claim a
-    # cross-family refutation that does not exist. Refutation runs same-family and resolution
-    # reports `degraded` so the controller says so — same posture as pi/codex/gemini.
+    # cursor/kimi-k3-high:high as `default` on both profiles, so a counter here would claim a
+    # cross-family refutation that does not exist. The falsification lanes instead pin concrete
+    # `cursor/kimi-k3-max:high` in agent_review_models.omp.verifier (user call 2026-08-05), so
+    # refutation runs same-family at a higher effort tier and resolution reports
+    # `reduced independence` — a capability-first pin, not a harness limit: OMP's provider order
+    # could field a second family.
     # Verified 17.2.4: a profile carrying `model: "@smol"` runs on modelRoles.smol, and an
     # unknown token fails loudly with `Error: No model selected.` rather than falling back.
     # Same single-dial constraint as Pi: omp maps thinkingLevel straight onto reasoning, and

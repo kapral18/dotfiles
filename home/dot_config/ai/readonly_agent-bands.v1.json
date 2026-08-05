@@ -74,20 +74,20 @@
     "claude_code": {
       "bands": {
         "cheap": {
-          "model": "claude-sonnet-4-6",
-          "effort": "high",
+          "model": "claude-fable-5",
+          "effort": "low",
           "thinking": "off",
           "context": "short"
         },
         "standard": {
-          "model": "claude-opus-5",
-          "effort": "high",
+          "model": "claude-fable-5",
+          "effort": "medium",
           "thinking": "off",
           "context": "short"
         },
         "max": {
-          "model": "claude-opus-5",
-          "effort": "high",
+          "model": "claude-fable-5",
+          "effort": "medium",
           "thinking": "off",
           "context": "short"
         }
@@ -97,336 +97,299 @@
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "Plan": {
           "category": "orchestrate",
           "band": "max",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "adversarial-verifier": {
           "category": "refute",
           "band": "max",
           "family": "counter",
-          "model": "claude-opus-5",
-          "effort": "high",
+          "model": "claude-fable-5",
+          "effort": "medium",
           "context": "short",
-          "degraded": true,
-          "alias": "opus"
+          "degraded": true
         },
         "best-of-n-runner": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "browser_agent": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "bugbot": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "change-auditor": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "claude": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "claude-code-guide": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "cli_help": {
           "category": "search",
           "band": "cheap",
           "family": "primary",
-          "model": "claude-sonnet-4-6",
-          "effort": "high",
-          "context": "short",
-          "alias": "sonnet"
+          "model": "claude-fable-5",
+          "effort": "low",
+          "context": "short"
         },
         "code-review": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "code-searcher": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "codebase_investigator": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "criteria-verifier": {
           "category": "refute",
           "band": "max",
           "family": "counter",
-          "model": "claude-opus-5",
-          "effort": "high",
+          "model": "claude-fable-5",
+          "effort": "medium",
           "context": "short",
-          "degraded": true,
-          "alias": "opus"
+          "degraded": true
         },
         "cursor-guide": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "deep-review": {
           "category": "orchestrate",
           "band": "max",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "default": {
           "category": "orchestrate",
           "band": "max",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "explore": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "explorer": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "findings-auditor": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "fresh-eyes": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "general-purpose": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "generalPurpose": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "generalist": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "live-ui-review": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "post-review": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "pr-necessity-auditor": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "rem-agent": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "research": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "researcher": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "review-controller": {
           "category": "orchestrate",
           "band": "max",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "review-worker": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "reviewer": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "rubber-duck": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "security-review": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "task": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         },
         "worker": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "claude-opus-5",
-          "effort": "high",
-          "context": "short",
-          "alias": "opus"
+          "model": "claude-fable-5",
+          "effort": "medium",
+          "context": "short"
         }
       }
     },
@@ -439,14 +402,14 @@
           "context": "short"
         },
         "standard": {
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "thinking": "",
           "context": "short"
         },
         "max": {
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "thinking": "",
           "context": "short"
         }
@@ -456,8 +419,8 @@
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "Plan": {
@@ -465,7 +428,7 @@
           "band": "max",
           "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short"
         },
         "adversarial-verifier": {
@@ -473,7 +436,7 @@
           "band": "max",
           "family": "counter",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short",
           "degraded": true
         },
@@ -481,16 +444,16 @@
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "browser_agent": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "bugbot": {
@@ -498,7 +461,7 @@
           "band": "max",
           "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short"
         },
         "change-auditor": {
@@ -506,23 +469,23 @@
           "band": "max",
           "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short"
         },
         "claude": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "claude-code-guide": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "cli_help": {
@@ -538,23 +501,23 @@
           "band": "max",
           "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short"
         },
         "code-searcher": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "codebase_investigator": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "criteria-verifier": {
@@ -562,7 +525,7 @@
           "band": "max",
           "family": "counter",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short",
           "degraded": true
         },
@@ -570,8 +533,8 @@
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "deep-review": {
@@ -579,7 +542,7 @@
           "band": "max",
           "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short"
         },
         "default": {
@@ -587,23 +550,23 @@
           "band": "max",
           "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short"
         },
         "explore": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "explorer": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "findings-auditor": {
@@ -611,7 +574,7 @@
           "band": "max",
           "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short"
         },
         "fresh-eyes": {
@@ -619,31 +582,31 @@
           "band": "max",
           "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short"
         },
         "general-purpose": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "generalPurpose": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "generalist": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "live-ui-review": {
@@ -651,7 +614,7 @@
           "band": "max",
           "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short"
         },
         "post-review": {
@@ -659,7 +622,7 @@
           "band": "max",
           "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short"
         },
         "pr-necessity-auditor": {
@@ -667,31 +630,31 @@
           "band": "max",
           "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short"
         },
         "rem-agent": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "research": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "researcher": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "review-controller": {
@@ -699,7 +662,7 @@
           "band": "max",
           "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short"
         },
         "review-worker": {
@@ -707,7 +670,7 @@
           "band": "max",
           "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short"
         },
         "reviewer": {
@@ -715,15 +678,15 @@
           "band": "max",
           "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short"
         },
         "rubber-duck": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "security-review": {
@@ -731,23 +694,23 @@
           "band": "max",
           "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
+          "effort": "max",
           "context": "short"
         },
         "task": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         },
         "worker": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "context": "short"
         }
       }
@@ -1087,14 +1050,14 @@
           "context": "short"
         },
         "standard": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "thinking": "",
           "context": "long"
         },
         "max": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "thinking": "",
           "context": "long"
         }
@@ -1104,24 +1067,24 @@
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "Plan": {
           "category": "orchestrate",
           "band": "max",
           "family": "primary",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "adversarial-verifier": {
           "category": "refute",
           "band": "max",
           "family": "counter",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long",
           "degraded": true
         },
@@ -1129,48 +1092,48 @@
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "browser_agent": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "bugbot": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "change-auditor": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "claude": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "claude-code-guide": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "cli_help": {
@@ -1185,32 +1148,32 @@
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "code-searcher": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "codebase_investigator": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "criteria-verifier": {
           "category": "refute",
           "band": "max",
           "family": "counter",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long",
           "degraded": true
         },
@@ -1218,184 +1181,184 @@
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "deep-review": {
           "category": "orchestrate",
           "band": "max",
           "family": "primary",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "default": {
           "category": "orchestrate",
           "band": "max",
           "family": "primary",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "explore": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "explorer": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "findings-auditor": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "fresh-eyes": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "general-purpose": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "generalPurpose": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "generalist": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "live-ui-review": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "post-review": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "pr-necessity-auditor": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "rem-agent": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "research": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "researcher": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "review-controller": {
           "category": "orchestrate",
           "band": "max",
           "family": "primary",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "review-worker": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "reviewer": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "rubber-duck": {
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "security-review": {
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "task": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         },
         "worker": {
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh",
+          "model": "claude-fable-5-medium",
+          "effort": "medium",
           "context": "long"
         }
       }
@@ -2047,19 +2010,19 @@
     "pi": {
       "bands": {
         "cheap": {
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "thinking": "",
           "context": "short"
         },
         "standard": {
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "thinking": "",
           "context": "short"
         },
         "max": {
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "thinking": "",
           "context": "short"
@@ -2070,7 +2033,7 @@
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2078,7 +2041,7 @@
           "category": "orchestrate",
           "band": "max",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2086,7 +2049,7 @@
           "category": "refute",
           "band": "max",
           "family": "counter",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short",
           "degraded": true
@@ -2095,7 +2058,7 @@
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2103,7 +2066,7 @@
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2111,7 +2074,7 @@
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2119,7 +2082,7 @@
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2127,7 +2090,7 @@
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2135,7 +2098,7 @@
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2143,7 +2106,7 @@
           "category": "search",
           "band": "cheap",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2151,7 +2114,7 @@
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2159,7 +2122,7 @@
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2167,7 +2130,7 @@
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2175,7 +2138,7 @@
           "category": "refute",
           "band": "max",
           "family": "counter",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short",
           "degraded": true
@@ -2184,7 +2147,7 @@
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2192,7 +2155,7 @@
           "category": "orchestrate",
           "band": "max",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2200,7 +2163,7 @@
           "category": "orchestrate",
           "band": "max",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2208,7 +2171,7 @@
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2216,7 +2179,7 @@
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2224,7 +2187,7 @@
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2232,7 +2195,7 @@
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2240,7 +2203,7 @@
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2248,7 +2211,7 @@
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2256,7 +2219,7 @@
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2264,7 +2227,7 @@
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2272,7 +2235,7 @@
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2280,7 +2243,7 @@
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2288,7 +2251,7 @@
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2296,7 +2259,7 @@
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2304,7 +2267,7 @@
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2312,7 +2275,7 @@
           "category": "orchestrate",
           "band": "max",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2320,7 +2283,7 @@
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2328,7 +2291,7 @@
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2336,7 +2299,7 @@
           "category": "research",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2344,7 +2307,7 @@
           "category": "review",
           "band": "max",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2352,7 +2315,7 @@
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         },
@@ -2360,7 +2323,7 @@
           "category": "implement",
           "band": "standard",
           "family": "primary",
-          "model": "openrouter/openai/gpt-5.2:high",
+          "model": "openrouter/moonshotai/kimi-k3:high",
           "effort": "high",
           "context": "short"
         }

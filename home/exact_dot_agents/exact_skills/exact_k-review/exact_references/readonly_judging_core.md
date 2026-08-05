@@ -28,7 +28,8 @@ Use in every non-trivial review.
 ## Candidate Refutation Ladder (Run Before Reporting Or Acting)
 
 Owned by the agent that decides keep/drop and acts (k-light-review, direct review modes, or a controller).
-Fan-out: the dedicated cross-family adversarial lane owns this pass; read-only finder lanes only return candidates plus a reachability statement and do not self-refute.
+Fan-out: the dedicated adversarial lane (cross-family preferred at equal capability, SOP §3.5) owns this pass;
+read-only finder lanes only return candidates plus a reachability statement and do not self-refute.
 
 A candidate survives only when a genuine refutation attempt fails with evidence.
 Default to `undecidable`, not `keep`, when the deciding evidence is genuinely out of reach.

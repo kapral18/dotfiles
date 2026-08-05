@@ -7,7 +7,7 @@ web_search = "cached"
 check_for_update_on_startup = true
 personality = "pragmatic"
 model = "gpt-5.6-terra"
-model_reasoning_effort = "high"
+model_reasoning_effort = "max"
 service_tier = "default"
 
 # __MCP_SERVERS__

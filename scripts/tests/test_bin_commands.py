@@ -40,7 +40,7 @@ from _test_support import (
 )
 
 # Every OpenRouter route runs this one model; see docs/topics/ai-assistants/tool-configs/other-harnesses.md.
-OPENROUTER_PIN = "openai/gpt-5.2"
+OPENROUTER_PIN = "moonshotai/kimi-k3"
 
 
 def _load_artifact_command():
@@ -2039,10 +2039,10 @@ class TestOpenRouterWrappers(unittest.TestCase):
         assert 'export CLAUDE_CODE_EFFORT_LEVEL="$OPENROUTER_EFFORT"' in source
 
     def test_SHOULD_pin_every_claude_tier_to_the_discounted_openrouter_model(self):
-        # All three tiers name one id on purpose: an unpinned tier would route a background
+        # All four tiers name one id on purpose: an unpinned tier would route a background
         # task to a list-price model while the rest of the session runs the discounted one.
         source = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()
-        for tier in ("OPUS", "SONNET", "HAIKU"):
+        for tier in ("OPUS", "SONNET", "HAIKU", "FABLE"):
             assert f'export ANTHROPIC_DEFAULT_{tier}_MODEL="$OPENROUTER_MODEL"' in source
         assert 'export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_MODEL"' in source
 

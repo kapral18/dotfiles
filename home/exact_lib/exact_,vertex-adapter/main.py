@@ -198,6 +198,7 @@ def _child(
             "ANTHROPIC_DEFAULT_OPUS_MODEL": model.model_id,
             "ANTHROPIC_DEFAULT_SONNET_MODEL": model.model_id,
             "ANTHROPIC_DEFAULT_HAIKU_MODEL": model.model_id,
+            "ANTHROPIC_DEFAULT_FABLE_MODEL": model.model_id,
         }
     )
     env.pop("ANTHROPIC_AUTH_TOKEN", None)

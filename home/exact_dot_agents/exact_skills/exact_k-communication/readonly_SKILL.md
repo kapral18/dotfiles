@@ -6,7 +6,7 @@ description: "Use when drafting human-visible communication; apply canonical ton
 # Communication (Centralized Tone & Style)
 
 Single source of truth for **how to word** any human-directed communication produced on the user's behalf, on **any** surface and in either direction.
-The surfaces named below (GitHub, Slack, email, chat, release notes, commit messages, docs aimed at people) are examples, not an exhaustive list — this applies to any channel where a human reads what you wrote.
+The surfaces named below are examples, not an exhaustive list — this applies to any channel where a human reads what you wrote.
 
 - **Proactive:** PR/issue descriptions, commit/release messages, announcements, status updates, a new comment that starts a thread.
 - **In response:** replies to a comment/message/thread (see "When Responding To An Existing Message/Thread").
@@ -29,8 +29,9 @@ Scope boundaries:
   Do not overstate certainty.
 - Don't leak the AI/agentic session itself.
   The reader must not be able to tell an agent produced this: no mention of the agent/assistant, the skills/prompts/SOP it follows, the tools or CLIs it ran, request payloads, or the raw tool errors it hit while working.
-  Write as the user would. (e.g. not "my agent re-ran the `gh` call after a 422" — just make the actual point.)
-  This is about hiding the agentic plumbing, not about withholding legitimate domain content like real API error codes the human needs.
+  Write as the user would (e.g. not "my agent re-ran the `gh` call after a 422" — just make the point).
+  It hides agentic plumbing; it does not withhold legitimate domain content like real API error codes the human needs.
+  Exception: a verified domain overlay may mandate AI-attribution trailers; it overrides this rule for the surfaces it names.
 
 ## Concision
 
@@ -96,11 +97,11 @@ Reply mechanics (in addition to everything above):
   If you must reference a fragment, quote only the minimum needed (one short blockquote), then reply. Avoid email-style interleaved quoting.
 - Replying to a reviewer's finding on the user's work: acknowledge, state what changed (link the fix commit), name the verification done, ask for re-review.
   Do not explain the reviewer's own domain or how the system they flagged works back at them — they found the issue;
-  skip the mechanism lecture unless they ask for it.
+  skip the mechanism lecture unless they ask.
 - Match the existing register.
   For Slack or casual threads, do not write like a report: avoid phrases such as "I checked the history around the hypothesis" when "I had a quick look" or no reply would be more natural.
 
-Triage outcome — when reacting to how the other party handled a request/thread, verify the outcome against the current state first (current code/head, current doc, current message) — act on what is actually there, not on what was claimed.
+Triage outcome — when reacting to how the other party handled a request/thread, verify the outcome against the current state first (code/head, doc, message) — act on what is actually there, not on what was claimed.
 Then reply by outcome:
 
 - **Addressed** (verified, not merely claimed): brief thanks, then close/resolve.

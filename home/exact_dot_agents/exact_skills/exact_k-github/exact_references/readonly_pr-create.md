@@ -5,8 +5,8 @@ Load before `gh pr create` or PR body/title edits.
 ## PR creation rules
 
 - Create PRs as draft by default.
-- Always ask which existing issue the PR should reference; never invent issue numbers.
-- Ask whether the PR should `Closes #X` or `Addresses #X` before creating the PR.
+- Resolve the referenced issue and whether it is `Closes #X` or `Addresses #X` from evidence first —
+  branch name, commit messages, and PR context; ask only when that evidence leaves a genuine fork. Never invent issue numbers.
 - If no existing issue exists, stop and ask whether to create one; do not create issues unless explicitly instructed.
 - PR title is a human-readable change summary, not necessarily a Conventional Commit header.
 - Multiline bodies/comments: use bash/zsh `$'...'` so `\n` becomes real newlines;
@@ -21,6 +21,7 @@ Load before `gh pr create` or PR body/title edits.
 
 Before `gh pr create` or PR body/title edit, require the `k-compose-pr` PR publication packet.
 Stop if the packet is missing, any required field is missing, or any required field is `blocked`.
+Exempt: backport PRs opened by the `k-kbn-backport` tool flow — that skill's upfront publication approval gates them instead.
 
 Packet requirements:
 

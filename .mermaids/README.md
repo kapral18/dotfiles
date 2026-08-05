@@ -49,7 +49,7 @@ Each file is a standalone [Mermaid](https://mermaid.js.org/) diagram (`.mmd`), l
 | C8 evidence ledger           | claims anchored or demoted to Unknown                                           | 03b      |
 | C9 stale-while-revalidate    | cached first paint, bg refetch, no block                                        | 05       |
 | C10 owner-scoped handoff bus | cooperate via pin/sentinel slots in a per-owner token namespace                 | 05,06    |
-| C11 adversarial diversity    | adversarial review family differs from implement family                         | 03b      |
+| C11 adversarial diversity    | prefer different family at equal capability; capability outranks diversity      | 03b      |
 | C12 resumable state machines | crash-safe hook/worklog queues preserve progress                                | 03b,12   |
 | C13 intent memory            | sessions rehydrate from `/tmp/specs`                                            | 03b      |
 

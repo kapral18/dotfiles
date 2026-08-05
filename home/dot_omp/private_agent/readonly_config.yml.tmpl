@@ -2,35 +2,33 @@
 # Keep OMP native guidance/features as the base; this file only pins user policy.
 # {{ if eq .isWork true }}
 modelRoles:
-  default: cursor/gpt-5.2-high:high
+  default: cursor/kimi-k3-high:high
   smol: cursor/composer-2.5:high
   vision: cursor/claude-sonnet-5-high:high
-  slow: cursor/gpt-5.2-high:high
-  plan: cursor/gpt-5.2-high:high
-  task: cursor/gpt-5.2-high:high
-  advisor: cursor/gpt-5.2-high:high
+  slow: cursor/kimi-k3-high:high
+  plan: cursor/kimi-k3-high:high
+  task: cursor/kimi-k3-high:high
+  advisor: cursor/kimi-k3-high:high
 
 modelProviderOrder:
   - cursor
   - openrouter
-  - github-copilot
   - openai-codex
   - anthropic
   - openai
 # {{ else }}
 modelRoles:
-  default: cursor/gpt-5.2-high:high
+  default: cursor/kimi-k3-high:high
   smol: cursor/composer-2.5:high
   vision: cursor/claude-sonnet-5-high:high
-  slow: cursor/gpt-5.2-high:high
-  plan: cursor/gpt-5.2-high:high
-  task: cursor/gpt-5.2-high:high
-  advisor: cursor/gpt-5.2-high:high
+  slow: cursor/kimi-k3-high:high
+  plan: cursor/kimi-k3-high:high
+  task: cursor/kimi-k3-high:high
+  advisor: cursor/kimi-k3-high:high
 
 modelProviderOrder:
   - cursor
   - openai-codex
-  - github-copilot
   - openrouter
   - anthropic
   - openai

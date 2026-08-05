@@ -33,6 +33,7 @@ Use the normal engineering flow for those surfaces.
    - Use a verified different model family when the active harness exposes one.
    - Apply a cross-family, two-order winner as the next normal edit.
    - If the evaluator is unavailable, same-family, tied, or mixed, continue normal iteration without tournament authority.
+     State the degradation out loud: which condition hit and that tournament authority was dropped. Never silently discard the evaluation.
 4. **Continue normally.** Record the rubric and tournament result in the next response only when it materially explains the edit.
    A later eligible rewrite starts a new round.
 

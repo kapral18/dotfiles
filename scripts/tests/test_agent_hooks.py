@@ -1880,7 +1880,7 @@ class BandGateTests(unittest.TestCase):
         "harnesses": {
             "claude_code": {
                 "agents": {
-                    "Explore": {"band": "cheap", "model": "claude-sonnet-4-6", "alias": "sonnet"},
+                    "Explore": {"band": "cheap", "model": "claude-fable-5", "alias": "fable"},
                     "searcher": {"band": "cheap", "model": "claude-haiku-4-5", "alias": "haiku"},
                     "reviewer": {"band": "max", "model": "claude-opus-5", "alias": "opus"},
                 }
@@ -1956,11 +1956,11 @@ class BandGateTests(unittest.TestCase):
             "claude_code",
             {"tool_name": "Agent", "tool_input": {"subagent_type": "Explore", "model": "opus"}},
         )
-        self.assertEqual(answer["hookSpecificOutput"]["updatedInput"]["model"], "sonnet")
+        self.assertEqual(answer["hookSpecificOutput"]["updatedInput"]["model"], "fable")
 
     def test_claude_leaves_an_unqualified_call_alone_so_the_profile_keeps_the_exact_id(self):
-        # Both sonnet bands share one alias, so writing it unasked would promote the cheap band to
-        # whatever ANTHROPIC_DEFAULT_SONNET_MODEL resolves to.
+        # All three bands share the `fable` alias, so writing it unasked would promote the cheap
+        # band to whatever ANTHROPIC_DEFAULT_FABLE_MODEL resolves to.
         self.assertEqual(
             self.gate("claude_code", {"tool_name": "Agent", "tool_input": {"subagent_type": "Explore"}}),
             {},
@@ -1989,15 +1989,15 @@ class BandGateTests(unittest.TestCase):
             {},
         )
 
-    def test_claude_cannot_separate_the_sonnet_bands_and_says_so(self):
-        # standard (claude-sonnet-4-6) and max (claude-sonnet-5) both project to `sonnet`, so an
-        # explicit `model: "sonnet"` on a standard-band agent is indistinguishable from its own
+    def test_claude_cannot_separate_bands_sharing_an_alias_and_says_so(self):
+        # All three bands (claude-fable-5) project to `fable`, so an
+        # explicit `model: "fable"` on a cheap-band agent is indistinguishable from its own
         # band and passes. This is the Agent-tool alias schema limit, not a gate bug; the profile
         # frontmatter's exact id is what holds the band whenever no `model` argument is passed.
         self.assertEqual(
             self.gate(
                 "claude_code",
-                {"tool_name": "Agent", "tool_input": {"subagent_type": "Explore", "model": "sonnet"}},
+                {"tool_name": "Agent", "tool_input": {"subagent_type": "Explore", "model": "fable"}},
             ),
             {},
         )
@@ -2066,7 +2066,7 @@ class BandGateTests(unittest.TestCase):
             {"tool_name": "Agent", "tool_input": {"subagent_type": "Explore", "model": "opus"}},
             override={"AGENT_BAND_MODEL_OVERRIDE": "openai/gpt-5.2"},
         )
-        self.assertEqual(answer["hookSpecificOutput"]["updatedInput"]["model"], "sonnet")
+        self.assertEqual(answer["hookSpecificOutput"]["updatedInput"]["model"], "fable")
 
     def test_gemini_has_no_adapter_because_invoke_agent_takes_no_model(self):
         self.assertEqual(

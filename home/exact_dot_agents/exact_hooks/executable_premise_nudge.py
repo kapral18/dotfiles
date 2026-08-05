@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Nudge the agent to verify a premise before a command whose outcome cannot expose it.
 
-SOP 2.1b's failure mode is not a missing probe, it is an *indistinguishable* one: a command
+SOP 2.1 item 8's failure mode is not a missing probe, it is an *indistinguishable* one: a command
 whose "it worked" and "the premise was wrong" outcomes look identical. `git stash` on a file
 whose change is already committed stashes nothing, so the suite passes vacuously and "verified
 by reverting" is false. Reverting, mocking, skipping, and force-pushing all share that shape.
@@ -151,7 +151,7 @@ def main() -> int:
 
     event = str(payload.get("hook_event_name") or "PreToolUse")
     lines = [
-        "### Premise check (SOP 2.1b)",
+        "### Premise check (SOP 2.1 item 8)",
         "This command's success would look the same whether or not its premise holds. "
         "Before relying on the result, verify:",
     ]

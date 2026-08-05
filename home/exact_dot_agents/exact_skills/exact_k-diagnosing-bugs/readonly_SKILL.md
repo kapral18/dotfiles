@@ -21,8 +21,7 @@ When you write the regression test, load `~/.agents/skills/k-code-quality-tests/
 
 **This is the skill.** Everything else is mechanical.
 With a **tight** pass/fail signal that goes red on _this_ bug, you will find the cause;
-bisection, hypotheses, and instrumentation all consume it. Without one, staring at code will not save you.
-Spend disproportionate effort here.
+bisection, hypotheses, and instrumentation all consume it. Spend disproportionate effort here.
 
 Ways to construct one — try roughly in this order:
 
@@ -49,7 +48,6 @@ Ways to construct one — try roughly in this order:
 
 ### Tighten the loop
 
-Treat the loop as a product.
 Once you have one, **tighten** it: faster (cache setup, skip unrelated init, narrow scope), sharper signal (assert the specific symptom, not "didn't crash"), more deterministic (pin time, seed RNG, isolate filesystem, freeze network).
 For non-deterministic bugs, chase a **higher reproduction rate**: loop the trigger, parallelise, add stress, inject sleeps, until debuggable.
 
@@ -69,8 +67,7 @@ Phase 1 is done when you can name **one command** you have **already run at leas
 - **Fast** — seconds, not minutes.
 - **Agent-runnable** — you can run it unattended.
 
-If you catch yourself reading code to build a theory before this command exists, **stop** —
-jumping to a hypothesis is the exact failure this skill prevents. No red-capable command, no Phase 2.
+If you catch yourself reading code to build a theory before this command exists, **stop**. No red-capable command, no Phase 2.
 
 ## Phase 2 — Reproduce + minimise
 
@@ -87,9 +84,9 @@ Each must be **falsifiable** — state the prediction: "If X is the cause, chang
 If you cannot state the prediction, it is a vibe — discard or sharpen it.
 Include a **negative control**: name an input your explanation calls irrelevant and predict the verdict is unchanged when you perturb it;
 if perturbing that "irrelevant" input flips the verdict, the explanation is not the real cause.
-A fluent, confident rationale for the cause is still only a hypothesis — the red-to-green loop and the negative control are the proof, not the narrative.
-Show the ranked list to the user before testing; they often re-rank instantly with domain knowledge.
-Do not block on it if they are AFK — proceed with your ranking.
+A fluent, confident rationale is still a hypothesis — the loop and the negative control are the proof, not the narrative.
+Include the ranked list in the next user-visible message (or final report); they often re-rank it with domain knowledge.
+Mid-turn text may never reach the user, so never wait on it — proceed with testing on your own ranking.
 
 ## Phase 4 — Instrument
 
@@ -97,16 +94,17 @@ Each probe maps to a specific prediction. **Change one variable at a time.**
 Prefer a debugger/REPL (one breakpoint beats ten logs), then targeted logs at the boundaries that distinguish hypotheses;
 never "log everything and grep". **Tag every debug log** with a unique prefix (e.g. `[DEBUG-a4f2]`) so cleanup is a single grep.
 For performance regressions, logs are usually wrong: establish a baseline measurement (timing harness, profiler, query plan), then bisect.
-Measure first, fix second.
 Done when each ranked hypothesis is confirmed or refuted by a recorded probe result, and performance regressions have a before/after measurement.
 
 ## Phase 5 — Fix + regression test
 
+This phase is fix work (SOP §1): on an assessment request, stop after Phase 4 with the verified cause and proposed fix.
 Write the regression test **before the fix**, but only if there is a **correct seam** —
 one where the test exercises the real bug pattern as it occurs at the call site. A too-shallow seam gives false confidence.
-**If no correct seam exists, that itself is the finding** — note it; the architecture is preventing the bug from being locked down, and it is a candidate for `~/.agents/skills/k-codebase-design/SKILL.md`.
+**If no correct seam exists, that itself is the finding** — the architecture prevents lockdown;
+hand it to `~/.agents/skills/k-codebase-design/SKILL.md`.
 If a correct seam exists: turn the minimised repro into a failing test, watch it fail (revert the fix in place —
-see `k-code-quality-tests`), apply the fix, watch it pass, then re-run the Phase 1 loop against the original (un-minimised) scenario.
+see `k-code-quality-tests`), apply the fix, watch it pass, then re-run the Phase 1 loop on the original scenario.
 For stateful/branch-heavy fixes, load `k-code-quality` and verify against base behaviour buckets with its state-machine verification harness.
 
 ## Phase 6 — Cleanup + post-mortem
@@ -115,7 +113,8 @@ Before declaring done:
 
 - Original repro no longer reproduces (re-run the Phase 1 loop).
 - Regression test passes (or absence of seam is documented).
-- Defect-class sweep: enumerate the class of defect the root cause implies, then sweep the codebase (and sibling repos when the class spans them) for other instances; account for each hit as fixed, out-of-scope (say where it goes), or clean.
+- Defect-class sweep: enumerate the class of defect the root cause implies, then sweep the codebase (and sibling repos when the class spans them) for other instances; classify every hit as fixed, out-of-scope (say where it goes), or clean.
+  Fix instances beyond the reported bug only when the user asked for a class-wide fix; otherwise list them as findings.
   A fix for instance N is not complete while unexamined siblings remain.
 - All `[DEBUG-...]` instrumentation removed (grep the prefix).
 - Throwaway prototypes deleted or clearly marked.
@@ -123,4 +122,4 @@ Before declaring done:
 
 Then ask: **what would have prevented this bug?**
 If the answer is architectural (no good seam, tangled callers, hidden coupling), hand off to `k-codebase-design` with specifics —
-after the fix is in, when you know more than you did at the start.
+after the fix is in.

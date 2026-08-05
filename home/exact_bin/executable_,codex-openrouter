@@ -19,7 +19,7 @@ if [[ -z "$api_key" ]]; then
 fi
 export OPENROUTER_API_KEY="$api_key"
 
-readonly OPENROUTER_MODEL="openai/gpt-5.2"
+readonly OPENROUTER_MODEL="moonshotai/kimi-k3"
 readonly OPENROUTER_EFFORT="high"
 
 cli_args=()

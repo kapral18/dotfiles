@@ -50,7 +50,7 @@ Pi encodes reasoning effort in model slug suffixes such as `:xhigh` on its per-t
 
 Runtime probes confirmed project custom-agent invocation in Cursor and Copilot, Copilot task subagents with explicit model overrides, and Codex `spawn_agent` / `wait`.
 
-Cursor source supports custom subagent types, but the model-facing Task schema can expose only generic types in some runs. Generic or fallback launches pass the registry value as a profile-equivalent model when the role has no usable profile frontmatter, and the adversarial verifier passes the explicitly resolved cross-family id.
+Cursor source supports custom subagent types, but the model-facing Task schema can expose only generic types in some runs. Generic or fallback launches pass the registry value as a profile-equivalent model when the role has no usable profile frontmatter, and the adversarial verifier passes the explicitly resolved verifier id.
 
 ## Agent suite
 

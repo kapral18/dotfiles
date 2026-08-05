@@ -864,13 +864,13 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         )
 
     def test_findings_audit_precedes_final_adversarial_verification(self):
-        # The audit narrows the candidate set and the cross-family verifier then refutes only
+        # The audit narrows the candidate set and the adversarial verifier then refutes only
         # what survived. Reverting to the old parallel/adversarial-first order silently doubles
         # verifier work and lets refuted candidates reach the audit.
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
             "5. findings audit, inline or delegated by the findings-audit delegation conditions",
-            "6. final cross-family adversarial verification over the audited candidate set",
+            "6. final adversarial verification (cross-family preferred at equal capability, SOP §3.5) over the audited candidate set",
             "4. **Run controller findings audit on candidate findings.**",
             "5. **Run final adversarial verification.**",
             "Launch one to three sighted lanes by default.",
@@ -901,7 +901,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             self.assert_file_contains(
                 controller,
                 "## Phase 4 — Findings audit (delegate, read-only)",
-                "## Phase 5 — Final adversarial verification (delegate, cross-family)",
+                "## Phase 5 — Final adversarial verification (delegate; cross-family preferred at equal capability, SOP §3.5)",
             )
             # The audit runs before the verifier, so it cannot consume adversarial verdicts;
             # applying those verdicts belongs to the later reconcile phase.
@@ -1012,6 +1012,15 @@ class TestAgentInstructionInvariants(unittest.TestCase):
                 # review + verifier same-family (degraded refutation) by omitting a counter.
                 assert roles["verifier"] == roles["lanes"], (
                     f"cursor registry verifier {roles['verifier']!r} != lanes {roles['lanes']!r}"
+                )
+                continue
+            if harness == "omp":
+                # Deliberate exception (user call 2026-08-05): the falsification lanes pin concrete
+                # cursor/kimi-k3-max:high while every other lane stays on @default. Same family at
+                # a higher effort tier, so no counter is claimed and none may appear.
+                assert "counter" not in top, f"omp max band carries a counter: {top['counter']!r}"
+                assert roles["verifier"] == "cursor/kimi-k3-max:high", (
+                    f"omp registry verifier {roles['verifier']!r} != the pinned falsification tier"
                 )
                 continue
             assert counter["model"] == roles["verifier"], (
@@ -1314,11 +1323,18 @@ class TestAgentInstructionInvariants(unittest.TestCase):
     def test_bands_are_short_context_by_default(self):
         # Standing policy: short context everywhere. `long` is allowed only where the harness
         # publishes no short variant of the wanted model, which today is Cursor alone — it ships
-        # Opus 5, Sonnet 5, GPT-5.5 and GPT-5.6 Sol exclusively as 1M ids. Any other `long` row is
+        # Opus 5, Sonnet 5, Fable 5 and the GPT-5.x ids exclusively as 1M ids. Any other `long` row is
         # drift, and an empty value is worse: it reads as "nobody decided" and hides the window.
         import ai_models
 
-        cursor_1m_only = ("claude-opus-5", "claude-sonnet-5", "gpt-5.5", "gpt-5.6-sol", "gpt-5.6-terra")
+        cursor_1m_only = (
+            "claude-opus-5",
+            "claude-sonnet-5",
+            "claude-fable-5",
+            "gpt-5.5",
+            "gpt-5.6-sol",
+            "gpt-5.6-terra",
+        )
         offenders: list[str] = []
 
         def check(where: str, harness: str, model: str, context: str | None) -> None:
@@ -1365,11 +1381,11 @@ class TestAgentInstructionInvariants(unittest.TestCase):
 
         assert not offenders, "short context is the default everywhere:\n  " + "\n  ".join(offenders)
 
-    def test_openrouter_routes_are_pinned_to_gpt_5_2_at_high_effort(self):
+    def test_openrouter_routes_are_pinned_to_kimi_k3_at_high_effort(self):
         import ai_models
         import model_mirrors
 
-        model = "openai/gpt-5.2"
+        model = "moonshotai/kimi-k3"
         selector = f"openrouter/{model}"
         registry = REPO / "home/.chezmoidata/ai_models"
         provider_models = [
@@ -1427,17 +1443,17 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         # high effort on every harness whose catalog has it. Five cannot: Claude Code and Gemini are
         # single-vendor, native Codex has no gpt-5.3-codex-spark, Cursor's Task tool takes only its
         # own eight-slug whitelist, and Pi reaches models only through OpenRouter, where every route
-        # is pinned to the pinned gpt-5.2. Each exception is spelled out so a future edit cannot
+        # is pinned to the pinned kimi-k3. Each exception is spelled out so a future edit cannot
         # quietly downgrade a harness that could have run the codex tier.
         import ai_models
 
         expected = {
-            "claude_code": ("claude-sonnet-4-6", "high"),  # Anthropic-only; user pin, opus ban not applied here
+            "claude_code": ("claude-fable-5", "low"),  # Anthropic-only; all bands fable-5 (user call 2026-08-05)
             "codex": ("gpt-5.4", "high"),  # no gpt-5.3-codex-spark in the 0.146.0 catalog
             "copilot": ("claude-haiku-4.5", "high"),
             "cursor": ("composer-2.5", "high"),  # no codex id in the Task whitelist; `-fast` costs 6x
             "gemini": ("gemini-3.6-flash", "high"),  # Google-only catalog
-            "pi": ("openrouter/openai/gpt-5.2:high", "high"),  # OpenRouter-only; pinned route
+            "pi": ("openrouter/moonshotai/kimi-k3:high", "high"),  # OpenRouter-only; pinned route
             "omp": ("@smol", "high"),  # a role token; the concrete pick is asserted below
         }
 
@@ -1662,7 +1678,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         # The verifier is the only different-family read of the diff. Refutation-only wastes it.
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_adversarial-verifier.md",
-            "## Cross-family miss sweep (bounded, after the verdicts)",
+            "## Miss sweep (bounded, after the verdicts)",
             "Return at most three, marked `new-candidate`",
             "the controller re-audits them before judgment",
         )

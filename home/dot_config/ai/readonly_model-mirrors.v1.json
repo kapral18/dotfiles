@@ -13,8 +13,8 @@
   "defaults": {
     "harnesses": {
       "claude": {
-        "personal": "claude-opus-5",
-        "work": "claude-opus-5"
+        "personal": "claude-fable-5",
+        "work": "claude-fable-5"
       },
       "codex": {
         "personal": "gpt-5.6-terra",
@@ -30,26 +30,26 @@
       "opencode": {
         "personal": {
           "agent": "main",
-          "model": "openrouter/openai/gpt-5.2",
-          "small_model": "openrouter/openai/gpt-5.2"
+          "model": "openrouter/moonshotai/kimi-k3",
+          "small_model": "openrouter/moonshotai/kimi-k3"
         },
         "work": {
           "agent": "main",
-          "model": "openrouter/openai/gpt-5.2",
-          "small_model": "openrouter/openai/gpt-5.2"
+          "model": "openrouter/moonshotai/kimi-k3",
+          "small_model": "openrouter/moonshotai/kimi-k3"
         }
       },
       "pi": {
         "personal": {
-          "model": "openai/gpt-5.2",
+          "model": "moonshotai/kimi-k3",
           "provider": "openrouter",
-          "selector": "openrouter/openai/gpt-5.2",
+          "selector": "openrouter/moonshotai/kimi-k3",
           "thinking": "high"
         },
         "work": {
-          "model": "openai/gpt-5.2",
+          "model": "moonshotai/kimi-k3",
           "provider": "openrouter",
-          "selector": "openrouter/openai/gpt-5.2",
+          "selector": "openrouter/moonshotai/kimi-k3",
           "thinking": "high"
         }
       }
@@ -98,7 +98,7 @@
       "curated": {
         "complete": true,
         "models": [
-          "claude-opus-5"
+          "claude-fable-5"
         ],
         "provenance": [
           {
@@ -125,7 +125,7 @@
       "recommended": {
         "complete": true,
         "models": [
-          "claude-opus-5"
+          "claude-fable-5"
         ],
         "provenance": [
           {
@@ -627,7 +627,7 @@
       "available": {
         "complete": false,
         "models": [
-          "openrouter/openai/gpt-5.2",
+          "openrouter/moonshotai/kimi-k3",
           "llama-cpp/local",
           "llama-cpp/local-max"
         ],
@@ -654,7 +654,7 @@
       "curated": {
         "complete": true,
         "models": [
-          "openrouter/openai/gpt-5.2",
+          "openrouter/moonshotai/kimi-k3",
           "llama-cpp/local",
           "llama-cpp/local-max"
         ],
@@ -690,7 +690,7 @@
       "recommended": {
         "complete": true,
         "models": [
-          "openrouter/openai/gpt-5.2"
+          "openrouter/moonshotai/kimi-k3"
         ],
         "provenance": [
           {
@@ -710,7 +710,7 @@
       "available": {
         "complete": false,
         "models": [
-          "openrouter/openai/gpt-5.2"
+          "openrouter/moonshotai/kimi-k3"
         ],
         "provenance": [
           {
@@ -732,7 +732,7 @@
       "curated": {
         "complete": true,
         "models": [
-          "openrouter/openai/gpt-5.2"
+          "openrouter/moonshotai/kimi-k3"
         ],
         "provenance": [
           {
@@ -764,7 +764,7 @@
       "recommended": {
         "complete": true,
         "models": [
-          "openrouter/openai/gpt-5.2"
+          "openrouter/moonshotai/kimi-k3"
         ],
         "provenance": [
           {
@@ -851,7 +851,7 @@
       "curated": {
         "complete": true,
         "models": [
-          "openai/gpt-5.2"
+          "moonshotai/kimi-k3"
         ],
         "provenance": [
           {
@@ -873,7 +873,7 @@
       "recommended": {
         "complete": true,
         "models": [
-          "openai/gpt-5.2"
+          "moonshotai/kimi-k3"
         ],
         "provenance": [
           {

@@ -27,7 +27,7 @@ local SYSTEM_MESSAGE =
 
 local DEFAULT_MAX_OUTPUT_TOKENS = 2048
 local GEMINI_DEFAULT_MODEL = "gemini-flash-latest"
-local OPENROUTER_DEFAULT_MODEL = "openai/gpt-5.2"
+local OPENROUTER_DEFAULT_MODEL = "moonshotai/kimi-k3"
 local OPENROUTER_CONTEXT_COMPRESSION_PLUGIN = { id = "context-compression" }
 
 -- ───────────────────────────── HELPERS (provider-agnostic) ─────────────────────

@@ -1,7 +1,7 @@
 name = "live-ui-review"
 description = "Verification-mode live UI verifier for /k-deep-review. Use after reviewer workers to validate UI/runtime-relevant candidate findings; returns comparison evidence, screenshot handoff, non-applicability, or target/branch/runtime/data blocker status."
 model = "{{ .agent_review_models.codex.lanes }}"
-model_reasoning_effort = "high"
+model_reasoning_effort = "max"
 approval_policy = "untrusted"
 sandbox_mode = "workspace-write"
 developer_instructions = """

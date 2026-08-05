@@ -58,7 +58,8 @@ Your lane is one of several running the same diff in parallel. Depth inside your
 Compare the diff against how base behaves today, for the paths your lens covers.
 
 When the context pack already carries base context for those paths, reuse it and say so.
-Otherwise, if the repo is indexed, run `list_indices` first, then use semantic code search per `~/.agents/skills/k-semantic-code-search/SKILL.md` to establish base invariants.
+Otherwise, if MCP/SCSI tools are available in this context and the repo is indexed, run `list_indices` first, then use semantic code search per `~/.agents/skills/k-semantic-code-search/SKILL.md` to establish base invariants.
+Controller-run lanes (for example under `k-deep-review`) have MCP/SCSI structurally disabled and receive base context from the controller instead; do not attempt `list_indices` there.
 SCSI reflects base, not the branch; where SCSI and the diff disagree, the diff wins.
 If the repo is not indexed, use `git show <base>:<path>` plus scoped `rg` and file reads.
 

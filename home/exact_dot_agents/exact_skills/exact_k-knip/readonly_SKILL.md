@@ -38,7 +38,8 @@ npx knip --reporter json          # machine-readable output
 
 ## Confidence rules
 
-Auto-delete: orphaned files, unused deps, internal unused exports, unused type exports.
+Auto-delete (only when the user asked for cleanup/removal): orphaned files, unused deps, internal unused exports, unused type exports.
+For a find, check, or report invocation, report the hits and delete nothing.
 
 Ask first: anything in `src/index` / `lib/` / public API paths, deps that may be CLI-only or peer deps, dynamically imported files.
 

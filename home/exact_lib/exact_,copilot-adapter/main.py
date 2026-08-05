@@ -167,6 +167,7 @@ def child_command(
                 "ANTHROPIC_DEFAULT_OPUS_MODEL": frontend_model,
                 "ANTHROPIC_DEFAULT_SONNET_MODEL": frontend_model,
                 "ANTHROPIC_DEFAULT_HAIKU_MODEL": frontend_model,
+                "ANTHROPIC_DEFAULT_FABLE_MODEL": frontend_model,
                 "CLAUDE_CODE_AUTO_COMPACT_WINDOW": str(model.context_window),
             }
         )

@@ -42,27 +42,27 @@ class TestOmpMigration(unittest.TestCase):
 
     def test_config_renders_profile_specific_model_roles(self):
         expected_values = {
-            # OMP WORK pins primary roles to Cursor gpt-5.2-high, uses composer-2.5 for smol, and
+            # OMP WORK pins primary roles to Cursor kimi-k3-high, uses composer-2.5 for smol, and
             # uses Claude Sonnet 5 for vision. Personal matches work on the same Cursor pins.
             True: (
-                "default: cursor/gpt-5.2-high:high",
+                "default: cursor/kimi-k3-high:high",
                 "smol: cursor/composer-2.5:high",
                 "vision: cursor/claude-sonnet-5-high:high",
-                "slow: cursor/gpt-5.2-high:high",
-                "plan: cursor/gpt-5.2-high:high",
-                "task: cursor/gpt-5.2-high:high",
-                "advisor: cursor/gpt-5.2-high:high",
-                "modelProviderOrder:\n  - cursor\n  - openrouter\n  - github-copilot\n  - openai-codex\n  - anthropic\n  - openai\n",
+                "slow: cursor/kimi-k3-high:high",
+                "plan: cursor/kimi-k3-high:high",
+                "task: cursor/kimi-k3-high:high",
+                "advisor: cursor/kimi-k3-high:high",
+                "modelProviderOrder:\n  - cursor\n  - openrouter\n  - openai-codex\n  - anthropic\n  - openai\n",
             ),
             False: (
-                "default: cursor/gpt-5.2-high:high",
+                "default: cursor/kimi-k3-high:high",
                 "smol: cursor/composer-2.5:high",
                 "vision: cursor/claude-sonnet-5-high:high",
-                "slow: cursor/gpt-5.2-high:high",
-                "plan: cursor/gpt-5.2-high:high",
-                "task: cursor/gpt-5.2-high:high",
-                "advisor: cursor/gpt-5.2-high:high",
-                "modelProviderOrder:\n  - cursor\n  - openai-codex\n  - github-copilot\n  - openrouter\n  - anthropic\n  - openai\n",
+                "slow: cursor/kimi-k3-high:high",
+                "plan: cursor/kimi-k3-high:high",
+                "task: cursor/kimi-k3-high:high",
+                "advisor: cursor/kimi-k3-high:high",
+                "modelProviderOrder:\n  - cursor\n  - openai-codex\n  - openrouter\n  - anthropic\n  - openai\n",
             ),
         }
         shared_values = (

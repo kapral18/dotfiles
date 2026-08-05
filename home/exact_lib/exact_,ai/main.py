@@ -30,7 +30,7 @@ ALIASES = {
 DEPTH_EFFORT = {"fast": "low", "balanced": "medium", "deep": "high"}
 MODEL_MIRROR_DISPLAY_PATH = "~/.config/ai/model-mirrors.v1.json"
 OPENROUTER_PROVIDER = "openrouter"
-OPENROUTER_MODEL = "openai/gpt-5.2"
+OPENROUTER_MODEL = "moonshotai/kimi-k3"
 OPENROUTER_SELECTOR = f"{OPENROUTER_PROVIDER}/{OPENROUTER_MODEL}"
 
 

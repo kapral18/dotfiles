@@ -37,7 +37,7 @@ Based on Ousterhout's "design it twice" — your first idea is unlikely to be th
 ### 1. Frame the problem space
 
 Write a short user-facing explanation for the candidate: the constraints any new interface must satisfy, the dependencies and their category (Branch A), and a rough illustrative sketch to ground the constraints (not a proposal).
-Show it, then proceed immediately — the user reads while the subagents work.
+Include it in the next user-visible message (mid-turn text may never reach the user), and proceed with the subagents immediately rather than waiting on a reply.
 
 ### 2. Spawn subagents in parallel
 

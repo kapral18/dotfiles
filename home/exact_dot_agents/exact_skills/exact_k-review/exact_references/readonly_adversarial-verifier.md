@@ -37,7 +37,7 @@ Hard constraints:
 - Do not dedup, re-rank, or rewrite candidates; verdicts only.
 - Do not launch more subagents.
 
-## Cross-family miss sweep (bounded, after the verdicts)
+## Miss sweep (bounded, after the verdicts)
 
 You are usually the only model from a different family that reads this diff.
 The finder lanes share a family and a prompt, so what they all missed is exactly what you are positioned to catch.

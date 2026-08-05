@@ -62,8 +62,8 @@ graph TB
     I10 --> R10["realized by: pickers/lib/handoff_namespace.py<br/>handoff_to_{gh,sessions}.sh · pin_{gh,session}_first.sh<br/>TMUX_PICKER_HANDOFF_TOKEN injection"]:::realize
 
     %% ---- C11 Diversity gate (adversarial review) ---------------------------
-    C11{{"C11 · ADVERSARIAL DIVERSITY<br/>a model may not clear its own family"}}:::concept
-    C11 --> I11["INVARIANT: verifier/adversarial review lanes use a<br/>different model family than the implement lane they judge."]:::inv
+    C11{{"C11 · ADVERSARIAL DIVERSITY<br/>a model prefers not to clear its own family"}}:::concept
+    C11 --> I11["INVARIANT: verifier/adversarial review lanes prefer a<br/>different model family at equal capability;<br/>capability outranks diversity."]:::inv
     I11 --> R11["realized by: agent_review_models registry<br/>/k-deep-review adversarial/verifier lanes · /k-build criteria-verifier lane"]:::realize
 
     %% ---- C12 Resumable state machine ---------------------------------------

@@ -80,7 +80,7 @@ Copilot custom providers are BYOK environment variables only, so its wrappers se
 
 The three OpenRouter wrappers read `OPENROUTER_API_KEY`, falling back to the `openrouter/api/token` pass entry when the environment is not already populated.
 
-All OpenRouter entry points are a strict one-model route: `openai/gpt-5.2` at `high` effort. The wrappers reject direct model, effort, and configuration overrides instead of treating the pin as a default.
+All OpenRouter entry points are a strict one-model route: `moonshotai/kimi-k3` at `high` effort. The wrappers reject direct model, effort, and configuration overrides instead of treating the pin as a default.
 
 `,claude-openrouter` points `ANTHROPIC_BASE_URL` at `https://openrouter.ai/api` with no `/v1` suffix, because Claude's Anthropic SDK appends `/v1/messages`. It pins the root model, all three family defaults, and `CLAUDE_CODE_SUBAGENT_MODEL` to GPT-5.2; it also passes `--effort high`, sets `ANTHROPIC_AUTH_TOKEN`, and clears `ANTHROPIC_API_KEY`.
 
@@ -162,26 +162,26 @@ The bridge injects a freshly selected bearer per request, rotating through curso
 
 ### Managed configuration
 
-`readonly_config.yml.tmpl` is the complete declarative OMP contract. Both profiles pin main roles to Cursor `gpt-5.2-high`, use `composer-2.5` for `smol`, and use Cursor `claude-sonnet-5-high` for `vision`. `omp config list --json` reports the effective typed settings; inspect all model-role pins together with `omp config get modelRoles`, not with dotted child keys.
+`readonly_config.yml.tmpl` is the complete declarative OMP contract. Both profiles pin main roles to Cursor `kimi-k3-high`, use `composer-2.5` for `smol`, and use Cursor `claude-sonnet-5-high` for `vision`. `omp config list --json` reports the effective typed settings; inspect all model-role pins together with `omp config get modelRoles`, not with dotted child keys.
 
-| Setting                                                                                | Work value                         | Personal value                     |
-| -------------------------------------------------------------------------------------- | ---------------------------------- | ---------------------------------- |
-| `modelRoles.default`                                                                   | `cursor/gpt-5.2-high:high`         | `cursor/gpt-5.2-high:high`         |
-| `modelRoles.smol`                                                                      | `cursor/composer-2.5:high`         | `cursor/composer-2.5:high`         |
-| `modelRoles.vision`                                                                    | `cursor/claude-sonnet-5-high:high` | `cursor/claude-sonnet-5-high:high` |
-| `modelRoles.slow`, `modelRoles.plan`                                                   | `cursor/gpt-5.2-high:high`         | `cursor/gpt-5.2-high:high`         |
-| `modelRoles.task`                                                                      | `cursor/gpt-5.2-high:high`         | `cursor/gpt-5.2-high:high`         |
-| `modelRoles.advisor`                                                                   | `cursor/gpt-5.2-high:high`         | `cursor/gpt-5.2-high:high`         |
-| `modelProviderOrder`                                                                   | `cursor`, then the work providers  | `cursor`, then the work providers  |
-| `advisor.enabled`, `advisor.subagents`, `advisor.syncBacklog`, `advisor.immuneTurns`   | `true`, `true`, `1`, `0`           | `true`, `true`, `1`, `0`           |
-| `defaultThinkingLevel`                                                                 | `high`                             | `high`                             |
-| `memory.backend`                                                                       | `off`                              | `off`                              |
-| `autolearn.enabled`, `autolearn.autoContinue`                                          | `false`, `false`                   | `false`, `false`                   |
-| `dev.autoqaConsent`                                                                    | `granted`                          | `granted`                          |
-| `skills.enabled`, `skills.enableSkillCommands`                                         | `true`, `true`                     | `true`, `true`                     |
-| `task.isolation.mode`, `task.enableEffort`, `task.enableLsp`, `task.maxRecursionDepth` | `auto`, `true`, `true`, `2`        | `auto`, `true`, `true`, `2`        |
-| `retry.enabled`, `retry.maxRetries`                                                    | `true`, `5`                        | `true`, `5`                        |
-| `symbolPreset`, `theme.dark`, `setupVersion`                                           | `nerd`, `titanium`, `1`            | `nerd`, `titanium`, `1`            |
+| Setting                                                                                | Work value                                                    | Personal value                                                |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------- |
+| `modelRoles.default`                                                                   | `cursor/kimi-k3-high:high`                                    | `cursor/kimi-k3-high:high`                                    |
+| `modelRoles.smol`                                                                      | `cursor/composer-2.5:high`                                    | `cursor/composer-2.5:high`                                    |
+| `modelRoles.vision`                                                                    | `cursor/claude-sonnet-5-high:high`                            | `cursor/claude-sonnet-5-high:high`                            |
+| `modelRoles.slow`, `modelRoles.plan`                                                   | `cursor/kimi-k3-high:high`                                    | `cursor/kimi-k3-high:high`                                    |
+| `modelRoles.task`                                                                      | `cursor/kimi-k3-high:high`                                    | `cursor/kimi-k3-high:high`                                    |
+| `modelRoles.advisor`                                                                   | `cursor/kimi-k3-high:high`                                    | `cursor/kimi-k3-high:high`                                    |
+| `modelProviderOrder`                                                                   | `cursor`, `openrouter`, `openai-codex`, `anthropic`, `openai` | `cursor`, `openai-codex`, `openrouter`, `anthropic`, `openai` |
+| `advisor.enabled`, `advisor.subagents`, `advisor.syncBacklog`, `advisor.immuneTurns`   | `true`, `true`, `1`, `0`                                      | `true`, `true`, `1`, `0`                                      |
+| `defaultThinkingLevel`                                                                 | `high`                                                        | `high`                                                        |
+| `memory.backend`                                                                       | `off`                                                         | `off`                                                         |
+| `autolearn.enabled`, `autolearn.autoContinue`                                          | `false`, `false`                                              | `false`, `false`                                              |
+| `dev.autoqaConsent`                                                                    | `granted`                                                     | `granted`                                                     |
+| `skills.enabled`, `skills.enableSkillCommands`                                         | `true`, `true`                                                | `true`, `true`                                                |
+| `task.isolation.mode`, `task.enableEffort`, `task.enableLsp`, `task.maxRecursionDepth` | `auto`, `true`, `true`, `2`                                   | `auto`, `true`, `true`, `2`                                   |
+| `retry.enabled`, `retry.maxRetries`                                                    | `true`, `5`                                                   | `true`, `5`                                                   |
+| `symbolPreset`, `theme.dark`, `setupVersion`                                           | `nerd`, `titanium`, `1`                                       | `nerd`, `titanium`, `1`                                       |
 
 `modelRoles` is also what prices OMP's bands: repo-managed agent profiles carry `@role` tokens (`@smol`, `@task`, `@default`, `@advisor`) that `model_bands.omp` names, so the work and personal role tables above decide what each band costs. See [Model tiering](../model-tiering.md).
 

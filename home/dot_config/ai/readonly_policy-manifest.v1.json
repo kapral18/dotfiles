@@ -1,8 +1,8 @@
 {
   "version": 1,
   "output_path": "home/readonly_AGENTS.md",
-  "output_sha256": "a853f2ef572267864f268c827ebfe51d76851fbb5528209a4c9e6d8f4df86101",
-  "output_bytes": 27252,
+  "output_sha256": "1b1f18cbc18de691a4479c2ec38f2dc22255777776b3a0daa22b38bca47e6dd1",
+  "output_bytes": 28670,
   "rules": [
     {
       "id": "sop.0.binding-contract",
@@ -17,8 +17,8 @@
     },
     {
       "id": "sop.1.purpose-and-hierarchy",
-      "sha256": "0f4f1e0053dcfa99645fe325899bcf7e10e54eb51569adf7bca01664591eeeed",
-      "bytes": 1287,
+      "sha256": "af1ae94b7e7d38bf3b33bdd71cdab7cb31b2c13671da9c1f32d77455863bd6ac",
+      "bytes": 1453,
       "disposition": "core",
       "consumer": "home/readonly_AGENTS.md",
       "risk_tier": "secret",
@@ -50,8 +50,8 @@
     },
     {
       "id": "sop.2.1.external-truth",
-      "sha256": "b4ef8fdf6eea868979f72628bde7277e59883fc7a8c91df8948dae29bbb5a8bb",
-      "bytes": 2050,
+      "sha256": "35a0530a72157a0f1bd4e5f2c864bc9b3c921a6123f37670d8ffe0a11d1e0ccc",
+      "bytes": 2307,
       "disposition": "core",
       "consumer": "home/readonly_AGENTS.md",
       "risk_tier": "standard",
@@ -94,8 +94,8 @@
     },
     {
       "id": "sop.2.3.completion",
-      "sha256": "8cbb6cfb76cfc163770cf85f586771e32ee910e694d4c4cf041c705fffe6d0cc",
-      "bytes": 743,
+      "sha256": "a200512a27942f608f42071397e0f7c4f0629bc8c5c99dce7dd0c229e1d2480a",
+      "bytes": 1296,
       "disposition": "core",
       "consumer": "home/readonly_AGENTS.md",
       "risk_tier": "standard",
@@ -193,8 +193,8 @@
     },
     {
       "id": "sop.3.5.delegation-categories",
-      "sha256": "f0efa06a959476f9ff3ac639bbc35105707516210ee0ef9745e7c586b0c7edb8",
-      "bytes": 2021,
+      "sha256": "a4be0700643df4971a55a51693e55989f1095aaa23390862b16b11803ff56d52",
+      "bytes": 2213,
       "disposition": "core",
       "consumer": "home/readonly_AGENTS.md",
       "risk_tier": "standard",
@@ -303,8 +303,8 @@
     },
     {
       "id": "sop.6.3.response-shape",
-      "sha256": "0d3f57af3d286a0a936ff68b270eff5ec223421d81cee2b1a598defc3a21f0dc",
-      "bytes": 1411,
+      "sha256": "2e0a3738b5db289c2b93e851165776a53519715c5c0a9408d1664aae65f200dd",
+      "bytes": 1661,
       "disposition": "core",
       "consumer": "home/readonly_AGENTS.md",
       "risk_tier": "standard",

@@ -29,7 +29,8 @@ the oracle (an intended visual/state to match, or a base-vs-head comparison) com
 
 ## Local-also or Windows-only
 
-Ask the user once whether to also verify the local browser (default — run both, mirroring the previous `windows_additional` behavior) or Windows-only (skip local; use only when the user says the path is Windows-exclusive).
+Proceed with the default — run both, mirroring the previous `windows_additional` behavior — and state the choice.
+Ask only when the user constrained verification scope; Windows-only (skip local) applies when the user says the path is Windows-exclusive.
 Resolve this once per invocation; never re-decide it per finding/criterion.
 
 ## VirtualBox/CDP connection rung

@@ -47,7 +47,7 @@ Environment variables:
 
 | Provider   | Required             | Optional                                                                                                                 |
 | ---------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| OpenRouter | `OPENROUTER_API_KEY` | None. The route is fixed to `openai/gpt-5.2` with `reasoning.effort: "high"`.                                            |
+| OpenRouter | `OPENROUTER_API_KEY` | None. The route is fixed to `moonshotai/kimi-k3` with `reasoning.effort: "high"`.                                        |
 | Gemini     | `GEMINI_API_KEY`     | `GEMINI_MODEL` (default `gemini-flash-latest`, 1,048,576-token input limit), `GEMINI_MAX_OUTPUT_TOKENS` (default `2048`) |
 
 OpenRouter requests always enable the `context-compression` plugin, so oversized staged diffs are compressed by OpenRouter instead of failing at the model context boundary.

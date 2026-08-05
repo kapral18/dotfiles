@@ -3,8 +3,8 @@
   "permissions": {
     "defaultMode": "bypassPermissions"
   },
-  "model": "claude-opus-5",
-  "effortLevel": "high",
+  "model": "claude-fable-5",
+  "effortLevel": "medium",
   "hooks": {
     "SessionStart": [
       {

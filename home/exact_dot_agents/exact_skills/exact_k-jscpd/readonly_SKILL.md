@@ -33,8 +33,10 @@ jscpd ./src --threshold 5                       # fail if >5% duplication
 
 1. Run `jscpd` on the target directory.
 2. Review reported clones — each shows both locations and the duplicated block.
-3. Refactor: extract shared logic into a common module or utility.
+3. Refactor: extract shared logic into a common module or utility — only when the user asked for dedup/refactor work.
+   For a check, investigation, or report invocation, stop at the findings report; do not edit code.
 4. Re-run and confirm the duplication % or clone count is strictly lower than the pre-refactor baseline (or that `--threshold` now passes if one is set).
+   Skipped when no refactor was requested.
 
 ## Notes
 

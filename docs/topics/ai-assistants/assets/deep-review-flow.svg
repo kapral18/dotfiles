@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="820" viewBox="0 0 1500 820" role="img" aria-labelledby="title desc">
   <title id="title">Deep-review end-to-end phase order</title>
-  <desc id="desc">The controller routes and scopes, optionally runs PR necessity or intent audit first, launches a bounded registry-model reviewer roster plus optional blind fresh-eyes lane, merges and dedupes candidates, runs live UI when applicable, audits findings, runs final cross-family adversarial verification, judges, acts, and then runs post-act verification whenever the working tree was edited.</desc>
+  <desc id="desc">The controller routes and scopes, optionally runs PR necessity or intent audit first, launches a bounded registry-model reviewer roster plus optional blind fresh-eyes lane, merges and dedupes candidates, runs live UI when applicable, audits findings, runs final adversarial verification (cross-family preferred at equal capability), judges, acts, and then runs post-act verification whenever the working tree was edited.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#7dd3fc"/></marker>
     <style>
@@ -26,7 +26,7 @@
   <text class="text" x="1075" y="405">5. Findings audit</text><text class="small" x="1075" y="435">inline when trivial,</text><text class="small" x="1075" y="461">delegated when not</text>
   <path class="line" d="M1040 424 H950"/>
   <rect class="gate" x="700" y="360" width="250" height="128"/>
-  <text class="text" x="735" y="405">6. Final adversarial</text><text class="small" x="735" y="435">cross-family refutation</text><text class="small" x="735" y="461">after findings audit</text>
+  <text class="text" x="735" y="405">6. Final adversarial</text><text class="small" x="735" y="435">cross-family preferred</text><text class="small" x="735" y="461">after findings audit</text>
   <path class="line" d="M700 424 H610"/>
   <rect class="act" x="360" y="360" width="250" height="128"/>
   <text class="text" x="395" y="405">7. Judge + act</text><text class="small" x="395" y="435">fix if authorized,</text><text class="small" x="395" y="461">else draft only</text>

@@ -1,6 +1,6 @@
 {
   "defaultProvider": "openrouter",
-  "defaultModel": "openai/gpt-5.2",
+  "defaultModel": "moonshotai/kimi-k3",
   "defaultThinkingLevel": "high",
   "showCacheMissNotices": true,
   "theme": "dark",

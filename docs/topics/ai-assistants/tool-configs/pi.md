@@ -32,10 +32,10 @@ Pi globals are installed via yarn from [`home/readonly_dot_default-yarn-pkgs`](.
 
 ### Profile defaults
 
-| Profile  | Default                         | Extra providers/models |
-| -------- | ------------------------------- | ---------------------- |
-| work     | `openrouter` / `openai/gpt-5.2` | configured work models |
-| personal | `openrouter` / `openai/gpt-5.2` | `llama-cpp`            |
+| Profile  | Default                             | Extra providers/models |
+| -------- | ----------------------------------- | ---------------------- |
+| work     | `openrouter` / `moonshotai/kimi-k3` | configured work models |
+| personal | `openrouter` / `moonshotai/kimi-k3` | `llama-cpp`            |
 
 The local llama.cpp provider for Pi is covered in [Model registry & routing](../model-registry.md) and [llama.cpp local inference](../llama-cpp/index.md).
 
