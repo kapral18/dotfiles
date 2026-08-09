@@ -211,11 +211,15 @@ cursor_models:
   - id: "kimi-k3-low"
   - id: "kimi-k3-max"
 
-# Pi's OpenRouter picker is a strict route. Pi resolves the `openrouter/` prefix through its own
-# built-in provider, so no generated provider block backs this entry.
+# Pi's OpenRouter picker is a strict four-model route (DeepSeek max default/lanes, selectable
+# Kimi, selectable GLM-5.2, counter gpt-5.6-terra). Pi resolves the `openrouter/` prefix through its
+# own built-in provider, so no generated provider block backs these entries.
 pi_extra_models:
-  - id: "openrouter/moonshotai/kimi-k3"
+  - id: "openrouter/deepseek/deepseek-v4-flash-0731"
     recommended: true
+  - id: "openrouter/moonshotai/kimi-k3"
+  - id: "openrouter/z-ai/glm-5.2"
+  - id: "openrouter/openai/gpt-5.6-terra"
 
 # Copilot CLI available-model catalog. Snapshot of the Copilot CLI 1.0.71 model list (extracted via an
 # isolated tmux-socket probe; the CLI exposes no --list-models command). Refresh by re-probing and

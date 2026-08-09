@@ -170,5 +170,108 @@ class WhPatchReceiveTests(unittest.TestCase):
         self.assertEqual(self.git("ls-files", "-u").stdout, "")
 
 
+class WhClipboardSendTests(unittest.TestCase):
+    """WHEN ,wh sends the clipboard, flavor detection drives the AppleScript class."""
+
+    def setUp(self) -> None:
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.root = Path(self.tempdir.name)
+        self.bindir = self.root / "bin"
+        self.bindir.mkdir()
+        self.log = self.root / "tools.log"
+
+        osascript = self.bindir / "osascript"
+        osascript.write_text(
+            "#!/usr/bin/env bash\n"
+            'echo "osascript $*" >> "$WH_TEST_LOG"\n'
+            'if [[ "$*" == *"clipboard info"* ]]; then\n'
+            '  echo "$WH_TEST_CLIP_INFO"\n'
+            "  exit 0\n"
+            "fi\n"
+            'if [[ "$*" == *"the clipboard as"* ]]; then\n'
+            '  args="$*"\n'
+            '  path="${args#*POSIX file \\"}"\n'
+            '  path="${path%%\\"*}"\n'
+            '  printf "fake-image-bytes" > "$path"\n'
+            "fi\n"
+            "exit 0\n",
+            encoding="utf-8",
+        )
+        osascript.chmod(0o755)
+
+        sips = self.bindir / "sips"
+        sips.write_text(
+            "#!/usr/bin/env bash\n"
+            'echo "sips $*" >> "$WH_TEST_LOG"\n'
+            'prev=""\n'
+            'for a in "$@"; do\n'
+            '  if [[ "$prev" == "--out" ]]; then\n'
+            '    printf "png-bytes" > "$a"\n'
+            "  fi\n"
+            '  prev="$a"\n'
+            "done\n"
+            "exit 0\n",
+            encoding="utf-8",
+        )
+        sips.chmod(0o755)
+
+        wormhole = self.bindir / "wormhole"
+        wormhole.write_text(
+            '#!/usr/bin/env bash\necho "wormhole $*" >> "$WH_TEST_LOG"\nexit 0\n',
+            encoding="utf-8",
+        )
+        wormhole.chmod(0o755)
+
+        pbpaste = self.bindir / "pbpaste"
+        pbpaste.write_text("#!/usr/bin/env bash\nprintf 'clipboard text'\n", encoding="utf-8")
+        pbpaste.chmod(0o755)
+
+    def tearDown(self) -> None:
+        self.tempdir.cleanup()
+
+    def send_clip(self, clip_info: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["bash", str(WH_MAIN), "send", "--clip"],
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "PATH": f"{self.bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+                "WH_TEST_LOG": str(self.log),
+                "WH_TEST_CLIP_INFO": clip_info,
+            },
+        )
+
+    def logged(self) -> str:
+        return self.log.read_text(encoding="utf-8") if self.log.exists() else ""
+
+    def test_WHEN_clipboard_is_gif_SHOULD_extract_as_GIFf_and_normalize_to_png(self) -> None:
+        # macOS reports GIF clipboards as "GIF picture"; the AppleScript legacy
+        # flavor code is GIFf («class GIF » fails coercion with -1700).
+        result = self.send_clip("GIF picture, 43")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("«class GIFf»", self.logged())
+        self.assertIn("sips -s format png", self.logged())
+        self.assertIn("Sending clipboard (png)", result.stdout)
+        self.assertIn("wormhole send", self.logged())
+
+    def test_WHEN_clipboard_offers_pngf_and_gif_SHOULD_prefer_pngf(self) -> None:
+        # macOS transmutes still images, so PNGf rides along; prefer it and skip sips.
+        result = self.send_clip("GIF picture, 43, «class PNGf», 162")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("«class PNGf»", self.logged())
+        self.assertNotIn("sips", self.logged())
+        self.assertIn("Sending clipboard (png)", result.stdout)
+
+    def test_WHEN_clipboard_is_text_SHOULD_use_pbpaste_without_extraction(self) -> None:
+        result = self.send_clip("«class utf8», 4, string, 4")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("the clipboard as", self.logged())
+        self.assertIn("Sending clipboard (text)", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

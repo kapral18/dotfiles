@@ -283,7 +283,7 @@ class TestAiLauncher(unittest.TestCase):
                 plan = self.dry_plan("pi", "--model", model)
 
                 self.assertEqual(model, plan["selection"]["model"]["value"])
-                self.assertNotIn("moonshotai/kimi-k3", plan["leaf"]["argv"])
+                self.assertNotIn("deepseek/deepseek-v4-flash-0731", plan["leaf"]["argv"])
 
     def test_when_provider_is_explicit_only_verified_harness_support_is_used(self) -> None:
         pi = self.dry_plan("pi", "--provider", "openrouter")
@@ -292,12 +292,12 @@ class TestAiLauncher(unittest.TestCase):
         unsupported = self.run_ai("claude", "--provider", "openrouter", "--dry-run")
 
         self.assertEqual(
-            [",ai-selection", "--provider", "openrouter", "--model", "moonshotai/kimi-k3"],
+            [",ai-selection", "--provider", "openrouter", "--model", "deepseek/deepseek-v4-flash-0731"],
             pi["selection"]["transport_trace"],
         )
         self.assertIn("--provider", pi["leaf"]["argv"])
         self.assertIn("--thinking", pi["leaf"]["argv"])
-        self.assertIn("high", pi["leaf"]["argv"])
+        self.assertIn("max", pi["leaf"]["argv"])
         self.assertEqual(2, other_model.returncode)
         self.assertIn("OpenRouter is pinned", other_model.stderr)
         self.assertEqual(2, empty_model.returncode)
@@ -312,7 +312,7 @@ class TestAiLauncher(unittest.TestCase):
             def resolve(self, harness, requested_model, requested_provider):
                 self.request = (harness, requested_model, requested_provider)
                 return core.AvailabilitySelection(
-                    model="moonshotai/kimi-k3",
+                    model="deepseek/deepseek-v4-flash-0731",
                     provider=requested_provider,
                     model_provenance=core.Provenance("adapter", "deterministic-model"),
                     provider_provenance=core.Provenance("option", "--provider"),
@@ -326,13 +326,13 @@ class TestAiLauncher(unittest.TestCase):
 
         self.assertEqual(("pi", None, "openrouter"), adapter.request)
         self.assertEqual(
-            ("--provider", "openrouter", "--model", "moonshotai/kimi-k3"),
+            ("--provider", "openrouter", "--model", "deepseek/deepseek-v4-flash-0731"),
             plan.selection.transport_args,
         )
-        self.assertEqual("OpenRouter GPT-5.2 pin", plan.selection.model_provenance.source)
+        self.assertEqual("OpenRouter deepseek-v4-flash-0731 pin", plan.selection.model_provenance.source)
         self.assertFalse(plan.selection.model_is_explicit)
         self.assertIn("--thinking", plan.actual_argv)
-        self.assertIn("high", plan.actual_argv)
+        self.assertIn("max", plan.actual_argv)
 
     def test_when_openrouter_is_selected_depth_and_non_terra_models_are_rejected(self) -> None:
         # Only an *explicit* OpenRouter selection is pinned. A bare `,ai pi --depth` is not a
@@ -346,9 +346,51 @@ class TestAiLauncher(unittest.TestCase):
         )
 
         self.assertEqual(2, depth.returncode)
-        self.assertIn("OpenRouter is pinned to high effort", depth.stderr)
+        self.assertIn("OpenRouter is pinned to max effort", depth.stderr)
         self.assertEqual(2, other_opencode_model.returncode)
-        self.assertIn("OpenRouter is pinned to openrouter/moonshotai/kimi-k3", other_opencode_model.stderr)
+        self.assertIn("OpenRouter is pinned to", other_opencode_model.stderr)
+        self.assertIn("openrouter/moonshotai/kimi-k3@preset/kimi-lanes", other_opencode_model.stderr)
+
+    def test_when_openrouter_route_models_are_explicit_each_harness_gets_its_sanctioned_set(self) -> None:
+        # The registry declares an OpenRouter route (DeepSeek default, selectable Kimi/GLM, terra counter);
+        # the launcher must accept the per-harness selectors the generated mirror sanctions and reject
+        # anything else.
+        pi_deepseek = self.dry_plan("pi", "--model", "openrouter/deepseek/deepseek-v4-flash-0731")
+        pi_terra = self.dry_plan("pi", "--model", "openrouter/openai/gpt-5.6-terra")
+        pi_glm = self.dry_plan("pi", "--model", "openrouter/z-ai/glm-5.2")
+        opencode_kimi = self.dry_plan("opencode", "--model", "openrouter/moonshotai/kimi-k3@preset/kimi-lanes")
+        opencode_deepseek = self.dry_plan(
+            "opencode",
+            "--model",
+            "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max",
+        )
+        pi_unsanctioned = self.run_ai("pi", "--model", "openrouter/openai/gpt-5.5", "--dry-run")
+        # Pi's policies ride modelOverrides, so bare policy-bound ids are invalid for OpenCode:
+        # without the preset slugs their provider routing would be lost.
+        opencode_bare_kimi = self.run_ai("opencode", "--model", "openrouter/moonshotai/kimi-k3", "--dry-run")
+        opencode_bare_deepseek = self.run_ai(
+            "opencode",
+            "--model",
+            "openrouter/deepseek/deepseek-v4-flash-0731",
+            "--dry-run",
+        )
+
+        self.assertIn("deepseek/deepseek-v4-flash-0731", pi_deepseek["leaf"]["argv"])
+        self.assertIn("openrouter", pi_deepseek["leaf"]["argv"])
+        self.assertIn("openrouter/openai/gpt-5.6-terra", pi_terra["leaf"]["argv"])
+        self.assertIn("openrouter/z-ai/glm-5.2", pi_glm["leaf"]["argv"])
+        self.assertIn("openrouter/moonshotai/kimi-k3@preset/kimi-lanes", opencode_kimi["leaf"]["argv"])
+        self.assertIn(
+            "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max",
+            opencode_deepseek["leaf"]["argv"],
+        )
+        self.assertEqual(2, pi_unsanctioned.returncode)
+        self.assertIn("OpenRouter is pinned to", pi_unsanctioned.stderr)
+        self.assertNotIn("@preset/kimi-lanes", pi_unsanctioned.stderr)
+        self.assertEqual(2, opencode_bare_kimi.returncode)
+        self.assertIn("@preset/kimi-lanes", opencode_bare_kimi.stderr)
+        self.assertEqual(2, opencode_bare_deepseek.returncode)
+        self.assertIn("@preset/deepseek-lanes-max", opencode_bare_deepseek.stderr)
 
     def test_when_availability_adapter_supplies_a_model_the_core_uses_the_seam(self) -> None:
         core = load_core()

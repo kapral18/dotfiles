@@ -127,10 +127,24 @@ send_stdin() {
 }
 
 clipboard_flavor() {
-  # Prints "png" if the clipboard holds an image (PNG flavor present), else "text".
+  # Prints the clipboard image flavor (png/jpeg/tiff/webp/avif/gif/heic) or "text".
   require_command osascript
-  if osascript -e 'clipboard info' 2> /dev/null | grep -q 'PNGf'; then
+  local info
+  info="$(osascript -e 'clipboard info' 2> /dev/null)"
+  if echo "$info" | grep -q 'PNGf'; then
     echo "png"
+  elif echo "$info" | grep -q 'JPEG'; then
+    echo "jpeg"
+  elif echo "$info" | grep -q 'TIFF'; then
+    echo "tiff"
+  elif echo "$info" | grep -q 'WebP'; then
+    echo "webp"
+  elif echo "$info" | grep -q 'AVIF'; then
+    echo "avif"
+  elif echo "$info" | grep -q 'GIF'; then
+    echo "gif"
+  elif echo "$info" | grep -q 'HEIC'; then
+    echo "heic"
   else
     echo "text"
   fi
@@ -149,22 +163,45 @@ send_clipboard() {
   payload="$content_dir/payload"
   meta="$content_dir/meta.json"
 
-  if [ "$flavor" = "png" ]; then
-    osascript \
-      -e 'set d to (the clipboard as «class PNGf»)' \
-      -e "set f to open for access (POSIX file \"$payload\") with write permission" \
-      -e 'set eof f to 0' \
-      -e 'write d to f' \
-      -e 'close access f' > /dev/null
-    if [ ! -s "$payload" ]; then
-      echo "Error: clipboard image was empty" >&2
-      exit 1
-    fi
-  else
+  if [ "$flavor" = "text" ]; then
     pbpaste > "$payload"
     if [ ! -s "$payload" ]; then
       echo "Error: clipboard is empty" >&2
       exit 1
+    fi
+  else
+    local class=""
+    case "$flavor" in
+      png) class="PNGf" ;;
+      jpeg) class="JPEG" ;;
+      tiff) class="TIFF" ;;
+      webp) class="WebP" ;;
+      avif) class="AVIF" ;;
+      gif) class="GIFf" ;;
+      heic) class="HEIC" ;;
+    esac
+    local raw="$CLIP_STAGE/clipboard.$flavor"
+    osascript \
+      -e "set d to (the clipboard as «class ${class}»)" \
+      -e "set f to open for access (POSIX file \"$raw\") with write permission" \
+      -e 'set eof f to 0' \
+      -e 'write d to f' \
+      -e 'close access f' > /dev/null
+    if [ ! -s "$raw" ]; then
+      echo "Error: clipboard image was empty" >&2
+      exit 1
+    fi
+    if [ "$flavor" = "png" ]; then
+      mv "$raw" "$payload"
+    else
+      # Normalize to PNG so the envelope flavor is always png or text.
+      require_command sips
+      sips -s format png "$raw" --out "$payload" > /dev/null
+      if [ ! -s "$payload" ]; then
+        echo "Error: could not convert clipboard $flavor image to PNG" >&2
+        exit 1
+      fi
+      flavor="png"
     fi
   fi
 

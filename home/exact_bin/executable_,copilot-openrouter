@@ -14,15 +14,44 @@ if [[ -z "$api_key" ]]; then
   exit 1
 fi
 
-readonly OPENROUTER_MODEL="moonshotai/kimi-k3"
-readonly OPENROUTER_EFFORT="high"
+# Model and effort are selectable; the pin rides the model slug. The anthropic client cannot inject
+# the OpenRouter `provider` body object, so Kimi's throughput-sorted Fireworks/Together/BaseTen-only+$16/M policy, DeepSeek's FP8-or-higher,
+# throughput-only policy, and effort ride an OpenRouter preset: OpenRouter resolves `<model>@preset/<slug>` on
+# /api/v1/messages (live-probed 2026-08-07, served by Wafer). Each `<family>-lanes-<level>` preset
+# bakes model+provider+effort; `deepseek-lanes-max` is the default.
+OPENROUTER_MODEL="deepseek/deepseek-v4-flash-0731"
+OPENROUTER_EFFORT="max"
 
 args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
-  --model | -m | --model=* | --effort | --reasoning-effort | --thinking | --effort=* | --reasoning-effort=* | --thinking=* | --no-thinking)
-    echo "Error: ,copilot-openrouter pins OpenRouter to $OPENROUTER_MODEL at $OPENROUTER_EFFORT effort; $1 is not supported." >&2
-    exit 2
+  --model | -m)
+    [[ $# -ge 2 ]] || {
+      echo "Error: $1 requires a value." >&2
+      exit 2
+    }
+    OPENROUTER_MODEL="$2"
+    shift 2
+    ;;
+  --model=*)
+    OPENROUTER_MODEL="${1#*=}"
+    shift
+    ;;
+  --effort | --reasoning-effort | --thinking)
+    [[ $# -ge 2 ]] || {
+      echo "Error: $1 requires a value." >&2
+      exit 2
+    }
+    OPENROUTER_EFFORT="$2"
+    shift 2
+    ;;
+  --effort=* | --reasoning-effort=* | --thinking=*)
+    OPENROUTER_EFFORT="${1#*=}"
+    shift
+    ;;
+  --no-thinking)
+    OPENROUTER_EFFORT="minimal"
+    shift
     ;;
   --)
     args+=("$1")
@@ -37,6 +66,34 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Map model+effort to a preset slug. glm, kimi, deepseek, and terra all have a real `max` (kimi's
+# OpenRouter max tier re-probed live 2026-08-07: max returned 1.9x high's reasoning tokens across
+# 6 pairs on 2 prompts, overturning the 2026-08-05 falsification). Unknown models use the
+# model-agnostic `effort-<level>` preset (no provider policy).
+preset_family() {
+  case "$1" in
+  moonshotai/kimi-k3*) echo "kimi" ;;
+  deepseek/*) echo "deepseek" ;;
+  z-ai/glm-5.2*) echo "glm" ;;
+  openai/gpt-5.6-terra*) echo "terra" ;;
+  *) echo "" ;;
+  esac
+}
+if [[ -z "$OPENROUTER_MODEL" || -z "$OPENROUTER_EFFORT" ]]; then
+  echo "Error: --model and --effort require non-empty values." >&2
+  exit 2
+fi
+family="$(preset_family "$OPENROUTER_MODEL")"
+preset_effort="$OPENROUTER_EFFORT"
+if [[ -z "$family" ]]; then
+  preset_slug="effort-$preset_effort"
+elif [[ "$OPENROUTER_MODEL" == "moonshotai/kimi-k3" && "$preset_effort" == "high" ]]; then
+  preset_slug="kimi-lanes"
+else
+  preset_slug="$family-lanes-$preset_effort"
+fi
+readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/$preset_slug"
+
 # Copilot picks the BYOK client kind once per launch, and only the anthropic one
 # emits cache_control breakpoints; its openai client never does. A session started
 # on the openai client therefore loses prompt caching for every Anthropic model it
@@ -46,7 +103,7 @@ export COPILOT_PROVIDER_TYPE=anthropic
 export COPILOT_PROVIDER_BASE_URL="https://openrouter.ai/api"
 export COPILOT_PROVIDER_API_KEY="$api_key"
 export COPILOT_MODEL="$OPENROUTER_MODEL"
-export COPILOT_PROVIDER_WIRE_MODEL="$OPENROUTER_MODEL"
+export COPILOT_PROVIDER_WIRE_MODEL="$OPENROUTER_WIRE_MODEL"
 export COPILOT_PROVIDER_MAX_PROMPT_TOKENS="${COPILOT_OPENROUTER_MAX_PROMPT_TOKENS:-1048576}"
 export COPILOT_PROVIDER_MAX_OUTPUT_TOKENS="${COPILOT_OPENROUTER_MAX_OUTPUT_TOKENS:-131072}"
 unset COPILOT_PROVIDER_MODEL_ID COPILOT_PROVIDER_WIRE_API
@@ -56,7 +113,7 @@ unset COPILOT_PROVIDER_MODEL_ID COPILOT_PROVIDER_WIRE_API
 # claude-opus-5 from a session pinned to a different model. The band gate resolves the spawn, so
 # the override belongs there; COPILOT_HOME cannot do it, because settings.json and agent
 # frontmatter both lose to the hook.
-export AGENT_BAND_MODEL_OVERRIDE="$OPENROUTER_MODEL"
-export AGENT_BAND_EFFORT_OVERRIDE="$OPENROUTER_EFFORT"
+export AGENT_BAND_MODEL_OVERRIDE="$OPENROUTER_WIRE_MODEL"
+export AGENT_BAND_EFFORT_OVERRIDE="high"
 
-exec ",copilot" --model "$OPENROUTER_MODEL" --effort "$OPENROUTER_EFFORT" "${args[@]}"
+exec ",copilot" --model "$OPENROUTER_MODEL" --effort high "${args[@]}"

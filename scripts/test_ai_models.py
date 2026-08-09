@@ -154,7 +154,7 @@ class TestAiModels(unittest.TestCase):
     def test_claude_openrouter_pins_subagent_models(self):
         wrapper = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()
 
-        assert 'export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_MODEL"' in wrapper
+        assert 'export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_WIRE_MODEL"' in wrapper
 
 
 if __name__ == "__main__":

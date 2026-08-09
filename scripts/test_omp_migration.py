@@ -14,12 +14,14 @@ from _test_support import REPO
 class TestOmpMigration(unittest.TestCase):
     """WHEN wiring OMP into the repo-owned AI workflow."""
 
-    def test_brewfile_installs_omp_from_upstream_tap(self):
-        brewfile = REPO / "home/.chezmoitemplates/brews/shared/38-ai-large-language-models.brewfile"
-        text = brewfile.read_text()
+    def test_omp_installs_via_yarn_pin_not_brew(self):
+        # brew's can1357/tap/omp stable is 17.2.10, which loops with kimi-k3
+        # (can1357/oh-my-pi#7826); the yarn pin carries the known-good version.
+        brewfile = (REPO / "home/.chezmoitemplates/brews/shared/38-ai-large-language-models.brewfile").read_text()
+        yarn_pkgs = (REPO / "home/readonly_dot_default-yarn-pkgs").read_text()
 
-        self.assertIn('tap "can1357/tap"', text)
-        self.assertIn('brew "can1357/tap/omp"', text)
+        self.assertNotIn("can1357/tap/omp", brewfile)
+        self.assertIn("@oh-my-pi/pi-coding-agent@17.2.9", yarn_pkgs)
 
     def render_omp_config(self, is_work: bool) -> str:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".toml") as config:
@@ -42,22 +44,22 @@ class TestOmpMigration(unittest.TestCase):
 
     def test_config_renders_profile_specific_model_roles(self):
         expected_values = {
-            # OMP WORK pins primary roles to Cursor kimi-k3-high, uses composer-2.5 for smol, and
-            # uses Claude Sonnet 5 for vision. Personal matches work on the same Cursor pins.
+            # OMP work defaults primary roles to DeepSeek max while vision stays on Kimi high.
+            # Personal keeps the Cursor pins, with vision on kimi-k3-high too.
             True: (
-                "default: cursor/kimi-k3-high:high",
-                "smol: cursor/composer-2.5:high",
-                "vision: cursor/claude-sonnet-5-high:high",
-                "slow: cursor/kimi-k3-high:high",
-                "plan: cursor/kimi-k3-high:high",
-                "task: cursor/kimi-k3-high:high",
-                "advisor: cursor/kimi-k3-high:high",
-                "modelProviderOrder:\n  - cursor\n  - openrouter\n  - openai-codex\n  - anthropic\n  - openai\n",
+                "default: openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max:max",
+                "smol: openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max:max",
+                "vision: openrouter/moonshotai/kimi-k3@preset/kimi-lanes:high",
+                "slow: openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max:max",
+                "plan: openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max:max",
+                "task: openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max:max",
+                "advisor: openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max:max",
+                "modelProviderOrder:\n  - openrouter\n  - cursor\n  - openai-codex\n  - anthropic\n  - openai\n",
             ),
             False: (
                 "default: cursor/kimi-k3-high:high",
                 "smol: cursor/composer-2.5:high",
-                "vision: cursor/claude-sonnet-5-high:high",
+                "vision: cursor/kimi-k3-high:high",
                 "slow: cursor/kimi-k3-high:high",
                 "plan: cursor/kimi-k3-high:high",
                 "task: cursor/kimi-k3-high:high",

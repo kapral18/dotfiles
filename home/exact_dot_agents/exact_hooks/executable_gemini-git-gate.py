@@ -12,7 +12,7 @@ The command line is tokenized with `shlex` (respecting quotes, splitting on
 `;`, `&&`, `||`, `|`, `&`, `(`, `)`, and newline) so the actual git
 subcommand can be found after global options (`git -C . commit`,
 `env X=1 git -c foo=bar push`). This is intentionally not a full shell
-parser: direct Git invocations and recognized shell/direct-execution wrappers are classified to their actual Git subcommand. Unrecognized Git options, ambiguous wrappers, nested shell code, and unparseable quoting fail closed. Non-Git arguments, including `.git` paths, are allowed.
+parser: direct Git invocations and recognized shell/direct-execution wrappers are classified to their actual Git subcommand. `$(...)` and backtick substitution bodies are classified recursively as their own command lines. Unrecognized Git options, ambiguous wrappers, and unparseable quoting fail closed. Non-Git arguments, including `.git` paths and inert quoted text mentioning Git, are allowed.
 
 Gemini CLI blocks a tool ONLY on exit code 2 (stderr becomes the reason);
 any other non-zero exit is treated as a non-fatal warning and the tool still
@@ -390,6 +390,102 @@ def _extract_heredoc_bodies(command: str) -> tuple[str, list[tuple[str, str]]] |
     return None if pending else ("".join(output_lines), bodies)
 
 
+def _extract_substitution_bodies(command: str) -> list[str] | None:
+    """Extract the inner text of every `$(...)` and backtick substitution.
+
+    Returns None on unbalanced delimiters or quotes (caller decides how to fail
+    closed). Backslash-escaped `\$(` and `` \` `` are literal and skipped.
+    Single-quoted text is literal in the shell, so substitution-looking text
+    inside single quotes is skipped; double quotes do not suppress
+    substitution, so bodies there are still classified.
+    """
+    bodies: list[str] = []
+    i = 0
+    quote = ""
+    while i < len(command):
+        char = command[i]
+        if quote == "'":
+            if char == "'":
+                quote = ""
+            i += 1
+            continue
+        if char == "\\":
+            i += 2
+            continue
+        if quote == "":
+            if char == "'":
+                quote = "'"
+                i += 1
+                continue
+            if char == '"':
+                quote = '"'
+                i += 1
+                continue
+        elif char == '"':
+            quote = ""
+            i += 1
+            continue
+        if char == "`":
+            j = i + 1
+            while j < len(command) and command[j] != "`":
+                j += 2 if command[j] == "\\" else 1
+            if j >= len(command):
+                return None
+            bodies.append(command[i + 1 : j])
+            i = j + 1
+            continue
+        if command.startswith("$(", i):
+            # The body is a command list: quotes inside it group, so a `)`
+            # inside quotes does not close the substitution, and `$(` inside
+            # double quotes still nests. Single quotes suppress nesting.
+            depth = 1
+            j = i + 2
+            inner_quote = ""
+            while j < len(command) and depth > 0:
+                char = command[j]
+                if inner_quote == "'":
+                    if char == "'":
+                        inner_quote = ""
+                    j += 1
+                    continue
+                if char == "\\":
+                    j += 2
+                    continue
+                if inner_quote == '"':
+                    if char == '"':
+                        inner_quote = ""
+                    elif command.startswith("$(", j):
+                        depth += 1
+                        j += 1
+                    j += 1
+                    continue
+                if char == "'":
+                    inner_quote = "'"
+                    j += 1
+                    continue
+                if char == '"':
+                    inner_quote = '"'
+                    j += 1
+                    continue
+                if command.startswith("$(", j):
+                    depth += 1
+                    j += 2
+                    continue
+                if char == ")":
+                    depth -= 1
+                j += 1
+            if depth > 0 or inner_quote:
+                return None
+            bodies.append(command[i + 2 : j - 1])
+            i = j
+            continue
+        i += 1
+    if quote:
+        # Unbalanced quote: tokenization will also fail, so fail closed here.
+        return None
+    return bodies
+
+
 def _wrapper_command_index(wrapper: str, tokens: list[str], start: int) -> int | None:
     """Locate a direct-execution wrapper's target command, failing closed on unknown options."""
     if wrapper == "env":
@@ -584,6 +680,13 @@ def classify_command(command: str) -> str:
         if _heredoc_declaration_runs_shell(declaration) and classify_command(body) == "deny":
             return "deny"
     command = _strip_shell_comments(heredoc_stripped)
+    # Substitution bodies are executable code: classify each as its own
+    # command line instead of denying on a co-occurring inert "git" mention.
+    substitutions = _extract_substitution_bodies(command)
+    if substitutions is None:
+        return "deny" if GIT_WORD.search(command) else "allow"
+    if any(classify_command(body) == "deny" for body in substitutions):
+        return "deny"
     try:
         tokens = _tokenize(command)
     except ValueError:
@@ -593,8 +696,6 @@ def classify_command(command: str) -> str:
     for segment in _split_segments(tokens):
         verdict = _classify_segment(segment)
         if verdict in MUTATING_SUBCOMMANDS or verdict == "unclassifiable":
-            return "deny"
-        if verdict is None and _has_command_substitution(segment) and GIT_WORD.search(" ".join(segment)):
             return "deny"
         if verdict is None and _wrapped_command_can_run_mutating_git(segment):
             # Shell and direct-execution wrappers can hide the real executable.
@@ -647,7 +748,15 @@ def main() -> None:
         return
     command, is_gemini_cli = extracted
 
-    if classify_command(command) == "deny":
+    try:
+        verdict = classify_command(command)
+    except RecursionError:
+        # Deeply nested substitutions/heredocs can exhaust the recursion
+        # budget; an unclassified command must fail closed, not warn.
+        _fail_closed("git-gate: command nesting exceeded parser limits; failing closed.")
+        return
+
+    if verdict == "deny":
         if is_gemini_cli:
             print(json.dumps({"decision": "deny", "reason": WARNING}, sort_keys=True))
         else:

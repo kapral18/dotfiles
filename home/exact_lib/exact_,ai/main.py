@@ -30,8 +30,15 @@ ALIASES = {
 DEPTH_EFFORT = {"fast": "low", "balanced": "medium", "deep": "high"}
 MODEL_MIRROR_DISPLAY_PATH = "~/.config/ai/model-mirrors.v1.json"
 OPENROUTER_PROVIDER = "openrouter"
-OPENROUTER_MODEL = "moonshotai/kimi-k3"
+OPENROUTER_MODEL = "deepseek/deepseek-v4-flash-0731"
 OPENROUTER_SELECTOR = f"{OPENROUTER_PROVIDER}/{OPENROUTER_MODEL}"
+# OpenCode cannot inject OpenRouter's `provider` routing body field, so its lane route carries
+# DeepSeek's FP8-or-higher, price-sorted (24 t/s floor) policy and max effort in the `deepseek-lanes-max` preset slug.
+OPENROUTER_OPENCODE_SELECTOR = f"{OPENROUTER_SELECTOR}@preset/deepseek-lanes-max"
+OPENROUTER_KIMI_SELECTOR = f"{OPENROUTER_PROVIDER}/moonshotai/kimi-k3"
+OPENROUTER_OPENCODE_KIMI_SELECTOR = f"{OPENROUTER_KIMI_SELECTOR}@preset/kimi-lanes"
+OPENROUTER_TERRA_SELECTOR = f"{OPENROUTER_PROVIDER}/openai/gpt-5.6-terra"
+OPENROUTER_GLM_SELECTOR = f"{OPENROUTER_PROVIDER}/z-ai/glm-5.2"
 
 
 class PlanError(ValueError):
@@ -642,6 +649,32 @@ def _depth_transport(
     return Transport("advisory", note=note), selection.model
 
 
+def _openrouter_sanctioned_selectors(
+    command: ParsedCommand,
+    selection: AvailabilitySelection,
+) -> tuple[str, ...]:
+    """Return the OpenRouter selectors the generated mirror sanctions for this harness.
+
+    The mirror is generated from the registry route tables, so its per-harness available
+    list is canonical; the static fallback mirrors the registry route set for stubs.
+    """
+    availability = selection.availability
+    if availability is not None and availability.status == "known" and availability.models:
+        sanctioned = tuple(
+            sorted(model for model in availability.models if model.startswith(f"{OPENROUTER_PROVIDER}/"))
+        )
+        if sanctioned:
+            return sanctioned
+    if command.harness == "pi":
+        return (
+            OPENROUTER_SELECTOR,
+            OPENROUTER_KIMI_SELECTOR,
+            OPENROUTER_GLM_SELECTOR,
+            OPENROUTER_TERRA_SELECTOR,
+        )
+    return (OPENROUTER_OPENCODE_SELECTOR, OPENROUTER_OPENCODE_KIMI_SELECTOR)
+
+
 def _enforce_openrouter_selection(
     command: ParsedCommand,
     selection: AvailabilitySelection,
@@ -659,11 +692,20 @@ def _enforce_openrouter_selection(
     }
     unconstrained = selection.provider is None and selection.model is None and not depth.explicit
     if pi and (openrouter_asked or unconstrained):
-        if selection.model not in {None, OPENROUTER_MODEL, OPENROUTER_SELECTOR}:
-            raise PlanError(f"OpenRouter is pinned to {OPENROUTER_MODEL}; use another provider for {selection.model!r}")
+        sanctioned = _openrouter_sanctioned_selectors(command, selection)
+        explicit = selection.model
+        if explicit is not None and explicit not in {OPENROUTER_MODEL, OPENROUTER_SELECTOR}:
+            selector = (
+                explicit if explicit.startswith(f"{OPENROUTER_PROVIDER}/") else f"{OPENROUTER_PROVIDER}/{explicit}"
+            )
+            if selector in sanctioned:
+                # A registry-sanctioned explicit route model is honored as-is: Pi's upstream
+                # pin rides modelOverrides, so no preset or effort rewrite applies.
+                return selection, False
+            raise PlanError(f"OpenRouter is pinned to {', '.join(sanctioned)}; use another provider for {explicit!r}")
         if depth.explicit:
-            raise PlanError("OpenRouter is pinned to high effort; --depth cannot override it")
-        policy = Provenance("route-policy", "OpenRouter GPT-5.2 pin")
+            raise PlanError("OpenRouter is pinned to max effort; --depth cannot override it")
+        policy = Provenance("route-policy", "OpenRouter deepseek-v4-flash-0731 pin")
         return (
             AvailabilitySelection(
                 model=OPENROUTER_MODEL,
@@ -678,12 +720,13 @@ def _enforce_openrouter_selection(
         )
 
     if selection.model is not None and selection.model.startswith(f"{OPENROUTER_PROVIDER}/"):
-        if selection.model != OPENROUTER_SELECTOR:
+        sanctioned = _openrouter_sanctioned_selectors(command, selection)
+        if selection.model not in sanctioned:
             raise PlanError(
-                f"OpenRouter is pinned to {OPENROUTER_SELECTOR}; use another provider for {selection.model!r}"
+                f"OpenRouter is pinned to {', '.join(sanctioned)}; use another provider for {selection.model!r}"
             )
-        if depth.explicit:
-            raise PlanError("OpenRouter is pinned to high effort; --depth cannot override it")
+        if depth.explicit and "@preset/" in selection.model:
+            raise PlanError("OpenRouter effort rides the model's preset; --depth cannot override it")
     return selection, False
 
 
@@ -759,8 +802,8 @@ def resolve_plan(
     if pin_pi_effort:
         depth_transport = Transport(
             "applied",
-            argv=("--thinking", "high"),
-            note="OpenRouter route pins Pi thinking=high",
+            argv=("--thinking", "max"),
+            note="OpenRouter route pins Pi thinking=max",
         )
         model = selection.model
     else:

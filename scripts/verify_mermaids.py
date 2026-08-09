@@ -58,11 +58,11 @@ CENSUS: list[Claim] = [
     Claim(
         name="total effective git files",
         globs=None,
-        claimed=1335,
+        claimed=1342,
         anchors=[
-            ("README.md", "1335 files in the effective git file set"),
-            ("00-overview.mmd", "1335 files in the effective git file set"),
-            ("00-overview.mmd", "file census (1335 total)"),
+            ("README.md", "1342 files in the effective git file set"),
+            ("00-overview.mmd", "1342 files in the effective git file set"),
+            ("00-overview.mmd", "file census (1342 total)"),
         ],
     ),
     Claim(
@@ -74,10 +74,10 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/.chezmoiscripts/",
         globs=["home/.chezmoiscripts/*"],
-        claimed=28,
+        claimed=29,
         anchors=[
-            ("01-chezmoi-pipeline.mmd", ".chezmoiscripts/ (28)"),
-            ("README.md", "`.chezmoiscripts/` hook (28)"),
+            ("01-chezmoi-pipeline.mmd", ".chezmoiscripts/ (29)"),
+            ("README.md", "`.chezmoiscripts/` hook (29)"),
         ],
     ),
     Claim(
@@ -117,28 +117,28 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/dot_config/fish/",
         globs=["home/dot_config/fish/*"],
-        claimed=80,
-        anchors=[("00-overview.mmd", "fish 80")],
+        claimed=81,
+        anchors=[("00-overview.mmd", "fish 81")],
     ),
     Claim(
         name="home/exact_bin/",
         globs=["home/exact_bin/*"],
-        claimed=77,
+        claimed=78,
         anchors=[
-            ("07c-bin-commands.mmd", "exact_bin/ (77 thin commands)"),
-            ("README.md", "`exact_bin/` (77)"),
-            ("00-overview.mmd", "bin 77"),
+            ("07c-bin-commands.mmd", "exact_bin/ (78 thin commands)"),
+            ("README.md", "`exact_bin/` (78)"),
+            ("00-overview.mmd", "bin 78"),
         ],
     ),
     Claim(
         name="home/exact_lib/",
         globs=["home/exact_lib/*"],
-        claimed=73,
+        claimed=75,
         anchors=[
-            ("07c-bin-commands.mmd", "home/exact_lib/ (73 command/shared library files)"),
-            ("README.md", "`home/exact_lib/` (73 command/shared library files)"),
-            ("README.md", "33 command libraries plus shared helpers"),
-            ("00-overview.mmd", "command-lib 73 (33 command dirs + shared)"),
+            ("07c-bin-commands.mmd", "home/exact_lib/ (75 command/shared library files)"),
+            ("README.md", "`home/exact_lib/` (75 command/shared library files)"),
+            ("README.md", "34 command libraries plus shared helpers"),
+            ("00-overview.mmd", "command-lib 75 (34 command dirs + shared)"),
         ],
     ),
     Claim(

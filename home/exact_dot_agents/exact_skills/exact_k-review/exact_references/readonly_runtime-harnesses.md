@@ -29,8 +29,7 @@ Claude subagent model overrides are limited to the installed SDK schema (`sonnet
 
 - Registry: `lanes: inherit` — Claude sessions run a deliberately chosen model, and review profiles use `model: inherit`.
 - Built-in shadows: repo-owned same-name profiles override high-risk embedded builtins (`Explore`, `Plan`, `general-purpose`, `claude-code-guide`, `claude`) so normal Task launches use our profile frontmatter instead of embedded defaults.
-- Wrapper guard: `,claude-openrouter` pins `CLAUDE_CODE_SUBAGENT_MODEL` and all family defaults to `moonshotai/kimi-k3` at `high`;
-  this is the deliberate global override for that strict route.
+- Wrapper guard: `,claude-openrouter` pins `CLAUDE_CODE_SUBAGENT_MODEL` and all family defaults to `deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max`; the preset carries FP8-or-higher, price-sorted (24 t/s floor) routing and max effort.
 - Adversarial verifier: single-family surface, always `families=same (degraded)`;
   launch a general-purpose `Task` carrying `adversarial-verifier.md`.
 
@@ -38,7 +37,8 @@ Claude subagent model overrides are limited to the installed SDK schema (`sonnet
 
 Codex's model surface is OpenAI-only, so the adversarial verifier is `families=same (degraded)` here.
 Launch angle lanes as `review-worker` agents; the verifier as the `adversarial-verifier` agent.
-Registry: both values are concrete (`gpt-5.6-terra` at high effort via profile `model` + `model_reasoning_effort`).
+Registry: both values are concrete (`gpt-5.6-sol` at high effort via profile `model` + `model_reasoning_effort`);
+every Codex role also pins priority routing with `service_tier = "fast"`.
 Never launch a native Codex `spawn_agent`/generic subagent without a model: the installed catalog does not make omitted defaults auditable, and uncataloged slugs can pass through with fallback metadata.
 
 ## Gemini CLI
@@ -54,8 +54,8 @@ Profiles carry registry-rendered `model` frontmatter; do not rely on the configu
 - Cursor source supports custom subagent types (`SubagentType.custom.name`) and loads `.cursor/agents` profile files.
   Launch angle lanes through the `review-worker` profile and the verifier through the `adversarial-verifier` profile;
   both carry registry-rendered `model` frontmatter.
-- The registry pins concrete Cursor lane/verifier models deliberately, and both are now `claude-fable-5-medium` (GPT-5.6 is off Cursor entirely, user call 2026-08-05; fable-5-medium is the only spawnable non-GPT lane in the Task whitelist).
-  `model_bands.cursor.max` therefore carries no equal-capability counter, so per SOP §3.5 (capability outranks family diversity) the adversarial verifier runs `families=same (reduced independence)`; keep refutation framing and report that, never skip the phase and never present it as a cross-family pass.
+- The registry pins concrete Cursor lane/verifier models deliberately, and both are now `gpt-5.6-terra-max` (GPT-5.6 returned to Cursor, user call 2026-08-07, superseding the 2026-08-05 ban).
+  `model_bands.cursor.max` carries no counter (user call, 2026-08-07), so the adversarial verifier runs `families=same (reduced independence)`; keep refutation framing and report that, never skip the phase and never present it as a cross-family pass.
   The user verified via expenditure dashboard that Cursor-served omitted/default subagents can resolve to `composer-2.5-fast`;
   local safe probes also show the CLI default selector as `auto` and `composer-2.5-fast` as an available legacy alias target.
   Treat any omitted Cursor subagent model as a matrix bypass.
@@ -87,14 +87,16 @@ Profiles carry registry-rendered `model` frontmatter; do not rely on the configu
 
 - Pi and OMP launch subagents through named profiles; per-task/per-profile `model` is honored over the worker default, and Pi thinking is encoded as a `:<thinking>` suffix on the model string.
 - Registry: both `lanes` and `verifier` are concrete.
-  Pi review workers, fresh-eyes, and adversarial/criteria verifiers all use `openrouter/moonshotai/kimi-k3:high`:
-  Pi reaches models only through OpenRouter, so no second family is available to refute with.
-  A max-effort upgrade was probe-falsified 2026-08-05: OpenRouter lists `reasoning_effort` for kimi-k3 but has no max tier, and `effort: max` returned equal-or-fewer reasoning tokens than `high` across three samples, so the verifier stays on `high`.
-  OMP resolves review roles through its own `modelRoles`, and both profiles deliberately pin `default` and `advisor` to the same `cursor/kimi-k3-high:high`.
-  The adversarial and criteria verifiers are the one exception: they pin concrete `cursor/kimi-k3-max:high` (user call 2026-08-05), spending the 2x cursor effort tier only on the falsification lanes while every other lane stays on `kimi-k3-high`.
-  `model_bands.omp.max` carries no counter and the adversarial verifier is `families=same (reduced independence)` —
-  same family at higher effort, a capability-first pairing (SOP §3.5), unlike Pi, Codex, Gemini, and Claude Code, which cannot field a second family and report `(degraded)`.
-  `smol` stays on the cursor/openai-codex codex tier.
-  An invariant asserts that OMP carries a counter only while `modelRoles.advisor` differs from `modelRoles.default`, so restoring cross-family refutation means changing the role pin first, not the band.
+  Pi review workers and fresh-eyes run `openrouter/deepseek/deepseek-v4-flash-0731:max`;
+  adversarial/criteria verifiers run `openrouter/openai/gpt-5.6-terra:max`, keeping refutation cross-family.
+  OMP resolves review roles through its own `modelRoles`.
+  Work prices primary roles to `openrouter/deepseek/deepseek-v4-flash-0731:max` and keeps `vision` on `openrouter/moonshotai/kimi-k3:high`;
+  the advisor feature stays disabled.
+  Personal pins `default` and `advisor` to `cursor/kimi-k3-high:high`, so `model_bands.omp.max` carries no counter.
+  The adversarial and criteria verifiers keep their own exception on both profiles:
+  they pin concrete `cursor/kimi-k3-max:high` (user call 2026-08-05), spending the 2x cursor effort tier only on the falsification lanes.
+  Refutation is cross-family on work and `families=same (reduced independence)` on personal;
+  personal `smol` stays on `cursor/composer-2.5:high`.
+  An invariant asserts that OMP carries a counter whenever any profile's `modelRoles.advisor` differs from `modelRoles.default`, so moving cross-family refutation means changing the role pin first, not the band.
   The cost-driven ban on opus-5/gpt-5.5 (closed 2026-08-03) moved the lanes off those models.
   Other repo-owned Pi/OMP profiles resolve their model from the band registry (`agent_bindings` → `agent_categories` → `model_bands`) so they do not fall through to `defaultProvider`/`defaultModel` unless a future profile deliberately omits `model` and documents why.

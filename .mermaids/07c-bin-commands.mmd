@@ -1,6 +1,6 @@
 %% ============================================================================
-%% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (77 thin commands)
-%% plus deployed internals in home/exact_lib/ (73 command/shared library files).
+%% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (78 thin commands)
+%% plus deployed internals in home/exact_lib/ (75 command/shared library files).
 %% executable_,* → ~/bin/,* (comma-prefixed user commands); home/exact_lib/exact_,name/
 %% → ~/lib/,name/. verify-bin-surface keeps each command covered by fish
 %% completions, docs, catalog, and non-orphaned command libraries.
@@ -21,7 +21,7 @@ flowchart TB
     end
 
     subgraph AIC["AI / agents / KB"]
-        A[",ai (model view + depth/execution/connectivity → harness leaf; Pi OpenRouter → kimi-k3 high) · ,ai-kb (→ ~/lib/,ai-kb/main.py)<br/>,agent-memory (/tmp/specs status/select/wipe topic buckets) · ,proof (durable freeform receipts)<br/>,artifact (cache HTML/live overlay + pollers) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,claude-openrouter · ,codex-openrouter<br/>,claude-codex · ,copilot-codex (→ ~/lib/,codex-adapter)<br/>,claude-copilot · ,codex-copilot (→ ~/lib/,copilot-adapter)<br/>,claude-vertex · ,codex-vertex · ,copilot-vertex (→ ~/lib/,vertex-adapter)<br/>,copilot · ,copilot-openrouter · ,llama-cpp<br/>,codex · ,cursor · ,mcp-token &lt;server&gt;<br/>,tg · ,youtube-search · ,letsfg-docker"]:::ai
+        A[",ai (model view + depth/execution/connectivity → harness leaf; Pi OpenRouter → deepseek-v4-flash-0731 max) · ,ai-kb (→ ~/lib/,ai-kb/main.py)<br/>,agent-memory (/tmp/specs status/select/wipe topic buckets) · ,proof (durable freeform receipts)<br/>,artifact (cache HTML/live overlay + pollers) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,claude-openrouter · ,codex-openrouter<br/>,claude-codex · ,copilot-codex (→ ~/lib/,codex-adapter)<br/>,claude-copilot · ,codex-copilot (→ ~/lib/,copilot-adapter)<br/>,claude-vertex · ,codex-vertex · ,copilot-vertex (→ ~/lib/,vertex-adapter)<br/>,copilot · ,copilot-openrouter · ,cursor-openrouter (auto-installs agent-cli-local via ~/lib/,cursor-agent-local; session model pin enforced at the wire) · ,llama-cpp<br/>(the four *-openrouter wrappers default to deepseek-v4-flash-0731@preset/deepseek-lanes-max; glm-5.2 and kimi selectable via glm-lanes-*/kimi-lanes-*)<br/>,codex · ,cursor · ,mcp-token &lt;server&gt;<br/>,tg · ,youtube-search · ,letsfg-docker"]:::ai
     end
 
     subgraph FZFC["fzf / search helpers"]
@@ -45,8 +45,10 @@ flowchart TB
     end
     W --> LIBS
 
-    subgraph CMDLIBS["33 deployed command libraries + shared helpers (home/exact_lib/ → ~/lib/)"]
+    subgraph CMDLIBS["34 deployed command libraries + shared helpers (home/exact_lib/ → ~/lib/)"]
+        ADS[",cursor-agent-local/install.sh · ,cursor-agent-shim/shim.py<br/>(loopback proxy for ,cursor-openrouter: enforces the session model pin at the wire — any subagent/profile model escape gets 403 — and strips tool `strict` on /chat/completions)"]:::ai
     end
+    ADS --> CMDLIBS
     G --> CMDLIBS
     A --> CMDLIBS
     F --> CMDLIBS

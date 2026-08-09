@@ -111,12 +111,11 @@ mcp_servers:
         redirectUri: "http://localhost:3118/callback"
         scopes: "$(pass slack/mcp/user_scopes)"
       pi:
-        # Reuse Claude's public client (no secret); the custom confidential client
-        # is not authorized for this user. Endpoints are auto-discovered.
-        clientId: "1601185624273.8899143856786"
-        scopes: "$(pass slack/mcp/user_scopes)"
-        # http:// localhost required; must match a registered redirect URI.
-        redirectUri: "http://localhost:3118/callback"
+        # Slack's public MCP client is not approved for the search:read.*
+        # scopes for this user (consent fails with "Unapproved permissions"),
+        # so ride the rotating user token cursor-cli already mints via the
+        # shared stdio bridge, same as Copilot/Codex/OMP below.
+        tokenBridge: "slack"
       copilot:
         # Copilot CLI cannot run Slack's OAuth flow itself: it hardcodes its
         # redirect to http://127.0.0.1:{port}/ (only the port is configurable),

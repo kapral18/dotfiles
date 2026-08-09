@@ -21,6 +21,22 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   desired_pkgs+=("$line")
 done <"$yarn_pkgs_file"
 
+# Split each entry into package name and optional version pin. The version
+# tag is the part after the LAST `@` when it is not the leading scope marker
+# (`@org/pkg@1.2.3` -> name `@org/pkg`, pin `1.2.3`).
+desired_names=()
+desired_pins=()
+for entry in "${desired_pkgs[@]}"; do
+  name="$entry"
+  pin=""
+  if [[ "${entry#@}" == *@* ]]; then
+    name="${entry%@*}"
+    pin="${entry##*@}"
+  fi
+  desired_names+=("$name")
+  desired_pins+=("$pin")
+done
+
 # Get currently installed global packages
 yarn_global_dir=$(yarn global dir 2>/dev/null || true)
 installed_pkgs=()
@@ -33,20 +49,31 @@ fi
 
 # Install a missing yarn package.
 #
-# ex: install_yarn_pkg pkg_name
+# ex: install_yarn_pkg pkg_name [version_pin]
 install_yarn_pkg() {
   local pkg=$1
+  local pin=${2:-}
+  local spec="$pkg@latest"
+  [[ -n "$pin" ]] && spec="$pkg@$pin"
 
-  echo "Installing yarn package: $pkg@latest"
-  if ! yarn global add "$pkg@latest" &>/dev/null; then
-    echo "Error: Failed to install yarn package $pkg@latest"
+  echo "Installing yarn package: $spec"
+  if ! yarn global add "$spec" &>/dev/null; then
+    echo "Error: Failed to install yarn package $spec"
     return 1
   fi
   return 0
 }
 
-# Install missing packages
-for pkg in "${desired_pkgs[@]}"; do
+# Read the installed version of a global package (empty when absent).
+installed_pkg_version() {
+  local pkg=$1
+  jq -r '.version // empty' "$yarn_global_dir/node_modules/$pkg/package.json" 2>/dev/null || true
+}
+
+# Install missing packages (and re-install pinned packages at the wrong version)
+for i in "${!desired_names[@]}"; do
+  pkg="${desired_names[$i]}"
+  pin="${desired_pins[$i]}"
   is_installed=false
   for installed in "${installed_pkgs[@]:-}"; do
     if [[ "$installed" == "$pkg" ]]; then
@@ -56,7 +83,10 @@ for pkg in "${desired_pkgs[@]}"; do
   done
 
   if [[ "$is_installed" == "false" ]]; then
-    install_yarn_pkg "$pkg"
+    install_yarn_pkg "$pkg" "$pin"
+  elif [[ -n "$pin" && "$(installed_pkg_version "$pkg")" != "$pin" ]]; then
+    echo "Re-pinning yarn package $pkg to $pin (installed: $(installed_pkg_version "$pkg"))"
+    install_yarn_pkg "$pkg" "$pin"
   else
     echo "yarn package $pkg is already installed"
   fi
@@ -68,7 +98,7 @@ for pkg in "${installed_pkgs[@]:-}"; do
   [[ -z "$pkg" ]] && continue
 
   is_desired=false
-  for desired in "${desired_pkgs[@]}"; do
+  for desired in "${desired_names[@]}"; do
     if [[ "$desired" == "$pkg" ]]; then
       is_desired=true
       break
@@ -83,10 +113,14 @@ for pkg in "${installed_pkgs[@]:-}"; do
   fi
 done
 
-echo "Upgrading global yarn packages to latest"
-if ! yarn global upgrade --latest &>/dev/null; then
-  echo "Error: Failed to upgrade global yarn packages to latest"
-  exit 1
-fi
+# Upgrade only unpinned packages; pinned entries stay at their exact version.
+echo "Upgrading unpinned global yarn packages to latest"
+for i in "${!desired_names[@]}"; do
+  [[ -n "${desired_pins[$i]}" ]] && continue
+  if ! yarn global upgrade "${desired_names[$i]}" --latest &>/dev/null; then
+    echo "Error: Failed to upgrade global yarn package ${desired_names[$i]} to latest"
+    exit 1
+  fi
+done
 
 echo "All yarn packages synced successfully"

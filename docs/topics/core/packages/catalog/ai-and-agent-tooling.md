@@ -20,6 +20,7 @@ The AI package set spans casks, Homebrew formulae, yarn globals, uv tools, custo
 | [`@earendil-works/pi-coding-agent`](https://pi.dev/)                                   | `yarn`             | Pi coding agent CLI                                                                              |
 | [`@earendil-works/pi-tui`](https://pi.dev/)                                            | `yarn`             | Pi terminal UI package                                                                           |
 | [`playwriter`](https://github.com/remorses/playwriter)                                 | `yarn`             | browser-control/code-generation agent package                                                    |
+| [`freebuff`](https://freebuff.com/get-started)                                         | `yarn`             | free coding agent CLI                                                                            |
 
 ## Agent extensions and support packages
 

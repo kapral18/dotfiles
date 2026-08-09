@@ -93,6 +93,19 @@ mcp_servers:
         )
         return registry
 
+    def test_pi_token_bridge_emits_stdio_bridge(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            registry = self._bridge_registry(Path(temporary), "bridge-source", tool="pi")
+            actual = json.loads(run_script(["generate_mcp_configs.py", str(registry), "false", "pi"]))
+
+        bridge = actual["mcpServers"]["first"]
+        # pi rides the shared ,mcp-token stdio bridge (fresh bearer per
+        # request) instead of running Slack's OAuth flow itself.
+        assert bridge == {
+            "command": ",mcp-token",
+            "args": ["bridge-source", "--bridge", "--url", "https://first.example/mcp"],
+        }
+
     def test_copilot_token_bridge_rejects_invalid_token_source(self):
         with tempfile.TemporaryDirectory() as temporary:
             registry = self._bridge_registry(Path(temporary), "bad source!")

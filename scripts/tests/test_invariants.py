@@ -1015,10 +1015,15 @@ class TestAgentInstructionInvariants(unittest.TestCase):
                 )
                 continue
             if harness == "omp":
-                # Deliberate exception (user call 2026-08-05): the falsification lanes pin concrete
-                # cursor/kimi-k3-max:high while every other lane stays on @default. Same family at
-                # a higher effort tier, so no counter is claimed and none may appear.
-                assert "counter" not in top, f"omp max band carries a counter: {top['counter']!r}"
+                # Two deliberate pins (user calls): the falsification lanes pin concrete
+                # cursor/kimi-k3-max:high while every other lane stays on @default, and the
+                # counter is @advisor — cross-family only where a profile resolves advisor to a
+                # different id than default (no current profile does; both resolve advisor to the
+                # lanes' own model, so the band carries no counter today).
+                if "counter" in top:
+                    assert top["counter"]["model"] == "@advisor", (
+                        f"omp max band counter is {top['counter']!r}, expected the @advisor role token"
+                    )
                 assert roles["verifier"] == "cursor/kimi-k3-max:high", (
                     f"omp registry verifier {roles['verifier']!r} != the pinned falsification tier"
                 )
@@ -1066,6 +1071,39 @@ class TestAgentInstructionInvariants(unittest.TestCase):
                 f"{(effort.group(1) if effort else None)!r} != "
                 f"model_bands.codex.{orchestrate}.effort {codex_band['effort']!r}"
             )
+
+    def test_codex_defaults_and_every_agent_lane_are_sol_high_fast(self):
+        import ai_models
+
+        registry = REPO / "home/.chezmoidata/ai_models"
+        expected_model = "gpt-5.6-sol"
+        expected_effort = "high"
+        expected_service_tier = "fast"
+
+        for band, row in ai_models.load_model_bands(registry)["codex"].items():
+            with self.subTest(surface="band", name=band):
+                self.assertEqual(row["model"], expected_model)
+                self.assertEqual(row["effort"], expected_effort)
+
+        for role, model in ai_models.load_agent_review_models(registry)["codex"].items():
+            with self.subTest(surface="review_registry", name=role):
+                self.assertEqual(model, expected_model)
+
+        for profile in ("personal", "work"):
+            config = (REPO / f"home/dot_codex/private_config.{profile}.toml").read_text(encoding="utf-8")
+            with self.subTest(surface="root_profile", name=profile):
+                self.assertRegex(config, re.compile(rf'^model\s*=\s*"{re.escape(expected_model)}"$', re.M))
+                self.assertRegex(config, re.compile(rf'^model_reasoning_effort\s*=\s*"{expected_effort}"$', re.M))
+                self.assertRegex(config, re.compile(rf'^service_tier\s*=\s*"{expected_service_tier}"$', re.M))
+
+        agents = sorted((REPO / "home/dot_codex/exact_agents").glob("*.toml.tmpl"))
+        self.assertTrue(agents, "Codex agent profile set is empty")
+        for profile in agents:
+            config = profile.read_text(encoding="utf-8")
+            with self.subTest(surface="agent_profile", name=profile.name):
+                self.assertIn(".agent_review_models.codex.", config)
+                self.assertRegex(config, re.compile(rf'^model_reasoning_effort\s*=\s*"{expected_effort}"$', re.M))
+                self.assertRegex(config, re.compile(rf'^service_tier\s*=\s*"{expected_service_tier}"$', re.M))
 
     def test_every_bound_agent_resolves_on_every_harness(self):
         # The three-table lookup is only useful if it is total: an agent bound to a category that
@@ -1182,8 +1220,9 @@ class TestAgentInstructionInvariants(unittest.TestCase):
 
     def test_the_omp_advisor_role_is_not_sold_as_a_second_family(self) -> None:
         # OMP names roles, not models, so a `counter: "@advisor"` band would be a cross-family
-        # claim that only readonly_config.yml.tmpl can settle. While both profiles resolve
-        # `advisor` to the same id as `default`, OMP must carry no counter and refute degraded.
+        # claim that only readonly_config.yml.tmpl can settle. A counter is required as soon as
+        # ANY profile resolves `advisor` to a different id than `default`; profiles that keep
+        # advisor == default resolve refutation same-family at runtime (reduced independence).
         import ai_models
 
         path = REPO / "home/.chezmoidata/ai_models"
@@ -1191,16 +1230,17 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         roles = self._omp_model_roles()
 
         assert set(roles) == {"work", "personal"}, f"unexpected OMP profiles {sorted(roles)}"
-        for profile, mapping in roles.items():
-            if mapping["advisor"] == mapping["default"]:
-                assert counter is None, (
-                    f"omp {profile} modelRoles resolves advisor to the lanes' own model "
-                    f"({mapping['advisor']!r}), so model_bands.omp.max must carry no counter"
-                )
-                continue
+        any_distinct = any(mapping["advisor"] != mapping["default"] for mapping in roles.values())
+        if any_distinct:
             assert counter is not None, (
-                f"omp {profile} modelRoles now has a distinct advisor ({mapping['advisor']!r} vs "
-                f"{mapping['default']!r}); add the counter back so refutation stops reporting degraded"
+                "omp modelRoles has a distinct advisor on at least one profile "
+                f"({roles!r}); model_bands.omp.max must carry the counter so refutation "
+                "stops reporting degraded there"
+            )
+        else:
+            assert counter is None, (
+                f"omp modelRoles resolves advisor to the lanes' own model on every profile "
+                f"({roles!r}), so model_bands.omp.max must carry no counter"
             )
 
     @staticmethod
@@ -1381,79 +1421,166 @@ class TestAgentInstructionInvariants(unittest.TestCase):
 
         assert not offenders, "short context is the default everywhere:\n  " + "\n  ".join(offenders)
 
-    def test_openrouter_routes_are_pinned_to_kimi_k3_at_high_effort(self):
+    def test_openrouter_routes_are_a_strict_route(self):
         import ai_models
         import model_mirrors
 
-        model = "moonshotai/kimi-k3"
-        selector = f"openrouter/{model}"
+        default = "deepseek/deepseek-v4-flash-0731"
+        optional = "moonshotai/kimi-k3"
+        glm = "z-ai/glm-5.2"
+        counter = "openai/gpt-5.6-terra"
+        default_selector = f"openrouter/{default}"
+        optional_selector = f"openrouter/{optional}"
+        glm_selector = f"openrouter/{glm}"
+        counter_selector = f"openrouter/{counter}"
+        expected_default_provider_routing = {
+            "sort": "price",
+            "quantizations": ["fp8", "fp16", "bf16", "fp32"],
+            "preferred_min_throughput": 24,
+        }
+        expected_glm_provider_routing = {
+            "sort": "price",
+            "quantizations": ["fp8", "fp16", "bf16", "fp32"],
+            "preferred_min_throughput": 24,
+        }
+        expected_optional_provider_routing = {
+            "only": ["fireworks", "together", "baseten"],
+            "allow_fallbacks": False,
+            "sort": "throughput",
+            "max_price": {"completion": 16},
+        }
         registry = REPO / "home/.chezmoidata/ai_models"
         provider_models = [
             row["id"] for row in ai_models.load_provider_models(registry) if row["provider"] == "openrouter"
         ]
-        self.assertEqual([model], provider_models)
-        self.assertEqual([{"id": selector, "recommended": True}], ai_models.load_pi_extra_models(registry))
+        # DeepSeek max carries every default lane; Kimi and GLM-5.2 stay selectable and Terra carries counter roles.
+        self.assertEqual([default, optional, glm, counter], provider_models)
+        self.assertEqual(
+            [
+                {"id": default_selector, "recommended": True},
+                {"id": optional_selector},
+                {"id": glm_selector},
+                {"id": counter_selector},
+            ],
+            ai_models.load_pi_extra_models(registry),
+        )
 
         for profile in ("work", "personal"):
             settings = json.loads((REPO / f"home/dot_pi/agent/readonly_settings.{profile}.json").read_text())
             self.assertEqual("openrouter", settings["defaultProvider"])
-            self.assertEqual(model, settings["defaultModel"])
-            self.assertEqual("high", settings["defaultThinkingLevel"])
+            self.assertEqual(default, settings["defaultModel"])
+            self.assertEqual("max", settings["defaultThinkingLevel"])
+
+            pi_models = json.loads(
+                (
+                    REPO / f"home/dot_pi/agent/readonly_models{'.personal' if profile == 'personal' else ''}.json"
+                ).read_text()
+            )
+            pi_overrides = pi_models["providers"]["openrouter"]["modelOverrides"]
+            default_compat = pi_overrides[default]["compat"]
+            optional_compat = pi_overrides[optional]["compat"]
+            glm_compat = pi_overrides[glm]["compat"]
+            self.assertEqual(expected_default_provider_routing, default_compat["openRouterRouting"])
+            self.assertEqual(expected_optional_provider_routing, optional_compat["openRouterRouting"])
+            self.assertEqual(expected_glm_provider_routing, glm_compat["openRouterRouting"])
+            self.assertNotIn("extraBody", default_compat)
+            self.assertNotIn("extraBody", optional_compat)
+            self.assertNotIn("extraBody", glm_compat)
 
             opencode = model_mirrors._read_jsonc(REPO / f"home/dot_config/opencode/readonly_opencode.{profile}.jsonc")
-            self.assertEqual(selector, opencode["small_model"])
+            default_preset = f"{default}@preset/deepseek-lanes-max"
+            optional_preset = f"{optional}@preset/kimi-lanes"
+            glm_preset = f"{glm}@preset/glm-lanes-max"
+            self.assertEqual(f"openrouter/{default_preset}", opencode["small_model"])
+            # OpenCode cannot inject the `provider` routing body field, so both routes carry
+            # their provider policies through workspace presets.
             for name, agent in opencode["agent"].items():
                 if isinstance(agent, dict) and agent.get("model", "").startswith("openrouter/"):
-                    self.assertEqual(selector, agent["model"], name)
-                    self.assertEqual("high", agent["reasoning_effort"], name)
-            options = opencode["provider"]["openrouter"]["models"][model]["options"]
-            self.assertEqual("high", options["reasoningEffort"])
+                    self.assertEqual(f"openrouter/{default_preset}", agent["model"], name)
+                    self.assertEqual("max", agent["reasoning_effort"], name)
+            openrouter_models = opencode["provider"]["openrouter"]["models"]
+            self.assertEqual("max", openrouter_models[default_preset]["options"]["reasoningEffort"])
+            self.assertEqual("high", openrouter_models[optional_preset]["options"]["reasoningEffort"])
+            self.assertEqual("max", openrouter_models[glm_preset]["options"]["reasoningEffort"])
+            self.assertNotIn(default, openrouter_models)
+            self.assertNotIn(optional, openrouter_models)
+            self.assertNotIn(glm, openrouter_models)
+            self.assertNotIn(counter, openrouter_models)
 
         review = ai_models.load_agent_review_models(registry)["pi"]
-        self.assertEqual(f"{selector}:high", review["lanes"])
-        self.assertEqual(f"{selector}:high", review["verifier"])
-        for band, row in ai_models.load_model_bands(registry)["pi"].items():
-            self.assertEqual(f"{selector}:high", row["model"], band)
-            self.assertEqual("high", row["effort"], band)
+        self.assertEqual(f"{default_selector}:max", review["lanes"])
+        self.assertEqual(f"{counter_selector}:max", review["verifier"])
+        bands = ai_models.load_model_bands(registry)["pi"]
+        self.assertEqual(f"{default_selector}:max", bands["cheap"]["model"])
+        self.assertEqual("max", bands["cheap"]["effort"])
+        for band in ("standard", "max"):
+            self.assertEqual(f"{default_selector}:max", bands[band]["model"], band)
+            self.assertEqual("max", bands[band]["effort"], band)
+        self.assertEqual(f"{counter_selector}:max", bands["max"]["counter"]["model"])
 
         for relative in (
             "home/exact_bin/executable_,claude-openrouter",
             "home/exact_bin/executable_,codex-openrouter",
             "home/exact_bin/executable_,copilot-openrouter",
+            "home/exact_bin/executable_,cursor-openrouter",
         ):
             source = (REPO / relative).read_text()
-            self.assertIn(f'readonly OPENROUTER_MODEL="{model}"', source)
-            self.assertIn('readonly OPENROUTER_EFFORT="high"', source)
+            # Default route is DeepSeek max; model/effort flags still compose other preset slugs.
+            self.assertIn(f'OPENROUTER_MODEL="{default}"', source)
+            self.assertIn('OPENROUTER_EFFORT="max"', source)
 
         neovim = (
             REPO / "home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_summarize-commit.lua"
         ).read_text()
-        self.assertIn(f'local OPENROUTER_DEFAULT_MODEL = "{model}"', neovim)
-        self.assertIn('reasoning = { effort = "high" }', neovim)
+        self.assertIn(f'local OPENROUTER_DEFAULT_MODEL = "{default}"', neovim)
+        self.assertIn('reasoning = { effort = "none" }', neovim)
+        # The summarizer talks to OpenRouter directly, so it must carry DeepSeek's FP8-or-higher
+        # allowlist itself; a bare model id would let unknown-quantization endpoints serve.
+        self.assertIn(
+            'local OPENROUTER_PROVIDER_ROUTING =\n  { sort = "price", quantizations = { "fp8", "fp16", "bf16", "fp32" }, preferred_min_throughput = 24 }',
+            neovim,
+        )
+        self.assertIn("provider = OPENROUTER_PROVIDER_ROUTING,", neovim)
         for variable in ("OPENROUTER_MODEL", "OPENROUTER_NITRO", "OPENROUTER_THINKING", "OPENROUTER_REASONING_EFFORT"):
             self.assertNotIn(variable, neovim)
 
         omp = (REPO / "home/dot_omp/private_agent/readonly_config.yml.tmpl").read_text()
-        # OMP lists OpenRouter as an available provider, but its work-profile modelRoles do not
-        # have to route through OpenRouter for this pinned route to be enforced elsewhere.
+        # OMP's work-profile modelRoles route through OpenRouter (user call 2026-08-06); the
+        # provider order must keep listing it for both profiles.
         self.assertIn("  - openrouter\n", omp)
+        omp_models = (REPO / "home/dot_omp/private_agent/readonly_models.yml").read_text()
+        # OMP 17.2.9 does not put modelOverrides…compat.extraBody.provider on the wire, so the
+        # provider policy rides the OpenRouter preset slug instead (same as the wrappers/OpenCode).
+        self.assertIn(
+            '      - id: "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max"\n',
+            omp_models,
+        )
+        self.assertIn(
+            '      - id: "moonshotai/kimi-k3@preset/kimi-lanes"\n',
+            omp_models,
+        )
+        # No per-request extraBody/modelOverrides routing (the typed wire would drop it) and no
+        # stray openRouterRouting config key.
+        self.assertNotIn("extraBody:", omp_models)
+        self.assertNotIn("modelOverrides:", omp_models)
+        self.assertNotIn("openRouterRouting", omp_models)
 
     def test_the_cheap_band_runs_the_codex_tier_wherever_the_catalog_has_it(self):
         # `cheap` carries judgment-free `search` and `mechanical` work, so it takes gpt-5.3-codex at
         # high effort on every harness whose catalog has it. Five cannot: Claude Code and Gemini are
-        # single-vendor, native Codex has no gpt-5.3-codex-spark, Cursor's Task tool takes only its
-        # own eight-slug whitelist, and Pi reaches models only through OpenRouter, where every route
-        # is pinned to the pinned kimi-k3. Each exception is spelled out so a future edit cannot
-        # quietly downgrade a harness that could have run the codex tier.
+        # single-vendor, native Codex deliberately pins Sol/high across every band, Cursor's Task
+        # tool takes only its own eight-slug whitelist, and Pi reaches models only through OpenRouter,
+        # where the cheap role is pinned to deepseek-v4-flash-0731:max. Each exception is spelled out
+        # so a future edit cannot quietly downgrade a harness that could have run the codex tier.
         import ai_models
 
         expected = {
             "claude_code": ("claude-fable-5", "low"),  # Anthropic-only; all bands fable-5 (user call 2026-08-05)
-            "codex": ("gpt-5.4", "high"),  # no gpt-5.3-codex-spark in the 0.146.0 catalog
+            "codex": ("gpt-5.6-sol", "high"),  # user-selected all-band Codex policy, 2026-08-07
             "copilot": ("claude-haiku-4.5", "high"),
             "cursor": ("composer-2.5", "high"),  # no codex id in the Task whitelist; `-fast` costs 6x
             "gemini": ("gemini-3.6-flash", "high"),  # Google-only catalog
-            "pi": ("openrouter/moonshotai/kimi-k3:high", "high"),  # OpenRouter-only; pinned route
+            "pi": ("openrouter/deepseek/deepseek-v4-flash-0731:max", "max"),  # OpenRouter-only; cheap role route
             "omp": ("@smol", "high"),  # a role token; the concrete pick is asserted below
         }
 
@@ -1476,11 +1603,13 @@ class TestAgentInstructionInvariants(unittest.TestCase):
                 f"model_bands.cursor.{band} is composer-2.5-fast; composer-2.5 is the same model for a sixth"
             )
 
-        # OMP resolves its bands through modelRoles; @smol is deliberately composer-2.5 in both
-        # profiles (policy override), even though a codex-tier id is available in the catalog.
+        # OMP resolves its bands through modelRoles; @smol is deliberately composer-2.5 on personal
+        # (policy override), even though a codex-tier id is available in the catalog. Work routes
+        # smol through the OpenRouter deepseek deepseek-lanes-max preset (FP8-or-higher, throughput-
+        # sorted; qwen3.8-max and minimax-m3 rejected, user call 2026-08-06).
         roles = self._omp_model_roles()
-        assert "composer-2.5" in roles["work"]["smol"], (
-            f"omp work modelRoles.smol is {roles['work']['smol']!r}, expected composer-2.5"
+        assert "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max" in roles["work"]["smol"], (
+            f"omp work modelRoles.smol is {roles['work']['smol']!r}, expected openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max"
         )
         assert "composer-2.5" in roles["personal"]["smol"], (
             f"omp personal modelRoles.smol is {roles['personal']['smol']!r}, expected composer-2.5"

@@ -1,0 +1,224 @@
+#!/usr/bin/env bash
+# Description: Launch Cursor's agent-cli-local flavor against OpenRouter's OpenAI-compatible endpoint.
+
+set -euo pipefail
+
+# cursor-agent (cloud build) hard-rejects --base-url/--local-agent-api-key ("can only be used with
+# agent-cli-local"); only the sibling agent-cli-local distribution accepts an OpenAI-compatible
+# provider. It ships per cursor-agent version in Cursor's public S3 bucket, so the flavor is
+# installed in lockstep with the cursor-agent on PATH and self-heals here after a cursor-agent
+# self-update (which bypasses chezmoi). Unlike ,cursor, no MCP OAuth pre-refresh runs on this
+# route.
+local_root="$HOME/.local/share/cursor-agent-local"
+version="${CURSOR_AGENT_LOCAL_VERSION:-}"
+if [[ -z "$version" ]]; then
+  version="$(cursor-agent --version 2>/dev/null | tr -d '[:space:]' || true)"
+fi
+if [[ -z "$version" ]]; then
+  version="$(ls -1 "$local_root/versions" 2>/dev/null | grep -v '^\.' | sort -rV | head -n 1 || true)"
+fi
+if [[ -z "$version" ]]; then
+  echo "Error: cursor-agent not found and no agent-cli-local flavor installed." >&2
+  exit 127
+fi
+
+local_bin="$local_root/versions/$version/cursor-agent-local"
+if [[ ! -x "$local_bin" ]]; then
+  bash "$HOME/lib/,cursor-agent-local/install.sh" "$version"
+fi
+
+api_key="${OPENROUTER_API_KEY:-}"
+if [[ -z "$api_key" ]] && command -v pass >/dev/null 2>&1; then
+  api_key="$(pass show openrouter/api/token 2>/dev/null | tr -d '\n')"
+fi
+if [[ -z "$api_key" ]]; then
+  echo "Error: set OPENROUTER_API_KEY or pass entry openrouter/api/token." >&2
+  exit 1
+fi
+
+# Model and effort are selectable; the pin rides the model slug. agent-cli-local's provider config
+# is baseUrl+apiKey only — no extra-body channel — so Kimi's throughput-sorted Fireworks/Together/BaseTen-only+$16/M policy, DeepSeek's
+# FP8-or-higher, throughput-only policy, and effort ride an OpenRouter preset: OpenRouter resolves
+# `<model>@preset/<slug>` on /v1/chat/completions (live-probed 2026-08-07, tool calls included). Each
+# `<family>-lanes-<level>` preset bakes model+provider+effort; `deepseek-lanes-max` is the default.
+OPENROUTER_MODEL="deepseek/deepseek-v4-flash-0731"
+OPENROUTER_EFFORT="max"
+# The strict-mode shim is now the session guardrail too, so it is always on for the
+# pinned route: the allowlist rejects any /chat/completions whose model is not the
+# pinned wire id before it reaches OpenRouter (a subagent/profile/resume escape can
+# never bill a different model), and `strict` is stripped from openai/* tool
+# schemas. `--no-shim` exists only for the explicit direct-OpenRouter route, i.e.
+# a model with no preset family, which has no provider policy to carry anyway.
+USE_SHIM=1
+
+cli_args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --no-shim)
+    # Direct-OpenRouter opt-out: skips both the model guardrail and the strict
+    # fix. Only meaningful for a model with no preset family (no provider policy
+    # to carry); the pinned default route must keep the shim.
+    USE_SHIM=0
+    shift
+    ;;
+  --model | -m)
+    [[ $# -ge 2 ]] || {
+      echo "Error: $1 requires a value." >&2
+      exit 2
+    }
+    OPENROUTER_MODEL="$2"
+    shift 2
+    ;;
+  --model=*)
+    OPENROUTER_MODEL="${1#*=}"
+    shift
+    ;;
+  --effort | --effort=* | --reasoning-effort | --reasoning-effort=* | --thinking | --thinking=*)
+    case "$1" in
+    *=*)
+      OPENROUTER_EFFORT="${1#*=}"
+      shift
+      ;;
+    *)
+      [[ $# -ge 2 ]] || {
+        echo "Error: $1 requires a value." >&2
+        exit 2
+      }
+      OPENROUTER_EFFORT="$2"
+      shift 2
+      ;;
+    esac
+    ;;
+  --no-thinking)
+    OPENROUTER_EFFORT="minimal"
+    shift
+    ;;
+  --base-url | --base-url=* | --local-agent-api-key | --local-agent-api-key=* | --enable-bedrock | --enable-local-bedrock | --authless)
+    echo "Error: ,cursor-openrouter pins OpenRouter on the agent-cli-local route; $1 is not supported." >&2
+    exit 2
+    ;;
+  --)
+    cli_args+=("$1")
+    shift
+    cli_args+=("$@")
+    break
+    ;;
+  *)
+    cli_args+=("$1")
+    shift
+    ;;
+  esac
+done
+
+# Map model+effort to a preset slug. glm, kimi, deepseek, and terra all have a real `max` (kimi's
+# OpenRouter max tier re-probed live 2026-08-07: max returned 1.9x high's reasoning tokens across
+# 6 pairs on 2 prompts, overturning the 2026-08-05 falsification). Unknown models use the
+# model-agnostic `effort-<level>` preset (no provider policy).
+preset_family() {
+  case "$1" in
+  moonshotai/kimi-k3*) echo "kimi" ;;
+  deepseek/*) echo "deepseek" ;;
+  z-ai/glm-5.2*) echo "glm" ;;
+  openai/gpt-5.6-terra*) echo "terra" ;;
+  *) echo "" ;;
+  esac
+}
+if [[ -z "$OPENROUTER_MODEL" || -z "$OPENROUTER_EFFORT" ]]; then
+  echo "Error: --model and --effort require non-empty values." >&2
+  exit 2
+fi
+family="$(preset_family "$OPENROUTER_MODEL")"
+preset_effort="$OPENROUTER_EFFORT"
+if [[ -z "$family" ]]; then
+  preset_slug="effort-$preset_effort"
+elif [[ "$OPENROUTER_MODEL" == "moonshotai/kimi-k3" && "$preset_effort" == "high" ]]; then
+  preset_slug="kimi-lanes"
+else
+  preset_slug="$family-lanes-$preset_effort"
+fi
+readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/$preset_slug"
+
+# The shim's session guardrail: only the pinned wire model may appear on
+# /chat/completions in this session. Subagents, profiles, resumes, and
+# caller-supplied Task.model all resolve before the request body is built, so
+# this env is the one knob the shim checks against.
+export CURSOR_AGENT_ALLOWED_MODEL="$OPENROUTER_WIRE_MODEL"
+
+# The env fallbacks (CURSOR_LOCAL_AGENT_BASE_URL/API_KEY, ANTHROPIC_BASE_URL/AUTH_TOKEN) sit below
+# the flags the CLI receives, so inherited values cannot escape the pinned route; drop them anyway
+# to keep the failure mode obvious rather than silently overridden.
+unset CURSOR_LOCAL_AGENT_BASE_URL CURSOR_LOCAL_AGENT_API_KEY ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN
+shim_pid=""
+shim_ready=""
+shim_log=""
+shim_cleanup() {
+  if [[ -n "$shim_pid" ]]; then
+    kill "$shim_pid" 2>/dev/null || true
+  fi
+  [[ -n "$shim_ready" ]] && rm -f "$shim_ready"
+  [[ -n "$shim_log" ]] && rm -f "$shim_log"
+  return 0
+}
+trap shim_cleanup EXIT
+
+# The shim runs for every pinned route: allowlist enforcement is model-agnostic
+# (DeepSeek/Kimi/GLM included) and the `strict` rewrite only matters for
+# openai/* ids. The only skip is the direct-OpenRouter route (`--no-shim`),
+# which disables both the guardrail and the strict fix by explicit opt-out.
+needs_shim=1
+if [[ "$USE_SHIM" -eq 0 ]]; then
+  needs_shim=0
+fi
+if [[ "$needs_shim" -eq 1 ]]; then
+  shim_dir="$HOME/lib/,cursor-agent-shim/"
+  if [[ ! -f "$shim_dir/shim.py" ]]; then
+    echo "Error: session guardrail shim missing at $shim_dir/shim.py (install shim first)." >&2
+    exit 1
+  fi
+  # Start the shim on an ephemeral loopback port. The server writes
+  # `PORT=<n>` to a ready file (fd 3) only after its socket is bound and
+  # listening; the launcher polls that file for a few seconds, so a shim that
+  # dies at startup produces a clear error instead of a hang.
+  shim_ready="$(mktemp -t ,cursor-openrouter-ready.XXXXXX)"
+  shim_log="$(mktemp -t ,cursor-openrouter-shim.XXXXXX)"
+  export OPENROUTER_API_KEY="$api_key"
+  PYTHONPATH="$shim_dir" "python3" -c '
+import shim, sys
+sys.argv[1:] = ["0"]
+raise SystemExit(shim.main(sys.argv[1:]))
+' 3>"$shim_ready" >"$shim_log" 2>&1 &
+  shim_pid=$!
+  shim_port=""
+  for _ in {1..40}; do
+    if [[ -s "$shim_ready" ]]; then
+      IFS= read -r port_line <"$shim_ready"
+      shim_port="$(printf '%s\n' "$port_line" | sed -n 's/^PORT=//p')"
+      break
+    fi
+    if ! kill -0 "$shim_pid" 2>/dev/null; then
+      break
+    fi
+    sleep 0.1
+  done
+  if [[ -z "$shim_port" ]]; then
+    echo "Error: strict-mode shim failed to start." >&2
+    if [[ -s "$shim_log" ]]; then
+      cat "$shim_log" >&2
+    fi
+    exit 1
+  fi
+  export CURSOR_LOCAL_AGENT_BASE_URL="http://127.0.0.1:$shim_port/api/v1"
+else
+  export CURSOR_LOCAL_AGENT_BASE_URL="https://openrouter.ai/api/v1"
+fi
+export CURSOR_LOCAL_AGENT_API_KEY="$api_key"
+
+# Delegated Task lanes reach the band gate with the native cursor band ids, which the local
+# provider cannot serve; the override rewrites them to the pinned wire model. The preset carries
+# the effort, so there is no separate effort override to set. The shim allowlist (above) is the
+# backstop: even a lane or profile that resolves to another model is rejected at the wire.
+export AGENT_BAND_MODEL_OVERRIDE="$OPENROUTER_WIRE_MODEL"
+
+"$local_bin" --model "$OPENROUTER_WIRE_MODEL" "${cli_args[@]}"
+status=$?
+exit "$status"

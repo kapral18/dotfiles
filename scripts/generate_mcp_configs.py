@@ -140,9 +140,18 @@ _TOOL_TRANSFORMS["gemini"] = _transform_gemini
 def _transform_pi(spec: dict[str, Any]) -> dict[str, Any]:
     """pi-mcp-adapter wants ``oauth`` with a singular space-separated ``scope``
     and explicit ``auth: "oauth"``.
+
+    A server may instead supply ``tokenBridge`` (a ,mcp-token token source);
+    it is then emitted as the shared ``,mcp-token --bridge`` stdio transport
+    that injects a freshly selected bearer per request.
     """
-    out: dict[str, Any] = {"url": spec["url"]}
     oauth = spec.get("oauth")
+    if isinstance(oauth, dict) and oauth.get("tokenBridge"):
+        return {
+            "command": TOKEN_BRIDGE_COMMAND,
+            "args": token_bridge_args(str(spec.get("url")), spec),
+        }
+    out: dict[str, Any] = {"url": spec["url"]}
     if oauth:
         pi_oauth = dict(oauth)
         scope = pi_oauth.pop("scope", None)

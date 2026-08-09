@@ -119,7 +119,7 @@ cmd | ,wh send -         # send piped stdin
 | Command              | Purpose                                                                                                                                                                       |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `,pull-rebase`       | Resolve branch upstream and run `git pull --rebase` behind a confirmation prompt                                                                                              |
-| `,install-yarn-pkgs` | Reconcile global Yarn packages against `~/.default-yarn-pkgs`                                                                                                                 |
+| `,install-yarn-pkgs` | Reconcile global Yarn packages against `~/.default-yarn-pkgs`; `name@x.y.z` entries pin an exact version (upgrades skip pinned packages)                                      |
 | `,apply-app-icons`   | Apply app icon mappings from `home/app_icons/readonly_icon_mapping.yaml`, refreshing Dock/Finder by signaling only the current user's own numeric PIDs (no `killall`/`pkill`) |
 
 ## tmux helpers

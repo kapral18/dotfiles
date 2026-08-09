@@ -83,6 +83,60 @@ class TestClassifyCommand(unittest.TestCase):
         assert gate.classify_command("rg 'git push' home") == "allow"
         assert gate.classify_command('rg "$(git push)" home') == "deny"
 
+    def test_allows_benign_substitution_alongside_inert_git_text(self):
+        # Regression: a benign substitution plus quoted git prose elsewhere in
+        # the segment must not deny; only the substitution body is executable.
+        assert (
+            gate.classify_command(
+                ',ai-kb remember --body "ran \'git status --porcelain\' earlier" --workspace "$(pwd)"'
+            )
+            == "allow"
+        )
+        assert gate.classify_command('rg "$(git status)" home') == "allow"
+        assert gate.classify_command('echo "cwd is $(pwd)" | ai-kb note "git status loop"') == "allow"
+
+    def test_denies_mutating_git_inside_command_substitution(self):
+        assert gate.classify_command("echo $(git push)") == "deny"
+        assert gate.classify_command('echo "$(git commit -m x)"') == "deny"
+        assert gate.classify_command("echo `git push`") == "deny"
+        assert gate.classify_command("echo $(echo $(git push))") == "deny"
+
+    def test_quoted_paren_inside_substitution_does_not_truncate_body(self):
+        # Regression: a `)` inside quotes within a `$(...)` body is literal in
+        # the shell; the scanner must not close the substitution early and
+        # hide a mutating git command in the truncated remainder.
+        assert gate.classify_command("echo \"$(printf 'a)b' && git push)\"") == "deny"
+        assert gate.classify_command("echo \"$(printf 'a)b' && git status)\"") == "allow"
+        # Double-quoted variant: a base-era bypass (base allows, real bash runs
+        # the push) that only the quote-aware scanner closes.
+        assert gate.classify_command('echo "$(printf "a)b" && git push)"') == "deny"
+        assert gate.classify_command('echo "$(printf "a)b" && git status)"') == "allow"
+        # The inner quotes belong to the substitution body, so the outer
+        # string stays open and `&& git push` is literal text (verified
+        # against bash/zsh); closing the outer quote first exposes it.
+        assert gate.classify_command('echo "$(echo ")") && git push)"') == "allow"
+        assert gate.classify_command('echo "$(echo ")")" && git push') == "deny"
+        # Nested substitution inside double quotes within a body still nests.
+        assert gate.classify_command('echo $(printf "%s" "$(git push)")') == "deny"
+        # Unbalanced quote inside a body fails closed when git is mentioned.
+        assert gate.classify_command('echo $(echo "unclosed && git push)') == "deny"
+
+    def test_allows_unbalanced_substitution_without_git_word(self):
+        assert gate.classify_command('echo "$(pwd') == "allow"
+
+    def test_ignores_substitution_syntax_inside_single_quotes(self):
+        # Regression: single-quoted text is literal in the shell, so prose
+        # mentioning `git push` or $(git ...) inside single quotes is inert.
+        assert (
+            gate.classify_command(",ai-kb remember --body 'never run `git push` without asking' --kind gotcha")
+            == "allow"
+        )
+        assert gate.classify_command("echo '$(git push)'") == "allow"
+        assert gate.classify_command("echo 'literal $(git push'") == "allow"
+        # Double quotes do not suppress substitution: still gated.
+        assert gate.classify_command('echo "`git push`"') == "deny"
+        assert gate.classify_command("echo \"'$(git push)'\"") == "deny"
+
     def test_allows_heredoc_with_template_strings_and_git_path_text(self):
         command = """node - <<'NODE'
 const fs = require('fs');
@@ -262,6 +316,21 @@ class TestGateHookProcess(unittest.TestCase):
         result = run_gate("")
         assert result.returncode == 2
         assert result.stdout == ""
+
+    def test_fails_closed_on_excessive_substitution_nesting(self):
+        # Recursion depth is bounded by the interpreter; exceeding it must
+        # fail closed (exit 2), not exit 1 as a non-fatal Gemini warning.
+        command = "true " + "$(true " * 600 + "x" + ")" * 600
+        payload = json.dumps(
+            {
+                "hook_event_name": "BeforeTool",
+                "tool_name": "run_shell_command",
+                "tool_input": {"command": command},
+            }
+        )
+        result = run_gate(payload)
+        assert result.returncode == 2
+        assert "failing closed" in result.stderr
 
 
 if __name__ == "__main__":

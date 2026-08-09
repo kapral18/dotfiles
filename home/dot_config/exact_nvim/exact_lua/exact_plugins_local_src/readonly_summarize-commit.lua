@@ -27,7 +27,12 @@ local SYSTEM_MESSAGE =
 
 local DEFAULT_MAX_OUTPUT_TOKENS = 2048
 local GEMINI_DEFAULT_MODEL = "gemini-flash-latest"
-local OPENROUTER_DEFAULT_MODEL = "moonshotai/kimi-k3"
+local OPENROUTER_DEFAULT_MODEL = "deepseek/deepseek-v4-flash-0731"
+-- OpenRouter lanes sort by price and allow only FP8-or-higher quantization with a minimum
+-- throughput floor; the same provider object Pi and OMP carry. Without it, default
+-- load-balancing would pick INT4/unknown-quantization or low-throughput endpoints.
+local OPENROUTER_PROVIDER_ROUTING =
+  { sort = "price", quantizations = { "fp8", "fp16", "bf16", "fp32" }, preferred_min_throughput = 24 }
 local OPENROUTER_CONTEXT_COMPRESSION_PLUGIN = { id = "context-compression" }
 
 -- ───────────────────────────── HELPERS (provider-agnostic) ─────────────────────
@@ -44,7 +49,7 @@ local function split_lines(text)
 end
 
 -- Diffs larger than this are replaced with stat+hunk-headers to avoid token overflow.
-local DIFF_SIZE_LIMIT = 200000
+local DIFF_SIZE_LIMIT = 400000
 
 -- Insert lines into the captured buffer+row; validates buffer is still a gitcommit buffer.
 local function insert_into_buf(bufnr, row, lines)
@@ -573,8 +578,9 @@ local providers = {
           { role = "system", content = SYSTEM_MESSAGE },
           { role = "user", content = diff },
         },
-        reasoning = { effort = "high" },
+        reasoning = { effort = "none" },
         plugins = { OPENROUTER_CONTEXT_COMPRESSION_PLUGIN },
+        provider = OPENROUTER_PROVIDER_ROUTING,
         max_tokens = DEFAULT_MAX_OUTPUT_TOKENS,
         temperature = 0,
         stream = false,

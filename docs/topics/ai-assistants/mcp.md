@@ -55,6 +55,8 @@ Both `scsi-main` and `slack` therefore give their `codex` block the same `tokenB
 
 Cursor can run the hosted OAuth flows, but its native HTTP MCP client has been observed mid-session as `enabled` with `0 tools` after token/session failure. The Cursor `tokenBridge` entries therefore match Copilot/Codex for runtime transport. OAuth minting stays on a dedicated mint workspace at `~/.cache/mcp-token/oauth-mint/.cursor/mcp.json` (OAuth HTTP shapes only): `,mcp-token` silent rotate and browser login always use that cwd so project OAuth config wins over the user-level bridge (cursor-agent loads project then user MCP config; project wins).
 
+Pi can run Slack's OAuth flow via `pi-mcp-adapter`, but only against Slack's public MCP client (`1601185624273.8899143856786`), and that client is not approved for the `search:read.*` scopes for this user: consent fails with `Unapproved permissions requested: search:read`. Slack moved search to the granular `search:read.public/private/mpim/im/files/users` scopes (see `scopes_supported` in `https://mcp.slack.com/.well-known/oauth-authorization-server`); cursor-cli's IDE client is approved for them and its minted tokens carry them. The `slack` `pi` block therefore uses `tokenBridge: "slack"` like Copilot/Codex/OMP, riding the rotating cursor-minted token instead of its own OAuth grant.
+
 ## Using it
 
 ### Add or change a server

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Keep the agent-cli-local flavor (cursor-agent-local) in lockstep with the installed
+# cursor-agent version: both ship as sibling per-version tarballs in Cursor's S3 bucket, and the
+# flavor is what unlocks OpenAI-compatible providers (,cursor-openrouter). The rendered version
+# stamp below makes this script re-run on chezmoi apply whenever cursor-agent's version changes;
+# a cursor-agent self-update without an apply is covered by ,cursor-openrouter's self-heal.
+# cursor-agent version: {{ if lookPath "cursor-agent" }}{{ output "cursor-agent" "--version" | trim }}{{ else }}not-installed{{ end }}
+# install.sh hash: {{ include "exact_lib/exact_,cursor-agent-local/install.sh" | sha256sum }}
+set -euo pipefail
+
+if ! command -v cursor-agent >/dev/null 2>&1; then
+  echo "cursor-agent not installed; skipping agent-cli-local install."
+  exit 0
+fi
+
+version="$(cursor-agent --version | tr -d '[:space:]')"
+bash "$HOME/lib/,cursor-agent-local/install.sh" "$version"

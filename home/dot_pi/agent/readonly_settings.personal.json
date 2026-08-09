@@ -1,7 +1,7 @@
 {
   "defaultProvider": "openrouter",
-  "defaultModel": "moonshotai/kimi-k3",
-  "defaultThinkingLevel": "high",
+  "defaultModel": "deepseek/deepseek-v4-flash-0731",
+  "defaultThinkingLevel": "max",
   "showCacheMissNotices": true,
   "theme": "dark",
   "compaction": {
