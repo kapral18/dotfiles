@@ -183,7 +183,7 @@ end
 
 local function write_tmp_json(tbl)
   local path = os.tmpname()
-  local ok, err = pcall(function()
+  local ok = pcall(function()
     local f = assert(io.open(path, "w"))
     f:write(vim.json.encode(tbl))
     f:close()
@@ -248,7 +248,7 @@ local function normalize_text(v)
   end
 
   -- Some OpenAI-like schemas represent content as an array of parts.
-  if vim.tbl_islist(v) then
+  if vim.islist(v) then
     local parts = {}
     for _, item in ipairs(v) do
       if type(item) == "string" then
@@ -487,21 +487,6 @@ local function env_trim(name)
   return v
 end
 
-local function env_bool_or_string(name)
-  local v = env_trim(name)
-  if not v then
-    return nil
-  end
-  local lower = v:lower()
-  if lower == "true" or lower == "1" or lower == "yes" or lower == "on" then
-    return true
-  end
-  if lower == "false" or lower == "0" or lower == "no" or lower == "off" then
-    return false
-  end
-  return v
-end
-
 local function env_number(name)
   local v = env_trim(name)
   if not v then
@@ -578,7 +563,7 @@ local providers = {
           { role = "system", content = SYSTEM_MESSAGE },
           { role = "user", content = diff },
         },
-        reasoning = { effort = "none" },
+        reasoning = { effort = "max" },
         plugins = { OPENROUTER_CONTEXT_COMPRESSION_PLUGIN },
         provider = OPENROUTER_PROVIDER_ROUTING,
         max_tokens = DEFAULT_MAX_OUTPUT_TOKENS,
