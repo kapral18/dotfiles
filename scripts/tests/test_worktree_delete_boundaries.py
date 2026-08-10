@@ -27,6 +27,7 @@ from __future__ import annotations
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -348,6 +349,14 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
             assert forwarded[-1] == scan_roots_raw
             assert not root.exists()
             assert not linked.exists()
+            # Async nohup removers can still hold ~/.cache/tmux open briefly; clear it
+            # before TemporaryDirectory cleanup so parallel runs don't flake on ENOTEMPTY.
+            cache_dir = home / ".cache"
+            assert _wait_for(
+                lambda: not any(cache_dir.rglob("*.lock")) if cache_dir.exists() else True,
+                timeout=5.0,
+            )
+            shutil.rmtree(cache_dir, ignore_errors=True)
 
     def test_old_blocklist_policy_accepts_outside_target(self):
         """Negative control: the pre-hardening policy deletes an outside path.

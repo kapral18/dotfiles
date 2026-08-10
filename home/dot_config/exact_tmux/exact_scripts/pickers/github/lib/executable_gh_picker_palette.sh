@@ -24,6 +24,10 @@ fi
 cleanup_files=()
 cleanup() {
   local f
+  if [ -n "${row_loader_pid:-}" ] && declare -F gh_row_loader_stop_spinner > /dev/null 2>&1; then
+    gh_row_loader_stop_spinner "$row_loader_pid" "${mode:-work}" "${scope:-all}" "${items_cmd:-}" 2> /dev/null || true
+    row_loader_pid=""
+  fi
   for f in "${cleanup_files[@]+"${cleanup_files[@]}"}"; do
     [ -n "$f" ] || continue
     rm -f "$f" 2> /dev/null || true
@@ -130,7 +134,8 @@ _mark_selection_loading() {
   for i in "${!kinds[@]}"; do
     printf '%s\t%s\t%s\n' "${kinds[i]}" "${repos[i]}" "${nums[i]}" >> "$row_loader_targets_file"
   done
-  row_loader_pid="$(gh_row_loader_start_file "$row_loader_targets_file" "$mode" "$scope" "$items_cmd" 2> /dev/null || true)"
+  gh_row_loader_start_file "$row_loader_targets_file" "$mode" "$scope" "$items_cmd" > /dev/null 2>&1 || true
+  row_loader_pid="${gh_row_loader_last_pid:-}"
 }
 
 _restore_selection_loading() {
@@ -146,11 +151,12 @@ _refresh_after_mutation() {
     return 0
   }
   if [ -n "$row_loader_pid" ] && declare -F gh_row_loader_stop_spinner > /dev/null 2>&1; then
-    local spinner_pid="$row_loader_pid"
     local targets_file="$row_loader_targets_file"
+    gh_row_loader_stop_spinner "$row_loader_pid" "$mode" "$scope" "$items_cmd" 2> /dev/null || true
     (
       GH_PICKER_MODE="$mode" GH_PICKER_SCOPE="$scope" "$items_cmd" --refresh > /dev/null 2>&1 || true
-      gh_row_loader_stop_spinner "$spinner_pid" "$mode" "$scope" "$items_cmd" 2> /dev/null || true
+      gh_row_loader_notify "$mode" "$scope" "$items_cmd"
+      gh_row_loader_wait_posts
       rm -f "$targets_file" 2> /dev/null || true
     ) > /dev/null 2>&1 &
     row_loader_pid=""
@@ -310,7 +316,6 @@ else
   tmux display-message "palette $verb_id: $ok ok" 2> /dev/null || true
 fi
 
-# Refresh the outer fzf so the dashboard reflects state changes (closed/merged
-# items disappear, label badges update, etc.). The selected rows keep animating
-# until the background refresh replaces them.
+# Settle selected-row animation, then refresh the outer fzf in the background
+# so closed/merged items disappear and label badges update.
 _refresh_after_mutation

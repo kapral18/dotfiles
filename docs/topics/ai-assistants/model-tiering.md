@@ -18,7 +18,7 @@ Whether a findings audit needs max reasoning is a fact about the job, not about 
 
 **Bands are editorial.** `cheap`/`standard`/`max` is a human judgment reviewed in the registry, not a value derived from a model's thinking-budget ladder or price. Harness catalogs share the same minimal/low/medium/high shape across most models, so there is nothing to normalize against; the band exists so that "high" on a cheap-band model and "high" on a max-band model are not read as the same amount of effort.
 
-**Two standing policies keep the option space small.** Every band runs short context unless the harness publishes no short variant of the wanted model, and the cheap band takes the codex tier (`gpt-5.3-codex` at high effort) on every harness whose catalog carries it. Claude Code and Gemini are single-vendor and keep their own cheap pick, Cursor's `Task` tool whitelist contains no codex id, and native Codex deliberately overrides the cheap rule with the user-selected all-band `gpt-5.6-sol`/high policy.
+**Two standing policies keep the option space small.** Every band runs short context unless the harness publishes no short variant of the wanted model, and the cheap band takes the codex tier (`gpt-5.3-codex` at high effort) on every harness whose catalog carries it. Claude Code and Gemini are single-vendor and keep their own cheap pick, Cursor's `Task` tool whitelist contains no codex id, and native Codex deliberately overrides the cheap rule with the user-selected all-band `gpt-5.6-terra`/max policy.
 
 ## Categories
 
@@ -131,14 +131,14 @@ Context stays short: bare `claude-fable-5` is the short-window selector, and the
 
 ### Codex
 
-| Band               | Model         | Effort |
-| ------------------ | ------------- | ------ |
-| cheap              | `gpt-5.6-sol` | high   |
-| standard           | `gpt-5.6-sol` | high   |
-| max                | `gpt-5.6-sol` | high   |
-| counter (on `max`) | none          | —      |
+| Band               | Model           | Effort |
+| ------------------ | --------------- | ------ |
+| cheap              | `gpt-5.6-terra` | max    |
+| standard           | `gpt-5.6-terra` | max    |
+| max                | `gpt-5.6-terra` | max    |
+| counter (on `max`) | none            | —      |
 
-Codex is single-vendor (OpenAI only); there is no cross-family split to make here, so `refute` reports `degraded`. Native Codex 0.147.0 lists `gpt-5.6-sol` with `high` among its supported reasoning levels (`codex debug models --bundled`). Every Codex band, root profile, and named role therefore pins `gpt-5.6-sol` at high effort, and every profile pins the priority route with `service_tier = "fast"` (user call, 2026-08-07). Codex carries effort per profile as `model_reasoning_effort`, and the gate rewrites both model fields on `spawn_agent`. Codex exposes no context-tier dial, so every band is short by construction.
+Codex is single-vendor (OpenAI only); there is no cross-family split to make here, so `refute` reports `degraded`. Native Codex 0.147.0 lists `gpt-5.6-terra` with `max` among its supported reasoning levels (`codex debug models --bundled`). Every Codex band, root profile, and named role therefore pins `gpt-5.6-terra` at max effort, and every profile pins `service_tier = "default"`. Codex carries effort per profile as `model_reasoning_effort`, and the gate rewrites both model fields on `spawn_agent`. Codex exposes no context-tier dial, so every band is short by construction.
 
 ### Copilot CLI
 

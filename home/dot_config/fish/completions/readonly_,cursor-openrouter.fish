@@ -1,7 +1,8 @@
-# Model and effort candidates come from the live OpenRouter catalog
+# Model candidates come from the live OpenRouter catalog
 # (GET /api/v1/models?supported_parameters=reasoning), cached for 1h so completion stays fast.
-# Each model's --effort list is its own `reasoning.supported_efforts`, so the two always match.
-# Offline/no-key falls back to the route-policy trio.
+# Effort candidates are that model's `reasoning.supported_efforts`, plus `none` (workspace
+# *-lanes-none / effort-none presets disable reasoning even when the catalog omits it).
+# Offline/no-key falls back to the route-policy model trio and the full effort ladder.
 set -g __cursor_openrouter_cache ~/.cache/,cursor-openrouter/models.tsv
 set -g __cursor_openrouter_ttl 3600
 
@@ -78,27 +79,29 @@ function __cursor_openrouter_model
 end
 
 function __cursor_openrouter_efforts
+    # Per-model catalog efforts, always union `none` (disables reasoning via workspace presets).
     set -l model (__cursor_openrouter_model)
     set -l rows (__cursor_openrouter_load)
+    set -l efforts
     for r in $rows
         set -l parts (string split \t -- $r)
         if test "$parts[1]" = "$model"
-            string split , -- $parts[2]
-            return
+            set efforts (string split , -- $parts[2])
+            break
         end
     end
-    # Unknown/free-form model: wrapper falls back to the model-agnostic effort-<level> preset.
-    echo 'minimal
-low
-medium
-high
-xhigh
-max'
+    if test (count $efforts) -eq 0
+        # Unknown/free-form model: wrapper uses effort-<level>; offer the full ladder.
+        set efforts none minimal low medium high xhigh max
+    else if not contains -- none $efforts
+        set efforts none $efforts
+    end
+    printf '%s\n' $efforts
 end
 
 complete -c ',cursor-openrouter' -f
 complete -c ',cursor-openrouter' -s m -l model -x -a '(__cursor_openrouter_models)' -d 'OpenRouter model id (default deepseek/deepseek-v4-flash-0731)'
-complete -c ',cursor-openrouter' -l effort -x -a '(__cursor_openrouter_efforts)' -d 'Reasoning effort (default max)'
+complete -c ',cursor-openrouter' -l effort -x -a '(__cursor_openrouter_efforts)' -d 'Reasoning effort (default max; none disables)'
 complete -c ',cursor-openrouter' -l reasoning-effort -x -a '(__cursor_openrouter_efforts)' -d 'Alias for --effort'
 complete -c ',cursor-openrouter' -l thinking -x -a '(__cursor_openrouter_efforts)' -d 'Alias for --effort'
 complete -c ',cursor-openrouter' -l no-thinking -d 'Minimal reasoning effort'

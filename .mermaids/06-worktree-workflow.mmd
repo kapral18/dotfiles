@@ -26,7 +26,7 @@ flowchart TD
     PRS --> LIB
     ISSUE --> LIB
 
-    ADD --> TMUX["tmux session per worktree<br/>(see 05-tmux-pickers.mmd)"]:::ext
+    ADD --> TMUX["tmux session per worktree<br/>(exact-name targets; current TMUX or detached OUTER_TMUX_SOCKET;<br/>see 05-tmux-pickers.mmd)"]:::ext
     PRS --> TMUX
     REMOVE --> TMUX
 

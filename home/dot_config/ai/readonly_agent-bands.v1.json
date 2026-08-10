@@ -1,2335 +1,1068 @@
 {
   "schema_version": "1.0.0",
   "kind": "ai.agent-bands",
-  "categories": {
-    "search": {
-      "band": "cheap",
-      "family": "primary"
-    },
-    "mechanical": {
-      "band": "cheap",
-      "family": "primary"
-    },
-    "research": {
-      "band": "standard",
-      "family": "primary"
-    },
-    "implement": {
-      "band": "standard",
-      "family": "primary"
-    },
-    "orchestrate": {
-      "band": "max",
-      "family": "primary"
-    },
-    "review": {
-      "band": "max",
-      "family": "primary"
-    },
-    "refute": {
-      "band": "max",
-      "family": "counter"
-    }
-  },
-  "bindings": {
-    "adversarial-verifier": "refute",
-    "criteria-verifier": "refute",
-    "fresh-eyes": "review",
-    "change-auditor": "review",
-    "findings-auditor": "review",
-    "live-ui-review": "review",
-    "post-review": "review",
-    "pr-necessity-auditor": "review",
-    "reviewer": "review",
-    "review-worker": "review",
-    "deep-review": "orchestrate",
-    "review-controller": "orchestrate",
-    "code-searcher": "research",
-    "researcher": "research",
-    "claude-code-guide": "research",
-    "Explore": "research",
-    "Plan": "orchestrate",
-    "claude": "implement",
-    "general-purpose": "implement",
-    "explore": "research",
-    "task": "implement",
-    "research": "research",
-    "rubber-duck": "research",
-    "rem-agent": "research",
-    "code-review": "review",
-    "security-review": "review",
-    "explorer": "research",
-    "worker": "implement",
-    "default": "orchestrate",
-    "codebase_investigator": "research",
-    "cli_help": "search",
-    "generalist": "implement",
-    "browser_agent": "implement",
-    "generalPurpose": "implement",
-    "cursor-guide": "research",
-    "bugbot": "review",
-    "best-of-n-runner": "implement"
-  },
   "harnesses": {
     "claude_code": {
-      "bands": {
-        "cheap": {
-          "model": "claude-fable-5",
-          "effort": "low",
-          "thinking": "off",
-          "context": "short"
-        },
-        "standard": {
-          "model": "claude-fable-5",
-          "effort": "medium",
-          "thinking": "off",
-          "context": "short"
-        },
-        "max": {
-          "model": "claude-fable-5",
-          "effort": "medium",
-          "thinking": "off",
-          "context": "short"
-        }
-      },
       "agents": {
         "Explore": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "Plan": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "adversarial-verifier": {
-          "category": "refute",
-          "band": "max",
-          "family": "counter",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short",
-          "degraded": true
+          "effort": "medium"
         },
         "best-of-n-runner": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "browser_agent": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "bugbot": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "change-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "claude": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "claude-code-guide": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "cli_help": {
-          "category": "search",
-          "band": "cheap",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "low",
-          "context": "short"
+          "effort": "low"
         },
         "code-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "code-searcher": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "codebase_investigator": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "criteria-verifier": {
-          "category": "refute",
-          "band": "max",
-          "family": "counter",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short",
-          "degraded": true
+          "effort": "medium"
         },
         "cursor-guide": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "deep-review": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "default": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "explore": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "explorer": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "findings-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "fresh-eyes": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "general-purpose": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "generalPurpose": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "generalist": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "live-ui-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "post-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "pr-necessity-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "rem-agent": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "research": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "researcher": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "review-controller": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "review-worker": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "reviewer": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "rubber-duck": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "security-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "task": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         },
         "worker": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-fable-5",
-          "effort": "medium",
-          "context": "short"
+          "effort": "medium"
         }
       }
     },
     "codex": {
-      "bands": {
-        "cheap": {
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "thinking": "",
-          "context": "short"
-        },
-        "standard": {
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "thinking": "",
-          "context": "short"
-        },
-        "max": {
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "thinking": "",
-          "context": "short"
-        }
-      },
       "agents": {
         "Explore": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "Plan": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "adversarial-verifier": {
-          "category": "refute",
-          "band": "max",
-          "family": "counter",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short",
-          "degraded": true
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "best-of-n-runner": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "browser_agent": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "bugbot": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "change-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "claude": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "claude-code-guide": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "cli_help": {
-          "category": "search",
-          "band": "cheap",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "code-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "code-searcher": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "codebase_investigator": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "criteria-verifier": {
-          "category": "refute",
-          "band": "max",
-          "family": "counter",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short",
-          "degraded": true
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "cursor-guide": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "deep-review": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "default": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "explore": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "explorer": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "findings-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "fresh-eyes": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "general-purpose": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "generalPurpose": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "generalist": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "live-ui-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "post-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "pr-necessity-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "rem-agent": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "research": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "researcher": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "review-controller": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "review-worker": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "reviewer": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "rubber-duck": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "security-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "task": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         },
         "worker": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
-          "model": "gpt-5.6-sol",
-          "effort": "high",
-          "context": "short"
+          "model": "gpt-5.6-terra",
+          "effort": "max"
         }
       }
     },
     "copilot": {
-      "bands": {
-        "cheap": {
-          "model": "claude-haiku-4.5",
-          "effort": "high",
-          "thinking": "off",
-          "context": "short"
-        },
-        "standard": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "thinking": "off",
-          "context": "short"
-        },
-        "max": {
-          "model": "gpt-5.6-terra",
-          "effort": "high",
-          "thinking": "",
-          "context": "short",
-          "counter": {
-            "model": "claude-sonnet-4.6",
-            "effort": "high",
-            "thinking": "off",
-            "context": "short"
-          }
-        }
-      },
       "agents": {
         "Explore": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "Plan": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "adversarial-verifier": {
-          "category": "refute",
-          "band": "max",
-          "family": "counter",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "best-of-n-runner": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "browser_agent": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "bugbot": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "change-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "claude": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "claude-code-guide": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "cli_help": {
-          "category": "search",
-          "band": "cheap",
-          "family": "primary",
           "model": "claude-haiku-4.5",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "code-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "code-searcher": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "codebase_investigator": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "criteria-verifier": {
-          "category": "refute",
-          "band": "max",
-          "family": "counter",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "cursor-guide": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "deep-review": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "default": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "explore": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "explorer": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "findings-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "fresh-eyes": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "general-purpose": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "generalPurpose": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "generalist": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "live-ui-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "post-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "pr-necessity-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "rem-agent": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "research": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "researcher": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "review-controller": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "review-worker": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "reviewer": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "rubber-duck": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "security-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "task": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "worker": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "claude-sonnet-4.6",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         }
       }
     },
     "cursor": {
-      "bands": {
-        "cheap": {
-          "model": "composer-2.5",
-          "effort": "high",
-          "thinking": "",
-          "context": "short"
-        },
-        "standard": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "thinking": "",
-          "context": "long"
-        },
-        "max": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "thinking": "",
-          "context": "long"
-        }
-      },
       "agents": {
         "Explore": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "Plan": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "adversarial-verifier": {
-          "category": "refute",
-          "band": "max",
-          "family": "counter",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long",
-          "degraded": true
+          "effort": "max"
         },
         "best-of-n-runner": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "browser_agent": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "bugbot": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "change-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "claude": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "claude-code-guide": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "cli_help": {
-          "category": "search",
-          "band": "cheap",
-          "family": "primary",
           "model": "composer-2.5",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "code-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "code-searcher": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "codebase_investigator": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "criteria-verifier": {
-          "category": "refute",
-          "band": "max",
-          "family": "counter",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long",
-          "degraded": true
+          "effort": "max"
         },
         "cursor-guide": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "deep-review": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "default": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "explore": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "explorer": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "findings-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "fresh-eyes": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "general-purpose": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "generalPurpose": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "generalist": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "live-ui-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "post-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "pr-necessity-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "rem-agent": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "research": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "researcher": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "review-controller": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "review-worker": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "reviewer": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "rubber-duck": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "security-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "task": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         },
         "worker": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "gpt-5.6-terra-max",
-          "effort": "max",
-          "context": "long"
+          "effort": "max"
         }
       }
     },
     "gemini": {
-      "bands": {
-        "cheap": {
-          "model": "gemini-3.6-flash",
-          "effort": "high",
-          "thinking": "",
-          "context": "short"
-        },
-        "standard": {
-          "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "thinking": "",
-          "context": "short"
-        },
-        "max": {
-          "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "thinking": "",
-          "context": "short"
-        }
-      },
       "agents": {
         "Explore": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "Plan": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "adversarial-verifier": {
-          "category": "refute",
-          "band": "max",
-          "family": "counter",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short",
-          "degraded": true
+          "effort": "high"
         },
         "best-of-n-runner": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "browser_agent": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "bugbot": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "change-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "claude": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "claude-code-guide": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "cli_help": {
-          "category": "search",
-          "band": "cheap",
-          "family": "primary",
           "model": "gemini-3.6-flash",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "code-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "code-searcher": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "codebase_investigator": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "criteria-verifier": {
-          "category": "refute",
-          "band": "max",
-          "family": "counter",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short",
-          "degraded": true
+          "effort": "high"
         },
         "cursor-guide": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "deep-review": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "default": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "explore": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "explorer": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "findings-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "fresh-eyes": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "general-purpose": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "generalPurpose": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "generalist": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "live-ui-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "post-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "pr-necessity-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "rem-agent": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "research": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "researcher": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "review-controller": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "review-worker": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "reviewer": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "rubber-duck": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "security-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "task": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "worker": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "gemini-3.1-pro-preview",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         }
       }
     },
     "omp": {
-      "bands": {
-        "cheap": {
-          "model": "@smol",
-          "effort": "high",
-          "thinking": "",
-          "context": "short"
-        },
-        "standard": {
-          "model": "@task",
-          "effort": "high",
-          "thinking": "",
-          "context": "short"
-        },
-        "max": {
-          "model": "@default",
-          "effort": "high",
-          "thinking": "",
-          "context": "short"
-        }
-      },
       "agents": {
         "Explore": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "Plan": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "@default",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "adversarial-verifier": {
-          "category": "refute",
-          "band": "max",
-          "family": "counter",
           "model": "@default",
-          "effort": "high",
-          "context": "short",
-          "degraded": true
+          "effort": "high"
         },
         "best-of-n-runner": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "browser_agent": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "bugbot": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "@default",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "change-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "@default",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "claude": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "claude-code-guide": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "cli_help": {
-          "category": "search",
-          "band": "cheap",
-          "family": "primary",
           "model": "@smol",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "code-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "@default",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "code-searcher": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "codebase_investigator": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "criteria-verifier": {
-          "category": "refute",
-          "band": "max",
-          "family": "counter",
           "model": "@default",
-          "effort": "high",
-          "context": "short",
-          "degraded": true
+          "effort": "high"
         },
         "cursor-guide": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "deep-review": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "@default",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "default": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "@default",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "explore": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "explorer": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "findings-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "@default",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "fresh-eyes": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "@default",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "general-purpose": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "generalPurpose": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "generalist": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "live-ui-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "@default",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "post-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "@default",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "pr-necessity-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "@default",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "rem-agent": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "research": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "researcher": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "review-controller": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "@default",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "review-worker": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "@default",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "reviewer": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "@default",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "rubber-duck": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "security-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "@default",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "task": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         },
         "worker": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "@task",
-          "effort": "high",
-          "context": "short"
+          "effort": "high"
         }
       }
     },
     "pi": {
-      "bands": {
-        "cheap": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "thinking": "",
-          "context": "short"
-        },
-        "standard": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "thinking": "",
-          "context": "short"
-        },
-        "max": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "thinking": "",
-          "context": "short",
-          "counter": {
-            "model": "openrouter/openai/gpt-5.6-terra:max",
-            "effort": "max",
-            "thinking": "",
-            "context": "short"
-          }
-        }
-      },
       "agents": {
         "Explore": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "Plan": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "adversarial-verifier": {
-          "category": "refute",
-          "band": "max",
-          "family": "counter",
           "model": "openrouter/openai/gpt-5.6-terra:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "best-of-n-runner": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "browser_agent": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "bugbot": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "change-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "claude": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "claude-code-guide": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "cli_help": {
-          "category": "search",
-          "band": "cheap",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "code-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "code-searcher": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "codebase_investigator": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "criteria-verifier": {
-          "category": "refute",
-          "band": "max",
-          "family": "counter",
           "model": "openrouter/openai/gpt-5.6-terra:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "cursor-guide": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "deep-review": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "default": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "explore": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "explorer": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "findings-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "fresh-eyes": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "general-purpose": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "generalPurpose": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "generalist": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "live-ui-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "post-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "pr-necessity-auditor": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "rem-agent": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "research": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "researcher": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "review-controller": {
-          "category": "orchestrate",
-          "band": "max",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "review-worker": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "reviewer": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "rubber-duck": {
-          "category": "research",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "security-review": {
-          "category": "review",
-          "band": "max",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "task": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         },
         "worker": {
-          "category": "implement",
-          "band": "standard",
-          "family": "primary",
           "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max",
-          "context": "short"
+          "effort": "max"
         }
       }
     }

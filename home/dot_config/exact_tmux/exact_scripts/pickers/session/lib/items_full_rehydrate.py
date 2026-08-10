@@ -131,15 +131,30 @@ def _pr_is_review_meta(meta: str) -> bool:
     return "prrole=review" in (meta or "").split("|")
 
 
+def _pr_is_terminal_meta(meta: str) -> bool:
+    for part in (meta or "").split("|"):
+        if not part.startswith("pr="):
+            continue
+        fields = part[3:].split(":", 2)
+        return len(fields) >= 2 and fields[1].upper() in {"MERGED", "CLOSED"}
+    return False
+
+
 # Review-row colors — keep in sync with index_main.py REVIEW_*_COLOR.
 REVIEW_NAME_COLOR = "1;38;5;213"
 REVIEW_PATH_COLOR = "38;5;213"
+TERMINAL_ROW_COLOR = "2;38;5;244"
 
 
-def display_session_entry_with_suffix(name, path_display, suffix="", review=False):
+def display_session_entry_with_suffix(name, path_display, suffix="", review=False, terminal=False):
     suffix = suffix or ""
-    name_color = REVIEW_NAME_COLOR if review else "1;38;5;81"
-    return f"{color('38;5;42', ICON_SESSION)}  {color(name_color, name)}{suffix}"
+    if terminal:
+        icon_color = TERMINAL_ROW_COLOR
+        name_color = TERMINAL_ROW_COLOR
+    else:
+        icon_color = "38;5;42"
+        name_color = REVIEW_NAME_COLOR if review else "1;38;5;81"
+    return f"{color(icon_color, ICON_SESSION)}  {color(name_color, name)}{suffix}"
 
 
 def display_dir_session_entry_with_suffix(path_display, suffix=""):
@@ -147,9 +162,14 @@ def display_dir_session_entry_with_suffix(path_display, suffix=""):
     return f"{color('38;5;42', ICON_SESSION)}  {color('1;38;5;81', path_display)}{suffix}"
 
 
-def display_worktree_entry(path_display, review=False):
-    path_color = REVIEW_PATH_COLOR if review else "38;5;221"
-    return f"{color('38;5;214', ICON_WORKTREE)}  {color(path_color, path_display)}"
+def display_worktree_entry(path_display, review=False, terminal=False):
+    if terminal:
+        icon_color = TERMINAL_ROW_COLOR
+        path_color = TERMINAL_ROW_COLOR
+    else:
+        icon_color = "38;5;214"
+        path_color = REVIEW_PATH_COLOR if review else "38;5;221"
+    return f"{color(icon_color, ICON_WORKTREE)}  {color(path_color, path_display)}"
 
 
 def display_dir_entry(path_display):
@@ -562,7 +582,12 @@ def emit_missing_sessions():
             disp = display_dir_session_entry_with_suffix(label, suffix) + gh_b
             mk = match_key(label, name) if label == rp else match_key(label, name, rp)
         else:
-            disp = display_session_entry_with_suffix(name, "", suffix, _pr_is_review_meta(meta)) + gh_b
+            disp = (
+                display_session_entry_with_suffix(
+                    name, "", suffix, _pr_is_review_meta(meta), _pr_is_terminal_meta(meta)
+                )
+                + gh_b
+            )
             mk = match_key(name)
         print(f"{disp}\tsession\t{rp}\t{meta}\t{name}\t{mk}")
         printed_sessions.add(name)
@@ -618,7 +643,7 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
                             meta = _worktree_meta_from_cached_session(rpath, meta)
                             gh_b = _gh_badges_from_meta(meta)
                             print(
-                                f"{display_worktree_entry(tildefy(rpath), _pr_is_review_meta(meta))}{badge}{gh_b}\tworktree\t{rpath}\t{meta}\t{root}\t{mk}"
+                                f"{display_worktree_entry(tildefy(rpath), _pr_is_review_meta(meta), _pr_is_terminal_meta(meta))}{badge}{gh_b}\tworktree\t{rpath}\t{meta}\t{root}\t{mk}"
                             )
                     elif os.path.isdir(rpath):
                         t = tildefy(rpath)
@@ -634,7 +659,7 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
                             meta = _worktree_meta_from_cached_session(rpath, meta)
                             gh_b = _gh_badges_from_meta(meta)
                             print(
-                                f"{display_worktree_entry(tildefy(rpath), _pr_is_review_meta(meta))}{badge}{gh_b}\tworktree\t{rpath}\t{meta}\t{root}\t{mk}"
+                                f"{display_worktree_entry(tildefy(rpath), _pr_is_review_meta(meta), _pr_is_terminal_meta(meta))}{badge}{gh_b}\tworktree\t{rpath}\t{meta}\t{root}\t{mk}"
                             )
                     elif os.path.isdir(rpath):
                         t = tildefy(rpath)
@@ -652,7 +677,9 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
                 display = display_dir_session_entry_with_suffix(label, suffix)
                 mk = match_key(label, target) if label == rpath else match_key(label, target, rpath)
             else:
-                display = display_session_entry_with_suffix(target, "", suffix, _pr_is_review_meta(meta))
+                display = display_session_entry_with_suffix(
+                    target, "", suffix, _pr_is_review_meta(meta), _pr_is_terminal_meta(meta)
+                )
                 mk = match_key(target)
             print(f"{display}{badge}{gh_b}\tsession\t{path}\t{meta}\t{target}\t{mk}")
             continue

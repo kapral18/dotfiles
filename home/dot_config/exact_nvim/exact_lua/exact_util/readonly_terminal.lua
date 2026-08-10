@@ -12,7 +12,7 @@ end
 
 --- Run a command in a vertical split terminal
 ---@param cmd string The command to run
----@param opts? table Options (cwd, etc.)
+---@param opts? table Options (cwd, focus_original, close_on_exit)
 function M.run_in_split(cmd, opts)
   opts = opts or {}
 
@@ -42,6 +42,21 @@ function M.run_in_split(cmd, opts)
       vim.cmd("silent! bdelete! " .. term_buf)
     end
   end, { noremap = true, silent = true, buffer = term_buf })
+
+  -- Auto-close: wipe this terminal buffer when its job exits. Scoped to the
+  -- buffer so it never matches other terminal buffers (Jest/python splits).
+  if opts.close_on_exit then
+    local augroup = vim.api.nvim_create_augroup("term_auto_close", { clear = false })
+    vim.api.nvim_create_autocmd("TermClose", {
+      group = augroup,
+      buffer = term_buf,
+      callback = function()
+        if vim.api.nvim_buf_is_valid(term_buf) then
+          vim.cmd("silent! bdelete! " .. term_buf)
+        end
+      end,
+    })
+  end
 
   local ok, job_id = pcall(vim.fn.termopen, cmd, term_opts)
   if not ok or job_id <= 0 then

@@ -39,8 +39,8 @@ Body one.
 def _write_fixture_repo(root: Path, sop_text: str = FIXTURE_SOP) -> None:
     (root / "home").mkdir(parents=True, exist_ok=True)
     (root / "home/readonly_AGENTS.md").write_text(sop_text, encoding="utf-8")
-    (root / "home/dot_config/ai").mkdir(parents=True, exist_ok=True)
-    (root / "home/dot_config/ai/readonly_harness-capabilities.v1.json").write_text(
+    (root / "home/dot_config/ai/exact_policy-ir").mkdir(parents=True, exist_ok=True)
+    (root / "home/dot_config/ai/exact_policy-ir/readonly_harness-capabilities.v1.json").write_text(
         json.dumps(
             {
                 "version": 1,

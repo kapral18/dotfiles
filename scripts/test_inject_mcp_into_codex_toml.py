@@ -142,7 +142,7 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                         "",
                         "[tui.model_availability_nux]",
                         '"gpt-5.5" = 4',
-                        '"gpt-5.6-sol" = 7',
+                        '"gpt-5.6-terra" = 7',
                         '"zero" = 0',
                         '"max-u32" = 4294967295',
                         '"negative" = -1',
@@ -173,7 +173,7 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
         assert _table_body(actual, "tui.model_availability_nux") == "\n".join(
             [
                 '"gpt-5.5" = 4',
-                '"gpt-5.6-sol" = 7',
+                '"gpt-5.6-terra" = 7',
                 '"zero" = 0',
                 '"max-u32" = 4294967295',
             ]

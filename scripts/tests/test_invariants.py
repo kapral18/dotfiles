@@ -55,7 +55,7 @@ def _transform_closure(paths: set[Path]) -> set[Path]:
     return result
 
 
-SOP_MANIFEST_PATH = "home/dot_config/ai/readonly_policy-manifest.v1.json"
+SOP_MANIFEST_PATH = "home/dot_config/ai/exact_policy-ir/readonly_policy-manifest.v1.json"
 
 
 def _sop_rule_text() -> str:
@@ -173,7 +173,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         # directory name. The uniform `k-` namespace avoids native-skill collisions in both,
         # so every skill dir and its frontmatter name must carry it.
         skills_root = REPO / "home/exact_dot_agents/exact_skills"
-        name_re = re.compile(r"^name: \"?(?P<name>[^\"\n]+)\"?$", re.M)
+        name_re = re.compile(r"^name: \"?(?P<name>[^\"\n]+)\"?$", re.MULTILINE)
         for skill_dir in sorted(p for p in skills_root.iterdir() if p.is_dir()):
             assert skill_dir.name.startswith("exact_k-"), f"skill dir missing k- namespace: {skill_dir.name}"
             expected = skill_dir.name.removeprefix("exact_")
@@ -344,8 +344,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         for entry in hooks_dir.iterdir():
             name = entry.name
             for prefix in ("executable_", "readonly_", "private_"):
-                if name.startswith(prefix):
-                    name = name[len(prefix) :]
+                name = name.removeprefix(prefix)
             available.add(name.removesuffix(".tmpl"))
 
         configs = (
@@ -621,7 +620,6 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         )
 
     def test_secondary_skill_loads_are_evidence_gated(self):
-        from pathlib import Path
 
         bad = []
         for path in (REPO / "home/exact_dot_agents/exact_skills").rglob("*SKILL.md"):
@@ -1059,8 +1057,8 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             )
 
             config = (REPO / f"home/dot_codex/private_config.{profile}.toml").read_text(encoding="utf-8")
-            model = re.search(r'^model\s*=\s*"([^"]+)"', config, re.M)
-            effort = re.search(r'^model_reasoning_effort\s*=\s*"([^"]+)"', config, re.M)
+            model = re.search(r'^model\s*=\s*"([^"]+)"', config, re.MULTILINE)
+            effort = re.search(r'^model_reasoning_effort\s*=\s*"([^"]+)"', config, re.MULTILINE)
             assert model and model.group(1) == codex_band["model"], (
                 f"codex private_config.{profile}.toml model "
                 f"{(model.group(1) if model else None)!r} != "
@@ -1072,13 +1070,13 @@ class TestAgentInstructionInvariants(unittest.TestCase):
                 f"model_bands.codex.{orchestrate}.effort {codex_band['effort']!r}"
             )
 
-    def test_codex_defaults_and_every_agent_lane_are_sol_high_fast(self):
+    def test_codex_defaults_and_every_agent_lane_are_terra_max_default(self):
         import ai_models
 
         registry = REPO / "home/.chezmoidata/ai_models"
-        expected_model = "gpt-5.6-sol"
-        expected_effort = "high"
-        expected_service_tier = "fast"
+        expected_model = "gpt-5.6-terra"
+        expected_effort = "max"
+        expected_service_tier = "default"
 
         for band, row in ai_models.load_model_bands(registry)["codex"].items():
             with self.subTest(surface="band", name=band):
@@ -1092,9 +1090,11 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         for profile in ("personal", "work"):
             config = (REPO / f"home/dot_codex/private_config.{profile}.toml").read_text(encoding="utf-8")
             with self.subTest(surface="root_profile", name=profile):
-                self.assertRegex(config, re.compile(rf'^model\s*=\s*"{re.escape(expected_model)}"$', re.M))
-                self.assertRegex(config, re.compile(rf'^model_reasoning_effort\s*=\s*"{expected_effort}"$', re.M))
-                self.assertRegex(config, re.compile(rf'^service_tier\s*=\s*"{expected_service_tier}"$', re.M))
+                self.assertRegex(config, re.compile(rf'^model\s*=\s*"{re.escape(expected_model)}"$', re.MULTILINE))
+                self.assertRegex(
+                    config, re.compile(rf'^model_reasoning_effort\s*=\s*"{expected_effort}"$', re.MULTILINE)
+                )
+                self.assertRegex(config, re.compile(rf'^service_tier\s*=\s*"{expected_service_tier}"$', re.MULTILINE))
 
         agents = sorted((REPO / "home/dot_codex/exact_agents").glob("*.toml.tmpl"))
         self.assertTrue(agents, "Codex agent profile set is empty")
@@ -1102,8 +1102,10 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             config = profile.read_text(encoding="utf-8")
             with self.subTest(surface="agent_profile", name=profile.name):
                 self.assertIn(".agent_review_models.codex.", config)
-                self.assertRegex(config, re.compile(rf'^model_reasoning_effort\s*=\s*"{expected_effort}"$', re.M))
-                self.assertRegex(config, re.compile(rf'^service_tier\s*=\s*"{expected_service_tier}"$', re.M))
+                self.assertRegex(
+                    config, re.compile(rf'^model_reasoning_effort\s*=\s*"{expected_effort}"$', re.MULTILINE)
+                )
+                self.assertRegex(config, re.compile(rf'^service_tier\s*=\s*"{expected_service_tier}"$', re.MULTILINE))
 
     def test_every_bound_agent_resolves_on_every_harness(self):
         # The three-table lookup is only useful if it is total: an agent bound to a category that
@@ -1169,14 +1171,14 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         # hooks.json files via a matcher, and the Copilot extension (whose SDK exposes no matcher)
         # via its own copy of DELEGATION_TOOLS, which has to stay in sync with the hook's.
         hook = (REPO / "home/exact_dot_agents/exact_hooks/executable_band_gate.py").read_text(encoding="utf-8")
-        tools = re.search(r"^DELEGATION_TOOLS = \{([^}]+)\}", hook, re.M)
+        tools = re.search(r"^DELEGATION_TOOLS = \{([^}]+)\}", hook, re.MULTILINE)
         assert tools, "band_gate.py no longer declares DELEGATION_TOOLS"
         expected = set(re.findall(r'"([^"]+)"', tools.group(1)))
 
         extension = (
             REPO / "home/private_dot_copilot/exact_extensions/exact_agent-memory/readonly_extension.mjs"
         ).read_text(encoding="utf-8")
-        mirrored = re.search(r"^const DELEGATION_TOOLS = new Set\(\[([^\]]+)\]\)", extension, re.M)
+        mirrored = re.search(r"^const DELEGATION_TOOLS = new Set\(\[([^\]]+)\]\)", extension, re.MULTILINE)
         assert mirrored, "the Copilot extension no longer mirrors DELEGATION_TOOLS"
         assert set(re.findall(r'"([^"]+)"', mirrored.group(1))) == expected, (
             "readonly_extension.mjs DELEGATION_TOOLS has drifted from band_gate.py's"
@@ -1203,7 +1205,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         # `chezmoi apply` installs the picked profile whole (07-merge-claude-code-settings patches
         # only .model/.effortLevel). A gate present on one profile and absent on the other means
         # the whole band system is silently unenforced on that machine, and
-        # readonly_harness-capabilities.v1.json claims hook_support="mutation" for both.
+        # home/dot_config/ai/exact_policy-ir/readonly_harness-capabilities.v1.json claims hook_support="mutation" for both.
         for profile in ("personal", "work"):
             settings = json.loads((REPO / f"home/dot_claude/settings.{profile}.json").read_text(encoding="utf-8"))
             entries = settings.get("hooks", {}).get("PreToolUse", [])
@@ -1349,8 +1351,8 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             check(f"claude settings.{profile}", claude.get("model", ""), claude.get("effortLevel"))
 
             codex = (REPO / f"home/dot_codex/private_config.{profile}.toml").read_text(encoding="utf-8")
-            model = re.search(r'^model\s*=\s*"([^"]+)"', codex, re.M)
-            effort = re.search(r'^model_reasoning_effort\s*=\s*"([^"]+)"', codex, re.M)
+            model = re.search(r'^model\s*=\s*"([^"]+)"', codex, re.MULTILINE)
+            effort = re.search(r'^model_reasoning_effort\s*=\s*"([^"]+)"', codex, re.MULTILINE)
             if model:
                 check(
                     f"codex private_config.{profile}.toml",
@@ -1576,7 +1578,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
 
         expected = {
             "claude_code": ("claude-fable-5", "low"),  # Anthropic-only; all bands fable-5 (user call 2026-08-05)
-            "codex": ("gpt-5.6-sol", "high"),  # user-selected all-band Codex policy, 2026-08-07
+            "codex": ("gpt-5.6-terra", "max"),  # user-selected all-band Codex policy
             "copilot": ("claude-haiku-4.5", "high"),
             "cursor": ("composer-2.5", "high"),  # no codex id in the Task whitelist; `-fast` costs 6x
             "gemini": ("gemini-3.6-flash", "high"),  # Google-only catalog

@@ -10,6 +10,7 @@ _gh_row_loader_frames=(loading-0 loading-1 loading-2 loading-3)
 _gh_row_loader_interval="0.8"
 _gh_row_loader_header_idle=" GitHub cockpit "
 _gh_row_loader_header_loading=" GitHub cockpit | Loading... "
+_gh_row_loader_post_pids=()
 
 gh_row_loader_mk_restore_file() {
   local prefix="${1:-row}"
@@ -59,7 +60,8 @@ gh_row_loader_notify_file() {
   } > "$cmd_file"
   chmod +x "$cmd_file" 2> /dev/null || true
   reload_cmd="$(printf '%q' "$cmd_file")"
-  (curl -s --max-time 1 -XPOST "http://127.0.0.1:${port}" -d "reload-sync(${reload_cmd})+track" > /dev/null 2>&1 &) 2> /dev/null
+  curl -s --max-time 1 -XPOST "http://127.0.0.1:${port}" -d "reload-sync(${reload_cmd})+track" > /dev/null 2>&1 &
+  _gh_row_loader_post_pids+=("$!")
   (
     sleep 5
     rm -f "$frame_file" "$cmd_file" 2> /dev/null || true
@@ -156,32 +158,29 @@ gh_row_loader_render() {
   rm -f "$frame_file" 2> /dev/null || true
 }
 
-gh_row_loader_notify_render_item() {
-  local kind="$1" repo="$2" num="$3" state="$4"
-  local mode="${5:-$(gh_row_loader_mode_from_file)}" scope="${6:-$(gh_row_loader_scope_from_file)}"
-  local items_cmd="${7:-${_gh_row_loader_picker_dir}/gh_items.sh}"
-  local frame_file
-  frame_file="$(gh_row_loader_prepare_render_file "$items_cmd" "$mode" "$scope" item "$state" "$kind" "$repo" "$num" 2> /dev/null || true)"
-  [ -n "$frame_file" ] || return 0
-  gh_row_loader_notify_file "$frame_file"
+# Spinner frames are ephemeral full-list renders POSTed fire-and-forget; fzf
+# applies whatever arrives last. A frame rendered just before stop but POSTed
+# after the authoritative re-render would clobber it (stuck amber rows, hidden
+# done markers). Each spinner carries a token file named by its own pid: the
+# loop re-checks it after every slow render and aborts before POSTing once
+# stop_spinner has removed it. Spinner EXIT traps wait for their direct curl
+# children, so an already-fired frame lands before the final render.
+_gh_row_loader_spin_token() {
+  printf '%s/gh_row_loader_spin_%s.tok' "$_gh_row_loader_cache_dir" "$1"
 }
 
-gh_row_loader_notify_render_file() {
-  local targets_file="$1" state="$2"
-  local mode="${3:-$(gh_row_loader_mode_from_file)}" scope="${4:-$(gh_row_loader_scope_from_file)}"
-  local items_cmd="${5:-${_gh_row_loader_picker_dir}/gh_items.sh}"
-  local frame_file
-  frame_file="$(gh_row_loader_prepare_render_file "$items_cmd" "$mode" "$scope" file "$state" "$targets_file" 2> /dev/null || true)"
-  [ -n "$frame_file" ] || return 0
-  gh_row_loader_notify_file "$frame_file"
+_gh_row_loader_spinner_cleanup() {
+  local token="$1"
+  rm -f "$token" 2> /dev/null || true
+  gh_row_loader_wait_posts
 }
 
-gh_row_loader_notify_render_all() {
-  local mode="$1" scope="$2" items_cmd="$3" state="$4"
-  local frame_file
-  frame_file="$(gh_row_loader_prepare_render_file "$items_cmd" "$mode" "$scope" all "$state" 2> /dev/null || true)"
-  [ -n "$frame_file" ] || return 0
-  gh_row_loader_notify_file "$frame_file"
+gh_row_loader_wait_posts() {
+  local post_pid
+  for post_pid in "${_gh_row_loader_post_pids[@]+"${_gh_row_loader_post_pids[@]}"}"; do
+    wait "$post_pid" 2> /dev/null || true
+  done
+  _gh_row_loader_post_pids=()
 }
 
 gh_row_loader_start_item() {
@@ -189,15 +188,28 @@ gh_row_loader_start_item() {
   local mode="${4:-$(gh_row_loader_mode_from_file)}" scope="${5:-$(gh_row_loader_scope_from_file)}"
   local items_cmd="${6:-${_gh_row_loader_picker_dir}/gh_items.sh}"
   (
-    local i=0 state
-    while :; do
+    local token i=0 state frame_file
+    _gh_row_loader_post_pids=()
+    token="$(_gh_row_loader_spin_token "$BASHPID")"
+    : > "$token" 2> /dev/null || true
+    trap '_gh_row_loader_spinner_cleanup "$token"' EXIT
+    trap 'exit 0' TERM INT
+    while [ -f "$token" ]; do
       state="$(gh_row_loader_frame_state "$i")"
-      gh_row_loader_notify_render_item "$kind" "$repo" "$num" "$state" "$mode" "$scope" "$items_cmd"
+      frame_file="$(gh_row_loader_prepare_render_file "$items_cmd" "$mode" "$scope" item "$state" "$kind" "$repo" "$num" 2> /dev/null || true)"
+      [ -f "$token" ] || {
+        rm -f "$frame_file" 2> /dev/null || true
+        break
+      }
+      [ -n "$frame_file" ] && gh_row_loader_notify_file "$frame_file"
       i=$((i + 1))
       sleep "$_gh_row_loader_interval"
     done
   ) > /dev/null 2>&1 &
-  printf '%s\n' "$!"
+  # Callers that invoke us directly (no $(...)) read gh_row_loader_last_pid so
+  # the spinner stays in their process tree; $(...) callers capture stdout.
+  gh_row_loader_last_pid=$!
+  printf '%s\n' "$gh_row_loader_last_pid"
 }
 
 gh_row_loader_start_file() {
@@ -205,39 +217,63 @@ gh_row_loader_start_file() {
   local mode="${2:-$(gh_row_loader_mode_from_file)}" scope="${3:-$(gh_row_loader_scope_from_file)}"
   local items_cmd="${4:-${_gh_row_loader_picker_dir}/gh_items.sh}"
   (
-    local i=0 state
-    while :; do
+    local token i=0 state frame_file
+    _gh_row_loader_post_pids=()
+    token="$(_gh_row_loader_spin_token "$BASHPID")"
+    : > "$token" 2> /dev/null || true
+    trap '_gh_row_loader_spinner_cleanup "$token"' EXIT
+    trap 'exit 0' TERM INT
+    while [ -f "$token" ]; do
       state="$(gh_row_loader_frame_state "$i")"
-      gh_row_loader_notify_render_file "$targets_file" "$state" "$mode" "$scope" "$items_cmd"
+      frame_file="$(gh_row_loader_prepare_render_file "$items_cmd" "$mode" "$scope" file "$state" "$targets_file" 2> /dev/null || true)"
+      [ -f "$token" ] || {
+        rm -f "$frame_file" 2> /dev/null || true
+        break
+      }
+      [ -n "$frame_file" ] && gh_row_loader_notify_file "$frame_file"
       i=$((i + 1))
       sleep "$_gh_row_loader_interval"
     done
   ) > /dev/null 2>&1 &
-  printf '%s\n' "$!"
+  gh_row_loader_last_pid=$!
+  printf '%s\n' "$gh_row_loader_last_pid"
 }
 
 gh_row_loader_start_all() {
   local mode="$1" scope="$2" items_cmd="$3"
   (
-    local i=0 state
-    while :; do
+    local token i=0 state frame_file
+    _gh_row_loader_post_pids=()
+    token="$(_gh_row_loader_spin_token "$BASHPID")"
+    : > "$token" 2> /dev/null || true
+    trap '_gh_row_loader_spinner_cleanup "$token"' EXIT
+    trap 'exit 0' TERM INT
+    while [ -f "$token" ]; do
       state="$(gh_row_loader_frame_state "$i")"
-      gh_row_loader_notify_render_all "$mode" "$scope" "$items_cmd" "$state"
+      frame_file="$(gh_row_loader_prepare_render_file "$items_cmd" "$mode" "$scope" all "$state" 2> /dev/null || true)"
+      [ -f "$token" ] || {
+        rm -f "$frame_file" 2> /dev/null || true
+        break
+      }
+      [ -n "$frame_file" ] && gh_row_loader_notify_file "$frame_file"
       i=$((i + 1))
       sleep "$_gh_row_loader_interval"
     done
   ) > /dev/null 2>&1 &
-  printf '%s\n' "$!"
+  gh_row_loader_last_pid=$!
+  printf '%s\n' "$gh_row_loader_last_pid"
 }
 
 gh_row_loader_stop_spinner() {
   local pid="${1:-}" mode="${2:-$(gh_row_loader_mode_from_file)}" scope="${3:-$(gh_row_loader_scope_from_file)}"
   local items_cmd="${4:-${_gh_row_loader_picker_dir}/gh_items.sh}"
   if [ -n "$pid" ]; then
+    rm -f "$(_gh_row_loader_spin_token "$pid")" 2> /dev/null || true
     kill "$pid" 2> /dev/null || true
     wait "$pid" 2> /dev/null || true
   fi
   gh_row_loader_notify "$mode" "$scope" "$items_cmd"
+  gh_row_loader_wait_posts
 }
 
 gh_row_loader_mark() {
@@ -281,7 +317,8 @@ gh_row_loader_refresh_all() {
   local items_cmd="$1" mode="$2" scope="$3"
   local spinner_pid rc
   gh_row_loader_global_start
-  spinner_pid="$(gh_row_loader_start_all "$mode" "$scope" "$items_cmd" 2> /dev/null || true)"
+  gh_row_loader_start_all "$mode" "$scope" "$items_cmd" > /dev/null 2>&1 || true
+  spinner_pid="${gh_row_loader_last_pid:-}"
   set +e
   GH_PICKER_MODE="$mode" GH_PICKER_SCOPE="$scope" "$items_cmd" --refresh > /dev/null 2>&1
   rc=$?

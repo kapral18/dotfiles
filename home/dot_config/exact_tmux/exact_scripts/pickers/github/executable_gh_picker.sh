@@ -192,6 +192,7 @@ pick="$(
     --reverse \
     --multi \
     --delimiter=$'\t' \
+    --id-nth=2,3,4 \
     --nth=1,6 \
     --with-nth=1 \
     --marker '▌' \

@@ -14,6 +14,19 @@ require_cmd() {
   fi
 }
 
+# Split a tab-separated record into named variables without collapsing empty
+# fields. Bash treats tab as IFS whitespace, so `IFS=$'\t' read` merges
+# consecutive tabs and shifts later columns (empty branch_ref on a detached
+# worktree made detached=1 land in branch_ref and the remove path skip it).
+_tsv_assign() {
+  local _line="$1"
+  shift
+  local _mapped
+  _mapped="$(printf '%s' "$_line" | tr '\t' '\037')"
+  # Trailing newline so `read` does not fail-closed under `set -e` on EOF.
+  IFS=$'\037' read -r "$@" < <(printf '%s\n' "$_mapped") || true
+}
+
 list_worktrees_porcelain() {
   local line key value
   local worktree_path=""
@@ -91,7 +104,7 @@ Description:
 
 Notes:
   - The default branch (main/master) cannot be removed
-  - Worktrees in detached HEAD state will be skipped
+  - Interactive mode skips detached HEAD worktrees; --paths removes them
   - If you have stale worktree metadata, run $(,w prune) first
 EOF
 }
@@ -205,7 +218,14 @@ if [ "$preflight_mode" -eq 1 ]; then
   for p in "${paths[@]}"; do
     wp="$(realpath "$p" 2> /dev/null || printf '%s' "$p")"
     [ -d "$wp" ] || continue
-    if ! _check_worktree_safe_to_remove "$wp" 0 2> /dev/null > /dev/null; then
+    # Match removal semantics: detached HEAD skips the unpushed-commit check.
+    # Hardcoding detached=0 here falsely blocked detached worktrees whose commits
+    # are not on any remote (picker alt-x then hid the row and resurrected it).
+    det=0
+    if ! git -C "$wp" symbolic-ref -q HEAD > /dev/null 2>&1; then
+      det=1
+    fi
+    if ! _check_worktree_safe_to_remove "$wp" "$det" 2> /dev/null > /dev/null; then
       printf '%s\n' "$p"
     fi
   done
@@ -242,7 +262,7 @@ done < <(
   '
 )
 
-if [ ${#selectable_worktrees[@]} -eq 0 ]; then
+if [ ${#selectable_worktrees[@]} -eq 0 ] && [ "$paths_mode" -ne 1 ]; then
   echo "No removable worktrees found."
   exit 1
 fi
@@ -259,7 +279,9 @@ if [ "$paths_mode" -eq 1 ]; then
     local needle_rp
     needle_rp="$(realpath "$needle" 2> /dev/null || printf '%s' "$needle")"
     local line p branch_ref detached locked p_rp
-    while IFS=$'\t' read -r p branch_ref detached locked; do
+    while IFS= read -r line; do
+      [ -n "$line" ] || continue
+      _tsv_assign "$line" p branch_ref detached locked
       [ -n "$p" ] || continue
       p_rp="$(realpath "$p" 2> /dev/null || printf '%s' "$p")"
       if [ "$p" = "$needle" ] || [ "$p_rp" = "$needle" ] || [ "$p" = "$needle_rp" ] || [ "$p_rp" = "$needle_rp" ]; then
@@ -277,7 +299,7 @@ if [ "$paths_mode" -eq 1 ]; then
       notify "Skipping (not a git worktree path): $p"
       continue
     fi
-    IFS=$'\t' read -r p_found branch_ref detached locked <<< "$rec"
+    _tsv_assign "$rec" p_found branch_ref detached locked
     case "$locked" in
       1)
         notify "Skipping locked worktree: $p_found"
@@ -355,7 +377,7 @@ _infer_remote_from_prefixed_branch() {
 }
 
 for worktree in "${worktrees[@]}"; do
-  IFS=$'\t' read -r worktree_path worktree_branch worktree_detached <<< "$worktree"
+  _tsv_assign "$worktree" worktree_path worktree_branch worktree_detached
 
   if [ "$force_remove" -eq 0 ]; then
     if ! _check_worktree_safe_to_remove "$worktree_path" "${worktree_detached:-0}"; then
@@ -417,7 +439,7 @@ for worktree in "${worktrees[@]}"; do
   _bag_and_rmdir_upwards_ignoring_ds_store "$(dirname "$worktree_path")" "$parent_dir"
 
   if command -v zoxide &> /dev/null; then
-    zoxide remove "$worktree_path"
+    zoxide remove "$worktree_path" 2> /dev/null || true
   fi
 
   notify "Removed worktree: $worktree_path ($worktree_branch)"

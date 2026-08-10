@@ -32,6 +32,7 @@ Examples in this setup:
 
 - [`home/app_icons/`](../../home/app_icons/) is used by the `,apply-app-icons` script, but it is not installed into `$HOME`.
 - [`home/Alfred.alfredpreferences/`](../../home/Alfred.alfredpreferences/) is stored in the repo, but not automatically applied.
+- Compile-only AI policy IR under [`home/dot_config/ai/exact_policy-ir/`](../../home/dot_config/ai/exact_policy-ir/) is ignored (`.config/ai/policy-ir`); former flat `~/.config/ai/{harness-capabilities,policy-*}.v1.json` targets are purged via [`.chezmoiremove`](../../home/.chezmoiremove).
 
 ## Chezmoi Naming Conventions (How Source Maps To Installed Files)
 

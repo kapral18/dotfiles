@@ -37,8 +37,8 @@ Claude subagent model overrides are limited to the installed SDK schema (`sonnet
 
 Codex's model surface is OpenAI-only, so the adversarial verifier is `families=same (degraded)` here.
 Launch angle lanes as `review-worker` agents; the verifier as the `adversarial-verifier` agent.
-Registry: both values are concrete (`gpt-5.6-sol` at high effort via profile `model` + `model_reasoning_effort`);
-every Codex role also pins priority routing with `service_tier = "fast"`.
+Registry: both values are concrete (`gpt-5.6-terra` at max effort via profile `model` + `model_reasoning_effort`);
+every Codex role also pins `service_tier = "default"`.
 Never launch a native Codex `spawn_agent`/generic subagent without a model: the installed catalog does not make omitted defaults auditable, and uncataloged slugs can pass through with fallback metadata.
 
 ## Gemini CLI

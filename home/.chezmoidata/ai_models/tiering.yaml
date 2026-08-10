@@ -33,11 +33,11 @@ agent_review_models:
     verifier: "inherit"
   codex:
     # OpenAI-only harness, so no cross-family verifier is expressible; families=same (degraded) is expected.
-    # Verified codex-cli 0.147.0 bundled catalog via `codex debug models --bundled`: gpt-5.6-sol
-    # supports high effort. User call 2026-08-07 pins Sol/high across the Codex harness.
+    # Verified codex-cli 0.147.0 bundled catalog via `codex debug models --bundled`: gpt-5.6-terra
+    # supports max effort. User request pins Terra/max across the Codex harness.
     # Kept in sync BY HAND with model_bands.codex.max.model — not templated/derived, update both on change.
-    lanes: "gpt-5.6-sol"
-    verifier: "gpt-5.6-sol" # single-family harness; families=same (degraded) is expected
+    lanes: "gpt-5.6-terra"
+    verifier: "gpt-5.6-terra" # single-family harness; families=same (degraded) is expected
   gemini:
     lanes: "gemini-3.1-pro-preview" # closed 2026-07-27: previously "" (unaudited config-default); kept in sync BY HAND with model_bands.gemini.max.model — not templated/derived, update both on change
     verifier: "gemini-3.1-pro-preview" # single-family harness; families=same (degraded) is expected, not a defect
@@ -223,22 +223,22 @@ model_bands:
       thinking: "off"
       context: "short"
   codex:
-    # User call 2026-08-07: every Codex band runs `gpt-5.6-sol` at high effort. Keeping the three
+    # User request: every Codex band runs `gpt-5.6-terra` at max effort. Keeping the three
     # bands explicit lets the gate close native subagent defaults without changing the portable
     # category taxonomy. OpenAI-only, hence no counter (families=same degraded).
     cheap:
-      model: "gpt-5.6-sol"
-      effort: "high"
+      model: "gpt-5.6-terra"
+      effort: "max"
       thinking: ""
       context: "short"
     standard:
-      model: "gpt-5.6-sol"
-      effort: "high"
+      model: "gpt-5.6-terra"
+      effort: "max"
       thinking: ""
       context: "short"
     max:
-      model: "gpt-5.6-sol"
-      effort: "high"
+      model: "gpt-5.6-terra"
+      effort: "max"
       thinking: ""
       context: "short"
   copilot:

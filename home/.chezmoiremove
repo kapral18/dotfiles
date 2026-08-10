@@ -28,3 +28,10 @@ lib/,palantir
 .agents/skills/ralph
 .agents/skills/k-palantir
 .local/bin/ralph-tui
+# Former flat ~/.config/ai deploy of compile-only policy IR (now repo-local under
+# home/dot_config/ai/exact_policy-ir/, ignored). Keep these so other machines purge.
+.config/ai/harness-capabilities.v1.json
+.config/ai/policy-manifest.v1.json
+.config/ai/policy-dispositions.v1.json
+.config/ai/policy-ablations.v1.json
+.config/ai/policy-rule-inventory.v1.json

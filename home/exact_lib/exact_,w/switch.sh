@@ -60,7 +60,7 @@ parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
 
 query="$*"
 
-mapfile -t candidates < <("$(dirname "$0")/ls.sh" --selectable)
+mapfile -t candidates < <(bash "$(dirname "$0")/ls.sh" --selectable)
 if [ ${#candidates[@]} -eq 0 ]; then
   echo "No selectable worktrees found."
   exit 1

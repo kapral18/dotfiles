@@ -511,7 +511,7 @@ for pr_number in "${pr_numbers[@]}"; do
         # unbound variable under `set -u`. `mv_args` is empty when neither
         # --quiet nor --focus was passed, and `,w` scripts use
         # `#!/usr/bin/env bash` without re-execing into bash 4+.
-        "$(dirname "$0")/mv.sh" "${mv_args[@]+"${mv_args[@]}"}" --path "$worktree_path" "$old_local_branch" "$local_branch" > /dev/null || true
+        bash "$(dirname "$0")/mv.sh" "${mv_args[@]+"${mv_args[@]}"}" --path "$worktree_path" "$old_local_branch" "$local_branch" > /dev/null || true
       fi
     fi
   fi
@@ -522,8 +522,8 @@ for pr_number in "${pr_numbers[@]}"; do
     if [[ "$local_branch" == *__* ]] && ! _comma_w_remote_is_first_party "$remote_name"; then
       _comma_w_configure_prefixed_branch_push_routing "$existing_path" "$local_branch" "$remote_name" "$branch_name" "$quiet_mode" || true
     fi
+    _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$existing_path"
     if [ "$focus_mode" -eq 1 ]; then
-      _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$existing_path"
       _comma_w_focus_tmux_session "$quiet_mode" "$(_comma_w_tmux_session_name "$parent_name" "$local_branch")" "$existing_path" || true
     fi
     _processed=$((_processed + 1))

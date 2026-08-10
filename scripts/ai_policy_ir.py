@@ -59,8 +59,8 @@ RISK_TIER_BY_RULE_ID = {
     "sop.4.1.durable-memory": "secret",
 }
 
-DISPOSITIONS_PATH = Path("home/dot_config/ai/readonly_policy-dispositions.v1.json")
-RULE_INVENTORY_PATH = Path("home/dot_config/ai/readonly_policy-rule-inventory.v1.json")
+DISPOSITIONS_PATH = Path("home/dot_config/ai/exact_policy-ir/readonly_policy-dispositions.v1.json")
+RULE_INVENTORY_PATH = Path("home/dot_config/ai/exact_policy-ir/readonly_policy-rule-inventory.v1.json")
 
 # Matches "## 0. Binding Contract", "### 2.0 Compatibility Gate", etc. Stage 1
 # splits strictly on these headings so every byte of the legacy file belongs

@@ -2,9 +2,10 @@
 """Project the band registry into a deployed JSON the hooks can read.
 
 The pre-tool-use band hook runs from ``~/.agents/hooks`` with no access to this repo, so the
-category/binding/band tables have to exist as a plain file under ``~/.config/ai``. This flattens
+resolved per-agent picks have to exist as a plain file under ``~/.config/ai``. This flattens
 the three-table lookup once, at apply time, so the hook does no resolution of its own: it looks up
-``harnesses.<harness>.agents.<name>`` and gets the final pick.
+``harnesses.<harness>.agents.<name>`` and gets the final pick (``model``, optional ``effort`` /
+``alias``). Category/binding/band tables stay in ``ai_models``; they are not redeployed.
 
     generate_agent_bands.py check     exit 1 when the committed projection is stale
     generate_agent_bands.py write     regenerate it
@@ -38,7 +39,6 @@ def _claude_alias(model: str) -> str | None:
 
 
 def build() -> dict:
-    categories = ai_models.load_agent_categories(REGISTRY)
     bindings = ai_models.load_agent_bindings(REGISTRY)
     bands = ai_models.load_model_bands(REGISTRY)
 
@@ -48,27 +48,20 @@ def build() -> dict:
         for agent in sorted(bindings):
             pick = ai_models.resolve_agent_model(REGISTRY, harness, agent)
             entry = {
-                "category": pick["category"],
-                "band": pick["band"],
-                "family": pick["family"],
                 "model": pick["model"],
-                "effort": pick["effort"],
-                "context": pick["context"],
             }
-            if pick["degraded"]:
-                entry["degraded"] = True
+            if pick["effort"]:
+                entry["effort"] = pick["effort"]
             if harness == "claude_code":
                 alias = _claude_alias(pick["model"])
                 if alias:
                     entry["alias"] = alias
             agents[agent] = entry
-        harnesses[harness] = {"bands": bands[harness], "agents": agents}
+        harnesses[harness] = {"agents": agents}
 
     return {
         "schema_version": SCHEMA_VERSION,
         "kind": KIND,
-        "categories": categories,
-        "bindings": bindings,
         "harnesses": harnesses,
     }
 

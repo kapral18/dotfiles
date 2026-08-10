@@ -819,6 +819,366 @@ exit 1
             assert "blob/.../src/platform/pl" not in offered
             assert "…" not in offered
 
+    def test_gh_picker_id_nth_preserves_multi_selection_across_reload_sync(self):
+        """WHEN reload-sync mutates display text, SHOULD keep marks by kind/repo/num."""
+        picker = TMUX_PICKERS / "github/executable_gh_picker.sh"
+        text = picker.read_text()
+        assert "--id-nth=2,3,4" in text
+        assert re.search(r"--multi\b", text)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            v1 = root / "v1.tsv"
+            v2 = root / "v2.tsv"
+            v1.write_text(
+                "disp-a\tpr\towner/repo\t101\tu\tm\n"
+                "disp-b\tpr\towner/repo\t102\tu\tm\n"
+                "disp-c\tissue\towner/repo\t201\tu\tm\n"
+            )
+            v2.write_text(
+                "NEW-c\tissue\towner/repo\t201\tu\tm\n"
+                "NEW-a\tpr\towner/repo\t101\tu\tm\n"
+                "NEW-b\tpr\towner/repo\t102\tu\tm\n"
+            )
+
+            def probe(port: int, *extra: str) -> tuple[list[str], list[str]]:
+                # Drive fzf under a pty so --listen serves; select via POST (not load:)
+                # so reload does not re-fire toggle binds.
+                script = "\n".join(
+                    [
+                        f"fzf --listen {port} --multi --no-sort --delimiter=$'\\t' --with-nth=1 --height=10 "
+                        + " ".join(shlex.quote(a) for a in extra)
+                        + f" < {shlex.quote(str(v1))} >/dev/null 2>&1 &",
+                        "pid=$!",
+                        f"for i in $(seq 1 40); do curl -sf http://127.0.0.1:{port} >/dev/null && break; sleep 0.1; done",
+                        f"curl -s -XPOST http://127.0.0.1:{port} -d 'toggle+down+toggle' >/dev/null",
+                        "sleep 0.2",
+                        f"curl -s http://127.0.0.1:{port} > {shlex.quote(str(root / f'{port}.before'))}",
+                        f"curl -s -XPOST http://127.0.0.1:{port} -d "
+                        + shlex.quote(f"reload-sync(cat {v2})")
+                        + " >/dev/null",
+                        "sleep 0.8",
+                        f"curl -s http://127.0.0.1:{port} > {shlex.quote(str(root / f'{port}.after'))}",
+                        "kill $pid 2>/dev/null || true",
+                        "wait $pid 2>/dev/null || true",
+                    ]
+                )
+                subprocess.run(
+                    ["script", "-q", "/dev/null", "bash", "-lc", script],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    env={**os.environ, "TERM": "xterm-256color"},
+                )
+
+                def nums_from(path: Path) -> list[str]:
+                    raw = path.read_text()
+                    data = json.loads(raw[raw.find("{") : raw.rfind("}") + 1])
+                    return [row["text"].split("\t")[3] for row in data.get("selected", [])]
+
+                return nums_from(root / f"{port}.before"), nums_from(root / f"{port}.after")
+
+            before_id, after_id = probe(20551, "--id-nth=2,3,4")
+            before_noid, after_noid = probe(20552)
+
+            assert before_id == ["101", "102"]
+            assert after_id == ["101", "102"]
+            assert before_noid == ["101", "102"]
+            assert after_noid == []
+
+
+class TestGhRowLoaderSpinnerOrdering(unittest.TestCase):
+    """WHEN a row-loader spinner is stopped mid-render."""
+
+    SPINNER_GLYPHS = ("◐", "◓", "◑", "◒")
+
+    def test_each_spinner_waits_for_its_direct_post_children(self):
+        source = (TMUX_PICKERS / "github/lib/executable_gh_row_loader.sh").read_text()
+        assert source.count("trap '_gh_row_loader_spinner_cleanup \"$token\"' EXIT") == 3
+        assert source.count("trap 'exit 0' TERM INT") == 3
+        assert 'wait "$post_pid" 2> /dev/null || true' in source
+        assert '(curl -s --max-time 1 -XPOST "http://127.0.0.1:${port}"' not in source
+        callers = "\n".join(
+            (TMUX_PICKERS / path).read_text()
+            for path in (
+                "github/executable_gh_batch_worktree.sh",
+                "github/executable_gh_comment.sh",
+                "github/lib/executable_gh_picker_palette.sh",
+                "github/lib/executable_gh_row_loader.sh",
+            )
+        )
+        assert '="$(gh_row_loader_start_' not in callers
+
+    def _setup_fixture(self, tmp_path: Path) -> dict[str, Path]:
+        picker_dir = tmp_path / "pickers/github"
+        lib_dir = picker_dir / "lib"
+        lib_dir.mkdir(parents=True)
+        for name, target in (
+            ("executable_gh_row_loader.sh", "gh_row_loader.sh"),
+            ("gh_patch_picker_cache.py", "gh_patch_picker_cache.py"),
+        ):
+            (lib_dir / target).write_text((TMUX_PICKERS / "github/lib" / name).read_text())
+
+        cache_dir = tmp_path / "cache/tmux"
+        cache_dir.mkdir(parents=True)
+        # One row whose marker cell is a plain space (no worktree): display is
+        # state-icon + reset+space + marker-space + trailing text.
+        (cache_dir / "gh_picker_work.tsv").write_text(
+            "\x1b[32m●\x1b[0m  row-one\tpr\towner/repo\t1\thttps://example.test/1\n"
+        )
+
+        items_cmd = picker_dir / "gh_items.sh"
+        items_cmd.write_text(
+            "#!/usr/bin/env bash\n"
+            'cache_file="$XDG_CACHE_HOME/tmux/gh_picker_${GH_PICKER_MODE:-work}.tsv"\n'
+            'if [ "${1:-}" = "--refresh" ]; then\n'
+            "  printf '\\033[32m●\\033[0m  row-refreshed\\tpr\\towner/repo\\t1\\thttps://example.test/1\\n' > \"$cache_file\"\n"
+            "fi\n"
+            # Slow render keeps a spinner frame in flight when stop lands.
+            'sleep "${RENDER_SLEEP:-0}"\n'
+            'cat "$cache_file"\n'
+        )
+        items_cmd.chmod(0o755)
+
+        stub_bin = tmp_path / "bin"
+        stub_bin.mkdir()
+        posts_log = tmp_path / "posts.log"
+        curl_start_log = tmp_path / "curl-start.log"
+        curl_stub = stub_bin / "curl"
+        curl_stub.write_text(
+            "#!/usr/bin/env bash\n"
+            # Log the rendered list content fzf would show (what the reload-sync
+            # command prints), delayed for spinner frames so a stale frame lands
+            # AFTER the authoritative stop render unless the loop aborts it.
+            'body="${@: -1}"\n'
+            'cmd="${body#reload-sync(}"\n'
+            'cmd="${cmd%%)+*}"\n'
+            '  out="$("$cmd" 2>/dev/null || true)"\n'
+            '  printf \'START %s\\n\' "$out" >> "$CURL_START_LOG"\n'
+            "  if printf '%s' \"$out\" | grep -q '◐\\|◓\\|◑\\|◒'; then\n"
+            "    sleep 1.0\n"
+            "  elif [ \"${DELAY_ROW_ONE:-0}\" = 1 ] && printf '%s' \"$out\" | grep -q 'row-one'; then\n"
+            "    sleep 1.0\n"
+            "  fi\n"
+            '  printf \'POST %s\\n\' "$out" >> "$POSTS_LOG"\n'
+            "exit 0\n"
+        )
+        curl_stub.chmod(0o755)
+
+        return {
+            "picker_dir": picker_dir,
+            "cache_dir": cache_dir,
+            "items_cmd": items_cmd,
+            "stub_bin": stub_bin,
+            "posts_log": posts_log,
+            "curl_start_log": curl_start_log,
+        }
+
+    def test_stopped_spinner_cannot_clobber_final_render(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = self._setup_fixture(Path(tmp))
+            lib = fixture["picker_dir"] / "lib/gh_row_loader.sh"
+            harness = "\n".join(
+                [
+                    "set -euo pipefail",
+                    f". {shlex.quote(str(lib))}",
+                    "gh_row_loader_start_item pr owner/repo 1 work all "
+                    + shlex.quote(str(fixture["items_cmd"]))
+                    + " >/dev/null",
+                    'pid="$gh_row_loader_last_pid"',
+                    # Stop while the first frame is still rendering (RENDER_SLEEP=0.6).
+                    "sleep 0.3",
+                    (f'gh_row_loader_stop_spinner "$pid" work all {shlex.quote(str(fixture["items_cmd"]))}'),
+                ]
+            )
+            env = {
+                **os.environ,
+                "XDG_CACHE_HOME": str(fixture["cache_dir"].parent),
+                "PATH": f"{fixture['stub_bin']}:{os.environ['PATH']}",
+                "POSTS_LOG": str(fixture["posts_log"]),
+                "CURL_START_LOG": str(fixture["curl_start_log"]),
+                "RENDER_SLEEP": "0.6",
+                "FZF_PORT": "1",
+            }
+            subprocess.run([modern_bash(), "-c", harness], check=True, env=env)
+
+            # The stub posts spinner frames with a 1s delay; wait past it.
+            deadline = time.monotonic() + 4
+            while time.monotonic() < deadline and not fixture["posts_log"].exists():
+                time.sleep(0.05)
+            time.sleep(1.6)
+            posts = fixture["posts_log"].read_text().splitlines()
+            assert posts, "stop_spinner never posted the authoritative render"
+            last = posts[-1]
+            assert "row-one" in last
+            assert not any(glyph in last for glyph in self.SPINNER_GLYPHS), posts
+
+    def test_already_fired_spinner_post_lands_before_final_render(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = self._setup_fixture(Path(tmp))
+            lib = fixture["picker_dir"] / "lib/gh_row_loader.sh"
+            harness = "\n".join(
+                [
+                    "set -euo pipefail",
+                    f". {shlex.quote(str(lib))}",
+                    "gh_row_loader_start_item pr owner/repo 1 work all "
+                    + shlex.quote(str(fixture["items_cmd"]))
+                    + " >/dev/null",
+                    'pid="$gh_row_loader_last_pid"',
+                    "fired=0",
+                    "for _ in {1..500}; do",
+                    '  if [ -s "$CURL_START_LOG" ]; then fired=1; break; fi',
+                    "  sleep 0.02",
+                    "done",
+                    'if [ "$fired" -ne 1 ]; then printf "spinner curl never started\\n" >&2; exit 90; fi',
+                    (f'gh_row_loader_stop_spinner "$pid" work all {shlex.quote(str(fixture["items_cmd"]))}'),
+                ]
+            )
+            env = {
+                **os.environ,
+                "XDG_CACHE_HOME": str(fixture["cache_dir"].parent),
+                "PATH": f"{fixture['stub_bin']}:{os.environ['PATH']}",
+                "POSTS_LOG": str(fixture["posts_log"]),
+                "CURL_START_LOG": str(fixture["curl_start_log"]),
+                "RENDER_SLEEP": "0",
+                "FZF_PORT": "1",
+            }
+            subprocess.run([modern_bash(), "-c", harness], check=True, env=env)
+
+            deadline = time.monotonic() + 10
+            posts: list[str] = []
+            while time.monotonic() < deadline:
+                if fixture["posts_log"].exists():
+                    posts = fixture["posts_log"].read_text().splitlines()
+                    if any(not any(glyph in post for glyph in self.SPINNER_GLYPHS) for post in posts):
+                        break
+                time.sleep(0.05)
+            time.sleep(1.2)
+            posts = fixture["posts_log"].read_text().splitlines()
+            assert len(posts) >= 2, posts
+            assert any(any(glyph in post for glyph in self.SPINNER_GLYPHS) for post in posts[:-1]), posts
+            last = posts[-1]
+            assert "row-one" in last
+            assert not any(glyph in last for glyph in self.SPINNER_GLYPHS), posts
+
+    def test_palette_stops_spinner_from_its_parent_before_background_refresh(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = self._setup_fixture(Path(tmp))
+            lib = fixture["picker_dir"] / "lib/gh_row_loader.sh"
+            palette = TMUX_PICKERS / "github/lib/executable_gh_picker_palette.sh"
+            harness = "\n".join(
+                [
+                    "set -euo pipefail",
+                    f". {shlex.quote(str(lib))}",
+                    f"eval \"$(sed -n '/^_mark_selection_loading()/,/^}}/p' {shlex.quote(str(palette))})\"",
+                    f"eval \"$(sed -n '/^_refresh_after_mutation()/,/^}}/p' {shlex.quote(str(palette))})\"",
+                    "cleanup_files=()",
+                    'row_loader_targets_file=""',
+                    'row_loader_pid=""',
+                    'mode="work"',
+                    'scope="all"',
+                    f"items_cmd={shlex.quote(str(fixture['items_cmd']))}",
+                    "kinds=(pr)",
+                    "repos=(owner/repo)",
+                    "nums=(1)",
+                    "_mark_selection_loading",
+                    "fired=0",
+                    "for _ in {1..500}; do",
+                    '  if [ -s "$CURL_START_LOG" ]; then fired=1; break; fi',
+                    "  sleep 0.02",
+                    "done",
+                    'if [ "$fired" -ne 1 ]; then printf "palette spinner curl never started\\n" >&2; exit 90; fi',
+                    "_refresh_after_mutation",
+                ]
+            )
+            env = {
+                **os.environ,
+                "XDG_CACHE_HOME": str(fixture["cache_dir"].parent),
+                "PATH": f"{fixture['stub_bin']}:{os.environ['PATH']}",
+                "POSTS_LOG": str(fixture["posts_log"]),
+                "CURL_START_LOG": str(fixture["curl_start_log"]),
+                "RENDER_SLEEP": "0",
+                "DELAY_ROW_ONE": "1",
+                "FZF_PORT": "1",
+            }
+            subprocess.run([modern_bash(), "-c", harness], check=True, env=env)
+
+            deadline = time.monotonic() + 10
+            posts: list[str] = []
+            while time.monotonic() < deadline:
+                if fixture["posts_log"].exists():
+                    posts = fixture["posts_log"].read_text().splitlines()
+                    if any("row-refreshed" in post for post in posts):
+                        break
+                time.sleep(0.05)
+            time.sleep(1.2)
+            posts = fixture["posts_log"].read_text().splitlines()
+            assert len(posts) >= 2, posts
+            assert any(any(glyph in post for glyph in self.SPINNER_GLYPHS) for post in posts[:-1]), posts
+            last = posts[-1]
+            assert "row-refreshed" in last
+            assert not any(glyph in last for glyph in self.SPINNER_GLYPHS), posts
+
+    def test_direct_spinner_callers_stop_children_from_exit_cleanup(self):
+        callers = (
+            TMUX_PICKERS / "github/executable_gh_comment.sh",
+            TMUX_PICKERS / "github/lib/executable_gh_picker_palette.sh",
+        )
+        for caller in callers:
+            with self.subTest(caller=caller.name), tempfile.TemporaryDirectory() as tmp:
+                assert caller.read_text().count("trap cleanup EXIT") == 1
+                fixture = self._setup_fixture(Path(tmp))
+                lib = fixture["picker_dir"] / "lib/gh_row_loader.sh"
+                pid_file = Path(tmp) / "spinner.pid"
+                harness = "\n".join(
+                    [
+                        "set -euo pipefail",
+                        f". {shlex.quote(str(lib))}",
+                        f"eval \"$(sed -n '/^cleanup()/,/^}}/p' {shlex.quote(str(caller))})\"",
+                        "cleanup_files=()",
+                        'row_loader_pid=""',
+                        'mode="work"',
+                        'scope="all"',
+                        f"items_cmd={shlex.quote(str(fixture['items_cmd']))}",
+                        "trap cleanup EXIT",
+                        "gh_row_loader_start_item pr owner/repo 1 work all "
+                        + shlex.quote(str(fixture["items_cmd"]))
+                        + " >/dev/null",
+                        'row_loader_pid="$gh_row_loader_last_pid"',
+                        'printf "%s\\n" "$row_loader_pid" > "$PID_FILE"',
+                        "fired=0",
+                        "for _ in {1..500}; do",
+                        '  if [ -s "$CURL_START_LOG" ]; then fired=1; break; fi',
+                        "  sleep 0.02",
+                        "done",
+                        'if [ "$fired" -ne 1 ]; then printf "spinner curl never started\\n" >&2; exit 90; fi',
+                    ]
+                )
+                env = {
+                    **os.environ,
+                    "XDG_CACHE_HOME": str(fixture["cache_dir"].parent),
+                    "PATH": f"{fixture['stub_bin']}:{os.environ['PATH']}",
+                    "POSTS_LOG": str(fixture["posts_log"]),
+                    "CURL_START_LOG": str(fixture["curl_start_log"]),
+                    "PID_FILE": str(pid_file),
+                    "RENDER_SLEEP": "0",
+                    "FZF_PORT": "1",
+                }
+                subprocess.run([modern_bash(), "-c", harness], check=True, env=env)
+
+                spinner_pid = int(pid_file.read_text().strip())
+                try:
+                    os.kill(spinner_pid, 0)
+                except ProcessLookupError:
+                    pass
+                else:
+                    os.kill(spinner_pid, 9)
+                    self.fail(f"{caller.name} left spinner {spinner_pid} alive after EXIT cleanup")
+
+                posts_before = fixture["posts_log"].read_text()
+                time.sleep(1.2)
+                assert fixture["posts_log"].read_text() == posts_before
+
 
 if __name__ == "__main__":
     unittest.main()

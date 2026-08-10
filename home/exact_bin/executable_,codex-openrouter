@@ -78,7 +78,8 @@ done
 
 # Map model+effort to a preset slug. glm, kimi, deepseek, and terra all have a real `max` (kimi's
 # OpenRouter max tier re-probed live 2026-08-07: max returned 1.9x high's reasoning tokens across
-# 6 pairs on 2 prompts, overturning the 2026-08-05 falsification). Unknown models use the
+# 6 pairs on 2 prompts, overturning the 2026-08-05 falsification). `none` disables reasoning via
+# the matching `*-lanes-none` / `effort-none` workspace presets. Unknown models use the
 # model-agnostic `effort-<level>` preset (no provider policy).
 preset_family() {
   case "$1" in

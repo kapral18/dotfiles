@@ -12,8 +12,8 @@
 #
 # Dispatch is synchronous (`exec`) because gh_batch_worktree.sh's foreground
 # phase opens `$EDITOR` for issue branch naming and needs the user's TTY.
-# That's why we don't go through `dispatch_async.sh` (which uses
-# `tmux run-shell -b` and detaches from the TTY).
+# After naming, the script itself detaches a nohup background job so clones
+# survive closing the dashboard popup.
 #
 # Usage: gh_picker_ctrl_t.sh <fzf-selection-file> <batch_worktree_cmd>
 set -euo pipefail

@@ -129,18 +129,18 @@ _add_worktree_tmux_session() {
   local branch_name="$3"
   local worktree_path="$4"
 
-  if [ -n "${TMUX:-}" ]; then
+  if [ -n "${TMUX:-}" ] || [ -n "${OUTER_TMUX_SOCKET:-}" ]; then
     if ! command -v tmux > /dev/null 2>&1; then
       if [ "$quiet_mode" -eq 0 ]; then
-        echo "Warning: TMUX is set but 'tmux' is not available; skipping session creation." >&2
+        echo "Warning: tmux context is set but 'tmux' is not available; skipping session creation." >&2
       fi
-      return 0
+      return 1
     fi
 
     local session_name
     session_name="$(_comma_w_tmux_session_name "$parent_name" "$branch_name")"
 
-    if _comma_w_tmux has-session -t "$session_name" 2> /dev/null; then
+    if _comma_w_tmux has-session -t "=$session_name" 2> /dev/null; then
       return 0
     fi
 
@@ -159,13 +159,15 @@ At Path: $worktree_path
       if [ "$quiet_mode" -eq 0 ]; then
         echo "Warning: Failed to create tmux session '$session_name'." >&2
       fi
+      return 1
     fi
   fi
+  return 0
 }
 
 # Remove worktree tmux session
 _remove_worktree_tmux_session() {
-  if [ -n "${TMUX:-}" ]; then
+  if [ -n "${TMUX:-}" ] || [ -n "${OUTER_TMUX_SOCKET:-}" ]; then
     local quiet_mode="${1:-0}"
     local worktree_path="$2"
     local session_name_hint="${3:-}"
@@ -185,7 +187,7 @@ _remove_worktree_tmux_session() {
       session_names_seen+="${name} "
     }
 
-    if [ -n "$session_name_hint" ] && _comma_w_tmux has-session -t "$session_name_hint" 2> /dev/null; then
+    if [ -n "$session_name_hint" ] && _comma_w_tmux has-session -t "=$session_name_hint" 2> /dev/null; then
       _add_session_name "$session_name_hint"
     fi
 
@@ -208,7 +210,7 @@ Removing TMUX Session: ${session_names[*]:-}
     # like `,w remove` source this lib without a bash 4+ re-exec, so we hit
     # this branch when no matching tmux sessions exist for the path.
     for session_name in "${session_names[@]+"${session_names[@]}"}"; do
-      _comma_w_tmux kill-session -t "$session_name" 2> /dev/null || true
+      _comma_w_tmux kill-session -t "=$session_name" 2> /dev/null || true
     done
   fi
 }
@@ -251,23 +253,23 @@ _comma_w_focus_tmux_session() {
 
   if [ -n "${OUTER_TMUX_SOCKET:-}" ]; then
     if [ -n "${OUTER_TMUX_CLIENT:-}" ] \
-      && _comma_w_tmux switch-client -c "${OUTER_TMUX_CLIENT}" -t "$session_name" 2> /dev/null; then
+      && _comma_w_tmux switch-client -c "${OUTER_TMUX_CLIENT}" -t "=$session_name" 2> /dev/null; then
       return 0
     fi
 
     fallback_client="$(_comma_w_tmux list-clients -F '#{client_name}' 2> /dev/null | sed -n '1p')"
     if [ -n "$fallback_client" ] \
-      && _comma_w_tmux switch-client -c "$fallback_client" -t "$session_name" 2> /dev/null; then
+      && _comma_w_tmux switch-client -c "$fallback_client" -t "=$session_name" 2> /dev/null; then
       return 0
     fi
 
-    if _comma_w_tmux switch-client -t "$session_name" 2> /dev/null; then
+    if _comma_w_tmux switch-client -t "=$session_name" 2> /dev/null; then
       return 0
     fi
   fi
 
   if [ -n "${TMUX:-}" ]; then
-    if _comma_w_tmux switch-client -t "$session_name" 2> /dev/null; then
+    if _comma_w_tmux switch-client -t "=$session_name" 2> /dev/null; then
       return 0
     fi
     if [ "$quiet_mode" -eq 0 ]; then
@@ -276,7 +278,7 @@ _comma_w_focus_tmux_session() {
     return 1
   fi
 
-  if _comma_w_tmux attach-session -t "$session_name" 2> /dev/null; then
+  if _comma_w_tmux attach-session -t "=$session_name" 2> /dev/null; then
     return 0
   fi
   local shell="$(_comma_w_login_shell)"

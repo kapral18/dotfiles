@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Harness capability snapshot: what each harness proves about policy enforcement.
 
-Read from home/dot_config/ai/readonly_harness-capabilities.v1.json (deployed as
-~/.config/ai/harness-capabilities.v1.json). Compilation must fail closed when a
-rule's harness_scope names a harness missing from this snapshot, or a
-hook-disposition rule targets a harness whose hook_support is below "blocking".
+Read from home/dot_config/ai/exact_policy-ir/readonly_harness-capabilities.v1.json
+(repo-local under ai/; policy-ir is chezmoiignored and not deployed). Compilation
+must fail closed when a rule's harness_scope names a harness missing from this
+snapshot, or a hook-disposition rule targets a harness whose hook_support is
+below "blocking".
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ def hook_support_at_least(level: str, required: str) -> bool:
     return HOOK_SUPPORT_LEVELS.index(level) >= HOOK_SUPPORT_LEVELS.index(required)
 
 
-SNAPSHOT_PATH = Path("home/dot_config/ai/readonly_harness-capabilities.v1.json")
+SNAPSHOT_PATH = Path("home/dot_config/ai/exact_policy-ir/readonly_harness-capabilities.v1.json")
 
 
 @dataclass(frozen=True)

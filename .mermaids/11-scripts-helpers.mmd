@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 11-scripts-helpers.mmd — Every file in scripts/ (102). Repo-side Python
+%% 11-scripts-helpers.mmd — Every file in scripts/ (103). Repo-side Python
 %% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
 %% Grouped by consumer. Shared parsers feed the generators/mergers.
 %% ============================================================================
@@ -33,7 +33,7 @@ flowchart TB
     end
 
     subgraph BANDGEN["Category model tiering (band registry projections)"]
-        GAB["generate_agent_bands.py (flattens agent_bindings × agent_categories × model_bands<br/>into dot_config/ai/readonly_agent-bands.v1.json for the band_gate hook; check|write)"]:::model
+        GAB["generate_agent_bands.py (flattens agent_bindings × agent_categories × model_bands<br/>into gate-used picks in dot_config/ai/readonly_agent-bands.v1.json for the band_gate hook; check|write)"]:::model
         GSM["generate_subagent_models.py (writes the harnesses with no agent files:<br/>copilot settings.json subagents.agents + gemini settings.json agents.overrides; check|write)"]:::model
     end
     AM --> GAB & GSM

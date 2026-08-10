@@ -57,7 +57,7 @@ def completed_text_events(text: str = "hello") -> list[dict[str, object]]:
             "type": "response.created",
             "response": {
                 "id": "resp_1",
-                "model": "gpt-5.6-sol",
+                "model": "gpt-5.6-terra",
                 "status": "in_progress",
                 "output": [],
             },
@@ -74,7 +74,7 @@ def completed_text_events(text: str = "hello") -> list[dict[str, object]]:
             "type": "response.completed",
             "response": {
                 "id": "resp_1",
-                "model": "gpt-5.6-sol",
+                "model": "gpt-5.6-terra",
                 "status": "completed",
                 "output": [],
                 "usage": {
@@ -211,7 +211,7 @@ class TestLauncherOptions(unittest.TestCase):
             for model, context_window, expected_prompt in (
                 ("gpt-5.4", 1_000_000, 872_000),
                 ("gpt-5.5", 272_000, 144_000),
-                ("gpt-5.6-sol", 272_000, 144_000),
+                ("gpt-5.6-terra", 272_000, 144_000),
             ):
                 with self.subTest(model=model):
                     _, env = main.child_command(

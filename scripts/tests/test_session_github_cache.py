@@ -5,8 +5,11 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import shutil
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -175,6 +178,275 @@ class TestSessionGitHubCache(unittest.TestCase):
         )
         tmp_files = list(cache_file.parent.glob("*.tmp"))
         self.assertEqual(tmp_files, [])
+
+
+class TestSessionPickerPrStyling(unittest.TestCase):
+    """WHEN quick session refresh finds PR metadata after session discovery."""
+
+    @staticmethod
+    def _write_fake_tmux(fake_bin: Path) -> None:
+        tmux = fake_bin / "tmux"
+        tmux.write_text(
+            "#!/bin/sh\n"
+            'if [ "$1" = display-message ]; then\n'
+            "  printf '%s\\n' review-session\n"
+            'elif [ "$1" = list-sessions ]; then\n'
+            '  [ -n "${PICK_SESSION_TEST_WORKTREE:-}" ] && printf \'%s\\t%s\\n\' review-session "$PICK_SESSION_TEST_WORKTREE"\n'
+            "fi\n"
+            "exit 0\n",
+            encoding="utf-8",
+        )
+        tmux.chmod(0o755)
+
+    def _run_quick_session_index(
+        self, *, state: str, author: str, seed_unrelated_cache_entry: bool = False
+    ) -> tuple[str, str, dict[str, object]]:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            worktree = home / "work" / "repo" / "review"
+            gitdir = root / "gitdirs" / "review"
+            fake_bin = root / "bin"
+            cache_home = root / "cache"
+            worktree.mkdir(parents=True)
+            gitdir.mkdir(parents=True)
+            fake_bin.mkdir()
+            (worktree / ".git").write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
+            (gitdir / "HEAD").write_text("ref: refs/heads/review/branch\n", encoding="utf-8")
+
+            self._write_fake_tmux(fake_bin)
+            git = fake_bin / "git"
+            git.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            gh = fake_bin / "gh"
+            gh.write_text(
+                '#!/bin/sh\nif [ "$1" = pr ]; then\n  printf \'%s\\n\' "$PICK_SESSION_TEST_PR_JSON"\nfi\n',
+                encoding="utf-8",
+            )
+            for command in (git, gh):
+                command.chmod(0o755)
+
+            payload = {
+                "number": 42,
+                "state": state,
+                "url": "https://github.com/elastic/kibana/pull/42",
+                "reviewDecision": "REVIEW_REQUIRED",
+                "closingIssuesReferences": [],
+                "author": {"login": author},
+            }
+            gh_cache_file = cache_home / "tmux" / "pick_session_gh.json"
+            if seed_unrelated_cache_entry:
+                gh_cache_file.parent.mkdir(parents=True)
+                gh_cache_file.write_text(
+                    json.dumps(
+                        {
+                            "version": 1,
+                            "entries": {
+                                "/unrelated/worktree": {
+                                    "pr": {"number": 99, "state": "OPEN"},
+                                    "issue": None,
+                                    "branch": "unrelated",
+                                    "nwo": "elastic/kibana",
+                                    "ts": 1,
+                                }
+                            },
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+            env = {
+                **os.environ,
+                "HOME": str(home),
+                "XDG_CACHE_HOME": str(cache_home),
+                "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
+                "PICK_SESSION_GITHUB_LOGIN": "me",
+                "PICK_SESSION_QUICK": "1",
+                "PICK_SESSION_SESSIONS_ONLY": "1",
+                "PICK_SESSION_SKIP_DIRTY": "1",
+                "PICK_SESSION_SKIP_GH": "0",
+                "PICK_SESSION_SCAN_ROOTS": str(home / "work"),
+                "PICK_SESSION_SCAN_DEPTH": "6",
+                "PICK_SESSION_THREADS": "1",
+                "PICK_SESSION_TEST_WORKTREE": str(worktree),
+                "PICK_SESSION_TEST_PR_JSON": json.dumps(payload),
+            }
+            result = subprocess.run(
+                [sys.executable, str(INDEX_MAIN)],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            row = next(line for line in result.stdout.splitlines() if "\tsession\t" in line)
+            cache_entries = json.loads(gh_cache_file.read_text(encoding="utf-8")).get("entries", {})
+            return row, str(worktree.resolve()), cache_entries
+
+    def _run_full_worktree_index(self, *, state: str) -> str:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            worktree = home / "work" / "repo" / "review"
+            gitdir = root / "gitdirs" / "review"
+            fake_bin = root / "bin"
+            worktree.mkdir(parents=True)
+            gitdir.mkdir(parents=True)
+            fake_bin.mkdir()
+            (worktree / ".git").write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
+            (gitdir / "HEAD").write_text("ref: refs/heads/review/branch\n", encoding="utf-8")
+            self._write_fake_tmux(fake_bin)
+            for name, contents in {
+                "fd": "#!/bin/sh\nprintf '%s\\n' \"$PICK_SESSION_TEST_GIT_MARKER\"\n",
+                "git": "#!/bin/sh\nexit 0\n",
+                "gh": "#!/bin/sh\nprintf '%s\\n' \"$PICK_SESSION_TEST_PR_JSON\"\n",
+            }.items():
+                command = fake_bin / name
+                command.write_text(contents, encoding="utf-8")
+                command.chmod(0o755)
+
+            payload = {
+                "number": 42,
+                "state": state,
+                "url": "https://github.com/elastic/kibana/pull/42",
+                "reviewDecision": "REVIEW_REQUIRED",
+                "closingIssuesReferences": [],
+                "author": {"login": "contributor"},
+            }
+            env = {
+                **os.environ,
+                "HOME": str(home),
+                "XDG_CACHE_HOME": str(root / "cache"),
+                "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
+                "PICK_SESSION_GITHUB_LOGIN": "me",
+                "PICK_SESSION_QUICK": "0",
+                "PICK_SESSION_SESSIONS_ONLY": "0",
+                "PICK_SESSION_SKIP_DIRTY": "1",
+                "PICK_SESSION_SKIP_GH": "0",
+                "PICK_SESSION_SCAN_ROOTS": str(home / "work"),
+                "PICK_SESSION_SCAN_DEPTH": "6",
+                "PICK_SESSION_THREADS": "1",
+                "PICK_SESSION_TEST_WORKTREE": "",
+                "PICK_SESSION_TEST_GIT_MARKER": str(worktree / ".git"),
+                "PICK_SESSION_TEST_PR_JSON": json.dumps(payload),
+            }
+            result = subprocess.run(
+                [sys.executable, str(INDEX_MAIN)],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            return next(line for line in result.stdout.splitlines() if "\tworktree\t" in line)
+
+    def _run_full_rehydrate(self, *, state: str) -> str:
+        rehydrate = TMUX_PICKERS / "session/lib/items_full_rehydrate.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            worktree = home / "work" / "repo" / "review"
+            gitdir = root / "gitdirs" / "review"
+            fake_bin = root / "bin"
+            cache_file = root / "items.tsv"
+            worktree.mkdir(parents=True)
+            gitdir.mkdir(parents=True)
+            fake_bin.mkdir()
+            (worktree / ".git").write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
+            (gitdir / "HEAD").write_text("ref: refs/heads/review/branch\n", encoding="utf-8")
+            self._write_fake_tmux(fake_bin)
+            cache_file.write_text(
+                "stale\tsession\t"
+                f"{worktree}\t"
+                f"sess_wt:review/branch|pr=42:{state}:REVIEW_REQUIRED::https://github.com/elastic/kibana/pull/42|prrole=review\t"
+                "review-session\treview-session\n",
+                encoding="utf-8",
+            )
+            env = {
+                **os.environ,
+                "HOME": str(home),
+                "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
+                "PICK_SESSION_SCAN_ROOTS": str(home / "work"),
+                "PICK_SESSION_TEST_WORKTREE": str(worktree),
+            }
+            result = subprocess.run(
+                [sys.executable, str(rehydrate), str(cache_file)],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            return next(line for line in result.stdout.splitlines() if "\tsession\t" in line)
+
+    def test_quick_session_lookup_highlights_contributor_pr(self):
+        row, worktree, _ = self._run_quick_session_index(state="OPEN", author="contributor")
+
+        display, kind, path, meta, *_ = row.split("\t")
+        self.assertEqual(kind, "session")
+        self.assertEqual(path, worktree)
+        self.assertIn("prrole=review", meta)
+        self.assertIn("\033[1;38;5;213mreview-session", display)
+
+    def test_quick_session_lookup_dims_merged_pr(self):
+        row, _, _ = self._run_quick_session_index(state="MERGED", author="contributor")
+
+        display, _, _, meta, *_ = row.split("\t")
+        self.assertIn("pr=42:MERGED", meta)
+        self.assertIn("\033[2;38;5;244m", display)
+        self.assertIn("\033[2;38;5;244mreview-session", display)
+
+    def test_quick_session_lookup_keeps_open_own_pr_bright(self):
+        row, _, _ = self._run_quick_session_index(state="OPEN", author="me")
+
+        display, _, _, meta, *_ = row.split("\t")
+        self.assertIn("pr=42:OPEN", meta)
+        self.assertNotIn("prrole=review", meta)
+        self.assertIn("\033[1;38;5;81mreview-session", display)
+        self.assertNotIn("\033[2;38;5;244mreview-session", display)
+
+    def test_quick_session_lookup_dims_closed_pr(self):
+        row, _, _ = self._run_quick_session_index(state="CLOSED", author="contributor")
+
+        display, _, _, meta, *_ = row.split("\t")
+        self.assertIn("pr=42:CLOSED", meta)
+        self.assertIn("prrole=review", meta)
+        self.assertIn("\033[2;38;5;244m", display)
+        self.assertIn("\033[2;38;5;244mreview-session", display)
+
+    def test_quick_session_lookup_dims_closed_own_pr(self):
+        row, _, _ = self._run_quick_session_index(state="CLOSED", author="me")
+
+        display, _, _, meta, *_ = row.split("\t")
+        self.assertIn("pr=42:CLOSED", meta)
+        self.assertNotIn("prrole=review", meta)
+        self.assertIn("\033[2;38;5;244m", display)
+        self.assertIn("\033[2;38;5;244mreview-session", display)
+
+    def test_quick_session_lookup_preserves_unseen_worktree_cache_entries(self):
+        _, _, entries = self._run_quick_session_index(
+            state="OPEN", author="contributor", seed_unrelated_cache_entry=True
+        )
+
+        self.assertIn("/unrelated/worktree", entries)
+
+    def test_full_rehydrate_dims_cached_terminal_session_pr(self):
+        for state in ("MERGED", "CLOSED"):
+            with self.subTest(state=state):
+                row = self._run_full_rehydrate(state=state)
+
+                display, _, _, meta, *_ = row.split("\t")
+                self.assertIn(f"pr=42:{state}", meta)
+                self.assertIn("\033[2;38;5;244m", display)
+                self.assertIn("\033[2;38;5;244mreview-session", display)
+
+    def test_full_worktree_index_dims_terminal_pr(self):
+        for state in ("MERGED", "CLOSED"):
+            with self.subTest(state=state):
+                row = self._run_full_worktree_index(state=state)
+
+                display, _, _, meta, *_ = row.split("\t")
+                self.assertIn(f"pr=42:{state}", meta)
+                self.assertIn("prrole=review", meta)
+                self.assertIn("\033[2;38;5;244m", display)
 
 
 if __name__ == "__main__":

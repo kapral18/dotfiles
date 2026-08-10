@@ -32,10 +32,10 @@ from pathlib import Path
 import ai_harness_capabilities as capabilities
 import ai_policy_ir as ir
 
-MANIFEST_PATH = Path("home/dot_config/ai/readonly_policy-manifest.v1.json")
+MANIFEST_PATH = Path("home/dot_config/ai/exact_policy-ir/readonly_policy-manifest.v1.json")
 LEGACY_PATH = Path("home/readonly_AGENTS.md")
 SKILLS_ROOT = Path("home/exact_dot_agents/exact_skills")
-ABLATIONS_PATH = Path("home/dot_config/ai/readonly_policy-ablations.v1.json")
+ABLATIONS_PATH = Path("home/dot_config/ai/exact_policy-ir/readonly_policy-ablations.v1.json")
 MANIFEST_VERSION = 1
 PROTECTED_CORE_RULE_IDS = frozenset(
     {

@@ -18,6 +18,10 @@ die() {
 cleanup_files=()
 cleanup() {
   local f
+  if [ -n "${row_loader_pid:-}" ] && declare -F gh_row_loader_stop_spinner > /dev/null 2>&1; then
+    gh_row_loader_stop_spinner "$row_loader_pid" 2> /dev/null || true
+    row_loader_pid=""
+  fi
   for f in "${cleanup_files[@]+"${cleanup_files[@]}"}"; do
     [ -n "$f" ] || continue
     rm -f "$f" 2> /dev/null || true
@@ -47,7 +51,8 @@ row_loader_pid=""
 _start_item_loading() {
   row_loader_pid=""
   if declare -F gh_row_loader_start_item > /dev/null 2>&1; then
-    row_loader_pid="$(gh_row_loader_start_item "$kind" "$repo_nwo" "$number" 2> /dev/null || true)"
+    gh_row_loader_start_item "$kind" "$repo_nwo" "$number" > /dev/null 2>&1 || true
+    row_loader_pid="${gh_row_loader_last_pid:-}"
   fi
 }
 

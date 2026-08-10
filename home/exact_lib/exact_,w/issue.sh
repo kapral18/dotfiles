@@ -205,6 +205,8 @@ repo_name="$(_comma_w_issue_get_repo_name)"
 if [ -z "$repo_name" ]; then
   die "failed to determine repo name (are you in a git repo and authenticated with gh?)"
 fi
+parent_dir="$(_get_worktree_parent_dir)"
+parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
 
 _comma_w_prune_stale_worktrees "$quiet_mode"
 
@@ -216,8 +218,11 @@ fi
 if [ -n "$existing_path" ]; then
   info "Found existing issue worktree for #$issue_number at: $existing_path"
   _comma_w_issue_store_metadata "$existing_path" "$repo_name" "$issue_number" || true
+  existing_branch="$(git -C "$existing_path" branch --show-current 2> /dev/null || true)"
+  [ -n "$existing_branch" ] || die "failed to determine branch for existing issue worktree: $existing_path"
+  _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$existing_branch" "$existing_path"
   if [ "$focus_mode" -eq 1 ]; then
-    "$(dirname "$0")/open.sh" -q "$existing_path"
+    bash "$(dirname "$0")/open.sh" -q "$existing_path"
   fi
   exit 0
 fi
@@ -245,8 +250,9 @@ existing_path="$(_comma_w_find_worktree_path_for_branch "$manual_branch" 2> /dev
 if [ -n "$existing_path" ]; then
   info "Found existing worktree for branch '$manual_branch' at: $existing_path"
   _comma_w_issue_store_metadata "$existing_path" "$repo_name" "$issue_number" || true
+  _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$manual_branch" "$existing_path"
   if [ "$focus_mode" -eq 1 ]; then
-    "$(dirname "$0")/open.sh" -q "$existing_path"
+    bash "$(dirname "$0")/open.sh" -q "$existing_path"
   fi
   exit 0
 fi
@@ -278,16 +284,16 @@ if _comma_w_branch_exists_locally_or_remote "$branch"; then
   fi
   info "Branch already exists; creating/reusing worktree without base branch."
   if [ "$quiet_mode" -eq 1 ]; then
-    "$(dirname "$0")/add.sh" --quiet "$branch"
+    bash "$(dirname "$0")/add.sh" --quiet "$branch"
   else
-    "$(dirname "$0")/add.sh" "$branch"
+    bash "$(dirname "$0")/add.sh" "$branch"
   fi
 else
   info "Creating new branch from base: $default_branch"
   if [ "$quiet_mode" -eq 1 ]; then
-    "$(dirname "$0")/add.sh" --quiet "$branch" "$default_branch"
+    bash "$(dirname "$0")/add.sh" --quiet "$branch" "$default_branch"
   else
-    "$(dirname "$0")/add.sh" "$branch" "$default_branch"
+    bash "$(dirname "$0")/add.sh" "$branch" "$default_branch"
   fi
 fi
 
@@ -299,5 +305,5 @@ fi
 _comma_w_issue_store_metadata "$worktree_path" "$repo_name" "$issue_number" || true
 
 if [ "$focus_mode" -eq 1 ]; then
-  "$(dirname "$0")/open.sh" -q "$worktree_path"
+  bash "$(dirname "$0")/open.sh" -q "$worktree_path"
 fi

@@ -17,6 +17,11 @@ app_icons/
 .copilot/hooks.json
 .copilot/hooks/agent-memory.json
 .config/gh-dash/gh-dash-shared.yml
+# Compile/verify-only AI policy IR under ~/.config/ai/policy-ir (source: home/dot_config/ai/exact_policy-ir).
+# Ignored so it does not deploy; old flat ~/.config/ai/{harness-capabilities,policy-*}.v1.json
+# targets are purged via .chezmoiremove (ignore would block remove on the same path).
+.config/ai/policy-ir
+.config/ai/policy-ir/**
 crontab
 **/__pycache__/**
 **/*.pyc

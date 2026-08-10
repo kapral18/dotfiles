@@ -1,8 +1,8 @@
 complete -c ',copilot-openrouter' -f
 complete -c ',copilot-openrouter' -s m -l model -x -d 'OpenRouter model id (default deepseek/deepseek-v4-flash-0731)'
-complete -c ',copilot-openrouter' -l effort -x -a 'minimal low medium high xhigh max' -d 'Reasoning effort (default max)'
-complete -c ',copilot-openrouter' -l reasoning-effort -x -a 'minimal low medium high xhigh max' -d 'Alias for --effort'
-complete -c ',copilot-openrouter' -l thinking -x -a 'minimal low medium high xhigh max' -d 'Alias for --effort'
+complete -c ',copilot-openrouter' -l effort -x -a 'none minimal low medium high xhigh max' -d 'Reasoning effort (default max; none disables)'
+complete -c ',copilot-openrouter' -l reasoning-effort -x -a 'none minimal low medium high xhigh max' -d 'Alias for --effort'
+complete -c ',copilot-openrouter' -l thinking -x -a 'none minimal low medium high xhigh max' -d 'Alias for --effort'
 complete -c ',copilot-openrouter' -l no-thinking -d 'Minimal reasoning effort'
 complete -c ',copilot-openrouter' -l prompt -s p -r -d 'Execute a prompt in non-interactive mode'
 complete -c ',copilot-openrouter' -l interactive -s i -r -d 'Start interactive mode and execute prompt'

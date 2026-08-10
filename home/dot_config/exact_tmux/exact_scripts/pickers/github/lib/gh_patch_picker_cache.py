@@ -29,6 +29,7 @@ creation and transient per-row GitHub waits.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import re
@@ -172,6 +173,34 @@ def main() -> int:
     if not cache.exists():
         return 0
 
+    # Serialize read-modify-write across parallel batch creators / row loaders so
+    # concurrent marker updates cannot lose each other's patches.
+    lock_path = Path(str(cache) + ".lock")
+    try:
+        lock_fh = open(lock_path, "a+", encoding="utf-8")
+    except OSError:
+        return 0
+    try:
+        fcntl.flock(lock_fh.fileno(), fcntl.LOCK_EX)
+        return _patch_locked(args, cache, restore, restore_changed, marker)
+    finally:
+        try:
+            fcntl.flock(lock_fh.fileno(), fcntl.LOCK_UN)
+        except OSError:
+            pass
+        try:
+            lock_fh.close()
+        except OSError:
+            pass
+
+
+def _patch_locked(
+    args: argparse.Namespace,
+    cache: Path,
+    restore: dict[str, str],
+    restore_changed: bool,
+    marker: str | None,
+) -> int:
     try:
         lines = cache.read_text(encoding="utf-8", errors="replace").splitlines(True)
     except (OSError, UnicodeError):

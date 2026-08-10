@@ -88,7 +88,7 @@ The GitHub picker uses `alt-r` for quote-reply; the session picker keeps `alt-r`
 
 ## Remove worktrees (`alt-x`)
 
-`alt-x` removes selected worktree rows in the background and hides their rows optimistically while the cache refresh runs. When a root worktree selection maps to a wrapper directory such as `~/work/kibana`, the remover deletes only the worktrees reported by that repo's `git worktree list`. Ordinary non-worktree leftovers under an otherwise removable wrapper are preserved under `.bag/pickers/session/` before the empty wrapper is removed. If the wrapper also contains an independent git repo or worktree root, the wrapper is kept in place and those sibling git roots are neither deleted nor moved into `.bag`.
+`alt-x` removes selected worktree rows in the background and hides their rows optimistically while the cache refresh runs. Detached-HEAD worktrees are included for `--paths` removals (the picker uses that path); a failed/skipped remove resurrects the row on the next index refresh. When a root worktree selection maps to a wrapper directory such as `~/work/kibana`, the remover deletes only the worktrees reported by that repo's `git worktree list`. Ordinary non-worktree leftovers under an otherwise removable wrapper are preserved under `.bag/pickers/session/` before the empty wrapper is removed. If the wrapper also contains an independent git repo or worktree root, the wrapper is kept in place and those sibling git roots are neither deleted nor moved into `.bag`.
 
 Deletion is boundary-guarded: the background remover only `rm`s targets that resolve to a strict descendant of `$HOME` or a configured `@pick_session_worktree_scan_roots` entry (the scan roots are passed through from the picker, which still holds tmux context). The roots themselves, `/`, empty paths, and anything resolving outside every approved root are refused.
 
@@ -117,6 +117,8 @@ Main cache files live under `~/.cache/tmux/`:
 PR/issue cache TTLs are state-aware: open items refresh more often than merged/closed items, and cache misses have their own shorter TTL.
 
 GitHub lookups are tri-state. A successful lookup writes fresh PR/issue metadata; a confirmed absence (the branch has no PR, or the issue does not resolve) clears any stale badge; a transient failure (rate limit, network error, timeout, `gh` unavailable) preserves the last-known cached badge instead of erasing it. Badges therefore survive a flaky `gh` call rather than flickering to empty.
+
+GitHub metadata resolves after live sessions join the index, so a contributor PR session receives the same dark-pink review treatment as its worktree row even when the quick session pass found it first. Rows whose linked upstream PR is `MERGED` or `CLOSED` are dimmed.
 
 ## Worktree discovery
 

@@ -66,20 +66,31 @@ ICON_DIR = ""
 # Kept in sync with items_full_rehydrate.py via REVIEW_NAME_COLOR below.
 REVIEW_NAME_COLOR = "1;38;5;213"
 REVIEW_PATH_COLOR = "38;5;213"
+TERMINAL_ROW_COLOR = "2;38;5;244"
 
 
-def display_session_entry(name, review=False):
-    name_color = REVIEW_NAME_COLOR if review else "1;38;5;81"
-    return f"{color('38;5;42', ICON_SESSION)}  {color(name_color, name)}"
+def display_session_entry(name, review=False, terminal=False):
+    if terminal:
+        icon_color = TERMINAL_ROW_COLOR
+        name_color = TERMINAL_ROW_COLOR
+    else:
+        icon_color = "38;5;42"
+        name_color = REVIEW_NAME_COLOR if review else "1;38;5;81"
+    return f"{color(icon_color, ICON_SESSION)}  {color(name_color, name)}"
 
 
 def display_dir_session_entry(path_display):
     return f"{color('38;5;42', ICON_SESSION)}  {color('1;38;5;81', path_display)}"
 
 
-def display_worktree_entry(path_display, review=False):
-    path_color = REVIEW_PATH_COLOR if review else "38;5;221"
-    return f"{color('38;5;214', ICON_WORKTREE)}  {color(path_color, path_display)}"
+def display_worktree_entry(path_display, review=False, terminal=False):
+    if terminal:
+        icon_color = TERMINAL_ROW_COLOR
+        path_color = TERMINAL_ROW_COLOR
+    else:
+        icon_color = "38;5;214"
+        path_color = REVIEW_PATH_COLOR if review else "38;5;221"
+    return f"{color(icon_color, ICON_WORKTREE)}  {color(path_color, path_display)}"
 
 
 def display_dir_entry(path_display):
@@ -1390,6 +1401,12 @@ def pr_is_review(gh_info: dict[str, Any] | None) -> bool:
     return bool(me) and author != me
 
 
+def pr_is_terminal(gh_info: dict[str, Any] | None) -> bool:
+    """True when the associated upstream pull request is merged or closed."""
+    pr = (gh_info or {}).get("pr")
+    return bool(pr and (pr.get("state") or "").upper() in {"MERGED", "CLOSED"})
+
+
 def _check_dirty(wt_path: str) -> bool:
     try:
         r = subprocess.run(
@@ -1509,58 +1526,6 @@ elif _dirty_candidates:
             except Exception:
                 pass
 
-# 1c. Parallel GitHub PR/issue lookup for non-default branches.
-# Uses a persistent file cache to avoid redundant API calls across refreshes.
-# Skips stale/gone worktrees (no valid git context).
-wt_gh_info: dict[str, dict[str, Any]] = {}
-_gh_pruned: dict[str, dict[str, Any]] = {}
-_gh_save_pending = False
-_gh_all: list[tuple[str, str, str]] = []
-_nwo_cache: dict[str, str] = {}
-for rid in groups:
-    root_checkout = groups[rid].get("root_checkout", "")
-    if root_checkout and root_checkout not in _nwo_cache:
-        url = origin_url_for_root(root_checkout)
-        _nwo_cache[root_checkout] = nwo_from_url(url)
-    nwo = _nwo_cache.get(root_checkout, "")
-    for wt_path, wt_data in groups[rid]["wt_map"].items():
-        br = wt_data.get("branch", "")
-        flags = wt_status.get(wt_path, set[str]())
-        if br and br not in DEFAULT_BRANCH_DIRS and not (flags & {"gone", "stale"}):
-            _gh_all.append((wt_path, br, nwo))
-
-if _gh_all:
-    _gh_disk_cache = _gh_cache_load()
-    _raw_entries = _gh_disk_cache.get("entries")
-    _gh_entries: dict[str, dict[str, Any]] = _raw_entries if isinstance(_raw_entries, dict) else {}
-    _now = time.time()
-    _gh_need_fetch: list[tuple[str, str, str]] = []
-    for p, br, nwo in _gh_all:
-        cached = _gh_entries.get(p)
-        # skip-gh mode treats any cached entry as usable (stale-ok) so a fast
-        # scan never blocks on the network; the next normal scan re-fetches.
-        if cached and (skip_gh or _gh_cache_fresh(cached, br, nwo, _now)):
-            if cached.get("pr") or cached.get("issue"):
-                wt_gh_info[p] = {"pr": cached.get("pr"), "issue": cached.get("issue")}
-        else:
-            _gh_need_fetch.append((p, br, nwo))
-
-    if _gh_need_fetch and not skip_gh and shutil.which("gh"):
-        _fetch_meta = {p: (br, nwo) for p, br, nwo in _gh_need_fetch}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=WORKER_THREADS) as pool:
-            _gh_futures = {pool.submit(_lookup_gh_info, p, br, nwo): p for p, br, nwo in _gh_need_fetch}
-            for fut in concurrent.futures.as_completed(_gh_futures):
-                p = _gh_futures[fut]
-                br, nwo = _fetch_meta[p]
-                lookup = fut.result()
-                _apply_gh_lookup_result(_gh_entries, wt_gh_info, p, br, nwo, _now, lookup)
-
-    _live_paths = {p for p, _, _ in _gh_all}
-    _gh_pruned = {k: v for k, v in _gh_entries.items() if k in _live_paths}
-    # A skip-gh run did no fetches, so it must not rewrite (and prune) the
-    # disk cache that normal scans maintain.
-    _gh_save_pending = not skip_gh
-
 # 2. Add sessions
 _tmux_session = subprocess.run(["tmux", "display-message", "-p", "#S"], check=False, stdout=subprocess.PIPE, text=True)
 current_session = (_tmux_session.stdout or "").strip()
@@ -1622,17 +1587,62 @@ if quick or sessions_only:
                 except Exception:
                     pass
 
-# 2b. In quick/sessions-only mode, step 1c was skipped (no worktree discovery).
-# Hydrate wt_gh_info from the persistent gh disk cache so session entries still
-# get PR/issue badges. Zero-cost: just a local JSON read, no network calls.
-if (quick or sessions_only) and not wt_gh_info:
-    _gh_disk = _gh_cache_load().get("entries")
-    if isinstance(_gh_disk, dict):
-        for rid in groups:
-            for wt_path in groups[rid]["wt_map"]:
-                cached = _gh_disk.get(wt_path)
-                if cached and (cached.get("pr") or cached.get("issue")):
-                    wt_gh_info[wt_path] = {"pr": cached.get("pr"), "issue": cached.get("issue")}
+# 2b. Resolve GitHub metadata after both scans and live sessions have populated
+# the worktree groups. A quick refresh has no discovery pass, so looking up
+# before sessions were added left a cache-miss session without its review role.
+wt_gh_info: dict[str, dict[str, Any]] = {}
+_gh_pruned: dict[str, dict[str, Any]] = {}
+_gh_save_pending = False
+_gh_all: list[tuple[str, str, str]] = []
+_nwo_cache: dict[str, str] = {}
+for rid in groups:
+    root_checkout = groups[rid].get("root_checkout", "")
+    if root_checkout and root_checkout not in _nwo_cache:
+        url = origin_url_for_root(root_checkout)
+        _nwo_cache[root_checkout] = nwo_from_url(url)
+    nwo = _nwo_cache.get(root_checkout, "")
+    for wt_path, wt_data in groups[rid]["wt_map"].items():
+        br = wt_data.get("branch", "")
+        flags = wt_status.get(wt_path, set[str]())
+        if br and br not in DEFAULT_BRANCH_DIRS and not (flags & {"gone", "stale"}):
+            _gh_all.append((wt_path, br, nwo))
+
+if _gh_all:
+    _gh_disk_cache = _gh_cache_load()
+    _raw_entries = _gh_disk_cache.get("entries")
+    _gh_entries: dict[str, dict[str, Any]] = _raw_entries if isinstance(_raw_entries, dict) else {}
+    _now = time.time()
+    _gh_need_fetch: list[tuple[str, str, str]] = []
+    for p, br, nwo in _gh_all:
+        cached = _gh_entries.get(p)
+        # skip-gh mode treats any cached entry as usable (stale-ok) so a fast
+        # scan never blocks on the network; the next normal scan re-fetches.
+        if cached and (skip_gh or _gh_cache_fresh(cached, br, nwo, _now)):
+            if cached.get("pr") or cached.get("issue"):
+                wt_gh_info[p] = {"pr": cached.get("pr"), "issue": cached.get("issue")}
+        else:
+            _gh_need_fetch.append((p, br, nwo))
+
+    if _gh_need_fetch and not skip_gh and shutil.which("gh"):
+        _fetch_meta = {p: (br, nwo) for p, br, nwo in _gh_need_fetch}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=WORKER_THREADS) as pool:
+            _gh_futures = {pool.submit(_lookup_gh_info, p, br, nwo): p for p, br, nwo in _gh_need_fetch}
+            for fut in concurrent.futures.as_completed(_gh_futures):
+                p = _gh_futures[fut]
+                br, nwo = _fetch_meta[p]
+                lookup = fut.result()
+                _apply_gh_lookup_result(_gh_entries, wt_gh_info, p, br, nwo, _now, lookup)
+
+    if quick or sessions_only:
+        # Session-only refreshes cannot enumerate every worktree. Preserve their
+        # cache entries while adding metadata for live sessions discovered here.
+        _gh_pruned = _gh_entries
+    else:
+        _live_paths = {p for p, _, _ in _gh_all}
+        _gh_pruned = {k: v for k, v in _gh_entries.items() if k in _live_paths}
+    # A skip-gh run did no fetches, so it must not rewrite (and prune) the
+    # disk cache that normal scans maintain.
+    _gh_save_pending = not skip_gh
 
 # 2c. Enrich PR entries with CI + review from the gh picker cache first,
 # then batch-fetch remaining PRs via a single GraphQL call.
@@ -1680,7 +1690,7 @@ if _prs_needing_ci and not quick and not sessions_only and not skip_gh and shuti
                     if review_gql and not pr.get("review"):
                         pr["review"] = review_gql
 
-# 2d. Save the GH disk cache (deferred from step 1c so CI enrichment is included).
+# 2d. Save the GH disk cache after CI enrichment is included.
 if _gh_save_pending:
     for p, gh in wt_gh_info.items():
         if p in _gh_pruned and gh.get("pr"):
@@ -1721,9 +1731,10 @@ def emit_sessions_and_worktrees():
                 if gm:
                     meta += f"|{gm}"
                 review = pr_is_review(ghi)
+                terminal = pr_is_terminal(ghi)
                 if review:
                     meta += "|prrole=review"
-                disp = display_session_entry(sess_name, review) + status_badge(flags) + gh_badges(ghi)
+                disp = display_session_entry(sess_name, review, terminal) + status_badge(flags) + gh_badges(ghi)
                 mk = match_key(sess_name, expected, repo, br)
                 print(f"{disp}\tsession\t{wt_path}\t{meta}\t{sess_name}\t{mk}")
                 emitted_session_names.add(sess_name)
@@ -1747,12 +1758,13 @@ def emit_sessions_and_worktrees():
                 if gm:
                     meta += f"|{gm}"
                 review = pr_is_review(ghi)
+                terminal = pr_is_terminal(ghi)
                 if review:
                     meta += "|prrole=review"
                 wt_name = f"{repo}|{br}" if br else repo
                 mk = match_key(wt_name, Path(wt_path).name, tildefy(wt_path))
                 print(
-                    f"{display_worktree_entry(tildefy(wt_path), review)}{status_badge(flags)}{gh_badges(ghi)}\tworktree\t{wt_path}\t{meta}\t{root_checkout}\t{mk}"
+                    f"{display_worktree_entry(tildefy(wt_path), review, terminal)}{status_badge(flags)}{gh_badges(ghi)}\tworktree\t{wt_path}\t{meta}\t{root_checkout}\t{mk}"
                 )
                 exclude_worktree_roots.add(wt_path)
 
