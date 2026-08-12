@@ -46,4 +46,4 @@ if [[ "$caller_set_model" == false && -n "$CLAUDE_LLAMA_CPP_MODEL" ]]; then
   args+=(--model "$CLAUDE_LLAMA_CPP_MODEL")
 fi
 
-exec claude "${args[@]}" "$@"
+exec ,llama-cpp run -- claude "${args[@]}" "$@"

@@ -3,7 +3,7 @@
 #
 # The llama-cpp provider (baseURL http://127.0.0.1:8080/v1) is declared in the
 # deployed ~/.config/opencode/opencode.jsonc, so this wrapper just selects it.
-# Pass a model with --model/-m using a bare id (local|local-max) or the full
+# Pass a model with --model/-m using a bare id (local|local-max|nemotron-3.5) or the full
 # provider-qualified id; a bare id is rewritten to llama-cpp/<id>:
 #   ,opencode-llama-cpp --model local-max run "hi"
 # With no --model, defaults to llama-cpp/$OPENCODE_LLAMA_CPP_MODEL (local).
@@ -52,4 +52,4 @@ if [[ "$caller_set_model" == false ]]; then
   args=(--model "llama-cpp/${OPENCODE_LLAMA_CPP_MODEL}" "${args[@]}")
 fi
 
-exec opencode "${args[@]}"
+exec ,llama-cpp run -- opencode "${args[@]}"

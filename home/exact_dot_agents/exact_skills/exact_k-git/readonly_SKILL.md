@@ -30,6 +30,18 @@ Large-repo probe safety:
   Do not keep waiting on the same git process.
 - Keep the first probe narrow: status, branch, upstream, changed paths, and the smallest commit range needed for the task.
 
+Remote credential-output safety:
+
+- Never print configured remote URLs verbatim.
+  Commands such as `git remote -v`, `git remote get-url`, `git config --get remote.*.url`, and broad `git config --list` / `--show-origin` probes may expose credentials embedded as URL userinfo.
+- Resolve repository and PR identity with platform metadata (`gh repo view`, `gh pr view`) and list remote names with `git remote`;
+  a named remote is sufficient for fetch/push commands.
+- Inspect an exact remote URL only when the task materially depends on URL semantics.
+  Redact userinfo inside the local command pipeline before any output reaches the model, and return only the redacted value;
+  never emit or interpolate the raw URL into model-visible text.
+- Redaction is not permission to inspect credential-bearing configuration.
+  Prefer a probe that never reads the URL when remote names or platform metadata answer the question.
+
 Safety protocol:
 
 - never change git config unless explicitly requested

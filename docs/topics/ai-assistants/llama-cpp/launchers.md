@@ -5,23 +5,29 @@ title: Launchers
 
 # Launchers
 
-These launchers make local llama.cpp models usable from Codex, OpenCode, and Claude Code without repeating provider flags every time. Each wrapper solves a different harness-specific problem: Codex needs local model metadata plus provider routing, OpenCode needs model ids qualified to its configured provider, and Claude Code needs a llama.cpp-scoped settings file.
+These launchers make local llama.cpp models usable from Codex, Cursor, OpenCode, and Claude Code without repeating provider flags every time. Each wrapper solves a different harness-specific problem: Codex needs local model metadata plus provider routing, Cursor needs its OpenAI-compatible `agent-cli-local` flavor, OpenCode needs model ids qualified to its configured provider, and Claude Code needs a llama.cpp-scoped settings file.
+
+All four launchers acquire a shared router lease. They join an existing router, or start a loopback router when none is reachable. After the last managed consumer exits, the auto-started instance stays resident for a 10-minute grace period so the next harness can reuse its loaded model; run `,llama-cpp stop` to end it earlier or set `LLAMA_CPP_GRACE_SECONDS=0` for immediate shutdown. Running `,llama-cpp serve` first remains supported, and that manually started process is left running.
 
 ## Mental model
 
-Codex has two layers. The transparent `,codex` wrapper supplies catalog metadata for local ids (`local` and `local-max`), while `,codex-llama-cpp` supplies the provider routing flags that point Codex at `llama-server`.
+Codex has two layers. The transparent `,codex` wrapper supplies catalog metadata for local ids (`local`, `local-max`, and `nemotron-3.5`), while `,codex-llama-cpp` supplies the provider routing flags that point Codex at `llama-server`.
 
 OpenCode reads providers from `~/.config/opencode/opencode.jsonc`, so its launcher only normalizes model selection and passes the rest through.
+
+Cursor's cloud build rejects local provider flags. `,cursor-llama-cpp` therefore runs the version-matched `agent-cli-local` flavor, pins its provider environment to llama.cpp, and rewrites `-m` to Cursor's `--model` flag.
 
 Claude Code has one global `autoCompactWindow`, but cloud `opus[1m]` and local llama.cpp need different values. The llama.cpp launcher loads an additive settings file with `autoCompactWindow: 200000` and leaves plain cloud Claude sessions untouched.
 
 ## Using it
 
+No separate server command is required for these launchers. Start any harness directly; use `,llama-cpp serve` only when you want the router to remain available independently of harness sessions.
+
 ### Codex launcher metadata
 
 Codex only has first-class model metadata for slugs present in its model catalog; unknown local slugs use fallback metadata and emit a warning. This repo ships a transparent `,codex` wrapper plus a small local catalog for the llama.cpp models.
 
-The wrapper injects `-c model_catalog_json="$HOME/.codex/llama-cpp-model-catalog.json"` when the selected model is one of the local llama.cpp ids (`local` or `local-max`), in either `--model <id>` or `--model=<id>` form.
+The wrapper injects `-c model_catalog_json="$HOME/.codex/llama-cpp-model-catalog.json"` when the selected model is one of the three local llama.cpp ids, in either `--model <id>` or `--model=<id>` form.
 
 Other Codex invocations execute `/opt/homebrew/bin/codex` directly. Hosted MCP authentication is owned by the per-request stdio bridges declared in `~/.codex/config.toml`, not by this launcher.
 
@@ -44,7 +50,21 @@ The wrapper adds its default `--model $CODEX_LLAMA_CPP_MODEL` only when you did 
 ```bash
 ,codex-llama-cpp                          # default model local
 ,codex-llama-cpp --model local-max        # abliterated sibling
+,codex-llama-cpp --model nemotron-3.5     # Nemotron 3.5 Lightning
 ,codex-llama-cpp -m local-max exec "..."  # one-shot
+```
+
+### Cursor launcher (`,cursor-llama-cpp`)
+
+The launcher uses the same version-matched `agent-cli-local` installation as `,cursor-openrouter`. If that flavor is absent after a Cursor update, the existing `~/lib/,cursor-agent-local/install.sh` installer restores it before launch.
+
+It pins `CURSOR_LOCAL_AGENT_BASE_URL=http://${LLAMA_CPP_HOST}:${LLAMA_CPP_PORT}/v1`, maps `LLAMA_CPP_API_KEY` to `CURSOR_LOCAL_AGENT_API_KEY`, and keeps Cursor's delegated model band on the selected local id. Inherited endpoint and provider credentials cannot redirect the session.
+
+```bash
+,cursor-llama-cpp                          # default model local
+,cursor-llama-cpp --model local-max        # abliterated sibling
+,cursor-llama-cpp -m nemotron-3.5          # Nemotron 3.5 Lightning
+,cursor-llama-cpp -p "summarize README.md" # one-shot
 ```
 
 ### OpenCode launcher (`,opencode-llama-cpp`)
@@ -53,21 +73,22 @@ OpenCode reads providers from `~/.config/opencode/opencode.jsonc`; there is no p
 
 The `llama-cpp` provider is declared in both profile sources and flows through the merge hook unchanged:
 
-| Field       | Value                      |
-| ----------- | -------------------------- |
-| Provider id | `llama-cpp`                |
-| Base URL    | `http://127.0.0.1:8080/v1` |
-| Models      | `local`, `local-max`       |
+| Field       | Value                                |
+| ----------- | ------------------------------------ |
+| Provider id | `llama-cpp`                          |
+| Base URL    | `http://127.0.0.1:8080/v1`           |
+| Models      | `local`, `local-max`, `nemotron-3.5` |
 
 The provider id avoids a dot (`llama-cpp`, not `llama.cpp`) because OpenCode's SDK derives an incorrect lookup key from dotted ids.
 
-Pass `--model`/`-m` with a bare id (`local`/`local-max`) — the wrapper qualifies it to `llama-cpp/<id>` — or the full `llama-cpp/<id>`. With no `--model`, it defaults to `llama-cpp/$OPENCODE_LLAMA_CPP_MODEL` (`local`).
+Pass `--model`/`-m` with a bare id (`local`, `local-max`, or `nemotron-3.5`) — the wrapper qualifies it to `llama-cpp/<id>` — or the full `llama-cpp/<id>`. With no `--model`, it defaults to `llama-cpp/$OPENCODE_LLAMA_CPP_MODEL` (`local`).
 
 Any subcommand/args pass through.
 
 ```bash
 ,opencode-llama-cpp                            # interactive TUI, default model local
 ,opencode-llama-cpp --model local-max          # abliterated sibling (bare id auto-qualified)
+,opencode-llama-cpp --model nemotron-3.5       # Nemotron 3.5 Lightning
 ,opencode-llama-cpp --model local-max run "…"  # one-shot
 ```
 
@@ -109,6 +130,7 @@ The wrapper injects its default `--model $CLAUDE_LLAMA_CPP_MODEL` only when you 
 ,claude-llama-cpp                           # interactive session, default model local
 ,claude-llama-cpp -p "summarize README.md"  # one-shot prompt
 ,claude-llama-cpp --model local-max         # use the abliterated sibling
+,claude-llama-cpp --model nemotron-3.5      # use Nemotron 3.5 Lightning
 ```
 
 Cloud Claude sessions are unaffected — plain `claude ...` still reads only `~/.claude/settings.json`, where `autoCompactWindow` stays unset so the default for `opus[1m]` applies.
@@ -117,8 +139,10 @@ Cloud Claude sessions are unaffected — plain `claude ...` still reads only `~/
 
 - [`home/exact_bin/executable_,codex`](../../../../home/exact_bin/executable_,codex) → `~/bin/,codex`
 - [`home/exact_lib/exact_,codex/main.py`](../../../../home/exact_lib/exact_,codex/main.py) → `~/lib/,codex/main.py`
-- [`home/dot_codex/readonly_llama-cpp-model-catalog.json`](../../../../home/dot_codex/readonly_llama-cpp-model-catalog.json) → `~/.codex/llama-cpp-model-catalog.json` (defines both `local` and `local-max`)
+- [`home/dot_codex/readonly_llama-cpp-model-catalog.json`](../../../../home/dot_codex/readonly_llama-cpp-model-catalog.json) → `~/.codex/llama-cpp-model-catalog.json` (defines all three local model ids)
 - [`home/exact_bin/executable_,codex-llama-cpp`](../../../../home/exact_bin/executable_,codex-llama-cpp) → `~/bin/,codex-llama-cpp`
+- [`home/exact_bin/executable_,cursor-llama-cpp`](../../../../home/exact_bin/executable_,cursor-llama-cpp) → `~/bin/,cursor-llama-cpp`
+- [`home/exact_lib/exact_,cursor-agent-local/install.sh`](../../../../home/exact_lib/exact_,cursor-agent-local/install.sh) → version-matched local-provider Cursor binary
 - [`home/dot_config/opencode/readonly_opencode.personal.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.personal.jsonc) / [`readonly_opencode.work.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.work.jsonc) — declare the `llama-cpp` provider
 - [`home/exact_bin/executable_,opencode-llama-cpp`](../../../../home/exact_bin/executable_,opencode-llama-cpp) → `~/bin/,opencode-llama-cpp`
 - [`home/dot_claude/settings.llama-cpp.json`](../../../../home/dot_claude/settings.llama-cpp.json) → `~/.claude/settings.llama-cpp.json` (contains only `autoCompactWindow: 200000`)

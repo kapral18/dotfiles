@@ -14,17 +14,18 @@ Pi settings and models are installed readonly, so the llama.cpp provider is decl
 ,llama-cpp serve
 pi --model llama-cpp/local       # primary
 pi --model llama-cpp/local-max   # abliterated sibling
+pi --model llama-cpp/nemotron-3.5
 ```
 
 The provider declares both local models:
 
-| Field                  | Value / reason                  |
-| ---------------------- | ------------------------------- |
-| Models                 | `local`, `local-max`            |
-| Base URL               | `http://127.0.0.1:8080/v1`      |
-| API mode               | `openai-completions`            |
-| Template compatibility | Qwen thinking-compatible        |
-| `apiKey`               | `!command` form (`!printf ...`) |
+| Field                  | Value / reason                       |
+| ---------------------- | ------------------------------------ |
+| Models                 | `local`, `local-max`, `nemotron-3.5` |
+| Base URL               | `http://127.0.0.1:8080/v1`           |
+| API mode               | `openai-completions`                 |
+| Template compatibility | Qwen thinking-compatible             |
+| `apiKey`               | `!command` form (`!printf ...`)      |
 
 Provider keys use `$ENV_VAR` or `!command` syntax. Pi's startup migration therefore has nothing to rewrite and never attempts to write the read-only `~/.pi/agent/models.json`.
 

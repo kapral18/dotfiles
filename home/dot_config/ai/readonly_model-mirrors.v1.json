@@ -631,7 +631,8 @@
           "openrouter/moonshotai/kimi-k3@preset/kimi-lanes",
           "openrouter/z-ai/glm-5.2@preset/glm-lanes-max",
           "llama-cpp/local",
-          "llama-cpp/local-max"
+          "llama-cpp/local-max",
+          "llama-cpp/nemotron-3.5"
         ],
         "provenance": [
           {
@@ -660,7 +661,8 @@
           "openrouter/moonshotai/kimi-k3@preset/kimi-lanes",
           "openrouter/z-ai/glm-5.2@preset/glm-lanes-max",
           "llama-cpp/local",
-          "llama-cpp/local-max"
+          "llama-cpp/local-max",
+          "llama-cpp/nemotron-3.5"
         ],
         "provenance": [
           {
@@ -795,7 +797,8 @@
         "complete": false,
         "models": [
           "local",
-          "local-max"
+          "local-max",
+          "nemotron-3.5"
         ],
         "provenance": [
           {
@@ -810,7 +813,8 @@
         "complete": true,
         "models": [
           "local",
-          "local-max"
+          "local-max",
+          "nemotron-3.5"
         ],
         "provenance": [
           {
@@ -832,7 +836,8 @@
         "complete": true,
         "models": [
           "local",
-          "local-max"
+          "local-max",
+          "nemotron-3.5"
         ],
         "provenance": [
           {

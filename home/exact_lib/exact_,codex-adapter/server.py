@@ -16,11 +16,14 @@ from client import CodexClient, UpstreamError
 from protocols import (
     aggregate_responses,
     anthropic_to_responses,
+    chat_to_responses,
     collect_anthropic_message,
+    collect_chat_completion,
     encode_sse,
     iter_sse_json,
     prepare_responses_request,
     responses_to_anthropic_events,
+    responses_to_chat_events,
 )
 from state import OpaqueReasoningStore
 
@@ -137,20 +140,22 @@ class AdapterHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlsplit(self.path).path.rstrip("/")
-        frontend = "responses" if path == "/v1/responses" else "anthropic"
+        frontend = "responses" if path == "/v1/responses" else "chat" if path == "/v1/chat/completions" else "anthropic"
         if not self._authorized():
             self._error(frontend, HTTPStatus.UNAUTHORIZED, "authentication_error", "invalid adapter token")
             return
         if path == "/v1/messages/count_tokens":
             self._count_tokens()
             return
-        if path not in {"/v1/responses", "/v1/messages"}:
+        if path not in {"/v1/responses", "/v1/chat/completions", "/v1/messages"}:
             self._error(frontend, HTTPStatus.NOT_FOUND, "not_found_error", "unknown adapter endpoint")
             return
         try:
             body = self._read_body()
             if path == "/v1/responses":
                 self._responses(body)
+            elif path == "/v1/chat/completions":
+                self._chat(body)
             else:
                 self._anthropic(body)
         except (BrokenPipeError, ConnectionResetError):
@@ -217,6 +222,24 @@ class AdapterHandler(BaseHTTPRequestHandler):
                 self._stream_anthropic(events)
             else:
                 self._json(HTTPStatus.OK, collect_anthropic_message(events))
+        finally:
+            upstream.close()
+
+    def _chat(self, body: dict[str, Any]) -> None:
+        wants_stream = body.get("stream") is True
+        payload = chat_to_responses(
+            body,
+            model_override=self.context.model,
+            effort_override=self.context.effort,
+            store=self.context.store,
+        )
+        upstream = self.context.codex.open(payload)
+        try:
+            events = iter_sse_json(upstream)
+            if wants_stream:
+                self._write_stream(responses_to_chat_events(events, self.context.model, self.context.store))
+            else:
+                self._json(HTTPStatus.OK, collect_chat_completion(events, self.context.model, self.context.store))
         finally:
             upstream.close()
 

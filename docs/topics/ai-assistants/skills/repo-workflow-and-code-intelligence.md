@@ -67,11 +67,11 @@ These skills operate on local repositories, code search, cleanup, external sourc
 
 ## `k-git`
 
-| Field    | Value                                                                                                      |
-| -------- | ---------------------------------------------------------------------------------------------------------- |
-| Use when | local git operations: status/diff/log, branching, committing, pushing, rebasing, conflicts                 |
-| Source   | [`exact_k-git`](../../../../home/exact_dot_agents/exact_skills/exact_k-git/)                               |
-| Boundary | no GitHub side effects; no worktree management; no commit without an explicit current-conversation request |
+| Field    | Value                                                                                                                                                                                                      |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | local git operations: status/diff/log, branching, committing, pushing, rebasing, conflicts                                                                                                                 |
+| Source   | [`exact_k-git`](../../../../home/exact_dot_agents/exact_skills/exact_k-git/)                                                                                                                               |
+| Boundary | no GitHub side effects; no worktree management; no commit without an explicit current-conversation request; configured remote URLs are never printed verbatim because URL userinfo may contain credentials |
 
 ## `k-worktrees`
 

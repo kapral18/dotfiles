@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import queue
@@ -24,13 +25,9 @@ def default_auth_path() -> Path:
     return (Path(codex_home).expanduser() if codex_home else Path.home() / ".codex") / "auth.json"
 
 
-def load_credentials(path: Path) -> Credentials:
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError as error:
-        raise RuntimeError(f"Codex authentication state was not found at {path}") from error
-    except (OSError, json.JSONDecodeError) as error:
-        raise RuntimeError(f"Codex authentication state at {path} is unreadable") from error
+def _credentials_from_payload(payload: object, source: str) -> Credentials:
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"Codex authentication state from {source} is invalid")
     tokens = payload.get("tokens")
     if not isinstance(tokens, dict):
         raise RuntimeError("Codex is not signed in with a ChatGPT subscription")
@@ -41,6 +38,42 @@ def load_credentials(path: Path) -> Credentials:
     if account_id is not None and not isinstance(account_id, str):
         raise RuntimeError("Codex authentication state has an invalid account ID")
     return Credentials(access_token, account_id or None)
+
+
+def _keyring_account(auth_path: Path) -> str:
+    codex_home = auth_path.parent.resolve()
+    digest = hashlib.sha256(str(codex_home).encode()).hexdigest()[:16]
+    return f"cli|{digest}"
+
+
+def load_keyring_credentials(auth_path: Path) -> Credentials:
+    """Read current device-authorized Codex auth from macOS Keychain."""
+    try:
+        result = subprocess.run(
+            ["security", "find-generic-password", "-s", "Codex Auth", "-a", _keyring_account(auth_path), "-w"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as error:
+        raise RuntimeError("Codex authentication state was not found in auth.json or macOS Keychain") from error
+    except subprocess.CalledProcessError as error:
+        raise RuntimeError("Codex authentication state was not found in auth.json or macOS Keychain") from error
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise RuntimeError("Codex authentication state in macOS Keychain is unreadable") from error
+    return _credentials_from_payload(payload, "macOS Keychain")
+
+
+def load_credentials(path: Path) -> Credentials:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as error:
+        return load_keyring_credentials(path)
+    except (OSError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"Codex authentication state at {path} is unreadable") from error
+    return _credentials_from_payload(payload, str(path))
 
 
 def refresh_via_app_server(codex_binary: str, *, timeout: int = 30) -> None:

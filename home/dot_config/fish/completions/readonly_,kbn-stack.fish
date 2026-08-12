@@ -17,6 +17,8 @@ complete -c ,kbn-stack -l slot -d "Force a specific slot number" -x
 complete -c ,kbn-stack -l detach -d "Agent mode: background ES+Kibana, wait until ready, record started_by=agent"
 complete -c ,kbn-stack -l stop -d "Tear down this worktree's stack (recorded pids or interactive port owners) and drop its registry entry"
 complete -c ,kbn-stack -l stop-all -d "Tear down registered detached/serverless stacks; leave pid-less interactive tmux entries"
+complete -c ,kbn-stack -l status -d "List registered stacks with live process and port state"
+complete -c ,kbn-stack -l prune -d "Remove fully stale registry entries without stopping processes"
 complete -c ,kbn-stack -s E -d "Extra Elasticsearch setting (key=value)" -x
 complete -c ,kbn-stack -s K -l kbn -d "Extra Kibana setting passed to yarn start as --key=value" -x
 complete -c ,kbn-stack -s h -l help -d "Show help"

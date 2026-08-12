@@ -111,6 +111,19 @@ class TestArgumentsAndModels(unittest.TestCase):
                 models,
             )
 
+    def test_SHOULD_render_only_live_completion_capabilities(self) -> None:
+        models = {
+            "gpt-5.3-codex": model(
+                "gpt-5.3-codex",
+                ("/responses",),
+                ("low", "high"),
+                {"default": 264_000, "long_context": 1_000_000},
+            ),
+            "embedding-only": model("embedding-only", ("/embeddings",)),
+        }
+
+        self.assertEqual(main.completion_rows(models), ["gpt-5.3-codex\thigh,low\tdefault,long_context"])
+
     def test_SHOULD_select_only_context_tiers_advertised_for_the_model(self) -> None:
         models = {
             "claude-sonnet-5": model(
@@ -195,7 +208,13 @@ class TestChildIsolation(unittest.TestCase):
             "GH_TOKEN": "real-github-token",
             "GITHUB_TOKEN": "other-token",
             "ANTHROPIC_API_KEY": "real-anthropic-key",
+            "ANTHROPIC_BASE_URL": "https://outside.example",
+            "ANTHROPIC_AUTH_TOKEN": "outside-token",
             "OPENAI_API_KEY": "real-openai-key",
+            "CURSOR_LOCAL_AGENT_BASE_URL": "https://outside.example",
+            "CURSOR_LOCAL_AGENT_API_KEY": "outside-key",
+            "CURSOR_API_ENDPOINT": "https://outside.example",
+            "CURSOR_API_KEY": "outside-key",
         }
         claude_model = model("claude-sonnet-5", ("/v1/messages",))
         codex_model = model("gpt-5.3-codex", ("/responses",), ("low", "high"))
@@ -218,6 +237,15 @@ class TestChildIsolation(unittest.TestCase):
                 "high",
                 ["exec", "hello"],
             )
+            cursor_command, cursor_env = main.child_command(
+                "cursor",
+                "/usr/bin/cursor-agent-local",
+                "http://127.0.0.1:3210",
+                "local-token",
+                codex_model,
+                "high",
+                ["-p", "hello"],
+            )
 
         self.assertEqual(
             claude_command,
@@ -236,6 +264,20 @@ class TestChildIsolation(unittest.TestCase):
         self.assertNotIn("GH_TOKEN", codex_env)
         self.assertNotIn("GITHUB_TOKEN", codex_env)
         self.assertNotIn("OPENAI_API_KEY", codex_env)
+
+        self.assertEqual(cursor_command, ["/usr/bin/cursor-agent-local", "--model", "gpt-5.3-codex", "-p", "hello"])
+        self.assertEqual(cursor_env["CURSOR_LOCAL_AGENT_BASE_URL"], "http://127.0.0.1:3210/v1")
+        self.assertEqual(cursor_env["CURSOR_LOCAL_AGENT_API_KEY"], "local-token")
+        self.assertNotIn("ANTHROPIC_BASE_URL", cursor_env)
+        self.assertNotIn("ANTHROPIC_AUTH_TOKEN", cursor_env)
+        self.assertNotIn("CURSOR_API_ENDPOINT", cursor_env)
+        self.assertNotIn("CURSOR_API_KEY", cursor_env)
+
+    def test_SHOULD_reject_cursor_flags_that_can_bypass_loopback(self) -> None:
+        for option in ("--base-url", "--base-url=https://outside.example", "--model", "-m"):
+            with self.subTest(option=option):
+                with self.assertRaises(ValueError):
+                    main.validate_cursor_forwarded([option])
 
     def test_SHOULD_suppress_tracebacks_when_clients_reset_before_request_line(self) -> None:
         server = copilot_server.AdapterServer(
@@ -576,6 +618,29 @@ class TestLoopbackProxy(unittest.TestCase):
         self.assertIn(b'"type":"text_delta","text":"GPT_OK"', translated)
         self.assertIn(b'"type":"message_stop"', translated)
 
+    def test_SHOULD_translate_cursor_chat_to_responses_for_the_default_model(self) -> None:
+        self.upstream.response_body = (
+            b'data: {"type":"response.created","response":{"id":"resp_test"}}\n\n'
+            b'data: {"type":"response.output_text.delta","delta":"CURSOR_OK"}\n\n'
+            b'data: {"type":"response.completed","response":{"usage":{"input_tokens":3,"output_tokens":2}}}\n\n'
+        )
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{self.adapter.server_port}/v1/chat/completions",
+            data=b'{"model":"gpt-5.3-codex","stream":false,"messages":[{"role":"user","content":"reply"}]}',
+            headers={"Authorization": "Bearer local-token", "Content-Type": "application/json"},
+        )
+
+        with (
+            mock.patch("copilot_server.api_url", return_value=f"http://127.0.0.1:{self.upstream.server_port}"),
+            urllib.request.urlopen(request, timeout=5) as response,
+        ):
+            translated = json.loads(response.read())
+
+        upstream_body = json.loads(self.upstream.request_body)
+        self.assertEqual(self.upstream.request_path, "/responses")
+        self.assertEqual(upstream_body["input"][0]["role"], "user")
+        self.assertEqual(translated["choices"][0]["message"]["content"], "CURSOR_OK")
+
     def test_SHOULD_return_json_for_non_stream_messages_translated_to_responses(self) -> None:
         self.upstream.response_body = (
             b'data: {"type":"response.created","response":{"id":"resp_test","usage":{"input_tokens":3}}}\n\n'
@@ -712,6 +777,11 @@ class TestLoopbackProxy(unittest.TestCase):
                     b'"input":[{"type":"message","role":"user","content":"reply"}]}'
                 ),
                 b'"type":"response.completed"',
+            ),
+            (
+                "/v1/chat/completions",
+                b'{"model":"gemini-3.5-flash","stream":true,"messages":[{"role":"user","content":"reply"}]}',
+                b"[DONE]",
             ),
         )
         for frontend, body, terminal in requests:

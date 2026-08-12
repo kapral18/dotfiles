@@ -6,6 +6,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import re
 import subprocess
 import sys
 import unittest
@@ -39,6 +40,36 @@ class TestStaticModelMirrors(unittest.TestCase):
             },
         )
         model_mirrors.validate_mirror(mirror)
+
+    def test_SHOULD_keep_llama_cpp_model_ids_aligned_across_consumers(self):
+        import model_mirrors
+
+        pi_work = json.loads((REPO / "home/dot_pi/agent/readonly_models.json").read_text())
+        expected = {model["id"] for model in pi_work["providers"]["llama-cpp"]["models"]}
+        self.assertEqual(expected, {"local", "local-max", "nemotron-3.5"})
+
+        pi_personal = json.loads((REPO / "home/dot_pi/agent/readonly_models.personal.json").read_text())
+        self.assertEqual(
+            {model["id"] for model in pi_personal["providers"]["llama-cpp"]["models"]},
+            expected,
+        )
+
+        for profile in ("work", "personal"):
+            config = model_mirrors._read_jsonc(REPO / f"home/dot_config/opencode/readonly_opencode.{profile}.jsonc")
+            self.assertEqual(set(config["provider"]["llama-cpp"]["models"]), expected)
+
+        codex = json.loads((REPO / "home/dot_codex/readonly_llama-cpp-model-catalog.json").read_text())
+        self.assertEqual({model["slug"] for model in codex["models"]}, expected)
+
+        router_text = (REPO / "home/dot_config/llama.cpp/models.ini.tmpl").read_text()
+        router_ids = set(re.findall(r"^\[([^*][^]]*)\]$", router_text, flags=re.MULTILINE))
+        self.assertEqual(router_ids, expected)
+
+        manifest = (REPO / "home/readonly_dot_default-llama-cpp-models.tmpl").read_text()
+        self.assertIn(
+            "ggml-org/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF|NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_K_M.gguf",
+            manifest,
+        )
 
     def test_SHOULD_generate_deterministic_network_free_bytes(self):
         import model_mirrors

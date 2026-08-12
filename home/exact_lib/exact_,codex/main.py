@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 REAL_CODEX = "/opt/homebrew/bin/codex"
-LOCAL_MODELS = {"local", "local-max"}
+LOCAL_MODELS = {"local", "local-max", "nemotron-3.5"}
 
 
 def _uses_llama_cpp_model(argv: list[str]) -> bool:

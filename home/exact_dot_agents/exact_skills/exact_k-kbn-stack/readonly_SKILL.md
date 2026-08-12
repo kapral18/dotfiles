@@ -1,7 +1,7 @@
 ---
 name: k-kbn-stack
 description: "Use for elastic/kibana UI/browser tests needing ES+Kibana URLs, -K flags, stack registry, start/stop/reuse."
-tool_version: ",kbn-stack ownership registry surface verified 2026-06-30"
+tool_version: ",kbn-stack status/prune/ownership registry surface verified 2026-08-12"
 ---
 
 # Kbn Stack
@@ -21,6 +21,8 @@ Use `,kbn-stack` from an `elastic/kibana` git worktree to start an isolated loca
 ,kbn-stack --detach
 ,kbn-stack --stop
 ,kbn-stack --stop-all
+,kbn-stack --status
+,kbn-stack --prune
 ,kbn-stack --es snapshot
 ,kbn-stack --es serverless --project-type es
 ,kbn-stack --data <name>
@@ -34,6 +36,12 @@ Starts also fail fast when a foreign process already holds the slot's Kibana/ES 
 
 `-K key=value` is repeatable and becomes `--key=value` for `yarn start`.
 Use it for runtime settings that the UI path requires, for example `-K xpack.index_management.dev.enableSemanticField=true`.
+
+`--status` works outside a Kibana worktree and lists every registry entry without changing it.
+Its `ready`, `starting`, `degraded`, and `stale` states combine recorded readiness with current launcher/process and Kibana/Elasticsearch port liveness.
+
+`--prune` works outside a Kibana worktree and removes only `stale` entries; it never stops processes.
+Interactive ES and Kibana commands also invoke silent pruning when they exit, so the entry is removed after both halves are down while starting, ready, and degraded entries remain registered.
 
 ## Registry
 

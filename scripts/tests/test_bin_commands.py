@@ -2479,6 +2479,14 @@ class TestOpenRouterWrappers(unittest.TestCase):
                 text = (REPO / relative).read_text()
                 assert "none minimal low medium high xhigh max" in text
 
+    def test_SHOULD_complete_cursor_codex_from_the_live_codex_model_cache(self):
+        source = (REPO / "home/dot_config/fish/completions/readonly_,cursor-codex.fish").read_text()
+
+        assert 'cache "$HOME/.codex/models_cache.json"' in source
+        assert 'model.get("supported_reasoning_levels", [])' in source
+        assert "(__cursor_codex_models)" in source
+        assert "(__cursor_codex_efforts)" in source
+
     def test_SHOULD_hard_pin_claude_route_over_environment_values(self):
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp)
@@ -3553,7 +3561,7 @@ class TestCodexWrapper(unittest.TestCase):
         assert "REAL_CODEX_STARTED" in result.stdout
         assert token_calls == [], "launch must not touch ,mcp-token; the bridge owns auth per request"
 
-    def test_local_model_injects_catalog_metadata(self):
+    def test_local_models_inject_catalog_metadata(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             home = root / "home"
@@ -3566,21 +3574,129 @@ class TestCodexWrapper(unittest.TestCase):
             real_codex = bindir / "codex-real"
             real_codex.write_text("#!/usr/bin/env bash\nprintf 'ARGS=%s\\n' \"$*\"\n")
             real_codex.chmod(0o755)
+            for model in ("local", "local-max", "nemotron-3.5"):
+                with self.subTest(model=model):
+                    result = subprocess.run(
+                        [sys.executable, str(CODEX_COMMAND), "--model", model, "exec", "hi"],
+                        capture_output=True,
+                        text=True,
+                        cwd=str(REPO),
+                        env={
+                            **os.environ,
+                            "HOME": str(home),
+                            "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+                            "CODEX_REAL_BIN": str(real_codex),
+                        },
+                    )
+
+                    assert result.returncode == 0
+                    assert f'model_catalog_json="{catalog}"' in result.stdout
+
+
+class TestCursorLlamaCppWrapper(unittest.TestCase):
+    """WHEN Cursor launches against the local llama.cpp router."""
+
+    def test_SHOULD_pin_the_local_endpoint_key_and_selected_model(self):
+        wrapper = REPO / "home/exact_bin/executable_,cursor-llama-cpp"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            bindir = root / "bin"
+            bindir.mkdir()
+            version = "2026.08.11-test"
+            local_dir = home / ".local/share/cursor-agent-local/versions" / version
+            local_dir.mkdir(parents=True)
+
+            cursor_agent = bindir / "cursor-agent"
+            cursor_agent.write_text(f'#!/usr/bin/env bash\necho "{version}"\n', encoding="utf-8")
+            cursor_agent.chmod(0o755)
+            lifecycle = bindir / ",llama-cpp"
+            lifecycle.write_text(
+                '#!/usr/bin/env bash\n[[ "$1" == run && "$2" == -- ]] || exit 2\nshift 2\nexec "$@"\n',
+                encoding="utf-8",
+            )
+            lifecycle.chmod(0o755)
+            local = local_dir / "cursor-agent-local"
+            local.write_text(
+                """#!/usr/bin/env bash
+printf 'base=%s\nkey=%s\nband-model=%s\nargs=%s\n' \\
+  "$CURSOR_LOCAL_AGENT_BASE_URL" "$CURSOR_LOCAL_AGENT_API_KEY" "$AGENT_BAND_MODEL_OVERRIDE" "$*"
+""",
+                encoding="utf-8",
+            )
+            local.chmod(0o755)
+
             result = subprocess.run(
-                [sys.executable, str(CODEX_COMMAND), "--model", "local", "exec", "hi"],
+                [modern_bash(), str(wrapper), "-m", "nemotron-3.5", "-p", "review"],
                 capture_output=True,
                 text=True,
-                cwd=str(REPO),
                 env={
                     **os.environ,
                     "HOME": str(home),
-                    "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
-                    "CODEX_REAL_BIN": str(real_codex),
+                    "PATH": f"{bindir}:{os.environ['PATH']}",
+                    "LLAMA_CPP_HOST": "127.0.0.9",
+                    "LLAMA_CPP_PORT": "9090",
+                    "LLAMA_CPP_API_KEY": "fixture-local-key",
+                    "CURSOR_LOCAL_AGENT_BASE_URL": "https://evil.example/v1",
+                    "CURSOR_LOCAL_AGENT_API_KEY": "evil-key",
+                    "AGENT_BAND_MODEL_OVERRIDE": "other-model",
                 },
             )
 
-        assert result.returncode == 0
-        assert f'model_catalog_json="{catalog}"' in result.stdout
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == [
+            "base=http://127.0.0.9:9090/v1",
+            "key=fixture-local-key",
+            "band-model=nemotron-3.5",
+            "args=--model nemotron-3.5 -p review",
+        ]
+
+    def test_SHOULD_enter_the_shared_router_lifecycle_from_every_harness(self):
+        for harness in ("claude", "codex", "cursor", "opencode"):
+            with self.subTest(harness=harness):
+                wrapper = REPO / f"home/exact_bin/executable_,{harness}-llama-cpp"
+                self.assertIn("exec ,llama-cpp run --", wrapper.read_text())
+
+    def test_SHOULD_offer_nemotron_from_every_llama_cpp_harness_completion(self):
+        for harness in ("claude", "codex", "cursor", "opencode"):
+            with self.subTest(harness=harness):
+                completion = REPO / f"home/dot_config/fish/completions/readonly_,{harness}-llama-cpp.fish"
+                result = subprocess.run(
+                    [
+                        "fish",
+                        "--no-config",
+                        "-c",
+                        f"source {shlex.quote(str(completion))}; complete -C ',{harness}-llama-cpp --model ne'",
+                    ],
+                    capture_output=True,
+                    text=True,
+                )
+
+                assert result.returncode == 0, result.stderr
+                assert "nemotron-3.5\t" in result.stdout
+
+    def test_SHOULD_complete_llama_cpp_stop_and_force(self):
+        completion = REPO / "home/dot_config/fish/completions/readonly_,llama-cpp.fish"
+        subcommand = subprocess.run(
+            ["fish", "--no-config", "-c", f"source {shlex.quote(str(completion))}; complete -C ',llama-cpp st'"],
+            capture_output=True,
+            text=True,
+        )
+        force = subprocess.run(
+            [
+                "fish",
+                "--no-config",
+                "-c",
+                f"source {shlex.quote(str(completion))}; complete -C ',llama-cpp stop --f'",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert subcommand.returncode == 0, subcommand.stderr
+        assert "stop\tStop the lifecycle-owned router" in subcommand.stdout
+        assert force.returncode == 0, force.stderr
+        assert "--force\tInterrupt active consumers and stop the owned router" in force.stdout
 
 
 class TestCursorWrapper(unittest.TestCase):
@@ -3753,6 +3869,105 @@ class TestKbnStackCommand(unittest.TestCase):
         assert kbn_stack.start_mode(kbn_stack.parse_args([]), "%1") == "interactive-tmux"
         assert kbn_stack.start_mode(kbn_stack.parse_args([]), None) == "manual-command"
 
+    def test_status_state_uses_recorded_readiness_and_live_evidence(self):
+        kbn_stack = _load_kbn_stack_command()
+        cases = (
+            (True, True, (True, True), "ready"),
+            (True, False, (True, True), "ready"),
+            (False, True, (False, False), "starting"),
+            (False, True, (False, True), "starting"),
+            (True, True, (False, True), "degraded"),
+            (True, True, (True, False), "degraded"),
+            (False, False, (True, True), "degraded"),
+            (False, False, (False, False), "stale"),
+        )
+        for ready, process_alive, liveness, expected in cases:
+            with self.subTest(ready=ready, process_alive=process_alive, liveness=liveness):
+                entry = {"ready": ready}
+                assert kbn_stack.status_state(entry, process_alive, *liveness) == expected
+
+    def test_status_lists_registered_stacks_in_slot_order(self):
+        kbn_stack = _load_kbn_stack_command()
+        registry = {
+            "/wt/B": {
+                "slot": 2,
+                "backend": "serverless",
+                "branch": "feature/b",
+                "started_by": kbn_stack.STARTED_BY_AGENT,
+                "ready": False,
+            },
+            "/wt/A": {
+                "slot": 0,
+                "backend": "snapshot",
+                "branch": "main",
+                "started_by": kbn_stack.STARTED_BY_USER,
+                "ready": True,
+            },
+        }
+        with mock.patch.object(kbn_stack, "status_state", side_effect=["ready", "starting"]):
+            with mock.patch.object(kbn_stack, "slot_liveness", side_effect=[(True, True), (False, True)]):
+                with contextlib.redirect_stdout(io.StringIO()) as output:
+                    assert kbn_stack.run_status(registry) == 0
+
+        lines = output.getvalue().splitlines()
+        assert lines[0].split() == ["STATE", "SLOT", "BACKEND", "OWNER", "KIBANA", "ES", "BRANCH", "WORKTREE"]
+        assert lines[1].split() == ["ready", "0", "snapshot", "user", "up", "up", "main", "/wt/A"]
+        assert lines[2].split() == ["starting", "2", "serverless", "agent", "down", "up", "feature/b", "/wt/B"]
+
+    def test_status_does_not_require_a_kibana_worktree(self):
+        kbn_stack = _load_kbn_stack_command()
+        with mock.patch.object(kbn_stack, "load_registry", return_value={}) as load_registry:
+            with mock.patch.object(kbn_stack, "run_status", return_value=0) as run_status:
+                with mock.patch.object(
+                    kbn_stack, "resolve_worktree", side_effect=AssertionError("unexpected worktree lookup")
+                ):
+                    assert kbn_stack.main(["--status"]) == 0
+
+        load_registry.assert_called_once_with()
+        run_status.assert_called_once_with({})
+
+    def test_prune_removes_only_fully_stale_entries(self):
+        kbn_stack = _load_kbn_stack_command()
+        registry = {
+            "/ready": {"slot": 0, "backend": "snapshot", "ready": True},
+            "/starting": {"slot": 1, "backend": "snapshot", "ready": False, "started_by_pid": 1234},
+            "/degraded": {"slot": 2, "backend": "snapshot", "ready": True},
+            "/stale": {"slot": 3, "backend": "snapshot", "ready": True},
+        }
+        alive_slots = {0: (True, True), 1: (False, False), 2: (False, True), 3: (False, False)}
+        with mock.patch.object(kbn_stack, "pid_alive", side_effect=lambda pid: pid == 1234):
+            with _patched_ports(kbn_stack, alive_slots=alive_slots) as state:
+                with contextlib.redirect_stdout(io.StringIO()) as output:
+                    assert kbn_stack.run_prune(registry) == 0
+
+        assert set(registry) == {"/ready", "/starting", "/degraded"}
+        assert set(state["saved"][-1]) == {"/ready", "/starting", "/degraded"}
+        assert state["killed"] == []
+        assert "/stale" in output.getvalue()
+
+    def test_prune_does_not_require_a_kibana_worktree(self):
+        kbn_stack = _load_kbn_stack_command()
+        with mock.patch.object(kbn_stack, "load_registry", return_value={}) as load_registry:
+            with mock.patch.object(kbn_stack, "run_prune", return_value=0) as run_prune:
+                with mock.patch.object(
+                    kbn_stack, "resolve_worktree", side_effect=AssertionError("unexpected worktree lookup")
+                ):
+                    assert kbn_stack.main(["--prune"]) == 0
+
+        load_registry.assert_called_once_with()
+        run_prune.assert_called_once_with({})
+
+    def test_prune_may_ignore_the_exiting_launcher_pid(self):
+        kbn_stack = _load_kbn_stack_command()
+        registry = {"/stale": {"slot": 0, "started_by_pid": 1234}}
+        with mock.patch.object(kbn_stack, "pid_alive", side_effect=lambda pid: pid == 1234):
+            with _patched_ports(kbn_stack, alive_slots={0: (False, False)}) as state:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    assert kbn_stack.run_prune(registry, ignored_pid=1234) == 0
+
+        assert registry == {}
+        assert state["saved"][-1] == {}
+
     def test_when_trigger_precedes_detached_reader_should_detect_it(self):
         kbn_stack = _load_kbn_stack_command()
 
@@ -3801,8 +4016,41 @@ class TestKbnStackCommand(unittest.TestCase):
                             )
 
         ensure_trial.assert_called_once_with("http://localhost:9200")
-        run.assert_called_once_with(["tmux", "send-keys", "-t", "%2", "yarn start", "C-m"], check=False)
+        wrapped_command = shlex.join(
+            [sys.executable, str(Path(kbn_stack.__file__).resolve()), "--run-with-prune", "yarn", "start"]
+        )
+        run.assert_called_once_with(
+            ["tmux", "send-keys", "-t", "%2", wrapped_command, "C-m"],
+            check=False,
+        )
         mark_ready.assert_called_once_with("/worktree", True)
+
+    def test_interrupted_kibana_wrapper_invokes_quiet_pruning(self):
+        kbn_stack = _load_kbn_stack_command()
+        registry = {"/worktree": {"slot": 0}}
+        with mock.patch.object(kbn_stack.subprocess, "run", side_effect=KeyboardInterrupt):
+            with mock.patch.object(kbn_stack, "load_registry", return_value=registry):
+                with mock.patch.object(kbn_stack, "run_prune") as run_prune:
+                    assert kbn_stack.run_with_prune(["yarn", "start"]) == 130
+
+        run_prune.assert_called_once_with(registry, quiet=True)
+
+    def test_interrupted_foreground_es_invokes_quiet_pruning(self):
+        kbn_stack = _load_kbn_stack_command()
+        proc = mock.Mock()
+        proc.stdout = mock.MagicMock()
+        proc.stdout.__iter__.side_effect = KeyboardInterrupt
+        registry = {"/worktree": {"slot": 0}}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            logfile = Path(tmp) / "es.log"
+            with mock.patch.object(kbn_stack.subprocess, "Popen", return_value=proc):
+                with mock.patch.object(kbn_stack, "load_registry", return_value=registry):
+                    with mock.patch.object(kbn_stack, "run_prune") as run_prune:
+                        with self.assertRaises(KeyboardInterrupt):
+                            kbn_stack.run_foreground_es(["yarn", "es"], logfile)
+
+        run_prune.assert_called_once_with(registry, ignored_pid=os.getpid(), quiet=True)
 
     def test_pid_alive_rejects_non_pid_values(self):
         kbn_stack = _load_kbn_stack_command()

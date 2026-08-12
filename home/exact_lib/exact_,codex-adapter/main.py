@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launch Claude Code or Copilot CLI through the Codex subscription adapter."""
+"""Launch Claude Code, Copilot CLI, or Cursor through the Codex subscription adapter."""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ CLAUDE_EXTENDED_CONTEXT_SUFFIX = "[1m]"
 COPILOT_GPT5_MAX_OUTPUT_TOKENS = 128_000
 COPILOT_GPT5_MODEL = re.compile(r"^gpt-5\.[456](?:$|-)")
 EFFORTS = {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
+CURSOR_PINNED_OPTIONS = {"--base-url", "--local-agent-api-key", "--authless", "--model", "-m"}
 
 
 @dataclass(frozen=True)
@@ -93,6 +94,14 @@ def parse_args(argv: list[str]) -> LaunchOptions:
     return LaunchOptions(model_id, effort, forwarded, show_help)
 
 
+def validate_cursor_forwarded(argv: list[str]) -> None:
+    for argument in argv:
+        if argument in CURSOR_PINNED_OPTIONS or any(
+            argument.startswith(f"{option}=") for option in CURSOR_PINNED_OPTIONS
+        ):
+            raise ValueError(f"{argument} cannot override the Cursor loopback adapter")
+
+
 def default_config_path() -> Path:
     codex_home = os.environ.get("CODEX_HOME")
     return (Path(codex_home).expanduser() if codex_home else Path.home() / ".codex") / "config.toml"
@@ -160,6 +169,22 @@ def harness_binary(harness: str) -> str:
     raise RuntimeError(f"{harness} CLI is not installed")
 
 
+def cursor_binary() -> str:
+    cursor = shutil.which("cursor-agent")
+    if cursor is None:
+        raise RuntimeError("cursor-agent CLI is not installed")
+    version = subprocess.run([cursor, "--version"], check=True, capture_output=True, text=True).stdout.strip()
+    binary = Path.home() / ".local/share/cursor-agent-local/versions" / version / "cursor-agent-local"
+    if not binary.is_file() or not os.access(binary, os.X_OK):
+        installer = Path.home() / "lib/,cursor-agent-local/install.sh"
+        if not installer.is_file():
+            raise RuntimeError(f"Cursor local-agent installer was not found at {installer}")
+        subprocess.run(["bash", str(installer), version], check=True)
+    if binary.is_file() and os.access(binary, os.X_OK):
+        return str(binary)
+    raise RuntimeError("Cursor local-agent installation did not provide an executable")
+
+
 def codex_binary() -> str:
     binary = shutil.which("codex")
     if binary:
@@ -205,6 +230,18 @@ def child_command(
                 env["COPILOT_PROVIDER_MAX_OUTPUT_TOKENS"] = str(COPILOT_GPT5_MAX_OUTPUT_TOKENS)
             env["COPILOT_PROVIDER_MAX_PROMPT_TOKENS"] = str(max_prompt_tokens)
         return [binary, *forwarded], env
+    if harness == "cursor":
+        for key in (
+            "CURSOR_LOCAL_AGENT_BASE_URL",
+            "CURSOR_LOCAL_AGENT_API_KEY",
+            "CURSOR_API_ENDPOINT",
+            "CURSOR_API_KEY",
+            "ANTHROPIC_BASE_URL",
+            "ANTHROPIC_AUTH_TOKEN",
+        ):
+            env.pop(key, None)
+        env.update({"CURSOR_LOCAL_AGENT_BASE_URL": f"{base_url}/v1", "CURSOR_LOCAL_AGENT_API_KEY": token})
+        return [binary, "--model", model, *forwarded], env
     for key in (
         "CLAUDE_CODE_USE_VERTEX",
         "CLAUDE_CODE_USE_BEDROCK",
@@ -256,13 +293,15 @@ def launch(harness: str, argv: list[str]) -> int:
         if options.help:
             print(usage(harness))
             return 0
+        if harness == "cursor":
+            validate_cursor_forwarded(options.forwarded)
         model = options.model_id or resolve_default_model()
         context_window = resolve_model_context_window(model)
-        binary = harness_binary(harness)
+        binary = cursor_binary() if harness == "cursor" else harness_binary(harness)
         refresh_binary = codex_binary()
         credentials = CodexAuth(codex_binary=refresh_binary)
         credentials.get()
-    except (OSError, RuntimeError, ValueError) as error:
+    except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 2
 
@@ -297,8 +336,8 @@ def launch(harness: str, argv: list[str]) -> int:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) < 1 or argv[0] not in {"claude", "copilot"}:
-        print("Usage: main.py {claude|copilot} [arguments]", file=sys.stderr)
+    if len(argv) < 1 or argv[0] not in {"claude", "copilot", "cursor"}:
+        print("Usage: main.py {claude|copilot|cursor} [arguments]", file=sys.stderr)
         return 2
     return launch(argv[0], argv[1:])
 

@@ -429,6 +429,9 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "Content approval is not commit authorization",
             "`git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, or `git merge <remote>/<branch>` automatically before pushing",
             "If push is rejected for divergence, non-fast-forward, lease failure, or diverged history, stop and ask how to proceed",
+            "Never print configured remote URLs verbatim",
+            "Resolve repository and PR identity with platform metadata (`gh repo view`, `gh pr view`) and list remote names with `git remote`",
+            "Redaction is not permission to inspect credential-bearing configuration",
         )
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
@@ -1535,7 +1538,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             REPO / "home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_summarize-commit.lua"
         ).read_text()
         self.assertIn(f'local OPENROUTER_DEFAULT_MODEL = "{default}"', neovim)
-        self.assertIn('reasoning = { effort = "none" }', neovim)
+        self.assertIn('reasoning = { effort = "max" }', neovim)
         # The summarizer talks to OpenRouter directly, so it must carry DeepSeek's FP8-or-higher
         # allowlist itself; a bare model id would let unknown-quantization endpoints serve.
         self.assertIn(

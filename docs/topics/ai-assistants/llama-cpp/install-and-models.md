@@ -26,10 +26,11 @@ brew "hf"
 
 ### Model manifest
 
-The curated GGUF model list is a chezmoi-templated manifest: [`home/readonly_dot_default-llama-cpp-models.tmpl`](../../../../home/readonly_dot_default-llama-cpp-models.tmpl). It keeps two checkpoints:
+The curated GGUF model list is a chezmoi-templated manifest: [`home/readonly_dot_default-llama-cpp-models.tmpl`](../../../../home/readonly_dot_default-llama-cpp-models.tmpl). It keeps three checkpoints:
 
 - **Primary** (router id `local`) — `unsloth/Qwen3.6-35B-A3B-GGUF` with `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf` (~22.4 GB). The Unsloth dynamic (UD) quant is higher fidelity than stock `Q4_K_M` at the same size class, and the full 262144-token context still co-fits in 36 GB unified memory alongside the q8_0 KV cache.
 - **Abliterated sibling** (router id `local-max`) — `mradermacher/Qwen3.6-35B-A3B-abliterated-GGUF` with `Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf` (~21.2 GB). A refusal-removed abliteration of the same base model, for prompts the stock model declines. Both GGUFs stay on disk; the router loads one at a time on demand.
+- **Nemotron 3.5 Lightning** (router id `nemotron-3.5`) — `ggml-org/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF` with `NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_K_M.gguf` (~25.4 GB). The Q4_K_M conversion preserves Metal acceleration; llama.cpp's Metal backend rejects NVFP4 matrix operations.
 
 ### Sync hook (opt-in)
 

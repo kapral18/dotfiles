@@ -7,6 +7,7 @@ import io
 import json
 import os
 import queue
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -160,10 +161,16 @@ class TestLauncherOptions(unittest.TestCase):
         inherited = {
             "PATH": "/usr/bin",
             "ANTHROPIC_API_KEY": "real-anthropic-key",
+            "ANTHROPIC_BASE_URL": "https://outside.example",
+            "ANTHROPIC_AUTH_TOKEN": "outside-token",
             "CLAUDE_CODE_USE_VERTEX": "1",
             "COPILOT_PROVIDER_API_KEY": "real-copilot-key",
             "COPILOT_PROVIDER_BEARER_TOKEN": "real-copilot-bearer",
             "OPENAI_API_KEY": "real-openai-key",
+            "CURSOR_LOCAL_AGENT_BASE_URL": "https://outside.example",
+            "CURSOR_LOCAL_AGENT_API_KEY": "outside-key",
+            "CURSOR_API_ENDPOINT": "https://outside.example",
+            "CURSOR_API_KEY": "outside-key",
         }
         with mock.patch.dict(os.environ, inherited, clear=True):
             claude_command, claude_env = main.child_command(
@@ -178,6 +185,15 @@ class TestLauncherOptions(unittest.TestCase):
             copilot_command, copilot_env = main.child_command(
                 "copilot",
                 "/usr/bin/copilot",
+                "http://127.0.0.1:3210",
+                "local-token",
+                "gpt-selected",
+                ["-p", "hello"],
+                1_000_000,
+            )
+            cursor_command, cursor_env = main.child_command(
+                "cursor",
+                "/usr/bin/cursor-agent-local",
                 "http://127.0.0.1:3210",
                 "local-token",
                 "gpt-selected",
@@ -205,6 +221,20 @@ class TestLauncherOptions(unittest.TestCase):
         self.assertEqual(copilot_env["COPILOT_PROVIDER_MAX_PROMPT_TOKENS"], "1000000")
         self.assertNotIn("COPILOT_PROVIDER_API_KEY", copilot_env)
         self.assertNotIn("OPENAI_API_KEY", copilot_env)
+
+        self.assertEqual(cursor_command, ["/usr/bin/cursor-agent-local", "--model", "gpt-selected", "-p", "hello"])
+        self.assertEqual(cursor_env["CURSOR_LOCAL_AGENT_BASE_URL"], "http://127.0.0.1:3210/v1")
+        self.assertEqual(cursor_env["CURSOR_LOCAL_AGENT_API_KEY"], "local-token")
+        self.assertNotIn("ANTHROPIC_BASE_URL", cursor_env)
+        self.assertNotIn("ANTHROPIC_AUTH_TOKEN", cursor_env)
+        self.assertNotIn("CURSOR_API_ENDPOINT", cursor_env)
+        self.assertNotIn("CURSOR_API_KEY", cursor_env)
+
+    def test_SHOULD_reject_cursor_flags_that_can_bypass_loopback(self) -> None:
+        for option in ("--base-url", "--base-url=https://outside.example", "--model", "-m"):
+            with self.subTest(option=option):
+                with self.assertRaises(ValueError):
+                    main.validate_cursor_forwarded([option])
 
     def test_SHOULD_split_gpt5_context_between_copilot_prompt_and_output_limits(self) -> None:
         with mock.patch.dict(os.environ, {"PATH": "/usr/bin"}, clear=True):
@@ -315,6 +345,19 @@ class TestCodexAuthentication(unittest.TestCase):
 
         self.assertEqual(credentials.access_token, "secret-access")
         self.assertEqual(credentials.account_id, "account-1")
+
+    def test_SHOULD_load_device_authorization_from_the_codex_keychain_record(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "auth.json"
+            keyring_payload = json.dumps(
+                {"auth_mode": "chatgpt", "tokens": {"access_token": "device-access", "account_id": "account-2"}}
+            )
+            completed = subprocess.CompletedProcess([], 0, keyring_payload, "")
+            with mock.patch("auth.subprocess.run", return_value=completed) as run:
+                credentials = auth.load_credentials(path)
+
+        self.assertEqual(credentials, auth.Credentials("device-access", "account-2"))
+        self.assertEqual(run.call_args.args[0][:5], ["security", "find-generic-password", "-s", "Codex Auth", "-a"])
 
     def test_SHOULD_refresh_via_current_app_server_account_read_method(self) -> None:
         responses: queue.Queue[str | None] = queue.Queue()
@@ -829,6 +872,20 @@ class TestLoopbackServer(unittest.TestCase):
         sent = self.fake_client.open.call_args.args[0]
         self.assertEqual(sent["model"], "gpt-test")
         self.assertEqual(sent["reasoning"]["effort"], "high")
+        self.assertTrue(sent["stream"])
+
+    def test_SHOULD_aggregate_non_streaming_cursor_chat_request(self) -> None:
+        self.fake_client.open.return_value = sse_response(*completed_text_events("cursor"))
+
+        with self.request(
+            "/v1/chat/completions",
+            {"model": "harness-model", "messages": [{"role": "user", "content": "hello"}], "stream": False},
+        ) as response:
+            payload = json.load(response)
+
+        self.assertEqual(payload["choices"][0]["message"]["content"], "cursor")
+        sent = self.fake_client.open.call_args.args[0]
+        self.assertEqual(sent["input"][0]["role"], "user")
         self.assertTrue(sent["stream"])
 
     def test_SHOULD_silently_ignore_broken_pipe_during_stream_and_error_handling(self) -> None:

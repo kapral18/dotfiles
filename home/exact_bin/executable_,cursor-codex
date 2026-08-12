@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Description: Launch Cursor through the current Codex ChatGPT subscription.
+set -euo pipefail
+adapter="$HOME/lib/,codex-adapter/main.py"
+[[ -f "$adapter" ]] || {
+  echo "Error: Codex adapter not found at $adapter." >&2
+  exit 127
+}
+exec python3 "$adapter" cursor "$@"

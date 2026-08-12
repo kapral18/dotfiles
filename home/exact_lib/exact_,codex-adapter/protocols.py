@@ -389,6 +389,266 @@ def anthropic_to_responses(
     return payload
 
 
+def chat_to_responses(
+    body: dict[str, Any],
+    *,
+    model_override: str | None,
+    effort_override: str | None,
+    store: OpaqueReasoningStore,
+) -> dict[str, Any]:
+    """Translate OpenAI Chat Completions requests through the Messages converter."""
+
+    raw_messages = body.get("messages")
+    if not isinstance(raw_messages, list):
+        raise ValueError("Chat Completions messages must be an array")
+    system: list[dict[str, str]] = []
+    messages: list[dict[str, Any]] = []
+    for message in raw_messages:
+        if not isinstance(message, dict):
+            raise ValueError("Chat Completions messages must be objects")
+        role = message.get("role")
+        content = message.get("content")
+        text = _text_blocks(content)
+        if role in {"system", "developer"}:
+            if text:
+                system.append({"type": "text", "text": text})
+            continue
+        if role == "tool":
+            call_id = message.get("tool_call_id")
+            if not isinstance(call_id, str) or not call_id:
+                raise ValueError("Chat Completions tool message has no tool_call_id")
+            messages.append(
+                {"role": "user", "content": [{"type": "tool_result", "tool_use_id": call_id, "content": text}]}
+            )
+            continue
+        if role not in {"user", "assistant"}:
+            raise ValueError(f"unsupported Chat Completions message role: {role!r}")
+        blocks: list[dict[str, Any]] = []
+        if text:
+            blocks.append({"type": "text", "text": text})
+        if role == "assistant":
+            calls = message.get("tool_calls", [])
+            if not isinstance(calls, list):
+                raise ValueError("Chat Completions tool_calls must be an array")
+            for call in calls:
+                function = call.get("function") if isinstance(call, dict) else None
+                call_id = call.get("id") if isinstance(call, dict) else None
+                name = function.get("name") if isinstance(function, dict) else None
+                arguments = function.get("arguments", "{}") if isinstance(function, dict) else "{}"
+                if not isinstance(call_id, str) or not isinstance(name, str) or not isinstance(arguments, str):
+                    raise ValueError("Chat Completions tool call is incomplete")
+                try:
+                    parsed = json.loads(arguments or "{}")
+                except json.JSONDecodeError as error:
+                    raise ValueError("Chat Completions tool arguments are not valid JSON") from error
+                if not isinstance(parsed, dict):
+                    raise ValueError("Chat Completions tool arguments must be an object")
+                blocks.append({"type": "tool_use", "id": call_id, "name": name, "input": parsed})
+        messages.append({"role": role, "content": blocks})
+    tools = []
+    for tool in body.get("tools", []):
+        function = tool.get("function") if isinstance(tool, dict) else None
+        if not isinstance(function, dict) or tool.get("type") != "function":
+            raise ValueError("Chat Completions tools must be function definitions")
+        name = function.get("name")
+        if not isinstance(name, str):
+            raise ValueError("Chat Completions tool has no name")
+        tools.append(
+            {
+                "name": name,
+                "description": function.get("description", ""),
+                "input_schema": function.get("parameters", {}),
+            }
+        )
+    choice = body.get("tool_choice")
+    anthropic_choice: dict[str, Any] | None = None
+    if choice == "required":
+        anthropic_choice = {"type": "any"}
+    elif choice == "none":
+        anthropic_choice = {"type": "none"}
+    elif isinstance(choice, dict):
+        function = choice.get("function")
+        name = function.get("name") if isinstance(function, dict) else None
+        if not isinstance(name, str):
+            raise ValueError("Chat Completions tool_choice function has no name")
+        anthropic_choice = {"type": "tool", "name": name}
+    translated: dict[str, Any] = {
+        "model": body.get("model"),
+        "system": system,
+        "messages": messages,
+        "tools": tools,
+        "max_tokens": body.get("max_completion_tokens", body.get("max_tokens", 32768)),
+        "stream": body.get("stream") is True,
+    }
+    if anthropic_choice is not None:
+        translated["tool_choice"] = anthropic_choice
+    effort = body.get("reasoning_effort")
+    if isinstance(effort, str):
+        translated["output_config"] = {"effort": effort}
+    return anthropic_to_responses(
+        translated, model_override=model_override, effort_override=effort_override, store=store
+    )
+
+
+def _chat_sse(payload: dict[str, Any]) -> bytes:
+    return f"data: {json.dumps(payload, separators=(',', ':'))}\n\n".encode()
+
+
+def responses_to_chat_events(
+    events: Iterable[dict[str, Any]], model: str, store: OpaqueReasoningStore
+) -> Iterator[bytes]:
+    """Render Responses SSE objects as Chat Completions chunks."""
+
+    response_id = "chatcmpl_codex"
+    tool_indices: dict[int, int] = {}
+    saw_tool = False
+    for event in responses_to_anthropic_events(events, model, store):
+        kind = event["type"]
+        if kind == "message_start":
+            message = event.get("message", {})
+            if isinstance(message, dict) and isinstance(message.get("id"), str):
+                response_id = message["id"].removeprefix("msg_")
+            yield _chat_sse(
+                {
+                    "id": response_id,
+                    "object": "chat.completion.chunk",
+                    "model": model,
+                    "choices": [{"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}],
+                }
+            )
+        elif kind == "content_block_delta":
+            delta = event.get("delta", {})
+            index = event.get("index")
+            if not isinstance(delta, dict) or not isinstance(index, int):
+                continue
+            if delta.get("type") == "text_delta":
+                value = delta.get("text", "")
+                yield _chat_sse(
+                    {
+                        "id": response_id,
+                        "object": "chat.completion.chunk",
+                        "model": model,
+                        "choices": [{"index": 0, "delta": {"content": value}, "finish_reason": None}],
+                    }
+                )
+            elif delta.get("type") == "input_json_delta" and index in tool_indices:
+                yield _chat_sse(
+                    {
+                        "id": response_id,
+                        "object": "chat.completion.chunk",
+                        "model": model,
+                        "choices": [
+                            {
+                                "index": 0,
+                                "delta": {
+                                    "tool_calls": [
+                                        {
+                                            "index": tool_indices[index],
+                                            "function": {"arguments": delta.get("partial_json", "")},
+                                        }
+                                    ]
+                                },
+                                "finish_reason": None,
+                            }
+                        ],
+                    }
+                )
+        elif kind == "content_block_start":
+            block = event.get("content_block", {})
+            index = event.get("index")
+            if isinstance(block, dict) and isinstance(index, int) and block.get("type") == "tool_use":
+                position = len(tool_indices)
+                tool_indices[index] = position
+                saw_tool = True
+                yield _chat_sse(
+                    {
+                        "id": response_id,
+                        "object": "chat.completion.chunk",
+                        "model": model,
+                        "choices": [
+                            {
+                                "index": 0,
+                                "delta": {
+                                    "tool_calls": [
+                                        {
+                                            "index": position,
+                                            "id": block.get("id"),
+                                            "type": "function",
+                                            "function": {"name": block.get("name"), "arguments": ""},
+                                        }
+                                    ]
+                                },
+                                "finish_reason": None,
+                            }
+                        ],
+                    }
+                )
+        elif kind == "message_delta":
+            usage = event.get("usage", {})
+            yield _chat_sse(
+                {
+                    "id": response_id,
+                    "object": "chat.completion.chunk",
+                    "model": model,
+                    "choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls" if saw_tool else "stop"}],
+                    "usage": {
+                        "prompt_tokens": usage.get("input_tokens", 0),
+                        "completion_tokens": usage.get("output_tokens", 0),
+                        "total_tokens": usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
+                    },
+                }
+            )
+        elif kind == "message_stop":
+            yield b"data: [DONE]\n\n"
+
+
+def collect_chat_completion(
+    events: Iterable[dict[str, Any]], model: str, store: OpaqueReasoningStore
+) -> dict[str, Any]:
+    chunks = responses_to_chat_events(events, model, store)
+    text = ""
+    tools: dict[int, dict[str, Any]] = {}
+    finish = "stop"
+    usage: dict[str, int] = {}
+    response_id = "chatcmpl_codex"
+    for raw in chunks:
+        if raw == b"data: [DONE]\n\n":
+            continue
+        payload = json.loads(raw.decode().removeprefix("data: "))
+        response_id = payload["id"]
+        choice = payload["choices"][0]
+        delta = choice["delta"]
+        text += delta.get("content", "") or ""
+        for call in delta.get("tool_calls", []):
+            index = call["index"]
+            current = tools.setdefault(
+                index, {"id": call.get("id"), "type": "function", "function": {"name": None, "arguments": ""}}
+            )
+            function = call.get("function", {})
+            current["function"]["name"] = function.get("name", current["function"]["name"])
+            current["function"]["arguments"] += function.get("arguments", "")
+        if choice.get("finish_reason") is not None:
+            finish = choice["finish_reason"]
+        usage = payload.get("usage", usage)
+    return {
+        "id": response_id,
+        "object": "chat.completion",
+        "model": model,
+        "choices": [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": text or None,
+                    **({"tool_calls": list(tools.values())} if tools else {}),
+                },
+                "finish_reason": finish,
+            }
+        ],
+        "usage": usage,
+    }
+
+
 def _message_start(response: dict[str, Any], model: str) -> dict[str, Any]:
     response_id = response.get("id")
     usage = response.get("usage")

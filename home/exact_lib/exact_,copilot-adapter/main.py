@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launch Claude Code or Codex through the current GitHub Copilot subscription."""
+"""Launch Claude Code, Codex, or Cursor through the current GitHub Copilot subscription."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ import signal
 import subprocess
 import sys
 from dataclasses import dataclass, replace
+from pathlib import Path
 
 from copilot_auth import CLAUDE_EXTENDED_CONTEXT_SUFFIX, CopilotError, ModelSpec, TokenProvider, fetch_models
 from copilot_server import AdapterContext, start_server
@@ -19,12 +20,15 @@ from copilot_wire import SUPPORTED_ENDPOINTS
 DEFAULT_MODELS = {
     "claude": "claude-sonnet-5",
     "codex": "gpt-5.3-codex",
+    "cursor": "gpt-5.3-codex",
 }
 DEFAULT_EFFORTS = {
     "claude": None,
     "codex": "medium",
+    "cursor": "medium",
 }
 CLAUDE_DEFAULT_CONTEXT_WINDOW = 200_000
+CURSOR_PINNED_OPTIONS = {"--base-url", "--local-agent-api-key", "--authless", "--model", "-m"}
 
 
 @dataclass(frozen=True)
@@ -124,11 +128,55 @@ def resolve_model(harness: str, options: LaunchOptions, models: dict[str, ModelS
     return replace(model, context_window=model.context_windows[options.context_tier])
 
 
+def completion_rows(models: dict[str, ModelSpec]) -> list[str]:
+    """Render the live catalog for shell completion without making it a launcher contract."""
+    rows = []
+    for model in sorted(models.values(), key=lambda item: item.model_id):
+        if not model.endpoints.isdisjoint(SUPPORTED_ENDPOINTS):
+            rows.append("\t".join((model.model_id, ",".join(sorted(model.efforts)), ",".join(model.context_windows))))
+    return rows
+
+
+def complete(argv: list[str]) -> int:
+    if argv != ["models"]:
+        print("Usage: main.py __complete models", file=sys.stderr)
+        return 2
+    try:
+        for row in completion_rows(fetch_models(TokenProvider())):
+            print(row)
+    except CopilotError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 2
+    return 0
+
+
 def harness_binary(harness: str) -> str:
+    if harness == "cursor":
+        cursor = shutil.which("cursor-agent")
+        if cursor is None:
+            raise RuntimeError("cursor-agent CLI is not installed")
+        version = subprocess.run([cursor, "--version"], check=True, capture_output=True, text=True).stdout.strip()
+        binary = Path.home() / ".local/share/cursor-agent-local/versions" / version / "cursor-agent-local"
+        if not binary.is_file() or not os.access(binary, os.X_OK):
+            installer = Path.home() / "lib/,cursor-agent-local/install.sh"
+            if not installer.is_file():
+                raise RuntimeError(f"Cursor local-agent installer was not found at {installer}")
+            subprocess.run(["bash", str(installer), version], check=True)
+        if binary.is_file() and os.access(binary, os.X_OK):
+            return str(binary)
+        raise RuntimeError("Cursor local-agent installation did not provide an executable")
     binary = shutil.which(harness)
     if binary is None:
         raise RuntimeError(f"{harness} CLI is not installed")
     return binary
+
+
+def validate_cursor_forwarded(argv: list[str]) -> None:
+    for argument in argv:
+        if argument in CURSOR_PINNED_OPTIONS or any(
+            argument.startswith(f"{option}=") for option in CURSOR_PINNED_OPTIONS
+        ):
+            raise ValueError(f"{argument} cannot override the Cursor loopback adapter")
 
 
 def claude_frontend_model(model: ModelSpec) -> str:
@@ -176,6 +224,18 @@ def child_command(
             command.extend(["--effort", effort])
         command.extend(forwarded)
         return command, env
+    if harness == "cursor":
+        for key in (
+            "CURSOR_LOCAL_AGENT_BASE_URL",
+            "CURSOR_LOCAL_AGENT_API_KEY",
+            "CURSOR_API_ENDPOINT",
+            "CURSOR_API_KEY",
+            "ANTHROPIC_BASE_URL",
+            "ANTHROPIC_AUTH_TOKEN",
+        ):
+            env.pop(key, None)
+        env.update({"CURSOR_LOCAL_AGENT_BASE_URL": f"{base_url}/v1", "CURSOR_LOCAL_AGENT_API_KEY": loopback_token})
+        return [binary, "--model", model.model_id, *forwarded], env
     env["COPILOT_ADAPTER_TOKEN"] = loopback_token
     provider = "copilot_subscription"
     command = [
@@ -226,6 +286,8 @@ def launch(harness: str, argv: list[str]) -> int:
         if options.help:
             print(usage(harness))
             return 0
+        if harness == "cursor":
+            validate_cursor_forwarded(options.forwarded)
         tokens = TokenProvider()
         models = fetch_models(tokens)
         if options.effort is None:
@@ -236,7 +298,7 @@ def launch(harness: str, argv: list[str]) -> int:
                 options = replace(options, effort=default_effort)
         model = resolve_model(harness, options, models)
         binary = harness_binary(harness)
-    except (CopilotError, OSError, RuntimeError, ValueError) as error:
+    except (CopilotError, OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 2
     loopback_token = secrets.token_urlsafe(32)
@@ -266,8 +328,10 @@ def launch(harness: str, argv: list[str]) -> int:
 
 
 def main(argv: list[str]) -> int:
+    if argv and argv[0] == "__complete":
+        return complete(argv[1:])
     if len(argv) < 1 or argv[0] not in DEFAULT_MODELS:
-        print("Usage: main.py {claude|codex} [arguments]", file=sys.stderr)
+        print("Usage: main.py {claude|codex|cursor} [arguments]", file=sys.stderr)
         return 2
     return launch(argv[0], argv[1:])
 

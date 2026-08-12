@@ -277,8 +277,8 @@ class TestAiLauncher(unittest.TestCase):
 
     def test_when_pi_names_a_non_openrouter_model_the_pin_does_not_claim_it(self) -> None:
         # The pin is the default route, not a claim over every provider-less launch: pi still ships
-        # the llama-cpp `local`/`local-max` models, so naming one must not be read as OpenRouter.
-        for model in ("local", "local-max"):
+        # the llama-cpp local models, so naming one must not be read as OpenRouter.
+        for model in ("local", "local-max", "nemotron-3.5"):
             with self.subTest(model=model):
                 plan = self.dry_plan("pi", "--model", model)
 

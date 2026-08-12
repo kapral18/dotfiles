@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Description: Launch Cursor through the current GitHub Copilot subscription.
+set -euo pipefail
+adapter="$HOME/lib/,copilot-adapter/main.py"
+[[ -f "$adapter" ]] || {
+  echo "Error: Copilot adapter not found at $adapter." >&2
+  exit 127
+}
+exec python3 "$adapter" cursor "$@"

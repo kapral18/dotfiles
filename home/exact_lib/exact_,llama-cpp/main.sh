@@ -7,6 +7,7 @@ LLAMA_CPP_HOST="${LLAMA_CPP_HOST:-127.0.0.1}"
 LLAMA_CPP_PORT="${LLAMA_CPP_PORT:-8080}"
 LLAMA_CPP_API_KEY="${LLAMA_CPP_API_KEY:-}"
 LLAMA_CPP_MODELS_PRESET="${LLAMA_CPP_MODELS_PRESET:-$HOME/.config/llama.cpp/models.ini}"
+LLAMA_CPP_GRACE_SECONDS="${LLAMA_CPP_GRACE_SECONDS:-600}"
 
 base_url="http://${LLAMA_CPP_HOST}:${LLAMA_CPP_PORT}"
 
@@ -19,11 +20,13 @@ show_usage() {
   cat << 'EOF'
 Usage: ,llama-cpp <subcommand> [args...]
 
-Control a llama.cpp router server using its HTTP API. The server itself is
-started with `,llama-cpp serve`; model load/unload calls require that server.
+Control a llama.cpp router server using its HTTP API. `run` joins a reachable
+router or starts a loopback router and schedules its shutdown after the last consumer exits.
 
 Subcommands:
   serve [args...]       Start llama-server in router mode with the local preset.
+  run -- <command>      Run a command with a shared router lifecycle lease.
+  stop [-f|--force]     Stop the lifecycle-owned router; --force interrupts active consumers.
   status                Show available models and router load state.
   load <model-id>...    Load one or more models.
   unload [id|--all]     Unload model(s). With --all, unload everything loaded.
@@ -34,14 +37,37 @@ Environment:
   LLAMA_CPP_PORT           Default: 8080
   LLAMA_CPP_API_KEY        Sent as Authorization: Bearer <key> when set.
   LLAMA_CPP_MODELS_PRESET  Default: ~/.config/llama.cpp/models.ini
+  LLAMA_CPP_LIFECYCLE_DIR  Default: ~/.local/state/llama-cpp/lifecycle
+  LLAMA_CPP_GRACE_SECONDS  Default: 600. Use 0 for immediate shutdown.
 
 Examples:
   ,llama-cpp serve
+  ,llama-cpp run -- command args...
   ,llama-cpp status
   ,llama-cpp load local
   ,llama-cpp load local-max
   ,llama-cpp unload --all
 EOF
+}
+
+cmd_run() {
+  [[ $# -gt 0 ]] || {
+    echo "Error: ,llama-cpp run requires a command after --" >&2
+    exit 1
+  }
+  [[ "${1:-}" != "--" ]] || shift
+  [[ $# -gt 0 ]] || {
+    echo "Error: ,llama-cpp run requires a command after --" >&2
+    exit 1
+  }
+
+  export LLAMA_CPP_HOST LLAMA_CPP_PORT LLAMA_CPP_API_KEY LLAMA_CPP_MODELS_PRESET LLAMA_CPP_GRACE_SECONDS
+  exec python3 "$HOME/lib/,llama-cpp/lifecycle.py" run -- "$@"
+}
+
+cmd_stop() {
+  export LLAMA_CPP_HOST LLAMA_CPP_PORT LLAMA_CPP_API_KEY LLAMA_CPP_MODELS_PRESET LLAMA_CPP_GRACE_SECONDS
+  exec python3 "$HOME/lib/,llama-cpp/lifecycle.py" stop "$@"
 }
 
 require_jq() {
@@ -213,6 +239,8 @@ subcommand="${1:-help}"
 
 case "$subcommand" in
   serve) cmd_serve "$@" ;;
+  run) cmd_run "$@" ;;
+  stop) cmd_stop "$@" ;;
   status) cmd_status ;;
   load) cmd_load "$@" ;;
   unload) cmd_unload "$@" ;;

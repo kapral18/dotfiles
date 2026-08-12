@@ -30,6 +30,8 @@ Usage:
                [-E key=value ...] [-K key=value ...]
     ,kbn-stack --stop        # tear down this worktree's registered stack
     ,kbn-stack --stop-all    # tear down registered detached/serverless stacks
+    ,kbn-stack --status      # list registered stacks with live-derived state
+    ,kbn-stack --prune       # remove fully stale registry entries
 
 ``-E key=value`` passes an extra Elasticsearch setting through to the snapshot
 backend; ``-K key=value`` passes an extra Kibana CLI setting through to
@@ -145,6 +147,23 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
             "stacks without recorded processes are left in the registry."
         ),
     )
+    parser.add_argument(
+        "--status",
+        action="store_true",
+        help=(
+            "List every registered stack with live process and port state. "
+            "Works outside a Kibana worktree and does not change the registry."
+        ),
+    )
+    parser.add_argument(
+        "--prune",
+        action="store_true",
+        help=(
+            "Remove registry entries with no live recorded process and no "
+            "Kibana or Elasticsearch port listener. Does not stop processes."
+        ),
+    )
+    parser.add_argument("--run-with-prune", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
     parser.add_argument(
         "-E",
         dest="es_flags",
@@ -404,7 +423,7 @@ def listener_identity_ok(port: int, owner_pid: int) -> tuple[bool, list[int]]:
     return False, listeners
 
 
-def entry_has_live_processes(entry: dict) -> bool:
+def entry_has_live_processes(entry: dict, ignored_pid: int | None = None) -> bool:
     """True when any process recorded for this stack is still running.
 
     ``started_by_pid`` is the ,kbn-stack launcher: for interactive stacks it
@@ -414,7 +433,77 @@ def entry_has_live_processes(entry: dict) -> bool:
     launcher has returned. Any of them alive means the stack is active or still
     bootstrapping, so its ports being closed is not evidence of death.
     """
-    return any(pid_alive(entry.get(key)) for key in ("started_by_pid", "kbn_pid", "es_pid"))
+    for key in ("started_by_pid", "kbn_pid", "es_pid"):
+        pid = entry.get(key)
+        if pid != ignored_pid and pid_alive(pid):
+            return True
+    return False
+
+
+def status_state(entry: dict, process_alive: bool, kbn_alive: bool, es_alive: bool) -> str:
+    """Classify one registry entry from recorded readiness and current liveness."""
+    if entry.get("ready") is True and kbn_alive and es_alive:
+        return "ready"
+    if entry.get("ready") is not True and process_alive:
+        return "starting"
+    if process_alive or kbn_alive or es_alive:
+        return "degraded"
+    return "stale"
+
+
+def run_status(registry: dict) -> int:
+    """Print every registered stack without mutating registry state."""
+    if not registry:
+        print(",kbn-stack: no registered stacks.", flush=True)
+        return 0
+
+    rows = []
+    sort_key = lambda item: (item[1].get("slot") if isinstance(item[1].get("slot"), int) else sys.maxsize, item[0])
+    for worktree, entry in sorted(registry.items(), key=sort_key):
+        kbn_alive, es_alive = slot_liveness(entry)
+        process_alive = entry_has_live_processes(entry)
+        rows.append(
+            (
+                status_state(entry, process_alive, kbn_alive, es_alive),
+                str(entry.get("slot", "-")),
+                str(entry.get("backend", "unknown")),
+                stack_started_by(entry),
+                "up" if kbn_alive else "down",
+                "up" if es_alive else "down",
+                str(entry.get("branch", "unknown")),
+                worktree,
+            )
+        )
+
+    headers = ("STATE", "SLOT", "BACKEND", "OWNER", "KIBANA", "ES", "BRANCH", "WORKTREE")
+    widths = [max(len(str(value)) for value in column) for column in zip(headers, *rows)]
+    for row in (headers, *rows):
+        print("  ".join(str(value).ljust(width) for value, width in zip(row, widths)).rstrip(), flush=True)
+    return 0
+
+
+def run_prune(registry: dict, *, ignored_pid: int | None = None, quiet: bool = False) -> int:
+    """Remove only entries whose recorded processes and tandem ports are all dead."""
+    stale_worktrees = []
+    for worktree, entry in registry.items():
+        kbn_alive, es_alive = slot_liveness(entry)
+        process_alive = entry_has_live_processes(entry, ignored_pid=ignored_pid)
+        if status_state(entry, process_alive, kbn_alive, es_alive) == "stale":
+            stale_worktrees.append(worktree)
+
+    for worktree in stale_worktrees:
+        del registry[worktree]
+    if stale_worktrees:
+        save_registry(registry)
+
+    if not quiet:
+        if stale_worktrees:
+            print(f",kbn-stack: pruned {len(stale_worktrees)} stale stack(s):", flush=True)
+            for worktree in sorted(stale_worktrees):
+                print(f"  {worktree}", flush=True)
+        else:
+            print(",kbn-stack: no stale stacks.", flush=True)
+    return 0
 
 
 def reclaim_dead_slots(registry: dict, current_worktree: str) -> bool:
@@ -667,6 +756,9 @@ def start_kibana_on_trigger(
                 continue
             if TRIGGER_STRING in line:
                 ensure_trial_license(es_url)
+                kbn_cmd = shlex.join(
+                    [sys.executable, str(Path(__file__).resolve()), "--run-with-prune", *shlex.split(kbn_cmd)]
+                )
                 if target_pane:
                     subprocess.run(
                         ["tmux", "send-keys", "-t", target_pane, kbn_cmd, "C-m"],
@@ -729,6 +821,34 @@ def spawn_background(cmd: list[str], logfile: Path, worktree: str) -> int:
         start_new_session=True,
     )
     return proc.pid
+
+
+def run_foreground_es(es_cmd: list[str], logfile: Path) -> int:
+    """Stream interactive Elasticsearch and prune stale entries after it exits."""
+    with logfile.open("w", encoding="utf-8") as log_handle:
+        try:
+            proc = subprocess.Popen(es_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            assert proc.stdout is not None
+            for line in proc.stdout:
+                sys.stdout.write(line)
+                sys.stdout.flush()
+                log_handle.write(line)
+                log_handle.flush()
+            return proc.wait()
+        finally:
+            run_prune(load_registry(), ignored_pid=os.getpid(), quiet=True)
+
+
+def run_with_prune(command: list[str]) -> int:
+    """Run a foreground command and silently prune after normal exit or Ctrl-C."""
+    if not command:
+        fail("--run-with-prune requires a command")
+    try:
+        return subprocess.run(command, check=False).returncode
+    except KeyboardInterrupt:
+        return 130
+    finally:
+        run_prune(load_registry(), quiet=True)
 
 
 def run_detached(
@@ -966,8 +1086,28 @@ def stop_existing_serverless(registry: dict, current_worktree: str, new_started_
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
 
-    if args.stop and args.stop_all:
-        fail("--stop and --stop-all are mutually exclusive")
+    actions = [
+        flag
+        for flag, enabled in (
+            ("--status", args.status),
+            ("--prune", args.prune),
+            ("--run-with-prune", args.run_with_prune is not None),
+            ("--stop", args.stop),
+            ("--stop-all", args.stop_all),
+        )
+        if enabled
+    ]
+    if len(actions) > 1:
+        fail(f"{', '.join(actions)} are mutually exclusive")
+
+    if args.status:
+        return run_status(load_registry())
+
+    if args.prune:
+        return run_prune(load_registry())
+
+    if args.run_with_prune is not None:
+        return run_with_prune(args.run_with_prune)
 
     if args.stop_all:
         return run_stop_all(load_registry())
@@ -1051,16 +1191,7 @@ def main(argv: list[str]) -> int:
     )
     watcher.start()
 
-    es_cmd = es_command(args, cfg, data_path)
-    with logfile.open("w", encoding="utf-8") as log_handle:
-        proc = subprocess.Popen(es_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        assert proc.stdout is not None
-        for line in proc.stdout:
-            sys.stdout.write(line)
-            sys.stdout.flush()
-            log_handle.write(line)
-            log_handle.flush()
-        return proc.wait()
+    return run_foreground_es(es_command(args, cfg, data_path), logfile)
 
 
 if __name__ == "__main__":

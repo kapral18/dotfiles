@@ -21,3 +21,7 @@ model = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.6-35B-A3B-abliterated.Q4_
 # ordering. Override it with the robust Unsloth template used by `local`.
 chat-template-file = {{ .chezmoi.homeDir }}/.config/llama.cpp/qwen3.6-chat-template.jinja
 load-on-startup = false
+
+[nemotron-3.5]
+model = {{ .chezmoi.homeDir }}/.llama.cpp/models/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_K_M.gguf
+load-on-startup = false

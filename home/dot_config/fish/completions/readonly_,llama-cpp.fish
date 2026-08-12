@@ -32,12 +32,16 @@ function __llama_cpp_cp_ids_loaded
         | jq -r '.data[]? | select(.status.value == "loaded") | "\(.id)\tloaded"' 2>/dev/null
 end
 
-set -l __llama_cpp_cp_subs serve status load unload help
+set -l __llama_cpp_cp_subs serve run stop status load unload help
 
 complete -c ',llama-cpp' -f
 
 complete -c ',llama-cpp' -n "not __fish_seen_subcommand_from $__llama_cpp_cp_subs" \
     -a serve -d 'Start llama-server in router mode'
+complete -c ',llama-cpp' -n "not __fish_seen_subcommand_from $__llama_cpp_cp_subs" \
+    -a run -d 'Run a command with a shared router lease'
+complete -c ',llama-cpp' -n "not __fish_seen_subcommand_from $__llama_cpp_cp_subs" \
+    -a stop -d 'Stop the lifecycle-owned router'
 complete -c ',llama-cpp' -n "not __fish_seen_subcommand_from $__llama_cpp_cp_subs" \
     -a status -d 'Show router models and load state'
 complete -c ',llama-cpp' -n "not __fish_seen_subcommand_from $__llama_cpp_cp_subs" \
@@ -49,6 +53,12 @@ complete -c ',llama-cpp' -n "not __fish_seen_subcommand_from $__llama_cpp_cp_sub
 
 complete -c ',llama-cpp' -n '__fish_seen_subcommand_from load' \
     -a '(__llama_cpp_cp_ids)'
+
+complete -c ',llama-cpp' -n '__fish_seen_subcommand_from run' \
+    -a '(__fish_complete_subcommand --fcs-skip=2)'
+
+complete -c ',llama-cpp' -n '__fish_seen_subcommand_from stop' \
+    -s f -l force -d 'Interrupt active consumers and stop the owned router'
 
 complete -c ',llama-cpp' -n '__fish_seen_subcommand_from unload' \
     -a '(__llama_cpp_cp_ids_loaded)'

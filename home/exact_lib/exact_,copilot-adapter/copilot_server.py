@@ -84,6 +84,7 @@ def _frontend_endpoint(path: str) -> str | None:
     normalized = route.path.rstrip("/")
     return {
         "/v1/messages": ANTHROPIC,
+        "/v1/chat/completions": CHAT,
         "/v1/responses": RESPONSES,
     }.get(normalized)
 

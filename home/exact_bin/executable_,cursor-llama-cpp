@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Description: Launch Cursor's agent-cli-local flavor against the local llama.cpp server.
+
+set -euo pipefail
+
+LLAMA_CPP_HOST="${LLAMA_CPP_HOST:-127.0.0.1}"
+LLAMA_CPP_PORT="${LLAMA_CPP_PORT:-8080}"
+LLAMA_CPP_API_KEY="${LLAMA_CPP_API_KEY:-sk-no-key-required}"
+CURSOR_LLAMA_CPP_MODEL="${CURSOR_LLAMA_CPP_MODEL-local}"
+
+local_root="$HOME/.local/share/cursor-agent-local"
+version="${CURSOR_AGENT_LOCAL_VERSION:-}"
+if [[ -z "$version" ]]; then
+  version="$(cursor-agent --version 2>/dev/null | tr -d '[:space:]' || true)"
+fi
+if [[ -z "$version" ]]; then
+  version="$(ls -1 "$local_root/versions" 2>/dev/null | grep -v '^\.' | sort -rV | head -n 1 || true)"
+fi
+if [[ -z "$version" ]]; then
+  echo "Error: cursor-agent not found and no agent-cli-local flavor installed." >&2
+  exit 127
+fi
+
+local_bin="$local_root/versions/$version/cursor-agent-local"
+if [[ ! -x "$local_bin" ]]; then
+  bash "$HOME/lib/,cursor-agent-local/install.sh" "$version"
+fi
+
+cli_args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --model | -m)
+    [[ $# -ge 2 && -n "$2" ]] || {
+      echo "Error: $1 requires a value." >&2
+      exit 2
+    }
+    CURSOR_LLAMA_CPP_MODEL="$2"
+    shift 2
+    ;;
+  --model=*)
+    CURSOR_LLAMA_CPP_MODEL="${1#*=}"
+    shift
+    ;;
+  --endpoint | -e | --endpoint=* | --api-key | --api-key=* | --base-url | --base-url=* | --local-agent-api-key | --local-agent-api-key=*)
+    echo "Error: ,cursor-llama-cpp pins the local llama.cpp endpoint; $1 is not supported." >&2
+    exit 2
+    ;;
+  --)
+    cli_args+=("$1")
+    shift
+    cli_args+=("$@")
+    break
+    ;;
+  *)
+    cli_args+=("$1")
+    shift
+    ;;
+  esac
+done
+
+if [[ -z "$CURSOR_LLAMA_CPP_MODEL" ]]; then
+  echo "Error: --model requires a non-empty value." >&2
+  exit 2
+fi
+
+unset CURSOR_API_ENDPOINT CURSOR_API_KEY ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN
+export CURSOR_LOCAL_AGENT_BASE_URL="http://${LLAMA_CPP_HOST}:${LLAMA_CPP_PORT}/v1"
+export CURSOR_LOCAL_AGENT_API_KEY="$LLAMA_CPP_API_KEY"
+export AGENT_BAND_MODEL_OVERRIDE="$CURSOR_LLAMA_CPP_MODEL"
+
+exec ,llama-cpp run -- "$local_bin" --model "$CURSOR_LLAMA_CPP_MODEL" "${cli_args[@]}"

@@ -1,10 +1,12 @@
 ---
 name: k-kbn-standup
-description: "Prepare Karen's #admin-ux-internal daily-update draft from Slack and GitHub activity."
+description: "Prepare Karen's #admin-ux-internal daily update from Slack and GitHub activity."
 disable-model-invocation: true
 ---
 
 # Standup
+
+Process: baseline → gather → compile → show and ask, then `pbcopy`.
 
 ## Resolve first (don't hardcode IDs)
 
@@ -14,15 +16,14 @@ Resolve the rest at runtime:
 
 - `USER` = current Slack user id from `slack_read_user_profile` (no arg).
 - `GH` = `gh api user --jq .login`.
-- `CHAN` = `#admin-ux-internal` id from `slack_search_channels admin-ux-internal` (only needed to create the draft in step 4;
-  the `in:#admin-ux-internal` search modifier takes the name directly).
 
 ## 1. Baseline
 
-`BASELINE` = the `Message_ts` of the user's own **last multi-bullet standup post** (not a Slackbot reminder, not chatter).
-Find it in both `#admin-ux-internal` and `#kibana-management` via `slack_search_public` and choose the newest result.
-`#kibana-management` is historic baseline-only; never draft or post there.
+`BASELINE` = the `Message_ts` of the user's own **last multi-bullet standup post** in `#admin-ux-internal` (not a Slackbot reminder, not chatter).
+Find it via `slack_search_public` `from:<@USER> in:#admin-ux-internal`.
 Read it fully — you must not repeat its items and should report status deltas (e.g. `waiting on review` → `merged`).
+
+Done when `BASELINE` is that newest `#admin-ux-internal` post's `Message_ts` and the post has been read.
 
 ## 2. Gather (only events strictly after BASELINE)
 
@@ -44,39 +45,83 @@ GitHub (author `GH`, owner `elastic`):
 
 Slack (catches work that never hits GitHub — incidents, impact assessments):
 
-- Enumerate everything, don't keyword-guess: `slack_search_public` `from:<@USER> after:<date>`, `sort=timestamp`, `include_context=false`, **no free-text term**; page the `pagination_info` cursor until you pass BASELINE.
-  For private channels/DMs use `slack_search_public_and_private` (ask consent once).
-- Search `from:<@USER> SDH after:<date>` with context and map only explicitly named PRs/issues/discussions to SDH work.
+- Enumerate everything, don't keyword-guess: `slack_search_public_and_private` `from:<@USER> after:<date>`, `sort=timestamp`, `include_context=false`, **no free-text term**; page the `pagination_info` cursor until you pass BASELINE.
+  Search all channels the account can access, including private channels and DMs. Do not ask for consent.
+- Also search `from:<@USER> in:#admin-ux-internal` and `from:<@USER> in:#kibana-management` after BASELINE for discussion context.
+  `#kibana-management` is a public-facing discussion channel, not a standup source.
+- Search `from:<@USER> SDH after:<date>` with `slack_search_public_and_private` and context, and map only explicitly named PRs/issues/discussions to SDH work.
   Do not infer SDH association from product area.
 - Triage for team relevance: keep effortful work (incident/severity assessments, investigations, decisions);
   drop social/off-topic chatter and acknowledgements.
 
-## 3. Draft (team format)
+Done when every post-baseline GitHub item and Slack item from `#admin-ux-internal`, `#kibana-management`, and the all-channels `from:<@USER>` pass has been timestamp-checked and triaged.
 
-- One `•` per item, terse. Count final items after grouping related work: use no category emojis for three or fewer items.
-  For four or more items, end each non-merge bullet with exactly one category emoji.
-- For merged work, put one `:merged:` immediately after each merged PR URL.
-  A source PR plus two qualifying backports contains three `URL :merged:` pairs.
-- Categories: `:merged:` merged; `✅` completed/resolved without a merge; `🐛` defect or issue; `🔍` investigation or validation; `👀` review;
-  `🤝` sync or design discussion. Choose the bullet's primary outcome when it spans categories.
-- SDH is metadata, not a category.
-  Only when evidence directly identifies the activity as SDH work, use `:sdh:` in the summary where the word “SDH” would appear.
-  Do not append `:sdh:` to artifact/category icons or propagate it to merely related activity.
-- Use bare URLs; Slack's draft composer does not reliably make Markdown-label or mrkdwn links clickable.
-  Never end a line with a URL: put its category icon immediately after it.
-- Link every shareable artifact represented by an item: source PR, each qualifying conflict/CI-work backport, issue, channel thread, design document, or other referenced work product.
-  Use DMs as evidence, but do not put inaccessible DM permalinks in a team-channel draft.
-- Describe qualifying backport effort as `Resolved the <branches> backports for <change>`.
-  Use `Adapted` instead of `Resolved` only when evidence shows branch-specific implementation changes; never say `manually resolved`.
-- Do not join unrelated work because one activity blocked validation of another.
-  Operational investigations and the technical change they happened to delay are separate bullets.
-- New work only; report status deltas vs the last standup; state verified facts ("added", not "will add");
-  high-level units, not micro-steps.
+## 3. Compile (team format)
 
-## 4. Submit draft
+Emit `•` bullets. Terse, high-level, readable in a skim.
+New work only; status deltas vs the last standup; verified facts ("added", not "will add").
+Name the unit of work (what shipped, what is open, what was raised), not implementation micro-steps.
+Do not join unrelated authored work because one activity blocked validation of another.
+Operational investigations and the technical change they happened to delay are separate bullets.
 
-- Draft target = newest Slackbot reminder thread that tags `@admin-ux-team`: `slack_search_public` `from:<@USLACKBOT> "share your daily update" in:#admin-ux-internal`, `sort=timestamp`, `include_bots=true` → its `thread_ts`.
-- Show the exact draft + target, then create it with `slack_send_message_draft` using `channel_id=<CHAN>` and `thread_ts=<reminder ts>`.
-  Never invoke `slack_send_message`.
-- If no reminder thread exists, create a standalone draft in `#admin-ux-internal`.
-- Return the draft link. Do not add a `Sent using Cursor` suffix.
+Emit the standup as three sections in this order, each heading on its own line: `PRs`, `Issues`, `Slack and other`.
+Omit a heading when that group has no bullets. Put a blank line after each heading, then that group's bullets.
+Put a blank line after the last bullet of a section before the next heading.
+Do not flatten into one list, and do not add other headings or regroup by theme, SDH, or product area.
+
+### PRs
+
+One bullet per authored source PR. Never lump distinct source PRs onto one line.
+The only authored grouping is a source PR plus qualifying backports of that same PR.
+A PR bullet links that PR as `[label](URL)` and, when grouped, each qualifying backport.
+After each PR link, put `:merged:` or `:pr-open:` as specified under Icons.
+A source PR plus two merged qualifying backports contains three `[label](URL) :merged:` pairs.
+Describe qualifying backport effort as `Resolved the <branches> backports for <change>`.
+Use `Adapted` instead of `Resolved` only when evidence shows branch-specific implementation changes; never say `manually resolved`.
+Reviews of others' PRs share one `Reviews:` bullet. Link each reviewed PR with its icon. Do not give a reviewed PR its own bullet.
+
+### Issues
+
+Never put an issue and a PR on the same bullet, even when the PR fixes that issue. Same-theme related issues may share one bullet.
+Unrelated issues stay on separate bullets. An issue bullet links each issue as `[label](URL)`.
+After each issue link, put `🐛` or `:ticket:` as specified under Icons.
+
+### Slack and other
+
+Keep effortful discussions and investigations as their own bullets (incidents, SDH, attribution, decisions).
+Skim low-impact leftovers (CI noise, small reports, acknowledgements) into one bullet, or omit them.
+Link each channel thread, design document, or other work product the item represents.
+Use DMs as evidence, but do not put inaccessible DM permalinks in the compiled standup.
+
+### Icons and SDH
+
+Never end a line with a link: put that artifact's icon immediately after it.
+
+PRs: after each PR link, `:merged:` if that PR is merged, `:pr-open:` if it is open.
+Do not put `🐛`, `:ticket:`, `👀`, or other category icons on PR bullets.
+
+Issues: after the issue link, `🐛` if the issue is a bug (`bug` label, or a defect/regression); `:ticket:` for every other issue.
+Do not use `🐛` on PRs or on non-bug issues.
+
+Slack and other: exactly one category icon after the last link on the bullet.
+Categories: `✅` completed/resolved without a merge; `🔍` investigation or validation; `👀` review; `🤝` sync or design discussion.
+Choose the bullet's primary outcome when one item spans categories.
+
+SDH is metadata, not a category.
+Only when evidence directly identifies the activity as SDH work, use `:sdh:` in the summary where the word “SDH” would appear.
+Do not append `:sdh:` to artifact/category icons or propagate it to merely related activity.
+
+Done when the compiled standup is in team format, uses those section headings with empty groups omitted and blank lines after each heading and between sections, every authored source PR is its own bullet except a source PR with its qualifying backports, reviews of others share one `Reviews:` bullet, no issue shares a bullet with a PR, every shareable artifact is a `[label](URL)`, every PR link is followed by `:merged:` or `:pr-open:`, and every issue link is followed by `🐛` or `:ticket:`.
+
+## 4. Deliver
+
+`slack_send_message_draft` strips the URL target from both `[label](URL)` and `<URL|label>`, leaving plain label text.
+Never invoke `slack_send_message` or `slack_send_message_draft`. Do not copy until the user says they are ready.
+
+- Paste target = newest Slackbot reminder thread that tags `@admin-ux-team`: `slack_search_public` `from:<@USLACKBOT> "share your daily update" in:#admin-ux-internal`, `sort=timestamp`, `include_bots=true`.
+  If none exists, the paste target is a standalone message in `#admin-ux-internal`.
+  Never paste or post the compiled standup in `#kibana-management`.
+- Show the compiled standup and the paste target, then ask if they are ready for `pbcopy`. A yes in the invoking prompt counts.
+- On yes: copy the compiled standup as plain text with `pbcopy`, then verify `pbpaste` exactly matches the source and contains one Markdown link per artifact.
+
+Done when the user has seen the compiled standup and paste target, and after a yes `pbpaste` matches with one Markdown link per artifact.

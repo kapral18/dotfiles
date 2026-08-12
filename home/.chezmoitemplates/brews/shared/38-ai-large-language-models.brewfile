@@ -8,11 +8,7 @@ brew "llmfit"
 
 # LLM inference in C/C++ with OpenAI/Anthropic-compatible llama-server
 # https://github.com/ggml-org/llama.cpp
-# HEAD: stable bottle 9590 ships an out-of-sync gated-delta-net op vs its
-# qwen35moe caller, aborting on load of Qwen3.6 (qwen35moe) GGUFs with
-# `ggml.c: GGML_ASSERT(state->ne[0] == S_v) failed`. master has op+caller
-# consistent. Revert to stable once a fixed bottle (>9590) is published.
-brew "llama.cpp", args: ["HEAD"]
+brew "llama.cpp"
 
 # Official Hugging Face CLI (`hf`) — model downloads, auth, repo listing
 # https://huggingface.co/docs/huggingface_hub/guides/cli

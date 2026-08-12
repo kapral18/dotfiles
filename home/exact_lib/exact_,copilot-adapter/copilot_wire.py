@@ -166,7 +166,17 @@ class WireTranslator:
             )
             return PreparedRequest(json.dumps(translated, separators=(",", ":")).encode(), wants_stream, {})
 
-        frontend_name = "anthropic" if frontend == ANTHROPIC else "responses"
+        if frontend == CHAT and backend == RESPONSES:
+            wants_stream = payload.get("stream") is True
+            translated = _CODEX["protocols"].chat_to_responses(
+                payload,
+                model_override=model.model_id,
+                effort_override=None,
+                store=self._reasoning,
+            )
+            return PreparedRequest(json.dumps(translated, separators=(",", ":")).encode(), wants_stream, {})
+
+        frontend_name = "anthropic" if frontend == ANTHROPIC else "chat" if frontend == CHAT else "responses"
         conversation = _VERTEX["protocols"].parse_request(frontend_name, payload)
         vertex_model = self._vertex_model(model, "gemini-chat" if backend == CHAT else "claude")
         if backend == CHAT:
@@ -213,6 +223,13 @@ class WireTranslator:
             payload = _CODEX["protocols"].collect_anthropic_message(events)
             return json.dumps(payload, separators=(",", ":")).encode()
 
+        if frontend == CHAT and backend == RESPONSES:
+            events = _normalize_copilot_responses(_CODEX["protocols"].iter_sse_json(upstream))
+            if prepared.stream:
+                return _CODEX["protocols"].responses_to_chat_events(events, model.model_id, self._reasoning)
+            payload = _CODEX["protocols"].collect_chat_completion(events, model.model_id, self._reasoning)
+            return json.dumps(payload, separators=(",", ":")).encode()
+
         backend_name = "gemini-chat" if backend == CHAT else "claude"
         vertex_model = self._vertex_model(model, backend_name)
         events = _VERTEX["streaming"].canonical_events(
@@ -221,10 +238,12 @@ class WireTranslator:
             stream=prepared.stream,
             store=self._context,
         )
-        frontend_name = "anthropic" if frontend == ANTHROPIC else "responses"
+        frontend_name = "anthropic" if frontend == ANTHROPIC else "chat" if frontend == CHAT else "responses"
         if prepared.stream:
             if frontend == ANTHROPIC:
                 return _VERTEX["streaming"].render_anthropic(events, vertex_model)
+            if frontend == CHAT:
+                return _VERTEX["streaming"].render_chat(events, vertex_model)
             return _VERTEX["streaming"].render_responses(events, vertex_model, prepared.tool_kinds)
         result = _VERTEX["streaming"].collect_response(events)
         payload = _VERTEX["streaming"].render_json(

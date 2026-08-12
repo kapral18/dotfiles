@@ -1,6 +1,6 @@
 %% ============================================================================
-%% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (78 thin commands)
-%% plus deployed internals in home/exact_lib/ (75 command/shared library files).
+%% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (81 thin commands)
+%% plus deployed internals in home/exact_lib/ (76 command/shared library files).
 %% executable_,* → ~/bin/,* (comma-prefixed user commands); home/exact_lib/exact_,name/
 %% → ~/lib/,name/. verify-bin-surface keeps each command covered by fish
 %% completions, docs, catalog, and non-orphaned command libraries.
@@ -16,12 +16,15 @@ flowchart TB
         G[",gh-prw (open PR) · ,gh-issuew · ,gh-worktree (PR/issue→,w)<br/>,gh-tfork (fork+clone+tmux) · ,gh-subissues-create<br/>,add-patch-to-prs · ,enable-auto-merge · ,disable-auto-merge<br/>,check-backport-progress · ,remove-comment · ,view-my-issues<br/>,trace-string-pr · ,kbn-pr-audit (kibana audit) · ,codeowners (owner-of)<br/>,search-gh-topic · ,hey-branch · ,pull-rebase<br/>,wh (wormhole: patch direct-apply → three-way conflicts; file/dir/clipboard transfer)"]:::gh
     end
 
+    ACURSOR[",cursor-codex → ,codex-adapter<br/>,cursor-copilot → ,copilot-adapter"]:::ai
+    ACURSOR --> A
+
     subgraph WTC["Worktree / git"]
         W[",w (thin launcher → home/exact_lib/exact_,w; see 06)<br/>,generate-git-sandbox · ,history-sync (fish hist via 1Password → home/exact_lib)"]:::wt
     end
 
     subgraph AIC["AI / agents / KB"]
-        A[",ai (model view + depth/execution/connectivity → harness leaf; Pi OpenRouter → deepseek-v4-flash-0731 max) · ,ai-kb (→ ~/lib/,ai-kb/main.py)<br/>,agent-memory (/tmp/specs status/select/wipe topic buckets) · ,proof (durable freeform receipts)<br/>,artifact (cache HTML/live overlay + pollers) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,claude-openrouter · ,codex-openrouter<br/>,claude-codex · ,copilot-codex (→ ~/lib/,codex-adapter)<br/>,claude-copilot · ,codex-copilot (→ ~/lib/,copilot-adapter)<br/>,claude-vertex · ,codex-vertex · ,copilot-vertex (→ ~/lib/,vertex-adapter)<br/>,copilot · ,copilot-openrouter · ,cursor-openrouter (auto-installs agent-cli-local via ~/lib/,cursor-agent-local; session model pin enforced at the wire) · ,llama-cpp<br/>(the four *-openrouter wrappers default to deepseek-v4-flash-0731@preset/deepseek-lanes-max; glm-5.2 and kimi selectable via glm-lanes-*/kimi-lanes-*)<br/>,codex · ,cursor · ,mcp-token &lt;server&gt;<br/>,tg · ,youtube-search · ,letsfg-docker"]:::ai
+        A[",ai (model view + depth/execution/connectivity → harness leaf; Pi OpenRouter → deepseek-v4-flash-0731 max) · ,ai-kb (→ ~/lib/,ai-kb/main.py)<br/>,agent-memory (/tmp/specs status/select/wipe topic buckets) · ,proof (durable freeform receipts)<br/>,artifact (cache HTML/live overlay + pollers) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,cursor-llama-cpp · ,opencode-llama-cpp → ,llama-cpp run<br/>(~/lib/,llama-cpp/lifecycle.py: shared leases; auto-start loopback; 600s grace; explicit owned stop)<br/>,claude-openrouter · ,codex-openrouter<br/>,claude-codex · ,copilot-codex (→ ~/lib/,codex-adapter)<br/>,claude-copilot · ,codex-copilot (→ ~/lib/,copilot-adapter)<br/>,claude-vertex · ,codex-vertex · ,copilot-vertex (→ ~/lib/,vertex-adapter)<br/>,copilot · ,copilot-openrouter · ,cursor-openrouter (auto-installs agent-cli-local via ~/lib/,cursor-agent-local; session model pin enforced at the wire) · ,llama-cpp<br/>(the four *-openrouter wrappers default to deepseek-v4-flash-0731@preset/deepseek-lanes-max; glm-5.2 and kimi selectable via glm-lanes-*/kimi-lanes-*)<br/>,codex · ,cursor · ,mcp-token &lt;server&gt;<br/>,tg · ,youtube-search · ,letsfg-docker"]:::ai
     end
 
     subgraph FZFC["fzf / search helpers"]
@@ -33,7 +36,7 @@ flowchart TB
     end
 
     subgraph KBNC["Kibana dev"]
-        K[",kbn-stack (per-worktree ES+Kibana, snapshot|serverless, auto slot + dead-slot reclaim via ES/Kibana port liveness guarded by launcher/stack pid-alive checks so bootstrapping stacks are never reclaimed, pre-start port-squatter fail-fast naming the owning pid, detached ready gated on /api/status plus listener process-tree identity so an orphan serving stale code is never marked ready, -E/-K passthrough, started_by ownership + registry-safe/port-reclaiming stop)<br/>,jest-test-title-report"]:::sys
+        K[",kbn-stack (per-worktree ES+Kibana, snapshot|serverless, auto slot + dead-slot reclaim via ES/Kibana port liveness guarded by launcher/stack pid-alive checks so bootstrapping stacks are never reclaimed, pre-start port-squatter fail-fast naming the owning pid, detached ready gated on /api/status plus listener process-tree identity so an orphan serving stale code is never marked ready, read-only --status with live-derived states, non-destructive --prune + interactive exit auto-prune, -E/-K passthrough, started_by ownership + registry-safe/port-reclaiming stop)<br/>,jest-test-title-report"]:::sys
     end
 
     subgraph MEDIA["Media / misc utilities"]
