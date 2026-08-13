@@ -630,9 +630,8 @@
           "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max",
           "openrouter/moonshotai/kimi-k3@preset/kimi-lanes",
           "openrouter/z-ai/glm-5.2@preset/glm-lanes-max",
-          "llama-cpp/local",
-          "llama-cpp/local-max",
-          "llama-cpp/nemotron-3.5"
+          "llama-cpp/nemotron-3.5",
+          "llama-cpp/qwen3.5-9b"
         ],
         "provenance": [
           {
@@ -660,9 +659,8 @@
           "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max",
           "openrouter/moonshotai/kimi-k3@preset/kimi-lanes",
           "openrouter/z-ai/glm-5.2@preset/glm-lanes-max",
-          "llama-cpp/local",
-          "llama-cpp/local-max",
-          "llama-cpp/nemotron-3.5"
+          "llama-cpp/nemotron-3.5",
+          "llama-cpp/qwen3.5-9b"
         ],
         "provenance": [
           {
@@ -796,9 +794,8 @@
       "available": {
         "complete": false,
         "models": [
-          "local",
-          "local-max",
-          "nemotron-3.5"
+          "nemotron-3.5",
+          "qwen3.5-9b"
         ],
         "provenance": [
           {
@@ -812,9 +809,8 @@
       "curated": {
         "complete": true,
         "models": [
-          "local",
-          "local-max",
-          "nemotron-3.5"
+          "nemotron-3.5",
+          "qwen3.5-9b"
         ],
         "provenance": [
           {
@@ -835,9 +831,8 @@
       "recommended": {
         "complete": true,
         "models": [
-          "local",
-          "local-max",
-          "nemotron-3.5"
+          "nemotron-3.5",
+          "qwen3.5-9b"
         ],
         "provenance": [
           {

@@ -44,8 +44,8 @@ Examples:
   ,llama-cpp serve
   ,llama-cpp run -- command args...
   ,llama-cpp status
-  ,llama-cpp load local
-  ,llama-cpp load local-max
+  ,llama-cpp load nemotron-3.5
+  ,llama-cpp load qwen3.5-9b
   ,llama-cpp unload --all
 EOF
 }

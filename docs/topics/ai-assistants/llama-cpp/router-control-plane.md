@@ -11,7 +11,7 @@ The router control plane is the local runtime layer for llama.cpp models. It map
 
 `models.ini` is the preset: it names the models and their per-model defaults. `,llama-cpp` is the operator interface: it manages the shared server lifecycle and calls the model API.
 
-The shipped preset defines three model ids: `local`, `local-max`, and `nemotron-3.5`. They inherit the same shared defaults, and the router loads one at a time on demand.
+The shipped preset defines these model ids. They inherit shared `[*]` defaults unless a section overrides `ctx-size` / `n-predict`. The router loads one at a time on demand.
 
 ## Using it
 
@@ -22,15 +22,14 @@ llama.cpp model routing and per-model defaults live in an INI preset:
 - Source: [`home/dot_config/llama.cpp/models.ini.tmpl`](../../../../home/dot_config/llama.cpp/models.ini.tmpl)
 - Target: `~/.config/llama.cpp/models.ini`
 
-The shipped preset defines three short model ids:
+The shipped preset defines these short model ids:
 
-| ID             | GGUF path                                                               | Use                     |
-| -------------- | ----------------------------------------------------------------------- | ----------------------- |
-| `local`        | `~/.llama.cpp/models/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf`                   | primary model           |
-| `local-max`    | `~/.llama.cpp/models/Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf`           | refusal-removed sibling |
-| `nemotron-3.5` | `~/.llama.cpp/models/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_K_M.gguf` | Nemotron agentic model  |
+| ID             | GGUF path                                                                   | Use                                      |
+| -------------- | --------------------------------------------------------------------------- | ---------------------------------------- |
+| `nemotron-3.5` | `~/.llama.cpp/models/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-UD-Q4_K_XL.gguf` | Unsloth Nemotron agentic model           |
+| `qwen3.5-9b`   | `~/.llama.cpp/models/Qwen3.5-9B-UD-Q4_K_XL.gguf`                            | Unsloth Qwen3.5 9B + dest-renamed mmproj |
 
-Both inherit shared `[*]` defaults:
+They inherit shared `[*]` defaults:
 
 - `ctx-size=262144`
 - Metal offload
@@ -38,12 +37,12 @@ Both inherit shared `[*]` defaults:
 - Jinja chat templates
 - q8 KV cache
 - `reasoning=auto`
+- `nemotron-3.5` sets in-model NextN MTP (`spec-type=draft-mtp`, `spec-draft-n-max=2`) plus Unsloth thinking sampling (`temp=0.6`, `top-p=0.95`, `min-p=0.01`)
+- `qwen3.5-9b` forces `reasoning=on` (Small-series thinking is off by default) plus Unsloth coding sampling (`temp=0.6`, `top-p=0.95`, `top-k=20`, `min-p=0`)
 
 Switch with `,llama-cpp load <id>` / `,llama-cpp unload <id>`.
 
-Local A/B testing showed no-reasoning mode improves latency and structured-output cleanliness, but makes Qwen3.6 less capable for agent work. Keep reasoning enabled by default and disable it only for narrow structured-output probes.
-
-The served `ctx-size` is `262144`, matching Qwen3.6's native context and intentionally capping Nemotron 3.5 below its 1M model limit. Claude Code's local settings use `autoCompactWindow=200000` to compact before the server context fills.
+The served default `ctx-size` is `262144`, matching Nemotron and Qwen3.5-9B. Claude Code's local settings use `autoCompactWindow=200000` to compact before the default 262144-token server context fills.
 
 ```bash
 ,llama-cpp serve

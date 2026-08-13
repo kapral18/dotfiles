@@ -3,22 +3,22 @@
 #
 # The llama-cpp provider (baseURL http://127.0.0.1:8080/v1) is declared in the
 # deployed ~/.config/opencode/opencode.jsonc, so this wrapper just selects it.
-# Pass a model with --model/-m using a bare id (local|local-max|nemotron-3.5) or the full
+# Pass a model with --model/-m using a bare router id (nemotron-3.5, qwen3.5-9b, ...) or the full
 # provider-qualified id; a bare id is rewritten to llama-cpp/<id>:
-#   ,opencode-llama-cpp --model local-max run "hi"
-# With no --model, defaults to llama-cpp/$OPENCODE_LLAMA_CPP_MODEL (local).
+#   ,opencode-llama-cpp --model qwen3.5-9b run "hi"
+# With no --model, defaults to llama-cpp/$OPENCODE_LLAMA_CPP_MODEL (nemotron-3.5).
 # Any opencode subcommand/args pass through, e.g. `,opencode-llama-cpp run "hi"`.
 
 set -euo pipefail
 
-OPENCODE_LLAMA_CPP_MODEL="${OPENCODE_LLAMA_CPP_MODEL-local}"
+OPENCODE_LLAMA_CPP_MODEL="${OPENCODE_LLAMA_CPP_MODEL-nemotron-3.5}"
 
 if ! command -v opencode >/dev/null 2>&1; then
   echo "Error: opencode CLI not found on PATH." >&2
   exit 127
 fi
 
-# Qualify a bare model id (local) to the provider form (llama-cpp/local).
+# Qualify a bare model id to the provider form (llama-cpp/<id>).
 qualify_model() {
   local id="$1"
   case "$id" in

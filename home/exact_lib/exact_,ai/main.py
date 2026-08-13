@@ -682,7 +682,7 @@ def _enforce_openrouter_selection(
 ) -> tuple[AvailabilitySelection, bool]:
     """Return a pinned Pi selection and whether the Pi thinking flag must be emitted."""
     # The pin is Pi's *default* route, not a claim over every provider-less launch: Pi still ships
-    # the llama-cpp `local`/`local-max` models, and a bare `,ai pi` must keep its depth dial. Only
+    # the llama-cpp `nemotron-3.5`/`qwen3.5-9b` models, and a bare `,ai pi` must keep its depth dial. Only
     # an explicit OpenRouter provider, or an unconstrained launch with neither model nor depth,
     # takes the pin; anything else falls through to normal resolution.
     pi = command.harness == "pi"

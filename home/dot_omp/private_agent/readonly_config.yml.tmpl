@@ -42,9 +42,9 @@ advisor:
 
 defaultThinkingLevel: high
 
-# Version pinning: no startup update check. omp installs via the yarn pin in
-# ~/.default-yarn-pkgs (brew's can1357/tap/omp stable is the kimi-looping 17.2.10).
-# Deliberate upgrade: bump the @oh-my-pi/pi-coding-agent pin there.
+# omp installs via the unpinned yarn package in ~/.default-yarn-pkgs.
+# Apply runs yarn global upgrade --latest. Startup update check stays off so
+# yarn remains the installer.
 startup:
   checkUpdate: false
 
@@ -80,12 +80,20 @@ theme:
 
 setupVersion: 1
 
+# web_search: unlisted ids stay in the fallback chain, so every unused provider
+# is excluded. Listing perplexity is an OpenRouter sonar-pro opt-in. Keyless
+# scrapers are duckduckgo/startpage/ecosia/google/mojeek/public. Personal keeps
+# those after Codex in OMP's built-in relative order.
+# {{ if eq .isWork true }}
 providers:
   webSearchOrder:
-    - perplexity
-    - gemini
-    - anthropic
     - codex
+    - gemini
+    - google
+    - duckduckgo
+  webSearchExclude:
+    - perplexity
+    - anthropic
     - xai
     - zai
     - exa
@@ -100,8 +108,34 @@ providers:
     - synthetic
     - searxng
     - startpage
+    - ecosia
+    - mojeek
+    - public
+# {{ else }}
+providers:
+  webSearchOrder:
+    - codex
+    - startpage
     - duckduckgo
     - ecosia
     - google
     - mojeek
     - public
+  webSearchExclude:
+    - perplexity
+    - gemini
+    - anthropic
+    - xai
+    - zai
+    - exa
+    - tinyfish
+    - jina
+    - kagi
+    - tavily
+    - firecrawl
+    - brave
+    - kimi
+    - parallel
+    - synthetic
+    - searxng
+# {{ end }}

@@ -1,7 +1,6 @@
 # Deep clean and optimize your Mac
 # https://github.com/tw93/mole
-tap "tw93/tap"
-brew "tw93/tap/mole"
+brew "mole"
 
 # GNU File, Shell, and Text utilities
 # https://www.gnu.org/software/coreutils

@@ -2,33 +2,31 @@
 #
 # Format (pipe-delimited, one model per line):
 #   <hf-repo-id>|<hf-file>
+#   <hf-repo-id>|<hf-file>|<dest-basename>
 #
 # - hf-repo-id: Hugging Face repo id containing GGUF weights.
-# - hf-file: GGUF file to place under ~/.llama.cpp/models/.
+# - hf-file: GGUF filename in that repo.
+# - dest-basename: optional on-disk name under ~/.llama.cpp/models/.
+#   Required when two Hugging Face files share a name (mmproj-F16.gguf).
 #
 # Lines starting with `#` and blank lines are ignored.
 #
 # Downloads are opt-in via the `downloadLlamaCppModels` data variable in
 # ~/.config/chezmoi/chezmoi.toml. Re-prompt by clearing that value.
 #
-# Strategy: keep the measured best local Qwen3.6 GGUF checkpoint, its
-# refusal-removed sibling, and Nemotron 3.5 Lightning for agentic coding.
+# Companion files (mmproj, dflash) are extra manifest lines. They are not
+# router ids; models.ini references them from the matching preset.
 
-# Qwen3.6 35B-A3B Unsloth UD-Q4_K_XL (~22.4 GB GGUF).
-# Unsloth dynamic (UD) quant: higher fidelity than stock Q4_K_M at the same
-# size class, and the full 262144 context still co-fits in 36 GB unified memory
-# with the q8_0 KV cache.
-# https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF
-unsloth/Qwen3.6-35B-A3B-GGUF|Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
+# NVIDIA Nemotron 3.5 Lightning 30B-A3B Unsloth Dynamic Q4_K_XL (~25.5 GB).
+# Thinking sampling: temp 0.6, top_p 0.95, min_p 0.01.
+# In-model NextN MTP via spec-type=draft-mtp in models.ini (no extra draft GGUF).
+# DFlash/DSpark companion GGUFs are NVIDIA NVFP4, not Metal; do not add those files.
+# https://huggingface.co/unsloth/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF
+unsloth/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF|NVIDIA-Nemotron-3.5-Lightning-30B-A3B-UD-Q4_K_XL.gguf
 
-# Qwen3.6 35B-A3B abliterated Q4_K_M (~21.2 GB GGUF).
-# Refusal-removed sibling of the model above (abliteration of the same base,
-# via wangzhang/Qwen3.6-35B-A3B-abliterated). Same size class, loaded on demand.
-# https://huggingface.co/mradermacher/Qwen3.6-35B-A3B-abliterated-GGUF
-mradermacher/Qwen3.6-35B-A3B-abliterated-GGUF|Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf
-
-# NVIDIA Nemotron 3.5 Lightning 30B-A3B Q4_K_M (~25.4 GB GGUF).
-# Use ggml-org's canonical llama.cpp conversion. Q4_K_M retains Metal matrix
-# acceleration; the smaller NVFP4 checkpoint is not supported by Metal.
-# https://huggingface.co/ggml-org/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF
-ggml-org/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF|NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_K_M.gguf
+# Unsloth Qwen3.5-9B Dynamic Q4_K_XL (~6.0 GB) plus F16 mmproj companion.
+# Dest-rename mmproj so a generic Hugging Face mmproj-F16.gguf name stays unique on disk.
+# Small-series thinking is off by default; models.ini forces reasoning=on.
+# https://huggingface.co/unsloth/Qwen3.5-9B-GGUF
+unsloth/Qwen3.5-9B-GGUF|Qwen3.5-9B-UD-Q4_K_XL.gguf
+unsloth/Qwen3.5-9B-GGUF|mmproj-F16.gguf|Qwen3.5-9B-mmproj-F16.gguf

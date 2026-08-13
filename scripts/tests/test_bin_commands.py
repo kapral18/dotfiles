@@ -3574,7 +3574,7 @@ class TestCodexWrapper(unittest.TestCase):
             real_codex = bindir / "codex-real"
             real_codex.write_text("#!/usr/bin/env bash\nprintf 'ARGS=%s\\n' \"$*\"\n")
             real_codex.chmod(0o755)
-            for model in ("local", "local-max", "nemotron-3.5"):
+            for model in ("nemotron-3.5", "qwen3.5-9b"):
                 with self.subTest(model=model):
                     result = subprocess.run(
                         [sys.executable, str(CODEX_COMMAND), "--model", model, "exec", "hi"],
@@ -3657,23 +3657,25 @@ printf 'base=%s\nkey=%s\nband-model=%s\nargs=%s\n' \\
                 wrapper = REPO / f"home/exact_bin/executable_,{harness}-llama-cpp"
                 self.assertIn("exec ,llama-cpp run --", wrapper.read_text())
 
-    def test_SHOULD_offer_nemotron_from_every_llama_cpp_harness_completion(self):
+    def test_SHOULD_offer_router_ids_from_every_llama_cpp_harness_completion(self):
+        cases = (("ne", "nemotron-3.5"), ("qwen3.5", "qwen3.5-9b"))
         for harness in ("claude", "codex", "cursor", "opencode"):
-            with self.subTest(harness=harness):
-                completion = REPO / f"home/dot_config/fish/completions/readonly_,{harness}-llama-cpp.fish"
-                result = subprocess.run(
-                    [
-                        "fish",
-                        "--no-config",
-                        "-c",
-                        f"source {shlex.quote(str(completion))}; complete -C ',{harness}-llama-cpp --model ne'",
-                    ],
-                    capture_output=True,
-                    text=True,
-                )
+            for prefix, model_id in cases:
+                with self.subTest(harness=harness, model=model_id):
+                    completion = REPO / f"home/dot_config/fish/completions/readonly_,{harness}-llama-cpp.fish"
+                    result = subprocess.run(
+                        [
+                            "fish",
+                            "--no-config",
+                            "-c",
+                            f"source {shlex.quote(str(completion))}; complete -C ',{harness}-llama-cpp --model {prefix}'",
+                        ],
+                        capture_output=True,
+                        text=True,
+                    )
 
-                assert result.returncode == 0, result.stderr
-                assert "nemotron-3.5\t" in result.stdout
+                    assert result.returncode == 0, result.stderr
+                    assert f"{model_id}\t" in result.stdout
 
     def test_SHOULD_complete_llama_cpp_stop_and_force(self):
         completion = REPO / "home/dot_config/fish/completions/readonly_,llama-cpp.fish"

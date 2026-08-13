@@ -6,10 +6,6 @@ cask "thebrowsercompany-dia"
 # https://brave.com/
 cask "brave-browser"
 
-# Web browser
-# https://zen-browser.app/
-cask "zen"
-
 # Graphically shows disk usage within a file system
 # https://grandperspectiv.sourceforge.io/
 cask "grandperspective"
@@ -86,10 +82,6 @@ cask "dangerzone"
 # https://www.docker.com/products/docker-desktop
 cask "docker-desktop"
 
-# Cross-platform virtualization application for test VMs
-# https://www.virtualbox.org/
-cask "virtualbox"
-
 # Set of tools to manage resources and applications hosted on Google Cloud
 # https://cloud.google.com/cli/
 cask "gcloud-cli"
@@ -120,7 +112,3 @@ cask "karabiner-elements"
 # Screenshot measurement and annotation tool
 # https://shottr.cc/
 cask "shottr"
-
-# GUI Shows all open files, directories, sockets, pipes and devices
-# https://sveinbjorn.org/sloth
-cask "sloth"

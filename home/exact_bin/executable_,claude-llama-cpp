@@ -7,17 +7,18 @@
 #     placeholder because llama.cpp accepts unauthenticated requests unless
 #     started with --api-key.
 #   - Adds --settings ~/.claude/settings.llama-cpp.json so autoCompactWindow
-#     stays below the local llama.cpp context size.
-#   - Injects --model $CLAUDE_LLAMA_CPP_MODEL (default local) only when the
+#     stays below the local llama.cpp context size, and so
+#     CLAUDE_CODE_ATTRIBUTION_HEADER=0 keeps the llama.cpp KV cache stable.
+#   - Injects --model $CLAUDE_LLAMA_CPP_MODEL (default nemotron-3.5) only when the
 #     caller did not pass their own --model/-m, so `,claude-llama-cpp --model
-#     local-max ...` selects the model with no duplicate flag.
+#     qwen3.5-9b ...` selects the model with no duplicate flag.
 
 set -euo pipefail
 
 LLAMA_CPP_HOST="${LLAMA_CPP_HOST:-127.0.0.1}"
 LLAMA_CPP_PORT="${LLAMA_CPP_PORT:-8080}"
 LLAMA_CPP_API_KEY="${LLAMA_CPP_API_KEY:-sk-no-key-required}"
-CLAUDE_LLAMA_CPP_MODEL="${CLAUDE_LLAMA_CPP_MODEL-local}"
+CLAUDE_LLAMA_CPP_MODEL="${CLAUDE_LLAMA_CPP_MODEL-nemotron-3.5}"
 CLAUDE_LLAMA_CPP_SETTINGS="${CLAUDE_LLAMA_CPP_SETTINGS:-$HOME/.claude/settings.llama-cpp.json}"
 
 if ! command -v claude >/dev/null 2>&1; then

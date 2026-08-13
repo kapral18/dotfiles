@@ -166,6 +166,7 @@ The bridge injects a freshly selected bearer per request, rotating through curso
 | MCP servers   | `mcp_servers.yaml` via `generate_mcp_configs.py omp`                                                                     | `~/.omp/agent/mcp.json`    |
 | Shared skills | `symlink_skills` → `~/.agents/skills`                                                                                    | `~/.omp/agent/skills`      |
 | Runtime hooks | `extensions/`                                                                                                            | `~/.omp/agent/extensions/` |
+| Install       | [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs) `@oh-my-pi/pi-coding-agent`     | yarn global, unpinned      |
 
 ### Managed configuration
 
@@ -189,12 +190,16 @@ The bridge injects a freshly selected bearer per request, rotating through curso
 | `task.isolation.mode`, `task.enableEffort`, `task.enableLsp`, `task.maxRecursionDepth` | `auto`, `true`, `true`, `2`                                   | `auto`, `true`, `true`, `2`                                   |
 | `retry.enabled`, `retry.maxRetries`                                                    | `true`, `5`                                                   | `true`, `5`                                                   |
 | `symbolPreset`, `theme.dark`, `setupVersion`                                           | `nerd`, `titanium`, `1`                                       | `nerd`, `titanium`, `1`                                       |
+| `providers.webSearchOrder`                                                             | `codex`, `gemini`, `google`, `duckduckgo`                     | `codex`, then keyless scrapers in OMP built-in order          |
+| `providers.webSearchExclude`                                                           | every other OMP search id, including `perplexity`             | every keyed search id, including `perplexity` and `gemini`    |
 
 `modelRoles` is also what prices OMP's bands: repo-managed agent profiles carry `@role` tokens (`@smol`, `@task`, `@default`, `@advisor`) that `model_bands.omp` names, so the work and personal role tables above decide what each band costs. See [Model tiering](../model-tiering.md).
 
 The OMP advisor is enabled for primary turns and spawned agents. It uses the configured `modelRoles.advisor` model to inject actionable notes as `<advisory>` context. `syncBacklog: 1` pauses the primary for up to 30 seconds at every pending advisor review, waiting for the backlog to clear before continuing. `immuneTurns: 0` keeps every later `concern` or `blocker` eligible for steering instead of downgrading it to a non-interrupting aside. These settings make advisor recommendations reach the primary promptly; OMP still marks them as `guidance="weigh, don't blindly obey"`, so it does not mechanically enforce compliance.
 
 AutoQA consent is source-managed as `granted`, so OMP records and uploads concise `xd://report_issue` tool-grievance reports without prompting again.
+
+`web_search` is profile-specific. Work walks Codex, then Gemini, then Google scrape, then DuckDuckGo. Personal walks Codex, then every keyless scraper in OMP's built-in relative order (`startpage`, `duckduckgo`, `ecosia`, `google`, `mojeek`, `public`). Listing `perplexity` is an explicit selection that calls OpenRouter `perplexity/sonar-pro` when an OpenRouter key is set, so both profiles exclude it. Unlisted providers stay in the fallback chain, so `providers.webSearchExclude` drops every id not in that profile's order. Bash `ddgr --noua` remains the SOP fallback if the tool fails.
 
 OMP receives a native `mcp.json` generated from the shared registry. `scsi-main` and `slack` run as `,mcp-token --bridge` stdio servers, so fresh cursor-minted bearer tokens are injected per request; `scsi-local` remains a direct stdio server.
 

@@ -364,6 +364,10 @@ class TestAgentInstructionInvariants(unittest.TestCase):
                 assert name in available, f"{config} wires ~/.agents/hooks/{name}, which has no source in {hooks_dir}"
         assert checked, "no hook references found; the regex or the config list is stale"
 
+    def test_claude_llama_cpp_settings_disable_attribution_header(self):
+        settings = json.loads((REPO / "home/dot_claude/settings.llama-cpp.json").read_text(encoding="utf-8"))
+        self.assertEqual(settings["env"]["CLAUDE_CODE_ATTRIBUTION_HEADER"], "0")
+
     def test_ai_docs_track_current_runtime_contracts(self):
         self.assert_file_contains(
             "docs/topics/ai-assistants/tool-configs/other-harnesses.md",
@@ -385,6 +389,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         self.assert_file_contains(
             "docs/topics/ai-assistants/llama-cpp/launchers.md",
             "Hosted MCP authentication is owned by the per-request stdio bridges",
+            "CLAUDE_CODE_ATTRIBUTION_HEADER",
         )
         self.assert_file_not_contains(
             "docs/topics/ai-assistants/llama-cpp/launchers.md",

@@ -6,7 +6,7 @@ set -euo pipefail
 LLAMA_CPP_HOST="${LLAMA_CPP_HOST:-127.0.0.1}"
 LLAMA_CPP_PORT="${LLAMA_CPP_PORT:-8080}"
 LLAMA_CPP_API_KEY="${LLAMA_CPP_API_KEY:-sk-no-key-required}"
-CURSOR_LLAMA_CPP_MODEL="${CURSOR_LLAMA_CPP_MODEL-local}"
+CURSOR_LLAMA_CPP_MODEL="${CURSOR_LLAMA_CPP_MODEL-nemotron-3.5}"
 
 local_root="$HOME/.local/share/cursor-agent-local"
 version="${CURSOR_AGENT_LOCAL_VERSION:-}"

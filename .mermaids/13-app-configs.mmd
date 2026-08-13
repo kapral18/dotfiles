@@ -29,7 +29,7 @@ flowchart TB
     end
 
     subgraph LOCALAI["Local LLM runtime"]
-        LLAMA["llama.cpp/models.ini.tmpl (local · local-max · nemotron-3.5)<br/>readonly_qwen3.6-chat-template.jinja (local-max override)<br/>← readonly_dot_default-llama-cpp-models.tmpl<br/>→ ,llama-cpp / four *-llama-cpp harnesses (see 02/07c)<br/>shared lifecycle auto-starts loopback router; 600s grace; explicit owned stop"]:::misc
+        LLAMA["llama.cpp/models.ini.tmpl (nemotron-3.5 · qwen3.5-9b)<br/>← readonly_dot_default-llama-cpp-models.tmpl<br/>→ ,llama-cpp / four *-llama-cpp harnesses (see 02/07c)<br/>shared lifecycle auto-starts loopback router; 600s grace; explicit owned stop"]:::misc
     end
 
     subgraph INPUT["Input / window mgmt (see 07)"]

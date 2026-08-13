@@ -44,6 +44,5 @@ This slice covers media processing, personal-only tools, and tools installed fro
 
 | Tool                                                                                                                                                            | Source                 | Why it is here        |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | --------------------- |
-| [Roblox](https://www.roblox.com/)                                                                                                                               | `cask personal`        | personal app          |
 | Telegram TUI stack ([`tdlib`](https://core.telegram.org/tdlib), [`maven`](https://maven.apache.org/), [`telegramtui`](https://github.com/kapral18/telegramtui)) | `brew/custom personal` | personal chat tooling |
 | [`kanban-tui`](https://github.com/Zaloog/kanban-tui)                                                                                                            | `uv personal`          | terminal task board   |

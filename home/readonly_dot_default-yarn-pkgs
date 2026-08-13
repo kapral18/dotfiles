@@ -25,10 +25,9 @@ playwriter
 # Description: Find unused dependencies, exports, and files in JS/TS projects
 # URL: https://knip.dev/
 knip
-# Description: Coding agent (OMP). Version PINNED: 17.2.10 loops with kimi-k3 (can1357/oh-my-pi#7826).
-# Upgrade deliberately by bumping the pin.
+# Description: Coding agent (OMP). Unpinned; apply upgrades to latest.
 # URL: https://omp.sh
-@oh-my-pi/pi-coding-agent@17.2.9
+@oh-my-pi/pi-coding-agent
 # Description: Free coding agent CLI
 # URL: https://freebuff.com/get-started
 freebuff

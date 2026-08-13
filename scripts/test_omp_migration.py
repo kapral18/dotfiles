@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 import tempfile
 import unittest
@@ -10,18 +11,60 @@ import unittest
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import REPO
 
+# OMP 17.2.15 SEARCH_PROVIDER_ORDER. Listing perplexity in webSearchOrder makes
+# it explicit and routes through OpenRouter sonar-pro. Unlisted ids stay in the
+# fallback chain, so exclude must be every id not in the profile's order.
+OMP_SEARCH_PROVIDER_ORDER = (
+    "perplexity",
+    "gemini",
+    "anthropic",
+    "codex",
+    "xai",
+    "zai",
+    "exa",
+    "tinyfish",
+    "jina",
+    "kagi",
+    "tavily",
+    "firecrawl",
+    "brave",
+    "kimi",
+    "parallel",
+    "synthetic",
+    "searxng",
+    "startpage",
+    "duckduckgo",
+    "ecosia",
+    "google",
+    "mojeek",
+    "public",
+)
+OMP_KEYLESS_SEARCH_PROVIDERS = ("startpage", "duckduckgo", "ecosia", "google", "mojeek", "public")
+WORK_WEB_SEARCH_ORDER = ("codex", "gemini", "google", "duckduckgo")
+PERSONAL_WEB_SEARCH_ORDER = ("codex", *OMP_KEYLESS_SEARCH_PROVIDERS)
+
+YAML_LIST_RE = re.compile(
+    r"(?m)^(?P<indent> *)(?P<key>webSearch(?:Order|Exclude)):\n(?P<body>(?:(?P=indent)  - .+\n)+)"
+)
+
+
+def _yaml_string_list(config: str, key: str) -> list[str]:
+    for match in YAML_LIST_RE.finditer(config):
+        if match.group("key") == key:
+            return [line.strip()[2:] for line in match.group("body").splitlines() if line.strip()]
+    raise AssertionError(f"missing YAML list for {key}")
+
 
 class TestOmpMigration(unittest.TestCase):
     """WHEN wiring OMP into the repo-owned AI workflow."""
 
-    def test_omp_installs_via_yarn_pin_not_brew(self):
-        # brew's can1357/tap/omp stable is 17.2.10, which loops with kimi-k3
-        # (can1357/oh-my-pi#7826); the yarn pin carries the known-good version.
+    def test_omp_installs_via_unpinned_yarn_not_brew(self):
         brewfile = (REPO / "home/.chezmoitemplates/brews/shared/38-ai-large-language-models.brewfile").read_text()
         yarn_pkgs = (REPO / "home/readonly_dot_default-yarn-pkgs").read_text()
 
         self.assertNotIn("can1357/tap/omp", brewfile)
-        self.assertIn("@oh-my-pi/pi-coding-agent@17.2.9", yarn_pkgs)
+        self.assertIn("@oh-my-pi/pi-coding-agent\n", yarn_pkgs)
+        self.assertNotIn("@oh-my-pi/pi-coding-agent@", yarn_pkgs)
 
     def render_omp_config(self, is_work: bool) -> str:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".toml") as config:
@@ -89,6 +132,24 @@ class TestOmpMigration(unittest.TestCase):
                 self.assertNotIn("{{", config)
                 for value in (*values, *shared_values):
                     self.assertIn(value, config)
+
+    def test_web_search_uses_profile_specific_provider_chains(self):
+        expected = {
+            True: WORK_WEB_SEARCH_ORDER,
+            False: PERSONAL_WEB_SEARCH_ORDER,
+        }
+        for is_work, wanted_order in expected.items():
+            with self.subTest(is_work=is_work):
+                config = self.render_omp_config(is_work)
+                order = tuple(_yaml_string_list(config, "webSearchOrder"))
+                exclude = tuple(_yaml_string_list(config, "webSearchExclude"))
+                leftover = tuple(provider for provider in OMP_SEARCH_PROVIDER_ORDER if provider not in wanted_order)
+
+                self.assertEqual(order, wanted_order)
+                self.assertEqual(exclude, leftover)
+                self.assertIn("perplexity", exclude)
+                self.assertNotIn("perplexity", order)
+                self.assertEqual(set(order) & set(exclude), set())
 
     def test_system_policy_appends_without_replacing_omp_prompt(self):
         agent_dir = REPO / "home/dot_omp/private_agent"

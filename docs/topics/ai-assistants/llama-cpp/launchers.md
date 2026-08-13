@@ -11,13 +11,13 @@ All four launchers acquire a shared router lease. They join an existing router, 
 
 ## Mental model
 
-Codex has two layers. The transparent `,codex` wrapper supplies catalog metadata for local ids (`local`, `local-max`, and `nemotron-3.5`), while `,codex-llama-cpp` supplies the provider routing flags that point Codex at `llama-server`.
+Codex has two layers. The transparent `,codex` wrapper supplies catalog metadata for the llama.cpp router ids, while `,codex-llama-cpp` supplies the provider routing flags that point Codex at `llama-server`.
 
 OpenCode reads providers from `~/.config/opencode/opencode.jsonc`, so its launcher only normalizes model selection and passes the rest through.
 
 Cursor's cloud build rejects local provider flags. `,cursor-llama-cpp` therefore runs the version-matched `agent-cli-local` flavor, pins its provider environment to llama.cpp, and rewrites `-m` to Cursor's `--model` flag.
 
-Claude Code has one global `autoCompactWindow`, but cloud `opus[1m]` and local llama.cpp need different values. The llama.cpp launcher loads an additive settings file with `autoCompactWindow: 200000` and leaves plain cloud Claude sessions untouched.
+Claude Code has one global `autoCompactWindow`, but cloud `opus[1m]` and local llama.cpp need different values. The llama.cpp launcher loads an additive settings file with `autoCompactWindow: 200000` and `CLAUDE_CODE_ATTRIBUTION_HEADER=0`, and leaves plain cloud Claude sessions untouched.
 
 ## Using it
 
@@ -27,7 +27,7 @@ No separate server command is required for these launchers. Start any harness di
 
 Codex only has first-class model metadata for slugs present in its model catalog; unknown local slugs use fallback metadata and emit a warning. This repo ships a transparent `,codex` wrapper plus a small local catalog for the llama.cpp models.
 
-The wrapper injects `-c model_catalog_json="$HOME/.codex/llama-cpp-model-catalog.json"` when the selected model is one of the three local llama.cpp ids, in either `--model <id>` or `--model=<id>` form.
+The wrapper injects `-c model_catalog_json="$HOME/.codex/llama-cpp-model-catalog.json"` when the selected model is one of the llama.cpp router ids, in either `--model <id>` or `--model=<id>` form.
 
 Other Codex invocations execute `/opt/homebrew/bin/codex` directly. Hosted MCP authentication is owned by the per-request stdio bridges declared in `~/.codex/config.toml`, not by this launcher.
 
@@ -43,15 +43,14 @@ The wrapper injects:
 | `model_providers.llama-cpp.name`     | `llama.cpp`                                     |
 | `model_provider`                     | `llama-cpp`                                     |
 
-The `~/bin/,codex` shim still injects catalog metadata. Pass `--model` / `-m local-max` to pick the model.
+The `~/bin/,codex` shim still injects catalog metadata. Pass `--model` / `-m nemotron-3.5` to pick the model.
 
 The wrapper adds its default `--model $CODEX_LLAMA_CPP_MODEL` only when you did not pass one, so there is no duplicate flag.
 
 ```bash
-,codex-llama-cpp                          # default model local
-,codex-llama-cpp --model local-max        # abliterated sibling
-,codex-llama-cpp --model nemotron-3.5     # Nemotron 3.5 Lightning
-,codex-llama-cpp -m local-max exec "..."  # one-shot
+,codex-llama-cpp                          # default model nemotron-3.5
+,codex-llama-cpp --model qwen3.5-9b       # Unsloth Qwen3.5 9B
+,codex-llama-cpp -m qwen3.5-9b exec "..."  # one-shot
 ```
 
 ### Cursor launcher (`,cursor-llama-cpp`)
@@ -61,9 +60,8 @@ The launcher uses the same version-matched `agent-cli-local` installation as `,c
 It pins `CURSOR_LOCAL_AGENT_BASE_URL=http://${LLAMA_CPP_HOST}:${LLAMA_CPP_PORT}/v1`, maps `LLAMA_CPP_API_KEY` to `CURSOR_LOCAL_AGENT_API_KEY`, and keeps Cursor's delegated model band on the selected local id. Inherited endpoint and provider credentials cannot redirect the session.
 
 ```bash
-,cursor-llama-cpp                          # default model local
-,cursor-llama-cpp --model local-max        # abliterated sibling
-,cursor-llama-cpp -m nemotron-3.5          # Nemotron 3.5 Lightning
+,cursor-llama-cpp                          # default model nemotron-3.5
+,cursor-llama-cpp --model qwen3.5-9b       # Unsloth Qwen3.5 9B
 ,cursor-llama-cpp -p "summarize README.md" # one-shot
 ```
 
@@ -73,23 +71,21 @@ OpenCode reads providers from `~/.config/opencode/opencode.jsonc`; there is no p
 
 The `llama-cpp` provider is declared in both profile sources and flows through the merge hook unchanged:
 
-| Field       | Value                                |
-| ----------- | ------------------------------------ |
-| Provider id | `llama-cpp`                          |
-| Base URL    | `http://127.0.0.1:8080/v1`           |
-| Models      | `local`, `local-max`, `nemotron-3.5` |
+| Field       | Value                      |
+| ----------- | -------------------------- |
+| Provider id | `llama-cpp`                |
+| Base URL    | `http://127.0.0.1:8080/v1` |
+| Models      | llama.cpp router ids       |
 
 The provider id avoids a dot (`llama-cpp`, not `llama.cpp`) because OpenCode's SDK derives an incorrect lookup key from dotted ids.
 
-Pass `--model`/`-m` with a bare id (`local`, `local-max`, or `nemotron-3.5`) — the wrapper qualifies it to `llama-cpp/<id>` — or the full `llama-cpp/<id>`. With no `--model`, it defaults to `llama-cpp/$OPENCODE_LLAMA_CPP_MODEL` (`local`).
+Pass `--model`/`-m` with a bare router id — the wrapper qualifies it to `llama-cpp/<id>` — or the full `llama-cpp/<id>`. With no `--model`, it defaults to `llama-cpp/$OPENCODE_LLAMA_CPP_MODEL` (`nemotron-3.5`).
 
 Any subcommand/args pass through.
 
 ```bash
-,opencode-llama-cpp                            # interactive TUI, default model local
-,opencode-llama-cpp --model local-max          # abliterated sibling (bare id auto-qualified)
-,opencode-llama-cpp --model nemotron-3.5       # Nemotron 3.5 Lightning
-,opencode-llama-cpp --model local-max run "…"  # one-shot
+,opencode-llama-cpp                            # interactive TUI, default model nemotron-3.5
+,opencode-llama-cpp --model qwen3.5-9b run "…"  # Unsloth Qwen3.5 9B
 ```
 
 ### Claude Code launcher (`,claude-llama-cpp`)
@@ -112,7 +108,7 @@ The wrapper:
 - defaults the key to `sk-no-key-required` because llama.cpp accepts unauthenticated local requests unless started with `--api-key`.
 - invokes `claude --settings ~/.claude/settings.llama-cpp.json "$@"`.
 
-Pass `--model` / `-m local-max` to pick the model.
+Pass `--model` / `-m nemotron-3.5` to pick the model.
 
 The wrapper injects its default `--model $CLAUDE_LLAMA_CPP_MODEL` only when you did not pass one, so there is no duplicate flag.
 
@@ -121,16 +117,17 @@ The wrapper injects its default `--model $CLAUDE_LLAMA_CPP_MODEL` only when you 
 | `LLAMA_CPP_HOST`            | `127.0.0.1`                             | Same as `,llama-cpp`                                                |
 | `LLAMA_CPP_PORT`            | `8080`                                  | Same as `,llama-cpp`                                                |
 | `LLAMA_CPP_API_KEY`         | `sk-no-key-required`                    | Sent as `ANTHROPIC_API_KEY` (Claude Code uses this for bearer auth) |
-| `CLAUDE_LLAMA_CPP_MODEL`    | `local`                                 | Default model; overridden by a caller `--model`/`-m`, empty to skip |
+| `CLAUDE_LLAMA_CPP_MODEL`    | `nemotron-3.5`                          | Default model; overridden by a caller `--model`/`-m`, empty to skip |
 | `CLAUDE_LLAMA_CPP_SETTINGS` | `$HOME/.claude/settings.llama-cpp.json` | Point at an alternate llama.cpp settings file                       |
 
 `autoCompactWindow=200000` leaves a ~62k token buffer under the 262144-token server context for the next turn's prompt, tool outputs, and model reply.
 
+`env.CLAUDE_CODE_ATTRIBUTION_HEADER=0` stops Claude Code from prepending a per-request `x-anthropic-billing-header` that would miss the llama.cpp KV cache. Claude Code 2.1.220 copies `--settings` `env` into `process.env` and treats `"0"` as off.
+
 ```bash
-,claude-llama-cpp                           # interactive session, default model local
+,claude-llama-cpp                           # interactive session, default model nemotron-3.5
+,claude-llama-cpp --model qwen3.5-9b        # Unsloth Qwen3.5 9B
 ,claude-llama-cpp -p "summarize README.md"  # one-shot prompt
-,claude-llama-cpp --model local-max         # use the abliterated sibling
-,claude-llama-cpp --model nemotron-3.5      # use Nemotron 3.5 Lightning
 ```
 
 Cloud Claude sessions are unaffected — plain `claude ...` still reads only `~/.claude/settings.json`, where `autoCompactWindow` stays unset so the default for `opus[1m]` applies.
@@ -139,11 +136,11 @@ Cloud Claude sessions are unaffected — plain `claude ...` still reads only `~/
 
 - [`home/exact_bin/executable_,codex`](../../../../home/exact_bin/executable_,codex) → `~/bin/,codex`
 - [`home/exact_lib/exact_,codex/main.py`](../../../../home/exact_lib/exact_,codex/main.py) → `~/lib/,codex/main.py`
-- [`home/dot_codex/readonly_llama-cpp-model-catalog.json`](../../../../home/dot_codex/readonly_llama-cpp-model-catalog.json) → `~/.codex/llama-cpp-model-catalog.json` (defines all three local model ids)
+- [`home/dot_codex/readonly_llama-cpp-model-catalog.json`](../../../../home/dot_codex/readonly_llama-cpp-model-catalog.json) → `~/.codex/llama-cpp-model-catalog.json` (defines the local llama.cpp router ids)
 - [`home/exact_bin/executable_,codex-llama-cpp`](../../../../home/exact_bin/executable_,codex-llama-cpp) → `~/bin/,codex-llama-cpp`
 - [`home/exact_bin/executable_,cursor-llama-cpp`](../../../../home/exact_bin/executable_,cursor-llama-cpp) → `~/bin/,cursor-llama-cpp`
 - [`home/exact_lib/exact_,cursor-agent-local/install.sh`](../../../../home/exact_lib/exact_,cursor-agent-local/install.sh) → version-matched local-provider Cursor binary
 - [`home/dot_config/opencode/readonly_opencode.personal.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.personal.jsonc) / [`readonly_opencode.work.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.work.jsonc) — declare the `llama-cpp` provider
 - [`home/exact_bin/executable_,opencode-llama-cpp`](../../../../home/exact_bin/executable_,opencode-llama-cpp) → `~/bin/,opencode-llama-cpp`
-- [`home/dot_claude/settings.llama-cpp.json`](../../../../home/dot_claude/settings.llama-cpp.json) → `~/.claude/settings.llama-cpp.json` (contains only `autoCompactWindow: 200000`)
+- [`home/dot_claude/settings.llama-cpp.json`](../../../../home/dot_claude/settings.llama-cpp.json) → `~/.claude/settings.llama-cpp.json` (`autoCompactWindow: 200000` and `CLAUDE_CODE_ATTRIBUTION_HEADER=0`)
 - [`home/exact_bin/executable_,claude-llama-cpp`](../../../../home/exact_bin/executable_,claude-llama-cpp) → `~/bin/,claude-llama-cpp`

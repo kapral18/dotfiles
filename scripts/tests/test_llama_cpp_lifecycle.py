@@ -384,5 +384,127 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         _wait_for(lambda: not _router_reachable(port), "fixture router did not stop")
 
 
+class TestLlamaCppModelSync(unittest.TestCase):
+    """WHEN syncing the llama.cpp GGUF manifest into a models root."""
+
+    def test_SHOULD_treat_a_two_field_line_as_same_name_dest(self) -> None:
+        import io
+
+        import sync_llama_cpp_models as sync
+
+        entries = sync.parse_manifest(io.StringIO("repo/name|weights.gguf\n"))
+        self.assertEqual(entries, [("repo/name", "weights.gguf", "weights.gguf")])
+
+    def test_SHOULD_accept_an_optional_dest_basename(self) -> None:
+        import io
+
+        import sync_llama_cpp_models as sync
+
+        entries = sync.parse_manifest(
+            io.StringIO("unsloth/Qwen3.5-9B-GGUF|mmproj-F16.gguf|Qwen3.5-9B-mmproj-F16.gguf\n")
+        )
+        self.assertEqual(
+            entries,
+            [
+                (
+                    "unsloth/Qwen3.5-9B-GGUF",
+                    "mmproj-F16.gguf",
+                    "Qwen3.5-9B-mmproj-F16.gguf",
+                )
+            ],
+        )
+
+    def test_SHOULD_skip_path_dests_and_wrong_field_counts(self) -> None:
+        import io
+
+        import sync_llama_cpp_models as sync
+
+        entries = sync.parse_manifest(
+            io.StringIO(
+                "\n".join(
+                    [
+                        "# comment",
+                        "",
+                        "only-one",
+                        "a|b|c|d",
+                        "repo/name|weights.gguf|../escape.gguf",
+                        "repo/name|weights.gguf|subdir/weights.gguf",
+                    ]
+                )
+                + "\n"
+            )
+        )
+        self.assertEqual(entries, [])
+
+    def test_SHOULD_skip_download_when_dest_already_complete(self) -> None:
+        import io
+        import tempfile
+
+        import sync_llama_cpp_models as sync
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            dest = root / "Qwen3.5-9B-mmproj-F16.gguf"
+            dest.write_bytes(b"gguf")
+            with mock.patch.object(sync, "download_one") as download_one:
+                with mock.patch.object(
+                    sys, "stdin", io.StringIO("repo/name|mmproj-F16.gguf|Qwen3.5-9B-mmproj-F16.gguf\n")
+                ):
+                    with mock.patch.object(sys, "argv", ["sync_llama_cpp_models.py", str(root)]):
+                        self.assertEqual(0, sync.main())
+            download_one.assert_not_called()
+
+    def test_SHOULD_stage_renamed_downloads_so_the_hf_name_cannot_clobber_siblings(self) -> None:
+        import tempfile
+
+        import sync_llama_cpp_models as sync
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sibling = root / "mmproj-F16.gguf"
+            sibling.write_bytes(b"keep-me")
+
+            def fake_hf(cmd, check=False):
+                local_dir = Path(cmd[cmd.index("--local-dir") + 1])
+                (local_dir / "mmproj-F16.gguf").write_bytes(b"new-mmproj")
+                return subprocess.CompletedProcess(cmd, 0)
+
+            with mock.patch.object(sync.subprocess, "run", side_effect=fake_hf):
+                self.assertEqual(
+                    0,
+                    sync.download_one(
+                        "unsloth/Qwen3.5-9B-GGUF",
+                        "mmproj-F16.gguf",
+                        "Qwen3.5-9B-mmproj-F16.gguf",
+                        root,
+                    ),
+                )
+
+            dest = root / "Qwen3.5-9B-mmproj-F16.gguf"
+            self.assertEqual(b"new-mmproj", dest.read_bytes())
+            self.assertEqual(b"keep-me", sibling.read_bytes())
+            self.assertFalse((root / ".hf-download").exists())
+
+    def test_SHOULD_download_matching_names_straight_into_the_models_root(self) -> None:
+        import tempfile
+
+        import sync_llama_cpp_models as sync
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            seen: list[str] = []
+
+            def fake_hf(cmd, check=False):
+                seen.append(cmd[cmd.index("--local-dir") + 1])
+                Path(seen[-1], "weights.gguf").write_bytes(b"gguf")
+                return subprocess.CompletedProcess(cmd, 0)
+
+            with mock.patch.object(sync.subprocess, "run", side_effect=fake_hf):
+                self.assertEqual(0, sync.download_one("repo/name", "weights.gguf", "weights.gguf", root))
+
+            self.assertEqual(seen, [str(root)])
+            self.assertEqual(b"gguf", (root / "weights.gguf").read_bytes())
+
+
 if __name__ == "__main__":
     unittest.main()

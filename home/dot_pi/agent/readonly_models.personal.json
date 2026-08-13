@@ -8,7 +8,9 @@
               "only": ["fireworks", "together", "baseten"],
               "allow_fallbacks": false,
               "sort": "throughput",
-              "max_price": { "completion": 16 }
+              "max_price": {
+                "completion": 16
+              }
             }
           }
         },
@@ -45,36 +47,22 @@
       },
       "models": [
         {
-          "id": "local",
-          "name": "Qwen3.6 35B A3B UD-Q4_K_XL (llama.cpp)",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 262144,
-          "maxTokens": 32768,
-          "cost": {
-            "input": 0,
-            "output": 0,
-            "cacheRead": 0,
-            "cacheWrite": 0
-          }
-        },
-        {
-          "id": "local-max",
-          "name": "Qwen3.6 35B A3B abliterated (llama.cpp)",
-          "reasoning": true,
-          "input": ["text"],
-          "contextWindow": 262144,
-          "maxTokens": 32768,
-          "cost": {
-            "input": 0,
-            "output": 0,
-            "cacheRead": 0,
-            "cacheWrite": 0
-          }
-        },
-        {
           "id": "nemotron-3.5",
-          "name": "NVIDIA Nemotron 3.5 Lightning 30B A3B Q4_K_M (llama.cpp)",
+          "name": "NVIDIA Nemotron 3.5 Lightning 30B A3B UD-Q4_K_XL (llama.cpp)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 262144,
+          "maxTokens": 32768,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
+        },
+        {
+          "id": "qwen3.5-9b",
+          "name": "Qwen3.5 9B UD-Q4_K_XL (llama.cpp)",
           "reasoning": true,
           "input": ["text"],
           "contextWindow": 262144,

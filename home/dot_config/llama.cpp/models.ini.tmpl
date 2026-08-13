@@ -10,18 +10,21 @@ cache-type-k = q8_0
 cache-type-v = q8_0
 reasoning = auto
 
-[local]
-model = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
-load-on-startup = false
-
-[local-max]
-model = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf
-# The abliterated GGUF ships the stock Qwen template that raises
-# "System message must be at the beginning" for Anthropic/Codex-style message
-# ordering. Override it with the robust Unsloth template used by `local`.
-chat-template-file = {{ .chezmoi.homeDir }}/.config/llama.cpp/qwen3.6-chat-template.jinja
-load-on-startup = false
-
 [nemotron-3.5]
-model = {{ .chezmoi.homeDir }}/.llama.cpp/models/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_K_M.gguf
+model = {{ .chezmoi.homeDir }}/.llama.cpp/models/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-UD-Q4_K_XL.gguf
+spec-type = draft-mtp
+spec-draft-n-max = 2
+temp = 0.6
+top-p = 0.95
+min-p = 0.01
+load-on-startup = false
+
+[qwen3.5-9b]
+model = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.5-9B-UD-Q4_K_XL.gguf
+mmproj = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.5-9B-mmproj-F16.gguf
+reasoning = on
+temp = 0.6
+top-p = 0.95
+top-k = 20
+min-p = 0.00
 load-on-startup = false

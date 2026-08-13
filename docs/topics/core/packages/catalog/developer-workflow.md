@@ -46,13 +46,13 @@ This slice covers source control, review/readiness tooling, build/test utilities
 
 ## Build, CI, containers, and VMs
 
-| Tool                                                                                                                                                                                                                         | Source          | Why it is here                                           |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------- |
-| [`cmake`](https://www.cmake.org/), [`automake`](https://www.gnu.org/software/automake/), [`tcl-tk`](https://www.tcl-lang.org)                                                                                                | `brew`          | native build dependencies                                |
-| [`buildkite/buildkite/bk@3`](https://github.com/buildkite/cli)                                                                                                                                                               | `brew` tap      | Buildkite CI CLI                                         |
-| [`dive`](https://github.com/wagoodman/dive), [`colima`](https://colima.run), [`lazydocker`](https://github.com/jesseduffield/lazydocker), [`k9s`](https://k9scli.io/), [`minikube`](https://minikube.sigs.k8s.io/)           | `brew`          | container and Kubernetes workflow                        |
-| [`sou`](https://github.com/knqyf263/sou), [`cek`](https://github.com/bschaatsbergen/cek)                                                                                                                                     | `brew`          | container/devops utilities                               |
-| [`docker-desktop`](https://www.docker.com/products/docker-desktop), [`virtualbox`](https://www.virtualbox.org/), [`gcloud-cli`](https://cloud.google.com/cli/), [`azure-cli`](https://docs.microsoft.com/cli/azure/overview) | `cask` / `brew` | cloud/container desktop CLIs and cross-platform test VMs |
+| Tool                                                                                                                                                                                                               | Source          | Why it is here                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- | --------------------------------- |
+| [`cmake`](https://www.cmake.org/), [`automake`](https://www.gnu.org/software/automake/), [`tcl-tk`](https://www.tcl-lang.org)                                                                                      | `brew`          | native build dependencies         |
+| [`buildkite/buildkite/bk@3`](https://github.com/buildkite/cli)                                                                                                                                                     | `brew` tap      | Buildkite CI CLI                  |
+| [`dive`](https://github.com/wagoodman/dive), [`colima`](https://colima.run), [`lazydocker`](https://github.com/jesseduffield/lazydocker), [`k9s`](https://k9scli.io/), [`minikube`](https://minikube.sigs.k8s.io/) | `brew`          | container and Kubernetes workflow |
+| [`sou`](https://github.com/knqyf263/sou), [`cek`](https://github.com/bschaatsbergen/cek)                                                                                                                           | `brew`          | container/devops utilities        |
+| [`docker-desktop`](https://www.docker.com/products/docker-desktop), [`gcloud-cli`](https://cloud.google.com/cli/), [`azure-cli`](https://docs.microsoft.com/cli/azure/overview)                                    | `cask` / `brew` | cloud/container desktop CLIs      |
 
 ## Project/runtime helpers
 

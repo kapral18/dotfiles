@@ -88,14 +88,11 @@
         "baseURL": "http://127.0.0.1:8080/v1",
       },
       "models": {
-        "local": {
-          "name": "Qwen3.6 35B A3B UD-Q4_K_XL (llama.cpp)",
-        },
-        "local-max": {
-          "name": "Qwen3.6 35B A3B abliterated (llama.cpp)",
-        },
         "nemotron-3.5": {
-          "name": "NVIDIA Nemotron 3.5 Lightning 30B A3B Q4_K_M (llama.cpp)",
+          "name": "NVIDIA Nemotron 3.5 Lightning 30B A3B UD-Q4_K_XL (llama.cpp)",
+        },
+        "qwen3.5-9b": {
+          "name": "Qwen3.5 9B UD-Q4_K_XL (llama.cpp)",
         },
       },
     },

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+import importlib.util
 import json
 import os
 import re
@@ -46,7 +47,13 @@ class TestStaticModelMirrors(unittest.TestCase):
 
         pi_work = json.loads((REPO / "home/dot_pi/agent/readonly_models.json").read_text())
         expected = {model["id"] for model in pi_work["providers"]["llama-cpp"]["models"]}
-        self.assertEqual(expected, {"local", "local-max", "nemotron-3.5"})
+        self.assertEqual(
+            expected,
+            {
+                "nemotron-3.5",
+                "qwen3.5-9b",
+            },
+        )
 
         pi_personal = json.loads((REPO / "home/dot_pi/agent/readonly_models.personal.json").read_text())
         self.assertEqual(
@@ -67,9 +74,59 @@ class TestStaticModelMirrors(unittest.TestCase):
 
         manifest = (REPO / "home/readonly_dot_default-llama-cpp-models.tmpl").read_text()
         self.assertIn(
-            "ggml-org/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF|NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_K_M.gguf",
+            "unsloth/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF|NVIDIA-Nemotron-3.5-Lightning-30B-A3B-UD-Q4_K_XL.gguf",
             manifest,
         )
+        self.assertNotIn("ggml-org/", manifest)
+        self.assertIn("unsloth/Qwen3.5-9B-GGUF|Qwen3.5-9B-UD-Q4_K_XL.gguf", manifest)
+        self.assertIn(
+            "unsloth/Qwen3.5-9B-GGUF|mmproj-F16.gguf|Qwen3.5-9B-mmproj-F16.gguf",
+            manifest,
+        )
+        self.assertNotIn("unsloth/Qwen3.6-27B-MTP-GGUF|", manifest)
+        self.assertNotIn("unsloth/Qwen3.6-27B-GGUF|", manifest)
+        self.assertNotIn("deepreinforce-ai/", manifest)
+        self.assertNotIn("LiquidAI/", manifest)
+        self.assertNotIn("[local]", router_text)
+        self.assertNotIn("[local-max]", router_text)
+        self.assertIn("spec-type = draft-mtp", router_text)
+        self.assertIn("temp = 0.6", router_text)
+        self.assertIn("top-k = 20", router_text)
+        self.assertIn("min-p = 0.00", router_text)
+        self.assertNotIn("reasoning-preserve = true", router_text)
+        self.assertNotIn("[qwen3.6-27b]", router_text)
+        nemotron_block = router_text.split("[qwen3.5-9b]", 1)[0]
+        self.assertIn("spec-type = draft-mtp", nemotron_block)
+        self.assertIn("spec-draft-n-max = 2", nemotron_block)
+        self.assertNotIn("reasoning = on", nemotron_block)
+        self.assertIn("temp = 0.6", nemotron_block)
+        self.assertIn("top-p = 0.95", nemotron_block)
+        self.assertIn("min-p = 0.01", nemotron_block)
+        qwen35_block = router_text.split("[qwen3.5-9b]", 1)[1]
+        self.assertIn("reasoning = on", qwen35_block)
+        self.assertNotIn("spec-type = draft-mtp", qwen35_block)
+        self.assertIn("temp = 0.6", qwen35_block)
+        self.assertIn("top-k = 20", qwen35_block)
+        self.assertIn("min-p = 0.00", qwen35_block)
+
+        ini_ggufs = set(re.findall(r"/([^/\s]+\.gguf)$", router_text, flags=re.MULTILINE))
+        manifest_files = {
+            line.split("|")[-1].strip()
+            for line in manifest.splitlines()
+            if "|" in line and not line.lstrip().startswith("#")
+        }
+        self.assertTrue(
+            ini_ggufs <= manifest_files, f"models.ini GGUFs missing from manifest: {ini_ggufs - manifest_files}"
+        )
+
+        spec = importlib.util.spec_from_file_location(
+            "codex_llama_cpp_catalog",
+            REPO / "home/exact_lib/exact_,codex/main.py",
+        )
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+        self.assertEqual(module.LOCAL_MODELS, expected)
 
     def test_SHOULD_generate_deterministic_network_free_bytes(self):
         import model_mirrors

@@ -58,11 +58,11 @@ CENSUS: list[Claim] = [
     Claim(
         name="total effective git files",
         globs=None,
-        claimed=1352,
+        claimed=1351,
         anchors=[
-            ("README.md", "1352 files in the effective git file set"),
-            ("00-overview.mmd", "1352 files in the effective git file set"),
-            ("00-overview.mmd", "file census (1352 total)"),
+            ("README.md", "1351 files in the effective git file set"),
+            ("00-overview.mmd", "1351 files in the effective git file set"),
+            ("00-overview.mmd", "file census (1351 total)"),
         ],
     ),
     Claim(
