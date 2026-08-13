@@ -54,14 +54,15 @@ agent_review_models:
     # openrouter/deepseek/deepseek-v4-flash-0731:max while vision stays on kimi-k3:high; glm-5.2 is
     # selectable through the glm-lanes presets (FP8-or-higher, price-sorted, 24 t/s floor) but is not
     # a default lane. The advisor role stays on the lanes' own
-    # model and is enabled for primary turns and spawned agents. Personal keeps cursor/kimi-k3-high
-    # for main reasoning roles (user call 2026-08-05: kimi-k3 replaces gpt-5.2 everywhere).
+    # model and is enabled for primary turns and spawned agents. Personal keeps
+    # cursor/cursor-grok-4.6-xhigh for main reasoning roles (user call 2026-08-13:
+    # replaces cursor/kimi-k3-high).
     #
     # The verifier is the deliberate exception (user call, 2026-08-05): adversarial-verifier and
     # criteria-verifier pin concrete `cursor/kimi-k3-max:high` — the 2x cursor effort tier is
     # spent only on the falsification lanes, not on routine review. The concrete id bypasses
     # modelRoles per-profile pricing on purpose: the pin is identical on work and personal.
-    # Against the personal profile's kimi-k3-high lanes the verifier is same family at higher effort.
+    # Against the personal profile's grok-4.6-xhigh lanes the verifier is cross-family.
     # model_bands.omp.max carries no counter because every profile resolves
     # modelRoles.advisor to the lanes' own model;
     # re-add the counter only if a profile pins the advisor role to a genuinely different
@@ -355,7 +356,7 @@ model_bands:
     # is what lets each profile decide what a role costs.
     # There is no counter (dropped 2026-08-06, user call): every profile resolves advisor to the
     # lanes' own model — work to openrouter/deepseek/deepseek-v4-flash-0731:max, personal to
-    # cursor/kimi-k3-high:high — and the advisor remains same-family at runtime, while the
+    # cursor/cursor-grok-4.6-xhigh — and the advisor remains same-family at runtime, while the
     # falsification lanes keep their concrete
     # `cursor/kimi-k3-max:high` pin in agent_review_models.omp.verifier (user call 2026-08-05).
     # Verified 17.2.4: a profile carrying `model: "@smol"` runs on modelRoles.smol, and an

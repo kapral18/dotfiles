@@ -48,7 +48,7 @@ flowchart TB
     end
     W --> LIBS
 
-    subgraph CMDLIBS["34 deployed command libraries + shared helpers (home/exact_lib/ → ~/lib/)"]
+    subgraph CMDLIBS["33 deployed command libraries + shared helpers (home/exact_lib/ → ~/lib/)"]
         ADS[",cursor-agent-local/install.sh · ,cursor-agent-shim/shim.py<br/>(loopback proxy for ,cursor-openrouter: enforces the session model pin at the wire — any subagent/profile model escape gets 403 — and strips tool `strict` on /chat/completions)"]:::ai
     end
     ADS --> CMDLIBS

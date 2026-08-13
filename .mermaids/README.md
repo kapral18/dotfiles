@@ -27,7 +27,7 @@ Each file is a standalone [Mermaid](https://mermaid.js.org/) diagram (`.mmd`), l
 7. [`06-worktree-workflow.mmd`](06-worktree-workflow.mmd) — `,w` subcommands, `,gh-tfork`, gh-dash, and 1Password identity switching.
 8. [`07-shell-editor-macos.mmd`](07-shell-editor-macos.mmd) — fish/zsh/bash, terminals, and macOS automation (Hammerspoon, Karabiner, Alfred, icons, osx defaults).
 9. [`07b-neovim.mmd`](07b-neovim.mmd) — every file under `exact_nvim/` (155): core, 57 plugin specs, local plugins (14 each), util, queries, syntax.
-10. [`07c-bin-commands.mmd`](07c-bin-commands.mmd) — every thin command in `exact_bin/` (81) grouped by purpose + deployed command/shared internals in `home/exact_lib/` (76 command/shared library files), spanning 34 command libraries plus shared helpers.
+10. [`07c-bin-commands.mmd`](07c-bin-commands.mmd) — every thin command in `exact_bin/` (81) grouped by purpose + deployed command/shared internals in `home/exact_lib/` (76 command/shared library files), spanning 33 command libraries plus shared helpers.
 11. [`08-security-and-dotfiles.mmd`](08-security-and-dotfiles.mmd) — SSH/GPG identity, 1Password agent, git signing, pass stores, and every shell/tool rc dotfile.
 12. [`09-repo-validation.mmd`](09-repo-validation.mmd) — `make check` / `make fmt`, hygiene gates, and every repo-side config/meta file.
 13. [`10-docs-and-repo-meta.mmd`](10-docs-and-repo-meta.mmd) — the Docusaurus site (`website/` + `docs/`) and GitHub Pages CI; every page named.

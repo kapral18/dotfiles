@@ -137,8 +137,8 @@ CENSUS: list[Claim] = [
         anchors=[
             ("07c-bin-commands.mmd", "home/exact_lib/ (76 command/shared library files)"),
             ("README.md", "`home/exact_lib/` (76 command/shared library files)"),
-            ("README.md", "34 command libraries plus shared helpers"),
-            ("00-overview.mmd", "command-lib 76 (34 command dirs + shared)"),
+            ("README.md", "33 command libraries plus shared helpers"),
+            ("00-overview.mmd", "command-lib 76 (33 command dirs + shared)"),
         ],
     ),
     Claim(

@@ -1539,21 +1539,6 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             self.assertIn(f'OPENROUTER_MODEL="{default}"', source)
             self.assertIn('OPENROUTER_EFFORT="max"', source)
 
-        neovim = (
-            REPO / "home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_summarize-commit.lua"
-        ).read_text()
-        self.assertIn(f'local OPENROUTER_DEFAULT_MODEL = "{default}"', neovim)
-        self.assertIn('reasoning = { effort = "max" }', neovim)
-        # The summarizer talks to OpenRouter directly, so it must carry DeepSeek's FP8-or-higher
-        # allowlist itself; a bare model id would let unknown-quantization endpoints serve.
-        self.assertIn(
-            'local OPENROUTER_PROVIDER_ROUTING =\n  { sort = "price", quantizations = { "fp8", "fp16", "bf16", "fp32" }, preferred_min_throughput = 24 }',
-            neovim,
-        )
-        self.assertIn("provider = OPENROUTER_PROVIDER_ROUTING,", neovim)
-        for variable in ("OPENROUTER_MODEL", "OPENROUTER_NITRO", "OPENROUTER_THINKING", "OPENROUTER_REASONING_EFFORT"):
-            self.assertNotIn(variable, neovim)
-
         omp = (REPO / "home/dot_omp/private_agent/readonly_config.yml.tmpl").read_text()
         # OMP's work-profile modelRoles route through OpenRouter (user call 2026-08-06); the
         # provider order must keep listing it for both profiles.
@@ -1574,6 +1559,29 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         self.assertNotIn("extraBody:", omp_models)
         self.assertNotIn("modelOverrides:", omp_models)
         self.assertNotIn("openRouterRouting", omp_models)
+
+    def test_neovim_openrouter_summarizer_pins_gpt_oss_120b(self):
+        # Personal leader-aisc talks to OpenRouter directly. gpt-oss-120b is not on the DeepSeek
+        # wrapper route. OpenRouter's catalog lists supported_efforts high/medium/low. Provider
+        # routing is price-sorted with a 300 t/s preferred floor (OpenRouter deprioritizes slower
+        # endpoints; it does not hard-exclude them). Not a Cerebras-only whitelist.
+        neovim = (
+            REPO / "home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_summarize-commit.lua"
+        ).read_text()
+        self.assertIn('local OPENROUTER_DEFAULT_MODEL = "openai/gpt-oss-120b"', neovim)
+        self.assertNotIn('local OPENROUTER_DEFAULT_MODEL = "deepseek/deepseek-v4-flash-0731"', neovim)
+        self.assertIn('reasoning = { effort = "high" }', neovim)
+        self.assertNotIn('reasoning = { effort = "max" }', neovim)
+        self.assertIn(
+            'local OPENROUTER_PROVIDER_ROUTING = { sort = "price", preferred_min_throughput = 300 }',
+            neovim,
+        )
+        self.assertIn("provider = OPENROUTER_PROVIDER_ROUTING,", neovim)
+        self.assertNotIn('only = { "cerebras" }', neovim)
+        self.assertNotIn("quantizations", neovim)
+        self.assertNotIn("fireworks", neovim)
+        for variable in ("OPENROUTER_MODEL", "OPENROUTER_NITRO", "OPENROUTER_THINKING", "OPENROUTER_REASONING_EFFORT"):
+            self.assertNotIn(variable, neovim)
 
     def test_the_cheap_band_runs_the_codex_tier_wherever_the_catalog_has_it(self):
         # `cheap` carries judgment-free `search` and `mechanical` work, so it takes gpt-5.3-codex at

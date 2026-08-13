@@ -88,7 +88,7 @@ class TestOmpMigration(unittest.TestCase):
     def test_config_renders_profile_specific_model_roles(self):
         expected_values = {
             # OMP work defaults primary roles to DeepSeek max while vision stays on Kimi high.
-            # Personal keeps the Cursor pins, with vision on kimi-k3-high too.
+            # Personal keeps the Cursor pins, with vision on cursor-grok-4.6-xhigh too.
             True: (
                 "default: openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max:max",
                 "smol: openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max:max",
@@ -100,13 +100,13 @@ class TestOmpMigration(unittest.TestCase):
                 "modelProviderOrder:\n  - openrouter\n  - cursor\n  - openai-codex\n  - anthropic\n  - openai\n",
             ),
             False: (
-                "default: cursor/kimi-k3-high:high",
+                "default: cursor/cursor-grok-4.6-xhigh\n",
                 "smol: cursor/composer-2.5:high",
-                "vision: cursor/kimi-k3-high:high",
-                "slow: cursor/kimi-k3-high:high",
-                "plan: cursor/kimi-k3-high:high",
-                "task: cursor/kimi-k3-high:high",
-                "advisor: cursor/kimi-k3-high:high",
+                "vision: cursor/cursor-grok-4.6-xhigh\n",
+                "slow: cursor/cursor-grok-4.6-xhigh\n",
+                "plan: cursor/cursor-grok-4.6-xhigh\n",
+                "task: cursor/cursor-grok-4.6-xhigh\n",
+                "advisor: cursor/cursor-grok-4.6-xhigh\n",
                 "modelProviderOrder:\n  - cursor\n  - openai-codex\n  - openrouter\n  - anthropic\n  - openai\n",
             ),
         }

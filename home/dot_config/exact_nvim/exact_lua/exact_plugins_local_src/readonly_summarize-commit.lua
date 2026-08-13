@@ -27,12 +27,10 @@ local SYSTEM_MESSAGE =
 
 local DEFAULT_MAX_OUTPUT_TOKENS = 2048
 local GEMINI_DEFAULT_MODEL = "gemini-flash-latest"
-local OPENROUTER_DEFAULT_MODEL = "deepseek/deepseek-v4-flash-0731"
--- OpenRouter lanes sort by price and allow only FP8-or-higher quantization with a minimum
--- throughput floor; the same provider object Pi and OMP carry. Without it, default
--- load-balancing would pick INT4/unknown-quantization or low-throughput endpoints.
-local OPENROUTER_PROVIDER_ROUTING =
-  { sort = "price", quantizations = { "fp8", "fp16", "bf16", "fp32" }, preferred_min_throughput = 24 }
+local OPENROUTER_DEFAULT_MODEL = "openai/gpt-oss-120b"
+-- Price-sort among endpoints OpenRouter prefers at >=300 t/s (p50). Below-threshold
+-- hosts are deprioritized, not hard-excluded; there is no hard t/s gate on the API.
+local OPENROUTER_PROVIDER_ROUTING = { sort = "price", preferred_min_throughput = 300 }
 local OPENROUTER_CONTEXT_COMPRESSION_PLUGIN = { id = "context-compression" }
 
 -- ───────────────────────────── HELPERS (provider-agnostic) ─────────────────────
@@ -563,7 +561,7 @@ local providers = {
           { role = "system", content = SYSTEM_MESSAGE },
           { role = "user", content = diff },
         },
-        reasoning = { effort = "max" },
+        reasoning = { effort = "high" },
         plugins = { OPENROUTER_CONTEXT_COMPRESSION_PLUGIN },
         provider = OPENROUTER_PROVIDER_ROUTING,
         max_tokens = DEFAULT_MAX_OUTPUT_TOKENS,

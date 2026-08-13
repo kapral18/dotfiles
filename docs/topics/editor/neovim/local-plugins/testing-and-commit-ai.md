@@ -45,10 +45,10 @@ Output format notes:
 
 Environment variables:
 
-| Provider   | Required             | Optional                                                                                                                                                                                                                                         |
-| ---------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| OpenRouter | `OPENROUTER_API_KEY` | None. The route is fixed to `deepseek/deepseek-v4-flash-0731` with `reasoning.effort: "max"` and the FP8-or-higher provider allowlist (`quantizations: [fp8, fp16, bf16, fp32]`, throughput-sorted) — the same provider policy Pi and OMP carry. |
-| Gemini     | `GEMINI_API_KEY`     | `GEMINI_MODEL` (default `gemini-flash-latest`, 1,048,576-token input limit), `GEMINI_MAX_OUTPUT_TOKENS` (default `2048`)                                                                                                                         |
+| Provider   | Required             | Optional                                                                                                                                                                                                                                                                                                      |
+| ---------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OpenRouter | `OPENROUTER_API_KEY` | None. The route is fixed to `openai/gpt-oss-120b` with `reasoning.effort: "high"` (catalog max: high/medium/low), `provider.sort: "price"`, and `preferred_min_throughput: 300`. OpenRouter deprioritizes slower endpoints rather than hard-excluding them. Independent of the DeepSeek wrapper/Pi/OMP route. |
+| Gemini     | `GEMINI_API_KEY`     | `GEMINI_MODEL` (default `gemini-flash-latest`, 1,048,576-token input limit), `GEMINI_MAX_OUTPUT_TOKENS` (default `2048`)                                                                                                                                                                                      |
 
 OpenRouter requests always enable the `context-compression` plugin, so oversized staged diffs are compressed by OpenRouter instead of failing at the model context boundary.
 

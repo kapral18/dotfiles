@@ -199,16 +199,16 @@ Pi has no hook system, so profiles are the only lever and the gate never runs th
 
 OMP is the one harness with native band indirection, so its bands are spelled as `@role` tokens and [`readonly_config.yml.tmpl`](../../../home/dot_omp/private_agent/readonly_config.yml.tmpl)'s `modelRoles` prices them per profile. That is what lets the repo pin band costs per profile without needing a gate.
 
-| Band               | Token      | Work profile                                                                          | Personal profile           |
-| ------------------ | ---------- | ------------------------------------------------------------------------------------- | -------------------------- |
-| cheap              | `@smol`    | `openrouter/deepseek/deepseek-v4-flash-0731:max`                                      | `cursor/composer-2.5:high` |
-| standard           | `@task`    | `openrouter/deepseek/deepseek-v4-flash-0731:max`                                      | `cursor/kimi-k3-high:high` |
-| max                | `@default` | `openrouter/deepseek/deepseek-v4-flash-0731:max`                                      | `cursor/kimi-k3-high:high` |
-| counter (on `max`) | —          | — (no counter: advisor resolves to the lanes' own model on both profiles, 2026-08-06) | —                          |
+| Band               | Token      | Work profile                                                                          | Personal profile               |
+| ------------------ | ---------- | ------------------------------------------------------------------------------------- | ------------------------------ |
+| cheap              | `@smol`    | `openrouter/deepseek/deepseek-v4-flash-0731:max`                                      | `cursor/composer-2.5:high`     |
+| standard           | `@task`    | `openrouter/deepseek/deepseek-v4-flash-0731:max`                                      | `cursor/cursor-grok-4.6-xhigh` |
+| max                | `@default` | `openrouter/deepseek/deepseek-v4-flash-0731:max`                                      | `cursor/cursor-grok-4.6-xhigh` |
+| counter (on `max`) | —          | — (no counter: advisor resolves to the lanes' own model on both profiles, 2026-08-06) | —                              |
 
-Verified on 17.2.4: a profile carrying `model: "@smol"` runs on `modelRoles.smol`, and an unknown token fails loudly with `Error: No model selected.` rather than falling back. Provider and model are separated by `/`, never `:` — `cursor:` parses as a bogus provider. Like Pi, OMP's `:<level>` suffix is a single thinking dial the runtime maps straight onto `reasoning`, so "high effort, non-thinking" is not expressible here. Work routes primary roles through OpenRouter `deepseek/deepseek-v4-flash-0731:max` and keeps `vision` on `openrouter/moonshotai/kimi-k3:high`; personal pins primary roles to Cursor `kimi-k3-high`, uses `composer-2.5` for `smol`, and uses Cursor `kimi-k3-high` for `vision`.
+Verified on 17.2.4: a profile carrying `model: "@smol"` runs on `modelRoles.smol`, and an unknown token fails loudly with `Error: No model selected.` rather than falling back. Provider and model are separated by `/`, never `:` — `cursor:` parses as a bogus provider. Like Pi, OMP's `:<level>` suffix is a single thinking dial the runtime maps straight onto `reasoning`, so "high effort, non-thinking" is not expressible here. Work routes primary roles through OpenRouter `deepseek/deepseek-v4-flash-0731:max` and keeps `vision` on `openrouter/moonshotai/kimi-k3:high`; personal pins primary roles to Cursor `cursor-grok-4.6-xhigh`, uses `composer-2.5` for `smol`, and uses Cursor `cursor-grok-4.6-xhigh` for `vision`.
 
-`modelRoles.advisor` resolves to the lanes' own model on both profiles — OpenRouter DeepSeek max on work, Cursor Kimi high on personal — and the advisor is enabled for primary turns and spawned agents. The falsification lanes keep their concrete `cursor/kimi-k3-max:high` profile pin. An invariant asserts OMP carries a counter whenever any profile's `advisor` differs from `default`, so moving cross-family refutation means repricing the role first, not editing the band.
+`modelRoles.advisor` resolves to the lanes' own model on both profiles — OpenRouter DeepSeek max on work, Cursor Grok 4.6 Extra High on personal — and the advisor is enabled for primary turns and spawned agents. The falsification lanes keep their concrete `cursor/kimi-k3-max:high` profile pin. An invariant asserts OMP carries a counter whenever any profile's `advisor` differs from `default`, so moving cross-family refutation means repricing the role first, not editing the band.
 
 ## Native subagent takeover risk
 

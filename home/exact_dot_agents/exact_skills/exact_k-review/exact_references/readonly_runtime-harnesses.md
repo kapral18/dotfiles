@@ -92,11 +92,10 @@ Profiles carry registry-rendered `model` frontmatter; do not rely on the configu
   OMP resolves review roles through its own `modelRoles`.
   Work prices primary roles to `openrouter/deepseek/deepseek-v4-flash-0731:max` and keeps `vision` on `openrouter/moonshotai/kimi-k3:high`;
   the advisor feature stays disabled.
-  Personal pins `default` and `advisor` to `cursor/kimi-k3-high:high`, so `model_bands.omp.max` carries no counter.
+  Personal pins `default` and `advisor` to `cursor/cursor-grok-4.6-xhigh`, so `model_bands.omp.max` carries no counter.
   The adversarial and criteria verifiers keep their own exception on both profiles:
   they pin concrete `cursor/kimi-k3-max:high` (user call 2026-08-05), spending the 2x cursor effort tier only on the falsification lanes.
-  Refutation is cross-family on work and `families=same (reduced independence)` on personal;
-  personal `smol` stays on `cursor/composer-2.5:high`.
+  Refutation is cross-family on work and on personal (Grok vs Kimi max); personal `smol` stays on `cursor/composer-2.5:high`.
   An invariant asserts that OMP carries a counter whenever any profile's `modelRoles.advisor` differs from `modelRoles.default`, so moving cross-family refutation means changing the role pin first, not the band.
   The cost-driven ban on opus-5/gpt-5.5 (closed 2026-08-03) moved the lanes off those models.
   Other repo-owned Pi/OMP profiles resolve their model from the band registry (`agent_bindings` → `agent_categories` → `model_bands`) so they do not fall through to `defaultProvider`/`defaultModel` unless a future profile deliberately omits `model` and documents why.
