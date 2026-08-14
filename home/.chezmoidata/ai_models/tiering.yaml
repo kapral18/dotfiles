@@ -12,14 +12,15 @@
 # Empty value = the profile omits the field (harness config default). inherit = harness-native parent inheritance.
 agent_review_models:
   cursor:
-    # GPT-5.6 is back on Cursor (user call, 2026-08-07, superseding the 2026-08-05 ban): lanes and
-    # verifier both run gpt-5.6-terra-max, the single-model review policy (reduced independence,
-    # SOP §3.5). Task subagents are whitelist-bound; whitelist verified live 2026-08-05:
-    # claude-fable-5-medium, claude-opus-5-high, claude-sonnet-5-thinking-max, composer-2.5,
-    # composer-2.5-fast, cursor-grok-4.5-high-fast, gpt-5.6-sol-xhigh, gpt-5.6-terra-max.
+    # Single-model review policy (reduced independence, SOP §3.5): lanes and verifier both run
+    # cursor-grok-4.6-xhigh (user call 2026-08-14: Cursor harness matches the personal OMP pin;
+    # replaces gpt-5.6-terra-max). Task subagents are whitelist-bound; live Task enum in this
+    # Cursor IDE session 2026-08-14: claude-fable-5-medium, claude-opus-5-high,
+    # claude-sonnet-5-thinking-max, composer-2.5, composer-2.5-fast, cursor-grok-4.5-high-fast,
+    # cursor-grok-4.6-xhigh, gpt-5.6-sol-xhigh, gpt-5.6-terra-xhigh.
     # `claude-fable-5-low`/`claude-fable-5-max` exist in the main catalog but not the Task whitelist.
-    lanes: "gpt-5.6-terra-max"
-    verifier: "gpt-5.6-terra-max" # single-model review policy (reduced independence, SOP §3.5)
+    lanes: "cursor-grok-4.6-xhigh"
+    verifier: "cursor-grok-4.6-xhigh" # single-model review policy (reduced independence, SOP §3.5)
   copilot:
     # Cost-driven pin (closed 2026-08-03): opus-5 and gpt-5.5 are punitively expensive for regular
     # lanes. Copilot's catalog has no glm-5.2 or kimi, so lanes run OpenAI terra (priority #2).
@@ -33,11 +34,12 @@ agent_review_models:
     verifier: "inherit"
   codex:
     # OpenAI-only harness, so no cross-family verifier is expressible; families=same (degraded) is expected.
-    # Verified codex-cli 0.147.0 bundled catalog via `codex debug models --bundled`: gpt-5.6-terra
-    # supports max effort. User request pins Terra/max across the Codex harness.
+    # Verified codex-cli 0.147.0 bundled catalog via `codex debug models --bundled`: gpt-5.6-sol
+    # supports xhigh (also low/medium/high/max/ultra; native default is low). User call 2026-08-14
+    # pins Sol/xhigh across the Codex harness (not Sol/high).
     # Kept in sync BY HAND with model_bands.codex.max.model — not templated/derived, update both on change.
-    lanes: "gpt-5.6-terra"
-    verifier: "gpt-5.6-terra" # single-family harness; families=same (degraded) is expected
+    lanes: "gpt-5.6-sol"
+    verifier: "gpt-5.6-sol" # single-family harness; families=same (degraded) is expected
   gemini:
     lanes: "gemini-3.1-pro-preview" # closed 2026-07-27: previously "" (unaudited config-default); kept in sync BY HAND with model_bands.gemini.max.model — not templated/derived, update both on change
     verifier: "gemini-3.1-pro-preview" # single-family harness; families=same (degraded) is expected, not a defect
@@ -58,17 +60,14 @@ agent_review_models:
     # cursor/cursor-grok-4.6-xhigh for main reasoning roles (user call 2026-08-13:
     # replaces cursor/kimi-k3-high).
     #
-    # The verifier is the deliberate exception (user call, 2026-08-05): adversarial-verifier and
-    # criteria-verifier pin concrete `cursor/kimi-k3-max:high` — the 2x cursor effort tier is
-    # spent only on the falsification lanes, not on routine review. The concrete id bypasses
-    # modelRoles per-profile pricing on purpose: the pin is identical on work and personal.
-    # Against the personal profile's grok-4.6-xhigh lanes the verifier is cross-family.
+    # Review workers and falsifiers both use @default, so they follow modelRoles.default per
+    # profile (work DeepSeek max, personal grok-4.6-xhigh). families=same (reduced independence).
     # model_bands.omp.max carries no counter because every profile resolves
     # modelRoles.advisor to the lanes' own model;
     # re-add the counter only if a profile pins the advisor role to a genuinely different
     # family again, the invariant reads the role pins.
     lanes: "@default"
-    verifier: "cursor/kimi-k3-max:high" # 2x tier on falsification lanes only (user call 2026-08-05)
+    verifier: "@default"
 
 # Model tiering is two independent tables, kept apart on purpose. `agent_categories` says what a
 # kind of work needs and is portable — whether a findings audit needs max reasoning is a fact about
@@ -224,22 +223,24 @@ model_bands:
       thinking: "off"
       context: "short"
   codex:
-    # User request: every Codex band runs `gpt-5.6-terra` at max effort. Keeping the three
-    # bands explicit lets the gate close native subagent defaults without changing the portable
-    # category taxonomy. OpenAI-only, hence no counter (families=same degraded).
+    # User call 2026-08-14: every Codex band runs `gpt-5.6-sol` at xhigh effort (not high).
+    # Keeping the three bands explicit lets the gate close native subagent defaults without
+    # changing the portable category taxonomy. OpenAI-only, hence no counter (families=same degraded).
+    # Bundled catalog (codex-cli 0.147.0): sol supports xhigh; native default is low, so the pin is
+    # load-bearing.
     cheap:
-      model: "gpt-5.6-terra"
-      effort: "max"
+      model: "gpt-5.6-sol"
+      effort: "xhigh"
       thinking: ""
       context: "short"
     standard:
-      model: "gpt-5.6-terra"
-      effort: "max"
+      model: "gpt-5.6-sol"
+      effort: "xhigh"
       thinking: ""
       context: "short"
     max:
-      model: "gpt-5.6-terra"
-      effort: "max"
+      model: "gpt-5.6-sol"
+      effort: "xhigh"
       thinking: ""
       context: "short"
   copilot:
@@ -272,40 +273,39 @@ model_bands:
   cursor:
     # Cursor is the only harness that splits effort and thinking into separate ids (plain
     # `claude-fable-5-medium` vs `claude-fable-5-thinking-*`). Opus 5, Fable 5 and the GPT-5.6 ids
-    # exist only as 1M ids here.
+    # exist only as 1M ids here. `cursor-grok-4.6-xhigh` is not a 1M label in live
+    # `cursor-agent models` (2026.08.11-e8db854: "Cursor Grok 4.6 Extra High").
     #
     # These bands are read by the band hook alone, and the Task tool takes a far narrower whitelist
-    # than `cursor-agent models` (197 ids): only claude-fable-5-medium, claude-opus-5-high,
-    # claude-sonnet-5-thinking-max, composer-2.5, composer-2.5-fast, cursor-grok-4.5-high-fast,
-    # gpt-5.6-sol-xhigh, gpt-5.6-terra-max resolve for a subagent (re-verified live 2026-08-05 via
-    # spawn probe). Anything else fails the spawn with "Invalid model selection", so bands here must
-    # stay inside that list even where a better id exists for a main session: kimi-k3 and
+    # than `cursor-agent models`. Live Task enum (Cursor IDE 2026-08-14): claude-fable-5-medium,
+    # claude-opus-5-high, claude-sonnet-5-thinking-max, composer-2.5, composer-2.5-fast,
+    # cursor-grok-4.5-high-fast, cursor-grok-4.6-xhigh, gpt-5.6-sol-xhigh, gpt-5.6-terra-xhigh.
+    # Anything else fails the spawn with "Invalid model selection", so bands here must stay inside
+    # that list even where a better id exists for a main session: kimi-k3 and
     # claude-fable-5-low/-max are sellable to a main session but are not on that whitelist.
     #
-    # GPT-5.6 is back on Cursor (user call, 2026-08-07, superseding the 2026-08-05 ban): standard
-    # and max both run gpt-5.6-terra-max. No counter — the verifier follows the band, so refutation
-    # against GPT lanes runs families=same (degraded), a deliberate single-model policy (user call,
-    # 2026-08-07).
+    # User call 2026-08-14: every Cursor band and both review-lane roles run cursor-grok-4.6-xhigh
+    # (replaces gpt-5.6-terra-max / composer-2.5). No counter — the verifier follows the band, so
+    # refutation runs families=same (reduced independence), a deliberate single-model policy.
     #
-    # cheap and standard were once the same id deliberately. `-fast` is a speed tier, not a cheaper model:
-    # cursor.com/docs/models prices Composer 2.5 at $0.5/$2.5 and calls the fast variant "A faster
-    # variant with the same intelligence ... at $3/M input and $15/M output tokens". Pinning cheap to
-    # `-fast` charged 6x for the band that is supposed to cost least.
+    # `-fast` is a speed tier, not a cheaper model: cursor.com/docs/models prices Composer 2.5 at
+    # $0.5/$2.5 and calls the fast variant "A faster variant with the same intelligence ... at $3/M
+    # input and $15/M output tokens". No band may reach for a `-fast` id.
     cheap:
-      model: "composer-2.5"
-      effort: "high"
+      model: "cursor-grok-4.6-xhigh"
+      effort: "xhigh"
       thinking: ""
       context: "short"
     standard:
-      model: "gpt-5.6-terra-max"
-      effort: "max"
+      model: "cursor-grok-4.6-xhigh"
+      effort: "xhigh"
       thinking: ""
-      context: "long"
+      context: "short"
     max:
-      model: "gpt-5.6-terra-max"
-      effort: "max"
+      model: "cursor-grok-4.6-xhigh"
+      effort: "xhigh"
       thinking: ""
-      context: "long"
+      context: "short"
   gemini:
     # gemini-3.1-pro (Cursor spelling) / gemini-3.1-pro-preview (Vertex/Copilot spelling) —
     # deliberately not normalized to one name; see docs/topics/ai-assistants/model-tiering.md.
@@ -356,9 +356,7 @@ model_bands:
     # is what lets each profile decide what a role costs.
     # There is no counter (dropped 2026-08-06, user call): every profile resolves advisor to the
     # lanes' own model — work to openrouter/deepseek/deepseek-v4-flash-0731:max, personal to
-    # cursor/cursor-grok-4.6-xhigh — and the advisor remains same-family at runtime, while the
-    # falsification lanes keep their concrete
-    # `cursor/kimi-k3-max:high` pin in agent_review_models.omp.verifier (user call 2026-08-05).
+    # cursor/cursor-grok-4.6-xhigh — and review lanes plus verifier stay on @default (same-family).
     # Verified 17.2.4: a profile carrying `model: "@smol"` runs on modelRoles.smol, and an
     # unknown token fails loudly with `Error: No model selected.` rather than falling back.
     # Same single-dial constraint as Pi: omp maps thinkingLevel straight onto reasoning, and

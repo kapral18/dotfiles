@@ -1021,17 +1021,14 @@ class TestAgentInstructionInvariants(unittest.TestCase):
                 )
                 continue
             if harness == "omp":
-                # Two deliberate pins (user calls): the falsification lanes pin concrete
-                # cursor/kimi-k3-max:high while every other lane stays on @default, and the
-                # counter is @advisor — cross-family only where a profile resolves advisor to a
-                # different id than default (no current profile does; both resolve advisor to the
-                # lanes' own model, so the band carries no counter today).
+                # Review lanes and verifier both follow @default (same-family per profile).
+                # The band carries no counter unless a profile prices advisor as a different family.
                 if "counter" in top:
                     assert top["counter"]["model"] == "@advisor", (
                         f"omp max band counter is {top['counter']!r}, expected the @advisor role token"
                     )
-                assert roles["verifier"] == "cursor/kimi-k3-max:high", (
-                    f"omp registry verifier {roles['verifier']!r} != the pinned falsification tier"
+                assert roles["verifier"] == roles["lanes"], (
+                    f"omp registry verifier {roles['verifier']!r} != lanes {roles['lanes']!r}"
                 )
                 continue
             assert counter["model"] == roles["verifier"], (
@@ -1078,12 +1075,12 @@ class TestAgentInstructionInvariants(unittest.TestCase):
                 f"model_bands.codex.{orchestrate}.effort {codex_band['effort']!r}"
             )
 
-    def test_codex_defaults_and_every_agent_lane_are_terra_max_default(self):
+    def test_codex_defaults_and_every_agent_lane_are_sol_xhigh_default(self):
         import ai_models
 
         registry = REPO / "home/.chezmoidata/ai_models"
-        expected_model = "gpt-5.6-terra"
-        expected_effort = "max"
+        expected_model = "gpt-5.6-sol"
+        expected_effort = "xhigh"
         expected_service_tier = "default"
 
         for band, row in ai_models.load_model_bands(registry)["codex"].items():
@@ -1586,17 +1583,18 @@ class TestAgentInstructionInvariants(unittest.TestCase):
     def test_the_cheap_band_runs_the_codex_tier_wherever_the_catalog_has_it(self):
         # `cheap` carries judgment-free `search` and `mechanical` work, so it takes gpt-5.3-codex at
         # high effort on every harness whose catalog has it. Five cannot: Claude Code and Gemini are
-        # single-vendor, native Codex deliberately pins Sol/high across every band, Cursor's Task
-        # tool takes only its own eight-slug whitelist, and Pi reaches models only through OpenRouter,
-        # where the cheap role is pinned to deepseek-v4-flash-0731:max. Each exception is spelled out
-        # so a future edit cannot quietly downgrade a harness that could have run the codex tier.
+        # single-vendor, native Codex deliberately pins Sol/xhigh across every band, Cursor's Task
+        # tool takes only its own whitelist (user call 2026-08-14 pins every Cursor band to
+        # cursor-grok-4.6-xhigh), and Pi reaches models only through OpenRouter, where the cheap
+        # role is pinned to deepseek-v4-flash-0731:max. Each exception is spelled out so a future
+        # edit cannot quietly downgrade a harness that could have run the codex tier.
         import ai_models
 
         expected = {
             "claude_code": ("claude-fable-5", "low"),  # Anthropic-only; all bands fable-5 (user call 2026-08-05)
-            "codex": ("gpt-5.6-terra", "max"),  # user-selected all-band Codex policy
+            "codex": ("gpt-5.6-sol", "xhigh"),  # user-selected all-band Codex policy
             "copilot": ("claude-haiku-4.5", "high"),
-            "cursor": ("composer-2.5", "high"),  # no codex id in the Task whitelist; `-fast` costs 6x
+            "cursor": ("cursor-grok-4.6-xhigh", "xhigh"),  # all-band Cursor pin (user call 2026-08-14)
             "gemini": ("gemini-3.6-flash", "high"),  # Google-only catalog
             "pi": ("openrouter/deepseek/deepseek-v4-flash-0731:max", "max"),  # OpenRouter-only; cheap role route
             "omp": ("@smol", "high"),  # a role token; the concrete pick is asserted below
@@ -1689,8 +1687,8 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         assert result.returncode == 0, result.stderr
 
     def test_cursor_bands_stay_inside_the_task_tool_whitelist(self):
-        # cursor-agent 2026.07.23 resolves a subagent model against a far narrower list than
-        # `cursor-agent models` (197 ids): anything else fails the spawn with "Invalid model
+        # Cursor IDE Task enum 2026-08-14 (this session): a far narrower list than
+        # `cursor-agent models`. Anything else fails the spawn with "Invalid model
         # selection". Since Cursor has no loadable agent files, the band hook is the only tiering
         # surface there, and a slug outside this list breaks delegation rather than repricing it.
         import ai_models
@@ -1702,8 +1700,9 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "composer-2.5",
             "composer-2.5-fast",
             "cursor-grok-4.5-high-fast",
+            "cursor-grok-4.6-xhigh",
             "gpt-5.6-sol-xhigh",
-            "gpt-5.6-terra-max",
+            "gpt-5.6-terra-xhigh",
         }
 
         bands = ai_models.load_model_bands(REPO / "home/.chezmoidata/ai_models")["cursor"]

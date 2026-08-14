@@ -157,152 +157,152 @@
     "codex": {
       "agents": {
         "Explore": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "Plan": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "adversarial-verifier": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "best-of-n-runner": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "browser_agent": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "bugbot": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "change-auditor": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "claude": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "claude-code-guide": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "cli_help": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "code-review": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "code-searcher": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "codebase_investigator": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "criteria-verifier": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "cursor-guide": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "deep-review": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "default": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "explore": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "explorer": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "findings-auditor": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "fresh-eyes": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "general-purpose": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "generalPurpose": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "generalist": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "live-ui-review": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "post-review": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "pr-necessity-auditor": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "rem-agent": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "research": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "researcher": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "review-controller": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "review-worker": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "reviewer": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "rubber-duck": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "security-review": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "task": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         },
         "worker": {
-          "model": "gpt-5.6-terra",
-          "effort": "max"
+          "model": "gpt-5.6-sol",
+          "effort": "xhigh"
         }
       }
     },
@@ -461,152 +461,152 @@
     "cursor": {
       "agents": {
         "Explore": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "Plan": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "adversarial-verifier": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "best-of-n-runner": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "browser_agent": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "bugbot": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "change-auditor": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "claude": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "claude-code-guide": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "cli_help": {
-          "model": "composer-2.5",
-          "effort": "high"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "code-review": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "code-searcher": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "codebase_investigator": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "criteria-verifier": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "cursor-guide": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "deep-review": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "default": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "explore": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "explorer": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "findings-auditor": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "fresh-eyes": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "general-purpose": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "generalPurpose": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "generalist": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "live-ui-review": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "post-review": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "pr-necessity-auditor": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "rem-agent": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "research": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "researcher": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "review-controller": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "review-worker": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "reviewer": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "rubber-duck": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "security-review": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "task": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         },
         "worker": {
-          "model": "gpt-5.6-terra-max",
-          "effort": "max"
+          "model": "cursor-grok-4.6-xhigh",
+          "effort": "xhigh"
         }
       }
     },

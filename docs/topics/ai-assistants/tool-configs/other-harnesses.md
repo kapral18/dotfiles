@@ -51,7 +51,7 @@ Repeated MCP tool approvals live as `mcp_servers.<server>.tools.<tool>.approval_
 
 `scsi-main` and `scsi-local` are generated with `default_tools_approval_mode = "approve"` so their read-analysis tools do not depend on the flaky MCP approval persistence path. Slack is only auto-approved for read/search tools (`slack_read_*` and `slack_search_*`), while send/create/update/schedule tools stay prompted/auto-reviewed.
 
-Both interactive profiles and every named Codex agent profile pin `service_tier = "default"`.
+Both interactive profiles and every named Codex agent profile pin `model = "gpt-5.6-sol"`, `model_reasoning_effort = "xhigh"`, and `service_tier = "default"`.
 
 ### Codex reconciliation
 

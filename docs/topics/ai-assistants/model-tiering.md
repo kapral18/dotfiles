@@ -18,7 +18,7 @@ Whether a findings audit needs max reasoning is a fact about the job, not about 
 
 **Bands are editorial.** `cheap`/`standard`/`max` is a human judgment reviewed in the registry, not a value derived from a model's thinking-budget ladder or price. Harness catalogs share the same minimal/low/medium/high shape across most models, so there is nothing to normalize against; the band exists so that "high" on a cheap-band model and "high" on a max-band model are not read as the same amount of effort.
 
-**Two standing policies keep the option space small.** Every band runs short context unless the harness publishes no short variant of the wanted model, and the cheap band takes the codex tier (`gpt-5.3-codex` at high effort) on every harness whose catalog carries it. Claude Code and Gemini are single-vendor and keep their own cheap pick, Cursor's `Task` tool whitelist contains no codex id, and native Codex deliberately overrides the cheap rule with the user-selected all-band `gpt-5.6-terra`/max policy.
+**Two standing policies keep the option space small.** Every band runs short context unless the harness publishes no short variant of the wanted model, and the cheap band takes the codex tier (`gpt-5.3-codex` at high effort) on every harness whose catalog carries it. Claude Code and Gemini are single-vendor and keep their own cheap pick, Cursor pins every band to `cursor-grok-4.6-xhigh` (user call 2026-08-14; the Task whitelist has no codex id), and native Codex deliberately overrides the cheap rule with the user-selected all-band `gpt-5.6-sol`/xhigh policy.
 
 ## Categories
 
@@ -131,14 +131,14 @@ Context stays short: bare `claude-fable-5` is the short-window selector, and the
 
 ### Codex
 
-| Band               | Model           | Effort |
-| ------------------ | --------------- | ------ |
-| cheap              | `gpt-5.6-terra` | max    |
-| standard           | `gpt-5.6-terra` | max    |
-| max                | `gpt-5.6-terra` | max    |
-| counter (on `max`) | none            | —      |
+| Band               | Model         | Effort |
+| ------------------ | ------------- | ------ |
+| cheap              | `gpt-5.6-sol` | xhigh  |
+| standard           | `gpt-5.6-sol` | xhigh  |
+| max                | `gpt-5.6-sol` | xhigh  |
+| counter (on `max`) | none          | —      |
 
-Codex is single-vendor (OpenAI only); there is no cross-family split to make here, so `refute` reports `degraded`. Native Codex 0.147.0 lists `gpt-5.6-terra` with `max` among its supported reasoning levels (`codex debug models --bundled`). Every Codex band, root profile, and named role therefore pins `gpt-5.6-terra` at max effort, and every profile pins `service_tier = "default"`. Codex carries effort per profile as `model_reasoning_effort`, and the gate rewrites both model fields on `spawn_agent`. Codex exposes no context-tier dial, so every band is short by construction.
+Codex is single-vendor (OpenAI only); there is no cross-family split to make here, so `refute` reports `degraded`. Native Codex 0.147.0 lists `gpt-5.6-sol` with `xhigh` among its supported reasoning levels (`codex debug models --bundled`; native default is `low`). Every Codex band, root profile, and named role therefore pins `gpt-5.6-sol` at xhigh effort (user call 2026-08-14: Sol/xhigh, not Sol/high), and every profile pins `service_tier = "default"`. Codex carries effort per profile as `model_reasoning_effort`, and the gate rewrites both model fields on `spawn_agent`. Codex exposes no context-tier dial, so every band is short by construction.
 
 ### Copilot CLI
 
@@ -157,16 +157,16 @@ Copilot is the only harness with a live context dial: `subagents.agents.<name>.c
 
 | Band               | Model                                                                        | Effort | Context |
 | ------------------ | ---------------------------------------------------------------------------- | ------ | ------- |
-| cheap              | `composer-2.5`                                                               | high   | short   |
-| standard           | `gpt-5.6-terra-max`                                                          | max    | long    |
-| max                | `gpt-5.6-terra-max`                                                          | max    | long    |
-| counter (on `max`) | none — verifier follows the band (single-model policy, user call 2026-08-07) | —      | —       |
+| cheap              | `cursor-grok-4.6-xhigh`                                                      | xhigh  | short   |
+| standard           | `cursor-grok-4.6-xhigh`                                                      | xhigh  | short   |
+| max                | `cursor-grok-4.6-xhigh`                                                      | xhigh  | short   |
+| counter (on `max`) | none — verifier follows the band (single-model policy, user call 2026-08-14) | —      | —       |
 
-Cursor's bands are read by the gate alone, because `cursor-agent` does not discover home-level agent files. That matters for which ids are legal: the `Task` tool takes a far narrower whitelist than the 197 ids `cursor-agent models` lists. Only `claude-fable-5-medium`, `claude-opus-5-high`, `claude-sonnet-5-thinking-max`, `composer-2.5`, `composer-2.5-fast`, `cursor-grok-4.5-high-fast`, `gpt-5.6-sol-xhigh`, and `gpt-5.6-terra-max` resolve for a subagent; anything else fails the spawn with `Invalid model selection` (re-verified live 2026-08-05 via spawn probe). An invariant pins the bands to that list. glm-5.2 is unusable (closed 2026-08-03), so cheap stays on `composer-2.5`. GPT-5.6 is back on Cursor (user call, 2026-08-07, superseding the 2026-08-05 ban): standard and max both run `gpt-5.6-terra-max`. `claude-fable-5-low`/`claude-fable-5-max` and kimi-k3 are sellable to a Cursor main session but absent from the whitelist, so they cannot be subagent picks. Both bands name `composer-2.5` rather than `composer-2.5-fast`: Cursor prices Composer 2.5 at $0.5/$2.5 and describes the fast variant as "A faster variant with the same intelligence" at $3/M input and $15/M output, so `-fast` buys speed at 6x, never a cheaper rung. An invariant keeps it out of every band.
+Cursor's bands are read by the gate alone, because `cursor-agent` does not discover home-level agent files. That matters for which ids are legal: the `Task` tool takes a far narrower whitelist than the ids `cursor-agent models` lists. The live Task enum in Cursor IDE on 2026-08-14 is `claude-fable-5-medium`, `claude-opus-5-high`, `claude-sonnet-5-thinking-max`, `composer-2.5`, `composer-2.5-fast`, `cursor-grok-4.5-high-fast`, `cursor-grok-4.6-xhigh`, `gpt-5.6-sol-xhigh`, and `gpt-5.6-terra-xhigh`. Anything else fails the spawn with `Invalid model selection`. An invariant pins the bands to that list. User call 2026-08-14: every Cursor band and both review-lane roles run `cursor-grok-4.6-xhigh`, replacing `gpt-5.6-terra-max` / cheap `composer-2.5`, so the Cursor harness matches the personal OMP pin. `claude-fable-5-low`/`claude-fable-5-max` and kimi-k3 are sellable to a Cursor main session but absent from the whitelist, so they cannot be subagent picks. No band names `composer-2.5-fast`: Cursor prices Composer 2.5 at $0.5/$2.5 and describes the fast variant as "A faster variant with the same intelligence" at $3/M input and $15/M output, so `-fast` buys speed at 6x, never a cheaper rung. An invariant keeps `-fast` ids out of every band.
 
-The cost-driven ban (closed 2026-08-03) moved the lanes off `claude-opus-5-high`, which is what had made the lane/verifier pairing cross-family. GPT-5.6 left Cursor on 2026-08-05 and returned on 2026-08-07 (both user calls): both review-lane roles are now `gpt-5.6-terra-max`, `max` carries no counter, and refutation is `families=same (reduced independence)` — a deliberate single-model policy (user call, 2026-08-07): report it, never present it as a cross-family pass.
+The cost-driven ban (closed 2026-08-03) moved the lanes off `claude-opus-5-high`, which is what had made the lane/verifier pairing cross-family. GPT-5.6 left Cursor on 2026-08-05, returned on 2026-08-07, and was replaced by Grok 4.6 Extra High on 2026-08-14 (all user calls): both review-lane roles are now `cursor-grok-4.6-xhigh`, `max` carries no counter, and refutation is `families=same (reduced independence)` — a deliberate single-model policy: report it, never present it as a cross-family pass.
 
-Cursor cannot honor the short-context policy for its upper bands: it publishes the GPT-5.6 ids exclusively as 1M variants (`gpt-5.6-terra-max`), with no short variant to select, so those rows record the window they actually get. The effort/thinking split is a real Cursor id-scheme fact — `claude-fable-5-medium` (plain) and `claude-fable-5-thinking-medium` are distinct, real model IDs — Cursor is the one harness where "non-thinking" is selected by picking a different model ID outright, not a flag, which is why effort rides in the id here. The effort/thinking split is a real Cursor id-scheme fact — `claude-fable-5-medium` (plain) and `claude-fable-5-thinking-medium` are distinct, real model IDs — Cursor is the one harness where "non-thinking" is selected by picking a different model ID outright, not a flag, which is why effort rides in the id here.
+`cursor-grok-4.6-xhigh` is not a 1M-only id in live `cursor-agent models` 2026.08.11-e8db854 ("Cursor Grok 4.6 Extra High"), so the short-context policy holds. The effort/thinking split is a real Cursor id-scheme fact — `claude-fable-5-medium` (plain) and `claude-fable-5-thinking-medium` are distinct, real model IDs — Cursor is the one harness where "non-thinking" is selected by picking a different model ID outright, not a flag, which is why effort rides in the id here.
 
 ### Gemini (as consumed via each harness)
 
@@ -208,7 +208,7 @@ OMP is the one harness with native band indirection, so its bands are spelled as
 
 Verified on 17.2.4: a profile carrying `model: "@smol"` runs on `modelRoles.smol`, and an unknown token fails loudly with `Error: No model selected.` rather than falling back. Provider and model are separated by `/`, never `:` — `cursor:` parses as a bogus provider. Like Pi, OMP's `:<level>` suffix is a single thinking dial the runtime maps straight onto `reasoning`, so "high effort, non-thinking" is not expressible here. Work routes primary roles through OpenRouter `deepseek/deepseek-v4-flash-0731:max` and keeps `vision` on `openrouter/moonshotai/kimi-k3:high`; personal pins primary roles to Cursor `cursor-grok-4.6-xhigh`, uses `composer-2.5` for `smol`, and uses Cursor `cursor-grok-4.6-xhigh` for `vision`.
 
-`modelRoles.advisor` resolves to the lanes' own model on both profiles — OpenRouter DeepSeek max on work, Cursor Grok 4.6 Extra High on personal — and the advisor is enabled for primary turns and spawned agents. The falsification lanes keep their concrete `cursor/kimi-k3-max:high` profile pin. An invariant asserts OMP carries a counter whenever any profile's `advisor` differs from `default`, so moving cross-family refutation means repricing the role first, not editing the band.
+`modelRoles.advisor` resolves to the lanes' own model on both profiles — OpenRouter DeepSeek max on work, Cursor Grok 4.6 Extra High on personal — and the advisor is enabled for primary turns and spawned agents. Review lanes and verifier both resolve `@default` (same-family per profile). An invariant asserts OMP carries a counter whenever any profile's `advisor` differs from `default`, so moving cross-family refutation means repricing the role first, not editing the band.
 
 ## Native subagent takeover risk
 

@@ -37,7 +37,7 @@ Claude subagent model overrides are limited to the installed SDK schema (`sonnet
 
 Codex's model surface is OpenAI-only, so the adversarial verifier is `families=same (degraded)` here.
 Launch angle lanes as `review-worker` agents; the verifier as the `adversarial-verifier` agent.
-Registry: both values are concrete (`gpt-5.6-terra` at max effort via profile `model` + `model_reasoning_effort`);
+Registry: both values are concrete (`gpt-5.6-sol` at xhigh effort via profile `model` + `model_reasoning_effort`);
 every Codex role also pins `service_tier = "default"`.
 Never launch a native Codex `spawn_agent`/generic subagent without a model: the installed catalog does not make omitted defaults auditable, and uncataloged slugs can pass through with fallback metadata.
 
@@ -54,10 +54,10 @@ Profiles carry registry-rendered `model` frontmatter; do not rely on the configu
 - Cursor source supports custom subagent types (`SubagentType.custom.name`) and loads `.cursor/agents` profile files.
   Launch angle lanes through the `review-worker` profile and the verifier through the `adversarial-verifier` profile;
   both carry registry-rendered `model` frontmatter.
-- The registry pins concrete Cursor lane/verifier models deliberately, and both are now `gpt-5.6-terra-max` (GPT-5.6 returned to Cursor, user call 2026-08-07, superseding the 2026-08-05 ban).
-  `model_bands.cursor.max` carries no counter (user call, 2026-08-07), so the adversarial verifier runs `families=same (reduced independence)`; keep refutation framing and report that, never skip the phase and never present it as a cross-family pass.
-  The user verified via expenditure dashboard that Cursor-served omitted/default subagents can resolve to `composer-2.5-fast`;
-  local safe probes also show the CLI default selector as `auto` and `composer-2.5-fast` as an available legacy alias target.
+- Registry `lanes` and `verifier` are both `cursor-grok-4.6-xhigh`.
+  `model_bands.cursor.max` carries no counter, so the adversarial verifier runs `families=same (reduced independence)`;
+  keep refutation framing and report that, never skip the phase and never present it as a cross-family pass.
+  Omitted/default Cursor subagents can resolve to `composer-2.5-fast`; the CLI default selector is `auto`.
   Treat any omitted Cursor subagent model as a matrix bypass.
 - Same-name custom profiles do **not** shadow native Cursor enum agents (`explore`, `debug`, `cursor_guide`, `unspecified`):
   custom profiles are carried as a separate `custom` oneof with a `name`, while native cases are distinct empty oneof variants.
@@ -90,12 +90,8 @@ Profiles carry registry-rendered `model` frontmatter; do not rely on the configu
   Pi review workers and fresh-eyes run `openrouter/deepseek/deepseek-v4-flash-0731:max`;
   adversarial/criteria verifiers run `openrouter/openai/gpt-5.6-terra:max`, keeping refutation cross-family.
   OMP resolves review roles through its own `modelRoles`.
-  Work prices primary roles to `openrouter/deepseek/deepseek-v4-flash-0731:max` and keeps `vision` on `openrouter/moonshotai/kimi-k3:high`;
-  the advisor feature stays disabled.
+  Work prices primary roles to `openrouter/deepseek/deepseek-v4-flash-0731:max` and keeps `vision` on `openrouter/moonshotai/kimi-k3:high`.
   Personal pins `default` and `advisor` to `cursor/cursor-grok-4.6-xhigh`, so `model_bands.omp.max` carries no counter.
-  The adversarial and criteria verifiers keep their own exception on both profiles:
-  they pin concrete `cursor/kimi-k3-max:high` (user call 2026-08-05), spending the 2x cursor effort tier only on the falsification lanes.
-  Refutation is cross-family on work and on personal (Grok vs Kimi max); personal `smol` stays on `cursor/composer-2.5:high`.
-  An invariant asserts that OMP carries a counter whenever any profile's `modelRoles.advisor` differs from `modelRoles.default`, so moving cross-family refutation means changing the role pin first, not the band.
-  The cost-driven ban on opus-5/gpt-5.5 (closed 2026-08-03) moved the lanes off those models.
+  Adversarial and criteria verifiers follow `@default` with the review lanes, so refutation is same-family on both profiles (reduced independence).
+  Personal `smol` stays on `cursor/composer-2.5:high`.
   Other repo-owned Pi/OMP profiles resolve their model from the band registry (`agent_bindings` → `agent_categories` → `model_bands`) so they do not fall through to `defaultProvider`/`defaultModel` unless a future profile deliberately omits `model` and documents why.

@@ -2,7 +2,7 @@
 name = "review-worker"
 description = "Read-only /k-deep-review investigation worker. Use for each Codex review lane; returns evidence-backed candidate findings and never edits or posts."
 model = "{{ .agent_review_models.codex.lanes }}"
-model_reasoning_effort = "max"
+model_reasoning_effort = "xhigh"
 service_tier = "default"
 approval_policy = "untrusted"
 sandbox_mode = "workspace-write"
