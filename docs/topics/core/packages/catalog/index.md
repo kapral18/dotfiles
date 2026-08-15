@@ -31,6 +31,7 @@ This is the human map of the tools this dotfiles repo controls across package ma
 | [GitHub CLI](https://cli.github.com/) extensions                                                                       | [`run_onchange_after_05-install-gh-extensions.fish.tmpl`](../../../../../home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl)                                       |
 | [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases) / source builds | [`home/readonly_dot_default-custom-packages.tmpl`](../../../../../home/readonly_dot_default-custom-packages.tmpl)                                                                          |
 | [llama.cpp](https://llama.app) model assets                                                                            | [`home/readonly_dot_default-llama-cpp-models.tmpl`](../../../../../home/readonly_dot_default-llama-cpp-models.tmpl)                                                                        |
+| FLUX.2 klein 9B weights                                                                                                | [`home/dot_config/sd-image/readonly_models.txt`](../../../../../home/dot_config/sd-image/readonly_models.txt)                                                                              |
 
 ## Reading convention
 

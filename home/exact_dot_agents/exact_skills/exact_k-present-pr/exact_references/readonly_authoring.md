@@ -145,18 +145,20 @@ That is the entire trick to keeping a big PR a focused narrative instead of a wa
 - `ln add` / `ln del` / `ln ctx` set the line background and `+`/`-`/` ` gutter.
 - HTML-escape `<`, `>`, `&` inside code (`&lt; &gt; &amp;`). This is the #1 source of a broken render — verify in a browser (see SKILL.md).
 
-## Images via `,nano-banana` (see the nano-banana skill)
+## Raster images (named Nano Banana / Gemini / Google image only)
 
 - Reserve diagrams for **goal-level flow/contrast** + **at most one additional state/flow idea**.
   Default to a single Act I diagram; you cannot (and must not) draw one diagram per file.
-- Reference images by **relative filename** in the same dir as the HTML. Do NOT base64-inline them — it bloats the file and slows editing.
+  Prefer deterministic HTML/diff unless this turn named Nano Banana, Gemini image, or Google image gen/edit.
+- When that named lane is in play, load the `k-nano-banana` skill. Reference images by **relative filename** in the same dir as the HTML.
+  Do NOT base64-inline them — it bloats the file and slows editing.
 - Prompt for the house style every time so images cohere: `dark background #0b1020, thin teal/blue/amber line style, developer documentation, labeled, no people`, plus the specific BEFORE/AFTER or state.
 - **Verify each image by viewing it.** The model occasionally stutters text (e.g. "query.query.console") or adds a stray title banner.
   Regenerate if the most prominent images (Act I especially) have artifacts.
   Instruct "spell every label exactly once, no title banner" to reduce this.
 - If a label-heavy image still has text artifacts after one regeneration, cut the image and represent the idea in HTML/diff instead.
   Accuracy beats visual variety.
-- The CLI returns JPEG bytes even into a `.png` name — harmless for browsers.
+- The Nano Banana CLI returns JPEG bytes even into a `.png` name — harmless for browsers.
 
 ## Act-rail (navigation)
 

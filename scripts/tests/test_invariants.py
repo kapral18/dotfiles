@@ -1561,12 +1561,19 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         # Personal leader-aisc talks to OpenRouter directly. gpt-oss-120b is not on the DeepSeek
         # wrapper route. OpenRouter's catalog lists supported_efforts high/medium/low. Provider
         # routing is price-sorted with a 300 t/s preferred floor (OpenRouter deprioritizes slower
-        # endpoints; it does not hard-exclude them). Not a Cerebras-only whitelist.
+        # endpoints; it does not hard-exclude them). Output cap is the endpoint max completion
+        # (131072), not a 2048-token ceiling. Not a Cerebras-only whitelist.
         neovim = (
             REPO / "home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_summarize-commit.lua"
         ).read_text()
         self.assertIn('local OPENROUTER_DEFAULT_MODEL = "openai/gpt-oss-120b"', neovim)
         self.assertNotIn('local OPENROUTER_DEFAULT_MODEL = "deepseek/deepseek-v4-flash-0731"', neovim)
+        self.assertIn("local OPENROUTER_MAX_OUTPUT_TOKENS = 131072", neovim)
+        self.assertIn("max_tokens = OPENROUTER_MAX_OUTPUT_TOKENS,", neovim)
+        self.assertNotIn("local DEFAULT_MAX_OUTPUT_TOKENS = 2048", neovim)
+        self.assertNotIn("DIFF_SIZE_LIMIT", neovim)
+        self.assertIn("local GEMINI_DEFAULT_MAX_OUTPUT_TOKENS = 65536", neovim)
+        self.assertIn("or GEMINI_DEFAULT_MAX_OUTPUT_TOKENS", neovim)
         self.assertIn('reasoning = { effort = "high" }', neovim)
         self.assertNotIn('reasoning = { effort = "max" }', neovim)
         self.assertIn(

@@ -4,3 +4,5 @@ __pycache__/
 .DS_Store
 mprocs.log
 .agent-test-artifacts/
+# accidental ,image / similar CLI outputs written into the repo root
+/*.png

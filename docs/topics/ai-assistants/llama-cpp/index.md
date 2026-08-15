@@ -26,4 +26,5 @@ Each page owns one layer.
 ## Related
 
 - [Add a llama.cpp model](../../core/packages/llama-cpp-model.md) — manifest recipe
+- [Add local FLUX.2 klein generate and edit](../../core/packages/sd-image.md) — klein 9B via `sd-cli`, not llama-server
 - [Model registry & routing](../model-registry.md) — cloud model definitions

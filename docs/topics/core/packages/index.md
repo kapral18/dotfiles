@@ -24,6 +24,7 @@ This setup treats package installation as declarative: edit a source list, run `
 | 7        | uv Python tool               | [Add a uv tool](uv.md)                      |
 | 8        | Custom GitHub/source package | [Add a custom package](custom.md)           |
 | 9        | llama.cpp GGUF model         | [Add a llama.cpp model](llama-cpp-model.md) |
+| 10       | Local FLUX.2 klein image     | [Add FLUX.2 klein](sd-image.md)             |
 
 ## Core workflow
 

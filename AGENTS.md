@@ -251,7 +251,7 @@ When a CLI tool is not available through higher-priority package managers and is
 
 1. **Verify CLI source**: Confirm the official GitHub repo and the binary/archive asset for the target OS and architecture.
 2. **Add registry entry**: Use `home/readonly_dot_default-custom-packages.tmpl`
-3. **Prefer release assets**: Use `file|...` (single binary asset) or `tar_gz_bin|...` (archive with a binary)
+3. **Prefer release assets**: Use `file|...` (single binary), `tar_gz_bin|...` (archive with a binary), or `zip_opt|...` (zip that must keep sibling dylibs under `~/.local/opt`)
 4. **Template variables**: Use `{{- if ne .isWork true }}` blocks when needed
 
 **Example entry**:
@@ -259,6 +259,7 @@ When a CLI tool is not available through higher-priority package managers and is
 ```text
 file|dug|unfrl/dug|0.0.94|dug-osx-x64|dug
 tar_gz_bin|mdtt|szktkfm/mdtt|v0.3.1|mdtt_Darwin_arm64.tar.gz|mdtt|mdtt
+zip_opt|sd-cli|leejet/stable-diffusion.cpp|master-820-de298c2|sd-*-bin-Darwin-macOS-*-arm64.zip|sd-cli|sd-cli
 ```
 
 **Installer**: `home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl`

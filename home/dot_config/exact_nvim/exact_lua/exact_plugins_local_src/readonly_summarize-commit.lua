@@ -25,9 +25,12 @@ Do not add explanations, no prose, no markdown wrappers, no JSON, and no extra t
 local SYSTEM_MESSAGE =
   "You are a conventional commit message specialist. Classify the header by the most meaningful behavior change, not by file paths. Use docs only for documentation-only diffs. Return only valid commit message text in the requested format. Do not include reasoning."
 
-local DEFAULT_MAX_OUTPUT_TOKENS = 2048
 local GEMINI_DEFAULT_MODEL = "gemini-flash-latest"
+-- gemini-flash-latest tracks Gemini 3.6 Flash: input 1,048,576 / output 65,536.
+local GEMINI_DEFAULT_MAX_OUTPUT_TOKENS = 65536
 local OPENROUTER_DEFAULT_MODEL = "openai/gpt-oss-120b"
+-- openai/gpt-oss-120b OpenRouter endpoint max completion (context_length 131072).
+local OPENROUTER_MAX_OUTPUT_TOKENS = 131072
 -- Price-sort among endpoints OpenRouter prefers at >=300 t/s (p50). Below-threshold
 -- hosts are deprioritized, not hard-excluded; there is no hard t/s gate on the API.
 local OPENROUTER_PROVIDER_ROUTING = { sort = "price", preferred_min_throughput = 300 }
@@ -45,9 +48,6 @@ local function split_lines(text)
   end
   return lines
 end
-
--- Diffs larger than this are replaced with stat+hunk-headers to avoid token overflow.
-local DIFF_SIZE_LIMIT = 400000
 
 -- Insert lines into the captured buffer+row; validates buffer is still a gitcommit buffer.
 local function insert_into_buf(bufnr, row, lines)
@@ -73,8 +73,9 @@ local function insert_into_buf(bufnr, row, lines)
   end
 end
 
--- Async: run `git diff --cached`, apply size guard, call on_done(diff_text) or on_done(nil).
+-- Async: run `git diff --cached`, call on_done(diff_text) or on_done(nil).
 -- on_done is called via vim.schedule so vim.api.* is safe inside it.
+-- Full staged diff is sent; OpenRouter context-compression handles context overflow.
 local function get_staged_diff_async(on_done)
   vim.system({ "git", "diff", "--cached" }, { text = true }, function(result)
     vim.schedule(function()
@@ -84,39 +85,7 @@ local function get_staged_diff_async(on_done)
         return
       end
 
-      local out = result.stdout or ""
-
-      if #out > DIFF_SIZE_LIMIT then
-        vim.notify(
-          ("summarize-commit: diff is %d bytes (limit %d); using stat+headers instead"):format(#out, DIFF_SIZE_LIMIT),
-          vim.log.levels.WARN
-        )
-        vim.system(
-          { "git", "diff", "--cached", "--stat", "--stat-name-width=80" },
-          { text = true },
-          function(stat_result)
-            vim.schedule(function()
-              local stat_text = (stat_result.code == 0 and stat_result.stdout) or ""
-              local headers = {}
-              for line in vim.gsplit(out, "\n", { plain = true }) do
-                if
-                  line:match("^diff %-%-git ")
-                  or line:match("^%-%-%- ")
-                  or line:match("^%+%+%+ ")
-                  or line:match("^@@")
-                then
-                  table.insert(headers, line)
-                end
-              end
-              local compact = stat_text .. "\n-- hunk headers --\n" .. table.concat(headers, "\n")
-              on_done(compact)
-            end)
-          end
-        )
-        return
-      end
-
-      on_done(out)
+      on_done(result.stdout or "")
     end)
   end)
 end
@@ -544,7 +513,7 @@ local providers = {
   openrouter = {
     url = "https://openrouter.ai/api/v1/chat/completions", -- POST body uses OpenAI chat schema
     required_env = { "OPENROUTER_API_KEY" },
-    timeout = 90,
+    timeout = 300,
     headers = function()
       return {
         "Authorization: Bearer " .. (os.getenv("OPENROUTER_API_KEY") or ""),
@@ -564,7 +533,7 @@ local providers = {
         reasoning = { effort = "high" },
         plugins = { OPENROUTER_CONTEXT_COMPRESSION_PLUGIN },
         provider = OPENROUTER_PROVIDER_ROUTING,
-        max_tokens = DEFAULT_MAX_OUTPUT_TOKENS,
+        max_tokens = OPENROUTER_MAX_OUTPUT_TOKENS,
         temperature = 0,
         stream = false,
       }
@@ -583,10 +552,10 @@ local providers = {
       return ("%s/v1beta/models/%s:generateContent?key=%s"):format(base, model, os.getenv("GEMINI_API_KEY") or "")
     end,
     required_env = { "GEMINI_API_KEY" },
-    timeout = 90,
+    timeout = 300,
     headers = { "Content-Type: application/json" },
     payload = function(diff)
-      local max_output_tokens = env_number("GEMINI_MAX_OUTPUT_TOKENS") or DEFAULT_MAX_OUTPUT_TOKENS
+      local max_output_tokens = env_number("GEMINI_MAX_OUTPUT_TOKENS") or GEMINI_DEFAULT_MAX_OUTPUT_TOKENS
 
       return {
         systemInstruction = {

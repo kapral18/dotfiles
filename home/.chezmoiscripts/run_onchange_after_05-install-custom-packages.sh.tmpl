@@ -2,14 +2,16 @@
 
 set -euo pipefail
 
-# Bump this script when custom packages list changes so chezmoi re-runs the installer.
+# Bump this script when custom packages list or the zip-bundle helper changes so chezmoi re-runs the installer.
 # custom packages list hash: {{ include "readonly_dot_default-custom-packages.tmpl" | sha256sum }}
+# zip bundle helper hash: {{ output "sh" "-c" (printf "shasum -a 256 %q | cut -d' ' -f1" (joinPath .chezmoi.sourceDir "../scripts/install_github_zip_bundle.py")) | trim }}
 
 BIN_DIR="${HOME}/.local/bin"
 CUSTOM_PACKAGES_TEMPLATE={{ joinPath .chezmoi.sourceDir "readonly_dot_default-custom-packages.tmpl" | quote }}
 CUSTOM_STATE_DIR="${HOME}/.local/state/custom-packages"
 GIT_MAVEN_JAR_STATE_FILE="${CUSTOM_STATE_DIR}/git_maven_jar.tsv"
 RECONCILE_CUSTOM_PACKAGES={{ joinPath .chezmoi.sourceDir "../scripts/reconcile_custom_packages.py" | quote }}
+INSTALL_ZIP_BUNDLE={{ joinPath .chezmoi.sourceDir "../scripts/install_github_zip_bundle.py" | quote }}
 GIT_MAVEN_JAR_DESIRED_FILE="$(mktemp)"
 
 cleanup_temp_files() {
@@ -373,6 +375,16 @@ process_custom_package_line() {
       return 1
     fi
     install_git_maven_jar "$tool_name" "$repo" "$branch" "$output_name"
+    ;;
+  zip_opt)
+    local tool_name repo release_tag pattern bin_in_archive output_name
+    IFS='|' read -r _ tool_name repo release_tag pattern bin_in_archive output_name <<<"$trimmed_line"
+    if [[ -z "${tool_name:-}" || -z "${repo:-}" || -z "${release_tag:-}" || -z "${pattern:-}" || -z "${bin_in_archive:-}" || -z "${output_name:-}" ]]; then
+      echo "Error: invalid zip_opt line: $trimmed_line" >&2
+      return 1
+    fi
+    require_cmd python3
+    python3 "$INSTALL_ZIP_BUNDLE" "$repo" "$release_tag" "$pattern" "${HOME}/.local/opt/${tool_name}" "$bin_in_archive" "$BIN_DIR/$output_name"
     ;;
   *)
     echo "Error: unknown custom package kind '$kind' in line: $trimmed_line" >&2

@@ -30,12 +30,16 @@ Each package source has a different convergence model. The important question is
 | Pi globals live in yarn                             | `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`, `pi-mcp-adapter`, and `pi-subagents` are kept together in the managed yarn list |
 | Custom installer includes `ytsurf`                  | installed outside standard package managers in this setup                                                                                    |
 | `git_maven_jar` rows are declarative                | add/update rows clone/build/install; removed clean repos are deleted; dirty stale repos are preserved                                        |
+| `zip_opt` keeps sibling dylibs                      | zip extracts to `~/.local/opt/<name>/`; removing the row does not delete that directory                                                      |
+| FLUX.2 klein weights are command-only               | `,image sync` downloads ~15 GB; `chezmoi apply` never pulls them (not gated on `downloadLlamaCppModels`)                                     |
 
 ## Where to make changes
 
-| Goal                               | Start here                                 |
-| ---------------------------------- | ------------------------------------------ |
-| Add or remove a Homebrew package   | [Add a Homebrew package](homebrew.md)      |
-| Pin a runtime                      | [Pin a tool version](mise.md)              |
-| Add a language-specific CLI        | Cargo / Go / Ruby / yarn / uv recipe pages |
-| Add a GitHub release binary or DMG | [Custom packages registry](custom.md)      |
+| Goal                               | Start here                                  |
+| ---------------------------------- | ------------------------------------------- |
+| Add or remove a Homebrew package   | [Add a Homebrew package](homebrew.md)       |
+| Pin a runtime                      | [Pin a tool version](mise.md)               |
+| Add a language-specific CLI        | Cargo / Go / Ruby / yarn / uv recipe pages  |
+| Add a GitHub release binary or DMG | [Custom packages registry](custom.md)       |
+| Add a llama.cpp GGUF               | [Add a llama.cpp model](llama-cpp-model.md) |
+| Wire local FLUX.2 klein            | [Add FLUX.2 klein](sd-image.md)             |

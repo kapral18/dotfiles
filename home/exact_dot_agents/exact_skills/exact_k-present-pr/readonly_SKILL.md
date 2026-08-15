@@ -118,11 +118,11 @@ Per `authoring.md`:
 ### 4. Generate diagrams
 
 - Create the output dir, `cd` into it.
-- Use the `k-nano-banana` skill.
-  House style every prompt: dark `#0b1020` background, thin teal/blue/amber line art, labeled, no people, no title banner, each label spelled exactly once.
-  Write to `nb-<name>.png` in the output dir.
-- **View each generated image** and regenerate any with text stutter/artifacts, especially the Act I hero diagram.
-- If an image has repeated/misspelled labels after one regeneration, delete it and replace that idea with deterministic HTML/diff content.
+- Default to deterministic HTML/diff for Act I/II visuals.
+  Load `k-nano-banana` only if this turn named Nano Banana, Gemini image, or Google image gen/edit.
+- When that named lane is in play: house style every prompt (dark `#0b1020` background, thin teal/blue/amber line art, labeled, no people, no title banner, each label spelled exactly once) and write `nb-<name>.png` in the output dir.
+  View each generated image and regenerate any with text stutter/artifacts, especially the Act I hero diagram.
+  If an image has repeated/misspelled labels after one regeneration, delete it and replace that idea with deterministic HTML/diff.
   Do not spend more attempts on label-heavy diagrams.
 
 ### 5. Fill the template

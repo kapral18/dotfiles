@@ -5,6 +5,7 @@
 # - tar_gz_bin|tool-name|owner/repo|release-tag|asset-pattern|bin-in-archive|output-binary-name
 # - file|tool-name|owner/repo|release-tag|asset-pattern|output-binary-name
 # - git_maven_jar|tool-name|owner/repo|branch|output-binary-name
+# - zip_opt|tool-name|owner/repo|release-tag|asset-pattern|bin-in-archive|output-binary-name
 #
 # Lines starting with `#` are ignored.
 
@@ -110,4 +111,11 @@ file|kitten|kovidgoyal/kitty|latest|{{ $kittenAsset }}|kitten
   {{ if ne $enolaAsset "" }}
 tar_gz_bin|enola|TheYahya/enola|{{ $enolaTag }}|{{ $enolaAsset }}|enola|enola
   {{ end }}
+{{ end }}
+
+# sd-cli (stable-diffusion.cpp). Metal runner for ,image.
+# Zip ships sd-cli + libstable-diffusion.dylib; zip_opt keeps the dylib beside the binary.
+# https://github.com/leejet/stable-diffusion.cpp
+{{ if eq $os "darwin" }}
+zip_opt|sd-cli|leejet/stable-diffusion.cpp|master-820-de298c2|sd-*-bin-Darwin-macOS-*-arm64.zip|sd-cli|sd-cli
 {{ end }}

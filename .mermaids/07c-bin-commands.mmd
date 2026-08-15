@@ -1,6 +1,6 @@
 %% ============================================================================
-%% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (81 thin commands)
-%% plus deployed internals in home/exact_lib/ (76 command/shared library files).
+%% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (82 thin commands)
+%% plus deployed internals in home/exact_lib/ (78 command/shared library files).
 %% executable_,* → ~/bin/,* (comma-prefixed user commands); home/exact_lib/exact_,name/
 %% → ~/lib/,name/. verify-bin-surface keeps each command covered by fish
 %% completions, docs, catalog, and non-orphaned command libraries.
@@ -40,7 +40,7 @@ flowchart TB
     end
 
     subgraph MEDIA["Media / misc utilities"]
-        M[",to-gif · ,vid-ipad · ,pdf-diff · ,nano-banana (Gemini image gen) · ,appid · ,dumputi<br/>,set-default-mic · ,doctor / ,doctor ai (health + effective state) · ,unwrap-md (md/sentence formatter)<br/>,weave-setup-local / ,weave-unsetup-local · ,tmux-lowfi · ,tmux-run-all"]:::media
+        M[",to-gif · ,vid-ipad · ,pdf-diff · ,nano-banana (Gemini generate/edit/compose → ~/lib/,nano-banana/) · ,image (local FLUX.2 klein 9B gen; -i edit; personal skips offload → ~/lib/,image/) · ,appid · ,dumputi<br/>,set-default-mic · ,doctor / ,doctor ai (health + effective state) · ,unwrap-md (md/sentence formatter)<br/>,weave-setup-local / ,weave-unsetup-local · ,tmux-lowfi · ,tmux-run-all"]:::media
     end
 
     subgraph LIBS["Shared libs + ,w/history internals (home/exact_lib/)"]
@@ -48,7 +48,7 @@ flowchart TB
     end
     W --> LIBS
 
-    subgraph CMDLIBS["33 deployed command libraries + shared helpers (home/exact_lib/ → ~/lib/)"]
+    subgraph CMDLIBS["35 deployed command libraries + shared helpers (home/exact_lib/ → ~/lib/)"]
         ADS[",cursor-agent-local/install.sh · ,cursor-agent-shim/shim.py<br/>(loopback proxy for ,cursor-openrouter: enforces the session model pin at the wire — any subagent/profile model escape gets 403 — and strips tool `strict` on /chat/completions)"]:::ai
     end
     ADS --> CMDLIBS

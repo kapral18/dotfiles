@@ -36,12 +36,14 @@ The AI package set spans casks, Homebrew formulae, yarn globals, uv tools, custo
 
 ## Local inference and model assets
 
-| Tool / asset                                                                                                                         | Source  | Why it is here                                                         |
-| ------------------------------------------------------------------------------------------------------------------------------------ | ------- | ---------------------------------------------------------------------- |
-| [`llama.cpp`](https://llama.app)                                                                                                     | `brew`  | local `llama-server` backend for OpenAI/Anthropic-compatible inference |
-| [`hf`](https://huggingface.co/docs/huggingface_hub/guides/cli)                                                                       | `brew`  | Hugging Face CLI for model downloads                                   |
-| [`NVIDIA-Nemotron-3.5-Lightning-30B-A3B-UD-Q4_K_XL.gguf`](https://huggingface.co/unsloth/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF) | `model` | Unsloth Nemotron 3.5 Lightning (`nemotron-3.5`)                        |
-| [`Qwen3.5-9B-UD-Q4_K_XL.gguf`](https://huggingface.co/unsloth/Qwen3.5-9B-GGUF)                                                       | `model` | Unsloth Qwen3.5 9B (`qwen3.5-9b`)                                      |
+| Tool / asset                                                                                                                         | Source   | Why it is here                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------ | -------- | ---------------------------------------------------------------------- |
+| [`llama.cpp`](https://llama.app)                                                                                                     | `brew`   | local `llama-server` backend for OpenAI/Anthropic-compatible inference |
+| [`hf`](https://huggingface.co/docs/huggingface_hub/guides/cli)                                                                       | `brew`   | Hugging Face CLI for model downloads                                   |
+| [`sd-cli`](https://github.com/leejet/stable-diffusion.cpp)                                                                           | `custom` | Metal runner for `,image` (not llama-server)                           |
+| [`NVIDIA-Nemotron-3.5-Lightning-30B-A3B-UD-Q4_K_XL.gguf`](https://huggingface.co/unsloth/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF) | `model`  | Unsloth Nemotron 3.5 Lightning (`nemotron-3.5`)                        |
+| [`Qwen3.5-9B-UD-Q4_K_XL.gguf`](https://huggingface.co/unsloth/Qwen3.5-9B-GGUF)                                                       | `model`  | Unsloth Qwen3.5 9B (`qwen3.5-9b`)                                      |
+| [FLUX.2 klein 9B GGUF](https://huggingface.co/leejet/FLUX.2-klein-9B-GGUF)                                                           | `model`  | On-device `,image` generate and edit (~15 GB)                          |
 
 ## AI-adjacent review and cleanup tools
 

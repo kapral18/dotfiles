@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Work is the 36 GB M3 Pro: keep sd-cli --offload-to-cpu.
+# Personal is the 64 GB M1 Max: skip the CPU-to-Metal copy tax.
+{{ if eq .isWork true -}}
+export SD_IMAGE_OFFLOAD_TO_CPU=1
+{{ else -}}
+export SD_IMAGE_OFFLOAD_TO_CPU=0
+{{ end -}}
+exec python3 "$HOME/lib/,image/main.py" "$@"

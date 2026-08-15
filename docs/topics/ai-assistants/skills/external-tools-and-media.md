@@ -35,11 +35,12 @@ These skills route non-code tools, browser automation, and generated visual asse
 
 ## `k-nano-banana`
 
-| Field    | Value                                                                                        |
-| -------- | -------------------------------------------------------------------------------------------- |
-| Use when | generating raster images from a text prompt                                                  |
-| Source   | [`exact_k-nano-banana`](../../../../home/exact_dot_agents/exact_skills/exact_k-nano-banana/) |
-| Tool     | `,nano-banana`                                                                               |
+| Field    | Value                                                                                             |
+| -------- | ------------------------------------------------------------------------------------------------- |
+| Use when | the user names Nano Banana, `,nano-banana`, Gemini/Google image, or a `gemini-*-image` model      |
+| Source   | [`exact_k-nano-banana`](../../../../home/exact_dot_agents/exact_skills/exact_k-nano-banana/)      |
+| Tool     | `,nano-banana`                                                                                    |
+| Boundary | not the default image lane; unnamed image/icon/sticker/illustration work must not load this skill |
 
 ## `k-omp`
 

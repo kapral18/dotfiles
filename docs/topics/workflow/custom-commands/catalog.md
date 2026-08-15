@@ -115,7 +115,8 @@ Planning reads `~/.config/ai/model-mirrors.v1.json` through the same shared cons
 | `,to-gif`              | Convert a video to an optimized GIF                                              |
 | `,vid-ipad`            | Re-encode a video for iPad playback                                              |
 | `,pdf-diff`            | Visual diff two PDFs by compositing pages                                        |
-| `,nano-banana`         | Generate a Nano Banana/Gemini raster image from text                             |
+| `,nano-banana`         | Cloud Gemini generate/edit/compose/inpaint (uploads to Google)                   |
+| `,image`               | FLUX.2 klein 9B generate (512 default) and `-i` edit at input size               |
 | `,set-default-mic`     | Select the preferred external microphone, falling back to the MacBook microphone |
 | `,update`              | Reconcile dotfiles and package-manager update categories                         |
 | `,parallel`            | Forward to GNU Parallel when both GNU Parallel and semantic-git are installed    |
