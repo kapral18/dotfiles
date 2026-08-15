@@ -11,13 +11,13 @@ from unittest import mock
 import _test_support  # noqa: F401
 from _test_support import REPO
 
-CLI = REPO / "home" / "exact_lib" / "exact_,image" / "main.py"
+CLI = REPO / "home" / "exact_lib" / "exact_,image-local" / "main.py"
 
 
 def _load():
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location("sd_image_under_test", CLI)
+    spec = importlib.util.spec_from_file_location("sd_image_local_under_test", CLI)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"could not load {CLI}")
     module = importlib.util.module_from_spec(spec)
@@ -40,6 +40,16 @@ GEN_PATHS = {
     "klein_llm": Path("/tmp/sd-image-models/Qwen3-8B-Q4_K_M.gguf"),
     "vae": Path("/tmp/sd-image-models/flux2_ae.safetensors"),
 }
+
+
+class TestCommandIdentity(unittest.TestCase):
+    """WHEN the local image command surface is inspected."""
+
+    def test_it_should_use_only_the_image_local_command_and_library_names(self) -> None:
+        self.assertEqual(MOD.build_parser().prog, ",image-local")
+        launcher = (REPO / "home" / "exact_bin" / "executable_,image-local.tmpl").read_text(encoding="utf-8")
+        self.assertIn("lib/,image-local/main.py", launcher)
+        self.assertNotIn("lib/,image/main.py", launcher)
 
 
 def _fake_png(width: int, height: int) -> bytes:
@@ -109,7 +119,7 @@ class TestMissingRoles(unittest.TestCase):
             with mock.patch.dict(os.environ, _env(root), clear=True), mock.patch.object(sys, "stderr", stderr):
                 code = MOD.main(["a cat sitting on a windowsill"])
             self.assertEqual(code, 1)
-            self.assertIn(",image sync", stderr.getvalue())
+            self.assertIn(",image-local sync", stderr.getvalue())
             self.assertIn("klein", stderr.getvalue())
 
     def test_it_should_refuse_edit_when_klein_weights_are_missing(self) -> None:
@@ -125,7 +135,7 @@ class TestMissingRoles(unittest.TestCase):
                 code = MOD.main(["-i", str(png), "-p", "wear shorts"])
             self.assertEqual(code, 1)
             self.assertIn("klein", stderr.getvalue())
-            self.assertIn(",image sync", stderr.getvalue())
+            self.assertIn(",image-local sync", stderr.getvalue())
 
 
 class TestBuildGenArgv(unittest.TestCase):
@@ -252,7 +262,7 @@ class TestOffloadToCpu(unittest.TestCase):
         self.assertNotIn("--offload-to-cpu", personal)
         self.assertIn("--diffusion-fa", personal)
         self.assertIn("--offload-to-cpu", work)
-        launcher = (REPO / "home" / "exact_bin" / "executable_,image.tmpl").read_text(encoding="utf-8")
+        launcher = (REPO / "home" / "exact_bin" / "executable_,image-local.tmpl").read_text(encoding="utf-8")
         self.assertIn("eq .isWork true", launcher)
         self.assertIn(f"{MOD.OFFLOAD_ENV}=1", launcher)
         self.assertIn(f"{MOD.OFFLOAD_ENV}=0", launcher)

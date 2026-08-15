@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 11-scripts-helpers.mmd — Every file in scripts/ (110). Repo-side Python
+%% 11-scripts-helpers.mmd — Every file in scripts/ (111). Repo-side Python
 %% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
 %% Grouped by consumer. Shared parsers feed the generators/mergers.
 %% ============================================================================
@@ -75,7 +75,7 @@ flowchart TB
 
     subgraph TESTS["Tests + fixtures"]
         TTOP["top-level tests: test_{agent_memory,ai_kb,ai_launcher,ai_models,analyze_pi_session,check,chezmoi_lib,embed,<br/>generate_mcp_configs,generated_artifact_ledger,inject_mcp_into_codex_toml,<br/>inject_mcp_into_opencode_jsonc,mcp_registry,merge_copilot_settings,<br/>model_mirrors,pre_commit,verify_agent_file_sizes,<br/>verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py<br/>test_omp_migration.py (OMP install/config/agents/extensions migration contract)"]:::shared
-        IT["scripts/tests/: __init__.py · copilot_agent_memory_extension.test.mjs<br/>recall_worklog_state_machine.py · test_{agent_hooks,codex_adapter,copilot_adapter,correction_detector,recall_worklog,bin_commands,gh_picker_dispatch_state,gh_picker_lock,gh_picker_review_requests,git_gate,invariants,llama_cpp_lifecycle,nano_banana,image,install_github_zip_bundle}.py<br/>test_ai_policy_compiler.py (IR/capability/compiler offline contract tests)<br/>test_{plain_session_removal,proof_cli,session_github_cache,tmux_handoff_lifecycle,<br/>tmux_handoff_namespace,tmux_pickers,vertex_adapter,wh,worktree_delete_boundaries}.py"]:::shared
+        IT["scripts/tests/: __init__.py · copilot_agent_memory_extension.test.mjs<br/>recall_worklog_state_machine.py · test_{agent_hooks,codex_adapter,copilot_adapter,correction_detector,recall_worklog,bin_commands,gh_picker_dispatch_state,gh_picker_lock,gh_picker_review_requests,git_gate,invariants,llama_cpp_lifecycle,nano_banana,image_local,image_openrouter,install_github_zip_bundle}.py<br/>test_ai_policy_compiler.py (IR/capability/compiler offline contract tests)<br/>test_{plain_session_removal,proof_cli,session_github_cache,tmux_handoff_lifecycle,<br/>tmux_handoff_namespace,tmux_pickers,vertex_adapter,wh,worktree_delete_boundaries}.py"]:::shared
         FX["fixtures/: ai_models/ + ai_models_with_claude/ (split registry dirs) · {mcp_servers,mcp_servers_exclude}.yaml<br/>codex_base.toml · golden_codex_personal.toml · golden_mcp_{personal,work}.json<br/>golden_opencode_{models,models_with_claude,personal}.jsonc · golden_pi_models.json<br/>model_probe_cases.json · opencode_{base,work_base}.jsonc<br/>ai_policy_eval/matrix.yaml (routing/behavioral scenario fixture, one triple per compiled rule)"]:::shared
     end
     MCPGEN -.verified by golden.-> TESTS

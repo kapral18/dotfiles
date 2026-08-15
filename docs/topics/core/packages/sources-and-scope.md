@@ -22,7 +22,7 @@ Package managers are split by source-of-truth and by whether they can branch on 
 | gh extensions                 | managed list in hook                                                                                                                                             | `run_onchange_after_05-install-gh-extensions.fish.tmpl` | n/a    |
 | Custom GitHub/source packages | [`home/readonly_dot_default-custom-packages.tmpl`](../../../../home/readonly_dot_default-custom-packages.tmpl)                                                   | `run_onchange_after_05-install-custom-packages.sh.tmpl` | Yes    |
 | llama.cpp GGUF models         | [`home/readonly_dot_default-llama-cpp-models.tmpl`](../../../../home/readonly_dot_default-llama-cpp-models.tmpl)                                                 | `run_onchange_after_07-sync-llama-cpp-models.sh.tmpl`   | Yes    |
-| FLUX.2 klein weights          | [`home/dot_config/sd-image/readonly_models.txt`](../../../../home/dot_config/sd-image/readonly_models.txt)                                                       | none (`,image sync` only)                               | No     |
+| FLUX.2 klein weights          | [`home/dot_config/sd-image/readonly_models.txt`](../../../../home/dot_config/sd-image/readonly_models.txt)                                                       | none (`,image-local sync` only)                         | No     |
 
 All hooks live under [`home/.chezmoiscripts/`](../../../../home/.chezmoiscripts/).
 

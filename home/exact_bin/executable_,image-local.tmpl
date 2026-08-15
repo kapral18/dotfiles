@@ -8,4 +8,4 @@ export SD_IMAGE_OFFLOAD_TO_CPU=1
 {{ else -}}
 export SD_IMAGE_OFFLOAD_TO_CPU=0
 {{ end -}}
-exec python3 "$HOME/lib/,image/main.py" "$@"
+exec python3 "$HOME/lib/,image-local/main.py" "$@"

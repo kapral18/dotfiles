@@ -1,8 +1,8 @@
-# Local image weights for ,image (sd-cli / stable-diffusion.cpp).
+# Local image weights for ,image-local (sd-cli / stable-diffusion.cpp).
 # Generate and edit: FLUX.2 klein 9B. Not an agent skill.
 # Format: role|hf-repo|hf-file|[dest-basename]
 # Roles: klein, klein_llm, vae
-# Sync is command-only: `,image sync` (~15 GB). chezmoi apply does not download these.
+# Sync is command-only: `,image-local sync` (~15 GB). chezmoi apply does not download these.
 
 klein|leejet/FLUX.2-klein-9B-GGUF|flux-2-klein-9b-Q8_0.gguf
 klein_llm|unsloth/Qwen3-8B-GGUF|Qwen3-8B-Q4_K_M.gguf

@@ -58,11 +58,11 @@ CENSUS: list[Claim] = [
     Claim(
         name="total effective git files",
         globs=None,
-        claimed=1364,
+        claimed=1368,
         anchors=[
-            ("README.md", "1364 files in the effective git file set"),
-            ("00-overview.mmd", "1364 files in the effective git file set"),
-            ("00-overview.mmd", "file census (1364 total)"),
+            ("README.md", "1368 files in the effective git file set"),
+            ("00-overview.mmd", "1368 files in the effective git file set"),
+            ("00-overview.mmd", "file census (1368 total)"),
         ],
     ),
     Claim(
@@ -117,28 +117,28 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/dot_config/fish/",
         globs=["home/dot_config/fish/*"],
-        claimed=85,
-        anchors=[("00-overview.mmd", "fish 85")],
+        claimed=86,
+        anchors=[("00-overview.mmd", "fish 86")],
     ),
     Claim(
         name="home/exact_bin/",
         globs=["home/exact_bin/*"],
-        claimed=82,
+        claimed=83,
         anchors=[
-            ("07c-bin-commands.mmd", "exact_bin/ (82 thin commands)"),
-            ("README.md", "`exact_bin/` (82)"),
-            ("00-overview.mmd", "bin 82"),
+            ("07c-bin-commands.mmd", "exact_bin/ (83 thin commands)"),
+            ("README.md", "`exact_bin/` (83)"),
+            ("00-overview.mmd", "bin 83"),
         ],
     ),
     Claim(
         name="home/exact_lib/",
         globs=["home/exact_lib/*"],
-        claimed=78,
+        claimed=79,
         anchors=[
-            ("07c-bin-commands.mmd", "home/exact_lib/ (78 command/shared library files)"),
-            ("README.md", "`home/exact_lib/` (78 command/shared library files)"),
-            ("README.md", "35 command libraries plus shared helpers"),
-            ("00-overview.mmd", "command-lib 78 (35 command dirs + shared)"),
+            ("07c-bin-commands.mmd", "home/exact_lib/ (79 command/shared library files)"),
+            ("README.md", "`home/exact_lib/` (79 command/shared library files)"),
+            ("README.md", "36 command libraries plus shared helpers"),
+            ("00-overview.mmd", "command-lib 79 (36 command dirs + shared)"),
         ],
     ),
     Claim(
@@ -159,11 +159,11 @@ CENSUS: list[Claim] = [
     Claim(
         name="scripts/",
         globs=["scripts/*"],
-        claimed=110,
+        claimed=111,
         anchors=[
-            ("11-scripts-helpers.mmd", "scripts/ (110)"),
-            ("README.md", "`scripts/` (110)"),
-            ("00-overview.mmd", "scripts 110"),
+            ("11-scripts-helpers.mmd", "scripts/ (111)"),
+            ("README.md", "`scripts/` (111)"),
+            ("00-overview.mmd", "scripts 111"),
         ],
     ),
 ]

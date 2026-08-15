@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Local FLUX.2 klein 9B generate and edit via sd-cli.
 
-On-device. Not an agent-invoked tool. Cloud generate/edit stays ``,nano-banana``.
+On-device. Not an agent-invoked tool. General cloud generate/edit uses ``,image-openrouter``.
 
 Usage:
-    ,image sync
-    ,image status
-    ,image "a cat sitting on a windowsill"
-    ,image -i photo.png -p "make the smaller kid wear shorts"
-    ,image --version
+    ,image-local sync
+    ,image-local status
+    ,image-local "a cat sitting on a windowsill"
+    ,image-local -i photo.png -p "make the smaller kid wear shorts"
+    ,image-local --version
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-VERSION = "1.3.0"
+VERSION = "2.0.0"
 SD_CLI_DEFAULT_SIZE = 512
 DEFAULT_STEPS = 4
 DEFAULT_CFG = 1.0
@@ -256,7 +256,7 @@ def cmd_sync() -> int:
         (hf_repo, hf_file, dest) for _role, hf_repo, hf_file, dest in entries if not is_model_complete(root / dest)
     ]
     if not pending:
-        print("All ,image weights already present; nothing to download.")
+        print("All ,image-local weights already present; nothing to download.")
         return 0
     if shutil.which("hf") is None:
         print("error: `hf` CLI not found on PATH (brew install hf)", file=sys.stderr)
@@ -268,7 +268,7 @@ def cmd_sync() -> int:
     if failures:
         print(f"Completed with {failures} failure(s).", file=sys.stderr)
         return 1
-    print("All ,image weights synced.")
+    print("All ,image-local weights synced.")
     return 0
 
 
@@ -290,7 +290,7 @@ def cmd_status() -> int:
     missing = missing_roles(entries, root, REQUIRED_ROLES)
     if missing:
         print(f"missing roles: {', '.join(missing)}")
-        print("run: ,image sync")
+        print("run: ,image-local sync")
         return 1
     return 0
 
@@ -318,7 +318,7 @@ def require_runtime(required: tuple[str, ...]) -> tuple[str, list[ManifestEntry]
     root = models_root()
     missing = missing_roles(entries, root, required)
     if missing:
-        print(f"error: missing ,image weights: {', '.join(missing)}\nrun: ,image sync", file=sys.stderr)
+        print(f"error: missing ,image-local weights: {', '.join(missing)}\nrun: ,image-local sync", file=sys.stderr)
         return 1
     return sd_cli, entries, root
 
@@ -387,7 +387,7 @@ def cmd_edit(args: argparse.Namespace, prompt: str) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog=",image",
+        prog=",image-local",
         description="Local FLUX.2 klein 9B generate and edit via sd-cli.",
         epilog="Subcommands: sync (~15 GB weights), status. Default is generate. -i edits. Not an agent skill.",
     )

@@ -39,7 +39,7 @@ This slice covers media processing, personal-only tools, and tools installed fro
 | [`dug`](https://github.com/unfrl/dug)                    | `custom file`          | shared   | release binary                        |
 | [`kitten`](https://github.com/kovidgoyal/kitty)          | `custom file`          | shared   | kitty CLI for image preview support   |
 | [`enola`](https://github.com/TheYahya/enola)             | `custom tar_gz_bin`    | personal | terminal utility release binary       |
-| [sd-cli](https://github.com/leejet/stable-diffusion.cpp) | `custom zip_opt`       | shared   | Metal runner for `,image`             |
+| [sd-cli](https://github.com/leejet/stable-diffusion.cpp) | `custom zip_opt`       | shared   | Metal runner for `,image-local`       |
 
 ## Personal-only apps and tools
 

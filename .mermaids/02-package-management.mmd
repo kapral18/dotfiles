@@ -39,7 +39,7 @@ flowchart TD
 
     subgraph LOCALAI["Local model weights (opt-in)"]
         LLAMA["readonly_dot_default-llama-cpp-models.tmpl<br/>dot_config/llama.cpp/models.ini.tmpl<br/>→ hook 07-sync-llama-cpp-models (gate: downloadLlamaCppModels)<br/>scripts/sync_llama_cpp_models.py"]:::reg
-        SDIMAGE["dot_config/sd-image/readonly_models.txt<br/>→ ,image sync (command-only, not apply-gated)<br/>sd-cli zip_opt + FLUX.2 klein 9B generate/edit; not llama-server"]:::reg
+        SDIMAGE["dot_config/sd-image/readonly_models.txt<br/>→ ,image-local sync (command-only, not apply-gated)<br/>sd-cli zip_opt + FLUX.2 klein 9B generate/edit; not llama-server"]:::reg
     end
 
     subgraph SYSTEM["System-level apply hooks"]

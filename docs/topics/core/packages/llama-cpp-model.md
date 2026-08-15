@@ -91,4 +91,4 @@ rm -f ~/.llama.cpp/models/<model>.gguf
 
 ## Not for image edit
 
-On-device image generate/edit is [`,image`](sd-image.md) (FLUX.2 klein 9B via `sd-cli`). Do not add those weights to `models.ini` or the Pi/Codex/OpenCode llama catalogs.
+On-device image generate/edit is [`,image-local`](sd-image.md) (FLUX.2 klein 9B via `sd-cli`). Do not add those weights to `models.ini` or the Pi/Codex/OpenCode llama catalogs.
