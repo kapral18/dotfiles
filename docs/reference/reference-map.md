@@ -121,8 +121,9 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 | Script                              | Purpose                                                                                                                         |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `chezmoi_lib.sh`                    | Shared shell library for merge/apply hooks (source selection, atomic writes, checksums, artifact ledger)                        |
+| `check.py`                          | Affected-first `make check` planner/runner (`bin/check`; `make check-full` is human-only)                                       |
 | `verify_templates.py`               | Render every chezmoi `*.tmpl` via `execute-template` to catch errors early                                                      |
-| `verify_mermaids.py`                | Check `.mermaids/` file-census counts against the effective git file set (part of `make check`)                                 |
+| `verify_mermaids.py`                | Check `.mermaids/` file-census counts against the effective git file set (part of `bin/check`)                                  |
 | `verify_bin_surface.py`             | Check comma-command completions, docs tokens, catalog tokens, and library ownership                                             |
 | `verify_docs_navigation.py`         | Check `docs/reference/` links and implementation coverage catalog rows                                                          |
 | `verify_agent_file_sizes.py`        | Check agent skill reference markdown stays under the 20 KB harness view limit (`SKILL.md` exempt)                               |

@@ -12,7 +12,7 @@ sidebar_position: 4
 make verify-templates
 ```
 
-This renders every managed template under `home/` and fails if any template does not render. It is also part of `make check` (and therefore the pre-commit hook), so any commit that touches a `.tmpl` is validated automatically.
+This renders every managed template under `home/` and fails if any template does not render. It is also part of `make check` / `bin/check` when a `.tmpl` (or other template input) is in the affected set, including pre-commit via `bin/check --staged`.
 
 Under the hood it calls `scripts/verify_templates.py`, which:
 

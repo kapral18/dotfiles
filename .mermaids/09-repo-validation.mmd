@@ -1,7 +1,8 @@
 %% ============================================================================
 %% 09-repo-validation.mmd — Repo dev loop + every repo-side config/meta file.
-%% After every change: `make check` then `make fmt`. bin/fmt operates over the
-%% effective git file set (cached + untracked, non-ignored; .mmd files untouched).
+%% After every change: `make check` then `make fmt`. `make check` is affected-only
+%% (`bin/check` vs dirty paths). `make check-full` is human-only (`CHECK_FULL=1 bin/check --full`);
+%% agents must never invoke it. Pre-commit: staged-only bin/fmt, then `bin/check --staged`.
 %% ============================================================================
 flowchart TD
     classDef mk fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
@@ -9,11 +10,11 @@ flowchart TD
     classDef gate fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
     classDef cfg fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
 
-    EDIT["edit home/** · scripts/** · tools/** · docs/** · website/**"]:::mk --> CHECK["make check (lint + verify-* + verify-agent-policy + test)"]:::mk
+    EDIT["edit home/** · scripts/** · tools/** · docs/** · website/**"]:::mk --> CHECK["make check → bin/check (affected lint/gates/tests vs HEAD + untracked;<br/>make check-full is human-only CHECK_FULL=1 bin/check --full; agents never invoke it)"]:::mk
 
     subgraph LINT["lint"]
-        FMT["bin/fmt --check (over cached + untracked non-ignored files; ignores Alfred/)<br/>md: ,unwrap-md (AI instruction sentence / strong-clause wrap) + markdownlint(~/.markdownlint.jsonc) + prettier<br/>json/yaml: prettier · sh: shfmt · lua: stylua<br/>fish: fish_indent · py: ruff"]:::tool
-        RUFFI["ruff check --select I scripts/ home/exact_lib/ (ruff.toml)"]:::tool
+        FMT["bin/fmt --check (affected paths, or all cached + untracked non-ignored if --full; ignores Alfred/)<br/>md: ,unwrap-md (AI instruction sentence / strong-clause wrap) + markdownlint(~/.markdownlint.jsonc) + prettier<br/>json/yaml: prettier · sh: shfmt · lua: stylua<br/>fish: fish_indent · py: ruff"]:::tool
+        RUFFI["ruff check --select I (affected .py under scripts/ + home/exact_lib/, or those trees if --full)"]:::tool
     end
     VT["verify-templates → scripts/verify_templates.py<br/>(chezmoi --source &lt;current repo&gt; execute-template every *.tmpl;<br/>isolated clones never render includes from the real source checkout)"]:::tool
     VM["verify-mermaids → scripts/verify_mermaids.py<br/>(.mermaids/ file-census counts vs effective git files)"]:::tool
@@ -21,7 +22,7 @@ flowchart TD
     VDN["verify-docs-navigation → scripts/verify_docs_navigation.py<br/>(docs/reference links and implementation coverage catalog rows stay live)"]:::tool
     VAF["verify-agent-file-sizes → scripts/verify_agent_file_sizes.py<br/>(exact_dot_agents reference .md stay under the 20480B harness view limit;<br/>SKILL.md exempt — skill loaders deliver it)"]:::tool
     VAP["verify-agent-policy → compile_ai_policy.py audit-coverage + verify-budgets"]:::tool
-    TST["test → scripts/test_runner.py + fish-history + Copilot extension tests"]:::tool
+    TST["test → convention + one-hop scripts/*.py imports + TEST_RULES;<br/>slow picker shards only on tmux (or editing the shard); agents never --full"]:::tool
     CHECK --> LINT & VT & VM & VB & VDN & VAF & VAP & TST
 
     CHECK -->|fail| FIX["fix in scope, else report output"]:::gate --> CHECK
@@ -29,9 +30,9 @@ flowchart TD
     FMTW --> APPLY["chezmoi diff → chezmoi apply --no-tty <target> → verify $HOME"]:::mk
 
     subgraph CONFIG["Repo-side config / meta files"]
-        C1["Makefile (help/fmt/lint/test/check/verify-templates/verify-mermaids/verify-bin-surface/verify-docs-navigation/verify-agent-file-sizes/verify-agent-policy/docs*)<br/>package.json + .yarnrc (npm docs* shims; no root yarn.lock)<br/>bin/fmt (formatter orchestrator)"]:::cfg
+        C1["Makefile (help/fmt/lint/test/check/check-full/verify-templates/verify-mermaids/verify-bin-surface/verify-docs-navigation/verify-agent-file-sizes/verify-agent-policy/docs*)<br/>package.json + .yarnrc (npm docs* shims; no root yarn.lock)<br/>bin/fmt (formatter orchestrator) · bin/check (affected-first; make check-full is human-only CHECK_FULL=1)"]:::cfg
         C2[".editorconfig · .prettierrc · .prettierignore · .stylua.toml<br/>ruff.toml · pyrightconfig.json · .python-version"]:::cfg
-        C3[".chezmoiroot(home) · .gitignore · .githooks/pre-commit(staged-only bin/fmt, then make check)<br/>.cursor/.gitignore · LICENSE · README.md · AGENTS.md"]:::cfg
+        C3[".chezmoiroot(home) · .gitignore · .githooks/pre-commit(staged-only bin/fmt, then bin/check --staged)<br/>.cursor/.gitignore · LICENSE · README.md · AGENTS.md"]:::cfg
         C4[".github/workflows/deploy-docs.yml (Pages CI)<br/>check-docs.yml (PR: verify-docs-navigation + docs-build)"]:::cfg
     end
 
@@ -40,5 +41,6 @@ flowchart TD
         G2["behavior change under home//scripts//tools/ → update docs/ (+ .mermaids/)"]:::gate
         G3["shell = thin glue; logic → scripts/*.py or home/exact_lib/exact_,name/ (stdlib only)"]:::gate
         G4["Compatibility Gate · External/Runtime Truth · Minimal edit scope"]:::gate
+        G5["new code/tests stay on the affected map (check.py convention or TEST_RULES) in the same change;<br/>do not leave a shard reachable only via make check-full"]:::gate
     end
     EDIT -.must satisfy.-> HYG

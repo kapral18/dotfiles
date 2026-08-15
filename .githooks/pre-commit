@@ -41,12 +41,11 @@ for path in "${paths[@]}"; do
   fi
 done
 
-# Repair only staged files before the full repo check. The final make check still
-# guards the entire repo, but unrelated failures are surfaced rather than
-# auto-formatted.
+# Repair only staged files, then run affected checks on the index.
+# The full suite is human-only (`make check-full`) and is never the commit path.
 if ! bin/fmt --check "${paths[@]}"; then
   bin/fmt "${paths[@]}"
   git add -- "${paths[@]}"
 fi
 
-make -s check
+bin/check --staged

@@ -137,7 +137,7 @@ class PreCommitFixture:
             """,
         )
         write_executable(
-            self.bin_dir / "make",
+            self.root / "bin/check",
             """
             #!/usr/bin/env python3
             import os
@@ -146,19 +146,13 @@ class PreCommitFixture:
 
             log = Path(os.environ["HOOK_LOG"])
             with log.open("a", encoding="utf-8") as handle:
-                handle.write("make " + " ".join(sys.argv[1:]) + "\\n")
+                handle.write("bin/check " + " ".join(sys.argv[1:]) + "\\n")
 
-            repo = Path.cwd()
-            staged = repo / "staged.txt"
-            dirty = repo / "dirty.txt"
+            staged = Path.cwd() / "staged.txt"
             args = sys.argv[1:]
-            if args == ["-s", "check"]:
+            if args == ["--staged"]:
                 raise SystemExit(0 if staged.read_text(encoding="utf-8") == "formatted\\n" else 1)
-            if args == ["-s", "fmt"]:
-                staged.write_text("formatted\\n", encoding="utf-8")
-                dirty.write_bytes(b"MUTATED BY GLOBAL FMT\\n")
-                raise SystemExit(0)
-            raise SystemExit(f"unexpected make args: {args!r}")
+            raise SystemExit(f"unexpected check args: {args!r}")
             """,
         )
 
@@ -212,8 +206,8 @@ class TestPreCommitHook(unittest.TestCase):
         assert result.stderr == "error: bash 4+ required (mapfile)\n"
         assert self.fixture.read_log() == []
 
-    def test_WHEN_a_staged_file_needs_repair_SHOULD_scope_bin_fmt_before_make_check(self):
-        """SHOULD repair only the staged path, then run the full repo check once."""
+    def test_WHEN_a_staged_file_needs_repair_SHOULD_scope_bin_fmt_before_staged_check(self):
+        """SHOULD repair only the staged path, then run affected index checks once."""
         self._prepare_dirty_repo()
 
         result = self._run_hook()
@@ -222,7 +216,7 @@ class TestPreCommitHook(unittest.TestCase):
         assert self.fixture.read_log() == [
             "bin/fmt --check staged.txt",
             "bin/fmt staged.txt",
-            "make -s check",
+            "bin/check --staged",
         ]
         staged_index = run(["git", "show", ":staged.txt"], cwd=self.fixture.root).stdout
         assert staged_index == "formatted\n"

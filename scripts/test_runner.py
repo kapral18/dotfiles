@@ -15,6 +15,7 @@ their relaxing floor.
 Usage:
     python3 scripts/test_runner.py            # run all shards, stream results
     python3 scripts/test_runner.py --list     # print the shard plan, run nothing
+    python3 scripts/test_runner.py tests/test_foo.py test_bar.py
 """
 
 from __future__ import annotations
@@ -29,12 +30,14 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
+# The runner matches test_*.py but is not a unittest module.
+NOT_TEST_FILES = frozenset({"test_runner.py"})
 
 
 def discover_files() -> list[Path]:
     files = sorted(SCRIPTS.glob("test_*.py"))
     files += sorted((SCRIPTS / "tests").glob("test_*.py"))
-    return files
+    return [path for path in files if path.name not in NOT_TEST_FILES]
 
 
 # Files whose tests snapshot the working tree (git-status file census) and so
@@ -74,13 +77,29 @@ def run_file(path: Path, tmpdir: str) -> tuple[Path, int, float, str, str]:
     return path, proc.returncode, elapsed, proc.stdout, proc.stderr
 
 
+def resolve_files(names: list[str]) -> list[Path]:
+    if not names:
+        return discover_files()
+    resolved: list[Path] = []
+    for name in names:
+        path = Path(name)
+        if not path.is_absolute():
+            candidate = SCRIPTS / path
+            path = candidate if candidate.exists() else path
+        if path.name in NOT_TEST_FILES:
+            continue
+        resolved.append(path)
+    return resolved
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--list", action="store_true", help="print shard plan and exit")
     parser.add_argument("--workers", type=int, default=os.cpu_count() or 4)
+    parser.add_argument("files", nargs="*", help="test files relative to scripts/ (default: all shards)")
     args = parser.parse_args()
 
-    files = discover_files()
+    files = resolve_files(args.files)
     if args.list:
         for f in files:
             print(module_name(f))

@@ -56,6 +56,13 @@ Examples include shell configs, scripts in `~/bin/`, app configs in `~/.config/`
 ## Project Validation
 
 - After each change/task in this repo, run `make check` followed by `make fmt`.
+- `make check` is affected-only (`bin/check` vs dirty paths).
+- Agents must not run `make check-full`, `bin/check --full`, or `make test`; those are human-only.
+  Pre-commit runs `bin/check --staged` and must not run the full suite.
+- When adding or renaming production code or tests, keep them on the affected map in the same change.
+  Name tests so `scripts/check.py` convention hits, or add a `TEST_RULES` row.
+  Convention: `scripts/foo.py` / `foo.sh` → `test_foo.py` or `tests/test_foo.py`; `home/exact_lib/exact_,name/` → `tests/test_name.py`.
+  Do not leave a new shard reachable only by `make check-full`.
 - If either command fails, fix the issue when it is in scope; otherwise report the failure and the relevant output.
 
 ---

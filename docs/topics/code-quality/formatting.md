@@ -31,7 +31,7 @@ Format specific files:
 bin/fmt docs/topics/code-quality/formatting.md home/dot_config/exact_nvim/readonly_init.lua
 ```
 
-The pre-commit hook uses this file-argument mode to repair only staged paths before it hands off to the full `make check`.
+The pre-commit hook uses this file-argument mode to repair only staged paths before it hands off to `bin/check --staged`.
 
 ## Formatters
 

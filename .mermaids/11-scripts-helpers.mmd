@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 11-scripts-helpers.mmd — Every file in scripts/ (108). Repo-side Python
+%% 11-scripts-helpers.mmd — Every file in scripts/ (110). Repo-side Python
 %% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
 %% Grouped by consumer. Shared parsers feed the generators/mergers.
 %% ============================================================================
@@ -16,7 +16,7 @@ flowchart TB
         MC["model_mirror_consumer.py (consumer_view.v1<br/>shared by repo generators and deployed ,ai)"]:::shared
         MD["jsonc_dump.py (JSONC writer)"]:::shared
         CL["chezmoi_lib.sh (thin hook interface)<br/>managed_config_manifest.py (generic literal checksum ledger)<br/>generated_artifact_ledger.py (AI ownership-aware effective state + ,doctor ai)"]:::shared
-        TS["_test_support.py (puts scripts/ on sys.path for direct script tests)<br/>test_runner.py (file-sharded parallel unittest runner for make test;<br/>per-file AGENT_MEMORY_SPEC_ROOT isolation)"]:::shared
+        TS["_test_support.py (puts scripts/ on sys.path for direct script tests)<br/>test_runner.py (file-sharded parallel unittest runner for make test / bin/check;<br/>per-file AGENT_MEMORY_SPEC_ROOT isolation; not itself a unittest shard)"]:::shared
     end
 
     subgraph MCPGEN["MCP config generation (hook 07-generate-mcp-configs)"]
@@ -60,7 +60,7 @@ flowchart TB
         IZB["install_github_zip_bundle.py (hook 05 zip_opt → ~/.local/opt + PATH wrapper)"]:::misc
         RGP["reconcile_golang_pkgs.py (hook 05-update-golang-pkgs; binary reconcile + state ledger)"]:::misc
         SLC["sync_llama_cpp_models.py (hook 07-sync-llama-cpp-models)"]:::misc
-        VT["verify_templates.py (make verify-templates; pins chezmoi --source to current repo)<br/>verify_mermaids.py (make verify-mermaids; .mermaids census + overview anchors)<br/>verify_bin_surface.py (make verify-bin-surface; ~/bin completions/docs/catalog + exact token matching + home/exact_lib orphans)<br/>verify_docs_navigation.py (make verify-docs-navigation; docs/reference links + catalog rows)<br/>verify_agent_file_sizes.py (make verify-agent-file-sizes; exact_dot_agents reference .md under 20480B view limit, SKILL.md exempt)"]:::misc
+        CHK["check.py (bin/check / make check; convention + one-hop imports + TEST_RULES; make check-full is human-only CHECK_FULL=1)<br/>verify_templates.py (make verify-templates; pins chezmoi --source to current repo)<br/>verify_mermaids.py (make verify-mermaids; .mermaids census + overview anchors)<br/>verify_bin_surface.py (make verify-bin-surface; ~/bin completions/docs/catalog + exact token matching + home/exact_lib orphans)<br/>verify_docs_navigation.py (make verify-docs-navigation; docs/reference links + catalog rows)<br/>verify_agent_file_sizes.py (make verify-agent-file-sizes; exact_dot_agents reference .md under 20480B view limit, SKILL.md exempt)"]:::misc
         YT["yt_search.py (,youtube-search backend)"]:::misc
     end
 
@@ -74,7 +74,7 @@ flowchart TB
     PCAP --> PCOMP
 
     subgraph TESTS["Tests + fixtures"]
-        TTOP["top-level tests: test_{agent_memory,ai_kb,ai_launcher,ai_models,analyze_pi_session,chezmoi_lib,embed,<br/>generate_mcp_configs,generated_artifact_ledger,inject_mcp_into_codex_toml,<br/>inject_mcp_into_opencode_jsonc,mcp_registry,merge_copilot_settings,<br/>model_mirrors,pre_commit,runner,verify_agent_file_sizes,<br/>verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py<br/>test_omp_migration.py (OMP install/config/agents/extensions migration contract)"]:::shared
+        TTOP["top-level tests: test_{agent_memory,ai_kb,ai_launcher,ai_models,analyze_pi_session,check,chezmoi_lib,embed,<br/>generate_mcp_configs,generated_artifact_ledger,inject_mcp_into_codex_toml,<br/>inject_mcp_into_opencode_jsonc,mcp_registry,merge_copilot_settings,<br/>model_mirrors,pre_commit,verify_agent_file_sizes,<br/>verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py<br/>test_omp_migration.py (OMP install/config/agents/extensions migration contract)"]:::shared
         IT["scripts/tests/: __init__.py · copilot_agent_memory_extension.test.mjs<br/>recall_worklog_state_machine.py · test_{agent_hooks,codex_adapter,copilot_adapter,correction_detector,recall_worklog,bin_commands,gh_picker_dispatch_state,gh_picker_lock,gh_picker_review_requests,git_gate,invariants,llama_cpp_lifecycle,nano_banana,image,install_github_zip_bundle}.py<br/>test_ai_policy_compiler.py (IR/capability/compiler offline contract tests)<br/>test_{plain_session_removal,proof_cli,session_github_cache,tmux_handoff_lifecycle,<br/>tmux_handoff_namespace,tmux_pickers,vertex_adapter,wh,worktree_delete_boundaries}.py"]:::shared
         FX["fixtures/: ai_models/ + ai_models_with_claude/ (split registry dirs) · {mcp_servers,mcp_servers_exclude}.yaml<br/>codex_base.toml · golden_codex_personal.toml · golden_mcp_{personal,work}.json<br/>golden_opencode_{models,models_with_claude,personal}.jsonc · golden_pi_models.json<br/>model_probe_cases.json · opencode_{base,work_base}.jsonc<br/>ai_policy_eval/matrix.yaml (routing/behavioral scenario fixture, one triple per compiled rule)"]:::shared
     end
