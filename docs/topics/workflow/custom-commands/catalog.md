@@ -118,6 +118,8 @@ Planning reads `~/.config/ai/model-mirrors.v1.json` through the same shared cons
 | `,nano-banana`         | Cloud Gemini generate/edit/compose/inpaint (uploads to Google)                   |
 | `,image-local`         | On-device FLUX.2 klein 9B generate (512 default) and `-i` edit at input size     |
 | `,image-openrouter`    | OpenRouter generate/edit; Seedream 5 Pro; strips input metadata; ZDR routing     |
+| `,image-codex`         | Codex subscription GPT Image 2 generate/edit; automatic settings; strips inputs  |
+| `,image-openai`        | Native GPT Image 2 generate/edit/mask with quality, size, and format controls    |
 | `,set-default-mic`     | Select the preferred external microphone, falling back to the MacBook microphone |
 | `,update`              | Reconcile dotfiles and package-manager update categories                         |
 | `,parallel`            | Forward to GNU Parallel when both GNU Parallel and semantic-git are installed    |

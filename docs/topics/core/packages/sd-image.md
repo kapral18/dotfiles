@@ -2,15 +2,36 @@
 sidebar_position: 20
 ---
 
-# Add local FLUX.2 klein generate and edit
+# Image generation and editing
 
 `,image-local` runs [FLUX.2 klein 9B](https://huggingface.co/leejet/FLUX.2-klein-9B-GGUF) for text-to-image and instruction edit, through `sd-cli` from [leejet/stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp).
 
-These are not llama.cpp chat GGUFs. There is no agent skill; run the CLI yourself. General cloud generate/edit uses `,image-openrouter`; it auto-orients and strips input metadata through the managed ImageMagick binary before upload, without changing the original file. It fails closed if sanitization is unavailable or fails. `,nano-banana` remains the direct Gemini command.
+These are not llama.cpp chat GGUFs. There is no agent skill; run the CLI yourself. Cloud choices are `,image-openrouter`, `,image-codex`, `,image-openai`, and the existing Gemini `,nano-banana` command.
 
 Default is generate: a plain English prompt, no `-i`. Edit runs only when you pass `-i`. Klein rewrites the canvas. It has no mask, so it cannot pixel-lock an unmentioned region.
 
 Ideogram 4 is not this CLI. It needs a full JSON caption and draws a gray "Image blocked by safety filter" screen on thin prompts.
+
+## Cloud commands
+
+All 3 `,image-*` cloud commands auto-orient and strip metadata from temporary input copies through the managed ImageMagick binary. They never modify the source and fail before upload if sanitization fails.
+
+`,image-codex` uses the active Codex ChatGPT login and its built-in GPT Image 2 tool. It does not use `OPENAI_API_KEY`. Codex fixes quality, size, and background to `auto`, emits PNG, and exposes no mask:
+
+```bash
+,image-codex "a cat astronaut"
+,image-codex -i photo.jpg "add shorts to the kid" -o edited.png
+```
+
+`,image-openai` calls the native GPT Image 2 Images API with `OPENAI_API_KEY`, falling back to `pass show openai/api/token`. GPT Image 2 always uses high input fidelity. The command exposes quality, arbitrary valid size, PNG/JPEG/WebP, JPEG/WebP compression, background, repeated inputs, and a mask applied to the first input:
+
+```bash
+,image-openai "a cat astronaut" --quality high --size 2048x2048
+,image-openai -i photo.jpg --mask mask.png "add shorts to the kid" --quality high -o edited.png
+,image-openai "a poster" --format webp --compression 85 --background opaque
+```
+
+Input and mask are converted to matching PNGs. A grayscale mask becomes its alpha channel, so black becomes transparent and white opaque. Masks guide GPT Image 2 but do not pixel-lock their exact boundary.
 
 ## Preconditions
 
