@@ -10,9 +10,9 @@ review flows compare PR/head against base, and `k-ui-proof` verifies the built r
 Stacks are started per worktree by `,kbn-stack`, which records each running stack in `~/.cache/kbn-stack/registry.json` keyed by absolute worktree path.
 Load and follow `~/.agents/skills/k-kbn-stack/SKILL.md` for command mechanics, registry inspection, required `-K` flag parity, and teardown ownership.
 Each entry has `slot`, `branch`, `backend`, `kbn_url`, `es_url`, `cookie_name`, `kbn_flags`, `ready`, `started_by`, and `start_mode`.
-Detached agent starts also record `kbn_log`.
-`kbn_flags` is the list of extra `key=value` Kibana settings the stack was started with via `,kbn-stack -K`;
-it is empty when none were supplied.
+Detached agent starts also record `kbn_log`. `kbn_flags` is the list of extra `key=value` Kibana settings the stack was started with.
+Default starts inject `plugins.allowlistPluginGroups.0=platform` unless `--groups all` was passed (no allowlist flags) or an explicit `-K plugins.allowlistPluginGroups…` was supplied.
+User `-K` flags are recorded after any injected allowlist flags.
 `ready` is true only once Kibana has answered `/api/status`; detached starts additionally require the port listener to belong to the spawned Kibana's process tree before flipping it.
 `started_by` is `user` for interactive/manual starts and `agent` for `--detach`;
 for legacy entries with no `started_by`, infer `agent` only when recorded process ids are present, otherwise treat the entry as user-owned.
@@ -108,6 +108,7 @@ Only applies when the manually-invoked `~/.agents/skills/k-live-ui-windows/SKILL
 
 - Runtime-start precondition (do this before resolving target URLs): if a required target stack has no `ready:true` registry entry, do not treat the missing URL as a readiness failure.
   Go to Data/setup ladder Rung 0 and start it with `,kbn-stack --detach` plus one `-K key=value` per entry in `required_kbn_flags` (shell-capable harness), then resolve its `kbn_url` and continue preflight.
+  Pass `--groups all` (or the needed groups) when the UI under test is outside platform; the default is `platform` only.
   The reachability/readiness checks below assume the stacks are up; the "cannot establish readiness -> `Blocked`" and "blocker invalid unless every selected target URL is reported" rules apply only after Rung 0, never as a reason to skip starting a startable stack.
 - Dev-optimizer bundle precondition (freshly started snapshot stacks): `,kbn-stack --detach` and the registry `ready:true` flag mean Kibana answered `/api/status` — they do NOT mean the browser plugin bundles are built.
   A dev stack compiles bundles lazily via the `@kbn/optimizer`, so the first browser navigation to a just-started stack can 404 / MIME-error plugin bundles (e.g. `discover.plugin.js`, `lens.plugin.js`) or throw render errors like `Cannot read properties of null (reading 'dataset')` while the optimizer is still building.
@@ -154,6 +155,7 @@ Only applies when the manually-invoked `~/.agents/skills/k-live-ui-windows/SKILL
 Rung 0 — ensure the stack is running with the required config (runtime-start, before any data rung):
 if the registry has no `ready:true` entry for a required worktree key (PR/head, plus base when selected), the stack is missing, not the data.
 When the harness allows shell side effects, start it yourself with `,kbn-stack --detach` plus one `-K key=value` for each entry in `required_kbn_flags` from that worktree, wait until the registry entry reports `ready: true`, then continue to preflight.
+Pass `--groups all` (or the needed groups) when the UI under test is outside platform.
 Starting with the required flags here is what avoids a reconfigure/restart round-trip later.
 Only in a read-only/Ask-mode harness (or if `,kbn-stack --detach` fails) return `Blocked` with the exact `,kbn-stack --detach -K <flag> ...` command (including every required flag) for each missing worktree for the user to run.
 Honor the serverless single-instance constraint (`"exclusive": true`) and the teardown ownership rule under Runtime targets.

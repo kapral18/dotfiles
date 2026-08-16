@@ -60,7 +60,7 @@ The overlay also carries a Kibana planning fork checklist (`references/kibana-pl
 | Tool     | `,kbn-stack`                                                                             |
 | Gate     | `elastic/kibana` repos                                                                   |
 
-Detached `,kbn-stack --detach` starts record the Kibana process log as `kbn_log` in the registry. Kibana live-UI checks use that log for optimizer-bundle readiness; the ES `log` field is not optimizer evidence. Before reusing a ready registry entry, correlate it with recorded pids, slot-derived port listeners, and log paths. That check validates a registry entry; it does not license guessing arbitrary localhost targets.
+Detached `,kbn-stack --detach` starts record the Kibana process log as `kbn_log` in the registry. Kibana live-UI checks use that log for optimizer-bundle readiness; the ES `log` field is not optimizer evidence. Before reusing a ready registry entry, correlate it with recorded pids, slot-derived port listeners, and log paths. That check validates a registry entry; it does not license guessing arbitrary localhost targets. Default starts load plugin group `platform` and snapshot ES heap `1g`; pass `--groups all` when the UI is outside platform, and `--es-heap 1536m` to restore the kbn-es snapshot heap.
 
 ## `k-kbn-backport`
 

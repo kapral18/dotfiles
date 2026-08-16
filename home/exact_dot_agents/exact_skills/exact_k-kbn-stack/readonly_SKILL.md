@@ -1,7 +1,7 @@
 ---
 name: k-kbn-stack
 description: "Use for elastic/kibana UI/browser tests needing ES+Kibana URLs, -K flags, stack registry, start/stop/reuse."
-tool_version: ",kbn-stack status/prune/ownership registry surface verified 2026-08-12"
+tool_version: ",kbn-stack groups/es-heap/status/prune/ownership registry surface verified 2026-08-16"
 ---
 
 # Kbn Stack
@@ -29,6 +29,11 @@ Use `,kbn-stack` from an `elastic/kibana` git worktree to start an isolated loca
 ,kbn-stack --slot <n>
 ,kbn-stack -E key=value
 ,kbn-stack -K key=value
+,kbn-stack --groups platform
+,kbn-stack --groups all
+,kbn-stack --groups platform,security
+,kbn-stack --es-heap 1g
+,kbn-stack --es-heap 1536m
 ```
 
 `--detach` is the agent mode: it starts ES and Kibana in the background, waits until Kibana answers `/api/status` and the port listener belongs to the spawned Kibana's process tree (a port-squatting orphan answering the probe is named and the stack is not marked ready), records `ready: true`, marks `started_by: "agent"`, and returns.
@@ -36,6 +41,20 @@ Starts also fail fast when a foreign process already holds the slot's Kibana/ES 
 
 `-K key=value` is repeatable and becomes `--key=value` for `yarn start`.
 Use it for runtime settings that the UI path requires, for example `-K xpack.index_management.dev.enableSemanticField=true`.
+
+`--groups` defaults to `platform` and becomes `-K plugins.allowlistPluginGroups.N=<group>` (server plugin discovery only;
+Rspack still compiles all UI). `--groups all` skips that allowlist so every group loads.
+`--groups platform,security` loads those named groups.
+Restart the stack to change groups; do not reuse a `platform`-only stack for a security/observability/search UI.
+If the path under review is outside platform, pass `--groups all` (or the needed groups) on start.
+An explicit `-K plugins.allowlistPluginGroups…` wins and `--groups` is not injected.
+
+Snapshot ES sets `ES_JAVA_OPTS -Xms1g -Xmx1g` via `--es-heap` (default `1g`). `--es-heap 1536m` restores the kbn-es snapshot default.
+`--es-heap` is snapshot-only; serverless docker already pins 1g.
+
+Snapshot ES always includes `-E indices.merge.disk.watermark.high=2gb` before user `-E` flags.
+That is an absolute free-space floor so overnight Kibana does not trip the parent circuit breaker when the Mac disk is above the default 95% merge watermark.
+Override with a later `-E` of the same key.
 
 `--status` works outside a Kibana worktree and lists every registry entry without changing it.
 Its `ready`, `starting`, `degraded`, and `stale` states combine recorded readiness with current launcher/process and Kibana/Elasticsearch port liveness.
@@ -75,6 +94,7 @@ For older entries without `started_by`, infer `agent` only when recorded process
    Do not use this to discover arbitrary localhost targets; use it only to validate or reject an existing registry entry keyed by worktree.
 5. If the matching entry is `ready: true`, its Kibana/ES liveness matches the entry, and it has the needed `kbn_flags`, reuse it.
 6. If no ready entry exists and shell side effects are allowed, run `,kbn-stack --detach` plus any required `-K key=value` flags.
+   Pass `--groups all` (or the needed groups) when the UI under test is outside platform.
 7. If a ready stack with `started_by: "user"` is missing required `kbn_flags`, do not restart it.
    Report the exact `,kbn-stack --stop && ,kbn-stack --detach -K ...` command the user should run.
 8. If a ready stack with `started_by: "agent"` is missing required `kbn_flags`, or its liveness/process evidence contradicts the registry, an agent may stop/recreate it only when that does not conflict with another active task; record the replacement in the evidence.

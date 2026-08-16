@@ -27,6 +27,7 @@ teardown ownership.
 Usage:
     ,kbn-stack [--es snapshot|serverless] [--project-type es|security|oblt]
                [--data NAME] [--slot N] [--detach]
+               [--groups platform|all|LIST] [--es-heap SIZE]
                [-E key=value ...] [-K key=value ...]
     ,kbn-stack --stop        # tear down this worktree's registered stack
     ,kbn-stack --stop-all    # tear down registered detached/serverless stacks
@@ -35,10 +36,15 @@ Usage:
 
 ``-E key=value`` passes an extra Elasticsearch setting through to the snapshot
 backend; ``-K key=value`` passes an extra Kibana CLI setting through to
-``yarn start`` as ``--key=value`` (repeatable). Use ``-K`` to start a stack with
-the runtime config a change under review needs in one shot, e.g.
-``-K xpack.index_management.dev.enableSemanticField=true``, instead of starting a
-default stack and restarting Kibana afterwards.
+``yarn start`` as ``--key=value`` (repeatable). Snapshot starts also pass
+``-E indices.merge.disk.watermark.high=2gb`` (absolute merge-disk floor) before
+user ``-E`` flags, so a later ``-E`` of the same key overrides. Snapshot ES
+also sets ``ES_JAVA_OPTS -Xms1g -Xmx1g`` (override with ``--es-heap 1536m``).
+Kibana defaults to ``--groups platform`` (``plugins.allowlistPluginGroups``);
+``--groups all`` loads every group. Restart the stack to change groups. Use
+``-K`` to start a stack with the runtime config a change under review needs
+in one shot, e.g. ``-K xpack.index_management.dev.enableSemanticField=true``,
+instead of starting a default stack and restarting Kibana afterwards.
 
 Run it from within a Kibana git worktree.
 
@@ -72,6 +78,23 @@ TRIGGER_STRING = "succ kbn/es setup complete"
 REGISTRY_PATH = Path.home() / ".cache" / "kbn-stack" / "registry.json"
 ES_DATA_ROOT = Path.home() / "work" / "kibana" / "es_data"
 ELASTIC_AUTH = ("elastic", "changeme")
+# Absolute free-space floor for Lucene merges. kbn-es already sets
+# cluster.routing.allocation.disk.threshold_enabled=false, but the merge
+# scheduler still uses indices.merge.disk.watermark.high=95%. On a ~1TB APFS
+# volume at 96% used that budget clamps to 0 bytes despite tens of GB free,
+# so overnight Kibana writes explode unmerged segments and trip the 1.5g parent breaker.
+MERGE_DISK_WATERMARK = "indices.merge.disk.watermark.high=2gb"
+
+# Kibana server plugin groups from @kbn/projects-solutions-groups KIBANA_GROUPS.
+# Default platform covers Management (console, index management, stack management).
+# --groups all skips the allowlist so every group loads. Restart to change groups.
+PLUGIN_GROUPS = ("platform", "observability", "security", "search", "workplaceai", "vectordb")
+DEFAULT_PLUGIN_GROUPS = "platform"
+ALLOWLIST_KEY = "plugins.allowlistPluginGroups"
+
+# Snapshot kbn-es otherwise pins -Xms1536m -Xmx1536m. 1g matches serverless kbn-es.
+DEFAULT_ES_HEAP = "1g"
+HEAP_SIZE_RE = re.compile(r"^[0-9]+[kKmMgG]$")
 
 # Slot -> port/cookie/key derivation. Slot 0 reproduces the historical defaults
 # (Kibana 5601, ES 9200/9300). Each slot bumps Kibana by 1 and ES by 2 (HTTP +
@@ -89,6 +112,51 @@ STARTED_BY_USER = "user"
 def fail(message: str) -> "None":
     print(f",kbn-stack: {message}", file=sys.stderr)
     raise SystemExit(1)
+
+
+def parse_plugin_groups(raw: str) -> tuple[str, ...]:
+    parts = [part.strip().lower() for part in raw.split(",") if part.strip()]
+    if not parts:
+        raise argparse.ArgumentTypeError("expected all or a comma-separated group list")
+    if parts == ["all"]:
+        return ()
+    if "all" in parts:
+        raise argparse.ArgumentTypeError("--groups all cannot be combined with named groups")
+    unknown = [part for part in parts if part not in PLUGIN_GROUPS]
+    if unknown:
+        raise argparse.ArgumentTypeError(
+            f"unknown plugin group(s): {', '.join(unknown)}. Use all or: {', '.join(PLUGIN_GROUPS)}"
+        )
+    seen: list[str] = []
+    for part in parts:
+        if part not in seen:
+            seen.append(part)
+    return tuple(seen)
+
+
+def parse_es_heap(raw: str) -> str:
+    if not HEAP_SIZE_RE.fullmatch(raw):
+        raise argparse.ArgumentTypeError("expected a JVM size like 1g or 1536m")
+    return raw
+
+
+def resolved_kbn_flags(args: argparse.Namespace) -> list[str]:
+    flags = list(args.kbn_flags)
+    if any(flag.startswith(ALLOWLIST_KEY) for flag in flags):
+        return flags
+    injected = [f"{ALLOWLIST_KEY}.{index}={group}" for index, group in enumerate(args.plugin_groups)]
+    return injected + flags
+
+
+def es_java_opts(heap: str, existing: str = "") -> str:
+    kept = [token for token in existing.split() if not token.lower().startswith(("-xms", "-xmx"))]
+    return " ".join((f"-Xms{heap}", f"-Xmx{heap}", *kept))
+
+
+def snapshot_es_env(heap: str) -> dict[str, str]:
+    env = os.environ.copy()
+    env["ES_JAVA_OPTS"] = es_java_opts(heap, env.get("ES_JAVA_OPTS", ""))
+    return env
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -165,12 +233,40 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument("--run-with-prune", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
     parser.add_argument(
+        "--groups",
+        dest="plugin_groups",
+        type=parse_plugin_groups,
+        default=parse_plugin_groups(DEFAULT_PLUGIN_GROUPS),
+        metavar="LIST",
+        help=(
+            "Kibana plugin groups to load (comma-separated). Default: platform. "
+            "Use --groups all for every group. Named groups: "
+            + ", ".join(PLUGIN_GROUPS)
+            + ". Restart the stack to change this."
+        ),
+    )
+    parser.add_argument(
+        "--es-heap",
+        dest="es_heap",
+        type=parse_es_heap,
+        default=DEFAULT_ES_HEAP,
+        metavar="SIZE",
+        help=(
+            "Snapshot ES JVM heap (sets -Xms and -Xmx). Default: 1g. "
+            "Use --es-heap 1536m for the kbn-es snapshot default. Snapshot only."
+        ),
+    )
+    parser.add_argument(
         "-E",
         dest="es_flags",
         action="append",
         default=[],
         metavar="key=value",
-        help="Extra Elasticsearch setting passed through to the snapshot backend (repeatable).",
+        help=(
+            "Extra Elasticsearch setting passed through to the snapshot backend (repeatable). "
+            "Snapshot starts already set indices.merge.disk.watermark.high=2gb; "
+            "a later -E of the same key overrides."
+        ),
     )
     parser.add_argument(
         "-K",
@@ -185,7 +281,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
             "needs, e.g. -K xpack.index_management.dev.enableSemanticField=true."
         ),
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.es == "serverless" and args.es_heap != DEFAULT_ES_HEAP:
+        fail("--es-heap applies to snapshot ES only; serverless docker already pins 1g")
+    return args
 
 
 def git_output(args: list[str]) -> str:
@@ -682,7 +781,7 @@ def kibana_command(args: argparse.Namespace, cfg: dict) -> str:
     ]
     if args.es == "serverless":
         parts.append(f"--serverless={args.project_type}")
-    for flag in args.kbn_flags:
+    for flag in resolved_kbn_flags(args):
         parts.append(f"--{flag}")
     return " ".join(shlex.quote(p) for p in parts)
 
@@ -715,6 +814,8 @@ def es_command(args: argparse.Namespace, cfg: dict, data_path: Path) -> list[str
         "discovery.type=single-node",
         "-E",
         f"path.data={data_path}",
+        "-E",
+        MERGE_DISK_WATERMARK,
     ]
     for flag in args.es_flags:
         cmd += ["-E", flag]
@@ -810,7 +911,7 @@ def kibana_ready(kbn_url: str, timeout: float) -> bool:
     return False
 
 
-def spawn_background(cmd: list[str], logfile: Path, worktree: str) -> int:
+def spawn_background(cmd: list[str], logfile: Path, worktree: str, env: dict[str, str] | None = None) -> int:
     """Start a detached process writing combined output to logfile; return its pid."""
     handle = logfile.open("w", encoding="utf-8")
     proc = subprocess.Popen(
@@ -819,15 +920,16 @@ def spawn_background(cmd: list[str], logfile: Path, worktree: str) -> int:
         stderr=subprocess.STDOUT,
         cwd=worktree,
         start_new_session=True,
+        env=env,
     )
     return proc.pid
 
 
-def run_foreground_es(es_cmd: list[str], logfile: Path) -> int:
+def run_foreground_es(es_cmd: list[str], logfile: Path, env: dict[str, str] | None = None) -> int:
     """Stream interactive Elasticsearch and prune stale entries after it exits."""
     with logfile.open("w", encoding="utf-8") as log_handle:
         try:
-            proc = subprocess.Popen(es_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            proc = subprocess.Popen(es_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
             assert proc.stdout is not None
             for line in proc.stdout:
                 sys.stdout.write(line)
@@ -863,7 +965,8 @@ def run_detached(
     """Agent mode: background ES + Kibana, wait until ready, record readiness, return."""
     kbn_logfile = Path(f"/tmp/kbn-slot{cfg['slot']}.log")
 
-    es_pid = spawn_background(es_command(args, cfg, data_path), es_logfile, worktree)
+    es_env = None if args.es == "serverless" else snapshot_es_env(args.es_heap)
+    es_pid = spawn_background(es_command(args, cfg, data_path), es_logfile, worktree, env=es_env)
     print(f",kbn-stack: Elasticsearch starting (pid {es_pid}) -> {es_logfile}", flush=True)
 
     if not wait_for_trigger(es_logfile, timeout=600):
@@ -1156,7 +1259,7 @@ def main(argv: list[str]) -> int:
         "es_url": cfg["es_url"],
         "cookie_name": cfg["cookie_name"],
         "data": data_name,
-        "kbn_flags": list(args.kbn_flags),
+        "kbn_flags": resolved_kbn_flags(args),
         "log": str(logfile),
         "ready": False,
         "started_by": started_by,
@@ -1167,9 +1270,13 @@ def main(argv: list[str]) -> int:
     }
     save_registry(registry)
 
+    groups_label = ",".join(args.plugin_groups) or "all"
+    heap_label = args.es_heap if args.es == "snapshot" else "serverless-default"
     print(
         f",kbn-stack: worktree={worktree}\n"
         f"            slot={slot} backend={args.es} data={data_name}\n"
+        f"            groups  -> {groups_label}\n"
+        f"            es-heap -> {heap_label}\n"
         f"            Kibana  -> {cfg['kbn_url']}  (cookie {cfg['cookie_name']})\n"
         f"            ES      -> {cfg['es_url']}\n",
         flush=True,
@@ -1191,7 +1298,8 @@ def main(argv: list[str]) -> int:
     )
     watcher.start()
 
-    return run_foreground_es(es_command(args, cfg, data_path), logfile)
+    es_env = None if args.es == "serverless" else snapshot_es_env(args.es_heap)
+    return run_foreground_es(es_command(args, cfg, data_path), logfile, env=es_env)
 
 
 if __name__ == "__main__":

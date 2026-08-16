@@ -76,6 +76,18 @@ def _load_mcp_token_module():
     return module
 
 
+def _es_dash_e_settings(cmd: list[str]) -> list[str]:
+    settings: list[str] = []
+    index = 0
+    while index < len(cmd):
+        if cmd[index] == "-E" and index + 1 < len(cmd):
+            settings.append(cmd[index + 1])
+            index += 2
+            continue
+        index += 1
+    return settings
+
+
 def _load_kbn_stack_command():
     loader = SourceFileLoader("kbn_stack_command", str(KBN_STACK_COMMAND))
     spec = importlib.util.spec_from_loader("kbn_stack_command", loader)
@@ -4359,6 +4371,87 @@ class TestKbnStackCommand(unittest.TestCase):
         assert rc == 0
         assert "/wt/B" in state["saved"][-1]
         assert state["killed"] == []
+
+    def test_snapshot_es_command_pins_merge_disk_watermark_before_user_flags(self):
+        kbn_stack = _load_kbn_stack_command()
+        args = kbn_stack.parse_args(["-E", "node.attr.foo=bar"])
+        cfg = kbn_stack.derive(0)
+        cfg["slot"] = 0
+        cmd = kbn_stack.es_command(args, cfg, Path("/tmp/es-data"))
+        settings = _es_dash_e_settings(cmd)
+        assert "indices.merge.disk.watermark.high=2gb" in settings
+        assert settings.index("indices.merge.disk.watermark.high=2gb") < settings.index("node.attr.foo=bar")
+
+    def test_snapshot_es_command_lets_later_user_flag_override_merge_disk_watermark(self):
+        kbn_stack = _load_kbn_stack_command()
+        override = "indices.merge.disk.watermark.high=99%"
+        args = kbn_stack.parse_args(["-E", override])
+        cfg = kbn_stack.derive(0)
+        cfg["slot"] = 0
+        cmd = kbn_stack.es_command(args, cfg, Path("/tmp/es-data"))
+        settings = _es_dash_e_settings(cmd)
+        assert settings.count("indices.merge.disk.watermark.high=2gb") == 1
+        assert settings.index("indices.merge.disk.watermark.high=2gb") < settings.index(override)
+
+    def test_default_groups_platform_injects_allowlist_on_yarn_start(self):
+        kbn_stack = _load_kbn_stack_command()
+        args = kbn_stack.parse_args([])
+        assert args.plugin_groups == ("platform",)
+        assert args.es_heap == "1g"
+        cmd = kbn_stack.kibana_command(args, kbn_stack.derive(0))
+        assert "--plugins.allowlistPluginGroups.0=platform" in cmd
+        assert "--plugins.allowlistPluginGroups.1=" not in cmd
+
+    def test_groups_all_omits_allowlist(self):
+        kbn_stack = _load_kbn_stack_command()
+        args = kbn_stack.parse_args(["--groups", "all"])
+        assert args.plugin_groups == ()
+        cmd = kbn_stack.kibana_command(args, kbn_stack.derive(0))
+        assert "allowlistPluginGroups" not in cmd
+
+    def test_groups_comma_list_indexes_from_zero(self):
+        kbn_stack = _load_kbn_stack_command()
+        args = kbn_stack.parse_args(["--groups", "platform,security"])
+        flags = kbn_stack.resolved_kbn_flags(args)
+        assert flags[:2] == [
+            "plugins.allowlistPluginGroups.0=platform",
+            "plugins.allowlistPluginGroups.1=security",
+        ]
+
+    def test_explicit_k_allowlist_skips_group_injection(self):
+        kbn_stack = _load_kbn_stack_command()
+        args = kbn_stack.parse_args(["-K", "plugins.allowlistPluginGroups.0=security"])
+        assert kbn_stack.resolved_kbn_flags(args) == ["plugins.allowlistPluginGroups.0=security"]
+
+    def test_unknown_group_exits(self):
+        kbn_stack = _load_kbn_stack_command()
+        with self.assertRaises(SystemExit):
+            kbn_stack.parse_args(["--groups", "nope"])
+
+    def test_groups_all_cannot_mix_with_named_groups(self):
+        kbn_stack = _load_kbn_stack_command()
+        with self.assertRaises(SystemExit):
+            kbn_stack.parse_args(["--groups", "all,platform"])
+
+    def test_es_java_opts_sets_xms_xmx_and_keeps_other_tokens(self):
+        kbn_stack = _load_kbn_stack_command()
+        assert kbn_stack.es_java_opts("1g") == "-Xms1g -Xmx1g"
+        assert kbn_stack.es_java_opts("512m", "-Xms1536m -Xmx1536m -XX:+UseG1GC") == "-Xms512m -Xmx512m -XX:+UseG1GC"
+
+    def test_serverless_rejects_custom_es_heap(self):
+        kbn_stack = _load_kbn_stack_command()
+        with self.assertRaises(SystemExit):
+            kbn_stack.parse_args(["--es", "serverless", "--es-heap", "512m"])
+
+    def test_serverless_allows_default_es_heap(self):
+        kbn_stack = _load_kbn_stack_command()
+        args = kbn_stack.parse_args(["--es", "serverless"])
+        assert args.es_heap == "1g"
+
+    def test_invalid_es_heap_exits(self):
+        kbn_stack = _load_kbn_stack_command()
+        with self.assertRaises(SystemExit):
+            kbn_stack.parse_args(["--es-heap", "1"])
 
 
 class _BridgeMcpHandler(http.server.BaseHTTPRequestHandler):
