@@ -39,13 +39,13 @@ git clone <repo-url> /tmp/<tool-name>
 <tool> <subcommand> --help
 ```
 
-Source is for understanding; `--help` is the truth. Do not include anything that cannot be verified against the installed binary.
+Source is for understanding; `--help` is the truth. Include only what can be verified against the installed binary.
 
 1. Create the skill directory and files:
    - `home/exact_dot_agents/exact_skills/exact_<name>/readonly_SKILL.md`
    - Optional: `exact_references/readonly_*.md` for detailed sub-topics
 2. Set `tool_version` in frontmatter to the installed version.
-3. Use the real binary name on PATH — not wrapper aliases.
+3. Use the real binary name on PATH, rather than wrapper aliases.
 4. Authoring is done when every command, subcommand, and flag documented in the skill appears in `<tool> --help` / `<tool> <subcommand> --help` output and `tool_version` matches `<tool> --version`; then `chezmoi diff` to verify and `chezmoi apply`.
 
 ## Upgrading an existing skill
@@ -75,7 +75,7 @@ Skip: tests, CI configs, unrelated docs.
 1. For each change in the diff:
    - Verify against `<tool> --help` / `<tool> <subcommand> --help`.
    - Update only the affected skill sections.
-   - Do not propagate changes you cannot verify locally.
+   - Propagate only changes you can verify locally.
 2. Update `tool_version` in frontmatter to the installed version.
 3. Upgrade is done when the diffed CLI changes are reflected in the skill, `tool_version` matches `<tool> --version`, and `chezmoi diff` shows only expected sections changed.
 

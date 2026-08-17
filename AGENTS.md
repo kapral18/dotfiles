@@ -145,6 +145,9 @@ Use these rules when editing LLM-guidance text: text whose purpose is to steer m
 Examples include SOPs, skills, prompts, agent profiles, hooks docs, and instruction/reference `.md` or `.txt` files.
 Do not apply this rule to arbitrary prose or data solely because it may be passed to an LLM as context.
 
+**Affirmative phrasing (mandatory for instruction text):** when adding, generating, or rewording any LLM instruction, load `home/exact_dot_agents/exact_skills/exact_k-affirmative-phrasing/readonly_SKILL.md` (deployed: `~/.agents/skills/k-affirmative-phrasing/SKILL.md`) and apply it: state the behavior you want affirmatively; when a hard prohibition must stay, pair it with the affirmative alternative in the same line.
+The skill also owns the fidelity boundaries — factual negations, quoted examples, and enumerated gate contracts stay as written.
+
 - Treat line breaks as prompt-ingestion affordances, not as a fixed-width prose formatter.
 - Do not hard-wrap mid-sentence just to satisfy a target column. A line around 140 characters is a soft boundary, not a target.
 - Keep a sentence intact by default. Move the next sentence to a new line when appending it would cross the soft boundary.

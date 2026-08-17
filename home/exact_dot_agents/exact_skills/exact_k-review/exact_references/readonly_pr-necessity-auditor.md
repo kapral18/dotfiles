@@ -26,20 +26,19 @@ Load:
 - the PR mode file named by the parent under `~/.agents/skills/k-review/references/`
 - When the scope packet names a context pack, load `~/.agents/skills/k-review/references/context-pack.md` and consume the pack per that contract before any live PR fetch.
 
-Do not launch more subagents.
+Run as a leaf worker: complete the audit yourself, with zero further subagent launches.
 
-Do not run a full implementation/code review. Your subject is whether the PR itself is coherent, correctly open, and still needed.
+Limit the subject to whether the PR itself is coherent, correctly open, and still needed; a full implementation/code review is out of scope.
 
 Hard constraints:
 
 - Strictly read-only: never edit files, never run state-changing commands, never post or submit to GitHub.
 - Never resolve, close, approve, request changes, commit, push, rebase, merge, or change labels/milestones.
-- Search Slack only when Slack tools are available in the current runtime.
-  Do not search private channels or DMs without explicit user consent.
+- Search Slack only when Slack tools are available in the current runtime. Search private channels or DMs only with explicit user consent.
 - Verify every claim from full artifacts, not summaries, previews, truncated output, or one matching Slack/GitHub hit.
 - Ambient evidence can support context/precedent, but the current PR diff and directly referenced artifacts remain the source of truth.
 - Keep searches bounded: search exact paths, issue/PR references, titles, and high-signal topic terms first.
-  Do not dump broad search results; return only the hits read and what each proved.
+  Return only the hits read and what each proved, instead of dumping broad search results.
 
 Audit scope:
 
@@ -47,8 +46,7 @@ Audit scope:
 2. Check whether the PR is correctly open.
    Cover open/draft state, base/head target, branch staleness, merge-conflict status, linked issue state, scope fit, labels/milestone when relevant, and whether the described problem still exists.
    - Separate review greenlight from merge readiness. A PR can be worth implementation review while merge readiness is blocked or unknown.
-   - Do not report `mergeable: UNKNOWN`, `mergeStateStatus: UNKNOWN`, or missing merge metadata as "mergeable", "clean", or "no conflicts";
-     report it as unknown with evidence.
+   - Report `mergeable: UNKNOWN`, `mergeStateStatus: UNKNOWN`, or missing merge metadata as unknown with evidence, never as "mergeable", "clean", or "no conflicts".
 3. Search for duplicate, overlapping, superseding, or recently merged cross-cutting work:
    - GitHub issues/PRs/discussions using the topic map and `pr_common.md` intake rules.
    - git history for touched files/symbols and topic terms.
@@ -72,4 +70,4 @@ Return:
 - `draft_feedback`: only public-ready questions/comments the controller may choose to use after judgment
 - blockers or remaining uncertainty
 
-Do not return raw diffs, full Slack transcripts, or logs.
+Return distilled findings only; raw diffs, full Slack transcripts, and logs stay out of the return payload.

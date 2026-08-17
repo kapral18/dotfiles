@@ -53,7 +53,7 @@ A small fixed bar at bottom-centre: left arrow (previous, wraps), variant label 
 Behaviour:
 
 - Clicking an arrow updates the URL search param via the framework's router so the variant is shareable and reload-stable.
-- `←`/`→` keys also cycle, but do not intercept them when an `<input>`, `<textarea>`, or `[contenteditable]` is focused.
+- `←`/`→` keys also cycle; leave them untouched while an `<input>`, `<textarea>`, or `[contenteditable]` is focused.
 - Visually distinct from the page (high-contrast pill, subtle shadow) so it is obviously not part of the design being evaluated.
 - Hidden in production builds — gate on `NODE_ENV !== 'production'` so a stray merge cannot ship the bar.
 
@@ -69,7 +69,7 @@ The interesting feedback is usually "I want the header from B with the sidebar f
 Once a variant wins, write down which and why (commit, PR, issue, `,ai-kb`, or a `NOTES.md`).
 Then, for sub-shape A delete the losing variants and the switcher and fold the winner into the page;
 for sub-shape B promote the winner to a real route and delete the throwaway route and switcher.
-Do not leave variant components or the switcher lying around.
+Delete every variant component and the switcher; the repo ends the prototype clean.
 
 ## Anti-patterns
 

@@ -16,7 +16,7 @@ Use when:
 - the user asks for the single smartest, most impactful, or highest-leverage addition to the current repository
 - the target is the whole codebase, not only the current diff, branch, PR, issue, or a targeted part
 
-Do not use:
+Route elsewhere for:
 
 - current local changes only: `~/.agents/skills/k-improve-local/SKILL.md`
 - current branch, PR, or issue only: `~/.agents/skills/k-improve-branch/SKILL.md`
@@ -28,14 +28,14 @@ First actions:
 1. Inspect the repo shape, documentation, test/validation commands, and current git state.
 2. Identify up to three candidate improvements internally, grounded in observed code or docs.
 3. Choose exactly one candidate only if it is clearly smart, accretive, useful, and compelling for this repo now.
-4. If no candidate clears that bar, say so and do not propose a marginal change.
+4. If no candidate clears that bar, say so and refrain from proposing a marginal change.
 
 Selection rules:
 
 - Prefer changes that compound future work: sharper automation, better verification, safer generated config, or clearer agent/tool workflows.
 - Scope the recommendation to the real opportunity: small when small is enough, broad when breadth is where the leverage lives.
-- Do not recommend package churn, stylistic cleanup, or speculative abstractions unless the repo evidence makes the payoff unusually clear.
-- Treat "suggest" literally: present the recommendation first. Do not edit files unless the user explicitly approves implementation.
+- Recommend package churn, stylistic cleanup, or speculative abstractions only when the repo evidence makes the payoff unusually clear.
+- Treat "suggest" literally: present the recommendation first. Edit files only after the user explicitly approves implementation.
 
 Output:
 

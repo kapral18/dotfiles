@@ -12,7 +12,7 @@ Default interface:
 - Verify the local CLI first: `command -v gws`, `gws --version`, `gws --help`.
 - Before using a method in-session, inspect it with `gws schema <service.resource.method>`.
 - Then use direct `gws <service> <resource> [sub-resource] <method>` commands.
-- Do not invent service/resource/method names, params, request bodies, or scopes; verify them from `gws schema` output.
+- Use only service/resource/method names, params, request bodies, and scopes verified from `gws schema` output.
 
 When NOT to use:
 
@@ -42,15 +42,15 @@ Targeting & safety:
 - Prefer explicit identifiers from live reads (IDs, email addresses, file IDs, event IDs, label IDs).
 - For Gmail user-scoped calls, prefer `{"userId":"me"}` unless the user explicitly wants a different mailbox.
 - Before destructive actions (delete/remove/trash/send), enumerate the exact targets first.
-- If the user asks to remove a set of items, operate on the enumerated IDs you just verified; do not guess or pattern-match blindly.
-- Do not fall back to manual HTTP requests when `gws` supports the task.
+- If the user asks to remove a set of items, operate only on the enumerated IDs you just verified.
+- Use `gws` whenever it supports the task; manual HTTP requests are the fallback only for unsupported operations.
 - Human-visible sends (Gmail messages/replies, Chat messages, Doc comments) follow the Human-Visible Publication Gate (`~/AGENTS.md`):
   draft, show the exact payload + recipient/target, wait for approval.
   For the _wording_ of any such message/reply/comment, follow the centralized `~/.agents/skills/k-communication/SKILL.md`.
 
 Output guidance:
 
-- Default to JSON unless the user asked for another format.
+- Default to JSON; use another format only when the user asks for it.
 - Use `--page-all` only when the user wants the full result set and the volume is manageable.
 - Summarize the exact objects changed and the verification result.
 

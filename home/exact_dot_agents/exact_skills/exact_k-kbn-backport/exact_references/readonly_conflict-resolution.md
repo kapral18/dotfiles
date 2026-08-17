@@ -26,13 +26,13 @@ Do all of it in this checkout before handing back, then let the run advance to t
 ## Understand The Original Change
 
 Before resolving the conflict, investigate the commit/PR being backported so the resolution carries the same intent.
-Do not resolve from the conflict hunks alone.
+Resolve from the full original change context, not from the conflict hunks alone.
 
 1. Identify the source change:
    - `git show CHERRY_PICK_HEAD` for the full original diff, message, and rationale.
    - Extract the originating PR number from the commit message (Kibana commits end with `(#NNNNN)`).
 2. Read the original PR exhaustively — every reference, comment, and linked issue, all the way down.
-   Do not skim the description and stop; build the complete context for why the change exists and what shape reviewers landed on.
+   Read past the description; build the complete context for why the change exists and what shape reviewers landed on.
    - Full PR body, metadata, and linked issues: `gh pr view <NNNNN> --repo elastic/kibana --json title,body,state,labels,closingIssuesReferences,comments,reviews,url`.
    - Every conversation comment: `gh pr view <NNNNN> --repo elastic/kibana --comments` (read all of them, not just the latest).
    - Every review and inline review-thread comment (these hold the design rationale):
@@ -62,7 +62,7 @@ The interactive run prints this hint, but the agent driving the pane may not hav
 2. Investigate each missing/pending candidate using the same exhaustive PR reading as Understand The Original Change, and classify whether the current conflict actually depends on that PR:
    - **Blocker / prerequisite** — the conflicting hunks reference structure, files, or APIs introduced by that PR, so a faithful resolution is impossible (or unsafe) until it lands on the destination branch.
    - **Incidental** — the overlap is cosmetic/adjacent and can be resolved by hand on the destination branch without that PR.
-3. Surface and stop at the boundary — do not auto-backport prerequisites.
+3. Surface and stop at the boundary — leave prerequisite backports to the user.
    Opening other backport PRs is a separate, human-visible side effect outside this skill's contract.
    - If any prerequisite is a blocker: stop, report it (PR link, why it blocks, destination branch), and recommend backporting it first.
      Resume only when the user says to proceed or confirms the prerequisite is handled.
@@ -80,7 +80,7 @@ Apply under the Resolution Rules below, stage the resolved files, then `yarn kbn
 - For deleted-by-us conflicts, verify whether the destination branch intentionally removed or relocated the file.
   Prefer applying the behavior to the active branch file, then remove the stale incoming path.
 - For additive test conflicts, keep both destination-branch coverage and incoming PR coverage when they test distinct behavior.
-- Do not remove unrelated destination-branch behavior while cleaning conflict markers.
+- Preserve unrelated destination-branch behavior while cleaning conflict markers.
 - Search for conflict markers after every edit:
   - `rg '<<<<<<<|=======|>>>>>>>|\|\|\|\|\|\|\|' <resolved-files>`
 

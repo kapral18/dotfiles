@@ -18,13 +18,13 @@ Common trigger in reviews:
 
 - Base-branch context for reviews (PR or local changes): learn how base works and what invariants exist, then compare against the local diff.
 
-Do not use:
+Out of scope (use the named alternative):
 
 - simple string/filename lookup: use local `rg` or file listing
 - as a replacement for local review of branch changes: use local repo tools for exact state (`git diff`, file reads, tests).
   SCSI is for base context.
 - purely mechanical pattern matching to drive a replace/edit: use local `rg`
-- current repo is not indexed (not present in `list_indices`): do not use semantic code search
+- current repo is not indexed (not present in `list_indices`): fall back to local sources
 
 First actions:
 
@@ -42,7 +42,7 @@ Review output contract (when invoked from a review skill):
 
 - Record the selected index (or "none") and include a `Base context:` line in the review output:
   - `Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<base>...HEAD`
-  - reviewer metadata only; do not include in GitHub comment bodies
+  - reviewer metadata only; keep it out of GitHub comment bodies
 
 Review preflight (blocking):
 
@@ -57,7 +57,7 @@ How to run `list_indices`:
 - If both fail or neither exists, treat SCSI as unavailable.
 - `list_indices` output can exceed the harness output limit and get saved to a temp file;
   search that file for the candidate repo slug instead of re-running the call.
-- You are not allowed to skip SCSI just because the user didn't provide an index name.
+- You must run SCSI even when the user didn't provide an index name.
 - If the repo is indexed, you MUST invoke at least one SCSI tool to establish base-branch context.
 - Only skip SCSI if:
   - `list_indices` proves the repo is not indexed, OR
@@ -77,8 +77,8 @@ Index usage:
   - verify it exists in `list_indices`
   - if it does not exist, stop and ask which index to use
 - otherwise:
-  - always run `list_indices` first (do not guess) - if you have both `scsi-main` and `scsi-local`, run `list_indices` on both before concluding "not indexed"
-  - if `list_indices` returns no usable results, do not use semantic search (fall back to local sources)
+  - always run `list_indices` first (evidence, not guesses) - if you have both `scsi-main` and `scsi-local`, run `list_indices` on both before concluding "not indexed"
+  - if `list_indices` returns no usable results, fall back to local sources instead of semantic search
   - if `list_indices` returns an obvious match for the current repo, use it - "obvious" means you can justify the selection from evidence (for example: index name clearly includes the repo name, or it is the only index that matches the repo you're in)
   - if multiple equally plausible indices remain after evidence-based filtering, ask the user which index to use
 

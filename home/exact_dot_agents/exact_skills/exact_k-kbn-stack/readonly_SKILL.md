@@ -8,7 +8,7 @@ tool_version: ",kbn-stack groups/es-heap/status/prune/ownership registry surface
 
 Use `,kbn-stack` from an `elastic/kibana` git worktree to start an isolated local Elasticsearch + Kibana stack for that worktree.
 
-## Do Not Use
+## Out Of Scope
 
 - Non-Kibana repos.
 - Production, shared cloud, or remote Kibana targets.
@@ -45,7 +45,7 @@ Use it for runtime settings that the UI path requires, for example `-K xpack.ind
 `--groups` defaults to `platform` and becomes `-K plugins.allowlistPluginGroups.N=<group>` (server plugin discovery only;
 Rspack still compiles all UI). `--groups all` skips that allowlist so every group loads.
 `--groups platform,security` loads those named groups.
-Restart the stack to change groups; do not reuse a `platform`-only stack for a security/observability/search UI.
+Restart the stack to change groups; for a security/observability/search UI, start a stack with those groups instead of reusing a `platform`-only stack.
 If the path under review is outside platform, pass `--groups all` (or the needed groups) on start.
 An explicit `-K plugins.allowlistPluginGroups…` wins and `--groups` is not injected.
 
@@ -81,7 +81,7 @@ Each ready entry may include:
 - `start_mode` (`"interactive-tmux"`, `"manual-command"`, or `"agent-detach"`)
 - `es_pid` / `kbn_pid` for detached stacks
 
-Use only entries with `ready: true` as live browser targets. Do not guess localhost ports.
+Use only entries with `ready: true` as live browser targets; take localhost ports from those entries rather than guessing.
 For older entries without `started_by`, infer `agent` only when recorded process ids are present; otherwise treat the entry as user-owned.
 
 ## Workflow
@@ -91,11 +91,11 @@ For older entries without `started_by`, infer `agent` only when recorded process
 3. Inspect `~/.cache/kbn-stack/registry.json`.
 4. Before reusing a `ready: true` entry, correlate it with liveness/process evidence:
    recorded `kbn_pid`/`es_pid` when present, the derived Kibana/ES port listeners for the entry's `slot`, and relevant `log`/`kbn_log` paths.
-   Do not use this to discover arbitrary localhost targets; use it only to validate or reject an existing registry entry keyed by worktree.
+   Use this only to validate or reject an existing registry entry keyed by worktree, never to discover arbitrary localhost targets.
 5. If the matching entry is `ready: true`, its Kibana/ES liveness matches the entry, and it has the needed `kbn_flags`, reuse it.
 6. If no ready entry exists and shell side effects are allowed, run `,kbn-stack --detach` plus any required `-K key=value` flags.
    Pass `--groups all` (or the needed groups) when the UI under test is outside platform.
-7. If a ready stack with `started_by: "user"` is missing required `kbn_flags`, do not restart it.
+7. If a ready stack with `started_by: "user"` is missing required `kbn_flags`, leave it running.
    Report the exact `,kbn-stack --stop && ,kbn-stack --detach -K ...` command the user should run.
 8. If a ready stack with `started_by: "agent"` is missing required `kbn_flags`, or its liveness/process evidence contradicts the registry, an agent may stop/recreate it only when that does not conflict with another active task; record the replacement in the evidence.
 9. Load Playwriter before using `kbn_url` for readiness or UI verification.
@@ -108,8 +108,8 @@ For older entries without `started_by`, infer `agent` only when recorded process
 - If the user already had a `started_by: "user"` stack, leave it running and report that it was reused.
 - If a pre-existing `started_by: "agent"` stack is reused, leave it running unless this worker explicitly replaced it;
   report that it was reused as an agent-owned stack.
-- Never stop stacks owned by other worktrees.
-- Never run `,kbn-stack --stop-all` from an automated review or live-UI worker.
+- Stop only stacks owned by this worktree.
+- Use per-worktree `,kbn-stack --stop` from automated review or live-UI workers; `,kbn-stack --stop-all` is user-only cleanup.
 
 ## Output
 

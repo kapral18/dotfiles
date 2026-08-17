@@ -30,7 +30,7 @@ Reliable focus:
 await state.page.locator(".monaco-editor").first().click({ force: true });
 ```
 
-If clicking `codeEditorHint` directly, use `{ force: true }` too. Never click the textarea directly.
+If clicking `codeEditorHint` directly, use `{ force: true }` too. Focus via `.monaco-editor` only; direct textarea clicks time out.
 
 ## Setting content
 
@@ -78,7 +78,7 @@ for (let i = 0; i < count; i++)
   console.log(`${i}: "${await lines.nth(i).textContent()}"`);
 ```
 
-To click a target line, avoid the far right edge; each `.view-line` spans full width and right-edge clicks place the cursor past content or on another logical line.
+To click a target line, click near the text (left portion of the line); each `.view-line` spans full width and right-edge clicks place the cursor past content or on another logical line.
 
 ```js
 const targetLine = lines.nth(4);

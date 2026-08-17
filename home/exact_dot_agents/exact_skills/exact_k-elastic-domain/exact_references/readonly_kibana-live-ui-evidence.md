@@ -7,13 +7,12 @@ This file carries the worker conduct and evidence contract: safety boundary, scr
 
 - Verification only: no repo edits, GitHub mutations, git writes, commits, pushes, or decisions.
 - Never use ApplyPatch or file-editing tools.
-- Never write files except Playwriter artifacts under `/tmp`, including focused screenshots;
-  store each screenshot/pair/set in its own distinct `/tmp/<folder-name>/` directory, never loose directly in `/tmp`.
+- Write files only as Playwriter artifacts under `/tmp`, including focused screenshots;
+  store each screenshot/pair/set in its own distinct `/tmp/<folder-name>/` directory rather than loose directly in `/tmp`.
 - Mutating local/dev runtime data via Playwriter actions, local Kibana APIs, Dev Tools Console, or local Elasticsearch API calls is allowed for verification after target readiness/identity is established.
-- Do not mutate production, shared cloud, GitHub, git, repo files, committed files, labels, reviews, comments, branches, or user-visible external state.
+- Mutate only that local/dev runtime data; production, shared cloud, GitHub, git, repo files, committed files, labels, reviews, comments, branches, and user-visible external state stay untouched.
 - Runtime data mutations must be local/dev-only, focused, named in the evidence, tied to the exact target/Elasticsearch endpoint used, and cleaned up or reported.
-- Do not apply ES/Kibana runtime environment changes or restart services from this worker.
-  Surface them as `Blocked` instructions for the user to apply, then continue in a later run after reload.
+- Surface ES/Kibana runtime environment changes and service restarts as `Blocked` instructions for the user to apply, then continue in a later run after reload; applying or restarting from this worker is out of scope.
 - If target identity is ambiguous or appears non-local/non-dev, return `Blocked` instead of mutating.
 
 ## Screenshot handoff
@@ -23,7 +22,8 @@ This file carries the worker conduct and evidence contract: safety boundary, scr
   For pre-navigation blockers, record why no screenshot exists.
 - Store screenshots as Playwriter artifacts in a distinct `/tmp/<folder-name>/` directory —
   one dedicated folder per single screenshot, per comparison pair (base + PR/head), or per grouped set;
-  never loose in `/tmp` and never mixed with an unrelated set. Use descriptive names and preserve handoff files.
+  each folder holds exactly its own set, kept out of loose `/tmp` and separate from unrelated sets.
+  Use descriptive names and preserve handoff files.
 - For each screenshot, record:
   - folder + local file path
   - description
@@ -34,7 +34,7 @@ This file carries the worker conduct and evidence contract: safety boundary, scr
   - fidelity note for mocks or partial setup
 - The screenshot handoff is for the controller's upload step only: no image uploads or local paths in GitHub review comments or bodies from this worker, and no extra comments solely for image paths; the controller uploads and embeds screenshots via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md` behind explicit user approval.
 - Proof-mode (`k-ui-proof`) stores each visual criterion's proof set in its own distinct `/tmp/<folder-name>/` folder (e.g. `/tmp/<topic>-<criterion-slug>/`) and hands the manifest to `k-compose-pr`; the files are embedded through that same explicitly approved upload flow.
-  The worker itself still never uploads images or writes local paths into GitHub.
+  Uploading images and writing local paths into GitHub belongs to the controller alone, never to this worker.
 
 ## Live feedback overlay
 
@@ -64,7 +64,7 @@ Reject and rerun any `live-ui-review` result for this overlay that:
 - lists screenshot artifacts without local paths, descriptions, target URL/branch, or linked candidate/finding placement
 - omits applicability, exact URLs checked, browser preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and blockers/uncertainty
 
-Do not reject or rerun a result that reports a valid Playwriter harness blocker:
+Accept without rerun a result that reports a valid Playwriter harness blocker:
 
 - read-only/Ask-mode blocked Playwriter
 - every selected exact browser target URL was attempted or explicitly blocked before navigation

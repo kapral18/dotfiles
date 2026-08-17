@@ -1,6 +1,6 @@
 # Judging Core (Surface-Agnostic)
 
-- Mode files and `shared_rules.md` reference this file; do not duplicate these sections elsewhere.
+- Mode files and `shared_rules.md` reference this file; keep these sections defined here only.
 - Delivery-agnostic: no GitHub, SCSI, or delivery rules.
 - Surfaces needing PR/SCSI/GitHub-delivery rules layer them via `shared_rules.md`.
 
@@ -22,14 +22,14 @@ Use in every non-trivial review.
   - prefer the smallest reproduction in `/tmp` when possible
   - otherwise run the smallest safe experiment in the worktree
 - If you changed code as part of an iteration cycle, re-run the repo's quality gates:
-  - lint + type_check + tests (discover the correct commands from the repo; do not guess).
+  - lint + type_check + tests (discover the correct commands from the repo rather than guessing).
 - Keep an evidence log per comment/thread: what base does, what changed, what you tested, and what you observed.
 
 ## Candidate Refutation Ladder (Run Before Reporting Or Acting)
 
 Owned by the agent that decides keep/drop and acts (k-light-review, direct review modes, or a controller).
 Fan-out: the dedicated adversarial lane (cross-family preferred at equal capability, SOP §3.5) owns this pass;
-read-only finder lanes only return candidates plus a reachability statement and do not self-refute.
+Read-only finder lanes only return candidates plus a reachability statement; self-refutation is owned elsewhere.
 
 A candidate survives only when a genuine refutation attempt fails with evidence.
 Default to `undecidable`, not `keep`, when the deciding evidence is genuinely out of reach.
@@ -44,7 +44,7 @@ Attempt refutation in this order and stop at the first decisive result:
 5. **Already covered:** is the concern already handled elsewhere in the diff or base? Cite where.
 
 Self-refutation catches unreachable paths, inflated severity, and fixes that do not hold, but lacks the cross-family independence of the fan-out adversarial lane.
-Do not treat self-refutation as a substitute for that lane where fan-out is available.
+Where fan-out is available, use that lane; self-refutation stands in only when fan-out is unavailable.
 
 ## State-Machine Verification Gate
 
@@ -102,8 +102,7 @@ Before a candidate can become review feedback:
    - Drop `preserved_limitation` from review feedback. Do not ask the author to fix it in this PR.
    - Drop `prose_drift` from code-review feedback.
      If it matters to reviewers, handle it as PR-level prose feedback, not as an implementation finding.
-4. **Verification rule:** do not run live UI, heavy runtime probes, or delegated findings audit for `preserved_limitation` or `prose_drift`.
-   Run them only for a kept candidate when source-level evidence cannot decide keep/drop.
+4. **Verification rule:** run live UI, heavy runtime probes, or delegated findings audit only for a kept candidate when source-level evidence cannot decide keep/drop; skip them for `preserved_limitation` or `prose_drift`.
    - The live-UI skip only applies once step 1's evidence bar is met.
      Never drop a UI-visual candidate (spacing, alignment, layout, visual styling) on an unproven classification and then cite that drop as why live UI was unnecessary — that inverts cause/effect.
      If classification rests on a UI-visual property you have neither traced to the replacement's contract nor verified live, the candidate is unproven: settle with static proof or live UI before classifying; do not skip because it was dropped.
@@ -178,8 +177,8 @@ On PR surfaces, first apply the CI Coverage Gate (`pr_common.md`).
 
 A finding-class is exempt only when a present PR CI check genuinely catches it:
 
-- First verify the check exists and covers the class; then CI will flag it — do not re-check or comment on it.
-- Do not exempt a class where CI is loosened or absent (e.g. a backport).
+- First verify the check exists and covers the class; then CI will flag it — leave it to CI without re-checking or commenting on it.
+- Keep in scope every class where CI is loosened or absent (e.g. a backport).
 
 Non-PR surfaces have no PR CI to dedup against:
 
@@ -201,7 +200,7 @@ docs; maintainability/complexity; true nits.
 
 Subject: the **fix diff** a review just produced (see Post-Review Stage).
 
-These four dimensions are the only **canonical** ones: name them exactly; do not rename, merge, or reshape them.
+These four dimensions are the only **canonical** ones: name them exactly, keeping each one's name, boundary, and shape as written.
 
 1. **Redundancy** — the change repeats something existing:
    - re-implements an existing helper; re-states a rule already stated elsewhere; adds a path/branch/config that is already present
@@ -215,7 +214,7 @@ These four dimensions are the only **canonical** ones: name them exactly; do not
 
 For each dimension, anchor any finding in evidence: exact file + location, duplicate's other location, stranded symbol.
 
-Do not assert a hygiene problem you have not pointed at.
+Assert a hygiene problem only after pointing at it.
 
 ## Findings-Set Audit (Run Before Final Refutation Or Acting)
 
@@ -226,7 +225,7 @@ In deeper fan-out orchestration, keep this in the controller by default and dele
 Before final adversarial refutation, fixing, drafting, or presenting findings, run the four dimensions (Post-Review Lens) over the finding set:
 
 - **Redundancy / semantic + logical duplication:** collapse two findings with the same root cause or anchor region into one;
-  do not present the same issue twice under different wording.
+  present each issue exactly once, under one wording.
 - **Verbosity:** trim finding text and proposed fixes to the smallest form that still carries the evidence.
 - **Gaps:** name any finding asserted without an exact anchor or without a decisive verification path, and either anchor it or drop it.
 
@@ -258,7 +257,7 @@ Read-only lanes report precise fixes for the parent to apply instead of editing.
 3. **Final refutation.**
    Run the Candidate Refutation Ladder or the available adversarial-verifier lane over the audited set;
    keep only survivors, record reachability, and drop refuted/unverified findings.
-4. **Fix each finding** highest severity first: verify from evidence, apply the smallest correct change, and do not commit/push unless asked.
+4. **Fix each finding** highest severity first: verify from evidence, apply the smallest correct change, and commit/push only when asked.
    For non-trivial or ambiguous fixes, state options and proceed with the recommended default unless the user intervenes.
 5. **Quality gates.** Run repo lint + type_check + tests; fix until green or report what remains and why.
 6. **Post-Review Stage.** Run it over this pass's fix diff, then re-run quality gates if cleanup touched code.

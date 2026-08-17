@@ -20,14 +20,14 @@ When the design is settled and you write tests through the new interface, load `
 - making code testable through its interface rather than past it
 - another skill needs the deep-module vocabulary (e.g. a review or improvement pass)
 
-## Do not use
+## Out of scope
 
 - for pure implementation style, naming, or async idioms — that is `k-code-quality`
 - as license to refactor beyond the request — the SOP's minimal edit scope still binds
 
 ## Glossary — use these terms exactly
 
-Do not substitute "component", "service", "API", or "boundary". Consistent language is the whole point.
+Use exactly these terms in place of "component", "service", "API", or "boundary". Consistent language is the whole point.
 
 - **Module** — anything with an interface and an implementation; scale-agnostic (a function, class, package, or tier-spanning slice).
   _Avoid_: unit, component, service.
@@ -63,7 +63,7 @@ When designing an interface, ask:
 - **The interface is the test surface.** Callers and tests cross the same seam.
   If you want to test _past_ the interface, the module is probably the wrong shape.
 - **One adapter means a hypothetical seam. Two adapters means a real one.**
-  Do not introduce a seam unless something actually varies across it (typically production + test).
+  Introduce a seam only when something actually varies across it (typically production + test).
 
 ## Designing for testability
 

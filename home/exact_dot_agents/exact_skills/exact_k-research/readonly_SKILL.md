@@ -12,7 +12,7 @@ Choose the smallest branch that answers the question:
 
 Explicit repo/file/directory URLs use the source-inspection branch.
 
-Do not use:
+Skip this skill:
 
 - for the current repo/worktree you are already in
 - when the authoritative answer is product/account/runtime state rather than public source
@@ -40,7 +40,7 @@ If they did not provide a repo yet, identify it first. Prefer GitHub CLI:
 - `gh search repos "<project name>" --limit 5`
 - If you already have an owner/repo, skip search.
 
-Do not start with raw content URLs or GitHub contents/tree APIs before you have resolved the repo/ref you intend to inspect.
+Resolve the repo/ref you intend to inspect before reaching for raw content URLs or GitHub contents/tree APIs.
 
 #### 2) Clone into `/tmp` (and reuse it)
 
@@ -99,7 +99,7 @@ Use web fetches for:
 
 Keep the `/tmp/agent-src/...` clone around for reuse unless cleanup is explicitly requested.
 Always run `git fetch --prune --tags` before relying on it.
-Do not run `git pull` unless the user explicitly asks to update a local tracking branch.
+Run `git pull` only when the user explicitly asks to update a local tracking branch.
 
 Output:
 
@@ -134,7 +134,7 @@ The verifier reopens the primary source, checks the quote and every number, and 
 - `undecidable` — name the exact missing source or check
 
 Use a different model family when the runtime exposes one. Otherwise use a distinct fresh agent and report `same-family (degraded)`.
-If no independent context is available, keep the claim `undecidable`; do not relabel it verified.
+If no independent context is available, keep the claim `undecidable` rather than relabeling it verified.
 Done when no candidate is awaiting a verifier.
 
 ### 3. Deepen, then synthesize

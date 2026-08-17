@@ -10,7 +10,8 @@ Every lever below serves that.
 
 This skill owns skill craft.
 For CLI-tool mechanics (`tool_version`, `--help`, source layout), load `~/.agents/skills/k-cli-skills/SKILL.md`.
-The SOP still owns evidence, minimal edit scope, and human-visible gates; a skill never restates them.
+For phrasing instructions affirmatively instead of as prohibitions, load `~/.agents/skills/k-affirmative-phrasing/SKILL.md`.
+The SOP still owns evidence, minimal edit scope, and human-visible gates; a skill defers to the SOP for those instead of restating them.
 
 ## Invocation
 

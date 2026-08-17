@@ -18,11 +18,11 @@ Contract:
 - Before entering any mode, load once:
   - `~/.agents/skills/k-review/references/judging_core.md`
   - `~/.agents/skills/k-review/references/shared_rules.md`
-- Mode files reference both files but do not re-load them.
+- Mode files reference both files but reuse the already-loaded copies.
 - For PR modes, also load `~/.agents/skills/k-review/references/pr_common.md` once.
   Load `~/.agents/skills/k-review/references/pr_context_audits.md` only when `pr_common.md`'s conditional Ambient Topic Exploration or PR Necessity + Correctly-Open Audit gate triggers.
-- Do not invoke the `k-github` skill for read-only PR inspection/review.
-  Only invoke it (via the Skill tool) when the user explicitly asks to post/submit anything to GitHub.
+- Keep read-only PR inspection/review inside this router.
+  Invoke the `k-github` skill (via the Skill tool) only when the user explicitly asks to post/submit anything to GitHub.
 - If the user wants review analysis and GitHub posting in the same request:
   - keep the review router primary
   - draft/verify through review mode first
@@ -38,14 +38,14 @@ Standard review uses a bounded reviewer roster as an execution mechanism, not as
 
 ## Secondary Skill Escalation
 
-Do not load secondary skills until read/diff evidence proves the surface is in scope.
+Load secondary skills only after read/diff evidence proves the surface is in scope.
 
 - Load semantic code search only for base context after the selected mode requires base-branch context.
 - Load GitHub workflow only when the user explicitly asks to post/submit anything to GitHub.
 
 ## Draft-PR Policy
 
-- Never review someone else's draft PR unless the user explicitly asks.
+- Review someone else's draft PR only when the user explicitly asks.
 - If a PR is in draft state and the user did not explicitly request a review, stop and note: "This PR is a draft —
   skipping review unless you explicitly ask."
 - When a draft PR is reviewed (because explicitly asked), apply full thoroughness — a review is a review regardless of draft status.
@@ -75,7 +75,7 @@ Allowed values:
 Exception: plan review mode has no code target. Record `authorship: n/a`, skip the git/`gh` probes below, and produce feedback only.
 
 This input gates whether the review may edit code. Resolve it in the local/branch path too.
-Never default to `self` just because the change is checked out locally.
+Resolve `self` only from verified evidence; a locally checked-out change alone still needs the probes below.
 
 When a PR is involved:
 
@@ -99,11 +99,11 @@ This affects mode behavior:
 
 - **`self` (user owns the change):**
   - find issues and fix them in the working tree
-  - do not only comment
+  - fix, rather than only comment
   - draft review comments only if the user plans to post self-review notes
 - **`other` / `unknown`:**
   - produce draft comments/suggestions only
-  - do not change code
+  - keep code unchanged
   - editing requires the user to explicitly say to fix it (e.g. "fix these" or "take over this branch")
 
 ## Mode Selection (Intent + Evidence)
@@ -135,13 +135,13 @@ Pick exactly one mode. If ambiguous, ask one fork-closing question and state a d
 
 ## Disambiguation (If Still Unclear)
 
-If the user's intent is still unclear, resolve via local context (do not guess):
+If the user's intent is still unclear, resolve via local context (evidence, not guesses):
 
 - If the subject is a document, issue body, or pasted text rather than a code target: plan review mode.
 - If not in a git repo:
   - Ask: "Is this a GitHub PR review (send URL/number), a local repo changes review, or a plan/design document review?"
 - If in a git repo:
-  - Run `git status --porcelain=v1 -b` (read-only, do not ask to proceed).
+  - Run `git status --porcelain=v1 -b` (read-only, proceed without asking).
   - Independently check both:
     - whether staged/unstaged changes exist
     - whether `,gh-prw --number` resolves a PR for the current branch

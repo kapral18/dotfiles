@@ -12,10 +12,9 @@ The SOP (§3.0 Intent Loop) already owns the mechanics: investigate read-only fi
 This skill sharpens how you run that loop.
 
 - **Answer it yourself before asking.**
-  Every question I could resolve by reading the code, running a probe, or checking history is a question you should not ask me.
-  Ask only what evidence cannot settle.
+  Resolve every question you can by reading the code, running a probe, or checking history, and bring me only what evidence cannot settle.
 - **Walk the decision tree, resolving dependencies in order.**
-  Later choices often depend on earlier answers; do not ask a question whose relevance a prior answer would eliminate.
+  Later choices often depend on earlier answers; ask only questions whose relevance survives every prior answer.
   Ask the most branch-eliminating one first, then descend.
 - **Give me your recommended answer with each question.**
   State the option you would pick and why, so I can confirm with one word instead of composing a reply.

@@ -122,5 +122,5 @@ After finalization, `start` on that ledger and other mutating commands refuse un
 
 `,proof report` writes a Markdown receipt under the proof directory's `reports/` only after finalization.
 Reports include seal status and per-criterion provenance counts.
-Reports are handoff artifacts; they do not replace the final answer's concise evidence summary.
+Reports are handoff artifacts; keep the final answer's concise evidence summary in addition to any report.
 Treat reports as local proof receipts unless a publication skill sanitizes them for an external surface.

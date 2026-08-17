@@ -3,7 +3,7 @@
 Reference for the `k-github` skill.
 Load when posting inline, file-level, reply, or PR-timeline comments outside the draft-review batch flow.
 
-- Use bash/zsh `$'...'` so `\n` becomes real line breaks. Do NOT send literal `\n`.
+- Use bash/zsh `$'...'` so `\n` becomes real line breaks; send only real line breaks, with literal `\n` excluded.
 - Add a soft close such as `Wdyt` only when the review style calls for it.
 - **Commit references in comment bodies must be clickable links, never bare hashes or backtick-wrapped hashes.**
   Use the full GitHub URL: `https://github.com/OWNER/REPO/commit/FULL_SHA` (or `/pull/NUM/commits/FULL_SHA` for PR commits).
@@ -12,7 +12,7 @@ Load when posting inline, file-level, reply, or PR-timeline comments outside the
   - `~/.agents/skills/k-review/references/pr_review.md`
   - `~/.agents/skills/k-review/references/pr_fix.md`
 - For UI-related comments, replies, or PR-level feedback drafted after `/k-deep-review` or `live-ui-review`, require screenshot handoff evidence outside the body or a valid blocker/non-applicability reason.
-  Never put local screenshot paths in GitHub comment, reply, review, or PR-level bodies.
+  Keep local screenshot paths out of GitHub comment, reply, review, and PR-level bodies.
 
 ## Inline review comment (line or range; supports GitHub suggestion blocks)
 
@@ -47,7 +47,7 @@ gh api repos/OWNER/REPO/pulls/NUM/comments \
 Notes:
 
 - The request field is `in_reply_to` (integer). The response field is `in_reply_to_id`.
-- Do NOT use `in_reply_to_id` in the request; it may create a new top-level comment instead of a reply.
+- Use `in_reply_to` only in the request; `in_reply_to_id` in a request may create a new top-level comment instead of a reply.
 - If you need to add query params to a GET `gh api` call, use `-X GET`.
   In practice, adding `-f` or `-F` without `-X GET` can cause `gh` to hit the POST schema by default.
 - zsh gotcha: avoid unquoted `?ref=...` in endpoints (it can trigger `no matches found`).
@@ -63,7 +63,7 @@ A submitted review's top-level body (`pullrequestreview-<id>`) has no API reply 
   This is the shape GitHub's own **Quote reply** menu action produces; a plain timeline comment without the quote loses the thread context and reads as unrelated.
 - When quote fidelity matters or the user says "quote reply", drive the real UI action via `k-playwriter`:
   open the review body's `Show options` menu -> `Quote reply`, which prefills the full quoted body; append the reply and post.
-- Never repurpose or edit an unrelated existing comment into a reply.
+- Reply only via a new comment or the Quote reply action; editing or repurposing an unrelated existing comment corrupts the thread.
 - Wording per `~/.agents/skills/k-communication/SKILL.md` (reviewer-reply register):
   acknowledge, link the fix commit, name the verification, ask for re-review.
 

@@ -12,7 +12,7 @@ Treat the version as the identity to re-check (`node node_modules/backport/bin/b
 - The Kibana checkout used for backports is usually `~/.backport/repositories/elastic/kibana`.
   Backport branches are created and resolved there, not in your `~/work/kibana` worktrees.
   The tool derives this path from `repoOwner`/`repoName` (`getRepoPath` → `~/.backport/repositories/<owner>/<repo>`, or a `--dir` override) **independent of the process CWD**, so you can launch `node scripts/backport` from any checkout that has the wrapper (e.g. your operating `~/work/kibana`) and it still cherry-picks in the tool-owned checkout.
-  The tool resets/re-clones and re-prepares that checkout per target branch, so do not root any long-lived process (like the controlling tmux window) inside it.
+  The tool resets/re-clones and re-prepares that checkout per target branch, so root any long-lived process (like the controlling tmux window) outside it.
 - Kibana's configured `backportBinary` is `node scripts/backport` (from `.backportrc.json`).
   That wrapper is the right entrypoint for the **interactive** run a human drives.
 - The wrapper uses `require('backport')` (CommonJS).
@@ -39,7 +39,7 @@ A human (or an agent driving the TTY) runs it. The flow prompts and pauses:
 5. On a conflict it:
    - prints `The commit could not be backported due to conflicts` and the repo path,
    - prints the missing-prerequisite hint (see below) when any are found,
-   - opens `options.editor` if set (avoid setting an editor when driving non-visually),
+   - opens `options.editor` if set (leave the editor unset when driving non-visually),
    - **pauses** on `Press ENTER when the conflicts are resolved and files are staged (Y/n)`, looping until there are no conflict markers and the files are staged.
      Only then does it continue to push + open the PR.
 
@@ -77,7 +77,7 @@ node node_modules/backport/bin/backport --ls --onlyMissing --all \
   -b <targetBranch> -n 50 --json
 ```
 
-- Run from the checkout root. Do **not** pass `--pr`/`--sha`: those dispatch to a pull-number lookup and skip the path-based history search.
+- Run from the checkout root. Omit `--pr`/`--sha`: those dispatch to a pull-number lookup and skip the path-based history search.
   Use `--all` (all authors) + one `-p` per conflicting file (from `git diff --name-only --diff-filter=U`).
 - Default max is 10 commits; pass `-n 50` to match the interactive window.
   Optionally bound with `--until <ISO date>` using the backported commit's date (`git show -s --format=%cI CHERRY_PICK_HEAD`).
@@ -89,7 +89,7 @@ node node_modules/backport/bin/backport --ls --onlyMissing --all \
 
 ## Target-Branch Policy (elastic/kibana)
 
-Decide targets from policy, then reconcile against what already exists. Sources (read live, do not hardcode):
+Decide targets from policy, then reconcile against what already exists. Sources (read live rather than hardcoding):
 
 - **Active release branches** — `versions.json` on `main` (`gh api repos/elastic/kibana/contents/versions.json`):
   `versions[]` with `branch` + `branchType`.
@@ -98,7 +98,7 @@ Decide targets from policy, then reconcile against what already exists. Sources 
 - **`.backportrc.json`** on `main`: `targetBranchChoices`, `targetPRLabels` (`backport`), `branchLabelMapping` (`^v9.5.0$` → `main`;
   `^v(\d+).(\d+).\d+$` → `$1.$2`, i.e. a `vX.Y.Z` label → branch `X.Y`), `autoMerge: true`, `autoMergeMethod: squash`.
 - **Source PR `backport:*` label** (see `~/.agents/skills/k-kibana-labels-propose/SKILL.md` for label semantics):
-  - `backport:skip` — the author marked it as not to be backported. Do not proceed without explicit user confirmation.
+  - `backport:skip` — the author marked it as not to be backported. Proceed only with explicit user confirmation.
   - `backport:all-open` — backport to all open release minors = the `versions.json` `branchType: "release"` branches.
   - `backport:version` + `vX.Y.Z` — backport to the specific `X.Y` branch(es).
 - **The tool's own suggestion** — each commit carries `suggestedTargetBranches`:
@@ -106,8 +106,8 @@ Decide targets from policy, then reconcile against what already exists. Sources 
   Available in the `--ls`/`--json` output for the PR.
 
 Reconcile before selecting targets: Kibana CI (`.github/workflows/on-merge.yml`) auto-creates backports when `backport:all-open`/`backport:version` is present on merge, so some target backports may already exist by the time you backport manually.
-The policy: the **only** source of truth for "already backported" is whether the source PR's merge commit is actually present on the target release branch (an ancestor of the upstream `elastic/kibana` remote-tracking ref for that branch, e.g. `elastic/<branch>`); the tool's `targetPullRequestStates` / `suggestedTargetBranches` and `gh pr list` are candidate hints only and can be stale or reflect an in-flight PR that never merged — never treat them as proof the commit landed.
-The `k-kbn-backport` flow performs the per-branch presence check, fetching only the candidate branches from the upstream remote (never a bare `git fetch`/`--all`, which is heavy on Kibana); suggest exactly the active release branches where the commit is absent.
+The policy: the **only** source of truth for "already backported" is whether the source PR's merge commit is actually present on the target release branch (an ancestor of the upstream `elastic/kibana` remote-tracking ref for that branch, e.g. `elastic/<branch>`); the tool's `targetPullRequestStates` / `suggestedTargetBranches` and `gh pr list` are candidate hints only and can be stale or reflect an in-flight PR that never merged — treat only the ancestor check as proof the commit landed.
+The `k-kbn-backport` flow performs the per-branch presence check, fetching only the candidate branches from the upstream remote (a bare `git fetch`/`--all` is heavy on Kibana); suggest exactly the active release branches where the commit is absent.
 
 ## Per-Branch Flow And Naming
 

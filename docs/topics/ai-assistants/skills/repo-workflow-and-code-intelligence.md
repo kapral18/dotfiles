@@ -147,6 +147,15 @@ The multi-source branch separates candidate finding, independent verification, a
 | Source   | [`exact_k-cli-skills`](../../../../home/exact_dot_agents/exact_skills/exact_k-cli-skills/) |
 | Boundary | CLI-tool skill mechanics; general skill craft lives in `k-writing-great-skills`            |
 
+## `k-affirmative-phrasing`
+
+| Field    | Value                                                                                                          |
+| -------- | -------------------------------------------------------------------------------------------------------------- |
+| Use when | rewriting AI-facing guidance text from prohibitions to affirmative phrasing                                    |
+| Source   | [`exact_k-affirmative-phrasing`](../../../../home/exact_dot_agents/exact_skills/exact_k-affirmative-phrasing/) |
+| Routing  | user-invoked (`disable-model-invocation: true`); referenced by `k-writing-great-skills`                        |
+| Boundary | negation-reliability phrasing rules; general skill craft lives in `k-writing-great-skills`                     |
+
 ## `k-writing-great-skills`
 
 | Field    | Value                                                                                                          |

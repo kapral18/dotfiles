@@ -22,16 +22,16 @@ Reference for the `k-github` skill. Load when creating, reconciling, or submitti
 > 4. Only add `event` in a **separate** submit call after the user explicitly
 >    asks to publish.
 > 5. Before that submit call, show the exact submit `event` and PR-level review
->    `body` alongside the inline-comment payload; never invent or revise the
->    summary body after approval.
+>    `body` alongside the inline-comment payload; submit only the exact approved
+>    summary body, never an invented or revised one.
 > 6. For code-review feedback, default to inline anchored `comments[]` (not body-only summary),
 >    unless the user explicitly asks for PR-level summary feedback.
 > 7. In `body` and each inline comment body,
 >    any code/file/symbol reference must be a clickable source link (exact file + line/range on PR head SHA), not plain text.
 > 8. Fetch the current PR diff/patch for the target head SHA and verify every `line`/`side`, range, or
 >    `position` anchor is inside the intended diff hunk immediately before creating or submitting the review.
->    Do not rely on full-file line numbers, stale patches, or memory.
-> 9. Read existing current-account pending reviews and reconcile them with the payload. Do not create or submit fragmented review feedback.
+>    Verify against the fresh diff, since full-file line numbers, stale patches, and memory drift out of sync.
+> 9. Read existing current-account pending reviews and reconcile them with the payload so review feedback stays consolidated, never fragmented.
 > 10. For UI-related review feedback drafted after `/k-deep-review` or `live-ui-review`, verify the approved draft includes `ui_evidence_attachments` or a valid blocker/non-applicability reason.
 >     Keep local screenshot paths out of `body` and inline comment bodies; show the handoff separately in the approval payload.
 
@@ -42,8 +42,9 @@ Reference for the `k-github` skill. Load when creating, reconciling, or submitti
 - Practical constraint: GitHub generally allows only one `PENDING` review per user per PR.
 - Adding net-new comments to an existing pending review does not require delete/recreate;
   append them with GraphQL `addPullRequestReviewThread` (see below).
-- Delete/recreate is only required to change or remove existing draft comments; they are not PATCH-editable, so do not try.
-- Do not use REST to append to a pending review: `POST /pulls/{n}/comments` returns `422 user_id can only have one pending review per pull request`, and `/pulls/{n}/reviews/{review_id}/comments` is GET-only (no POST exists).
+- Delete/recreate is only required to change or remove existing draft comments;
+  they are not PATCH-editable, so delete/recreate is the only edit path.
+- Append to a pending review only via GraphQL: REST `POST /pulls/{n}/comments` returns `422 user_id can only have one pending review per pull request`, and `/pulls/{n}/reviews/{review_id}/comments` is GET-only (no POST exists).
 - File-level review comments (`subject_type=file`) are immediately visible; they are not part of a pending review.
   In practice, while you have a pending review, you may not be able to create additional file-level review comments from the same user.
 - Verification rule of thumb:
@@ -62,7 +63,7 @@ Reference for the `k-github` skill. Load when creating, reconciling, or submitti
   5. If any approved review feedback is UI-related and drafted after `/k-deep-review` or `live-ui-review`, compare it against the draft's `ui_evidence_attachments` ledger and block if screenshot evidence is missing without a valid blocker/non-applicability reason.
 - If no reconciliation ledger exists, run the review skill's Existing Pending Review Reconciliation before mutating GitHub.
 - If a pending review exists and the new payload is purely **additive** (net-new findings, no edits to existing draft comments):
-  - do not create a second pending review, and do not delete/recreate
+  - keep the single existing pending review (create/delete/recreate stays off the table)
   - append the net-new threads via GraphQL `addPullRequestReviewThread` against the existing `pullRequestReviewId`
   - show the exact pending review ID, the net-new comment bodies/anchors, and wait for explicit approval before posting
 - If the new payload must **change or drop** existing draft comments:
@@ -72,8 +73,8 @@ Reference for the `k-github` skill. Load when creating, reconciling, or submitti
   - fetch the pending review and comments immediately before the submit call
   - verify they match the approved reconciled payload and current head anchors
   - if they differ, stop and ask for approval to replace/reconcile first
-- If a pending review contains stale or contradictory feedback, do not submit it.
-  Delete/recreate only after explicit approval with the consolidated replacement payload.
+- If a pending review contains stale or contradictory feedback, replace it instead of submitting it:
+  delete/recreate only after explicit approval with the consolidated replacement payload.
 
 ## Posting a batch as a draft (PENDING) review
 
@@ -96,7 +97,7 @@ If explicitly asked to POST a batch as a draft (PENDING) review:
   - If a file has multiple hunks (or repeated target lines), create separate comments and verify the correct hunk/occurrence.
   - Common trap: the patch changes when new commits are pushed.
     Always re-fetch the patch from the current PR head before computing positions.
-- Keep the pending review summary body empty unless the user explicitly wants a public summary.
+- Keep the pending review summary body empty; fill it only when the user explicitly wants a public summary.
 
 ## Embedding screenshot images in review comments
 

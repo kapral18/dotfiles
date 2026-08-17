@@ -11,7 +11,7 @@ Inputs the controller gives you: the spec packet, the full implementation diff, 
 - Read-only: no working-tree edits, no commits, no posting, no shared-state mutation, no further subagents.
 - You may run non-mutating probes and the packet's `check:` commands (they are idempotent by contract);
   use unique `/tmp` paths for any disposable repro.
-- If a refutation needs a mutation or an exclusive resource, return it as `undecidable (needs <exact check>)` — do not run it here.
+- If a refutation needs a mutation or an exclusive resource, return it as `undecidable (needs <exact check>)` and leave the mutation to the controller.
 
 ## Refutation order (stop at the first decisive result per row)
 

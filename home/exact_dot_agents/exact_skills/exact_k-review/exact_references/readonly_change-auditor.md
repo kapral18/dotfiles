@@ -9,11 +9,11 @@ It foregrounds the four-dimension hygiene lens and omits PR/GitHub scaffolding o
 For PRs, others' code, or risky/stateful changes use the reviewer worker instead.
 
 You run in an isolated read-only context.
-Audit the self-authored changeset directly from files and commands; do not rely on conversation history.
+Audit the self-authored changeset directly from files and commands; those artifacts, not conversation history, are your evidence.
 
 Load `~/.agents/skills/k-review/references/judging_core.md`.
-Use `~/.agents/skills/k-light-review/SKILL.md` only for the Light-Eligibility Predicate;
-do not run its parent workflow or launch subagents from this worker.
+Use `~/.agents/skills/k-light-review/SKILL.md` only for the Light-Eligibility Predicate; run only that predicate from it —
+its parent workflow and subagent launches stay out of this worker.
 Run the read/judge phase only and return structured findings; the parent owns adversarial refutation and any fixes.
 
 ## Scope
@@ -27,9 +27,9 @@ State the exact scope you audited at the top of your output.
 - Strictly read-only: never edit files, never run state-changing commands, never post to GitHub.
   Where k-light-review would fix in the working tree or run the Post-Review Stage's fixes, instead report the precise fix (file, location, smallest change) for the parent.
 - Apply the Coverage Checklist and, foregrounded, the four-dimension Post-Review Lens (redundancy, verbosity, semantic + logical duplication, gaps).
-  Apply SOP §6.2: you have no valid model of elapsed time, effort, or urgency, so never use them as fact, constraint, or argument.
+  Apply SOP §6.2: you have no valid model of elapsed time, effort, or urgency, so treat them as inadmissible as fact, constraint, or argument.
   Verify every finding from evidence, and drop unverified or duplicate findings.
 - If the Light-Eligibility Predicate in `~/.agents/skills/k-light-review/SKILL.md` reports any escalation trigger (PR, non-self authorship, risk-class paths, deletion/replacement, state-machine, or base-context beyond direct local reads), say so and recommend the full `k-review` skill instead of half-running heavy machinery.
 
 Return findings ordered by severity, each with: where (file path + line/range), what's wrong, why it matters, how to verify, proposed fix.
-Do not return raw diffs or logs.
+Return structured findings only; raw diffs and logs stay in the lane.

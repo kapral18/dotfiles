@@ -15,7 +15,7 @@ Read this file only for capability caveats that affect orchestration.
   Same-family runs keep refutation framing and report the reduced independence, never hidden).
   Generic fresh-eyes launches must pass the registry lane model as the profile-equivalent model;
   named fresh-eyes profiles carry the same registry-rendered frontmatter.
-  Any harness-served generic/default subagent must also receive that model; never let the runtime pick an implicit default when the registry has a concrete lane value.
+  Any harness-served generic/default subagent must also receive that model; always pass the registry's concrete lane value rather than letting the runtime pick an implicit default.
 - Empty registry value = the profile omits the field and the harness config default applies; `inherit` = harness-native parent inheritance.
   Empty is allowed only for a deliberately documented default path.
   Current review-lane registry values are concrete for Cursor, Copilot, Codex, Gemini, Pi, and OMP;
@@ -39,15 +39,16 @@ Codex's model surface is OpenAI-only, so the adversarial verifier is `families=s
 Launch angle lanes as `review-worker` agents; the verifier as the `adversarial-verifier` agent.
 Registry: both values are concrete (`gpt-5.6-sol` at xhigh effort via profile `model` + `model_reasoning_effort`);
 every Codex role also pins `service_tier = "default"`.
-Never launch a native Codex `spawn_agent`/generic subagent without a model: the installed catalog does not make omitted defaults auditable, and uncataloged slugs can pass through with fallback metadata.
+Always pass an explicit model when launching a native Codex `spawn_agent`/generic subagent:
+the installed catalog does not make omitted defaults auditable, and uncataloged slugs can pass through with fallback metadata.
 
 ## Gemini CLI
 
 Gemini subagents cannot call other subagents, so run `/k-deep-review` in the main Gemini session.
-Do not run the controller itself as a Gemini subagent.
+Run the controller itself only in the main session, never as a Gemini subagent.
 The model surface is Gemini-only: the adversarial verifier is `families=same (degraded)`; launch it as the `adversarial-verifier` profile.
 Registry: both values are concrete (`gemini-3.1-pro-preview`).
-Profiles carry registry-rendered `model` frontmatter; do not rely on the configured Gemini default for review workers.
+Profiles carry registry-rendered `model` frontmatter; use that value for review workers rather than the configured Gemini default.
 
 ## Cursor
 
@@ -61,7 +62,7 @@ Profiles carry registry-rendered `model` frontmatter; do not rely on the configu
   Treat any omitted Cursor subagent model as a matrix bypass.
 - Same-name custom profiles do **not** shadow native Cursor enum agents (`explore`, `debug`, `cursor_guide`, `unspecified`):
   custom profiles are carried as a separate `custom` oneof with a `name`, while native cases are distinct empty oneof variants.
-  Do not add same-name templates expecting them to override native Explore.
+  Same-name templates will leave native Explore in place, so rely on distinct custom profile names instead.
 - When the active Task schema exposes only generic subagent types, pass the same registry values as explicit `model` arguments —
   the registry stays the single source either way.
   Generic fresh-eyes launches pass the registry lane model; never let Cursor `auto` choose the model for review workers.
@@ -69,7 +70,7 @@ Profiles carry registry-rendered `model` frontmatter; do not rely on the configu
   Cursor source shows `readonly: true` blocks shell, write, delete, and MCP operations.
   Keep Cursor profile frontmatter and Task launches at `readonly: false`; the worker contracts enforce no-mutation behavior.
 - If a Cursor worker reports Ask/read-only mode blocked shell/git/`gh`/Playwriter, discard that launch result and rerun with `readonly: false` before accepting `verification_needed`.
-- If Cursor cannot await background subagent ids, do not loop blind sleeps.
+- If Cursor cannot await background subagent ids, wait through the native paths below instead of looping blind sleeps.
   Cursor source has a subagent await protocol, but the shell Await/AwaitShell path is for shell tasks and may reject subagent ids.
   Keep reviewer, PR-necessity, live-UI, and findings-audit workers as real Cursor background subagents;
   use Cursor Task `run_in_background=true` when the active Task schema exposes it. Wait through a Cursor-native subagent completion signal.
@@ -81,7 +82,7 @@ Profiles carry registry-rendered `model` frontmatter; do not rely on the configu
   The managed `~/.copilot/settings.json` subagent entries also include registry-aligned `model`/`effortLevel`/`contextTier` so stale target-only model overrides cannot survive Copilot's settings merge.
   Per-task model overrides are runtime-verified but reserved for fail-visible recovery, not steering, except generic fresh-eyes where the explicit model is the profile-equivalent registry lane value.
 - Launch angle lanes as the `review-worker` agent type (model-invocable, not user-invocable).
-  Do not use `general-purpose` unless a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason.
+  Use `general-purpose` only when a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason.
 
 ## Pi and OMP
 

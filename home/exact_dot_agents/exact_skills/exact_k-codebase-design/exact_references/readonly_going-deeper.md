@@ -19,9 +19,10 @@ Classify a candidate's dependencies first; the category determines how the deepe
 ### Seam discipline
 
 - **One adapter = hypothetical seam. Two = real.**
-  Do not introduce a port unless at least two adapters are justified (typically production + test).
-  A single-adapter seam is just indirection.
-- **Internal vs external seams.** Do not expose an internal seam through the interface just because the module's own tests use it.
+  Introduce a port only when at least two adapters are justified (typically production + test). A single-adapter seam is just indirection.
+- **Internal vs external seams.**
+  Keep internal seams private to the implementation even when the module's own tests use them;
+  expose a seam through the interface only for external callers.
 
 ### Testing strategy: replace, don't layer
 

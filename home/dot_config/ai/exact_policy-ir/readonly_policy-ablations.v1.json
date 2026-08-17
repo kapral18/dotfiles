@@ -10,7 +10,7 @@
       "evidence": "minimal edit scope, no unrelated cleanup/removal without approval, targeted edits/full-rewrite diffing, introduced-only dead-code removal, semantic dedupe guard preservation, no unrequested abstractions/features/error handling, simplicity/no behavior loss, and artifact necessity without-it probe requirements were confirmed present in k-code-quality before this pass",
       "rule_sha256": "4b2d1c447aa70c367f9ab15accc59c566befcf15b2f8002e129c0f0dbd2c4f78",
       "eval_ref": "sop.5.code-quality.mechanical-only",
-      "consumer_sha256": "0d2190559821948b9e67b393abba4c0a501e67758c0dfd2d01f18e4f4024d6ad"
+      "consumer_sha256": "9a86a714507a15722f7056b34955e91980cd87ddc6c9e3cb860666066576996c"
     },
     "sop.6.5.external-human-replies": {
       "status": "mechanical-only",
@@ -21,7 +21,7 @@
       "evidence": "no-reply when restating the thread/attribution trivia/investigation-report, match the surface's register plus no lab-report phrasing for simple social replies, natural wording or no message, and SOP \u00a76 shape not overriding the friendly register were confirmed present in k-communication/references/external-replies.md before this pass; skill Use-when plus a must-load pointer own routing; SOP 3.6 still owns always-on central wording ownership",
       "rule_sha256": "eeb95ad036a65cb80b6a8bb983e9c6602fdf0e78bfe6cbd7a4f481b7e58f67d3",
       "eval_ref": "sop.6.5.external-human-replies.mechanical-only",
-      "consumer_sha256": "184465a33691c0501879e5b3d3002c621c9ceb297b85e95fd725bae9a431cda2"
+      "consumer_sha256": "194afbd0b8a645a25d2b2c1925796b84a4d4c0aa377e1ed17c98d2c181d1129e"
     }
   }
 }

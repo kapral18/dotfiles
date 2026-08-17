@@ -18,7 +18,7 @@ Use `,proof` only when at least one receipt trigger applies:
 
 No other task property is a trigger by itself.
 
-Do not use:
+These are non-triggers; verify inline instead:
 
 - runtime, UI, browser, or external-service verification merely because it needs a live probe
 - multi-file, multi-subsystem, or multi-evidence work merely because of its size
@@ -35,7 +35,7 @@ Do not use:
 
 1. **Decide before collecting ledger-bound evidence.**
    Name the receipt trigger and its consumer or audit need at intent/readiness, or as soon as that need becomes known.
-   Do not create a ledger near the final answer merely to repackage checks that are already sufficient inline.
+   Create the ledger at that decision point; checks that are already sufficient inline stay inline rather than being repackaged into a late ledger.
 
 2. **Start one ledger for one goal.**
    Pick a stable topic slug and run `,proof --topic <topic> start "<goal>"` once the goal is clear enough to state.
@@ -51,12 +51,12 @@ Do not use:
 4. **Attach evidence immediately after collecting it.**
    Prefer command-backed evidence: `,proof --topic <topic> add-evidence --criterion AC-001 --type test --command "npm test -- --runInBand path/to/test"`.
    Attach artifacts with `--artifact-path`; the CLI copies them into proof state and hashes them.
-   Do not attach raw logs or reports that contain secrets; capture a redacted artifact or use a narrower command instead.
+   Attach only redacted or secret-free artifacts: when a raw log or report contains secrets, capture a redacted artifact or use a narrower command instead.
    Done when each criterion lists the evidence IDs that are meant to satisfy it.
 
 5. **Assess the evidence before trusting it.**
    Inspect with `,proof --topic <topic> show EV-001`, then record why it supports or does not support the criterion:
-   `,proof --topic <topic> review --criterion AC-001 --evidence EV-001 --verdict supports --notes "The test log shows exit 0 and the regression assertion passed."` Do not record `supports` from memory or from the command name alone.
+   `,proof --topic <topic> review --criterion AC-001 --evidence EV-001 --verdict supports --notes "The test log shows exit 0 and the regression assertion passed."` Record `supports` only from inspected evidence, never from memory or the command name alone.
    `review` records an assessment; it is not an independent or adversarial certification, even when `--reviewer` names another actor.
    Done when every current proof artifact has a review note tied to its criterion.
 

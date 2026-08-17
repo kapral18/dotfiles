@@ -27,7 +27,7 @@ a page/component → UI) and state the assumption at the top of the prototype.
 
 1. **Throwaway from day one, and clearly marked.**
    Locate it close to where it will be used so context is obvious, but name it so a casual reader sees it is a prototype.
-   For throwaway UI routes, obey the project's existing routing convention; do not invent a new top-level structure.
+   For throwaway UI routes, obey the project's existing routing convention rather than inventing a new top-level structure.
 2. **One command to run.**
    Discover the project's existing task runner (`package.json` scripts, `Makefile`, `justfile`, `pyproject.toml`) and add the entry there.
    The user must start it without thinking.
@@ -36,7 +36,8 @@ a page/component → UI) and state the assumption at the top of the prototype.
 4. **Skip the polish.** No tests, no error handling beyond what makes it runnable, no abstractions. Learn something fast, then delete it.
 5. **Surface the state.**
    After every action (logic) or on every variant switch (UI), print or render the full relevant state so the user sees what changed.
-6. **Delete or absorb when done.** Either delete it or fold the validated decision into the real code — do not leave it rotting in the repo.
+6. **Delete or absorb when done.**
+   Either delete it or fold the validated decision into the real code, so nothing is left rotting in the repo.
 
 ## When done
 

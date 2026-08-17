@@ -47,7 +47,7 @@ If a feature/surface is absent on base because the PR introduces it, mark the ba
 Continue head-only verification against the PR/head target when the feature exists there.
 Return full `Not applicable` only when the candidate is not UI/runtime-relevant or the feature/surface is absent from every relevant target.
 
-Do not return `Not applicable` just because the target runtime has no data.
+Return `Not applicable` only for reachability/relevance reasons, never merely because the target runtime has no data.
 If the changed UI/runtime path exists but required data is absent, continue through the shared data/setup ladder and return `Blocked` only after those attempts are exhausted.
 
 ### Playwriter comparison
@@ -55,7 +55,8 @@ If the changed UI/runtime path exists but required data is absent, continue thro
 When applicable targets pass the shared preflight, use Playwriter for UI comparison.
 
 - Compare the PR/head runtime against the base runtime for UI-relevant changes and reviewer findings only when the selected packet includes a distinct base target.
-  Otherwise perform head-only verification against the PR/head runtime. Never treat a base runtime as evidence for PR/head behavior.
+  Otherwise perform head-only verification against the PR/head runtime.
+  Treat only PR/head runtime observations as evidence for PR/head behavior; a base runtime is comparison-only.
 - Use the most faithful verification path that stays within the selected local/dev safety boundary:
   browser inspection, required screenshot captures, logs, read-only CLI commands, existing data, allowed local/dev runtime data setup, and repo-specific interactive setup tools.
   Use browser/route mocks only as last resort.
@@ -63,7 +64,8 @@ When applicable targets pass the shared preflight, use Playwriter for UI compari
   link each screenshot to the candidate/finding it supports.
 - For any applicable UI-related candidate that may become review feedback, screenshot handoff is required supporting evidence.
   Capture the smallest useful screenshot set, or return `Blocked`/uncertainty with the exact reason screenshots could not be captured.
-  Do not return a confirmed UI finding for drafting with `ui_evidence_artifacts: none`.
+  A confirmed UI finding is ready for drafting only with at least one handoff artifact;
+  with `ui_evidence_artifacts: none`, return `Blocked`/uncertainty instead.
 - For an observable UI blocker or uncertainty state, capture a screenshot when it materially supports the blocker.
   If the flow is blocked before navigation or screenshot capture, state that as the no-screenshot reason.
 - Return partial evidence plus `Blocked` only when the flow still needs unsafe, impossible, or unstable actions/data setup after the shared data/setup ladder.

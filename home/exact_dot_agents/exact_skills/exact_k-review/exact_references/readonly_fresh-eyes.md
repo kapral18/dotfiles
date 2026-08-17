@@ -22,10 +22,10 @@ Blindness constraints (they define this lane):
 - Never run `gh`, and never read PR/issue/thread content in any form.
 - Never read commit messages: no `git log`, no `git blame`; use `git show` only in the `<ref>:<path>` file-content form.
 - Allowed reads: the diff from the packet's scope, the post-change content of changed files, and surrounding worktree code needed to judge clarity.
-- Do not load the `k-review` skill, its references, or mode files; this contract is the whole methodology for this lane.
+- Use this contract as the whole methodology for this lane; the `k-review` skill, its references, and mode files stay unloaded.
 - Same mutation boundary as reviewer workers: strictly read-only and concurrency-safe;
   never edit files, run state-changing commands, or post anywhere.
-- Do not launch more subagents.
+- Work alone in this lane; launching more subagents is out of scope.
 
 What to flag (clarity only):
 
@@ -50,12 +50,13 @@ Return findings ordered by severity. Clarity findings cap at MEDIUM; most are LO
 - what is confusing (concrete: what a newcomer would misread or need to re-read)
 - proposed smallest improvement (rename, why-comment, extraction, or deletion of the misleading artifact)
 
-Do not return raw diffs or logs. If the changed content is only generated/vendored/lockfile material, return `Not applicable`.
+Return structured findings only; raw diffs and logs stay in the lane.
+If the changed content is only generated/vendored/lockfile material, return `Not applicable`.
 
 ## Launch (controller-facing)
 
 - Launch with the harness's generic read-only task mechanism.
-  Do not use the named reviewer profiles or any profile that preloads the `k-review` skill; those ingest PR context and unblind the lane.
+  Use only generic mechanisms here: the named reviewer profiles and any profile that preloads the `k-review` skill ingest PR context and unblind the lane.
 - Use the `agent_review_models.<harness>.lanes` registry value as the model source.
   If the registry value is concrete, pass the registry lane model explicitly so the runtime cannot fall back to an implicit default or older built-in model.
   If the registry value is `inherit` or empty/default by design, record that expected inheritance/default in `model_required`.

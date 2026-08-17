@@ -3,7 +3,7 @@
 Precondition:
 
 - You already loaded `~/.agents/skills/k-review/SKILL.md`.
-- Follow `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/shared_rules.md` (loaded once by the router; do not re-load).
+- Follow `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/shared_rules.md` (loaded once by the router; reuse that load).
 - Follow `~/.agents/skills/k-review/references/pr_common.md` for PR setup, media evidence, comment placement, anchoring, deep links, and local verification.
 
 Use when:
@@ -29,7 +29,7 @@ Check Role Detection from the router (`SKILL.md`):
 
 - **Reviewing others (`authorship: other` or `unknown`):**
   - draft comments/suggestions
-  - do not change code
+  - keep code unchanged (draft-only)
   - run the PR Necessity + Correctly-Open Audit in `pr_context_audits.md`
   - apply the Findings-Set Audit (`judging_core.md`) to surviving PR-diff candidate findings before drafting
   - surface redundancy / verbosity / semantic + logical duplication / gaps as read-only finding-set findings
@@ -39,7 +39,7 @@ Check Role Detection from the router (`SKILL.md`):
   - after quality gates pass, run the Post-Review Stage over the fix diff
   - draft review comments only if the user explicitly wants self-review notes to post
 
-## Complete Pass Before Drafting (Do Not Skip)
+## Complete Pass Before Drafting (Mandatory)
 
 On the first turn (or when starting a fresh review):
 
@@ -62,7 +62,7 @@ On the first turn (or when starting a fresh review):
 On later turns (iterative/continued):
 
 - keep working from the internal findings queue
-- do not re-read everything unless needed
+- re-read artifacts only when needed
 - if the PR changed, run the intake gate for changed artifacts before relying on the prior queue
 - if a new comment/link/reference appears, run the intake gate for that artifact before relying on the prior queue
 
@@ -103,7 +103,7 @@ Return a `Pending review draft` containing:
   - How to verify (minimal)
   - Proposed fix (smallest change)
 - `ui_evidence_attachments`: for UI-related findings drafted after `/k-deep-review` or `live-ui-review`, screenshot handoff paths/descriptions/placement for the upload step, or the blocker/non-applicability reason screenshots are absent.
-  Do not put local screenshot paths in comment bodies.
+  Keep local screenshot paths out of comment bodies; use the handoff paths instead.
 - `pr_necessity_audit` (for other-authored/unknown PRs): classifications and any draft feedback/questions about intent, correctly-open status, need, or overlapping work
 - `summary_comment` (optional): short PR-level comment
 
@@ -122,7 +122,7 @@ If the user says "one at a time", "next comment", or "continue the review":
   - Proposed fix (smallest change)
   - `ui_evidence_attachments` when the comment is UI-related and drafted after `/k-deep-review` or `live-ui-review`:
     screenshot handoff paths/descriptions/placement, or the blocker/non-applicability reason screenshots are absent.
-    Do not put local screenshot paths in the comment body.
+    Keep local screenshot paths out of the comment body; use the handoff paths instead.
 - If you need to reply to an existing review thread instead of creating a new comment, switch to PR fix mode for that thread.
 
 ## Draft Persistence
@@ -130,4 +130,4 @@ If the user says "one at a time", "next comment", or "continue the review":
 - If the user says "consult before sending":
   - keep the full batch draft in a single scratch file under `/tmp/`
   - make it reviewable/editable before posting
-  - do not post until explicitly asked
+  - post only when explicitly asked

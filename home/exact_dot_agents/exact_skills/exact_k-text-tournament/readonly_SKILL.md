@@ -17,8 +17,7 @@ Skip tiny mechanical edits, factual corrections with one supported wording, and 
 - Eligible targets are human-maintained prose: documentation, a prompt, a skill, a plan, help text, or a draft.
 - The normal task already authorizes the next text edit.
 
-Do not use for code, generated artifacts, configuration, secret-bearing content, runtime/system behavior, or changes whose quality depends on tests or live probes.
-Use the normal engineering flow for those surfaces.
+Use only for the eligible targets above; code, generated artifacts, configuration, secret-bearing content, runtime/system behavior, and changes whose quality depends on tests or live probes go through the normal engineering flow.
 
 ## Tournament round
 

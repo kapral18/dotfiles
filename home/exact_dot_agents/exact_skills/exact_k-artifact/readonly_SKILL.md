@@ -8,7 +8,8 @@ description: "Use for cache-only HTML artifacts, visual reports/diagrams, or liv
 Use `,artifact` to create a local browser review surface without polluting the current worktree.
 
 Artifacts and runtime state live under `~/.cache/agent-artifacts` (or `$XDG_CACHE_HOME/agent-artifacts`).
-The current cwd/git root and tmux session are identity metadata only; do not create `.agent-artifacts/` in the repo and do not edit `.gitignore`.
+The current cwd/git root and tmux session are identity metadata only; keep the worktree clean —
+artifacts live in the cache dir, never in a repo `.agent-artifacts/`, and `.gitignore` stays untouched.
 
 The generated-artifact chrome starts with only a fixed Feedback button at the top right.
 Feedback mode is hidden and capture is disabled by default, so artifact controls remain interactive without selection highlights or interception.
@@ -25,14 +26,13 @@ Live feedback captures minimal DOM context: URL, title, selector, role/label, co
 
 Feedback is sent as batches, so treat `poll` output as a grouped set of requested changes.
 `poll` also returns an `archive` path for the delivered JSONL so feedback can be recovered if the agent crashes after receiving it.
-Do not copy the visual language of Lavish or any other third-party artifact tool.
-Design artifact contents with an original look that fits the task.
+Design artifact contents with an original look that fits the task, rather than copying the visual language of Lavish or any other third-party artifact tool.
 
 `write` and `open` inject a low-specificity ambient theme by default.
 The theme is inferred from broad local worktree signals such as dotfiles, docs, web app, or codebase markers.
 Use `,artifact theme` or `,artifact theme --json` before authoring when you need to understand the current style vocabulary.
 
-Do not use:
+Out of scope — use a plainer surface instead:
 
 - routine short answers.
 - human-visible publication to external systems.
@@ -86,19 +86,19 @@ A session is scoped by tmux session identity plus resolved worktree root, so par
 - Use `,artifact pollers` before cleanup if you need to see active pollers for the current session.
 - Use `,artifact poll-stop <name>` when the feedback loop for one artifact is done.
 - Use `,artifact stop` only when the whole current artifact session is done; it stops the current session's server and pollers.
-- Do not kill pollers from other worktrees or tmux sessions.
+- Kill only pollers belonging to the current worktree and tmux session; leave other worktrees' and sessions' pollers running.
 - Prefer finite `--timeout` values when waiting opportunistically instead of actively expecting user feedback.
 
 ## Rules
 
-- Cache-only: never write generated artifact files into the worktree.
+- Cache-only: write generated artifact files only under the cache directory, never into the worktree.
 - Use standalone HTML. If local assets are needed, put them under the cached artifact directory printed by `,artifact path <name>`.
 - Make the artifact interactive when it helps: filters, toggles, revealable detail, checklists, comparison controls, or highlighted regions are preferred over static walls of text.
 - Use live overlay for already-running apps instead of trying to iframe protected pages.
 - In live overlay mode, verify the page is local/dev before collecting feedback.
-  Do not inject into production, shared cloud, or non-user-approved sites.
+  Inject only into local/dev, user-approved pages; production and shared cloud sites are off limits.
 - Prefer the built-in ambient primitives for dense artifacts: `.density-compact`, `.card`, `.panel`, `.callout`, `.checklist`, `.pill`, `.metric`, and normal tables.
 - Make feedback prompts specific enough to act on without another clarification round.
 - Keep the artifact focused: one decision, plan, report, or review surface per artifact.
-- Do not leave background pollers running after the task is finalized.
+- Stop all background pollers when the task is finalized.
 - If the user asks to keep or publish the artifact, ask where it should be exported before writing into the repo.

@@ -65,7 +65,7 @@ Two rules that come from real failures:
 
 - **Isolate**: a refuter that mutates source must run in its own worktree.
   Refuters mutating the tree you are testing in produce transient failures you will misattribute to your own edit.
-- **Never forward-chain on a refuter's verdict.** Re-verify every material finding against the artifact yourself.
+- **Forward-chain only on verdicts you re-verified.** Re-verify every material finding against the artifact yourself.
   Refuters confidently assert wrong things; in practice they have inverted a real finding and invented a stale-test claim that would have broken passing code.
 
 Completion criterion: each refuter returned findings or an explicit "none", and every finding you plan to act on was independently re-verified.
@@ -97,6 +97,6 @@ Completion criterion: a dry round is reached, or a blocker is named that no furt
 Convergence bounds what your evidence covers; it does not extend it.
 When the loop goes dry, state plainly what remains unverified — the end-to-end run you never executed, the environment you could not reproduce.
 
-Do not let a dry loop imply coverage you never had.
+Let a dry loop imply only the coverage you actually exercised.
 If a real run is merely inconvenient rather than blocked, run it instead of writing it off:
 pin the tool version you need, fetch the matching binary, and match the harness's transport and auth expectations.

@@ -6,14 +6,15 @@ tool_version: "letsfg 2026.4.66 (uv tool; --version unavailable); playwriter 0.1
 
 # LetsFG
 
-## Do Not Use
+## Boundaries
 
-- Do not book, unlock, attach payment, or register unless the user explicitly asks and confirms the real-money or account side effect.
-- Do not use MCP for LetsFG; this skill exists to avoid injecting LetsFG tools into every agent session.
-- Do not use the hosted `letsfg.co` website API by default. Hosted book pages hide booking links behind the website unlock/pay/share flow.
-- Do not open airline/OTA booking URLs unless the user asks.
+- Book, unlock, attach payment, or register only when the user explicitly asks and confirms the real-money or account side effect.
+- Use this skill instead of MCP for LetsFG; it exists to keep LetsFG tools out of every agent session.
+- Prefer the local CLI over the hosted `letsfg.co` website API.
+  Hosted book pages hide booking links behind the website unlock/pay/share flow.
+- Open airline/OTA booking URLs only when the user asks.
   Opening is read-only, but checkout, passenger entry, payment, or final booking can create real-world side effects.
-- Do not start a browser for search-only tasks. Use the local `letsfg` CLI first.
+- For search-only tasks, use the local `letsfg` CLI first; start a browser only when rendered UI is required.
 
 ## First Actions
 
@@ -73,7 +74,7 @@ Use single quotes around `-e` snippets unless using a quoted heredoc, so the she
   This runs the CLI in a Docker container with Xvfb, avoiding visible local Chrome windows while keeping all browser-based connectors active.
 - Prefer `--mode fast` for interactive searches.
   Use the default full search only when the user wants maximum coverage and accepts a slower run.
-- Prefer direct `booking_url` fields returned by local results. Do not create LetsFG hosted `/book/...` URLs.
+- Prefer direct `booking_url` fields returned by local results over constructing LetsFG hosted `/book/...` URLs.
 - Summarize price, airline, route, departure/arrival, duration, stops, source, and direct booking URL when available.
 
 ## Safety
@@ -82,8 +83,8 @@ Use single quotes around `-e` snippets unless using a quoted heredoc, so the she
 - Opening airline/OTA result pages is still read-only, but checkout, account registration, passenger entry, payment setup, or final booking can create account, payment, booking, or external state.
   Ask for explicit confirmation before running any of them.
 - `letsfg unlock`, `letsfg book`, `letsfg register`, `letsfg star`, and `letsfg setup-payment` call the LetsFG backend or payment/account flows.
-  Do not run them unless the user explicitly requests that side effect.
-- For booking, passenger names must match passport/government ID exactly. Never invent passenger details.
+  Run them only when the user explicitly requests that side effect.
+- For booking, passenger names must match passport/government ID exactly. Use only user-provided passenger details, never invented ones.
 
 ## Runtime Notes
 
@@ -94,7 +95,7 @@ Use single quotes around `-e` snippets unless using a quoted heredoc, so the she
 - Local `letsfg search ... --json` returns offers with `booking_url`, `source_tier`, and `is_locked`.
   Local free search should return `source_tier: "free"` and `is_locked: false` for directly usable result links.
 - Some LetsFG connectors hard-code headed Chrome or CDP Chrome because their target sites block headless browsers.
-  Do not patch installed package files in-place; prefer browserless search by default and treat browser connectors as explicit opt-in coverage.
+  Keep installed package files unpatched; prefer browserless search by default and treat browser connectors as explicit opt-in coverage.
 - The system Python may not import `letsfg` because uv tools live in isolated environments.
   Prefer the `letsfg` executable instead of Python imports.
 - Playwriter has a hidden browser launcher: `playwriter browser start --headless`.

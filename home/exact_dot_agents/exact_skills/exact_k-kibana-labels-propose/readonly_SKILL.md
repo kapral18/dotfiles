@@ -7,12 +7,12 @@ description: "Use when proposing elastic/kibana labels, backports, or version ta
 
 Non-negotiables:
 
-- propose only; never apply labels unless explicitly approved
-- verify labels exist in the target repo; do not propose from memory if you cannot verify the label set
+- propose only; apply labels only when explicitly approved
+- verify labels exist in the target repo; propose only labels you verified against the repo label set
 - this skill is the source of truth for `elastic/kibana` label/backport/version classification;
-  other skills may route here but should not independently infer labels
+  other skills may route here instead of independently inferring labels
 
-Do not use:
+Route elsewhere when:
 
 - repo is not `elastic/kibana` (or label set cannot be verified)
 - user asked to apply labels now:
@@ -30,23 +30,23 @@ First actions:
 Output:
 
 - Return the exact proposed label set and a short rationale for each non-obvious label.
-- If a label cannot be verified in the repo, say so and do not propose it as a fact.
+- If a label cannot be verified in the repo, say so and present it as unverified, never as a fact.
 - When the proposal feeds PR creation or editing, include a packet-ready metadata entry:
   proposed labels/backport/version targets, source evidence, and `status: pending_approval`.
-  Do not let "propose-only" become silent non-application; the GitHub skill must ask whether to apply or explicitly defer the proposed metadata.
+  Ensure "propose-only" leads to an explicit decision: the GitHub skill must ask whether to apply or explicitly defer the proposed metadata.
 
 Common patterns (verify in repo):
 
 - team ownership: `Team:*`
 - resolved/linked issue labels:
   - use the issue that the PR closes/addresses as a primary classification signal, especially for `Team:*`, `Feature:*`, `bug`, and similar area/type labels
-  - do not blindly copy every issue label to the PR; drop issue-only workflow labels or labels contradicted by the PR's changed paths/scope
+  - copy issue labels selectively: drop issue-only workflow labels or labels contradicted by the PR's changed paths/scope
   - when issue labels and changed paths disagree, treat that as a fork: explain the conflict and ask or mark the extra label as heuristic instead of applying it as fact
 - feature tags: `Feature:<area>` (varies)
   - prefer the owning plugin/area from changed paths and the directly linked issue's existing feature labels
-  - do not add a cross-feature label only because the PR body mentions that feature or shared technology
+  - add a cross-feature label only on ownership evidence; a PR body merely mentioning that feature or shared technology is insufficient
   - when all changed paths and the linked issue point to Console, propose `Feature:Console`;
-    do not add `Feature:ES|QL` unless there is separate evidence that the ES|QL feature area owns/reviews the change
+    add `Feature:ES|QL` only when there is separate evidence that the ES|QL feature area owns/reviews the change
   - mark any additional feature label as heuristic with a short rationale, and leave it out if that rationale is not evidence-backed
 - release notes: `release_note:feature` | `release_note:enhancement` | `release_note:fix` | `release_note:skip`
   - default to `release_note:skip` unless user confirms public-facing change

@@ -13,10 +13,10 @@ Use when:
 Scope:
 
 - produce a PR title/body draft and PR publication packet only
-- do not change PR metadata; use `~/.agents/skills/k-github/SKILL.md` for side effects
+- change PR metadata only via `~/.agents/skills/k-github/SKILL.md`; this composer produces text, side effects stay elsewhere
 - read-only `gh`/GitHub API use is allowed only to resolve and fully read references needed for the draft
 
-Do not use:
+Out of scope:
 
 - creating/editing PRs in GitHub: `~/.agents/skills/k-github/SKILL.md`
 - PR review feedback: `~/.agents/skills/k-review/SKILL.md`
@@ -37,7 +37,7 @@ First actions:
 5. If issue linkage or test evidence is missing after intake, keep placeholders instead of inventing details.
 6. If the repo is in `elastic`, load `~/.agents/skills/k-elastic-domain/SKILL.md` and apply its GitHub/PR composition section.
 7. Load `~/.agents/skills/k-compose-pr/references/publication-packet.md`, then build the PR publication packet.
-   Do not hand off while any required field is missing or `blocked`.
+   Hand off only when every required field is present and unblocked.
 8. Keep the packet with the draft for `k-github`: title source, body source, linked issue intake, template, screenshots, Test Plan, metadata, and unresolved placeholders.
 
 Rules:

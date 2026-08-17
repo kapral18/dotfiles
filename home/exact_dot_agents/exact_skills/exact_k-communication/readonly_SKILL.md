@@ -16,18 +16,18 @@ Surface-specific skills (`k-github`, `k-google-workspace`, `k-review`, `babysit`
 Scope boundaries:
 
 - This skill governs **wording of external human-visible content** only.
-- **Whether and how to publish** (approval, bot-vs-human carve-out, draft → show payload → wait) is the Human-Visible Publication Gate in the SOP (`~/AGENTS.md`); do not restate or weaken it here.
+- **Whether and how to publish** (approval, bot-vs-human carve-out, draft → show payload → wait) is the Human-Visible Publication Gate in the SOP (`~/AGENTS.md`); defer to it as written there.
 - In-session chat/CLI responses stay SOP §6; this skill is for other humans.
 - Before drafting, apply every rule in `~/.agents/skills/k-communication/references/external-replies.md`.
 
 ## Core Tone
 
 - Direct, friendly, polite. Plain language, no corporate filler.
-- Never confrontational or accusatory.
-  When something expected is missing or wrong, ask what's blocking it or state the issue neutrally — never imply fault or assign blame.
+- Stay collegial and neutral in every exchange; confrontational or accusatory wording is off limits.
+  When something expected is missing or wrong, ask what's blocking it or state the issue neutrally, without fault or blame.
 - Honest about epistemic state: separate observed (evidence) from inferred (hypothesis) from recommended (action).
-  Do not overstate certainty.
-- Don't leak the AI/agentic session itself.
+  State certainty at its actual level.
+- Keep the AI/agentic session invisible.
   The reader must not be able to tell an agent produced this: no mention of the agent/assistant, the skills/prompts/SOP it follows, the tools or CLIs it ran, request payloads, or the raw tool errors it hit while working.
   Write as the user would (e.g. not "my agent re-ran the `gh` call after a 422" — just make the point).
   It hides agentic plumbing; it does not withhold legitimate domain content like real API error codes the human needs.
@@ -46,9 +46,9 @@ Budgets (words of narrative; code blocks and links do not count):
 
 - No water. Every sentence carries a fact, request, or decision. Delete the rest.
 - Cut anything the reader infers from context (thread, diff, prior message, PR title).
-  Do not restate the concern, file path, obvious effect, or what the reader just said.
+  The concern, file path, obvious effect, and what the reader just said are already in context — leave them out.
 - Prefer no message over a low-signal message.
-  If the thread already has the correction or next step, and the only remaining contribution is historical color, attribution cleanup, or rephrasing someone else's point, do not draft.
+  If the thread already has the correction or next step, and the only remaining contribution is historical color, attribution cleanup, or rephrasing someone else's point, choose no draft.
 - No headline summaries, status prefixes, or `RE:`-style headers. Get to the substance.
 - Prefer the shortest form that carries full meaning: a one-line comment, a tight PR description, a single-sentence status update.
 - PR review summary bodies describe inline topics, not commands: prefer `Left inline comments on <topics>.`
@@ -65,8 +65,7 @@ That is the whole message. Add sections only when the content genuinely needs th
 
 - One idea per bullet or line. Split any sentence carrying two facts.
 - Put paths, commands, IDs, and links on their own line, not buried mid-sentence.
-- Never use time or effort as an argument ("didn't have time to", "for now", "quick fix").
-  State the technical reason, or state the open question.
+- Argue from the technical reason or the open question, never from time or effort ("didn't have time to", "for now", "quick fix" are all off limits).
 
 ## Structure (Longer-Form Artifacts)
 
@@ -93,13 +92,13 @@ reach for a density primitive before prose, and never add sections to fill a tem
 
 Reply mechanics (in addition to everything above):
 
-- Reply directly; do not quote the whole message.
-  If you must reference a fragment, quote only the minimum needed (one short blockquote), then reply. Avoid email-style interleaved quoting.
+- Reply directly; quote at most the minimum fragment needed (one short blockquote), then reply.
+  Skip email-style interleaved quoting and whole-message quotes.
 - Replying to a reviewer's finding on the user's work: acknowledge, state what changed (link the fix commit), name the verification done, ask for re-review.
-  Do not explain the reviewer's own domain or how the system they flagged works back at them — they found the issue;
-  skip the mechanism lecture unless they ask.
+  They found the issue — reply to the finding itself and skip explaining the reviewer's own domain or the flagged system's mechanism back at them, unless they ask.
 - Match the existing register.
-  For Slack or casual threads, do not write like a report: avoid phrases such as "I checked the history around the hypothesis" when "I had a quick look" or no reply would be more natural.
+  For Slack or casual threads, write conversationally rather than like a report:
+  prefer "I had a quick look" (or no reply) over phrases such as "I checked the history around the hypothesis".
 
 Triage outcome — when reacting to how the other party handled a request/thread, verify the outcome against the current state first (code/head, doc, message) — act on what is actually there, not on what was claimed.
 Then reply by outcome:
@@ -108,14 +107,14 @@ Then reply by outcome:
   - e.g. `Thanks, looks good — <one clause naming what landed>. Resolving.`
 - **Not addressed / partial:** reopen/keep open and ask what's blocking it — non-accusatory, no implication of fault, offer help.
   - e.g. `Reopening — I don't think <X> made it in yet. Could we <smallest concrete ask>? Happy to help if anything's in the way.`
-- Do not offer "drop it" as an acceptable resolution unless the user explicitly allows dropping the behavior/coverage (SOP `2.0` Compatibility Gate).
-  For the user's own work, dropping is not on the table by default.
+- Offer "drop it" as an acceptable resolution only when the user explicitly allows dropping the behavior/coverage (SOP `2.0` Compatibility Gate).
+  For the user's own work, dropping is off the table by default.
 - Resolution-state direction is independent of who last set it: an addressed-but-still-open item gets closed;
   a not-addressed-but-marked-resolved item gets reopened.
 
 ## Optional Niceties
 
 - A light collaborative close (`Wdyt`, `lmk`) is the default nicety and covers most of what politeness needs here.
-  It replaces longer warmth; do not add both. Drop it when it would not fit naturally (a pure factual answer, a resolve/close).
+  It replaces longer warmth; use one or the other. Drop it when it would not fit naturally (a pure factual answer, a resolve/close).
 - Honest doubt is a nicety, not a weakness: naming the assumption you could not verify invites correction and reads as collaborative.
 - Match the surface's register: terser for chat/Slack, slightly more structured for long-form email or a PR description when the content genuinely needs it.

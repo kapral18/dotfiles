@@ -10,8 +10,8 @@ It realizes generic skill contracts with OMP-native tools; it does not change th
 
 ## Browser boundary
 
-Use `k-playwriter` for all real-browser work in OMP, including existing-tab control and live overlays.
-Do not substitute OMP's native `browser` tool for those flows.
+Use `k-playwriter` for all real-browser work in OMP, including existing-tab control and live overlays;
+use it instead of OMP's native `browser` tool for those flows.
 
 ## Structured reads
 

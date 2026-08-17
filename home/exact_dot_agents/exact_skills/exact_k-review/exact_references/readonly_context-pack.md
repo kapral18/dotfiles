@@ -20,7 +20,8 @@ Local modes use:
 /tmp/deep-review/local-<workspace-hash>-<base>..<head>/
 ```
 
-Treat the pack as read-only. Never write into it, refresh it in place, delete files from it, or add worker notes beside it.
+Treat the pack as read-only.
+Read from it only: leave it exactly as generated — no writes, in-place refreshes, deletions, or worker notes beside it.
 
 ## Contents
 
@@ -39,7 +40,7 @@ The pack may contain:
 - `base/<path>` — base content for every changed file when available.
 
 The JSON snapshots are complete/paginated snapshots produced by the controller (`pr.json` is the full `gh pr view --json` payload, present only when a PR exists).
-Do not replace them with summaries or partial live queries.
+Consume them as-is; summaries or partial live queries are weaker substitutes and stay out.
 
 ## Freshness gate
 
@@ -50,13 +51,13 @@ Before trusting any pack content:
 3. If the head does not match, ignore the pack, fall back to live `gh`/`git` reads, and report `pack_stale` in your return block with both shas.
 4. If the pack root or `manifest.json` is missing, fall back to live `gh`/`git` reads and report `pack_missing` in your return block.
 
-Do not mix stale pack content with live content for the same PR snapshot.
+Keep each artifact class on a single source: pack content only while fresh, live content consistently after a stale or missing result.
 After a stale or missing result, use live reads consistently for the affected artifact class.
 
 ## Consumption rules
 
 - Read changed-file content, base changed-file content, PR metadata, discussions, reviews, checks, and the unified diff from the pack when the pack contains them.
-- Never re-fetch with `gh pr view`, `gh api` comment/review pagination, or `git show <head>:<changed-path>` for artifacts already present in the pack.
+- For artifacts already present in the pack, read the pack copy instead of re-fetching with `gh pr view`, `gh api` comment/review pagination, or `git show <head>:<changed-path>`.
 - Use live commands for material the pack does not contain: history/blame, symbol searches, files outside the changed set, base-repo context, external references, runtime checks, or follow-up evidence named by your role contract.
 - If a single expected changed file is absent from `files/` or `base/`, fetch only that missing file live and report the missing path in the return block.
 - Keep worker-local notes and disposable probes outside the pack.

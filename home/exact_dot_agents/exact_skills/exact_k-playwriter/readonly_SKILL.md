@@ -24,10 +24,10 @@ This outputs the complete documentation including:
 - Best practices for slow pages and SPAs
 - Context variables, utility functions, and more
 
-**Do NOT skip this step.**
+**Complete this step before any playwriter use.**
 The quick examples below will fail without understanding timeouts, selector rules, and common pitfalls from the full docs.
 
-**Read the ENTIRE output.** Do NOT pipe through `head`, `tail`, or any truncation command.
+**Read the ENTIRE output**, unpiped — plain `playwriter skill`, without `head`, `tail`, or any truncation command.
 The skill output must be read in its entirety — critical rules about timeouts, selectors, and common pitfalls are spread throughout the document, not just at the top.
 
 ## Minimal Example (after reading full docs)
@@ -42,3 +42,45 @@ Single quotes prevent bash from interpreting `$`, backticks, and backslashes ins
 Use double quotes or backtick template literals for strings inside the JS.
 
 If `playwriter` is not found, use `npx playwriter@latest` or `bunx playwriter@latest`.
+
+## Video Recording: Skip the Extension Path
+
+`recording.start/stop` (extension `chrome.tabCapture`) can silently produce empty files:
+`start` succeeds, `stop` returns a plausible `duration`, but `size` is ~749 B (mp4 header only) or 0.
+Verified on both Dia and real Chrome with the bundled extension (playwriter 0.4.0 / extension 0.0.97);
+codec support, activeTab grant, tab focus, and window visibility were all confirmed and did not help.
+
+Rules:
+
+- After every `recording.stop`, check `result.size` before doing anything else.
+  Under ~50 KB for a multi-second clip means no frames were captured.
+- On an empty file, do not loop on icon clicks, grants, reloads, or another browser — the pipeline is broken;
+  switch immediately to Playwright's built-in recorder below.
+- The activeTab grant from an icon click survives in-page keyboard/mouse actions but dies on any navigation or reload;
+  each re-grant needs a human click. This burns user round-trips — another reason to prefer the built-in recorder for video.
+
+### Reliable path: plain Playwright `recordVideo`
+
+Works headless, needs no extension or user clicks, fully reproducible:
+
+```bash
+NODE_PATH="$PWD/node_modules" node /tmp/record.js   # reuse the repo's playwright-core
+```
+
+```js
+const { chromium } = require("playwright-core");
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext({
+  viewport: { width: 1280, height: 720 },
+  recordVideo: { dir: "/tmp/raw", size: { width: 1280, height: 720 } },
+});
+const page = await context.newPage();
+// ...login + scenario...
+const video = page.video();
+await context.close(); // finalizes the file
+const path = await video.path(); // .webm
+```
+
+Post-process: `ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p -movflags +faststart out.mp4`, then trim the login/load lead-in with `-ss <sec>`.
+Verify content by extracting frames (`ffmpeg -vf fps=1 f-%02d.png`) and reading them —
+a green status probe is not proof the video shows the behavior.

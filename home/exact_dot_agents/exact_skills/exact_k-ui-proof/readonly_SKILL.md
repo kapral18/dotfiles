@@ -14,7 +14,7 @@ Load `~/.agents/skills/k-review/references/live-ui-runtime.md` for the shared ru
 mode boundary, terminology, target-packet resolution, Playwriter preflight, readiness stability guard, screenshot & evidence capture, runtime-start rung, data/setup ladder, and the hard runtime constraints.
 This file adds only the proof-mode specifics: the head-only model, the intended UI state/behavior oracle, and the proof return shape.
 
-## Do not use
+## Out of scope (use the named alternative)
 
 - reviewing an existing PR or someone else's changes, or hunting regressions:
   `~/.agents/skills/k-review/SKILL.md` / `/k-deep-review` (which owns `live-ui-review`)
@@ -51,7 +51,7 @@ Decide whether the changed paths touch UI/runtime behavior and whether an intend
 - If the change has no UI/runtime surface, return `Not applicable` with the changed-path evidence.
 - If UI changed but the caller supplied no intended visual/UI state or behavior, return `Blocked`:
   proof needs an oracle (which visible state or interaction result counts as correct). Name what is missing.
-- Do not return `Not applicable` because the runtime has no data. Missing data is setup work or `Blocked` per the shared data/setup ladder.
+- A runtime with no data is still applicable: missing data is setup work or `Blocked` per the shared data/setup ladder, never `Not applicable`.
 
 ## Head-only model
 
@@ -72,8 +72,7 @@ Decide whether the changed paths touch UI/runtime behavior and whether an intend
 - Capture the smallest set that proves each visual/UI criterion — the key state(s) the intended behavior describes, not every navigation.
 - For each shot, record a manifest entry: its folder, filename, caption (what it proves), exact URL, the linked acceptance criterion or visual goal, and any fidelity note (mocked/partial data).
 - The manifest and the `/tmp` paths are a handoff to the caller for the upload step only.
-  Do not upload images or put local paths in a PR body/comment from this proof phase;
-  the publication step uploads and embeds them via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md` behind explicit user approval.
+  Leave uploading and embedding to the publication step, which uses the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md` behind explicit user approval; keep images and local paths out of PR bodies/comments during this proof phase.
 
 ## Return exactly
 

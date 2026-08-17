@@ -16,7 +16,7 @@ Use when:
 - the user asks for the single smartest, most impactful, or highest-leverage addition to the current branch, PR, or issue
 - the target is the branch/PR/issue goal, not only the uncommitted local diff, the whole codebase, or a targeted part
 
-Do not use:
+Route elsewhere for:
 
 - whole-codebase improvements: `~/.agents/skills/k-improve-codebase/SKILL.md`
 - current uncommitted/staged diff only: `~/.agents/skills/k-improve-local/SKILL.md`
@@ -28,14 +28,14 @@ First actions:
 1. Inspect current git status, branch name, branch diff/history, and any discoverable PR or issue context.
 2. Identify up to three candidate improvements internally, grounded in the observed branch, PR, or issue goal.
 3. Choose exactly one candidate only if it is clearly smart, accretive, useful, and compelling for this branch now.
-4. If no candidate clears that bar, say so and do not propose a marginal change.
+4. If no candidate clears that bar, say so and refrain from proposing a marginal change.
 
 Selection rules:
 
 - Prefer changes that advance the branch goal: stronger acceptance coverage, cleaner integration, sharper UX/API behavior, clearer migration path, or reduced review risk.
 - Scope the recommendation to the real opportunity: small when small is enough, broad when breadth is where the leverage lives.
-- Do not recommend unrelated cleanup, package churn, or speculative abstractions unless the branch context makes the payoff unusually clear.
-- Treat "suggest" literally: present the recommendation first. Do not edit files unless the user explicitly approves implementation.
+- Recommend unrelated cleanup, package churn, or speculative abstractions only when the branch context makes the payoff unusually clear.
+- Treat "suggest" literally: present the recommendation first. Edit files only after the user explicitly approves implementation.
 
 Output:
 

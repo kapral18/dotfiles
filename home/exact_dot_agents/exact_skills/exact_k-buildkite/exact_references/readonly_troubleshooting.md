@@ -88,7 +88,7 @@ bk configure
 **Fix:**
 
 - Wait 60 seconds before retrying
-- Reduce request frequency — avoid rapid sequential `bk api` calls
+- Reduce request frequency — space out `bk api` calls instead of issuing them in rapid sequence
 - Use pagination to limit result sets
 
 ---

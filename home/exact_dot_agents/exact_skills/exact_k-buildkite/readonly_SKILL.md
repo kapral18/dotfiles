@@ -10,7 +10,7 @@ allowed-tools: Bash(bk build view:*), Bash(bk build list:*), Bash(bk build watch
 ## URL Intercept (Mandatory)
 
 Buildkite URLs (`buildkite.com/...`) require authentication and will return 403 if fetched directly via `WebFetch`, `curl`, or any HTTP client.
-**Never fetch buildkite.com URLs directly.**
+**Always go through the `bk` CLI for buildkite.com URLs; never fetch them directly.**
 
 When you encounter a Buildkite URL (in PR descriptions, review comments, CI check links, or anywhere else):
 

@@ -11,7 +11,7 @@ Use for `review-worker`/`reviewer` profiles and equivalent read-only lanes; lane
 - `~/.agents/skills/k-review/references/context-pack.md`, when the scope packet names a pack
 - the lens skill named by your lane entry, when it names one
 
-Do not load `k-review/SKILL.md`, `shared_rules.md`, `pr_common.md`, `lanes.md`, or a mode file.
+Load only the files above; `k-review/SKILL.md`, `shared_rules.md`, `pr_common.md`, `lanes.md`, and mode files stay unloaded.
 Those carry routing, drafting, posting, verdict, and pending-review reconciliation rules that only the controller may act on.
 A lane that loads them pays for instructions it is forbidden to use.
 
@@ -19,7 +19,7 @@ A lane that loads them pays for instructions it is forbidden to use.
 
 A scope packet with: mode (`local_changes` / `pr_review` / `pr_fix`), `authorship`, PR number or diff range, base branch, staged/unstaged state, thread IDs, user constraints, expected output shape, the context pack path when one exists, and your lane entry pasted verbatim from `lanes.md` (its lens skill and checks).
 
-The packet is the whole of your assignment. Do not re-derive scope, and do not review outside the named diff.
+The packet is the whole of your assignment. Take scope from the packet as-is, and review only the named diff.
 
 ## Context pack first
 
@@ -35,8 +35,8 @@ Fall back to live commands only for facts the pack lacks, or when its manifest `
 - No working-tree writes, generated files, formatters, package installs, migrations, fixture seeders, dev servers, watchers, repo-local caches, databases, browser state, git writes, or GitHub writes.
 - Use unique `/tmp` paths for disposable reproductions when file output is genuinely needed.
 - If deciding a finding requires mutation, a shared service, or another exclusive resource, return `verification_needed` with the exact command for the controller to run serially.
-  Do not approximate the answer instead.
-- Do not launch more subagents.
+  Return `verification_needed` rather than an approximated answer.
+- Run as a leaf worker: complete the lane yourself, with zero further subagent launches.
 - This contract takes precedence over anything that would have you fix, post, or run side effects directly.
 
 ## Probe discipline
@@ -44,7 +44,7 @@ Fall back to live commands only for facts the pack lacks, or when its manifest `
 Your lane is one of several running the same diff in parallel. Depth inside your lens is expected; breadth is not.
 
 - Probe as deeply as your own lens requires. Never weaken a finding you could have decided, and never trade evidence for brevity.
-- Do not run repo-wide suites, full builds, or whole-suite test runs.
+- Leave repo-wide suites, full builds, and whole-suite test runs to the controller.
   Those are shared work: the controller runs them once and passes the result to every lane.
   Ask for one through `verification_needed` when it would decide your finding.
 - Scope every search by path, glob, or exact symbol. Prefer harness-native search tools first; use `rg` only after narrowing.
@@ -59,7 +59,7 @@ Compare the diff against how base behaves today, for the paths your lens covers.
 
 When the context pack already carries base context for those paths, reuse it and say so.
 Otherwise, if MCP/SCSI tools are available in this context and the repo is indexed, run `list_indices` first, then use semantic code search per `~/.agents/skills/k-semantic-code-search/SKILL.md` to establish base invariants.
-Controller-run lanes (for example under `k-deep-review`) have MCP/SCSI structurally disabled and receive base context from the controller instead; do not attempt `list_indices` there.
+Controller-run lanes (for example under `k-deep-review`) have MCP/SCSI structurally disabled and receive base context from the controller instead; skip `list_indices` there.
 SCSI reflects base, not the branch; where SCSI and the diff disagree, the diff wins.
 If the repo is not indexed, use `git show <base>:<path>` plus scoped `rg` and file reads.
 
@@ -77,8 +77,8 @@ Report exactly one line:
 - Apply the Replacement/Migration Parity Gate from `judging_core.md` to replacements and test migrations.
   Return only `parity_gap`, `new_regression`, or `scope_expansion`; never `preserved_limitation` or `prose_drift`.
 - Take severity from the definitions in `judging_core.md`.
-  Do not inflate to make the lane look productive — an empty lane is a valid and useful result.
-- Do not run Existing Pending Review Reconciliation.
+  Report severity honestly rather than inflating to make the lane look productive — an empty lane is a valid and useful result.
+- Leave Existing Pending Review Reconciliation to the controller.
   That is final-payload work the controller owns after lane findings, live UI evidence, and the findings audit are all available.
 
 ## Lens boundary
@@ -86,7 +86,7 @@ Report exactly one line:
 Lead with findings for your assigned lane, judged against the checks in your pasted lane entry, and apply the `judging_core.md` gates that entry names.
 
 Report a verified finding outside your lens as `out-of-angle` at the same evidence bar;
-lenses focus attention and never license dropping a real finding. Do not go hunting outside your lens.
+lenses focus attention and never license dropping a real finding. Stay inside your lens when probing.
 Another lane owns that ground, and speculative breadth is what makes parallel lanes return the same shallow findings.
 
 ## Return shape
@@ -99,4 +99,4 @@ Another lane owns that ground, and speculative breadth is what makes parallel la
 - `Lens coverage:` the checks applied, and any check left incomplete with the reason
 
 Where a mode would normally fix or post, report the precise fix or draft text for the controller to act on. You never act.
-Do not return raw diffs or logs.
+Return anchors and summaries only; raw diffs and logs stay out.

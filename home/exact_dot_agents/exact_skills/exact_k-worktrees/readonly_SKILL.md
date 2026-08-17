@@ -11,7 +11,7 @@ Primary goal:
   - keep command boundaries explicit: `,gh-worktree` handles repo routing/bootstrap;
     `,w` handles worktree operations inside a resolved repo.
 
-Do not use:
+Out of scope (use the named alternative):
 
 - PR review feedback: `~/.agents/skills/k-review/SKILL.md`
 - GitHub side effects (posting comments/reviews, creating PRs/issues): `~/.agents/skills/k-github/SKILL.md`
@@ -29,9 +29,9 @@ First actions:
 
 Non-negotiables:
 
-- do not create/switch worktrees unless the user explicitly asked for it
+- create/switch worktrees only when the user explicitly asked for it
 - prefer `,w` subcommands over `git worktree`
-- do not auto-focus/attach tmux sessions unless the user asked to focus/attach
+- auto-focus/attach tmux sessions only when the user asked to focus/attach
 
 Common patterns:
 

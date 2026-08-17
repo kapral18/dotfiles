@@ -9,7 +9,7 @@ Entity-level merge driver for Git. Replaces git's line-based merge with function
 Two branches adding different functions to the same file? Auto-resolved, zero conflicts.
 Only truly incompatible changes to the _same entity_ produce conflicts.
 
-Do not use:
+Out of scope (use the named alternative):
 
 - for diffing or analyzing changes (use the `k-sem` skill, which runs the `,sem` CLI)
 - for non-code files that tree-sitter doesn't parse
@@ -64,6 +64,6 @@ TypeScript, TSX, JavaScript, Python, Go, Rust, Java, C, C++, Ruby, C#, PHP, Swif
 ## Notes
 
 - `,weave-setup-local` configures weave via `.git/info/attributes` + repo-local git config, so nothing is added to repo history.
-- Avoid `weave setup` for day-to-day use: it writes a repo-root `.gitattributes` (tracked by default) and tends to show up in PR diffs.
+- Use `,weave-setup-local` instead of `weave setup` for day-to-day use: `weave setup` writes a repo-root `.gitattributes` (tracked by default) and tends to show up in PR diffs.
 - Zero regressions across real-world benchmarks (git/git, CPython, Go, TypeScript, Flask).
 - Conflict markers include the entity name and conflict reason for faster manual resolution.

@@ -14,7 +14,7 @@ The SOP owns the surrounding gates: per-step verification loops (§3.4), require
 The `k-code-quality` skill owns minimal edit scope at point of use.
 This skill owns the phase order, the criteria ledger, and the verification topology.
 
-## Do not use
+## Out of scope (work directly under the SOP or a review skill instead)
 
 - no spec packet exists and the change is trivial or intent is already unambiguous — work directly under the SOP
 - the target is reviewing existing changes or a PR: the `k-review` / `k-deep-review` skills
@@ -42,14 +42,14 @@ When rows keep reopening across verification passes, run `~/.agents/skills/k-con
 
 ## Phase order (strict)
 
-Do not start a later phase until the current one completes.
+Complete the current phase before starting a later one.
 
 1. **Spec gate (human gate 1).**
    Obtain the spec packet: the active `/tmp/specs/<pwd>/<topic>.spec.md`, a user-supplied file, or — when none exists —
    run the `k-spec` skill now.
    If any criterion lacks a run-once red check or a `judgment:` tag, return to the `k-spec` skill;
-   do not backfill criteria yourself mid-build. Present the packet and stop for explicit approval.
-   Approval of the packet is the hands-free authorization; do not re-ask permission for in-scope work after it.
+   criteria are authored there, never backfilled mid-build. Present the packet and stop for explicit approval.
+   Approval of the packet is the hands-free authorization; proceed on in-scope work after it without re-asking permission.
 
 2. **Plan.** Decompose into steps, each with its own verification (SOP §3.4) — a criterion check, a targeted test, or a probe.
    Run the Ownership Gate (SOP §3.2) over the paths the plan touches before any edit.
@@ -57,13 +57,13 @@ Do not start a later phase until the current one completes.
 
 3. **Execute.** Work the steps in order; after each, run its verification and update the ledger.
    Run checks bare — a piped check (`cmd | tail`) reports the pipe's exit code, not the check's.
-   Never proceed past a red step verification — fix or replan.
+   Proceed past a step verification only when it is green — otherwise fix or replan.
    Two consecutive failed attempts on the same criterion trigger the SOP §3.3 reset:
    stop implementing and end the flow as `blocked` with the captured failure, instead of thrashing.
-   If evidence found mid-build contradicts the packet (wrong premise, wrong scope), stop, state the correction, and return to gate 1 with the revised packet — do not silently implement a different spec.
+   If evidence found mid-build contradicts the packet (wrong premise, wrong scope), stop, state the correction, and return to gate 1 with the revised packet — implementing a silently different spec is a flow violation.
 
 4. **Mechanical gates.**
-   Discover the repo's lint / type-check / test commands from repo sources (do not guess), prefer scoped commands for the affected package, and run them.
+   Discover the repo's lint / type-check / test commands from repo sources (repo evidence, never a guess), prefer scoped commands for the affected package, and run them.
    An unprepared environment is a setup step to perform, not a blocker; loop fix → verify until green.
    Only undiscoverable or failing setup itself is a blocker — report the exact command and error.
 
@@ -93,7 +93,7 @@ Do not start a later phase until the current one completes.
 
 ## Completion gate
 
-Do not declare `/k-build` complete while any ledger row is `red`, `judgment-unmet`, or `undecidable` without an explicit blocker, while a mechanical gate is un-run, while a triggered live-UI proof was skipped without a valid blocker, or while the verification lane was skipped.
+Declare `/k-build` complete only when every ledger row is resolved (no `red`, `judgment-unmet`, or blocker-less `undecidable` rows), every mechanical gate has run, any triggered live-UI proof ran or has a valid blocker, and the verification lane ran.
 A blocked flow ends as `blocked` with the ledger as-is — never as a success summary with hedged wording.
 
 ## Output

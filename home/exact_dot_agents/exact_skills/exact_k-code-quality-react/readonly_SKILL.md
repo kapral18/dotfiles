@@ -14,19 +14,19 @@ The `~/.agents/skills/k-code-quality/SKILL.md` skill still applies unless local 
 - Prefer hooks and composition over class components or inheritance.
 - Keep component props explicit and typed.
 - Split a component only when it reduces real complexity or matches an existing local pattern.
-- Do not add configurability, callbacks, context, memoization, or state just because it might be useful later.
+- Add configurability, callbacks, context, memoization, or state only when a present need requires it, never because it might be useful later.
 
 ## Hooks And State
 
 - Keep hooks unconditional and ordered.
 - Prefer derived values over duplicated state.
 - Use effects for synchronization with external systems, not for derivable render state.
-- Keep effect dependencies honest; do not silence dependency rules without a verified local reason.
+- Keep effect dependencies honest; silence dependency rules only with a verified local reason.
 - Treat loading, empty, error, and disabled states as user-visible behavior that needs verification when touched.
 
 ## Secondary Skill Escalation
 
-Do not load secondary skills until read/diff evidence proves the surface is in scope.
+Load secondary skills only after read/diff evidence proves the surface is in scope.
 
 - If markup, styling, or accessibility semantics change, also load the `~/.agents/skills/k-code-quality-web/SKILL.md` skill.
 

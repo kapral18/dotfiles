@@ -18,7 +18,7 @@ A logic prototype that answers the wrong question is pure waste; make the questi
 ### 2. Pick the language
 
 Use whatever the host project uses.
-Match its existing tooling conventions — do not add a new package manager or runtime just for the prototype.
+Match its existing tooling conventions — reuse the project's package manager and runtime rather than adding new ones just for the prototype.
 If the repo has no obvious runtime (e.g. a docs repo), ask.
 
 ### 3. Isolate the logic in a portable module
@@ -49,7 +49,8 @@ The whole frame fits on one screen.
 
 ### 5. Make it runnable in one command
 
-Add a script to the project's existing task runner. The user runs `pnpm run <name>` or equivalent — never a remembered path.
+Add a script to the project's existing task runner.
+The user runs `pnpm run <name>` or equivalent — always a task-runner entry, never a remembered path.
 If there is no task runner, put the command at the top of the prototype's `NOTES.md`.
 
 ### 6. Hand it over

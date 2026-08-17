@@ -1,6 +1,6 @@
 # PR Common Setup
 
-All PR review modes load this file; do not duplicate these rules in mode files.
+All PR review modes load this file; keep these rules defined here only, outside mode files.
 
 ## Resolve the PR Target (Avoid Searching)
 
@@ -36,7 +36,7 @@ PR review otherwise re-checks everything, including classes PR CI already catche
 Avoid redundant findings:
 
 - Drop findings CI will inevitably flag, but first verify the relevant check exists and covers that finding class.
-- Do not assume usual CI exists on every branch; backports may loosen or narrow CI.
+- Verify CI per branch; backports may loosen or narrow CI, so a branch earns its usual-CI assumption only from its actual checks.
 
 1. Enumerate PR checks (read-only). Set `GH_PAGER=cat`, then `gh pr checks <number> --json name,state,bucket,workflow,link`.
 2. Map each present check to the Coverage-Checklist classes it actually catches.
@@ -45,14 +45,14 @@ Avoid redundant findings:
    - a test job -> the behavior it exercises
    - SAST -> the vuln classes it scans
    - A check covers only what it actually runs.
-   - Do not credit a check from its name alone.
+   - Credit a check only from what it runs, never from its name alone.
    - Buildkite job whose coverage is unclear: load and follow `~/.agents/skills/k-buildkite/SKILL.md` (`bk` CLI) to see what runs before crediting it with a class.
-     For Elastic repos, route through `k-elastic-domain` first when available, but do not skip Buildkite solely because the overlay cannot be loaded.
+     For Elastic repos, route through `k-elastic-domain` first when available, and keep the Buildkite step even when the overlay cannot be loaded.
      If Buildkite access is unavailable, keep the coverage class in scope instead of crediting the check.
 3. Exempt a finding-class from review only when a present check genuinely covers it —
-   CI will flag those, so do not build findings or draft comments for them.
+   CI will flag those, so leave them out of findings and draft comments.
 4. Keep every other class in scope, including ones whose check is absent or loosened on this branch.
-   Do not assume a class is covered just because CI usually covers it elsewhere.
+   Credit a class as covered only from this branch's actual checks, even when CI usually covers it elsewhere.
 5. State one line before drafting: `CI coverage: covered=[...] -> exempt; in-scope=[...]`.
 
 ## Pending Review Intake (blocking before diff analysis)
@@ -72,7 +72,7 @@ Use this gate for the primary PR and every recursively discovered item that coul
 - URL
 - reference
 
-Do not rely on summaries, previews, truncated/compacted output, or sliced fields such as `body[0:N]`, `head`, preview scripts, or partial comment/reply lists.
+Rely only on full raw content: summaries, previews, truncated/compacted output, and sliced fields such as `body[0:N]`, `head`, preview scripts, or partial comment/reply lists are indexes, not truth.
 
 Recover the full raw content before marking an item read. Limited output is allowed only for discovery/status.
 Once an item can inform composition, review, labels, routing, or mutation, re-fetch the full raw artifact with pagination before using it.
@@ -97,14 +97,14 @@ Keep a short intake ledger for composition/review work: object read, full-body/c
      cover UI changes, overlays, terminal output changes, and before/after states;
      use local tooling (`ffmpeg`/`ffprobe`, browser/player, image extraction, OCR/vision when available);
      inspect audio/captions/transcripts when present
-   - Buildkite URLs (`buildkite.com/...`): **do not fetch directly** (authenticated pages commonly 403).
+   - Buildkite URLs (`buildkite.com/...`): fetch only via the `bk` CLI (direct fetches of authenticated pages commonly 403).
      Load and follow `~/.agents/skills/k-buildkite/SKILL.md` — use `bk` CLI to retrieve build/job info.
-     For Elastic repos, route through `k-elastic-domain` first when available, but do not skip Buildkite solely because the overlay cannot load.
+     For Elastic repos, route through `k-elastic-domain` first when available, and keep the Buildkite step even when the overlay cannot load.
    - Other URLs: fetch when they could inform the review, then read the full relevant content and extract references.
 4. From every artifact just read, extract new URLs, PR/issue refs, comments, assets, media, commits, builds, and code references;
    enqueue any unvisited potentially relevant item.
 5. Repeat until the queue is empty.
-   - Do not proceed while a reachable, potentially relevant reference remains unread.
+   - Proceed only once every reachable, potentially relevant reference is read.
    - If an item is inaccessible, record the exact reason before excluding it.
    - If an item is unsupported by local tooling, record the exact reason before excluding it.
    - If an item is irrelevant, record the exact reason before excluding it.
@@ -137,12 +137,12 @@ When triggered, load and follow `~/.agents/skills/k-review/references/pr_context
     - already present in a valid existing pending review/draft comment from the current authenticated account
     - comment author does not matter
     - verify against the current implementation/diff
-    - do not draft a new comment
+    - leave it without a new draft comment
   - `new`: not already covered and verified against the current implementation/diff; eligible for draft feedback.
     - For replacements and test migrations, apply the Replacement/Migration Parity Gate in `judging_core.md` first.
       Only `parity_gap`, `new_regression`, and `scope_expansion` can be `new`; `preserved_limitation` and `prose_drift` cannot be `new`.
   - `incorrect`: prior clarification/comment conflicts with the current implementation/diff;
-    add one correction with evidence (do not echo the incorrect claim).
+    add one correction with evidence (state the correction itself, leaving the incorrect claim unquoted).
 
 ## Existing Pending Review Reconciliation (Blocking Before Final Draft/Post)
 
@@ -159,7 +159,7 @@ Run this after the candidate queue is evidence-verified and before preparing any
    - new finding duplicates an existing valid pending finding -> suppress the new duplicate
    - new evidence contradicts existing pending content -> resolve from current head or stop as `blocked`
 3. If a pending review already exists:
-   - do not create another pending review
+   - reuse it as the single pending review
    - prepare a consolidated payload that contains kept existing findings plus kept new findings exactly once
    - purely additive payload -> append net-new threads via GraphQL `addPullRequestReviewThread`; no delete/recreate
    - any existing draft comment changes or drops -> delete/recreate, only after explicit approval
@@ -171,7 +171,7 @@ Run this after the candidate queue is evidence-verified and before preparing any
    - `Pending review reconciliation: stale pending dropped for <review_id> (<reason>)`
    - `Pending review reconciliation: blocked (<reason>)`
 
-Never post or submit review feedback while this reconciliation is unknown and locally/API-verifiable.
+Post or submit review feedback only after this reconciliation is known or proven non-verifiable locally/via API.
 
 ## Comment Placement (Draft Guidance)
 
@@ -180,7 +180,7 @@ Where to comment:
 - Default: inline on a relevant diff line/range in the PR.
 - File-scoped concerns: prefer a file-level comment (`subject_type=file`).
 - If you are replying in an existing thread, use the reply mode of PR fix.
-- Do not replace inline feedback with a PR-level summary body.
+- Keep inline feedback inline; a PR-level summary body supplements it rather than replacing it.
 - Only use file-level or PR-level placement when no reliable inline anchor exists, or when the user explicitly asks for non-inline placement.
 
 ## Anchoring Constraints (Only If Posting Is Requested)
@@ -191,18 +191,15 @@ Where to comment:
 - Before every API call that creates or submits anchored PR review comments:
   - fetch the current PR diff/patch for the target head SHA
   - verify each anchor against the diff hunk you intend to comment on
-  - do not rely on full-file line numbers
-  - do not rely on stale patches
-  - do not rely on memory
-- For API calls, do not assume a source-file line number is a valid anchor. Prefer:
+  - compute anchors only from the current diff: full-file line numbers, stale patches, and memory are all invalid anchor sources
+- For API calls, treat a source-file line number as a valid anchor only after it resolves against the PR diff. Prefer:
   - `position` (diff-relative), computed from the PR's unified diff:
     - the `@@` hunk header line itself is **not counted** (position 0)
     - the first line after the `@@` header is position 1
     - counting continues sequentially across all subsequent hunks in the file
   - or `line` + `side` / `start_line` + `start_side` (still must resolve against the PR diff; GitHub will 422 if it cannot resolve)
 - If the specific source line you care about is not shown in the diff context:
-  - do NOT anchor the comment to an unrelated line
-  - anchor on the nearest relevant diff line in the same file and include a deep link to the exact source location on the PR head SHA
+  - anchor on the nearest relevant diff line in the same file (an unrelated line is an invalid anchor) and include a deep link to the exact source location on the PR head SHA
 - If you cannot find a relevant diff anchor without confusing the author:
   - use a file-level comment (`subject_type=file`)
   - or a PR-level comment that links to the exact source lines
@@ -219,7 +216,7 @@ Where to comment:
 - UI repro hygiene (when verifying UI/editor behavior):
   - do one claim per repro run; reset state between runs (reload/new tab)
   - clear inputs deterministically before typing
-  - for rich editors, do not assume the accessible textarea reflects the full editor model; verify what is actually rendered
+  - for rich editors, verify what is actually rendered; the accessible textarea may lag the full editor model
 
 ## If Posting Is Requested
 

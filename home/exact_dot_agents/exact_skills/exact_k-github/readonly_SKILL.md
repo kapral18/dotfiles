@@ -8,15 +8,15 @@ description: "Use for GitHub effects: PRs, issues, comments, reviews, labels, re
 Defaults:
 
 - Use `gh` CLI; set `GH_PAGER=cat` for non-interactive reliability.
-- Follow repo merge settings; never merge into the base branch via CLI.
-- Gists use `gh gist` or `gh api`; do not fetch gist URLs directly.
+- Follow repo merge settings; merge into the base branch only via the GitHub UI, never via CLI.
+- Gists use `gh gist` or `gh api`, replacing direct gist URL fetches.
 - Attachment uploads (local images/videos/files -> `user-attachments`) are impossible via REST/GraphQL;
   use `~/.agents/skills/k-github/references/attachments.md`.
 
 ## Targeting
 
 - Implicit current PR (“this PR”, “current PR”, “PR for this branch”): resolve with `,gh-prw --number` / `,gh-prw --url`;
-  if it fails once, ask for URL. Do not assume current-branch PR unless wording clearly implies it.
+  if it fails once, ask for URL. Assume current-branch PR only when wording clearly implies it.
 - Implicit current issue: resolve with `,gh-issuew --number` / `,gh-issuew --url`; if it fails once, ask for URL.
 
 ## Route away
@@ -58,18 +58,18 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
 
 ## PR review side effects
 
-- Never include `event` in create-review payloads; `POST /reviews` without `event` creates a pending draft.
+- Create-review payloads must omit `event`; `POST /reviews` without `event` creates a pending draft.
   Publish only via a separate submit call after explicit approval.
-- Before create/append/delete-recreate/submit, reconcile current-account pending reviews with the new payload; do not fragment feedback.
+- Before create/append/delete-recreate/submit, reconcile current-account pending reviews with the new payload so feedback stays consolidated.
   Append net-new comments to an existing pending review; delete/recreate only to change or drop existing ones.
 - UI-related review feedback needs screenshot handoff evidence outside the body, or a valid blocker/non-applicability reason.
 - Full mechanics live in `~/.agents/skills/k-github/references/pr-reviews.md`.
 
 ## PR review comments
 
-- Use bash/zsh `$'...'` so `\n` becomes real line breaks; never send literal `\n`.
+- Use bash/zsh `$'...'` so `\n` becomes real line breaks; send only real line breaks, with literal `\n` excluded.
 - Commit references must be clickable full GitHub URLs.
-- UI-related comments/replies/PR-level feedback need screenshot handoff evidence outside the body; never include local screenshot paths.
+- UI-related comments/replies/PR-level feedback need screenshot handoff evidence outside the body; keep local screenshot paths out of it.
 - Follow `~/.agents/skills/k-review/references/pr_review.md` or `pr_fix.md` for anchoring/placement.
 - Comment examples live in `~/.agents/skills/k-github/references/pr-comments.md`.
 
@@ -92,5 +92,5 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
 
 - Before each side effect, restate exact target and action.
 - After each side effect, verify via read-back (`gh`/API) and report URL, identifier, or resulting state.
-- Do not add/modify repo `.github/*` templates unless explicitly asked.
+- Add/modify repo `.github/*` templates only when explicitly asked.
 - Sub-issues API creates real parent-child relationships; use `~/.agents/skills/k-github/references/sub-issues.md`.

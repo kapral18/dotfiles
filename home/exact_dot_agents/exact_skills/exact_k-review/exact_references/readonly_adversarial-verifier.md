@@ -16,7 +16,7 @@ The parent controller supplies one of these candidate shapes:
   plus plan artifact path/body, referenced code/docs already resolved by the parent, and mode `plan_review.md`
 
 Load `~/.agents/skills/k-review/references/judging_core.md` for the severity definitions, Truth Validation Framework, and Replacement/Migration Parity Gate classes.
-Load nothing else from the review tree; discovery is not your job.
+Load only `judging_core.md` (and the context pack when named) from the review tree; discovery belongs to other lanes.
 When the scope packet names a context pack, load `~/.agents/skills/k-review/references/context-pack.md` and consume the pack per that contract before any live PR fetch.
 
 Per candidate, attempt refutation in this order and stop at the first decisive result:
@@ -34,8 +34,8 @@ Hard constraints:
 
 - Strictly read-only and concurrency-safe: no working-tree writes, git/GitHub writes, installs, dev servers, or shared-state mutation;
   unique `/tmp` paths for disposable reproduction artifacts.
-- Do not dedup, re-rank, or rewrite candidates; verdicts only.
-- Do not launch more subagents.
+- Return verdicts only; leave candidates as supplied — dedup, re-ranking, and rewriting belong to the controller.
+- Work alone in this lane; launching more subagents is out of scope.
 
 ## Miss sweep (bounded, after the verdicts)
 
@@ -50,9 +50,9 @@ After returning every verdict, run one bounded sweep for what the candidate set 
   An unverified suspicion is not a candidate.
 - Return at most three, marked `new-candidate`, ordered by severity.
   Return none when nothing clears the bar; an empty sweep is a valid result and is better than a padded one.
-- Do not restate, re-severity, or re-word an existing candidate as new.
+- Return only genuinely new items: an item that restates, re-severities, or re-words an existing candidate belongs in its verdict, not the sweep.
   If it overlaps one you just judged, it is a verdict, not a sweep item.
-- Do not expand scope to chase a sweep item.
+- Keep sweep work inside this lane's scope.
   If deciding it needs work beyond this lane, return it as `undecidable (needs <exact check>)` instead.
 
 `new-candidate` items have not passed the findings audit. Say so; the controller re-audits them before judgment.
@@ -67,4 +67,4 @@ Default to `undecidable`, not `confirmed`, when the deciding evidence is genuine
 
 Then the miss sweep result: `new-candidate` items with the same fields as a finding (where, what is wrong, why it matters, how to verify, smallest proposed fix), or `Miss sweep: none above the bar`.
 
-Do not return raw diffs or logs.
+Return distilled verdicts and sweep items only; raw diffs and logs stay in the lane.

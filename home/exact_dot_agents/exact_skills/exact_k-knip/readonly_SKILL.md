@@ -6,7 +6,7 @@ tool_version: knip 5.88.0
 
 # Knip (Dead Code & Dependency Cleanup)
 
-Do not use:
+Use other skills for:
 
 - copy/paste detection: `~/.agents/skills/k-jscpd/SKILL.md`
 

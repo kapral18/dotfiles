@@ -18,8 +18,8 @@ The SOP still owns required verification loops and the rule that test-first fram
 
 ## Determinism
 
-- Avoid sleeps, real network calls, current-time dependencies, and order-sensitive assertions unless the behavior under test requires them.
-- Use local fakes/mocks only where they simplify the observable behavior; do not mock the unit under test into proving itself.
+- Use sleeps, real network calls, current-time dependencies, or order-sensitive assertions only when the behavior under test requires them.
+- Use local fakes/mocks only where they simplify the observable behavior; keep the unit under test real so it proves itself against something independent.
 - Make failure output actionable: the assertion should reveal what behavior changed.
 
 ## Oracles
@@ -41,4 +41,4 @@ The SOP still owns required verification loops and the rule that test-first fram
 - Waiting for async work: prefer a wait that settles the whole chain (yield a macrotask, or await the real signal) over a fixed number of ticks; a fixed count silently stops reaching the assertion when a step is added, turning every test in the block green-but-vacuous.
 - With multiple worktrees/checkouts in play, name the worktree and branch in the run description and confirm the run targets the intended one before interpreting results.
 - If a test cannot be run, state why and what evidence was verified instead.
-- Do not add snapshots or golden files unless they protect a meaningful contract.
+- Add snapshots or golden files only when they protect a meaningful contract.

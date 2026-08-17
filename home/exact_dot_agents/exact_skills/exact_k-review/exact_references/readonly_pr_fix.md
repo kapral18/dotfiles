@@ -3,7 +3,7 @@
 Precondition:
 
 - You already loaded `~/.agents/skills/k-review/SKILL.md`.
-- Follow `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/shared_rules.md` (loaded once by the router; do not re-load).
+- Follow `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/shared_rules.md` (loaded once by the router; reuse that load).
 - Follow `~/.agents/skills/k-review/references/pr_common.md` for PR setup, media evidence, comment placement, anchoring, deep links, and local verification.
 
 Use when:
@@ -32,7 +32,7 @@ Explicit fix requests include:
 
 If `authorship` is `other`/`unknown` and no explicit fix request exists:
 
-- do not edit
+- keep the working tree untouched (edits stay out of scope)
 - fall back to draft-only PR review (`pr_review.md`)
 - confirm intent
 
@@ -57,12 +57,12 @@ If `authorship` is `other`/`unknown` and no explicit fix request exists:
 
 Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 
-## One Thread/Comment Per Turn (Do Not Skip)
+## One Thread/Comment Per Turn (Mandatory)
 
 Iteration contract:
 
 - Pick exactly one reviewer thread/comment.
-- While fixes are not yet authorized, do not move to the next thread/comment until you and the user agree on what to do.
+- While fixes are not yet authorized, stay on the current thread/comment until you and the user agree on what to do.
   Once the user has authorized fixing the batch (e.g. "address the review threads"), that is Drain Mode:
   proceed thread to thread without waiting, surfacing only genuine decision forks.
 - Batch/repeat phrases include:
@@ -120,13 +120,13 @@ Iteration contract:
    - If the reviewer request is a "clarity" ask (add comment, rename, tiny refactor), prefer the smallest localized change that satisfies the request.
    - If the reviewer request is out-of-scope cleanup, you may treat it as a "graceful gesture" only when:
      - it is cheap
-     - it does not change runtime behavior
+     - it keeps runtime behavior unchanged
      - it reduces future confusion
-   - Otherwise: reply proposing a follow-up (do not expand the change-set).
+   - Otherwise: reply proposing a follow-up (keep the change-set at its current scope).
 
 9. If you chose code change — quality gates (required after each change):
    - Run lint + type_check + tests.
-   - Discover the correct commands from the repo (do not guess):
+   - Discover the correct commands from the repo (repo sources, not guesses):
      - check `package.json` scripts (or equivalent build tooling) for `lint`, `typecheck`, `test`
      - if monorepo, prefer scoped/targeted commands for the affected package first
      - if you cannot determine the commands from repo sources, stop and ask the user
@@ -136,13 +136,13 @@ Iteration contract:
     - Before drafting, compare the reply/fix note with any current-account pending review, submitted review comment, or prior reply discovered by Existing Pending Review Reconciliation.
     - If the same point is already pending, merge the reply intent into the pending-review replacement plan instead of creating a competing comment.
     - If prior current-account content is stale or contradicted by current head, draft one correction/replacement path;
-      do not publish both versions.
+      publish only that single version.
     - If the thread asked for code comments/documentation:
       - make the change in code
       - reply with a short `Fixed in <commit URL>` message
-      - avoid long explanations in the thread
+      - keep in-thread explanations short
       - use full clickable GitHub URLs for commits
-      - never use bare hashes
+      - always use full URLs, not bare hashes
     - If your fix ended up elsewhere (different file/thread): reply with a clickable link to the canonical commit/thread rather than re-explaining.
 
 ### Reply Style
@@ -158,7 +158,7 @@ Follow it for:
 Review-specific mechanics only:
 
 - Verify the outcome against the current head before replying/resolving (the author's claim is not proof).
-- If the thread asked for a code/doc change you made: reply `Fixed in <full commit URL>` (avoid long explanations in-thread).
+- If the thread asked for a code/doc change you made: reply `Fixed in <full commit URL>` (keep in-thread explanations short).
 - If a thread is obsolete because later commits superseded the hunk: `Superseded by <commit link>` (optionally one link to the new canonical thread).
 - Resolve/unresolve and any reply to a human author stay gated by `shared_rules.md` Posting Boundary and the SOP publication gate:
   draft first, show exact payload + target, then wait for approval.
@@ -171,8 +171,8 @@ In Drain Mode:
 
 - run the per-thread workflow back-to-back
 - continue until no unresolved actionable thread remains
-- do not re-ask "what next?" for each thread
-- do not relax the Human-Visible Publication Gate (SOP, `~/AGENTS.md`)
+- proceed thread to thread; re-ask "what next?" only at genuine decision forks
+- keep the Human-Visible Publication Gate (SOP, `~/AGENTS.md`) fully in force
 
 Author-type classification (do first, per thread, verified — not guessed):
 
@@ -198,13 +198,14 @@ Per-thread branch:
   - stop before publishing
   - queue the drafted reply + resolve recommendation
   - surface it for supervision
-  - do not post or resolve
+  - keep posting and resolving gated on supervision
   - continue investigating/queuing remaining threads
-  - never publish a human-visible reply/resolve without explicit approval
+  - publish a human-visible reply/resolve only with explicit approval
 
 Loop control:
 
-- Commit/push still require explicit approval (git skill) regardless of mode; Drain Mode never auto-commits or auto-pushes.
+- Commit/push still require explicit approval (git skill) regardless of mode;
+  in Drain Mode, commits and pushes always wait for that approval.
 - After each thread, append the decision to the review persistence spec (see shared_rules.md) so the loop is resumable after pruning.
 - End condition:
   - no unresolved actionable threads remain
@@ -231,7 +232,7 @@ Loop control:
 - Draft reply body
 - `ui_evidence_attachments` when the reply is UI-related and drafted after `/k-deep-review` or `live-ui-review`:
   screenshot handoff paths/descriptions/placement, or the blocker/non-applicability reason screenshots are absent.
-  Do not put local screenshot paths in the reply body.
+  Keep local screenshot paths out of the reply body; use the handoff paths instead.
 - Recommendation: `resolve` | `keep_open`
 
 ## Post-Review Stage (After Code Fixes, Before Completing)
@@ -245,7 +246,7 @@ Use the **fix diff** as the subject:
 - `git diff`
 - or the commit range/staged set for this session
 
-Do not use the original PR diff as the subject.
+Use only the fix diff as the subject, not the original PR diff.
 
 - Apply the four dimensions (redundancy, verbosity, semantic + logical duplication, gaps) to that fix diff.
 - Resolve each hygiene finding in the working tree and re-run quality gates for changed artifacts when applicable.

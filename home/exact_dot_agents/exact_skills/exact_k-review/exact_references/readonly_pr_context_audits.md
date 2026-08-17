@@ -38,7 +38,7 @@ Keep it bounded. Before using the results, write:
    - search relevant public/team channels for the topic terms
    - read full matching threads
    - examples in this setup: `slack_search_public`, `slack_search_channels`, `slack_read_user_profile`, `slack_search_public_and_private` with explicit user consent
-   - do not search private channels or DMs without explicit consent
+   - search private channels or DMs only with explicit consent
 4. For each promising ambient hit, read enough full context to decide whether it informs the disputed topic:
    - GitHub issues/PRs/discussions: body, comments/replies/threads, linked references, and relevant diffs/files using the GitHub Context Intake + Reference Resolution rules in `pr_common.md`
    - Slack: the complete thread/conversation around the hit, not just the matching message;
@@ -82,7 +82,7 @@ This audit does not approve, reject, close, or post. It produces evidence for dr
    - Search relevant public/team channels for topic terms.
    - Read complete matching threads in timestamp order.
    - Distinguish decisions from speculation, proposals, and unresolved questions.
-   - Do not search private channels or DMs without explicit user consent.
+   - Search private channels or DMs only with explicit user consent.
    - If Slack is unavailable, or private-channel consent would be required, record that as skipped-with-reason.
 6. Classify the audit:
    - `intent`: clear / unclear / conflicting
@@ -91,6 +91,6 @@ This audit does not approve, reject, close, or post. It produces evidence for dr
    - `similar_or_recent_work`: none found / open overlap / recently merged overlap / superseded / unknown
    - `recommended_review_action`: continue normal review / ask author a clarifying question / suggest narrowing / suggest closing as duplicate or superseded / block on missing evidence
 7. Use the result conservatively:
-   - Do not claim a PR is unnecessary from ambient evidence alone.
-   - Do not claim overlap from matching terminology alone.
+   - Claim a PR is unnecessary only when evidence beyond ambient evidence alone supports it.
+   - Claim overlap only when a diff comparison supports it, not matching terminology alone.
    - Draft feedback only when the classification is anchored in the current PR plus direct or high-signal ambient evidence.

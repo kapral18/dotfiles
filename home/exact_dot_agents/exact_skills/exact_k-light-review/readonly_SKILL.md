@@ -25,7 +25,7 @@ the `k-review` router and the delegated `change-auditor` reference it rather tha
 The change is **light-eligible** only when **none** of these escalation triggers holds:
 
 - **A PR is involved:** a PR exists for the branch (`,gh-prw --number` resolves) or the user wants a thorough or GitHub-delivered result.
-- **Not self-authored:** do not assume `self` just because the change is checked out locally.
+- **Not self-authored:** verify authorship instead of assuming `self` just because the change is checked out locally.
   Uncommitted or staged working-tree edits are `self`; for a named commit range, verify authors with `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false log --format='%an <%ae>' <base>..HEAD` compared against `git config user.email`, and confirm the tracked remote is not another person's fork.
   Any non-self commit, another person's fork, or unverifiable authorship escalates.
 - **Risk-class paths:** the diff touches security, auth/authz, crypto, secret-handling, migration, persisted-data, or public-API surfaces.
@@ -34,8 +34,8 @@ The change is **light-eligible** only when **none** of these escalation triggers
 - **Base context beyond direct local reads:** a finding's correctness depends on base behavior that `git show <base>:<path>` + `rg` or local file reads cannot settle (mandatory SCSI base-context).
 - **Live UI/runtime evidence needed:** the diff changes UI, runtime behavior, or browser-visible flows where local static reads cannot prove the finding or fix.
 
-If any trigger holds, stop and escalate to `~/.agents/skills/k-review/SKILL.md` (its Role Detection owns the authorship procedure);
-do not edit code here. If a trigger surfaces mid-pass, stop and switch to `k-review` rather than half-doing the heavy machinery.
+If any trigger holds, stop and escalate to `~/.agents/skills/k-review/SKILL.md` (its Role Detection owns the authorship procedure), leaving the code unedited here.
+If a trigger surfaces mid-pass, stop and switch to `k-review` rather than half-doing the heavy machinery.
 
 ## Workflow (agent-assisted verify and fix in place)
 
@@ -45,7 +45,7 @@ do not edit code here. If a trigger surfaces mid-pass, stop and switch to `k-rev
 2. **Base context (opt-in).** Default off.
    Establish base context when a finding's correctness genuinely depends on how base behaves today;
    use the most direct sufficient source (`git show <base>:<path>` + `rg`, or local file reads).
-   Do not omit needed base context because SCSI would be heavier; escalate to `k-review` when direct local reads are not enough.
+   Gather all needed base context even when SCSI would be heavier; escalate to `k-review` when direct local reads are not enough.
 3. **Candidate audit.**
    Launch one read-only `change-auditor` worker when the harness supports subagents;
    otherwise run the same read/judge pass inline and report `agent_lane=inline-degraded`.
@@ -63,7 +63,7 @@ do not edit code here. If a trigger surfaces mid-pass, stop and switch to `k-rev
 6. **Fix survivors.**
    Apply the Verify-and-Fix Loop's fix, quality-gate, and Post-Review Stage steps from `judging_core.md` over the surviving findings.
    The **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage** are foregrounded for this skill.
-   Do not commit or push unless explicitly asked.
+   Commit or push only when explicitly asked.
 
 ## Output
 

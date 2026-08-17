@@ -14,14 +14,14 @@ Run the SCSI investigation here and return only the distilled findings (relevant
 Load and follow `~/.agents/skills/k-semantic-code-search/SKILL.md` end to end:
 
 - Run `list_indices` first (try both `scsi-main` and `scsi-local`).
-  If the repo is not indexed or the tools are unavailable, say so and fall back to `rg`/file reads rather than guessing.
+  If the repo is unindexed or the tools are unavailable, say so and fall back to `rg`/file reads rather than guessing.
 - Select the single justified index from evidence and pass it explicitly to SCSI tools.
 - Prefer `discover_directories` → `map_symbols_by_query` / `semantic_code_search` → `symbol_analysis` → `read_file_from_chunks`.
 
 ## Hard constraints
 
-- Read-only investigation: do not edit files or run state-changing commands.
+- Read-only investigation: stick to reads and non-mutating commands; file edits and state-changing commands are out of scope.
 - Treat the index as a base snapshot; tie every finding to concrete paths/symbols/snippets.
 
 Return: the selected index (or `none` + reason), the distilled findings tied to paths/symbols, and a `Base context:` line when invoked for a review.
-Do not return raw tool dumps.
+Return distilled findings only; raw tool dumps stay in the lane.

@@ -3,7 +3,7 @@
 Precondition:
 
 - You already loaded `~/.agents/skills/k-review/SKILL.md`.
-- Follow `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/shared_rules.md` (loaded once by the router; do not re-load).
+- Follow `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/shared_rules.md` (loaded once by the router; reuse that load).
 
 Use when:
 
@@ -18,7 +18,7 @@ This mode's verify-and-fix behavior assumes `authorship: self`.
 
 Resolve authorship via the router's Role Detection / Authorship section.
 
-Do not assume `self` just because the change is checked out locally:
+Resolve `self` from that evidence, never merely from the change being checked out locally:
 
 - a branch tracking another person's fork is `other`
 - commits authored by someone else are `other`
@@ -47,8 +47,8 @@ Treat every finding as something to resolve right now, not something to note for
 - If something is wrong: fix it.
 - If something is missing (tests, docs, error handling): add it.
 - If something needs improvement: improve it.
-- Report what you found and what you did — do not ask permission for each fix unless the change is large or ambiguous.
-- All fixes are edits to working-tree files only. Do not commit or push unless explicitly asked.
+- Report what you found and what you did — proceed with each fix directly, asking permission only when the change is large or ambiguous.
+- All fixes are edits to working-tree files only. Commit or push only when explicitly asked.
 
 ## Investigation (Read-Only, Start Immediately)
 
@@ -118,7 +118,7 @@ If the user says "one at a time" or "step by step":
 
 ## Extra Constraints
 
-- Do not commit/push unless explicitly asked.
+- Commit/push only when explicitly asked.
 - Code changes are expected and encouraged when `authorship: self`.
 - Under `other`/`unknown` authorship, this mode is draft-only (see Authorship Precondition).
 - Keep the internal findings queue in the review persistence spec (see shared_rules.md) so progress survives conversation pruning.

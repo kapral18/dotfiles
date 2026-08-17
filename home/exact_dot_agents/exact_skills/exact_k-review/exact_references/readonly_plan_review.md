@@ -3,7 +3,7 @@
 Precondition:
 
 - You already loaded `~/.agents/skills/k-review/SKILL.md`.
-- Follow `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/shared_rules.md` (loaded once by the router; do not re-load).
+- Follow `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/shared_rules.md` (loaded once by the router; reuse that load).
 
 Use when:
 
@@ -57,7 +57,7 @@ The verifier attacks the plan finding's actual claim, not the plan author's word
 
 ## Output
 
-Feedback only. Do not edit the plan document or write code unless the user explicitly asks.
+Feedback only. Edit the plan document or write code only when the user explicitly asks.
 
 - Advisor discipline: prefer probing questions that make the author re-examine an assumption or fork over prescribing a specific implementation; reserve concrete fixes for when the user asks.
   A finding that dictates the solution forecloses alternatives the author may have reason to prefer.

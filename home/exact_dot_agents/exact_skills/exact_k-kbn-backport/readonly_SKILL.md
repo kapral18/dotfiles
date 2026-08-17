@@ -29,16 +29,15 @@ This skill orchestrates that tool; it does not restate it.
 - One interactive `node scripts/backport` run, launched in a dedicated tmux window, drives the **whole** process.
   The tool owns branch creation, cherry-pick, push, and PR creation; this skill owns target selection, conflict resolution, and the decision of when to hand control back to you.
 - Keep the controlling window and the tool's checkout separate.
-  Spawn a dedicated window in the current tmux session, rooted at your `~/work/kibana` checkout.
-  Never spawn inside the tool-owned `~/.backport/repositories/elastic/kibana`;
-  the tool resets/re-clones that directory, so a window rooted there is unsafe.
+  Spawn a dedicated window in the current tmux session, rooted at your `~/work/kibana` checkout —
+  keep it outside the tool-owned `~/.backport/repositories/elastic/kibana`; the tool resets/re-clones that directory, so a window rooted there is unsafe.
   The run still backports into the tool-owned checkout regardless of where it is launched.
 - The tool's checkout (`~/.backport/repositories/elastic/kibana`, the tool-owned dir —
   not your `~/work/kibana` worktrees) is where cherry-picks and conflict resolution happen.
   The run is strictly sequential and uses this single checkout: one target branch at a time, fully, before the next.
   There is only one checkout state at any moment, and the tool re-prepares it from each new target branch —
   so the previous branch's `node_modules` no longer matches.
-- Do nothing in the tool-owned checkout until the run actually pauses on a conflict.
+- Touch the tool-owned checkout only once the run actually pauses on a conflict.
   A clean cherry-pick needs no agent action — the tool pushes and opens the PR on its own and moves to the next branch.
   Per-conflict work (investigate, resolve, `yarn kbn bootstrap`, validate, stage) happens only for the branch currently paused, never up front and never for multiple branches at once.
   Because each branch re-prepares the checkout, `yarn kbn bootstrap` must run again for every conflicting branch —
@@ -48,7 +47,7 @@ This skill orchestrates that tool; it does not restate it.
 - Understand the original commit/PR being backported before resolving anything;
   a faithful resolution requires knowing what the change intended and why.
 - Check whether each conflict is caused by missing prerequisite backports before hand-resolving; surface them and let the user decide —
-  do not open prerequisite backport PRs yourself.
+  opening prerequisite backport PRs is the user's call.
 - Resolve in context, adapting paths and implementation style to the destination branch;
   preserve destination-branch behavior unless the incoming PR intentionally changes it.
 - Stop points (hand back to the user):
@@ -57,7 +56,7 @@ This skill orchestrates that tool; it does not restate it.
   - a missing prerequisite that blocks faithful resolution
   - any path outside team ownership
   - a resolution you are not confident is faithful
-- Compatibility impact default: `none`. Do not add compatibility shims unless explicitly requested.
+- Compatibility impact default: `none`. Add compatibility shims only when explicitly requested.
 
 ## Compute Target Branches
 
@@ -74,14 +73,13 @@ Use the Target-Branch Policy in `references/backport-tool.md` for the authoritat
      (These only seed the candidate set; presence on a branch is decided in step 4, not here.)
 4. Determine which candidates still need a backport by **actual commit presence** —
    this is the only source of truth for "already backported".
-   Do not infer it from labels, PR titles, or the tool's `targetPullRequestStates`/`suggestedTargetBranches` (those can be stale, in-flight, or wrong).
+   Infer it only from actual commit presence; labels, PR titles, and the tool's `targetPullRequestStates`/`suggestedTargetBranches` can be stale, in-flight, or wrong.
    - Find the source PR's merge commit on the source branch: `gh pr view <N> --repo elastic/kibana --json mergeCommit -q .mergeCommit.oid`.
      Kibana squash-merges, so this is the single commit to look for.
    - Identify the upstream remote in the backport checkout — the one pointing at `elastic/kibana` (commonly `elastic`, not `origin`;
      your fork is a separate remote): `git remote -v | rg 'github.com[:/]elastic/kibana'`.
-   - Fetch only the candidate branches you are about to check.
-     Never run a bare `git fetch` or `--all`, which pulls every ref and is very heavy on Kibana:
-     `git fetch <upstream> <branch1> <branch2> …` (one branch name per candidate).
+   - Fetch only the candidate branches you are about to check, one branch name per candidate: `git fetch <upstream> <branch1> <branch2> …` —
+     a bare `git fetch` or `--all` pulls every ref and is very heavy on Kibana.
      With the upstream's standard refspec this refreshes the `<upstream>/<branch>` tracking refs for just those branches (and `FETCH_HEAD`);
      if a tracking ref is not updated, check against `FETCH_HEAD` for the branch you just fetched.
    - For each candidate release branch, test whether that commit is already present against the upstream remote-tracking ref:
@@ -97,13 +95,13 @@ Use the Target-Branch Policy in `references/backport-tool.md` for the authoritat
 
 This run **is** the backport.
 Launch the interactive tool once in a dedicated tmux window and let it walk the confirmed target branches one at a time;
-you only step in when it pauses on a conflict. Do not pre-bootstrap, pre-resolve, or do any per-branch work before launching.
+you only step in when it pauses on a conflict. Launch first; all pre-bootstrap, pre-resolve, or per-branch work waits for a conflict pause.
 Driving the window's TTY pane follows the repo's existing send-keys pattern (`~/.config/tmux/scripts/pickers/session/action_send_command.sh`): address the pane by the id you captured at spawn, then `tmux send-keys -t '<pane>' …`.
 
 Two locations are in play; keep them separate:
 
 - **Controlling window** — a dedicated tmux window running `node scripts/backport`, driven through its pane id.
-  Spawn it in the current tmux session (the one the agent is running in, rooted at the `~/work/kibana` checkout), **never** in `~/.backport/repositories/elastic/kibana`.
+  Spawn it in the current tmux session (the one the agent is running in, rooted at the `~/work/kibana` checkout), keeping it out of `~/.backport/repositories/elastic/kibana`.
   That tool-owned checkout is the tool's mutable workspace — it resets, re-clones, and re-prepares it for every target branch and may nuke it at any time, so a window rooted there can have its CWD pulled out from under it.
   The tool computes its checkout path from `repoOwner`/`repoName` under `~/.backport/repositories/`, independent of where it is launched, so launching from the operating checkout still backports into the tool-owned checkout correctly.
 - **Tool-owned checkout** — `~/.backport/repositories/elastic/kibana`, where the paused conflict state lives.
@@ -111,17 +109,17 @@ Two locations are in play; keep them separate:
 
 1. Spawn a dedicated controlling **window** in the current tmux session, detached, with its CWD on the operating checkout (not the tool-owned checkout) — e.g. `tmux new-window -d -n kbn-backport -c <operating-kibana-checkout> -PF '#{pane_id}'`, which creates the window in the current session without stealing focus and prints its pane id.
    Drive the run through that pane id (`capture-pane`/`send-keys -t '<pane>'`).
-   Own this window; do not reuse the user's existing shell pane or window.
+   Own this window; use it instead of the user's existing shell pane or window.
 2. Launch the run from that pane, passing the confirmed branches so you do not have to drive the checkbox prompt:
    - `tmux send-keys -t '<pane>' 'node scripts/backport --pr <N> -b <branch> [-b <branch> …]' C-m`
-   - Do not set an editor (`--editor`/`$EDITOR`) for this pane; the tool only spawns one if configured, and an editor popup cannot be driven blind.
+   - Leave the editor unset (`--editor`/`$EDITOR`) for this pane; the tool only spawns one if configured, and an editor popup cannot be driven blind.
 3. Poll the pane with `tmux capture-pane -p -t '<pane>'` to follow progress. Drive the run as a loop until it exits:
    - Cherry-pick succeeded for a branch → the tool pushes and opens the PR itself; continue watching.
    - Conflict pause (`Press ENTER when the conflicts are resolved and files are staged (Y/n)`) → work the per-conflict procedure against the tool-owned checkout (not the controlling window) for the current branch (Resolve A Conflict → Apply under Resolution Rules → stage → `yarn kbn bootstrap` + Validation), then Stage And Continue The Run sends ENTER to the controlling window's pane once it is staged, conflict-free, and validated.
      Only then does the run move to the next branch.
    - Run completed → capture the final summary and the opened backport PR URLs.
 4. If the launched `node scripts/backport` wrapper fails to start (e.g. `ERR_PACKAGE_PATH_NOT_EXPORTED`), report it and stop;
-   do not silently fall back to a different mechanism.
+   a silent fallback to a different mechanism is out of contract.
 5. Clean up the window you spawned (`tmux kill-window -t '<pane>'` — a pane id is a valid window target) once the run has exited and its output is captured.
    Keep it open only if the run ended with something needing the user's attention (failed/aborted run, unresolved conflict, or a blocked prerequisite) — say so and leave the window for inspection.
 
