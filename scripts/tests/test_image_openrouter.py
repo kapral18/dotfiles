@@ -108,7 +108,7 @@ class TestPayload(unittest.TestCase):
         self.assertEqual(payload["model"], "bytedance-seed/seedream-5-0-pro")
         self.assertEqual(
             payload["provider"],
-            {"data_collection": "deny", "zdr": True, "sort": "latency"},
+            {"data_collection": "deny", "zdr": True},
         )
         self.assertEqual(payload["aspect_ratio"], "16:9")
         self.assertEqual(payload["resolution"], "1K")

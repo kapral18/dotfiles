@@ -4,12 +4,13 @@
 # extraBody — so per-request routing filters never reach OpenRouter and providers of ANY
 # quantization were eligible. The provider policy therefore rides the OpenRouter preset slug, the
 # same mechanism the Claude/Codex/Copilot/Cursor wrappers and OpenCode use:
-#   - `deepseek-lanes-max` allows only FP8-or-higher quantization (`fp8, fp16, bf16, fp32`),
-#     price-sorted under a 24 t/s preferred-minimum-throughput floor;
-#   - `glm-lanes-max` applies the same FP8-or-higher, price-sorted (24 t/s floor) policy to
+#   - `deepseek-lanes-max` allows only FP8-or-higher quantization (`fp8, fp16, bf16, fp32`)
+#     under a 24 t/s preferred-minimum-throughput floor, with `sort` omitted so default
+#     load balancing keeps uptime then price-weights remaining endpoints;
+#   - `glm-lanes-max` applies the same FP8-or-higher, 24 t/s floor, no-sort policy to
 #     z-ai/glm-5.2;
-#   - `kimi-lanes` restricts kimi to Fireworks, Together, and BaseTen, throughput-sorted under a
-#     $16/M completion cap with fallbacks disabled.
+#   - `kimi-lanes` restricts kimi to Fireworks, Together, and BaseTen under a
+#     $16/M completion cap (`only` blocks other providers; no sort).
 # `auth` is "none" so no key is stored here; the openrouter transport still authorizes with the
 # OPENROUTER_API_KEY env at request time (verified live).
 providers:

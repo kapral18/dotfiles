@@ -33,7 +33,7 @@ OPENROUTER_PROVIDER = "openrouter"
 OPENROUTER_MODEL = "deepseek/deepseek-v4-flash-0731"
 OPENROUTER_SELECTOR = f"{OPENROUTER_PROVIDER}/{OPENROUTER_MODEL}"
 # OpenCode cannot inject OpenRouter's `provider` routing body field, so its lane route carries
-# DeepSeek's FP8-or-higher, price-sorted (24 t/s floor) policy and max effort in the `deepseek-lanes-max` preset slug.
+# DeepSeek's FP8-or-higher, 24 t/s floor, no-sort (uptime-aware default LB) policy and max effort in the `deepseek-lanes-max` preset slug.
 OPENROUTER_OPENCODE_SELECTOR = f"{OPENROUTER_SELECTOR}@preset/deepseek-lanes-max"
 OPENROUTER_KIMI_SELECTOR = f"{OPENROUTER_PROVIDER}/moonshotai/kimi-k3"
 OPENROUTER_OPENCODE_KIMI_SELECTOR = f"{OPENROUTER_KIMI_SELECTOR}@preset/kimi-lanes"

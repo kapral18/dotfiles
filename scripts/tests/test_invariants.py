@@ -1470,19 +1470,15 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         glm_selector = f"openrouter/{glm}"
         counter_selector = f"openrouter/{counter}"
         expected_default_provider_routing = {
-            "sort": "price",
-            "quantizations": ["fp8", "fp16", "bf16", "fp32"],
             "preferred_min_throughput": 24,
+            "quantizations": ["fp8", "fp16", "bf16", "fp32"],
         }
         expected_glm_provider_routing = {
-            "sort": "price",
-            "quantizations": ["fp8", "fp16", "bf16", "fp32"],
             "preferred_min_throughput": 24,
+            "quantizations": ["fp8", "fp16", "bf16", "fp32"],
         }
         expected_optional_provider_routing = {
             "only": ["fireworks", "together", "baseten"],
-            "allow_fallbacks": False,
-            "sort": "throughput",
             "max_price": {"completion": 16},
         }
         registry = REPO / "home/.chezmoidata/ai_models"
@@ -1519,6 +1515,14 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             self.assertEqual(expected_default_provider_routing, default_compat["openRouterRouting"])
             self.assertEqual(expected_optional_provider_routing, optional_compat["openRouterRouting"])
             self.assertEqual(expected_glm_provider_routing, glm_compat["openRouterRouting"])
+            for routing in (
+                default_compat["openRouterRouting"],
+                optional_compat["openRouterRouting"],
+                glm_compat["openRouterRouting"],
+            ):
+                self.assertNotIn("sort", routing)
+                self.assertNotIn("order", routing)
+                self.assertNotIn("allow_fallbacks", routing)
             self.assertNotIn("extraBody", default_compat)
             self.assertNotIn("extraBody", optional_compat)
             self.assertNotIn("extraBody", glm_compat)
@@ -1589,9 +1593,10 @@ class TestAgentInstructionInvariants(unittest.TestCase):
     def test_neovim_openrouter_summarizer_pins_gpt_oss_120b(self):
         # Personal leader-aisc talks to OpenRouter directly. gpt-oss-120b is not on the DeepSeek
         # wrapper route. OpenRouter's catalog lists supported_efforts high/medium/low. Provider
-        # routing is price-sorted with a 300 t/s preferred floor (OpenRouter deprioritizes slower
-        # endpoints; it does not hard-exclude them). Output cap is the endpoint max completion
-        # (131072), not a 2048-token ceiling. Not a Cerebras-only whitelist.
+        # routing omits sort so OpenRouter's default load balancer keeps uptime, then
+        # price-weights remaining endpoints, with a 300 t/s preferred floor (OpenRouter
+        # deprioritizes slower endpoints; it does not hard-exclude them). Output cap is the
+        # endpoint max completion (131072), not a 2048-token ceiling. Not a Cerebras-only whitelist.
         neovim = (
             REPO / "home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_summarize-commit.lua"
         ).read_text()
@@ -1606,10 +1611,11 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         self.assertIn('reasoning = { effort = "high" }', neovim)
         self.assertNotIn('reasoning = { effort = "max" }', neovim)
         self.assertIn(
-            'local OPENROUTER_PROVIDER_ROUTING = { sort = "price", preferred_min_throughput = 300 }',
+            "local OPENROUTER_PROVIDER_ROUTING = { preferred_min_throughput = 300 }",
             neovim,
         )
         self.assertIn("provider = OPENROUTER_PROVIDER_ROUTING,", neovim)
+        self.assertNotIn('sort = "price"', neovim)
         self.assertNotIn('only = { "cerebras" }', neovim)
         self.assertNotIn("quantizations", neovim)
         self.assertNotIn("fireworks", neovim)
@@ -1657,7 +1663,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
 
         # OMP resolves its bands through modelRoles; @smol is deliberately composer-2.5 on personal
         # (policy override), even though a codex-tier id is available in the catalog. Work routes
-        # smol through the OpenRouter deepseek deepseek-lanes-max preset (FP8-or-higher, throughput-
+        # smol through the OpenRouter deepseek deepseek-lanes-max preset (FP8-or-higher, 24 t/s
         # sorted; qwen3.8-max and minimax-m3 rejected, user call 2026-08-06).
         roles = self._omp_model_roles()
         assert "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max" in roles["work"]["smol"], (

@@ -37,7 +37,7 @@ Pi globals are installed via yarn from [`home/readonly_dot_default-yarn-pkgs`](.
 | work     | `openrouter` / `deepseek/deepseek-v4-flash-0731` | configured work models |
 | personal | `openrouter` / `deepseek/deepseek-v4-flash-0731` | `llama-cpp`            |
 
-The local llama.cpp provider for Pi is covered in [Model registry & routing](../model-registry.md) and [llama.cpp local inference](../llama-cpp/index.md). Both `readonly_models*.json` files also carry `providers.openrouter.modelOverrides`: `moonshotai/kimi-k3` throughput-sorts only Fireworks, Together, and BaseTen under a $16/M completion cap with fallbacks disabled, while `deepseek/deepseek-v4-flash-0731` allows only FP8-or-higher quantization and sorts by throughput. Both use `compat.openRouterRouting` (see [OpenRouter routing](../model-registry.md#openrouter-routing)).
+The local llama.cpp provider for Pi is covered in [Model registry & routing](../model-registry.md) and [llama.cpp local inference](../llama-cpp/index.md). Both `readonly_models*.json` files also carry `providers.openrouter.modelOverrides`: `moonshotai/kimi-k3` allows only Fireworks, Together, and BaseTen under a $16/M completion cap, while `deepseek/deepseek-v4-flash-0731` allows only FP8-or-higher quantization with a 24 t/s preferred floor. Neither object sets `sort`, so OpenRouter's default load balancer keeps uptime then price-weights remaining endpoints. Both use `compat.openRouterRouting` (see [OpenRouter routing](../model-registry.md#openrouter-routing)).
 
 ### Shared settings
 

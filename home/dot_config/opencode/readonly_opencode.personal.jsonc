@@ -37,20 +37,20 @@
   "provider": {
     "openrouter": {
       "models": {
-        // kimi lanes use only Fireworks, Together, and BaseTen, sorted by throughput under the $16/M cap via the
+        // kimi lanes use only Fireworks, Together, and BaseTen under the $16/M cap via the
         // `kimi-lanes` preset (opencode has no request-body channel for this provider object).
         "moonshotai/kimi-k3@preset/kimi-lanes": {
           "options": {
             "reasoningEffort": "high",
           },
         },
-        // deepseek lanes require FP8-or-higher quantization and sort OpenRouter providers by price via `deepseek-lanes-max`.
+        // deepseek lanes require FP8-or-higher quantization and a 24 t/s floor via `deepseek-lanes-max` (no sort: uptime-aware default LB).
         "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max": {
           "options": {
             "reasoningEffort": "max",
           },
         },
-        // glm lanes apply the same FP8-or-higher, price-sorted (24 t/s floor) policy to GLM-5.2 via `glm-lanes-max`.
+        // glm lanes apply the same FP8-or-higher, 24 t/s floor, no-sort policy to GLM-5.2 via `glm-lanes-max`.
         "z-ai/glm-5.2@preset/glm-lanes-max": {
           "options": {
             "reasoningEffort": "max",

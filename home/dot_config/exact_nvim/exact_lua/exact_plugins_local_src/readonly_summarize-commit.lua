@@ -31,9 +31,10 @@ local GEMINI_DEFAULT_MAX_OUTPUT_TOKENS = 65536
 local OPENROUTER_DEFAULT_MODEL = "openai/gpt-oss-120b"
 -- openai/gpt-oss-120b OpenRouter endpoint max completion (context_length 131072).
 local OPENROUTER_MAX_OUTPUT_TOKENS = 131072
--- Price-sort among endpoints OpenRouter prefers at >=300 t/s (p50). Below-threshold
--- hosts are deprioritized, not hard-excluded; there is no hard t/s gate on the API.
-local OPENROUTER_PROVIDER_ROUTING = { sort = "price", preferred_min_throughput = 300 }
+-- Omit sort/order so OpenRouter's default load balancer keeps uptime (recent-outage
+-- providers last) then price-weights remaining endpoints. preferred_min_throughput
+-- deprioritizes hosts below 300 t/s (p50); it does not hard-exclude them.
+local OPENROUTER_PROVIDER_ROUTING = { preferred_min_throughput = 300 }
 local OPENROUTER_CONTEXT_COMPRESSION_PLUGIN = { id = "context-compression" }
 
 -- ───────────────────────────── HELPERS (provider-agnostic) ─────────────────────

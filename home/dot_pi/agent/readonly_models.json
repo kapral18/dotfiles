@@ -6,8 +6,6 @@
           "compat": {
             "openRouterRouting": {
               "only": ["fireworks", "together", "baseten"],
-              "allow_fallbacks": false,
-              "sort": "throughput",
               "max_price": {
                 "completion": 16
               }
@@ -17,7 +15,6 @@
         "deepseek/deepseek-v4-flash-0731": {
           "compat": {
             "openRouterRouting": {
-              "sort": "price",
               "preferred_min_throughput": 24,
               "quantizations": ["fp8", "fp16", "bf16", "fp32"]
             }
@@ -26,7 +23,6 @@
         "z-ai/glm-5.2": {
           "compat": {
             "openRouterRouting": {
-              "sort": "price",
               "preferred_min_throughput": 24,
               "quantizations": ["fp8", "fp16", "bf16", "fp32"]
             }

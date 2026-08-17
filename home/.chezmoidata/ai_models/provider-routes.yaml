@@ -8,11 +8,12 @@
 # canonical registries or configs; only explicit remote-route fallbacks are listed here.
 provider_models:
   # OpenRouter is a strict four-model route. deepseek-v4-flash-0731 carries every default and
-  # lane at max effort with FP8-or-higher quantization and price-sorted routing above a 24 t/s
-  # floor; moonshotai/kimi-k3 remains selectable with
-  # only allows Fireworks, Together, and BaseTen; throughput sorting picks among them under a $16/M
-  # completion cap with fallbacks disabled; z-ai/glm-5.2 is selectable alongside with the same
-  # FP8-or-higher, price-sorted (24 t/s floor) policy as deepseek; gpt-5.6-terra carries counters.
+  # lane at max effort with FP8-or-higher quantization and a 24 t/s preferred floor; `sort` is
+  # omitted so OpenRouter's default load balancer keeps uptime (recent-outage providers last)
+  # then price-weights remaining endpoints. moonshotai/kimi-k3 remains selectable and only
+  # allows Fireworks, Together, and BaseTen under a $16/M completion cap (`only` blocks other
+  # providers). z-ai/glm-5.2 is selectable alongside with the same FP8-or-higher, 24 t/s floor
+  # policy as deepseek; gpt-5.6-terra carries counters.
   # Pi injects the deepseek/kimi policies through modelOverrides openRouterRouting and OMP through
   # modelOverrides extraBody.provider. Harnesses without an extra-body channel carry them in the
   # `kimi-lanes*`, `deepseek-lanes-*`, and `glm-lanes-*` workspace preset slugs. Keeping other

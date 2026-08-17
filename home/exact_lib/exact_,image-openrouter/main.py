@@ -133,9 +133,9 @@ def build_payload(
         "model": model,
         "prompt": prompt,
         "provider": {
+            # Omit sort so default load balancing keeps uptime, then price.
             "data_collection": "deny",
             "zdr": True,
-            "sort": "latency",
         },
     }
     if inputs:

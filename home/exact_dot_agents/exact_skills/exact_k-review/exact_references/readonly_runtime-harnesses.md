@@ -29,7 +29,7 @@ Claude subagent model overrides are limited to the installed SDK schema (`sonnet
 
 - Registry: `lanes: inherit` — Claude sessions run a deliberately chosen model, and review profiles use `model: inherit`.
 - Built-in shadows: repo-owned same-name profiles override high-risk embedded builtins (`Explore`, `Plan`, `general-purpose`, `claude-code-guide`, `claude`) so normal Task launches use our profile frontmatter instead of embedded defaults.
-- Wrapper guard: `,claude-openrouter` pins `CLAUDE_CODE_SUBAGENT_MODEL` and all family defaults to `deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max`; the preset carries FP8-or-higher, price-sorted (24 t/s floor) routing and max effort.
+- Wrapper guard: `,claude-openrouter` pins `CLAUDE_CODE_SUBAGENT_MODEL` and all family defaults to `deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max`; the preset carries FP8-or-higher, 24 t/s floor, no-sort routing and max effort.
 - Adversarial verifier: single-family surface, always `families=same (degraded)`;
   launch a general-purpose `Task` carrying `adversarial-verifier.md`.
 
