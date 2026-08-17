@@ -158,13 +158,17 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "do not invoke `,proof` merely because the task feels",
             "repo-external `,proof` ledger",
             "Test-first framing does not license touching code outside the request",
+            "### 3.4.1 State-Machine Verification",
+            "A disposable harness under `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/` is required before that behavior is final or merge-ready.",
+            "Reuse an existing harness after reading its manifest and confirming it still matches.",
+            "Compare implementation behavior against an independent model/table.",
+            "The harness verifies complexity.",
+            "Production state machines need an explicit request.",
         )
-        self.assert_file_contains(
+        self.assert_file_not_contains(
             "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
+            "## State-Machine Verification",
             "Before calling such behavior final or merge-ready",
-            "Reuse an existing harness only after reading its manifest",
-            "Compare implementation behavior against an independent model/table",
-            "this verifies complexity, not a reason to add production state machines",
         )
 
     def test_skill_namespace_uses_k_prefix(self):
@@ -496,9 +500,6 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "A later section may not restate an item already given in an earlier table/list",
             "cap at 5",
             "Anchor claims with evidence; do not narrate the verification chain in prose",
-            "Choose no reply when it would only restate the thread",
-            "Match the surface's register",
-            "Use natural wording, or say that no message is worth sending",
             "One clarifying question per message",
             "Code citation format: `startLine:endLine:filepath`",
             "In-response result summary only when it carries evidence, outcomes, or next-step constraints",
@@ -511,6 +512,34 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "Do not stop at the first plausible explanation; verify thoroughly",
             '"Concise" means unpadded, not shallow.',
             "unnecessary churn is a defect, not diligence",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-communication/exact_references/readonly_external-replies.md",
+            "Choose no reply when it would only restate the thread",
+            "Match the surface's register",
+            "Use natural wording, or say that no message is worth sending",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-communication/readonly_SKILL.md",
+            "Before drafting, apply every rule in `~/.agents/skills/k-communication/references/external-replies.md`.",
+        )
+        self.assert_file_not_contains(
+            "home/readonly_AGENTS.md",
+            "### 6.5 External Human Replies",
+            "Choose no reply when it would only restate the thread",
+        )
+        self.assert_file_contains(
+            "home/readonly_AGENTS.md",
+            "### 2.0 Compatibility Gate",
+            "Every implementation summary must include: `Compatibility impact: none | removed (requested) | kept existing (requested)`",
+        )
+        self.assert_file_contains(
+            "home/readonly_AGENTS.md",
+            "### 3.5 Delegation Categories",
+            "Delegation keeps the conclusion in the caller's context, not the file dumps",
+            "Classify by the work, not by the caller",
+            "A skill that names a category owns that choice",
+            "Never trade capability for family diversity",
         )
         self.assert_file_contains(
             "home/readonly_AGENTS.md",

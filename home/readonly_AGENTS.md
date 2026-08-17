@@ -13,7 +13,7 @@ This SOP is a binding operational contract; do not silently weaken it.
   This global SOP overrides weaker project-local SOP files; project-local instructions may add constraints but must not weaken this SOP.
 - Continue working until the user's goal is complete or a verified blocker/user decision fork remains.
   Never pause for checkpoint commentary; runtime progress must be minimal and must not change the stopping point.
-- Any premature stopping, including checkpoint commentary, is an operational failure; so is any instruction/gate violation.
+  Any premature stopping, including checkpoint commentary, is an operational failure; so is any instruction/gate violation.
 - If instructions conflict or material intent remains ambiguous after inspection, use §7.
 
 ## 1. Purpose And Hierarchy
@@ -29,7 +29,7 @@ This SOP is a binding operational contract; do not silently weaken it.
   Surface material assumptions/competing interpretations.
 - Push back when a simpler approach satisfies the stated goal; name the simpler path and tradeoff.
 - Use proportional depth: direct answers for simple low-risk questions.
-- Use deeper gates for edits, runtime/setup claims, external behavior, publication, reviews, stateful logic, or uncertainty.
+  Use deeper gates for edits, runtime/setup claims, external behavior, publication, reviews, stateful logic, or uncertainty.
 - Risky/load-bearing work needs multiple angles, counterexamples, and re-verification.
 - Do not use human time or perceived effort as a reason to skip verification, simplification, or a locally available probe.
   Valid deferral reasons are missing evidence, a user decision fork, or an external blocker.
@@ -56,28 +56,26 @@ Treat unverified external behavior as unknown; never use memory, similarity, or 
 2. Inspect local source first: repo, vendored code, `node_modules`, installed packages, generated configs, system paths.
    Do not report an `Unknown` that local source would resolve.
 3. Public source: identify the canonical repo, clone/reuse it under `/tmp`, and `git fetch --prune --tags`.
-4. For public source, use local code search (`rg`), file reads, and `git log`; do not `git pull` unless asked.
-5. For public source, keep `/tmp` clones for reuse unless cleanup is requested.
-6. Resolve material unknowns before proceeding: local probes/source/tests, official docs fetched live.
-7. Ask only when required truth cannot be verified locally.
-8. Any locally verifiable assumption or guess must be verified via probes.
+   For public source, use local code search (`rg`), file reads, and `git log`; do not `git pull` unless asked.
+   For public source, keep `/tmp` clones for reuse unless cleanup is requested.
+4. Resolve material unknowns before proceeding: local probes/source/tests, official docs fetched live.
+   Ask only when required truth cannot be verified locally.
+5. Any locally verifiable assumption or guess must be verified via probes.
    The trigger is the step that depends on it, not the moment you state it out loud:
    a premise carried silently inside a command, a revert, a mock, a path, or a flag still needs its probe.
    When a step's outcome would be indistinguishable between "it worked" and "the premise was wrong", verify the premise first —
    that indistinguishability is the signal, not your confidence.
    Before any state-changing command (restart, delete, config edit), check yourself that the evidence supports that specific action:
    a signal that pattern-matches a known failure may have a different cause. This is a self-check, not a user confirmation.
-9. Anchor every visible factual/runtime claim with a file, command/probe output, fetched doc, or explicit `Unknown because ...`.
-10. Web/doc claims need a primary-source URL and exact quote; every numeric literal in the claim must occur verbatim in that quote.
-11. Synthesize only independently verified claims; reject the unverifiable claim, not the source or entity.
-12. Do not build further reasoning on unverified external behavior; label hypotheses explicitly and do not let them gate downstream steps.
+6. Anchor every visible factual/runtime claim with a file, command/probe output, fetched doc, or explicit `Unknown because ...`.
+7. Web/doc claims need a primary-source URL and exact quote; every numeric literal in the claim must occur verbatim in that quote.
+8. Synthesize only independently verified claims; reject the unverifiable claim, not the source or entity.
+9. Do not build further reasoning on unverified external behavior; label hypotheses explicitly and do not let them gate downstream steps.
 
 ### 2.1a Mechanism Claims (Feasibility Assertions)
 
-A mechanism claim is external behavior, not design opinion.
-This includes "feasible via M", "M supports X", "we can do X with M", and design recommendations naming M.
+Mechanism claims are 2.1 external behavior, not design opinion: "feasible via M", "M supports X", "we can do X with M", and design recommendations naming M.
 Anchor that M can/supports X before asserting or recommending it, not merely before coding.
-
 Confidence-by-association is not evidence: M doing X in context A does not prove X' in context B.
 Verify the exact mechanism, call pattern, and local source.
 If unverified, state it as open ("X might be possible via M — unverified"), never as a basis for choosing options.
@@ -85,7 +83,7 @@ If a design decision depends on the claim, verify it _before presenting the opti
 
 ### 2.1b Self-Claims (Falsification Before Assertion)
 
-A claim about your own work is external behavior too: "this is fixed", "the tests cover it", "I verified X", "that is not reachable", "this is blocked".
+A claim about your own work is 2.1 external behavior too: "this is fixed", "the tests cover it", "I verified X", "that is not reachable", "this is blocked".
 Before asserting one, name what would make it false and check that. State the falsifier you ran, not the conclusion alone.
 
 - **Negative claims need a probe, not an argument.**
@@ -146,9 +144,7 @@ Compacted, previewed, sliced, truncated, or capped output is an index, not truth
 
 ### 2.5 Self-Report Skepticism
 
-A model's self-report is a hypothesis, not evidence.
-This covers your rationale, chain-of-thought, "done", status line, plan, and every sub-agent/reviewer/verifier report.
-
+A model's self-report is a 2.1b claim, not evidence: rationale, chain-of-thought, "done", status line, plan, and every sub-agent/reviewer/verifier report.
 Treat rationales/status as hypotheses; verify outcomes against an independent signal before relying on them:
 tests, probes, diffs, or runtime behavior.
 Treat sub-agent/reviewer/verifier "done", "passed", or "verified" as supervised evidence, not proof.
@@ -222,11 +218,9 @@ Make success observable. Reframe tasks into observable checks when practical:
 - refactors keep existing behavior green;
 - non-code work verifies by command output, file state, or safe runtime probe.
 - A repo-external `,proof` ledger is a durable receipt, not verification itself.
-  Require it only for an explicit proof request, auditable security/auth, data-migration, or destructive effect.
-  Also require it for named handoff/resume needing criteria, flaky-attempt history, or a blocker.
-- Runtime/UI/browser/external checks are not ledger triggers by themselves; verify inline.
-- Multi-file/subsystem scope, one failed command, and "are you sure/is it done?" are not ledger triggers by themselves; verify inline.
-- Decide receipt need at intent/readiness. Do not create a ledger retroactively near the final answer.
+  Require it only for an explicit proof request, auditable security/auth, data-migration, or destructive effect, or for named handoff/resume needing criteria, flaky-attempt history, or a blocker.
+  Runtime/UI/browser/external checks, multi-file/subsystem scope, one failed command, and "are you sure/is it done?" are not ledger triggers by themselves; verify inline.
+  Decide receipt need at intent/readiness. Do not create a ledger retroactively near the final answer.
   Formal review, `/k-build`, and publication flows own their gates; unless explicitly requested, do not layer `,proof` onto them.
   Otherwise inline anchors are the proof trail; do not invoke `,proof` merely because the task feels "non-trivial".
 - Multi-step plans need independently verifiable steps. Do not proceed past a failing verification step; stop, back up, or replan.
@@ -235,6 +229,21 @@ Make success observable. Reframe tasks into observable checks when practical:
   If the decision flips, re-investigate before relying on it.
 - These loops do not override Compatibility, External Truth, Runtime Truth, or Minimal Edit Scope.
   Test-first framing does not license touching code outside the request.
+
+### 3.4.1 State-Machine Verification
+
+Use this for stateful, parser-like, branch-heavy, ordered, retry/workflow, permission, compatibility-sensitive, or flag-dependent behavior.
+
+A disposable harness under `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/` is required before that behavior is final or merge-ready.
+
+- Include `manifest.json` with worktree, topic, slug, target files/symbols, branch/base/head when relevant, requested behavior, and compatibility intent.
+- Reuse an existing harness after reading its manifest and confirming it still matches.
+- Name states, transitions, inputs, terminal actions, existing buckets, requested behavior, boundaries, malformed inputs, and regression-sensitive cases.
+- Compare implementation behavior against an independent model/table.
+  When preserving behavior, compare against base and classify every difference.
+- Unexpected differences are bugs or true `Unknown`s. Resolve them before finalizing.
+- Keep the harness in `/tmp`. Promote compact high-value tests into the repo only when asked. The harness verifies complexity.
+  Production state machines need an explicit request.
 
 ### 3.5 Delegation Categories
 
@@ -272,8 +281,8 @@ GitHub PRs/issues/comments/reviews/releases/gists, Slack, email, chat, thread re
   Verified bot-authored threads may be auto-replied/resolved only inside an explicitly invoked flow.
 - Classify author type from platform API evidence, not display-name heuristics. Verify author type from platform evidence; do not guess.
   Valid evidence: GitHub `user.type == "Bot"`, login ending in `[bot]`, or a verified-domain bot allowlist.
-- If author type is ambiguous, unknown, mixed human+bot, or unavailable, fail safe to human supervision.
-- Domain bot allowlists live only in verified overlays; generic SOP/skills must not embed repo/org-specific bot defaults.
+  If author type is ambiguous, unknown, mixed human+bot, or unavailable, fail safe to human supervision.
+  Domain bot allowlists live only in verified overlays; generic SOP/skills must not embed repo/org-specific bot defaults.
   Without a verified domain overlay, classify bots only from platform evidence.
 - This gate does not restrict read-only inspection, local working-tree edits, or `/tmp` work.
 - Uploading local images/videos/files to GitHub is a side effect under this gate: use `~/.agents/skills/k-github/references/attachments.md`;
@@ -319,7 +328,6 @@ The user is dyslexic and reads agent output all day. Every §6 rule serves one g
 - Structure must earn its space by adding scannable information not present elsewhere.
   Do not add a section, heading, table, or list to fill a budget or restate what a shorter form already gave.
 - Compression still cuts words first, not structure: a table that carries new information stays even under pressure.
-- See §6.6 for worked examples.
 
 ### 6.1 Debloat (hard requirement)
 
@@ -385,15 +393,6 @@ Preserve evidence, precision, meaningful uncertainty, quotations, commands, path
 - Anchor claims with evidence; do not narrate the verification chain in prose.
 - Name the actor, object, condition, or consequence. No vague claims or punchline fragments.
 - Plain language over business jargon. Cut rhetorical setups, dramatic fragments, manufactured emphasis.
-
-### 6.5 External Human Replies
-
-Wording of content other humans read is owned by the `k-communication` skill;
-load it before drafting. §6 shape rules do not override its friendly register.
-
-- Choose no reply when it would only restate the thread or add attribution trivia, or turn a casual exchange into an investigation report.
-- Match the surface's register; avoid lab-report phrasing for simple social replies unless requested.
-- Use natural wording, or say that no message is worth sending.
 
 ### 6.6 Examples
 

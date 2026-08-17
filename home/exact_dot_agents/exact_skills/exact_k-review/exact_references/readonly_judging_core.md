@@ -48,19 +48,11 @@ Do not treat self-refutation as a substitute for that lane where fan-out is avai
 
 ## State-Machine Verification Gate
 
-Use for reviewed behavior that is stateful, parser-like, branch-heavy, or dependent on ordered conditions.
+Apply SOP `### 3.4.1 State-Machine Verification` to reviewed behavior that is stateful, parser-like, branch-heavy, or dependent on ordered conditions.
 
 Examples include parsers, tokenizers, formatters, routing/matching logic, retry/workflow loops, permission matrices, compatibility-sensitive branching, multi-flag control flow.
 
-- Before calling the change final, merge-ready, or a review concern resolved, build/inspect a disposable harness under `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/`.
-- The harness must include `manifest.json` with worktree, topic, slug, target files/symbols, branch, base/head refs when relevant, requested behavior, and compatibility intent.
-- Model explicitly: states, transitions, inputs, terminal actions.
-- Cover: existing behavior buckets, requested behavior, boundary/malformed inputs, regression-sensitive examples.
-- Compare implementation against an independent model/state table, not just itself.
-- When behavior should be preserved:
-  - compare against base and classify each difference as intended or unexpected
-- In review-only PR mode for someone else's work:
-  - keep code read-only, use the harness to verify claims when safe, and surface missing/inadequate state-machine coverage as a test gap when risk remains
+In review-only PR mode for someone else's work, keep the worktree read-only, use the harness to verify claims when safe, and surface missing or inadequate state-machine coverage as a test gap when risk remains.
 
 ## Deletion-Safety Audit (Run On Any Removal)
 

@@ -17,8 +17,8 @@ Scope boundaries:
 
 - This skill governs **wording of external human-visible content** only.
 - **Whether and how to publish** (approval, bot-vs-human carve-out, draft → show payload → wait) is the Human-Visible Publication Gate in the SOP (`~/AGENTS.md`); do not restate or weaken it here.
-- **How the agent talks to the user in-session** (chat/CLI responses) is SOP §6 Communication;
-  this skill is for content the agent emits to _other_ humans.
+- In-session chat/CLI responses stay SOP §6; this skill is for other humans.
+- Before drafting, apply every rule in `~/.agents/skills/k-communication/references/external-replies.md`.
 
 ## Core Tone
 

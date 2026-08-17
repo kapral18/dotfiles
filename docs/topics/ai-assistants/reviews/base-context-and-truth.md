@@ -47,7 +47,7 @@ For non-trivial review decisions — accepting a suggestion, pushing back, or pr
 1. Establish base truth: what base branch does today.
 2. Establish change truth: what the branch/PR actually does.
 3. Test assumptions: reproduce in `/tmp` when possible; otherwise run the smallest safe experiment in the worktree.
-4. Check state machines: for reviewed behavior that is stateful, parser-like, branch-heavy, or ordered-condition dependent, build or inspect a `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/` harness before calling the change final, merge-ready, or a review concern resolved.
+4. Check state machines: for reviewed behavior that is stateful, parser-like, branch-heavy, or ordered-condition dependent, a `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/` harness is required before the change is final, merge-ready, or a review concern resolved.
 5. Run quality gates: if you changed code as part of an iteration cycle, re-run the repo's lint/type_check/tests trio. Discover the correct commands from the repo; do not guess.
 
 ## Reference: skill support

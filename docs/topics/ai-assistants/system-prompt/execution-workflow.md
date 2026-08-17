@@ -45,7 +45,7 @@ Do not load specs broadly. Topic keys are broad, stable, kebab-case, and exactly
 | bug fix                           | reframe as a verifiable goal: write a test that reproduces the bug, then make it pass                                                                         |
 | refactor                          | keep the existing behavior surface green                                                                                                                      |
 | durable freeform receipt          | use `,proof` only for an explicit receipt, auditable security/auth, data-migration, or destructive effect, or named handoff/resume consumer; otherwise inline |
-| parser/stateful logic             | load `k-code-quality`; before final/merge-ready, build a `/tmp/state-machine-verification/...` harness with an independent model/table                        |
+| parser/stateful logic             | SOP State-Machine Verification: a `/tmp/state-machine-verification/...` harness with an independent model/table is required before final/merge-ready          |
 | rationale claims input irrelevant | perturb exactly that input and confirm the decision is stable; a flip means the stated rationale is not the real driver                                       |
 | repeated misses                   | stop speculative edits and reset requirements                                                                                                                 |
 

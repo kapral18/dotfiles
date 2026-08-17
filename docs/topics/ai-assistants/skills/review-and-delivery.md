@@ -74,11 +74,12 @@ When a draft feeds a GitHub issue side effect, it carries an issue publication p
 
 ## `k-communication`
 
-| Field    | Value                                                                                            |
-| -------- | ------------------------------------------------------------------------------------------------ |
-| Use when | wording anything another human will read                                                         |
-| Source   | [`exact_k-communication`](../../../../home/exact_dot_agents/exact_skills/exact_k-communication/) |
-| Boundary | governs wording, not whether publishing is allowed                                               |
+| Field    | Value                                                                                                                                                                                                              |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Use when | wording anything another human will read                                                                                                                                                                           |
+| Source   | [`exact_k-communication`](../../../../home/exact_dot_agents/exact_skills/exact_k-communication/)                                                                                                                   |
+| Boundary | governs wording, not whether publishing is allowed                                                                                                                                                                 |
+| Moved    | SOP §6.5 lives in [`references/external-replies.md`](../../../../home/exact_dot_agents/exact_skills/exact_k-communication/exact_references/readonly_external-replies.md); the skill must-load pointer owns routing |
 
 The default message shape is three parts: the point in the first sentence, the doubt when one exists (the assumption you could not verify), and a short collaborative close (`wdyt` / `lmk`). That close is the default nicety and replaces longer warmth rather than stacking with it. Budgets are per artifact class (`≤40` thread reply, `≤80` comment, `≤200` description), tighter than SOP §6.1's task-class budgets; the terse in-session shape does not carry over, because external readers get direct and polite.
 

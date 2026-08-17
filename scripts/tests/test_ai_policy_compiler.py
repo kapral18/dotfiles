@@ -92,6 +92,37 @@ class PolicyIRTest(unittest.TestCase):
         rules = ir.split_legacy_sop("# T\n\n---\n\n## 9. Café Policy\n\nbody\n")
         assert [rule.id for rule in rules] == ["sop.9.cafe-policy"]
 
+    def test_display_heading_can_alias_a_stable_inventory_id(self):
+        rules = ir.split_legacy_sop(
+            "# T\n\n---\n\n"
+            "### 3.4 Verification Loops\n\nloops\n\n"
+            "### 3.4.1 State-Machine Verification\n\nsmv\n\n"
+            "### 3.5 Delegation Categories\n\ndeleg\n"
+        )
+        assert [rule.id for rule in rules] == [
+            "sop.3.4.verification-loops",
+            "sop.3.5.state-machine-verification",
+            "sop.3.5.delegation-categories",
+        ]
+        assert rules[1].risk_tier == "compatibility"
+
+    def test_apply_dispositions_orders_by_heading_number(self):
+        text = (
+            "# T\n\n---\n\n"
+            "### 3.5 Delegation Categories\n\ndeleg\n\n"
+            "### 3.4 Verification Loops\n\nloops\n\n"
+            "### 3.4.1 State-Machine Verification\n\nsmv\n"
+        )
+        rules = ir.apply_dispositions(ir.split_legacy_sop(text), {})
+        assert [rule.id for rule in rules] == [
+            "sop.3.4.verification-loops",
+            "sop.3.5.state-machine-verification",
+            "sop.3.5.delegation-categories",
+        ]
+        rendered = ir.render(rules)
+        assert rendered.index("### 3.4 Verification") < rendered.index("### 3.4.1 State-Machine")
+        assert rendered.index("### 3.4.1 State-Machine") < rendered.index("### 3.5 Delegation")
+
     def test_high_risk_rule_ids_get_non_standard_risk_tiers(self):
         rules = ir.split_legacy_sop(
             "# T\n\n---\n\n"

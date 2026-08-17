@@ -65,7 +65,7 @@ flowchart TB
     end
 
     subgraph POLICY["SOP policy compiler (make verify-agent-policy; Stage 1: byte-for-byte)"]
-        PIR["ai_policy_ir.py (Rule dataclass + split_legacy_sop/render;<br/>one opaque rule per numbered SOP heading)"]:::ai
+        PIR["ai_policy_ir.py (Rule dataclass + split_legacy_sop/render;<br/>one opaque rule per numbered SOP heading;<br/>display number may alias to a stable inventory id)"]:::ai
         PCAP["ai_harness_capabilities.py (HarnessCapability snapshot loader;<br/>ordered hook levels none &lt; advisory &lt; blocking &lt; mutation, mutation must name its scope;<br/>fails closed on unsupported hook/pinned-model claims)"]:::ai
         PCOMP["compile_ai_policy.py (generate/verify/verify-budgets/audit-coverage/explain/measure;<br/>atomic write-if-changed; provenance manifest emission)"]:::ai
         PEVAL["eval_ai_policy.py (plan emits cross-product cell count/cost estimate;<br/>verify-routing/verify-behavior report every cell blocked — no live requests)"]:::ai

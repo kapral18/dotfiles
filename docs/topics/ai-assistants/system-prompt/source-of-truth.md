@@ -49,7 +49,7 @@ Update the source and then verify the rendered effect.
 
 ## Compiled ownership (policy compiler)
 
-`scripts/compile_ai_policy.py` compiles `home/readonly_AGENTS.md` from a versioned policy IR (`scripts/ai_policy_ir.py`) instead of treating the file as hand-authored prose. Stage 1 established byte-for-byte compilation from one IR rule per numbered SOP heading. Stage 2 moves ablated rules out of the always-loaded core by changing their disposition and consumer while freezing their original text for provenance.
+`scripts/compile_ai_policy.py` compiles `home/readonly_AGENTS.md` from a versioned policy IR (`scripts/ai_policy_ir.py`) instead of treating the file as hand-authored prose. Stage 1 established byte-for-byte compilation from one IR rule per numbered SOP heading. Heading numbers are the display/order surface; a rename can alias to a stable inventory id so the permanent rule id does not change. Stage 2 moves ablated rules out of the always-loaded core by changing their disposition and consumer while freezing their original text for provenance.
 
 | Artifact                                                                    | Role                                                                                                                                                                                                         |
 | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

@@ -55,6 +55,7 @@ RISK_TIER_BY_RULE_ID = {
     "sop.3.1.git-commit-and-push-safety": "git-gate",
     "sop.3.2.ownership-gate": "ownership",
     "sop.3.4.verification-loops": "safety",
+    "sop.3.5.state-machine-verification": "compatibility",
     "sop.3.6.human-visible-publication": "publication",
     "sop.4.1.durable-memory": "secret",
 }
@@ -62,10 +63,17 @@ RISK_TIER_BY_RULE_ID = {
 DISPOSITIONS_PATH = Path("home/dot_config/ai/exact_policy-ir/readonly_policy-dispositions.v1.json")
 RULE_INVENTORY_PATH = Path("home/dot_config/ai/exact_policy-ir/readonly_policy-rule-inventory.v1.json")
 
+# Display heading number may differ from the inventory id. Inventory ids are permanent;
+# a heading rename must alias to the existing id instead of minting a new one.
+RULE_ID_ALIASES = {
+    "sop.3.4.1.state-machine-verification": "sop.3.5.state-machine-verification",
+}
+
 # Matches "## 0. Binding Contract", "### 2.0 Compatibility Gate", etc. Stage 1
 # splits strictly on these headings so every byte of the legacy file belongs
 # to exactly one rule and concatenation reconstructs the file exactly.
 _HEADING_RE = re.compile(r"^(#{2,3})\s+(\S+)\s+(.+)$", re.MULTILINE)
+_HEADING_NUMBER_SEG_RE = re.compile(r"^(\d+)([a-zA-Z]*)$")
 
 
 @dataclass(frozen=True)
@@ -96,19 +104,36 @@ def _slug(number: str, title: str) -> str:
     number = number.rstrip(".")
     ascii_title = unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode("ascii")
     words = re.sub(r"[^a-z0-9]+", "-", ascii_title.lower()).strip("-")
-    return f"sop.{number}.{words}"
+    raw = f"sop.{number}.{words}"
+    return RULE_ID_ALIASES.get(raw, raw)
 
 
 def _risk_tier_for(rule_id: str) -> str:
     return RISK_TIER_BY_RULE_ID.get(rule_id, "standard")
 
 
+def _heading_order_key(number: str) -> tuple[tuple[int, ...], str]:
+    numeric: list[int] = []
+    suffix = ""
+    for seg in number.rstrip(".").split("."):
+        match = _HEADING_NUMBER_SEG_RE.fullmatch(seg)
+        if match is None:
+            return ((), number)
+        numeric.append(int(match.group(1)))
+        suffix += match.group(2)
+    return (tuple(numeric), suffix)
+
+
 def _rule_order_key(rule: Rule) -> tuple:
-    """Sort re-synthesized split rules back into their original SOP order."""
-    match = re.match(r"^sop\.((?:\d+\.)*\d+)", rule.id)
-    if not match:
-        return ((), rule.id)
-    return (tuple(int(part) for part in match.group(1).split(".")), rule.id)
+    """Sort re-synthesized split rules by the heading number in the rule text."""
+    match = _HEADING_RE.search(rule.text)
+    if match:
+        numeric, suffix = _heading_order_key(match.group(2))
+        return (numeric, suffix, rule.id)
+    id_match = re.match(r"^sop\.((?:\d+\.)*\d+)", rule.id)
+    if not id_match:
+        return ((), "", rule.id)
+    return (tuple(int(part) for part in id_match.group(1).split(".")), "", rule.id)
 
 
 def split_legacy_sop(text: str) -> list[Rule]:

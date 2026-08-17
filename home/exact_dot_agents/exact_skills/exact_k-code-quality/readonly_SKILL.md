@@ -54,21 +54,6 @@ Do not load React/web/test/design secondaries merely because they might become r
 - A "works with it" check is insufficient unless the user explicitly requested that artifact by name.
 - If the without-it probe passes, do not add the artifact; if already added, remove it.
 
-## State-Machine Verification
-
-Use this for stateful, parser-like, branch-heavy, ordered, retry/workflow, permission, compatibility-sensitive, or flag-dependent behavior.
-
-Before calling such behavior final or merge-ready, build or inspect a disposable harness under `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/`.
-
-- Include `manifest.json` with worktree, topic, slug, target files/symbols, branch/base/head when relevant, requested behavior, and compatibility intent.
-- Reuse an existing harness only after reading its manifest and confirming it still matches.
-- Name states, transitions, inputs, terminal actions, existing buckets, requested behavior, boundaries, malformed inputs, and regression-sensitive cases.
-- Compare implementation behavior against an independent model/table, not just itself;
-  when preserving behavior, compare against base and classify every difference.
-- Treat unexpected differences as bugs or true `Unknown`s before finalizing.
-- Keep the harness in `/tmp` unless asked to promote compact high-value tests;
-  this verifies complexity, not a reason to add production state machines.
-
 ## General Code Rules
 
 - Avoid TypeScript `as any` and unnecessary type assertions.

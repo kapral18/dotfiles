@@ -7,8 +7,7 @@ description: "Use for hard bugs, regressions, flaky failures, crashes, thrown er
 
 A discipline for hard bugs. Skip phases only when explicitly justified.
 
-The SOP owns the surrounding gates: verification loops (§3.4) and runtime truth (§2.2).
-The `k-code-quality` skill owns the `/tmp/state-machine-verification` harness for stateful/branch-heavy behaviour.
+The SOP owns the surrounding gates: verification loops (§3.4), runtime truth (§2.2), and state-machine verification (`### 3.4.1 State-Machine Verification`).
 This skill is the debugging front-end that forces a **tight** feedback loop before any theorising, then routes into those gates.
 When you write the regression test, load `~/.agents/skills/k-code-quality-tests/SKILL.md`.
 
@@ -105,7 +104,7 @@ one where the test exercises the real bug pattern as it occurs at the call site.
 hand it to `~/.agents/skills/k-codebase-design/SKILL.md`.
 If a correct seam exists: turn the minimised repro into a failing test, watch it fail (revert the fix in place —
 see `k-code-quality-tests`), apply the fix, watch it pass, then re-run the Phase 1 loop on the original scenario.
-For stateful/branch-heavy fixes, load `k-code-quality` and verify against base behaviour buckets with its state-machine verification harness.
+For stateful/branch-heavy fixes, verify against base behaviour buckets with the SOP state-machine verification harness.
 
 ## Phase 6 — Cleanup + post-mortem
 

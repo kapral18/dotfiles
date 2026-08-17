@@ -40,9 +40,12 @@ MANIFEST_VERSION = 1
 PROTECTED_CORE_RULE_IDS = frozenset(
     {
         "sop.0.binding-contract",
+        "sop.2.0.compatibility-gate",
         "sop.3.1.git-commit-and-push-safety",
         "sop.3.2.ownership-gate",
         "sop.3.4.verification-loops",
+        "sop.3.5.delegation-categories",
+        "sop.3.5.state-machine-verification",
         "sop.3.6.human-visible-publication",
         "sop.4.1.durable-memory",
     }

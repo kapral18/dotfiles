@@ -69,7 +69,7 @@ graph TB
     %% ---- C12 Resumable state machine ---------------------------------------
     C12{{"C12 · RESUMABLE STATE MACHINES<br/>death parks, relaunch continues"}}:::concept
     C12 --> I12["INVARIANT: long work advances through persisted queues/states;<br/>a crash leaves it restartable from saved state without losing side effects<br/>or replaying acknowledged work; terminal state is not complete until<br/>terminal cleanup is recorded."]:::inv
-    I12 --> R12["realized by: worklog_queue.py + spec/worklog queues<br/>hook dispatch state · k-code-quality state-machine verification harness policy"]:::realize
+    I12 --> R12["realized by: worklog_queue.py + spec/worklog queues<br/>hook dispatch state · SOP state-machine verification harness policy"]:::realize
 
     %% ---- C13 Persistent intent memory --------------------------------------
     C13{{"C13 · INTENT MEMORY<br/>sessions rehydrate, don't restart cold"}}:::concept
