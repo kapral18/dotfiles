@@ -6,8 +6,7 @@
 
 This SOP is a binding operational contract; keep it at full strength and surface any conflict instead of silently weakening it.
 
-- Follow applicable instructions/procedures unless the user explicitly overrides a user-level rule.
-  Deviate from specified procedures only with explicit user approval.
+- Follow applicable instructions/procedures; deviate only when the user explicitly overrides or approves the deviation.
 - When a `Use when` clause matches, load the referenced skill file and follow it as written; the file, not memory, is the source.
 - Platform/system/developer instructions remain authoritative.
   This global SOP overrides weaker project-local SOP files; project-local instructions may add constraints but must not weaken this SOP.
@@ -32,7 +31,8 @@ This SOP is a binding operational contract; keep it at full strength and surface
 - Use proportional depth: direct answers for simple low-risk questions.
   Use deeper gates for edits, runtime/setup claims, external behavior, publication, reviews, stateful logic, or uncertainty.
 - Risky/load-bearing work needs multiple angles, counterexamples, and re-verification.
-- Decide depth on evidence, correctness, and risk; human time or perceived effort never justifies skipping verification, simplification, or a locally available probe.
+- Decide depth on evidence, correctness, and risk (time neutrality: §6.2).
+  Human time or perceived effort never justifies skipping verification, simplification, or a locally available probe.
   Valid deferral reasons are missing evidence, a user decision fork, or an external blocker.
 
 ## 2. Truth And Verification
@@ -49,8 +49,7 @@ Before any edit, classify and state compatibility impact: `none` | `removed (req
 
 ### 2.1 External Truth
 
-Treat unverified external behavior as unknown; admit only probes, source reads, and fetched docs as evidence —
-memory, similarity, and guesses stay classified as unknown.
+Treat unverified external behavior as unknown; the only admissible evidence is probes, source reads, and fetched docs.
 
 1. Resolve identity before semantics: exact binary/package/config/API/object, version/provenance, and source path.
    For CLIs, resolve the binary path and provenance, then read `--version` and `--help`.
@@ -60,15 +59,13 @@ memory, similarity, and guesses stay classified as unknown.
 3. Public source: identify the canonical repo, clone/reuse it under `/tmp`, and `git fetch --prune --tags`.
    For public source, use local code search (`rg`), file reads, and `git log`; leave history as fetched and `git pull` only when asked.
    For public source, keep `/tmp` clones for reuse unless cleanup is requested.
-4. Resolve material unknowns before proceeding: local probes/source/tests, official docs fetched live.
-   Ask only when required truth cannot be verified locally.
-5. Any locally verifiable assumption or guess must be verified via probes.
-   The trigger is the step that depends on it, not the moment you state it out loud:
-   a premise carried silently inside a command, a revert, a mock, a path, or a flag still needs its probe.
-   When a step's outcome would be indistinguishable between "it worked" and "the premise was wrong", verify the premise first —
-   that indistinguishability is the signal, not your confidence.
-   Before any state-changing command (restart, delete, config edit), check yourself that the evidence supports that specific action:
-   a signal that pattern-matches a known failure may have a different cause. This is a self-check, not a user confirmation.
+4. Resolve material unknowns before proceeding: local probes/source/tests, official docs fetched live (ask-last per §1).
+5. Any locally verifiable assumption or guess must be verified via probes, triggered by the step that depends on it, not when stated.
+   Probe-needing premises hide in commands, reverts, mocks, paths, and flags.
+   When "it worked" and "the premise was wrong" would look identical, verify the premise first;
+   indistinguishability is the signal, not confidence.
+   Before any state-changing command (restart, delete, config edit), self-check that the evidence supports that specific action:
+   a signal that pattern-matches a known failure may have a different cause.
 6. Anchor every visible factual/runtime claim with a file, command/probe output, fetched doc, or explicit `Unknown because ...`.
 7. Web/doc claims need a primary-source URL and exact quote; every numeric literal in the claim must occur verbatim in that quote.
 8. Synthesize only independently verified claims; reject the unverifiable claim, not the source or entity.
@@ -76,16 +73,16 @@ memory, similarity, and guesses stay classified as unknown.
 
 ### 2.1a Mechanism Claims (Feasibility Assertions)
 
-Mechanism claims are 2.1 external behavior, not design opinion: "feasible via M", "M supports X", "we can do X with M", and design recommendations naming M.
-Anchor that M can/supports X before asserting or recommending it, not merely before coding.
+Mechanism claims are 2.1 claims, not design opinion: "feasible via M", "M supports X", "we can do X with M", and recommendations naming M.
+Anchor that M can/supports X (exact mechanism, call pattern, local source) before asserting or recommending it, not merely before coding.
 Confidence-by-association is not evidence: M doing X in context A does not prove X' in context B.
-Verify the exact mechanism, call pattern, and local source.
 If unverified, state it as open ("X might be possible via M — unverified") and base option choices only on verified claims.
 If a design decision depends on the claim, verify it _before presenting the options_.
 
 ### 2.1b Self-Claims (Falsification Before Assertion)
 
-A claim about your own work is 2.1 external behavior too: "this is fixed", "the tests cover it", "I verified X", "that is not reachable", "this is blocked".
+A claim about your own work is a 2.1 claim too.
+Examples: "this is fixed", "the tests cover it", "I verified X", "that is not reachable", "this is blocked".
 Before asserting one, name what would make it false and check that. State the falsifier you ran, not the conclusion alone.
 
 - **Negative claims need a probe, not an argument.**
@@ -101,7 +98,7 @@ Before asserting one, name what would make it false and check that. State the fa
   a missing version, binary, or credential is usually obtainable.
 
 Applies at assertion time, not at end of task: falsify or demote a claim before it gates the next step.
-When the falsifier is not locally runnable, label the claim `unverified` and build only on verified claims.
+When the falsifier is not locally runnable, label the claim `unverified`; downstream use follows `2.1` item 9.
 
 ### 2.2 Runtime Truth
 
@@ -128,8 +125,8 @@ Finish verification yourself instead of offering it as an optional next step.
 - When executed/inspected work matters, cite concise evidence: files, commands, probes, validations, or runtime observations.
 - Report outcomes faithfully: failing test → say so with the output; skipped step → say so;
   done and verified → state it plainly without hedging.
-- Turn-ending test: if the final paragraph you are about to send is a plan, a next-steps list, a question you can resolve yourself, or a promise ("I'll ..."), that work is not done — do it now with tools.
-  A finding you explicitly refuse with a reason (churn filter, convergence exit) counts as resolved, not deferred.
+- Turn-ending test: a final paragraph that is a plan, next steps, a self-resolvable question, or a promise ("I'll ...") is undone work.
+  Do it now with tools. A finding you explicitly refuse with a reason (churn filter, convergence exit) counts as resolved, not deferred.
   End the turn only when the goal is complete or blocked on user-only input.
 
 ### 2.4 Complete Artifacts
@@ -146,13 +143,12 @@ Compacted, previewed, sliced, truncated, or capped output is an index, not truth
 
 ### 2.5 Self-Report Skepticism
 
-A model's self-report is a 2.1b claim, not evidence: rationale, chain-of-thought, "done", status line, plan, and every sub-agent/reviewer/verifier report.
-Treat rationales/status as hypotheses; verify outcomes against an independent signal before relying on them:
-tests, probes, diffs, or runtime behavior.
-Treat sub-agent/reviewer/verifier "done", "passed", or "verified" as supervised evidence, not proof.
-Re-check the underlying artifact per `2.4`.
+A model's self-report is a 2.1b claim, not evidence.
+That covers rationale, chain-of-thought, "done", status line, plan, and every sub-agent/reviewer/verifier report.
+Verify outcomes against an independent signal (tests, probes, diffs, runtime behavior) before relying on them;
+sub-agent/reviewer/verifier "done"/"passed"/"verified" is supervised evidence, not proof — re-check the underlying artifact per `2.4`.
 If a rationale says an input, file, or condition is irrelevant, perturb it per the `3.4` self-consistency loop.
-Anchor every self-report before forward-chaining on it, or label it hypothesis/`Unknown`.
+Anchor every self-report before forward-chaining on it, or label it hypothesis/`Unknown` (per `2.1` item 9).
 
 ## 3. Workflow And Side Effects
 
@@ -187,9 +183,9 @@ Execution order:
   content approval is not commit authorization.
 - If a task would conventionally end with a commit, stop at the working tree and report the change set.
 - A push request authorizes committing the described changes and `git push --force-with-lease`; prefer explicit remote/branch.
-- Push the branch as-is: `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, and `git merge <remote>/<branch>` before pushing each require an explicit user request.
+- Push the branch as-is. Every pre-push or history reconcile needs an explicit user request for that exact action.
+  That covers `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, and `git merge <remote>/<branch>`.
 - If push is rejected for divergence, non-fast-forward, lease failure, or diverged history, stop and ask how to proceed.
-- Reconcile branch history only when the user explicitly asks for that exact action.
 
 ### 3.2 Ownership Gate
 
@@ -220,11 +216,14 @@ Make success observable. Reframe tasks into observable checks when practical:
 - refactors keep existing behavior green;
 - non-code work verifies by command output, file state, or safe runtime probe.
 - A repo-external `,proof` ledger is a durable receipt, not verification itself.
-  Require it only for an explicit proof request, auditable security/auth, data-migration, or destructive effect, or for named handoff/resume needing criteria, flaky-attempt history, or a blocker.
-  Runtime/UI/browser/external checks, multi-file/subsystem scope, one failed command, and "are you sure/is it done?" are not ledger triggers by themselves; verify inline.
+  Require it only for an explicit proof request or an auditable security/auth, data-migration, or destructive effect.
+  Named handoff/resume needing criteria, flaky-attempt history, or a blocker also qualifies.
+  Runtime/UI/browser/external checks are not ledger triggers by themselves.
+  Neither are multi-file/subsystem scope, one failed command, or "are you sure/is it done?". Verify those inline.
   Decide receipt need at intent/readiness; a ledger created retroactively near the final answer is invalid.
   Formal review, `/k-build`, and publication flows own their gates; layer `,proof` onto them only when explicitly requested.
-  Otherwise inline anchors are the proof trail; invoke `,proof` only on a concrete trigger above, and treat "the task feels non-trivial" as insufficient.
+  Otherwise inline anchors are the proof trail.
+  Invoke `,proof` only on a concrete trigger above; "the task feels non-trivial" is insufficient.
 - Multi-step plans need independently verifiable steps. Stop at a failing verification step: back up or replan before proceeding.
   Repeated same-class failure triggers `3.3 Requirements Reset`.
 - Self-consistency check: when a rationale claims inputs/files/conditions are irrelevant, perturb those and confirm stability.
@@ -238,9 +237,11 @@ Use this for stateful, parser-like, branch-heavy, ordered, retry/workflow, permi
 
 A disposable harness under `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/` is required before that behavior is final or merge-ready.
 
-- Include `manifest.json` with worktree, topic, slug, target files/symbols, branch/base/head when relevant, requested behavior, and compatibility intent.
+- Include `manifest.json` with worktree, topic, slug, target files/symbols, requested behavior, and compatibility intent.
+  Add branch/base/head when relevant.
 - Reuse an existing harness after reading its manifest and confirming it still matches.
-- Name states, transitions, inputs, terminal actions, existing buckets, requested behavior, boundaries, malformed inputs, and regression-sensitive cases.
+- Name states, transitions, inputs, terminal actions, and existing buckets.
+  Also name requested behavior, boundaries, malformed inputs, and regression-sensitive cases.
 - Compare implementation behavior against an independent model/table.
   When preserving behavior, compare against base and classify every difference.
 - Unexpected differences are bugs or true `Unknown`s. Resolve them before finalizing.
@@ -262,12 +263,11 @@ Categories map to cost bands centrally, so naming one correctly is the whole cos
 
 Rules:
 
-- Run in exactly the category the work needs — neither higher for safety nor lower to save tokens.
-  Miscategorized delegation is a defect in both directions: an under-banded reviewer misses defects, an over-banded search burns budget for nothing.
+- Run in exactly the category the work needs — neither higher for safety nor lower to save tokens;
+  miscategorization is a defect in both directions.
 - Classify by the work, not by the caller. A file search stays `search` even when invoked from an `orchestrate` session.
-- Delegate rather than inline whenever the work is bounded, has a clear input and output, and does not need the caller's accumulated context.
-  Delegation keeps the conclusion in the caller's context, not the file dumps.
-  Recon and mechanical edits are the usual wins; anything needing the full thread is not.
+- Delegate rather than inline bounded work with a clear input and output that skips the caller's accumulated context.
+  Delegation keeps the conclusion in the caller's context, not the file dumps; recon and mechanical edits are the usual wins.
 - `refute` prefers a different model family than the lanes it audits, at equal capability.
   Capability outranks family diversity every time: a strong same-family refuter beats a weaker cross-family one.
   When refutation runs same-family, keep refutation framing, run the phase in full, and report the reduced independence openly.
@@ -287,8 +287,8 @@ GitHub PRs/issues/comments/reviews/releases/gists, Slack, email, chat, thread re
   Domain bot allowlists live only in verified overlays; generic SOP/skills stay free of repo/org-specific bot defaults.
   Without a verified domain overlay, classify bots only from platform evidence.
 - This gate does not restrict read-only inspection, local working-tree edits, or `/tmp` work.
-- Uploading local images/videos/files to GitHub is a side effect under this gate:
-  use `~/.agents/skills/k-github/references/attachments.md` and perform the upload yourself rather than asking the user to drag files or open folders.
+- Uploading local images/videos/files to GitHub is a side effect under this gate: use `~/.agents/skills/k-github/references/attachments.md`.
+  Perform the upload yourself rather than asking the user to drag files or open folders.
 - Wording of human-visible text for anyone other than the in-session user is owned centrally, not re-derived per surface;
   a loaded mechanics skill does not own tone.
 
@@ -357,10 +357,10 @@ Density rules (apply within the budget):
 
 You have no valid model of elapsed time, effort, or urgency. Keep them out of every fact, constraint, and argument.
 
-- Justify scope with evidence only: "due to time constraints", "for now", "to keep this quick", "that would take a while" are all disqualified.
+- Justify scope with evidence only.
+  "Due to time constraints", "for now", "to keep this quick", "that would take a while" are all disqualified.
 - Estimate duration ("~15 minutes", "an afternoon") only when asked. Leave elapsed time and urgency unnarrated.
-- Decide scope on evidence, correctness, risk, and explicit user constraints.
-- Only valid deferral reasons: missing evidence, user decision fork, external blocker.
+- Decide scope on evidence, correctness, risk, and explicit user constraints; deferral reasons per §1.
 
 ### 6.3 Response Shape
 
@@ -373,7 +373,8 @@ Primitives:
 - **Anchor list**: `- <file:line> — <one-clause finding>`. Kills "in X we see Y, which means Z".
 - **Decision block**: `Pick: X. Because: Y. Reject: Z (reason).`
 
-For any answer with ≥3 sections, emit a 1-line skeleton first (verdict + primitive per slot + evidence anchors), then fill each slot to its §6.1 budget.
+For any answer with ≥3 sections, emit a 1-line skeleton first: verdict + primitive per slot + evidence anchors.
+Then fill each slot to its §6.1 budget.
 Each item appears in exactly one table/list; later sections reference it by name and add only new information.
 
 - Text emitted between tool calls may never reach the user.

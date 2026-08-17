@@ -82,5 +82,7 @@ const path = await video.path(); // .webm
 ```
 
 Post-process: `ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p -movflags +faststart out.mp4`, then trim the login/load lead-in with `-ss <sec>`.
+The video starts at page creation, so capture the trim point instead of guessing:
+`const t0 = Date.now()` after `newPage()`, then log `(Date.now() - t0) / 1000` when the scenario starts and use it (minus ~0.5s) as `-ss`.
 Verify content by extracting frames (`ffmpeg -vf fps=1 f-%02d.png`) and reading them —
 a green status probe is not proof the video shows the behavior.

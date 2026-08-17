@@ -89,7 +89,50 @@ await state.page.keyboard.press("End");
 ```
 
 Keyboard navigation after focus: `Meta+Home`, `Meta+End`, `Home`, `End`, `ArrowDown`, `ArrowUp`.
-`Ctrl+G` does not work; Console intercepts it. `Enter` does not reliably create lines; import content instead.
+`Ctrl+G` does not work; Console intercepts it.
+
+## Enter swallowing: root causes and safeEnter
+
+`Enter` failing to insert a newline has two distinct causes; neither is random:
+
+1. An open suggest widget accepts the highlighted suggestion instead of inserting a newline.
+2. Pressing `Escape` while **no** widget is open bubbles out of Monaco and moves focus to an EUI element (`document.activeElement` becomes an Emotion `css-*` node, not `textarea.inputarea`).
+   Every later key goes nowhere.
+
+For content setup, import (below) is still the simplest route.
+For typed demos/videos where keystrokes must be visible, use this verified recipe:
+
+```js
+const widgetVisible = (page) =>
+  page.evaluate(
+    () =>
+      document
+        .querySelector(".suggest-widget")
+        ?.classList.contains("visible") ?? false,
+  );
+const lineCount = (page) =>
+  page.evaluate(() => document.querySelectorAll(".view-line").length);
+
+async function safeEnter(page) {
+  for (let i = 0; i < 4; i++) {
+    if (await widgetVisible(page)) {
+      // Escape ONLY when the widget is open
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(300);
+    }
+    await page.evaluate(() => {
+      // re-focus without moving the cursor
+      const ta = document.querySelector("textarea.inputarea");
+      if (ta && document.activeElement !== ta) ta.focus();
+    });
+    const before = await lineCount(page);
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(350);
+    if ((await lineCount(page)) > before) return; // verify the newline actually landed
+  }
+  throw new Error("Enter never inserted a newline");
+}
+```
 
 ## Autocomplete
 
@@ -99,9 +142,24 @@ await state.page.waitForTimeout(2500);
 ```
 
 - Endpoint must be recognized by the Console API spec; unknown endpoints do not produce body suggestions.
-- Dismiss with `Escape` before trying again.
+- Body suggestions are JSON-path-sensitive, not just endpoint-sensitive: `processors` is a root key for `PUT _ingest/pipeline/<name>` but lives under `pipeline` in `POST _ingest/pipeline/_simulate`.
+  A wrong nesting level silently yields the "No suggestions." widget.
+- Dismiss with `Escape` **only when the widget is open** — stray Escape moves focus out of the editor (see safeEnter above).
 - Accept with `Enter`.
 - Popup renders as a Monaco widget visible in screenshots.
+
+Probing the widget programmatically:
+
+```js
+// visibility: the element always exists; check the class
+document.querySelector(".suggest-widget")?.classList.contains("visible");
+// rows: aria-label on .monaco-list-row (the .label-name child can be empty)
+[...document.querySelectorAll(".suggest-widget .monaco-list-row")].map((e) =>
+  e.getAttribute("aria-label"),
+);
+```
+
+Empty state renders the literal text `No suggestions.`; a hidden widget's `innerText` returns embedded CSS junk, so check visibility before reading contents.
 
 ## Reading and screenshots
 
@@ -132,14 +190,16 @@ await state.page.screenshot({
 
 ## Pitfalls
 
-| Problem                                      | Fix                                           |
-| -------------------------------------------- | --------------------------------------------- |
-| `locator.click` timeout on textarea          | Click `.monaco-editor` with `{ force: true }` |
-| `codeEditorHint` intercepts clicks           | Click `.monaco-editor` with `{ force: true }` |
-| Typed `{` becomes `{}` or Enter is swallowed | Use import button                             |
-| Cursor lands on wrong line                   | Click closer to text (~160px from left)       |
-| Autocomplete shows HTTP methods              | Put cursor inside JSON body, not after `}`    |
-| `Ctrl+G` types text                          | Use ArrowDown/ArrowUp from known position     |
-| `window.monaco` is undefined                 | Use DOM `.view-line` elements                 |
+| Problem                                      | Fix                                                                 |
+| -------------------------------------------- | ------------------------------------------------------------------- |
+| `locator.click` timeout on textarea          | Click `.monaco-editor` with `{ force: true }`                       |
+| `codeEditorHint` intercepts clicks           | Click `.monaco-editor` with `{ force: true }`                       |
+| Typed `{` becomes `{}` or Enter is swallowed | Import for setup; `safeEnter` for typed demos                       |
+| Enter dead even with widget closed           | Focus left the editor (stray Escape); re-focus `textarea.inputarea` |
+| Widget "visible" but rows empty              | `No suggestions.` state or wrong JSON nesting level                 |
+| Cursor lands on wrong line                   | Click closer to text (~160px from left)                             |
+| Autocomplete shows HTTP methods              | Put cursor inside JSON body, not after `}`                          |
+| `Ctrl+G` types text                          | Use ArrowDown/ArrowUp from known position                           |
+| `window.monaco` is undefined                 | Use DOM `.view-line` elements                                       |
 
 Full import/cursor/autocomplete/screenshot example: `~/.agents/skills/k-kibana-console-monaco/references/console-monaco-example.md`.
