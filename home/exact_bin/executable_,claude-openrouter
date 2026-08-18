@@ -17,11 +17,9 @@ if [[ -z "$api_key" ]]; then
   exit 1
 fi
 
-# Model and effort are selectable; the provider policy rides the model slug. Claude Code has no
-# extra-body channel, so Kimi's throughput-sorted Fireworks/Together/BaseTen-only+$16/M policy, DeepSeek's FP8-or-higher, throughput-only policy, and effort ride an
-# OpenRouter preset: OpenRouter resolves `<model>@preset/<slug>` on /api/v1/messages (live-probed
-# 2026-08-07, served by Wafer). Each `<family>-lanes-<level>` preset bakes model+provider+effort;
-# `deepseek-lanes-max` is the default. Presets are workspace state, created via
+# Model and effort are selectable. Claude Code has no extra-body channel, so effort rides a
+# model-agnostic OpenRouter workspace preset: `<model>@preset/effort-<level>` on /api/v1/messages.
+# Every --model uses the same slug. Presets are workspace state via
 # POST /api/v1/presets/<slug>/chat/completions.
 OPENROUTER_MODEL="deepseek/deepseek-v4-flash-0731"
 OPENROUTER_EFFORT="max"
@@ -74,34 +72,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Map model+effort to a preset slug. glm, kimi, deepseek, and terra all have a real `max` (kimi's
-# OpenRouter max tier re-probed live 2026-08-07: max returned 1.9x high's reasoning tokens across
-# 6 pairs on 2 prompts, overturning the 2026-08-05 falsification). `none` disables reasoning via
-# the matching `*-lanes-none` / `effort-none` workspace presets. Unknown models use the
-# model-agnostic `effort-<level>` preset (no provider policy).
-preset_family() {
-  case "$1" in
-  moonshotai/kimi-k3*) echo "kimi" ;;
-  deepseek/*) echo "deepseek" ;;
-  z-ai/glm-5.2*) echo "glm" ;;
-  openai/gpt-5.6-terra*) echo "terra" ;;
-  *) echo "" ;;
-  esac
-}
+# Every --model/--effort pair composes the same slug. `none` disables reasoning via
+# the `effort-none` workspace preset. OpenRouter rejects `ultra` on these slugs.
 if [[ -z "$OPENROUTER_MODEL" || -z "$OPENROUTER_EFFORT" ]]; then
   echo "Error: --model and --effort require non-empty values." >&2
   exit 2
 fi
-family="$(preset_family "$OPENROUTER_MODEL")"
-preset_effort="$OPENROUTER_EFFORT"
-if [[ -z "$family" ]]; then
-  preset_slug="effort-$preset_effort"
-elif [[ "$OPENROUTER_MODEL" == "moonshotai/kimi-k3" && "$preset_effort" == "high" ]]; then
-  preset_slug="kimi-lanes"
-else
-  preset_slug="$family-lanes-$preset_effort"
-fi
-readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/$preset_slug"
+readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
 
 # Claude Code appends /v1/messages, so the base URL stops at /api. OpenRouter answers
 # that path with the Anthropic Messages schema, usage block included.

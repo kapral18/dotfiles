@@ -43,7 +43,7 @@ from _test_support import (
 
 # Every OpenRouter wrapper defaults to this route; model and effort remain selectable.
 OPENROUTER_PIN = "deepseek/deepseek-v4-flash-0731"
-OPENROUTER_WIRE_PIN = f"{OPENROUTER_PIN}@preset/deepseek-lanes-max"
+OPENROUTER_WIRE_PIN = f"{OPENROUTER_PIN}@preset/effort-max"
 
 
 def _load_artifact_command():
@@ -2573,8 +2573,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
                 source = (REPO / relative).read_text()
                 assert f'OPENROUTER_MODEL="{OPENROUTER_PIN}"' in source
                 assert 'OPENROUTER_EFFORT="max"' in source
-                assert 'readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/$preset_slug"' in source
-                assert 'preset_slug="$family-lanes-$preset_effort"' in source  # max composes, no cap
+                assert 'readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"' in source
 
     def test_SHOULD_keep_reasoning_models_that_omit_supported_efforts(self):
         # OpenRouter lists inclusionai/ling-3.0-flash under supported_parameters=reasoning
@@ -2836,25 +2835,26 @@ touch "%s"
     def test_SHOULD_compose_wire_model_from_model_and_effort_flags(self):
         # Model and effort are selectable; the wire id composes the matching preset slug.
         cases = [
-            (["-p", "x"], "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max"),
+            (["-p", "x"], "deepseek/deepseek-v4-flash-0731@preset/effort-max"),
             (
                 ["--model", "deepseek/deepseek-v4-flash-0731", "--effort", "max"],
-                "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max",
+                "deepseek/deepseek-v4-flash-0731@preset/effort-max",
             ),
-            (["--model", "moonshotai/kimi-k3", "--effort", "max"], "moonshotai/kimi-k3@preset/kimi-lanes-max"),
+            (["--model", "moonshotai/kimi-k3", "--effort", "max"], "moonshotai/kimi-k3@preset/effort-max"),
             (
                 ["--model", "openai/gpt-5.6-terra", "--effort", "minimal"],
-                "openai/gpt-5.6-terra@preset/terra-lanes-minimal",
+                "openai/gpt-5.6-terra@preset/effort-minimal",
             ),
             (
                 ["--effort", "none"],
-                "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-none",
+                "deepseek/deepseek-v4-flash-0731@preset/effort-none",
             ),
             (
                 ["--model", "openai/gpt-5.6-terra", "--effort", "none"],
-                "openai/gpt-5.6-terra@preset/terra-lanes-none",
+                "openai/gpt-5.6-terra@preset/effort-none",
             ),
             (["--model", "qwen/qwen3.8-max", "--effort", "high"], "qwen/qwen3.8-max@preset/effort-high"),
+            (["--model", "google/gemini-3.7-flash", "--effort", "high"], "google/gemini-3.7-flash@preset/effort-high"),
             (["--model", "qwen/qwen3.8-max", "--effort", "none"], "qwen/qwen3.8-max@preset/effort-none"),
         ]
         with tempfile.TemporaryDirectory() as tmp:
@@ -2881,14 +2881,18 @@ touch "%s"
         # The same model/effort -> preset-slug composition runs in every wrapper; only the
         # leaf delivery differs (argv for codex/cursor, provider env for copilot).
         cases = [
-            (["-p", "x"], "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max"),
+            (["-p", "x"], "deepseek/deepseek-v4-flash-0731@preset/effort-max"),
             (
                 ["--model", "deepseek/deepseek-v4-flash-0731", "--effort", "max"],
-                "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max",
+                "deepseek/deepseek-v4-flash-0731@preset/effort-max",
             ),
-            (["--thinking", "max"], "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max"),
-            (["--no-thinking"], "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-minimal"),
-            (["--effort", "none"], "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-none"),
+            (["--thinking", "max"], "deepseek/deepseek-v4-flash-0731@preset/effort-max"),
+            (["--no-thinking"], "deepseek/deepseek-v4-flash-0731@preset/effort-minimal"),
+            (["--effort", "none"], "deepseek/deepseek-v4-flash-0731@preset/effort-none"),
+            (
+                ["--model", "google/gemini-3.7-flash", "--effort", "high"],
+                "google/gemini-3.7-flash@preset/effort-high",
+            ),
         ]
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp) / "bin"

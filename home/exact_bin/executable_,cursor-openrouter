@@ -37,27 +37,25 @@ if [[ -z "$api_key" ]]; then
 fi
 
 # Model and effort are selectable; the pin rides the model slug. agent-cli-local's provider config
-# is baseUrl+apiKey only — no extra-body channel — so Kimi's throughput-sorted Fireworks/Together/BaseTen-only+$16/M policy, DeepSeek's
-# FP8-or-higher, throughput-only policy, and effort ride an OpenRouter preset: OpenRouter resolves
-# `<model>@preset/<slug>` on /v1/chat/completions (live-probed 2026-08-07, tool calls included). Each
-# `<family>-lanes-<level>` preset bakes model+provider+effort; `deepseek-lanes-max` is the default.
+# is baseUrl+apiKey only — no extra-body channel — so effort rides a model-agnostic OpenRouter
+# workspace preset: OpenRouter resolves `<model>@preset/effort-<level>` on /v1/chat/completions
+# (live-probed 2026-08-18: Gemini and Qwen on effort-high/effort-max). Every --model uses the same
+# `effort-<level>` slug; the default is `deepseek/deepseek-v4-flash-0731` at `max`.
 OPENROUTER_MODEL="deepseek/deepseek-v4-flash-0731"
 OPENROUTER_EFFORT="max"
 # The strict-mode shim is now the session guardrail too, so it is always on for the
 # pinned route: the allowlist rejects any /chat/completions whose model is not the
 # pinned wire id before it reaches OpenRouter (a subagent/profile/resume escape can
 # never bill a different model), and `strict` is stripped from openai/* tool
-# schemas. `--no-shim` exists only for the explicit direct-OpenRouter route, i.e.
-# a model with no preset family, which has no provider policy to carry anyway.
+# schemas. `--no-shim` is the explicit direct-OpenRouter route and drops the
+# guardrail and the strict fix.
 USE_SHIM=1
 
 cli_args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
   --no-shim)
-    # Direct-OpenRouter opt-out: skips both the model guardrail and the strict
-    # fix. Only meaningful for a model with no preset family (no provider policy
-    # to carry); the pinned default route must keep the shim.
+    # Direct-OpenRouter opt-out: skips the model guardrail and the strict fix.
     USE_SHIM=0
     shift
     ;;
@@ -110,34 +108,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Map model+effort to a preset slug. glm, kimi, deepseek, and terra all have a real `max` (kimi's
-# OpenRouter max tier re-probed live 2026-08-07: max returned 1.9x high's reasoning tokens across
-# 6 pairs on 2 prompts, overturning the 2026-08-05 falsification). `none` disables reasoning via
-# the matching `*-lanes-none` / `effort-none` workspace presets. Unknown models use the
-# model-agnostic `effort-<level>` preset (no provider policy).
-preset_family() {
-  case "$1" in
-  moonshotai/kimi-k3*) echo "kimi" ;;
-  deepseek/*) echo "deepseek" ;;
-  z-ai/glm-5.2*) echo "glm" ;;
-  openai/gpt-5.6-terra*) echo "terra" ;;
-  *) echo "" ;;
-  esac
-}
+# Every --model/--effort pair composes the same slug. `none` disables reasoning via
+# the `effort-none` workspace preset. OpenRouter rejects `ultra` on these slugs.
 if [[ -z "$OPENROUTER_MODEL" || -z "$OPENROUTER_EFFORT" ]]; then
   echo "Error: --model and --effort require non-empty values." >&2
   exit 2
 fi
-family="$(preset_family "$OPENROUTER_MODEL")"
-preset_effort="$OPENROUTER_EFFORT"
-if [[ -z "$family" ]]; then
-  preset_slug="effort-$preset_effort"
-elif [[ "$OPENROUTER_MODEL" == "moonshotai/kimi-k3" && "$preset_effort" == "high" ]]; then
-  preset_slug="kimi-lanes"
-else
-  preset_slug="$family-lanes-$preset_effort"
-fi
-readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/$preset_slug"
+readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
 
 # The shim's session guardrail: only the pinned wire model may appear on
 # /chat/completions in this session. Subagents, profiles, resumes, and
