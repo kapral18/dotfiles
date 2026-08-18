@@ -59,6 +59,7 @@ class TestAiLauncher(unittest.TestCase):
         *args: str,
         env: dict[str, str] | None = None,
         check: bool = False,
+        stdin: str | None = None,
     ) -> subprocess.CompletedProcess[str]:
         result = subprocess.run(
             [sys.executable, str(CORE), *args],
@@ -67,6 +68,7 @@ class TestAiLauncher(unittest.TestCase):
             text=True,
             capture_output=True,
             check=False,
+            input=stdin,
         )
         if check and result.returncode != 0:
             self.fail(f",ai {' '.join(args)} failed\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}")
@@ -617,6 +619,30 @@ class TestAiLauncher(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual("InvocationPlan", json.loads(result.stdout)["kind"])
         self.assertLessEqual(len(LAUNCHER.read_text(encoding="utf-8").splitlines()), 15)
+
+    def test_when_ask_is_used_it_is_rejected_as_an_unknown_harness(self) -> None:
+        result = self.run_ai("ask", "hello")
+        self.assertEqual(2, result.returncode)
+        self.assertIn("invalid choice: 'ask'", result.stderr)
+
+    @unittest.skipUnless(shutil.which("fish"), "fish is not installed")
+    def test_when_fish_completes_ai_it_offers_harnesses_without_ask(self) -> None:
+        completion = REPO / "home" / "dot_config" / "fish" / "completions" / "readonly_,ai.fish"
+        result = subprocess.run(
+            [
+                shutil.which("fish") or "fish",
+                "-c",
+                "source $argv[1]; complete -C ',ai '",
+                str(completion),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        tokens = {line.split("\t", 1)[0] for line in result.stdout.splitlines() if line.strip()}
+        self.assertNotIn("ask", tokens)
+        for harness in LEAVES:
+            self.assertIn(harness, tokens)
 
 
 class CapabilityDriftTests(unittest.TestCase):

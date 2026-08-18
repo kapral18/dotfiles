@@ -1,34 +1,14 @@
----
-name: k-ui-proof
-description: "Use when proving a built/changed UI matches intended visual, state, or behavior and capturing PR screenshots."
----
+# Proof-Mode Contract (shared)
 
-# UI Proof
-
-Head-only live-UI verification that a **built or changed** UI matches its **intended visual, state, or behavior**, capturing the screenshot set that proves it for a PR.
-This is the creation-side sibling of `live-ui-review.md`: same runtime machinery, opposite direction.
-`live-ui-review` compares PR/head against base to find regressions for `/k-deep-review` to judge;
-`k-ui-proof` checks the built runtime against the intended UI state/behavior and captures proof to attach to a PR.
+The proof-mode live-UI contract: head-only verification that a built/changed UI matches its intended visual, state, or behavior, and capture of the proof set for a PR.
+Loaded by the `k-ui-capture` skill (direct entry), `/k-build`'s live-UI proof phase, and `k-compose-pr`'s publication packet;
+the caller owns routing and supplies the inputs below.
 
 Load `~/.agents/skills/k-review/references/live-ui-runtime.md` for the shared runtime contract:
 mode boundary, terminology, target-packet resolution, Playwriter preflight, readiness stability guard, screenshot & evidence capture, runtime-start rung, data/setup ladder, and the hard runtime constraints.
 This file adds only the proof-mode specifics: the head-only model, the intended UI state/behavior oracle, and the proof return shape.
 
-## Out of scope (use the named alternative)
-
-- reviewing an existing PR or someone else's changes, or hunting regressions:
-  `~/.agents/skills/k-review/SKILL.md` / `/k-deep-review` (which owns `live-ui-review`)
-- a change with no UI/runtime surface: there is no UI proof to capture — skip
-- generic browser automation with no intended UI state/behavior to check against: `~/.agents/skills/k-playwriter/SKILL.md` directly
-
-## Execution model
-
-`k-ui-proof` runs **inline** in its caller, which already holds Playwriter and local/dev mutation permissions:
-
-- `/k-build` — a phase after the mechanical gates verifies any acceptance criterion whose evidence is visual (see the `k-build` skill).
-- `k-compose-pr` — captures/embeds proof at PR-composition time when the diff is UI-facing and no `/k-build` manifest exists.
-- ad-hoc — fired directly when the user asks to verify a UI and capture screenshots.
-
+This contract runs **inline** in its caller, which already holds Playwriter and local/dev mutation permissions.
 It is not a `/k-deep-review` read-only reviewer lane and needs no isolated subagent profile;
 the shared read-only constraints still bind everything except Playwriter commands and packet-permitted local/dev data setup.
 
@@ -39,7 +19,7 @@ the shared read-only constraints still bind everything except Playwriter command
 - the **intended visual/UI state or behavior** to check against — exactly one of:
   - a spec acceptance criterion tagged `judgment:` whose evidence is visual (`/k-build`)
   - a linked issue/design mockup, screenshot, UI behavior repro, or the PR's stated UI goal (`k-compose-pr`)
-  - the user's described target (ad-hoc)
+  - the user's described target, or the diff-derived intended delta confirmed with the user (`k-ui-capture`)
 - selected target packet, including overlay source when an overlay supplied it (`elastic/kibana` → `~/.agents/skills/k-elastic-domain/references/kibana-live-ui.md`)
 - required runtime config (feature-flag/settings the path needs to be reachable), or an empty set
 - the `/tmp` output location: each visual/UI criterion's proof set goes in its own distinct `/tmp/<folder-name>/` folder (never a single shared dump), named for the criterion — e.g. `/tmp/<topic>-<criterion-slug>/`
@@ -56,7 +36,9 @@ Decide whether the changed paths touch UI/runtime behavior and whether an intend
 ## Head-only model
 
 - There is no base comparison: a newly built UI state/behavior has no base counterpart, and proof is about matching the intended state or behavior, not diffing against `main`.
-- Verify only the runtime under verification. Never navigate or start a base/main runtime.
+- Verify only the runtime under verification. Never navigate or start a base/main runtime for the verdict.
+  Exception: a base runtime may be used solely to capture `before` presentation artifacts for a PR's before/after pairs;
+  those feed publication, never the verdict.
 - The oracle is the intended visual/UI state or behavior, not a base screenshot:
   reach the target state, observe it, and judge whether it matches the intended state or behavior the caller supplied.
 - For UI behavior bugs whose success is not fully visible (clipboard contents, keyboard/focus behavior, downloaded files, network effects), capture the smallest visible proof around the interaction — for example the target control before action and success/error state after action — and record the non-visual assertion in the verdict.
@@ -67,6 +49,8 @@ Decide whether the changed paths touch UI/runtime behavior and whether an intend
 
 ## Proof capture
 
+- Categorize each changed observed behavior by interactivity: a static visual change is proven by before/after screenshots;
+  a behavior involving a sequence of actions or interactivity is proven by short before/after videos (Playwright `recordVideo`, see the Video Recording section of `~/.agents/skills/k-playwriter/SKILL.md`).
 - Follow the shared Screenshot & evidence capture rules.
   Store each visual/UI criterion's proof set as Playwriter artifacts in its own distinct `/tmp/<folder-name>/` folder with descriptive filenames — never combine unrelated criteria/sets in one folder.
 - Capture the smallest set that proves each visual/UI criterion — the key state(s) the intended behavior describes, not every navigation.

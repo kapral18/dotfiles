@@ -11,21 +11,20 @@ Connects Playwriter to a Windows guest's browser running in VirtualBox over CDP 
 
 ## Manual only — explicit request required
 
-`/k-deep-review`, `live-ui-review`, `/k-build`, and `k-ui-proof` verify the local browser only.
+`/k-deep-review`, `live-ui-review`, `/k-build`, and `k-ui-capture` verify the local browser only.
 None of them resolve, infer, or accept a Windows/VirtualBox requirement anymore —
 that entire environment-selection concept was purged from those flows and lives only here.
 
 Load this skill only when the user explicitly asks, this turn, for Windows/VirtualBox verification.
 Treat only that explicit request as the trigger: a PR/issue/spec hint is insufficient, and so is an unrelated/ambiguous mention of the word "Windows" (e.g. a UI panel or feature literally named "Windows").
-If the user wants Windows coverage alongside an in-flight `k-ui-proof` or `live-ui-review` check, add this skill to that turn's work by hand; keep it out of either flow's default path.
+If the user wants Windows coverage alongside an in-flight `k-ui-capture` or `live-ui-review` check, add this skill to that turn's work by hand; keep it out of either flow's default path.
 
 ## Load first
 
 Load `~/.agents/skills/k-review/references/live-ui-runtime.md` for target-packet resolution (including the `elastic/kibana` fallback via `~/.agents/skills/k-elastic-domain/references/kibana-live-ui.md`), Playwriter preflight, the readiness stability guard, screenshot & evidence capture, the data/setup ladder, and the hard runtime constraints.
 This skill adds only the guest-connection rung below, the URL translation lookup, and its own hard constraints.
 
-Resolve the target packet and required runtime config the same way `k-ui-proof`'s ad-hoc mode does when no controller supplies them;
-the oracle (an intended visual/state to match, or a base-vs-head comparison) comes from whichever check the user asked for.
+Resolve the target packet and required runtime config the same way `k-ui-capture`'s direct-verify entry does when no controller supplies them; the oracle (an intended visual/state to match, or a base-vs-head comparison) comes from whichever check the user asked for.
 
 ## Local-also or Windows-only
 
@@ -81,7 +80,7 @@ Scope this to URLs the browser actually navigates to; backing/data endpoints the
 
 ## Return exactly
 
-Whatever return shape the check you're running already uses (`k-ui-proof`'s per-criterion verdicts, or `live-ui-review`'s comparison evidence), plus:
+Whatever return shape the check you're running already uses (the proof-mode contract's per-criterion verdicts, or `live-ui-review`'s comparison evidence), plus:
 
 - `environment`: `windows-vbox` (and `local` too when the user chose local-also), with VM name, VM state transition, the NAT/CDP host port used, and the connection result
 - the URL translation applied (source host-facing URL -> guest-facing URL) or the exact reason none was available

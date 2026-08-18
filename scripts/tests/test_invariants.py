@@ -1911,7 +1911,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "environments_checked",
         )
         self.assert_file_not_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-ui-proof/readonly_SKILL.md",
+            "home/exact_dot_agents/exact_skills/exact_k-ui-capture/exact_references/readonly_proof-mode.md",
             "windows verification requirement",
             "environments_checked",
         )
@@ -1930,7 +1930,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-build/readonly_SKILL.md",
-            "`k-ui-proof` verifies the local browser only; when the user explicitly wants Windows/VirtualBox coverage too, add the manual `~/.agents/skills/k-live-ui-windows/SKILL.md` skill",
+            "The proof-mode contract verifies the local browser only; when the user explicitly wants Windows/VirtualBox coverage too, add the manual `~/.agents/skills/k-live-ui-windows/SKILL.md` skill",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-elastic-domain/exact_references/readonly_kibana-live-ui.md",

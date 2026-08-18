@@ -156,7 +156,7 @@ The review's diversity comes from angles plus the adversarial verify pass (cross
 
 For verified `elastic/kibana` targets, `k-elastic-domain` supplies Kibana targets, mapped Elasticsearch endpoints, Dev Tools Console fallback, and runtime-blocker rules. Generic review contracts do not inline those targets.
 
-`live-ui-review`/`k-ui-proof` verify the local browser only; there is no automatic or context-inferred Windows/VirtualBox path in this flow. Windows/VirtualBox coverage is the separate manual [`k-live-ui-windows`](../../../../home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/) skill: load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn, never from PR/issue/spec inference.
+`live-ui-review` and `k-ui-capture`'s proof-mode contract verify the local browser only; there is no automatic or context-inferred Windows/VirtualBox path in this flow. Windows/VirtualBox coverage is the separate manual [`k-live-ui-windows`](../../../../home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/) skill: load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn, never from PR/issue/spec inference.
 
 When `k-live-ui-windows` is used against a Kibana target, `k-elastic-domain` rewrites `kbn_url`/`es_url` to the guest-reachable NAT gateway address and folds `server.host=0.0.0.0` into the required Kibana flags. The manual skill owns only the CDP connection mechanics, never Kibana-specific hostnames or flags.
 

@@ -30,7 +30,7 @@ Usage:
                [--groups platform|all|LIST] [--es-heap SIZE]
                [-E key=value ...] [-K key=value ...]
     ,kbn-stack --stop        # tear down this worktree's registered stack
-    ,kbn-stack --stop-all    # tear down registered detached/serverless stacks
+    ,kbn-stack --stop-all    # tear down every registered stack, including interactive tmux
     ,kbn-stack --status      # list registered stacks with live-derived state
     ,kbn-stack --prune       # remove fully stale registry entries
 
@@ -95,6 +95,9 @@ ALLOWLIST_KEY = "plugins.allowlistPluginGroups"
 # Snapshot kbn-es otherwise pins -Xms1536m -Xmx1536m. 1g matches serverless kbn-es.
 DEFAULT_ES_HEAP = "1g"
 HEAP_SIZE_RE = re.compile(r"^[0-9]+[kKmMgG]$")
+# SIGTERM grace before SIGKILL. Tests patch this so hang-after-unbind coverage stays fast.
+KILL_GRACE_SECONDS = 5.0
+KILL_POLL_SECONDS = 0.05
 
 # Slot -> port/cookie/key derivation. Slot 0 reproduces the historical defaults
 # (Kibana 5601, ES 9200/9300). Each slot bumps Kibana by 1 and ES by 2 (HTTP +
@@ -202,17 +205,17 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--stop",
         action="store_true",
         help=(
-            "Tear down the stack for the current worktree when recorded processes "
-            "are available, then drop its registry entry. User-owned interactive "
-            "tmux stacks must be stopped from tmux."
+            "Tear down the stack for the current worktree: kill recorded process "
+            "groups and whatever still listens on the slot's Kibana/ES ports, then "
+            "drop its registry entry."
         ),
     )
     parser.add_argument(
         "--stop-all",
         action="store_true",
         help=(
-            "Tear down every registered detached/serverless stack. Interactive tmux "
-            "stacks without recorded processes are left in the registry."
+            "Tear down every registered stack, including interactive tmux stacks "
+            "with no recorded pids, then clear the registry."
         ),
     )
     parser.add_argument(
@@ -393,40 +396,58 @@ def slot_liveness(entry: dict) -> tuple[bool, bool]:
 
 
 def kill_port_listeners(port: int | None) -> bool:
-    """SIGTERM then SIGKILL whatever is listening on ``port``. Returns True if it acted.
+    """SIGTERM then SIGKILL the process group of each listener on ``port``.
 
-    Interactive stacks are not our children, so their process groups are not
-    ours to signal by recorded pid; the port owner is killed directly instead.
+    Interactive stacks are not our children, so recorded pids are missing; the
+    port owner is the inner Kibana, a group *member*. Signaling that pid alone
+    lets Kibana close the port, log "All plugins stopped", and hang while yarn
+    and the rspack worker stay up. Killing the listener's process group reaps
+    the whole tree. Returns True if it found a listener.
     """
     if port is None:
         return False
-    pids = port_listener_pids(port)
+    pids: list[int] = []
+    seen_pids: set[int] = set()
+    for pid in port_listener_pids(port):
+        if pid in seen_pids:
+            continue
+        seen_pids.add(pid)
+        pids.append(pid)
     if not pids:
         return False
+    seen_pgids: set[int] = set()
     for pid in pids:
         try:
-            os.kill(pid, signal.SIGTERM)
+            pgid = os.getpgid(pid)
         except (ProcessLookupError, PermissionError):
+            kill_pid_group(pid)
             continue
-    for _ in range(20):
-        if not port_listener_pids(port):
-            return True
-        time.sleep(0.25)
-    for pid in port_listener_pids(port):
-        try:
-            os.kill(pid, signal.SIGKILL)
-        except (ProcessLookupError, PermissionError):
+        if pgid in seen_pgids:
             continue
+        seen_pgids.add(pgid)
+        kill_pid_group(pid)
     return True
 
 
+def pid_is_zombie(pid: int) -> bool:
+    """True when ``ps`` reports ``pid`` in state Z (defunct)."""
+    result = subprocess.run(
+        ["ps", "-o", "stat=", "-p", str(pid)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.stdout.strip().startswith("Z")
+
+
 def pid_alive(pid: object) -> bool:
-    """True when ``pid`` refers to a live process (signal 0 probe).
+    """True when ``pid`` refers to a live, non-zombie process (signal 0 probe).
 
     PermissionError means the pid exists but belongs to another user, so it
     counts as alive. Pid reuse can make a stale entry look alive; that only
     leaves a slot occupied (the next worktree takes a higher slot), which is a
-    safe failure mode compared to reclaiming a live stack.
+    safe failure mode compared to reclaiming a live stack. Zombies are not
+    alive: they cannot hold ports and must not block SIGKILL wait loops.
     """
     if type(pid) is not int or pid <= 0:
         return False
@@ -436,7 +457,7 @@ def pid_alive(pid: object) -> bool:
         return False
     except PermissionError:
         return True
-    return True
+    return not pid_is_zombie(pid)
 
 
 def describe_pid(pid: int) -> str:
@@ -1007,27 +1028,75 @@ def run_detached(
     return 0
 
 
+def _live_group_members(pgid: int) -> list[int]:
+    """Pids in ``pgid`` that are not zombies (empty if the group is gone)."""
+    result = subprocess.run(
+        ["ps", "-axo", "pid=,pgid=,stat="],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    members: list[int] = []
+    for line in result.stdout.splitlines():
+        parts = line.split()
+        if len(parts) < 3:
+            continue
+        try:
+            pid = int(parts[0])
+            group = int(parts[1])
+        except ValueError:
+            continue
+        if group != pgid or parts[2].startswith("Z"):
+            continue
+        members.append(pid)
+    return members
+
+
+def _signal_pid(pid: int, sig: int) -> None:
+    try:
+        os.kill(pid, sig)
+    except (ProcessLookupError, PermissionError, OverflowError):
+        return
+
+
 def kill_pid_group(pid: int) -> None:
-    """SIGTERM then SIGKILL the process group led by pid (a stack child started
-    with start_new_session=True, so pid is the group leader). No-op if already gone."""
+    """SIGTERM then SIGKILL the process group of ``pid``.
+
+    Detached stacks start with start_new_session=True, so the recorded pid is the
+    group leader. Interactive stacks are stopped via a port listener which is a
+    group member (the inner Kibana); getpgid still names the yarn/python group.
+    After SIGTERM, wait for live (non-zombie) members, then SIGKILL the group and
+    any survivors. A Kibana that closes its port and hangs still dies.
+    """
     try:
         pgid = os.getpgid(pid)
-    except (ProcessLookupError, PermissionError):
+    except ProcessLookupError:
+        return
+    except PermissionError:
+        _signal_pid(pid, signal.SIGTERM)
+        time.sleep(min(KILL_GRACE_SECONDS, 0.2))
+        _signal_pid(pid, signal.SIGKILL)
         return
     try:
         os.killpg(pgid, signal.SIGTERM)
-    except (ProcessLookupError, PermissionError):
+    except ProcessLookupError:
         return
-    for _ in range(20):
-        try:
-            os.killpg(pgid, 0)
-        except (ProcessLookupError, PermissionError):
+    except PermissionError:
+        _signal_pid(pid, signal.SIGTERM)
+        time.sleep(min(KILL_GRACE_SECONDS, 0.2))
+        _signal_pid(pid, signal.SIGKILL)
+        return
+    deadline = time.monotonic() + KILL_GRACE_SECONDS
+    while time.monotonic() < deadline:
+        if not _live_group_members(pgid):
             return
-        time.sleep(0.25)
+        time.sleep(KILL_POLL_SECONDS)
     try:
         os.killpg(pgid, signal.SIGKILL)
     except (ProcessLookupError, PermissionError):
-        return
+        pass
+    for member in _live_group_members(pgid):
+        _signal_pid(member, signal.SIGKILL)
 
 
 def docker_kill_serverless() -> None:
@@ -1055,11 +1124,11 @@ def stop_entry(worktree: str, entry: dict, *, allow_user_owned: bool = True, rec
     as single-instance, so those fixed names are removed directly.
 
     Interactive tmux stacks have no recorded process groups. With
-    ``reclaim_ports`` set (an explicit single-worktree ``--stop``), fall back to
-    killing whatever still listens on this slot's Kibana/ES ports so the stack is
-    actually torn down and its registry entry can be removed. Without it (bulk
-    ``--stop-all`` and serverless preflight), such entries are left intact rather
-    than claiming they were stopped.
+    ``reclaim_ports`` set (``--stop`` and ``--stop-all``), also kill whatever
+    still listens on this slot's Kibana/ES ports by signaling the listener
+    process group, so a Kibana that closes the port and hangs still gets SIGKILL.
+    Serverless preflight leaves reclaim off so a snapshot stack on those ports is
+    not killed as a side effect.
     """
     slot = entry.get("slot")
     started_by = stack_started_by(entry)
@@ -1068,28 +1137,33 @@ def stop_entry(worktree: str, entry: dict, *, allow_user_owned: bool = True, rec
         return False
     print(f",kbn-stack: stopping slot {slot} ({worktree}, started_by={started_by})", flush=True)
     stopped = False
+    recorded = False
     for key in ("kbn_pid", "es_pid"):
         pid = entry.get(key)
         if isinstance(pid, int):
             kill_pid_group(pid)
+            recorded = True
             stopped = True
     if entry.get("backend") == "serverless":
         docker_kill_serverless()
         stopped = True
-    if not stopped and reclaim_ports and entry.get("backend") != "serverless":
+    if reclaim_ports and entry.get("backend") != "serverless":
         kbn_port, es_http = entry_ports(entry)
+        port_stopped = False
         if kill_port_listeners(kbn_port):
+            port_stopped = True
             stopped = True
         if kill_port_listeners(es_http):
+            port_stopped = True
             stopped = True
-        if stopped:
+        if port_stopped and not recorded:
             print(
                 f",kbn-stack: stopped interactive slot {slot} by killing its Kibana/ES port owners.",
                 flush=True,
             )
     if not stopped:
         print(
-            ",kbn-stack: no recorded detached/serverless processes; leaving registry entry intact.",
+            ",kbn-stack: no live processes or port listeners for this entry.",
             flush=True,
         )
     return stopped
@@ -1116,22 +1190,11 @@ def run_stop_all(registry: dict) -> int:
     if not registry:
         print(",kbn-stack: no registered stacks.", flush=True)
         return 0
-    remaining = {}
-    stopped_count = 0
+    count = len(registry)
     for worktree, entry in list(registry.items()):
-        if stop_entry(worktree, entry):
-            stopped_count += 1
-        else:
-            remaining[worktree] = entry
-    save_registry(remaining)
-    if remaining:
-        print(
-            f",kbn-stack: stopped {stopped_count} stack(s); left {len(remaining)} "
-            "interactive stack(s) in the registry because they have no recorded processes.",
-            flush=True,
-        )
-    else:
-        print(f",kbn-stack: stopped {stopped_count} stack(s) and cleared the registry.", flush=True)
+        stop_entry(worktree, entry, reclaim_ports=True)
+    save_registry({})
+    print(f",kbn-stack: stopped {count} stack(s) and cleared the registry.", flush=True)
     return 0
 
 

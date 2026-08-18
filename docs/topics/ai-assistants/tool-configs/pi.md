@@ -96,7 +96,7 @@ Prompt order:
 Pi default -> operating layer -> project context
 ```
 
-Pi discovers `APPEND_SYSTEM.md` through `DefaultResourceLoader` and appends it before the `<project_context>` block that wraps `AGENTS.md` / `CLAUDE.md`.
+Pi discovers `APPEND_SYSTEM.md` through `DefaultResourceLoader` and appends it before the `<project_context>` block that wraps `AGENTS.md` / `CLAUDE.md`. `,q` skips this file: it passes a short `--system-prompt` and an empty `--append-system-prompt`.
 
 Why `APPEND_SYSTEM.md`, not `SYSTEM.md`:
 

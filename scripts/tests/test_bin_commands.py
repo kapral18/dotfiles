@@ -15,6 +15,7 @@ import queue
 import re
 import shlex
 import shutil
+import signal
 import socket
 import sqlite3
 import subprocess
@@ -138,6 +139,104 @@ def _patched_ports(kbn_stack, alive_slots: dict[int, tuple[bool, bool]]):
         kbn_stack.port_listener_pids = original_listeners
         kbn_stack.kill_port_listeners = original_kill
         kbn_stack.save_registry = original_save
+
+
+_HANG_AFTER_UNBIND_SERVER = """\
+import os
+import signal
+import socket
+import sys
+import time
+
+port = int(sys.argv[1])
+role = sys.argv[2]
+if role == "worker":
+    signal.signal(signal.SIGTERM, lambda *_: None)
+    while True:
+        time.sleep(60)
+
+sock = socket.socket()
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock.bind(("127.0.0.1", port))
+sock.listen(1)
+
+
+def hang(_signum, _frame):
+    try:
+        sock.close()
+    except OSError:
+        pass
+    while True:
+        time.sleep(60)
+
+
+signal.signal(signal.SIGTERM, hang)
+print(f"ready {os.getpid()}", flush=True)
+while True:
+    time.sleep(60)
+"""
+
+
+def _spawn_hang_after_unbind_group(script: Path) -> tuple[int, int, list[int]]:
+    """Start a session: leader + listener that hangs after closing the port + worker.
+
+    Returns ``(port, pgid, member_pids)``.
+    """
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
+    leader = os.fork()
+    if leader == 0:
+        os.setsid()
+        if os.fork() == 0:
+            os.execv(sys.executable, [sys.executable, str(script), str(port), "listener"])
+        if os.fork() == 0:
+            os.execv(sys.executable, [sys.executable, str(script), str(port), "worker"])
+        while True:
+            try:
+                os.wait()
+            except ChildProcessError:
+                time.sleep(60)
+    deadline = time.monotonic() + 5
+    listeners: list[int] = []
+    while time.monotonic() < deadline:
+        result = subprocess.run(
+            ["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-t"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        listeners = [int(tok) for tok in result.stdout.split() if tok.isdigit()]
+        if listeners:
+            break
+        time.sleep(0.05)
+    if not listeners:
+        try:
+            os.killpg(os.getpgid(leader), signal.SIGKILL)
+        except OSError:
+            pass
+        raise AssertionError("hang-after-unbind harness failed to bind")
+    pgid = os.getpgid(listeners[0])
+    ps = subprocess.run(["ps", "-axo", "pid=,pgid="], capture_output=True, text=True, check=False)
+    members = []
+    for line in ps.stdout.splitlines():
+        parts = line.split()
+        if len(parts) == 2 and parts[1] == str(pgid):
+            members.append(int(parts[0]))
+    return port, pgid, members
+
+
+def _reap_group(pgid: int, leader: int | None = None) -> None:
+    try:
+        os.killpg(pgid, signal.SIGKILL)
+    except OSError:
+        pass
+    if leader is not None:
+        try:
+            os.waitpid(leader, 0)
+        except ChildProcessError:
+            pass
 
 
 def _capture_stop_existing_serverless(kbn_stack, registry: dict, new_started_by: str):
@@ -2477,19 +2576,58 @@ class TestOpenRouterWrappers(unittest.TestCase):
                 assert 'readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/$preset_slug"' in source
                 assert 'preset_slug="$family-lanes-$preset_effort"' in source  # max composes, no cap
 
-    def test_SHOULD_union_cursor_effort_completions_with_none_ladder(self):
+    def test_SHOULD_keep_reasoning_models_that_omit_supported_efforts(self):
+        # OpenRouter lists inclusionai/ling-3.0-flash under supported_parameters=reasoning
+        # with reasoning={mandatory:false, default_enabled:true} and no supported_efforts.
+        # The completer used to skip those rows, so --model never offered the id.
+        source = (REPO / "home/dot_config/fish/functions/readonly___openrouter_catalog.fish").read_text()
+        start = source.index("import json, sys")
+        end = source.index("' $tmp", start)
+        snippet = source[start:end]
+        self.assertNotIn("if not efforts:", snippet)
+        fixture = {
+            "data": [
+                {
+                    "id": "inclusionai/ling-3.0-flash",
+                    "reasoning": {"mandatory": False, "default_enabled": True},
+                },
+                {
+                    "id": "deepseek/deepseek-v4-flash-0731",
+                    "reasoning": {"supported_efforts": ["max", "high", "low"]},
+                },
+            ]
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog = Path(tmp) / "models.json"
+            catalog.write_text(json.dumps(fixture), encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, "-c", snippet, str(catalog)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        rows = dict(line.split("\t", 1) for line in result.stdout.splitlines())
+        self.assertEqual(rows["inclusionai/ling-3.0-flash"], "")
+        self.assertEqual(rows["deepseek/deepseek-v4-flash-0731"], "max,high,low")
+
+    def test_SHOULD_share_openrouter_catalog_across_chat_wrappers(self):
         # Live catalog omits none for DeepSeek; completions still force-union none onto catalog efforts.
-        source = (REPO / "home/dot_config/fish/completions/readonly_,cursor-openrouter.fish").read_text()
+        source = (REPO / "home/dot_config/fish/functions/readonly___openrouter_catalog.fish").read_text()
         assert "not contains -- none $efforts" in source
         assert "set efforts none $efforts" in source
+        assert 'test -z "$parts[2]"' in source
+        assert "~/.cache/,openrouter/models.tsv" in source
         for relative in (
             "home/dot_config/fish/completions/readonly_,claude-openrouter.fish",
             "home/dot_config/fish/completions/readonly_,codex-openrouter.fish",
             "home/dot_config/fish/completions/readonly_,copilot-openrouter.fish",
+            "home/dot_config/fish/completions/readonly_,cursor-openrouter.fish",
         ):
             with self.subTest(completion=relative):
                 text = (REPO / relative).read_text()
-                assert "none minimal low medium high xhigh max" in text
+                assert "functions/__openrouter_catalog.fish" in text
+                assert "(__openrouter_catalog_models)" in text
+                assert "(__openrouter_catalog_efforts)" in text
 
     def test_SHOULD_complete_cursor_codex_from_the_live_codex_model_cache(self):
         source = (REPO / "home/dot_config/fish/completions/readonly_,cursor-codex.fish").read_text()
@@ -3254,7 +3392,9 @@ touch "%s"
 
             assert downstream_body == STREAM_BODY
             assert "text/event-stream" in downstream_ct
-            assert downstream_cl == str(len(STREAM_BODY))
+            # Inbound tool-name rewrite can change SSE byte length, so the shim
+            # omits Content-Length and closes the connection instead.
+            assert downstream_cl == ""
             assert _recorded_content_type and _recorded_content_type[-1] == "application/json"
 
             # --- HTTP error path ---
@@ -4083,6 +4223,23 @@ class TestKbnStackCommand(unittest.TestCase):
         with mock.patch.object(kbn_stack.os, "kill", side_effect=PermissionError):
             assert kbn_stack.pid_alive(1234) is True
 
+    def test_pid_alive_treats_zombie_as_dead(self):
+        kbn_stack = _load_kbn_stack_command()
+        child = os.fork()
+        if child == 0:
+            os._exit(0)
+        try:
+            deadline = time.monotonic() + 2
+            while time.monotonic() < deadline:
+                if kbn_stack.pid_is_zombie(child):
+                    break
+                time.sleep(0.02)
+            else:
+                self.fail("child did not become a zombie")
+            assert kbn_stack.pid_alive(child) is False
+        finally:
+            os.waitpid(child, 0)
+
     def test_ensure_ports_free_names_the_squatting_pid(self):
         kbn_stack = _load_kbn_stack_command()
         cfg = kbn_stack.derive(0)
@@ -4361,16 +4518,56 @@ class TestKbnStackCommand(unittest.TestCase):
         assert "/wt/B" not in registry
         assert state["killed"] == []
 
-    def test_run_stop_all_still_leaves_pidless_interactive_entry(self):
+    def test_run_stop_all_reclaims_pidless_interactive_entry(self):
         kbn_stack = _load_kbn_stack_command()
         registry = {"/wt/B": {"slot": 1, "backend": "snapshot", "started_by": kbn_stack.STARTED_BY_USER}}
+        kbn_port, es_http = kbn_stack.derive(1)["kbn_port"], kbn_stack.derive(1)["es_http"]
         with _patched_ports(kbn_stack, alive_slots={1: (True, True)}) as state:
             with contextlib.redirect_stdout(io.StringIO()):
                 rc = kbn_stack.run_stop_all(registry)
 
         assert rc == 0
-        assert "/wt/B" in state["saved"][-1]
-        assert state["killed"] == []
+        assert state["saved"][-1] == {}
+        assert set(state["killed"]) == {kbn_port, es_http}
+
+    def test_run_stop_reclaims_ports_even_when_recorded_pids_exist(self):
+        kbn_stack = _load_kbn_stack_command()
+        registry = {
+            "/wt/B": {
+                "slot": 1,
+                "backend": "snapshot",
+                "started_by": kbn_stack.STARTED_BY_AGENT,
+                "kbn_pid": 4242,
+                "es_pid": 4243,
+            }
+        }
+        kbn_port, es_http = kbn_stack.derive(1)["kbn_port"], kbn_stack.derive(1)["es_http"]
+        with _patched_ports(kbn_stack, alive_slots={1: (True, True)}) as state:
+            with mock.patch.object(kbn_stack, "kill_pid_group") as kill_group:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    rc = kbn_stack.run_stop("/wt/B", registry)
+
+        assert rc == 0
+        assert "/wt/B" not in registry
+        assert kill_group.mock_calls == [mock.call(4242), mock.call(4243)]
+        assert set(state["killed"]) == {kbn_port, es_http}
+
+    def test_kill_port_listeners_reaps_hang_after_unbind_process_group(self):
+        kbn_stack = _load_kbn_stack_command()
+        kbn_stack.KILL_GRACE_SECONDS = 0.2
+        with tempfile.TemporaryDirectory() as tmp:
+            script = Path(tmp) / "hang_server.py"
+            script.write_text(_HANG_AFTER_UNBIND_SERVER)
+            port, pgid, members = _spawn_hang_after_unbind_group(script)
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    acted = kbn_stack.kill_port_listeners(port)
+                live = [pid for pid in members if kbn_stack.pid_alive(pid)]
+                assert acted is True
+                assert kbn_stack.port_listener_pids(port) == []
+                assert live == [], live
+            finally:
+                _reap_group(pgid, leader=pgid)
 
     def test_snapshot_es_command_pins_merge_disk_watermark_before_user_flags(self):
         kbn_stack = _load_kbn_stack_command()

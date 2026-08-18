@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Description: One-shot OpenRouter pi agent with tools and a short system prompt.
+
+set -euo pipefail
+
+lib="$HOME/lib/,q/main.py"
+if [[ ! -f "$lib" ]]; then
+  echo "Error: ,q library not found at $lib. Run chezmoi apply --no-tty ~/lib/,q/main.py." >&2
+  exit 127
+fi
+
+exec python3 "$lib" "$@"

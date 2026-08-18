@@ -33,7 +33,7 @@ This file carries the worker conduct and evidence contract: safety boundary, scr
   - suggested review comment placement
   - fidelity note for mocks or partial setup
 - The screenshot handoff is for the controller's upload step only: no image uploads or local paths in GitHub review comments or bodies from this worker, and no extra comments solely for image paths; the controller uploads and embeds screenshots via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md` behind explicit user approval.
-- Proof-mode (`k-ui-proof`) stores each visual criterion's proof set in its own distinct `/tmp/<folder-name>/` folder (e.g. `/tmp/<topic>-<criterion-slug>/`) and hands the manifest to `k-compose-pr`; the files are embedded through that same explicitly approved upload flow.
+- Proof-mode (`k-ui-capture`) stores each visual criterion's proof set in its own distinct `/tmp/<folder-name>/` folder (e.g. `/tmp/<topic>-<criterion-slug>/`) and hands the manifest to `k-compose-pr`; the files are embedded through that same explicitly approved upload flow.
   Uploading images and writing local paths into GitHub belongs to the controller alone, never to this worker.
 
 ## Live feedback overlay

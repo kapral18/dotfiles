@@ -7,8 +7,10 @@ Load when building the required PR publication packet for `k-github`. The gate i
 - `template`: selected template, selection reason, required-section checklist, and `status: satisfied | blocked`.
   If an overlay provides templates, load the actual template file and draft against one selected template.
 - `screenshots`: `captured | not_applicable | blocked | explicitly_skipped`.
-  Screenshot proof is required when the diff touches UI/runtime behavior, linked context includes screenshots/media, or the Test Plan includes manual UI steps.
-  Required proof means reuse a `/k-build` `k-ui-proof` manifest, or load `~/.agents/skills/k-ui-proof/SKILL.md` and run it head-only.
+  Visual proof is required when the diff touches UI/runtime behavior, linked context includes screenshots/media, or the Test Plan includes manual UI steps.
+  Categorize each changed observed behavior by interactivity: a static visual change needs a before/after screenshot pair;
+  a behavior involving a sequence of actions or interactivity needs a before/after video pair (before recorded on the base branch, after on the PR head).
+  Required proof means reuse a `/k-build` live-UI proof manifest, or load `~/.agents/skills/k-ui-capture/references/proof-mode.md` and run it head-only.
   For non-visual UI behavior bugs (clipboard, keyboard, focus, network), capture human-visible trigger/result states and record the non-visual assertion in the Test Plan.
   Captured proof includes folder/filename mapping; explicit skips include user approval evidence.
 - `test_plan`: issue reproduction/expected/actual coverage, commands run, and observed results.
@@ -41,6 +43,10 @@ Completion criterion: the packet is complete, or composition is blocked with exa
   `attach:` placeholders, fabricated URLs, and asking the user to drag files are all off limits.
   Uploading is a GitHub side effect and needs explicit approval. Keep local folder/filename mapping outside the body for upload resolution.
   Omit screenshots only for `not_applicable` or `explicitly_skipped`; not for `required` or `blocked`.
+- Videos: embed each as a bare `user-attachments` URL alone in its own paragraph — GitHub renders a video player only then;
+  players do not render inside markdown table cells or link/`<img>` syntax (verified: table cells degrade to text links).
+  Per behavior, stack one pair under a bold caption: a `Before:` line, blank line, before-video URL;
+  then an `After:` line, blank line, after-video URL.
 - Decision log: when a change embodies an externally visible decision (API shape, privilege model, error response, storage format, default), add `## Decisions` with `**<decision>** — risk: <what goes wrong if wrong>`.
   Omit for internal implementation-only choices.
 - Link issues explicitly: `Closes #X` only when merging should close the issue, `Addresses #X` otherwise.
@@ -63,7 +69,23 @@ Closes #X | Addresses #X
 
 <!-- UI-facing changes only; omit otherwise. One titled block per captured shot, uploaded via the browser-assisted flow and embedded by URL. -->
 
-**<caption — what this proves>:**
+**<caption — static visual change>:**
 
-<img src="https://github.com/user-attachments/assets/<uuid>" alt="<caption>" />
+Before:
+
+<img src="https://github.com/user-attachments/assets/<uuid>" alt="<caption> (before)" />
+
+After:
+
+<img src="https://github.com/user-attachments/assets/<uuid>" alt="<caption> (after)" />
+
+**<caption — behavior with a sequence of actions or interactivity>:**
+
+Before:
+
+https://github.com/user-attachments/assets/<uuid>
+
+After:
+
+https://github.com/user-attachments/assets/<uuid>
 ```

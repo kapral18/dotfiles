@@ -58,21 +58,21 @@ These skills route non-code tools, browser automation, and generated visual asse
 | Source   | [`exact_k-playwriter`](../../../../home/exact_dot_agents/exact_skills/exact_k-playwriter/) |
 | Boundary | rendered browser behavior only; prefer non-browser tools for static file or source checks  |
 
-## `k-ui-proof`
+## `k-ui-capture`
 
-| Field    | Value                                                                                                                                                                                                                              |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Use when | verifying a built/changed UI matches its intended visual and capturing screenshot proof for a PR                                                                                                                                   |
-| Source   | [`exact_k-ui-proof`](../../../../home/exact_dot_agents/exact_skills/exact_k-ui-proof/)                                                                                                                                             |
-| Related  | creation-side sibling of `live-ui-review`; shares [`live-ui-runtime.md`](../../../../home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_live-ui-runtime.md); runs inline in `/k-build` and `k-compose-pr` |
-| Boundary | head-only proof capture; not for reviewing others' changes (`k-review`/`/k-deep-review` own `live-ui-review`)                                                                                                                      |
+| Field    | Value                                                                                                                                                                                                                                                                                                                                             |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | proving a built/changed UI matches its intended visual/behavior, auditing a diff for capturable UI changes, or capturing/uploading before/after PR screenshots and videos                                                                                                                                                                         |
+| Source   | [`exact_k-ui-capture`](../../../../home/exact_dot_agents/exact_skills/exact_k-ui-capture/)                                                                                                                                                                                                                                                        |
+| Related  | creation-side sibling of `live-ui-review`; proof mechanics live in its shared `references/proof-mode.md`, loaded directly by `/k-build` and `k-compose-pr`; shares [`live-ui-runtime.md`](../../../../home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_live-ui-runtime.md); upload via the `k-github` attachments flow |
+| Boundary | head-only proof capture with gated upload; not for reviewing others' changes (`k-review`/`/k-deep-review` own `live-ui-review`)                                                                                                                                                                                                                   |
 
 ## `k-live-ui-windows`
 
-| Field    | Value                                                                                                                                                                      |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Use when | verifying a UI inside a Windows guest running in VirtualBox, over CDP through a host NAT port-forward                                                                      |
-| Source   | [`exact_k-live-ui-windows`](../../../../home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/)                                                                       |
-| Routing  | manual                                                                                                                                                                     |
-| Related  | adds the Windows/VirtualBox environment to whichever check you're running (`k-ui-proof` or `live-ui-review`); shares `live-ui-runtime.md`                                  |
-| Boundary | never auto-triggered by `/k-deep-review`, `/k-build`, `k-ui-proof`, or `live-ui-review` — load it by hand only on an explicit user request for Windows/VirtualBox coverage |
+| Field    | Value                                                                                                                                                                        |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | verifying a UI inside a Windows guest running in VirtualBox, over CDP through a host NAT port-forward                                                                        |
+| Source   | [`exact_k-live-ui-windows`](../../../../home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/)                                                                         |
+| Routing  | manual                                                                                                                                                                       |
+| Related  | adds the Windows/VirtualBox environment to whichever check you're running (`k-ui-capture` or `live-ui-review`); shares `live-ui-runtime.md`                                  |
+| Boundary | never auto-triggered by `/k-deep-review`, `/k-build`, `k-ui-capture`, or `live-ui-review` — load it by hand only on an explicit user request for Windows/VirtualBox coverage |

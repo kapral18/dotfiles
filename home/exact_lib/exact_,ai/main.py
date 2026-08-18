@@ -922,8 +922,9 @@ def execute_plan(plan: InvocationPlan) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    raw = list(sys.argv[1:] if argv is None else argv)
     try:
-        command = parse_cli(sys.argv[1:] if argv is None else argv)
+        command = parse_cli(raw)
         plan = resolve_plan(command)
     except PlanError as error:
         print(f",ai: error: {error}", file=sys.stderr)

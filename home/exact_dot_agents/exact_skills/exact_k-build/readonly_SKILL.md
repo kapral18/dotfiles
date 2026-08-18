@@ -69,10 +69,10 @@ Complete the current phase before starting a later one.
 
 5. **Live-UI proof.**
    Run this when any acceptance criterion's evidence is visual — a `judgment:` criterion naming a screenshot/visual comparison, or an in-scope UI-facing change with a stated visual goal.
-   Load `~/.agents/skills/k-ui-proof/SKILL.md` and run it inline (this flow already holds Playwriter and local/dev mutation permissions), head-only against the built runtime.
+   Load `~/.agents/skills/k-ui-capture/references/proof-mode.md` and run it inline (this flow already holds Playwriter and local/dev mutation permissions), head-only against the built runtime.
    Supply the built worktree/branch, the changed UI paths, the visual criterion as the intended-visual oracle, the selected target packet (for verified `elastic/kibana`, the overlay's `~/.agents/skills/k-elastic-domain/references/kibana-live-ui.md`; otherwise the explicit user/repo-documented local/dev packet), the required runtime config, and the `/tmp` output location (each visual criterion's proof set in its own distinct `/tmp/<folder-name>/` folder).
-   `k-ui-proof` verifies the local browser only; when the user explicitly wants Windows/VirtualBox coverage too, add the manual `~/.agents/skills/k-live-ui-windows/SKILL.md` skill to this turn's work by hand instead of inferring it from the spec/issue context.
-   Set each visual criterion's ledger row from the returned verdict with the captured screenshot as its evidence:
+   The proof-mode contract verifies the local browser only; when the user explicitly wants Windows/VirtualBox coverage too, add the manual `~/.agents/skills/k-live-ui-windows/SKILL.md` skill to this turn's work by hand instead of inferring it from the spec/issue context.
+   Set each visual criterion's ledger row from the returned verdict with the captured visual proof (screenshot or video) as its evidence:
    `met` -> `judgment-met`, `unmet` -> back to phase 3 like a red step, `blocked` -> `blocked` with the exact blocker.
    Skip only when no criterion is visual; record the skip reason.
    A read-only/Ask-mode Playwriter block or an unstartable runtime is a valid `blocked`, not a silent skip.
@@ -106,6 +106,6 @@ A blocked flow ends as `blocked` with the ledger as-is — never as a success su
 - Post-review stage: result per dimension (clean, or what was cleaned).
 - Scope: files changed, each traced to a criterion; out-of-scope confirmation.
 - Remaining unknowns / blockers, and the suggested next move (commit via `k-git` skill, PR via `k-compose-pr` —
-  which can embed the captured screenshots — or fixes).
+  which can embed the captured visual proof — or fixes).
 - Completion gate: clear, or blocked with the unresolved rows.
 - `Compatibility impact: none | removed (requested) | kept existing (requested)`.

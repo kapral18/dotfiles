@@ -12,6 +12,6 @@ complete -c ',ai' -l execution -x -a "$__ai_executions" -d 'Hard execution const
 complete -c ',ai' -l connectivity -x -a "$__ai_connectivities" -d 'Hard connectivity constraint when explicit'
 complete -c ',ai' -l model -r -d 'Explicit harness model'
 complete -c ',ai' -l provider -r -d 'Explicit provider when the harness supports it'
-complete -c ',ai' -l dry-run -d 'Emit redacted InvocationPlan JSON without executing'
 complete -c ',ai' -l explain -d 'Explain the redacted InvocationPlan without executing'
+complete -c ',ai' -l dry-run -d 'Emit InvocationPlan JSON without executing'
 complete -c ',ai' -s h -l help -d 'Show help'

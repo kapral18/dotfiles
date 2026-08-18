@@ -15,8 +15,8 @@ complete -c ,kbn-stack -l project-type -d "Serverless project type" -x -a "es se
 complete -c ,kbn-stack -l data -d "ES data folder name under ~/work/kibana/es_data" -x -a "(__complete_es_data_folders)"
 complete -c ,kbn-stack -l slot -d "Force a specific slot number" -x
 complete -c ,kbn-stack -l detach -d "Agent mode: background ES+Kibana, wait until ready, record started_by=agent"
-complete -c ,kbn-stack -l stop -d "Tear down this worktree's stack (recorded pids or interactive port owners) and drop its registry entry"
-complete -c ,kbn-stack -l stop-all -d "Tear down registered detached/serverless stacks; leave pid-less interactive tmux entries"
+complete -c ,kbn-stack -l stop -d "Tear down this worktree's stack (recorded pids and interactive port owners' process groups) and drop its registry entry"
+complete -c ,kbn-stack -l stop-all -d "Tear down every registered stack, including interactive tmux, then clear the registry"
 complete -c ,kbn-stack -l status -d "List registered stacks with live process and port state"
 complete -c ,kbn-stack -l prune -d "Remove fully stale registry entries without stopping processes"
 complete -c ,kbn-stack -s E -d "Extra ES setting (key=value); snapshot already sets merge watermark 2gb" -x

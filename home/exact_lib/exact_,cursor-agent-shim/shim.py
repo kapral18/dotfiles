@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Session guardrail + strict-mode proxy for cursor-agent-local on OpenRouter.
 
-Two duties, both enforced at the wire so no subagent, profile, resume, or
-caller-supplied ``model`` can escape the launcher's session pin:
+Three duties, all enforced at the wire:
 
 1. Model allowlist. The launcher pins one wire model (``OPENROUTER_WIRE_MODEL``)
    for the whole session and exports it as ``CURSOR_AGENT_ALLOWED_MODEL``.
@@ -22,11 +21,21 @@ caller-supplied ``model`` can escape the launcher's session pin:
    with ``LocalProviderError: Provider returned error`` before a single token
    is produced. The shim strips the ``strict`` field from each tool object.
 
+3. Inbound tool-name adapter. Some OpenRouter models (live: inclusionai/ling-3.0-flash)
+   emit Claude-style ``Bash`` tool calls. cursor-agent-local's available set has
+   ``Shell``, not ``Bash``; ``AI_NoSuchToolError`` is classified as a transport
+   error and the TUI shows reconnecting. The shim rewrites ``Bash`` to ``Shell``
+   on JSON and SSE ``/chat/completions`` responses. Shell already accepts
+   Claude Bash's ``command``, ``timeout``, and ``description`` fields, so the
+   name is the only mapping. Outbound tool lists stay Cursor-native so DeepSeek
+   and other well-behaved models keep seeing ``Shell``.
+
 The shim is a loopback HTTP proxy between the CLI and OpenRouter. It forwards
 every request untouched except on ``POST /api/v1/chat/completions``: the pinned
-model is enforced before forwarding, and ``strict`` is removed from tool
-objects. DeepSeek/Kimi/GLM ids never hit the strict bug, but the guardrail
-still applies to them, so the shim is always on for the pinned route; only the
+model is enforced before forwarding, ``strict`` is removed from tool objects,
+and inbound tool names are rewritten on the way back. DeepSeek/Kimi/GLM ids
+never hit the strict bug, but the guardrail and the inbound rewrite still
+apply to them, so the shim is always on for the pinned route; only the
 wrap-level ``--no-shim`` (explicit direct OpenRouter route without a preset
 family) runs without it.
 
@@ -66,6 +75,8 @@ from typing import Any
 UPSTREAM = "https://openrouter.ai"
 MAX_REQUEST_BYTES = 32 * 1024 * 1024
 ALLOWED_MODEL_ENV = "CURSOR_AGENT_ALLOWED_MODEL"
+INBOUND_TOOL_NAMES = {"Bash": "Shell"}
+_PIPE_ERRORS = (BrokenPipeError, ConnectionAbortedError, ConnectionResetError)
 
 
 def strip_tool_strict(tools: Any) -> None:
@@ -110,12 +121,94 @@ def enforce_allowed_model(payload: dict[str, Any], allowed: str) -> str | None:
     return None
 
 
+def _rewrite_tool_calls(calls: Any) -> None:
+    if not isinstance(calls, list):
+        return
+    for call in calls:
+        if not isinstance(call, dict):
+            continue
+        fn = call.get("function")
+        if not isinstance(fn, dict):
+            continue
+        name = fn.get("name")
+        if isinstance(name, str) and name in INBOUND_TOOL_NAMES:
+            fn["name"] = INBOUND_TOOL_NAMES[name]
+
+
+def rewrite_inbound_tool_names(payload: dict[str, Any]) -> dict[str, Any]:
+    """Map Claude-style tool names in a chat completion to Cursor names."""
+    choices = payload.get("choices")
+    if not isinstance(choices, list):
+        return payload
+    for choice in choices:
+        if not isinstance(choice, dict):
+            continue
+        message = choice.get("message")
+        if isinstance(message, dict):
+            _rewrite_tool_calls(message.get("tool_calls"))
+        delta = choice.get("delta")
+        if isinstance(delta, dict):
+            _rewrite_tool_calls(delta.get("tool_calls"))
+    return payload
+
+
+def _rewrite_sse_line(line: bytes) -> bytes:
+    if line.endswith(b"\r\n"):
+        ending = b"\r\n"
+        body = line[:-2]
+    elif line.endswith(b"\n"):
+        ending = b"\n"
+        body = line[:-1]
+    else:
+        ending = b""
+        body = line
+    if not body.startswith(b"data:"):
+        return line
+    payload_bytes = body[5:]
+    if payload_bytes.startswith(b" "):
+        payload_bytes = payload_bytes[1:]
+    if payload_bytes in (b"", b"[DONE]"):
+        return line
+    try:
+        payload = json.loads(payload_bytes)
+    except ValueError:
+        return line
+    if not isinstance(payload, dict):
+        return line
+    rewrite_inbound_tool_names(payload)
+    return b"data: " + json.dumps(payload, separators=(",", ":")).encode() + ending
+
+
+def rewrite_sse_chunk(buffer: bytes) -> tuple[bytes, bytes]:
+    """Rewrite complete SSE lines; return (emittable, remainder)."""
+    last_nl = buffer.rfind(b"\n")
+    if last_nl < 0:
+        return b"", buffer
+    complete = buffer[: last_nl + 1]
+    rest = buffer[last_nl + 1 :]
+    out = bytearray()
+    for line in complete.splitlines(keepends=True):
+        out.extend(_rewrite_sse_line(line))
+    return bytes(out), rest
+
+
+def rewrite_json_response(raw: bytes) -> bytes:
+    try:
+        payload = json.loads(raw)
+    except ValueError:
+        return raw
+    if not isinstance(payload, dict):
+        return raw
+    rewrite_inbound_tool_names(payload)
+    return json.dumps(payload, separators=(",", ":")).encode()
+
+
 class ShimServer(ThreadingHTTPServer):
     daemon_threads = True
 
     def handle_error(self, request: object, client_address: object) -> None:
         error = sys.exc_info()[1]
-        if isinstance(error, (BrokenPipeError, ConnectionAbortedError, ConnectionResetError)):
+        if isinstance(error, _PIPE_ERRORS):
             return
         super().handle_error(request, client_address)
 
@@ -182,31 +275,77 @@ class ShimHandler(BaseHTTPRequestHandler):
         except Exception:
             self.send_error(502, "upstream request failed")
             return
+        is_chat = self.path.endswith("/chat/completions")
+        content_type = resp_headers.get("Content-Type") or ""
         try:
-            self.send_response(status)
-            ct = resp_headers.get("Content-Type")
-            if ct:
-                self.send_header("Content-Type", ct)
-            content_length = resp_headers.get("Content-Length")
-            if content_length is not None:
-                self.send_header("Content-Length", content_length)
+            if is_chat and "text/event-stream" in content_type.lower():
+                self._write_rewritten_sse(status, content_type, resp_body)
+            elif is_chat:
+                self._write_rewritten_json(status, content_type, resp_body)
             else:
-                self.close_connection = True
-                self.send_header("Connection", "close")
-            self.end_headers()
-            try:
-                while True:
-                    chunk = resp_body.read(65536)
-                    if not chunk:
-                        break
-                    self.wfile.write(chunk)
-            except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
-                pass
+                self._write_passthrough(status, resp_headers, resp_body)
         finally:
             try:
                 resp_body.close()
             except Exception:
                 pass
+
+    def _write_rewritten_sse(self, status: int, content_type: str, resp_body: Any) -> None:
+        self.send_response(status)
+        if content_type:
+            self.send_header("Content-Type", content_type)
+        self.close_connection = True
+        self.send_header("Connection", "close")
+        self.end_headers()
+        pending = b""
+        try:
+            while True:
+                chunk = resp_body.read(65536)
+                if not chunk:
+                    if pending:
+                        out, _ = rewrite_sse_chunk(pending + b"\n")
+                        if out:
+                            self.wfile.write(out)
+                    break
+                out, pending = rewrite_sse_chunk(pending + chunk)
+                if out:
+                    self.wfile.write(out)
+        except _PIPE_ERRORS:
+            pass
+
+    def _write_rewritten_json(self, status: int, content_type: str, resp_body: Any) -> None:
+        raw = resp_body.read()
+        rewritten = rewrite_json_response(raw)
+        self.send_response(status)
+        if content_type:
+            self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(rewritten)))
+        self.end_headers()
+        try:
+            self.wfile.write(rewritten)
+        except _PIPE_ERRORS:
+            pass
+
+    def _write_passthrough(self, status: int, resp_headers: Any, resp_body: Any) -> None:
+        self.send_response(status)
+        content_type = resp_headers.get("Content-Type")
+        if content_type:
+            self.send_header("Content-Type", content_type)
+        content_length = resp_headers.get("Content-Length")
+        if content_length is not None:
+            self.send_header("Content-Length", content_length)
+        else:
+            self.close_connection = True
+            self.send_header("Connection", "close")
+        self.end_headers()
+        try:
+            while True:
+                chunk = resp_body.read(65536)
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+        except _PIPE_ERRORS:
+            pass
 
 
 def _usage() -> str:

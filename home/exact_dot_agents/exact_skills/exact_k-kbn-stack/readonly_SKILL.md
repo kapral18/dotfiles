@@ -1,7 +1,7 @@
 ---
 name: k-kbn-stack
 description: "Use for elastic/kibana UI/browser tests needing ES+Kibana URLs, -K flags, stack registry, start/stop/reuse."
-tool_version: ",kbn-stack groups/es-heap/status/prune/ownership registry surface verified 2026-08-16"
+tool_version: ",kbn-stack stop process-group SIGKILL / stop-all interactive reclaim verified 2026-08-17"
 ---
 
 # Kbn Stack
@@ -12,7 +12,7 @@ Use `,kbn-stack` from an `elastic/kibana` git worktree to start an isolated loca
 
 - Non-Kibana repos.
 - Production, shared cloud, or remote Kibana targets.
-- `--stop-all` from an agent workflow. That is user-only cleanup.
+- `--stop-all` from an agent workflow. Use per-worktree `--stop`; `--stop-all` is user-only cleanup.
 
 ## Command Surface
 
@@ -38,6 +38,10 @@ Use `,kbn-stack` from an `elastic/kibana` git worktree to start an isolated loca
 
 `--detach` is the agent mode: it starts ES and Kibana in the background, waits until Kibana answers `/api/status` and the port listener belongs to the spawned Kibana's process tree (a port-squatting orphan answering the probe is named and the stack is not marked ready), records `ready: true`, marks `started_by: "agent"`, and returns.
 Starts also fail fast when a foreign process already holds the slot's Kibana/ES ports, naming the owning pid to kill or stop first.
+
+`--stop` and `--stop-all` SIGTERM the stack process group (the port listener's group for interactive tmux stacks), wait a short grace, then SIGKILL live members so a Kibana that logs "All plugins stopped" and hangs still exits.
+`--stop-all` clears every registered stack, including interactive tmux.
+From an agent workflow, use per-worktree `--stop`; `--stop-all` is user-only cleanup.
 
 `-K key=value` is repeatable and becomes `--key=value` for `yarn start`.
 Use it for runtime settings that the UI path requires, for example `-K xpack.index_management.dev.enableSemanticField=true`.

@@ -50,6 +50,9 @@ Before uploading any image or video:
 - Precede every image with its own bold title line (e.g. `**Before — sortable Description column:**`), a blank line, then the `<img>` tag, then a blank line.
 - Before/after pairs are two titled blocks, not a `before | after` row.
 - Videos: paste the bare `user-attachments` URL on its own line (GitHub renders a player); same titled-block rule.
+  Players never render inside markdown table cells or link/`<img>` syntax — a video URL in a table cell degrades to a text link (verified live).
+  For a behavior's before/after video pair, stack under one bold caption: `Before:` line, blank line, before URL;
+  then `After:` line, blank line, after URL.
 - Verify after publishing/recreating: attachment counts via `--jq`, and rendered `naturalWidth > 0` via the browser when it matters.
 
 ## Gates
