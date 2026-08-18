@@ -8,9 +8,12 @@ Load when building the required PR publication packet for `k-github`. The gate i
   If an overlay provides templates, load the actual template file and draft against one selected template.
 - `screenshots`: `captured | not_applicable | blocked | explicitly_skipped`.
   Visual proof is required when the diff touches UI/runtime behavior, linked context includes screenshots/media, or the Test Plan includes manual UI steps.
-  Categorize each changed observed behavior by interactivity: a static visual change needs a before/after screenshot pair;
-  a behavior involving a sequence of actions or interactivity needs a before/after video pair (before recorded on the base branch, after on the PR head).
-  Required proof means reuse a `/k-build` live-UI proof manifest, or load `~/.agents/skills/k-ui-capture/references/proof-mode.md` and run it head-only.
+  Build the proof-mode contract's Behavior inventory first (`~/.agents/skills/k-ui-capture/references/proof-mode.md`):
+  screenshot pair for static deltas, video pair for any delta observed through interaction (before recorded on the base branch, after on the PR head), even when the diff looks static.
+  Follow its coverage plan: a dedicated before/after pair per behavior by default, or one shared pair when same-trigger behaviors are each plainly visible in it, captioned with every covered behavior.
+  Required proof means reuse a `/k-build` live-UI proof manifest, or run that proof-mode contract head-only.
+  When the PR already exists and carries published before/after proof, run the proof-mode Existing published proof gate first:
+  reuse each pair that passes its adequacy and freshness checks, and recapture stale, inadequate, partial, or unmapped items.
   For non-visual UI behavior bugs (clipboard, keyboard, focus, network), capture human-visible trigger/result states and record the non-visual assertion in the Test Plan.
   Captured proof includes folder/filename mapping; explicit skips include user approval evidence.
 - `test_plan`: issue reproduction/expected/actual coverage, commands run, and observed results.
@@ -45,7 +48,7 @@ Completion criterion: the packet is complete, or composition is blocked with exa
   Omit screenshots only for `not_applicable` or `explicitly_skipped`; not for `required` or `blocked`.
 - Videos: embed each as a bare `user-attachments` URL alone in its own paragraph — GitHub renders a video player only then;
   players do not render inside markdown table cells or link/`<img>` syntax (verified: table cells degrade to text links).
-  Per behavior, stack one pair under a bold caption: a `Before:` line, blank line, before-video URL;
+  Per pair, stack it under a bold caption naming the covered behavior(s): a `Before:` line, blank line, before-video URL;
   then an `After:` line, blank line, after-video URL.
 - Decision log: when a change embodies an externally visible decision (API shape, privilege model, error response, storage format, default), add `## Decisions` with `**<decision>** — risk: <what goes wrong if wrong>`.
   Omit for internal implementation-only choices.

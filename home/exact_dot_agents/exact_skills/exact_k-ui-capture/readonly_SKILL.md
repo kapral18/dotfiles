@@ -33,21 +33,20 @@ Other shared cores, loaded when their step applies:
 Pick exactly one entry from what the request supplies:
 
 - **Direct verify** — the user names the target and intended visual/behavior ("verify this UI and screenshot it").
-  Skip the audit: run the proof-mode contract with the user's described target as the oracle. Steps 3-4 apply; upload only when asked.
-- **Diff audit** — the user wants UI changes discovered and proven ("capture media proof for this diff/PR"). Run steps 1-4 in order.
+  Skip the audit: run the proof-mode contract with the user's described target as the oracle. Steps 3-5 apply; upload only when asked.
+- **Diff audit** — the user wants UI changes discovered and proven ("capture media proof for this diff/PR"). Run steps 1-5 in order.
 
 ## Step 1 — Audit the diff for capturable UI changes
 
 Inspect the change set and itemize what can be visually proven:
 
 1. Resolve the diff: `git diff origin/<base>...HEAD` plus staged/unstaged working-tree changes, or `gh pr diff <n>` when a PR is named.
-2. Itemize every distinct user-visible change (rendered markup, styles, component state/flow, user-facing runtime behavior).
+2. Load `~/.agents/skills/k-ui-capture/references/proof-mode.md` and build its Behavior inventory:
+   apply the split test (one item per independently observable difference), the classification test (static → screenshot pair, interactive → video pair), and the coverage plan (dedicated pair per item by default; one shared pair when same-trigger items are each plainly visible in it) to every user-visible change.
    Mechanical, test-only, or non-rendered changes are not capture items.
-3. For each item, note whether it is a static visual change or an interactive behavior —
-   the proof-mode contract owns what that classification means for media type.
-4. When the diff has no user-visible surface, report `Not applicable` with the changed-file evidence and stop.
+3. When the diff has no user-visible surface, report `Not applicable` with the changed-file evidence and stop.
 
-Completion criterion: every changed file is accounted for as part of a capture item or explicitly excluded, or a `Not applicable` verdict with evidence ends the run.
+Completion criterion: every changed file is accounted for as part of an inventory item or explicitly excluded, every item carries its media classification, or a `Not applicable` verdict with evidence ends the run.
 
 ## Step 2 — Assemble the capture inputs
 
@@ -57,30 +56,40 @@ Build the exact inputs the proof-mode contract's Caller supplies section require
 - the intended visual/UI state or behavior (the oracle), derived from the diff, linked issue/PR context, or the user's description;
   ask the user once when an item's oracle stays ambiguous after that
 - the selected target packet and required runtime config, resolved as the proof-mode contract's Caller supplies section directs
-- a distinct `/tmp/ui-capture-<item-slug>/` output folder per item
+- a distinct `/tmp/ui-capture-<item-slug>/` output folder per item, or per shared pair when the coverage plan consolidates items
 
 Completion criterion: every item has a testable oracle and a complete input set, or the item is reported blocked with what is missing.
 
-## Step 3 — Capture via the proof-mode contract
+## Step 3 — Reuse check against published PR proof
 
-Load `~/.agents/skills/k-ui-capture/references/proof-mode.md` and run it inline per item.
-It categorizes each item (screenshot pair vs video pair), captures the proof set, and returns the manifest.
+When the target PR already exists, run the proof-mode contract's Existing published proof gate before any capture:
+collect the PR's published before/after media, map each inventory item to the published pair conveying its contrast (shared pairs allowed per the coverage plan), and reuse a pair only when it passes both the adequacy check (media type matches the item's classification and that item's contrast is plainly visible) and the freshness check against the item's changed paths.
+Reuse the URLs of passing pairs; carry every stale, inadequate, partial, or unmapped item into Step 4. Skip this step when no PR exists yet.
+
+Completion criterion: every inventory item is classified `reused` with its existing URLs or routed to capture with the adequacy/staleness evidence.
+
+## Step 4 — Capture via the proof-mode contract
+
+Load `~/.agents/skills/k-ui-capture/references/proof-mode.md` and run it inline per item routed from Step 3.
+It captures each item's proof set in the media type its inventory classification requires and returns the manifest.
 For before/after pairs, its base-runtime exception covers capturing `before` presentation artifacts on the base branch.
 
-Completion criterion: every item has a `met`/`unmet`/`blocked` verdict and manifest entries from the proof-mode contract.
+Completion criterion: every routed item has a `met`/`unmet`/`blocked` verdict and manifest entries from the proof-mode contract.
 
-## Step 4 — Gated upload and markdown
+## Step 5 — Gated upload and markdown
 
 Load `~/.agents/skills/k-github/references/attachments.md` and follow it end to end:
 pre-upload QA, the browser-assisted upload, and the presentation rules for embedding.
+Upload only newly captured media; Step 3 supplies the URLs for reused pairs.
 Uploading is a GitHub side effect — show the QA summary and destination, and wait for explicit user approval before uploading.
 After upload, emit the ready-to-paste markdown block built per those presentation rules.
 
-Completion criterion: media uploaded and markdown emitted, or local manifest paths returned with upload marked `pending_approval`/`skipped`.
+Completion criterion: new media uploaded and markdown emitted, or local manifest paths returned with upload marked `pending_approval`/`skipped`.
 
 ## Deliverable
 
 - `audit_summary`: capture items with classification, plus excluded files (diff-audit entry only)
+- `proof_reuse`: per item, `reused` with existing URLs or the staleness evidence routing it to capture
 - `capture_manifest`: the proof-mode manifest(s) and verdicts
 - `upload_status`: `uploaded` with asset URLs, `pending_approval` with local paths, or `skipped`
 - `markdown_snippet`: the final embed block, when uploaded

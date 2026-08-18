@@ -72,7 +72,7 @@ Claude runs the lane degraded on the session model with refutation framing, repo
 
 When any acceptance criterion's evidence is visual — a `judgment:` criterion naming a screenshot/visual comparison, or an in-scope UI-facing change with a stated visual goal — `/k-build` runs the proof-mode contract, [`k-ui-capture/references/proof-mode.md`](../../../home/exact_dot_agents/exact_skills/exact_k-ui-capture/exact_references/readonly_proof-mode.md), owned by the [`k-ui-capture`](../../../home/exact_dot_agents/exact_skills/exact_k-ui-capture/readonly_SKILL.md) skill.
 
-It is the creation-side sibling of the review flow's `live-ui-review`: same runtime machinery, opposite direction. `live-ui-review` compares PR/head against base to find regressions; the proof-mode contract verifies the **built** runtime head-only against its **intended visual** and captures the screenshot set that proves it.
+It is the creation-side sibling of the review flow's `live-ui-review`: same runtime machinery, opposite direction. `live-ui-review` compares PR/head against base to find regressions; the proof-mode contract verifies the **built** runtime head-only against its **intended visual** and captures the proof media set — screenshots for static deltas, videos for interactive ones — that proves it.
 
 Both share one mode-neutral contract — [`k-review/references/live-ui-runtime.md`](../../../home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_live-ui-runtime.md) — for target-packet resolution, Playwriter preflight, readiness, runtime start, the data/setup ladder, screenshot artifacts, and the runtime safety boundary.
 
@@ -82,7 +82,7 @@ The proof-mode contract runs **inline** in `/k-build`, which already holds Playw
 
 It returns a per-criterion `met` / `unmet` / `blocked` verdict. The controller sets the ledger's `judgment-met`/`judgment-unmet` row from it; an `unmet` returns to phase 3 like a red step.
 
-The controller reports the screenshot manifest. Each screenshot/pair/set lives in its own distinct `/tmp/<folder-name>/` folder, so `k-compose-pr` can upload and embed the shots.
+The controller reports the proof manifest. Each proof set lives in its own distinct `/tmp/<folder-name>/` folder, so `k-compose-pr` can upload and embed the media.
 
 Windows/VirtualBox coverage is a separate manual skill, [`k-live-ui-windows`](../../../home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/), connecting Playwriter to a guest browser over CDP through a host NAT port-forward. It is never auto-triggered by either mode; load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn.
 
