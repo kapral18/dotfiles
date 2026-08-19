@@ -276,6 +276,26 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "runtime/UI/external/security/data/destructive claims, failed attempts, blockers, or multi-evidence changes",
         )
 
+    def test_probe_budget_loop_producer_and_consumer_stay_wired(self):
+        # The probe-budget hint only fires if agents actually record probes: the
+        # session-injected prefix carries the producer instruction, and the
+        # correction detector consumes the ledger. Pin both ends plus the ledger
+        # filename contract so one side cannot drift away silently.
+        self.assert_file_contains(
+            "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
+            ',probe pass "<summary>"',
+            ',probe fail "<summary>"',
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_hooks/correction_detector.py",
+            "probe-budget-exhausted",
+            ".probe-ledger.jsonl",
+        )
+        self.assert_file_contains(
+            "home/exact_bin/executable_,probe",
+            ".probe-ledger.jsonl",
+        )
+
     def test_converge_loop_is_manual_only_and_wired_into_sdlc_flows(self):
         # k-converge owns the bounded re-attack loop: a fixed exit condition (a round that
         # changes nothing) plus a correctness-only filter so rounds terminate instead of

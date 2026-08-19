@@ -15,9 +15,18 @@ Defaults:
 
 ## Targeting
 
-- Implicit current PR (“this PR”, “current PR”, “PR for this branch”): resolve with `,gh-prw --number` / `,gh-prw --url`;
-  if it fails once, ask for URL. Assume current-branch PR only when wording clearly implies it.
-- Implicit current issue: resolve with `,gh-issuew --number` / `,gh-issuew --url`; if it fails once, ask for URL.
+- Implicit current PR (“this PR”, “current PR”, “PR for this branch”): resolve with `,gh-prw --number` / `,gh-prw --url`.
+  Assume current-branch PR only when wording clearly implies it.
+  `,gh-prw` already probes the current branch + commit SHA fallback, so a number literal that returns "could not resolve" is a hint that the number is wrong, not a signal that the helper is broken.
+- If the user names a number that `,gh-prw` cannot resolve: reroute before writing prose about it.
+  Fallback chain (each step is read-only and cheap):
+  1. `,gh-prw --number <n>` — handles the typical case (number, branch, commit SHA).
+  2. `gh pr view --repo <upstream-fork-owner>/<repo> <n>` — for branches that target a different fork than the authenticated `gh` account (verified via `gh auth status`, not assumed from `git config`).
+  3. `gh pr view` (no args) — relies on the branch's tracked remote, regardless of authenticated `gh` account.
+  4. `gh pr view --head <branch>` — covers branches that exist on a fork but lack a default-remote config.
+  5. `gh issue view <n> --repo <owner>/<repo>` — covers the common case where a number is an issue, not a PR.
+     Three rounds of guessing "this number is the PR" without trying any of those is the failure mode.
+- Implicit current issue: resolve with `,gh-issuew --number` / `,gh-issuew --url`; same fallback applies if the helper fails.
 
 ## Route away
 

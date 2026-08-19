@@ -23,6 +23,19 @@ SPEC_ROOT = Path(
 )
 PARENT_SESSION_ENV = "COPILOT_AGENT_SESSION_ID"
 KEEP_PARENT_SESSION_ENV = "AGENT_HOOK_TEST_KEEP_COPILOT_PARENT"
+GH_STUB_LOGIN = "gh-stub-login"
+
+
+def _make_gh_stub_dir() -> Path:
+    """Stub `gh` so session_context's identity probe never hits the network in tests."""
+    directory = Path(tempfile.mkdtemp(prefix="agent-hook-gh-stub-"))
+    stub = directory / "gh"
+    stub.write_text(f"#!/bin/sh\nprintf '%s\\n' '{GH_STUB_LOGIN}'\n")
+    stub.chmod(0o755)
+    return directory
+
+
+GH_STUB_DIR = _make_gh_stub_dir()
 
 
 def hook_env(env: dict | None = None) -> dict:
@@ -33,6 +46,7 @@ def hook_env(env: dict | None = None) -> dict:
     if keep_parent_session and parent_session:
         effective_env[PARENT_SESSION_ENV] = parent_session
     effective_env["PYTHONPATH"] = f"{REPO / 'scripts'}{os.pathsep}{effective_env.get('PYTHONPATH', '')}"
+    effective_env["PATH"] = f"{GH_STUB_DIR}{os.pathsep}{effective_env.get('PATH', '')}"
     effective_env.setdefault("AGENT_MEMORY_SPEC_ROOT", str(SPEC_ROOT))
     # Keep hook subprocesses away from the real persistent topic mirror.
     effective_env.setdefault("AGENT_MEMORY_MIRROR_ROOT", str(SPEC_ROOT / ".mirror-test"))
@@ -235,6 +249,43 @@ class TestAgentHooks(unittest.TestCase):
             assert "target: prove context injection" in result["additional_context"]
             assert result["hookSpecificOutput"]["hookEventName"] == "SessionStart"
             assert "target: prove context injection" in result["hookSpecificOutput"]["additionalContext"]
+
+    def test_session_context_prefixes_github_identity_from_gh_probe(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            payload = {
+                "hook_event_name": "SessionStart",
+                "workspace_roots": [tmp],
+                "session_id": "gh-identity-test",
+            }
+            context = run_hook("executable_session_context.py", payload)["additional_context"]
+
+            assert "### GitHub identity" in context
+            assert GH_STUB_LOGIN in context
+
+    def test_session_context_omits_github_identity_when_gh_is_unavailable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            payload = {
+                "hook_event_name": "SessionStart",
+                "workspace_roots": [tmp],
+                "session_id": "gh-identity-missing-test",
+            }
+            env = dict(os.environ)
+            env["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin"
+            # hook_env prepends the gh stub dir; strip it back out so `gh` is absent.
+            effective = hook_env(env)
+            effective["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin"
+            result = subprocess.run(
+                [sys.executable, str(HOOKS / "executable_session_context.py")],
+                input=json.dumps(payload),
+                capture_output=True,
+                text=True,
+                cwd=str(REPO),
+                env=effective,
+                check=True,
+            )
+            context = json.loads(result.stdout or "{}").get("additional_context", "")
+
+            assert "### GitHub identity" not in context
 
     def test_session_context_warms_resident_embedder_only_when_adapter_opts_in(self):
         with tempfile.TemporaryDirectory() as tmp:

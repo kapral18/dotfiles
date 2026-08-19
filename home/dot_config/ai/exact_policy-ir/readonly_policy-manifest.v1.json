@@ -1,8 +1,8 @@
 {
   "version": 1,
   "output_path": "home/readonly_AGENTS.md",
-  "output_sha256": "f4a02cfff19cef0c7452db1ee8ed55df4daf3b0f333558036c2296257c3eb32f",
-  "output_bytes": 29328,
+  "output_sha256": "ad11fb565649412bde8d19d05dfa291a558eac21735d50bd5aa6f198f239b951",
+  "output_bytes": 29505,
   "rules": [
     {
       "id": "sop.0.binding-contract",
@@ -72,8 +72,8 @@
     },
     {
       "id": "sop.2.1b.self-claims-falsification-before-assertion",
-      "sha256": "f5ce76b55b8e4755f47297ed0a05b38f49837a12e4a41600d56908f39b6acd0a",
-      "bytes": 1354,
+      "sha256": "dacf0d98e3c4ae42fe76e3294063275e9701322219a84a54d4101e426c05ae70",
+      "bytes": 1531,
       "disposition": "core",
       "consumer": "home/readonly_AGENTS.md",
       "risk_tier": "standard",

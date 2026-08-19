@@ -18,6 +18,7 @@ Contract:
 - Before entering any mode, load once:
   - `~/.agents/skills/k-review/references/judging_core.md`
   - `~/.agents/skills/k-review/references/shared_rules.md`
+  - `~/.agents/skills/k-review/references/authorship.md`
 - Mode files reference both files but reuse the already-loaded copies.
 - For PR modes, also load `~/.agents/skills/k-review/references/pr_common.md` once.
   Load `~/.agents/skills/k-review/references/pr_context_audits.md` only when `pr_common.md`'s conditional Ambient Topic Exploration or PR Necessity + Correctly-Open Audit gate triggers.
@@ -55,56 +56,25 @@ Load secondary skills only after read/diff evidence proves the surface is in sco
 If the user mentions or strongly implies a PR (PR/pull request, PR review, threads, "check my PR comment", "recheck this fix from the PR", etc.):
 
 - First step is PR discovery via `,gh-prw` (read-only):
-  - `,gh-prw --number`
-  - If it fails once, stop and ask for the PR URL/number.
+  - `,gh-prw --number` returns the current branch's PR number when one exists.
+  - `,gh-prw --number <n>` resolves a specific number, URL, branch, or commit SHA against the upstream repo.
+- If `,gh-prw` cannot resolve the user's claim, run the k-github `Targeting` fallback chain (`gh pr view [--repo OWNER/REPO] <n>` → `gh pr view` (no args) → `gh pr view --head <branch>` → `gh issue view <n>`).
+  Treat the first `could not resolve` as a hint, not an answer.
+- Step `gh auth status` once up front so the authenticated principal is known before any of the above.
+  Identity mismatches between `gh api user` and the branch's tracked remote are facts, not hypotheses.
+- Last resort: ask for the URL/number.
 
 Continuity rule:
 
 - If the conversation is already clearly in a specific mode, stay in that mode when the user says "continue" / "next" unless they explicitly switch targets.
 
+## Verdict Gate (PR Mode Only)
+
+See `references/pr_common.md` → "Verdict Gate" before claiming `Verdict: merge-ready` on the first response of a PR review.
+
 ## Role Detection / Authorship (Mandatory In Every Mode)
 
-Resolve `authorship` before selecting a mode.
-
-Allowed values:
-
-- `self`
-- `other`
-- `unknown`
-
-Exception: plan review mode has no code target. Record `authorship: n/a`, skip the git/`gh` probes below, and produce feedback only.
-
-This input gates whether the review may edit code. Resolve it in the local/branch path too.
-Resolve `self` only from verified evidence; a locally checked-out change alone still needs the probes below.
-
-When a PR is involved:
-
-- Run: `gh pr view <number> --json author --jq '.author.login'`
-- Compare against: `gh api user --jq '.login'`
-- Match -> `self`; mismatch -> `other`; cannot resolve -> `unknown`.
-
-When there is no PR (local changes / branch-delta / commit-range review):
-
-- Identify the current user: `gh api user --jq '.login'` (fall back to `git config user.email` if `gh` is unavailable).
-- Check the branch's tracked remote with bounded read-only git probes in large repositories:
-  - `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false rev-parse --abbrev-ref --symbolic-full-name @{u}`
-  - `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false remote -v` for that remote's URL/owner
-- A branch tracking another person's fork is `other` (e.g. `someoneelse/<branch>`).
-- Check authorship of the commits under review: `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false log --format='%an <%ae>' <base>..HEAD`.
-  Commits authored by someone other than the current user make it `other`.
-- Only uncommitted/staged working-tree changes, or commits/branch owned by the current user, resolve to `self`.
-  If it cannot be verified, it is `unknown`.
-
-This affects mode behavior:
-
-- **`self` (user owns the change):**
-  - find issues and fix them in the working tree
-  - fix, rather than only comment
-  - draft review comments only if the user plans to post self-review notes
-- **`other` / `unknown`:**
-  - produce draft comments/suggestions only
-  - keep code unchanged
-  - editing requires the user to explicitly say to fix it (e.g. "fix these" or "take over this branch")
+See `references/authorship.md` (loaded once by the router).
 
 ## Mode Selection (Intent + Evidence)
 

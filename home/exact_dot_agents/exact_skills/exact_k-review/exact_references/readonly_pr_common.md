@@ -55,6 +55,20 @@ Avoid redundant findings:
    Credit a class as covered only from this branch's actual checks, even when CI usually covers it elsewhere.
 5. State one line before drafting: `CI coverage: covered=[...] -> exempt; in-scope=[...]`.
 
+## Verdict Gate (PR Mode Only)
+
+A `Verdict: ...` line on the first response of a PR review is a **premature** verdict when any of the following has not yet run on the current head SHA:
+
+- `gh api graphql … pullRequest.reviews(first:50)` + `pullRequest.reviewThreads(first:50)` —
+  every review-thread must be triaged before approve/request-changes/comment-only is honest.
+- `gh pr checks <n> --json name,state,bucket` — the CI Coverage Gate above needs the actual check names;
+  "all green" without enumeration is also a premature verdict.
+- `gh api repos/OWNER/REPO/pulls/comments/COMMENT_ID --jq '{login:.user.login, type:.user.type}'` —
+  reviewed comments must be classified by platform evidence, not by display-name.
+
+The pattern "merge-ready, no surviving findings" is the reportable form **only** after those three have completed and any reviewer-claimed fact has been either anchored or retracted.
+Until then the right shape is a status ledger (what was read / what is still open) with no verdict word at all.
+
 ## Pending Review Intake (blocking before diff analysis)
 
 Before PR diff analysis/dedup, seed the current-account review ledger from GitHub API truth:

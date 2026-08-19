@@ -21,7 +21,7 @@ The fastest visual entry point is the tmux command palette: `prefix` + `r`. It i
 | Family               | Use it for                                                                                 | Details                                                                                 |
 | -------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
 | Health and readiness | `,doctor`, `,kbn-pr-audit`                                                                 | [High-leverage commands](./high-leverage.md)                                            |
-| AI and agents        | `,q`, `,ai`, `,agent-memory`, `,artifact`, `,ai-kb`, provider wrappers                     | [Command catalog](./catalog.md), [AI & assistants](../../ai-assistants/index.md)        |
+| AI and agents        | `,q`, `,ai`, `,agent-memory`, `,artifact`, `,ai-kb`, `,probe`, provider wrappers           | [Command catalog](./catalog.md), [AI & assistants](../../ai-assistants/index.md)        |
 | Worktrees and GitHub | `,w`, `,gh-worktree`, `,gh-prw`, `,gh-issuew`, `,gh-tfork`                                 | [High-leverage commands](./high-leverage.md), [Worktrees](../git-identity/worktrees.md) |
 | Patch/file transfer  | `,wh`, `,add-patch-to-prs`                                                                 | [High-leverage commands](./high-leverage.md)                                            |
 | tmux helpers         | `,tmux-run-all`, `,tmux-lowfi`                                                             | [High-leverage commands](./high-leverage.md), [Tmux](../tmux/index.md)                  |

@@ -100,6 +100,8 @@ Before asserting one, name what would make it false and check that. State the fa
 Applies at assertion time, not at end of task: falsify or demote a claim before it gates the next step.
 When the falsifier is not locally runnable, label the claim `unverified`; downstream use follows `2.1` item 9.
 
+For catalogued recurring failure shapes (identity mismatch, PR-number misread, premature verdicts, probe-budget exhaustion, etc.), see `~/.agents/references/failure-modes.md`.
+
 ### 2.2 Runtime Truth
 
 Runtime/setup questions need end-to-end evidence, not static config only.

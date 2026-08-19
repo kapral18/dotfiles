@@ -34,6 +34,13 @@ AI_EMBED_WARM_ENV = "AI_EMBED_WARM"
 TRUE_VALUES = {"1", "true", "yes", "on"}
 EMBED_WARM_TIMEOUT_SECONDS = 4
 
+# Reconcile GitHub identity so PR-discovery / authorship checks below are anchored to
+# the verified `gh` principal, not assumed from `git config user.email`. Failed commands
+# or empty output are silent — `gh_identity_line` returns "" and the block is omitted.
+# Without this line, agents that assume "auth principal != upstream owner" can chase
+# the wrong repo for five rounds before discovering `gh auth status` (see failure-modes doc).
+GH_IDENTITY_TIMEOUT_SECONDS = 2
+
 PREFIX_REL_PATH = "tmux/agent_prompts/prefix.txt"
 MAX_PREFIX_CHARS = 3000
 
@@ -247,6 +254,30 @@ def collapse(text: str, max_chars: int) -> str:
     if len(flat) <= max_chars:
         return flat
     return flat[:max_chars].rstrip() + "…"
+
+
+def gh_identity_line() -> str:
+    """One-line `gh api user` probe, prefixed into every SessionStart context block.
+
+    Failures are silent (return empty string). The hook's timeout is the same
+    `EMBED_WARM_TIMEOUT_SECONDS` family — kept short because this is best-effort
+    context, not a gate.
+    """
+    try:
+        result = subprocess.run(
+            ["gh", "api", "user", "--jq", ".login"],
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=GH_IDENTITY_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    login = result.stdout.strip()
+    if not login:
+        return ""
+    # Account-type / host are deferred: per-harness adapters can decorate later if needed.
+    return f"### GitHub identity\n- `gh api user` -> `{login}` (run `gh auth status` for the active host/scopes)"
 
 
 def topic_bucket_mtime(path: Path) -> float:
@@ -478,6 +509,10 @@ def main() -> None:
     prefix = prefix_block()
     if prefix:
         parts.extend(["", prefix])
+
+    gh_identity = gh_identity_line()
+    if gh_identity:
+        parts.extend(["", gh_identity])
 
     spec_dir = spec_path.parent
     key = session_key(payload)

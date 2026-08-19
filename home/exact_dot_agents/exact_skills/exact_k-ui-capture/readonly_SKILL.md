@@ -1,6 +1,6 @@
 ---
 name: k-ui-capture
-description: "Use when proving a built/changed UI matches its intended visual/behavior, auditing a diff for capturable UI changes, or capturing/uploading before/after PR screenshots and videos."
+description: "Use when proving UI visual/behavior, auditing a diff for capturable changes, or capturing/uploading pre/post PR screenshots/videos."
 ---
 
 # UI Capture

@@ -1,6 +1,6 @@
 ---
 name: k-elastic-domain
-description: "Use when target is Elastic org, elastic/kibana, Buildkite, SCSI, labels, ownership, live UI, or domain policy."
+description: "Use when target is Elastic org, elastic/kibana, Buildkite, ownership, live UI, or domain policy."
 ---
 
 # Elastic Domain Overlay

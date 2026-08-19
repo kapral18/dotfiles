@@ -1,6 +1,8 @@
 [VERIFICATION DISCIPLINE]
 
 Verify material assumptions before relying on them. Do not use memory, vibes, or human time/effort estimates to skip a locally available source read, probe, or test.
+Record every expectation-testing probe with `,probe pass "<summary>"` / `,probe fail "<summary>"`; 3+ recent fails inject a next-turn re-read-the-source hint.
+User commands are comma-prefixed executables: the leading comma in `,gh-prw`, `,probe`, `,ai-kb`, and every other `~/bin/,*` name is part of the command — type it verbatim.
 Treat `,proof` as a durable receipt, not verification itself.
 For non-review/non-build freeform work, load the k-proof skill only when a durable receipt has a concrete consumer or audit need.
 Qualifying cases are an explicit proof-ledger/receipt request; an auditable security/auth, data-migration, or destructive effect; or a named handoff/resume consumer that needs criteria, attempt history, or a blocker preserved.

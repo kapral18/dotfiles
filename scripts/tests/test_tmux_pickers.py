@@ -465,6 +465,22 @@ exit 1
             assert all(action.endswith(b")+first") for action in actions)
             assert all(b"toggle-sort" not in action for action in actions)
 
+    def test_when_two_sessions_share_a_path_should_keep_both_visible(self):
+        grouping = runpy.run_path(str(TMUX_PICKERS / "session/lib/pick_session_grouping.py"))
+        path = "/work/kibana/fix/thing"
+        stray = f"ftr-console\tsession\t{path}\tsess_wt:fix/thing|repo=work/kibana\tftr-console\tm"
+        named = f"work/kibana|fix/thing\tsession\t{path}\tsess_wt:fix/thing|repo=work/kibana\twork/kibana|fix/thing\tm"
+        worktree = f"fix/thing\tworktree\t{path}\twt:fix/thing\t/work/kibana/main\tm"
+        rows = [stray, named, named, worktree]
+
+        deduped = grouping["dedup_best"](rows, grouping["simple_resolve"], set())
+
+        assert deduped == [stray, named]
+
+        ordered = grouping["grouped_output"](rows, [], grouping["simple_resolve"])
+        session_names = [line.split("\t")[4] for line in ordered if line.split("\t")[1] == "session"]
+        assert sorted(session_names) == ["ftr-console", "work/kibana|fix/thing"]
+
     def test_when_fzf_ranks_folder_first_should_preserve_kind_priority(self):
         daemon = runpy.run_path(str(TMUX_PICKERS / "session/lib/sort_toggle_daemon.py"))
         session_weak = "i___l___m\tsession\t/session-weak\t\t/session-weak"

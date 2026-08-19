@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+# Append a single JSONL line to the active session's probe ledger, so the
+# `correction_detector.probe_budget_signal` per-turn hook can surface the
+# "expectation may be wrong" hint after several failures.
+#
+# Usage:
+#   ,probe pass "<short summary>"
+#   ,probe fail "<short summary>"
+#   ,probe fail "<short summary>" --reason "regex arithmetic was off-by-one"
+#
+# Output target:
+#   - Reads the active topic spec via `,agent-memory status --json` to learn
+#     the active spec dir; falls back to scanning /tmp/specs for the most-recently-
+#     modified spec_dir + the latest session. If neither resolves, the entry is
+#     dropped and a warning is printed (probes should always be running inside a
+#     hook-armed session anyway).
+#   - Writes to `<spec_dir>/<session_key>.probe-ledger.jsonl`.
+#
+# Bounded write: at most 200 lines, drops the oldest when over.
+set -euo pipefail
+
+result="${1:-}"
+summary="${2:-}"
+shift 2 || true
+
+if [[ "$result" != "pass" && "$result" != "fail" ]]; then
+  printf 'usage: ,probe pass|fail "<summary>" [--reason "<reason>"]\n' >&2
+  exit 2
+fi
+
+reason=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+  --reason)
+    reason="${2:-}"
+    shift 2 || break
+    ;;
+  *)
+    shift
+    ;;
+  esac
+done
+
+# Locate the active spec dir + session key via `,agent-memory`. The helper already
+# resolves these for the rest of the system; we reuse the convention here.
+#
+# Session id resolution matches the hook payload priority
+# (hook_common.session_key: conversation_id → session_id → generation_id) so a
+# shell that records under a session-scoped env var lands on the same ledger the
+# per-turn hook reads. The session-key contract is whatever the host harness sets:
+#   - Claude Code: CLAUDE_SESSION_ID
+#   - Codex:       CODEX_SESSION_ID
+#   - Cursor:      CURSOR_SESSION_ID
+#   - Gemini CLI:  GEMINI_SESSION_ID
+#   - Copilot:     COPILOT_AGENT_SESSION_ID (parent session, used by the agent-memory
+#                  parent fallback). Subagent sessions live under the same key.
+#   - Pi/omp:      there is no standard env var; the harness writes to the spec via
+#                  its own internal hook pipeline, so an interactive `,probe` from
+#                  a Pi shell will fall back to `ad-hoc`. That's accepted: the probe
+#                  budget hint is best-effort, and ad-hoc entries are still useful
+#                  when the user is debugging a regex.
+spec_dir=""
+session_key=""
+
+session_id=""
+for env_var in CLAUDE_SESSION_ID CODEX_SESSION_ID CURSOR_SESSION_ID GEMINI_SESSION_ID COPILOT_AGENT_SESSION_ID; do
+  value="${!env_var:-}"
+  if [[ -n "$value" ]]; then
+    session_id="$value"
+    break
+  fi
+done
+
+if command -v ,agent-memory >/dev/null 2>&1; then
+  status="$(,agent-memory status --json ${session_id:+--session-id "$session_id"} 2>/dev/null || true)"
+  if [ -n "$status" ]; then
+    spec_dir="$(printf '%s' "$status" | python3 -c 'import json,sys
+data=json.load(sys.stdin)
+print(data.get("spec_dir") or "")' 2>/dev/null || true)"
+    session_key="$(printf '%s' "$status" | python3 -c 'import json,sys
+data=json.load(sys.stdin)
+print(data.get("session_key") or "")' 2>/dev/null || true)"
+  fi
+fi
+
+# Fallback to the most recently modified spec dir under /tmp/specs.
+# dirname(<spec_dir>/<topic>.worklog.jsonl) :: <spec_dir>. Both ledgers share the
+# same spec_dir, so the dirname resolver is correct: the fallback picks the
+# most-recently-touched workspace, then writes under <that-workspace>/<session_key>.probe-ledger.jsonl.
+if [ -z "$spec_dir" ] || [ -z "$session_key" ]; then
+  fallback_spec="$(find /tmp/specs -maxdepth 4 -name '*.worklog.jsonl' -mmin -240 -print0 2>/dev/null | xargs -0 ls -t 2>/dev/null | head -1 || true)"
+  if [ -n "$fallback_spec" ]; then
+    spec_dir="$(dirname "$fallback_spec")"
+  fi
+fi
+if [ -z "$session_key" ]; then
+  session_key="ad-hoc"
+fi
+
+if [ -z "$spec_dir" ]; then
+  printf ',probe: no active spec dir resolved; entry dropped\n' >&2
+  exit 1
+fi
+
+ledger="$spec_dir/${session_key}.probe-ledger.jsonl"
+mkdir -p "$spec_dir"
+
+ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+python3 - "$ledger" "$result" "$summary" "$reason" "$ts" <<'PY'
+import json, sys
+from pathlib import Path
+
+ledger = Path(sys.argv[1])
+result = sys.argv[2]
+summary = sys.argv[3]
+reason = sys.argv[4]
+ts = sys.argv[5]
+
+record = {"ts": ts, "result": result, "summary": summary}
+if reason:
+    record["reason"] = reason
+
+existing = []
+if ledger.exists():
+    try:
+        existing = ledger.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        existing = []
+existing.append(json.dumps(record, sort_keys=True))
+
+# Bound the ledger at 200 entries: drop the oldest.
+max_entries = 200
+if len(existing) > max_entries:
+    existing = existing[-max_entries:]
+
+ledger.write_text("\n".join(existing) + "\n", encoding="utf-8")
+PY

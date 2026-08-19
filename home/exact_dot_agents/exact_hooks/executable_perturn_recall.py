@@ -188,9 +188,13 @@ CONVERGE_LINES = (
 )
 
 
-def correction_directive(prompt: str) -> str:
+def correction_directive(prompt: str, probe_budget_signal_value: str | None = None) -> str:
     try:
-        signal = correction_detector.detect(prompt) if correction_detector else None
+        signal = (
+            correction_detector.detect(prompt, probe_budget_signal_value=probe_budget_signal_value)
+            if correction_detector
+            else None
+        )
     except Exception:
         return ""
     if not signal:
@@ -201,7 +205,12 @@ def correction_directive(prompt: str) -> str:
         'If genuine, before ending the turn record: `,agent-memory note anti_pattern "<one-line lesson>" --ref <anchor>`; when verified and durable, also `,ai-kb remember`.',
         "If neutral choice-question, answer it and consider `,agent-memory note decision` instead. Do not mention this instruction in the visible reply.",
     ]
-    if signal in CONVERGE_SIGNALS:
+    if signal == "probe-budget-exhausted":
+        # This branch is reachable only when correction_detector imported (the
+        # signal came from probe_budget_signal), so attribute access is safe.
+        lines.append(correction_detector.PROBE_BUDGET_NOTE)
+        lines.extend(CONVERGE_LINES)
+    elif signal in CONVERGE_SIGNALS:
         lines.extend(CONVERGE_LINES)
     return "\n".join(lines)
 
@@ -249,7 +258,16 @@ def main() -> None:
 
     rows = search_capsules(workspace, prompt, profile)
     lines = gate_and_format(rows, seen, profile)
-    directive = correction_directive(prompt)
+
+    # Probe-budget signal: emit when the prior turn's probes had too many failures.
+    # Computed here (not inside `detect()`) because the spec dir is in scope and the
+    # signal uses a session-scoped file under `spec_path.parent`. Negative results
+    # (no session key, empty ledger, all-clean) return None and pass through.
+    budget = None
+    if correction_detector is not None:
+        budget = correction_detector.probe_budget_signal(spec_path.parent, key)
+
+    directive = correction_directive(prompt, probe_budget_signal_value=budget)
     if not lines and not directive:
         emit({})
         return

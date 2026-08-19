@@ -124,6 +124,62 @@ class TestCorrectionDetector(unittest.TestCase):
         self.assertIsNone(correction_detector.detect(prompt))
 
 
+class TestProbeBudgetSignal(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.spec_dir = Path(self.tmp.name)
+
+    def tearDown(self) -> None:
+        self.tmp.cleanup()
+
+    def _write_ledger(self, key: str, results: list[str]) -> Path:
+        path = self.spec_dir / f"{key}.probe-ledger.jsonl"
+        lines = [json.dumps({"ts": "2026-01-01T00:00:00Z", "result": r, "summary": "s"}) for r in results]
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return path
+
+    def test_when_threshold_failures_in_window_should_fire(self):
+        self._write_ledger("sess", ["fail", "pass", "fail", "fail"])
+        self.assertEqual(
+            correction_detector.probe_budget_signal(self.spec_dir, "sess"),
+            "probe-budget-exhausted",
+        )
+
+    def test_when_below_threshold_should_not_fire(self):
+        self._write_ledger("sess", ["fail", "fail", "pass", "pass"])
+        self.assertIsNone(correction_detector.probe_budget_signal(self.spec_dir, "sess"))
+
+    def test_when_old_failures_left_the_rolling_window_should_not_fire(self):
+        self._write_ledger("sess", ["fail"] * 3 + ["pass"] * correction_detector.PROBE_BUDGET_WINDOW)
+        self.assertIsNone(correction_detector.probe_budget_signal(self.spec_dir, "sess"))
+
+    def test_when_ledger_missing_key_empty_or_spec_dir_none_should_not_fire(self):
+        self.assertIsNone(correction_detector.probe_budget_signal(self.spec_dir, "sess"))
+        self._write_ledger("sess", ["fail"] * 5)
+        self.assertIsNone(correction_detector.probe_budget_signal(self.spec_dir, ""))
+        self.assertIsNone(correction_detector.probe_budget_signal(None, "sess"))
+
+    def test_when_lines_are_malformed_should_skip_them(self):
+        path = self.spec_dir / "sess.probe-ledger.jsonl"
+        valid_fails = "\n".join(json.dumps({"result": "fail"}) for _ in range(2))
+        path.write_text("not-json\n" + valid_fails + "\n", encoding="utf-8")
+        self.assertIsNone(correction_detector.probe_budget_signal(self.spec_dir, "sess"))
+
+    def test_when_correction_pattern_matches_should_outrank_probe_budget_signal(self):
+        self.assertEqual(
+            correction_detector.detect("this is still wrong", probe_budget_signal_value="probe-budget-exhausted"),
+            "repeat-failure",
+        )
+
+    def test_when_no_pattern_matches_should_pass_probe_budget_signal_through(self):
+        self.assertEqual(
+            correction_detector.detect(
+                "why did you choose sqlite here?", probe_budget_signal_value="probe-budget-exhausted"
+            ),
+            "probe-budget-exhausted",
+        )
+
+
 def _run_perturn_recall(root: Path, prompt: str) -> dict:
     workspace = root / "workspace"
     workspace.mkdir()
@@ -189,6 +245,53 @@ class TestPerturnRecallCorrectionInjection(unittest.TestCase):
         context = result["hookSpecificOutput"]["additionalContext"]
         self.assertIn(",agent-memory note anti_pattern", context)
         self.assertNotIn("/k-converge", context)
+
+    def test_when_probe_budget_exhausted_should_inject_note_and_convergence(self):
+        root = self.root
+        workspace = root / "workspace"
+        workspace.mkdir()
+        deployed = _deploy_hooks(root)
+        sys.path.insert(0, str(deployed))
+        self.addCleanup(lambda: sys.path.remove(str(deployed)) if str(deployed) in sys.path else None)
+
+        loader = SourceFileLoader("perturn_recall_budget_test", str(deployed / "perturn_recall.py"))
+        spec = importlib.util.spec_from_loader("perturn_recall_budget_test", loader)
+        if spec is None or spec.loader is None:
+            raise AssertionError("could not load perturn recall")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["perturn_recall_budget_test"] = module
+        spec.loader.exec_module(module)
+
+        payload = {
+            "hook_event_name": "UserPromptSubmit",
+            "workspace_roots": [str(workspace)],
+            "session_id": "probe-budget-test",
+            "prompt": "why did you choose sqlite here?",
+        }
+        stdout = io.StringIO()
+        with (
+            mock.patch.object(
+                module.correction_detector,
+                "probe_budget_signal",
+                lambda *_args: "probe-budget-exhausted",
+            ),
+            mock.patch.dict(
+                os.environ,
+                {
+                    "AGENT_MEMORY_SPEC_ROOT": str(root / "specs"),
+                    "AGENT_MEMORY_MIRROR_ROOT": str(root / "mirror"),
+                    "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+                },
+            ),
+            mock.patch.object(sys, "stdin", io.StringIO(json.dumps(payload))),
+            mock.patch.object(sys, "stdout", stdout),
+        ):
+            module.main()
+
+        context = json.loads(stdout.getvalue())["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("User correction signal: probe-budget-exhausted", context)
+        self.assertIn(module.correction_detector.PROBE_BUDGET_NOTE, context)
+        self.assertIn("/k-converge", context)
 
     def test_when_detector_raises_should_fail_open_with_valid_hook_output(self):
         root = self.root

@@ -1,6 +1,6 @@
 ---
 name: k-nano-banana
-description: "Use when the user names Nano Banana, ,nano-banana, Gemini/Google image, or gemini-*-image. Not for unnamed image requests."
+description: "Use only when the user names Nano Banana, ,nano-banana, Gemini/Google image, or gemini-*-image."
 tool_version: ",nano-banana 1.2.0"
 ---
 

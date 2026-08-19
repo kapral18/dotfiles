@@ -90,6 +90,7 @@ def dedup_best(rows, resolve_fn, scan_roots_set):
             best_by_path[key] = (pr, i)
     out = []
     seen = set()
+    seen_sessions = set()
     seen_scan_root_dirs = set()
     for i, line in enumerate(rows):
         parts = line.split("\t")
@@ -102,6 +103,18 @@ def dedup_best(rows, resolve_fn, scan_roots_set):
             out.append(line)
             continue
         key = resolve_fn(path)
+        if kind == "session":
+            # A session is identified by its name (parts[4]), not its path:
+            # several live sessions can share one session_path (tmux pins it
+            # to the creation-time start dir, e.g. a stray `tmux new-session
+            # -c <worktree>`). Every distinctly named session stays visible;
+            # the path key in best_by_path still shadows worktree/dir rows.
+            skey = (key, (parts[4] or "").strip().lower())
+            if skey in seen_sessions:
+                continue
+            seen_sessions.add(skey)
+            out.append(line)
+            continue
         if kind == "dir" and key in scan_roots_set:
             best = best_by_path.get(key)
             if best is not None and best[1] != i:

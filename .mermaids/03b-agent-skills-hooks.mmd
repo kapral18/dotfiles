@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (123).
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (125).
 %% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Shared hooks → ~/.agents/hooks/.
 %% ============================================================================
 flowchart TB
@@ -17,7 +17,7 @@ flowchart TB
         GG["gemini-git-gate.py (Cursor beforeShell + Gemini BeforeTool run_shell_command;<br/>shlex-classifies direct git commit/push across chains/env/-C/-c;<br/>comments and complete heredoc bodies are inert; unterminated heredocs fail closed;<br/>only wrappers with a hidden Git executable are denied) — failClosed"]:::hook
     end
 
-    MEM[("/tmp/specs/<pwd>/<topic>.txt + .worklog.jsonl<br/>.session-topic-<id>.txt binds one session to a bucket<br/>(select folds the pre-bind session-* fallback worklog into the topic)<br/>.recall-seen-<session-key>.json dedupes warm/per-turn recall<br/>.worklog-queue-v1/<session>/ + target locks; bounded + crash-safe<br/>review topics → clean-room; default branch → session-<id> fallback<br/>Copilot sub-agent writes may inherit the parent selection/fallback via COPILOT_AGENT_SESSION_ID;<br/>read/inject hooks ignore that parent env to preserve blind lanes<br/>stale session-* worklogs + recall-seen swept after 7d on flush")]:::data
+    MEM[("/tmp/specs/<pwd>/<topic>.txt + .worklog.jsonl<br/>.session-topic-<id>.txt binds one session to a bucket<br/>(select folds the pre-bind session-* fallback worklog into the topic)<br/>.recall-seen-<session-key>.json dedupes warm/per-turn recall<br/>.worklog-queue-v1/<session>/ + target locks; bounded + crash-safe<br/>review topics → clean-room; default branch → session-<id> fallback<br/>Copilot sub-agent writes may inherit the parent selection/fallback via COPILOT_AGENT_SESSION_ID;<br/>read/inject hooks ignore that parent env to preserve blind lanes<br/>stale session-* worklogs + recall-seen swept after 7d on flush<br/><session-key>.probe-ledger.jsonl — appended by ,probe (pass/fail); correction_detector reads the last 8 entries<br/>and fires the `probe-budget-exhausted` signal when 3+ failed (per-turn fail-open hint)")]:::data
     SCx <--> MEM
     WLx --> MEM
 
