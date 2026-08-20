@@ -37,7 +37,6 @@ class TestStaticModelMirrors(unittest.TestCase):
             {
                 "llama-cpp",
                 "openrouter",
-                "vertex",
             },
         )
         model_mirrors.validate_mirror(mirror)
@@ -340,7 +339,7 @@ class TestStaticModelMirrors(unittest.TestCase):
         fish_source = (REPO / "home/dot_config/fish/functions/readonly___comma_provider_models.fish").read_text()
 
         self.assertIn("model-mirrors.v1.json", fish_source)
-        for provider in ("openrouter", "vertex"):
+        for provider in ("openrouter",):
             for model in mirror["providers"][provider]["curated"]["models"]:
                 self.assertNotIn(model, fish_source)
 

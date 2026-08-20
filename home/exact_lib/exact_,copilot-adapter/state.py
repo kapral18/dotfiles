@@ -16,14 +16,14 @@ RETENTION_SECONDS = 30 * 24 * 60 * 60
 
 def default_state_path() -> Path:
     base = Path(os.environ.get("XDG_STATE_HOME", "~/.local/state")).expanduser()
-    return base / "vertex-adapter" / "opaque-tool-context.json"
+    return base / "copilot-adapter" / "opaque-tool-context.json"
 
 
 class OpaqueContextStore:
     """Persist only signatures/thinking blocks required by provider tool loops."""
 
     def __init__(self, path: str | Path | None = None) -> None:
-        self.path = Path(path or os.environ.get("VERTEX_ADAPTER_STATE", "") or default_state_path())
+        self.path = Path(path or os.environ.get("COPILOT_ADAPTER_STATE", "") or default_state_path())
         self.lock_path = self.path.with_suffix(".lock")
 
     @contextmanager

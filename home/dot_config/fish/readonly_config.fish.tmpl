@@ -130,19 +130,12 @@ if type -q pass; and test -z "$GEMINI_API_KEY"
     set -gx GEMINI_API_KEY (pass google/gemini/api/token)
 end
 
-if type -q pass; and test -z "$GOOGLE_GENERATIVE_AI_API_KEY"
-    set -gx GOOGLE_GENERATIVE_AI_API_KEY (pass google/gemini/api/token)
-end
-
 if type -q pass; and test -z "$NANOBANANA_API_KEY"
     set -gx NANOBANANA_API_KEY (pass google/gemini/api/token)
 end
 
-if type -q pass; and test -z "$GOOGLE_CLOUD_PROJECT"
-    set -gx GOOGLE_CLOUD_PROJECT (pass google/vertex/project)
-    set -gx GOOGLE_GENAI_USE_VERTEXAI true
-    set -gx GOOGLE_CLOUD_LOCATION global
-end
+# Do not export GOOGLE_CLOUD_PROJECT / GOOGLE_GENAI_USE_VERTEXAI / GOOGLE_CLOUD_LOCATION here.
+# Those steer Gemini Developer API clients (including Antigravity) onto Vertex.
 
 # ------------------------------------
 # OpenAI API Key Configuration
@@ -207,7 +200,6 @@ if status --is-interactive
     function codex --wraps codex --description "Launch Codex CLI through the managed ,codex wrapper"
         command ,codex $argv
     end
-    alias vlaude='env CLAUDE_CODE_USE_VERTEX=1 CLOUD_ML_REGION=global ANTHROPIC_VERTEX_PROJECT_ID=(pass google/vertex/project) ANTHROPIC_DEFAULT_OPUS_MODEL=claude-opus-4-7 claude --effort xhigh'
     alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l'
     function g --wraps git --description 'git with fsmonitor auto-recovery'
         set -l tmpfile (mktemp)

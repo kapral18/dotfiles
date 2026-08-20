@@ -10,6 +10,8 @@ This hook does not block. It matches the command text against a small set of pre
 verbs and rides an `additionalContext` note along with the call, so the nudge lands at the step
 that depends on the premise rather than at the end of the turn. Antigravity's `PreToolUse`
 contract has no context channel, so it queues the note and injects it at the next `PreInvocation`.
+Antigravity requires a `decision` on every `PreToolUse` response, so silent Antigravity
+`PreToolUse` paths emit `{"decision":"allow"}`; an empty `{}` denies the tool with an empty reason.
 A blocked command would be worse than an unverified one: the agent would work around the gate
 instead of checking its premise.
 
@@ -156,37 +158,45 @@ def _emit_antigravity_pending(payload: dict) -> int:
     return 0
 
 
+def _silent(antigravity: bool, event: str) -> int:
+    """No-op stdout for the active harness/event shape.
+
+    Antigravity PreToolUse requires `decision`; every other silent path stays `{}`.
+    """
+    if antigravity and event == "PreToolUse":
+        print(json.dumps({"decision": "allow"}, sort_keys=True))
+        return 0
+    print("{}")
+    return 0
+
+
 def main() -> int:
+    antigravity = os.environ.get("AGENT_HOOK_OUTPUT") == ANTIGRAVITY_OUTPUT
+    event = os.environ.get("AGENT_HOOK_EVENT", "").strip() or "PreToolUse"
     try:
         payload = read_payload()
     except (ValueError, json.JSONDecodeError):
-        print("{}")
-        return 0
+        return _silent(antigravity, event)
 
     if not isinstance(payload, dict):
-        print("{}")
-        return 0
+        return _silent(antigravity, event)
 
-    antigravity = os.environ.get("AGENT_HOOK_OUTPUT") == ANTIGRAVITY_OUTPUT
-    event = str(payload.get("hook_event_name") or "PreToolUse")
+    event = str(payload.get("hook_event_name") or event)
     if antigravity and event == "PreInvocation":
         return _emit_antigravity_pending(payload)
 
     tool = payload.get("tool_name") or payload.get("tool") or ""
     # Cursor's shell events carry the command without naming a tool.
     if tool and tool not in SHELL_TOOLS:
-        print("{}")
-        return 0
+        return _silent(antigravity, event)
 
     command = command_from(payload)
     if not command:
-        print("{}")
-        return 0
+        return _silent(antigravity, event)
 
     premises = premises_for(command)
     if not premises:
-        print("{}")
-        return 0
+        return _silent(antigravity, event)
 
     lines = [
         "### Premise check (SOP 2.1 item 8)",
@@ -205,6 +215,7 @@ def main() -> int:
                 _store_antigravity_nudge(payload, context)
             except OSError:
                 pass
+            return _silent(True, "PreToolUse")
         emit({})
         return 0
 

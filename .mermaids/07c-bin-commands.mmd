@@ -1,6 +1,6 @@
 %% ============================================================================
-%% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (87 thin commands)
-%% plus deployed internals in home/exact_lib/ (82 command/shared library files).
+%% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (84 thin commands)
+%% plus deployed internals in home/exact_lib/ (78 command/shared library files).
 %% executable_,* → ~/bin/,* (comma-prefixed user commands); home/exact_lib/exact_,name/
 %% → ~/lib/,name/. verify-bin-surface keeps each command covered by fish
 %% completions, docs, catalog, and non-orphaned command libraries.
@@ -24,7 +24,7 @@ flowchart TB
     end
 
     subgraph AIC["AI / agents / KB"]
-        A[",q (one-shot OpenRouter inclusionai/ling-3.0-flash, tools on, short system prompt, no APPEND_SYSTEM) · ,ai (model view + depth/execution/connectivity → harness leaf; Pi OpenRouter → deepseek-v4-flash-0731 max) · ,ai-kb (→ ~/lib/,ai-kb/main.py)<br/>,agent-memory (/tmp/specs status/select/wipe topic buckets) · ,probe (per-session JSONL ledger for the probe-budget hook signal) · ,proof (durable freeform receipts)<br/>,artifact (cache HTML/live overlay + pollers) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,cursor-llama-cpp · ,opencode-llama-cpp → ,llama-cpp run<br/>(~/lib/,llama-cpp/lifecycle.py: shared leases; auto-start loopback; 600s grace; explicit owned stop)<br/>,claude-openrouter · ,codex-openrouter<br/>,claude-codex · ,copilot-codex (→ ~/lib/,codex-adapter)<br/>,claude-copilot · ,codex-copilot (→ ~/lib/,copilot-adapter)<br/>,claude-vertex · ,codex-vertex · ,copilot-vertex (→ ~/lib/,vertex-adapter)<br/>,copilot · ,copilot-openrouter · ,cursor-openrouter (auto-installs agent-cli-local via ~/lib/,cursor-agent-local; session model pin enforced at the wire) · ,llama-cpp<br/>(the four *-openrouter wrappers default to deepseek-v4-flash-0731@preset/effort-max; --model/--effort compose &lt;model&gt;@preset/effort-&lt;level&gt; for every model)<br/>,codex · ,cursor · ,mcp-token &lt;server&gt;<br/>,tg · ,youtube-search · ,letsfg-docker"]:::ai
+        A[",q (one-shot OpenRouter inclusionai/ling-3.0-flash, tools on, short system prompt, no APPEND_SYSTEM) · ,ai (model view + depth/execution/connectivity → harness leaf; Pi OpenRouter → deepseek-v4-flash-0731 max) · ,ai-kb (→ ~/lib/,ai-kb/main.py)<br/>,agent-memory (/tmp/specs status/select/wipe topic buckets) · ,probe (per-session JSONL ledger for the probe-budget hook signal) · ,proof (durable freeform receipts)<br/>,artifact (cache HTML/live overlay + pollers) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,cursor-llama-cpp · ,opencode-llama-cpp → ,llama-cpp run<br/>(~/lib/,llama-cpp/lifecycle.py: shared leases; auto-start loopback; 600s grace; explicit owned stop)<br/>,claude-openrouter · ,codex-openrouter<br/>,claude-codex · ,copilot-codex (→ ~/lib/,codex-adapter)<br/>,claude-copilot · ,codex-copilot (→ ~/lib/,copilot-adapter)<br/>,copilot · ,copilot-openrouter · ,cursor-openrouter (auto-installs agent-cli-local via ~/lib/,cursor-agent-local; session model pin enforced at the wire) · ,llama-cpp<br/>(the four *-openrouter wrappers default to deepseek-v4-flash-0731@preset/effort-max; --model/--effort compose &lt;model&gt;@preset/effort-&lt;level&gt; for every model)<br/>,codex · ,cursor · ,mcp-token &lt;server&gt;<br/>,tg · ,youtube-search · ,letsfg-docker"]:::ai
     end
 
     subgraph FZFC["fzf / search helpers"]

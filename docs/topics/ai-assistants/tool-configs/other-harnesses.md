@@ -134,26 +134,6 @@ Claude's selected Copilot context window becomes `CLAUDE_CODE_AUTO_COMPACT_WINDO
 
 The GitHub bearer is added only on the adapter's upstream request together with Copilot's `copilot-developer-cli` integration ID. A `401` refreshes the value from `gh auth token` and retries once; other failures pass through without retry. Interactive interrupts propagate to the native harness, while adapter shutdown suppresses follow-up `SIGINT` delivery so cleanup does not emit a Python traceback.
 
-### Repo-owned Vertex adapter
-
-`,codex-vertex`, `,copilot-vertex`, and `,claude-vertex` start one authenticated adapter on a random `127.0.0.1` port and stop it with the harness. The adapter uses the configured Google Cloud project and refreshes `gcloud auth print-access-token` credentials behind the local protocol boundary; no Google bearer or project credential is written to generated config.
-
-The three local frontends map to the two Vertex transports:
-
-| Wrapper           | Local protocol          | Vertex transport                                                                   |
-| ----------------- | ----------------------- | ---------------------------------------------------------------------------------- |
-| `,codex-vertex`   | OpenAI Responses        | Gemini OpenAI Chat Completions or Claude publisher `rawPredict`/`streamRawPredict` |
-| `,copilot-vertex` | OpenAI Chat Completions | Gemini OpenAI Chat Completions or Claude publisher `rawPredict`/`streamRawPredict` |
-| `,claude-vertex`  | Anthropic Messages      | Gemini OpenAI Chat Completions or Claude publisher `rawPredict`/`streamRawPredict` |
-
-The canonical `provider_models` entries in `home/.chezmoidata/ai_models/provider-routes.yaml` own the four allowed IDs, backend wire IDs, token limits, and effort matrix. `home/dot_config/vertex-adapter/readonly_models.json.tmpl` renders that data for the deployed core in `~/lib/,vertex-adapter/`. For Codex, the launcher also renders an owner-only, per-session `model_catalog_json` from the same registry and removes it on exit; the loopback `/v1/models` route exposes the equivalent Codex schema so these non-OpenAI IDs use their declared context, effort, shell, and freeform `apply_patch` metadata instead of fallback metadata.
-
-All wrappers use `gemini-3.6-flash` unless `--model`/`-m` selects `gemini-3.1-pro-preview`, `claude-opus-4-6`, or `claude-opus-4-7`. `--thinking` enables the model's declared default, `--effort` selects a supported level, and `--no-thinking` is accepted only for the Claude models. Gemini 3.6 Flash's closest low-reasoning mode is `--effort minimal`; Gemini 3.1 Pro cannot disable thinking.
-
-Streaming text and parallel function/custom tools are translated incrementally. Gemini tool-call thought signatures and Claude signed thinking blocks that cannot cross another protocol directly are stored by call ID in owner-only runtime state under `${XDG_STATE_HOME:-~/.local/state}/vertex-adapter/`; no user prompts, credentials, or general conversation transcript are added to that store.
-
-Cursor is intentionally absent: Cursor Agent has no custom model-provider/base-URL route, so a `,cursor-vertex` command would not make Cursor use Vertex. Native `vlaude` also remains unchanged for direct Claude Code → Vertex Claude use.
-
 ### Codex hosted MCP token bridges
 
 `inject_mcp_into_codex_toml.py` emits `slack` and `scsi-main` as `,mcp-token <source> --bridge --url <url>` command servers, not inline secrets or env-var contracts.

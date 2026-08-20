@@ -40,3 +40,12 @@ lib/,palantir
 .gemini/settings.json
 .gemini/agents
 .gemini/commands
+# Retired Vertex harness adapter + wrappers
+bin/,claude-vertex
+bin/,codex-vertex
+bin/,copilot-vertex
+lib/,vertex-adapter
+.config/vertex-adapter
+.config/fish/completions/,claude-vertex.fish
+.config/fish/completions/,codex-vertex.fish
+.config/fish/completions/,copilot-vertex.fish

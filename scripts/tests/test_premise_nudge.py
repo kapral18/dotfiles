@@ -299,7 +299,7 @@ class TestPremiseNudgeWireFormat(unittest.TestCase):
                 "toolCall": {"name": "run_command", "args": {"CommandLine": "git stash"}},
             }
 
-            self.assertEqual(run_hook(payload, env_extra=env), {})
+            self.assertEqual(run_hook(payload, env_extra=env), {"decision": "allow"})
             env["AGENT_HOOK_EVENT"] = "PreInvocation"
             injected = run_hook(
                 {
@@ -322,6 +322,18 @@ class TestPremiseNudgeWireFormat(unittest.TestCase):
                 {},
             )
 
+    def test_when_antigravity_pretool_has_no_premise_should_allow_explicitly(self):
+        # Empty `{}` on Antigravity PreToolUse denies run_command with an empty reason.
+        result = run_hook(
+            {
+                "conversationId": "agy-allow",
+                "workspacePaths": ["/tmp"],
+                "toolCall": {"name": "run_command", "args": {"CommandLine": "pwd"}},
+            },
+            env_extra={"AGENT_HOOK_OUTPUT": "antigravity", "AGENT_HOOK_EVENT": "PreToolUse"},
+        )
+        self.assertEqual(result, {"decision": "allow"})
+
 
 class TestPremiseNudgeFailsOpen(unittest.TestCase):
     """WHEN the payload is malformed; a hook that blocks a call is worse than a missed nudge."""
@@ -330,6 +342,12 @@ class TestPremiseNudgeFailsOpen(unittest.TestCase):
         for payload in ("", "   ", "not json{{", "[]", '"a string"', "null", "{}"):
             with self.subTest(payload=payload):
                 self.assertEqual(run_hook(payload), {})
+
+    def test_when_antigravity_pretool_payload_is_unusable_should_allow(self):
+        env = {"AGENT_HOOK_OUTPUT": "antigravity", "AGENT_HOOK_EVENT": "PreToolUse"}
+        for payload in ("", "   ", "not json{{", "[]", '"a string"', "null", "{}"):
+            with self.subTest(payload=payload):
+                self.assertEqual(run_hook(payload, env_extra=env), {"decision": "allow"})
 
 
 if __name__ == "__main__":

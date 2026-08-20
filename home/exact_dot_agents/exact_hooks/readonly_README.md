@@ -65,6 +65,8 @@ Resident FastEmbed warm-up is a separate, explicit lifecycle for automatic per-t
 - OpenCode and Copilot pass `warm_embedder: true` in their session-start payload.
 - Pi calls `~/lib/,ai-kb/embed_client.py ensure` from its TypeScript `session_start` handler.
 - Antigravity injects context on its first `PreInvocation`, carries queued premise nudges into the next `PreInvocation`, records `PostToolUse`, and has no user-prompt hook; it receives the `### Recall Notice`.
+  Every Antigravity `PreToolUse` handler must emit a `decision` (`allow` / `deny` / `ask` / `force_ask`);
+  an empty `{}` denies the tool with an empty reason.
 - Adapters that send neither warm-up signal do not warm the resident and get the `### Recall Notice` fallback described above.
 
 `AI_AGENT_DEPTH` applies one automatic recall contract to Claude, OpenCode, Copilot, Codex, Cursor, and Pi:

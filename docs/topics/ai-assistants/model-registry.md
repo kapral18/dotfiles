@@ -36,8 +36,6 @@ Adding a section means adding it to `SECTION_FILES` as well: the parser resolves
 
 Recommended Cursor entries use `recommendation_rank` to preserve the deliberate TUI picker order independently of the broader curated registry order.
 
-Vertex entries keep the adapter's routing contract in the same canonical section: `backend` selects Gemini Chat Completions or Claude publisher raw prediction, `wire_model` is the exact upstream ID, `efforts` and `supports_no_thinking` define accepted reasoning controls, and one `adapter_default` selects the no-argument model. `home/dot_config/vertex-adapter/readonly_models.json.tmpl` projects the registry into `~/.config/vertex-adapter/models.json`; the deployed adapter filters the `vertex` provider and fails if the default or model IDs are ambiguous.
-
 ## Using it
 
 Static generation has no network path:
@@ -71,10 +69,9 @@ python3 scripts/model_mirrors.py probe \
 
 ## Generators
 
-| Generator                                                                                                                       | Output                                                                      |
-| ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| [`scripts/model_mirrors.py`](../../../scripts/model_mirrors.py)                                                                 | Generates/verifies the v1 static mirror and runs explicit live drift probes |
-| [`home/dot_config/vertex-adapter/readonly_models.json.tmpl`](../../../home/dot_config/vertex-adapter/readonly_models.json.tmpl) | Renders provider metadata consumed by the three per-session Vertex wrappers |
+| Generator                                                       | Output                                                                      |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| [`scripts/model_mirrors.py`](../../../scripts/model_mirrors.py) | Generates/verifies the v1 static mirror and runs explicit live drift probes |
 
 Pi and OpenCode no longer generate model blocks: both harnesses resolve `openrouter/` selectors through their own built-in provider, so `run_onchange_after_07-merge-pi-config.sh.tmpl` installs the profile's static `models.json` and `run_onchange_after_07-merge-opencode-config.sh.tmpl` only injects MCP servers.
 

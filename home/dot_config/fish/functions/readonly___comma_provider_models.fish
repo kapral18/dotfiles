@@ -13,7 +13,6 @@ from pathlib import Path
 provider_aliases = {
     "codex": "codex",
     "openrouter": "openrouter",
-    "vertex": "vertex",
 }
 
 provider = provider_aliases.get(sys.argv[1])

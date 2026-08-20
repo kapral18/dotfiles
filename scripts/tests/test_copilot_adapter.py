@@ -386,7 +386,6 @@ class TestWireTranslator(unittest.TestCase):
             mock.patch.dict(
                 os.environ,
                 {
-                    "VERTEX_ADAPTER_STATE": str(Path(directory, "vertex-state.json")),
                     "XDG_STATE_HOME": directory,
                 },
             ),

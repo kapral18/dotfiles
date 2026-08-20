@@ -61,10 +61,11 @@ _CODEX = _load_sibling_modules(
     ("auth", "client", "state", "protocols"),
     "_copilot_codex_wire",
 )
-_VERTEX = _load_sibling_modules(
-    _sibling(",vertex-adapter"),
+# Local Gemini Chat / Claude Messages translators (formerly vertex-adapter).
+_GC = _load_sibling_modules(
+    Path(__file__).resolve().parent,
     ("models", "state", "protocols", "streaming"),
-    "_copilot_vertex_wire",
+    "_copilot_gc_wire",
 )
 
 
@@ -127,9 +128,9 @@ class WireTranslator:
         self._context = _SessionContextStore()
 
     @staticmethod
-    def _vertex_model(model: ModelSpec, backend: str) -> object:
+    def _gc_model(model: ModelSpec, backend: str) -> object:
         efforts = tuple(sorted(model.efforts))
-        return _VERTEX["models"].ModelSpec(
+        return _GC["models"].ModelSpec(
             model_id=model.model_id,
             backend=backend,
             wire_model=model.model_id,
@@ -177,19 +178,19 @@ class WireTranslator:
             return PreparedRequest(json.dumps(translated, separators=(",", ":")).encode(), wants_stream, {})
 
         frontend_name = "anthropic" if frontend == ANTHROPIC else "chat" if frontend == CHAT else "responses"
-        conversation = _VERTEX["protocols"].parse_request(frontend_name, payload)
-        vertex_model = self._vertex_model(model, "gemini-chat" if backend == CHAT else "claude")
+        conversation = _GC["protocols"].parse_request(frontend_name, payload)
+        gc_model = self._gc_model(model, "gemini-chat" if backend == CHAT else "claude")
         if backend == CHAT:
-            translated = _VERTEX["protocols"].to_gemini_payload(
+            translated = _GC["protocols"].to_gemini_payload(
                 conversation,
-                vertex_model,
+                gc_model,
                 None,
                 self._context,
             )
         elif backend == ANTHROPIC:
-            translated = _VERTEX["protocols"].to_claude_payload(
+            translated = _GC["protocols"].to_claude_payload(
                 conversation,
-                vertex_model,
+                gc_model,
                 None,
                 self._context,
             )
@@ -231,8 +232,8 @@ class WireTranslator:
             return json.dumps(payload, separators=(",", ":")).encode()
 
         backend_name = "gemini-chat" if backend == CHAT else "claude"
-        vertex_model = self._vertex_model(model, backend_name)
-        events = _VERTEX["streaming"].canonical_events(
+        gc_model = self._gc_model(model, backend_name)
+        events = _GC["streaming"].canonical_events(
             backend_name,
             upstream,
             stream=prepared.stream,
@@ -241,15 +242,15 @@ class WireTranslator:
         frontend_name = "anthropic" if frontend == ANTHROPIC else "chat" if frontend == CHAT else "responses"
         if prepared.stream:
             if frontend == ANTHROPIC:
-                return _VERTEX["streaming"].render_anthropic(events, vertex_model)
+                return _GC["streaming"].render_anthropic(events, gc_model)
             if frontend == CHAT:
-                return _VERTEX["streaming"].render_chat(events, vertex_model)
-            return _VERTEX["streaming"].render_responses(events, vertex_model, prepared.tool_kinds)
-        result = _VERTEX["streaming"].collect_response(events)
-        payload = _VERTEX["streaming"].render_json(
+                return _GC["streaming"].render_chat(events, gc_model)
+            return _GC["streaming"].render_responses(events, gc_model, prepared.tool_kinds)
+        result = _GC["streaming"].collect_response(events)
+        payload = _GC["streaming"].render_json(
             frontend_name,
             result,
-            vertex_model,
+            gc_model,
             prepared.tool_kinds,
         )
         return json.dumps(payload, separators=(",", ":")).encode()

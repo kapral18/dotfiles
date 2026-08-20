@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# antigravity-cli settings policy hash: {{ include "dot_gemini/antigravity-cli/readonly_settings.policy.json" | sha256sum }}
+# merge_antigravity_cli_settings.py hash: {{ include "../scripts/merge_antigravity_cli_settings.py" | sha256sum }}
+# chezmoi_lib.sh hash: {{ include "../scripts/chezmoi_lib.sh" | sha256sum }}
+# managed_config_manifest.py hash: {{ include "../scripts/managed_config_manifest.py" | sha256sum }}
+# generated_artifact_ledger.py hash: {{ include "../scripts/generated_artifact_ledger.py" | sha256sum }}
+
+source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
+# shellcheck source=../../../scripts/chezmoi_lib.sh
+source "$source_dir/../scripts/chezmoi_lib.sh"
+
+profile="{{ if eq .isWork true }}work{{ else }}personal{{ end }}"
+settings_target="$HOME/.gemini/antigravity-cli/settings.json"
+policy_src="$source_dir/dot_gemini/antigravity-cli/readonly_settings.policy.json"
+settings_merge="$source_dir/../scripts/merge_antigravity_cli_settings.py"
+
+mkdir -p "$HOME/.gemini/antigravity-cli"
+chmod 0700 "$HOME/.gemini/antigravity-cli"
+
+settings_live="$settings_target"
+[ -f "$settings_live" ] || settings_live="$policy_src"
+desired_settings="$(python3 "$settings_merge" "$settings_live" "$policy_src")"
+chezmoi_write_if_changed "$desired_settings" "$settings_target" 0600
+chezmoi_record_artifact --id antigravity-cli-settings \
+  --producer 07-merge-antigravity-cli-settings --profile "$profile" \
+  --target "$settings_target" --ownership-adapter json-declared \
+  --baseline "$policy_src" \
+  --input "$policy_src" \
+  --transform "$settings_merge" \
+  --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --consumer agy

@@ -1,0 +1,5 @@
+{
+  "enableTelemetry": false,
+  "modelProvider": "gemini",
+  "model": "Gemini 3.7 Flash (High)"
+}

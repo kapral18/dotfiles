@@ -235,7 +235,6 @@ TEST_RULES: tuple[TestRule, ...] = (
     TestRule(prefixes=("home/exact_lib/exact_,wh/",), tests=("tests/test_wh.py",)),
     TestRule(prefixes=("home/exact_lib/exact_,codex-adapter/",), tests=("tests/test_codex_adapter.py",)),
     TestRule(prefixes=("home/exact_lib/exact_,copilot-adapter/",), tests=("tests/test_copilot_adapter.py",)),
-    TestRule(prefixes=("home/exact_lib/exact_,vertex-adapter/",), tests=("tests/test_vertex_adapter.py",)),
     TestRule(prefixes=("home/exact_lib/exact_,cursor-agent-shim/",), tests=("tests/test_cursor_agent_shim.py",)),
     TestRule(prefixes=("home/exact_lib/exact_,ai/", "home/exact_bin/executable_,ai"), tests=("test_ai_launcher.py",)),
     TestRule(prefixes=("home/dot_omp/",), tests=("test_omp_migration.py", "tests/test_invariants.py")),

@@ -2457,46 +2457,6 @@ class TestMcpTokenWorkspaceSeeding(unittest.TestCase):
         assert seeded.get("kibana", {}).get("tokens") == other_tokens, "other servers' entries must be preserved"
 
 
-class TestVertexWrappers(unittest.TestCase):
-    """WHEN launching a supported harness through the shared Vertex adapter."""
-
-    def test_SHOULD_forward_the_harness_name_and_every_argument_to_the_shared_core(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            fake_core = Path(tmp) / "main.py"
-            fake_core.write_text(
-                "import json\nimport sys\nprint(json.dumps(sys.argv[1:]))\n",
-                encoding="utf-8",
-            )
-            for harness in ("codex", "copilot", "claude"):
-                with self.subTest(harness=harness):
-                    result = subprocess.run(
-                        [
-                            modern_bash(),
-                            str(REPO / f"home/exact_bin/executable_,{harness}-vertex"),
-                            "--model",
-                            "claude-opus-4-7",
-                            "--effort",
-                            "xhigh",
-                            "-p",
-                            "prompt",
-                        ],
-                        capture_output=True,
-                        text=True,
-                        env={**os.environ, "VERTEX_ADAPTER_LIB": str(fake_core)},
-                    )
-
-                    assert result.returncode == 0, result.stderr
-                    assert json.loads(result.stdout) == [
-                        harness,
-                        "--model",
-                        "claude-opus-4-7",
-                        "--effort",
-                        "xhigh",
-                        "-p",
-                        "prompt",
-                    ]
-
-
 def _install_shim_stub(home: Path) -> None:
     """Drop a stub shim.py into a fake HOME so the launcher's shim branch works.
 
