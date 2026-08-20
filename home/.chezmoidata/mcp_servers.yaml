@@ -31,19 +31,8 @@ mcp_servers:
         tokenBridge: "scsi-main"
         retryConnectTimeouts: true
       gemini:
-        clientId: "0oa1aviou3pe7dITS1t8"
-        callbackPort: 12345
-        # Okta authz server only configures openid/email/offline_access; the
-        # legacy "user" scope is rejected with error=invalid_scope.
-        scopes: "openid, email, offline_access"
-        # gemini-cli's local callback listener hardcodes the /oauth/callback
-        # path (404 on anything else) and ignores this redirectUri for the
-        # listener, so the request path MUST be /oauth/callback to match it.
-        # Plain http (not https) is required: gemini-cli only serves http on
-        # localhost. This is correct-by-construction but only completes once
-        # the Okta SCSI app registers http://localhost:12345/oauth/callback as
-        # a Login redirect URI (currently it only allows .../callback).
-        redirectUri: "http://localhost:{port}/oauth/callback"
+        tokenBridge: "scsi-main"
+        retryConnectTimeouts: true
       pi:
         # Pre-registered public client (no DCR). pi derives the callback
         # listener from redirectUri; /callback matches the Okta app.
@@ -106,10 +95,7 @@ mcp_servers:
         ideClientId: "3660753192626.8903469228982"
         tokenBridge: "slack"
       gemini:
-        clientId: "1601185624273.8899143856786"
-        callbackPort: 3118
-        redirectUri: "http://localhost:3118/callback"
-        scopes: "$(pass slack/mcp/user_scopes)"
+        tokenBridge: "slack"
       pi:
         # Slack's public MCP client is not approved for the search:read.*
         # scopes for this user (consent fails with "Unapproved permissions"),

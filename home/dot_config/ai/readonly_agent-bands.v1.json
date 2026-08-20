@@ -613,151 +613,151 @@
     "gemini": {
       "agents": {
         "Explore": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "Plan": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "adversarial-verifier": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "best-of-n-runner": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "browser_agent": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "bugbot": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "change-auditor": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "claude": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "claude-code-guide": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "cli_help": {
-          "model": "gemini-3.6-flash",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "code-review": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "code-searcher": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "codebase_investigator": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "criteria-verifier": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "cursor-guide": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "deep-review": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "default": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "explore": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "explorer": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "findings-auditor": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "fresh-eyes": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "general-purpose": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "generalPurpose": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "generalist": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "live-ui-review": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "post-review": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "pr-necessity-auditor": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "rem-agent": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "research": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "researcher": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "review-controller": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "review-worker": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "reviewer": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "rubber-duck": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "security-review": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "task": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "worker": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.7-flash",
           "effort": "high"
         }
       }

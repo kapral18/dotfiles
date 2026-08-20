@@ -49,15 +49,15 @@
     },
     {
       "harness": "gemini",
-      "version_evidence": "gemini-cli 0.53.1: settings.json hooks.BeforeTool runs the fail-closed git gate. Model tiering needs no hook because invoke_agent takes only agent_name and prompt, and BeforeModel's input carries llm_request with no agent identity — read from the bundle 2026-08-02.",
+      "version_evidence": "Antigravity CLI 1.1.16: ~/.gemini/config/hooks.json supports blocking PreToolUse decisions plus PreInvocation/PostToolUse command hooks; dynamic invoke_subagent accepts model tiers inherit|flash_lite|flash|pro rather than raw model ids — local docs, live hook payload, and installed binary strings probed 2026-08-20.",
       "instruction_entrypoints": [
-        "home/dot_gemini/symlink_GEMINI.md -> ../AGENTS.md"
+        "home/dot_gemini/config/symlink_AGENTS.md -> ../../AGENTS.md"
       ],
       "hook_support": "blocking",
-      "model_mutable": false,
-      "subagent_model_binding": "static",
+      "model_mutable": true,
+      "subagent_model_binding": "runtime",
       "mutation_scope": "",
-      "evidence_freshness": "2026-08-02"
+      "evidence_freshness": "2026-08-20"
     },
     {
       "harness": "copilot",

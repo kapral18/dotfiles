@@ -42,6 +42,54 @@ def _normalize_osc8_target(target: str) -> str:
     return re.sub(r"\s+", "", _strip_escaped_whitespace(target))
 
 
+def _should_join_url_continuation(url_so_far: str, part: str, has_bordered_wrap: bool) -> bool:
+    if re.match(r"(?:https?|ftp|file)://", part) or part.startswith("www."):
+        return False
+    try:
+        parsed = urlsplit(url_so_far)
+    except ValueError:
+        return False
+
+    if re.fullmatch(r"(?:[-+*•>]|\d+[.)])", part):
+        return False
+
+    host = parsed.netloc or ""
+    if parsed.scheme in {"http", "https"}:
+        if not host or "." not in host or url_so_far.endswith("."):
+            joined_candidate = url_so_far + part
+            try:
+                joined_parsed = urlsplit(joined_candidate)
+                joined_host = joined_parsed.hostname or ""
+                if "." in joined_host:
+                    return True
+            except ValueError:
+                pass
+
+    if PLAIN_WORD_RE.match(part):
+        return url_so_far.endswith(("-", "?", "&", "=", "#", "_"))
+
+    if url_so_far.endswith("/"):
+        return has_bordered_wrap
+
+    if url_so_far.endswith(("-", "?", "&", "=", "#", ":", "_", ".")):
+        return True
+
+    if "?" in url_so_far or "#" in url_so_far:
+        if part.startswith(("&", "=", "#", "-")):
+            return True
+        if has_bordered_wrap and (re.search(r"#[A-Za-z0-9_-]+", part) or re.match(r"^[A-Za-z0-9_.-]+#", part)):
+            return True
+        return False
+
+    if has_bordered_wrap:
+        if "/" in part or "#" in part or "?" in part:
+            return True
+        if "/" in parsed.path:
+            return True
+
+    return False
+
+
 def _join_wrapped_urls(text: str) -> str:
     url_re = re.compile(r"(?P<url>(?:https?|ftp|file)://[^\s│┃║]+)(?P<trail>[\s│┃║]*)$")
     continuation_re = re.compile(r"^(?P<prefix>[\s│┃║]*)(?P<part>[^\s│┃║]+)(?P<rest>.*)$")
@@ -55,25 +103,13 @@ def _join_wrapped_urls(text: str) -> str:
             next_match = continuation_re.match(lines[i + 1])
             if not url_match or not next_match:
                 break
-            # Join only when box-border evidence shows the break was a
-            # render-time wrap. Indentation alone is common prose structure,
-            # so it must not glue a following path-like sentence onto a
-            # complete URL.
             line_prefix = re.match(r"[\s│┃║]*", line).group(0)
-            has_border = any(
-                char in BORDER_CHARS for char in f"{line_prefix}{url_match.group('trail')}{next_match.group('prefix')}"
-            )
-            if not has_border:
-                break
+            current_has_border = any(char in BORDER_CHARS for char in f"{line_prefix}{url_match.group('trail')}")
+            next_has_border = any(char in BORDER_CHARS for char in next_match.group("prefix"))
+            has_bordered_wrap = current_has_border and next_has_border
             part = next_match.group("part")
-            if re.match(r"(?:https?|ftp|file)://", part):
-                break
-            # A render-time wrap splits a URL at an arbitrary column, so the
-            # continuation is a bare URL fragment (`gin/transform/...`, `va#L1`)
-            # rather than a word. Rejecting plain words keeps bordered prose
-            # that merely happens to end on a URL from being glued on, without
-            # requiring the fragment to carry a `/`, `?`, or `#` of its own.
-            if PLAIN_WORD_RE.match(part):
+            url_so_far = url_match.group("url")
+            if not _should_join_url_continuation(url_so_far, part, has_bordered_wrap):
                 break
             line = f"{line[: url_match.start('trail')]}{part}{next_match.group('rest')}"
             i += 1
@@ -113,6 +149,12 @@ def clean_candidate(candidate: str) -> str | None:
         return None
     if parsed.scheme not in {"http", "https", "ftp", "file"} or not (parsed.netloc or parsed.scheme == "file"):
         return None
+    if parsed.scheme in {"http", "https"}:
+        host = parsed.hostname or ""
+        if not host:
+            return None
+        if not parsed.path and "." not in host and ":" not in parsed.netloc and host.lower() != "localhost":
+            return None
     if "..." in candidate or "…" in candidate:
         return None
     return candidate

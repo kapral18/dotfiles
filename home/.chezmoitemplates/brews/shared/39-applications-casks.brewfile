@@ -18,10 +18,6 @@ cask "vlc"
 # https://github.com/mifi/lossless-cut
 cask "losslesscut"
 
-# AI-powered agent from OpenAI
-# https://github.com/openai/codex
-cask "codex"
-
 # GitHub Copilot CLI — Copilot coding agent in the terminal
 # https://github.com/github/copilot-cli
 cask "copilot-cli"

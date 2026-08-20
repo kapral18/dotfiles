@@ -1,6 +1,7 @@
 %% ============================================================================
 %% 02-package-management.mmd — "add X" decision ladder + every declarative
-%% package list and its sync hook. Stop at first suitable match top-down.
+%% package list and its sync hook. Honor colocated priority exceptions, otherwise
+%% stop at the first suitable match top-down.
 %% Lists live at home/readonly_dot_default-* (deployed to ~/.default-*).
 %% ============================================================================
 flowchart TD
@@ -10,7 +11,9 @@ flowchart TD
 
     ADD(["request: add X → identify on GitHub first<br/>(README/INSTALL → recommended method)"]):::q
 
-    ADD --> BREW{"Homebrew?<br/>brew search/info incl. name variants"}:::q
+    ADD --> EXCEPTION{"Existing package entry has<br/>@install-priority-exception?"}:::q
+    EXCEPTION -- yes --> OVERRIDE["honor prefer manager + bypass skip manager<br/>then use that manager's registry/hook"]:::reg
+    EXCEPTION -- no --> BREW{"Homebrew?<br/>brew search/info incl. name variants"}:::q
     BREW -- yes --> BREWF["home/.chezmoitemplates/brews/ (49): _assemble.brewfile index<br/>+ per-category shared/personal/work partials (dir = profile)<br/>→ readonly_dot_Brewfile.tmpl renders single ~/.Brewfile"]:::reg
     BREW -- no --> CARGO{Rust crate?}:::q
     CARGO -- yes --> CARGOF["readonly_dot_default-cargo-crates"]:::reg
@@ -24,7 +27,7 @@ flowchart TD
     UV -- yes --> UVF["readonly_dot_default-uv-tools.tmpl"]:::reg
     UV -- no --> CUSTOM["readonly_dot_default-custom-packages.tmpl<br/>dmg | file | tar_gz_bin | zip_opt | source"]:::reg
 
-    BREWF --> H3["hook 03-install-brew-packages (bundle + cleanup --force)"]:::hook
+    BREWF --> H3["hook 03-install-brew-packages<br/>(standalone agy migration + bundle + cleanup --force)"]:::hook
     CARGOF --> H5c["hook 05-update-cargo-crates"]:::hook
     GOF --> H5g["hook 05-update-golang-pkgs"]:::hook
     GEMF --> H5r["hook 05-update-gems"]:::hook

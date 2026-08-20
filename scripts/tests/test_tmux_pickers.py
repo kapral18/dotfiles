@@ -496,6 +496,40 @@ exit 1
 
         assert ranked == [session_strong, session_weak, session_nonmatch, worktree, directory]
 
+    def test_session_preview_classifies_antigravity_as_agent_activity(self):
+        preview = TMUX_PICKERS / "session/executable_preview.sh"
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            bindir = tmp_path / "bin"
+            bindir.mkdir()
+            tmux = bindir / "tmux"
+            tmux.write_text(
+                "#!/bin/sh\n"
+                'case "$1" in\n'
+                "  display-message) printf 'agy\\t%s\\t1\\n' \"$HOME\" ;;\n"
+                "  capture-pane) exit 0 ;;\n"
+                "esac\n"
+            )
+            tmux.chmod(0o755)
+
+            result = subprocess.run(
+                [
+                    modern_bash(),
+                    str(preview),
+                    "--kind=session",
+                    f"--path={tmp_path}",
+                    "--target=antigravity",
+                ],
+                capture_output=True,
+                text=True,
+                env={**os.environ, "HOME": str(tmp_path), "PATH": f"{bindir}{os.pathsep}{os.environ['PATH']}"},
+            )
+
+            assert result.returncode == 0, result.stderr
+            plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+            assert "status  agent (agy)" in plain
+            assert "busy (agy)" not in plain
+
     def test_pick_url_strip_cr_preserves_osc8_target_and_cleans_noise(self):
         strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
         hidden_target = "https://github.com/elastic/kibana/pull/281311"
@@ -834,6 +868,141 @@ exit 1
             assert "https://github.com/elastic/kibana.git" in offered
             assert "blob/.../src/platform/pl" not in offered
             assert "…" not in offered
+
+    def test_pick_url_joins_unbordered_wrapped_urls_across_lines(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        payload = (
+            "1. Removed Last Commit: Reset branch chore/console/cloud-deploy-284530 https://github.\n"
+            "com/elastic/kibana/pull/286090 to commit 0c22ea648202 https://github.\n"
+            "com/elastic/kibana/commit/0c22ea64820231ffc82d8c911375646c7de51437 (removing 3b89441cba29) and force-\n"
+            "pushed to origin.\n"
+            "2. Retriggered Cloud Deployment:\n"
+            "  • Buildkite Build: kibana-deploy-cloud-from-pr #1344 https://buildkite.com/elastic/kibana-deploy-\n"
+            "    cloud-from-pr/builds/1344\n"
+            "  • Commit: 0c22ea64820231ffc82d8c911375646c7de51437 https://github.\n"
+            "    com/elastic/kibana/commit/0c22ea64820231ffc82d8c911375646c7de51437\n"
+            "  • PR: #286090 https://github.com/elastic/kibana/pull/286090\n"
+        )
+        result = subprocess.run(
+            ["python3", str(strip_cr), "--extract-candidates"], input=payload, capture_output=True, text=True
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == [
+            "https://buildkite.com/elastic/kibana-deploy-cloud-from-pr/builds/1344",
+            "https://github.com/elastic/kibana/commit/0c22ea64820231ffc82d8c911375646c7de51437",
+            "https://github.com/elastic/kibana/pull/286090",
+        ]
+
+    def test_pick_url_drops_bare_incomplete_host_candidates(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        payload = (
+            "standalone https://github and https://buildkite\n"
+            "valid http://localhost and http://localhost:3000\n"
+            "valid with path http://internal-wiki/docs and https://site/x/y\n"
+            "valid domain https://github.com\n"
+        )
+        result = subprocess.run(
+            ["python3", str(strip_cr), "--extract-candidates"], input=payload, capture_output=True, text=True
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == [
+            "http://internal-wiki/docs",
+            "http://localhost",
+            "http://localhost:3000",
+            "https://github.com",
+            "https://site/x/y",
+        ]
+
+    def test_pick_url_joins_alphabetic_fragments_after_strong_url_continuation_evidence(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        payload = (
+            "host https://github.\n"
+            "com\n"
+            "path https://example.com/cloud-\n"
+            "deploy\n"
+            "query https://example.com/?q=\n"
+            "value\n"
+            "fragment https://example.com/page#\n"
+            "section\n"
+        )
+        result = subprocess.run(
+            ["python3", str(strip_cr), "--extract-candidates"], input=payload, capture_output=True, text=True
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == [
+            "https://example.com/?q=value",
+            "https://example.com/cloud-deploy",
+            "https://example.com/page#section",
+            "https://github.com",
+        ]
+
+    def test_pick_url_does_not_join_following_markdown_list_items(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        payload = (
+            "root https://example.com/\n"
+            "- next item\n"
+            "hyphen https://example.com/path-\n"
+            "- another item\n"
+            "numbered https://example.com/docs/\n"
+            "1. first item\n"
+        )
+        result = subprocess.run(
+            ["python3", str(strip_cr), "--extract-candidates"], input=payload, capture_output=True, text=True
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == [
+            "https://example.com/docs/",
+            "https://example.com/path-",
+        ]
+
+    def test_pick_url_does_not_join_unbordered_prose_after_trailing_slash(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        payload = (
+            "root https://example.com/\n"
+            "**Note:** this is prose\n"
+            "docs https://docs.example.com/\n"
+            "### Next section\n"
+            "details https://example.net/\n"
+            "(Details) follow\n"
+            "linked https://linked.example/\n"
+            "[Docs](https://other.example/) follows\n"
+        )
+        result = subprocess.run(
+            ["python3", str(strip_cr), "--extract-candidates"], input=payload, capture_output=True, text=True
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == [
+            "https://docs.example.com/",
+            "https://example.com/",
+            "https://example.net/",
+            "https://linked.example/",
+            "https://other.example/",
+        ]
+
+    def test_pick_url_requires_borders_on_both_lines_for_trailing_slash_wraps(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        payload = (
+            "root https://base.example/\n"
+            "│ [Docs](https://docs.example/path) │\n"
+            "│ framed https://framed.example/ │\n"
+            "[Other](https://other.example/path) follows\n"
+        )
+        result = subprocess.run(
+            ["python3", str(strip_cr), "--extract-candidates"], input=payload, capture_output=True, text=True
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == [
+            "https://base.example/",
+            "https://docs.example/path",
+            "https://framed.example/",
+            "https://other.example/path",
+        ]
 
     def test_gh_picker_id_nth_preserves_multi_selection_across_reload_sync(self):
         """WHEN reload-sync mutates display text, SHOULD keep marks by kind/repo/num."""

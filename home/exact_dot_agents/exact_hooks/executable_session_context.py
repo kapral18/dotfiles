@@ -466,6 +466,9 @@ def spec_context(spec_path: Path, topic: str) -> str:
 
 def main() -> None:
     payload = read_payload()
+    if os.environ.get("AGENT_HOOK_OUTPUT") == "antigravity" and payload.get("invocation_num") != 0:
+        emit({})
+        return
     workspace, topic, spec_path, worklog_path = topic_paths(payload)
 
     # Self-heal named topics from the persistent mirror after a /tmp wipe

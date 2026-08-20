@@ -16,6 +16,7 @@ Load and follow `~/.agents/skills/k-semantic-code-search/SKILL.md` end to end:
 - Run `list_indices` first (try both `scsi-main` and `scsi-local`).
   If the repo is unindexed or the tools are unavailable, say so and fall back to `rg`/file reads rather than guessing.
 - Select the single justified index from evidence and pass it explicitly to SCSI tools.
+- Cast a multi-angle query net: brainstorm a cluster of diverse queries covering surrounding callers, sibling consumers, and downstream dependencies to discover how the diff affects preexisting behavior and expand investigation from initial matches.
 - Prefer `discover_directories` → `map_symbols_by_query` / `semantic_code_search` → `symbol_analysis` → `read_file_from_chunks`.
 
 ## Hard constraints

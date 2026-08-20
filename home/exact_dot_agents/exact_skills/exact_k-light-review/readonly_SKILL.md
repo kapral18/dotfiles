@@ -39,9 +39,10 @@ If a trigger surfaces mid-pass, stop and switch to `k-review` rather than half-d
 
 ## Workflow (agent-assisted verify and fix in place)
 
-1. **Scope.**
+1. **Scope and surrounding context.**
    Inspect `git status --porcelain=v1 -b` and the diff (`git diff`, `git diff --staged`, or `git diff <range>` / `git log --oneline <range>`).
    If there are no diffs, say so and stop.
+   Never review diff hunks in isolation: read full enclosing files and trace callers/consumers to discover blast radius and impact on preexisting surrounding behavior.
 2. **Base context (opt-in).** Default off.
    Establish base context when a finding's correctness genuinely depends on how base behaves today;
    use the most direct sufficient source (`git show <base>:<path>` + `rg`, or local file reads).
@@ -49,6 +50,7 @@ If a trigger surfaces mid-pass, stop and switch to `k-review` rather than half-d
 3. **Candidate audit.**
    Launch one read-only `change-auditor` worker when the harness supports subagents;
    otherwise run the same read/judge pass inline and report `agent_lane=inline-degraded`.
+   Enforce anti-tunnel-vision: audit enclosing files, sibling consumers, and call sites alongside the diff.
    The worker returns candidate findings and proposed fixes only; the parent owns edits.
 4. **Controller findings audit.**
    Inline the Findings-Set Audit from `judging_core.md` over the candidate set:

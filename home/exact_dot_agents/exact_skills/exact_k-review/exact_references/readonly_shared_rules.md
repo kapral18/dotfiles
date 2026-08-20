@@ -98,23 +98,36 @@ Goal: compare the diff against how base (usually `main`) works today.
   - The PR/local diff is the ground truth for what is actually changing.
   - When SCSI results conflict with the diff, the diff wins.
   - That conflict is expected; it simply means the PR modifies that code.
-- Query strategy — generate questions from the diff:
-  1. Read the diff to identify what changed.
-  2. Generate semantic questions about the contracts, invariants, and patterns the changed code touches.
-     - "how is X validated elsewhere?"
-     - "what calls this function?"
-     - "what pattern does the codebase use for Y?"
-  3. Query each question via SCSI tools against the repo index.
-  4. Carry the answers as base-branch context into the review (for comparison and to understand surrounding code —
-     not as current-branch truth).
+- Query strategy — cast a multi-angle semantic net from the diff:
+  1. Read the diff to map modified domain concepts, entities, functions, and state transitions.
+  2. Generate a diverse cluster of semantic queries exploring how changed functionality affects preexisting surrounding behavior and discovering impact blast radius:
+     - **Sibling & Co-located Consumers:** how do other callers/consumers in the codebase consume, sort, filter, format, or serialize the same domain concept?
+     - **Downstream Call Chains & Workflows:** what upstream entry points, background tasks, or downstream consumers depend on modified contracts?
+     - **Invariants & Conventions:** what validation rules, error handling, or fallback patterns are enforced elsewhere in the repository for similar constructs?
+     - **Cross-Subsystem Interactions:** what other plugins, packages, or modules share or reference these data structures?
+  3. Query each angle via SCSI tools against the repo index, expanding to surrounding files when initial results reveal interconnected components.
+  4. Carry the gathered answers as base-branch context into the review to evaluate whether the diff breaks invariants or introduces behavioral drift against surrounding code.
 - Use SCSI to learn base-branch implementation and invariants, then compare against the PR/local diff (ground truth).
 
 ### If the repo is not indexed / tools unavailable
 
-- Use local sources instead:
-  - `rg` + file reads
-  - `git show <base>:<path>` for base-branch behavior
-  - `git diff <base>...HEAD` for branch delta
+- Cast the same multi-angle impact net using local tools to discover blast radius and surrounding impact:
+  - read full enclosing files and modules beyond immediate diff hunks
+  - trace callers, sibling consumers, and imports via scoped `rg` and symbol lookups
+  - compare base-branch implementation via `git show <base>:<path>` against `git diff <base>...HEAD`
+  - audit sibling consumers, downstream workflows, and error fallbacks for behavioral drift or broken invariants
+
+### Historical Archaeology & Provenance (History Dimension)
+
+History encodes invariants, past bug fixes, edge cases, and architectural context invisible to static code search:
+
+- In massive repositories (e.g. multi-gigabyte git histories like Kibana), archaeology must be **targeted and line-bounded**, never run as whole-file blame or unconstrained recursive log traversals:
+  - Probe only high-uncertainty or non-obvious modified guards, conditionals, fallback branches, or legacy helpers where origin intent is ambiguous.
+  - Always bound line ranges and commit depth: `git blame -L <start>,<end> <base> -- <path>` or `git log -n 5 -L <start>,<end>:<path>`.
+  - Use `git log -n 5 -p -- <path>` only when scoped to the immediate modified file.
+  - Look up context from the identified commit via `gh pr view <pr>` or `gh issue view <issue>`.
+- Check whether the diff inadvertently removes or weakens a guard previously added to fix a past defect or CVE.
+- Classify changes that unknowingly resurrect historical bugs as HIGH regression findings.
 
 ### Base context reporting (required in every review output)
 

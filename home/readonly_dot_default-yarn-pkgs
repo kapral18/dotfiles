@@ -16,9 +16,10 @@ pi-subagents
 # Description: Terminal-based AI coding assistant by Anthropic
 # URL: https://www.anthropic.com/claude-code
 @anthropic-ai/claude-code
-# Description: Terminal-based AI coding assistant by Google
-# URL: https://github.com/google-gemini/gemini-cli
-@google/gemini-cli
+# Description: OpenAI coding agent CLI; Yarn-managed to track current releases
+# URL: https://github.com/openai/codex
+# @install-priority-exception: prefer=yarn; skip=homebrew-cask; reason=release-lag
+@openai/codex
 # Description: Code generation and editing agent with read, bash, edit, write tools and session management
 # URL: https://github.com/remorses/playwriter
 playwriter

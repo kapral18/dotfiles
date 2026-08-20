@@ -20,3 +20,7 @@ if [ -z "$payload" ]; then
 fi
 
 (printf '%s' "$payload" | AGENT_WORKLOG_DISPATCHED=1 python3 "$recorder") > /dev/null 2>&1 &
+
+if [ "${AGENT_HOOK_OUTPUT:-}" = "antigravity" ]; then
+  printf '{}\n'
+fi

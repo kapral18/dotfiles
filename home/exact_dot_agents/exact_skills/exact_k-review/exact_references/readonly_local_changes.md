@@ -57,6 +57,8 @@ Treat every finding as something to resolve right now, not something to note for
 - `git diff`
 - `git diff --staged`
 - `git log --oneline --decorate -n 15`
+- Never review diff hunks in isolation: read full enclosing files and trace callers/consumers to discover blast radius and impact on preexisting surrounding behavior.
+- Probe history: in large repos, run targeted line-bounded probes (`git blame -L <start>,<end>` / `git log -n 5 -L`) on modified guards, defensive checks, and error branches to uncover why existing code was written and ensure past bug fixes are preserved.
 
 ### Scope selection
 

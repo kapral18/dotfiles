@@ -12,7 +12,7 @@ flowchart TB
     subgraph GOV["1 · Governance (entrypoints, chezmoi-managed)"]
         AG["readonly_AGENTS.md → ~/AGENTS.md (compiled core SOP)"]:::gov
         CL["symlink_CLAUDE.md → ~/CLAUDE.md → ~/AGENTS.md (compiled core SOP)"]:::gov
-        GM["dot_gemini/symlink_GEMINI.md → ~/.gemini/GEMINI.md → ~/AGENTS.md"]:::gov
+        GM["dot_gemini/config/symlink_AGENTS.md → ~/.gemini/config/AGENTS.md → ~/AGENTS.md"]:::gov
         SK["home/exact_dot_agents/exact_skills/ → ~/.agents/skills/<br/>54 skill entrypoints, intent-routed (see 03b)"]:::gov
         AG -->|Use when… load| SK
         CL --> SK
@@ -28,7 +28,7 @@ flowchart TB
     subgraph EXECL["3 · Execution (per-tool, .work/.personal merged at apply)"]
         CURSOR["Cursor (primary): dot_cursor/hooks.json + filtered MCP<br/>exact_agents/ review controller+PR gate+workers → ~/.cursor/agents/"]:::exec
         CLAUDE["Claude Code: dot_claude/settings.{work,personal,llama-cpp}.json"]:::exec
-        GEMINI["Gemini CLI: dot_gemini/settings.json + exact_commands/"]:::exec
+        GEMINI["Antigravity: config/symlink_AGENTS.md + symlink_skills + generated mcp_config.json"]:::exec
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (OpenRouter selectors)"]:::exec
         CODEX["Codex: dot_codex/private_config.{work,personal}.toml<br/>+ ,codex bearer-token env wrapper for hosted MCP"]:::exec
         PI["Pi: dot_pi/agent/* (OpenRouter Terra default and review lanes, max thinking)"]:::exec
@@ -40,10 +40,10 @@ flowchart TB
 
     GEN -->|07-generate-mcp-configs + 07-merge-* hooks| EXECL
     MODELS -->|generate_pi_models / merge_opencode_models| EXECL
-    SK -. symlinked or natively discovered by .-> CURSOR & CLAUDE & OPENCODE & CODEX & PI & OMP & COPILOT
+    SK -. symlinked or natively discovered by .-> CURSOR & CLAUDE & OPENCODE & CODEX & PI & OMP & COPILOT & GEMINI
 
-    subgraph HOOKS["Cursor lifecycle hooks (dot_cursor/hooks.json) — detail in 03b"]
-        H["sessionStart→session_context · after*→worklog_dispatcher.sh → worklog_recorder/worklog_queue<br/>beforeShell→gemini-*-gate (failClosed)"]:::ctx
+    subgraph HOOKS["Shared lifecycle hooks — detail in 03b"]
+        H["Cursor + Antigravity session context and worklog adapters<br/>pre-shell/pre-tool git gate (fail closed)"]:::ctx
     end
     GOV -.enforced at runtime by.-> HOOKS
     MEM[("/tmp/specs/<pwd>/<topic>.* (ephemeral memory, ,agent-memory)")]:::data

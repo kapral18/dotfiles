@@ -210,6 +210,33 @@ class TestAgentHooks(unittest.TestCase):
             assert entry["command"] == "printf ok"
             assert entry["tool_name"] == "Shell"
 
+    def test_antigravity_worklog_payload_is_normalized(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            payload = {
+                "conversationId": "agy-worklog",
+                "workspacePaths": [tmp],
+                "modelName": "gemini-3.7-flash-high",
+                "toolCall": {
+                    "name": "run_command",
+                    "args": {"CommandLine": "printf ok"},
+                },
+                "error": "exit status 1",
+            }
+            env = hook_env()
+            env["AGENT_HOOK_EVENT"] = "PostToolUse"
+            env["AGENT_HOOK_OUTPUT"] = "antigravity"
+
+            assert run_hook("executable_worklog_recorder.py", payload, env=env) == {}
+            spec_dir = SPEC_ROOT / str(Path(tmp).resolve()).lstrip("/")
+            flush_worklog(spec_dir)
+            entry = worklog_entries(spec_dir / "current.worklog.jsonl")[-1]
+
+            assert entry["event"] == "PostToolUse"
+            assert entry["model"] == "gemini-3.7-flash-high"
+            assert entry["tool_name"] == "run_command"
+            assert entry["command"] == "printf ok"
+            assert entry["error"] == "exit status 1"
+
     def test_worklog_recorder_keeps_bounded_tail(self):
         with tempfile.TemporaryDirectory() as tmp:
             payload = {
@@ -249,6 +276,28 @@ class TestAgentHooks(unittest.TestCase):
             assert "target: prove context injection" in result["additional_context"]
             assert result["hookSpecificOutput"]["hookEventName"] == "SessionStart"
             assert "target: prove context injection" in result["hookSpecificOutput"]["additionalContext"]
+
+    def test_antigravity_session_context_injects_only_on_first_invocation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            bind_session_topic(spec_dir, "agy-session", "agy-hook-test")
+            (spec_dir / "agy-hook-test.txt").write_text("target: prove Antigravity context injection\n")
+            env = hook_env()
+            env["AGENT_HOOK_OUTPUT"] = "antigravity"
+            env["AGENT_HOOK_EVENT"] = "PreInvocation"
+            payload = {
+                "conversationId": "agy-session",
+                "workspacePaths": [tmp],
+                "modelName": "gemini-3.7-flash-high",
+                "invocationNum": 0,
+                "initialNumSteps": 1,
+            }
+
+            first = run_hook("executable_session_context.py", payload, env=env)
+            assert "target: prove Antigravity context injection" in first["injectSteps"][0]["ephemeralMessage"]
+            assert run_hook("executable_session_context.py", {**payload, "invocationNum": 1}, env=env) == {}
 
     def test_session_context_prefixes_github_identity_from_gh_probe(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1028,9 +1077,38 @@ class TestAgentHooks(unittest.TestCase):
         assert "perturn_recall.py" in prompt_block
         assert "AGENT_HOOK_OUTPUT=hook_specific" in prompt_block
 
+        antigravity = json.loads((REPO / "home/dot_gemini/config/readonly_hooks.json").read_text())
+        assert "session_context.py" in json.dumps(antigravity["agent-context"]["PreInvocation"])
+        assert "premise_nudge.py" in json.dumps(antigravity["agent-context"]["PreInvocation"])
+        assert "worklog_dispatcher.sh" in json.dumps(antigravity["agent-worklog"]["PostToolUse"])
+        assert "gemini-git-gate.py" in json.dumps(antigravity["git-safety"]["PreToolUse"])
+        assert "premise_nudge.py" in json.dumps(antigravity["git-safety"]["PreToolUse"])
+        assert "AGENT_HOOK_OUTPUT=antigravity" in json.dumps(antigravity)
+
+    def test_antigravity_worklog_dispatcher_returns_empty_json(self):
+        dispatcher = REPO / "home/exact_dot_agents/exact_hooks/executable_worklog_dispatcher.sh"
+        with tempfile.TemporaryDirectory() as tmp:
+            hooks_dir = Path(tmp)
+            target = hooks_dir / "worklog_dispatcher.sh"
+            target.write_text(dispatcher.read_text())
+            target.chmod(0o755)
+            recorder = hooks_dir / "worklog_recorder.py"
+            recorder.write_text("#!/usr/bin/env python3\nimport sys\nsys.stdin.read()\nprint('{}')\n")
+            recorder.chmod(0o755)
+            result = subprocess.run(
+                [str(target)],
+                input='{"toolCall":{"name":"run_command","args":{"CommandLine":"true"}}}',
+                text=True,
+                capture_output=True,
+                env={**os.environ, "AGENT_HOOK_OUTPUT": "antigravity"},
+                check=False,
+            )
+
+        assert result.returncode == 0
+        assert json.loads(result.stdout) == {}
+
     def test_pr_anchor_verification_is_instruction_only(self):
         files_to_check = [
-            REPO / "home" / "dot_gemini" / "settings.json",
             REPO / "home" / "dot_cursor" / "hooks.json",
         ]
 
@@ -1947,7 +2025,7 @@ class BandGateTests(unittest.TestCase):
                     }
                 }
             },
-            "gemini": {"agents": {"codebase_investigator": {"band": "cheap", "model": "gemini-3.6-flash"}}},
+            "gemini": {"agents": {"codebase_investigator": {"band": "cheap", "model": "gemini-3.7-flash"}}},
         }
     }
 

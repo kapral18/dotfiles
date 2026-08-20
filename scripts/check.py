@@ -203,7 +203,7 @@ TEST_RULES: tuple[TestRule, ...] = (
     ),
     TestRule(
         prefixes=("home/.chezmoidata/ai_models/", "scripts/ai_models.py", "scripts/model_mirrors.py"),
-        tests=("test_ai_models.py", "test_model_mirrors.py", "tests/test_invariants.py"),
+        tests=("test_ai_launcher.py", "test_ai_models.py", "test_model_mirrors.py", "tests/test_invariants.py"),
     ),
     TestRule(
         prefixes=(

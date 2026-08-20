@@ -2,7 +2,7 @@
 
 Shared lifecycle hooks for terminal AI agents.
 
-Cursor CLI is the primary runtime. Claude Code, Codex, Gemini, OpenCode, and Copilot reuse compatible shared scripts.
+Cursor CLI is the primary runtime. Claude Code, Codex, Antigravity, OpenCode, and Copilot reuse compatible shared scripts.
 Those scripts cover session context, resident-embedder warm-up and per-turn recall where supported, and worklog recording.
 Each adapter passes its native session ID so topic selection, worklogs, and recall dedupe use the same binding.
 PR review anchor verification is instruction-owned by the review/GitHub skills, not enforced by a shell hook.
@@ -61,12 +61,13 @@ Pi persists the same state across extension reloads and session resumes.
 
 Resident FastEmbed warm-up is a separate, explicit lifecycle for automatic per-turn consumers:
 
-- Claude, Gemini, Codex, and Cursor set `AI_EMBED_WARM=1` on their session-start command (Cursor gained per-prompt `beforeSubmitPrompt` injection in `2026.07.16`).
+- Claude, Codex, and Cursor set `AI_EMBED_WARM=1` on their session-start command (Cursor gained per-prompt `beforeSubmitPrompt` injection in `2026.07.16`).
 - OpenCode and Copilot pass `warm_embedder: true` in their session-start payload.
 - Pi calls `~/lib/,ai-kb/embed_client.py ensure` from its TypeScript `session_start` handler.
-- Adapters that send neither signal do not warm the resident and get the `### Recall Notice` fallback described above.
+- Antigravity injects context on its first `PreInvocation`, carries queued premise nudges into the next `PreInvocation`, records `PostToolUse`, and has no user-prompt hook; it receives the `### Recall Notice`.
+- Adapters that send neither warm-up signal do not warm the resident and get the `### Recall Notice` fallback described above.
 
-`AI_AGENT_DEPTH` applies one recall contract to Claude, Gemini, OpenCode, Copilot, Codex, Cursor, and Pi:
+`AI_AGENT_DEPTH` applies one automatic recall contract to Claude, OpenCode, Copilot, Codex, Cursor, and Pi:
 
 | Depth      | Startup BM25 | Resident warm-up | Per-turn fetch / inject | Prompt / body caps | Timeout |
 | ---------- | ------------ | ---------------- | ----------------------- | ------------------ | ------- |

@@ -9,21 +9,17 @@
 Use in every non-trivial review.
 
 - Treat every claim as a hypothesis until verified.
-- A rationale is also a claim: a PR description, code comment, commit message, or reviewer's summary says what someone believes drove the change, not what the change does.
-  Verify behavior, not explanation.
-- Self-consistency check: when a rationale claims an input/file/condition is irrelevant, perturb exactly that and confirm the outcome is stable; if the outcome changes, rationale is not the real driver and the finding needs re-investigation.
-- A static read (reading source, searching the tree) proves what the source says, not what the system does.
-  When candidate keep/drop depends on observed/runtime behavior, static evidence is a hypothesis, not proof;
-  verify runtime behavior whenever available, because a static read can contradict the system.
-  (E.g. a source search indicated no tab tooltips; the live UI rendered four.)
-- Establish base invariants first (SCSI when indexed; otherwise `git show <base>:<path>` + local `rg`).
-- Validate PR/branch reality second (local diff + file reads).
-- When evaluating a proposed change (review suggestion / reviewer request):
-  - prefer the smallest reproduction in `/tmp` when possible
-  - otherwise run the smallest safe experiment in the worktree
-- If you changed code as part of an iteration cycle, re-run the repo's quality gates:
-  - lint + type_check + tests (discover the correct commands from the repo rather than guessing).
-- Keep an evidence log per comment/thread: what base does, what changed, what you tested, and what you observed.
+- A rationale is also a claim: verify actual runtime/code behavior, not explanations.
+- Self-consistency check: when a rationale claims an input/file/condition is irrelevant, perturb it and confirm outcome stability.
+- A static read proves what source says, not what the system does; verify runtime behavior whenever candidate keep/drop depends on observed state.
+- **Diff-boundary tunnel vision is forbidden:** reviewing diff hunks in isolation without inspecting surrounding context, caller trees, and sibling consumers is never justified across any review tier (light, standard, or deep).
+  Always expand beyond the diff: read full enclosing files, trace callers/callees (via local `rg`, symbol lookup, or SCSI), and audit how changed behavior impacts preexisting surrounding contracts.
+- Establish base invariants first (SCSI when indexed; otherwise `git show <base>:<path>` + local `rg`), then validate PR/branch reality (diff + full file reads).
+- Evaluate the diff as a state and contract boundary; simulate behavior across universal failure primitives:
+  caller/callee contract asymmetry, test oracle/mock fidelity gaps, compositional fault cascades in batch/collection processing, temporal/async hazards, projection/mapping divergence, and silent error degradation.
+- When evaluating a proposed change: prefer smallest repro in `/tmp` or smallest safe experiment in worktree.
+- If you changed code in an iteration cycle, re-run repo quality gates (lint + type_check + tests).
+- Keep an evidence log per comment/thread: base behavior, delta, tests run, observations.
 
 ## Candidate Refutation Ladder (Run Before Reporting Or Acting)
 
@@ -36,6 +32,8 @@ Default to `undecidable`, not `keep`, when the deciding evidence is genuinely ou
 Attempt refutation in this order and stop at the first decisive result:
 
 1. **Claim truth:** read the cited code and its callers/callees on the actual diff; does the claimed behavior occur?
+   Construct the explicit trace from initial state and input through the boundary failure to the unhandled state;
+   drop candidates that rest on abstract speculation without a concrete execution path.
 2. **Reachability:** is the claimed path reachable (inputs, flags, permissions)?
    An unreachable path refutes the severity even when the observation is textually correct. State reachability for every kept finding.
 3. **Severity:** does the evidence support the assigned severity under the definitions below, or a different one?
@@ -43,8 +41,8 @@ Attempt refutation in this order and stop at the first decisive result:
 4. **Proposed fix:** would the fix behave as claimed without introducing a new problem?
 5. **Already covered:** is the concern already handled elsewhere in the diff or base? Cite where.
 
-Self-refutation catches unreachable paths, inflated severity, and fixes that do not hold, but lacks the cross-family independence of the fan-out adversarial lane.
-Where fan-out is available, use that lane; self-refutation stands in only when fan-out is unavailable.
+Self-refutation catches unreachable paths, inflated severity, and weak fixes, but lacks cross-family independence.
+Use fan-out when available; self-refutation stands in only when fan-out is unavailable.
 
 ## State-Machine Verification Gate
 
@@ -107,19 +105,32 @@ Before a candidate can become review feedback:
      Never drop a UI-visual candidate (spacing, alignment, layout, visual styling) on an unproven classification and then cite that drop as why live UI was unnecessary — that inverts cause/effect.
      If classification rests on a UI-visual property you have neither traced to the replacement's contract nor verified live, the candidate is unproven: settle with static proof or live UI before classifying; do not skip because it was dropped.
 
-## Historical-Rationale Gate (Deleting/Replacing Long-Lived Infra)
+## Historical Archaeology Gate (Code Provenance & Evolution)
 
-Trigger: removing/replacing a custom/legacy stack, helper predating current infra, anything called "obsolete" or "legacy", or anything framed as "why does this exist".
+Trigger: modifying, replacing, or deleting existing non-trivial logic, guards, conditionals, fallback branches, or legacy infrastructure.
 
-Understand the origin before the removal is final.
+Code encodes history; static search sees current syntax, not past bugs, CVEs, or edge cases that shaped it.
+In large repos, keep probes targeted and line-bounded rather than running whole-file blame:
 
-- **Trace origin:** `git log --follow --oneline -- <path>` and `git blame <base> -- <path>` (or `git log -L` for a function) to find introducing commit(s).
-- **Link intent:** open the offending PR(s)/issue(s) (`gh pr view`, `gh issue view`) to learn the original reason.
-- **Classify:** was the behavior being removed (a) the original intended purpose, or (b) drift/side effect that later infra made obsolete?
-- **Decide narrative:**
-  - if removal corrects historical drift, the PR `## Root Cause` must state the original reason and why it no longer applies
-  - if it removes still-needed behavior, stop
-  - that is not a safe deletion
+- **Targeted line archaeology:** probe only high-uncertainty or non-obvious modified logic; always bound line ranges and depth:
+  `git blame -L <start>,<end> <base> -- <path>` or `git log -n 5 -L <start>,<end>:<path>` to find introducing commit and PR context (`gh pr view`, `gh issue view`).
+  Never run unbounded whole-file blame in massive repos.
+- **Unwritten invariant check:** discover whether a modified guard/fallback was introduced to fix a subtle bug, race condition, backward-compatibility requirement, or upstream quirk.
+- **Regression reintroduction:** verify whether the diff inadvertently removes or weakens a guard previously added to fix a past defect.
+- **Classify & act:**
+  - _intentional obsolescence:_ past reason no longer applies; document why in review/PR.
+  - _accidental regression:_ re-opens a historical bug or breaks a hard-won invariant; classify as HIGH.
+  - _historical drift:_ refactor preserves past invariant under cleaner architecture.
+
+## Semantic-Projection & Sibling-Consumer Gate
+
+Trigger: the diff changes how a domain concept, state enum, data bucket, or entity property is classified, partitioned, mapped, or formatted.
+
+Audit co-located consumers that project, compare, or transform that same concept:
+
+- **Projection symmetry:** when one projection of a concept is updated (e.g. formatting, categorization, or normalization), verify that parallel projections (sorting/ordering comparators, filter predicates, search matchers, equality checks, serialization, or export) reflect the identical semantic mapping.
+- **Bi-directional consistency:** verify read vs write, serialize vs deserialize, and encode vs decode paths handle all known variants and edge cases symmetrically.
+- **Classification divergence:** classify any case where sibling consumers apply diverging partition rules to the same input space as HIGH (broken invariant / silent behavioral split).
 
 ## Product-Flow Lens (Run When The Diff Touches User-Facing Flows)
 
@@ -134,11 +145,10 @@ Walk each affected user path as finding generation: trigger -> loading -> result
   transient errors (network, timeout) are distinguishable from permanent ones.
 - **Behavior expectations:** no surprises for a user who knows the existing product;
   labels, button text, and placeholders accurately describe what happens; new behavior is discoverable.
-- **Data visibility:** the user sees the expected data after an action; pagination, sorting, and filtering stay consistent after the change.
+- **Data visibility:** the user sees the expected data after an action; pagination, sorting, and filtering stay consistent after the change;
+  column sort keys and filter predicates match rendered cell labels and groupings.
 
-These heuristics generate candidates; they do not verify them.
-Verify per the Truth Validation Framework: when a runtime check is available, a static walkthrough of a user path is a hypothesis, not proof.
-A broken or dead-end user path is a user-visible bug (HIGH under the severity definitions below).
+These heuristics generate candidates. Verify per Truth Validation Framework; broken user paths are HIGH severity.
 
 ## Signal-Quality Gate (Run On Alerting/Monitoring/Analytics Logic)
 
@@ -146,30 +156,25 @@ Trigger: the diff changes alerting rules, monitoring queries, thresholds, statis
 
 Judge the signal, not just the code:
 
-- **False positives:** under what conditions does this fire when nothing is wrong (noise, baseline shifts, seasonality)?
-- **False negatives:** under what conditions does it stay silent when something is wrong (slow-burn failures, partial failures such as one host out of N)?
-- **Statistical soundness:** comparisons are valid (no means without variance, no tiny samples), rate denominators are right, percentiles handle sparse data, windows match data cadence, time buckets align.
-- **Actionability:** a fired signal gives the responder enough context to start triage;
-  correlated signals do not storm from a single root cause.
+- **False positives:** conditions causing firing when nothing is wrong (noise, baseline shifts, seasonality).
+- **False negatives:** conditions causing silence when something is wrong (slow-burn, partial/single-node failures).
+- **Statistical soundness:** valid comparisons, right rate denominators, sparse percentile handling, aligned time buckets.
+- **Actionability:** fired signal gives triage context; correlated signals do not storm from one root cause.
 
-Prefer executing the query/rule against representative data when a safe runtime exists;
-otherwise label the analysis a hypothesis per the Truth Validation Framework.
-Query-language and product specifics (syntax validity, field mappings, scale limits) are domain policy:
-load the verified domain overlay for the target repo/org when one applies; do not guess them generically.
+Prefer executing queries against representative data in safe runtimes; otherwise label analysis a hypothesis.
+Domain specifics (syntax, mappings, scale limits) come from verified domain overlays.
 
 ## Systemic-Risk Checks (Run When The Diff Crosses Module Or Deploy Boundaries)
 
 Trigger: the diff changes public API contracts, persisted data, cross-module/package imports, or behavior that ships through a staged/rolling rollout.
 
 - **Rolling-deploy coexistence:** old and new code run against the same data/API mid-deploy;
-  verify both directions survive the version boundary.
-- **Rollout gating:** when the repo's convention or stated intent expects incremental rollout, verify the change is gated the way that convention requires.
-  This check verifies expected gating; it never licenses adding unrequested flags (SOP `2.0`).
-- **Circular dependencies:** the change does not introduce a dependency cycle between packages/modules.
-- **Blast radius:** state what breaks if this change is wrong, and pair each identified risk with a concrete mitigation.
+  verify both directions survive version boundaries.
+- **Rollout gating:** when conventions expect incremental rollout, verify proper gating (without adding unrequested flags per SOP `2.0`).
+- **Circular dependencies:** verify the change does not introduce package/module cycles.
+- **Blast radius:** state what breaks if wrong and pair each risk with concrete mitigation.
 
-The Deletion-Safety Audit and Replacement/Migration Parity Gate own deletions and replacements;
-this section covers the deploy/coupling risk they do not.
+Deletion-Safety and Parity gates own deletions/replacements; this section covers deploy/coupling risk.
 
 ## Coverage Checklist (Do Not Skip)
 
@@ -209,8 +214,7 @@ These four dimensions are the only **canonical** ones: name them exactly, keepin
    - parallel branches that should be one; a rule stated two ways; divergent-but-equivalent logic;
      this is the subtle axis literal-clone detectors (`jscpd`) miss
 4. **Gaps** — incomplete change:
-   - dead code the change stranded; a co-edit-set member left unupdated (doc/diagram/census drift); a half-applied rename;
-     a referenced file/symbol that does not exist
+   - dead code the change stranded; a co-edit-set member left unupdated (doc/diagram/census drift, or sibling sort/filter/persistence consumer left on old mapping); a half-applied rename; a referenced file/symbol that does not exist
 
 For each dimension, anchor any finding in evidence: exact file + location, duplicate's other location, stranded symbol.
 

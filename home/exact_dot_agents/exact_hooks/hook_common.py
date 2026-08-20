@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared helpers for Cursor/Claude agent hook scripts."""
+"""Shared helpers for agent hook scripts."""
 
 from __future__ import annotations
 
@@ -26,7 +26,40 @@ def read_payload() -> dict[str, Any]:
     raw = sys.stdin.read()
     if not raw.strip():
         return {}
-    return json.loads(raw)
+    payload = json.loads(raw)
+    if not isinstance(payload, dict):
+        return payload
+
+    aliases = {
+        "conversationId": "conversation_id",
+        "workspacePaths": "workspace_roots",
+        "modelName": "model",
+        "invocationNum": "invocation_num",
+        "initialNumSteps": "initial_num_steps",
+        "transcriptPath": "transcript_path",
+        "artifactDirectoryPath": "artifact_directory_path",
+    }
+    for source, target in aliases.items():
+        if target not in payload and source in payload:
+            payload[target] = payload[source]
+
+    tool_call = payload.get("toolCall")
+    if isinstance(tool_call, dict):
+        if "tool_name" not in payload and isinstance(tool_call.get("name"), str):
+            payload["tool_name"] = tool_call["name"]
+        if "tool_input" not in payload and isinstance(tool_call.get("args"), dict):
+            tool_input = dict(tool_call["args"])
+            if "command" not in tool_input and isinstance(tool_input.get("CommandLine"), str):
+                tool_input["command"] = tool_input["CommandLine"]
+            payload["tool_input"] = tool_input
+
+    if "error_message" not in payload and isinstance(payload.get("error"), str):
+        payload["error_message"] = payload["error"]
+    if "hook_event_name" not in payload:
+        event = os.environ.get("AGENT_HOOK_EVENT", "").strip()
+        if event:
+            payload["hook_event_name"] = event
+    return payload
 
 
 def emit(data: dict[str, Any]) -> None:
@@ -39,7 +72,15 @@ def emit(data: dict[str, Any]) -> None:
     hook), so its adapter sets `AGENT_HOOK_OUTPUT=hook_specific` to keep only
     the `hookSpecificOutput` channel.
     """
-    if os.environ.get("AGENT_HOOK_OUTPUT") == "hook_specific" and "hookSpecificOutput" in data:
+    output_mode = os.environ.get("AGENT_HOOK_OUTPUT")
+    if output_mode == "antigravity":
+        context = data.get("additional_context")
+        if not isinstance(context, str):
+            specific = data.get("hookSpecificOutput")
+            if isinstance(specific, dict):
+                context = specific.get("additionalContext")
+        data = {"injectSteps": [{"ephemeralMessage": context}]} if isinstance(context, str) and context else {}
+    elif output_mode == "hook_specific" and "hookSpecificOutput" in data:
         data = {"hookSpecificOutput": data["hookSpecificOutput"]}
     print(json.dumps(data, sort_keys=True))
 

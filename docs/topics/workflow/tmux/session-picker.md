@@ -69,7 +69,7 @@ Session entries inherit the state of their backing worktree.
 | Stale worktree     | Diagnostic plus directory contents                                                                  |
 | Non-git dir        | Directory listing                                                                                   |
 
-Activity is classified coarsely: agent panes, idle shells, editors, or busy commands.
+Activity is classified coarsely: agent panes (including Antigravity's `agy` process), idle shells, editors, or busy commands.
 
 ## Detailed mechanics
 

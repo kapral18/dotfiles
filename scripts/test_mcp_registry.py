@@ -60,7 +60,7 @@ class TestMcpRegistry(unittest.TestCase):
     def test_http_server_unknown_tool_omits_tool_specific_oauth_server(self):
         from mcp_registry import load_servers
 
-        servers = load_servers(str(FIXTURES / "mcp_servers.yaml"), is_work=False, tool="gemini")
+        servers = load_servers(str(FIXTURES / "mcp_servers.yaml"), is_work=False, tool="unknown")
         assert "http-tool" not in servers
 
     def test_exclude_tools_omits_server_for_listed_tool_only(self):

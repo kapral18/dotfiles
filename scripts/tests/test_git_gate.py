@@ -270,25 +270,32 @@ class TestGateHookProcess(unittest.TestCase):
         assert result.returncode == 0, result.stderr
         assert json.loads(result.stdout) == {"permission": "allow"}
 
-    def test_gemini_shape_denies_push(self):
+    def test_antigravity_shape_asks_before_push(self):
         payload = json.dumps(
             {
-                "hook_event_name": "BeforeTool",
-                "tool_name": "run_shell_command",
-                "tool_input": {"command": "env X=1 git -c foo=bar push"},
+                "conversationId": "agy-session",
+                "workspacePaths": ["/tmp/workspace"],
+                "toolCall": {
+                    "name": "run_command",
+                    "args": {"CommandLine": "env X=1 git -c foo=bar push"},
+                },
             }
         )
         result = run_gate(payload)
         assert result.returncode == 0, result.stderr
         body = json.loads(result.stdout)
-        assert body["decision"] == "deny"
+        assert body["decision"] == "force_ask"
+        assert "ANTIGRAVITY GIT WARNING" in body["reason"]
 
-    def test_gemini_shape_allows_unrelated_command(self):
+    def test_antigravity_shape_allows_unrelated_command(self):
         payload = json.dumps(
             {
-                "hook_event_name": "BeforeTool",
-                "tool_name": "run_shell_command",
-                "tool_input": {"command": "ls -la"},
+                "conversationId": "agy-session",
+                "workspacePaths": ["/tmp/workspace"],
+                "toolCall": {
+                    "name": "run_command",
+                    "args": {"CommandLine": "ls -la"},
+                },
             }
         )
         result = run_gate(payload)
@@ -302,8 +309,8 @@ class TestGateHookProcess(unittest.TestCase):
         assert "failing closed" in result.stderr
 
     def test_fails_closed_on_unrecognized_payload_shape(self):
-        # Neither a Cursor top-level `command` string nor a Gemini
-        # `run_shell_command` tool_input.command is present.
+        # Neither a Cursor top-level `command` string nor an Antigravity
+        # `run_command` toolCall.args.CommandLine is present.
         payload = json.dumps({"hook_event_name": "postToolUse", "tool_name": "Read"})
         result = run_gate(payload)
         assert result.returncode == 2
@@ -319,13 +326,13 @@ class TestGateHookProcess(unittest.TestCase):
 
     def test_fails_closed_on_excessive_substitution_nesting(self):
         # Recursion depth is bounded by the interpreter; exceeding it must
-        # fail closed (exit 2), not exit 1 as a non-fatal Gemini warning.
+        # fail closed (exit 2).
         command = "true " + "$(true " * 600 + "x" + ")" * 600
         payload = json.dumps(
             {
-                "hook_event_name": "BeforeTool",
-                "tool_name": "run_shell_command",
-                "tool_input": {"command": command},
+                "conversationId": "agy-session",
+                "workspacePaths": ["/tmp/workspace"],
+                "toolCall": {"name": "run_command", "args": {"CommandLine": command}},
             }
         )
         result = run_gate(payload)

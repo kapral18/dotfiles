@@ -31,20 +31,22 @@ Runtime discovery is harness-specific:
 | GitHub Copilot CLI | `~/.copilot/agents/*.agent.md` and project `.github/agents/*.agent.md`; configured with `subagents.agents.*` |
 | Claude Code        | `~/.claude/agents/*.md`; launched via `Task` with `subagent_type`                                            |
 | Codex CLI          | `$CODEX_HOME/agents/*.toml`; launched through `multi_agent` `spawn_agent`/`wait`                             |
-| Gemini CLI         | project `.gemini/agents/*.md` and user `~/.gemini/agents/*.md`; exposed as tools and forced with `@name`     |
+| Antigravity        | Runtime-defined subagents via `define_subagent` / `invoke_subagent`; skills dynamically loaded               |
 | Pi                 | `~/.pi/agent/agents/*.md`; built-in subagents disabled to avoid name collisions                              |
 
 Verified discovery anchors:
 
-| Harness     | Verified surface                                                                                                          |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Cursor CLI  | bundled `~/.cursor/skills-cursor/create-subagent/SKILL.md`; `cursor-agent 2026.06.15-18-00-12-6f5a2cf`                    |
-| Copilot CLI | `copilot --agent <name>`, `/agent`, and `copilot help config`; version `copilot 1.0.63`                                   |
-| Claude Code | `claude --agent`, `--agents`, `claude agents`, and `Task.subagent_type`; version `claude 2.1.179`                         |
-| Codex CLI   | `$CODEX_HOME/agents/*.toml` plus `multi_agent.spawn_agent` / `wait`; source `openai/codex@45f603302c45`                   |
-| Gemini CLI  | `.gemini/agents/*.md`, `@name` forcing, and no subagent-to-subagent calls; source `google-gemini/gemini-cli@f741d0328209` |
+| Harness     | Verified surface                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------- |
+| Cursor CLI  | bundled `~/.cursor/skills-cursor/create-subagent/SKILL.md`; `cursor-agent 2026.06.15-18-00-12-6f5a2cf`  |
+| Copilot CLI | `copilot --agent <name>`, `/agent`, and `copilot help config`; version `copilot 1.0.63`                 |
+| Claude Code | `claude --agent`, `--agents`, `claude agents`, and `Task.subagent_type`; version `claude 2.1.179`       |
+| Codex CLI   | `$CODEX_HOME/agents/*.toml` plus `multi_agent.spawn_agent` / `wait`; source `openai/codex@45f603302c45` |
+| Antigravity | `~/.gemini/config/skills` symlink + progressive skill disclosure; dynamic subagent protocol             |
 
 Profile `model` frontmatter for `/k-deep-review` lanes is rendered from the `agent_review_models` registry. See [Model registry](model-registry.md) for policy and [Deep-review topology](reviews/deep-review-topology.md) for review-flow usage. Every other profile renders through `agent-model.partial`, which resolves the agent's category to a per-harness band, and a shared pre-tool-use gate re-applies that band to delegation calls no profile can reach — see [Model tiering](model-tiering.md).
+
+Antigravity is the runtime-defined exception: it has no repo-owned profile files. The main session defines each review role from the shared role contract and invokes it with the `pro` tier recorded in `agent_review_models.gemini`.
 
 Pi encodes reasoning effort in model slug suffixes such as `:xhigh` on its per-task registry value.
 
@@ -64,7 +66,7 @@ The "Loads contract" column is the `k-review/references/<role>.md` file the prof
 | ------------------------------------------------ | ---------------------------------------- | --------------------------------------------------------------------------------------- |
 | `deep-review`                                    | `k-deep-review/SKILL`                    | Controller: route, PR-necessity gate, bounded reviewer roster, live UI, audit, act      |
 | `review-controller` (Pi/OMP)                     | `k-deep-review/SKILL` + `k-review/SKILL` | Pi/OMP controller for PR gates, reviews, audits, fixes/drafts/verdict                   |
-| `review-worker`                                  | `reviewer-worker`                        | Registry-model selected angle lane (Cursor/Copilot/Codex/Gemini)                        |
+| `review-worker`                                  | `reviewer-worker`                        | Registry-model selected angle lane (Cursor/Copilot/Codex/Antigravity)                   |
 | `reviewer`                                       | `reviewer-worker`                        | Pi/OMP concrete registry lane; Claude inherited read-only angle lane                    |
 | `fresh-eyes` (Pi/OMP profile; generic elsewhere) | `fresh-eyes`                             | Conditional blind zero-context clarity lane                                             |
 | `adversarial-verifier`                           | `adversarial-verifier`                   | Cross-family refutation over audited candidates                                         |
@@ -87,16 +89,15 @@ Source paths:
 | `~/.copilot/agents/*.agent.md` | [`home/private_dot_copilot/exact_agents/`](../../../home/private_dot_copilot/exact_agents/)     | Copilot     |
 | `~/.claude/agents/*.md`        | [`home/dot_claude/exact_agents/`](../../../home/dot_claude/exact_agents/)                       | Claude      |
 | `~/.codex/agents/*.toml`       | [`home/dot_codex/exact_agents/`](../../../home/dot_codex/exact_agents/)                         | Codex       |
-| `~/.gemini/agents/*.md`        | [`home/dot_gemini/exact_agents/`](../../../home/dot_gemini/exact_agents/)                       | Gemini      |
 | `~/.pi/agent/agents/*.md`      | [`home/dot_pi/agent/exact_agents/`](../../../home/dot_pi/agent/exact_agents/)                   | Pi          |
 | `~/.omp/agent/agents/*.md`     | [`home/dot_omp/private_agent/exact_agents/`](../../../home/dot_omp/private_agent/exact_agents/) | OMP         |
 
 Not every harness ships every profile:
 
 - Cursor, Copilot, Claude, Pi, and OMP carry a controller profile (`deep-review` or `review-controller` by harness convention).
-- Codex and Gemini ship only worker/verifier/auditor lanes, so the controller role stays in the interactive session.
+- Codex ships only worker/verifier/auditor lanes, so the controller role stays in the interactive session.
 
-The `/k-build` flow's `criteria-verifier` profile follows the same shim pattern with its contract under `k-build/references/criteria-verifier.md`, using the same `agent_review_models` verifier model.
+The `/k-build` flow's `criteria-verifier` uses the contract under `k-build/references/criteria-verifier.md` and the same `agent_review_models` verifier selection. Profile-based harnesses render it normally; Antigravity defines it dynamically and invokes its `pro` tier.
 
 Claude carries no profile for `criteria-verifier`. This follows the same convention as `adversarial-verifier`: the lane runs degraded on the session model there.
 

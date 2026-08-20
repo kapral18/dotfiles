@@ -295,7 +295,8 @@ def _load_codex_policy(repo_root: Path) -> tuple[list[str], list[str], dict[str,
 
 
 def _load_gemini_policy(repo_root: Path) -> tuple[list[str], list[str], dict[str, str]]:
-    model = _read_json(repo_root / "home/dot_gemini/settings.json")["model"]["name"]
+    bands = ai_models.load_model_bands(repo_root / AI_MODELS_REGISTRY)
+    model = bands["gemini"]["standard"]["model"]
     return [model], [model], {"default": model}
 
 
@@ -598,7 +599,7 @@ def _harness_policy_provenance(harness: str, set_name: str) -> list[dict[str, An
             _provenance("config", "home/dot_codex/private_config.work.toml"),
             _provenance("config", "home/dot_codex/private_config.personal.toml"),
         ],
-        "gemini": [_provenance("config", "home/dot_gemini/settings.json")],
+        "gemini": [_registry_provenance("model_bands")],
         "opencode": [
             _provenance("config", "home/dot_config/opencode/readonly_opencode.work.jsonc"),
             _provenance("config", "home/dot_config/opencode/readonly_opencode.personal.jsonc"),

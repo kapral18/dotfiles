@@ -41,8 +41,8 @@ agent_review_models:
     lanes: "gpt-5.6-sol"
     verifier: "gpt-5.6-sol" # single-family harness; families=same (degraded) is expected
   gemini:
-    lanes: "gemini-3.1-pro-preview" # closed 2026-07-27: previously "" (unaudited config-default); kept in sync BY HAND with model_bands.gemini.max.model — not templated/derived, update both on change
-    verifier: "gemini-3.1-pro-preview" # single-family harness; families=same (degraded) is expected, not a defect
+    lanes: "pro"
+    verifier: "pro" # Antigravity's dynamic-subagent schema exposes abstract model tiers, not raw model ids
   pi:
     # Pi reaches models only through OpenRouter here. Pi's `:<level>` suffix is one dial for both
     # thinking level and effort. DeepSeek max carries the lanes; Terra max remains the verifier.
@@ -307,21 +307,19 @@ model_bands:
       thinking: ""
       context: "short"
   gemini:
-    # gemini-3.1-pro (Cursor spelling) / gemini-3.1-pro-preview (Vertex/Copilot spelling) —
-    # deliberately not normalized to one name; see docs/topics/ai-assistants/model-tiering.md.
-    # Google-only catalog, so standard and max collapse and there is no counter.
+    # Google-only catalog, so cheap, standard and max collapse to gemini-3.7-flash with high effort.
     cheap:
-      model: "gemini-3.6-flash"
+      model: "gemini-3.7-flash"
       effort: "high"
       thinking: ""
       context: "short"
     standard:
-      model: "gemini-3.1-pro-preview"
+      model: "gemini-3.7-flash"
       effort: "high"
       thinking: ""
       context: "short"
     max:
-      model: "gemini-3.1-pro-preview"
+      model: "gemini-3.7-flash"
       effort: "high"
       thinking: ""
       context: "short"

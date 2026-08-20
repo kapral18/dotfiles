@@ -1,0 +1,49 @@
+{
+  "agent-context": {
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "AGENT_HOOK_OUTPUT=antigravity AGENT_HOOK_EVENT=PreInvocation $HOME/.agents/hooks/session_context.py",
+        "timeout": 10
+      },
+      {
+        "type": "command",
+        "command": "AGENT_HOOK_OUTPUT=antigravity AGENT_HOOK_EVENT=PreInvocation $HOME/.agents/hooks/premise_nudge.py",
+        "timeout": 10
+      }
+    ]
+  },
+  "agent-worklog": {
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AGENT_HOOK_OUTPUT=antigravity AGENT_HOOK_EVENT=PostToolUse $HOME/.agents/hooks/worklog_dispatcher.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "git-safety": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.agents/hooks/gemini-git-gate.py",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "AGENT_HOOK_OUTPUT=antigravity AGENT_HOOK_EVENT=PreToolUse $HOME/.agents/hooks/premise_nudge.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

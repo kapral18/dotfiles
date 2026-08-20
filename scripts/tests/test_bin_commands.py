@@ -3748,6 +3748,53 @@ class TestCodexWrapper(unittest.TestCase):
                     assert result.returncode == 0
                     assert f'model_catalog_json="{catalog}"' in result.stdout
 
+    def test_resolves_codex_from_path_when_real_bin_unset(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            bindir = root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            real_codex = bindir / "codex"
+            real_codex.write_text("#!/usr/bin/env bash\necho REAL_CODEX_FROM_PATH\n")
+            real_codex.chmod(0o755)
+            clean_env = {k: v for k, v in os.environ.items() if k != "CODEX_REAL_BIN"}
+            result = subprocess.run(
+                [sys.executable, str(CODEX_COMMAND), "exec", "hi"],
+                capture_output=True,
+                text=True,
+                cwd=str(REPO),
+                env={
+                    **clean_env,
+                    "HOME": str(home),
+                    "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+                },
+            )
+            assert result.returncode == 0, result.stderr
+            assert "REAL_CODEX_FROM_PATH" in result.stdout
+
+    def test_fails_when_codex_binary_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            bindir = root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            clean_env = {k: v for k, v in os.environ.items() if k != "CODEX_REAL_BIN"}
+            result = subprocess.run(
+                [sys.executable, str(CODEX_COMMAND), "exec", "hi"],
+                capture_output=True,
+                text=True,
+                cwd=str(REPO),
+                env={
+                    **clean_env,
+                    "HOME": str(home),
+                    "PATH": "/usr/bin:/bin",
+                },
+            )
+            assert result.returncode == 127
+            assert "Error: real Codex binary not found at codex." in result.stderr
+
 
 class TestCursorLlamaCppWrapper(unittest.TestCase):
     """WHEN Cursor launches against the local llama.cpp router."""

@@ -35,7 +35,7 @@ The mental model is layered:
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
 | Single SOP source | [`home/readonly_AGENTS.md`](../../../../home/readonly_AGENTS.md)                                                                   | `~/AGENTS.md`                        |
 | Claude            | [`home/symlink_CLAUDE.md`](../../../../home/symlink_CLAUDE.md)                                                                     | `~/CLAUDE.md`                        |
-| Gemini            | [`home/dot_gemini/symlink_GEMINI.md`](../../../../home/dot_gemini/symlink_GEMINI.md)                                               | `~/.gemini/GEMINI.md`                |
+| Antigravity       | [`home/dot_gemini/config/symlink_AGENTS.md`](../../../../home/dot_gemini/config/symlink_AGENTS.md)                                 | `~/.gemini/config/AGENTS.md`         |
 | Cursor            | [`home/dot_cursor/symlink_AGENTS.md`](../../../../home/dot_cursor/symlink_AGENTS.md)                                               | `~/.cursor/AGENTS.md`                |
 | Codex             | [`home/dot_codex/symlink_AGENTS.md`](../../../../home/dot_codex/symlink_AGENTS.md)                                                 | `~/.codex/AGENTS.md`                 |
 | OpenCode          | [`home/dot_config/opencode/symlink_AGENTS.md`](../../../../home/dot_config/opencode/symlink_AGENTS.md)                             | `~/.config/opencode/AGENTS.md`       |

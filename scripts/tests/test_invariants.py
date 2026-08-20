@@ -377,7 +377,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "home/dot_claude/settings.llama-cpp.json",
             "home/dot_codex/hooks.json.tmpl",
             "home/dot_cursor/hooks.json",
-            "home/dot_gemini/settings.json",
+            "home/dot_gemini/config/readonly_hooks.json",
         )
         referenced = re.compile(r"\.agents/hooks/([A-Za-z0-9_.-]+\.(?:py|sh))")
         checked = 0
@@ -1058,6 +1058,15 @@ class TestAgentInstructionInvariants(unittest.TestCase):
                 )
                 continue
 
+            if harness == "gemini":
+                # Antigravity's dynamic invoke_subagent API accepts abstract tiers rather
+                # than the root CLI's concrete model ids. Both review roles deliberately
+                # select its strongest available tier.
+                assert roles == {"lanes": "pro", "verifier": "pro"}, (
+                    f"gemini review registry is {roles!r}, expected both roles to use 'pro'"
+                )
+                continue
+
             assert top["model"] == roles["lanes"], (
                 f"model_bands.{harness}.max.model is {top['model']!r} but "
                 f"agent_review_models.{registry_name.get(harness, harness)}.lanes is {roles['lanes']!r}"
@@ -1657,7 +1666,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "codex": ("gpt-5.6-sol", "xhigh"),  # user-selected all-band Codex policy
             "copilot": ("claude-haiku-4.5", "high"),
             "cursor": ("cursor-grok-4.6-xhigh", "xhigh"),  # all-band Cursor pin (user call 2026-08-14)
-            "gemini": ("gemini-3.6-flash", "high"),  # Google-only catalog
+            "gemini": ("gemini-3.7-flash", "high"),  # Google-only catalog
             "pi": ("openrouter/deepseek/deepseek-v4-flash-0731:max", "max"),  # OpenRouter-only; cheap role route
             "omp": ("@smol", "high"),  # a role token; the concrete pick is asserted below
         }
@@ -1717,10 +1726,8 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             )
 
     def test_generated_subagent_rosters_match_the_band_registry(self):
-        # Copilot's settings.json and Gemini's agents.overrides both pin subagent models inside a
-        # file the harness rewrites at runtime, so neither can be a chezmoi template over the
-        # registry: scripts/generate_subagent_models.py reconciles them instead. Copilot's has
-        # drifted before, and Gemini's was unguarded entirely.
+        # Copilot pins subagent models inside a settings file the harness rewrites at runtime,
+        # so it cannot be a chezmoi template over the registry. The generator reconciles it.
         import subprocess
 
         result = subprocess.run(
@@ -1730,7 +1737,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             cwd=str(REPO),
         )
         assert result.returncode == 0, (
-            "Copilot/Gemini subagent rosters diverge from model_bands; run "
+            "Copilot subagent roster diverges from model_bands; run "
             f"`python3 scripts/generate_subagent_models.py write`:\n{result.stderr}"
         )
 
@@ -1848,7 +1855,6 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         for profile in (
             "home/dot_cursor/exact_agents/readonly_review-worker.md.tmpl",
             "home/dot_codex/exact_agents/readonly_review-worker.toml.tmpl",
-            "home/dot_gemini/exact_agents/readonly_review-worker.md.tmpl",
             "home/private_dot_copilot/exact_agents/readonly_review-worker.agent.md.tmpl",
             "home/dot_claude/exact_agents/reviewer.md.tmpl",
             "home/dot_pi/agent/exact_agents/reviewer.md.tmpl",

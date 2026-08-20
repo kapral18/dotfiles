@@ -9,8 +9,10 @@ premise-carrying, and the per-harness wire format the nudge rides on.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -281,6 +283,44 @@ class TestPremiseNudgeWireFormat(unittest.TestCase):
     def test_when_payload_is_copilot_shaped_should_parse_json_encoded_args(self):
         result = run_hook({"tool_name": "shell", "arguments": json.dumps({"command": "git stash"})})
         self.assertIn("Premise check", context_of(result))
+
+    def test_when_antigravity_command_carries_a_premise_should_inject_it_on_the_next_invocation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "workspace"
+            workspace.mkdir()
+            env = {
+                "AGENT_MEMORY_SPEC_ROOT": str(Path(tmp) / "specs"),
+                "AGENT_HOOK_OUTPUT": "antigravity",
+                "AGENT_HOOK_EVENT": "PreToolUse",
+            }
+            payload = {
+                "conversationId": "agy-premise",
+                "workspacePaths": [str(workspace)],
+                "toolCall": {"name": "run_command", "args": {"CommandLine": "git stash"}},
+            }
+
+            self.assertEqual(run_hook(payload, env_extra=env), {})
+            env["AGENT_HOOK_EVENT"] = "PreInvocation"
+            injected = run_hook(
+                {
+                    "conversationId": "agy-premise",
+                    "workspacePaths": [str(workspace)],
+                    "invocationNum": 1,
+                },
+                env_extra=env,
+            )
+            self.assertIn("Premise check", injected["injectSteps"][0]["ephemeralMessage"])
+            self.assertEqual(
+                run_hook(
+                    {
+                        "conversationId": "agy-premise",
+                        "workspacePaths": [str(workspace)],
+                        "invocationNum": 2,
+                    },
+                    env_extra=env,
+                ),
+                {},
+            )
 
 
 class TestPremiseNudgeFailsOpen(unittest.TestCase):

@@ -1,18 +1,18 @@
 ---
 sidebar_position: 3
-title: Claude and Gemini
+title: Claude and Antigravity
 ---
 
-# Claude and Gemini
+# Claude and Antigravity
 
-Claude Code and Gemini CLI use small profile/config surfaces backed by the shared MCP registry. Claude keeps runtime-managed fields in `~/.claude.json`, while Gemini receives MCP server injection into its settings at apply time.
+Claude Code and Antigravity use config surfaces backed by the shared MCP registry. Claude keeps runtime-managed fields in `~/.claude.json`, while Antigravity receives native MCP configuration at `~/.gemini/config/mcp_config.json`.
 
 ## Mental model
 
-| Tool        | Source                                                                          | Target                    | Registry path                                                                                      |
-| ----------- | ------------------------------------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------- |
-| Claude Code | [`home/dot_claude/settings.{work,personal}.json`](../../../../home/dot_claude/) | `~/.claude/settings.json` | `~/.claude.json` top-level `mcpServers`                                                            |
-| Gemini CLI  | [`home/dot_gemini/settings.json`](../../../../home/dot_gemini/settings.json)    | `~/.gemini/settings.json` | shared [`mcp_servers.yaml`](../../../../home/.chezmoidata/mcp_servers.yaml) injected at apply time |
+| Tool        | Source                                                                          | Target                             | Registry path                                                                                      |
+| ----------- | ------------------------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Claude Code | [`home/dot_claude/settings.{work,personal}.json`](../../../../home/dot_claude/) | `~/.claude/settings.json`          | `~/.claude.json` top-level `mcpServers`                                                            |
+| Antigravity | [`home/dot_gemini/`](../../../../home/dot_gemini/)                              | `~/.gemini/config/mcp_config.json` | shared [`mcp_servers.yaml`](../../../../home/.chezmoidata/mcp_servers.yaml) rendered at apply time |
 
 ## Using it
 
@@ -44,6 +44,8 @@ Interactive fish/bash/zsh sessions leave `claude` native. MCP wiring is handled 
 
 Playwriter remains a fallback for rendered UI checks or booking-adjacent flows that need explicit user confirmation.
 
-### Gemini CLI settings
+### Antigravity settings
 
-MCP servers are injected from the shared [`mcp_servers.yaml`](../../../../home/.chezmoidata/mcp_servers.yaml) registry at apply time. Tool approval is controlled by `general.defaultApprovalMode`; this repo uses `auto_edit` to auto-approve edit tools.
+Antigravity (`agy`) reads its global MCP servers from `~/.gemini/config/mcp_config.json`, generated directly from the shared [`mcp_servers.yaml`](../../../../home/.chezmoidata/mcp_servers.yaml) registry by `07-generate-mcp-configs`. Hosted servers (`scsi-main`, `slack`) run as `,mcp-token --bridge` stdio servers with per-request bearer token injection from cursor-cli's rotating OAuth caches.
+
+Instructions and skills live in Antigravity's global customization root: `~/.gemini/config/AGENTS.md` points to `~/AGENTS.md`, while `~/.gemini/config/skills` symlinks to `~/.agents/skills`. `~/.gemini/config/hooks.json` injects shared session context on the first `PreInvocation`, carries premise-check nudges from `PreToolUse` into the next invocation, records `PostToolUse` events, and gates `git commit`/`git push`.

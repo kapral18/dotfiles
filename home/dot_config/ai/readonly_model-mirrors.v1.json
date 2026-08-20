@@ -25,7 +25,7 @@
       },
       "cursor": {},
       "gemini": {
-        "default": "gemini-3.1-pro-preview"
+        "default": "gemini-3.7-flash"
       },
       "opencode": {
         "personal": {
@@ -79,7 +79,7 @@
           {
             "binary": "claude",
             "kind": "installed-harness",
-            "observed_at": "2026-07-11",
+            "observed_at": "2026-08-20",
             "source": "claude --help model aliases and full-name example",
             "version": "2.1.206"
           },
@@ -149,9 +149,9 @@
           {
             "binary": "codex",
             "kind": "installed-harness",
-            "observed_at": "2026-07-11",
-            "source": "Homebrew cask codex 0.144.1",
-            "version": "codex-cli 0.144.1"
+            "observed_at": "2026-08-20",
+            "source": "Homebrew cask codex 0.148.0",
+            "version": "codex-cli 0.148.0"
           },
           {
             "kind": "config",
@@ -185,8 +185,8 @@
       },
       "identity": {
         "binary": "codex",
-        "package": "Homebrew cask codex 0.144.1",
-        "version": "codex-cli 0.144.1"
+        "package": "Homebrew cask codex 0.148.0",
+        "version": "codex-cli 0.148.0"
       },
       "live_probe": {
         "reason": "no locally verified complete catalog command",
@@ -299,7 +299,7 @@
           {
             "binary": "cursor-agent",
             "kind": "installed-harness",
-            "observed_at": "2026-07-11",
+            "observed_at": "2026-08-20",
             "source": "Cursor Agent",
             "version": "2026.07.09-a3815c0"
           },
@@ -559,35 +559,31 @@
       "available": {
         "complete": true,
         "models": [
-          "auto",
-          "pro",
-          "flash",
-          "flash-lite",
-          "auto-gemini-3",
-          "auto-gemini-2.5",
-          "gemini-3.1-flash-lite",
-          "gemini-3.1-pro-preview",
-          "gemini-3.1-pro-preview-customtools",
-          "gemini-3-pro-preview",
-          "gemini-3-flash-preview",
-          "gemini-3.5-flash",
-          "gemini-2.5-pro",
-          "gemini-2.5-flash",
-          "gemini-2.5-flash-lite",
-          "gemma-4-31b-it",
-          "gemma-4-26b-a4b-it"
+          "gemini-3.7-flash",
+          "gemini-3.7-flash-high",
+          "gemini-3.7-flash-medium",
+          "gemini-3.7-flash-low",
+          "gemini-3.6-flash-high",
+          "gemini-3.6-flash-medium",
+          "gemini-3.6-flash-low",
+          "gemini-3.5-flash-high",
+          "gemini-3.5-flash-medium",
+          "gemini-3.5-flash-low",
+          "gemini-3.1-pro-low",
+          "gemini-3.1-pro-high"
         ],
         "provenance": [
           {
-            "binary": "gemini",
+            "binary": "agy",
             "kind": "installed-harness",
-            "observed_at": "2026-07-11",
-            "source": "@google/gemini-cli bundle DEFAULT_MODEL_CONFIGS.modelDefinitions",
-            "version": "0.50.0"
+            "observed_at": "2026-08-20",
+            "source": "agy models output plus base-model --effort probe",
+            "version": "1.1.16"
           },
           {
-            "kind": "config",
-            "source": "home/dot_gemini/settings.json"
+            "kind": "registry",
+            "section": "model_bands",
+            "source": "home/.chezmoidata/ai_models/tiering.yaml"
           }
         ],
         "reason": null,
@@ -596,35 +592,37 @@
       "curated": {
         "complete": true,
         "models": [
-          "gemini-3.1-pro-preview"
+          "gemini-3.7-flash"
         ],
         "provenance": [
           {
-            "kind": "config",
-            "source": "home/dot_gemini/settings.json"
+            "kind": "registry",
+            "section": "model_bands",
+            "source": "home/.chezmoidata/ai_models/tiering.yaml"
           }
         ],
         "reason": null,
         "status": "known"
       },
       "identity": {
-        "binary": "gemini",
-        "package": "@google/gemini-cli",
-        "version": "0.50.0"
+        "binary": "agy",
+        "package": "Homebrew cask antigravity-cli",
+        "version": "1.1.16"
       },
       "live_probe": {
-        "reason": "installed CLI exposes --model but no complete account catalog command",
+        "reason": "static snapshot only; no live agy-models adapter is implemented",
         "supported": false
       },
       "recommended": {
         "complete": true,
         "models": [
-          "gemini-3.1-pro-preview"
+          "gemini-3.7-flash"
         ],
         "provenance": [
           {
-            "kind": "config",
-            "source": "home/dot_gemini/settings.json"
+            "kind": "registry",
+            "section": "model_bands",
+            "source": "home/.chezmoidata/ai_models/tiering.yaml"
           }
         ],
         "reason": null,
@@ -645,7 +643,7 @@
           {
             "binary": "opencode",
             "kind": "installed-harness",
-            "observed_at": "2026-07-11",
+            "observed_at": "2026-08-20",
             "source": "opencode-ai",
             "version": "1.17.15"
           },
@@ -731,7 +729,7 @@
           {
             "binary": "pi",
             "kind": "installed-harness",
-            "observed_at": "2026-07-11",
+            "observed_at": "2026-08-20",
             "source": "@earendil-works/pi-coding-agent",
             "version": "0.80.6"
           },

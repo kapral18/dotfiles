@@ -30,7 +30,8 @@ First actions:
 
 1. Run `list_indices` before any semantic query.
 2. Verify whether the current repo is indexed and pick the single justified index, or record why none can be used.
-3. Form precise semantic queries with paths/snippets from local context.
+3. Cast a multi-angle query net: brainstorm a cluster of diverse queries exploring how changed functionality affects preexisting surrounding behavior, sibling consumers, callers, and downstream pipelines.
+4. Drill down using symbol analysis and chunk reads on relevant matching paths to map full impact.
 
 Important limitation:
 

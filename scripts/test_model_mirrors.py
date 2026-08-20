@@ -328,18 +328,6 @@ class TestStaticModelMirrors(unittest.TestCase):
                 self.assertEqual(sources(harness, "curated"), expected_sources)
                 self.assertLessEqual(expected_sources, sources(harness, "available"))
 
-    def test_SHOULD_pin_gemini_builtin_agent_overrides(self):
-        settings = json.loads((REPO / "home/dot_gemini/settings.json").read_text())
-        overrides = settings["agents"]["overrides"]
-
-        # codebase_investigator is `research`, not `search`: it forms and reports conclusions, which
-        # is the judgment `search` excludes, so it takes the standard band. cli_help reads `--help`
-        # and reports what it says, which is the one genuinely judgment-free job here.
-        self.assertEqual(overrides["codebase_investigator"]["modelConfig"]["model"], "gemini-3.1-pro-preview")
-        self.assertEqual(overrides["cli_help"]["modelConfig"]["model"], "gemini-3.6-flash")
-        self.assertEqual(overrides["generalist"]["modelConfig"]["model"], "gemini-3.1-pro-preview")
-        self.assertEqual(overrides["browser_agent"]["modelConfig"]["model"], "gemini-3.1-pro-preview")
-
     def test_SHOULD_match_committed_json_and_generated_go_outputs(self):
         import model_mirrors
 

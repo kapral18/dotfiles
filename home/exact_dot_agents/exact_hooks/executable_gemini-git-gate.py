@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Gate git commit/push to prevent rushing, shared by Cursor and Gemini CLI.
+"""Gate git commit/push to prevent rushing, shared by Cursor and Antigravity.
 
 Cursor's `beforeShellExecution` payload carries the raw command as a
-top-level `command` string. Gemini CLI's `BeforeTool` payload carries it as
-`tool_input.command` alongside `tool_name == "run_shell_command"` (see
-https://github.com/google-gemini/gemini-cli `docs/hooks/reference.md`). The
-harness is identified from this shape, not guessed, so a malformed/ambiguous
+top-level `command` string. Antigravity's `PreToolUse` payload carries it as
+`toolCall.args.CommandLine` alongside `toolCall.name == "run_command"`. The
+harness is identified from this shape, not guessed, so a malformed or ambiguous
 payload fails closed instead of silently defaulting to one harness.
 
 The command line is tokenized with `shlex` (respecting quotes, splitting on
@@ -14,12 +13,9 @@ subcommand can be found after global options (`git -C . commit`,
 `env X=1 git -c foo=bar push`). This is intentionally not a full shell
 parser: direct Git invocations and recognized shell/direct-execution wrappers are classified to their actual Git subcommand. `$(...)` and backtick substitution bodies are classified recursively as their own command lines. Unrecognized Git options, ambiguous wrappers, and unparseable quoting fail closed. Non-Git arguments, including `.git` paths and inert quoted text mentioning Git, are allowed.
 
-Gemini CLI blocks a tool ONLY on exit code 2 (stderr becomes the reason);
-any other non-zero exit is treated as a non-fatal warning and the tool still
-runs. So on JSON-parse or shape failure we must not merely raise/exit(1); we
-explicitly emit the reason on stderr and exit(2) to fail closed under both
-harnesses (Cursor's `failClosed: true` also blocks on invalid/missing JSON
-output).
+On JSON-parse or shape failure, emit the reason on stderr and exit 2 so both
+harnesses fail closed (Cursor's `failClosed: true` also blocks on invalid or
+missing JSON output).
 """
 
 from __future__ import annotations
@@ -706,7 +702,7 @@ def classify_command(command: str) -> str:
 
 
 WARNING = (
-    "\u26a0\ufe0f GEMINI GIT WARNING: Gemini models frequently rush to commit "
+    "\u26a0\ufe0f ANTIGRAVITY GIT WARNING: agents frequently rush to commit "
     "and push without explicit permission. Stop and ask the user what to do next."
 )
 
@@ -716,16 +712,17 @@ def _fail_closed(reason: str) -> None:
     sys.exit(2)
 
 
-def _extract_command(payload: dict) -> tuple[str, bool] | None:
-    """Return (command, is_gemini_cli), or None if the payload shape is unrecognized."""
+def _extract_command(payload: dict) -> tuple[str, str] | None:
+    """Return (command, harness), or None if the payload shape is unrecognized."""
     top_level_command = payload.get("command")
     if isinstance(top_level_command, str):
-        return top_level_command, False
+        return top_level_command, "cursor"
 
-    if payload.get("tool_name") == "run_shell_command":
-        tool_input = payload.get("tool_input")
-        if isinstance(tool_input, dict) and isinstance(tool_input.get("command"), str):
-            return tool_input["command"], True
+    tool_call = payload.get("toolCall")
+    if isinstance(tool_call, dict) and tool_call.get("name") == "run_command":
+        args = tool_call.get("args")
+        if isinstance(args, dict) and isinstance(args.get("CommandLine"), str):
+            return args["CommandLine"], "antigravity"
 
     return None
 
@@ -746,7 +743,7 @@ def main() -> None:
     if extracted is None:
         _fail_closed("git-gate: could not identify the calling harness from hook input; failing closed.")
         return
-    command, is_gemini_cli = extracted
+    command, harness = extracted
 
     try:
         verdict = classify_command(command)
@@ -757,15 +754,15 @@ def main() -> None:
         return
 
     if verdict == "deny":
-        if is_gemini_cli:
-            print(json.dumps({"decision": "deny", "reason": WARNING}, sort_keys=True))
+        if harness == "antigravity":
+            print(json.dumps({"decision": "force_ask", "reason": WARNING}, sort_keys=True))
         else:
             print(
                 json.dumps(
                     {
                         "permission": "ask",
                         "user_message": (
-                            "\u26a0\ufe0f GEMINI GIT WARNING: Gemini models frequently rush to "
+                            "\u26a0\ufe0f GIT SAFETY WARNING: agents frequently rush to "
                             "commit and push without explicit permission. Did you explicitly ask "
                             "the agent to commit or push? If no, click Deny."
                         ),
@@ -779,7 +776,7 @@ def main() -> None:
             )
         return
 
-    if is_gemini_cli:
+    if harness == "antigravity":
         print(json.dumps({"decision": "allow"}, sort_keys=True))
     else:
         print(json.dumps({"permission": "allow"}, sort_keys=True))

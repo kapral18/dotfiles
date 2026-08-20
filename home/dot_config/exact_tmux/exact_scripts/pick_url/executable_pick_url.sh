@@ -77,6 +77,6 @@ if [[ -z "${selected}" ]]; then
   exit 0
 fi
 
-echo "${selected}" | awk '{print $2}' | while read -r chosen; do
-  open_url "${chosen}" &> "/tmp/tmux-$(id -u)-pick-url.log"
+echo "${selected}" | sed -E 's/^[[:space:]]*[0-9]+[[:space:]]+//' | while IFS= read -r chosen; do
+  [[ -n "${chosen}" ]] && open_url "${chosen}" &> "/tmp/tmux-$(id -u)-pick-url.log"
 done

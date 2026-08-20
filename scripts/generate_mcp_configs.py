@@ -106,32 +106,19 @@ _TOOL_TRANSFORMS["omp"] = _transform_omp
 
 
 def _transform_gemini(spec: dict[str, Any]) -> dict[str, Any]:
-    """Gemini CLI expects 'url' (infers SSE from it) and uses 'redirectUri'
-    instead of 'callbackPort' for OAuth.
+    """Emit Antigravity's ``mcp_config.json`` server shape.
+
+    A server with ``tokenBridge`` becomes the shared ``,mcp-token --bridge``
+    stdio transport, which injects a freshly selected bearer per request.
+    Direct remote servers use Antigravity's ``serverUrl`` SSE field.
     """
-    out: dict[str, Any] = {"url": spec["url"]}
     oauth = spec.get("oauth")
-    if oauth:
-        gemini_oauth = dict(oauth)
-        if "callbackPort" in gemini_oauth:
-            port = gemini_oauth.pop("callbackPort")
-            # The redirect URI must EXACTLY match a Login redirect URI registered
-            # on the OAuth app; a mismatch is rejected with 400 invalid_request.
-            # These differ per provider, so allow an explicit override:
-            #   - Slack's app UI forces https://localhost:<port>/oauth/callback
-            #     (also gemini-cli's default path) -> keep as the fallback.
-            #   - Elastic Okta (SCSI) registers http://localhost:<port>/callback.
-            override = gemini_oauth.pop("redirectUri", None)
-            if override:
-                gemini_oauth["redirectUri"] = override.replace("{port}", str(port))
-            else:
-                gemini_oauth["redirectUri"] = f"https://localhost:{port}/oauth/callback"
-
-        if "scopes" in gemini_oauth and isinstance(gemini_oauth["scopes"], str):
-            gemini_oauth["scopes"] = [s.strip() for s in gemini_oauth["scopes"].split(",") if s.strip()]
-
-        out["oauth"] = gemini_oauth
-    return out
+    if isinstance(oauth, dict) and oauth.get("tokenBridge"):
+        return {
+            "command": TOKEN_BRIDGE_COMMAND,
+            "args": token_bridge_args(str(spec.get("url")), spec),
+        }
+    return {"serverUrl": spec["url"]}
 
 
 _TOOL_TRANSFORMS["gemini"] = _transform_gemini

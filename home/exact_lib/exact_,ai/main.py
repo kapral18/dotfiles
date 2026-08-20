@@ -28,7 +28,9 @@ ALIASES = {
     "offline": {"connectivity": "offline"},
 }
 DEPTH_EFFORT = {"fast": "low", "balanced": "medium", "deep": "high"}
+ANTIGRAVITY_EFFORT_SUFFIX_RE = re.compile(r"-(?P<effort>low|medium|high)$")
 MODEL_MIRROR_DISPLAY_PATH = "~/.config/ai/model-mirrors.v1.json"
+AGENT_BANDS_DISPLAY_PATH = "~/.config/ai/agent-bands.v1.json"
 OPENROUTER_PROVIDER = "openrouter"
 OPENROUTER_MODEL = "deepseek/deepseek-v4-flash-0731"
 OPENROUTER_SELECTOR = f"{OPENROUTER_PROVIDER}/{OPENROUTER_MODEL}"
@@ -233,6 +235,20 @@ class ModelMirrorAvailabilityAdapter:
         )
 
 
+def _gemini_root_default(path: Path | None = None) -> tuple[str, str]:
+    source = path or Path.home() / ".config" / "ai" / "agent-bands.v1.json"
+    try:
+        document = json.loads(source.read_text(encoding="utf-8"))
+        default = document["harnesses"]["gemini"]["agents"]["default"]
+        model = default["model"]
+        effort = default["effort"]
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise PlanError(f"generated agent bands {AGENT_BANDS_DISPLAY_PATH} lack the Gemini root default") from exc
+    if not isinstance(model, str) or not model or effort not in {"low", "medium", "high"}:
+        raise PlanError(f"generated agent bands {AGENT_BANDS_DISPLAY_PATH} have an invalid Gemini root default")
+    return model, effort
+
+
 @dataclass(frozen=True)
 class HarnessCapability:
     leaf: str
@@ -301,7 +317,7 @@ CAPABILITIES = {
     ),
     "codex": HarnessCapability(
         leaf=",codex",
-        verified_version="0.144.1",
+        verified_version="0.148.0",
         depth_transport="codex-config",
         execution={
             "readonly": ("--sandbox", "read-only", "--ask-for-approval", "untrusted"),
@@ -322,22 +338,21 @@ CAPABILITIES = {
         },
     ),
     "gemini": HarnessCapability(
-        leaf="gemini",
-        verified_version="0.50.0",
-        depth_transport="unsupported",
+        leaf="agy",
+        verified_version="1.1",
+        depth_transport="effort-flag",
         execution={
-            "readonly": ("--approval-mode", "plan"),
-            "supervised": ("--approval-mode", "default"),
-            "autonomous": ("--approval-mode", "yolo"),
+            "readonly": ("--mode", "plan"),
+            "supervised": ("--mode", "accept-edits"),
+            "autonomous": ("--dangerously-skip-permissions",),
         },
         connectivity={"online": (), "offline": None},
         model_flag="--model",
         provider_flag=None,
         owned_options={
-            "--approval-mode": "execution",
-            "-y": "execution",
-            "--yolo": "execution",
-            "-m": "model selection",
+            "--mode": "execution",
+            "--dangerously-skip-permissions": "execution",
+            "--effort": "depth",
             "--model": "model selection",
         },
     ),
@@ -486,7 +501,7 @@ class InvocationPlan:
             "selection": self.selection.as_dict(),
             "capability": {
                 "verified_version": self.capability.verified_version,
-                "verified_source": "local --version/--help probes on 2026-07-11",
+                "verified_source": "local --version/--help probes recorded by the repository capability snapshot",
             },
             "leaf": {
                 "argv": _redact_argv(self.actual_argv, self.capability),
@@ -623,6 +638,12 @@ def _cursor_model_with_effort(model: str, effort: str) -> str:
     return f"{base}[{','.join(parameters)}]"
 
 
+def _validate_antigravity_model_effort(model: str | None, effort: str) -> None:
+    match = ANTIGRAVITY_EFFORT_SUFFIX_RE.search(model or "")
+    if match and match.group("effort") != effort:
+        raise PlanError(f"Antigravity model effort={match.group('effort')} contradicts depth effort={effort}")
+
+
 def _depth_transport(
     command: ParsedCommand,
     field: ResolvedField,
@@ -639,6 +660,8 @@ def _depth_transport(
         model = _cursor_model_with_effort(selection.model, effort)
         return Transport("applied", note=f"model parameter effort={effort}"), model
     if capability.depth_transport == "effort-flag":
+        if command.harness == "gemini":
+            _validate_antigravity_model_effort(selection.model, effort)
         return Transport("applied", argv=("--effort", effort)), selection.model
     if capability.depth_transport == "codex-config":
         value = f'model_reasoning_effort="{effort}"'
@@ -799,7 +822,26 @@ def resolve_plan(
     fields = {name: _resolve_axis(command, name) for name in DEFAULT_AXES}
 
     selection, pin_pi_effort = _enforce_openrouter_selection(command, selection, fields["depth"])
-    if pin_pi_effort:
+    pin_gemini_effort = command.harness == "gemini" and selection.model is None
+    if pin_gemini_effort:
+        default_model, default_effort = _gemini_root_default()
+        selection = AvailabilitySelection(
+            model=default_model,
+            provider=selection.provider,
+            model_provenance=Provenance("route-policy", "generated Gemini default"),
+            provider_provenance=selection.provider_provenance,
+            model_is_explicit=False,
+            provider_is_explicit=selection.provider_is_explicit,
+            availability=selection.availability,
+        )
+        effort = DEPTH_EFFORT[fields["depth"].value] if fields["depth"].explicit else default_effort
+        depth_transport = Transport(
+            "applied",
+            argv=("--effort", effort),
+            note=f"generated Gemini default effort={effort}",
+        )
+        model = default_model
+    elif pin_pi_effort:
         depth_transport = Transport(
             "applied",
             argv=("--thinking", "max"),

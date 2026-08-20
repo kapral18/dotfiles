@@ -42,7 +42,7 @@ This catalog is not a skill: it has no procedure to invoke. Its consumer is the 
 
 **Prevention.** `~/.agents/hooks/correction_detector.py` carries a `probe-budget-exhausted` signal: it reads a session-scoped JSONL ledger (`/tmp/specs/<workspace>/<session_key>.probe-ledger.jsonl`) and returns the signal when 3+ of the last 8 entries have `result == "fail"`. The companion `,probe` helper at `~/bin/,probe` records the entries via `,probe pass "<summary>"` / `,probe fail "<summary>"`. The session-injected `[VERIFICATION DISCIPLINE]` prefix (`~/.config/tmux/agent_prompts/prefix.txt`) carries the recording instruction, so the producer side is wired on every harness. When the per-turn `perturn_recall.py` hook sees the signal, it injects a "re-read the source" note on the next prompt.
 
-The helper resolves the session key through `,agent-memory status --json`, passing the harness session id when `CLAUDE_SESSION_ID` / `CODEX_SESSION_ID` / `CURSOR_SESSION_ID` / `GEMINI_SESSION_ID` / `COPILOT_AGENT_SESSION_ID` is set (no env means the entry lands in an `ad-hoc` ledger — accepted, as the hint is best-effort and ad-hoc entries are still useful while debugging a regex).
+The helper resolves the session key through `,agent-memory status --json`, passing the harness session id when `CLAUDE_SESSION_ID` / `CODEX_SESSION_ID` / `CURSOR_SESSION_ID` / `COPILOT_AGENT_SESSION_ID` is set. Antigravity shell probes call `,agent-memory status` without a session id and use its active-topic resolution; Pi/OMP probes can fall back to an `ad-hoc` ledger, which remains useful while debugging a regex.
 
 ## Argument-by-tool vs. argument-by-text
 

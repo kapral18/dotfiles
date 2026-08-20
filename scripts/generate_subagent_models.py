@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Resolve Copilot's and Gemini's subagent rosters against the band registry in .chezmoidata/ai_models/tiering.yaml.
+"""Resolve Copilot's subagent roster against the band registry in .chezmoidata/ai_models/tiering.yaml.
 
-Both harnesses pin subagent models inside a settings file that the harness itself rewrites at
-runtime, so the merge scripts reconcile a checked-in source rather than rendering a template.
+Copilot pins subagent models inside a settings file that the harness itself rewrites at
+runtime, so the merge script reconciles a checked-in source rather than rendering a template.
 That source has to carry literal model ids, and Copilot's has drifted from the registry before.
 This keeps the roster (which subagents exist) in the settings file and the picks (what each one
 runs on) in .chezmoidata/ai_models/tiering.yaml, regenerating one from the other.
@@ -10,8 +10,7 @@ runs on) in .chezmoidata/ai_models/tiering.yaml, regenerating one from the other
     generate_subagent_models.py check     exit 1 and print the divergence
     generate_subagent_models.py write     rewrite the settings files in place
 
-Copilot spells the short context window "default" and the long one "long_context"; Gemini has no
-context or effort dial on an override, so only the model id is written there.
+Copilot spells the short context window "default" and the long one "long_context".
 """
 
 from __future__ import annotations
@@ -25,7 +24,6 @@ import ai_models
 REPO = Path(__file__).resolve().parent.parent
 REGISTRY = REPO / "home/.chezmoidata/ai_models"
 COPILOT = REPO / "home/private_dot_copilot/settings.json"
-GEMINI = REPO / "home/dot_gemini/settings.json"
 CONTEXT_TIERS = {"short": "default", "long": "long_context"}
 
 
@@ -45,16 +43,7 @@ def copilot_desired(settings: dict) -> dict:
     return settings
 
 
-def gemini_desired(settings: dict) -> dict:
-    for name, override in settings["agents"]["overrides"].items():
-        override.setdefault("modelConfig", {})["model"] = _pick("gemini", name)["model"]
-    return settings
-
-
-TARGETS = (
-    (COPILOT, copilot_desired),
-    (GEMINI, gemini_desired),
-)
+TARGETS = ((COPILOT, copilot_desired),)
 
 
 def main(argv: list[str]) -> int:

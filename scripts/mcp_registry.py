@@ -150,10 +150,11 @@ def load_servers(
                 kv = re.match(r"^\s+(\w[\w_]*):\s*(.*)", stripped)
                 if kv:
                     key, val = kv.group(1), kv.group(2).strip()
-                    if not val:
+                    if not val or val == "{}":
                         # New tool sub-block
                         obt_tool_name = key
                         obt_tool_indent = indent + 2
+                        current.setdefault("oauth_by_tool", {}).setdefault(key, {})
                     elif obt_tool_name and indent >= obt_tool_indent:
                         # Property of the current tool
                         current.setdefault("oauth_by_tool", {}).setdefault(obt_tool_name, {})[key] = parse_scalar(val)

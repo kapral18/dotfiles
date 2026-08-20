@@ -299,13 +299,13 @@ The measured reason for this controller cache is concrete: one real review had 4
    - This phase is blocking as a phase.
      After the reviewer workers are launched, start adversarial verification, live UI verification, findings audit, or controller judgment only when every launched lane's output is available, fresh-eyes included when it was launched.
    - Keep the parallel lanes concurrency-safe:
-     - Prefer file reads, local source inspection, context-pack reads, `git show`/`git diff` reads, isolated `/tmp` reproductions, and verification commands.
+     - Prefer file reads, local source inspection, context-pack reads, `git show`/`git diff` reads, targeted line-bounded historical archaeology (`git blame -L`, `git log -n 5 -L`), isolated `/tmp` reproductions, and verification commands.
        The verification commands should improve finding validity or coverage.
-     - Allow non-mutating verification at whatever depth is needed, including expensive static analysis or full suites.
-       Outputs/caches must be read-only or isolated away from shared repo/runtime state.
-     - Run dev servers, watchers, database migrations, package installs, code generators, formatters, fixture seeders, and cache/artifact-writing commands only from the controller, never from reviewer lanes.
-     - If stronger verification requires shared-state mutation, a shared service, or an exclusive runtime resource, return `verification_needed` with the exact command/setup.
-       Let the controller run it serially after aggregation or during the act phase.
+   - Allow non-mutating verification at whatever depth is needed, including expensive static analysis or full suites.
+     Outputs/caches must be read-only or isolated away from shared repo/runtime state.
+   - Run dev servers, watchers, database migrations, package installs, code generators, formatters, fixture seeders, and cache/artifact-writing commands only from the controller, never from reviewer lanes.
+   - If stronger verification requires shared-state mutation, a shared service, or an exclusive runtime resource, return `verification_needed` with the exact command/setup.
+     Let the controller run it serially after aggregation or during the act phase.
    - Each candidate finding must include a reachability statement for the claimed path.
      If the claimed UI/API/state path may be unreachable, the worker must verify reachability before assigning severity or mark it as a hypothesis for the controller to verify/drop.
    - **Blind fresh-eyes clarity lane (conditional, same launch batch).**

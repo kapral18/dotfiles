@@ -8,8 +8,10 @@ by reverting" is false. Reverting, mocking, skipping, and force-pushing all shar
 
 This hook does not block. It matches the command text against a small set of premise-carrying
 verbs and rides an `additionalContext` note along with the call, so the nudge lands at the step
-that depends on the premise rather than at the end of the turn. A blocked command would be worse
-than an unverified one: the agent would work around the gate instead of checking its premise.
+that depends on the premise rather than at the end of the turn. Antigravity's `PreToolUse`
+contract has no context channel, so it queues the note and injects it at the next `PreInvocation`.
+A blocked command would be worse than an unverified one: the agent would work around the gate
+instead of checking its premise.
 
 Fires on both PreToolUse (before the premise is acted on) and PostToolUse (where a no-op result
 is the tell). Unknown payloads, unmatched commands, and every parse failure are silent no-ops.
@@ -18,10 +20,13 @@ is the tell). Unknown payloads, unmatched commands, and every parse failure are 
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
+import time
+from pathlib import Path
 
-from hook_common import emit
+from hook_common import emit, read_payload, session_key, spec_dir_for, workspace_root
 
 # `git` accepts global options before the subcommand, so `git -C <path> clean -fd` is the same
 # destructive command as `git clean -fd`. Anchoring on `git\s+<sub>` missed every such form, and
@@ -91,7 +96,9 @@ PREMISE_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
 )
 
 # Only shell-ish tools carry a command string worth matching.
-SHELL_TOOLS = {"Bash", "shell", "run_shell_command", "runTerminalCommand", "terminal"}
+SHELL_TOOLS = {"Bash", "shell", "run_command", "run_shell_command", "runTerminalCommand", "terminal"}
+ANTIGRAVITY_OUTPUT = "antigravity"
+PENDING_DIR = ".premise-nudges"
 
 
 def command_from(payload: dict) -> str:
@@ -121,17 +128,49 @@ def premises_for(command: str) -> list[str]:
     return seen
 
 
+def _pending_dir(payload: dict) -> Path:
+    key = session_key(payload) or "default"
+    return spec_dir_for(workspace_root(payload)) / PENDING_DIR / key
+
+
+def _store_antigravity_nudge(payload: dict, context: str) -> None:
+    pending = _pending_dir(payload)
+    pending.mkdir(parents=True, exist_ok=True)
+    stem = f"{time.time_ns()}-{os.getpid()}"
+    temporary = pending / f".{stem}.tmp"
+    temporary.write_text(context, encoding="utf-8")
+    os.replace(temporary, pending / f"{stem}.txt")
+
+
+def _emit_antigravity_pending(payload: dict) -> int:
+    contexts: list[str] = []
+    for path in sorted(_pending_dir(payload).glob("*.txt")):
+        try:
+            context = path.read_text(encoding="utf-8")
+            if context and context not in contexts:
+                contexts.append(context)
+            path.unlink()
+        except OSError:
+            continue
+    emit({"additional_context": "\n\n".join(contexts)} if contexts else {})
+    return 0
+
+
 def main() -> int:
-    raw = sys.stdin.read()
     try:
-        payload = json.loads(raw) if raw.strip() else {}
-    except ValueError:
+        payload = read_payload()
+    except (ValueError, json.JSONDecodeError):
         print("{}")
         return 0
 
     if not isinstance(payload, dict):
         print("{}")
         return 0
+
+    antigravity = os.environ.get("AGENT_HOOK_OUTPUT") == ANTIGRAVITY_OUTPUT
+    event = str(payload.get("hook_event_name") or "PreToolUse")
+    if antigravity and event == "PreInvocation":
+        return _emit_antigravity_pending(payload)
 
     tool = payload.get("tool_name") or payload.get("tool") or ""
     # Cursor's shell events carry the command without naming a tool.
@@ -149,7 +188,6 @@ def main() -> int:
         print("{}")
         return 0
 
-    event = str(payload.get("hook_event_name") or "PreToolUse")
     lines = [
         "### Premise check (SOP 2.1 item 8)",
         "This command's success would look the same whether or not its premise holds. "
@@ -160,6 +198,15 @@ def main() -> int:
         "State the falsifier you ran, not the conclusion alone. Do not mention this note in the visible reply."
     )
     context = "\n".join(lines)
+
+    if antigravity:
+        if event == "PreToolUse":
+            try:
+                _store_antigravity_nudge(payload, context)
+            except OSError:
+                pass
+        emit({})
+        return 0
 
     emit(
         {

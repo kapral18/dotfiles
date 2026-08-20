@@ -122,7 +122,7 @@ Command consumers keep policy in their own config and use the mirror only for bo
 
 Locally verified adapters cover Cursor (`cursor-agent --list-models`), Pi (`pi --offline --list-models`), OpenCode (`opencode models`), OpenRouter, Vertex, and llama.cpp.
 
-Claude, Codex, Gemini, and Copilot remain explicitly unsupported until a complete local adapter is verified.
+Claude, Codex, Antigravity, and Copilot remain explicitly unsupported until a complete local adapter is verified.
 
 Probe limits and failure rules:
 

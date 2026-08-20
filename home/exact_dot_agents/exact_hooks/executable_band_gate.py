@@ -126,10 +126,9 @@ def _copilot(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str
     return {"modifiedArgs": updated}
 
 
-# Gemini deliberately has no adapter. Its `invoke_agent` takes only `agent_name` and `prompt`
-# (gemini-cli 0.53.1), so a caller cannot escape the band in the first place and the generated
-# `agents.overrides` roster is the whole enforcement surface. `BeforeModel` could rewrite a model id
-# but its input carries only `llm_request`, with no agent identity to key the band on.
+# Antigravity deliberately has no adapter here. Its dynamic `invoke_subagent`
+# schema accepts abstract model tiers (`inherit`, `flash_lite`, `flash`, `pro`),
+# so the controller passes the registry's tier directly when launching a lane.
 ADAPTERS = {
     "claude_code": _claude,
     "cursor": _cursor,

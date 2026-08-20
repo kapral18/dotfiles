@@ -56,7 +56,8 @@ On the first turn (or when starting a fresh review):
 - run the PR Necessity + Correctly-Open Audit in pr_context_audits.md when reviewing someone else's PR or when authorship is unknown
 - run Existing Pending Review Reconciliation in pr_common.md before producing the final review draft
 - all review threads/replies (end-to-end)
-- full diff
+- full diff and enclosing files (never review diff hunks in isolation; inspect surrounding callers and sibling consumers)
+- historical provenance: in large repos, run targeted line-bounded probes (`git blame -L <start>,<end>` / `git log -n 5 -L`) on modified existing logic to understand why it was built and ensure past bug fixes are preserved
 - targeted local verification for risky claims (see pr_common.md)
 
 On later turns (iterative/continued):

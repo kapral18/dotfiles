@@ -40,7 +40,7 @@ Update the source and then verify the rendered effect.
 | ------------------------------------ | --------------------------------------------------- |
 | `~/AGENTS.md`                        | rendered output from chezmoi                        |
 | `~/CLAUDE.md`                        | symlink to `~/AGENTS.md`                            |
-| `~/.gemini/GEMINI.md`                | symlink to `~/AGENTS.md`                            |
+| `~/.gemini/config/AGENTS.md`         | symlink to `~/AGENTS.md`                            |
 | `~/.cursor/AGENTS.md`                | symlink to `~/AGENTS.md`                            |
 | `~/.codex/AGENTS.md`                 | symlink to `~/AGENTS.md`                            |
 | `~/.config/opencode/AGENTS.md`       | symlink to `~/AGENTS.md`                            |

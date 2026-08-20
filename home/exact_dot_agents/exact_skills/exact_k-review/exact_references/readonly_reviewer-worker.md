@@ -43,6 +43,8 @@ Fall back to live commands only for facts the pack lacks, or when its manifest `
 
 Your lane is one of several running the same diff in parallel. Depth inside your lens is expected; breadth is not.
 
+- Execute an ordered walk through every changed file in the diff/manifest sequentially.
+  Finding a severe defect in one file does not conclude the pass; evaluate every changed file against all applicable checks before returning.
 - Probe as deeply as your own lens requires. Never weaken a finding you could have decided, and never trade evidence for brevity.
 - Leave repo-wide suites, full builds, and whole-suite test runs to the controller.
   Those are shared work: the controller runs them once and passes the result to every lane.
@@ -56,12 +58,13 @@ Your lane is one of several running the same diff in parallel. Depth inside your
 ## Base context
 
 Compare the diff against how base behaves today, for the paths your lens covers.
+Never review diff hunks in isolation: read full enclosing files, check sibling functions, and trace callers/consumers to discover impact on preexisting surrounding behavior.
 
 When the context pack already carries base context for those paths, reuse it and say so.
 Otherwise, if MCP/SCSI tools are available in this context and the repo is indexed, run `list_indices` first, then use semantic code search per `~/.agents/skills/k-semantic-code-search/SKILL.md` to establish base invariants.
 Controller-run lanes (for example under `k-deep-review`) have MCP/SCSI structurally disabled and receive base context from the controller instead; skip `list_indices` there.
 SCSI reflects base, not the branch; where SCSI and the diff disagree, the diff wins.
-If the repo is not indexed, use `git show <base>:<path>` plus scoped `rg` and file reads.
+If the repo is not indexed or SCSI is unavailable, use `git show <base>:<path>` plus scoped `rg` and full file reads to audit blast radius and surrounding behavior.
 
 Report exactly one line:
 
@@ -74,6 +77,9 @@ Report exactly one line:
 - Verify every finding from evidence. Drop guesses and duplicates.
 - Verify the claimed path is reachable before assigning severity.
   If reachability stays uncertain, return it as a hypothesis with the exact open question, not as an actionable finding.
+- Apply the Semantic-Projection & Sibling-Consumer Gate from `judging_core.md`:
+  when a diff alters how a domain concept or state is mapped or partitioned, check sibling functions in the enclosing file or module that project, order, filter, or serialize that concept.
+- Apply the Historical Archaeology Gate from `judging_core.md`: when modifying, replacing, or deleting existing non-trivial logic, guards, or legacy helpers, trace origin and past bug intent via targeted line-bounded probes (`git blame -L <start>,<end>` / `git log -n 5 -L`) and linked PR/issue records.
 - Apply the Replacement/Migration Parity Gate from `judging_core.md` to replacements and test migrations.
   Return only `parity_gap`, `new_regression`, or `scope_expansion`; never `preserved_limitation` or `prose_drift`.
 - Take severity from the definitions in `judging_core.md`.

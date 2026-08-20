@@ -3,14 +3,14 @@
   "ablations": {
     "sop.5.code-quality": {
       "status": "mechanical-only",
-      "date": "2026-07-27",
+      "date": "2026-08-20",
       "method": "mechanical clause-presence sweep (no live model eval available this run)",
       "target_disposition": "skill",
       "consumer": "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
-      "evidence": "minimal edit scope, no unrelated cleanup/removal without approval, targeted edits/full-rewrite diffing, introduced-only dead-code removal, semantic dedupe guard preservation, no unrequested abstractions/features/error handling, simplicity/no behavior loss, and artifact necessity without-it probe requirements were confirmed present in k-code-quality before this pass",
+      "evidence": "minimal edit scope, no unrelated cleanup/removal without approval, targeted edits/full-rewrite diffing, introduced-only dead-code removal, sibling-consumer projection symmetry, semantic dedupe guard preservation, no unrequested abstractions/features/error handling, simplicity/no behavior loss, and artifact necessity without-it probe requirements were confirmed present in k-code-quality before this pass",
       "rule_sha256": "4b2d1c447aa70c367f9ab15accc59c566befcf15b2f8002e129c0f0dbd2c4f78",
       "eval_ref": "sop.5.code-quality.mechanical-only",
-      "consumer_sha256": "9a86a714507a15722f7056b34955e91980cd87ddc6c9e3cb860666066576996c"
+      "consumer_sha256": "aaa280e7cacf57b9c067c26249c141ea252defe364481894086ff7d48d9cb045"
     },
     "sop.6.5.external-human-replies": {
       "status": "mechanical-only",

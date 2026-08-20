@@ -35,3 +35,8 @@ lib/,palantir
 .config/ai/policy-dispositions.v1.json
 .config/ai/policy-ablations.v1.json
 .config/ai/policy-rule-inventory.v1.json
+# Obsolete gemini-cli config & directories (superseded by antigravity)
+.gemini/GEMINI.md
+.gemini/settings.json
+.gemini/agents
+.gemini/commands

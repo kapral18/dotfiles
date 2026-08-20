@@ -29,7 +29,7 @@ Codex only has first-class model metadata for slugs present in its model catalog
 
 The wrapper injects `-c model_catalog_json="$HOME/.codex/llama-cpp-model-catalog.json"` when the selected model is one of the llama.cpp router ids, in either `--model <id>` or `--model=<id>` form.
 
-Other Codex invocations execute `/opt/homebrew/bin/codex` directly. Hosted MCP authentication is owned by the per-request stdio bridges declared in `~/.codex/config.toml`, not by this launcher.
+Other Codex invocations execute the real Codex binary directly. Hosted MCP authentication is owned by the per-request stdio bridges declared in `~/.codex/config.toml`, not by this launcher.
 
 ### Codex launcher (`,codex-llama-cpp`)
 

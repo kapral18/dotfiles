@@ -64,7 +64,7 @@ Worker contract: [`k-build/references/criteria-verifier.md`](../../../home/exact
 
 The lane owns refutation order (claim truth → criterion truth → reachability → durability), a scope audit against the packet's binding out-of-scope list, and missing-criteria candidates.
 
-Per-harness profiles are rendered from the same `agent_review_models` registry the review verifier uses. Cursor, Copilot, Gemini, Codex, Pi, and OMP ship a `criteria-verifier` profile.
+Per-harness profiles are rendered from the same `agent_review_models` registry the review verifier uses. Cursor, Copilot, Codex, Pi, and OMP ship a `criteria-verifier` profile; Antigravity defines the role dynamically and invokes its `pro` tier.
 
 Claude runs the lane degraded on the session model with refutation framing, reported as `families=same (degraded)`. This mirrors the adversarial-verifier convention in [Cross-harness subagents](subagents.md).
 

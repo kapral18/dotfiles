@@ -316,7 +316,7 @@ check_editors_ai() {
     "claude:Claude Code"
     "codex:OpenAI Codex"
     "opencode:OpenCode"
-    "gemini:Gemini CLI"
+    "agy:Antigravity CLI"
     "copilot:Copilot CLI"
     "cursor-agent:Cursor Agent"
   )
@@ -423,20 +423,23 @@ check_ai_configs() {
   section "AI Tool Configs"
 
   local -a config_checks=(
-    "$HOME/.cursor/mcp.json:Cursor MCP"
-    "$HOME/.claude/settings.json:Claude Code settings"
-    "$HOME/.claude.json:Claude Code MCP"
-    "$HOME/.gemini/settings.json:Gemini settings"
-    "$HOME/.config/opencode/opencode.jsonc:OpenCode config"
-    "$HOME/.codex/config.toml:Codex config"
-    "$HOME/.pi/agent/settings.json:Pi settings"
-    "$HOME/.pi/agent/mcp.json:Pi MCP"
-    "$HOME/.pi/agent/models.json:Pi models"
+    "$HOME/.cursor/mcp.json:cursor:Cursor MCP"
+    "$HOME/.claude/settings.json:claude:Claude Code settings"
+    "$HOME/.claude.json:claude:Claude Code MCP"
+    "$HOME/.gemini/config/hooks.json:agy:Antigravity hooks"
+    "$HOME/.gemini/config/mcp_config.json:agy:Antigravity MCP"
+    "$HOME/.config/opencode/opencode.jsonc:opencode:OpenCode config"
+    "$HOME/.codex/config.toml:codex:Codex config"
+    "$HOME/.pi/agent/settings.json:pi:Pi settings"
+    "$HOME/.pi/agent/mcp.json:pi:Pi MCP"
+    "$HOME/.pi/agent/models.json:pi:Pi models"
   )
 
   for entry in "${config_checks[@]}"; do
     local path="${entry%%:*}"
-    local label="${entry#*:}"
+    local remainder="${entry#*:}"
+    local command="${remainder%%:*}"
+    local label="${remainder#*:}"
     if [ -f "$path" ]; then
       local size
       size="$(wc -c < "$path" | tr -d ' ')"
@@ -454,7 +457,7 @@ check_ai_configs() {
         warn "$label exists but appears empty" "chezmoi apply"
       fi
     else
-      if has_cmd "$(echo "$label" | awk '{print tolower($1)}')" 2> /dev/null; then
+      if has_cmd "$command" 2> /dev/null; then
         warn "$label missing" "chezmoi apply"
       else
         [ "$verbose" -eq 1 ] && pass "$label (skipped — tool not installed)"

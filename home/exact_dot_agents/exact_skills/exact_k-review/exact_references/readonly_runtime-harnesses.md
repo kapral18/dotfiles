@@ -18,7 +18,7 @@ Read this file only for capability caveats that affect orchestration.
   Any harness-served generic/default subagent must also receive that model; always pass the registry's concrete lane value rather than letting the runtime pick an implicit default.
 - Empty registry value = the profile omits the field and the harness config default applies; `inherit` = harness-native parent inheritance.
   Empty is allowed only for a deliberately documented default path.
-  Current review-lane registry values are concrete for Cursor, Copilot, Codex, Gemini, Pi, and OMP;
+  Current review-lane registry values are concrete for Cursor, Copilot, Codex, Antigravity, Pi, and OMP;
   launches that omit a model in those harnesses are a bug because they bypass the matrix.
   Claude uses `inherit` intentionally because Claude sessions are launched on a deliberate model and the installed Task resolver has been verified to inherit from the parent.
 - A model unavailable in the active runtime is a fail-visible launch error to surface; fix the registry, never substitute at launch.
@@ -42,13 +42,13 @@ every Codex role also pins `service_tier = "default"`.
 Always pass an explicit model when launching a native Codex `spawn_agent`/generic subagent:
 the installed catalog does not make omitted defaults auditable, and uncataloged slugs can pass through with fallback metadata.
 
-## Gemini CLI
+## Antigravity CLI
 
-Gemini subagents cannot call other subagents, so run `/k-deep-review` in the main Gemini session.
-Run the controller itself only in the main session, never as a Gemini subagent.
-The model surface is Gemini-only: the adversarial verifier is `families=same (degraded)`; launch it as the `adversarial-verifier` profile.
-Registry: both values are concrete (`gemini-3.1-pro-preview`).
-Profiles carry registry-rendered `model` frontmatter; use that value for review workers rather than the configured Gemini default.
+Run `/k-deep-review` in the main Antigravity session. Dynamic subagents cannot invoke further subagents.
+Antigravity has no repo-owned profile-file surface; define each needed role with `define_subagent`, point its system prompt at the matching shared role contract, then launch it through `invoke_subagent`.
+The `invoke_subagent` model field accepts only `inherit`, `flash_lite`, `flash`, or `pro`, so the registry stores `pro` for both lanes and verifier.
+Use `pro` for review, audit, and refutation lanes.
+The model surface is Gemini-only, so report `families=same (degraded)` for adversarial verification.
 
 ## Cursor
 

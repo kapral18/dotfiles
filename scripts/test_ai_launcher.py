@@ -17,12 +17,13 @@ REPO = Path(__file__).resolve().parents[1]
 CORE = REPO / "home" / "exact_lib" / "exact_,ai" / "main.py"
 LAUNCHER = REPO / "home" / "exact_bin" / "executable_,ai"
 MODEL_MIRROR = REPO / "home" / "dot_config" / "ai" / "readonly_model-mirrors.v1.json"
+AGENT_BANDS = REPO / "home" / "dot_config" / "ai" / "readonly_agent-bands.v1.json"
 MODEL_MIRROR_CONSUMER = REPO / "scripts" / "model_mirror_consumer.py"
 LEAVES = {
     "cursor": ",cursor",
     "claude": "claude",
     "codex": ",codex",
-    "gemini": "gemini",
+    "gemini": "agy",
     "opencode": "opencode",
     "pi": "pi",
     "copilot": ",copilot",
@@ -49,6 +50,7 @@ class TestAiLauncher(unittest.TestCase):
         deployed_mirror = cls.home / ".config" / "ai" / "model-mirrors.v1.json"
         deployed_mirror.parent.mkdir(parents=True)
         shutil.copy2(MODEL_MIRROR, deployed_mirror)
+        shutil.copy2(AGENT_BANDS, cls.home / ".config" / "ai" / "agent-bands.v1.json")
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -207,7 +209,7 @@ class TestAiLauncher(unittest.TestCase):
                 "autonomous",
                 ["--sandbox", "danger-full-access", "--ask-for-approval", "never"],
             ),
-            "gemini": ("readonly", ["--approval-mode", "plan"]),
+            "gemini": ("readonly", ["--mode", "plan"]),
             "opencode": ("autonomous", ["--auto"]),
             "pi": ("readonly", ["--tools", "read,grep,find,ls"]),
             "copilot": ("autonomous", ["--mode", "autopilot", "--allow-all"]),
@@ -254,7 +256,7 @@ class TestAiLauncher(unittest.TestCase):
             "cursor": (["--model", "gpt-5.5"], "applied", "gpt-5.5[effort=low]"),
             "claude": ([], "applied", "--effort"),
             "codex": ([], "applied", 'model_reasoning_effort="low"'),
-            "gemini": ([], "advisory", None),
+            "gemini": ([], "applied", "--effort"),
             "opencode": ([], "advisory", None),
             # Pi's OpenRouter pin owns the *default* route only, so an explicit --depth still
             # reaches Pi's --thinking flag; only an explicit OpenRouter provider rejects it.
@@ -269,6 +271,44 @@ class TestAiLauncher(unittest.TestCase):
                 self.assertEqual(status, plan["fields"]["depth"]["transport"]["status"])
                 if marker is not None:
                     self.assertIn(marker, plan["leaf"]["argv"])
+
+    def test_when_gemini_has_no_overrides_it_uses_the_generated_root_default(self) -> None:
+        plan = self.dry_plan("gemini")
+
+        self.assertEqual(
+            ["agy", "--model", "gemini-3.7-flash", "--effort", "high"],
+            plan["leaf"]["argv"],
+        )
+        self.assertEqual("generated Gemini default", plan["selection"]["model"]["provenance"]["source"])
+
+    def test_when_gemini_depth_is_explicit_it_keeps_the_generated_default_model(self) -> None:
+        plan = self.dry_plan("gemini", "--depth", "fast")
+
+        self.assertEqual(
+            ["agy", "--model", "gemini-3.7-flash", "--effort", "low"],
+            plan["leaf"]["argv"],
+        )
+
+    def test_when_gemini_model_variant_matches_depth_it_keeps_both_pins(self) -> None:
+        plan = self.dry_plan("gemini", "--model", "gemini-3.7-flash-high", "--depth", "deep")
+
+        self.assertEqual(
+            ["agy", "--model", "gemini-3.7-flash-high", "--effort", "high"],
+            plan["leaf"]["argv"],
+        )
+
+    def test_when_gemini_model_variant_conflicts_with_depth_it_fails_during_planning(self) -> None:
+        result = self.run_ai(
+            "gemini",
+            "--model",
+            "gemini-3.7-flash-high",
+            "--depth",
+            "fast",
+            "--dry-run",
+        )
+
+        self.assertEqual(2, result.returncode)
+        self.assertIn("Antigravity model effort=high contradicts depth effort=low", result.stderr)
 
     def test_when_cursor_depth_has_no_explicit_model_it_remains_soft_and_visible(self) -> None:
         plan = self.dry_plan("cursor", "--depth", "deep")

@@ -7,6 +7,7 @@ set -euo pipefail
 # mcp_servers hash: {{ include ".chezmoidata/mcp_servers.yaml" | sha256sum }}
 # generate_mcp_configs.py hash: {{ include "../scripts/generate_mcp_configs.py" | sha256sum }}
 # merge_claude_mcp.py hash: {{ include "../scripts/merge_claude_mcp.py" | sha256sum }}
+# merge_antigravity_mcp.py hash: {{ include "../scripts/merge_antigravity_mcp.py" | sha256sum }}
 # mcp_registry.py hash: {{ include "../scripts/mcp_registry.py" | sha256sum }}
 # yaml_parser.py hash: {{ include "../scripts/yaml_parser.py" | sha256sum }}
 # chezmoi_lib.sh hash: {{ include "../scripts/chezmoi_lib.sh" | sha256sum }}
@@ -23,7 +24,8 @@ yaml_src="$source_dir/.chezmoidata/mcp_servers.yaml"
 gen="$source_dir/../scripts/generate_mcp_configs.py"
 
 tmp="$(mktemp)"
-trap 'rm -f "$tmp"' EXIT
+antigravity_merged="$(mktemp)"
+trap 'rm -f "$tmp" "$antigravity_merged"' EXIT
 
 # Cursor — write full MCP file (tokenBridge stdio for hosted OAuth servers)
 python3 "$gen" "$yaml_src" "$is_work" cursor >"$tmp"
@@ -118,3 +120,27 @@ chezmoi_record_artifact --id omp-mcp \
   --transform "$source_dir/../scripts/yaml_parser.py" \
   --transform "$source_dir/../scripts/chezmoi_lib.sh" \
   --consumer omp
+
+# Antigravity (agy) — preserve runtime-managed servers while replacing the
+# previously declared registry-owned set.
+python3 "$gen" "$yaml_src" "$is_work" gemini >"$tmp"
+antigravity_target="$HOME/.gemini/config/mcp_config.json"
+antigravity_declared="${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi/antigravity_mcp_declared.json"
+antigravity_merge="$source_dir/../scripts/merge_antigravity_mcp.py"
+python3 "$antigravity_merge" "$antigravity_target" "$tmp" "$antigravity_declared" >"$antigravity_merged"
+chezmoi_write_if_changed "$(cat "$antigravity_merged")" "$antigravity_target" 0600
+chezmoi_install_if_changed "$tmp" "$antigravity_declared" 0600
+chezmoi_record_artifact --id antigravity-mcp \
+  --producer 07-generate-mcp-configs --profile "$profile" \
+  --target "$antigravity_target" --ownership-adapter json-declared \
+  --baseline "$antigravity_declared" \
+  --input "$yaml_src" \
+  --transform "$gen" \
+  --transform "$antigravity_merge" \
+  --transform "$source_dir/../scripts/mcp_registry.py" \
+  --transform "$source_dir/../scripts/yaml_parser.py" \
+  --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --consumer agy
+chezmoi_forget_checksum "$antigravity_target"
+chezmoi_forget_checksum "$HOME/.gemini/settings.json"
+chezmoi_forget_artifact "gemini-settings"

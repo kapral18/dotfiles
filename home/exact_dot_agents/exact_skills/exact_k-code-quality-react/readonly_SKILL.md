@@ -33,4 +33,5 @@ Load secondary skills only after read/diff evidence proves the surface is in sco
 ## UI Behavior
 
 - Preserve keyboard and focus behavior when changing interactive components.
+- In tables, lists, and collections, ensure presentation, sorting comparators, and filter predicates share identical projection logic for item attributes.
 - Verify user-visible behavior with the smallest practical rendered check when the change affects interaction or layout.

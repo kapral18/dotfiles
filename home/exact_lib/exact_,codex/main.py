@@ -9,10 +9,11 @@ chezmoi-rendered ~/.codex/config.toml, injecting a fresh bearer per request.
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 from pathlib import Path
 
-REAL_CODEX = "/opt/homebrew/bin/codex"
+DEFAULT_REAL_CODEX = "codex"
 LOCAL_MODELS = {
     "nemotron-3.5",
     "qwen3.5-9b",
@@ -31,9 +32,10 @@ def _uses_llama_cpp_model(argv: list[str]) -> bool:
 
 
 def main(argv: list[str]) -> int:
-    real_codex = os.environ.get("CODEX_REAL_BIN", REAL_CODEX)
-    if not os.access(real_codex, os.X_OK):
-        print(f"Error: real Codex binary not found at {real_codex}.", file=sys.stderr)
+    configured_codex = os.environ.get("CODEX_REAL_BIN", DEFAULT_REAL_CODEX)
+    real_codex = shutil.which(configured_codex)
+    if real_codex is None:
+        print(f"Error: real Codex binary not found at {configured_codex}.", file=sys.stderr)
         return 127
 
     exec_args = [real_codex]

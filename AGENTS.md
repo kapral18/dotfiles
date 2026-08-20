@@ -109,18 +109,22 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
 
 **Interpretation of the priority:**
 
-- Prefer Homebrew first when a formula/cask is verified to install the requested upstream project.
+- A `# @install-priority-exception: prefer=<manager>; skip=<manager>; reason=<reason>` comment immediately preceding a package entry overrides the default priority for that entry.
+  Keep the package in the `prefer` manager and bypass each `skip` manager.
+  Re-evaluate the directive only when the user explicitly requests it.
+- When no exception directive applies, prefer Homebrew first when a formula/cask is verified to install the requested upstream project.
   This applies even if the Homebrew package name differs from the repo slug.
-- Lower-priority package lists (`cargo`, `go`, `gems`, `yarn`, `uv`, manual packages) are fallbacks only.
+- When no exception directive applies, lower-priority package lists (`cargo`, `go`, `gems`, `yarn`, `uv`, manual packages) are fallbacks only.
   Use them only when Homebrew does not provide a suitable package.
-- Do not drop to a lower-priority registry just because the exact upstream/repo slug is not the Homebrew formula name.
+- Choose the verified Homebrew package when only its name differs from the upstream/repo slug.
 
 **Workflow:**
 
 1. **Identify X** — app, CLI tool, library, or language-specific package.
-2. **Check GitHub first** — find the official repo when one exists; read README, INSTALL, and releases to learn supported installs;
+2. **Check for an exception first** — search the package lists for the canonical package/project and honor any `@install-priority-exception` directive immediately preceding its entry.
+3. **Check GitHub** — find the official repo when one exists; read README, INSTALL, and releases to learn supported installs;
    verify package name, owner, version, and status.
-3. **Check registries in priority order**:
+4. **Check registries in priority order**:
    - **Homebrew first**: search likely names with `brew search <term>` and verify candidates with `brew info <formula-or-cask>`.
      Test repo name, normalized name, `<name>-cli`, collapsed owner/repo names, and official tap names.
    - **Cargo**: `cargo search <package> --limit 5` — for Rust packages
@@ -129,9 +133,9 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
    - **yarn**: `yarn info <package>` — Node.js/JavaScript packages
    - **uv**: `uv pip search <package>` — Python tools
    - **Manual (.dmg / release asset)**: verified GitHub releases
-4. **Stop at the first suitable match** and add it to that location only.
-5. **Never invent** package names, URLs, or sources. Ask the user if verification fails.
-6. **Use existing patterns** for the target file.
+5. **Stop at the first suitable match** and add it to that location only.
+6. **Use verified package names, URLs, and sources.** Ask the user when verification cannot resolve them.
+7. **Use existing patterns** for the target file.
 
 ## Documentation Hygiene
 
@@ -286,7 +290,7 @@ The compiled ownership model lives in `docs/topics/ai-assistants/system-prompt/s
 | ---------------------------------------------------------- | ------------------------------------ |
 | `home/readonly_AGENTS.md`                                  | `~/AGENTS.md`                        |
 | `home/symlink_CLAUDE.md`                                   | `~/CLAUDE.md`                        |
-| `home/dot_gemini/symlink_GEMINI.md`                        | `~/.gemini/GEMINI.md`                |
+| `home/dot_gemini/config/symlink_AGENTS.md`                 | `~/.gemini/config/AGENTS.md`         |
 | `home/dot_cursor/symlink_AGENTS.md`                        | `~/.cursor/AGENTS.md`                |
 | `home/dot_codex/symlink_AGENTS.md`                         | `~/.codex/AGENTS.md`                 |
 | `home/dot_config/opencode/symlink_AGENTS.md`               | `~/.config/opencode/AGENTS.md`       |

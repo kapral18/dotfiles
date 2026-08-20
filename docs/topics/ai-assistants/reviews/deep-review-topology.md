@@ -5,7 +5,7 @@ title: Deep-review topology
 
 # Multi-agent topology
 
-`/k-deep-review` is the orchestration entrypoint. Cursor, Copilot, Claude, Codex, and Gemini bridge it through their native isolation mechanisms where available.
+`/k-deep-review` is the orchestration entrypoint. Cursor, Copilot, Claude, Codex, and Antigravity bridge it through their native isolation mechanisms where available.
 
 The flow is a phased investigation pipeline, not a loose collection of agents. The key invariant is phase ownership: workers investigate; the controller judges and performs any gated side effect.
 
@@ -128,7 +128,7 @@ It merges still-valid pending feedback with net-new findings into one payload, d
 | Cursor/Copilot | `review-worker` once per selected sighted angle (registry lane model)                   |
 | Claude         | `reviewer` once per selected sighted angle through `Task` with `model: inherit`         |
 | Codex          | `spawn_agent` `review-worker` agents, one per selected sighted angle                    |
-| Gemini         | `review-worker` once per selected sighted angle                                         |
+| Antigravity    | `review-worker` once per selected sighted angle                                         |
 | any (blind)    | conditional fresh-eyes via a generic read-only task (Pi/OMP: thin `fresh-eyes` profile) |
 | verify (cross) | `adversarial-verifier` on the registry verifier model (different family than lanes)     |
 

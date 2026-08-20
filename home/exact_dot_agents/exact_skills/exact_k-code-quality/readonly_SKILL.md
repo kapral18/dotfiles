@@ -34,6 +34,7 @@ Load React/web/test/design secondaries only for surfaces the evidence already pu
 - If a full rewrite is necessary, diff against the original and verify no unrelated behavior was dropped.
 - Remove only dead imports, variables, or functions introduced by your changes; mention pre-existing dead code instead of deleting it.
   Every changed line must trace to the request; remove any line that does not.
+- When changing how a domain concept, state, or enum is mapped or partitioned, updating co-located sibling consumers (comparators, filters, search predicates, serializers) is required to preserve projection symmetry and traces to the change.
 
 ## Semantic Dedupe And Simplicity
 

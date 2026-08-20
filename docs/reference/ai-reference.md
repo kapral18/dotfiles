@@ -8,18 +8,19 @@ sidebar_position: 4
 
 See [The Agentic Operating System](../topics/ai-assistants/index.md) and [SOP source of truth](../topics/ai-assistants/system-prompt/source-of-truth.md).
 
-| Component              | Source path                                                                        |
-| ---------------------- | ---------------------------------------------------------------------------------- |
-| Assistant core SOP     | [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md)                         |
-| Assistant skills       | [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/) |
-| Shared assistant hooks | [`home/exact_dot_agents/exact_hooks/`](../../home/exact_dot_agents/exact_hooks/)   |
-| Cursor CLI hooks       | [`home/dot_cursor/hooks.json`](../../home/dot_cursor/hooks.json)                   |
+| Component              | Source path                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| Assistant core SOP     | [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md)                                       |
+| Assistant skills       | [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/)               |
+| Shared assistant hooks | [`home/exact_dot_agents/exact_hooks/`](../../home/exact_dot_agents/exact_hooks/)                 |
+| Cursor CLI hooks       | [`home/dot_cursor/hooks.json`](../../home/dot_cursor/hooks.json)                                 |
+| Antigravity hooks      | [`home/dot_gemini/config/readonly_hooks.json`](../../home/dot_gemini/config/readonly_hooks.json) |
 
-`~/CLAUDE.md`, `~/.gemini/GEMINI.md`, `~/.cursor/AGENTS.md`, `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`, and `~/.copilot/copilot-instructions.md` are symlinks to `~/AGENTS.md`.
+`~/CLAUDE.md`, `~/.gemini/config/AGENTS.md`, `~/.cursor/AGENTS.md`, `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`, and `~/.copilot/copilot-instructions.md` are symlinks to `~/AGENTS.md`.
 
 ### Git commit/push safety gate
 
-[`executable_gemini-git-gate.py`](../../home/exact_dot_agents/exact_hooks/executable_gemini-git-gate.py) is a shared pre-shell hook (Cursor `beforeShellExecution`, Gemini `BeforeTool`, and the Pi/OMP runtime extensions) that asks for approval before a `git commit` or `git push`. It classifies the real subcommand behind chains, `env`/`-C`/`-c`, and recognized wrappers (`sudo`, `command`, `time`, `bash -c`, ...), and fails closed on anything ambiguous. Shell comments are ignored, completed here-doc bodies are inspected when they feed shell wrappers and otherwise treated as inert stdin, and unterminated here-docs fail closed. Runtime extension UI confirmations are bounded and fail closed if the prompt does not resolve. Non-git commands are allowed even when they mention git, so `.git` path probes such as `stat .git/index.lock` run without prompting.
+[`executable_gemini-git-gate.py`](../../home/exact_dot_agents/exact_hooks/executable_gemini-git-gate.py) is a shared pre-shell hook (Cursor `beforeShellExecution`, Antigravity `PreToolUse`, and the Pi/OMP runtime extensions) that asks for approval before a `git commit` or `git push`. Antigravity uses `force_ask`, so a cached “Always Allow” permission cannot bypass this prompt. It classifies the real subcommand behind chains, `env`/`-C`/`-c`, and recognized wrappers (`sudo`, `command`, `time`, `bash -c`, ...), and fails closed on anything ambiguous. Shell comments are ignored, completed here-doc bodies are inspected when they feed shell wrappers and otherwise treated as inert stdin, and unterminated here-docs fail closed. Runtime extension UI confirmations are bounded and fail closed if the prompt does not resolve. Non-git commands are allowed even when they mention git, so `.git` path probes such as `stat .git/index.lock` run without prompting.
 
 ## Harness configs
 
@@ -29,7 +30,7 @@ Per-tool config sources and the `run_onchange_after_07-*` hooks that render them
 | ----------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Claude Code | [`home/dot_claude/`](../../home/dot_claude/)                   | [`run_onchange_after_07-merge-claude-code-settings.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-claude-code-settings.sh.tmpl) |
 | Codex       | [`home/dot_codex/`](../../home/dot_codex/)                     | [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl)                 |
-| Gemini      | [`home/dot_gemini/`](../../home/dot_gemini/)                   | [`run_onchange_after_07-merge-gemini-settings.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-gemini-settings.sh.tmpl)           |
+| Antigravity | [`home/dot_gemini/`](../../home/dot_gemini/)                   | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)             |
 | OpenCode    | [`home/dot_config/opencode/`](../../home/dot_config/opencode/) | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl)           |
 | Pi          | [`home/dot_pi/agent/`](../../home/dot_pi/agent/)               | [`run_onchange_after_07-merge-pi-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl)                       |
 | Copilot     | [`home/private_dot_copilot/`](../../home/private_dot_copilot/) | [`run_onchange_after_07-merge-copilot-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-copilot-config.sh.tmpl)             |

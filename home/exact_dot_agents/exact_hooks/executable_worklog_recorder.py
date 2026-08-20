@@ -20,7 +20,7 @@ def command_from(payload: dict) -> str:
 
     tool_input = payload.get("tool_input")
     if isinstance(tool_input, dict):
-        return str(tool_input.get("command") or tool_input.get("path") or "")
+        return str(tool_input.get("command") or tool_input.get("CommandLine") or tool_input.get("path") or "")
 
     return ""
 

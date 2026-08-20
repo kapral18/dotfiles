@@ -51,7 +51,7 @@ done
 #   - Claude Code: CLAUDE_SESSION_ID
 #   - Codex:       CODEX_SESSION_ID
 #   - Cursor:      CURSOR_SESSION_ID
-#   - Gemini CLI:  GEMINI_SESSION_ID
+#   - Antigravity: no exported session-id variable; shell probes use the active-topic fallback
 #   - Copilot:     COPILOT_AGENT_SESSION_ID (parent session, used by the agent-memory
 #                  parent fallback). Subagent sessions live under the same key.
 #   - Pi/omp:      there is no standard env var; the harness writes to the spec via
@@ -63,7 +63,7 @@ spec_dir=""
 session_key=""
 
 session_id=""
-for env_var in CLAUDE_SESSION_ID CODEX_SESSION_ID CURSOR_SESSION_ID GEMINI_SESSION_ID COPILOT_AGENT_SESSION_ID; do
+for env_var in CLAUDE_SESSION_ID CODEX_SESSION_ID CURSOR_SESSION_ID COPILOT_AGENT_SESSION_ID; do
   value="${!env_var:-}"
   if [[ -n "$value" ]]; then
     session_id="$value"

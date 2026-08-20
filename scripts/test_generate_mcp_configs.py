@@ -179,6 +179,28 @@ mcp_servers:
         assert "tokenBridge" not in mint.get("oauth", {})
         assert mint.get("command") != ",mcp-token"
 
+    def test_gemini_transform_uses_antigravity_server_url(self):
+        actual = json.loads(
+            run_script(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false", "gemini"])
+        )
+        assert actual["mcpServers"]["http-tool"] == {"serverUrl": "https://mcp.example.com/mcp"}
+
+    def test_gemini_token_bridge_emits_stdio_bridge(self):
+        actual = json.loads(
+            run_script(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false", "gemini"])
+        )
+        bridge = actual["mcpServers"]["bridge-tool"]
+        assert bridge == {
+            "command": ",mcp-token",
+            "args": [
+                "bridge-source",
+                "--bridge",
+                "--url",
+                "https://mcp.bridge.com/mcp",
+                "--retry-connect-timeouts",
+            ],
+        }
+
 
 if __name__ == "__main__":
     unittest.main()
