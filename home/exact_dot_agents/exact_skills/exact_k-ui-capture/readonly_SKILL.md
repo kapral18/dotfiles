@@ -42,7 +42,7 @@ Inspect the change set and itemize what can be visually proven:
 
 1. Resolve the diff: `git diff origin/<base>...HEAD` plus staged/unstaged working-tree changes, or `gh pr diff <n>` when a PR is named.
 2. Load `~/.agents/skills/k-ui-capture/references/proof-mode.md` and build its Behavior inventory:
-   apply the split test (one item per independently observable difference), the classification test (static → screenshot pair, interactive → video pair), and the coverage plan (dedicated pair per item by default; one shared pair when same-trigger items are each plainly visible in it) to every user-visible change.
+   apply the split test (one item per independently observable difference), the classification test (static → screenshot pair, interactive → video pair), the coverage plan (dedicated pair per item by default; one shared pair when same-trigger items are each plainly visible in it), and the baseline test (`baseline` vs `intra-change` vs head-only) to every user-visible change.
    Mechanical, test-only, or non-rendered changes are not capture items.
 3. When the diff has no user-visible surface, report `Not applicable` with the changed-file evidence and stop.
 
@@ -81,15 +81,19 @@ Completion criterion: every routed item has a `met`/`unmet`/`blocked` verdict an
 Load `~/.agents/skills/k-github/references/attachments.md` and follow it end to end:
 pre-upload QA, the browser-assisted upload, and the presentation rules for embedding.
 Upload only newly captured media; Step 3 supplies the URLs for reused pairs.
-Uploading is a GitHub side effect — show the QA summary and destination, and wait for explicit user approval before uploading.
+Build the proof-mode Claim map before drafting embed text: every behavior claim in the body/comment maps to an inventory item with an adequate asset; drop unmapped claims.
+Place `baseline` pairs in the PR/issue body's main Screenshots/Videos section;
+place `intra-change` pairs in a separate comment/thread when requested for reviewer re-verification.
+Uploading is a GitHub side effect — show the QA summary, claim map, and destination, and wait for explicit user approval before uploading.
 After upload, emit the ready-to-paste markdown block built per those presentation rules.
 
-Completion criterion: new media uploaded and markdown emitted, or local manifest paths returned with upload marked `pending_approval`/`skipped`.
+Completion criterion: new media uploaded and markdown emitted with a complete claim map, or local manifest paths returned with upload marked `pending_approval`/`skipped`.
 
 ## Deliverable
 
-- `audit_summary`: capture items with classification, plus excluded files (diff-audit entry only)
+- `audit_summary`: capture items with classification and frame (`baseline` / `intra-change` / head-only), plus excluded files (diff-audit entry only)
 - `proof_reuse`: per item, `reused` with existing URLs or the staleness evidence routing it to capture
 - `capture_manifest`: the proof-mode manifest(s) and verdicts
+- `claim_map`: every embed claim → inventory item → asset, or `n/a` when no embed drafted
 - `upload_status`: `uploaded` with asset URLs, `pending_approval` with local paths, or `skipped`
 - `markdown_snippet`: the final embed block, when uploaded

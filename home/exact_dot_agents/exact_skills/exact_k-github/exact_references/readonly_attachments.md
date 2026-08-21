@@ -42,6 +42,7 @@ Before uploading any image or video:
 - Verify md5s are pairwise distinct across the batch; upload each distinct state exactly once, with duplicates excluded.
 - View every file in this session and confirm it matches its intended caption/placement.
   Upload only images and videos you have viewed in this session.
+- When the upload will sit under a PR/issue body or comment that names behaviors, build the proof-mode Claim map first (`~/.agents/skills/k-ui-capture/references/proof-mode.md`): every claim in the surrounding prose maps to an viewed asset that plainly shows that claim; drop unmapped claims before upload.
 
 ## Presentation in comment/issue/PR bodies
 
@@ -53,6 +54,10 @@ Before uploading any image or video:
   Players never render inside markdown table cells or link/`<img>` syntax — a video URL in a table cell degrades to a text link (verified live).
   For a behavior's before/after video pair, stack under one bold caption: `Before:` line, blank line, before URL;
   then `After:` line, blank line, after URL.
+- Caption and surrounding prose name only behaviors the attached assets prove (Claim map);
+  shared pairs list every covered behavior in the caption.
+- Put `baseline` (base↔head) pairs in the body's main Screenshots/Videos section;
+  put `intra-change` (tip↔tip) pairs in a separate comment/thread when a reviewer needs mid-change re-verification, so they are not read as product deltas vs base.
 - Verify after publishing/recreating: attachment counts via `--jq`, and rendered `naturalWidth > 0` via the browser when it matters.
 
 ## Gates

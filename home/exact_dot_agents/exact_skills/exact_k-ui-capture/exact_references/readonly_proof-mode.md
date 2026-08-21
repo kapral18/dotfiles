@@ -69,6 +69,20 @@ Build this inventory before the published-proof gate and before any capture; bot
 4. **Sufficiency test — judged per item, per asset.**
    An asset covers an item only when that item's delta is plainly visible in it; covering one behavior never implies covering another.
    A pair too small, cropped, or static to convey any covered item's contrast proves nothing, regardless of how clean it looks.
+5. **Baseline test — comparison frame.** Tag each item with exactly one frame:
+   - `baseline` — the user-visible product delta vs the PR/integration base (or last shipped behavior).
+     Before = that base when the base can show the old outcome; after = the runtime under verification.
+   - `intra-change` — a delta between two tips on the same change branch (a mid-change regression and its fix).
+     Before = earlier tip; after = later tip.
+     Use this only when a human needs visual proof of that mid-change fix; it is a separate proof class from the product delta vs base.
+     When the base never reaches the old state (capability absent on base), keep the item as head-only proof of the new capability, or as `intra-change` when comparing two branch tips.
+     Capture only before-states the chosen frame can actually produce.
+     Publication channel: `baseline` pairs embed in the PR/issue body's main Screenshots/Videos section;
+     `intra-change` pairs publish in a separate comment/thread when requested for reviewer re-verification, and stay out of the body's main before/after section so they are not read as base↔head.
+6. **Claim map — prose ⊆ assets.**
+   Before drafting embed markdown or editing a PR/issue body/comment that cites proof, list every behavior claim the text will make and the inventory item + asset that proves it.
+   Emit the embed only when every claim has an adequate mapped asset (sufficiency test).
+   Drop or demote any claim that lacks one; covering one item never licenses claiming another.
 
 ## Existing published proof gate
 
@@ -79,23 +93,46 @@ Skip it when no PR exists yet (for example `/k-build` ahead of publication).
 2. Map each inventory item to the published pair that conveys its contrast, by caption and behavior.
    Several items may share one pair when they meet the coverage plan's consolidation conditions;
    an item with only one side published, or with no pair conveying its contrast, goes to capture.
-3. Adequacy check per mapped item: the pair's media type must match the item's classification, and that item's specific before/after contrast must be plainly visible in the pair (sufficiency test, judged per item).
+3. Adequacy check per mapped item: the pair's media type must match the item's classification, that item's specific before/after contrast must be plainly visible in the pair (sufficiency test, judged per item), and the pair's comparison frame must match the item's baseline-test tag (`baseline` vs `intra-change`).
    A screenshot pair mapped to a video-classified item is inadequate regardless of freshness — route it to capture.
+   A body-section base↔head pair never satisfies an `intra-change` item, and an intra-change tip↔tip pair never satisfies a `baseline` item.
 4. Freshness check per adequate item: treat the pair as current only when no commit newer than the container's `createdAt` touches the item's changed UI paths (`git log --since=<createdAt> <base>..HEAD -- <paths>`), and the base branch has not advanced over commits touching those same paths since the `before` capture.
    Treat an ambiguous timestamp or mapping as stale.
 5. Reuse pairs that pass both checks: carry their existing `user-attachments` URLs into the caller's embed step and skip capture and upload for those items.
    Recapture every stale, inadequate, partial, or unmapped item through the sections below, and upload only the new media.
 
+## Capture hygiene
+
+Apply on every capture run (any repo):
+
+1. **Identity bind.**
+   Keep shell cwd, topic-spec, and recorder scripts pointed at the runtime under verification;
+   use absolute paths for `/tmp` recorders and worktree roots when switching tips.
+2. **Control resolution.**
+   Resolve click/type targets from the live page's accessible name, role, and stable test id before recording;
+   when an assumed label times out, re-probe the live a11y tree once and use the observed name.
+3. **Evidence retention.**
+   Leave toasts, banners, dialogs, and warnings that constitute the item's delta visible through the clip;
+   dismiss them only after that item's capture finishes.
+4. **Tip ordering.**
+   Finish every after-clip for tip A before swapping tree/runtime state to tip B for before-clips (or the reverse planned order);
+   keep each tip's batch complete under that tip's tree.
+5. **Clip focus.**
+   Start published clips at the proving interaction; trim login, welcome, and idle load lead-in before pre-upload QA (see the Video Recording section of `~/.agents/skills/k-playwriter/SKILL.md`).
+6. **Isolation.**
+   Run capture as its own workstream: finish or park unrelated merges, history rewrites, and CI-fix churn before starting recorders so the worktree under the camera stays the intended tip.
+
 ## Proof capture
 
 - Capture per the coverage plan: each distinct interaction/state once, in the media type its classification requires;
   a shared pair lists every covered item in its manifest entry and caption.
-- Follow the shared Screenshot & evidence capture rules.
+- Follow Capture hygiene and the shared Screenshot & evidence capture rules.
   Store each visual/UI criterion's proof set as Playwriter artifacts in its own distinct `/tmp/<folder-name>/` folder with descriptive filenames — never combine unrelated criteria/sets in one folder.
 - Capture the smallest set that proves each visual/UI criterion — the key state(s) the intended behavior describes, not every navigation.
-- For each captured asset (screenshot or video), record a manifest entry: its folder, filename, media type, caption (what it proves), exact URL, the linked acceptance criterion or visual goal, and any fidelity note (mocked/partial data).
+- For each captured asset (screenshot or video), record a manifest entry: its folder, filename, media type, frame (`baseline` / `intra-change` / `head-only`), caption (what it proves), exact URL, the linked acceptance criterion or visual goal, and any fidelity note (mocked/partial data).
 - The manifest and the `/tmp` paths are a handoff to the caller for the upload step only.
   Leave uploading and embedding to the publication step, which uses the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md` behind explicit user approval; keep images and local paths out of PR bodies/comments during this proof phase.
+  When the caller drafts embed text, require the Claim map (inventory item 6) before approval.
 
 ## Return exactly
 
@@ -109,6 +146,7 @@ Skip it when no PR exists yet (for example `/k-build` ahead of publication).
 - `data_setup`: existing data checked, local/dev data seeded/mutated, cleanup result, or exact data/mutation still needed
 - `criteria_verdicts`: per intended visual/UI criterion, `met` / `unmet` / `blocked` with the linked proof media and observed state
 - `published_proof`: per item, `reused` with the existing URLs and container evidence, `stale` or `inadequate_media` with the reason, or `none_published`; `skipped` when no PR exists yet
-- `proof_manifest`: `none`, or the list of proof entries (folder, filename, media type, caption, URL, linked criterion, fidelity note)
+- `proof_manifest`: `none`, or the list of proof entries (folder, filename, media type, frame, caption, URL, linked criterion, fidelity note)
+- `claim_map`: `n/a` when no embed is drafted; otherwise every behavior claim in the draft paired with its inventory item and proving asset, with zero unmapped claims
 - `pages`: pages created and closed, or URLs left open
 - `blockers_or_uncertainty`: none, or precise blockers/remaining uncertainty

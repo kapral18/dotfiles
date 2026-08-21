@@ -11,6 +11,9 @@ Load when building the required PR publication packet for `k-github`. The gate i
   Build the proof-mode contract's Behavior inventory first (`~/.agents/skills/k-ui-capture/references/proof-mode.md`):
   screenshot pair for static deltas, video pair for any delta observed through interaction (before recorded on the base branch, after on the PR head), even when the diff looks static.
   Follow its coverage plan: a dedicated before/after pair per behavior by default, or one shared pair when same-trigger behaviors are each plainly visible in it, captioned with every covered behavior.
+  Tag each item with the baseline test (`baseline` vs `intra-change` vs head-only): body Screenshots/Videos carry `baseline` pairs;
+  mid-change tip↔tip pairs go in a separate comment when requested.
+  Before embedding, complete the Claim map so every behavior claim in the body maps to an adequate asset.
   Required proof means reuse a `/k-build` live-UI proof manifest, or run that proof-mode contract head-only.
   When the PR already exists and carries published before/after proof, run the proof-mode Existing published proof gate first:
   reuse each pair that passes its adequacy and freshness checks, and recapture stale, inadequate, partial, or unmapped items.

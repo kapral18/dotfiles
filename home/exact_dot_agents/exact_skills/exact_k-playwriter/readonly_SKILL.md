@@ -61,7 +61,8 @@ Rules:
 
 ### Reliable path: plain Playwright `recordVideo`
 
-Works headless, needs no extension or user clicks, fully reproducible:
+Works headless, needs no extension or user clicks, fully reproducible.
+Pass `NODE_PATH` on the same `node` invocation (or `export` it in the shell that will run every recorder) so child processes resolve `playwright-core`:
 
 ```bash
 NODE_PATH="$PWD/node_modules" node /tmp/record.js   # reuse the repo's playwright-core
@@ -75,14 +76,19 @@ const context = await browser.newContext({
   recordVideo: { dir: "/tmp/raw", size: { width: 1280, height: 720 } },
 });
 const page = await context.newPage();
+// Resolve controls from the live a11y/DOM before the scenario; leave proof-visible
+// toasts/banners/dialogs up through the clip when they are the delta being proven.
 // ...login + scenario...
 const video = page.video();
 await context.close(); // finalizes the file
 const path = await video.path(); // .webm
 ```
 
+`playwriter` CLI has no `--record` flag — use `Browser.newContext({ recordVideo })` as above (verified playwriter 0.4.0).
+
 Post-process: `ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p -movflags +faststart out.mp4`, then trim the login/load lead-in with `-ss <sec>`.
 The video starts at page creation, so capture the trim point instead of guessing:
 `const t0 = Date.now()` after `newPage()`, then log `(Date.now() - t0) / 1000` when the scenario starts and use it (minus ~0.5s) as `-ss`.
+Published clips start at the proving interaction; leave login/welcome/idle load out of the uploaded file.
 Verify content by extracting frames (`ffmpeg -vf fps=1 f-%02d.png`) and reading them —
 a green status probe is not proof the video shows the behavior.
