@@ -251,6 +251,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "never start a ledger near the final answer",
             "Otherwise inline anchors are the proof trail",
             "[OUTPUT DISCIPLINE]",
+            "Goal: shortest complete essence",
             "Length is a budget, not a vibe",
             "Direct answer ≤80 words",
             "Comparison/audit ≤120",
@@ -259,6 +260,8 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "emit a 1-line skeleton",
             "may not restate an item already in an earlier table/list",
             "Brevity outranks structure; structure must earn its space",
+            "Borrow STE (ASD-STE100 Simplified Technical English) habits only when they shrink text",
+            "§6 owns in-session replies",
             "No valid model of time/effort/urgency",
         )
         self.assert_file_contains(
@@ -499,7 +502,10 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "home/readonly_AGENTS.md",
             "Handle secrets by reference only: never commit, reveal, or write secrets or plaintext credentials.",
             "Brevity outranks structure. Shortest form that carries the full meaning wins",
+            "Prefer the shortest structure that still delivers a complete essence",
             "Structure must earn its space by adding scannable information not present elsewhere",
+            "Borrow STE (ASD-STE100 Simplified Technical English) sentence habits only when they shrink text",
+            "§6 density primitives and word budgets stay authoritative for in-session replies",
             "Length is a hard budget per task class, not a vibe",
             "Direct answer or one-shot question: ≤80",
             "Comparison or audit: ≤120",
@@ -542,6 +548,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-communication/readonly_SKILL.md",
             "Before drafting, apply every rule in `~/.agents/skills/k-communication/references/external-replies.md`.",
+            "prefer the shortest structure that still delivers a complete essence",
         )
         self.assert_file_not_contains(
             "home/readonly_AGENTS.md",

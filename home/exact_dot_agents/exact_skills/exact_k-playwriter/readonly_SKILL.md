@@ -45,6 +45,9 @@ If `playwriter` is not found, use `npx playwriter@latest` or `bunx playwriter@la
 
 ## Video Recording: Skip the Extension Path
 
+Use this section only after the capture plan has classified an item as video.
+A static state that needs a setup action to reach it stays screenshot-classified when the setup action is not the fixed behavior.
+
 `recording.start/stop` (extension `chrome.tabCapture`) can silently produce empty files:
 `start` succeeds, `stop` returns a plausible `duration`, but `size` is ~749 B (mp4 header only) or 0.
 Verified on both Dia and real Chrome with the bundled extension (playwriter 0.4.0 / extension 0.0.97);

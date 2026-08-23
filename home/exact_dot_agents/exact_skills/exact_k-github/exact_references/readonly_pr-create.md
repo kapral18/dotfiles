@@ -5,6 +5,7 @@ Load before `gh pr create` or PR body/title edits.
 ## PR creation rules
 
 - Create PRs as draft by default.
+- Keep PR reviewer fields unset; GitHub handles reviewer assignment automatically.
 - Resolve the referenced issue and whether it is `Closes #X` or `Addresses #X` from evidence first —
   branch name, commit messages, and PR context; ask only when that evidence leaves a genuine fork. Use only verified issue numbers.
 - If no existing issue exists, stop and ask whether to create one; create issues only when explicitly instructed.

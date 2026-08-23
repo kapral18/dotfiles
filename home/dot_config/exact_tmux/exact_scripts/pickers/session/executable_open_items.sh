@@ -14,6 +14,36 @@ script_dir="$(cd "$(dirname "$0")" && pwd)"
 
 # The (current) marker is baked into cached/ordered output at generation time.
 # Dynamically fix it up so it always reflects the *active* session.
+#
+# PATH may prefer Homebrew coreutils gnubin/stat (GNU). Use GNU -c when it
+# works; otherwise fall back to BSD /usr/bin/stat -f. Bare `stat -f` under
+# gnubin treats -f as --file-system and writes a multi-line dump into meta.
+file_mtime_epoch() {
+  local f="$1"
+  if stat -c %Y "$f" > /dev/null 2>&1; then
+    stat -c %Y "$f"
+    return 0
+  fi
+  if [ -x /usr/bin/stat ]; then
+    /usr/bin/stat -f %m "$f"
+    return 0
+  fi
+  stat -f %m "$f"
+}
+
+file_size_bytes() {
+  local f="$1"
+  if stat -c %s "$f" > /dev/null 2>&1; then
+    stat -c %s "$f"
+    return 0
+  fi
+  if [ -x /usr/bin/stat ]; then
+    /usr/bin/stat -f %z "$f"
+    return 0
+  fi
+  stat -f %z "$f"
+}
+
 fixup_current_marker() {
   local file="$1"
   local cur=""
@@ -29,10 +59,11 @@ fixup_current_marker() {
   # Recompute only when the active session changes or the ordered snapshot mtime changes.
   local fixed_file="${cache_dir}/pick_session_items_ordered.current.tsv"
   local meta_file="${fixed_file}.meta"
-  local src_mtime=""
-  src_mtime="$(stat -f %m "$file" 2> /dev/null || true)"
-  local src_size=""
-  src_size="$(stat -f %z "$file" 2> /dev/null || true)"
+  local src_mtime="" src_size=""
+  src_mtime="$(file_mtime_epoch "$file" 2> /dev/null || true)"
+  src_size="$(file_size_bytes "$file" 2> /dev/null || true)"
+  case "$src_mtime" in '' | *[!0-9]*) src_mtime="" ;; esac
+  case "$src_size" in '' | *[!0-9]*) src_size="" ;; esac
 
   if [ -n "$src_mtime" ] && [ -n "$src_size" ] && [ -s "$fixed_file" ] && [ -s "$meta_file" ]; then
     local meta_cur="" meta_mtime="" meta_size=""
@@ -50,9 +81,13 @@ fixup_current_marker() {
   tmp_meta="$(mktemp -t pick_session_items_ordered_current_meta.XXXXXX 2> /dev/null || printf '%s\n' "/tmp/pick_session_items_ordered_current_meta.$$")"
 
   if CURRENT="$cur" python3 -u "$script_dir/lib/fixup_current_marker.py" "$file" > "$tmp_fixed"; then
-    printf '%s\n%s\n%s\n' "$cur" "$src_mtime" "$src_size" > "$tmp_meta" 2> /dev/null || true
+    if [ -n "$src_mtime" ] && [ -n "$src_size" ]; then
+      printf '%s\n%s\n%s\n' "$cur" "$src_mtime" "$src_size" > "$tmp_meta" 2> /dev/null || true
+      mv -f "$tmp_meta" "$meta_file" 2> /dev/null || cat "$tmp_meta" > "$meta_file" 2> /dev/null || true
+    else
+      rm -f "$tmp_meta" "$meta_file" 2> /dev/null || true
+    fi
     mv -f "$tmp_fixed" "$fixed_file" 2> /dev/null || cat "$tmp_fixed" > "$fixed_file" 2> /dev/null || true
-    mv -f "$tmp_meta" "$meta_file" 2> /dev/null || cat "$tmp_meta" > "$meta_file" 2> /dev/null || true
     cat "$fixed_file"
   else
     rm -f "$tmp_fixed" "$tmp_meta" 2> /dev/null || true

@@ -12,6 +12,7 @@
 # either renames or shadows.
 #
 # Functions (all defined unconditionally; safe to re-source):
+#   picker_row_parse ROW                           -> sets PICKER_ROW_FIELDS[0..5]
 #   resolve_path PATH                              -> realpath fallback
 #   normalize                                      -> stdin -> stdout (kebab)
 #   tildefy_to_reply PATH                          -> sets REPLY
@@ -34,6 +35,14 @@ if [ "${__PICK_SESSION_NAMING_LOADED:-0}" = "1" ]; then
   return 0 2> /dev/null || true
 fi
 __PICK_SESSION_NAMING_LOADED=1
+
+picker_row_parse() {
+  local row="${1-}"
+  PICKER_ROW_FIELDS=()
+  mapfile -t PICKER_ROW_FIELDS < <(
+    printf '%s\n' "$row" | awk -F $'\t' '{ for (i = 1; i <= 6; i++) print $i }'
+  )
+}
 
 resolve_path() {
   realpath "$1" 2> /dev/null || printf '%s' "$1"

@@ -42,6 +42,8 @@ Before uploading any image or video:
 - Verify md5s are pairwise distinct across the batch; upload each distinct state exactly once, with duplicates excluded.
 - View every file in this session and confirm it matches its intended caption/placement.
   Upload only images and videos you have viewed in this session.
+- For videos, confirm the first proving frame starts at the behavior under test and the last proving frame still supports the caption.
+  Trim login, welcome, idle loading, and setup-only lead-in before upload.
 - When the upload will sit under a PR/issue body or comment that names behaviors, build the proof-mode Claim map first (`~/.agents/skills/k-ui-capture/references/proof-mode.md`): every claim in the surrounding prose maps to an viewed asset that plainly shows that claim; drop unmapped claims before upload.
 
 ## Presentation in comment/issue/PR bodies

@@ -61,8 +61,15 @@ GitHub (`GH`, owner `elastic`):
 Slack (catches work that never hits GitHub — incidents, impact assessments):
 
 - Enumerate everything instead of keyword-guessing: `slack_search_public_and_private` `from:<@USER> after:<date>`, `sort=timestamp`, `include_context=false`, **no free-text term**; page the `pagination_info` cursor until you pass BASELINE.
-  Prefer `channel_types=public_channel,private_channel` when paging past DM noise; still use DMs as evidence without publishing their permalinks.
+  Prefer `channel_types=public_channel,private_channel` when paging past DM noise;
+  still use DMs as evidence without publishing their permalinks.
   Search all channels the account can access, including private channels and DMs, without asking for consent.
+- Strict timestamp comparison: compare each message's `Message_ts` numerically as a float against `BASELINE` (`msg.Message_ts > BASELINE`).
+  Discard any message with `Message_ts <= BASELINE`.
+- Anti-resurrection guard: ignore all previous standup posts returned in search results (messages containing multi-bullet updates from earlier days).
+  Never extract items or bullet points from past standup messages.
+- Thread link target guard: the URL for a bullet in `Slack and other` must link directly to the specific discussion thread where the work happened.
+  NEVER link to a standup/daily update thread, a Slackbot reminder (`from:USLACKBOT`), or the thread where you are about to post.
 - Also search `from:<@USER> in:#admin-ux-internal` and `from:<@USER> in:#kibana-management` after BASELINE for discussion context.
   `#kibana-management` is a public-facing discussion channel, not a standup source.
 - Search `from:<@USER> SDH after:<date>` with `slack_search_public_and_private` and context, and map only explicitly named PRs/issues/discussions to SDH work.
@@ -70,7 +77,7 @@ Slack (catches work that never hits GitHub — incidents, impact assessments):
 - Triage for team relevance: keep effortful work (incident/severity assessments, investigations, decisions);
   drop social/off-topic chatter and acknowledgements.
 
-Done when authored PRs/issues, involves-contributed commits, reviews (including pending-with-comments), effortful issue comments, events-derived candidates, and Slack items from `#admin-ux-internal`, `#kibana-management`, and the all-channels `from:<@USER>` pass have been timestamp-checked and triaged.
+Done when authored PRs/issues, involves-contributed commits, reviews (including pending-with-comments), effortful issue comments, events-derived candidates, and Slack items from `#admin-ux-internal`, `#kibana-management`, and the all-channels `from:<@USER>` pass have been timestamp-checked (strictly `> BASELINE`), validated against old-standup resurrection, and triaged.
 
 ## 3. Compile (team format)
 
@@ -80,15 +87,16 @@ Name the unit of work (what shipped, what is open, what was raised), not impleme
 Keep unrelated authored work on separate bullets even when one activity blocked validation of another.
 Operational investigations and the technical change they happened to delay are separate bullets.
 
-Emit the standup as three sections in this order, each heading on its own line: `PRs`, `Issues`, `Slack and other`.
+Emit the standup as four sections in this order, each heading on its own line: `PRs`, `Reviews`, `Issues`, `Slack and other`.
 Omit a heading when that group has no bullets. Put a blank line after each heading, then that group's bullets.
 Put a blank line after the last bullet of a section before the next heading.
-Keep the three-section structure exactly: use only those headings, in that order, grouped as specified rather than flattened into one list or regrouped by theme, SDH, or product area.
+Keep the four-section structure exactly: use only those headings, in that order, grouped as specified rather than flattened into one list or regrouped by theme, SDH, or product area.
 
 ### PRs
 
 One bullet per authored source PR; keep distinct source PRs on separate lines.
-Also one bullet per other-author PR that has post-BASELINE commits by `GH` (contributed push); lead with `Contributed` (or `Pushed` when that is the only change).
+Also one bullet per other-author PR that has post-BASELINE commits by `GH` (contributed push);
+lead with `Contributed` (or `Pushed` when that is the only change).
 The only authored grouping is a source PR plus qualifying backports of that same PR.
 A PR bullet links that PR as `[label](URL)` and, when grouped, each qualifying backport.
 After each PR link, put `:merged:` or `:pr-open:` as specified under Icons.
@@ -96,9 +104,12 @@ A source PR plus two merged qualifying backports contains three `[label](URL) :m
 Describe qualifying backport effort as `Resolved the <branches> backports for <change>`.
 Use `Adapted` instead of `Resolved` only when evidence shows branch-specific implementation changes;
 use those two words, never `manually resolved`.
-Reviews of others' PRs share one `Reviews:` bullet.
-Link each reviewed PR with its icon there rather than on its own bullet.
-When the same other-author PR has both post-BASELINE commits by `GH` and review activity, keep the contributed-commit PR bullet and omit that PR from the `Reviews:` bullet.
+When the same other-author PR has both post-BASELINE commits by `GH` and review activity, keep the contributed-commit PR bullet under `PRs` and omit that PR from the `Reviews` section.
+
+### Reviews
+
+List reviewed PRs here instead of inside the `PRs` section. One bullet per reviewed PR (or concise grouped bullets for related PRs).
+Link each reviewed PR as `[label](URL)` followed immediately by `:merged:` or `:pr-open:`.
 
 ### Issues
 
@@ -118,8 +129,8 @@ Use DMs as evidence, but keep inaccessible DM permalinks out of the compiled sta
 
 End every line with the artifact's icon: put it immediately after the last link.
 
-PRs: after each PR link, `:merged:` if that PR is merged, `:pr-open:` if it is open.
-Those are the only icons on PR bullets; `🐛`, `:ticket:`, `👀`, and other category icons belong elsewhere.
+PRs & Reviews: after each PR link, `:merged:` if that PR is merged, `:pr-open:` if it is open.
+Those are the only icons on PR and review bullets; `🐛`, `:ticket:`, `👀`, and other category icons belong elsewhere.
 
 Issues: after the issue link, `🐛` if the issue is a bug (`bug` label, or a defect/regression); `:ticket:` for every other issue.
 Use `🐛` only on bug issues, never on PRs or non-bug issues.
@@ -132,7 +143,7 @@ SDH is metadata, not a category.
 Only when evidence directly identifies the activity as SDH work, use `:sdh:` in the summary where the word “SDH” would appear.
 Keep `:sdh:` there only: leave artifact/category icons plain and merely related activity unmarked.
 
-Done when the compiled standup is in team format, uses those section headings with empty groups omitted and blank lines after each heading and between sections, every authored or contributed-commit source PR is its own bullet except a source PR with its qualifying backports, reviews of others share one `Reviews:` bullet (excluding PRs already covered as contributed-commit bullets), no issue shares a bullet with a PR, every shareable artifact is a `[label](URL)`, every PR link is followed by `:merged:` or `:pr-open:`, and every issue link is followed by `🐛` or `:ticket:`.
+Done when the compiled standup is in team format, uses those section headings with empty groups omitted and blank lines after each heading and between sections, every authored or contributed-commit source PR is its own bullet under `PRs` except a source PR with its qualifying backports, reviewed PRs are listed under `Reviews` (excluding PRs already covered as contributed-commit bullets), no issue shares a bullet with a PR, every shareable artifact is a `[label](URL)`, every PR link is followed by `:merged:` or `:pr-open:`, and every issue link is followed by `🐛` or `:ticket:`.
 
 ## 4. Deliver
 
@@ -142,7 +153,7 @@ Deliver via `pbcopy` only; `slack_send_message` and `slack_send_message_draft` s
 - Paste target = newest Slackbot reminder thread that tags `@admin-ux-team`: `slack_search_public_and_private` `from:<@USLACKBOT> "share your daily update" in:#admin-ux-internal`, `sort=timestamp`, `include_bots=true` (private channel; `slack_search_public` misses it).
   If none exists, the paste target is a standalone message in `#admin-ux-internal`.
   Paste or post the compiled standup only in `#admin-ux-internal`, never in `#kibana-management`.
-- Show the compiled standup and the paste target, then ask if they are ready for `pbcopy`. A yes in the invoking prompt counts.
+- Show the compiled standup inside a fenced raw code block (` ```text `) so the assistant UI rendering layer does not obscure or render Markdown links, and show the paste target, then ask if they are ready for `pbcopy`. A yes in the invoking prompt counts.
 - On yes: copy the compiled standup as plain text with `pbcopy`, then verify `pbpaste` exactly matches the source and contains one Markdown link per artifact.
 
-Done when the user has seen the compiled standup and paste target, and after a yes `pbpaste` matches with one Markdown link per artifact.
+Done when the user has seen the compiled standup inside a fenced code block and paste target, and after a yes `pbpaste` matches with one Markdown link per artifact.

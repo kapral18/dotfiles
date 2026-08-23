@@ -34,6 +34,11 @@ lock_stale_seconds=180
 quick_only=0
 skip_dirty=0
 skip_gh=0
+# --force bypasses TTL. Without --defer-if-busy it also pre-empts an in-flight
+# updater. Session create/rename hooks use --force --defer-if-busy so they still
+# refresh promptly when the lock is free, but they leave a post-restore (or
+# live_refresh) full scan alone instead of killing it mid-flight.
+defer_if_busy=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -44,6 +49,7 @@ while [ $# -gt 0 ]; do
     --quick-only) quick_only=1 ;;
     --skip-dirty) skip_dirty=1 ;;
     --skip-gh) skip_gh=1 ;;
+    --defer-if-busy) defer_if_busy=1 ;;
   esac
   shift
 done
@@ -143,7 +149,7 @@ while ! mkdir "$lock_dir" 2> /dev/null; do
   pid=""
   [ -f "$pid_file" ] && pid="$(cat "$pid_file" 2> /dev/null || true)"
   if [ -n "$pid" ] && kill -0 "$pid" 2> /dev/null; then
-    if [ "$force" -eq 1 ]; then
+    if [ "$force" -eq 1 ] && [ "$defer_if_busy" -ne 1 ]; then
       kill "$pid" 2> /dev/null || true
       waited=0
       while kill -0 "$pid" 2> /dev/null && [ "$waited" -lt 30 ]; do
@@ -157,7 +163,7 @@ while ! mkdir "$lock_dir" 2> /dev/null; do
       rm -rf "$lock_dir" 2> /dev/null || true
       continue
     fi
-    # Another updater is in flight and this is not a manual refresh; defer.
+    # Another updater is in flight and this is not a pre-empting refresh; defer.
     exit 0
   fi
   # No live owner: either lock_dir is a leftover from a crashed updater
@@ -253,6 +259,39 @@ file_has_non_session_rows() {
   local f="$1"
   [ -f "$f" ] || return 1
   awk -F $'\t' 'NF>=5 && $2 != "session" { found=1; exit } END { exit(found?0:1) }' "$f" 2> /dev/null
+}
+
+file_has_discovered_rows() {
+  # Worktrees and dirs come only from a full (or mid-stream full) scan.
+  # A quick/sessions-only snapshot never invents them.
+  local f="$1"
+  [ -f "$f" ] || return 1
+  awk -F $'\t' 'NF>=5 && ($2 == "worktree" || $2 == "dir") { found=1; exit } END { exit(found?0:1) }' "$f" 2> /dev/null
+}
+
+# Publish a quick or mid-stream partial without dropping discovered rows.
+# When the live cache already has worktree/dir rows, refuse to replace it with a
+# sessions-only (or otherwise discovery-empty) snapshot — keep the richer cache.
+# Cold start (no discovered rows in cache) may still publish sessions-only.
+publish_merged_preserving_discovered() {
+  local src="$1"
+  [ -s "$src" ] || return 1
+
+  if [ -f "$cache_file" ]; then
+    build_cache_refreshing_sessions_preserving_others "$src" "$tmp_combined" || true
+    if [ -s "$tmp_combined" ]; then
+      if file_has_discovered_rows "$cache_file" && ! file_has_discovered_rows "$tmp_combined"; then
+        return 0
+      fi
+      publish_cache_from "$tmp_combined" || true
+      return 0
+    fi
+    if file_has_discovered_rows "$cache_file"; then
+      return 0
+    fi
+  fi
+
+  publish_cache_from "$src" || true
 }
 
 build_cache_refreshing_sessions_preserving_others() {
@@ -363,17 +402,7 @@ if [ "$quick_only" -eq 1 ]; then
   if [ "$gen_rc" -eq 0 ]; then
     quick_ok=1
     if [ -s "$tmp_quick" ]; then
-      # Always try to merge to preserve worktrees and directories in the cache.
-      if [ -f "$cache_file" ]; then
-        build_cache_refreshing_sessions_preserving_others "$tmp_quick" "$tmp_combined" || true
-        if [ -s "$tmp_combined" ]; then
-          publish_cache_from "$tmp_combined" || true
-        else
-          publish_cache_from "$tmp_quick" || true
-        fi
-      else
-        publish_cache_from "$tmp_quick" || true
-      fi
+      publish_merged_preserving_discovered "$tmp_quick" || true
       quick_published=1
     fi
   else
@@ -398,17 +427,7 @@ else
   if wait "$pid_quick"; then
     quick_ok=1
     if [ -s "$tmp_quick" ]; then
-      # Merge new sessions into existing cache immediately.
-      if [ -f "$cache_file" ]; then
-        build_cache_refreshing_sessions_preserving_others "$tmp_quick" "$tmp_combined" || true
-        if [ -s "$tmp_combined" ]; then
-          publish_cache_from "$tmp_combined" || true
-        else
-          publish_cache_from "$tmp_quick" || true
-        fi
-      else
-        publish_cache_from "$tmp_quick" || true
-      fi
+      publish_merged_preserving_discovered "$tmp_quick" || true
       quick_published=1
     fi
   else
@@ -433,16 +452,7 @@ else
           union_cached_worktrees_into_partial "$tmp_sessions"
           # Merge partial full-scan rows with current cache so in-flight
           # results do not drop already-known dirs/worktrees/sessions.
-          if [ -f "$cache_file" ]; then
-            build_cache_refreshing_sessions_preserving_others "$tmp_sessions" "$tmp_combined" || true
-            if [ -s "$tmp_combined" ]; then
-              publish_cache_from "$tmp_combined" || true
-            else
-              publish_cache_from "$tmp_sessions" || true
-            fi
-          else
-            publish_cache_from "$tmp_sessions" || true
-          fi
+          publish_merged_preserving_discovered "$tmp_sessions" || true
           quick_published=1
         fi
         last_stream_size="$cur_size"
@@ -463,14 +473,14 @@ else
     if sanitize_rows "$tmp_full" "$tmp_sessions"; then
       publish_cache_from "$tmp_sessions" || true
     elif [ "$quick_published" -eq 0 ] && [ "$quick_ok" -eq 1 ] && [ -s "$tmp_quick" ]; then
-      publish_cache_from "$tmp_quick" || true
+      publish_merged_preserving_discovered "$tmp_quick" || true
     fi
   else
     notify_error "full scan" "$tmp_err_full"
   fi
 
   if [ "$full_ok" -ne 1 ] && [ "$quick_ok" -eq 1 ] && [ "$quick_published" -eq 0 ] && [ -s "$tmp_quick" ]; then
-    publish_cache_from "$tmp_quick" || true
+    publish_merged_preserving_discovered "$tmp_quick" || true
     quick_published=1
   fi
 

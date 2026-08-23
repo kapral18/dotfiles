@@ -22,3 +22,8 @@ brew "cpulimit"
 # Kill process running on given port
 # https://github.com/jkfran/killport
 brew "killport"
+
+# Fuzzy find and kill processes from your terminal
+# https://github.com/cesarferreira/rip
+tap "cesarferreira/tap"
+brew "cesarferreira/tap/rip"

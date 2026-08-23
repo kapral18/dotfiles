@@ -42,7 +42,9 @@ Inspect the change set and itemize what can be visually proven:
 
 1. Resolve the diff: `git diff origin/<base>...HEAD` plus staged/unstaged working-tree changes, or `gh pr diff <n>` when a PR is named.
 2. Load `~/.agents/skills/k-ui-capture/references/proof-mode.md` and build its Behavior inventory:
-   apply the split test (one item per independently observable difference), the classification test (static → screenshot pair, interactive → video pair), the coverage plan (dedicated pair per item by default; one shared pair when same-trigger items are each plainly visible in it), and the baseline test (`baseline` vs `intra-change` vs head-only) to every user-visible change.
+   apply the split test (one item per independently observable difference), the classification test (static state → screenshot pair;
+   interactive sequence, timing, or continuous behavior → video pair), the coverage plan (dedicated pair per item by default;
+   one shared pair when same-trigger items are each plainly visible in it), and the baseline test (`baseline` vs `intra-change` vs head-only) to every user-visible change.
    Mechanical, test-only, or non-rendered changes are not capture items.
 3. When the diff has no user-visible surface, report `Not applicable` with the changed-file evidence and stop.
 

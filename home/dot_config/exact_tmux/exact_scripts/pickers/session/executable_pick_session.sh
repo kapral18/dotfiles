@@ -466,7 +466,10 @@ primary_target=""
 if [ -f "$primary_tmp" ]; then
   primary_line="$(cat "$primary_tmp" 2> /dev/null | head -n 1 || true)"
   if [ -n "${primary_line:-}" ]; then
-    IFS=$'\t' read -r _pdisp primary_kind primary_path _pmeta primary_target _pmk <<< "$primary_line"
+    picker_row_parse "$primary_line"
+    primary_kind="${PICKER_ROW_FIELDS[1]-}"
+    primary_path="${PICKER_ROW_FIELDS[2]-}"
+    primary_target="${PICKER_ROW_FIELDS[4]-}"
   fi
 fi
 
@@ -1020,7 +1023,11 @@ target_session=""
 primary_set=0
 while IFS= read -r _line; do
   [ -n "$_line" ] || continue
-  IFS=$'\t' read -r _disp kind path meta target _mk <<< "$_line"
+  picker_row_parse "$_line"
+  kind="${PICKER_ROW_FIELDS[1]-}"
+  path="${PICKER_ROW_FIELDS[2]-}"
+  meta="${PICKER_ROW_FIELDS[3]-}"
+  target="${PICKER_ROW_FIELDS[4]-}"
 
   is_primary=0
   if [ -n "${primary_kind:-}" ] && [ -n "${primary_path:-}" ]; then

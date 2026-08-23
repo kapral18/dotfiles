@@ -34,3 +34,6 @@ lasr
 # Description: Interactive side-by-side git diff viewer for PR review
 # URL: https://github.com/flamestro/deff
 deff
+# Description: Disk usage TUI with snapshots (what changed and what to delete)
+# URL: https://github.com/cesarferreira/disko
+disko-cli

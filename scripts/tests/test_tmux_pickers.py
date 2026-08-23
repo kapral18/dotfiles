@@ -101,6 +101,29 @@ class TestTmuxPickerShellHelpers(unittest.TestCase):
 
             assert out == "my-project\n"
 
+    def test_when_session_row_has_empty_meta_should_preserve_target_column(self):
+        lib = TMUX_PICKERS / "session/lib/session_naming.sh"
+        row = "display\tsession\t/path\t\tcanonical\tcanonical base ~/path /path"
+
+        out = run_bash(
+            "\n".join(
+                [
+                    f". {shlex.quote(str(lib))}",
+                    f"picker_row_parse {shlex.quote(row)}",
+                    "printf '%s\\n' \"${PICKER_ROW_FIELDS[@]}\"",
+                ]
+            )
+        )
+
+        assert out.splitlines() == [
+            "display",
+            "session",
+            "/path",
+            "",
+            "canonical",
+            "canonical base ~/path /path",
+        ]
+
     def test_bag_rename_if_needed_moves_bagged_holder_aside(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -331,6 +354,154 @@ exit 1
 
             assert result.returncode != 0
             assert cache.read_text() == original
+
+    def test_when_quick_only_refresh_runs_should_keep_cached_worktree_and_dir_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            fake_bin = root / "bin"
+            cache_dir = root / "cache/tmux"
+            session_scripts = home / ".config/tmux/scripts/pickers/session"
+            fake_bin.mkdir()
+            cache_dir.mkdir(parents=True)
+            session_scripts.mkdir(parents=True)
+
+            fake_index = session_scripts / "index.sh"
+            fake_index.write_text("#!/usr/bin/env bash\nprintf '%s\\n' $'sess\\tsession\\t/sess\\t\\tsess\\tsess'\n")
+            fake_index.chmod(0o755)
+            (session_scripts / "lib").mkdir()
+            (home / ".config/tmux/pick_session_dir_exclude.txt").write_text("")
+
+            fake_tmux = fake_bin / "tmux"
+            fake_tmux.write_text("#!/usr/bin/env bash\nexit 0\n")
+            fake_tmux.chmod(0o755)
+
+            cache = cache_dir / "pick_session_items.tsv"
+            original = (
+                "old-sess\tsession\t/old-sess\t\told-sess\told-sess\n"
+                "wt\tworktree\t/wt\t\t/wt\twt\n"
+                "dir\tdir\t/dir\t\t\tdir\n"
+            )
+            cache.write_text(original)
+
+            result = subprocess.run(
+                [
+                    modern_bash(),
+                    str(TMUX_PICKERS / "session/executable_index_update.sh"),
+                    "--force",
+                    "--quiet",
+                    "--quick-only",
+                    "--skip-dirty",
+                ],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "XDG_CACHE_HOME": str(root / "cache"),
+                    "PATH": f"{fake_bin}:{os.environ['PATH']}",
+                    "TMUX": "",
+                },
+            )
+
+            kinds = {line.split("\t")[1] for line in cache.read_text().splitlines() if line.strip()}
+            assert result.returncode == 0, result.stderr
+            assert "worktree" in kinds
+            assert "dir" in kinds
+            assert "session" in kinds
+
+    def test_when_session_create_hook_runs_should_defer_if_updater_busy(self):
+        hook = TMUX_PICKERS / "session/executable_index_update_hook.sh"
+        text = hook.read_text()
+        assert "--quick-only" in text
+        assert "--defer-if-busy" in text
+        assert "--force" in text
+
+    def test_when_open_items_writes_ordered_meta_should_use_numeric_mtime_under_gnubin_stat(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_dir = root / "cache/tmux"
+            session_scripts = root / "config/tmux/scripts/pickers/session"
+            fake_bin = root / "bin"
+            gnubin = fake_bin / "gnubin"
+            cache_dir.mkdir(parents=True)
+            session_scripts.mkdir(parents=True)
+            gnubin.mkdir(parents=True)
+
+            ordered = cache_dir / "pick_session_items_ordered.tsv"
+            cache_tsv = cache_dir / "pick_session_items.tsv"
+            row = "row\tsession\t/path\t\tname\tname\nwt\tworktree\t/wt\t\t/wt\twt\n"
+            # Write cache first, then ordered, so ordered is not older than cache
+            # (open_items treats cache -nt ordered as stale).
+            cache_tsv.write_text(row)
+            ordered.write_text(row)
+            # GNU-shaped `stat`: -c works; -f is --file-system (multi-line dump).
+            gnu_stat = gnubin / "stat"
+            gnu_stat.write_text(
+                """#!/usr/bin/env bash
+if [[ "$1" == -c ]]; then
+  fmt="$2"; shift 2
+  f="$1"
+  case "$fmt" in
+    %Y) /usr/bin/stat -f %m "$f" ;;
+    %s) /usr/bin/stat -f %z "$f" ;;
+    *) exit 1 ;;
+  esac
+  exit $?
+fi
+if [[ "$1" == -f ]]; then
+  echo "stat: cannot read file system information for '$2'" >&2
+  echo "  File: \\"$3\\""
+  echo "    ID: bogus Type: apfs"
+  exit 1
+fi
+exit 1
+"""
+            )
+            gnu_stat.chmod(0o755)
+
+            open_items = session_scripts / "open_items.sh"
+            open_items.write_text(
+                (TMUX_PICKERS / "session/executable_open_items.sh")
+                .read_text()
+                .replace(
+                    "$HOME/.config/tmux/scripts/pickers/session/",
+                    str(session_scripts) + "/",
+                )
+            )
+            open_items.chmod(0o755)
+            (session_scripts / "lib").symlink_to(TMUX_PICKERS / "session/lib", target_is_directory=True)
+            # Minimal stubs so open_items can exec filter/items if needed.
+            for name in ("items.sh", "filter.sh", "ordered_cache_update.sh"):
+                stub = session_scripts / name
+                stub.write_text("#!/usr/bin/env bash\nexit 0\n")
+                stub.chmod(0o755)
+
+            fake_tmux = fake_bin / "tmux"
+            fake_tmux.write_text(
+                '#!/usr/bin/env bash\nif [[ "$1" == display-message ]]; then echo test-session; exit 0; fi\nexit 0\n'
+            )
+            fake_tmux.chmod(0o755)
+
+            result = subprocess.run(
+                [modern_bash(), str(open_items)],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "HOME": str(root / "home"),
+                    "XDG_CACHE_HOME": str(root / "cache"),
+                    "PATH": f"{gnubin}:{fake_bin}:{os.environ['PATH']}",
+                    "TMUX": "dummy",
+                },
+            )
+            meta = (cache_dir / "pick_session_items_ordered.current.tsv.meta").read_text().splitlines()
+            assert result.returncode == 0, result.stderr
+            assert len(meta) >= 3
+            assert meta[0] == "test-session"
+            assert meta[1].isdigit(), meta
+            assert meta[2].isdigit(), meta
+            assert "File:" not in meta[1]
 
     def test_when_rehydrate_cannot_enumerate_sessions_should_keep_cached_session_rows(self):
         with tempfile.TemporaryDirectory() as tmp:

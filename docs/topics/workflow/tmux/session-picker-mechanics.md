@@ -102,6 +102,8 @@ Removing a plain (non-worktree) directory row also kills its tmux session. The p
 
 After tmux-resurrect/continuum restores saved sessions, a post-restore hook waits for restore-time quick-only session hooks to settle, then runs a fast full worktree scan (`--skip-dirty --skip-gh`) followed by the normal enriched full scan in the background. That keeps session-only restore caches from hiding worktrees that do not currently have live tmux sessions.
 
+Quick/sessions-only publishes merge into the existing cache and refuse to replace a cache that already has worktree/dir rows with a discovery-empty snapshot. Session create/rename hooks use `--force --quick-only --defer-if-busy` so they still bypass TTL when the lock is free, but they leave an in-flight full scan (post-restore or live refresh) alone instead of pre-empting it.
+
 Refresh preserves query and cursor position by reloading through the same ordered cache pipeline and using fzf tracking actions.
 
 Session enumeration fails closed: if `tmux list-sessions` fails, index updates keep the last good cache and cache rehydration preserves existing rows rather than presenting worktrees/directories without sessions. Ordered snapshots also verify that their cache, mutation, pending, and frecency inputs did not change while ordering; a raced snapshot is discarded.
@@ -134,7 +136,7 @@ Cross-repo closing issues preserve their exact `owner/repo` and do not rely on c
 
 ## Session naming and collision recovery
 
-Naming and path helpers are centralized in `pickers/session/lib/session_naming.sh`, shared by both regular open and send-command flows.
+Naming and path helpers are centralized in `pickers/session/lib/session_naming.sh`, shared by both regular open and send-command flows. Picker TSV rows preserve all six positional columns, including empty metadata and target fields, so a search-only match key cannot become a tmux session name.
 
 Name collisions first try the `@bag` recovery path: if the existing session points at a bagged removal path, it is renamed to `<name>@bag[N]`, freeing the canonical session name. Only non-bagged sessions at different paths fall back to `<name>@<basename>`.
 

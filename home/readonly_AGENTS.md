@@ -329,10 +329,16 @@ Durable cross-session knowledge lives in `,ai-kb`; ephemeral working context liv
 The user is dyslexic and reads agent output all day. Every §6 rule serves one goal: minimize the user's reading load.
 
 - Brevity outranks structure. Shortest form that carries the full meaning wins.
+- Prefer the shortest structure that still delivers a complete essence when that form is denser than prose (default:
+  verdict line → optional table or anchor list → one new last line).
 - Structure must earn its space by adding scannable information not present elsewhere.
   Add a section, heading, table, or list only when it carries information a shorter form lacks —
   filling a budget or restating is disqualifying.
 - Compression still cuts words first, not structure: a table that carries new information stays even under pressure.
+- Borrow STE (ASD-STE100 Simplified Technical English) sentence habits only when they shrink text:
+  one idea per sentence, active voice, delete filler, and condition before command in procedures.
+  Apply full STE vocabulary, modal, and sentence-cap discipline only when the user asks for STE or docs compliance;
+  §6 density primitives and word budgets stay authoritative for in-session replies.
 
 ### 6.1 Debloat (hard requirement)
 

@@ -9,7 +9,8 @@ Load when building the required PR publication packet for `k-github`. The gate i
 - `screenshots`: `captured | not_applicable | blocked | explicitly_skipped`.
   Visual proof is required when the diff touches UI/runtime behavior, linked context includes screenshots/media, or the Test Plan includes manual UI steps.
   Build the proof-mode contract's Behavior inventory first (`~/.agents/skills/k-ui-capture/references/proof-mode.md`):
-  screenshot pair for static deltas, video pair for any delta observed through interaction (before recorded on the base branch, after on the PR head), even when the diff looks static.
+  screenshot pair for fixed static states, including opened menus/popovers/palettes reached by setup actions;
+  video pair only when the fixed behavior is the interaction sequence, timing, continuous action, or cannot be conveyed by screenshots.
   Follow its coverage plan: a dedicated before/after pair per behavior by default, or one shared pair when same-trigger behaviors are each plainly visible in it, captioned with every covered behavior.
   Tag each item with the baseline test (`baseline` vs `intra-change` vs head-only): body Screenshots/Videos carry `baseline` pairs;
   mid-change tip↔tip pairs go in a separate comment when requested.
@@ -27,6 +28,7 @@ Load when building the required PR publication packet for `k-github`. The gate i
   presenting it as proof or finishing it retroactively during PR composition is off limits.
 - `metadata`: proposed labels/assignees/milestone/projects, source skill/rationale, and `status: none | not_applicable | approved_to_apply | applied | deferred | pending_approval`.
   Proposed-but-unapproved metadata is `pending_approval` unless the user explicitly defers it.
+- Keep PR reviewer fields unset; GitHub handles reviewer assignment automatically.
 
 Completion criterion: the packet is complete, or composition is blocked with exact missing fields.
 

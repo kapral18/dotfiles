@@ -56,13 +56,15 @@ Build this inventory before the published-proof gate and before any capture; bot
    Two observable differences stay two items even when one diff, commit, or feature produced both — could one ship without the other?
    Then split.
    A caption that needs "and", "plus", a semicolon, or a parenthetical to name a second observable difference is naming a second item.
-2. **Classification test — screenshot vs video.** Classify by what it takes to observe the delta, never by how the diff reads:
-   - static — the delta is fully visible in a single rendered state with no user action: before/after screenshot pair.
-   - interactive — observing the delta requires performing an action (click, keypress, submit, trigger):
-     short before/after video pair (Playwright `recordVideo`, see the Video Recording section of `~/.agents/skills/k-playwriter/SKILL.md`).
+2. **Classification test — screenshot vs video.** Classify by what the fix changes, not by the setup action needed to reach the state:
+   - static state — the changed surface is fully visible in one settled rendered state: before/after screenshot pair.
+     Setup actions may happen off-camera before the screenshot, such as opening a menu, command palette, popover, or modal.
+     If the fix changes only that opened surface's static styling, copy, layout, visibility, or contrast, keep it screenshot-classified.
+   - interactive sequence — the fixed behavior is the action sequence itself, the transition/result across time, or a single behavior that needs multiple states to be understood: short before/after video pair (Playwright `recordVideo`, see the Video Recording section of `~/.agents/skills/k-playwriter/SKILL.md`).
      The video drives the same trigger on both sides — before: perform the action, show the old outcome; after:
      repeat it, show the new outcome.
-   - Interaction-only deltas are video even when the diff looks static: element/warning removals, actions whose correct new result is "no visible change", and multi-effect changes.
+   - Multi-state proof without action semantics can use a small ordered screenshot set when that conveys the behavior clearly;
+     use video only when the sequence, timing, or continuous interaction is the fixed functionality or screenshots would not carry the claim.
 3. **Coverage plan — items to assets.** Each item gets its own dedicated pair by default.
    Consolidate into one shared pair only when several items are observed through the same trigger on the same target and that single pair plainly shows each item's before/after contrast in the same frames; the shared pair's caption then names every covered behavior.
    Capture each distinct interaction exactly once — re-recording the same interaction to make a second, visually identical pair is duplication, not extra rigor.

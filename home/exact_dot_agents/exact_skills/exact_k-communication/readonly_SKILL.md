@@ -69,9 +69,9 @@ That is the whole message. Add sections only when the content genuinely needs th
 
 ## Structure (Longer-Form Artifacts)
 
-Brevity outranks structure here too: the shortest form that carries the full meaning wins.
-For PR/issue descriptions, release notes, or any multi-point message, structure must earn its space —
-reach for a density primitive before prose, and never add sections to fill a template:
+Brevity outranks structure: prefer the shortest structure that still delivers a complete essence.
+For PR/issue descriptions, release notes, or multi-point messages, structure must earn its space —
+reach for a density primitive before prose; add sections only when they carry information a shorter form lacks:
 
 - **Verdict line** for status / decision / ack.
 - **Bulleted anchor list** for a set of findings, changes, or asks — one clause per bullet with a link/anchor.
@@ -114,7 +114,6 @@ Then reply by outcome:
 
 ## Optional Niceties
 
-- A light collaborative close (`Wdyt`, `lmk`) is the default nicety and covers most of what politeness needs here.
-  It replaces longer warmth; use one or the other. Drop it when it would not fit naturally (a pure factual answer, a resolve/close).
+- A light collaborative close (`Wdyt`, `lmk`) is the default nicety; it replaces longer warmth. Drop it on pure facts or resolve/close.
 - Honest doubt is a nicety, not a weakness: naming the assumption you could not verify invites correction and reads as collaborative.
 - Match the surface's register: terser for chat/Slack, slightly more structured for long-form email or a PR description when the content genuinely needs it.
