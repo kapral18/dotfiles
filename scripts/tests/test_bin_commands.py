@@ -67,6 +67,17 @@ def _load_unwrap_md_command():
     return module
 
 
+def _load_openrouter_presets_module():
+    source = REPO / "home/exact_lib/exact_shared/executable_openrouter_presets.py"
+    loader = SourceFileLoader("openrouter_presets", str(source))
+    spec = importlib.util.spec_from_loader("openrouter_presets", loader)
+    if spec is None or spec.loader is None:
+        raise AssertionError("could not load OpenRouter preset helper")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def _load_mcp_token_module():
     loader = SourceFileLoader("mcp_token_main", str(MCP_TOKEN_COMMAND))
     spec = importlib.util.spec_from_loader("mcp_token_main", loader)
@@ -2457,6 +2468,13 @@ class TestMcpTokenWorkspaceSeeding(unittest.TestCase):
         assert seeded.get("kibana", {}).get("tokens") == other_tokens, "other servers' entries must be preserved"
 
 
+def _install_openrouter_preset_stub(home: Path) -> None:
+    preset_helper = home / "lib" / "shared" / "openrouter_presets.py"
+    preset_helper.parent.mkdir(parents=True, exist_ok=True)
+    preset_helper.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+    preset_helper.chmod(0o755)
+
+
 def _install_shim_stub(home: Path) -> None:
     """Drop a stub shim.py into a fake HOME so the launcher's shim branch works.
 
@@ -2465,6 +2483,7 @@ def _install_shim_stub(home: Path) -> None:
     ready pipe) and then loops, so the launcher's poll loop advances past the
     ready check without a real HTTP server.
     """
+    _install_openrouter_preset_stub(home)
     shim_dir = home / "lib" / ",cursor-agent-shim"
     shim_dir.mkdir(parents=True, exist_ok=True)
     (shim_dir / "shim.py").write_text(
@@ -2474,7 +2493,244 @@ def _install_shim_stub(home: Path) -> None:
 
 
 class TestOpenRouterWrappers(unittest.TestCase):
-    """WHEN launching Claude or Codex through OpenRouter."""
+    """WHEN launching a harness through OpenRouter."""
+
+    def setUp(self):
+        self.wrapper_home_directory = tempfile.TemporaryDirectory()
+        wrapper_home = Path(self.wrapper_home_directory.name)
+        _install_openrouter_preset_stub(wrapper_home)
+        self.wrapper_home_environment = mock.patch.dict(
+            os.environ,
+            {"HOME": str(wrapper_home)},
+        )
+        self.wrapper_home_environment.start()
+
+    def tearDown(self):
+        self.wrapper_home_environment.stop()
+        self.wrapper_home_directory.cleanup()
+
+    def test_SHOULD_create_only_a_missing_preset_in_the_active_account(self):
+        module = _load_openrouter_presets_module()
+        existing_response = mock.MagicMock()
+        existing_response.__enter__.return_value = io.BytesIO(b'{"data":{"slug":"effort-high"}}')
+        missing_error = module.urllib.error.HTTPError(
+            "https://openrouter.ai/api/v1/presets/effort-max",
+            404,
+            "Not Found",
+            {},
+            io.BytesIO(b'{"error":"not found"}'),
+        )
+        created_response = mock.MagicMock()
+        created_response.__enter__.return_value = io.BytesIO(
+            b'{"data":{"designated_version":{"config":{"reasoning":{"effort":"max"}}}}}'
+        )
+
+        with mock.patch.object(module.URL_OPENER, "open", return_value=existing_response) as urlopen:
+            module.ensure_preset("high", "active-account-key")
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertEqual(urlopen.call_args.args[0].get_method(), "GET")
+
+        with mock.patch.object(
+            module.URL_OPENER,
+            "open",
+            side_effect=[missing_error, created_response],
+        ) as urlopen:
+            module.ensure_preset("max", "active-account-key")
+        self.assertEqual([call.args[0].get_method() for call in urlopen.call_args_list], ["GET", "POST"])
+        post_request = urlopen.call_args_list[1].args[0]
+        self.assertEqual(json.loads(post_request.data), {"reasoning": {"effort": "max"}})
+        self.assertEqual(post_request.get_header("Authorization"), "Bearer active-account-key")
+
+        enriched_response = mock.MagicMock()
+        enriched_response.__enter__.return_value = io.BytesIO(
+            b'{"data":{"designated_version":{"config":{"reasoning":{"effort":"max"},"provider":{}}}}}'
+        )
+        with mock.patch.object(
+            module.URL_OPENER,
+            "open",
+            side_effect=[missing_error, enriched_response],
+        ):
+            module.ensure_preset("max", "active-account-key")
+
+        conflict_error = module.urllib.error.HTTPError(
+            "https://openrouter.ai/api/v1/presets/effort-max/chat/completions",
+            409,
+            "Conflict",
+            {},
+            io.BytesIO(b'{"error":"resource conflict"}'),
+        )
+        concurrently_created_response = mock.MagicMock()
+        concurrently_created_response.__enter__.return_value = io.BytesIO(b'{"data":{"slug":"effort-max"}}')
+        with mock.patch.object(
+            module.URL_OPENER,
+            "open",
+            side_effect=[missing_error, conflict_error, concurrently_created_response],
+        ) as urlopen:
+            module.ensure_preset("max", "active-account-key")
+        self.assertEqual(
+            [call.args[0].get_method() for call in urlopen.call_args_list],
+            ["GET", "POST", "GET"],
+        )
+
+    def test_SHOULD_fail_preset_preflight_when_required_state_cannot_be_confirmed(self):
+        module = _load_openrouter_presets_module()
+
+        lookup_error = module.urllib.error.HTTPError(
+            "https://openrouter.ai/api/v1/presets/effort-high",
+            401,
+            "Unauthorized",
+            {},
+            io.BytesIO(b'{"error":"invalid key"}'),
+        )
+        with mock.patch.object(module.URL_OPENER, "open", side_effect=lookup_error):
+            with self.assertRaisesRegex(module.PresetError, "GET .* HTTP 401") as raised_error:
+                module.ensure_preset("high", "active-account-key")
+        self.assertNotIn("active-account-key", str(raised_error.exception))
+
+        timeout_response = mock.MagicMock()
+        timeout_response.__enter__.return_value.read.side_effect = TimeoutError("timed out")
+        with mock.patch.object(module.URL_OPENER, "open", return_value=timeout_response):
+            with self.assertRaisesRegex(module.PresetError, "response read failed"):
+                module.ensure_preset("high", "active-account-key")
+
+        malformed_lookup_response = mock.MagicMock()
+        malformed_lookup_response.__enter__.return_value = io.BytesIO(b"not-json")
+        with mock.patch.object(
+            module.URL_OPENER,
+            "open",
+            return_value=malformed_lookup_response,
+        ):
+            with self.assertRaisesRegex(module.PresetError, "GET .* returned invalid JSON"):
+                module.ensure_preset("high", "active-account-key")
+
+        mismatched_lookup_response = mock.MagicMock()
+        mismatched_lookup_response.__enter__.return_value = io.BytesIO(b'{"data":{"slug":"effort-low"}}')
+        with mock.patch.object(
+            module.URL_OPENER,
+            "open",
+            return_value=mismatched_lookup_response,
+        ):
+            with self.assertRaisesRegex(module.PresetError, "unexpected preset slug"):
+                module.ensure_preset("high", "active-account-key")
+
+        missing_error = module.urllib.error.HTTPError(
+            "https://openrouter.ai/api/v1/presets/effort-high",
+            404,
+            "Not Found",
+            {},
+            io.BytesIO(b'{"error":"not found"}'),
+        )
+        creation_error = module.urllib.error.HTTPError(
+            "https://openrouter.ai/api/v1/presets/effort-high/chat/completions",
+            500,
+            "Internal Server Error",
+            {},
+            io.BytesIO(b'{"error":"failed"}'),
+        )
+        with mock.patch.object(
+            module.URL_OPENER,
+            "open",
+            side_effect=[missing_error, creation_error],
+        ):
+            with self.assertRaisesRegex(module.PresetError, "POST .* HTTP 500"):
+                module.ensure_preset("high", "active-account-key")
+
+        mismatched_response = mock.MagicMock()
+        mismatched_response.__enter__.return_value = io.BytesIO(
+            b'{"data":{"designated_version":{"config":{"reasoning":{"effort":"low"}}}}}'
+        )
+        with mock.patch.object(
+            module.URL_OPENER,
+            "open",
+            side_effect=[missing_error, mismatched_response],
+        ):
+            with self.assertRaisesRegex(module.PresetError, "unexpected reasoning effort"):
+                module.ensure_preset("high", "active-account-key")
+
+        malformed_response = mock.MagicMock()
+        malformed_response.__enter__.return_value = io.BytesIO(b"not-json")
+        with mock.patch.object(
+            module.URL_OPENER,
+            "open",
+            side_effect=[missing_error, malformed_response],
+        ):
+            with self.assertRaisesRegex(module.PresetError, "returned invalid JSON"):
+                module.ensure_preset("high", "active-account-key")
+
+        unexpected_shape_response = mock.MagicMock()
+        unexpected_shape_response.__enter__.return_value = io.BytesIO(b"[]")
+        with mock.patch.object(
+            module.URL_OPENER,
+            "open",
+            side_effect=[missing_error, unexpected_shape_response],
+        ):
+            with self.assertRaisesRegex(module.PresetError, "unexpected JSON shape"):
+                module.ensure_preset("high", "active-account-key")
+
+    def test_SHOULD_reject_redirects_without_forwarding_the_active_account_key(self):
+        module = _load_openrouter_presets_module()
+        received_authorization_headers = []
+
+        class RedirectHandler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(302)
+                self.send_header("Location", target_url)
+                self.end_headers()
+
+            def log_message(self, *args):
+                pass
+
+        class CaptureHandler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                received_authorization_headers.append(self.headers.get("Authorization"))
+                self.send_response(200)
+                self.end_headers()
+
+            def log_message(self, *args):
+                pass
+
+        capture_server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), CaptureHandler)
+        target_url = f"http://127.0.0.1:{capture_server.server_port}/captured"
+        redirect_server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), RedirectHandler)
+        server_threads = [
+            threading.Thread(target=server.serve_forever, daemon=True) for server in (capture_server, redirect_server)
+        ]
+        for server_thread in server_threads:
+            server_thread.start()
+
+        try:
+            with mock.patch.object(
+                module,
+                "BASE_URL",
+                f"http://127.0.0.1:{redirect_server.server_port}",
+            ):
+                with self.assertRaisesRegex(module.PresetError, "GET .* HTTP 302"):
+                    module.ensure_preset("high", "active-account-key")
+        finally:
+            redirect_server.shutdown()
+            capture_server.shutdown()
+            redirect_server.server_close()
+            capture_server.server_close()
+            for server_thread in server_threads:
+                server_thread.join()
+
+        self.assertEqual(received_authorization_headers, [])
+
+    def test_SHOULD_run_account_local_preset_preflight_in_every_wrapper(self):
+        for relative in (
+            "home/exact_bin/executable_,claude-openrouter",
+            "home/exact_bin/executable_,codex-openrouter",
+            "home/exact_bin/executable_,copilot-openrouter",
+            "home/exact_bin/executable_,cursor-openrouter",
+        ):
+            with self.subTest(command=relative):
+                source = (REPO / relative).read_text()
+                self.assertIn(
+                    'readonly OPENROUTER_PRESET_HELPER="$HOME/lib/shared/openrouter_presets.py"',
+                    source,
+                )
+                self.assertIn('"$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"', source)
+                self.assertIn("tr -d '[:space:]'", source)
 
     def test_SHOULD_clear_claude_api_credentials(self):
         source = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()

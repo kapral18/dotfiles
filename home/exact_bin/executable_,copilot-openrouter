@@ -9,6 +9,7 @@ if ! command -v copilot >/dev/null 2>&1; then
 fi
 
 api_key="${OPENROUTER_API_KEY:-}"
+api_key="$(printf '%s' "$api_key" | tr -d '[:space:]')"
 if [[ -z "$api_key" ]]; then
   echo "Error: set OPENROUTER_API_KEY." >&2
   exit 1
@@ -70,6 +71,13 @@ if [[ -z "$OPENROUTER_MODEL" || -z "$OPENROUTER_EFFORT" ]]; then
   echo "Error: --model and --effort require non-empty values." >&2
   exit 2
 fi
+readonly OPENROUTER_PRESET_HELPER="$HOME/lib/shared/openrouter_presets.py"
+if [[ ! -x "$OPENROUTER_PRESET_HELPER" ]]; then
+  echo "Error: OpenRouter preset helper missing at $OPENROUTER_PRESET_HELPER." >&2
+  exit 1
+fi
+export OPENROUTER_API_KEY="$api_key"
+"$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
 
 # Copilot picks the BYOK client kind once per launch, and only the anthropic one

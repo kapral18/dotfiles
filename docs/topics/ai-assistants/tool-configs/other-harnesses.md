@@ -78,7 +78,7 @@ Other provider wrappers:
 
 Copilot custom providers are BYOK environment variables only, so its wrappers set those variables for OpenAI-compatible endpoints. The provider wrappers `exec ,copilot` rather than `copilot` to keep one stable entry point.
 
-The four OpenRouter wrappers read `OPENROUTER_API_KEY`, falling back to the `openrouter/api/token` pass entry when the environment is not already populated.
+The four OpenRouter wrappers read `OPENROUTER_API_KEY`; Claude, Codex, and Cursor fall back to the active password store's `openrouter/api/token` entry when the environment is not already populated, while Copilot requires the environment variable. Before launching, each wrapper checks the active account for its `effort-<level>` preset. A missing preset is created in that account with only `reasoning.effort`; an existing preset is used unchanged. No account discovery or cross-account synchronization occurs.
 
 The four `*-openrouter` wrappers default to `deepseek/deepseek-v4-flash-0731` at `max` and compose `<model>@preset/effort-<level>`. Pi, OMP, and OpenCode still carry family provider policy: FP8-or-higher plus a 24 t/s preferred floor on DeepSeek/GLM, Fireworks/Together/BaseTen-only Kimi under a $16/M completion cap, and `openai/gpt-5.6-terra` at `max` as the Pi counter/verifier. `sort` stays omitted so OpenRouter's default load balancer keeps uptime. Pi sends those objects as `modelOverrides.compat.openRouterRouting`. OMP 17.2.9 and OpenCode carry them through workspace `*-lanes-*` preset slugs (OMP drops `extraBody.provider` from its typed openrouter wire, so it pins the same preset-slug ids).
 
