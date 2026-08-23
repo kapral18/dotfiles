@@ -46,31 +46,35 @@ class TestReviewPolicyInvariants(unittest.TestCase):
             "### Playwriter comparison",
         )
 
-    def test_deep_review_fresh_eyes_uses_registry_lane_model(self):
+    def test_deep_review_fresh_eyes_uses_resolved_lane_model(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
-            "named fresh-eyes profiles and generic fresh-eyes launches both use the registry lane model",
-            "model_required=<registry value|inherit|default>",
+            "named fresh-eyes profiles and generic fresh-eyes launches both use the resolved lane model",
+            "model_required=<resolved value|inherit|default>",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_runtime-harnesses.md",
-            "Generic fresh-eyes launches must pass the registry lane model as the profile-equivalent model",
-            "named fresh-eyes profiles carry the same registry-rendered frontmatter",
-            "always pass the registry's concrete lane value rather than letting the runtime pick an implicit default",
+            "Generic fresh-eyes launches must pass the resolved lane model as the profile-equivalent model",
+            "named fresh-eyes profiles carry the same resolver-rendered frontmatter",
+            "always pass the resolved concrete lane value rather than letting the runtime pick an implicit default",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_fresh-eyes.md",
             "Pi/OMP: launch the `fresh-eyes` agent profile",
-            "model_required=<registry lanes value|inherit|default>",
+            "model_required=<resolved lanes value|inherit|default>",
             "model_status=exact",
         )
         self.assert_file_contains(
             "home/dot_pi/agent/exact_agents/fresh-eyes.md.tmpl",
-            'model: "{{ .agent_review_models.pi.lanes }}"',
+            "review-agent-model.partial",
+            '"harness" "pi"',
+            '"agent" "fresh-eyes"',
         )
         self.assert_file_contains(
             "home/dot_omp/private_agent/exact_agents/fresh-eyes.md.tmpl",
-            'model: "{{ .agent_review_models.omp.lanes }}"',
+            "review-agent-model.partial",
+            '"harness" "omp"',
+            '"agent" "fresh-eyes"',
         )
         self.assert_file_not_contains(
             "home/dot_pi/agent/exact_agents/fresh-eyes.md.tmpl",

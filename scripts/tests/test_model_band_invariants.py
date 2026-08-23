@@ -23,40 +23,33 @@ class TestModelBandInvariants(unittest.TestCase):
         for snippet in snippets:
             assert snippet not in text, f"{relative_path} should not contain: {snippet}"
 
-    def test_copilot_subagent_settings_match_the_review_model_registry(self):
+    def test_copilot_subagent_settings_match_the_review_model_resolver(self):
         # Copilot resolves subagent models from ~/.copilot/settings.json, which a merge script
-        # reads as source JSON, so it cannot be a chezmoi template over the registry. It is
-        # hand-synced and has drifted before; this asserts it against agent_review_models.
+        # reads as source JSON, so it cannot be a chezmoi template. The expected picks come from
+        # the same review resolver profile templates use.
         import ai_models
 
-        registry = ai_models.load_agent_review_models(REPO / "home/.chezmoidata/ai_models")
-        copilot = registry["copilot"]
+        registry = REPO / "home/.chezmoidata/ai_models"
         agents = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text(encoding="utf-8"))["subagents"][
             "agents"
         ]
 
-        lane_roles = (
+        review_roles = (
             "deep-review",
             "review-worker",
             "findings-auditor",
             "pr-necessity-auditor",
             "live-ui-review",
+            "adversarial-verifier",
+            "criteria-verifier",
         )
-        # criteria-verifier is /k-build's refutation lane and shares the review verifier pick.
-        verifier_roles = ("adversarial-verifier", "criteria-verifier")
-
-        for role in lane_roles:
-            assert agents[role]["model"] == copilot["lanes"], (
+        for role in review_roles:
+            expected = ai_models.resolve_review_agent_model(registry, "copilot", role)
+            assert expected is not None, f"{role} has no resolved review model"
+            assert agents[role]["model"] == expected["model"], (
                 f"copilot settings.json {role} model {agents[role]['model']!r} != "
-                f"agent_review_models.copilot.lanes {copilot['lanes']!r}"
+                f"resolved review model {expected['model']!r}"
             )
-        for role in verifier_roles:
-            assert agents[role]["model"] == copilot["verifier"], (
-                f"copilot settings.json {role} model {agents[role]['model']!r} != "
-                f"agent_review_models.copilot.verifier {copilot['verifier']!r}"
-            )
-        # Copilot review lanes and the cross-family verifier are all pinned at high effort.
-        for role in lane_roles + verifier_roles:
             assert agents[role]["effortLevel"] == "high", (
                 f"copilot settings.json {role} effortLevel is {agents[role]['effortLevel']!r}, expected 'high'"
             )
@@ -71,7 +64,15 @@ class TestModelBandInvariants(unittest.TestCase):
         available = {row["id"] for row in ai_models.load_copilot_models(registry)}
 
         bands = ai_models.load_model_bands(registry)["copilot"]
-        review = ai_models.load_agent_review_models(registry)["copilot"]
+        review_roles = (
+            "deep-review",
+            "review-worker",
+            "findings-auditor",
+            "pr-necessity-auditor",
+            "live-ui-review",
+            "adversarial-verifier",
+            "criteria-verifier",
+        )
 
         used: set[str] = set()
         for band, row in bands.items():
@@ -82,75 +83,50 @@ class TestModelBandInvariants(unittest.TestCase):
             if isinstance(counter, dict) and counter.get("model"):
                 used.add(counter["model"])
 
-        for role, model in review.items():
-            if model and model != "inherit":
-                used.add(model)
+        for role in review_roles:
+            pick = ai_models.resolve_review_agent_model(registry, "copilot", role)
+            if pick and pick["model"] and pick["model"] != "inherit":
+                used.add(pick["model"])
 
         missing = sorted(model for model in used if model not in available)
         assert not missing, f"copilot policy names models not in copilot_models: {missing}"
 
-    def test_review_bands_agree_with_the_review_registry(self):
-        # Two registries describe the same review picks: the `max` band (what the hook and the
-        # generated rosters enforce) and agent_review_models (what agent profile frontmatter
-        # renders). Either can drift into describing a policy the other does not implement.
+    def test_review_model_resolver_uses_bands_except_declared_overrides(self):
+        # Review routing has one source rule: override only for harness selectors that model_bands
+        # cannot express, otherwise derive lane/verifier picks from the max band and its counter.
         import ai_models
 
         path = REPO / "home/.chezmoidata/ai_models"
         bands = ai_models.load_model_bands(path)
-        registry = ai_models.load_agent_review_models(path)
-        # model_bands spells the Claude harness claude_code; the review registry spells it claude.
-        registry_name = {"claude_code": "claude"}
+        overrides = ai_models.load_review_model_overrides(path)
+        expected_overrides = {"claude", "gemini"}
+        assert set(overrides) == expected_overrides, (
+            f"review_model_overrides should stay sparse; unexpected keys {sorted(set(overrides) ^ expected_overrides)}"
+        )
 
-        for harness, harness_bands in bands.items():
-            roles = registry.get(registry_name.get(harness, harness))
-            if roles is None:
-                continue
-            top = harness_bands["max"]
-            counter = top.get("counter") or top
+        review_agents = ("reviewer", "deep-review", "findings-auditor", "live-ui-review", "adversarial-verifier")
+        review_harnesses = {
+            "claude_code": "claude",
+            **{harness: harness for harness in bands if harness != "claude_code"},
+        }
+        for band_harness, review_harness in review_harnesses.items():
+            for agent in review_agents:
+                pick = ai_models.resolve_review_agent_model(path, review_harness, agent)
+                assert pick is not None, f"{agent} does not resolve on {review_harness}"
+                if review_harness in overrides:
+                    assert pick["source"] == "override"
+                    assert pick["model"] == overrides[review_harness][pick["slot"]]
+                    continue
 
-            # Claude sessions launch on a deliberately chosen model, so its registry entry is
-            # "inherit" and cannot be compared. No other harness may claim that exemption.
-            if roles.get("lanes") == "inherit":
-                assert harness == "claude_code", (
-                    f"{harness} review registry is 'inherit'; only claude_code may be unpinned"
+                top = bands[band_harness]["max"]
+                expected = (top.get("counter") or top)["model"] if pick["slot"] == "verifier" else top["model"]
+                assert pick["source"] == "model_bands"
+                assert pick["model"] == expected, (
+                    f"{review_harness} {agent} resolved {pick['model']!r}, expected {expected!r} from model_bands"
                 )
-                continue
-
-            if harness == "gemini":
-                # Antigravity's dynamic invoke_subagent API accepts abstract tiers rather
-                # than the root CLI's concrete model ids. Both review roles deliberately
-                # select its strongest available tier.
-                assert roles == {"lanes": "pro", "verifier": "pro"}, (
-                    f"gemini review registry is {roles!r}, expected both roles to use 'pro'"
-                )
-                continue
-
-            assert top["model"] == roles["lanes"], (
-                f"model_bands.{harness}.max.model is {top['model']!r} but "
-                f"agent_review_models.{registry_name.get(harness, harness)}.lanes is {roles['lanes']!r}"
-            )
-            if harness == "cursor":
-                # Cursor's Task subagents are whitelist-bounded and the policy may intentionally run
-                # review + verifier same-family (degraded refutation) by omitting a counter.
-                assert roles["verifier"] == roles["lanes"], (
-                    f"cursor registry verifier {roles['verifier']!r} != lanes {roles['lanes']!r}"
-                )
-                continue
-            if harness == "omp":
-                # Review lanes and verifier both follow @default (same-family per profile).
-                # The band carries no counter unless a profile prices advisor as a different family.
-                if "counter" in top:
-                    assert top["counter"]["model"] == "@advisor", (
-                        f"omp max band counter is {top['counter']!r}, expected the @advisor role token"
-                    )
-                assert roles["verifier"] == roles["lanes"], (
-                    f"omp registry verifier {roles['verifier']!r} != lanes {roles['lanes']!r}"
-                )
-                continue
-            assert counter["model"] == roles["verifier"], (
-                f"model_bands.{harness}.max counter is {counter['model']!r} but "
-                f"agent_review_models.{registry_name.get(harness, harness)}.verifier is {roles['verifier']!r}"
-            )
+                if pick["slot"] == "verifier" and top.get("verifier_status") == "reduced_independence":
+                    assert pick["verifier_status"] == "reduced_independence"
+                    assert pick["degraded"] is False
 
     def test_orchestrate_band_matches_real_harness_config(self):
         # `orchestrate` is the session's own category, and it is the one band that reaches a real
@@ -204,9 +180,9 @@ class TestModelBandInvariants(unittest.TestCase):
                 self.assertEqual(row["model"], expected_model)
                 self.assertEqual(row["effort"], expected_effort)
 
-        for role, model in ai_models.load_agent_review_models(registry)["codex"].items():
-            with self.subTest(surface="review_registry", name=role):
-                self.assertEqual(model, expected_model)
+        for role in ("review-worker", "findings-auditor", "adversarial-verifier", "criteria-verifier"):
+            with self.subTest(surface="review_resolver", name=role):
+                self.assertEqual(ai_models.resolve_review_agent_model(registry, "codex", role)["model"], expected_model)
 
         for profile in ("personal", "work"):
             config = (REPO / f"home/dot_codex/private_config.{profile}.toml").read_text(encoding="utf-8")
@@ -222,7 +198,8 @@ class TestModelBandInvariants(unittest.TestCase):
         for profile in agents:
             config = profile.read_text(encoding="utf-8")
             with self.subTest(surface="agent_profile", name=profile.name):
-                self.assertIn(".agent_review_models.codex.", config)
+                self.assertIn("review-agent-model.partial", config)
+                self.assertIn('"harness" "codex"', config)
                 self.assertRegex(
                     config, re.compile(rf'^model_reasoning_effort\s*=\s*"{expected_effort}"$', re.MULTILINE)
                 )
@@ -255,15 +232,16 @@ class TestModelBandInvariants(unittest.TestCase):
                 pick = ai_models.resolve_agent_model(path, harness, agent)
                 assert pick is not None and pick["model"], f"{agent} does not resolve to a model on {harness}"
 
-    def test_the_counter_band_changes_family_or_reports_itself_degraded(self):
+    def test_the_counter_band_changes_family_or_declares_same_family_status(self):
         # `refute` exists to break a conclusion, and a refuter from the lanes' own family is worth
         # much less. Where a harness can field a second family it must be a different one; where it
-        # cannot, resolution has to say `degraded` so the controller reports the weaker refutation
-        # instead of presenting it as a real cross-family pass.
+        # deliberately stays same-family for capability, resolution has to report reduced
+        # independence. Other missing-counter cases are degraded.
         import ai_models
 
         path = REPO / "home/.chezmoidata/ai_models"
         bands = ai_models.load_model_bands(path)
+        reduced_independence_harnesses = {"cursor", "omp"}
 
         def family(model: str) -> str:
             base = model.rsplit("/", 1)[-1].lstrip("@")
@@ -276,12 +254,27 @@ class TestModelBandInvariants(unittest.TestCase):
             top = harness_bands["max"]
             counter = top.get("counter")
             pick = ai_models.resolve_agent_model(path, harness, "adversarial-verifier")
+            verifier_status = top.get("verifier_status")
             if counter is None:
-                assert pick["degraded"] is True, (
-                    f"model_bands.{harness} has no counter, so refutation must resolve degraded"
-                )
+                if verifier_status == "reduced_independence":
+                    assert harness in reduced_independence_harnesses, (
+                        f"model_bands.{harness}.max declares reduced_independence unexpectedly"
+                    )
+                    assert pick["degraded"] is False, (
+                        f"model_bands.{harness}.max declares reduced_independence but resolution says degraded"
+                    )
+                    assert pick["verifier_status"] == "reduced_independence"
+                else:
+                    assert pick["degraded"] is True, (
+                        f"model_bands.{harness} has no counter, so refutation must resolve degraded"
+                    )
+                    assert pick["verifier_status"] == "degraded"
                 continue
+            assert verifier_status in (None, "cross_family"), (
+                f"model_bands.{harness}.max has a counter and should not declare {verifier_status!r}"
+            )
             assert pick["degraded"] is False, f"model_bands.{harness} has a counter but resolution says degraded"
+            assert pick["verifier_status"] == "cross_family"
             assert family(top["model"]) != family(counter["model"]), (
                 f"model_bands.{harness}.max counter {counter['model']!r} shares a family with {top['model']!r}"
             )
@@ -458,10 +451,12 @@ class TestModelBandInvariants(unittest.TestCase):
                         counter.get("effort"),
                     )
 
-        registry = ai_models.load_agent_review_models(REPO / "home/.chezmoidata/ai_models")
-        for harness, roles in registry.items():
-            for role, model in roles.items():
-                check(f"agent_review_models.{harness}.{role}", model, None)
+        registry = REPO / "home/.chezmoidata/ai_models"
+        for harness in ("claude", "codex", "copilot", "cursor", "gemini", "pi", "omp"):
+            for role in ("reviewer", "adversarial-verifier", "criteria-verifier"):
+                pick = ai_models.resolve_review_agent_model(registry, harness, role)
+                if pick:
+                    check(f"review model {harness}.{role}", pick["model"], None)
 
         copilot = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text(encoding="utf-8"))
         for name, agent in copilot["subagents"]["agents"].items():
@@ -634,9 +629,10 @@ class TestModelBandInvariants(unittest.TestCase):
             self.assertNotIn(glm, openrouter_models)
             self.assertNotIn(counter, openrouter_models)
 
-        review = ai_models.load_agent_review_models(registry)["pi"]
-        self.assertEqual(f"{default_selector}:max", review["lanes"])
-        self.assertEqual(f"{counter_selector}:max", review["verifier"])
+        pi_lane = ai_models.resolve_review_agent_model(registry, "pi", "reviewer")
+        pi_verifier = ai_models.resolve_review_agent_model(registry, "pi", "adversarial-verifier")
+        self.assertEqual(f"{default_selector}:max", pi_lane["model"])
+        self.assertEqual(f"{counter_selector}:max", pi_verifier["model"])
         bands = ai_models.load_model_bands(registry)["pi"]
         self.assertEqual(f"{default_selector}:max", bands["cheap"]["model"])
         self.assertEqual("max", bands["cheap"]["effort"])

@@ -1,10 +1,10 @@
-agent_review_models:
-  cursor:
-    lanes: "cursor-model-a"
-    verifier: "cursor-model-b"
-  copilot:
-    lanes: "gpt-model"
-    verifier: "claude-model"
+review_model_overrides:
+  claude:
+    lanes: "inherit"
+    verifier: "inherit"
+  gemini:
+    lanes: "pro"
+    verifier: "pro"
 
 model_bands:
   claude_code:
@@ -27,6 +27,22 @@ model_bands:
         model: "model-counter"
         effort: "medium"
         context: "long"
+  codex:
+    cheap:
+      model: "codex-cheap"
+      effort: "low"
+      thinking: ""
+      context: "short"
+    standard:
+      model: "codex-standard"
+      effort: "medium"
+      thinking: ""
+      context: "short"
+    max:
+      model: "codex-max"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
 
 agent_categories:
   search:

@@ -1,0 +1,77 @@
+{
+  "dotfiles": {
+    "label": "Dotfiles terminal",
+    "markers": [".mermaids/", "home/"],
+    "tokens": {
+      "bg": "#0f172a",
+      "surface": "#111827",
+      "surface_2": "#1e293b",
+      "ink": "#e2e8f0",
+      "muted": "#94a3b8",
+      "line": "rgba(148, 163, 184, 0.26)",
+      "accent": "#38bdf8",
+      "accent_2": "#a78bfa",
+      "code_bg": "#020617"
+    }
+  },
+  "docs": {
+    "label": "Documentation",
+    "markers": ["docusaurus.config.js or website/"],
+    "tokens": {
+      "bg": "#f8fafc",
+      "surface": "#ffffff",
+      "surface_2": "#eef2ff",
+      "ink": "#182033",
+      "muted": "#5b677a",
+      "line": "#dbe4f0",
+      "accent": "#2563eb",
+      "accent_2": "#7c3aed",
+      "code_bg": "#e2e8f0"
+    }
+  },
+  "web-app": {
+    "label": "Web app",
+    "markers": ["package.json frontend dependencies"],
+    "tokens": {
+      "bg": "#f6f7fb",
+      "surface": "#ffffff",
+      "surface_2": "#f1f5f9",
+      "ink": "#111827",
+      "muted": "#64748b",
+      "line": "#d8dee9",
+      "accent": "#0ea5e9",
+      "accent_2": "#6366f1",
+      "code_bg": "#eef2f7"
+    }
+  },
+  "codebase": {
+    "label": "Codebase",
+    "markers": ["go.mod", "Cargo.toml", "pyproject.toml"],
+    "tokens": {
+      "bg": "#101216",
+      "surface": "#171a21",
+      "surface_2": "#20242d",
+      "ink": "#f4f4f5",
+      "muted": "#a1a1aa",
+      "line": "rgba(161, 161, 170, 0.26)",
+      "accent": "#f59e0b",
+      "accent_2": "#22c55e",
+      "code_bg": "#09090b"
+    }
+  },
+  "neutral": {
+    "label": "Neutral",
+    "markers": ["fallback"],
+    "tokens": {
+      "bg": "#f8fafc",
+      "surface": "#ffffff",
+      "surface_2": "#eef2f7",
+      "ink": "#172033",
+      "muted": "#64748b",
+      "line": "#dbe4f0",
+      "accent": "#2563eb",
+      "accent_2": "#7c3aed",
+      "code_bg": "#e2e8f0"
+    }
+  }
+}

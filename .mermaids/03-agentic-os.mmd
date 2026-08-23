@@ -20,7 +20,7 @@ flowchart TB
 
     subgraph CTX["2 · Context (single sources of truth)"]
         REG[[".chezmoidata/mcp_servers.yaml<br/>generic registry; current work/domain servers:<br/>scsi-main(http sso) · scsi-local (ES stdio) · slack(http oauth)"]]:::data
-        MODELS[[".chezmoidata/ai_models/ split registry — harness-catalogs · provider-routes · tiering<br/>+ agent_review_models (review-lane registry: per-harness lanes/verifier → profile frontmatter)<br/>+ cursor_models · pi_extra_models · provider_models (model-mirror registry sources)"]]:::data
+        MODELS[[".chezmoidata/ai_models/ split registry — harness-catalogs · provider-routes · tiering<br/>+ review_model_overrides + model_bands counter/verifier_status<br/>(review-model resolver → profile frontmatter)<br/>+ cursor_models · pi_extra_models · provider_models (model-mirror registry sources)"]]:::data
         GEN["scripts/: mcp_registry.py · generate_mcp_configs.py<br/>resolve $(pass …) · filter by tool + work_only/isWork"]:::ctx
         REG --> GEN
     end

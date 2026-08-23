@@ -1,0 +1,24 @@
+<div class="box" id="__agentArtifactHover" hidden></div>
+<div class="box" id="__agentArtifactSelected" hidden></div>
+<section class="dock" aria-label="Agent live feedback overlay">
+  <div class="head">
+    <div class="context" id="context"><strong>Live overlay armed.</strong><span>Click to pin. Cmd-click adds targets. Alt-click expands. Pause to use the app normally.</span></div>
+    <div>
+      <button id="pause" type="button">Pause</button>
+      <button id="remove" type="button">Remove</button>
+    </div>
+  </div>
+  <div class="body">
+    <textarea id="prompt" placeholder="Write feedback for the pinned live element. Cmd+Enter adds to tray."></textarea>
+    <div class="tray" id="tray" aria-label="Queued feedback items"></div>
+    <div class="actions">
+      <span class="hint" id="status">Capture is on; click pins one target, Cmd-click pins multiple targets, and Pause restores normal page clicks.</span>
+      <div>
+        <button id="clear" type="button">Clear</button>
+        <button id="add" type="button">Add</button>
+        <button id="end" type="button">End</button>
+        <button id="send" class="primary" type="button">Send batch</button>
+      </div>
+    </div>
+  </div>
+</section>

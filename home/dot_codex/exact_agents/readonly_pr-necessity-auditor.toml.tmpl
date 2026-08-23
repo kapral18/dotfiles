@@ -1,6 +1,6 @@
 name = "pr-necessity-auditor"
 description = "First blocking read-only /k-deep-review PR necessity and intent auditor. Use for other-authored or unknown-author PRs before reviewer fan-out to check whether the PR is sensible, correctly open, still needed, and worth reviewing further."
-model = "{{ .agent_review_models.codex.lanes }}"
+model = "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "codex" "agent" "pr-necessity-auditor") }}"
 model_reasoning_effort = "xhigh"
 service_tier = "default"
 approval_policy = "untrusted"

@@ -17,11 +17,14 @@ SECTION_FILES = {
     "pi_extra_models": "harness-catalogs.yaml",
     "copilot_models": "harness-catalogs.yaml",
     "provider_models": "provider-routes.yaml",
-    "agent_review_models": "tiering.yaml",
+    "review_model_overrides": "tiering.yaml",
     "agent_categories": "tiering.yaml",
     "agent_bindings": "tiering.yaml",
     "model_bands": "tiering.yaml",
 }
+
+REVIEW_BAND_HARNESSES = {"claude": "claude_code"}
+REVIEW_OVERRIDE_HARNESSES = {"claude_code": "claude"}
 
 
 def section_path(registry, section_key):
@@ -56,16 +59,17 @@ def load_copilot_models(registry):
     return _load_section(registry, "copilot_models")
 
 
-def load_agent_review_models(registry):
-    """Load the harness -> lane/verifier mapping from ``agent_review_models``."""
-    return _load_block_map(registry, "agent_review_models")
+def load_review_model_overrides(registry):
+    """Load sparse harness -> lane/verifier overrides from ``review_model_overrides``."""
+    return _load_block_map(registry, "review_model_overrides")
 
 
 def load_model_bands(registry):
     """Load the harness -> band -> model pick mapping from ``model_bands``.
 
     A ``max`` band may nest a ``counter`` map holding the cross-family refuter for that
-    harness; its absence means the harness cannot field a second family.
+    harness. When no counter is present, ``verifier_status`` can mark deliberate same-family
+    refutation as ``reduced_independence``; otherwise the verifier is degraded.
     """
     return _load_block_map(registry, "model_bands")
 
@@ -142,10 +146,85 @@ def resolve_agent_model(registry, harness, agent):
     spec = categories[category]
     pick = dict(bands[harness][spec["band"]])
     counter = pick.pop("counter", None)
-    degraded = spec["family"] == "counter" and not counter
+    verifier_status = pick.pop("verifier_status", None)
+    degraded = spec["family"] == "counter" and not counter and verifier_status != "reduced_independence"
     if spec["family"] == "counter" and counter:
         pick = dict(counter)
-    return dict(pick, category=category, band=spec["band"], family=spec["family"], degraded=degraded)
+        verifier_status = "cross_family"
+    elif spec["family"] == "counter":
+        verifier_status = verifier_status or "degraded"
+    return dict(
+        pick,
+        category=category,
+        band=spec["band"],
+        family=spec["family"],
+        degraded=degraded,
+        verifier_status=verifier_status,
+    )
+
+
+def resolve_review_agent_model(registry, harness, agent):
+    """Resolve the review profile model for ``agent`` on ``harness``.
+
+    Sparse ``review_model_overrides`` entries handle harness selectors that cannot be derived
+    from ``model_bands`` (for example Claude ``inherit`` and Antigravity ``pro``). All other
+    review roles use ``agent_bindings`` / ``agent_categories`` to choose the primary lane or
+    counter verifier model from ``model_bands``.
+    """
+    categories = load_agent_categories(registry)
+    bindings = load_agent_bindings(registry)
+
+    category = bindings.get(agent)
+    if category is None or category not in categories:
+        return None
+
+    spec = categories[category]
+    slot = "verifier" if spec["family"] == "counter" else "lanes"
+    band_harness = REVIEW_BAND_HARNESSES.get(harness, harness)
+    override_harness = REVIEW_OVERRIDE_HARNESSES.get(harness, harness)
+
+    overrides = load_review_model_overrides(registry)
+    override = overrides.get(override_harness, {})
+    if slot in override:
+        verifier_status = "degraded" if slot == "verifier" else None
+        return {
+            "model": override[slot],
+            "category": category,
+            "band": spec["band"],
+            "family": spec["family"],
+            "slot": slot,
+            "source": "override",
+            "degraded": spec["family"] == "counter",
+            "verifier_status": verifier_status,
+            "harness": harness,
+            "band_harness": band_harness,
+        }
+
+    bands = load_model_bands(registry)
+    if band_harness not in bands or spec["band"] not in bands[band_harness]:
+        return None
+
+    pick = dict(bands[band_harness][spec["band"]])
+    counter = pick.pop("counter", None)
+    verifier_status = pick.pop("verifier_status", None)
+    degraded = slot == "verifier" and not counter and verifier_status != "reduced_independence"
+    if slot == "verifier" and counter:
+        pick = dict(counter)
+        verifier_status = "cross_family"
+    elif slot == "verifier":
+        verifier_status = verifier_status or "degraded"
+    return dict(
+        pick,
+        category=category,
+        band=spec["band"],
+        family=spec["family"],
+        slot=slot,
+        source="model_bands",
+        degraded=degraded,
+        verifier_status=verifier_status,
+        harness=harness,
+        band_harness=band_harness,
+    )
 
 
 def _load_section(registry, section_key, *, required=False):

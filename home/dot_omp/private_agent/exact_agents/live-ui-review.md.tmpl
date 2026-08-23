@@ -2,7 +2,7 @@
 ---
 name: live-ui-review
 description: Read-only live UI verifier for /k-deep-review UI/runtime candidate findings.
-model: "{{ .agent_review_models.omp.lanes }}"
+model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "omp" "agent" "live-ui-review") }}"
 tools: read, grep, glob, bash
 autoloadSkills: k-deep-review, k-playwriter
 ---

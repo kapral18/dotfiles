@@ -1,6 +1,6 @@
 name = "live-ui-review"
 description = "Verification-mode live UI verifier for /k-deep-review. Use after reviewer workers to validate UI/runtime-relevant candidate findings; returns comparison evidence, screenshot handoff, non-applicability, or target/branch/runtime/data blocker status."
-model = "{{ .agent_review_models.codex.lanes }}"
+model = "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "codex" "agent" "live-ui-review") }}"
 model_reasoning_effort = "xhigh"
 service_tier = "default"
 approval_policy = "untrusted"

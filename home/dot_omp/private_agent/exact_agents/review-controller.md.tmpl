@@ -2,7 +2,7 @@
 ---
 name: review-controller
 description: Orchestrate multi-model reviews, reconcile findings, and perform the approved act phase.
-model: "{{ .agent_review_models.omp.lanes }}"
+model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "omp" "agent" "review-controller") }}"
 tools: read, grep, glob, bash, edit, write
 autoloadSkills: k-deep-review, k-review
 ---
@@ -38,7 +38,7 @@ Build the bounded reviewer roster from scope-level evidence only (mode, changed 
 
 Paste each selected lane's `Lens skill` line and `Checks` list verbatim into that task's prompt — workers never load `lanes.md`. Run any repo-wide suite or full build once here, before the batch, and pass the result into every task prompt; lanes are told not to repeat shared work.
 
-Launch the selected reviewer task(s) with fresh context — one `reviewer` task per selected sighted angle. When more than one lane applies, keep them in one parallel `task` call. Let each named profile supply its registry-rendered model; angle diversity, not model identity, is this phase's axis. Include the blind fresh-eyes clarity lane only when `k-deep-review/SKILL.md` step 3 says it applies:
+Launch the selected reviewer task(s) with fresh context — one `reviewer` task per selected sighted angle. When more than one lane applies, keep them in one parallel `task` call. Let each named profile supply its resolver-rendered model; angle diversity, not model identity, is this phase's axis. Include the blind fresh-eyes clarity lane only when `k-deep-review/SKILL.md` step 3 says it applies:
 
 ```text
 task { tasks: [
@@ -53,7 +53,7 @@ The fresh-eyes task prompt carries only the diff scope — never the PR number/t
 
 Notes:
 
-- Named OMP agent profiles carry registry-rendered frontmatter models, which take precedence over the parent session model. Do not bypass them with an omitted generic agent or an ad hoc model override.
+- Named OMP agent profiles carry resolver-rendered frontmatter models, which take precedence over the parent session model. Use named profiles so generic agents and ad hoc model overrides do not bypass the resolver.
 - Pass the explicit scope (diff range, PR number, thread set) into every reviewer task prompt. Reviewers do not see this conversation.
 - Keep reviewer lanes concurrency-safe. Let each lane probe as deeply as its own lens needs, but do not ask a lane to repeat a repo-wide suite or full build you already ran. If a reviewer returns `verification_needed` because evidence would require mutation or a shared/exclusive runtime, you own deciding and running that check serially after the launched lanes return.
 - While they run, do not start later phases. Wait for every launched lane's output (fresh-eyes included when launched) before live UI, findings audit, final adversarial verification, or reconciliation. Judge fresh-eyes clarity candidates per `k-deep-review/SKILL.md`: context that explains confusing code picks the fix, it does not drop the finding; cap them at MEDIUM.
@@ -68,7 +68,7 @@ Run the controller findings audit after live UI returns or is explicitly skipped
 
 ## Phase 5 — Final adversarial verification (delegate; cross-family preferred at equal capability, SOP §3.7)
 
-If the audited set is empty, skip adversarial verification and report `Adversarial verification: skipped (no candidates after findings audit)`. Otherwise, run one `adversarial-verifier` task over the audited candidates with lane attribution stripped, plus the findings-audit result, verification ledger, live UI status/evidence/artifacts/skip reason, diff scope, base ref, and mode. Use the registry verifier model for this harness; if unavailable, follow the harness policy in `runtime-harnesses.md` and report the degradation/blocker. Record each verdict in the verification ledger; a refutation is a hard drop reason only after its evidence addresses the candidate's actual claim. The verifier also returns a bounded miss sweep (`new-candidate`, at most three, or `Miss sweep: none above the bar`); it is the verifier's only look at the code, so do not drop those for arriving late. They have not passed the findings audit: run the `judging_core.md` Findings-Set Audit over them inline, merge the survivors into the kept set, and report produced-vs-survived counts. Do not relaunch the verifier over its own sweep items.
+If the audited set is empty, skip adversarial verification and report `Adversarial verification: skipped (no candidates after findings audit)`. Otherwise, run one `adversarial-verifier` task over the audited candidates with lane attribution stripped, plus the findings-audit result, verification ledger, live UI status/evidence/artifacts/skip reason, diff scope, base ref, and mode. Use the resolved verifier model for this harness; if unavailable, follow the harness policy in `runtime-harnesses.md` and report the degradation/blocker. Record each verdict in the verification ledger; a refutation is a hard drop reason only after its evidence addresses the candidate's actual claim. The verifier also returns a bounded miss sweep (`new-candidate`, at most three, or `Miss sweep: none above the bar`); it is the verifier's only look at the code, so audit those candidates when they arrive. They have not passed the findings audit: run the `judging_core.md` Findings-Set Audit over them inline, merge the survivors into the kept set, and report produced-vs-survived counts. Do not relaunch the verifier over its own sweep items.
 
 ## Phase 6 — Reconcile (you)
 

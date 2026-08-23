@@ -82,7 +82,7 @@ Complete the current phase before starting a later one.
 
 6. **Adversarial verification.** First re-run every packet check once from the current tree — machine truth before judgment.
    Then delegate one isolated **read-only** refutation lane with the packet, the full implementation diff, and the ledger.
-   Launch it via the harness's named `criteria-verifier` profile (rendered per harness with the `agent_review_models` **verifier** model —
+   Launch it via the harness's named `criteria-verifier` profile (rendered per harness with the review-model resolver's **verifier** slot —
    the same cross-family pick `/k-deep-review` uses).
    In Antigravity, define a dynamic `criteria-verifier` from `~/.agents/skills/k-build/references/criteria-verifier.md` and invoke it with the registry's `pro` tier.
    On a harness without a named profile (Claude), run the lane as a generic read-only subagent on the session model that loads the same contract, with refutation framing, and report `families=same (degraded)` — never skip the phase silently.

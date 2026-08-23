@@ -2,7 +2,7 @@
 
 The complete contract for a delegated read-only review lane. Load this file only for the matching worker role.
 
-Use for `review-worker`/`reviewer` profiles and equivalent read-only lanes; lane models are registry-rendered in the profiles (`agent_review_models`).
+Use for `review-worker`/`reviewer` profiles and equivalent read-only lanes; lane models are resolver-rendered in the profiles (`review-agent-model.partial`).
 
 ## Load exactly this
 

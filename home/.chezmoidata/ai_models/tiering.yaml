@@ -4,76 +4,32 @@
 # namespace, so `.cursor_models` and `.model_bands` still resolve the same in templates.
 # scripts/ai_models.py maps each section back to its file; add a section there when adding one here.
 
-# Review-lane model registry: the single source for k-review/k-deep-review model selection (C2: declare once, generate per tool).
-# Profile frontmatter is TEMPLATED from this block; edit here and `chezmoi apply` — never hand-edit model ids in profiles.
-# lanes = generation angle lanes + auditors + controller. verifier = adversarial verifier, preferring a
-# different model family than lanes at equal capability (capability outranks diversity, SOP §3.5;
-# pairing is reviewed by a human here, not inferred at runtime).
-# Empty value = the profile omits the field (harness config default). inherit = harness-native parent inheritance.
-agent_review_models:
-  cursor:
-    # Single-model review policy (reduced independence, SOP §3.5): lanes and verifier both run
-    # cursor-grok-4.6-xhigh (user call 2026-08-14: Cursor harness matches the personal OMP pin;
-    # replaces gpt-5.6-terra-max). Task subagents are whitelist-bound; live Task enum in this
-    # Cursor IDE session 2026-08-14: claude-fable-5-medium, claude-opus-5-high,
-    # claude-sonnet-5-thinking-max, composer-2.5, composer-2.5-fast, cursor-grok-4.5-high-fast,
-    # cursor-grok-4.6-xhigh, gpt-5.6-sol-xhigh, gpt-5.6-terra-xhigh.
-    # `claude-fable-5-low`/`claude-fable-5-max` exist in the main catalog but not the Task whitelist.
-    lanes: "cursor-grok-4.6-xhigh"
-    verifier: "cursor-grok-4.6-xhigh" # single-model review policy (reduced independence, SOP §3.5)
-  copilot:
-    # Cost-driven pin (closed 2026-08-03): opus-5 and gpt-5.5 are punitively expensive for regular
-    # lanes. Copilot's catalog has no glm-5.2 or kimi, so lanes run OpenAI terra (priority #2).
-    # Cross-family verifier is Anthropic sonnet 4.6: opus-5 is banned, so sonnet is the
-    # cheapest non-banned cross-family pick. Per-lane effort lives in
-    # ~/.copilot/settings.json (subagents.agents.<name>.effortLevel), templated from this block.
-    lanes: "gpt-5.6-terra"
-    verifier: "claude-sonnet-4.6" # cross-family refuter; opus-5 banned, sonnet is the cross-family pick
+# Sparse review-model overrides for harnesses whose review execution selectors cannot be
+# derived from model_bands. For every other harness, review-agent-model.partial and
+# scripts/ai_models.py resolve review roles through agent_bindings -> agent_categories ->
+# model_bands, so model tweaks happen in one band row.
+#
+# lanes = generation angle lanes + auditors + controller. verifier = adversarial verifier,
+# preferring a different model family than lanes at equal capability (capability outranks
+# diversity, SOP §3.7; pairing is reviewed by a human here, not inferred at runtime).
+# Empty value = the profile omits the field (harness config default). inherit = harness-native
+# parent inheritance.
+review_model_overrides:
   claude:
-    lanes: "inherit" # Claude sessions are launched on a deliberate model; single-family => verifier degraded
+    # Claude sessions are launched on a deliberate model, so review profiles inherit the parent
+    # session model instead of pinning model_bands.claude_code.max.model.
+    lanes: "inherit"
     verifier: "inherit"
-  codex:
-    # OpenAI-only harness, so no cross-family verifier is expressible; families=same (degraded) is expected.
-    # Verified codex-cli 0.147.0 bundled catalog via `codex debug models --bundled`: gpt-5.6-sol
-    # supports xhigh (also low/medium/high/max/ultra; native default is low). User call 2026-08-14
-    # pins Sol/xhigh across the Codex harness (not Sol/high).
-    # Kept in sync BY HAND with model_bands.codex.max.model — not templated/derived, update both on change.
-    lanes: "gpt-5.6-sol"
-    verifier: "gpt-5.6-sol" # single-family harness; families=same (degraded) is expected
   gemini:
+    # Antigravity's dynamic-subagent schema exposes abstract model tiers, not raw model ids.
     lanes: "pro"
-    verifier: "pro" # Antigravity's dynamic-subagent schema exposes abstract model tiers, not raw model ids
-  pi:
-    # Pi reaches models only through OpenRouter here. Pi's `:<level>` suffix is one dial for both
-    # thinking level and effort. DeepSeek max carries the lanes; Terra max remains the verifier.
-    lanes: "openrouter/deepseek/deepseek-v4-flash-0731:max"
-    verifier: "openrouter/openai/gpt-5.6-terra:max"
-  omp:
-    # OMP resolves bands through its own `modelRoles`, so the review lanes name roles rather than
-    # model ids and readonly_config.yml.tmpl decides what each role costs on work vs personal.
-    # Cost-driven pin (closed 2026-08-03): opus-5 and gpt-5.5 are punitively expensive for
-    # regular lanes. Work routes primary roles through
-    # openrouter/deepseek/deepseek-v4-flash-0731:max while vision stays on kimi-k3:high; glm-5.2 is
-    # selectable through the glm-lanes presets (FP8-or-higher, 24 t/s floor, no sort) but is not
-    # a default lane. The advisor role stays on the lanes' own
-    # model and is enabled for primary turns and spawned agents. Personal keeps
-    # cursor/cursor-grok-4.6-xhigh for main reasoning roles (user call 2026-08-13:
-    # replaces cursor/kimi-k3-high).
-    #
-    # Review workers and falsifiers both use @default, so they follow modelRoles.default per
-    # profile (work DeepSeek max, personal grok-4.6-xhigh). families=same (reduced independence).
-    # model_bands.omp.max carries no counter because every profile resolves
-    # modelRoles.advisor to the lanes' own model;
-    # re-add the counter only if a profile pins the advisor role to a genuinely different
-    # family again, the invariant reads the role pins.
-    lanes: "@default"
-    verifier: "@default"
+    verifier: "pro"
 
-# Model tiering is two independent tables, kept apart on purpose. `agent_categories` says what a
-# kind of work needs and is portable — whether a findings audit needs max reasoning is a fact about
-# the job, not about Copilot. `model_bands` says what a band resolves to and is the only place that
-# knows Codex's catalog. Merging them is what made the old single table need 57 rows to carry ~21
-# facts, most of which no consumer ever read. Full writeup: docs/topics/ai-assistants/model-tiering.md.
+# Model tiering is two independent dimensions plus sparse review overrides. `agent_categories`
+# says what a kind of work needs and is portable — whether a findings audit needs max reasoning is
+# a fact about the job, not about Copilot. `model_bands` says what a band resolves to and is the
+# only place that knows Codex's catalog. `review_model_overrides` is only for harnesses whose review
+# execution selector cannot be derived from model_bands. Full writeup: docs/topics/ai-assistants/model-tiering.md.
 #
 # Categories are chosen before the model: the SOP delegation section and the k-* skills name a
 # category, the category names a band, and only then does the harness resolve a model id.
@@ -86,7 +42,7 @@ agent_review_models:
 #
 # `family` is primary or counter. Only `refute` is counter: a refutation lane preferably
 # does not share a family with the work it audits — at equal capability — since same-family reviewers
-# inherit the same blind spots and the same context contamination; capability still outranks diversity (SOP §3.5).
+# inherit the same blind spots and the same context contamination; capability still outranks diversity (SOP §3.7).
 agent_categories:
   search:
     band: "cheap"
@@ -119,7 +75,7 @@ agent_categories:
 # reach for: it carries `tools: "*"` and is the only delegated agent that can edit anything.
 #
 # Investigation is `research`, not `search`. `search` is judgment-free recon by definition ("locate
-# code, enumerate call sites, gather files. No edits, no judgment calls" — SOP 3.5), and the cheap
+# code, enumerate call sites, gather files. No edits, no judgment calls" — SOP 3.7), and the cheap
 # band it maps to is for gruntwork a smarter model already scoped. Anything that forms and reports
 # a conclusion — code-searcher, Explore, explore, explorer, codebase_investigator — is doing the
 # judgment `search` excludes, and a weak model there produces confidently wrong recon that every
@@ -186,8 +142,10 @@ agent_bindings:
 # exclusively as 1M ids, so those rows record the window they actually get rather than a wish.
 #
 # `counter` is the cross-family refuter that the `refute` category resolves to. Omitting it is a
-# real statement, not an oversight: the harness cannot field a second family, so refutation runs
-# same-family and the controller must report `families=same (degraded)` rather than hide it.
+# real statement, not an oversight. By default the harness cannot field a second family, so
+# refutation runs same-family and the controller reports `families=same (degraded)`.
+# `verifier_status: reduced_independence` marks the deliberate same-family policy where capability
+# beats diversity and the controller reports `families=same (reduced independence)` instead.
 model_bands:
   claude_code:
     # Bare ids are the short-context selectors; `[1m]` is what buys the 1M window and no band asks
@@ -306,6 +264,7 @@ model_bands:
       effort: "xhigh"
       thinking: ""
       context: "short"
+      verifier_status: "reduced_independence"
   gemini:
     # Google-only catalog, so cheap, standard and max collapse to gemini-3.7-flash with high effort.
     cheap:
@@ -374,3 +333,4 @@ model_bands:
       effort: "high"
       thinking: ""
       context: "short"
+      verifier_status: "reduced_independence"

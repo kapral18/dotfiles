@@ -58,11 +58,11 @@ CENSUS: list[Claim] = [
     Claim(
         name="total effective git files",
         globs=None,
-        claimed=1380,
+        claimed=1409,
         anchors=[
-            ("README.md", "1380 files in the effective git file set"),
-            ("00-overview.mmd", "1380 files in the effective git file set"),
-            ("00-overview.mmd", "file census (1380 total)"),
+            ("README.md", "1409 files in the effective git file set"),
+            ("00-overview.mmd", "1409 files in the effective git file set"),
+            ("00-overview.mmd", "file census (1409 total)"),
         ],
     ),
     Claim(
@@ -133,12 +133,12 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/exact_lib/",
         globs=["home/exact_lib/*"],
-        claimed=79,
+        claimed=95,
         anchors=[
-            ("07c-bin-commands.mmd", "home/exact_lib/ (79 command/shared library files)"),
-            ("README.md", "`home/exact_lib/` (79 command/shared library files)"),
+            ("07c-bin-commands.mmd", "home/exact_lib/ (95 command/shared library files)"),
+            ("README.md", "`home/exact_lib/` (95 command/shared library files)"),
             ("README.md", "38 command libraries plus shared helpers"),
-            ("00-overview.mmd", "command-lib 79 (38 command dirs + shared)"),
+            ("00-overview.mmd", "command-lib 95 (38 command dirs + shared)"),
         ],
     ),
     Claim(
@@ -159,11 +159,11 @@ CENSUS: list[Claim] = [
     Claim(
         name="scripts/",
         globs=["scripts/*"],
-        claimed=123,
+        claimed=135,
         anchors=[
-            ("11-scripts-helpers.mmd", "scripts/ (123)"),
-            ("README.md", "`scripts/` (123)"),
-            ("00-overview.mmd", "scripts 123"),
+            ("11-scripts-helpers.mmd", "scripts/ (135)"),
+            ("README.md", "`scripts/` (135)"),
+            ("00-overview.mmd", "scripts 135"),
         ],
     ),
 ]

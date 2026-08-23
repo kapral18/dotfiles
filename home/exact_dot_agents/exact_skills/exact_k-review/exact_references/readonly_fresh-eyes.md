@@ -57,14 +57,13 @@ If the changed content is only generated/vendored/lockfile material, return `Not
 
 - Launch with the harness's generic read-only task mechanism.
   Use only generic mechanisms here: the named reviewer profiles and any profile that preloads the `k-review` skill ingest PR context and unblind the lane.
-- Use the `agent_review_models.<harness>.lanes` registry value as the model source.
-  If the registry value is concrete, pass the registry lane model explicitly so the runtime cannot fall back to an implicit default or older built-in model.
-  If the registry value is `inherit` or empty/default by design, record that expected inheritance/default in `model_required`.
+- Use the review model resolver (`review-agent-model.partial` / `resolve_review_agent_model`) as the model source.
+  If the resolved value is concrete, pass it explicitly so the runtime cannot fall back to an implicit default or older built-in model.
+  If the resolved value is `inherit` or empty/default by design, record that expected inheritance/default in `model_required`.
 - Claude Code: a general-purpose `Task` carrying this contract; `model_required=inherit`.
-- Cursor: a generic subagent type with `readonly: false`, passing the registry lane model (the same value the deployed `review-worker` profile carries).
-- Copilot CLI: a generic task agent type is correct here by design; pass the registry lane model explicitly and record `fallback_reason=blind-by-design`.
-- Pi/OMP: launch the `fresh-eyes` agent profile (a thin shim of this file that carries no skills and uses the registry lane model);
-  those harnesses launch this lane through named profiles.
+- Cursor: a generic subagent type with `readonly: false`, passing the resolved lane model (the same value the deployed `review-worker` profile carries).
+- Copilot CLI: a generic task agent type is correct here by design; pass the resolved lane model explicitly and record `fallback_reason=blind-by-design`.
+- Pi/OMP: launch the `fresh-eyes` agent profile (a thin shim of this file that carries no skills and resolves its model through `review-agent-model.partial`); those harnesses launch this lane through named profiles.
 - Worker selection line: `phase=fresh-eyes`, `profile=n/a` (Pi/OMP named profile:
-  `fresh-eyes`), `model_required=<registry lanes value|inherit|default>`, `model_used=<launch-confirmed model>`, `model_status=exact`.
+  `fresh-eyes`), `model_required=<resolved lanes value|inherit|default>`, `model_used=<launch-confirmed model>`, `model_status=exact`.
 - Never include prior findings, PR intent, or controller narrative in the prompt — including on re-runs after new context or applied fixes.

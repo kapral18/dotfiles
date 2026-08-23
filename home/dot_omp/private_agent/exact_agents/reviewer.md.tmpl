@@ -2,7 +2,7 @@
 ---
 name: reviewer
 description: Read-only review worker for one review-controller fan-out angle; returns findings only.
-model: "{{ .agent_review_models.omp.lanes }}"
+model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "omp" "agent" "reviewer") }}"
 tools: read, grep, glob, bash
 ---
 
@@ -14,6 +14,6 @@ Apply the discipline above before following the role-specific instructions below
 
 Load and follow `~/.agents/skills/k-review/references/reviewer-worker.md`.
 
-You are a single selected-lane worker invoked by `review-controller`; your profile model is rendered from `agent_review_models.omp.lanes`, and the controller owns aggregation and the act phase.
+You are a single selected-lane worker invoked by `review-controller`; your profile model is resolved by `review-agent-model.partial` for the `omp` reviewer role, and the controller owns aggregation and the act phase.
 
 No `autoloadSkills` is declared here on purpose: it injects a skill's body into the lane, and `k-review` would re-add the router and mode files that `reviewer-worker.md` forbids. Every skill stays discoverable, and a lane reads the files its contract names by absolute path.

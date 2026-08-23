@@ -1,0 +1,19 @@
+body {
+  margin: 0;
+  font: 16px/1.5 system-ui, sans-serif;
+  background: #111827;
+  color: #f9fafb;
+}
+main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+h1 {
+  margin-top: 0;
+}
+code {
+  background: #1f2937;
+  padding: 2px 6px;
+  border-radius: 6px;
+}

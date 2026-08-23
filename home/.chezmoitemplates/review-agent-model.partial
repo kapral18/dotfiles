@@ -1,0 +1,36 @@
+{{- /*
+Resolve the model id a review-role profile should carry. Call with:
+(dict "root" . "harness" "<review harness key>" "agent" "<agent_bindings key>").
+
+Review roles share the same category table as all other delegable agents. Most harnesses resolve
+review models from model_bands: primary review/orchestrator roles take their band pick, counter
+roles take the band counter when present and otherwise fall back to the primary pick. Sparse
+review_model_overrides entries cover harness selectors that are not model_bands ids (`inherit`,
+`pro`, or similar harness-native indirection).
+*/ -}}
+{{- $root := .root -}}
+{{- $harness := .harness -}}
+{{- $bandHarness := $harness -}}
+{{- $overrideHarness := $harness -}}
+{{- if eq $harness "claude" -}}
+{{- $bandHarness = "claude_code" -}}
+{{- end -}}
+{{- if eq $harness "claude_code" -}}
+{{- $overrideHarness = "claude" -}}
+{{- end -}}
+{{- $category := index $root.agent_bindings .agent -}}
+{{- $spec := index $root.agent_categories $category -}}
+{{- $slot := "lanes" -}}
+{{- if eq $spec.family "counter" -}}
+{{- $slot = "verifier" -}}
+{{- end -}}
+{{- $override := index $root.review_model_overrides $overrideHarness -}}
+{{- if and $override (hasKey $override $slot) -}}
+{{- index $override $slot -}}
+{{- else -}}
+{{- $pick := index (index $root.model_bands $bandHarness) $spec.band -}}
+{{- if and (eq $slot "verifier") (hasKey $pick "counter") -}}
+{{- $pick = $pick.counter -}}
+{{- end -}}
+{{- $pick.model -}}
+{{- end -}}

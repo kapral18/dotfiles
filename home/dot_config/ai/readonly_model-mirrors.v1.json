@@ -257,7 +257,22 @@
         "provenance": [
           {
             "kind": "registry",
-            "section": "agent_review_models",
+            "section": "agent_bindings",
+            "source": "home/.chezmoidata/ai_models/tiering.yaml"
+          },
+          {
+            "kind": "registry",
+            "section": "agent_categories",
+            "source": "home/.chezmoidata/ai_models/tiering.yaml"
+          },
+          {
+            "kind": "registry",
+            "section": "model_bands",
+            "source": "home/.chezmoidata/ai_models/tiering.yaml"
+          },
+          {
+            "kind": "registry",
+            "section": "review_model_overrides",
             "source": "home/.chezmoidata/ai_models/tiering.yaml"
           }
         ],
@@ -283,7 +298,22 @@
         "provenance": [
           {
             "kind": "registry",
-            "section": "agent_review_models",
+            "section": "agent_bindings",
+            "source": "home/.chezmoidata/ai_models/tiering.yaml"
+          },
+          {
+            "kind": "registry",
+            "section": "agent_categories",
+            "source": "home/.chezmoidata/ai_models/tiering.yaml"
+          },
+          {
+            "kind": "registry",
+            "section": "model_bands",
+            "source": "home/.chezmoidata/ai_models/tiering.yaml"
+          },
+          {
+            "kind": "registry",
+            "section": "review_model_overrides",
             "source": "home/.chezmoidata/ai_models/tiering.yaml"
           }
         ],

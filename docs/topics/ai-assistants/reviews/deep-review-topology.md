@@ -46,7 +46,7 @@ Review greenlight is separate from merge readiness. Unknown mergeability or fail
 
 ### Reviewer fan-out
 
-After any required PR necessity greenlight, the controller builds a **bounded angle roster** from scope-level evidence: changed paths and diff stats, never code reading. It launches one to three sighted read-only reviewer lanes by default, all on the **registry lane model** for the harness. Four or five sighted lanes are reserved for explicit maximum-rigor requests or multiple high-risk classes in the same diff.
+After any required PR necessity greenlight, the controller builds a **bounded angle roster** from scope-level evidence: changed paths and diff stats, never code reading. It launches one to three sighted read-only reviewer lanes by default, all on the **resolved lane model** for the harness. Four or five sighted lanes are reserved for explicit maximum-rigor requests or multiple high-risk classes in the same diff.
 
 Before that roster launches, the controller materializes a read-only context pack for PR metadata, comments, reviews, checks, diff, and changed-file/base snapshots, then includes the pack root and expected `head_sha` in every worker scope packet. Workers consume it through `context-pack.md`, verify `manifest.head_sha`, and report `pack_used`, `pack_stale`, or `pack_missing`.
 
@@ -107,7 +107,7 @@ Verdicts (`confirmed`/`refuted`/`undecidable`) feed the verification ledger. A r
 
 The verifier then runs a **bounded miss sweep**. It is usually the only model from a different family that reads the diff, and the finder lanes share a family and a prompt, so what they all missed is what it is best positioned to catch. Refutation alone discards that. The sweep is scoped to the highest-risk changed surface, holds the same evidence bar as a verdict, and returns at most three `new-candidate` items or `none above the bar`. Because they have not passed the findings audit, the controller re-audits them inline before judgment and reports produced-versus-survived counts.
 
-On harnesses where the registry pairs the same family for both roles, the phase runs on the lane model with refutation framing and reports `families=same (degraded)` when no second family is reachable, or `families=same (reduced independence)` when same-family is the deliberate capability-first pairing (Cursor) — capability outranks family diversity (SOP §3.7). Either state is reported, never silent. After the cost-driven ban (closed 2026-08-03) that is every harness except Copilot, which is the only one whose `max` band still carries a counter (`claude-sonnet-4.6` against OpenAI lanes).
+On harnesses where the resolver returns the same family for both roles, the phase runs on the lane model with refutation framing and reports `families=same (degraded)` when no second family is reachable, or `families=same (reduced independence)` when `verifier_status: reduced_independence` marks a deliberate capability-first pairing (Cursor and OMP) — capability outranks family diversity (SOP §3.7). Either state is reported, never silent. After the cost-driven ban (closed 2026-08-03), Copilot and Pi still carry counters: Copilot uses `claude-sonnet-4.6` against OpenAI lanes, and Pi uses `openrouter/openai/gpt-5.6-terra:max` against DeepSeek lanes.
 
 The controller aggregates the investigation outputs, then judges what to fix or draft through mode-correct review rules. For each ledger item, it either resolves it with evidence, runs the check serially when needed for judgment, marks it not needed with evidence, or reports the exact blocker/uncertainty.
 
@@ -125,24 +125,24 @@ It merges still-valid pending feedback with net-new findings into one payload, d
 
 | Runtime        | Worker lanes                                                                            |
 | -------------- | --------------------------------------------------------------------------------------- |
-| Cursor/Copilot | `review-worker` once per selected sighted angle (registry lane model)                   |
+| Cursor/Copilot | `review-worker` once per selected sighted angle (resolved lane model)                   |
 | Claude         | `reviewer` once per selected sighted angle through `Task` with `model: inherit`         |
 | Codex          | `spawn_agent` `review-worker` agents, one per selected sighted angle                    |
 | Antigravity    | `review-worker` once per selected sighted angle                                         |
 | any (blind)    | conditional fresh-eyes via a generic read-only task (Pi/OMP: thin `fresh-eyes` profile) |
-| verify (cross) | `adversarial-verifier` on the registry verifier model (different family than lanes)     |
+| verify (cross) | `adversarial-verifier` on the resolved verifier model (different family when available) |
 
 ### Model policy
 
 Model selection is registry-driven and deterministic.
 
-| Lane                                       | Model                                                                                                                                                      |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| angle lanes, fresh-eyes, auditors, live UI | `agent_review_models.<harness>.lanes` rendered into profile frontmatter; generic fresh-eyes passes the same registry value as the profile-equivalent model |
-| adversarial verifier                       | `agent_review_models.<harness>.verifier` — a different family than lanes, by review                                                                        |
-| verifier on single-family harnesses        | registry leaves it empty/inherit; runs on the lane model as `families=same (degraded)`                                                                     |
+| Lane                                       | Model                                                                                                                                                              |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| angle lanes, fresh-eyes, auditors, live UI | `review-agent-model.partial` / `resolve_review_agent_model` resolves the primary max-band model, or a sparse override such as Claude `inherit` / Antigravity `pro` |
+| adversarial verifier                       | same resolver, using `model_bands.<harness>.max.counter.model` when present and otherwise the primary max-band model plus its `verifier_status`                    |
+| verifier on same-family harnesses          | `verifier_status: reduced_independence` reports deliberate same-family policy; default fallback reports `families=same (degraded)`                                 |
 
-Every repo-owned review profile's `model` frontmatter is a chezmoi template over the single `agent_review_models` block in `.chezmoidata/ai_models/tiering.yaml`. Updating a model is a one-line registry edit, and neither skills nor controllers steer models at runtime; generic fresh-eyes is the only runtime pass-through, used only where no named fresh-eyes profile exists.
+Every repo-owned review profile's `model` frontmatter is a chezmoi template over `review-agent-model.partial`, which derives from `agent_bindings`, `agent_categories`, `model_bands`, and sparse `review_model_overrides`. Updating a derivable model is a one-line band edit, and neither skills nor controllers steer models at runtime; generic fresh-eyes is the only runtime pass-through, used only where no named fresh-eyes profile exists.
 
 The review's diversity comes from angles plus the adversarial verify pass (cross-family preferred at equal capability, SOP §3.7); the registry keeps the family pairing a human decision instead of a launch-time inference.
 

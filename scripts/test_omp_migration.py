@@ -206,14 +206,12 @@ class TestOmpMigration(unittest.TestCase):
                 self.assertNotIn(marker, text, f"{path} has legacy frontmatter {marker}")
             self.assertIn("name:", text)
             self.assertIn("description:", text)
-            # Review roles read `.agent_review_models.omp`; the rest resolve a band through
-            # agent-model.partial. Either way the harness is named, and a Pi copy-paste is the
-            # failure this guards against.
+            # Review roles and work-band roles both name the omp harness through their model
+            # partial. A Pi copy-paste is the failure this guards against.
             self.assertTrue(
-                ".agent_review_models.omp" in text or '"harness" "omp"' in text,
+                '"harness" "omp"' in text,
                 f"{path} does not resolve its model from an omp registry entry",
             )
-            self.assertNotIn(".agent_review_models.pi", text)
             self.assertNotIn('"harness" "pi"', text)
 
 

@@ -1,8 +1,8 @@
-{{- /* model frontmatter is rendered from the agent_review_models registry in home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file */ -}}
+{{- /* model frontmatter is rendered through review-agent-model.partial from home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 name: adversarial-verifier
 description: Cross-family refutation lane over audited deep-review candidates; returns verdicts only.
-model: "{{ .agent_review_models.cursor.verifier }}"
+model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "cursor" "agent" "adversarial-verifier") }}"
 readonly: false
 ---
 

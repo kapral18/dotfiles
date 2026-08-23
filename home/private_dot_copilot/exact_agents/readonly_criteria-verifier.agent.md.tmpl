@@ -1,9 +1,9 @@
-{{- /* model frontmatter is rendered from the agent_review_models registry in home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file */ -}}
+{{- /* model frontmatter is rendered through review-agent-model.partial from home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 name: criteria-verifier
 description: Cross-family refutation lane over a /k-build criteria ledger; returns verdicts and scope audit only. Use only when /k-build runs adversarial verification.
 target: github-copilot
-model: "{{ .agent_review_models.copilot.verifier }}"
+model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "copilot" "agent" "criteria-verifier") }}"
 tools: [read, search, execute]
 disable-model-invocation: false
 user-invocable: false

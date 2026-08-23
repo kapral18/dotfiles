@@ -1,7 +1,7 @@
-# model frontmatter is rendered from the agent_review_models registry in home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file
+# model frontmatter is rendered through review-agent-model.partial from home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file
 name = "review-worker"
 description = "Read-only /k-deep-review investigation worker. Use for each Codex review lane; returns evidence-backed candidate findings and never edits or posts."
-model = "{{ .agent_review_models.codex.lanes }}"
+model = "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "codex" "agent" "review-worker") }}"
 model_reasoning_effort = "xhigh"
 service_tier = "default"
 approval_policy = "untrusted"

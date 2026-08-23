@@ -171,7 +171,7 @@ This line is part of the audit trail.
 If a runtime export hides task arguments, the worker selection line must still prove whether the controller used named profiles.
 It must also show any fallback such as `general-purpose`.
 A worker launch is invalid when `model_required` differs from `model_used` or `model_status` is not `exact`, unless the phase is explicitly `n/a` for model selection.
-The fresh-eyes phase is not `n/a`: named fresh-eyes profiles and generic fresh-eyes launches both use the registry lane model, and worker selection must prove that exact value.
+The fresh-eyes phase is not `n/a`: named fresh-eyes profiles and generic fresh-eyes launches both use the resolved lane model, and worker selection must prove that exact value.
 
 1. **Route and scope.** Build a scope packet with:
    - mode: `local_changes.md`, `pr_review.md`, or `pr_fix.md`
@@ -185,8 +185,8 @@ The fresh-eyes phase is not `n/a`: named fresh-eyes profiles and generic fresh-e
    - intent dependencies needed for judgment, or `none`
    - context pack path, or `none` for a non-PR/local mode where a pack could not be built
    - context pack manifest `head_sha`, or the exact blocker that prevented manifest generation
-   - lane/verifier models: the `agent_review_models` registry values rendered into the deployed profiles;
-     worker selection lines emit `model_required=<registry value|inherit|default>` and the launch-confirmed `model_used`
+   - lane/verifier models: the review-model resolver values rendered into the deployed profiles;
+     worker selection lines emit `model_required=<resolved value|inherit|default>` and the launch-confirmed `model_used`
 
    Resolve `authorship` via the review router's Role Detection. Keep worker review analysis in the workers, out of the controller.
 
@@ -279,10 +279,10 @@ The measured reason for this controller cache is concrete: one real review had 4
      - State the roster and the scope-level evidence for each selected lane in the output.
    - Run any repo-wide suite, full build, or whole-suite test run **once here**, before the launch batch, and put the result in every scope packet.
      Lanes are instructed to reuse shared work rather than repeat it; if the controller skips it, no lane covers it.
-   - Lane model selection is declarative, never steered at runtime: every repo-owned review profile's `model` frontmatter is rendered from the single `agent_review_models` registry in the chezmoi model data (a concrete id, `inherit`, or omitted for the harness config default).
+   - Lane model selection is declarative, never steered at runtime: every repo-owned review profile's `model` frontmatter is rendered through `review-agent-model.partial` from the chezmoi model data (a concrete id, `inherit`, or omitted for the harness config default).
      The controller launches named profiles as-is with zero lane model overrides;
-     generic fresh-eyes launches pass the same registry lane value as the profile-equivalent model because they cannot use a context-bearing reviewer profile.
-     A wrong or stale model is fixed in the registry, not the launch.
+     generic fresh-eyes launches pass the same resolved lane value as the profile-equivalent model because they cannot use a context-bearing reviewer profile.
+     A wrong or stale model is fixed in the registry/bands, not the launch.
      The angles are this phase's diversity axis; cross-family checking is owned by the adversarial verification phase.
    - Emit all reviewer-lane launches, fresh-eyes included when it applies, in one message (a single tool-call batch).
    - Use the harness's native reviewer worker profiles or task mechanism (`review-worker`/`reviewer` profiles, or a generic task type carrying `reviewer-worker.md`); read `runtime-harnesses.md` for per-harness launch and model-inheritance caveats.
@@ -415,11 +415,10 @@ The measured reason for this controller cache is concrete: one real review had 4
    - If the audited set is empty, skip adversarial verification and report `Adversarial verification: skipped (no candidates after findings audit)`.
    - Otherwise, launch one adversarial-verifier worker following `~/.agents/skills/k-review/references/adversarial-verifier.md`.
      Give it the audited candidates with lane attribution stripped, plus the findings-audit result, verification ledger, live UI status/evidence/artifacts/skip reason, diff scope, base ref, and mode.
-   - Model rule — the one lane where model identity matters: the `agent_review_models` registry assigns each harness its verifier model, paired against the lane model by a human in the registry rather than inferred at runtime, and the deployed `adversarial-verifier` profile carries it (named-profile controllers such as Pi/OMP pass the rendered registry value per task).
-     Report `families=cross` only when the registry's verifier model is genuinely a different family than its lane model.
-     Report `families=same (degraded)` when the harness cannot field a second family (empty/`inherit` entry or single-vendor surface).
-     When the registry deliberately pairs the same family at equal capability, report `families=same (reduced independence)` instead —
-     capability outranks family diversity (SOP §3.7).
+   - Model rule — the one lane where model identity matters: the review-model resolver assigns each harness its verifier model from `model_bands.<harness>.max.counter` when present, or from a sparse override / primary max-band fallback otherwise, and the deployed `adversarial-verifier` profile carries it (named-profile controllers such as Pi/OMP pass the rendered resolver value per task).
+     Report `families=cross` only when the resolved verifier model is genuinely a different family than its lane model.
+     Report `families=same (reduced independence)` when the resolver carries `verifier_status: reduced_independence` for a deliberate same-family capability-first pairing.
+     Report `families=same (degraded)` when the harness cannot field a second family (`verifier_status: degraded`, `inherit`, or single-vendor surface).
      Degradation or reduced independence must be reported, never silent; run the phase even when cross-family is unavailable.
    - Verdicts are evidence, not decisions: when recording each `confirmed` / `refuted` / `undecidable (needs <check>)` in the verification ledger, check that a `refuted` verdict's evidence addresses the candidate's actual claim; record it as `undecidable` otherwise.
      "Non-refuted" downstream means not validly refuted after that check.

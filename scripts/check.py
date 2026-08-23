@@ -206,17 +206,30 @@ TEST_RULES: tuple[TestRule, ...] = (
         ),
     ),
     TestRule(
-        prefixes=(
-            "home/exact_bin/",
-            "home/exact_lib/exact_shared/",
-            "home/dot_config/fish/completions/",
-            "home/dot_config/fish/functions/",
-            "docs/topics/workflow/custom-commands/",
-            ".mermaids/07c-bin-commands.mmd",
-            "scripts/verify_bin_surface.py",
-            "scripts/tests/test_bin_commands.py",
+        prefixes=("scripts/tests/bin_command_support.py",),
+        tests=(
+            "tests/test_w_issue.py",
+            "tests/test_artifact.py",
+            "tests/test_unwrap_md.py",
+            "tests/test_mcp_token.py",
+            "tests/test_openrouter_wrappers.py",
+            "tests/test_install_yarn_pkgs.py",
+            "tests/test_copilot.py",
+            "tests/test_codex.py",
+            "tests/test_cursor_llama_cpp.py",
+            "tests/test_cursor.py",
+            "tests/test_kbn_stack.py",
         ),
-        tests=("tests/test_bin_commands.py",),
+    ),
+    TestRule(
+        prefixes=(
+            "home/exact_bin/executable_,claude-openrouter",
+            "home/exact_bin/executable_,codex-openrouter",
+            "home/exact_bin/executable_,copilot-openrouter",
+            "home/exact_bin/executable_,cursor-openrouter",
+            "home/exact_lib/exact_shared/executable_openrouter_presets.py",
+        ),
+        tests=("tests/test_openrouter_wrappers.py",),
     ),
     TestRule(
         prefixes=("home/.chezmoidata/ai_models/", "scripts/ai_models.py", "scripts/model_mirrors.py"),
@@ -308,7 +321,7 @@ EXTRA_TESTS: tuple[ExtraTest, ...] = (
 )
 
 RUFF_PREFIXES = ("scripts/", "home/exact_lib/")
-NOT_TEST_SHARDS = frozenset({"test_runner.py"})
+NOT_TEST_SHARDS = frozenset({"test_runner.py", "test_bin_commands.py"})
 FULL_ALLOW_ENV = "CHECK_FULL"
 # These shards dominate wall-clock (fzf listen / long batch waits). They run
 # only from TEST_RULES or from editing the shard itself, never from fan-out.

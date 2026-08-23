@@ -33,11 +33,10 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
 # The runner matches test_*.py but is not a unittest module.
-NOT_TEST_FILES = frozenset({"test_runner.py"})
+NOT_TEST_FILES = frozenset({"test_runner.py", "test_bin_commands.py"})
 UNIT_SHARDED_FILES = frozenset(
     {
         "test_ai_kb.py",
-        "tests/test_bin_commands.py",
         "tests/test_gh_picker_dispatch_state.py",
         "tests/test_llama_cpp_lifecycle.py",
         "tests/test_plain_session_removal.py",

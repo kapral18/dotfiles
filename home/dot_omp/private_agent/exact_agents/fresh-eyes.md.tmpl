@@ -2,7 +2,7 @@
 ---
 name: fresh-eyes
 description: Blind zero-context clarity lane for one review-controller fan-out; returns clarity findings only.
-model: "{{ .agent_review_models.omp.lanes }}"
+model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "omp" "agent" "fresh-eyes") }}"
 tools: read, grep, glob, bash
 ---
 

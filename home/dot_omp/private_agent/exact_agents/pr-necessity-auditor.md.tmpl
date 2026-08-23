@@ -2,7 +2,7 @@
 ---
 name: pr-necessity-auditor
 description: Blocking read-only PR necessity and intent auditor before reviewer fan-out.
-model: "{{ .agent_review_models.omp.lanes }}"
+model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "omp" "agent" "pr-necessity-auditor") }}"
 tools: read, grep, glob, bash
 autoloadSkills: k-deep-review, k-review
 ---

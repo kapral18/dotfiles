@@ -31,6 +31,15 @@ DRIFT_KIND = "ai.model-mirror-drift"
 CAPABILITIES_REL = Path("scripts/model_capabilities.v1.json")
 MIRROR_REL = Path("home/dot_config/ai/readonly_model-mirrors.v1.json")
 HARNESSES = ("cursor", "claude", "codex", "gemini", "opencode", "pi", "copilot")
+COPILOT_REVIEW_POLICY_AGENTS = (
+    "deep-review",
+    "review-worker",
+    "findings-auditor",
+    "pr-necessity-auditor",
+    "live-ui-review",
+    "adversarial-verifier",
+    "criteria-verifier",
+)
 PROVIDERS = (
     "llama-cpp",
     "openrouter",
@@ -354,11 +363,12 @@ def _load_pi_policy(
     return _unique(curated), _unique(recommended), defaults
 
 
-def _load_copilot_policy(
-    agent_review: dict[str, dict[str, str]],
-) -> tuple[list[str], list[str], dict[str, str]]:
+def _load_copilot_policy(registry_path: Path) -> tuple[list[str], list[str], dict[str, str]]:
     values = ["auto"]
-    values.extend(value for value in agent_review.get("copilot", {}).values() if value and value != "inherit")
+    for agent in COPILOT_REVIEW_POLICY_AGENTS:
+        pick = ai_models.resolve_review_agent_model(registry_path, "copilot", agent)
+        if pick and pick["model"] and pick["model"] != "inherit":
+            values.append(pick["model"])
     models = _unique(values)
     return models, models, {"default": "auto"}
 
@@ -488,7 +498,6 @@ def build_static_mirror(repo_root: str | Path) -> dict[str, Any]:
     cursor_policy = _validate_cursor_policy(ai_models.load_cursor_models(registry_path))
     pi_extras = ai_models.load_pi_extra_models(registry_path)
     provider_policy = _group_provider_policy(ai_models.load_provider_models(registry_path))
-    agent_review = ai_models.load_agent_review_models(registry_path)
 
     cursor_curated = [model["id"] for model in cursor_policy]
     cursor_recommended_entries = [model for model in cursor_policy if model.get("recommended") is True]
@@ -509,7 +518,7 @@ def build_static_mirror(repo_root: str | Path) -> dict[str, Any]:
     gemini_curated, gemini_recommended, gemini_defaults = _load_gemini_policy(root)
     opencode_curated, opencode_recommended, opencode_defaults = _load_opencode_policy(root)
     pi_curated, pi_recommended, pi_defaults = _load_pi_policy(root, pi_extras)
-    copilot_curated, copilot_recommended, copilot_defaults = _load_copilot_policy(agent_review)
+    copilot_curated, copilot_recommended, copilot_defaults = _load_copilot_policy(registry_path)
     copilot_available = _load_copilot_available(registry_path)
 
     policies = {
@@ -613,7 +622,12 @@ def _harness_policy_provenance(harness: str, set_name: str) -> list[dict[str, An
     if harness == "copilot":
         if set_name == "available":
             return [_registry_provenance("copilot_models")]
-        return [_registry_provenance("agent_review_models")]
+        return [
+            _registry_provenance("agent_bindings"),
+            _registry_provenance("agent_categories"),
+            _registry_provenance("model_bands"),
+            _registry_provenance("review_model_overrides"),
+        ]
     return profile_sources[harness]
 
 

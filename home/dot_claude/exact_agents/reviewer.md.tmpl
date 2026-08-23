@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Delegate code, diff, or PR review to an isolated read-only context that returns evidence-backed findings.
-model: inherit
+model: {{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "claude" "agent" "reviewer") }}
 readonly: false
 tools: Read, Grep, Glob, Bash
 skills:

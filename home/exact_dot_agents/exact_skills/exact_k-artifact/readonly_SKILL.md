@@ -15,6 +15,8 @@ The generated-artifact chrome starts with only a fixed Feedback button at the to
 Feedback mode is hidden and capture is disabled by default, so artifact controls remain interactive without selection highlights or interception.
 Opening Feedback reveals the dock and enables a cursor-following hover highlight;
 users then click or select content to pin a stronger highlight.
+Cmd-click toggles additional targets into a multi-selection (teal highlight) so one prompt can address several pinned targets at once;
+a plain click returns to single-anchor mode, and multi-target items reach `poll` with a `targets` array alongside the first target's fields.
 Text selections promote the highlight to the surrounding card, section, list item, or table row.
 Repeated Alt-clicks expand the pinned highlight upward through ancestor elements, up to the top `html` element.
 Closing Feedback hides the chrome and highlights again while preserving queued feedback.
@@ -22,7 +24,7 @@ The open dock expands upward into an anchor card and attaches that context when 
 
 The live overlay mode injects the same feedback idea into an already-open real page through Playwriter. It does not iframe the target app.
 It adds a namespaced Shadow DOM dock, intercepts page clicks while capture is active, has a pause/resume button for normal app use, and can be removed without changing app source.
-Live feedback captures minimal DOM context: URL, title, selector, role/label, compact text or selection, bounding rect, and ancestor hints.
+Live feedback captures minimal DOM context: URL, title, selector, role/label, compact text or selection, bounding rect, ancestor hints, and Cmd-click/Ctrl-click multi-target arrays.
 
 Feedback is sent as batches, so treat `poll` output as a grouped set of requested changes.
 `poll` also returns an `archive` path for the delivered JSONL so feedback can be recovered if the agent crashes after receiving it.

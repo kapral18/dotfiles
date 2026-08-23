@@ -1,8 +1,8 @@
-{{- /* model frontmatter is rendered from the model registries in home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file */ -}}
+{{- /* model frontmatter is rendered through review-agent-model.partial from home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 name: post-review
 description: Second-order audit of the FIXES a review (or any change-producing pass) just made. Use after a review has applied changes, to verify the review changes themselves are well done — runs only the four-dimension hygiene lens (redundancy, verbosity, semantic + logical duplication, gaps) over the fix diff in an isolated read-only context. Not an initial review; for that use the reviewer worker.
-model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "pi" "agent" "post-review") }}"
+model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "pi" "agent" "post-review") }}"
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: true

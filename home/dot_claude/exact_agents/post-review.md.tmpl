@@ -1,7 +1,7 @@
 ---
 name: post-review
 description: Audit a review's fix diff with the four-dimension hygiene lens in a read-only context.
-model: inherit
+model: {{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "claude" "agent" "post-review") }}
 readonly: false
 tools: Read, Grep, Glob, Bash
 skills:

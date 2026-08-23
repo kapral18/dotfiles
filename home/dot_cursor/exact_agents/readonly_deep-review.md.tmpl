@@ -1,7 +1,7 @@
 ---
 name: deep-review
 description: Orchestrates the investigation-only deep-review flow. Use when the user invokes /k-deep-review or asks for the deep-review orchestration.
-model: "{{ .agent_review_models.cursor.lanes }}"
+model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "cursor" "agent" "deep-review") }}"
 readonly: false
 ---
 

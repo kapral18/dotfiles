@@ -2,7 +2,7 @@
 name: findings-auditor
 description: Read-only /k-deep-review findings auditor for non-trivial post-live-UI audits.
 target: github-copilot
-model: "{{ .agent_review_models.copilot.lanes }}"
+model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "copilot" "agent" "findings-auditor") }}"
 tools: [read, search, execute]
 disable-model-invocation: false
 user-invocable: false

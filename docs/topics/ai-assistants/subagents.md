@@ -44,9 +44,9 @@ Verified discovery anchors:
 | Codex CLI   | `$CODEX_HOME/agents/*.toml` plus `multi_agent.spawn_agent` / `wait`; source `openai/codex@45f603302c45` |
 | Antigravity | `~/.gemini/config/skills` symlink + progressive skill disclosure; dynamic subagent protocol             |
 
-Profile `model` frontmatter for `/k-deep-review` lanes is rendered from the `agent_review_models` registry. See [Model registry](model-registry.md) for policy and [Deep-review topology](reviews/deep-review-topology.md) for review-flow usage. Every other profile renders through `agent-model.partial`, which resolves the agent's category to a per-harness band, and a shared pre-tool-use gate re-applies that band to delegation calls no profile can reach — see [Model tiering](model-tiering.md).
+Profile `model` frontmatter for review roles renders through `review-agent-model.partial`, which resolves the agent category to the per-harness max/counter band and uses `review_model_overrides` only for true harness exceptions. Non-review profiles render through `agent-model.partial`, and a shared pre-tool-use gate re-applies that band to delegation calls no profile can reach — see [Model tiering](model-tiering.md).
 
-Antigravity is the runtime-defined exception: it has no repo-owned profile files. The main session defines each review role from the shared role contract and invokes it with the `pro` tier recorded in `agent_review_models.gemini`.
+Antigravity is the runtime-defined exception: it has no repo-owned profile files. The main session defines each review role from the shared role contract and invokes it with the `pro` tier recorded in `review_model_overrides.gemini`.
 
 Pi encodes reasoning effort in model slug suffixes such as `:xhigh` on its per-task registry value.
 
@@ -58,7 +58,7 @@ Cursor source supports custom subagent types, but the model-facing Task schema c
 
 The delegated-subagent contract for every role lives once under `k-review/references/`, except where noted below. That contract loads the owning skill (`k-review`, `k-light-review`, `k-research`, `k-semantic-code-search`) in turn.
 
-`fresh-eyes` is the blind clarity lane: it deliberately loads no skill. Pi and OMP carry thin `fresh-eyes` profiles with the registry lane model; other harnesses launch it through a generic task carrying the same contract and registry model value.
+`fresh-eyes` is the blind clarity lane: it deliberately loads no skill. Pi and OMP carry thin `fresh-eyes` profiles resolved by `review-agent-model.partial`; other harnesses launch it through a generic task carrying the same contract and resolved model value.
 
 The "Loads contract" column is the `k-review/references/<role>.md` file the profile delegates to:
 
@@ -97,7 +97,7 @@ Not every harness ships every profile:
 - Cursor, Copilot, Claude, Pi, and OMP carry a controller profile (`deep-review` or `review-controller` by harness convention).
 - Codex ships only worker/verifier/auditor lanes, so the controller role stays in the interactive session.
 
-The `/k-build` flow's `criteria-verifier` uses the contract under `k-build/references/criteria-verifier.md` and the same `agent_review_models` verifier selection. Profile-based harnesses render it normally; Antigravity defines it dynamically and invokes its `pro` tier.
+The `/k-build` flow's `criteria-verifier` uses the contract under `k-build/references/criteria-verifier.md` and the same review-model resolver as `adversarial-verifier`. Profile-based harnesses render it normally; Antigravity defines it dynamically and invokes its `pro` tier.
 
 Claude carries no profile for `criteria-verifier`. This follows the same convention as `adversarial-verifier`: the lane runs degraded on the session model there.
 

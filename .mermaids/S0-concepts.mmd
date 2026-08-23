@@ -64,7 +64,7 @@ graph TB
     %% ---- C11 Diversity gate (adversarial review) ---------------------------
     C11{{"C11 · ADVERSARIAL DIVERSITY<br/>a model prefers not to clear its own family"}}:::concept
     C11 --> I11["INVARIANT: verifier/adversarial review lanes prefer a<br/>different model family at equal capability;<br/>capability outranks diversity."]:::inv
-    I11 --> R11["realized by: agent_review_models registry<br/>/k-deep-review adversarial/verifier lanes · /k-build criteria-verifier lane"]:::realize
+    I11 --> R11["realized by: review_model_overrides + model_bands counter/verifier_status<br/>review-agent-model.partial · resolve_review_agent_model<br/>/k-deep-review adversarial/verifier lanes · /k-build criteria-verifier lane"]:::realize
 
     %% ---- C12 Resumable state machine ---------------------------------------
     C12{{"C12 · RESUMABLE STATE MACHINES<br/>death parks, relaunch continues"}}:::concept

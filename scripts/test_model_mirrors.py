@@ -225,8 +225,8 @@ class TestStaticModelMirrors(unittest.TestCase):
             return model
 
         pins = [
-            ai_models.load_agent_review_models(registry)["pi"]["lanes"],
-            ai_models.load_agent_review_models(registry)["pi"]["verifier"],
+            ai_models.resolve_review_agent_model(registry, "pi", "reviewer")["model"],
+            ai_models.resolve_review_agent_model(registry, "pi", "adversarial-verifier")["model"],
         ]
         for band in ai_models.load_model_bands(registry)["pi"].values():
             pins.append(band["model"])
@@ -290,18 +290,21 @@ class TestStaticModelMirrors(unittest.TestCase):
             owner = {
                 "pi_extra_models": "harness-catalogs.yaml",
                 "copilot_models": "harness-catalogs.yaml",
-                "agent_review_models": "tiering.yaml",
+                "agent_bindings": "tiering.yaml",
+                "agent_categories": "tiering.yaml",
+                "model_bands": "tiering.yaml",
+                "review_model_overrides": "tiering.yaml",
             }[section]
             return (f"home/.chezmoidata/ai_models/{owner}", section)
 
-        self.assertEqual(
-            sources("copilot", "curated"),
-            {registry("agent_review_models")},
-        )
-        self.assertEqual(
-            sources("copilot", "recommended"),
-            {registry("agent_review_models")},
-        )
+        copilot_policy_sources = {
+            registry("agent_bindings"),
+            registry("agent_categories"),
+            registry("model_bands"),
+            registry("review_model_overrides"),
+        }
+        self.assertEqual(sources("copilot", "curated"), copilot_policy_sources)
+        self.assertEqual(sources("copilot", "recommended"), copilot_policy_sources)
         self.assertEqual(
             sources("copilot", "available"),
             {registry("copilot_models")},

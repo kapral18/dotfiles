@@ -1,7 +1,7 @@
 ---
 name: change-auditor
 description: Delegate a proportional read-only audit of a low-risk self-authored changeset.
-model: inherit
+model: {{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "claude" "agent" "change-auditor") }}
 readonly: false
 tools: Read, Grep, Glob, Bash
 skills:

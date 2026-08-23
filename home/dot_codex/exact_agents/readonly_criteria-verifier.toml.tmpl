@@ -1,6 +1,6 @@
 name = "criteria-verifier"
 description = "Refutation lane over a /k-build criteria ledger. Returns verdicts and scope audit only; never edits or posts."
-model = "{{ .agent_review_models.codex.verifier }}"
+model = "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "codex" "agent" "criteria-verifier") }}"
 model_reasoning_effort = "xhigh"
 service_tier = "default"
 approval_policy = "untrusted"

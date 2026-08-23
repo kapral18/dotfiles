@@ -15,17 +15,17 @@ class TestAiModels(unittest.TestCase):
 
     def test_load_model_mirror_policy_sections(self):
         from ai_models import (
-            load_agent_review_models,
             load_cursor_models,
             load_pi_extra_models,
             load_provider_models,
+            load_review_model_overrides,
         )
 
         path = FIXTURES / "ai_models"
         cursor = load_cursor_models(path)
         pi = load_pi_extra_models(path)
         providers = load_provider_models(path)
-        review = load_agent_review_models(path)
+        review = load_review_model_overrides(path)
 
         assert cursor == [
             {"id": "cursor-model-a", "recommended": True},
@@ -33,8 +33,8 @@ class TestAiModels(unittest.TestCase):
         ]
         assert pi == [{"id": "openrouter/model-a", "recommended": True}]
         assert providers == [{"provider": "openrouter", "id": "provider-model-a", "recommended": True}]
-        assert review["cursor"] == {"lanes": "cursor-model-a", "verifier": "cursor-model-b"}
-        assert review["copilot"] == {"lanes": "gpt-model", "verifier": "claude-model"}
+        assert review["claude"] == {"lanes": "inherit", "verifier": "inherit"}
+        assert review["gemini"] == {"lanes": "pro", "verifier": "pro"}
 
     def test_cursor_policy_fails_closed_when_missing_empty_or_unrecognized(self):
         from ai_models import load_cursor_models
@@ -56,7 +56,7 @@ class TestAiModels(unittest.TestCase):
         from ai_models import load_model_bands
 
         bands = load_model_bands(str(FIXTURES / "ai_models"))
-        assert set(bands.keys()) == {"claude_code"}
+        assert set(bands.keys()) == {"claude_code", "codex"}
         assert bands["claude_code"]["cheap"] == {
             "model": "model-b",
             "effort": "high",
@@ -73,6 +73,12 @@ class TestAiModels(unittest.TestCase):
                 "effort": "medium",
                 "context": "long",
             },
+        }
+        assert bands["codex"]["max"] == {
+            "model": "codex-max",
+            "effort": "xhigh",
+            "thinking": "",
+            "context": "short",
         }
 
     def test_load_agent_categories_and_bindings(self):
@@ -98,6 +104,43 @@ class TestAiModels(unittest.TestCase):
 
         # An unbound agent has no category, so there is no band to pin it to.
         assert resolve_agent_model(path, "claude_code", "not-an-agent") is None
+
+    def test_resolve_review_agent_model_uses_overrides_and_bands(self):
+        from ai_models import resolve_review_agent_model
+
+        path = str(FIXTURES / "ai_models")
+
+        claude_lane = resolve_review_agent_model(path, "claude", "reviewer")
+        assert claude_lane["model"] == "inherit"
+        assert claude_lane["slot"] == "lanes"
+        assert claude_lane["source"] == "override"
+
+        claude_refuter = resolve_review_agent_model(path, "claude_code", "adversarial-verifier")
+        assert claude_refuter["model"] == "inherit"
+        assert claude_refuter["slot"] == "verifier"
+        assert claude_refuter["source"] == "override"
+        assert claude_refuter["degraded"] is True
+        assert claude_refuter["verifier_status"] == "degraded"
+
+        gemini = resolve_review_agent_model(path, "gemini", "reviewer")
+        assert gemini["model"] == "pro"
+        assert gemini["source"] == "override"
+
+        codex_lane = resolve_review_agent_model(path, "codex", "reviewer")
+        assert codex_lane["model"] == "codex-max"
+        assert codex_lane["slot"] == "lanes"
+        assert codex_lane["source"] == "model_bands"
+        assert codex_lane["degraded"] is False
+
+        codex_refuter = resolve_review_agent_model(path, "codex", "adversarial-verifier")
+        assert codex_refuter["model"] == "codex-max"
+        assert codex_refuter["slot"] == "verifier"
+        assert codex_refuter["source"] == "model_bands"
+        assert codex_refuter["degraded"] is True
+        assert codex_refuter["verifier_status"] == "degraded"
+
+        assert resolve_review_agent_model(path, "codex", "not-an-agent") is None
+        assert resolve_review_agent_model(path, "missing", "reviewer") is None
 
     def test_band_entries_keep_empty_strings_and_trailing_comments(self):
         from ai_models import load_model_bands

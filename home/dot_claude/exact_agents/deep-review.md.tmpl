@@ -1,7 +1,7 @@
 ---
 name: deep-review
 description: Claude-native /k-deep-review controller for deep-review orchestration.
-model: inherit
+model: {{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "claude" "agent" "deep-review") }}
 readonly: false
 tools: Read, Grep, Glob, Bash, Edit, Write, Task
 skills:
@@ -21,7 +21,7 @@ Claude bridge:
 
 - Use `Task` for isolated reviewer/auditor work; follow `runtime-harnesses.md` only for capability caveats.
 - For other-authored or unknown-author PRs, run `pr-necessity-auditor` first and block reviewer fan-out until it greenlights that the PR is worth reviewing further.
-- After any required PR necessity greenlight, build the bounded reviewer roster per `k-deep-review/SKILL.md` step 3 and launch one concurrency-safe `reviewer` task per selected sighted angle; when more than one lane applies, launch them in a single parallel batch (`model: inherit` per the `agent_review_models` registry; do not pass model overrides).
+- After any required PR necessity greenlight, build the bounded reviewer roster per `k-deep-review/SKILL.md` step 3 and launch one concurrency-safe `reviewer` task per selected sighted angle; when more than one lane applies, launch them in a single parallel batch (`model: inherit` via the review-model override; do not pass model overrides).
 - When the blind fresh-eyes clarity lane applies (see `k-deep-review/SKILL.md` step 3), launch it in the same batch as a general-purpose `Task` carrying `k-review/references/fresh-eyes.md` — not the `reviewer` profile, whose lens set and scope packet would sight a lane that has to stay blind.
 - After all lanes return, merge duplicates, apply the controller parity filter, and launch `live-ui-review` when changed paths or merged candidates touch UI/runtime behavior and runtime evidence is applicable.
 - Run the findings audit after live UI returns or is explicitly skipped; delegate to `findings-auditor` only for non-trivial candidate sets or fix diffs, otherwise audit inline.

@@ -21,16 +21,16 @@ This is the model-side counterpart to the [MCP registry](mcp.md). Use it when ad
 
 Source of truth: [`home/.chezmoidata/ai_models/`](../../../home/.chezmoidata/ai_models). The sections are split across three files for navigation only — chezmoi merges every file under `.chezmoidata/` (subdirectories included) into one flat data namespace, so templates still read `.cursor_models` and `.model_bands` directly. [`scripts/ai_models.py`](../../../scripts/ai_models.py) holds the section → file map (`SECTION_FILES`) and takes the registry directory, never a single file.
 
-| Section               | File                    | Canonical policy                                                                                                                  |
-| --------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `cursor_models`       | `harness-catalogs.yaml` | Curated Cursor aliases; `recommended: true` is the narrower preferred set                                                         |
-| `pi_extra_models`     | `harness-catalogs.yaml` | Pi's curated picker; every entry is provider-routed through Pi's built-in OpenRouter provider                                     |
-| `copilot_models`      | `harness-catalogs.yaml` | Probed Copilot CLI catalog; the mirror's copilot `available` set                                                                  |
-| `provider_models`     | `provider-routes.yaml`  | Static provider-route choices for shell completion; Vertex entries also own adapter wire/capability metadata                      |
-| `agent_review_models` | `tiering.yaml`          | Per-harness review `lanes`/`verifier` pairs; the verifier-family pairing is reviewed here rather than inferred or auto-promoted   |
-| `agent_categories`    | `tiering.yaml`          | Portable category → `{band, family}`; the same table on every harness                                                             |
-| `agent_bindings`      | `tiering.yaml`          | Every delegable agent name → its category, built-ins included                                                                     |
-| `model_bands`         | `tiering.yaml`          | Per-harness `cheap`/`standard`/`max` picks (+ `counter` on `max`); see [Model tiering](model-tiering.md) for policy and rationale |
+| Section                  | File                    | Canonical policy                                                                                                                  |
+| ------------------------ | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `cursor_models`          | `harness-catalogs.yaml` | Curated Cursor aliases; `recommended: true` is the narrower preferred set                                                         |
+| `pi_extra_models`        | `harness-catalogs.yaml` | Pi's curated picker; every entry is provider-routed through Pi's built-in OpenRouter provider                                     |
+| `copilot_models`         | `harness-catalogs.yaml` | Probed Copilot CLI catalog; the mirror's copilot `available` set                                                                  |
+| `provider_models`        | `provider-routes.yaml`  | Static provider-route choices for shell completion; Vertex entries also own adapter wire/capability metadata                      |
+| `review_model_overrides` | `tiering.yaml`          | Sparse review selector overrides (`inherit`, `pro`) for harnesses whose review roles cannot be derived from `model_bands`         |
+| `agent_categories`       | `tiering.yaml`          | Portable category → `{band, family}`; the same table on every harness                                                             |
+| `agent_bindings`         | `tiering.yaml`          | Every delegable agent name → its category, built-ins included                                                                     |
+| `model_bands`            | `tiering.yaml`          | Per-harness `cheap`/`standard`/`max` picks (+ `counter` on `max`); see [Model tiering](model-tiering.md) for policy and rationale |
 
 Adding a section means adding it to `SECTION_FILES` as well: the parser resolves a section by name, so an unmapped section raises rather than being searched for across files.
 
@@ -97,7 +97,7 @@ Each catalog carries `status`, `models`, `complete`, `reason`, and `provenance`.
 
 `unknown`/`error` catalogs must have no models, `complete: null`, and a reason, so a failed probe can never look like a successful empty catalog.
 
-Provenance enumerates every contributing config or registry source. Registry entries also name the source section, such as `ai_models/tiering.yaml` → `agent_review_models` for Copilot policy.
+Provenance enumerates every contributing config or registry source. Registry entries also name sections, such as `agent_bindings`, `agent_categories`, `model_bands`, and `review_model_overrides` for Copilot review-policy routing.
 
 The mirror also records exact installed harness identity/version evidence and consumer adapters.
 

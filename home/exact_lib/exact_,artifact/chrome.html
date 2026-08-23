@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__ARTIFACT_TITLE__ - Agent Artifact</title>
+<link rel="stylesheet" href="/assets/chrome.css">
+</head>
+<body>
+<iframe id="artifact" src="/artifact/__ARTIFACT_PATH__" sandbox="allow-scripts allow-forms allow-popups allow-downloads"></iframe>
+<button class="feedback-toggle" id="feedbackToggle" type="button" aria-expanded="false" aria-controls="dock">Feedback</button>
+<div class="topbar">
+  <div class="badge"><span class="dot"></span><span>Cache review</span><code>__ARTIFACT_TITLE__</code></div>
+</div>
+<section class="dock" id="dock" aria-label="Agent feedback dock">
+  <div class="dock-head">
+    <div class="context" id="context"><strong>No anchor yet.</strong><span>Click or select content. Alt-click expands the pinned area. Cmd-click adds targets.</span></div>
+  </div>
+  <div class="dock-body">
+    <div class="anchor-card" id="anchorCard" aria-live="polite">
+      <strong id="anchorTitle">Pinned selection</strong>
+      <code id="anchorSelector"></code>
+      <p id="anchorText"></p>
+    </div>
+    <textarea id="prompt" placeholder="Write feedback for the current anchor. Cmd+Enter adds to tray."></textarea>
+    <div class="tray" id="tray" aria-label="Queued feedback items"></div>
+    <div class="actions">
+      <div class="chips">
+        <button type="button" data-prompt="Make this clearer and more scannable.">Clarify</button>
+        <button type="button" data-prompt="Tighten the layout and reduce visual noise.">Tighten</button>
+        <button type="button" data-prompt="Turn this into concrete next steps.">Next steps</button>
+      </div>
+      <div>
+        <button id="clear" type="button">Clear</button>
+        <button id="add" type="button">Add</button>
+        <button id="end" type="button">End</button>
+        <button class="primary" id="send" type="button">Send batch</button>
+      </div>
+    </div>
+    <div class="hint" id="status">Click to pin, select text to promote to its parent area, Cmd-click to pin multiple targets for one prompt, Alt-click repeatedly to expand toward the full page.</div>
+  </div>
+</section>
+<script>
+window.__AGENT_ARTIFACT_NAME__ = __ARTIFACT_NAME_JSON__;
+</script>
+<script src="/assets/chrome.js"></script>
+</body>
+</html>
