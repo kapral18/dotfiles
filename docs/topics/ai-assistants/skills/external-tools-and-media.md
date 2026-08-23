@@ -9,13 +9,13 @@ These skills route non-code tools, browser automation, and generated visual asse
 
 ## `k-artifact`
 
-| Field    | Value                                                                                                                 |
-| -------- | --------------------------------------------------------------------------------------------------------------------- |
-| Use when | creating cache-only local HTML artifacts or injecting a local feedback overlay into an already-open live browser page |
-| Source   | [`exact_k-artifact`](../../../../home/exact_dot_agents/exact_skills/exact_k-artifact/)                                |
-| Tool     | `,artifact`                                                                                                           |
-| Boundary | writes only under `~/.cache/agent-artifacts`; worktrees are identity metadata, not storage                            |
-| UX       | generated artifacts start with feedback capture hidden behind a fixed top-right Feedback button                       |
+| Field    | Value                                                                                                                                                                             |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | creating cache-only local HTML artifacts or injecting a local feedback overlay into an already-open live browser page                                                             |
+| Source   | [`exact_k-artifact`](../../../../home/exact_dot_agents/exact_skills/exact_k-artifact/)                                                                                            |
+| Tool     | `,artifact`                                                                                                                                                                       |
+| Boundary | writes only under `~/.cache/agent-artifacts`; worktrees are identity metadata, not storage                                                                                        |
+| UX       | generated artifacts start with feedback capture hidden behind a fixed top-right Feedback button; semantic IDs and manifests let feedback name entities and relationships directly |
 
 ## `k-google-workspace`
 

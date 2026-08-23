@@ -233,6 +233,14 @@ FEEDBACK_ITEM_FIELDS = (
     "note",
     "url",
     "title",
+    "artifact_id",
+    "entity_id",
+    "entity_kind",
+    "entity_label",
+    "entity_summary",
+    "entity",
+    "entity_ancestors",
+    "relations",
     "role",
     "label",
     "rect",
@@ -251,7 +259,7 @@ def feedback_item_from(raw_item: dict[str, Any]) -> dict[str, Any] | None:
         if field == "prompt" or field not in raw_item:
             continue
         value = raw_item.get(field)
-        if field in {"rect", "ancestors", "targets"}:
+        if field in {"entity", "entity_ancestors", "relations", "rect", "ancestors", "targets"}:
             if value:
                 item[field] = value
         else:

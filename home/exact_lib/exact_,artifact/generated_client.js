@@ -1,9 +1,13 @@
 (() => {
   const STYLE_ID = "__agent_artifact_highlight_style";
+  const ENTITY_ATTR = "data-artifact-id";
+  const MANIFEST_ID = "agent-artifact-manifest";
   let hovered = null;
   let selected = null;
   let multiSelected = [];
   let captureEnabled = false;
+  let manifestCache = null;
+  let manifestLoaded = false;
 
   function ensureStyle() {
     if (document.getElementById(STYLE_ID)) return;
@@ -57,7 +61,7 @@
     if (!el || !el.closest) return el;
     const cell = el.closest("td, th");
     if (cell && cell.parentElement) return cell.parentElement;
-    return el.closest("[data-card], .card, .panel, .callout, article, section, li, tr, blockquote, pre, figure, aside") || el;
+    return el.closest("[data-artifact-id], [data-card], .card, .panel, .callout, article, section, li, tr, blockquote, pre, figure, aside") || el;
   }
 
   function compactText(value) {
@@ -71,7 +75,7 @@
   function targetFor(el, expand) {
     if (!el || !el.closest) return el;
     if (expand) return areaTargetFor(el);
-    return el.closest("a, button, input, textarea, select, [role], [data-card], article, section, li, tr, th, td, h1, h2, h3, p, pre, blockquote") || el;
+    return el.closest("[data-artifact-id], a, button, input, textarea, select, [role], [data-card], article, section, li, tr, th, td, h1, h2, h3, p, pre, blockquote") || el;
   }
 
   function clearMulti() {
@@ -98,11 +102,100 @@
     return base.parentElement || document.documentElement;
   }
 
+  function manifest() {
+    if (manifestLoaded) return manifestCache;
+    manifestLoaded = true;
+    const node = document.getElementById(MANIFEST_ID) || document.querySelector('script[type="application/json"][data-artifact-manifest]');
+    if (!node || !node.textContent.trim()) return manifestCache;
+    try {
+      const value = JSON.parse(node.textContent);
+      if (value && typeof value === "object") manifestCache = value;
+    } catch (_error) {
+      manifestCache = null;
+    }
+    return manifestCache;
+  }
+
+  function manifestEntities() {
+    const value = manifest();
+    return value && value.entities && typeof value.entities === "object" ? value.entities : {};
+  }
+
+  function manifestRelations() {
+    const value = manifest();
+    const relations = value && (value.relations || value.edges);
+    return Array.isArray(relations) ? relations : [];
+  }
+
+  function relationTouches(relation, id) {
+    return relation && (relation.from === id || relation.to === id || relation.source === id || relation.target === id);
+  }
+
+  function carrierFor(el) {
+    return el && el.closest ? el.closest("[" + ENTITY_ATTR + "]") : null;
+  }
+
+  function entityFor(el) {
+    const carrier = carrierFor(el);
+    if (!carrier) return null;
+    const id = carrier.getAttribute(ENTITY_ATTR) || "";
+    if (!id) return null;
+    const raw = manifestEntities()[id] || {};
+    const entity = {
+      id,
+      kind: String(raw.kind || carrier.dataset.artifactKind || carrier.getAttribute("role") || carrier.tagName.toLowerCase()),
+      label: String(raw.label || raw.title || carrier.dataset.artifactLabel || carrier.dataset.artifactTitle || compactText(carrier.innerText || carrier.textContent)),
+    };
+    if (raw.summary || carrier.dataset.artifactSummary) entity.summary = String(raw.summary || carrier.dataset.artifactSummary);
+    if (raw.parent || carrier.dataset.artifactParent) entity.parent = String(raw.parent || carrier.dataset.artifactParent);
+    if (Array.isArray(raw.tags)) entity.tags = raw.tags.map(String).slice(0, 12);
+    return entity;
+  }
+
+  function entityAncestorsFor(entity) {
+    const entities = manifestEntities();
+    const values = [];
+    const seen = new Set([entity && entity.id]);
+    let parent = entity && entity.parent;
+    while (parent && values.length < 8 && !seen.has(parent)) {
+      seen.add(parent);
+      const raw = entities[parent] || {};
+      values.push({
+        id: parent,
+        kind: String(raw.kind || ""),
+        label: String(raw.label || raw.title || parent),
+      });
+      parent = raw.parent;
+    }
+    return values;
+  }
+
+  function semanticContextFor(el) {
+    const entity = entityFor(el);
+    if (!entity) return {};
+    const currentManifest = manifest() || {};
+    const relations = manifestRelations().filter((relation) => relationTouches(relation, entity.id)).slice(0, 16);
+    const context = {
+      source: "artifact",
+      artifact_id: String(currentManifest.artifactId || currentManifest.id || ""),
+      entity_id: entity.id,
+      entity_kind: entity.kind,
+      entity_label: entity.label,
+      entity,
+    };
+    if (entity.summary) context.entity_summary = entity.summary;
+    const ancestors = entityAncestorsFor(entity);
+    if (ancestors.length) context.entity_ancestors = ancestors;
+    if (relations.length) context.relations = relations;
+    return context;
+  }
+
   function contextFor(el, selection) {
     return {
       selector: cssPath(el),
       text: compactText(el.innerText || el.textContent),
       selection: selection || selectionText(),
+      ...semanticContextFor(el),
     };
   }
 

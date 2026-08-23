@@ -143,6 +143,51 @@ class TestArtifactCommand(unittest.TestCase):
         assert len(prompt["targets"]) == 2
         assert prompt["targets"][1]["text"] == "Second card"
 
+    def test_semantic_entity_feedback_survives_normalization(self):
+
+        batch = artifact_feedback.normalize_feedback_batch(
+            {
+                "items": [
+                    {
+                        "prompt": "connect these concepts",
+                        "selector": '[data-artifact-id="entity.option.auth.jwt"]',
+                        "text": "JWT auth",
+                        "artifact_id": "auth-plan",
+                        "entity_id": "entity.option.auth.jwt",
+                        "entity_kind": "option",
+                        "entity_label": "JWT auth",
+                        "entity_summary": "Stateless token-based auth option.",
+                        "entity": {
+                            "id": "entity.option.auth.jwt",
+                            "kind": "option",
+                            "label": "JWT auth",
+                            "parent": "entity.section.auth",
+                        },
+                        "entity_ancestors": [{"id": "entity.section.auth", "kind": "section", "label": "Auth options"}],
+                        "relations": [
+                            {"from": "entity.option.auth.jwt", "to": "entity.risk.revocation", "kind": "has_risk"}
+                        ],
+                        "targets": [
+                            {
+                                "selector": '[data-artifact-id="entity.option.auth.jwt"]',
+                                "entity_id": "entity.option.auth.jwt",
+                                "entity": {"id": "entity.option.auth.jwt", "kind": "option", "label": "JWT auth"},
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+
+        assert batch is not None
+        prompt = artifact_feedback.flatten_feedback_batches([batch])[0]
+        assert prompt["artifact_id"] == "auth-plan"
+        assert prompt["entity_id"] == "entity.option.auth.jwt"
+        assert prompt["entity"]["parent"] == "entity.section.auth"
+        assert prompt["entity_ancestors"][0]["label"] == "Auth options"
+        assert prompt["relations"][0]["kind"] == "has_risk"
+        assert prompt["targets"][0]["entity_id"] == "entity.option.auth.jwt"
+
     def test_feedback_poll_archives_delivered_batches(self):
         with tempfile.TemporaryDirectory() as tmp:
             fdir = Path(tmp) / "feedback"
@@ -334,6 +379,20 @@ class TestArtifactCommand(unittest.TestCase):
         assert "targets pinned" in chrome_js
         assert "Cmd-click" in chrome
 
+    def test_generated_client_exposes_semantic_entity_capture(self):
+
+        injected = artifact_assets.inject_client_script(
+            '<html><body><main data-artifact-id="entity.main" data-artifact-kind="section">hello</main></body></html>'
+        )
+
+        assert 'const ENTITY_ATTR = "data-artifact-id";' in injected
+        assert 'const MANIFEST_ID = "agent-artifact-manifest";' in injected
+        assert "function semanticContextFor" in injected
+        assert "entity_id: entity.id" in injected
+        assert "entity_ancestors = ancestors" in injected
+        assert "relations = relations" in injected
+        assert "[data-artifact-id], a, button" in injected
+
     def test_generated_feedback_mode_starts_hidden_and_gates_capture(self):
 
         injected = artifact_assets.inject_client_script("<html><body><button>Save</button></body></html>")
@@ -377,6 +436,18 @@ class TestArtifactCommand(unittest.TestCase):
         assert "value.targets && value.targets.length" in script
         assert "Cmd-click pins multiple targets" in script
         assert 'window.addEventListener("scroll", syncHighlights, true);' in script
+
+    def test_live_overlay_script_exposes_semantic_entity_capture(self):
+
+        script = artifact_server.live_overlay_script("live.html", "http://127.0.0.1:12345")
+
+        assert 'const ENTITY_ATTR = "data-artifact-id";' in script
+        assert 'const MANIFEST_ID = "agent-artifact-manifest";' in script
+        assert "function semanticContextFor" in script
+        assert "entity_id: entity.id" in script
+        assert "entity_ancestors = ancestors" in script
+        assert "relations = relations" in script
+        assert "[data-artifact-id], a, button" in script
 
     def test_live_start_serves_script_with_cors(self):
         with tempfile.TemporaryDirectory() as tmp:
