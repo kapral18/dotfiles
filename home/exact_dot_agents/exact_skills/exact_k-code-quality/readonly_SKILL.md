@@ -30,11 +30,14 @@ Load React/web/test/design secondaries only for surfaces the evidence already pu
 - Preserve all existing behavior outside the explicit scope of the change.
 - Leave surrounding code, unrelated behavior, and unrelated lines as they are; rewriting or cleaning them up requires explicit approval.
 - Dropping unrelated behavior, even if it looks like cleanup, requires explicit user approval.
+- For edits not proven mechanical-only, carry the SOP semantic delta into the edit:
+  old rule, new rule, intended differences, preserved differences, and evidence for each.
+  If an edit changes what inputs, states, events, persisted data, rendered output, errors, permissions, or generated artifacts mean or produce, treat the whole changed relationship as the unit of scope.
 - Use targeted edits, not full-file rewrites, unless the user asks for a rewrite.
 - If a full rewrite is necessary, diff against the original and verify no unrelated behavior was dropped.
 - Remove only dead imports, variables, or functions introduced by your changes; mention pre-existing dead code instead of deleting it.
   Every changed line must trace to the request; remove any line that does not.
-- When changing how a domain concept, state, or enum is mapped or partitioned, updating co-located sibling consumers (comparators, filters, search predicates, serializers) is required to preserve projection symmetry and traces to the change.
+- When the semantic delta changes one projection of a relationship, updating co-located sibling consumers (comparators, filters, predicates, serializers, renderers, generated outputs, persistence, or import/export paths) is required to preserve projection symmetry and traces to the change.
 
 ## Semantic Dedupe And Simplicity
 

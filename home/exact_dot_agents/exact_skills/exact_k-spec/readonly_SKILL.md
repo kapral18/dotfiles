@@ -33,6 +33,8 @@ Consumers: `/k-build` (in-session hands-free implementation), `~/.agents/skills/
    to the `k-prototype` skill instead of asking the user to imagine the answer; the prototype verdict closes the fork.
    In a delegated/hands-free flow the agent records the verdict itself, with the deciding observation, in the packet's Context line.
    When the verified target repo has a domain overlay exposing a planning fork checklist, consult it to seed the fork inventory (current concrete overlay: `~/.agents/skills/k-elastic-domain/SKILL.md` for `elastic/kibana`); evidence-first still applies.
+   For packets not proven mechanical-only, record SOP semantic delta before criteria:
+   old rule -> new rule -> intended differences -> preserved differences -> evidence; classify differences or externalize them.
    A fork that cannot close locally — another team's sign-off, a compliance confirmation, an external owner's choice between observably different behaviors — does not block packet assembly: record it under `External dependencies` with an owner, the criteria it blocks, and a recommended default, and keep drafting.
    Done when every remaining interpretation produces the same packet.
 
@@ -48,6 +50,7 @@ Consumers: `/k-build` (in-session hands-free implementation), `~/.agents/skills/
    Check strength (every observed contract failure has been a check under-testing its criterion):
    - a check must fail under a plausible wrong implementation, not just before any implementation —
      a no-op that prints the right words is the counterexample to beat
+   - when semantic delta exists, criteria must cover it: one intended-difference and one preserved-difference when both are locally observable
    - a check verifies the outcome, not the rationale: it must assert what observably changes, never restate why the change is correct (the model's own explanation is not evidence the change works)
    - coverage checks target invocation sites (`grep 'run_x(\["cmd"'`), never bare keywords a data field can satisfy
    - ordering/content criteria assert exact output ("store truth": `test "$(cmd)" = "expected"`), not first-line or substring greps
@@ -79,6 +82,8 @@ Consumers: `/k-build` (in-session hands-free implementation), `~/.agents/skills/
 
 Goal: <one sentence — what exists after, that does not exist now>
 Context: <why now; links: issue/PR/thread/prototype verdict>
+
+Semantic delta: <none | old rule; new rule; intended differences; preserved differences; evidence>
 
 In scope:
 

@@ -49,10 +49,13 @@ Complete the current phase before starting a later one.
    run the `k-spec` skill now.
    If any criterion lacks a run-once red check or a `judgment:` tag, return to the `k-spec` skill;
    criteria are authored there, never backfilled mid-build. Present the packet and stop for explicit approval.
+   If the packet is not proven mechanical-only and lacks a semantic delta, return to `k-spec` before presenting it:
+   old rule, new rule, intended differences, preserved differences, and evidence belong in the packet, not mid-build memory.
    Approval of the packet is the hands-free authorization; proceed on in-scope work after it without re-asking permission.
 
 2. **Plan.** Decompose into steps, each with its own verification (SOP §3.4) — a criterion check, a targeted test, or a probe.
    Run the Ownership Gate (SOP §3.2) over the paths the plan touches before any edit.
+   Carry the packet's semantic delta into the plan: every intended difference and every locally observable preserved difference needs a check, probe, or named judgment row.
    For stateful/parser-like/branch-heavy targets, plan the SOP State-Machine Verification harness during planning.
 
 3. **Execute.** Work the steps in order; after each, run its verification and update the ledger.
@@ -60,7 +63,7 @@ Complete the current phase before starting a later one.
    Proceed past a step verification only when it is green — otherwise fix or replan.
    Two consecutive failed attempts on the same criterion trigger the SOP §3.3 reset:
    stop implementing and end the flow as `blocked` with the captured failure, instead of thrashing.
-   If evidence found mid-build contradicts the packet (wrong premise, wrong scope), stop, state the correction, and return to gate 1 with the revised packet — implementing a silently different spec is a flow violation.
+   If evidence found mid-build contradicts the packet (wrong premise, wrong scope, missing intended difference, or missing preserved difference), stop, state the correction, and return to gate 1 with the revised packet — implementing a silently different spec is a flow violation.
 
 4. **Mechanical gates.**
    Discover the repo's lint / type-check / test commands from repo sources (repo evidence, never a guess), prefer scoped commands for the affected package, and run them.
@@ -83,6 +86,8 @@ Complete the current phase before starting a later one.
    the same cross-family pick `/k-deep-review` uses).
    In Antigravity, define a dynamic `criteria-verifier` from `~/.agents/skills/k-build/references/criteria-verifier.md` and invoke it with the registry's `pro` tier.
    On a harness without a named profile (Claude), run the lane as a generic read-only subagent on the session model that loads the same contract, with refutation framing, and report `families=same (degraded)` — never skip the phase silently.
+   The verifier must try to refute the semantic delta, not only the positive criteria:
+   look for behavior that changed outside intended differences and for intended differences not covered by checks.
    Judge the returned verdicts; a `refuted` row goes back to phase 3 (or `blocked` with the reason).
 
 7. **Post-review stage.**
@@ -102,6 +107,7 @@ A blocked flow ends as `blocked` with the ledger as-is — never as a success su
 
 - Spec packet: path + approval reference.
 - Criteria ledger: every row with status, evidence (command + exit), and verification verdict.
+- Semantic delta: old rule, new rule, intended differences, preserved differences, and which ledger rows proved each locally observable item.
 - Adversarial verification: families used (`<session-family> vs <verifier-family>` or `same (degraded)`), verdict counts, scope-audit result.
 - Mechanical gates: commands run with results, or the exact blocker.
 - Live-UI proof: per-criterion `met` / `unmet` / `blocked` verdicts and the screenshot manifest (each set in its own `/tmp/<folder-name>/`), or `skipped (no visual criterion)`.

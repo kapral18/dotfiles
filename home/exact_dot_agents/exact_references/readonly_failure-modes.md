@@ -32,6 +32,14 @@ This catalog is not a skill: it has no procedure to invoke. Its consumer is the 
 
 **Prevention.** `k-review/SKILL.md` adds a "Verdict Gate" section that names those three checks as the precondition for any verdict; earlier responses are required to be status ledgers without the verdict word.
 
+### Positive-delta tunnel vision
+
+**Mode.** Agent proves the requested positive behavior but does not reconstruct the full old-rule -> new-rule semantic delta. A fix for one symptom broadens or narrows behavior elsewhere, while the spec, tests, build verification, and review all inherit the same narrowed oracle.
+
+**Falsifier.** Before implementation or review verdict, state the old rule, new rule, intended differences, preserved differences, and evidence for each. A proposed fix whose semantic delta includes extra differences is not complete until those differences are classified as requested, preserved, or blocked.
+
+**Prevention.** `home/readonly_AGENTS.md`, `k-spec`, `k-build`, `k-code-quality`, `k-code-quality-tests`, and `k-review` all consume the shared semantic-delta contract instead of adding per-domain checklists.
+
 ## Probe budget
 
 ### Probe-budget exhaustion

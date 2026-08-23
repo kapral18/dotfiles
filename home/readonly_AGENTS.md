@@ -41,6 +41,10 @@ This SOP is a binding operational contract; keep it at full strength and surface
 
 Before any edit, classify and state compatibility impact: `none` | `removed (requested)` | `kept existing (requested)`.
 
+- Default for edits: state the semantic delta before editing unless the edit is proven mechanical-only:
+  formatting, generated metadata from checked source, pure rename with all references updated, or prose/comment text with no behavioral claim. old rule -> new rule -> intended differences -> preserved differences -> evidence.
+  The user's reported symptom is an entry point into the behavior, not the full rule.
+  If the preserved-difference set is empty, say why; if it is unknown, keep investigating and mark `Unknown` only when evidence is genuinely unavailable.
 - No explicit compatibility request: use a direct update with no shim, alias, wrapper, or deprecation path.
   Add a compatibility/legacy path only when the user explicitly requests one.
 - Simplify/remove/replace requested: remove the old path outright, leaving zero new compatibility paths behind.
@@ -154,7 +158,7 @@ Anchor every self-report before forward-chaining on it, or label it hypothesis/`
 
 ## 3. Workflow And Side Effects
 
-Minimal edit scope: change only what the request requires; preserve unrelated behavior.
+Minimal edit scope: change only what the request requires; preserve behavior outside the stated semantic delta.
 Rewrite, remove, or clean up unrelated code/prose only with explicit approval.
 Use targeted edits unless a rewrite is requested; if rewriting, verify no unrelated behavior was dropped.
 Every changed line must trace to the request.
@@ -228,6 +232,8 @@ Make success observable. Reframe tasks into observable checks when practical:
   Invoke `,proof` only on a concrete trigger above; "the task feels non-trivial" is insufficient.
 - Multi-step plans need independently verifiable steps. Stop at a failing verification step: back up or replan before proceeding.
   Repeated same-class failure triggers `3.3 Requirements Reset`.
+- Behavioral verification must exercise the semantic delta: at least one intended difference and one preserved difference when both are locally observable.
+  A check that proves only the requested positive path is incomplete unless the change has no preserved behavioral surface.
 - Self-consistency check: when a rationale claims inputs/files/conditions are irrelevant, perturb those and confirm stability.
   If the decision flips, re-investigate before relying on it.
 - These loops leave Compatibility, External Truth, Runtime Truth, and Minimal Edit Scope fully in force.
@@ -242,7 +248,7 @@ A disposable harness under `/tmp/state-machine-verification/<pwd>/<topic>/<slug>
 - Include `manifest.json` with worktree, topic, slug, target files/symbols, requested behavior, and compatibility intent.
   Add branch/base/head when relevant.
 - Reuse an existing harness after reading its manifest and confirming it still matches.
-- Name states, transitions, inputs, terminal actions, and existing buckets.
+- Name states, transitions, inputs, terminal actions, existing buckets, and the semantic delta across them.
   Also name requested behavior, boundaries, malformed inputs, and regression-sensitive cases.
 - Compare implementation behavior against an independent model/table.
   When preserving behavior, compare against base and classify every difference.

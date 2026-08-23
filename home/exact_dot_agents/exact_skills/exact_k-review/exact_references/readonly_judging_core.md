@@ -14,12 +14,14 @@ Use in every non-trivial review.
 - A static read proves what source says, not what the system does; verify runtime behavior whenever candidate keep/drop depends on observed state.
 - **Diff-boundary tunnel vision is forbidden:** reviewing diff hunks in isolation without inspecting surrounding context, caller trees, and sibling consumers is never justified across any review tier (light, standard, or deep).
   Always expand beyond the diff: read full enclosing files, trace callers/callees (via local `rg`, symbol lookup, or SCSI), and audit how changed behavior impacts preexisting surrounding contracts.
+- For diffs not proven mechanical-only, reconstruct semantic delta: old/new rule, intended/preserved differences, evidence.
+  Missing/extra/unproven rows are candidates until refuted.
 - Establish base invariants first (SCSI when indexed; otherwise `git show <base>:<path>` + local `rg`), then validate PR/branch reality (diff + full file reads).
 - Evaluate the diff as a state and contract boundary; simulate behavior across universal failure primitives:
   caller/callee contract asymmetry, test oracle/mock fidelity gaps, compositional fault cascades in batch/collection processing, temporal/async hazards, projection/mapping divergence, and silent error degradation.
 - When evaluating a proposed change: prefer smallest repro in `/tmp` or smallest safe experiment in worktree.
 - If you changed code in an iteration cycle, re-run repo quality gates (lint + type_check + tests).
-- Keep an evidence log per comment/thread: base behavior, delta, tests run, observations.
+- Keep an evidence log per comment/thread: base behavior, semantic delta, tests run, observations.
 
 ## Candidate Refutation Ladder (Run Before Reporting Or Acting)
 
@@ -39,6 +41,7 @@ Attempt refutation in this order and stop at the first decisive result:
 3. **Severity:** does the evidence support the assigned severity under the definitions below, or a different one?
    Correct in both directions.
 4. **Proposed fix:** would the fix behave as claimed without introducing a new problem?
+   Compare fix delta with requested delta; broader delta is a candidate, not implementation detail.
 5. **Already covered:** is the concern already handled elsewhere in the diff or base? Cite where.
 
 Self-refutation catches unreachable paths, inflated severity, and weak fixes, but lacks cross-family independence.
@@ -124,13 +127,13 @@ In large repos, keep probes targeted and line-bounded rather than running whole-
 
 ## Semantic-Projection & Sibling-Consumer Gate
 
-Trigger: the diff changes how a domain concept, state enum, data bucket, or entity property is classified, partitioned, mapped, or formatted.
+Trigger: semantic delta changes how a domain relationship is interpreted, projected, stored, rendered, compared, filtered, or serialized.
 
 Audit co-located consumers that project, compare, or transform that same concept:
 
-- **Projection symmetry:** when one projection of a concept is updated (e.g. formatting, categorization, or normalization), verify that parallel projections (sorting/ordering comparators, filter predicates, search matchers, equality checks, serialization, or export) reflect the identical semantic mapping.
+- **Projection symmetry:** when one projection changes, verify parallel projections reflect the same semantic mapping.
 - **Bi-directional consistency:** verify read vs write, serialize vs deserialize, and encode vs decode paths handle all known variants and edge cases symmetrically.
-- **Classification divergence:** classify any case where sibling consumers apply diverging partition rules to the same input space as HIGH (broken invariant / silent behavioral split).
+- **Delta divergence:** classify any case where sibling consumers apply diverging semantic deltas to the same input space as HIGH (broken invariant / silent behavioral split).
 
 ## Product-Flow Lens (Run When The Diff Touches User-Facing Flows)
 

@@ -1,8 +1,8 @@
 {
   "version": 1,
   "output_path": "home/readonly_AGENTS.md",
-  "output_sha256": "887f3fb02adc0da3c1f5475f761cb7e38d810a58131e3e61febe5529c67b826d",
-  "output_bytes": 30093,
+  "output_sha256": "901bd8a2536afd64daac83299da1a62d48e150f6720204544ee68e658bb269f7",
+  "output_bytes": 30999,
   "rules": [
     {
       "id": "sop.0.binding-contract",
@@ -39,8 +39,8 @@
     },
     {
       "id": "sop.2.0.compatibility-gate",
-      "sha256": "2bb1cc7f11a40068fa3214fafac27266fb8801ae812fbd87c196a6712ef5bb29",
-      "bytes": 653,
+      "sha256": "d99d9635ca8cc201aa344d636c55ac7d44b11cb6f1b240cc4b20e5588bb6aa96",
+      "bytes": 1223,
       "disposition": "core",
       "consumer": "home/readonly_AGENTS.md",
       "risk_tier": "compatibility",
@@ -127,8 +127,8 @@
     },
     {
       "id": "sop.3.workflow-and-side-effects",
-      "sha256": "48203664e09970d4ff35386d2e71f9c8eb56bb925b80a02645e2ee8e93c98737",
-      "bytes": 353,
+      "sha256": "f212f82f3c94908a0c3c80e57a7002fda3677b99b0ee8912bf8c818ecbd35f4b",
+      "bytes": 377,
       "disposition": "core",
       "consumer": "home/readonly_AGENTS.md",
       "risk_tier": "standard",
@@ -182,8 +182,8 @@
     },
     {
       "id": "sop.3.4.verification-loops",
-      "sha256": "af20c9566ab81c74c1a13abcd2dc0430f6123bad3c8aeac24ce8c6527f3a2ea5",
-      "bytes": 1687,
+      "sha256": "ad402761a562d2289f7f09f0e6dff7b37d0cf6e9bd376303ea1afcef0ceb39c2",
+      "bytes": 1967,
       "disposition": "core",
       "consumer": "home/readonly_AGENTS.md",
       "risk_tier": "safety",
@@ -193,8 +193,8 @@
     },
     {
       "id": "sop.3.5.state-machine-verification",
-      "sha256": "015f9d9ada4d59100815bf1f0f5a66f8c9a87d5f369d37aa2f07f05938984de5",
-      "bytes": 1157,
+      "sha256": "62f758d578023ebb0c607c44fad6b7ec316c8eed80ad78df260de059df851157",
+      "bytes": 1189,
       "disposition": "core",
       "consumer": "home/readonly_AGENTS.md",
       "risk_tier": "compatibility",

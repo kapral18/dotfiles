@@ -7,10 +7,10 @@
       "method": "mechanical clause-presence sweep (no live model eval available this run)",
       "target_disposition": "skill",
       "consumer": "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
-      "evidence": "minimal edit scope, no unrelated cleanup/removal without approval, targeted edits/full-rewrite diffing, introduced-only dead-code removal, sibling-consumer projection symmetry, semantic dedupe guard preservation, no unrequested abstractions/features/error handling, simplicity/no behavior loss, and artifact necessity without-it probe requirements were confirmed present in k-code-quality before this pass",
+      "evidence": "minimal edit scope, semantic-delta preservation, no unrelated cleanup/removal without approval, targeted edits/full-rewrite diffing, introduced-only dead-code removal, sibling-consumer projection symmetry, semantic dedupe guard preservation, no unrequested abstractions/features/error handling, simplicity/no behavior loss, and artifact necessity without-it probe requirements were confirmed present in k-code-quality before this pass",
       "rule_sha256": "4b2d1c447aa70c367f9ab15accc59c566befcf15b2f8002e129c0f0dbd2c4f78",
       "eval_ref": "sop.5.code-quality.mechanical-only",
-      "consumer_sha256": "aaa280e7cacf57b9c067c26249c141ea252defe364481894086ff7d48d9cb045"
+      "consumer_sha256": "7a18e892c77bfa5289d004f52d0fefd51469058af1a4833570ededd76d995d7d"
     },
     "sop.6.5.external-human-replies": {
       "status": "mechanical-only",

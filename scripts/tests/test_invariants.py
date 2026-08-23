@@ -579,6 +579,62 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "No per-session cap; dedup before writing",
         )
 
+    def test_ai_instructions_keep_semantic_delta_contract_wired(self):
+        self.assert_file_contains(
+            "home/readonly_AGENTS.md",
+            "Default for edits: state the semantic delta before editing unless the edit is proven mechanical-only",
+            "state the semantic delta before editing",
+            "formatting, generated metadata from checked source, pure rename with all references updated, or prose/comment text with no behavioral claim",
+            "old rule -> new rule -> intended differences -> preserved differences -> evidence",
+            "keep investigating and mark `Unknown` only when evidence is genuinely unavailable",
+            "preserve behavior outside the stated semantic delta",
+            "Behavioral verification must exercise the semantic delta",
+            "at least one intended difference and one preserved difference when both are locally observable",
+            "existing buckets, and the semantic delta across them",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
+            "For edits not proven mechanical-only, carry the SOP semantic delta into the edit",
+            "old rule, new rule, intended differences, preserved differences, and evidence for each",
+            "If an edit changes what inputs, states, events, persisted data, rendered output, errors, permissions, or generated artifacts mean or produce",
+            "When the semantic delta changes one projection of a relationship",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-spec/readonly_SKILL.md",
+            "For packets not proven mechanical-only",
+            "record SOP semantic delta before criteria",
+            "when semantic delta exists, criteria must cover it",
+            "one intended-difference and one preserved-difference when both are locally observable",
+            "Semantic delta: <none | old rule; new rule; intended differences; preserved differences; evidence>",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-build/readonly_SKILL.md",
+            "If the packet is not proven mechanical-only and lacks a semantic delta",
+            "Carry the packet's semantic delta into the plan",
+            "missing intended difference, or missing preserved difference",
+            "The verifier must try to refute the semantic delta, not only the positive criteria",
+            "Semantic delta: old rule, new rule, intended differences, preserved differences",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_core.md",
+            "For diffs not proven mechanical-only, reconstruct semantic delta",
+            "Missing/extra/unproven rows are candidates",
+            "Compare fix delta with requested delta",
+            "Trigger: semantic delta changes how a domain relationship is interpreted",
+            "Delta divergence",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-code-quality-tests/readonly_SKILL.md",
+            "Before claiming a test covers a changed observable relation",
+            "at least one intended difference fails and, when locally observable, at least one preserved difference fails",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_references/readonly_failure-modes.md",
+            "Positive-delta tunnel vision",
+            "does not reconstruct the full old-rule -> new-rule semantic delta",
+            "shared semantic-delta contract instead of adding per-domain checklists",
+        )
+
     def test_review_flows_iterate_to_fixed_point(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_core.md",
