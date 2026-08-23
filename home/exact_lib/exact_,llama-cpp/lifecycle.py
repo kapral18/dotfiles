@@ -158,13 +158,17 @@ def is_loopback(host: str) -> bool:
 
 def process_start_identity(pid: int) -> str | None:
     result = subprocess.run(
-        ["/bin/ps", "-o", "lstart=", "-p", str(pid)],
+        ["/bin/ps", "-o", "stat=", "-o", "lstart=", "-p", str(pid)],
         capture_output=True,
         text=True,
         check=False,
     )
-    identity = result.stdout.strip()
-    return identity if result.returncode == 0 and identity else None
+    fields = result.stdout.strip().split(None, 1)
+    if result.returncode != 0 or len(fields) != 2:
+        return None
+    if fields[0].startswith("Z"):
+        return None
+    return fields[1]
 
 
 def read_owner(path: Path) -> dict[str, object] | None:

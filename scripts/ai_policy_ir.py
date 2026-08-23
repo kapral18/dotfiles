@@ -3,16 +3,15 @@
 
 Stage 1: one Rule per numbered SOP heading, disposition "core", consumer
 "home/readonly_AGENTS.md", verbatim text -- the compiled output must equal
-the legacy file byte-for-byte. Stage 2 applies a disposition override on top
-of that mechanical split (see apply_dispositions/DISPOSITIONS_PATH) once a
-rule has an accepted ablation/evaluation record, moving it to a smaller consumer
-(skill/hook/overlay) without changing the split itself.
+the legacy file byte-for-byte. Stage 2 applies a disposition override from the
+policy audit file once a rule has an accepted ablation/evaluation record,
+moving it to a smaller consumer (skill/hook/overlay) without changing the
+split itself.
 
-Reviewer note: DISPOSITIONS_PATH freezes each moved rule's original text as a
+Reviewer note: POLICY_AUDIT_PATH freezes each moved rule's original text as a
 JSON-escaped string -- a normal PR diff renders that as one dense unreadable
-line per rule. Do not approve a disposition-override diff from the JSON diff
-alone; open the named consumer file and compare its content against the
-frozen `text` field by eye (or via `compile_ai_policy.py explain <rule-id>`,
+line per rule. Review the named consumer file and compare its content against
+the frozen `text` field by eye (or via `compile_ai_policy.py explain <rule-id>`,
 which pretty-prints one rule's frozen text) before trusting the ablation.
 """
 
@@ -51,25 +50,19 @@ RISK_TIERS = frozenset(
 RISK_TIER_BY_RULE_ID = {
     "sop.0.binding-contract": "safety",
     "sop.1.purpose-and-hierarchy": "secret",
-    "sop.2.0.compatibility-gate": "compatibility",
-    "sop.3.1.git-commit-and-push-safety": "git-gate",
-    "sop.3.2.ownership-gate": "ownership",
-    "sop.3.4.verification-loops": "safety",
-    "sop.3.5.state-machine-verification": "compatibility",
-    "sop.3.6.human-visible-publication": "publication",
+    "sop.2.1.compatibility-gate": "compatibility",
+    "sop.3.2.git-commit-and-push-safety": "git-gate",
+    "sop.3.3.ownership-gate": "ownership",
+    "sop.3.5.verification-loops": "safety",
+    "sop.3.6.state-machine-verification": "compatibility",
+    "sop.3.8.human-visible-publication": "publication",
     "sop.4.1.durable-memory": "secret",
 }
 
-DISPOSITIONS_PATH = Path("home/dot_config/ai/exact_policy-ir/readonly_policy-dispositions.v1.json")
+POLICY_AUDIT_PATH = Path("home/dot_config/ai/exact_policy-ir/readonly_policy-audit.v1.json")
 RULE_INVENTORY_PATH = Path("home/dot_config/ai/exact_policy-ir/readonly_policy-rule-inventory.v1.json")
 
-# Display heading number may differ from the inventory id. Inventory ids are permanent;
-# a heading rename must alias to the existing id instead of minting a new one.
-RULE_ID_ALIASES = {
-    "sop.3.4.1.state-machine-verification": "sop.3.5.state-machine-verification",
-}
-
-# Matches "## 0. Binding Contract", "### 2.0 Compatibility Gate", etc. Stage 1
+# Matches "## 0. Binding Contract", "### 2.1 Compatibility Gate", etc. Stage 1
 # splits strictly on these headings so every byte of the legacy file belongs
 # to exactly one rule and concatenation reconstructs the file exactly.
 _HEADING_RE = re.compile(r"^(#{2,3})\s+(\S+)\s+(.+)$", re.MULTILINE)
@@ -104,8 +97,7 @@ def _slug(number: str, title: str) -> str:
     number = number.rstrip(".")
     ascii_title = unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode("ascii")
     words = re.sub(r"[^a-z0-9]+", "-", ascii_title.lower()).strip("-")
-    raw = f"sop.{number}.{words}"
-    return RULE_ID_ALIASES.get(raw, raw)
+    return f"sop.{number}.{words}"
 
 
 def _risk_tier_for(rule_id: str) -> str:
@@ -176,7 +168,7 @@ def load_dispositions(repo_root: Path) -> dict[str, dict]:
     is gone from the legacy file for good, so the override is the only
     remaining place the rule's original text can live.
     """
-    path = repo_root / DISPOSITIONS_PATH
+    path = repo_root / POLICY_AUDIT_PATH
     if not path.is_file():
         return {}
     return json.loads(path.read_text(encoding="utf-8"))["overrides"]

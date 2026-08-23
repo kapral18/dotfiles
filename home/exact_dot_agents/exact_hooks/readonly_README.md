@@ -154,7 +154,7 @@ On default branches without an explicit active topic, it targets the latest `ses
 No hook runs on `stop`, and no hook re-prompts the agent.
 Two disciplines that earlier lived in `stop` hooks now live in the SOP, enforced by instruction rather than by an auto-submitted follow-up:
 
-- Evidence anchoring: visible factual/runtime claims must carry a hard source anchor or an explicit `Unknown` demotion (`~/CLAUDE.md` §2.1 / §2.3).
+- Evidence anchoring: visible factual/runtime claims must carry a hard source anchor or an explicit `Unknown` demotion (`~/CLAUDE.md` §2.2 / §2.6).
   The earlier `evidence_anchor.py` hook re-prompted per turn and was removed as noise.
 - Durable-learning capture: as the last step of a substantive turn the agent self-vets and persists durable insights inline with `,ai-kb remember` (`~/CLAUDE.md` §4.1).
   This replaces the earlier `learning_reminder.py` stop hook, which auto-submitted a "persist learnings" prompt capped at once per conversation.

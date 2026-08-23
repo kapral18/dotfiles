@@ -55,6 +55,42 @@ class TestCheckPlan(unittest.TestCase):
         assert "verify-templates" in plan.gates
         assert "tests/test_invariants.py" in plan.tests
 
+    def test_WHEN_sop_changes_SHOULD_run_focused_sop_policy_shard(self):
+        plan = plan_check(REPO, full=False, changed=("home/readonly_AGENTS.md",), add_delete=False)
+        assert "tests/test_sop_policy_invariants.py" in plan.tests
+        assert "tests/test_invariants.py" not in plan.tests
+
+    def test_WHEN_agent_prompt_prefix_changes_SHOULD_not_run_slow_picker_shards(self):
+        plan = plan_check(
+            REPO,
+            full=False,
+            changed=("home/dot_config/exact_tmux/agent_prompts/prefix.txt",),
+            add_delete=False,
+        )
+        assert "tests/test_sop_policy_invariants.py" in plan.tests
+        for shard in SLOW_SHARDS:
+            assert shard not in plan.tests
+
+    def test_WHEN_hook_readme_changes_SHOULD_not_run_hook_runtime_shards(self):
+        plan = plan_check(
+            REPO,
+            full=False,
+            changed=("home/exact_dot_agents/exact_hooks/readonly_README.md",),
+            add_delete=False,
+        )
+        assert "tests/test_agent_hooks.py" not in plan.tests
+        assert "tests/test_agent_skill_invariants.py" not in plan.tests
+
+    def test_WHEN_hook_source_changes_SHOULD_run_hook_runtime_shards(self):
+        plan = plan_check(
+            REPO,
+            full=False,
+            changed=("home/exact_dot_agents/exact_hooks/executable_session_context.py",),
+            add_delete=False,
+        )
+        assert "tests/test_agent_hooks.py" in plan.tests
+        assert "tests/test_agent_skill_invariants.py" in plan.tests
+
     def test_WHEN_a_file_is_added_SHOULD_run_verify_mermaids(self):
         plan = plan_check(REPO, full=False, changed=("docs/topics/code-quality/formatting.md",), add_delete=True)
         assert "verify-mermaids" in plan.gates

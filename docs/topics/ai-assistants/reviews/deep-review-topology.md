@@ -9,7 +9,7 @@ title: Deep-review topology
 
 The flow is a phased investigation pipeline, not a loose collection of agents. The key invariant is phase ownership: workers investigate; the controller judges and performs any gated side effect.
 
-![Deep-review phase order: route, blocking PR necessity, bounded registry-model reviewer roster, lane merge/dedup, conditional live UI, findings audit, final adversarial verification (cross-family preferred at equal capability, SOP §3.5), controller judgment, and gated action](../assets/deep-review-flow.svg)
+![Deep-review phase order: route, blocking PR necessity, bounded registry-model reviewer roster, lane merge/dedup, conditional live UI, findings audit, final adversarial verification (cross-family preferred at equal capability, SOP §3.7), controller judgment, and gated action](../assets/deep-review-flow.svg)
 
 ## Mental model: phase ownership
 
@@ -50,7 +50,7 @@ After any required PR necessity greenlight, the controller builds a **bounded an
 
 Before that roster launches, the controller materializes a read-only context pack for PR metadata, comments, reviews, checks, diff, and changed-file/base snapshots, then includes the pack root and expected `head_sha` in every worker scope packet. Workers consume it through `context-pack.md`, verify `manifest.head_sha`, and report `pack_used`, `pack_stale`, or `pack_missing`.
 
-`correctness-regressions` always runs. A single-surface diff with no independent risk trigger uses that one sighted lane; the adversarial verifier (cross-family preferred at equal capability, SOP §3.5) supplies the independent refutation pass after findings audit.
+`correctness-regressions` always runs. A single-surface diff with no independent risk trigger uses that one sighted lane; the adversarial verifier (cross-family preferred at equal capability, SOP §3.7) supplies the independent refutation pass after findings audit.
 
 Which lenses exist, when each is implicated, and what each one checks live in one place: `k-review/references/lanes.md`. It defines sixteen lenses — correctness, tests, design/modularity, API contracts, security/authz, data persistence, concurrency/state, error and failure modes, performance, deletion/replacement, product flow, frontend rendering, accessibility, observability, dependency/config, and docs/contract drift — and wires the ones with a matching expert skill (`k-code-quality`, `-tests`, `-react`, `-web`, `k-codebase-design`) to load it. Availability is free; only launched lanes cost tokens.
 
@@ -101,13 +101,13 @@ When two or more reviewer lanes report the same root cause, the audit should mer
 
 ### Final adversarial verification
 
-After findings audit, the controller runs **final adversarial verification**. One worker (cross-family preferred at equal capability, SOP §3.5) receives only the audited candidates, with lane attribution stripped, and tries to refute each claim by testing truth, reachability, severity, proposed fix, and already-covered status.
+After findings audit, the controller runs **final adversarial verification**. One worker (cross-family preferred at equal capability, SOP §3.7) receives only the audited candidates, with lane attribution stripped, and tries to refute each claim by testing truth, reachability, severity, proposed fix, and already-covered status.
 
 Verdicts (`confirmed`/`refuted`/`undecidable`) feed the verification ledger. A refutation becomes a hard drop reason only after the controller checks its evidence addresses the candidate's actual claim.
 
 The verifier then runs a **bounded miss sweep**. It is usually the only model from a different family that reads the diff, and the finder lanes share a family and a prompt, so what they all missed is what it is best positioned to catch. Refutation alone discards that. The sweep is scoped to the highest-risk changed surface, holds the same evidence bar as a verdict, and returns at most three `new-candidate` items or `none above the bar`. Because they have not passed the findings audit, the controller re-audits them inline before judgment and reports produced-versus-survived counts.
 
-On harnesses where the registry pairs the same family for both roles, the phase runs on the lane model with refutation framing and reports `families=same (degraded)` when no second family is reachable, or `families=same (reduced independence)` when same-family is the deliberate capability-first pairing (Cursor) — capability outranks family diversity (SOP §3.5). Either state is reported, never silent. After the cost-driven ban (closed 2026-08-03) that is every harness except Copilot, which is the only one whose `max` band still carries a counter (`claude-sonnet-4.6` against OpenAI lanes).
+On harnesses where the registry pairs the same family for both roles, the phase runs on the lane model with refutation framing and reports `families=same (degraded)` when no second family is reachable, or `families=same (reduced independence)` when same-family is the deliberate capability-first pairing (Cursor) — capability outranks family diversity (SOP §3.7). Either state is reported, never silent. After the cost-driven ban (closed 2026-08-03) that is every harness except Copilot, which is the only one whose `max` band still carries a counter (`claude-sonnet-4.6` against OpenAI lanes).
 
 The controller aggregates the investigation outputs, then judges what to fix or draft through mode-correct review rules. For each ledger item, it either resolves it with evidence, runs the check serially when needed for judgment, marks it not needed with evidence, or reports the exact blocker/uncertainty.
 
@@ -144,7 +144,7 @@ Model selection is registry-driven and deterministic.
 
 Every repo-owned review profile's `model` frontmatter is a chezmoi template over the single `agent_review_models` block in `.chezmoidata/ai_models/tiering.yaml`. Updating a model is a one-line registry edit, and neither skills nor controllers steer models at runtime; generic fresh-eyes is the only runtime pass-through, used only where no named fresh-eyes profile exists.
 
-The review's diversity comes from angles plus the adversarial verify pass (cross-family preferred at equal capability, SOP §3.5); the registry keeps the family pairing a human decision instead of a launch-time inference.
+The review's diversity comes from angles plus the adversarial verify pass (cross-family preferred at equal capability, SOP §3.7); the registry keeps the family pairing a human decision instead of a launch-time inference.
 
 ### Live UI target selection
 

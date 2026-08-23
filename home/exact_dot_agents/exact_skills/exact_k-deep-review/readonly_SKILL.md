@@ -66,7 +66,7 @@ The controller owns:
   - requires screenshot handoff evidence for any UI-related finding that may become draft review feedback, unless live UI returns a valid blocker or non-applicability result
 - running the controller findings audit phase after live UI returns evidence/non-applicability/blocker or is explicitly skipped;
   delegate to `findings-auditor` only when a findings-audit delegation condition is true
-- running the final adversarial verification pass (cross-family preferred at equal capability, SOP §3.5) over the audited candidate set
+- running the final adversarial verification pass (cross-family preferred at equal capability, SOP §3.7) over the audited candidate set
 - aggregating worker outputs, `pr-necessity-auditor` status, reviewer findings, live UI status/evidence/artifacts/skip reason, audit output, and final adversarial verification verdicts
 - deciding which worker-reported `verification_needed` items deserve serial controller verification
 - judging kept/dropped findings after aggregation
@@ -136,7 +136,7 @@ The phase order is strict:
 3. the reviewer lane roster (one sighted baseline lane plus evidence-triggered angle/fresh-eyes lanes, launched in parallel when more than one lane applies)
 4. lane merge/dedup plus conditional live UI verification over the merged candidate set
 5. findings audit, inline or delegated by the findings-audit delegation conditions
-6. final adversarial verification (cross-family preferred at equal capability, SOP §3.5) over the audited candidate set
+6. final adversarial verification (cross-family preferred at equal capability, SOP §3.7) over the audited candidate set
 7. controller aggregation, judgment, PR-mode pending-review reconciliation, and action
 8. post-act verification, only for any flow that edited the working tree (gates + fix-diff Post-Review Stage)
 
@@ -419,7 +419,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      Report `families=cross` only when the registry's verifier model is genuinely a different family than its lane model.
      Report `families=same (degraded)` when the harness cannot field a second family (empty/`inherit` entry or single-vendor surface).
      When the registry deliberately pairs the same family at equal capability, report `families=same (reduced independence)` instead —
-     capability outranks family diversity (SOP §3.5).
+     capability outranks family diversity (SOP §3.7).
      Degradation or reduced independence must be reported, never silent; run the phase even when cross-family is unavailable.
    - Verdicts are evidence, not decisions: when recording each `confirmed` / `refuted` / `undecidable (needs <check>)` in the verification ledger, check that a `refuted` verdict's evidence addresses the candidate's actual claim; record it as `undecidable` otherwise.
      "Non-refuted" downstream means not validly refuted after that check.

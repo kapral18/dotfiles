@@ -10,7 +10,7 @@ This is the controller contract for `/k-build` — the creation-side sibling of 
 It implements an approved **spec packet** (from the `k-spec` skill) hands-free: the human touches the flow at exactly two gates —
 packet approval before execution, and the final report. Everything between runs without asking, inside the side-effect boundary below.
 
-The SOP owns the surrounding gates: per-step verification loops (§3.4), requirements reset (§3.3), compatibility (§2.0), and state-machine verification (`### 3.4.1 State-Machine Verification`).
+The SOP owns the surrounding gates: per-step verification loops (§3.5), requirements reset (§3.4), compatibility (§2.1), and state-machine verification (`### 3.6 State-Machine Verification`).
 The `k-code-quality` skill owns minimal edit scope at point of use.
 This skill owns the phase order, the criteria ledger, and the verification topology.
 
@@ -23,7 +23,7 @@ This skill owns the phase order, the criteria ledger, and the verification topol
 
 Packet approval authorizes working-tree edits and verification mutations (installs, codegen, running tests) for the packet's in-scope work —
 nothing else.
-Commits, pushes, issue/PR creation, comments, and every other publication keep their own explicit-approval gates (`k-git`/`k-github` skills, SOP §3.6).
+Commits, pushes, issue/PR creation, comments, and every other publication keep their own explicit-approval gates (`k-git`/`k-github` skills, SOP §3.8).
 The packet's **Out of scope** list is binding: an edit that serves no criterion is scope expansion — revert it or stop and re-approve.
 
 ## Criteria ledger
@@ -53,15 +53,15 @@ Complete the current phase before starting a later one.
    old rule, new rule, intended differences, preserved differences, and evidence belong in the packet, not mid-build memory.
    Approval of the packet is the hands-free authorization; proceed on in-scope work after it without re-asking permission.
 
-2. **Plan.** Decompose into steps, each with its own verification (SOP §3.4) — a criterion check, a targeted test, or a probe.
-   Run the Ownership Gate (SOP §3.2) over the paths the plan touches before any edit.
+2. **Plan.** Decompose into steps, each with its own verification (SOP §3.5) — a criterion check, a targeted test, or a probe.
+   Run the Ownership Gate (SOP §3.3) over the paths the plan touches before any edit.
    Carry the packet's semantic delta into the plan: every intended difference and every locally observable preserved difference needs a check, probe, or named judgment row.
    For stateful/parser-like/branch-heavy targets, plan the SOP State-Machine Verification harness during planning.
 
 3. **Execute.** Work the steps in order; after each, run its verification and update the ledger.
    Run checks bare — a piped check (`cmd | tail`) reports the pipe's exit code, not the check's.
    Proceed past a step verification only when it is green — otherwise fix or replan.
-   Two consecutive failed attempts on the same criterion trigger the SOP §3.3 reset:
+   Two consecutive failed attempts on the same criterion trigger the SOP §3.4 reset:
    stop implementing and end the flow as `blocked` with the captured failure, instead of thrashing.
    If evidence found mid-build contradicts the packet (wrong premise, wrong scope, missing intended difference, or missing preserved difference), stop, state the correction, and return to gate 1 with the revised packet — implementing a silently different spec is a flow violation.
 

@@ -18,8 +18,8 @@ Over budget → cut restatement, then adjectives, then examples. Cut words, neve
 Reach for a density primitive before prose: verdict line, delta table, anchor list (`- file:line — one-clause finding`), decision block (`Pick/Because/Reject`).
 For ≥3 sections, emit a 1-line skeleton first, then fill each slot to budget. A section may not restate an item already in an earlier table/list; refer by name and add only new information.
 Brevity outranks structure; structure must earn its space. Prefer structure that compresses; skip sections/tables/lists that only fill a budget or restate.
-Borrow STE (ASD-STE100 Simplified Technical English) habits only when they shrink text (one idea/sentence, active voice, delete filler, condition before command). Full STE caps/modals/vocab only when asked for STE/docs compliance; §6 owns in-session replies.
+Borrow STE (ASD-STE100 Simplified Technical English) habits only when they shrink text (one idea/sentence, active voice, delete filler, condition before command). Full STE caps/modals/vocab only when asked for STE/docs compliance; §5 owns in-session replies.
 Final message of the turn holds every deliverable (no tool calls after it); restate mid-turn load-bearing facts there.
 Line 1 is the answer, decision, or next action. Last line adds new information, never a recap or "let me know". Skip preamble/closers.
 One idea per line. Max 2 sentences per block. Digits not words. Paths, commands, IDs on their own line.
-No valid model of time/effort/urgency: justify scope with evidence, correctness, risk, and explicit user constraints; estimate duration only when asked.
+Time neutrality: assume available work time is unbounded and development speed is instant; choose scope by evidence, correctness, risk, and explicit user constraints; estimate duration only when asked.

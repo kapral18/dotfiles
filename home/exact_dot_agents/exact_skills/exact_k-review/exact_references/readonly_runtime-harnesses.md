@@ -11,7 +11,7 @@ Read this file only for capability caveats that affect orchestration.
 
 - Model selection is **registry-driven and deterministic**: every repo-owned profile's `model` frontmatter is rendered from the single `agent_review_models` block in the chezmoi model registry (`home/.chezmoidata/ai_models/tiering.yaml`).
   Updating a model is a one-line registry edit plus `chezmoi apply`; model ids never live hand-written in profile files.
-- Registry values per harness: `lanes` (angle lanes, auditors, controller, named fresh-eyes profiles, and generic fresh-eyes launches) and `verifier` (the adversarial verifier — prefer a **different model family than `lanes`** at equal capability per SOP §3.5; never trade capability for family diversity — a strong same-family verifier beats a weaker cross-family one.
+- Registry values per harness: `lanes` (angle lanes, auditors, controller, named fresh-eyes profiles, and generic fresh-eyes launches) and `verifier` (the adversarial verifier — prefer a **different model family than `lanes`** at equal capability per SOP §3.7; never trade capability for family diversity — a strong same-family verifier beats a weaker cross-family one.
   Same-family runs keep refutation framing and report the reduced independence, never hidden).
   Generic fresh-eyes launches must pass the registry lane model as the profile-equivalent model;
   named fresh-eyes profiles carry the same registry-rendered frontmatter.
@@ -58,7 +58,7 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
 - Registry `lanes` and `verifier` are both `cursor-grok-4.6-xhigh`.
   `model_bands.cursor.max` carries no counter, so the adversarial verifier runs `families=same (reduced independence)`;
   keep refutation framing and report that, never skip the phase and never present it as a cross-family pass.
-  Omitted/default Cursor subagents can resolve to `composer-2.5-fast`; the CLI default selector is `auto`.
+  Omitted/default Cursor subagents can resolve to `composer-2.8-fast`; the CLI default selector is `auto`.
   Treat any omitted Cursor subagent model as a matrix bypass.
 - Same-name custom profiles do **not** shadow native Cursor enum agents (`explore`, `debug`, `cursor_guide`, `unspecified`):
   custom profiles are carried as a separate `custom` oneof with a `name`, while native cases are distinct empty oneof variants.
@@ -94,5 +94,5 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
   Work prices primary roles to `openrouter/deepseek/deepseek-v4-flash-0731:max` and keeps `vision` on `openrouter/moonshotai/kimi-k3:high`.
   Personal pins `default` and `advisor` to `cursor/cursor-grok-4.6-xhigh`, so `model_bands.omp.max` carries no counter.
   Adversarial and criteria verifiers follow `@default` with the review lanes, so refutation is same-family on both profiles (reduced independence).
-  Personal `smol` stays on `cursor/composer-2.5:high`.
+  Personal `smol` stays on `cursor/composer-2.8:high`.
   Other repo-owned Pi/OMP profiles resolve their model from the band registry (`agent_bindings` → `agent_categories` → `model_bands`) so they do not fall through to `defaultProvider`/`defaultModel` unless a future profile deliberately omits `model` and documents why.

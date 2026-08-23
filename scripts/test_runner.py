@@ -26,12 +26,37 @@ import subprocess
 import sys
 import tempfile
 import time
+import unittest
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
 # The runner matches test_*.py but is not a unittest module.
 NOT_TEST_FILES = frozenset({"test_runner.py"})
+UNIT_SHARDED_FILES = frozenset(
+    {
+        "test_ai_kb.py",
+        "tests/test_bin_commands.py",
+        "tests/test_gh_picker_dispatch_state.py",
+        "tests/test_llama_cpp_lifecycle.py",
+        "tests/test_plain_session_removal.py",
+        "tests/test_proof_cli.py",
+        "tests/test_recall_worklog.py",
+        "tests/test_session_github_cache.py",
+        "tests/test_tmux_handoff_lifecycle.py",
+        "tests/test_wh.py",
+        "tests/test_worktree_delete_boundaries.py",
+    }
+)
+
+
+@dataclass(frozen=True)
+class Shard:
+    path: Path
+    target: str
+    label: str
+    spec_stem: str
 
 
 def discover_files() -> list[Path]:
@@ -40,10 +65,9 @@ def discover_files() -> list[Path]:
     return [path for path in files if path.name not in NOT_TEST_FILES]
 
 
-# Files whose tests snapshot the working tree (git-status file census) and so
-# cannot run concurrently with the import-time __pycache__/.pyc churn that
-# sibling shard subprocesses create. They run in the lead phase instead.
-LEAD_FILES = frozenset({"test_verify_mermaids.py"})
+# Shard subprocesses run with PYTHONDONTWRITEBYTECODE from check.py, so tests
+# that inspect the working tree do not need a serial lead phase.
+LEAD_FILES = frozenset()
 
 
 def _split_lead(files: list[Path]) -> tuple[list[Path], list[Path]]:
@@ -57,24 +81,52 @@ def module_name(path: Path) -> str:
     return ".".join(rel.parts)
 
 
-def shard_spec_root(path: Path, tmpdir: str) -> str:
-    return str(Path(tmpdir) / f"agent-hook-specs-{path.stem}")
+def _safe_stem(value: str) -> str:
+    return "".join(ch if ch.isalnum() or ch in "._-" else "-" for ch in value)[:120]
 
 
-def run_file(path: Path, tmpdir: str) -> tuple[Path, int, float, str, str]:
+def shard_spec_root(shard: Shard, tmpdir: str) -> str:
+    return str(Path(tmpdir) / f"agent-hook-specs-{_safe_stem(shard.spec_stem)}")
+
+
+def _flatten_suite(suite: unittest.TestSuite):
+    for item in suite:
+        if isinstance(item, unittest.TestSuite):
+            yield from _flatten_suite(item)
+        else:
+            yield item
+
+
+def expand_shards(files: list[Path]) -> list[Shard]:
+    shards: list[Shard] = []
+    for path in files:
+        module = module_name(path)
+        rel = path.relative_to(SCRIPTS).as_posix()
+        if rel in UNIT_SHARDED_FILES:
+            suite = unittest.defaultTestLoader.loadTestsFromName(module)
+            for test in _flatten_suite(suite):
+                target = test.id()
+                shards.append(Shard(path=path, target=target, label=target, spec_stem=target))
+        else:
+            shards.append(Shard(path=path, target=module, label=module, spec_stem=path.stem))
+    return shards
+
+
+def run_shard(shard: Shard, tmpdir: str) -> tuple[Shard, int, float, str, str]:
     env = dict(os.environ)
     env["PYTHONPATH"] = str(SCRIPTS) + os.pathsep + env.get("PYTHONPATH", "")
-    env["AGENT_MEMORY_SPEC_ROOT"] = shard_spec_root(path, tmpdir)
+    env["AGENT_MEMORY_SPEC_ROOT"] = shard_spec_root(shard, tmpdir)
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
     start = time.monotonic()
     proc = subprocess.run(
-        [sys.executable, "-m", "unittest", "-v", module_name(path)],
+        [sys.executable, "-m", "unittest", "-v", shard.target],
         cwd=str(SCRIPTS),
         env=env,
         capture_output=True,
         text=True,
     )
     elapsed = time.monotonic() - start
-    return path, proc.returncode, elapsed, proc.stdout, proc.stderr
+    return shard, proc.returncode, elapsed, proc.stdout, proc.stderr
 
 
 def resolve_files(names: list[str]) -> list[Path]:
@@ -100,48 +152,51 @@ def main() -> int:
     args = parser.parse_args()
 
     files = resolve_files(args.files)
+    shards = expand_shards(files)
     if args.list:
-        for f in files:
-            print(module_name(f))
+        for shard in shards:
+            print(shard.label)
         return 0
 
     tmpdir = tempfile.gettempdir()
     total = 0
-    failed: list[Path] = []
+    failed: list[str] = []
     started = time.monotonic()
 
-    def report(path: Path, rc: int, elapsed: float, out: str, err: str) -> None:
+    def report(shard: Shard, rc: int, elapsed: float, out: str, err: str) -> None:
         nonlocal total
         ran = _parse_ran(err) or _parse_ran(out)
         total += ran
         status = "ok" if rc == 0 else "FAIL"
-        print(f"[{status}] {module_name(path)} ({ran} tests, {elapsed:.1f}s)")
+        print(f"[{status}] {shard.label} ({ran} tests, {elapsed:.1f}s)")
         if rc != 0:
-            failed.append(path)
+            failed.append(shard.label)
             sys.stdout.write(out)
             sys.stderr.write(err)
 
     # Lead-phase files walk the working tree (git-status census) and must not
     # race the __pycache__/.pyc files that sibling shard subprocesses create on
     # import. Run them alone in the lead process before the parallel fan-out.
-    lead, shards = _split_lead(files)
-    for path in lead:
-        _, rc, elapsed, out, err = run_file(path, tmpdir)
-        report(path, rc, elapsed, out, err)
+    lead_paths, _ = _split_lead(files)
+    lead = [shard for shard in shards if shard.path in lead_paths]
+    parallel = [shard for shard in shards if shard.path not in lead_paths]
+    for shard in lead:
+        _, rc, elapsed, out, err = run_shard(shard, tmpdir)
+        report(shard, rc, elapsed, out, err)
 
     # Threads (not processes) for the pool: each unit of work is itself a
     # subprocess, so the GIL is irrelevant and ThreadPoolExecutor avoids a
     # pickling boundary for the file payloads.
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        futures = {pool.submit(run_file, f, tmpdir): f for f in shards}
+        futures = {pool.submit(run_shard, shard, tmpdir): shard for shard in parallel}
         for future in as_completed(futures):
-            path, rc, elapsed, out, err = future.result()
-            report(path, rc, elapsed, out, err)
+            shard, rc, elapsed, out, err = future.result()
+            report(shard, rc, elapsed, out, err)
 
     wall = time.monotonic() - started
-    print(f"\nRan {total} tests across {len(files)} files in {wall:.1f}s ({args.workers} workers)")
+    print(f"\nRan {total} tests across {len(files)} files/{len(shards)} shards in {wall:.1f}s ({args.workers} workers)")
     if failed:
-        print(f"FAILED ({len(failed)} file(s)): {', '.join(module_name(f) for f in failed)}")
+        print(f"FAILED ({len(failed)} shard(s)): {', '.join(failed)}")
         return 1
     print("OK")
     return 0

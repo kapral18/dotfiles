@@ -35,7 +35,7 @@ Build, job, artifact, pipeline, agent, auth/config, and the `bk api` escape hatc
 Load it whenever you need a command not shown in the Failure Debugging Workflow below.
 
 The pre-authorized `bk` commands do not mutate org state (downloads write local files only).
-Mutating commands (`bk build create`, `bk build rebuild`, `bk build cancel`, `bk job retry`, `bk job cancel`, `bk agent stop`, `bk agent pause`, `bk agent resume`, `bk pipeline create`) change org-visible CI state (SOP §3.6): run them when the user's request covers them ("rebuild it", "retry the job"); otherwise propose the exact command first.
+Mutating commands (`bk build create`, `bk build rebuild`, `bk build cancel`, `bk job retry`, `bk job cancel`, `bk agent stop`, `bk agent pause`, `bk agent resume`, `bk pipeline create`) change org-visible CI state (SOP §3.8): run them when the user's request covers them ("rebuild it", "retry the job"); otherwise propose the exact command first.
 One authorization covers the flow, not one ask per command.
 `bk api` is not pre-authorized: it can POST, so it goes through the normal permission prompt.
 

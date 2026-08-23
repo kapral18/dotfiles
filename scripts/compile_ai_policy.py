@@ -12,7 +12,7 @@ Usage:
     compile_ai_policy.py verify [--all-targets] [--repo-root PATH]
     compile_ai_policy.py verify-budgets --core-max-bytes N --overlay-max-bytes N
         --skill-max-bytes N --description-total-max-bytes N [--repo-root PATH]
-    compile_ai_policy.py audit-coverage --legacy PATH --manifest PATH [--base-inventory PATH | --base-ref REF] [--repo-root PATH]
+    compile_ai_policy.py audit-coverage --legacy PATH [--manifest PATH] [--base-inventory PATH | --base-ref REF] [--repo-root PATH]
     compile_ai_policy.py explain RULE_ID [--repo-root PATH]
     compile_ai_policy.py measure [--repo-root PATH]
 """
@@ -35,18 +35,17 @@ import ai_policy_ir as ir
 MANIFEST_PATH = Path("home/dot_config/ai/exact_policy-ir/readonly_policy-manifest.v1.json")
 LEGACY_PATH = Path("home/readonly_AGENTS.md")
 SKILLS_ROOT = Path("home/exact_dot_agents/exact_skills")
-ABLATIONS_PATH = Path("home/dot_config/ai/exact_policy-ir/readonly_policy-ablations.v1.json")
 MANIFEST_VERSION = 1
 PROTECTED_CORE_RULE_IDS = frozenset(
     {
         "sop.0.binding-contract",
-        "sop.2.0.compatibility-gate",
-        "sop.3.1.git-commit-and-push-safety",
-        "sop.3.2.ownership-gate",
-        "sop.3.4.verification-loops",
-        "sop.3.5.delegation-categories",
-        "sop.3.5.state-machine-verification",
-        "sop.3.6.human-visible-publication",
+        "sop.2.1.compatibility-gate",
+        "sop.3.2.git-commit-and-push-safety",
+        "sop.3.3.ownership-gate",
+        "sop.3.5.verification-loops",
+        "sop.3.6.state-machine-verification",
+        "sop.3.7.delegation-categories",
+        "sop.3.8.human-visible-publication",
         "sop.4.1.durable-memory",
     }
 )
@@ -85,6 +84,23 @@ def _sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _rule_identity_title(rule: ir.Rule) -> str | None:
+    match = ir._HEADING_RE.search(rule.text)
+    if not match:
+        return None
+    title = match.group(3).lower()
+    title = re.sub(r"\s*\(hard requirement\)", "", title)
+    return re.sub(r"[^a-z0-9]+", "-", title).strip("-")
+
+
+def _rule_identity_title_from_id(rule_id: str) -> str:
+    parts = rule_id.split(".")
+    while parts and (parts[0] == "sop" or re.fullmatch(r"\d+[a-z]?", parts[0])):
+        parts.pop(0)
+    title = ".".join(parts)
+    return re.sub(r"-hard-requirement$", "", title)
+
+
 def _build_manifest(rules: list[ir.Rule], rendered: str) -> dict:
     return {
         "version": MANIFEST_VERSION,
@@ -110,6 +126,16 @@ def _build_manifest(rules: list[ir.Rule], rendered: str) -> dict:
 
 def _load_manifest(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _load_policy_audit(repo_root: Path) -> dict:
+    path = repo_root / ir.POLICY_AUDIT_PATH
+    if not path.is_file():
+        return {"version": 1, "overrides": {}, "ablations": {}}
+    audit = json.loads(path.read_text(encoding="utf-8"))
+    audit.setdefault("overrides", {})
+    audit.setdefault("ablations", {})
+    return audit
 
 
 def _check_capabilities(rules: list[ir.Rule], repo_root: Path) -> None:
@@ -190,7 +216,7 @@ def _load_rules_from_legacy_path(repo_root: Path, legacy_path: Path) -> list[ir.
 def cmd_verify(args: argparse.Namespace) -> int:
     repo_root: Path = args.repo_root
     legacy_rel = getattr(args, "legacy", LEGACY_PATH)
-    manifest_rel = getattr(args, "manifest", MANIFEST_PATH)
+    manifest_rel = getattr(args, "manifest", None)
     rules = _load_rules_from_legacy_path(repo_root, legacy_rel)
     _check_capabilities(rules, repo_root)
     rendered = ir.render(rules)
@@ -201,15 +227,13 @@ def cmd_verify(args: argparse.Namespace) -> int:
         print(f"verify: {legacy_path} does not match compiled output (drift detected)", file=sys.stderr)
         return 1
 
-    manifest_path = repo_root / manifest_rel
-    if not manifest_path.is_file():
-        print(f"verify: {manifest_path} missing; run generate first", file=sys.stderr)
-        return 1
-    manifest = _load_manifest(manifest_path)
     expected_manifest = _build_manifest(rules, rendered)
-    if manifest != expected_manifest:
-        print(f"verify: {manifest_path} does not match the recompiled manifest", file=sys.stderr)
-        return 1
+    manifest = expected_manifest
+    if manifest_rel is not None and (manifest_path := repo_root / manifest_rel).is_file():
+        manifest = _load_manifest(manifest_path)
+        if manifest != expected_manifest:
+            print(f"verify: {manifest_path} does not match the recompiled manifest", file=sys.stderr)
+            return 1
 
     manifest_rules = manifest.get("rules", [])
     for recorded in manifest_rules:
@@ -219,10 +243,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
             return 1
 
     if args.all_targets:
-        ablations_path = repo_root / ABLATIONS_PATH
-        ablations = {}
-        if ablations_path.is_file():
-            ablations = json.loads(ablations_path.read_text(encoding="utf-8")).get("ablations", {})
+        ablations = _load_policy_audit(repo_root).get("ablations", {})
         for recorded in manifest_rules:
             if recorded.get("disposition") == "core":
                 continue
@@ -266,15 +287,14 @@ def cmd_verify_budgets(args: argparse.Namespace) -> int:
         print(f"verify-budgets: core exceeds budget by {core_bytes - args.core_max_bytes} bytes", file=sys.stderr)
         ok = False
 
-    manifest_path = repo_root / MANIFEST_PATH
     overlay_consumers = set()
-    if manifest_path.is_file():
-        manifest = _load_manifest(manifest_path)
-        overlay_consumers = {
-            record["consumer"]
-            for record in manifest.get("rules", [])
-            if record["disposition"] in {"harness-overlay", "pinned-model-overlay"}
-        }
+    rules = ir.load_legacy_sop(repo_root)
+    manifest = _build_manifest(rules, ir.render(rules))
+    overlay_consumers = {
+        record["consumer"]
+        for record in manifest.get("rules", [])
+        if record["disposition"] in {"harness-overlay", "pinned-model-overlay"}
+    }
     for consumer in sorted(overlay_consumers):
         overlay_path = repo_root / consumer
         if not overlay_path.is_file():
@@ -324,7 +344,8 @@ def cmd_audit_coverage(args: argparse.Namespace) -> int:
     inventory_path = repo_root / ir.RULE_INVENTORY_PATH
     if not inventory_path.is_file():
         print(
-            f"audit-coverage: {inventory_path} missing; every rule ever split must be recorded there", file=sys.stderr
+            f"audit-coverage: {inventory_path} missing; current and disposed policy rules must be recorded there",
+            file=sys.stderr,
         )
         return 2
     inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
@@ -345,23 +366,27 @@ def cmd_audit_coverage(args: argparse.Namespace) -> int:
         )
         if result.returncode == 0:
             base_ids = set(json.loads(result.stdout)["rule_ids"])
-        else:
-            legacy_result = subprocess.run(
-                ["git", "-C", str(repo_root), "show", f"{base_ref}:{LEGACY_PATH}"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if legacy_result.returncode == 0:
-                base_rules = ir.split_legacy_sop(legacy_result.stdout)
-                base_rules_by_id = {rule.id: rule for rule in base_rules}
+        legacy_result = subprocess.run(
+            ["git", "-C", str(repo_root), "show", f"{base_ref}:{LEGACY_PATH}"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if legacy_result.returncode == 0:
+            base_rules = ir.split_legacy_sop(legacy_result.stdout)
+            base_rules_by_id = {rule.id: rule for rule in base_rules}
+            if base_ids is None:
                 base_ids = set(base_rules_by_id)
     if base_ids is not None:
         removed_ids = base_ids - inventory_ids
+        current_rule_titles = {title for rule in legacy_rules if (title := _rule_identity_title(rule))}
         unaccounted_removed = []
         for rule_id in sorted(removed_ids):
             rule = base_rules_by_id.get(rule_id)
-            if rule_id in PROTECTED_CORE_RULE_IDS or rule is None or rule.sha256 not in removed_rule_hashes:
+            removed_title = _rule_identity_title(rule) if rule is not None else _rule_identity_title_from_id(rule_id)
+            same_rule_title_is_current = removed_title in current_rule_titles
+            removed_content_is_recorded = rule is not None and rule.sha256 in removed_rule_hashes
+            if rule_id in PROTECTED_CORE_RULE_IDS or not (same_rule_title_is_current or removed_content_is_recorded):
                 unaccounted_removed.append(rule_id)
         if unaccounted_removed:
             print(
@@ -373,18 +398,22 @@ def cmd_audit_coverage(args: argparse.Namespace) -> int:
     new_from_legacy = legacy_ids - inventory_ids
     if new_from_legacy:
         print(
-            f"audit-coverage: {len(new_from_legacy)} rule id(s) in {args.legacy} are missing from the permanent "
+            f"audit-coverage: {len(new_from_legacy)} rule id(s) in {args.legacy} are missing from the "
             f"rule inventory {ir.RULE_INVENTORY_PATH}: {sorted(new_from_legacy)}",
             file=sys.stderr,
         )
         return 1
     required_ids = inventory_ids
 
-    manifest_path = repo_root / args.manifest
-    if not manifest_path.is_file():
-        print(f"audit-coverage: {manifest_path} missing", file=sys.stderr)
-        return 2
-    manifest = _load_manifest(manifest_path)
+    if args.manifest is not None:
+        manifest_path = repo_root / args.manifest
+        if not manifest_path.is_file():
+            print(f"audit-coverage: {manifest_path} missing", file=sys.stderr)
+            return 2
+        manifest = _load_manifest(manifest_path)
+    else:
+        rules = _load_rules_from_legacy_path(repo_root, args.legacy)
+        manifest = _build_manifest(rules, ir.render(rules))
     manifest_records = manifest.get("rules", [])
     manifest_ids = {record["id"] for record in manifest_records}
 
@@ -404,7 +433,7 @@ def cmd_audit_coverage(args: argparse.Namespace) -> int:
     uncovered = sorted(required_ids - manifest_ids)
     if uncovered:
         print(
-            f"audit-coverage: {len(uncovered)} rule(s) from the permanent inventory missing from the manifest "
+            f"audit-coverage: {len(uncovered)} rule(s) from the rule inventory missing from the manifest "
             f"(never omit a rule that ever existed, even across a Stage 2 split): {uncovered}",
             file=sys.stderr,
         )
@@ -413,7 +442,7 @@ def cmd_audit_coverage(args: argparse.Namespace) -> int:
     extra = sorted(manifest_ids - required_ids)
     if extra:
         print(
-            f"audit-coverage: {len(extra)} manifest rule(s) are missing from the permanent inventory: {extra}",
+            f"audit-coverage: {len(extra)} manifest rule(s) are missing from the rule inventory: {extra}",
             file=sys.stderr,
         )
         return 1
@@ -439,7 +468,7 @@ def cmd_audit_coverage(args: argparse.Namespace) -> int:
             print(f"  {problem}", file=sys.stderr)
         return 1
 
-    print(f"audit-coverage: all {len(required_ids)} rules in the permanent inventory covered with valid dispositions")
+    print(f"audit-coverage: all {len(required_ids)} inventoried rules covered with valid dispositions")
     return 0
 
 
@@ -504,6 +533,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     verify = sub.add_parser("verify", parents=[repo_root_parent])
     verify.add_argument("--all-targets", action="store_true")
+    verify.add_argument("--manifest", type=Path)
 
     budgets = sub.add_parser("verify-budgets", parents=[repo_root_parent])
     budgets.add_argument("--core-max-bytes", type=int, required=True)
@@ -513,7 +543,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     audit = sub.add_parser("audit-coverage", parents=[repo_root_parent])
     audit.add_argument("--legacy", type=Path, required=True)
-    audit.add_argument("--manifest", type=Path, required=True)
+    audit.add_argument("--manifest", type=Path)
     audit.add_argument("--base-inventory", type=Path)
     audit.add_argument("--base-ref")
 

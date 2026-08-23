@@ -73,7 +73,7 @@ Completion criterion: each refuter returned findings or an explicit "none", and 
 ## Step 5 — Act, refuse, and re-verify discrimination
 
 Fix class (a)/(b)/(c) findings. List refusals with reasons.
-Class (c) fixes that amend commits or edit published text must pass the SOP §3.1 commit gate and §3.6 publication approval before being applied; working-tree fixes need no gate.
+Class (c) fixes that amend commits or edit published text must pass the SOP §3.2 commit gate and §3.8 publication approval before being applied; working-tree fixes need no gate.
 
 After fixing, re-run the mutation probes that cover the touched code.
 A fix that quietly weakens a test is the failure this step exists to catch — a test-harness "improvement" can neutralize the very tests it was meant to protect.

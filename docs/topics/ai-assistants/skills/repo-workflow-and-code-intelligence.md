@@ -53,7 +53,7 @@ These skills operate on local repositories, code search, cleanup, external sourc
 | -------- | ------------------------------------------------------------------------------------------------------------- |
 | Use when | diagnosing a hard bug, failure, flake, or performance regression — build a tight red loop first               |
 | Source   | [`exact_k-diagnosing-bugs`](../../../../home/exact_dot_agents/exact_skills/exact_k-diagnosing-bugs/)          |
-| Boundary | routes into SOP §3.4 plus SOP State-Machine Verification; not the runtime-truth chain for "is X set up right" |
+| Boundary | routes into SOP §3.5 plus SOP State-Machine Verification; not the runtime-truth chain for "is X set up right" |
 | Pivots   | no-correct-seam / architectural post-mortem → `k-codebase-design`; regression test → `k-code-quality-tests`   |
 
 ## `k-prototype`

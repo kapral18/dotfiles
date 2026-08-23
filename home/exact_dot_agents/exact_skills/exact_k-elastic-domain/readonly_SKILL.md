@@ -83,7 +83,7 @@ Templates live in `~/.agents/skills/k-elastic-domain/references/pr-issue-templat
 
 ## Kibana planning fork checklist
 
-Apply with `k-spec` or any SOP §3.0 intent loop when the verified repo is `elastic/kibana`.
+Apply with `k-spec` or any SOP §3.1 intent loop when the verified repo is `elastic/kibana`.
 Read `~/.agents/skills/k-elastic-domain/references/kibana-planning-forks.md` to seed forks:
 API versioning, Saved Objects/migrations, privileges, dependencies, feature flags, backports, test placement, alerting, instrumentation.
 Evidence-first: answer from issue/diff/codebase before asking; only genuine gaps become fork-closing questions.

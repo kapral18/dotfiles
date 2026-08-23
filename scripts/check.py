@@ -25,6 +25,7 @@ import json
 import os
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -53,6 +54,13 @@ class ExtraTest:
     argv: tuple[str, ...]
     prefixes: tuple[str, ...]
     env: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True)
+class CheckJob:
+    name: str
+    argv: tuple[str, ...]
+    env: dict[str, str] | None = None
 
 
 @dataclass(frozen=True)
@@ -120,8 +128,6 @@ GATES: tuple[Gate, ...] = (
             "audit-coverage",
             "--legacy",
             "home/readonly_AGENTS.md",
-            "--manifest",
-            "home/dot_config/ai/exact_policy-ir/readonly_policy-manifest.v1.json",
             "--base-ref",
             "origin/main",
         ),
@@ -161,7 +167,12 @@ GATES: tuple[Gate, ...] = (
 
 TEST_RULES: tuple[TestRule, ...] = (
     TestRule(
-        prefixes=("home/dot_config/exact_tmux/",),
+        prefixes=(
+            "home/dot_config/exact_tmux/exact_scripts/pickers/",
+            "home/dot_config/exact_tmux/exact_scripts/pick_url/",
+            "home/dot_config/exact_tmux/exact_conf.d/readonly_41-pickers.conf",
+            "home/dot_config/exact_tmux/exact_conf.d/readonly_90-plugins.conf",
+        ),
         tests=(
             "tests/test_tmux_pickers.py",
             "tests/test_gh_picker_dispatch_state.py",
@@ -175,7 +186,11 @@ TEST_RULES: tuple[TestRule, ...] = (
     ),
     TestRule(
         prefixes=(
-            "home/exact_dot_agents/exact_hooks/",
+            "home/exact_dot_agents/exact_hooks/executable_",
+            "home/exact_dot_agents/exact_hooks/hook_common.py",
+            "home/exact_dot_agents/exact_hooks/correction_detector.py",
+            "home/exact_dot_agents/exact_hooks/spec_mirror.py.tmpl",
+            "home/exact_dot_agents/exact_hooks/worklog_queue.py.tmpl",
             "scripts/worklog_queue.py",
             "scripts/session_context.py",
             "scripts/perturn_recall.py",
@@ -186,6 +201,8 @@ TEST_RULES: tuple[TestRule, ...] = (
             "tests/test_recall_worklog.py",
             "tests/test_premise_nudge.py",
             "tests/test_correction_detector.py",
+            "tests/test_model_band_invariants.py",
+            "tests/test_agent_skill_invariants.py",
         ),
     ),
     TestRule(
@@ -203,12 +220,27 @@ TEST_RULES: tuple[TestRule, ...] = (
     ),
     TestRule(
         prefixes=("home/.chezmoidata/ai_models/", "scripts/ai_models.py", "scripts/model_mirrors.py"),
-        tests=("test_ai_launcher.py", "test_ai_models.py", "test_model_mirrors.py", "tests/test_invariants.py"),
+        tests=(
+            "test_ai_launcher.py",
+            "test_ai_models.py",
+            "test_model_mirrors.py",
+            "tests/test_model_band_invariants.py",
+            "tests/test_invariants.py",
+        ),
     ),
     TestRule(
         prefixes=(
             "home/readonly_AGENTS.md",
-            "home/exact_dot_agents/",
+            "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
+            "home/dot_config/ai/exact_policy-ir/",
+            "docs/topics/ai-assistants/system-prompt/source-of-truth.md",
+        ),
+        tests=("tests/test_sop_policy_invariants.py", "test_ai_policy_compiler.py"),
+    ),
+    TestRule(
+        prefixes=(
+            "home/exact_dot_agents/exact_skills/",
+            "home/exact_dot_agents/exact_references/",
             "home/dot_pi/",
             "home/dot_claude/",
             "home/dot_codex/",
@@ -218,7 +250,12 @@ TEST_RULES: tuple[TestRule, ...] = (
             "home/dot_config/exact_nvim/",
             "home/.chezmoiscripts/",
         ),
-        tests=("tests/test_invariants.py",),
+        tests=(
+            "tests/test_agent_skill_invariants.py",
+            "tests/test_review_policy_invariants.py",
+            "tests/test_model_band_invariants.py",
+            "tests/test_invariants.py",
+        ),
     ),
     TestRule(prefixes=(".githooks/pre-commit", "bin/fmt", "bin/check"), tests=("test_pre_commit.py",)),
     TestRule(
@@ -519,10 +556,43 @@ def _discover_tests(repo: Path) -> list[Path]:
     return test_runner.discover_files()
 
 
-def _run(argv: list[str], *, cwd: Path, env: dict[str, str] | None = None) -> int:
-    print("+ " + " ".join(argv), flush=True)
-    result = subprocess.run(argv, cwd=str(cwd), env=env)
-    return result.returncode
+def _child_env(env: dict[str, str] | None = None) -> dict[str, str]:
+    child = os.environ.copy()
+    child["PYTHONDONTWRITEBYTECODE"] = "1"
+    if env:
+        child.update(env)
+    return child
+
+
+def _run_capture(argv: tuple[str, ...], *, cwd: Path, env: dict[str, str] | None = None) -> tuple[int, str, str]:
+    result = subprocess.run(argv, cwd=str(cwd), env=_child_env(env), capture_output=True, text=True)
+    return result.returncode, result.stdout, result.stderr
+
+
+def _run_parallel(jobs: list[CheckJob], *, cwd: Path) -> int:
+    if not jobs:
+        return 0
+
+    for job in jobs:
+        print("+ " + " ".join(job.argv), flush=True)
+
+    results: list[tuple[int, str, str] | None] = [None] * len(jobs)
+    with ThreadPoolExecutor(max_workers=min(len(jobs), os.cpu_count() or 4)) as pool:
+        futures = {pool.submit(_run_capture, job.argv, cwd=cwd, env=job.env): index for index, job in enumerate(jobs)}
+        for future in as_completed(futures):
+            results[futures[future]] = future.result()
+
+    first_rc = 0
+    for result in results:
+        assert result is not None
+        rc, stdout, stderr = result
+        if stdout:
+            sys.stdout.write(stdout)
+        if stderr:
+            sys.stderr.write(stderr)
+        if rc and not first_rc:
+            first_rc = rc
+    return first_rc
 
 
 def run_plan(repo: Path, plan: CheckPlan) -> int:
@@ -531,43 +601,30 @@ def run_plan(repo: Path, plan: CheckPlan) -> int:
         print("nothing to check", flush=True)
         return 0
 
+    jobs: list[CheckJob] = []
     if plan.mode == "full":
-        rc = _run(["bin/fmt", "--check"], cwd=repo)
-        if rc:
-            return rc
-        rc = _run(["ruff", "check", "--select", "I", "scripts/", "home/exact_lib/"], cwd=repo)
-        if rc:
-            return rc
+        jobs.append(CheckJob(name="fmt", argv=("bin/fmt", "--check")))
+        jobs.append(
+            CheckJob(name="ruff-imports", argv=("ruff", "check", "--select", "I", "scripts/", "home/exact_lib/"))
+        )
     else:
         if plan.fmt_paths:
-            rc = _run(["bin/fmt", "--check", *plan.fmt_paths], cwd=repo)
-            if rc:
-                return rc
+            jobs.append(CheckJob(name="fmt", argv=("bin/fmt", "--check", *plan.fmt_paths)))
         if plan.ruff_paths:
-            rc = _run(["ruff", "check", "--select", "I", *plan.ruff_paths], cwd=repo)
-            if rc:
-                return rc
+            jobs.append(CheckJob(name="ruff-imports", argv=("ruff", "check", "--select", "I", *plan.ruff_paths)))
 
     gate_by_name = {gate.name: gate for gate in GATES}
     for name in plan.gates:
-        rc = _run(list(gate_by_name[name].argv), cwd=repo)
-        if rc:
-            return rc
+        jobs.append(CheckJob(name=name, argv=gate_by_name[name].argv))
 
     if plan.tests:
-        rc = _run([sys.executable, "scripts/test_runner.py", *plan.tests], cwd=repo)
-        if rc:
-            return rc
+        jobs.append(CheckJob(name="tests", argv=(sys.executable, "scripts/test_runner.py", *plan.tests)))
 
     extra_by_name = {item.name: item for item in EXTRA_TESTS}
     for name in plan.extra:
         extra = extra_by_name[name]
-        env = os.environ.copy()
-        env.update(dict(extra.env))
-        rc = _run(list(extra.argv), cwd=repo, env=env)
-        if rc:
-            return rc
-    return 0
+        jobs.append(CheckJob(name=name, argv=extra.argv, env=dict(extra.env)))
+    return _run_parallel(jobs, cwd=repo)
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -47,7 +47,7 @@ idea/issue
 | --------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1. Spec gate          | controller + human       | packet exists, checks red-proven; explicit approval                                                                                                 |
 | 2. Plan               | controller               | per-step verification defined; Ownership Gate over touched paths                                                                                    |
-| 3. Execute            | controller               | criteria ledger updated per step; never past a red step; §3.3 reset on 2×                                                                           |
+| 3. Execute            | controller               | criteria ledger updated per step; never past a red step; §3.4 reset on 2×                                                                           |
 | 4. Mechanical gates   | controller               | repo lint/type/tests discovered, run, looped to green                                                                                               |
 | 5. Live-UI proof      | proof-mode (inline)      | visual criteria verified head-only against the built runtime; each proof set captured to its own distinct `/tmp/<folder-name>/` and opened/provided |
 | 6. Adversarial verify | `criteria-verifier` lane | checks re-run from clean tree; refutation verdicts + scope audit                                                                                    |

@@ -1,7 +1,7 @@
 # Kibana Planning Fork Checklist
 
 Domain-seeded fork inventory for planning work targeting `elastic/kibana`.
-Consult this list during the `k-spec` skill's fork-closing step (or any SOP §3.0 intent loop on a Kibana change) to surface forks the generic loop would rediscover late.
+Consult this list during the `k-spec` skill's fork-closing step (or any SOP §3.1 intent loop on a Kibana change) to surface forks the generic loop would rediscover late.
 Evidence-first still applies: answer each item from the issue, diff, or codebase before asking; only genuine gaps become user questions.
 Most items resolve to "not applicable" for small changes — skip silently; this is a fork detector, not a questionnaire to transcribe into the packet.
 

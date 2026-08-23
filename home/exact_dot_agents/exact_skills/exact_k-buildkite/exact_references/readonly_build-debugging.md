@@ -113,7 +113,7 @@ bk build rebuild BUILD_NUMBER -p SLUG
 # Compare logs between failing and passing runs
 ```
 
-`bk build rebuild` creates an org-visible build and updates the PR's CI status (SOP §3.6):
+`bk build rebuild` creates an org-visible build and updates the PR's CI status (SOP §3.8):
 a user request to confirm flakiness or rebuild covers it; otherwise propose it first.
 
 **Action:** Fix timing dependencies, add retries for external service calls, quarantine flaky tests.

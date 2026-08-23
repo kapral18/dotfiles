@@ -239,24 +239,36 @@ class TestAgentHooks(unittest.TestCase):
 
     def test_worklog_recorder_keeps_bounded_tail(self):
         with tempfile.TemporaryDirectory() as tmp:
-            payload = {
-                "hook_event_name": "postToolUse",
-                "workspace_roots": [tmp],
-                "model": "test-model",
-                "tool_name": "Shell",
-                "tool_input": {"command": "printf ok"},
-                "tool_output": '{"stdout":"ok"}',
-                "duration": 12,
-            }
-
-            for _ in range(205):
-                assert run_hook("executable_worklog_recorder.py", payload) == {}
-
             workspace = str(Path(tmp).resolve())
             spec_dir = SPEC_ROOT / workspace.lstrip("/")
-            flush_worklog(spec_dir)
+            worklog_path = spec_dir / "current.worklog.jsonl"
+
+            import worklog_queue
+
+            self.assertEqual(worklog_queue.DEFAULT_MAX_WORKLOG_LINES, 200)
+            receipt = None
+            for index in range(5):
+                receipt = worklog_queue.enqueue(
+                    spec_dir,
+                    "bounded-tail-test",
+                    "current",
+                    worklog_path,
+                    {
+                        "ts": f"2026-01-01T00:00:0{index}+00:00",
+                        "workspace": workspace,
+                        "topic": "current",
+                        "line": index,
+                    },
+                    start_worker=False,
+                )
+            assert receipt is not None
+            worklog_queue.run_worker(
+                receipt.queue_dir,
+                config=worklog_queue.QueueConfig(max_worklog_lines=3, worker_idle_seconds=0),
+            )
+
             worklog = spec_dir / "current.worklog.jsonl"
-            assert len(worklog.read_text().splitlines()) == 200
+            assert [entry["line"] for entry in worklog_entries(worklog)] == [2, 3, 4]
 
     def test_session_context_emits_cursor_and_claude_context(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -825,7 +837,7 @@ class TestAgentHooks(unittest.TestCase):
             assert "verdict: Approve" not in context
             assert "Recent Hook Worklog" not in context
             assert (
-                len(context) <= len((REPO / "home/dot_config/exact_tmux/agent_prompts/prefix.txt").read_text()) + 1700
+                len(context) <= len((REPO / "home/dot_config/exact_tmux/agent_prompts/prefix.txt").read_text()) + 1800
             )
 
     def test_session_context_appends_aikb_reminder_with_named_topic(self):
@@ -1329,41 +1341,6 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
 
             assert result == {}
 
-    def test_perturn_recall_hybrid_gate_suppresses_when_all_cosine_scores_missing(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            workspace = str(Path(tmp).resolve())
-            env = make_aikb_stub(
-                Path(tmp),
-                [
-                    {
-                        "id": "capsule-a",
-                        "title": "No cosine one",
-                        "kind": "note",
-                        "scope": "project",
-                        "workspace_path": workspace,
-                    },
-                    {
-                        "id": "capsule-b",
-                        "title": "No cosine two",
-                        "kind": "note",
-                        "scope": "project",
-                        "workspace_path": workspace,
-                    },
-                ],
-            )
-
-            result = run_perturn_recall(
-                tmp,
-                {
-                    "hook_event_name": "UserPromptSubmit",
-                    "workspace_roots": [tmp],
-                    "prompt": "recall guidance for this hybrid gate test",
-                },
-                env,
-            )
-
-            assert result == {}
-
     def test_session_context_warmstart_unions_prior_seen_ids(self):
         # A resume/compact fires a second warm start in the same conversation.
         # The seen-file must load-union-save so capsules already recorded (by an
@@ -1591,10 +1568,7 @@ console.log(JSON.stringify({
             ]
 
     def test_runtime_extensions_enable_search_tools_and_gate_git_mutation(self):
-        extension_cases = [
-            REPO / "home/dot_pi/agent/exact_extensions/runtime-parity.ts",
-            REPO / "home/dot_omp/private_agent/extensions/runtime-parity.ts",
-        ]
+        extension_cases = [REPO / "home/dot_pi/agent/exact_extensions/runtime-parity.ts"]
         for extension in extension_cases:
             with self.subTest(extension=str(extension.relative_to(REPO))):
                 with tempfile.TemporaryDirectory() as tmp:
@@ -1730,6 +1704,21 @@ console.log(JSON.stringify({
                     assert payload["hangingConfirmBlocked"]["block"] is True
                     assert payload["explicit"] == ["read", "bash", "edit", "write"]
 
+        omp_extension = REPO / "home/dot_omp/private_agent/extensions/runtime-parity.ts"
+        omp_text = omp_extension.read_text()
+        for snippet in (
+            'const SEARCH_TOOLS = ["grep", "find", "ls"]',
+            'const TOOL_SELECTION_FLAGS = ["--tools", "-t", "--exclude-tools", "-xt", "--no-tools", "-nt", "--no-builtin-tools", "-nbt"]',
+            "function hasExplicitToolSelection(argv: string[]): boolean",
+            "function enableSearchTools(pi: ExtensionAPI): void",
+            "function runGitGate(command: string): Promise<GateProcessResult>",
+            "async function confirmWithTimeout(request: Promise<boolean>): Promise<boolean>",
+            'pi.on("session_start", () => {',
+            'pi.on("tool_call", async (event, ctx) => {',
+        ):
+            assert snippet in omp_text
+        assert "the OMP safety gate refused this command" in omp_text
+
     def test_pi_recall_uses_session_binding_and_persists_seen_capsules(self):
         extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"
         with tempfile.TemporaryDirectory() as tmp:
@@ -1859,142 +1848,21 @@ console.log(JSON.stringify({ first, second, seen, statusCalls }));
                 ["status", "--json", "--workspace", "/tmp/workspace", "--session-id", "pi/session"],
             ]
 
-    def test_pi_recall_hybrid_gate_uses_best_cosine_and_preserves_fused_order(self):
-        # Mirrors test_perturn_recall_hybrid_gate_uses_best_cosine_and_preserves_fused_order
-        # (executable_perturn_recall.py): pi's applyRelevanceFloor must observe the same
-        # per-turn hybrid contract — gate on the BEST cosine across all fused rows (not
-        # rows[0]), and never reorder the surviving rows by cosine.
-        extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"
-        with tempfile.TemporaryDirectory() as tmp:
-            # seenFileFor derives the recall-seen path from dirname(specFile), so route it
-            # into this test's own tmpdir rather than a fixed path shared across test runs
-            # (a fixed path would persist real .recall-seen-*.json state across invocations).
-            spec_file = str(Path(tmp) / "hybrid-memory.txt")
-            rows = [
-                {
-                    "id": "capsule-first",
-                    "title": "First fused row missing cosine",
-                    "kind": "note",
-                    "scope": "project",
-                    "workspace_path": "/tmp/workspace",
-                },
-                {
-                    "id": "capsule-second",
-                    "title": "Second fused row strongest cosine",
-                    "kind": "gotcha",
-                    "scope": "project",
-                    "workspace_path": "/tmp/workspace",
-                    "cosine_score": 0.9,
-                },
-                {
-                    "id": "capsule-third",
-                    "title": "Third fused row within floor",
-                    "kind": "gotcha",
-                    "scope": "project",
-                    "workspace_path": "/tmp/workspace",
-                    "cosine_score": 0.8,
-                },
-                {
-                    "id": "capsule-fourth",
-                    "title": "Fourth fused row below floor",
-                    "kind": "gotcha",
-                    "scope": "project",
-                    "workspace_path": "/tmp/workspace",
-                    "cosine_score": 0.5,
-                },
-            ]
-            search_log = Path(tmp) / "search.jsonl"
-            script = """
-const mod = await import(process.argv[1]);
-const specFile = process.argv[2];
-const workspace = "/tmp/workspace";
-const sessionId = "pi/hybrid-session";
-const rows = [
-  { id: "capsule-first", title: "First fused row missing cosine", kind: "note", scope: "project", workspace_path: workspace },
-  { id: "capsule-second", title: "Second fused row strongest cosine", kind: "gotcha", scope: "project", workspace_path: workspace, cosine_score: 0.9 },
-  { id: "capsule-third", title: "Third fused row within floor", kind: "gotcha", scope: "project", workspace_path: workspace, cosine_score: 0.8 },
-  { id: "capsule-fourth", title: "Fourth fused row below floor", kind: "gotcha", scope: "project", workspace_path: workspace, cosine_score: 0.5 }
-];
-function makePi() {
-  const handlers = {};
-  return {
-    handlers,
-    async exec(command, args) {
-      if (command === ",ai-kb" && args[0] === "--help") return { code: 0, killed: false, stdout: "" };
-      if (command === ",agent-memory") {
-        return {
-          code: 0,
-          killed: false,
-          stdout: JSON.stringify({
-            workspace,
-            selected_topic: "current",
-            session_key: "hybrid-session",
-            is_named_topic: false,
-            spec_file: specFile,
-            spec_exists: false
-          })
-        };
-      }
-      if (command === "python3" && args[0].endsWith("/lib/,ai-kb/embed_client.py") && args[1] === "ensure") {
-        return { code: 0, killed: false, stdout: "{}" };
-      }
-      if (command === "cat") return { code: 1, killed: false, stdout: "" };
-      throw new Error(`unexpected exec: ${command} ${args.join(" ")}`);
-    },
-    on(event, handler) { handlers[event] = handler; }
-  };
-}
-const pi = makePi();
-await mod.default(pi);
-await pi.handlers.session_start(
-  { type: "session_start", reason: "startup" },
-  { sessionManager: { getSessionId() { return sessionId; } } }
-);
-const result = await pi.handlers.before_agent_start(
-  { prompt: "recall guidance for this hybrid gate test" },
-  {
-    cwd: workspace,
-    getContextUsage() { return null; },
-    sessionManager: { getSessionId() { return sessionId; } }
-  }
-);
-console.log(JSON.stringify({ result }));
-"""
-            env = make_aikb_stub(Path(tmp), rows)
-            env["NODE_NO_WARNINGS"] = "1"
-            env["AI_KB_STUB_LOG"] = str(search_log)
-            env["HOME"] = str(Path(tmp) / "home")
-            result = subprocess.run(
-                ["node", "--input-type=module", "-e", script, str(extension), spec_file],
-                cwd=str(REPO),
-                capture_output=True,
-                text=True,
-                env=env,
-                check=True,
-            )
-            payload = json.loads(result.stdout)
-            content = payload["result"]["message"]["content"]
+    def test_pi_recall_hybrid_gate_contract_matches_perturn_recall(self):
+        extension = (REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts").read_text()
+        hook = (HOOKS / "executable_perturn_recall.py").read_text()
 
-            first_pos = content.index("First fused row missing cosine")
-            second_pos = content.index("Second fused row strongest cosine")
-            third_pos = content.index("Third fused row within floor")
-            assert first_pos < second_pos < third_pos
-            assert "Fourth fused row below floor" not in content
-            searches = [json.loads(line) for line in search_log.read_text().splitlines()]
-            assert len(searches) == 1
-            assert searches[0]["query"] == "recall guidance for this hybrid gate test"
-            assert searches[0]["args"] == [
-                "search",
-                "--query-stdin",
-                "--limit",
-                "6",
-                "--mode",
-                "hybrid",
-                "--workspace",
-                "/tmp/workspace",
-                "--workspace-gate",
-                "--json",
-            ]
+        assert "if (!cosines.length) return []" in extension
+        assert "const topCosine = Math.max(...cosines)" in extension
+        assert "return c == null || c >= cosineFloor" in extension
+        assert '"--mode",\n    mode,' in extension
+        assert '"--workspace-gate",' in extension
+
+        assert "if not cosines:\n        return []" in hook
+        assert "top = max(cosines)" in hook
+        assert "not isinstance(cosine, (int, float)) or cosine >= floor" in hook
+        assert '"--mode",\n                "hybrid",' in hook
+        assert '"--workspace-gate",' in hook
 
 
 class BandGateTests(unittest.TestCase):

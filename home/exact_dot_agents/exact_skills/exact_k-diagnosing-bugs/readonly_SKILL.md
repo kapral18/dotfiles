@@ -7,7 +7,7 @@ description: "Use for hard bugs, regressions, flaky failures, crashes, thrown er
 
 A discipline for hard bugs. Skip phases only when explicitly justified.
 
-The SOP owns the surrounding gates: verification loops (§3.4), runtime truth (§2.2), and state-machine verification (`### 3.4.1 State-Machine Verification`).
+The SOP owns the surrounding gates: verification loops (§3.5), runtime truth (§2.5), and state-machine verification (`### 3.6 State-Machine Verification`).
 This skill is the debugging front-end that forces a **tight** feedback loop before any theorising, then routes into those gates.
 When you write the regression test, load `~/.agents/skills/k-code-quality-tests/SKILL.md`.
 

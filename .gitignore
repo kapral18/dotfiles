@@ -6,3 +6,6 @@ mprocs.log
 .agent-test-artifacts/
 # accidental ,image / similar CLI outputs written into the repo root
 /*.png
+
+# Generated SOP policy manifest; source audit state lives in policy-audit.v1.json.
+/home/dot_config/ai/exact_policy-ir/readonly_policy-manifest.v1.json

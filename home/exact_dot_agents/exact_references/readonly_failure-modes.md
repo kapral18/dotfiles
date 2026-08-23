@@ -2,7 +2,7 @@
 
 This is a catalog of agent conduct failures that have happened in real sessions on this machine, kept short and load-bearing. Each entry names a single failure mode, the falsifier that would have caught it, and the system change that prevents its recurrence. The list is intentionally small: anti-patterns grouped by category.
 
-This catalog is not a skill: it has no procedure to invoke. Its consumer is the canonical `AGENTS.md` §2.1b (Self-Claims), where the SOP delegates "before asserting a claim, name what would make it false and check that." When a session reproduces one of the modes below, the SOP already mandates the falsifier; sessions load this file by path so the falsifier is at hand when needed.
+This catalog is not a skill: it has no procedure to invoke. Its consumer is the canonical `AGENTS.md` §2.4 (Self-Claims), where the SOP delegates "before asserting a claim, name what would make it false and check that." When a session reproduces one of the modes below, the SOP already mandates the falsifier; sessions load this file by path so the falsifier is at hand when needed.
 
 ## Identity / Repository resolution
 
@@ -68,7 +68,7 @@ The helper resolves the session key through `,agent-memory status --json`, passi
 
 **Mode.** Agent names a third-party API contract, OS behavior, or library parameter set from memory rather than reading the artifact, and proceeds on the remembered shape. Examples in this session: Monaco `IKeyboardEvent` semantics (verified live with `web_search`), keycode-vs-key handling (verified against MDN spec), Bash `set -e` and `NOMATCH` interaction.
 
-**Falsifier.** SOP §2.1 "Resolve identity before semantics" already mandates this. Anchoring means: read the source, run a probe, or quote a fetched doc with the exact verbatim phrase. Anything cited from memory is a claim, and a claim about external behavior is a 2.1b self-claim too.
+**Falsifier.** SOP §2.2 "Resolve identity before semantics" already mandates this. Anchoring means: read the source, run a probe, or quote a fetched doc with the exact verbatim phrase. Anything cited from memory is a claim, and a claim about external behavior is a 2.4 self-claim too.
 
 **Prevention.** The SOP already enforces this; no setup change needed beyond acknowledging that the failure mode repeats and adding it to this index so a session can search it when the user reports it.
 
@@ -78,7 +78,7 @@ The helper resolves the session key through `,agent-memory status --json`, passi
 
 **Mode.** User commands are comma-prefixed executables (`~/bin/,gh-prw`, `,probe`, `,ai-kb`). A session runs `,gh-prw` correctly in argv yet writes `gh-prw` in chat prose and tool-call descriptions, normalizing the leading comma away as punctuation because the remainder looks like a `gh` helper. The same slip pairs with flag mashing: `--json` passed to `,gh-prw`, whose surface is `--number`/`--url` only (observed in a Cursor session, 2026-08-19).
 
-**Falsifier.** The helper's `--help` and `k-github/SKILL.md` spell the name verbatim; a comma-less mention contradicts source already in context. For flags, SOP §2.1 already mandates reading `--help` before use.
+**Falsifier.** The helper's `--help` and `k-github/SKILL.md` spell the name verbatim; a comma-less mention contradicts source already in context. For flags, SOP §2.2 already mandates reading `--help` before use.
 
 **Prevention.** `prefix.txt` carries "User commands are comma-prefixed executables: the leading comma … is part of the command — type it verbatim" (added 2026-08-19), injected at session start and reinforced per turn.
 

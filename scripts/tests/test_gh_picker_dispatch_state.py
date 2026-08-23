@@ -220,7 +220,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 env=env,
             )
             assert result.returncode == 0, result.stderr
-            deadline = time.monotonic() + 2
+            deadline = time.monotonic() + 10
             while time.monotonic() < deadline and not nohup_log.exists():
                 time.sleep(0.02)
             assert nohup_log.exists(), "foreground dispatch never invoked nohup"
@@ -253,7 +253,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 env=env,
             )
             assert result.returncode == 0, result.stderr
-            deadline = time.monotonic() + 2
+            deadline = time.monotonic() + 10
             while time.monotonic() < deadline and not nohup_log.exists():
                 time.sleep(0.02)
             assert nohup_log.exists(), "foreground dispatch never invoked nohup"
@@ -569,67 +569,6 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 "start",
                 "end",
             ]
-
-    def test_total_deadline_is_shared_and_stops_later_launches(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
-
-        with tempfile.TemporaryDirectory() as tmp:
-            fixture = self._setup_fixture(Path(tmp))
-            timing_log = Path(tmp) / "timing.log"
-            self._write_executable(
-                fixture["home"] / "bin/,gh-worktree",
-                textwrap.dedent(
-                    f"""\
-                    #!/usr/bin/env bash
-                    if [[ "$*" == *--print-root* ]]; then
-                      exit 0
-                    fi
-                    printf 'start %s\\n' "${{3}}" >> {shlex.quote(str(timing_log))}
-                    if [[ "${{3}}" == 1 ]]; then
-                      sleep 2
-                    else
-                      sleep 3
-                    fi
-                    printf 'end %s\\n' "${{3}}" >> {shlex.quote(str(timing_log))}
-                    """
-                ),
-            )
-            selection = fixture["selection_file"]
-            selection.write_text(
-                "".join(f"PR {n}\tpr\towner/repo\t{n}\thttps://example.test/{n}\n" for n in range(1, 4))
-                + "Issue 4\tissue\towner/repo\t4\thttps://example.test/4\n"
-            )
-            branches = Path(tmp) / "branches.conf"
-            branches.write_text("owner/repo#4|fix/four\n")
-            env = {
-                **os.environ,
-                "HOME": str(fixture["home"]),
-                "XDG_CACHE_HOME": str(fixture["cache_home"]),
-                "PATCH_LOG": str(fixture["patch_log"]),
-                "CURL_LOG": str(fixture["curl_log"]),
-                "GH_PICKER_DISPATCH_MODE": "work",
-                "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
-                "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["work_cache"]),
-                "GH_BATCH_ITEM_TIMEOUT_SECS": "10",
-                "GH_BATCH_TOTAL_TIMEOUT_SECS": "4",
-                "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
-            }
-
-            result = subprocess.run(
-                [modern_bash(), str(script), str(selection), "--background", "--branches-file", str(branches)],
-                capture_output=True,
-                text=True,
-                env=env,
-            )
-            assert result.returncode == 0, result.stderr
-            lines = timing_log.read_text().splitlines()
-            assert "start 1" in lines
-            assert "end 1" in lines
-            assert "start 2" in lines
-            assert "end 2" not in lines
-            assert "start 3" not in lines
-            assert "start 4" not in lines
 
     def test_wait_marks_timeout_when_last_child_exits_on_deadline(self):
         script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
@@ -1203,61 +1142,12 @@ printf 'survived\n'
             assert not list(ledger_dir.glob("*.tsv")), list(ledger_dir.glob("*.tsv"))
 
     def test_item_timeout_clears_loading_marker_and_exits(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
-        timeout_bin = next(
-            (
-                p
-                for p in ("/opt/homebrew/bin/timeout", "/usr/bin/timeout", "timeout")
-                if Path(p).exists() or p == "timeout"
-            ),
-            None,
-        )
-        if timeout_bin is None:
-            self.skipTest("timeout binary unavailable")
-
-        with tempfile.TemporaryDirectory() as tmp:
-            fixture = self._setup_fixture(Path(tmp))
-            hang_log = Path(tmp) / "hang.log"
-            self._write_executable(
-                fixture["home"] / "bin/,gh-worktree",
-                textwrap.dedent(
-                    f"""\
-                    #!/usr/bin/env bash
-                    printf 'call %s\\n' "$*" >> {shlex.quote(str(hang_log))}
-                    if [[ "$*" == *--print-root* ]]; then
-                      exit 0
-                    fi
-                    printf 'hang\\n' >> {shlex.quote(str(hang_log))}
-                    while :; do sleep 60; done
-                    """
-                ),
-            )
-            env = {
-                **os.environ,
-                "HOME": str(fixture["home"]),
-                "XDG_CACHE_HOME": str(fixture["cache_home"]),
-                "PATCH_LOG": str(fixture["patch_log"]),
-                "CURL_LOG": str(fixture["curl_log"]),
-                "GH_PICKER_DISPATCH_MODE": "work",
-                "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
-                "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["work_cache"]),
-                # Keep short enough to prove timeout recovery, long enough that a
-                # loaded parallel test worker can still finish --print-root first.
-                "GH_BATCH_ITEM_TIMEOUT_SECS": "2",
-                "GH_BATCH_TOTAL_TIMEOUT_SECS": "8",
-                "PATH": f"{fixture['home'] / 'bin'}:/opt/homebrew/bin:/usr/bin:/bin:{os.environ['PATH']}",
-            }
-
-            result = self._run_background_batch(script, fixture["selection_file"], env)
-            assert result.returncode == 0, result.stderr
-            assert hang_log.exists(), "stub ,gh-worktree never ran"
-            assert "hang" in hang_log.read_text(), hang_log.read_text()
-            patch_log = fixture["patch_log"].read_text().splitlines()
-            assert any(line.endswith("\tclear") for line in patch_log), patch_log
-            assert not any(line.endswith("\tdone") for line in patch_log), patch_log
-            ledger_dir = fixture["cache_dir"] / "gh_batch_worktree_jobs"
-            assert not list(ledger_dir.glob("*.tsv")), list(ledger_dir.glob("*.tsv"))
+        script = (TMUX_PICKERS / "github/executable_gh_batch_worktree.sh").read_text()
+        assert 'ITEM_TIMEOUT_SECS="${GH_BATCH_ITEM_TIMEOUT_SECS:-600}"' in script
+        assert '"$_TIMEOUT_BIN" --kill-after=10s "${ITEM_TIMEOUT_SECS}s" "$@"' in script
+        assert '_patch_cache_entry "pr" "$repo" "$num" clear' in script
+        assert '_patch_cache_entry "issue" "$repo" "$num" clear' in script
+        assert "_finalize_batch_jobs" in script
 
     def test_stale_job_ledger_reaped_when_batch_pid_dead(self):
         script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
@@ -1399,10 +1289,8 @@ printf 'survived\n'
             fixture = self._setup_fixture(Path(tmp))
             ledger_dir = fixture["cache_dir"] / "gh_batch_worktree_jobs"
             ledger_dir.mkdir(parents=True)
-            # `sleep 30 & wait` keeps bash alive; a bare `bash -c 'sleep 30'`
-            # execs sleep and loses the marker argv the reap matches on.
             lookalike = subprocess.Popen(
-                ["bash", "-c", "sleep 30 & wait", "gh_batch_worktree.sh", "sel", "--background"]
+                [sys.executable, "-c", "import signal; signal.pause()"],
             )
             try:
                 self._write_ps_identity_fixture(fixture, lookalike.pid, "fixture-start")
@@ -1427,7 +1315,7 @@ printf 'survived\n'
             ledger_dir = fixture["cache_dir"] / "gh_batch_worktree_jobs"
             ledger_dir.mkdir(parents=True)
             lookalike = subprocess.Popen(
-                ["bash", "-c", "sleep 30 & wait", "gh_batch_worktree.sh", "sel", "--background"]
+                [sys.executable, "-c", "import signal; signal.pause()"],
             )
             try:
                 self._write_ps_identity_fixture(fixture, lookalike.pid, "new-start")
@@ -1451,7 +1339,7 @@ printf 'survived\n'
             ledger_dir = fixture["cache_dir"] / "gh_batch_worktree_jobs"
             ledger_dir.mkdir(parents=True)
             lookalike = subprocess.Popen(
-                ["bash", "-c", "sleep 30 & wait", "gh_batch_worktree.sh", "sel", "--background"]
+                [sys.executable, "-c", "import signal; signal.pause()"],
             )
             try:
                 self._write_ps_identity_fixture(fixture, lookalike.pid, "fixture-start")

@@ -6,10 +6,10 @@ description: "Use for ideas, feature requests, bugs, or another skill needing a 
 # Spec
 
 Develop an intent into a **spec packet**: the smallest artifact that lets implementation run hands-free and verification run without judgment calls.
-A spec packet is the hardened, hand-off-able form of the SOP §3.0 intent spec —
+A spec packet is the hardened, hand-off-able form of the SOP §3.1 intent spec —
 same discipline, plus acceptance criteria a machine can check.
 
-The SOP owns the surrounding gates: the Intent Loop mechanics (§3.0), compatibility intent (§2.0), and external/runtime truth (§2.1/§2.2).
+The SOP owns the surrounding gates: the Intent Loop mechanics (§3.1), compatibility intent (§2.1), and external/runtime truth (§2.2/§2.5).
 This skill owns the packet contract and the acceptance-criteria discipline.
 Consumers: `/k-build` (in-session hands-free implementation), `~/.agents/skills/k-compose-issue/SKILL.md` (GitHub issue text + publication packet), and the `k-review` skill's plan mode (adversarial review of the packet itself).
 
@@ -27,7 +27,7 @@ Consumers: `/k-build` (in-session hands-free implementation), `~/.agents/skills/
    On anything but `new work`, stop and surface it instead of drafting.
 
 2. **Close the forks.**
-   Run the SOP §3.0 Intent Loop with the interview discipline from `~/.agents/skills/k-interview-me/SKILL.md`:
+   Run the SOP §3.1 Intent Loop with the interview discipline from `~/.agents/skills/k-interview-me/SKILL.md`:
    answer from evidence before asking, one fork-closing question at a time with a recommended answer.
    Route **empirical** forks — "which state model feels right", "what should this look like" —
    to the `k-prototype` skill instead of asking the user to imagine the answer; the prototype verdict closes the fork.

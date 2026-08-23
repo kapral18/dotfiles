@@ -13,7 +13,7 @@ The tool then pushes the branches and opens the backport PRs; this skill stops o
 
 This skill requires a source PR number. If none was provided, ask the user for it before doing anything else.
 
-## Publication Gate (SOP §3.6)
+## Publication Gate (SOP §3.8)
 
 The tool pushes branches and opens the backport PRs itself, so the launch is a human-visible publication action.
 Before launch, surface the exact payload each target PR gets: title from the source commit, `# Backport …` body, `backport` label, assignees/reviewers, and squash auto-merge on clean cherry-picks (`.backportrc.json`), alongside the computed target branches.

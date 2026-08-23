@@ -26,7 +26,7 @@ Use in every non-trivial review.
 ## Candidate Refutation Ladder (Run Before Reporting Or Acting)
 
 Owned by the agent that decides keep/drop and acts (k-light-review, direct review modes, or a controller).
-Fan-out: the dedicated adversarial lane (cross-family preferred at equal capability, SOP §3.5) owns this pass;
+Fan-out: the dedicated adversarial lane (cross-family preferred at equal capability, SOP §3.7) owns this pass;
 Read-only finder lanes only return candidates plus a reachability statement; self-refutation is owned elsewhere.
 
 A candidate survives only when a genuine refutation attempt fails with evidence.
@@ -49,7 +49,7 @@ Use fan-out when available; self-refutation stands in only when fan-out is unava
 
 ## State-Machine Verification Gate
 
-Apply SOP `### 3.4.1 State-Machine Verification` to reviewed behavior that is stateful, parser-like, branch-heavy, or dependent on ordered conditions.
+Apply SOP `### 3.6 State-Machine Verification` to reviewed behavior that is stateful, parser-like, branch-heavy, or dependent on ordered conditions.
 
 Examples include parsers, tokenizers, formatters, routing/matching logic, retry/workflow loops, permission matrices, compatibility-sensitive branching, multi-flag control flow.
 
@@ -67,7 +67,7 @@ Before calling a deletion safe, verify each item and report a one-line deletion 
   confirm zero live importers/callers.
 - **Public surface:** deleted exports are removed from barrels and not part of a published package entry point still consumed downstream.
 - **Behavior parity:**
-  - every deleted behavior is intentionally dropped (user-approved per SOP `2.0`) or demonstrably replaced; name each replacement
+  - every deleted behavior is intentionally dropped (user-approved per SOP `2.1`) or demonstrably replaced; name each replacement
 - **Tests:** deleted tests were migrated, or removed only because the code they covered is gone;
   coverage still exists for behavior that remains after the diff.
 - **Base comparison:**
@@ -173,7 +173,7 @@ Trigger: the diff changes public API contracts, persisted data, cross-module/pac
 
 - **Rolling-deploy coexistence:** old and new code run against the same data/API mid-deploy;
   verify both directions survive version boundaries.
-- **Rollout gating:** when conventions expect incremental rollout, verify proper gating (without adding unrequested flags per SOP `2.0`).
+- **Rollout gating:** when conventions expect incremental rollout, verify proper gating (without adding unrequested flags per SOP `2.1`).
 - **Circular dependencies:** verify the change does not introduce package/module cycles.
 - **Blast radius:** state what breaks if wrong and pair each risk with concrete mitigation.
 

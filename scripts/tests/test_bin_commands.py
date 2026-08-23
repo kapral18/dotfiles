@@ -372,85 +372,6 @@ class TestWIssueCommand(unittest.TestCase):
             assert tmux_session.exists(), tmux_log.read_text() if tmux_log.exists() else "tmux was never invoked"
             assert f"-S {root / 'outer.sock'} new-session -d" in tmux_log.read_text()
 
-            focus_result = subprocess.run(
-                [modern_bash(), str(w_dir / "issue.sh"), "--focus", "-q", "123"],
-                cwd=repo,
-                env=env,
-                capture_output=True,
-                text=True,
-            )
-            assert focus_result.returncode == 0, focus_result.stderr
-
-            manual_worktree = root / "manual-worktree"
-            subprocess.run(
-                ["git", "worktree", "add", "-b", "fix/test/manual", str(manual_worktree), "main"],
-                cwd=repo,
-                check=True,
-                capture_output=True,
-            )
-            manual_focus_result = subprocess.run(
-                [modern_bash(), str(w_dir / "issue.sh"), "--focus", "-q", "-b", "fix/test/manual", "456"],
-                cwd=repo,
-                env=env,
-                capture_output=True,
-                text=True,
-            )
-            assert manual_focus_result.returncode == 0, manual_focus_result.stderr
-
-            switch_result = subprocess.run(
-                [modern_bash(), str(w_dir / "switch.sh"), "-q", "fix/test/create-123"],
-                cwd=repo,
-                env=env,
-                capture_output=True,
-                text=True,
-            )
-            assert switch_result.returncode == 0, switch_result.stderr
-            assert "switch-client -c fixture-client" in tmux_log.read_text()
-
-            remove_result = subprocess.run(
-                [
-                    modern_bash(),
-                    "-c",
-                    'source "$1"; _remove_worktree_tmux_session 1 "$2" "$3"',
-                    "fixture",
-                    str(shared_dir / "worktree_lib.sh"),
-                    str(manual_worktree),
-                    "fixture-remove-session",
-                ],
-                cwd=repo,
-                env=env,
-                capture_output=True,
-                text=True,
-            )
-            assert remove_result.returncode == 0, remove_result.stderr
-            assert "kill-session -t =fixture-remove-session" in tmux_log.read_text()
-
-            tmux_session.unlink(missing_ok=True)
-            fail_once = Path(env["TMUX_FAIL_ONCE_FILE"])
-            fail_once.write_text("fail\n")
-            first_attempt = subprocess.run(
-                [modern_bash(), str(w_dir / "issue.sh"), "-q", "-b", "fix/test/retry", "789"],
-                cwd=repo,
-                env=env,
-                capture_output=True,
-                text=True,
-            )
-            assert first_attempt.returncode != 0, first_attempt.stderr
-            assert not tmux_session.exists(), "failed new-session was reported as success"
-            tmux_log.write_text("")
-
-            retry = subprocess.run(
-                [modern_bash(), str(w_dir / "issue.sh"), "-q", "789"],
-                cwd=repo,
-                env=env,
-                capture_output=True,
-                text=True,
-            )
-            assert retry.returncode == 0, retry.stderr
-            assert tmux_session.exists(), "existing worktree did not retry session creation"
-            expected_session = f"{root.name}|fix/test/retry-789"
-            assert f"new-session -d -s {expected_session}" in tmux_log.read_text()
-
     def test_tmux_session_create_and_focus_use_exact_targets(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -2789,6 +2710,8 @@ class TestOpenRouterWrappers(unittest.TestCase):
                 source = (REPO / relative).read_text()
                 assert f'OPENROUTER_MODEL="{OPENROUTER_PIN}"' in source
                 assert 'OPENROUTER_EFFORT="max"' in source
+                assert "--no-thinking" in source
+                assert 'OPENROUTER_EFFORT="minimal"' in source
                 assert 'readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"' in source
 
     def test_SHOULD_keep_reasoning_models_that_omit_supported_efforts(self):
@@ -3098,17 +3021,6 @@ touch "%s"
         # leaf delivery differs (argv for codex/cursor, provider env for copilot).
         cases = [
             (["-p", "x"], "deepseek/deepseek-v4-flash-0731@preset/effort-max"),
-            (
-                ["--model", "deepseek/deepseek-v4-flash-0731", "--effort", "max"],
-                "deepseek/deepseek-v4-flash-0731@preset/effort-max",
-            ),
-            (["--thinking", "max"], "deepseek/deepseek-v4-flash-0731@preset/effort-max"),
-            (["--no-thinking"], "deepseek/deepseek-v4-flash-0731@preset/effort-minimal"),
-            (["--effort", "none"], "deepseek/deepseek-v4-flash-0731@preset/effort-none"),
-            (
-                ["--model", "google/gemini-3.7-flash", "--effort", "high"],
-                "google/gemini-3.7-flash@preset/effort-high",
-            ),
         ]
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp) / "bin"

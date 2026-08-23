@@ -75,6 +75,24 @@ def _passed_ablation(root: Path, rule_id: str, consumer: str, target_disposition
     }
 
 
+def _write_policy_audit(
+    root: Path,
+    *,
+    overrides: dict[str, dict] | None = None,
+    ablations: dict[str, dict] | None = None,
+) -> None:
+    path = root / ir.POLICY_AUDIT_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+    audit = {"version": 1, "overrides": {}, "ablations": {}}
+    if path.is_file():
+        audit.update(json.loads(path.read_text(encoding="utf-8")))
+    if overrides is not None:
+        audit["overrides"].update(overrides)
+    if ablations is not None:
+        audit["ablations"].update(ablations)
+    path.write_text(json.dumps(audit), encoding="utf-8")
+
+
 class PolicyIRTest(unittest.TestCase):
     """WHEN splitting a legacy SOP into opaque Stage 1 rules."""
 
@@ -92,52 +110,52 @@ class PolicyIRTest(unittest.TestCase):
         rules = ir.split_legacy_sop("# T\n\n---\n\n## 9. Café Policy\n\nbody\n")
         assert [rule.id for rule in rules] == ["sop.9.cafe-policy"]
 
-    def test_display_heading_can_alias_a_stable_inventory_id(self):
+    def test_rule_ids_follow_current_heading_numbers(self):
         rules = ir.split_legacy_sop(
             "# T\n\n---\n\n"
-            "### 3.4 Verification Loops\n\nloops\n\n"
-            "### 3.4.1 State-Machine Verification\n\nsmv\n\n"
-            "### 3.5 Delegation Categories\n\ndeleg\n"
+            "### 3.5 Verification Loops\n\nloops\n\n"
+            "### 3.6 State-Machine Verification\n\nsmv\n\n"
+            "### 3.7 Delegation Categories\n\ndeleg\n"
         )
         assert [rule.id for rule in rules] == [
-            "sop.3.4.verification-loops",
-            "sop.3.5.state-machine-verification",
-            "sop.3.5.delegation-categories",
+            "sop.3.5.verification-loops",
+            "sop.3.6.state-machine-verification",
+            "sop.3.7.delegation-categories",
         ]
         assert rules[1].risk_tier == "compatibility"
 
     def test_apply_dispositions_orders_by_heading_number(self):
         text = (
             "# T\n\n---\n\n"
-            "### 3.5 Delegation Categories\n\ndeleg\n\n"
-            "### 3.4 Verification Loops\n\nloops\n\n"
-            "### 3.4.1 State-Machine Verification\n\nsmv\n"
+            "### 3.7 Delegation Categories\n\ndeleg\n\n"
+            "### 3.5 Verification Loops\n\nloops\n\n"
+            "### 3.6 State-Machine Verification\n\nsmv\n"
         )
         rules = ir.apply_dispositions(ir.split_legacy_sop(text), {})
         assert [rule.id for rule in rules] == [
-            "sop.3.4.verification-loops",
-            "sop.3.5.state-machine-verification",
-            "sop.3.5.delegation-categories",
+            "sop.3.5.verification-loops",
+            "sop.3.6.state-machine-verification",
+            "sop.3.7.delegation-categories",
         ]
         rendered = ir.render(rules)
-        assert rendered.index("### 3.4 Verification") < rendered.index("### 3.4.1 State-Machine")
-        assert rendered.index("### 3.4.1 State-Machine") < rendered.index("### 3.5 Delegation")
+        assert rendered.index("### 3.5 Verification") < rendered.index("### 3.6 State-Machine")
+        assert rendered.index("### 3.6 State-Machine") < rendered.index("### 3.7 Delegation")
 
     def test_high_risk_rule_ids_get_non_standard_risk_tiers(self):
         rules = ir.split_legacy_sop(
             "# T\n\n---\n\n"
             "## 0. Binding Contract\n\nbody\n\n"
-            "### 2.0 Compatibility Gate\n\nbody\n\n"
-            "### 3.1 Git Commit and Push Safety\n\nbody\n\n"
-            "### 3.2 Ownership Gate\n\nbody\n\n"
-            "### 3.6 Human-Visible Publication\n\nbody\n"
+            "### 2.1 Compatibility Gate\n\nbody\n\n"
+            "### 3.2 Git Commit and Push Safety\n\nbody\n\n"
+            "### 3.3 Ownership Gate\n\nbody\n\n"
+            "### 3.8 Human-Visible Publication\n\nbody\n"
         )
         tiers = {rule.id: rule.risk_tier for rule in rules}
         assert tiers["sop.0.binding-contract"] == "safety"
-        assert tiers["sop.2.0.compatibility-gate"] == "compatibility"
-        assert tiers["sop.3.1.git-commit-and-push-safety"] == "git-gate"
-        assert tiers["sop.3.2.ownership-gate"] == "ownership"
-        assert tiers["sop.3.6.human-visible-publication"] == "publication"
+        assert tiers["sop.2.1.compatibility-gate"] == "compatibility"
+        assert tiers["sop.3.2.git-commit-and-push-safety"] == "git-gate"
+        assert tiers["sop.3.3.ownership-gate"] == "ownership"
+        assert tiers["sop.3.8.human-visible-publication"] == "publication"
 
     def test_rule_rejects_unknown_disposition(self):
         with self.assertRaises(ValueError):
@@ -326,28 +344,35 @@ class CompilerTest(unittest.TestCase):
             assert compiler.main(["generate", "--repo-root", str(root)]) == 0
             legacy_path = root / compiler.LEGACY_PATH
             legacy_path.write_text(FIXTURE_SOP + "\ntampered\n", encoding="utf-8")
-            assert compiler.main(["verify", "--all-targets", "--repo-root", str(root)]) == 1
+            assert (
+                compiler.main(
+                    [
+                        "verify",
+                        "--all-targets",
+                        "--manifest",
+                        str(compiler.MANIFEST_PATH),
+                        "--repo-root",
+                        str(root),
+                    ]
+                )
+                == 1
+            )
 
     def test_generate_rejects_unknown_missing_disposition_override(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write_fixture_repo(root)
-            (root / ir.DISPOSITIONS_PATH).write_text(
-                json.dumps(
-                    {
-                        "version": 1,
-                        "overrides": {
-                            "sop.999.injected": {
-                                "disposition": "core",
-                                "consumer": "home/readonly_AGENTS.md",
-                                "risk_tier": "standard",
-                                "eval_ref": "sop.999.injected.stage1-opaque",
-                                "text": "## 999. Injected\n\nbody\n",
-                            }
-                        },
+            _write_policy_audit(
+                root,
+                overrides={
+                    "sop.999.injected": {
+                        "disposition": "core",
+                        "consumer": "home/readonly_AGENTS.md",
+                        "risk_tier": "standard",
+                        "eval_ref": "sop.999.injected.stage1-opaque",
+                        "text": "## 999. Injected\n\nbody\n",
                     }
-                ),
-                encoding="utf-8",
+                },
             )
             assert compiler.main(["generate", "--repo-root", str(root)]) == 1
 
@@ -397,14 +422,20 @@ class CompilerTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write_fixture_repo(root)
-            assert compiler.main(["generate", "--repo-root", str(root)]) == 0
             overlay_path = root / "home/overlay.md"
             overlay_path.write_text("x" * 3000, encoding="utf-8")
-            manifest_path = root / compiler.MANIFEST_PATH
-            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            manifest["rules"][0]["disposition"] = "harness-overlay"
-            manifest["rules"][0]["consumer"] = "home/overlay.md"
-            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            _write_policy_audit(
+                root,
+                overrides={
+                    "sop.1.purpose": {
+                        "disposition": "harness-overlay",
+                        "consumer": "home/overlay.md",
+                        "risk_tier": "standard",
+                        "eval_ref": "sop.1.purpose.ablation-passed",
+                        "text": "## 1. Purpose\n\nBody one.\n",
+                    }
+                },
+            )
             assert (
                 compiler.main(
                     [
@@ -428,14 +459,20 @@ class CompilerTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write_fixture_repo(root)
-            assert compiler.main(["generate", "--repo-root", str(root)]) == 0
             overlay_path = root / "home/pinned-overlay.md"
             overlay_path.write_text("x" * 3000, encoding="utf-8")
-            manifest_path = root / compiler.MANIFEST_PATH
-            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            manifest["rules"][0]["disposition"] = "pinned-model-overlay"
-            manifest["rules"][0]["consumer"] = "home/pinned-overlay.md"
-            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            _write_policy_audit(
+                root,
+                overrides={
+                    "sop.1.purpose": {
+                        "disposition": "pinned-model-overlay",
+                        "consumer": "home/pinned-overlay.md",
+                        "risk_tier": "standard",
+                        "eval_ref": "sop.1.purpose.ablation-passed",
+                        "text": "## 1. Purpose\n\nBody one.\n",
+                    }
+                },
+            )
             assert (
                 compiler.main(
                     [
@@ -543,40 +580,24 @@ Body two.
             skill_path = root / "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md"
             skill_path.write_text("---\nname: k-x\ndescription: x\n---\n\nmoved content\n", encoding="utf-8")
 
-            dispositions_path = root / ir.DISPOSITIONS_PATH
-            dispositions_path.parent.mkdir(parents=True, exist_ok=True)
-            dispositions_path.write_text(
-                json.dumps(
-                    {
-                        "version": 1,
-                        "overrides": {
-                            "sop.1.purpose": {
-                                "disposition": "skill",
-                                "consumer": "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
-                                "risk_tier": "standard",
-                                "eval_ref": "sop.1.purpose.ablation-passed",
-                                "text": "## 1. Purpose\n\nBody one.\n\n",
-                            }
-                        },
+            _write_policy_audit(
+                root,
+                overrides={
+                    "sop.1.purpose": {
+                        "disposition": "skill",
+                        "consumer": "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
+                        "risk_tier": "standard",
+                        "eval_ref": "sop.1.purpose.ablation-passed",
+                        "text": "## 1. Purpose\n\nBody one.\n\n",
                     }
-                ),
-                encoding="utf-8",
-            )
-            ablations_path = root / compiler.ABLATIONS_PATH
-            ablations_path.write_text(
-                json.dumps(
-                    {
-                        "version": 1,
-                        "ablations": {
-                            "sop.1.purpose": _passed_ablation(
-                                root,
-                                "sop.1.purpose",
-                                "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
-                            )
-                        },
-                    }
-                ),
-                encoding="utf-8",
+                },
+                ablations={
+                    "sop.1.purpose": _passed_ablation(
+                        root,
+                        "sop.1.purpose",
+                        "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
+                    )
+                },
             )
 
             assert compiler.main(["generate", "--repo-root", str(root)]) == 0
@@ -615,24 +636,17 @@ Body two.
             (root / "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md").write_text(
                 "---\nname: k-x\ndescription: x\n---\n\nmoved content\n", encoding="utf-8"
             )
-            dispositions_path = root / ir.DISPOSITIONS_PATH
-            dispositions_path.parent.mkdir(parents=True, exist_ok=True)
-            dispositions_path.write_text(
-                json.dumps(
-                    {
-                        "version": 1,
-                        "overrides": {
-                            "sop.1.purpose": {
-                                "disposition": "skill",
-                                "consumer": "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
-                                "risk_tier": "standard",
-                                "eval_ref": "sop.1.purpose.ablation-passed",
-                                "text": "## 1. Purpose\n\nWRONG FROZEN TEXT\n",
-                            }
-                        },
+            _write_policy_audit(
+                root,
+                overrides={
+                    "sop.1.purpose": {
+                        "disposition": "skill",
+                        "consumer": "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
+                        "risk_tier": "standard",
+                        "eval_ref": "sop.1.purpose.ablation-passed",
+                        "text": "## 1. Purpose\n\nWRONG FROZEN TEXT\n",
                     }
-                ),
-                encoding="utf-8",
+                },
             )
             assert compiler.main(["generate", "--repo-root", str(root)]) == 1
 
@@ -646,39 +660,24 @@ Body two.
             (root / "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md").write_text(
                 "---\nname: k-x\ndescription: x\n---\n\nmoved content\n", encoding="utf-8"
             )
-            dispositions_path = root / ir.DISPOSITIONS_PATH
-            dispositions_path.parent.mkdir(parents=True, exist_ok=True)
-            dispositions_path.write_text(
-                json.dumps(
-                    {
-                        "version": 1,
-                        "overrides": {
-                            "sop.1.purpose": {
-                                "disposition": "skill",
-                                "consumer": "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
-                                "risk_tier": "standard",
-                                "eval_ref": "sop.1.purpose.ablation-passed",
-                                "text": "## 1. Purpose\n\nBody one.\n",
-                            }
-                        },
+            _write_policy_audit(
+                root,
+                overrides={
+                    "sop.1.purpose": {
+                        "disposition": "skill",
+                        "consumer": "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
+                        "risk_tier": "standard",
+                        "eval_ref": "sop.1.purpose.ablation-passed",
+                        "text": "## 1. Purpose\n\nBody one.\n",
                     }
-                ),
-                encoding="utf-8",
-            )
-            (root / compiler.ABLATIONS_PATH).write_text(
-                json.dumps(
-                    {
-                        "version": 1,
-                        "ablations": {
-                            "sop.1.purpose": _passed_ablation(
-                                root,
-                                "sop.1.purpose",
-                                "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
-                            )
-                        },
-                    }
-                ),
-                encoding="utf-8",
+                },
+                ablations={
+                    "sop.1.purpose": _passed_ablation(
+                        root,
+                        "sop.1.purpose",
+                        "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
+                    )
+                },
             )
             assert compiler.main(["generate", "--repo-root", str(root)]) == 0
 
@@ -910,7 +909,12 @@ Body two.
             phantom["id"] = "sop.999.phantom"
             manifest["rules"].append(phantom)
             manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-            assert compiler.main(["verify", "--all-targets", "--repo-root", str(root)]) == 1
+            assert (
+                compiler.main(
+                    ["verify", "--all-targets", "--manifest", str(compiler.MANIFEST_PATH), "--repo-root", str(root)]
+                )
+                == 1
+            )
 
     def test_verify_catches_stale_manifest_metadata(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -921,7 +925,12 @@ Body two.
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             manifest["rules"][0]["risk_tier"] = "bogus-risk-tier"
             manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-            assert compiler.main(["verify", "--all-targets", "--repo-root", str(root)]) == 1
+            assert (
+                compiler.main(
+                    ["verify", "--all-targets", "--manifest", str(compiler.MANIFEST_PATH), "--repo-root", str(root)]
+                )
+                == 1
+            )
 
     def test_audit_coverage_catches_manifest_rule_missing_from_inventory(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -938,7 +947,12 @@ Body two.
             inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
             inventory["rule_ids"].append("sop.999.phantom")
             inventory_path.write_text(json.dumps(inventory), encoding="utf-8")
-            assert compiler.main(["verify", "--all-targets", "--repo-root", str(root)]) == 1
+            assert (
+                compiler.main(
+                    ["verify", "--all-targets", "--manifest", str(compiler.MANIFEST_PATH), "--repo-root", str(root)]
+                )
+                == 1
+            )
 
             inventory["rule_ids"] = [r for r in inventory["rule_ids"] if r != "sop.999.phantom"]
             manifest["rules"] = [r for r in manifest["rules"] if r["id"] != "sop.999.phantom"]
@@ -1043,37 +1057,24 @@ Body two.
             (root / "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md").write_text(
                 "---\nname: k-x\ndescription: x\n---\n\nmoved content\n", encoding="utf-8"
             )
-            (root / ir.DISPOSITIONS_PATH).write_text(
-                json.dumps(
-                    {
-                        "version": 1,
-                        "overrides": {
-                            "sop.0.binding-contract": {
-                                "disposition": "skill",
-                                "consumer": "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
-                                "risk_tier": "standard",
-                                "eval_ref": "sop.0.binding-contract.ablation-passed",
-                                "text": "# Standard Operating Procedures\n\n---\n\n## 0. Binding Contract\n\nBody zero.\n\n",
-                            }
-                        },
+            _write_policy_audit(
+                root,
+                overrides={
+                    "sop.0.binding-contract": {
+                        "disposition": "skill",
+                        "consumer": "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
+                        "risk_tier": "standard",
+                        "eval_ref": "sop.0.binding-contract.ablation-passed",
+                        "text": "# Standard Operating Procedures\n\n---\n\n## 0. Binding Contract\n\nBody zero.\n\n",
                     }
-                ),
-                encoding="utf-8",
-            )
-            (root / compiler.ABLATIONS_PATH).write_text(
-                json.dumps(
-                    {
-                        "version": 1,
-                        "ablations": {
-                            "sop.0.binding-contract": _passed_ablation(
-                                root,
-                                "sop.0.binding-contract",
-                                "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
-                            )
-                        },
-                    }
-                ),
-                encoding="utf-8",
+                },
+                ablations={
+                    "sop.0.binding-contract": _passed_ablation(
+                        root,
+                        "sop.0.binding-contract",
+                        "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
+                    )
+                },
             )
             assert compiler.main(["generate", "--repo-root", str(root)]) == 0
             assert (
@@ -1102,7 +1103,7 @@ Body two.
 
 Body zero.
 
-### 3.2 Ownership Gate
+### 3.3 Ownership Gate
 
 Ownership body.
 """
@@ -1111,37 +1112,24 @@ Ownership body.
             (root / "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md").write_text(
                 "---\nname: k-x\ndescription: x\n---\n\nmoved content\n", encoding="utf-8"
             )
-            (root / ir.DISPOSITIONS_PATH).write_text(
-                json.dumps(
-                    {
-                        "version": 1,
-                        "overrides": {
-                            "sop.3.2.ownership-gate": {
-                                "disposition": "skill",
-                                "consumer": "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
-                                "risk_tier": "ownership",
-                                "eval_ref": "sop.3.2.ownership-gate.ablation-passed",
-                                "text": "### 3.2 Ownership Gate\n\nOwnership body.\n",
-                            }
-                        },
+            _write_policy_audit(
+                root,
+                overrides={
+                    "sop.3.3.ownership-gate": {
+                        "disposition": "skill",
+                        "consumer": "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
+                        "risk_tier": "ownership",
+                        "eval_ref": "sop.3.3.ownership-gate.ablation-passed",
+                        "text": "### 3.3 Ownership Gate\n\nOwnership body.\n",
                     }
-                ),
-                encoding="utf-8",
-            )
-            (root / compiler.ABLATIONS_PATH).write_text(
-                json.dumps(
-                    {
-                        "version": 1,
-                        "ablations": {
-                            "sop.3.2.ownership-gate": _passed_ablation(
-                                root,
-                                "sop.3.2.ownership-gate",
-                                "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
-                            )
-                        },
-                    }
-                ),
-                encoding="utf-8",
+                },
+                ablations={
+                    "sop.3.3.ownership-gate": _passed_ablation(
+                        root,
+                        "sop.3.3.ownership-gate",
+                        "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
+                    )
+                },
             )
             assert compiler.main(["generate", "--repo-root", str(root)]) == 0
             assert (
@@ -1167,37 +1155,24 @@ Ownership body.
             (root / "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md").write_text(
                 "---\nname: k-x\ndescription: x\n---\n\nmoved content\n", encoding="utf-8"
             )
-            (root / ir.DISPOSITIONS_PATH).write_text(
-                json.dumps(
-                    {
-                        "version": 1,
-                        "overrides": {
-                            "sop.1.purpose": {
-                                "disposition": "skill",
-                                "consumer": "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
-                                "risk_tier": "standard",
-                                "eval_ref": "sop.1.purpose.ablation-passed",
-                                "text": "## 1. Purpose\n\nBody one.\n",
-                            }
-                        },
+            _write_policy_audit(
+                root,
+                overrides={
+                    "sop.1.purpose": {
+                        "disposition": "skill",
+                        "consumer": "home/exact_dot_agents/exact_skills/exact_k-x/readonly_SKILL.md",
+                        "risk_tier": "standard",
+                        "eval_ref": "sop.1.purpose.ablation-passed",
+                        "text": "## 1. Purpose\n\nBody one.\n",
                     }
-                ),
-                encoding="utf-8",
-            )
-            (root / compiler.ABLATIONS_PATH).write_text(
-                json.dumps(
-                    {
-                        "version": 1,
-                        "ablations": {
-                            "sop.1.purpose": {
-                                "status": "passed",
-                                "target_disposition": "skill",
-                                "consumer": "wrong.md",
-                            }
-                        },
+                },
+                ablations={
+                    "sop.1.purpose": {
+                        "status": "passed",
+                        "target_disposition": "skill",
+                        "consumer": "wrong.md",
                     }
-                ),
-                encoding="utf-8",
+                },
             )
             assert compiler.main(["generate", "--repo-root", str(root)]) == 0
             assert (
@@ -1269,20 +1244,27 @@ class EvalScaffoldTest(unittest.TestCase):
             code = fn(args)
         return code, json.loads(out.getvalue())
 
+    def _computed_manifest(self) -> dict:
+        rules = ir.load_legacy_sop(REPO)
+        return compiler._build_manifest(rules, ir.render(rules))
+
     def test_plan_reports_cross_product_without_authorized_spend(self):
         matrix = REPO / "scripts/tests/fixtures/ai_policy_eval/matrix.yaml"
-        code, report = self._capture_json(
-            evals.main,
-            [
-                "plan",
-                "--matrix",
-                str(matrix),
-                "--manifest",
-                str(REPO / compiler.MANIFEST_PATH),
-                "--capabilities",
-                str(REPO / capabilities.SNAPSHOT_PATH),
-            ],
-        )
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest_path = Path(tmp) / "manifest.json"
+            manifest_path.write_text(json.dumps(self._computed_manifest()), encoding="utf-8")
+            code, report = self._capture_json(
+                evals.main,
+                [
+                    "plan",
+                    "--matrix",
+                    str(matrix),
+                    "--manifest",
+                    str(manifest_path),
+                    "--capabilities",
+                    str(REPO / capabilities.SNAPSHOT_PATH),
+                ],
+            )
         assert code == 0
         assert report["cell_count"] == 4608
         assert report["estimated_requests"] == 4608
@@ -1347,7 +1329,7 @@ class EvalScaffoldTest(unittest.TestCase):
 
     def test_eval_matrix_has_three_scenarios_for_every_manifest_rule(self):
         matrix = evals._load_matrix(REPO / "scripts/tests/fixtures/ai_policy_eval/matrix.yaml")
-        manifest = json.loads((REPO / compiler.MANIFEST_PATH).read_text(encoding="utf-8"))
+        manifest = self._computed_manifest()
         scenarios = set(matrix["scenarios"])
         for record in manifest["rules"]:
             for suffix in ("positive", "negative-control", "malformed-input"):
