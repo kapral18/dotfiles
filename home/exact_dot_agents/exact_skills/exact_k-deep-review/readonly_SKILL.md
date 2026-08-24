@@ -415,7 +415,7 @@ The measured reason for this controller cache is concrete: one real review had 4
    - If the audited set is empty, skip adversarial verification and report `Adversarial verification: skipped (no candidates after findings audit)`.
    - Otherwise, launch one adversarial-verifier worker following `~/.agents/skills/k-review/references/adversarial-verifier.md`.
      Give it the audited candidates with lane attribution stripped, plus the findings-audit result, verification ledger, live UI status/evidence/artifacts/skip reason, diff scope, base ref, and mode.
-   - Model rule — the one lane where model identity matters: the review-model resolver assigns each harness its verifier model from `model_bands.<harness>.max.counter` when present, or from a sparse override / primary max-band fallback otherwise, and the deployed `adversarial-verifier` profile carries it (named-profile controllers such as Pi/OMP pass the rendered resolver value per task).
+   - Model rule — the one lane where model identity matters: the review-model resolver assigns each harness its verifier model from `category_models.<harness>.refute` or a sparse override, and the deployed `adversarial-verifier` profile carries it (named-profile controllers such as Pi/OMP pass the rendered resolver value per task).
      Report `families=cross` only when the resolved verifier model is genuinely a different family than its lane model.
      Report `families=same (reduced independence)` when the resolver carries `verifier_status: reduced_independence` for a deliberate same-family capability-first pairing.
      Report `families=same (degraded)` when the harness cannot field a second family (`verifier_status: degraded`, `inherit`, or single-vendor surface).

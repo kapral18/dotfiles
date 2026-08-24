@@ -122,13 +122,17 @@ if [[ ! -x "$OPENROUTER_PRESET_HELPER" ]]; then
 fi
 export OPENROUTER_API_KEY="$api_key"
 "$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"
+"$OPENROUTER_PRESET_HELPER" xhigh
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
+readonly OPENROUTER_PI_GPT55_WIRE_MODEL="openai/gpt-5.5@preset/effort-xhigh"
+readonly OPENROUTER_PI_DEEPSEEK_WIRE_MODEL="deepseek/deepseek-v4-flash@preset/effort-xhigh"
+readonly OPENROUTER_PI_SONNET_WIRE_MODEL="anthropic/claude-sonnet-4.6@preset/effort-xhigh"
 
 # The shim's session guardrail: only the pinned wire model may appear on
 # /chat/completions in this session. Subagents, profiles, resumes, and
 # caller-supplied Task.model all resolve before the request body is built, so
 # this env is the one knob the shim checks against.
-export CURSOR_AGENT_ALLOWED_MODEL="$OPENROUTER_WIRE_MODEL"
+export CURSOR_AGENT_ALLOWED_MODEL="$OPENROUTER_WIRE_MODEL,$OPENROUTER_PI_GPT55_WIRE_MODEL,$OPENROUTER_PI_DEEPSEEK_WIRE_MODEL,$OPENROUTER_PI_SONNET_WIRE_MODEL"
 
 # The env fallbacks (CURSOR_LOCAL_AGENT_BASE_URL/API_KEY, ANTHROPIC_BASE_URL/AUTH_TOKEN) sit below
 # the flags the CLI receives, so inherited values cannot escape the pinned route; drop them anyway
@@ -199,11 +203,13 @@ else
 fi
 export CURSOR_LOCAL_AGENT_API_KEY="$api_key"
 
-# Delegated Task lanes reach the band gate with the native cursor band ids, which the local
-# provider cannot serve; the override rewrites them to the pinned wire model. The preset carries
-# the effort, so there is no separate effort override to set. The shim allowlist (above) is the
-# backstop: even a lane or profile that resolves to another model is rejected at the wire.
-export AGENT_BAND_MODEL_OVERRIDE="$OPENROUTER_WIRE_MODEL"
+# Delegated Task lanes emit in Cursor's tool shape, but model choices come from Pi's
+# OpenRouter-compatible category matrix. The gate strips the `openrouter/` prefix and turns
+# `:<level>` into `@preset/effort-<level>`; the shim allowlist above admits only the session pin
+# and those Pi lane wire models.
+unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE
+export AGENT_BAND_SCHEMA_HARNESS="pi"
+export AGENT_BAND_MODEL_FORMAT="openrouter-preset"
 
 "$local_bin" --model "$OPENROUTER_WIRE_MODEL" "${cli_args[@]}"
 status=$?

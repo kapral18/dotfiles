@@ -19,18 +19,18 @@ This is the model-side counterpart to the [MCP registry](mcp.md). Use it when ad
 
 ## Registry: `.chezmoidata/ai_models/`
 
-Source of truth: [`home/.chezmoidata/ai_models/`](../../../home/.chezmoidata/ai_models). The sections are split across three files for navigation only — chezmoi merges every file under `.chezmoidata/` (subdirectories included) into one flat data namespace, so templates still read `.cursor_models` and `.model_bands` directly. [`scripts/ai_models.py`](../../../scripts/ai_models.py) holds the section → file map (`SECTION_FILES`) and takes the registry directory, never a single file.
+Source of truth: [`home/.chezmoidata/ai_models/`](../../../home/.chezmoidata/ai_models). The sections are split across three files for navigation only — chezmoi merges every file under `.chezmoidata/` (subdirectories included) into one flat data namespace, so templates still read `.cursor_models` and `.category_models` directly. [`scripts/ai_models.py`](../../../scripts/ai_models.py) holds the section → file map (`SECTION_FILES`) and takes the registry directory, never a single file.
 
-| Section                  | File                    | Canonical policy                                                                                                                  |
-| ------------------------ | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `cursor_models`          | `harness-catalogs.yaml` | Curated Cursor aliases; `recommended: true` is the narrower preferred set                                                         |
-| `pi_extra_models`        | `harness-catalogs.yaml` | Pi's curated picker; every entry is provider-routed through Pi's built-in OpenRouter provider                                     |
-| `copilot_models`         | `harness-catalogs.yaml` | Probed Copilot CLI catalog; the mirror's copilot `available` set                                                                  |
-| `provider_models`        | `provider-routes.yaml`  | Static provider-route choices for shell completion; Vertex entries also own adapter wire/capability metadata                      |
-| `review_model_overrides` | `tiering.yaml`          | Sparse review selector overrides (`inherit`, `pro`) for harnesses whose review roles cannot be derived from `model_bands`         |
-| `agent_categories`       | `tiering.yaml`          | Portable category → `{band, family}`; the same table on every harness                                                             |
-| `agent_bindings`         | `tiering.yaml`          | Every delegable agent name → its category, built-ins included                                                                     |
-| `model_bands`            | `tiering.yaml`          | Per-harness `cheap`/`standard`/`max` picks (+ `counter` on `max`); see [Model tiering](model-tiering.md) for policy and rationale |
+| Section                  | File                    | Canonical policy                                                                                                              |
+| ------------------------ | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `cursor_models`          | `harness-catalogs.yaml` | Curated Cursor aliases; `recommended: true` is the narrower preferred set                                                     |
+| `pi_extra_models`        | `harness-catalogs.yaml` | Pi's curated picker; every entry is provider-routed through Pi's built-in OpenRouter provider                                 |
+| `copilot_models`         | `harness-catalogs.yaml` | Probed Copilot CLI catalog; the mirror's copilot `available` set                                                              |
+| `provider_models`        | `provider-routes.yaml`  | Static provider-route choices for shell completion; Vertex entries also own adapter wire/capability metadata                  |
+| `review_model_overrides` | `tiering.yaml`          | Sparse review selector overrides (`inherit`, `pro`) for harnesses whose review roles cannot be derived from `category_models` |
+| `agent_categories`       | `tiering.yaml`          | Portable category → `{family, contract}`; the same table on every harness                                                     |
+| `agent_bindings`         | `tiering.yaml`          | Every delegable agent name → its category, built-ins included                                                                 |
+| `category_models`        | `tiering.yaml`          | Per-harness category picks; see [Model tiering](model-tiering.md) for policy and rationale                                    |
 
 Adding a section means adding it to `SECTION_FILES` as well: the parser resolves a section by name, so an unmapped section raises rather than being searched for across files.
 
@@ -97,7 +97,7 @@ Each catalog carries `status`, `models`, `complete`, `reason`, and `provenance`.
 
 `unknown`/`error` catalogs must have no models, `complete: null`, and a reason, so a failed probe can never look like a successful empty catalog.
 
-Provenance enumerates every contributing config or registry source. Registry entries also name sections, such as `agent_bindings`, `agent_categories`, `model_bands`, and `review_model_overrides` for Copilot review-policy routing.
+Provenance enumerates every contributing config or registry source. Registry entries also name sections, such as `agent_bindings`, `agent_categories`, `category_models`, and `review_model_overrides` for Copilot review-policy routing.
 
 The mirror also records exact installed harness identity/version evidence and consumer adapters.
 
@@ -149,7 +149,7 @@ Upstream provider routing is model-specific (user calls 2026-08-07; uptime-aware
 The policies have three carriers. Pi 0.84.0 sends each object through `modelOverrides.compat.openRouterRouting`, which its runtime copies as-is into the request's `provider` field. OMP 17.2.9's typed openrouter transport drops `modelOverrides…compat.extraBody.provider` from the wire (verified 2026-08-08: the merged catalog entry carries no extraBody and a live request with an impossible quantization succeeds), so OMP and OpenCode carry the policy in the model slug through workspace `*-lanes-*` presets. The eight `kimi-lanes*` presets preserve their effort-specific `reasoning.effort` values (including `none`, which disables reasoning) and carry the Kimi object; the eight `deepseek-lanes*` and eight `glm-lanes*` presets do the same for DeepSeek and GLM-5.2, including the FP8-or-higher quantization allowlist. The four `*-openrouter` wrappers compose effort only: `<model>@preset/effort-<level>` for every `--model`. `,cursor-openrouter` reaches OpenRouter through Cursor's agent-cli-local flavor (`--base-url` OpenAI-compatible), which the regular cursor-agent build rejects; its provider config is baseUrl+apiKey only, so effort rides the `effort-<level>` slug. Every session runs through the loopback shim, which both strips `strict:true` from `openai/*` tool schemas (cursor-agent-local's reasoning predicate matches those ids and the bundled Shell schema's optional `debounce_ms` fails OpenAI strict validation; see [other harnesses](tool-configs/other-harnesses.md)) and enforces a wire-level model allowlist: the launcher exports the pinned wire id as `CURSOR_AGENT_ALLOWED_MODEL` and the shim returns 403 for any `/chat/completions` whose model differs, so no subagent or profile can route a different model on the session. The wrappers default to `deepseek/deepseek-v4-flash-0731@preset/effort-max`. Each wrapper first checks the active account for `effort-<level>` and creates it with only `reasoning.effort` when absent; existing presets are never rewritten. Inside an interactive session `/model` accepts a free-text id verbatim, so a typed `model@preset/effort-<level>` keeps the effort slug while a bare model does not.
 
 - **OpenCode**: both profiles run `main`, every configured worker, and `small_model` on `openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max` at `max` effort. Kimi stays available through `openrouter/moonshotai/kimi-k3@preset/kimi-lanes`; GLM-5.2 is selectable through `openrouter/z-ai/glm-5.2@preset/glm-lanes-max`.
-- **Pi**: `defaultProvider` is `openrouter` in both profiles, and `pi_extra_models` exposes the strict OpenRouter route: `openrouter/deepseek/deepseek-v4-flash-0731` (recommended/default/lanes), `openrouter/moonshotai/kimi-k3` (selectable), `openrouter/z-ai/glm-5.2` (selectable), and `openrouter/openai/gpt-5.6-terra` (counter/verifier only). The three gated models carry their policy through `modelOverrides`.
+- **Pi**: `defaultProvider` is `openrouter` in both profiles, `defaultModel` is `openai/gpt-5.5`, and `defaultThinkingLevel` is `xhigh`. `pi_extra_models` exposes the strict Pi OpenRouter set: `openrouter/openai/gpt-5.5` (recommended/default/lanes), `openrouter/deepseek/deepseek-v4-flash` (mechanical), `openrouter/anthropic/claude-sonnet-4.6` (counter/verifier), `openrouter/moonshotai/kimi-k3` (selectable), and `openrouter/z-ai/glm-5.2` (selectable). The gated Kimi, DeepSeek-0731, and GLM-5.2 provider policies still live in `modelOverrides`.
 
 ## Local inference
 

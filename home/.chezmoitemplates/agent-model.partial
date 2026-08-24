@@ -1,18 +1,11 @@
 {{- /*
-Resolve the model id an agent profile should carry, from its category rather than a hand-picked
-band. Call with: (dict "root" . "harness" "<model_bands key>" "agent" "<agent_bindings key>").
+Resolve the model id an agent profile should carry from its category. Call with:
+(dict "root" . "harness" "<category_models key>" "agent" "<agent_bindings key>").
 
-The three-hop lookup is the whole point of the split registry: the profile names only itself, the
-portable agent_bindings/agent_categories tables decide which band that job needs, and model_bands
-decides what the band costs on this harness. A `counter`-family category takes the harness's
-cross-family refuter when it has one; harnesses without one fall through to the primary max pick,
-which is the degraded refutation the controller has to report.
+The profile names only itself, agent_bindings selects the portable category, and category_models
+decides what that category costs on this harness.
 */ -}}
 {{- $root := .root -}}
 {{- $category := index $root.agent_bindings .agent -}}
-{{- $spec := index $root.agent_categories $category -}}
-{{- $pick := index (index $root.model_bands .harness) $spec.band -}}
-{{- if and (eq $spec.family "counter") (hasKey $pick "counter") -}}
-{{- $pick = $pick.counter -}}
-{{- end -}}
+{{- $pick := index (index $root.category_models .harness) $category -}}
 {{- $pick.model -}}

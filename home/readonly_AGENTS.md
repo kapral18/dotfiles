@@ -258,11 +258,12 @@ A disposable harness under `/tmp/state-machine-verification/<pwd>/<topic>/<slug>
 ### 3.7 Delegation Categories
 
 Delegable work is classified before it is delegated, and the category — not a model name — is what you choose.
-Categories map to cost bands centrally, so naming one correctly is the whole cost decision; the harness resolves the model.
+Categories map to per-harness model rows centrally, so naming one correctly is the whole cost decision; the harness resolves the model.
 
-- `search` — read-only recon: locate code, enumerate call sites, gather files. No edits, no judgment calls.
+- `lookup` — exact scoped retrieval: read a specified help page, list requested files, or return raw pointers selected by the caller.
+  No edits, no importance ranking, no conclusions.
 - `mechanical` — deterministic edits with a stated rule: renames, import fixes, mechanical migrations, formatting the tool cannot do.
-- `research` — external sources and synthesis: upstream repos, docs, release notes, cross-source claims.
+- `research` — evidence discovery and synthesis: find important code paths, enumerate call sites that matter, inspect upstream repos, reconcile docs, or form conclusions from sources.
 - `implement` — writing or changing code where the approach is settled but the details are not.
 - `orchestrate` — holding a multi-step plan, sequencing delegations, and judging their results. The main session's own default.
 - `review` — judging a change against intent, risk, and repository rules.
@@ -272,7 +273,8 @@ Rules:
 
 - Run in exactly the category the work needs — neither higher for safety nor lower to save tokens;
   miscategorization is a defect in both directions.
-- Classify by the work, not by the caller. A file search stays `search` even when invoked from an `orchestrate` session.
+- Classify by the work, not by the caller.
+  A caller-scoped exact file lookup stays `lookup`; choosing which files or symbols matter is `research`, even when invoked from an `orchestrate` session.
 - Delegate rather than inline bounded work with a clear input and output that skips the caller's accumulated context.
   Delegation keeps the conclusion in the caller's context, not the file dumps; recon and mechanical edits are the usual wins.
 - `refute` prefers a different model family than the lanes it audits, at equal capability.

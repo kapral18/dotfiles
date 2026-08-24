@@ -6,4 +6,6 @@ adapter="$HOME/lib/,copilot-adapter/main.py"
   echo "Error: Copilot adapter not found at $adapter." >&2
   exit 127
 }
+unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE AGENT_BAND_MODEL_FORMAT
+export AGENT_BAND_SCHEMA_HARNESS="copilot"
 exec python3 "$adapter" cursor "$@"

@@ -107,7 +107,7 @@ Verdicts (`confirmed`/`refuted`/`undecidable`) feed the verification ledger. A r
 
 The verifier then runs a **bounded miss sweep**. It is usually the only model from a different family that reads the diff, and the finder lanes share a family and a prompt, so what they all missed is what it is best positioned to catch. Refutation alone discards that. The sweep is scoped to the highest-risk changed surface, holds the same evidence bar as a verdict, and returns at most three `new-candidate` items or `none above the bar`. Because they have not passed the findings audit, the controller re-audits them inline before judgment and reports produced-versus-survived counts.
 
-On harnesses where the resolver returns the same family for both roles, the phase runs on the lane model with refutation framing and reports `families=same (degraded)` when no second family is reachable, or `families=same (reduced independence)` when `verifier_status: reduced_independence` marks a deliberate capability-first pairing (Cursor and OMP) — capability outranks family diversity (SOP §3.7). Either state is reported, never silent. After the cost-driven ban (closed 2026-08-03), Copilot and Pi still carry counters: Copilot uses `claude-sonnet-4.6` against OpenAI lanes, and Pi uses `openrouter/openai/gpt-5.6-terra:max` against DeepSeek lanes.
+On harnesses where the resolver returns the same family for both roles, the phase runs on the lane model with refutation framing and reports `families=same (degraded)` when no second family is reachable, or `families=same (reduced independence)` when `verifier_status: reduced_independence` marks a deliberate capability-first pairing (OMP) — capability outranks family diversity (SOP §3.7). Either state is reported, never silent. Cursor, Copilot, and Pi still carry counters: Cursor uses `claude-opus-5-high` against GPT-5.6 SOL lanes, Copilot uses `claude-fable-5` against OpenAI lanes, and Pi uses `openrouter/anthropic/claude-sonnet-4.6:xhigh` against OpenAI GPT-5.5 lanes.
 
 The controller aggregates the investigation outputs, then judges what to fix or draft through mode-correct review rules. For each ledger item, it either resolves it with evidence, runs the check serially when needed for judgment, marks it not needed with evidence, or reports the exact blocker/uncertainty.
 
@@ -136,13 +136,13 @@ It merges still-valid pending feedback with net-new findings into one payload, d
 
 Model selection is registry-driven and deterministic.
 
-| Lane                                       | Model                                                                                                                                                              |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| angle lanes, fresh-eyes, auditors, live UI | `review-agent-model.partial` / `resolve_review_agent_model` resolves the primary max-band model, or a sparse override such as Claude `inherit` / Antigravity `pro` |
-| adversarial verifier                       | same resolver, using `model_bands.<harness>.max.counter.model` when present and otherwise the primary max-band model plus its `verifier_status`                    |
-| verifier on same-family harnesses          | `verifier_status: reduced_independence` reports deliberate same-family policy; default fallback reports `families=same (degraded)`                                 |
+| Lane                                       | Model                                                                                                                                                                      |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| angle lanes, fresh-eyes, auditors, live UI | `review-agent-model.partial` / `resolve_review_agent_model` resolves `category_models.<harness>.review`, or a sparse override such as Claude `inherit` / Antigravity `pro` |
+| adversarial verifier                       | same resolver, using `category_models.<harness>.refute` plus its `verifier_status`                                                                                         |
+| verifier on same-family harnesses          | `verifier_status: reduced_independence` reports deliberate same-family policy; default fallback reports `families=same (degraded)`                                         |
 
-Every repo-owned review profile's `model` frontmatter is a chezmoi template over `review-agent-model.partial`, which derives from `agent_bindings`, `agent_categories`, `model_bands`, and sparse `review_model_overrides`. Updating a derivable model is a one-line band edit, and neither skills nor controllers steer models at runtime; generic fresh-eyes is the only runtime pass-through, used only where no named fresh-eyes profile exists.
+Every repo-owned review profile's `model` frontmatter is a chezmoi template over `review-agent-model.partial`, which derives from `agent_bindings`, `agent_categories`, `category_models`, and sparse `review_model_overrides`. Updating a derivable model is a one-line category row edit, and neither skills nor controllers steer models at runtime; generic fresh-eyes is the only runtime pass-through, used only where no named fresh-eyes profile exists.
 
 The review's diversity comes from angles plus the adversarial verify pass (cross-family preferred at equal capability, SOP §3.7); the registry keeps the family pairing a human decision instead of a launch-time inference.
 

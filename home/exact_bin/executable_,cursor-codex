@@ -6,4 +6,6 @@ adapter="$HOME/lib/,codex-adapter/main.py"
   echo "Error: Codex adapter not found at $adapter." >&2
   exit 127
 }
+unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE AGENT_BAND_MODEL_FORMAT
+export AGENT_BAND_SCHEMA_HARNESS="codex"
 exec python3 "$adapter" cursor "$@"

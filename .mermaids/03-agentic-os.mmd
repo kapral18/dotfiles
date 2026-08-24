@@ -20,7 +20,7 @@ flowchart TB
 
     subgraph CTX["2 · Context (single sources of truth)"]
         REG[[".chezmoidata/mcp_servers.yaml<br/>generic registry; current work/domain servers:<br/>scsi-main(http sso) · scsi-local (ES stdio) · slack(http oauth)"]]:::data
-        MODELS[[".chezmoidata/ai_models/ split registry — harness-catalogs · provider-routes · tiering<br/>+ review_model_overrides + model_bands counter/verifier_status<br/>(review-model resolver → profile frontmatter)<br/>+ cursor_models · pi_extra_models · provider_models (model-mirror registry sources)"]]:::data
+        MODELS[[".chezmoidata/ai_models/ split registry — harness-catalogs · provider-routes · tiering<br/>+ review_model_overrides + category_models.refute/verifier_status<br/>(review-model resolver → profile frontmatter)<br/>+ cursor_models · pi_extra_models · provider_models (model-mirror registry sources)"]]:::data
         GEN["scripts/: mcp_registry.py · generate_mcp_configs.py<br/>resolve $(pass …) · filter by tool + work_only/isWork"]:::ctx
         REG --> GEN
     end
@@ -31,8 +31,8 @@ flowchart TB
         GEMINI["Antigravity: config/symlink_AGENTS.md + symlink_skills + generated mcp_config.json"]:::exec
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (OpenRouter selectors)"]:::exec
         CODEX["Codex: dot_codex/private_config.{work,personal}.toml<br/>+ ,codex bearer-token env wrapper for hosted MCP"]:::exec
-        PI["Pi: dot_pi/agent/* (OpenRouter Terra default and review lanes, max thinking)"]:::exec
-        OMP["OMP: dot_omp/private_agent/readonly_config.yml.tmpl<br/>work + personal: native OpenAI Codex subscription roles; GitHub Copilot kept as fallback route<br/>+ generated ~/.omp/agent/mcp.json token bridges"]:::exec
+        PI["Pi: dot_pi/agent/* (OpenRouter GPT-5.5 xhigh default/review lanes; Sonnet refute)"]:::exec
+        OMP["OMP: dot_omp/private_agent/readonly_config.yml.tmpl<br/>work + personal: OpenRouter GPT-5.5 xhigh roles; smol DeepSeek Flash; advisor Sonnet 4.6<br/>+ generated ~/.omp/agent/mcp.json token bridges"]:::exec
         COPILOT["Copilot CLI: private_dot_copilot/* (settings + gates + review agents;<br/>MCP stdio-only, OAuth http unusable)"]:::exec
         TUICR["tuicr: dot_config/tuicr/readonly_config.toml"]:::exec
         LOCAL["llama.cpp (local, opt-in)"]:::exec

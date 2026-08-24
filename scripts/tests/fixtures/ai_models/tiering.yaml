@@ -6,56 +6,67 @@ review_model_overrides:
     lanes: "pro"
     verifier: "pro"
 
-model_bands:
+category_models:
   claude_code:
-    cheap:
+    lookup:
       model: "model-b"
       effort: "high"
       thinking: "no"
       context: "short"
-    standard:
+    research:
       model: "model-c"
       effort: "high"
       thinking: "off"
       context: "short"
-    max:
+    review:
       model: "model-a"
       effort: "high"
       thinking: "off"
       context: "long"
-      counter:
-        model: "model-counter"
-        effort: "medium"
-        context: "long"
+    refute:
+      model: "model-counter"
+      effort: "medium"
+      thinking: "off"
+      context: "long"
+      verifier_status: "cross_family"
   codex:
-    cheap:
+    lookup:
       model: "codex-cheap"
       effort: "low"
       thinking: ""
       context: "short"
-    standard:
+    research:
       model: "codex-standard"
       effort: "medium"
       thinking: ""
       context: "short"
-    max:
+    review:
       model: "codex-max"
       effort: "xhigh"
       thinking: ""
       context: "short"
+    refute:
+      model: "codex-max"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+      verifier_status: "degraded"
 
 agent_categories:
-  search:
-    band: "cheap"
+  lookup:
     family: "primary"
+    contract: "exact-retrieval"
+  research:
+    family: "primary"
+    contract: "evidence-synthesis"
   review:
-    band: "max"
     family: "primary"
+    contract: "review"
   refute:
-    band: "max"
     family: "counter"
+    contract: "adversarial-verification"
 
 agent_bindings:
-  code-searcher: search
+  code-searcher: research
   reviewer: review
   adversarial-verifier: refute

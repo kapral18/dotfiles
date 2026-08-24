@@ -9,4 +9,6 @@ if [[ ! -f "$lib" ]]; then
   exit 127
 fi
 
+unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE AGENT_BAND_MODEL_FORMAT
+export AGENT_BAND_SCHEMA_HARNESS="copilot"
 exec python3 "$lib" codex "$@"

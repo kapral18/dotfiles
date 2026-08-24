@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve Copilot's subagent roster against the band registry in .chezmoidata/ai_models/tiering.yaml.
+"""Resolve Copilot's subagent roster against category routing in .chezmoidata/ai_models/tiering.yaml.
 
 Copilot pins subagent models inside a settings file that the harness itself rewrites at
 runtime, so the merge script reconciles a checked-in source rather than rendering a template.

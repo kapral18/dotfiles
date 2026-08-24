@@ -303,8 +303,8 @@ def _load_codex_policy(repo_root: Path) -> tuple[list[str], list[str], dict[str,
 
 
 def _load_gemini_policy(repo_root: Path) -> tuple[list[str], list[str], dict[str, str]]:
-    bands = ai_models.load_model_bands(repo_root / AI_MODELS_REGISTRY)
-    model = bands["gemini"]["standard"]["model"]
+    category_models = ai_models.load_category_models(repo_root / AI_MODELS_REGISTRY)
+    model = category_models["gemini"]["research"]["model"]
     return [model], [model], {"default": model}
 
 
@@ -439,6 +439,7 @@ def _live_probe(supported: bool, **fields: Any) -> dict[str, Any]:
 def _provider_entries(
     explicit: dict[str, list[dict[str, Any]]],
     llama_models: list[str],
+    pi_extras: list[dict[str, Any]],
 ) -> dict[str, dict[str, Any]]:
     policies: dict[str, list[str]] = {"llama-cpp": llama_models}
     recommendations = dict(policies)
@@ -446,11 +447,21 @@ def _provider_entries(
         policies[provider] = [entry["id"] for entry in explicit[provider]]
         recommendations[provider] = [entry["id"] for entry in explicit[provider] if entry.get("recommended") is True]
 
+    for entry in pi_extras:
+        model_id = entry["id"]
+        if not model_id.startswith("openrouter/"):
+            continue
+        provider_model = model_id.removeprefix("openrouter/")
+        if provider_model not in policies["openrouter"]:
+            policies["openrouter"].append(provider_model)
+
     entries = {}
     for provider in PROVIDERS:
         curated = policies.get(provider, [])
         recommended = recommendations.get(provider, [])
         policy_provenance = _provider_policy_provenance(provider)
+        if provider == "openrouter":
+            policy_provenance = [*policy_provenance, _registry_provenance("pi_extra_models")]
         available = (
             _known(
                 llama_models,
@@ -585,6 +596,7 @@ def build_static_mirror(repo_root: str | Path) -> dict[str, Any]:
         "providers": _provider_entries(
             provider_policy,
             _load_llama_models(root),
+            pi_extras,
         ),
         "schema_version": SCHEMA_VERSION,
     }
@@ -607,7 +619,7 @@ def _harness_policy_provenance(harness: str, set_name: str) -> list[dict[str, An
             _provenance("config", "home/dot_codex/private_config.work.toml"),
             _provenance("config", "home/dot_codex/private_config.personal.toml"),
         ],
-        "gemini": [_registry_provenance("model_bands")],
+        "gemini": [_registry_provenance("category_models")],
         "opencode": [
             _provenance("config", "home/dot_config/opencode/readonly_opencode.work.jsonc"),
             _provenance("config", "home/dot_config/opencode/readonly_opencode.personal.jsonc"),
@@ -625,7 +637,7 @@ def _harness_policy_provenance(harness: str, set_name: str) -> list[dict[str, An
         return [
             _registry_provenance("agent_bindings"),
             _registry_provenance("agent_categories"),
-            _registry_provenance("model_bands"),
+            _registry_provenance("category_models"),
             _registry_provenance("review_model_overrides"),
         ]
     return profile_sources[harness]

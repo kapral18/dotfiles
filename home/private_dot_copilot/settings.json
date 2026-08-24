@@ -1,6 +1,6 @@
 {
-  "model": "gpt-5.6-terra",
-  "effortLevel": "high",
+  "model": "gpt-5.5",
+  "effortLevel": "xhigh",
   "keepAlive": "busy",
   "includeCoAuthoredBy": true,
   "autoUpdate": false,
@@ -9,79 +9,79 @@
   "subagents": {
     "agents": {
       "deep-review": {
-        "effortLevel": "high",
+        "effortLevel": "xhigh",
         "contextTier": "default",
-        "model": "gpt-5.6-terra"
+        "model": "gpt-5.5"
       },
       "review-worker": {
-        "effortLevel": "high",
+        "effortLevel": "xhigh",
         "contextTier": "default",
-        "model": "gpt-5.6-terra"
+        "model": "gpt-5.5"
       },
       "adversarial-verifier": {
         "effortLevel": "high",
         "contextTier": "default",
-        "model": "claude-sonnet-4.6"
+        "model": "claude-fable-5"
       },
       "findings-auditor": {
-        "effortLevel": "high",
+        "effortLevel": "xhigh",
         "contextTier": "default",
-        "model": "gpt-5.6-terra"
+        "model": "gpt-5.5"
       },
       "pr-necessity-auditor": {
-        "effortLevel": "high",
+        "effortLevel": "xhigh",
         "contextTier": "default",
-        "model": "gpt-5.6-terra"
+        "model": "gpt-5.5"
       },
       "live-ui-review": {
-        "effortLevel": "high",
+        "effortLevel": "xhigh",
         "contextTier": "default",
-        "model": "gpt-5.6-terra"
+        "model": "gpt-5.5"
       },
       "criteria-verifier": {
         "effortLevel": "high",
         "contextTier": "default",
-        "model": "claude-sonnet-4.6"
+        "model": "claude-fable-5"
       },
       "explore": {
-        "effortLevel": "high",
+        "effortLevel": "xhigh",
         "contextTier": "default",
-        "model": "claude-sonnet-4.6"
+        "model": "gpt-5.5"
       },
       "task": {
-        "effortLevel": "high",
+        "effortLevel": "xhigh",
         "contextTier": "default",
-        "model": "claude-sonnet-4.6"
+        "model": "gpt-5.5"
       },
       "research": {
-        "effortLevel": "high",
+        "effortLevel": "xhigh",
         "contextTier": "default",
-        "model": "claude-sonnet-4.6"
+        "model": "gpt-5.5"
       },
       "rubber-duck": {
-        "effortLevel": "high",
+        "effortLevel": "xhigh",
         "contextTier": "default",
-        "model": "claude-sonnet-4.6"
+        "model": "gpt-5.5"
       },
       "general-purpose": {
-        "effortLevel": "high",
+        "effortLevel": "xhigh",
         "contextTier": "default",
-        "model": "claude-sonnet-4.6"
+        "model": "gpt-5.5"
       },
       "rem-agent": {
-        "effortLevel": "high",
+        "effortLevel": "xhigh",
         "contextTier": "default",
-        "model": "claude-sonnet-4.6"
+        "model": "gpt-5.5"
       },
       "code-review": {
-        "effortLevel": "high",
+        "effortLevel": "xhigh",
         "contextTier": "default",
-        "model": "gpt-5.6-terra"
+        "model": "gpt-5.5"
       },
       "security-review": {
-        "effortLevel": "high",
+        "effortLevel": "xhigh",
         "contextTier": "default",
-        "model": "gpt-5.6-terra"
+        "model": "gpt-5.5"
       }
     }
   }

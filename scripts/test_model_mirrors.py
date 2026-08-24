@@ -154,7 +154,7 @@ class TestStaticModelMirrors(unittest.TestCase):
             set(gemini["curated"]["models"]),
         )
         self.assertNotIn("new-live", cursor["curated"]["models"])
-        self.assertEqual(["openrouter/deepseek/deepseek-v4-flash-0731"], pi_recommended)
+        self.assertEqual(["openrouter/openai/gpt-5.5"], pi_recommended)
 
     def test_SHOULD_encode_unknown_and_error_without_empty_success(self):
         import model_mirrors
@@ -228,11 +228,8 @@ class TestStaticModelMirrors(unittest.TestCase):
             ai_models.resolve_review_agent_model(registry, "pi", "reviewer")["model"],
             ai_models.resolve_review_agent_model(registry, "pi", "adversarial-verifier")["model"],
         ]
-        for band in ai_models.load_model_bands(registry)["pi"].values():
-            pins.append(band["model"])
-            counter = band.get("counter")
-            if counter:
-                pins.append(counter["model"])
+        for row in ai_models.load_category_models(registry)["pi"].values():
+            pins.append(row["model"])
 
         for model in {catalog_id(pin) for pin in pins}:
             with self.subTest(model=model):
@@ -292,7 +289,7 @@ class TestStaticModelMirrors(unittest.TestCase):
                 "copilot_models": "harness-catalogs.yaml",
                 "agent_bindings": "tiering.yaml",
                 "agent_categories": "tiering.yaml",
-                "model_bands": "tiering.yaml",
+                "category_models": "tiering.yaml",
                 "review_model_overrides": "tiering.yaml",
             }[section]
             return (f"home/.chezmoidata/ai_models/{owner}", section)
@@ -300,7 +297,7 @@ class TestStaticModelMirrors(unittest.TestCase):
         copilot_policy_sources = {
             registry("agent_bindings"),
             registry("agent_categories"),
-            registry("model_bands"),
+            registry("category_models"),
             registry("review_model_overrides"),
         }
         self.assertEqual(sources("copilot", "curated"), copilot_policy_sources)

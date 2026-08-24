@@ -261,13 +261,39 @@ class TestOpenRouterWrappers(unittest.TestCase):
         assert "export CLAUDE_CODE_DISABLE_THINKING=1" in source
         assert 'export CLAUDE_CODE_EFFORT_LEVEL="$CLAUDE_EFFORT"' in source
 
-    def test_SHOULD_pin_every_claude_tier_to_the_default_openrouter_model(self):
-        # All four tiers name one id on purpose: an unpinned tier would route a background
-        # task to a list-price model while the rest of the session runs the discounted one.
+    def test_SHOULD_map_claude_tiers_to_the_pi_openrouter_backend_schema(self):
         source = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()
-        for tier in ("OPUS", "SONNET", "HAIKU", "FABLE"):
-            assert f'export ANTHROPIC_DEFAULT_{tier}_MODEL="$OPENROUTER_WIRE_MODEL"' in source
-        assert 'export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_WIRE_MODEL"' in source
+        assert 'export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"' in source
+        assert 'export ANTHROPIC_DEFAULT_SONNET_MODEL="$OPENROUTER_PI_SONNET_WIRE_MODEL"' in source
+        assert 'export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OPENROUTER_PI_DEEPSEEK_WIRE_MODEL"' in source
+        assert 'export ANTHROPIC_DEFAULT_FABLE_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"' in source
+        assert 'export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"' in source
+        assert 'export AGENT_BAND_SCHEMA_HARNESS="pi"' in source
+        assert 'export AGENT_BAND_MODEL_FORMAT="openrouter-preset"' in source
+
+    def test_SHOULD_mark_suffix_wrappers_with_their_backend_lane_schema(self):
+        expectations = {
+            "claude-openrouter": ("pi", "openrouter-preset"),
+            "codex-openrouter": ("pi", "openrouter-preset"),
+            "copilot-openrouter": ("pi", "openrouter-preset"),
+            "cursor-openrouter": ("pi", "openrouter-preset"),
+            "claude-copilot": ("copilot", None),
+            "codex-copilot": ("copilot", None),
+            "cursor-copilot": ("copilot", None),
+            "claude-codex": ("codex", None),
+            "copilot-codex": ("codex", None),
+            "cursor-codex": ("codex", None),
+        }
+        for command, (schema, model_format) in expectations.items():
+            with self.subTest(command=command):
+                source = (REPO / f"home/exact_bin/executable_,{command}").read_text()
+                assert "unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE" in source
+                assert f'export AGENT_BAND_SCHEMA_HARNESS="{schema}"' in source
+                if model_format is None:
+                    assert "AGENT_BAND_MODEL_FORMAT" in source
+                    assert f'export AGENT_BAND_MODEL_FORMAT="{model_format}"' not in source
+                else:
+                    assert f'export AGENT_BAND_MODEL_FORMAT="{model_format}"' in source
 
     def test_SHOULD_stop_the_claude_base_url_before_the_messages_path(self):
         # Claude Code appends /v1/messages, and OpenRouter answers that path with the
@@ -405,7 +431,7 @@ printf 'model=%s\\neffort=%s\\nsubagent=%s\\nargs=%s\\n' \
         assert result.stdout.splitlines() == [
             f"model={OPENROUTER_WIRE_PIN}",
             "effort=high",
-            f"subagent={OPENROUTER_WIRE_PIN}",
+            "subagent=openai/gpt-5.5@preset/effort-xhigh",
             f"args=--model {OPENROUTER_WIRE_PIN} --effort high -p review",
         ]
 
@@ -415,8 +441,9 @@ printf 'model=%s\\neffort=%s\\nsubagent=%s\\nargs=%s\\n' \
             codex = bindir / "codex"
             codex.write_text(
                 """#!/usr/bin/env bash
-printf 'band-model=%s\\nband-effort=%s\\nargs=%s\\n' \
-  "$AGENT_BAND_MODEL_OVERRIDE" "$AGENT_BAND_EFFORT_OVERRIDE" "$*"
+printf 'schema=%s\\nformat=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
+  "$AGENT_BAND_SCHEMA_HARNESS" "$AGENT_BAND_MODEL_FORMAT" \
+  "${AGENT_BAND_MODEL_OVERRIDE-}" "${AGENT_BAND_EFFORT_OVERRIDE-}" "$*"
 """,
                 encoding="utf-8",
             )
@@ -427,9 +454,10 @@ printf 'band-model=%s\\nband-effort=%s\\nargs=%s\\n' \
             copilot_wrapper = bindir / ",copilot"
             copilot_wrapper.write_text(
                 """#!/usr/bin/env bash
-printf 'type=%s\\nmodel=%s\\nwire=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
+printf 'type=%s\\nmodel=%s\\nwire=%s\\nschema=%s\\nformat=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
   "$COPILOT_PROVIDER_TYPE" "$COPILOT_MODEL" "$COPILOT_PROVIDER_WIRE_MODEL" \
-  "$AGENT_BAND_MODEL_OVERRIDE" "$AGENT_BAND_EFFORT_OVERRIDE" "$*"
+  "$AGENT_BAND_SCHEMA_HARNESS" "$AGENT_BAND_MODEL_FORMAT" \
+  "${AGENT_BAND_MODEL_OVERRIDE-}" "${AGENT_BAND_EFFORT_OVERRIDE-}" "$*"
 echo "base=$COPILOT_PROVIDER_BASE_URL"
 """,
                 encoding="utf-8",
@@ -466,7 +494,12 @@ echo "base=$COPILOT_PROVIDER_BASE_URL"
             )
 
         assert codex_result.returncode == 0, codex_result.stderr
-        assert codex_result.stdout.splitlines()[:2] == [f"band-model={OPENROUTER_WIRE_PIN}", "band-effort=high"]
+        assert codex_result.stdout.splitlines()[:4] == [
+            "schema=pi",
+            "format=openrouter-preset",
+            "band-model=",
+            "band-effort=",
+        ]
         assert f"--model {OPENROUTER_WIRE_PIN}" in codex_result.stdout
         # Effort rides the preset slug, not a Codex body field, so model_reasoning_effort is unset.
         assert "model_reasoning_effort" not in codex_result.stdout
@@ -475,8 +508,10 @@ echo "base=$COPILOT_PROVIDER_BASE_URL"
             "type=anthropic",
             f"model={OPENROUTER_PIN}",
             f"wire={OPENROUTER_WIRE_PIN}",
-            f"band-model={OPENROUTER_WIRE_PIN}",
-            "band-effort=high",
+            "schema=pi",
+            "format=openrouter-preset",
+            "band-model=",
+            "band-effort=",
             f"args=--model {OPENROUTER_PIN} --effort high -p review",
             "base=https://openrouter.ai/api",
         ]
@@ -496,8 +531,9 @@ echo "base=$COPILOT_PROVIDER_BASE_URL"
             local = local_bin / "cursor-agent-local"
             local.write_text(
                 """#!/usr/bin/env bash
-printf 'base=%s\nkey=%s\nband-model=%s\nargs=%s\n' \\
-  "$CURSOR_LOCAL_AGENT_BASE_URL" "$CURSOR_LOCAL_AGENT_API_KEY" "$AGENT_BAND_MODEL_OVERRIDE" "$*"
+printf 'base=%s\nkey=%s\nallowed=%s\nschema=%s\nformat=%s\nband-model=%s\nargs=%s\n' \\
+  "$CURSOR_LOCAL_AGENT_BASE_URL" "$CURSOR_LOCAL_AGENT_API_KEY" "$CURSOR_AGENT_ALLOWED_MODEL" \\
+  "$AGENT_BAND_SCHEMA_HARNESS" "$AGENT_BAND_MODEL_FORMAT" "${AGENT_BAND_MODEL_OVERRIDE-}" "$*"
 """,
                 encoding="utf-8",
             )
@@ -523,7 +559,10 @@ printf 'base=%s\nkey=%s\nband-model=%s\nargs=%s\n' \\
         assert result.stdout.splitlines() == [
             "base=http://127.0.0.1:9876/api/v1",
             "key=fixture-key",
-            f"band-model={OPENROUTER_WIRE_PIN}",
+            "allowed=deepseek/deepseek-v4-flash-0731@preset/effort-max,openai/gpt-5.5@preset/effort-xhigh,deepseek/deepseek-v4-flash@preset/effort-xhigh,anthropic/claude-sonnet-4.6@preset/effort-xhigh",
+            "schema=pi",
+            "format=openrouter-preset",
+            "band-model=",
             f"args=--model {OPENROUTER_WIRE_PIN} -p review",
         ]
 
@@ -776,8 +815,11 @@ touch "%s"
         assert 'CURSOR_LOCAL_AGENT_BASE_URL="http://127.0.0.1:$shim_port/api/v1"' in source
         assert "--no-shim" in source
         assert "trap shim_cleanup EXIT" in source
-        # The guardrail env is exported before the shim branch.
-        assert 'export CURSOR_AGENT_ALLOWED_MODEL="$OPENROUTER_WIRE_MODEL"' in source
+        # The guardrail env is exported before the shim branch and includes the Pi backend lanes.
+        assert 'export CURSOR_AGENT_ALLOWED_MODEL="$OPENROUTER_WIRE_MODEL,' in source
+        assert "$OPENROUTER_PI_GPT55_WIRE_MODEL" in source
+        assert "$OPENROUTER_PI_DEEPSEEK_WIRE_MODEL" in source
+        assert "$OPENROUTER_PI_SONNET_WIRE_MODEL" in source
 
     def test_SHOULD_strip_tool_strict_from_chat_completions(self):
         # The shell schema shipped in cursor-agent-local/2026.08.04 declares
@@ -823,6 +865,14 @@ touch "%s"
 
         allowed = "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max"
         assert module.enforce_allowed_model({"model": allowed, "messages": []}, allowed) is None
+        allowlist = f"{allowed},openai/gpt-5.5@preset/effort-xhigh"
+        assert (
+            module.enforce_allowed_model(
+                {"model": "openai/gpt-5.5@preset/effort-xhigh", "messages": []},
+                allowlist,
+            )
+            is None
+        )
 
         violations = {
             "claude-sonnet-4.6": "an unbound profile model must be rejected",
@@ -835,7 +885,7 @@ touch "%s"
             with self.subTest(model=model):
                 error = module.enforce_allowed_model({"model": model, "messages": []}, allowed)
                 assert error is not None, reason
-                assert "not the pinned session model" in error
+                assert "not in the pinned session allowlist" in error
 
         # Missing/non-string model is a violation, not a pass-through.
         for payload in ({}, {"model": 5}, {"model": ""}):

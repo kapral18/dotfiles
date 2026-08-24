@@ -6,302 +6,339 @@
       "agents": {
         "Explore": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "Plan": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "adversarial-verifier": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "best-of-n-runner": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "browser_agent": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "bugbot": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "change-auditor": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "claude": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "claude-code-guide": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "cli_help": {
           "model": "claude-fable-5",
-          "effort": "low"
+          "effort": "low",
+          "alias": "fable"
         },
         "code-review": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "code-searcher": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "codebase_investigator": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "criteria-verifier": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "cursor-guide": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "deep-review": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "default": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "explore": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "explorer": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "findings-auditor": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "fresh-eyes": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "general-purpose": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "generalPurpose": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "generalist": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "live-ui-review": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "post-review": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "pr-necessity-auditor": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "rem-agent": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "research": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "researcher": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "review-controller": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "review-worker": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "reviewer": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "rubber-duck": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "security-review": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "task": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         },
         "worker": {
           "model": "claude-fable-5",
-          "effort": "medium"
+          "effort": "medium",
+          "alias": "fable"
         }
       }
     },
     "codex": {
       "agents": {
         "Explore": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "Plan": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "adversarial-verifier": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "best-of-n-runner": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "browser_agent": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "bugbot": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "change-auditor": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "claude": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "claude-code-guide": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "cli_help": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "code-review": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "code-searcher": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "codebase_investigator": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "criteria-verifier": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "cursor-guide": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "deep-review": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "default": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "explore": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "explorer": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "findings-auditor": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "fresh-eyes": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "general-purpose": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "generalPurpose": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "generalist": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "live-ui-review": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "post-review": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "pr-necessity-auditor": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "rem-agent": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "research": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "researcher": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "review-controller": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "review-worker": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "reviewer": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "rubber-duck": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "security-review": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "task": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "worker": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-5.5",
           "effort": "xhigh"
         }
       }
@@ -309,303 +346,303 @@
     "copilot": {
       "agents": {
         "Explore": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "Plan": {
-          "model": "gpt-5.6-terra",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "adversarial-verifier": {
-          "model": "claude-sonnet-4.6",
+          "model": "claude-fable-5",
           "effort": "high"
         },
         "best-of-n-runner": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "browser_agent": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "bugbot": {
-          "model": "gpt-5.6-terra",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "change-auditor": {
-          "model": "gpt-5.6-terra",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "claude": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "claude-code-guide": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "cli_help": {
-          "model": "claude-haiku-4.5",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "code-review": {
-          "model": "gpt-5.6-terra",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "code-searcher": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "codebase_investigator": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "criteria-verifier": {
-          "model": "claude-sonnet-4.6",
+          "model": "claude-fable-5",
           "effort": "high"
         },
         "cursor-guide": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "deep-review": {
-          "model": "gpt-5.6-terra",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "default": {
-          "model": "gpt-5.6-terra",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "explore": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "explorer": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "findings-auditor": {
-          "model": "gpt-5.6-terra",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "fresh-eyes": {
-          "model": "gpt-5.6-terra",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "general-purpose": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "generalPurpose": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "generalist": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "live-ui-review": {
-          "model": "gpt-5.6-terra",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "post-review": {
-          "model": "gpt-5.6-terra",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "pr-necessity-auditor": {
-          "model": "gpt-5.6-terra",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "rem-agent": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "research": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "researcher": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "review-controller": {
-          "model": "gpt-5.6-terra",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "review-worker": {
-          "model": "gpt-5.6-terra",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "reviewer": {
-          "model": "gpt-5.6-terra",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "rubber-duck": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "security-review": {
-          "model": "gpt-5.6-terra",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "task": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         },
         "worker": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
+          "model": "gpt-5.5",
+          "effort": "xhigh"
         }
       }
     },
     "cursor": {
       "agents": {
         "Explore": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "Plan": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "adversarial-verifier": {
-          "model": "cursor-grok-4.6-xhigh",
-          "effort": "xhigh"
+          "model": "claude-opus-5-high",
+          "effort": "high"
         },
         "best-of-n-runner": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "browser_agent": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "bugbot": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "change-auditor": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "claude": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "claude-code-guide": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "cli_help": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "code-review": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "code-searcher": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "codebase_investigator": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "criteria-verifier": {
-          "model": "cursor-grok-4.6-xhigh",
-          "effort": "xhigh"
+          "model": "claude-opus-5-high",
+          "effort": "high"
         },
         "cursor-guide": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "deep-review": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "default": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "explore": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "explorer": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "findings-auditor": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "fresh-eyes": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "general-purpose": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "generalPurpose": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "generalist": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "live-ui-review": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "post-review": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "pr-necessity-auditor": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "rem-agent": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "research": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "researcher": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "review-controller": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "review-worker": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "reviewer": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "rubber-duck": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "security-review": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "task": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
         "worker": {
-          "model": "cursor-grok-4.6-xhigh",
+          "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         }
       }
@@ -613,151 +650,151 @@
     "gemini": {
       "agents": {
         "Explore": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "Plan": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "adversarial-verifier": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "best-of-n-runner": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "browser_agent": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "bugbot": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "change-auditor": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "claude": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "claude-code-guide": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "cli_help": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "code-review": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "code-searcher": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "codebase_investigator": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "criteria-verifier": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "cursor-guide": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "deep-review": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "default": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "explore": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "explorer": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "findings-auditor": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "fresh-eyes": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "general-purpose": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "generalPurpose": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "generalist": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "live-ui-review": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "post-review": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "pr-necessity-auditor": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "rem-agent": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "research": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "researcher": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "review-controller": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "review-worker": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "reviewer": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "rubber-duck": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "security-review": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "task": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "worker": {
-          "model": "gemini-3.7-flash",
+          "model": "gemini-3.1-pro-preview",
           "effort": "high"
         }
       }
@@ -766,303 +803,303 @@
       "agents": {
         "Explore": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "Plan": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@plan",
+          "effort": "xhigh"
         },
         "adversarial-verifier": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@advisor",
+          "effort": "xhigh"
         },
         "best-of-n-runner": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "browser_agent": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "bugbot": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@advisor",
+          "effort": "xhigh"
         },
         "change-auditor": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@advisor",
+          "effort": "xhigh"
         },
         "claude": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "claude-code-guide": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "cli_help": {
           "model": "@smol",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "code-review": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@advisor",
+          "effort": "xhigh"
         },
         "code-searcher": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "codebase_investigator": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "criteria-verifier": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@advisor",
+          "effort": "xhigh"
         },
         "cursor-guide": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "deep-review": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@plan",
+          "effort": "xhigh"
         },
         "default": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@plan",
+          "effort": "xhigh"
         },
         "explore": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "explorer": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "findings-auditor": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@advisor",
+          "effort": "xhigh"
         },
         "fresh-eyes": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@advisor",
+          "effort": "xhigh"
         },
         "general-purpose": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "generalPurpose": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "generalist": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "live-ui-review": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@advisor",
+          "effort": "xhigh"
         },
         "post-review": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@advisor",
+          "effort": "xhigh"
         },
         "pr-necessity-auditor": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@advisor",
+          "effort": "xhigh"
         },
         "rem-agent": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "research": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "researcher": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "review-controller": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@plan",
+          "effort": "xhigh"
         },
         "review-worker": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@advisor",
+          "effort": "xhigh"
         },
         "reviewer": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@advisor",
+          "effort": "xhigh"
         },
         "rubber-duck": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "security-review": {
-          "model": "@default",
-          "effort": "high"
+          "model": "@advisor",
+          "effort": "xhigh"
         },
         "task": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         },
         "worker": {
           "model": "@task",
-          "effort": "high"
+          "effort": "xhigh"
         }
       }
     },
     "pi": {
       "agents": {
         "Explore": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "Plan": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "adversarial-verifier": {
-          "model": "openrouter/openai/gpt-5.6-terra:max",
-          "effort": "max"
+          "model": "openrouter/anthropic/claude-sonnet-4.6:xhigh",
+          "effort": "xhigh"
         },
         "best-of-n-runner": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "browser_agent": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "bugbot": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "change-auditor": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "claude": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "claude-code-guide": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "cli_help": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "code-review": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "code-searcher": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "codebase_investigator": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "criteria-verifier": {
-          "model": "openrouter/openai/gpt-5.6-terra:max",
-          "effort": "max"
+          "model": "openrouter/anthropic/claude-sonnet-4.6:xhigh",
+          "effort": "xhigh"
         },
         "cursor-guide": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "deep-review": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "default": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "explore": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "explorer": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "findings-auditor": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "fresh-eyes": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "general-purpose": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "generalPurpose": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "generalist": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "live-ui-review": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "post-review": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "pr-necessity-auditor": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "rem-agent": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "research": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "researcher": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "review-controller": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "review-worker": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "reviewer": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "rubber-duck": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "security-review": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "task": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         },
         "worker": {
-          "model": "openrouter/deepseek/deepseek-v4-flash-0731:max",
-          "effort": "max"
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
         }
       }
     }

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Project the band registry into a deployed JSON the hooks can read.
+"""Project category model routing into a deployed JSON the hooks can read.
 
 The pre-tool-use band hook runs from ``~/.agents/hooks`` with no access to this repo, so the
 resolved per-agent picks have to exist as a plain file under ``~/.config/ai``. This flattens
 the three-table lookup once, at apply time, so the hook does no resolution of its own: it looks up
 ``harnesses.<harness>.agents.<name>`` and gets the final pick (``model``, optional ``effort`` /
-``alias``). Category/binding/band tables stay in ``ai_models``; they are not redeployed.
+``alias``). Category/binding/model tables stay in ``ai_models``; they are not redeployed.
 
     generate_agent_bands.py check     exit 1 when the committed projection is stale
     generate_agent_bands.py write     regenerate it
@@ -28,7 +28,7 @@ REGISTRY = REPO / "home/.chezmoidata/ai_models"
 PROJECTION = REPO / "home/dot_config/ai/readonly_agent-bands.v1.json"
 SCHEMA_VERSION = "1.0.0"
 KIND = "ai.agent-bands"
-CLAUDE_ALIASES = ("opus", "sonnet", "haiku")
+CLAUDE_ALIASES = ("opus", "sonnet", "haiku", "fable")
 
 
 def _claude_alias(model: str) -> str | None:
@@ -40,10 +40,10 @@ def _claude_alias(model: str) -> str | None:
 
 def build() -> dict:
     bindings = ai_models.load_agent_bindings(REGISTRY)
-    bands = ai_models.load_model_bands(REGISTRY)
+    category_models = ai_models.load_category_models(REGISTRY)
 
     harnesses = {}
-    for harness in sorted(bands):
+    for harness in sorted(category_models):
         agents = {}
         for agent in sorted(bindings):
             pick = ai_models.resolve_agent_model(REGISTRY, harness, agent)

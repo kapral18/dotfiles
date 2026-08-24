@@ -12,7 +12,7 @@ flowchart TB
 
     subgraph SHARED["Shared parsers / libs"]
         YP["yaml_parser.py (minimal YAML, parse_scalar)"]:::shared
-        AM["ai_models.py (parse .chezmoidata/ai_models/*.yaml via SECTION_FILES;<br/>resolve_agent_model joins agent_bindings → agent_categories → model_bands per harness)"]:::shared
+        AM["ai_models.py (parse .chezmoidata/ai_models/*.yaml via SECTION_FILES;<br/>resolve_agent_model joins agent_bindings → agent_categories → category_models per harness)"]:::shared
         MC["model_mirror_consumer.py (consumer_view.v1<br/>shared by repo generators and deployed ,ai)"]:::shared
         MD["jsonc_dump.py (JSONC writer)"]:::shared
         CL["chezmoi_lib.sh (thin hook interface)<br/>managed_config_manifest.py (generic literal checksum ledger)<br/>generated_artifact_ledger.py (AI ownership-aware effective state + ,doctor ai)"]:::shared
@@ -33,7 +33,7 @@ flowchart TB
     end
 
     subgraph BANDGEN["Category model tiering (band registry projections)"]
-        GAB["generate_agent_bands.py (flattens agent_bindings × agent_categories × model_bands<br/>into gate-used picks in dot_config/ai/readonly_agent-bands.v1.json for the band_gate hook; check|write)"]:::model
+        GAB["generate_agent_bands.py (flattens agent_bindings × agent_categories × category_models<br/>into gate-used picks in dot_config/ai/readonly_agent-bands.v1.json for the band_gate hook; check|write)"]:::model
         GSM["generate_subagent_models.py (writes the harnesses with no agent files:<br/>copilot settings.json subagents.agents; check|write)"]:::model
     end
     AM --> GAB & GSM

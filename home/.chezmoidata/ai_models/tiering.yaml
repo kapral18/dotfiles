@@ -1,13 +1,13 @@
 # Who runs on what: review-lane pins, work categories, agent bindings, per-harness bands.
 # One section of the model registry, split across .chezmoidata/ai_models/ for navigation only:
 # chezmoi merges every file under .chezmoidata/ (subdirectories included) into one flat data
-# namespace, so `.cursor_models` and `.model_bands` still resolve the same in templates.
+# namespace, so `.cursor_models` and `.category_models` still resolve the same in templates.
 # scripts/ai_models.py maps each section back to its file; add a section there when adding one here.
 
 # Sparse review-model overrides for harnesses whose review execution selectors cannot be
-# derived from model_bands. For every other harness, review-agent-model.partial and
+# derived from category_models. For every other harness, review-agent-model.partial and
 # scripts/ai_models.py resolve review roles through agent_bindings -> agent_categories ->
-# model_bands, so model tweaks happen in one band row.
+# category_models, so model tweaks happen in one category row.
 #
 # lanes = generation angle lanes + auditors + controller. verifier = adversarial verifier,
 # preferring a different model family than lanes at equal capability (capability outranks
@@ -17,7 +17,7 @@
 review_model_overrides:
   claude:
     # Claude sessions are launched on a deliberate model, so review profiles inherit the parent
-    # session model instead of pinning model_bands.claude_code.max.model.
+    # session model instead of pinning category_models.claude_code.review.model.
     lanes: "inherit"
     verifier: "inherit"
   gemini:
@@ -25,62 +25,58 @@ review_model_overrides:
     lanes: "pro"
     verifier: "pro"
 
-# Model tiering is two independent dimensions plus sparse review overrides. `agent_categories`
-# says what a kind of work needs and is portable — whether a findings audit needs max reasoning is
-# a fact about the job, not about Copilot. `model_bands` says what a band resolves to and is the
-# only place that knows Codex's catalog. `review_model_overrides` is only for harnesses whose review
-# execution selector cannot be derived from model_bands. Full writeup: docs/topics/ai-assistants/model-tiering.md.
+# Model routing is two independent dimensions plus sparse review overrides. `agent_categories`
+# says what a kind of work needs and is portable — whether a findings audit needs top reasoning is
+# a fact about the job, not about Copilot. `category_models` says what each category resolves to
+# for each harness and is the only place that knows Codex's catalog. `review_model_overrides` is only
+# for harnesses whose review execution selector cannot be derived from category_models. Full writeup:
+# docs/topics/ai-assistants/model-tiering.md.
 #
 # Categories are chosen before the model: the SOP delegation section and the k-* skills name a
-# category, the category names a band, and only then does the harness resolve a model id.
+# category, then category_models resolves that category to a harness-native model id.
 #
-# `band` is an editorial cheap/standard/max judgment reviewed by a human here — NOT derived from a
-# model's effort ladder or cost fields; harness catalogs share an identical minimal/low/medium/high
-# shape across most models, so there is no per-model ladder to normalize against. The band
-# exists so "high" on a cheap-band model and "high" on a max-band model are not read as equivalent
-# effort just because the label string matches.
+# Category rows are explicit because work type and model cost are not interchangeable. `lookup`
+# is exact retrieval only; semantic discovery and any conclusion-forming investigation uses `research`.
 #
 # `family` is primary or counter. Only `refute` is counter: a refutation lane preferably
 # does not share a family with the work it audits — at equal capability — since same-family reviewers
 # inherit the same blind spots and the same context contamination; capability still outranks diversity (SOP §3.7).
 agent_categories:
-  search:
-    band: "cheap"
+  lookup:
     family: "primary"
+    contract: "exact-retrieval"
   mechanical:
-    band: "cheap"
     family: "primary"
+    contract: "deterministic-edit"
   research:
-    band: "standard"
     family: "primary"
+    contract: "evidence-synthesis"
   implement:
-    band: "standard"
     family: "primary"
+    contract: "implementation"
   orchestrate:
-    band: "max"
     family: "primary"
+    contract: "orchestration"
   review:
-    band: "max"
     family: "primary"
+    contract: "review"
   refute:
-    band: "max"
     family: "counter"
+    contract: "adversarial-verification"
 
 # Every delegable agent name across every harness, mapped to its category. Names are the ones the
 # harness itself uses, so built-ins (Copilot's `explore`, Codex's `worker`, Gemini's `generalist`,
 # Cursor's `generalPurpose`) sit here next to the repo-authored profiles: a built-in that spawns on
 # its own default model is exactly the leak this table exists to close.
 #
-# `general-purpose` is deliberately `implement`, not `search`, despite being the cheapest thing to
+# `general-purpose` is deliberately `implement`, not `lookup`, despite being the cheapest thing to
 # reach for: it carries `tools: "*"` and is the only delegated agent that can edit anything.
 #
-# Investigation is `research`, not `search`. `search` is judgment-free recon by definition ("locate
-# code, enumerate call sites, gather files. No edits, no judgment calls" — SOP 3.7), and the cheap
-# band it maps to is for gruntwork a smarter model already scoped. Anything that forms and reports
-# a conclusion — code-searcher, Explore, explore, explorer, codebase_investigator — is doing the
-# judgment `search` excludes, and a weak model there produces confidently wrong recon that every
-# downstream lane then builds on. `cli_help` is the one genuine `search` member: it reads `--help`
-# and reports what it says.
+# Investigation is `research`, not `lookup`. `lookup` is exact retrieval by a smarter caller:
+# read the CLI help text, list the requested filenames, or return caller-scoped raw pointers.
+# Anything that discovers relevant code, chooses symbols, or forms and reports a conclusion —
+# code-searcher, Explore, explore, explorer, codebase_investigator — is doing `research`.
+# `cli_help` is the one genuine `lookup` member: it reads `--help` and reports what it says.
 agent_bindings:
   # Repo-authored review roles.
   adversarial-verifier: "refute"
@@ -122,7 +118,7 @@ agent_bindings:
   default: "orchestrate"
   # Gemini built-ins.
   codebase_investigator: "research"
-  cli_help: "search"
+  cli_help: "lookup"
   generalist: "implement"
   browser_agent: "implement"
   # Cursor built-ins (the Task tool's subagent_type enum).
@@ -141,196 +137,338 @@ agent_bindings:
 # publishes no short variant of the wanted model — Cursor ships Opus 5, Sonnet 5 and GPT-5.5
 # exclusively as 1M ids, so those rows record the window they actually get rather than a wish.
 #
-# `counter` is the cross-family refuter that the `refute` category resolves to. Omitting it is a
-# real statement, not an oversight. By default the harness cannot field a second family, so
-# refutation runs same-family and the controller reports `families=same (degraded)`.
-# `verifier_status: reduced_independence` marks the deliberate same-family policy where capability
-# beats diversity and the controller reports `families=same (reduced independence)` instead.
-model_bands:
+# `refute` is the adversarial verification category. `verifier_status: cross_family` means it uses
+# a different model family from `review`; `reduced_independence` marks deliberate same-family
+# capability-first verification; `degraded` means the harness has no better second-family route.
+category_models:
   claude_code:
-    # Bare ids are the short-context selectors; `[1m]` is what buys the 1M window and no band asks
+    # Bare ids are the short-context selectors; `[1m]` is what buys the 1M window and no category asks
     # for it. Claude Code hyphenates point versions — `claude-sonnet-4.6` is the id its own 404 text
     # names as the typo. Unknown ids are not remapped, they reach the API as `API model not found`,
     # so no cross-vendor counter is expressible here. alwaysThinkingEnabled:false keeps the
-    # max-band model non-thinking; that is what `thinking: "off"` means on this harness.
+    # top-category model non-thinking; that is what `thinking: "off"` means on this harness.
     #
-    # Every band runs Fable 5 (user call, 2026-08-05, following the Cursor GPT-5.6 exit): cheap at
-    # low effort, standard and max at medium effort. `claude-fable-5` is verified inside the
-    # installed 2.1.222 bundle and `fable` is a first-class Agent-tool alias there. The API-key
-    # route short-circuits on billing before model validation, so a live `-p` probe cannot prove
-    # id validity on this machine. The cost-driven opus-5 ban exemption (closed 2026-08-03) is
-    # superseded — opus is off this harness too. Claude Code is Anthropic-only, so the glm/terra/
-    # kimi substitution chain does not apply here and the verifier stays families=same (degraded).
+    # Fable 5 carries lookup and conclusion-forming categories (user call, 2026-08-05, following
+    # the Cursor GPT-5.6 exit); mechanical work uses Claude Sonnet 4.6 high. Claude Code hyphenates the
+    # version selector as `claude-sonnet-4-6` (not Copilot's dotted `claude-sonnet-4.6`). The API-key
+    # route short-circuits on billing before model validation, so a live `-p` probe cannot prove id
+    # validity on this machine. The cost-driven opus-5 ban exemption (closed 2026-08-03) is superseded
+    # — opus is off this harness too. Claude Code is Anthropic-only, so the glm/terra/kimi
+    # substitution chain does not apply here and the verifier stays families=same (degraded).
     #
-    # All three bands share the `fable` alias, so the Claude gate's alias projection cannot
-    # separate any of them; the profile frontmatter's exact id is what holds each band. That is the
+    # All categories share the `fable` alias, so the Claude gate's alias projection cannot
+    # separate all of them; the profile frontmatter's exact id is what holds each category. That is the
     # same collision the two sonnet bands used to have, documented in band_gate.py `_claude`.
-    cheap:
+    lookup:
       model: "claude-fable-5"
       effort: "low"
       thinking: "off"
       context: "short"
-    standard:
-      model: "claude-fable-5"
-      effort: "medium"
-      thinking: "off"
-      context: "short"
-    max:
-      model: "claude-fable-5"
-      effort: "medium"
-      thinking: "off"
-      context: "short"
-  codex:
-    # User call 2026-08-14: every Codex band runs `gpt-5.6-sol` at xhigh effort (not high).
-    # Keeping the three bands explicit lets the gate close native subagent defaults without
-    # changing the portable category taxonomy. OpenAI-only, hence no counter (families=same degraded).
-    # Bundled catalog (codex-cli 0.147.0): sol supports xhigh; native default is low, so the pin is
-    # load-bearing.
-    cheap:
-      model: "gpt-5.6-sol"
-      effort: "xhigh"
-      thinking: ""
-      context: "short"
-    standard:
-      model: "gpt-5.6-sol"
-      effort: "xhigh"
-      thinking: ""
-      context: "short"
-    max:
-      model: "gpt-5.6-sol"
-      effort: "xhigh"
-      thinking: ""
-      context: "short"
-  copilot:
-    # `context: short` is settings.json `contextTier: "default"`; long would be `"long_context"`.
-    # Cost-driven pin (closed 2026-08-03): opus-5 and gpt-5.5 are punitively expensive for regular
-    # lanes, so max runs gpt-5.6-terra and the cross-family counter runs claude-sonnet-4.6.
-    # Non-thinking Anthropic models (sonnet here) still need COPILOT_DISABLE_ANTHROPIC_THINKING=1,
-    # which the `,copilot` launcher exports; it zeroes the thinking budget while effortLevel
-    # still ships as reasoning_effort.
-    cheap:
-      model: "claude-haiku-4.5"
+    mechanical:
+      model: "claude-sonnet-4-6"
       effort: "high"
       thinking: "off"
       context: "short"
-    standard:
+    research:
+      model: "claude-fable-5"
+      effort: "medium"
+      thinking: "off"
+      context: "short"
+    implement:
+      model: "claude-fable-5"
+      effort: "medium"
+      thinking: "off"
+      context: "short"
+    orchestrate:
+      model: "claude-fable-5"
+      effort: "medium"
+      thinking: "off"
+      context: "short"
+    review:
+      model: "claude-fable-5"
+      effort: "medium"
+      thinking: "off"
+      context: "short"
+    refute:
+      model: "claude-fable-5"
+      effort: "medium"
+      thinking: "off"
+      context: "short"
+      verifier_status: "degraded"
+  codex:
+    # User call 2026-08-24: Codex mechanical uses `gpt-5.4` at high effort; every other Codex
+    # category runs `gpt-5.5` at xhigh effort. Keeping every category explicit lets the gate close
+    # native subagent defaults. OpenAI-only, hence refute reports families=same degraded.
+    # Bundled catalog (codex-cli 0.149.0): gpt-5.4 supports high but is hidden and carries an
+    # upgrade note to gpt-5.6-terra; this row is a deliberate user policy.
+    # Bundled catalog (codex-cli 0.149.0): gpt-5.5 supports xhigh; native default is low, so the
+    # pin is load-bearing.
+    lookup:
+      model: "gpt-5.5"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+    mechanical:
+      model: "gpt-5.4"
+      effort: "high"
+      thinking: ""
+      context: "short"
+    research:
+      model: "gpt-5.5"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+    implement:
+      model: "gpt-5.5"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+    orchestrate:
+      model: "gpt-5.5"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+    review:
+      model: "gpt-5.5"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+    refute:
+      model: "gpt-5.5"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+      verifier_status: "degraded"
+  copilot:
+    # `context: short` is settings.json `contextTier: "default"`; long would be `"long_context"`.
+    # User call 2026-08-24: Copilot defaults to gpt-5.5 at xhigh effort for every category except
+    # mechanical and refute. Mechanical uses Sonnet 4.6 high; refute uses Fable 5 high.
+    # Non-thinking Anthropic models still need COPILOT_DISABLE_ANTHROPIC_THINKING=1, which the
+    # `,copilot` launcher exports; it zeroes the thinking budget while effortLevel still ships as
+    # reasoning_effort.
+    lookup:
+      model: "gpt-5.5"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+    mechanical:
       model: "claude-sonnet-4.6"
       effort: "high"
       thinking: "off"
       context: "short"
-    max:
-      model: "gpt-5.6-terra"
-      effort: "high"
+    research:
+      model: "gpt-5.5"
+      effort: "xhigh"
       thinking: ""
       context: "short"
-      counter:
-        model: "claude-sonnet-4.6"
-        effort: "high"
-        thinking: "off"
-        context: "short"
+    implement:
+      model: "gpt-5.5"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+    orchestrate:
+      model: "gpt-5.5"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+    review:
+      model: "gpt-5.5"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+    refute:
+      model: "claude-fable-5"
+      effort: "high"
+      thinking: "off"
+      context: "short"
+      verifier_status: "cross_family"
   cursor:
     # Cursor is the only harness that splits effort and thinking into separate ids (plain
-    # `claude-fable-5-medium` vs `claude-fable-5-thinking-*`). Opus 5, Fable 5 and the GPT-5.6 ids
+    # `claude-fable-5-medium` vs `claude-fable-5-thinking-*`). Opus 5, Fable 5 and the GPT-5.x ids
     # exist only as 1M ids here. `cursor-grok-4.6-xhigh` is not a 1M label in live
-    # `cursor-agent models` (2026.08.11-e8db854: "Cursor Grok 4.6 Extra High").
+    # `cursor-agent models` (2026.08.21-4bf0f61: "Cursor Grok 4.6 Extra High").
     #
-    # These bands are read by the band hook alone, and the Task tool takes a far narrower whitelist
+    # These categories are read by the band hook alone, and the Task tool takes a far narrower whitelist
     # than `cursor-agent models`. Live Task enum (Cursor IDE 2026-08-14): claude-fable-5-medium,
     # claude-opus-5-high, claude-sonnet-5-thinking-max, composer-2.5, composer-2.5-fast,
     # cursor-grok-4.5-high-fast, cursor-grok-4.6-xhigh, gpt-5.6-sol-xhigh, gpt-5.6-terra-xhigh.
-    # Anything else fails the spawn with "Invalid model selection", so bands here must stay inside
+    # Anything else fails the spawn with "Invalid model selection", so categories here must stay inside
     # that list even where a better id exists for a main session: kimi-k3 and
     # claude-fable-5-low/-max are sellable to a main session but are not on that whitelist.
     #
-    # User call 2026-08-14: every Cursor band and both review-lane roles run cursor-grok-4.6-xhigh
-    # (replaces gpt-5.6-terra-max / composer-2.5). No counter — the verifier follows the band, so
-    # refutation runs families=same (reduced independence), a deliberate single-model policy.
+    # User call 2026-08-24: match Copilot's default shape where the Cursor Task enum can spawn it.
+    # Primary categories use GPT-5.6 SOL Extra High, mechanical stays on Cursor Grok 4.6 Extra High,
+    # and refute uses Opus 5 High. The primary/refute rows are long-context task ids.
     #
     # `-fast` is a speed tier, not a cheaper model: cursor.com/docs/models prices Composer 2.5 at
     # $0.5/$2.5 and calls the fast variant "A faster variant with the same intelligence ... at $3/M
-    # input and $15/M output tokens". No band may reach for a `-fast` id.
-    cheap:
+    # input and $15/M output tokens". No category may reach for a `-fast` id.
+    lookup:
+      model: "gpt-5.6-sol-xhigh"
+      effort: "xhigh"
+      thinking: ""
+      context: "long"
+    mechanical:
       model: "cursor-grok-4.6-xhigh"
       effort: "xhigh"
       thinking: ""
       context: "short"
-    standard:
-      model: "cursor-grok-4.6-xhigh"
+    research:
+      model: "gpt-5.6-sol-xhigh"
       effort: "xhigh"
       thinking: ""
-      context: "short"
-    max:
-      model: "cursor-grok-4.6-xhigh"
+      context: "long"
+    implement:
+      model: "gpt-5.6-sol-xhigh"
       effort: "xhigh"
       thinking: ""
-      context: "short"
-      verifier_status: "reduced_independence"
+      context: "long"
+    orchestrate:
+      model: "gpt-5.6-sol-xhigh"
+      effort: "xhigh"
+      thinking: ""
+      context: "long"
+    review:
+      model: "gpt-5.6-sol-xhigh"
+      effort: "xhigh"
+      thinking: ""
+      context: "long"
+    refute:
+      model: "claude-opus-5-high"
+      effort: "high"
+      thinking: ""
+      context: "long"
+      verifier_status: "cross_family"
   gemini:
-    # Google-only catalog, so cheap, standard and max collapse to gemini-3.7-flash with high effort.
-    cheap:
+    # Google-only catalog, so refute reports degraded. User call 2026-08-24: use Gemini 3.1 Pro
+    # everywhere except mechanical, which stays on Gemini 3.7 Flash. Antigravity 1.1.18 spells
+    # Gemini 3.1 Pro as `gemini-3.1-pro-preview` in `agy models`. All Gemini categories request
+    # long context.
+    lookup:
+      model: "gemini-3.1-pro-preview"
+      effort: "high"
+      thinking: ""
+      context: "long"
+    mechanical:
       model: "gemini-3.7-flash"
       effort: "high"
       thinking: ""
-      context: "short"
-    standard:
-      model: "gemini-3.7-flash"
+      context: "long"
+    research:
+      model: "gemini-3.1-pro-preview"
       effort: "high"
       thinking: ""
-      context: "short"
-    max:
-      model: "gemini-3.7-flash"
+      context: "long"
+    implement:
+      model: "gemini-3.1-pro-preview"
       effort: "high"
       thinking: ""
-      context: "short"
+      context: "long"
+    orchestrate:
+      model: "gemini-3.1-pro-preview"
+      effort: "high"
+      thinking: ""
+      context: "long"
+    review:
+      model: "gemini-3.1-pro-preview"
+      effort: "high"
+      thinking: ""
+      context: "long"
+    refute:
+      model: "gemini-3.1-pro-preview"
+      effort: "high"
+      thinking: ""
+      context: "long"
+      verifier_status: "degraded"
   pi:
-    # Pi only ever reaches OpenRouter here. DeepSeek max carries all primary bands; the counter is
-    # gpt-5.6-terra:max, so lanes vs counter stay genuinely cross-family.
+    # Pi only ever reaches OpenRouter here. User call 2026-08-24: primary categories use GPT-5.5
+    # at xhigh thinking, mechanical uses DeepSeek V4 Flash at xhigh, and refute uses Claude Sonnet
+    # 4.6 at xhigh so lanes vs counter stay genuinely cross-family.
     # The `:<level>` suffix is Pi's single dial (thinking level and reasoning effort at once).
-    # Pi exposes no context tier at all, so every band is short by construction.
-    cheap:
-      model: "openrouter/deepseek/deepseek-v4-flash-0731:max"
-      effort: "max"
+    # Pi exposes no context tier at all, so every category is short by construction.
+    lookup:
+      model: "openrouter/openai/gpt-5.5:xhigh"
+      effort: "xhigh"
       thinking: ""
       context: "short"
-    standard:
-      model: "openrouter/deepseek/deepseek-v4-flash-0731:max"
-      effort: "max"
+    mechanical:
+      model: "openrouter/deepseek/deepseek-v4-flash:xhigh"
+      effort: "xhigh"
       thinking: ""
       context: "short"
-    max:
-      model: "openrouter/deepseek/deepseek-v4-flash-0731:max"
-      effort: "max"
+    research:
+      model: "openrouter/openai/gpt-5.5:xhigh"
+      effort: "xhigh"
       thinking: ""
       context: "short"
-      counter:
-        model: "openrouter/openai/gpt-5.6-terra:max"
-        effort: "max"
-        thinking: ""
-        context: "short"
+    implement:
+      model: "openrouter/openai/gpt-5.5:xhigh"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+    orchestrate:
+      model: "openrouter/openai/gpt-5.5:xhigh"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+    review:
+      model: "openrouter/openai/gpt-5.5:xhigh"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+    refute:
+      model: "openrouter/anthropic/claude-sonnet-4.6:xhigh"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+      verifier_status: "cross_family"
   omp:
-    # OMP is the one harness with native band indirection, so the bands are spelled as its own
-    # `@role` tokens and readonly_config.yml.tmpl's `modelRoles` resolves them per profile. That
-    # is what lets each profile decide what a role costs.
-    # There is no counter (dropped 2026-08-06, user call): every profile resolves advisor to the
-    # lanes' own model — work to openrouter/deepseek/deepseek-v4-flash-0731:max, personal to
-    # cursor/cursor-grok-4.6-xhigh — and review lanes plus verifier stay on @default (same-family).
+    # OMP is the one harness with native role indirection, so the category rows are spelled as
+    # `@role` tokens and readonly_config.yml.tmpl's `modelRoles` resolves them per profile.
+    # Installed omp/18.0.3 exposes default/smol/vision/slow/plan/task/advisor via
+    # `omp config get modelRoles`; use those role names as local inspiration, not as the
+    # portable taxonomy.
+    # User call 2026-08-24: every OMP profile resolves default/vision/slow/plan/task to
+    # openrouter/openai/gpt-5.5:xhigh, smol to openrouter/deepseek/deepseek-v4-flash:xhigh, and
+    # advisor to openrouter/anthropic/claude-sonnet-4.6:xhigh.
+    # Review/refute stay on @advisor (same-family), so refute reports reduced_independence.
     # Verified 17.2.4: a profile carrying `model: "@smol"` runs on modelRoles.smol, and an
     # unknown token fails loudly with `Error: No model selected.` rather than falling back.
     # Same single-dial constraint as Pi: omp maps thinkingLevel straight onto reasoning, and
     # provider/model are separated by `/`, never `:` — `cursor:` parses as a bogus provider.
-    cheap:
+    lookup:
       model: "@smol"
-      effort: "high"
+      effort: "xhigh"
       thinking: ""
       context: "short"
-    standard:
+    mechanical:
       model: "@task"
-      effort: "high"
+      effort: "xhigh"
       thinking: ""
       context: "short"
-    max:
-      model: "@default"
-      effort: "high"
+    research:
+      model: "@task"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+    implement:
+      model: "@task"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+    orchestrate:
+      model: "@plan"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+    review:
+      model: "@advisor"
+      effort: "xhigh"
+      thinking: ""
+      context: "short"
+    refute:
+      model: "@advisor"
+      effort: "xhigh"
       thinking: ""
       context: "short"
       verifier_status: "reduced_independence"

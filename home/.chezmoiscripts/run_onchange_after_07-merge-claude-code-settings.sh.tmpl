@@ -11,9 +11,8 @@ set -euo pipefail
 # managed_config_manifest.py hash: {{ include "../scripts/managed_config_manifest.py" | sha256sum }}
 # generated_artifact_ledger.py hash: {{ include "../scripts/generated_artifact_ledger.py" | sha256sum }}
 {{- /* shfmt parses this file as shell, and a parenthesised template call trips its lexer. */}}
-{{- $orchestrate := .agent_categories.orchestrate }}
-{{- $band := index .model_bands.claude_code $orchestrate.band }}
-# model_bands.claude_code orchestrate band hash: {{ $band | toJson | sha256sum }}
+{{- $orchestrate := index .category_models.claude_code "orchestrate" }}
+# category_models.claude_code.orchestrate hash: {{ $orchestrate | toJson | sha256sum }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh
@@ -26,12 +25,12 @@ src="$(chezmoi_pick_src "$is_work" "$source_dir" "dot_claude/settings.work.json"
 # The main session is the `orchestrate` category, so its own default model/effort resolves
 # through .chezmoidata/ai_models/tiering.yaml (see docs/topics/ai-assistants/model-tiering.md)
 # rather than being hand-maintained in each static settings.*.json. Work and personal used to
-# carry separate rows that never differed; both now read the same band. Patch both fields from
+# carry separate rows that never differed; both now read the same category. Patch both fields from
 # the rendered registry values before installing. include() does not recursively render .tmpl
 # content, so this substitution happens here, at apply time, not by making settings.*.json
 # themselves .tmpl files.
-tier_model="{{ $band.model }}"
-tier_effort="{{ $band.effort }}"
+tier_model="{{ $orchestrate.model }}"
+tier_effort="{{ $orchestrate.effort }}"
 patched="$(mktemp)"
 trap 'rm -f "$patched"' EXIT
 jq --arg model "$tier_model" --arg effort "$tier_effort" \

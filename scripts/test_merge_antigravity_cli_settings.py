@@ -34,13 +34,13 @@ class TestMergeAntigravityCliSettings(unittest.TestCase):
         policy = {
             "enableTelemetry": False,
             "modelProvider": "gemini",
-            "model": "Gemini 3.7 Flash (High)",
+            "model": "Gemini 3.1 Pro",
         }
 
         merged = merge_antigravity_cli_settings(live, policy)
 
         self.assertEqual(merged["modelProvider"], "gemini")
-        self.assertEqual(merged["model"], "Gemini 3.7 Flash (High)")
+        self.assertEqual(merged["model"], "Gemini 3.1 Pro")
         self.assertEqual(merged["enableTelemetry"], False)
         self.assertEqual(merged["trustedWorkspaces"], ["/tmp/live"])
         self.assertEqual(merged["permissions"], {"allow": ["command(ls)"]})
@@ -61,7 +61,7 @@ class TestMergeAntigravityCliSettings(unittest.TestCase):
             live = Path(tmp) / "missing.json"
             policy = Path(tmp) / "policy.json"
             policy.write_text(
-                json.dumps({"modelProvider": "gemini", "model": "Gemini 3.7 Flash (High)"}),
+                json.dumps({"modelProvider": "gemini", "model": "Gemini 3.1 Pro"}),
                 encoding="utf-8",
             )
             result = subprocess.run(
@@ -72,13 +72,13 @@ class TestMergeAntigravityCliSettings(unittest.TestCase):
             )
             self.assertEqual(
                 json.loads(result.stdout),
-                {"modelProvider": "gemini", "model": "Gemini 3.7 Flash (High)"},
+                {"modelProvider": "gemini", "model": "Gemini 3.1 Pro"},
             )
 
     def test_SHOULD_pin_policy_file_to_gemini_api_key_path(self):
         policy = json.loads(POLICY.read_text(encoding="utf-8"))
         self.assertEqual(policy["modelProvider"], "gemini")
-        self.assertEqual(policy["model"], "Gemini 3.7 Flash (High)")
+        self.assertEqual(policy["model"], "Gemini 3.1 Pro")
         self.assertIs(policy["enableTelemetry"], False)
         self.assertNotIn("gcp", policy)
 

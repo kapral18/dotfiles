@@ -1,7 +1,7 @@
 # Direct provider routes: completions reachable without the gateway.
 # One section of the model registry, split across .chezmoidata/ai_models/ for navigation only:
 # chezmoi merges every file under .chezmoidata/ (subdirectories included) into one flat data
-# namespace, so `.cursor_models` and `.model_bands` still resolve the same in templates.
+# namespace, so `.cursor_models` and `.category_models` still resolve the same in templates.
 # scripts/ai_models.py maps each section back to its file; add a section there when adding one here.
 
 # Provider-route completion policy. `azure-foundry` and `llama-cpp` are derived from their
@@ -14,7 +14,7 @@ provider_models:
   # allows Fireworks, Together, and BaseTen under a $16/M completion cap (`only` blocks other
   # providers). z-ai/glm-5.2 is selectable alongside with the same FP8-or-higher, 24 t/s floor
   # policy as deepseek; gpt-5.6-terra carries counters.
-  # Pi injects the deepseek/kimi policies through modelOverrides openRouterRouting and OMP through
+  # Pi injects the DeepSeek-0731/Kimi/GLM policies through modelOverrides openRouterRouting and OMP through
   # modelOverrides extraBody.provider. Harnesses without an extra-body channel carry them in the
   # `kimi-lanes*`, `deepseek-lanes-*`, and `glm-lanes-*` workspace preset slugs. Keeping other
   # provider entries here

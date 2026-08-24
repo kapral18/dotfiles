@@ -86,29 +86,19 @@ class TestOmpMigration(unittest.TestCase):
         return result.stdout
 
     def test_config_renders_profile_specific_model_roles(self):
+        role_values = (
+            "default: openrouter/openai/gpt-5.5:xhigh",
+            "smol: openrouter/deepseek/deepseek-v4-flash:xhigh",
+            "vision: openrouter/openai/gpt-5.5:xhigh",
+            "slow: openrouter/openai/gpt-5.5:xhigh",
+            "plan: openrouter/openai/gpt-5.5:xhigh",
+            "task: openrouter/openai/gpt-5.5:xhigh",
+            "advisor: openrouter/anthropic/claude-sonnet-4.6:xhigh",
+            "modelProviderOrder:\n  - openrouter\n  - cursor\n  - openai-codex\n  - anthropic\n  - openai\n",
+        )
         expected_values = {
-            # OMP work defaults primary roles to DeepSeek max while vision stays on Kimi high.
-            # Personal keeps the Cursor pins, with vision on cursor-grok-4.6-xhigh too.
-            True: (
-                "default: openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max:max",
-                "smol: openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max:max",
-                "vision: openrouter/moonshotai/kimi-k3@preset/kimi-lanes:high",
-                "slow: openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max:max",
-                "plan: openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max:max",
-                "task: openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max:max",
-                "advisor: openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max:max",
-                "modelProviderOrder:\n  - openrouter\n  - cursor\n  - openai-codex\n  - anthropic\n  - openai\n",
-            ),
-            False: (
-                "default: cursor/cursor-grok-4.6-xhigh\n",
-                "smol: cursor/composer-2.5:high",
-                "vision: cursor/cursor-grok-4.6-xhigh\n",
-                "slow: cursor/cursor-grok-4.6-xhigh\n",
-                "plan: cursor/cursor-grok-4.6-xhigh\n",
-                "task: cursor/cursor-grok-4.6-xhigh\n",
-                "advisor: cursor/cursor-grok-4.6-xhigh\n",
-                "modelProviderOrder:\n  - cursor\n  - openai-codex\n  - openrouter\n  - anthropic\n  - openai\n",
-            ),
+            True: role_values,
+            False: role_values,
         }
         shared_values = (
             "modelRoles:\n",

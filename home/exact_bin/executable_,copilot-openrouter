@@ -78,6 +78,7 @@ if [[ ! -x "$OPENROUTER_PRESET_HELPER" ]]; then
 fi
 export OPENROUTER_API_KEY="$api_key"
 "$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"
+"$OPENROUTER_PRESET_HELPER" xhigh
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
 
 # Copilot picks the BYOK client kind once per launch, and only the anthropic one
@@ -94,12 +95,11 @@ export COPILOT_PROVIDER_MAX_PROMPT_TOKENS="${COPILOT_OPENROUTER_MAX_PROMPT_TOKEN
 export COPILOT_PROVIDER_MAX_OUTPUT_TOKENS="${COPILOT_OPENROUTER_MAX_OUTPUT_TOKENS:-131072}"
 unset COPILOT_PROVIDER_MODEL_ID COPILOT_PROVIDER_WIRE_API
 
-# Delegated lanes carry the native Copilot band ids, and those travel to OpenRouter as their own
-# wire model: in the original probe `explore` reached openai/gpt-5.3-codex and `review-worker`
-# claude-opus-5 from a session pinned to a different model. The band gate resolves the spawn, so
-# the override belongs there; COPILOT_HOME cannot do it, because settings.json and agent
-# frontmatter both lose to the hook.
-export AGENT_BAND_MODEL_OVERRIDE="$OPENROUTER_WIRE_MODEL"
-export AGENT_BAND_EFFORT_OVERRIDE="high"
+# Delegated lanes emit in Copilot's task shape, but model choices come from Pi's
+# OpenRouter-compatible category matrix. The gate strips the `openrouter/` prefix and turns
+# `:<level>` into `@preset/effort-<level>`, which is the wire format this route serves.
+unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE
+export AGENT_BAND_SCHEMA_HARNESS="pi"
+export AGENT_BAND_MODEL_FORMAT="openrouter-preset"
 
 exec ",copilot" --model "$OPENROUTER_MODEL" --effort high "${args[@]}"

@@ -23,8 +23,11 @@ from typing import Any
 
 PROJECTION = Path(os.environ.get("AGENT_BANDS_FILE", os.path.expanduser("~/.config/ai/agent-bands.v1.json")))
 HARNESS_ENV = "AGENT_BAND_HARNESS"
+SCHEMA_HARNESS_ENV = "AGENT_BAND_SCHEMA_HARNESS"
 MODEL_OVERRIDE_ENV = "AGENT_BAND_MODEL_OVERRIDE"
 EFFORT_OVERRIDE_ENV = "AGENT_BAND_EFFORT_OVERRIDE"
+MODEL_FORMAT_ENV = "AGENT_BAND_MODEL_FORMAT"
+THINKING_SUFFIXES = {"off", "minimal", "none", "low", "medium", "high", "xhigh", "max"}
 
 # Claude family aliases ordered by capability, so the gate can tell an upward escape from a
 # sideways or downward one. `fable` is a small fast model, not a frontier one, so it sits with
@@ -68,6 +71,49 @@ def _override(harness: str) -> dict[str, Any] | None:
     return override
 
 
+def _split_thinking_suffix(model: str) -> tuple[str, str | None]:
+    base, separator, suffix = model.rpartition(":")
+    if separator and suffix in THINKING_SUFFIXES:
+        return base, suffix
+    return model, None
+
+
+def _claude_alias_for_backend_model(model: str) -> str | None:
+    lowered = model.lower()
+    if "claude" in lowered or "anthropic" in lowered or "sonnet" in lowered:
+        return "sonnet"
+    if "deepseek" in lowered:
+        return "haiku"
+    if "gpt" in lowered or "openai" in lowered:
+        return "fable"
+    return None
+
+
+def _format_pick(pick: dict[str, Any], harness: str, schema_harness: str) -> dict[str, Any]:
+    model = pick.get("model")
+    if not isinstance(model, str):
+        return pick
+
+    formatted = dict(pick)
+    if os.environ.get(MODEL_FORMAT_ENV) == "openrouter-preset":
+        base, suffix = _split_thinking_suffix(model)
+        if base.startswith("openrouter/"):
+            base = base.removeprefix("openrouter/")
+        effort = suffix or formatted.get("effort")
+        if isinstance(effort, str) and effort:
+            formatted["model"] = f"{base}@preset/effort-{effort}"
+            formatted["effort"] = effort
+        else:
+            formatted["model"] = base
+        alias = _claude_alias_for_backend_model(base)
+        if alias:
+            formatted["alias"] = alias
+
+    if harness == "claude_code" and schema_harness != harness:
+        formatted["force_alias"] = True
+    return formatted
+
+
 def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]) -> dict[str, Any]:
     # Claude's Agent tool constrains `model` to the family aliases sonnet|opus|haiku|fable
     # (claude-code 2.1.222; anything else fails updatedInput schema validation), and each alias
@@ -81,6 +127,13 @@ def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str,
     # `model: "sonnet"` on a cheap-band agent, which an `asked == alias` early return let through.
     alias = pick.get("alias")
     asked = tool_input.get("model")
+    if pick.get("force_alias") and alias and asked != alias:
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "updatedInput": dict(tool_input, model=alias),
+            }
+        }
     if not alias or not isinstance(asked, str) or asked == alias:
         return {}
     if _CLAUDE_RANK.get(asked, _CLAUDE_CEILING) <= _CLAUDE_RANK.get(alias, 0):
@@ -160,6 +213,7 @@ def main() -> int:
         return 0
 
     harness = os.environ.get(HARNESS_ENV, "")
+    schema_harness = os.environ.get(SCHEMA_HARNESS_ENV, "") or harness
     adapter = ADAPTERS.get(harness)
     tool = payload.get("tool_name") or payload.get("tool") or ""
     tool_input = payload.get("tool_input") or payload.get("arguments") or {}
@@ -177,7 +231,7 @@ def main() -> int:
         return 0
 
     agent = _agent_name(payload, tool_input)
-    pick = _pick(harness, agent) if agent else None
+    pick = _pick(schema_harness, agent) if agent else None
     override = _override(harness)
     if override:
         pick = {**(pick or {}), **override}
@@ -185,6 +239,7 @@ def main() -> int:
         print("{}")
         return 0
 
+    pick = _format_pick(pick, harness, schema_harness)
     print(json.dumps(adapter(payload, pick, tool_input) or {}, sort_keys=True))
     return 0
 

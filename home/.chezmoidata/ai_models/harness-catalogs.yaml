@@ -1,7 +1,7 @@
 # Per-harness model catalogs: what each harness's own picker can offer.
 # One section of the model registry, split across .chezmoidata/ai_models/ for navigation only:
 # chezmoi merges every file under .chezmoidata/ (subdirectories included) into one flat data
-# namespace, so `.cursor_models` and `.model_bands` still resolve the same in templates.
+# namespace, so `.cursor_models` and `.category_models` still resolve the same in templates.
 # scripts/ai_models.py maps each section back to its file; add a section there when adding one here.
 
 # Harness policy consumed by the generated model mirror. `recommended` is the
@@ -166,8 +166,11 @@ cursor_models:
   # entries) — this list was missing every Sonnet 5, Opus 5, Grok 4.5, and plain (non-suffixed)
   # GLM-5.2 entry the installed CLI actually exposes. gpt-5.6-terra-* and kimi-k3-* / kimi-k2.7-code
   # were added 2026-08-03 (same CLI) after the cost-driven move off opus-5/gpt-5.5 made them
-  # load-bearing for the cursor max band and OMP cursor-provider roles. See `model_bands.cursor`
+  # load-bearing for Cursor category routes and OMP cursor-provider roles. See `category_models.cursor`
   # in tiering.yaml for the taxonomy's actual picks (marked recommended below where they match).
+  # claude-fable-5-high was verified in cursor-agent 2026.08.21-4bf0f61 for main-session catalog
+  # completeness. Cursor delegated refute stays on the Task-enum `claude-opus-5-high` id.
+  - id: "claude-fable-5-high"
   - id: "claude-sonnet-5-low"
   - id: "claude-sonnet-5-medium"
   - id: "claude-sonnet-5-high"
@@ -219,15 +222,17 @@ cursor_models:
   - id: "kimi-k3-low"
   - id: "kimi-k3-max"
 
-# Pi's OpenRouter picker is a strict four-model route (DeepSeek max default/lanes, selectable
-# Kimi, selectable GLM-5.2, counter gpt-5.6-terra). Pi resolves the `openrouter/` prefix through its
-# own built-in provider, so no generated provider block backs these entries.
+# Pi's OpenRouter picker is a strict route. GPT-5.5 carries primary categories, DeepSeek V4 Flash
+# carries mechanical, and Sonnet 4.6 carries refute; Kimi and GLM-5.2 remain selectable.
+# Pi resolves the `openrouter/` prefix through its own built-in provider, so no generated provider
+# block backs these entries.
 pi_extra_models:
-  - id: "openrouter/deepseek/deepseek-v4-flash-0731"
+  - id: "openrouter/openai/gpt-5.5"
     recommended: true
+  - id: "openrouter/deepseek/deepseek-v4-flash"
+  - id: "openrouter/anthropic/claude-sonnet-4.6"
   - id: "openrouter/moonshotai/kimi-k3"
   - id: "openrouter/z-ai/glm-5.2"
-  - id: "openrouter/openai/gpt-5.6-terra"
 
 # Copilot CLI available-model catalog. Snapshot of the Copilot CLI 1.0.71 model list (extracted via an
 # isolated tmux-socket probe; the CLI exposes no --list-models command). Refresh by re-probing and

@@ -20,7 +20,7 @@ SECTION_FILES = {
     "review_model_overrides": "tiering.yaml",
     "agent_categories": "tiering.yaml",
     "agent_bindings": "tiering.yaml",
-    "model_bands": "tiering.yaml",
+    "category_models": "tiering.yaml",
 }
 
 REVIEW_BAND_HARNESSES = {"claude": "claude_code"}
@@ -64,18 +64,17 @@ def load_review_model_overrides(registry):
     return _load_block_map(registry, "review_model_overrides")
 
 
-def load_model_bands(registry):
-    """Load the harness -> band -> model pick mapping from ``model_bands``.
+def load_category_models(registry):
+    """Load the harness -> category -> model pick mapping from ``category_models``.
 
-    A ``max`` band may nest a ``counter`` map holding the cross-family refuter for that
-    harness. When no counter is present, ``verifier_status`` can mark deliberate same-family
-    refutation as ``reduced_independence``; otherwise the verifier is degraded.
+    Each category is priced directly per harness. The ``refute`` category can carry
+    ``verifier_status`` to report cross-family, reduced-independence, or degraded verification.
     """
-    return _load_block_map(registry, "model_bands")
+    return _load_block_map(registry, "category_models")
 
 
 def load_agent_categories(registry):
-    """Load the portable category -> ``{band, family}`` table from ``agent_categories``."""
+    """Load the portable category -> metadata table from ``agent_categories``."""
     return _load_block_map(registry, "agent_categories")
 
 
@@ -131,32 +130,29 @@ def _load_block_map(registry, section_key):
 def resolve_agent_model(registry, harness, agent):
     """Resolve the model pick a harness should run ``agent`` on, or ``None`` if unbound.
 
-    Returns the band map plus the resolved ``category``/``band``/``family``. A ``counter``
-    family falls back to the primary ``max`` pick when the harness has no counter model,
-    which is the degraded-refutation case callers must report rather than silently accept.
+    Returns the model pick plus the resolved ``category``/``family`` metadata.
+    A counter-family category reports whether the verifier is cross-family, reduced
+    independence, or degraded so callers do not treat same-family refutation as fully independent.
     """
     categories = load_agent_categories(registry)
     bindings = load_agent_bindings(registry)
-    bands = load_model_bands(registry)
+    category_models = load_category_models(registry)
 
     category = bindings.get(agent)
-    if category is None or category not in categories or harness not in bands:
+    if category is None or category not in categories or harness not in category_models:
+        return None
+    if category not in category_models[harness]:
         return None
 
     spec = categories[category]
-    pick = dict(bands[harness][spec["band"]])
-    counter = pick.pop("counter", None)
+    pick = dict(category_models[harness][category])
     verifier_status = pick.pop("verifier_status", None)
-    degraded = spec["family"] == "counter" and not counter and verifier_status != "reduced_independence"
-    if spec["family"] == "counter" and counter:
-        pick = dict(counter)
-        verifier_status = "cross_family"
-    elif spec["family"] == "counter":
+    degraded = spec["family"] == "counter" and verifier_status not in ("cross_family", "reduced_independence")
+    if spec["family"] == "counter":
         verifier_status = verifier_status or "degraded"
     return dict(
         pick,
         category=category,
-        band=spec["band"],
         family=spec["family"],
         degraded=degraded,
         verifier_status=verifier_status,
@@ -167,9 +163,8 @@ def resolve_review_agent_model(registry, harness, agent):
     """Resolve the review profile model for ``agent`` on ``harness``.
 
     Sparse ``review_model_overrides`` entries handle harness selectors that cannot be derived
-    from ``model_bands`` (for example Claude ``inherit`` and Antigravity ``pro``). All other
-    review roles use ``agent_bindings`` / ``agent_categories`` to choose the primary lane or
-    counter verifier model from ``model_bands``.
+    from ``category_models`` (for example Claude ``inherit`` and Antigravity ``pro``). All other
+    review roles use ``agent_bindings`` / ``agent_categories`` to choose their direct category pick.
     """
     categories = load_agent_categories(registry)
     bindings = load_agent_bindings(registry)
@@ -190,7 +185,6 @@ def resolve_review_agent_model(registry, harness, agent):
         return {
             "model": override[slot],
             "category": category,
-            "band": spec["band"],
             "family": spec["family"],
             "slot": slot,
             "source": "override",
@@ -200,26 +194,21 @@ def resolve_review_agent_model(registry, harness, agent):
             "band_harness": band_harness,
         }
 
-    bands = load_model_bands(registry)
-    if band_harness not in bands or spec["band"] not in bands[band_harness]:
+    category_models = load_category_models(registry)
+    if band_harness not in category_models or category not in category_models[band_harness]:
         return None
 
-    pick = dict(bands[band_harness][spec["band"]])
-    counter = pick.pop("counter", None)
+    pick = dict(category_models[band_harness][category])
     verifier_status = pick.pop("verifier_status", None)
-    degraded = slot == "verifier" and not counter and verifier_status != "reduced_independence"
-    if slot == "verifier" and counter:
-        pick = dict(counter)
-        verifier_status = "cross_family"
-    elif slot == "verifier":
+    degraded = slot == "verifier" and verifier_status not in ("cross_family", "reduced_independence")
+    if slot == "verifier":
         verifier_status = verifier_status or "degraded"
     return dict(
         pick,
         category=category,
-        band=spec["band"],
         family=spec["family"],
         slot=slot,
-        source="model_bands",
+        source="category_models",
         degraded=degraded,
         verifier_status=verifier_status,
         harness=harness,

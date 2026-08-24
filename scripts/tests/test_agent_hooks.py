@@ -1893,6 +1893,21 @@ class BandGateTests(unittest.TestCase):
                     }
                 }
             },
+            "pi": {
+                "agents": {
+                    "explorer": {"band": "standard", "model": "openrouter/openai/gpt-5.5:xhigh", "effort": "xhigh"},
+                    "worker": {
+                        "band": "mechanical",
+                        "model": "openrouter/deepseek/deepseek-v4-flash:xhigh",
+                        "effort": "xhigh",
+                    },
+                    "adversarial-verifier": {
+                        "band": "counter",
+                        "model": "openrouter/anthropic/claude-sonnet-4.6:xhigh",
+                        "effort": "xhigh",
+                    },
+                }
+            },
             "gemini": {"agents": {"codebase_investigator": {"band": "cheap", "model": "gemini-3.7-flash"}}},
         }
     }
@@ -1907,11 +1922,13 @@ class BandGateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             bands = Path(tmp) / "agent-bands.v1.json"
             bands.write_text(json.dumps(self.PROJECTION if projection is None else projection))
-            env = {
-                key: value
-                for key, value in os.environ.items()
-                if key not in {"AGENT_BAND_MODEL_OVERRIDE", "AGENT_BAND_EFFORT_OVERRIDE"}
+            excluded_env = {
+                "AGENT_BAND_MODEL_OVERRIDE",
+                "AGENT_BAND_EFFORT_OVERRIDE",
+                "AGENT_BAND_SCHEMA_HARNESS",
+                "AGENT_BAND_MODEL_FORMAT",
             }
+            env = {key: value for key, value in os.environ.items() if key not in excluded_env}
             env.update(override or {})
             env["AGENT_BAND_HARNESS"] = harness
             env["AGENT_BANDS_FILE"] = str(bands)
@@ -1955,6 +1972,15 @@ class BandGateTests(unittest.TestCase):
         )
         self.assertEqual(answer["hookSpecificOutput"]["updatedInput"]["model"], "fable")
 
+    def test_deployed_claude_projection_clamps_fable_category_agents(self):
+        projection = json.loads((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_text(encoding="utf-8"))
+        answer = self.gate(
+            "claude_code",
+            {"tool_name": "Agent", "tool_input": {"subagent_type": "Explore", "model": "opus"}},
+            projection=projection,
+        )
+        self.assertEqual(answer["hookSpecificOutput"]["updatedInput"]["model"], "fable")
+
     def test_claude_leaves_an_unqualified_call_alone_so_the_profile_keeps_the_exact_id(self):
         # All three bands share the `fable` alias, so writing it unasked would promote the cheap
         # band to whatever ANTHROPIC_DEFAULT_FABLE_MODEL resolves to.
@@ -1963,8 +1989,8 @@ class BandGateTests(unittest.TestCase):
             {},
         )
 
-    def test_claude_clamps_an_upward_alias_escape_on_the_cheap_band(self):
-        # `sonnet` is not the cheap band's alias, so it is an escape upward even though it is not a
+    def test_claude_clamps_an_upward_alias_escape_on_the_lookup_category(self):
+        # `sonnet` is not the lookup category's alias, so it is an escape upward even though it is not a
         # different family. Comparing rank, not equality, is what catches it: an `asked == alias`
         # early return only guarded the exact alias and let every promotion above it through.
         for asked in ("sonnet", "opus"):
@@ -2033,6 +2059,49 @@ class BandGateTests(unittest.TestCase):
                 "reasoning_effort": "high",
             },
         )
+
+    def test_schema_harness_reads_backend_projection_but_keeps_frontend_shape(self):
+        answer = self.gate(
+            "codex",
+            {"tool_name": "spawn_agent", "tool_input": {"agent_type": "explore", "message": "go"}},
+            override={"AGENT_BAND_SCHEMA_HARNESS": "copilot"},
+        )
+        specific = answer["hookSpecificOutput"]
+        self.assertEqual(specific["permissionDecision"], "allow")
+        self.assertEqual(
+            specific["updatedInput"],
+            {
+                "agent_type": "explore",
+                "message": "go",
+                "model": "gpt-5.3-codex",
+                "reasoning_effort": "high",
+            },
+        )
+
+    def test_openrouter_schema_rows_normalize_to_preset_wire_models(self):
+        answer = self.gate(
+            "codex",
+            {"tool_name": "spawn_agent", "tool_input": {"agent_type": "explorer", "message": "go"}},
+            override={"AGENT_BAND_SCHEMA_HARNESS": "pi", "AGENT_BAND_MODEL_FORMAT": "openrouter-preset"},
+        )
+        updated = answer["hookSpecificOutput"]["updatedInput"]
+        self.assertEqual(updated["model"], "openai/gpt-5.5@preset/effort-xhigh")
+        self.assertEqual(updated["reasoning_effort"], "xhigh")
+
+    def test_claude_openrouter_schema_forces_backend_alias_on_unqualified_calls(self):
+        answer = self.gate(
+            "claude_code",
+            {"tool_name": "Agent", "tool_input": {"subagent_type": "explorer", "prompt": "p"}},
+            override={"AGENT_BAND_SCHEMA_HARNESS": "pi", "AGENT_BAND_MODEL_FORMAT": "openrouter-preset"},
+        )
+        self.assertEqual(answer["hookSpecificOutput"]["updatedInput"]["model"], "fable")
+
+        verifier = self.gate(
+            "claude_code",
+            {"tool_name": "Agent", "tool_input": {"subagent_type": "adversarial-verifier", "prompt": "p"}},
+            override={"AGENT_BAND_SCHEMA_HARNESS": "pi", "AGENT_BAND_MODEL_FORMAT": "openrouter-preset"},
+        )
+        self.assertEqual(verifier["hookSpecificOutput"]["updatedInput"]["model"], "sonnet")
 
     def test_a_single_model_route_overrides_every_band_including_unbound_agents(self):
         # A BYOK launcher sells one provider model; a band id that is not that model reaches the

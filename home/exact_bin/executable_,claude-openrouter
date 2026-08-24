@@ -86,22 +86,31 @@ if [[ ! -x "$OPENROUTER_PRESET_HELPER" ]]; then
 fi
 export OPENROUTER_API_KEY="$api_key"
 "$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"
+"$OPENROUTER_PRESET_HELPER" xhigh
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
+readonly OPENROUTER_PI_GPT55_WIRE_MODEL="openai/gpt-5.5@preset/effort-xhigh"
+readonly OPENROUTER_PI_DEEPSEEK_WIRE_MODEL="deepseek/deepseek-v4-flash@preset/effort-xhigh"
+readonly OPENROUTER_PI_SONNET_WIRE_MODEL="anthropic/claude-sonnet-4.6@preset/effort-xhigh"
 
 # Claude Code appends /v1/messages, so the base URL stops at /api. OpenRouter answers
 # that path with the Anthropic Messages schema, usage block included.
-# All tier and delegated-agent aliases resolve to the same pinned model. The client-side effort
-# dial only gates Claude Code's thinking-block handling, and the preset already carries the real
-# effort, so the client dial stays at high to avoid suppressing thinking on lower picks.
+# Claude Code's Agent tool accepts family aliases, not arbitrary OpenRouter model ids. The gate
+# maps Pi's OpenRouter-compatible categories to aliases; these defaults make the aliases resolve to
+# the backend lane models. The client-side effort dial only gates Claude Code's thinking-block
+# handling, and the preset already carries the real effort, so the client dial stays at high to
+# avoid suppressing thinking on lower picks.
 readonly CLAUDE_EFFORT="high"
 export ANTHROPIC_MODEL="$OPENROUTER_WIRE_MODEL"
-export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_WIRE_MODEL"
-export ANTHROPIC_DEFAULT_SONNET_MODEL="$OPENROUTER_WIRE_MODEL"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OPENROUTER_WIRE_MODEL"
-export ANTHROPIC_DEFAULT_FABLE_MODEL="$OPENROUTER_WIRE_MODEL"
-export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_WIRE_MODEL"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="$OPENROUTER_PI_SONNET_WIRE_MODEL"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OPENROUTER_PI_DEEPSEEK_WIRE_MODEL"
+export ANTHROPIC_DEFAULT_FABLE_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"
+export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"
 export CLAUDE_CODE_DISABLE_THINKING=1
 export CLAUDE_CODE_EFFORT_LEVEL="$CLAUDE_EFFORT"
+unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE
+export AGENT_BAND_SCHEMA_HARNESS="pi"
+export AGENT_BAND_MODEL_FORMAT="openrouter-preset"
 export ANTHROPIC_BASE_URL="https://openrouter.ai/api"
 export ANTHROPIC_AUTH_TOKEN="$api_key"
 export ANTHROPIC_API_KEY=""

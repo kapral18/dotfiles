@@ -8,6 +8,7 @@
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
 import { mkdtempSync, writeFileSync, chmodSync, rmSync, existsSync } from "node:fs";
 
 process.env.COPILOT_AGENT_MEMORY_EXTENSION_TEST = "1";
@@ -120,7 +121,7 @@ test("recallContext fails open: a missing per-turn hook returns '' instead of th
 });
 
 test("recallContext fails open: a hook that exits nonzero returns ''", async () => {
-    const scratch = mkdtempSync(join(here, "recall-fail-"));
+    const scratch = mkdtempSync(join(tmpdir(), "copilot-agent-memory-recall-fail-"));
     try {
         const stub = join(scratch, "hook.sh");
         writeFileSync(stub, "#!/bin/sh\ncat >/dev/null\nexit 3\n");
@@ -132,7 +133,7 @@ test("recallContext fails open: a hook that exits nonzero returns ''", async () 
 });
 
 test("recallContext surfaces a successful hook's non-empty additionalContext", async () => {
-    const scratch = mkdtempSync(join(here, "recall-ok-"));
+    const scratch = mkdtempSync(join(tmpdir(), "copilot-agent-memory-recall-ok-"));
     try {
         const stub = join(scratch, "hook.sh");
         writeFileSync(stub, "#!/bin/sh\ncat >/dev/null\nprintf '%s' '{\"additionalContext\":\"recalled\"}'\n");
@@ -160,18 +161,32 @@ test("preToolUsePayload carries the tool name and args the band gate keys on", (
     assert.equal(payload.tool_input.model, "claude-opus-5");
 });
 
-test("bandModifiedArgs returns the gate's modifiedArgs and passes the harness through the env", async () => {
-    const scratch = mkdtempSync(join(here, "band-ok-"));
+test("bandModifiedArgs returns the gate's modifiedArgs and passes the band env through", async () => {
+    const scratch = mkdtempSync(join(tmpdir(), "copilot-agent-memory-band-ok-"));
+    const previousSchemaHarness = process.env.AGENT_BAND_SCHEMA_HARNESS;
+    const previousModelFormat = process.env.AGENT_BAND_MODEL_FORMAT;
     try {
+        process.env.AGENT_BAND_SCHEMA_HARNESS = "pi";
+        process.env.AGENT_BAND_MODEL_FORMAT = "openrouter-preset";
         const stub = join(scratch, "hook.sh");
         writeFileSync(
             stub,
-            "#!/bin/sh\ncat >/dev/null\nprintf '{\"modifiedArgs\":{\"harness\":\"%s\"}}' \"$AGENT_BAND_HARNESS\"\n",
+            "#!/bin/sh\ncat >/dev/null\nprintf '{\"modifiedArgs\":{\"harness\":\"%s\",\"schema\":\"%s\",\"format\":\"%s\"}}' \"$AGENT_BAND_HARNESS\" \"$AGENT_BAND_SCHEMA_HARNESS\" \"$AGENT_BAND_MODEL_FORMAT\"\n",
         );
         chmodSync(stub, 0o755);
         const modifiedArgs = await mod.bandModifiedArgs(stub, { tool_name: "task" });
-        assert.deepEqual(modifiedArgs, { harness: "copilot" });
+        assert.deepEqual(modifiedArgs, { harness: "copilot", schema: "pi", format: "openrouter-preset" });
     } finally {
+        if (previousSchemaHarness == null) {
+            delete process.env.AGENT_BAND_SCHEMA_HARNESS;
+        } else {
+            process.env.AGENT_BAND_SCHEMA_HARNESS = previousSchemaHarness;
+        }
+        if (previousModelFormat == null) {
+            delete process.env.AGENT_BAND_MODEL_FORMAT;
+        } else {
+            process.env.AGENT_BAND_MODEL_FORMAT = previousModelFormat;
+        }
         rmSync(scratch, { recursive: true, force: true });
     }
 });
@@ -179,7 +194,7 @@ test("bandModifiedArgs returns the gate's modifiedArgs and passes the harness th
 test("bandModifiedArgs fails open on a missing gate, a nonzero exit, and an empty answer", async () => {
     const payload = { tool_name: "task" };
     assert.equal(await mod.bandModifiedArgs(join(here, "no-such-band-gate.py"), payload), undefined);
-    const scratch = mkdtempSync(join(here, "band-fail-"));
+    const scratch = mkdtempSync(join(tmpdir(), "copilot-agent-memory-band-fail-"));
     try {
         const failing = join(scratch, "fail.sh");
         writeFileSync(failing, "#!/bin/sh\ncat >/dev/null\nexit 7\n");
@@ -199,7 +214,7 @@ test("bandModifiedArgs never spawns the gate for a non-delegation tool", async (
     // The Copilot SDK exposes no matcher on onPreToolUse, so without this filter every Read/Grep/
     // Edit in a session pays for a Python spawn that band_gate.py then no-ops on anyway. The stub
     // writes a marker file, so its absence proves nothing ran.
-    const scratch = mkdtempSync(join(here, "band-filter-"));
+    const scratch = mkdtempSync(join(tmpdir(), "copilot-agent-memory-band-filter-"));
     try {
         const marker = join(scratch, "ran");
         const stub = join(scratch, "hook.sh");
@@ -219,7 +234,7 @@ test("bandModifiedArgs never spawns the gate for a non-delegation tool", async (
 });
 
 test("recordWorklog fails open and reports a nonzero recorder", async () => {
-    const scratch = mkdtempSync(join(here, "worklog-fail-"));
+    const scratch = mkdtempSync(join(tmpdir(), "copilot-agent-memory-worklog-fail-"));
     const warnings = [];
     const originalWarn = console.warn;
     try {

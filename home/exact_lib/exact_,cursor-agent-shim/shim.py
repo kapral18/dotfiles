@@ -3,7 +3,7 @@
 
 Three duties, all enforced at the wire:
 
-1. Model allowlist. The launcher pins one wire model (``OPENROUTER_WIRE_MODEL``)
+1. Model allowlist. The launcher pins one or more wire models
    for the whole session and exports it as ``CURSOR_AGENT_ALLOWED_MODEL``.
    cursor-agent-local sends ``model: this.modelId`` on every
    ``/chat/completions`` request, and subagent model resolution runs before
@@ -46,9 +46,10 @@ Run rules (from `,cursor-openrouter`, which owns the process tree):
 - Listens on 127.0.0.1 only. Its bearer is the real ``OPENROUTER_API_KEY``,
   so no other process may bind the port; the launcher picks a free port with
   an atomic bind.
-- ``CURSOR_AGENT_ALLOWED_MODEL`` is the exact wire model id allowed on
-  ``/chat/completions``; when unset the guardrail is disabled (fail-open, so a
-  stray env gap cannot wedge an interactive session).
+- ``CURSOR_AGENT_ALLOWED_MODEL`` is the exact wire model id or comma-separated
+  wire model allowlist accepted on ``/chat/completions``; when unset the
+  guardrail is disabled (fail-open, so a stray env gap cannot wedge an
+  interactive session).
 - Upstream is ``https://openrouter.ai`` and the CLI is pointed at
   ``http://127.0.0.1:<port>/api/v1``, so path translation is a no-op.
 - The key comes from the inherited ``OPENROUTER_API_KEY`` environment variable;
@@ -105,19 +106,24 @@ def rewrite_chat_completions(payload: dict[str, Any]) -> dict[str, Any]:
     return rewritten
 
 
-def enforce_allowed_model(payload: dict[str, Any], allowed: str) -> str | None:
-    """Return an error message when the request model is not the pinned one.
+def _allowed_models(allowed: str) -> set[str]:
+    return {part.strip() for part in allowed.split(",") if part.strip()}
 
-    ``payload["model"]`` must equal ``allowed`` exactly. A bare provider model
-    (no preset suffix) is rejected too: the launcher pins the preset-suffixed
-    wire id, and only that id carries the provider routing policy, so a bare id
-    that happens to share the provider prefix is not the pinned session model.
+
+def enforce_allowed_model(payload: dict[str, Any], allowed: str) -> str | None:
+    """Return an error message when the request model is not one of the pinned ids.
+
+    ``payload["model"]`` must equal one allowed id exactly. A bare provider
+    model (no preset suffix) is rejected too: the launcher pins preset-suffixed
+    wire ids, and only those ids carry their provider routing policy, so a bare
+    id that happens to share the provider prefix is not an allowed session model.
     """
     model = payload.get("model")
     if not isinstance(model, str) or not model:
         return "missing model field"
-    if model != allowed:
-        return f"model {model!r} is not the pinned session model {allowed!r}"
+    allowed_models = _allowed_models(allowed)
+    if model not in allowed_models:
+        return f"model {model!r} is not in the pinned session allowlist {sorted(allowed_models)!r}"
     return None
 
 

@@ -88,6 +88,7 @@ if [[ ! -x "$OPENROUTER_PRESET_HELPER" ]]; then
 fi
 export OPENROUTER_API_KEY="$api_key"
 "$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"
+"$OPENROUTER_PRESET_HELPER" xhigh
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
 
 # OpenRouter answers /api/v1/responses, and Codex 0.146.0 attaches its full built-in tool set
@@ -101,9 +102,11 @@ args=(
   --model "$OPENROUTER_WIRE_MODEL"
 )
 
-# spawn_agent otherwise carries the native codex band ids, which reach OpenRouter unprefixed. The
-# effort override stays at high for the band gate's display; the preset carries the real effort.
-export AGENT_BAND_MODEL_OVERRIDE="$OPENROUTER_WIRE_MODEL"
-export AGENT_BAND_EFFORT_OVERRIDE="high"
+# spawn_agent emits in Codex's tool shape, but model choices come from Pi's OpenRouter-compatible
+# category matrix. The gate strips the `openrouter/` prefix and turns `:<level>` into
+# `@preset/effort-<level>`, which is the wire format this route serves.
+unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE
+export AGENT_BAND_SCHEMA_HARNESS="pi"
+export AGENT_BAND_MODEL_FORMAT="openrouter-preset"
 
 exec "$codex_bin" "${args[@]}" "${cli_args[@]}"

@@ -78,18 +78,15 @@
           "gemini-3.6-flash-high",
           "gemini-3.6-flash-medium",
           "gemini-3.6-flash-low",
-          "gemini-3.5-flash-high",
-          "gemini-3.5-flash-medium",
-          "gemini-3.5-flash-low",
-          "gemini-3.1-pro-low",
-          "gemini-3.1-pro-high"
+          "gemini-3.5-flash",
+          "gemini-3.1-pro-preview"
         ],
-        "source": "agy models output plus base-model --effort probe"
+        "source": "agy 1.1.18 models output plus existing base-model --effort selector policy"
       },
       "identity": {
         "binary": "agy",
         "package": "Homebrew cask antigravity-cli",
-        "version": "1.1.16"
+        "version": "1.1.18"
       },
       "live_probe": {
         "reason": "static snapshot only; no live agy-models adapter is implemented",
@@ -136,6 +133,6 @@
     }
   },
   "kind": "ai.harness-capabilities",
-  "observed_at": "2026-08-20",
+  "observed_at": "2026-08-24",
   "schema_version": "1.0.0"
 }

@@ -9,8 +9,9 @@ Read this file only for capability caveats that affect orchestration.
 
 ## Model policy
 
-- Model selection is **registry-driven and deterministic**: every repo-owned review profile's `model` frontmatter is rendered through `review-agent-model.partial`, which derives from `agent_bindings`, `agent_categories`, `model_bands`, and sparse `review_model_overrides` in `home/.chezmoidata/ai_models/tiering.yaml`.
-  Updating a derivable review model is a one-line band edit plus `chezmoi apply`; model ids never live hand-written in profile files.
+- Model selection is **registry-driven and deterministic**: every repo-owned review profile's `model` frontmatter is rendered through `review-agent-model.partial`, which derives from `agent_bindings`, `agent_categories`, `category_models`, and sparse `review_model_overrides` in `home/.chezmoidata/ai_models/tiering.yaml`.
+  Updating a derivable review model is a one-line category row edit plus `chezmoi apply`;
+  model ids never live hand-written in profile files.
 - Resolver slots per harness: `lanes` (angle lanes, auditors, controller, named fresh-eyes profiles, and generic fresh-eyes launches) and `verifier` (the adversarial verifier — prefer a **different model family than `lanes`** at equal capability per SOP §3.7; never trade capability for family diversity — a strong same-family verifier beats a weaker cross-family one.
   Same-family runs keep refutation framing and report the reduced independence, never hidden).
   Generic fresh-eyes launches must pass the resolved lane model as the profile-equivalent model;
@@ -29,7 +30,8 @@ Claude subagent model overrides are limited to the installed SDK schema (`sonnet
 
 - Review override: `lanes: inherit` — Claude sessions run a deliberately chosen model, and review profiles use `model: inherit`.
 - Built-in shadows: repo-owned same-name profiles override high-risk embedded builtins (`Explore`, `Plan`, `general-purpose`, `claude-code-guide`, `claude`) so normal Task launches use our profile frontmatter instead of embedded defaults.
-- Wrapper guard: `,claude-openrouter` pins `CLAUDE_CODE_SUBAGENT_MODEL` and all family defaults to `deepseek/deepseek-v4-flash-0731@preset/effort-max`; the `effort-max` slug carries max reasoning effort.
+- Wrapper guard: `,claude-openrouter` keeps the root session on the selected OpenRouter wire model and maps delegated lanes through Pi's OpenRouter schema: GPT-5.5 xhigh for primary categories, DeepSeek V4 Flash xhigh for mechanical, and Sonnet 4.6 xhigh for refute.
+  Claude Code's Agent schema accepts aliases only, so the wrapper points `fable`/`opus`, `haiku`, and `sonnet` at those OpenRouter preset wire ids.
 - Adversarial verifier: single-family surface, always `families=same (degraded)`;
   launch a general-purpose `Task` carrying `adversarial-verifier.md`.
 
@@ -37,7 +39,7 @@ Claude subagent model overrides are limited to the installed SDK schema (`sonnet
 
 Codex's model surface is OpenAI-only, so the adversarial verifier is `families=same (degraded)` here.
 Launch angle lanes as `review-worker` agents; the verifier as the `adversarial-verifier` agent.
-Registry: both values are concrete (`gpt-5.6-sol` at xhigh effort via profile `model` + `model_reasoning_effort`);
+Registry: both values are concrete (`gpt-5.5` at xhigh effort via profile `model` + `model_reasoning_effort`);
 every Codex role also pins `service_tier = "default"`.
 Always pass an explicit model when launching a native Codex `spawn_agent`/generic subagent:
 the installed catalog does not make omitted defaults auditable, and uncataloged slugs can pass through with fallback metadata.
@@ -55,8 +57,8 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
 - Cursor source supports custom subagent types (`SubagentType.custom.name`) and loads `.cursor/agents` profile files.
   Launch angle lanes through the `review-worker` profile and the verifier through the `adversarial-verifier` profile;
   both carry resolver-rendered `model` frontmatter.
-- Resolved `lanes` and `verifier` are both `cursor-grok-4.6-xhigh`.
-  `model_bands.cursor.max` carries `verifier_status: reduced_independence`, so the adversarial verifier runs `families=same (reduced independence)`; keep refutation framing and report that, never skip the phase and never present it as a cross-family pass.
+- Resolved `lanes` are `gpt-5.6-sol-xhigh`; resolved `verifier` is `claude-opus-5-high`.
+  `category_models.cursor.refute` carries `verifier_status: cross_family`, so the adversarial verifier runs as a cross-family lane.
   Omitted/default Cursor subagents can resolve to `composer-2.8-fast`; the CLI default selector is `auto`.
   Treat any omitted Cursor subagent model as a matrix bypass.
 - Same-name custom profiles do **not** shadow native Cursor enum agents (`explore`, `debug`, `cursor_guide`, `unspecified`):
@@ -87,11 +89,8 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
 
 - Pi and OMP launch subagents through named profiles; per-task/per-profile `model` is honored over the worker default, and Pi thinking is encoded as a `:<thinking>` suffix on the model string.
 - Resolved `lanes` and `verifier` are concrete.
-  Pi review workers and fresh-eyes run `openrouter/deepseek/deepseek-v4-flash-0731:max`;
-  adversarial/criteria verifiers run `openrouter/openai/gpt-5.6-terra:max`, keeping refutation cross-family.
+  Pi review workers and fresh-eyes run `openrouter/openai/gpt-5.5:xhigh`; adversarial/criteria verifiers run `openrouter/anthropic/claude-sonnet-4.6:xhigh`, keeping refutation cross-family.
   OMP resolves review roles through its own `modelRoles`.
-  Work prices primary roles to `openrouter/deepseek/deepseek-v4-flash-0731:max` and keeps `vision` on `openrouter/moonshotai/kimi-k3:high`.
-  Personal pins `default` and `advisor` to `cursor/cursor-grok-4.6-xhigh`, so `model_bands.omp.max` carries no counter and marks `verifier_status: reduced_independence`.
-  Adversarial and criteria verifiers follow `@default` with the review lanes, so refutation is same-family on both profiles (reduced independence).
-  Personal `smol` stays on `cursor/composer-2.8:high`.
-  Other repo-owned Pi/OMP profiles resolve their model from the review resolver or band registry (`agent_bindings` → `agent_categories` → `model_bands`) so they do not fall through to `defaultProvider`/`defaultModel` unless a future profile deliberately omits `model` and documents why.
+  Both profiles price default/vision/slow/plan/task to `openrouter/openai/gpt-5.5:xhigh`, `smol` to `openrouter/deepseek/deepseek-v4-flash:xhigh`, and `advisor` to `openrouter/anthropic/claude-sonnet-4.6:xhigh`.
+  Adversarial and criteria verifiers follow `@advisor`; `category_models.omp.refute` marks `verifier_status: reduced_independence`.
+  Other repo-owned Pi/OMP profiles resolve their model from the review resolver or category registry (`agent_bindings` → `agent_categories` → `category_models`) so they do not fall through to `defaultProvider`/`defaultModel` unless a future profile deliberately omits `model` and documents why.

@@ -50,8 +50,9 @@ class TestModelBandInvariants(unittest.TestCase):
                 f"copilot settings.json {role} model {agents[role]['model']!r} != "
                 f"resolved review model {expected['model']!r}"
             )
-            assert agents[role]["effortLevel"] == "high", (
-                f"copilot settings.json {role} effortLevel is {agents[role]['effortLevel']!r}, expected 'high'"
+            assert agents[role]["effortLevel"] == expected["effort"], (
+                f"copilot settings.json {role} effortLevel is {agents[role]['effortLevel']!r}, "
+                f"expected {expected['effort']!r}"
             )
 
     def test_copilot_policy_models_exist_in_the_copilot_catalog(self):
@@ -63,7 +64,7 @@ class TestModelBandInvariants(unittest.TestCase):
         registry = REPO / "home/.chezmoidata/ai_models"
         available = {row["id"] for row in ai_models.load_copilot_models(registry)}
 
-        bands = ai_models.load_model_bands(registry)["copilot"]
+        category_models = ai_models.load_category_models(registry)["copilot"]
         review_roles = (
             "deep-review",
             "review-worker",
@@ -75,13 +76,10 @@ class TestModelBandInvariants(unittest.TestCase):
         )
 
         used: set[str] = set()
-        for band, row in bands.items():
+        for category, row in category_models.items():
             model = row.get("model")
             if model:
                 used.add(model)
-            counter = row.get("counter")
-            if isinstance(counter, dict) and counter.get("model"):
-                used.add(counter["model"])
 
         for role in review_roles:
             pick = ai_models.resolve_review_agent_model(registry, "copilot", role)
@@ -91,13 +89,65 @@ class TestModelBandInvariants(unittest.TestCase):
         missing = sorted(model for model in used if model not in available)
         assert not missing, f"copilot policy names models not in copilot_models: {missing}"
 
-    def test_review_model_resolver_uses_bands_except_declared_overrides(self):
-        # Review routing has one source rule: override only for harness selectors that model_bands
-        # cannot express, otherwise derive lane/verifier picks from the max band and its counter.
+    def test_copilot_category_matrix_uses_gpt55_with_requested_exceptions(self):
+        import ai_models
+
+        rows = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["copilot"]
+        settings = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text(encoding="utf-8"))
+
+        for category in ("lookup", "research", "implement", "orchestrate", "review"):
+            with self.subTest(category=category):
+                self.assertEqual("gpt-5.5", rows[category]["model"])
+                self.assertEqual("xhigh", rows[category]["effort"])
+        self.assertEqual("gpt-5.5", settings["model"])
+        self.assertEqual("xhigh", settings["effortLevel"])
+        self.assertEqual("claude-sonnet-4.6", rows["mechanical"]["model"])
+        self.assertEqual("high", rows["mechanical"]["effort"])
+        self.assertEqual("claude-fable-5", rows["refute"]["model"])
+        self.assertEqual("high", rows["refute"]["effort"])
+        self.assertEqual("cross_family", rows["refute"]["verifier_status"])
+
+    def test_cursor_category_matrix_uses_task_enum_models_with_requested_exceptions(self):
+        import ai_models
+
+        rows = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["cursor"]
+
+        for category in ("lookup", "research", "implement", "orchestrate", "review"):
+            with self.subTest(category=category):
+                self.assertEqual("gpt-5.6-sol-xhigh", rows[category]["model"])
+                self.assertEqual("xhigh", rows[category]["effort"])
+                self.assertEqual("long", rows[category]["context"])
+        self.assertEqual("cursor-grok-4.6-xhigh", rows["mechanical"]["model"])
+        self.assertEqual("xhigh", rows["mechanical"]["effort"])
+        self.assertEqual("short", rows["mechanical"]["context"])
+        self.assertEqual("claude-opus-5-high", rows["refute"]["model"])
+        self.assertEqual("high", rows["refute"]["effort"])
+        self.assertEqual("long", rows["refute"]["context"])
+        self.assertEqual("cross_family", rows["refute"]["verifier_status"])
+
+    def test_gemini_category_matrix_uses_pro_with_flash_mechanical_long_context(self):
+        import ai_models
+
+        rows = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["gemini"]
+
+        for category in ("lookup", "research", "implement", "orchestrate", "review", "refute"):
+            with self.subTest(category=category):
+                self.assertEqual("gemini-3.1-pro-preview", rows[category]["model"])
+                self.assertEqual("high", rows[category]["effort"])
+                self.assertEqual("long", rows[category]["context"])
+        self.assertEqual("gemini-3.7-flash", rows["mechanical"]["model"])
+        self.assertEqual("high", rows["mechanical"]["effort"])
+        self.assertEqual("long", rows["mechanical"]["context"])
+        self.assertEqual("degraded", rows["refute"]["verifier_status"])
+
+    def test_review_model_resolver_uses_category_models_except_declared_overrides(self):
+        # Review routing has one source rule: override only for harness selectors that
+        # category_models cannot express, otherwise derive lane/verifier picks from the direct
+        # category row.
         import ai_models
 
         path = REPO / "home/.chezmoidata/ai_models"
-        bands = ai_models.load_model_bands(path)
+        category_models = ai_models.load_category_models(path)
         overrides = ai_models.load_review_model_overrides(path)
         expected_overrides = {"claude", "gemini"}
         assert set(overrides) == expected_overrides, (
@@ -107,7 +157,7 @@ class TestModelBandInvariants(unittest.TestCase):
         review_agents = ("reviewer", "deep-review", "findings-auditor", "live-ui-review", "adversarial-verifier")
         review_harnesses = {
             "claude_code": "claude",
-            **{harness: harness for harness in bands if harness != "claude_code"},
+            **{harness: harness for harness in category_models if harness != "claude_code"},
         }
         for band_harness, review_harness in review_harnesses.items():
             for agent in review_agents:
@@ -118,65 +168,69 @@ class TestModelBandInvariants(unittest.TestCase):
                     assert pick["model"] == overrides[review_harness][pick["slot"]]
                     continue
 
-                top = bands[band_harness]["max"]
-                expected = (top.get("counter") or top)["model"] if pick["slot"] == "verifier" else top["model"]
-                assert pick["source"] == "model_bands"
-                assert pick["model"] == expected, (
-                    f"{review_harness} {agent} resolved {pick['model']!r}, expected {expected!r} from model_bands"
+                category = "refute" if pick["slot"] == "verifier" else pick["category"]
+                expected_row = category_models[band_harness][category]
+                assert pick["source"] == "category_models"
+                assert pick["model"] == expected_row["model"], (
+                    f"{review_harness} {agent} resolved {pick['model']!r}, "
+                    f"expected {expected_row['model']!r} from category_models"
                 )
-                if pick["slot"] == "verifier" and top.get("verifier_status") == "reduced_independence":
+                if pick["slot"] == "verifier" and expected_row.get("verifier_status") == "reduced_independence":
                     assert pick["verifier_status"] == "reduced_independence"
                     assert pick["degraded"] is False
 
-    def test_orchestrate_band_matches_real_harness_config(self):
-        # `orchestrate` is the session's own category, and it is the one band that reaches a real
+    def test_orchestrate_category_matches_real_harness_config(self):
+        # `orchestrate` is the session's own category, and it is the one category that reaches a real
         # config file. Claude Code's is jq-patched into settings.json at apply time and Codex's is
-        # a hand-kept literal, so a wrong band ships silently to the session default.
+        # a hand-kept literal, so a wrong row ships silently to the session default.
         import ai_models
 
         path = REPO / "home/.chezmoidata/ai_models"
-        categories = ai_models.load_agent_categories(path)
-        bands = ai_models.load_model_bands(path)
-        orchestrate = categories["orchestrate"]["band"]
+        category_models = ai_models.load_category_models(path)
 
-        claude_band = bands["claude_code"][orchestrate]
-        codex_band = bands["codex"][orchestrate]
+        claude_orchestrate = category_models["claude_code"]["orchestrate"]
+        codex_orchestrate = category_models["codex"]["orchestrate"]
 
         for profile in ("work", "personal"):
             settings = json.loads((REPO / f"home/dot_claude/settings.{profile}.json").read_text(encoding="utf-8"))
-            assert settings["model"] == claude_band["model"], (
+            assert settings["model"] == claude_orchestrate["model"], (
                 f"claude settings.{profile}.json model {settings['model']!r} != "
-                f"model_bands.claude_code.{orchestrate}.model {claude_band['model']!r}"
+                f"category_models.claude_code.orchestrate.model {claude_orchestrate['model']!r}"
             )
-            assert settings["effortLevel"] == claude_band["effort"], (
+            assert settings["effortLevel"] == claude_orchestrate["effort"], (
                 f"claude settings.{profile}.json effortLevel {settings['effortLevel']!r} != "
-                f"model_bands.claude_code.{orchestrate}.effort {claude_band['effort']!r}"
+                f"category_models.claude_code.orchestrate.effort {claude_orchestrate['effort']!r}"
             )
 
             config = (REPO / f"home/dot_codex/private_config.{profile}.toml").read_text(encoding="utf-8")
             model = re.search(r'^model\s*=\s*"([^"]+)"', config, re.MULTILINE)
             effort = re.search(r'^model_reasoning_effort\s*=\s*"([^"]+)"', config, re.MULTILINE)
-            assert model and model.group(1) == codex_band["model"], (
+            assert model and model.group(1) == codex_orchestrate["model"], (
                 f"codex private_config.{profile}.toml model "
                 f"{(model.group(1) if model else None)!r} != "
-                f"model_bands.codex.{orchestrate}.model {codex_band['model']!r}"
+                f"category_models.codex.orchestrate.model {codex_orchestrate['model']!r}"
             )
-            assert effort and effort.group(1) == codex_band["effort"], (
+            assert effort and effort.group(1) == codex_orchestrate["effort"], (
                 f"codex private_config.{profile}.toml model_reasoning_effort "
                 f"{(effort.group(1) if effort else None)!r} != "
-                f"model_bands.codex.{orchestrate}.effort {codex_band['effort']!r}"
+                f"category_models.codex.orchestrate.effort {codex_orchestrate['effort']!r}"
             )
 
-    def test_codex_defaults_and_every_agent_lane_are_sol_xhigh_default(self):
+    def test_codex_defaults_and_agent_lanes_are_gpt55_xhigh_except_mechanical(self):
         import ai_models
 
         registry = REPO / "home/.chezmoidata/ai_models"
-        expected_model = "gpt-5.6-sol"
+        expected_model = "gpt-5.5"
         expected_effort = "xhigh"
         expected_service_tier = "default"
+        category_models = ai_models.load_category_models(registry)["codex"]
 
-        for band, row in ai_models.load_model_bands(registry)["codex"].items():
-            with self.subTest(surface="band", name=band):
+        self.assertEqual(category_models["mechanical"]["model"], "gpt-5.4")
+        self.assertEqual(category_models["mechanical"]["effort"], "high")
+        for category, row in category_models.items():
+            if category == "mechanical":
+                continue
+            with self.subTest(surface="category", name=category):
                 self.assertEqual(row["model"], expected_model)
                 self.assertEqual(row["effort"], expected_effort)
 
@@ -214,25 +268,25 @@ class TestModelBandInvariants(unittest.TestCase):
         path = REPO / "home/.chezmoidata/ai_models"
         categories = ai_models.load_agent_categories(path)
         bindings = ai_models.load_agent_bindings(path)
-        bands = ai_models.load_model_bands(path)
+        category_models = ai_models.load_category_models(path)
 
         for category, spec in categories.items():
             assert spec["family"] in ("primary", "counter"), (
                 f"agent_categories.{category}.family is {spec['family']!r}, expected primary or counter"
             )
-            for harness, harness_bands in bands.items():
-                assert spec["band"] in harness_bands, (
-                    f"agent_categories.{category} wants band {spec['band']!r}, "
-                    f"which model_bands.{harness} does not define"
+            assert "band" not in spec, f"agent_categories.{category} must route directly, not through a band"
+            for harness, harness_categories in category_models.items():
+                assert category in harness_categories, (
+                    f"agent_categories.{category} has no category_models.{harness}.{category} row"
                 )
 
         for agent, category in bindings.items():
             assert category in categories, f"agent_bindings.{agent} names unknown category {category!r}"
-            for harness in bands:
+            for harness in category_models:
                 pick = ai_models.resolve_agent_model(path, harness, agent)
                 assert pick is not None and pick["model"], f"{agent} does not resolve to a model on {harness}"
 
-    def test_the_counter_band_changes_family_or_declares_same_family_status(self):
+    def test_the_refute_category_changes_family_or_declares_same_family_status(self):
         # `refute` exists to break a conclusion, and a refuter from the lanes' own family is worth
         # much less. Where a harness can field a second family it must be a different one; where it
         # deliberately stays same-family for capability, resolution has to report reduced
@@ -240,8 +294,8 @@ class TestModelBandInvariants(unittest.TestCase):
         import ai_models
 
         path = REPO / "home/.chezmoidata/ai_models"
-        bands = ai_models.load_model_bands(path)
-        reduced_independence_harnesses = {"cursor", "omp"}
+        category_models = ai_models.load_category_models(path)
+        reduced_independence_harnesses = {"omp"}
 
         def family(model: str) -> str:
             base = model.rsplit("/", 1)[-1].lstrip("@")
@@ -250,33 +304,31 @@ class TestModelBandInvariants(unittest.TestCase):
                     return name
             return base
 
-        for harness, harness_bands in bands.items():
-            top = harness_bands["max"]
-            counter = top.get("counter")
+        for harness, harness_categories in category_models.items():
+            review = harness_categories["review"]
+            refute = harness_categories["refute"]
             pick = ai_models.resolve_agent_model(path, harness, "adversarial-verifier")
-            verifier_status = top.get("verifier_status")
-            if counter is None:
-                if verifier_status == "reduced_independence":
-                    assert harness in reduced_independence_harnesses, (
-                        f"model_bands.{harness}.max declares reduced_independence unexpectedly"
-                    )
-                    assert pick["degraded"] is False, (
-                        f"model_bands.{harness}.max declares reduced_independence but resolution says degraded"
-                    )
-                    assert pick["verifier_status"] == "reduced_independence"
-                else:
-                    assert pick["degraded"] is True, (
-                        f"model_bands.{harness} has no counter, so refutation must resolve degraded"
-                    )
-                    assert pick["verifier_status"] == "degraded"
+            verifier_status = refute.get("verifier_status")
+            if verifier_status == "reduced_independence":
+                assert harness in reduced_independence_harnesses, (
+                    f"category_models.{harness}.refute declares reduced_independence unexpectedly"
+                )
+                assert pick["degraded"] is False, (
+                    f"category_models.{harness}.refute declares reduced_independence but resolution says degraded"
+                )
+                assert pick["verifier_status"] == "reduced_independence"
                 continue
-            assert verifier_status in (None, "cross_family"), (
-                f"model_bands.{harness}.max has a counter and should not declare {verifier_status!r}"
+            if verifier_status == "degraded":
+                assert pick["degraded"] is True
+                assert pick["verifier_status"] == "degraded"
+                continue
+            assert verifier_status == "cross_family", (
+                f"category_models.{harness}.refute must declare verifier_status, got {verifier_status!r}"
             )
-            assert pick["degraded"] is False, f"model_bands.{harness} has a counter but resolution says degraded"
+            assert pick["degraded"] is False, f"category_models.{harness}.refute resolves degraded"
             assert pick["verifier_status"] == "cross_family"
-            assert family(top["model"]) != family(counter["model"]), (
-                f"model_bands.{harness}.max counter {counter['model']!r} shares a family with {top['model']!r}"
+            assert family(review["model"]) != family(refute["model"]), (
+                f"category_models.{harness}.refute {refute['model']!r} shares a family with {review['model']!r}"
             )
 
     def test_the_band_gate_only_spawns_for_delegation_tools(self) -> None:
@@ -334,30 +386,40 @@ class TestModelBandInvariants(unittest.TestCase):
                 "so delegation bands are unenforced on that profile"
             )
 
-    def test_the_omp_advisor_role_is_not_sold_as_a_second_family(self) -> None:
-        # OMP names roles, not models, so a `counter: "@advisor"` band would be a cross-family
-        # claim that only readonly_config.yml.tmpl can settle. A counter is required as soon as
-        # ANY profile resolves `advisor` to a different id than `default`; profiles that keep
-        # advisor == default resolve refutation same-family at runtime (reduced independence).
+    def test_omp_category_models_use_native_role_tokens(self) -> None:
+        # OMP already has role indirection, so the repo maps categories to local role tokens rather
+        # than pretending cost bands exist there. Review and refute both use advisor;
+        # the status reports reduced independence because both review and refute resolve through
+        # the same advisor role.
         import ai_models
 
         path = REPO / "home/.chezmoidata/ai_models"
-        counter = ai_models.load_model_bands(path)["omp"]["max"].get("counter")
+        category_models = ai_models.load_category_models(path)["omp"]
         roles = self._omp_model_roles()
 
         assert set(roles) == {"work", "personal"}, f"unexpected OMP profiles {sorted(roles)}"
-        any_distinct = any(mapping["advisor"] != mapping["default"] for mapping in roles.values())
-        if any_distinct:
-            assert counter is not None, (
-                "omp modelRoles has a distinct advisor on at least one profile "
-                f"({roles!r}); model_bands.omp.max must carry the counter so refutation "
-                "stops reporting degraded there"
+        expected_roles = {
+            "default": "openrouter/openai/gpt-5.5:xhigh",
+            "smol": "openrouter/deepseek/deepseek-v4-flash:xhigh",
+            "vision": "openrouter/openai/gpt-5.5:xhigh",
+            "slow": "openrouter/openai/gpt-5.5:xhigh",
+            "plan": "openrouter/openai/gpt-5.5:xhigh",
+            "task": "openrouter/openai/gpt-5.5:xhigh",
+            "advisor": "openrouter/anthropic/claude-sonnet-4.6:xhigh",
+        }
+        for profile, mapping in roles.items():
+            assert {"default", "smol", "plan", "task", "advisor"} <= set(mapping), (
+                f"omp {profile} modelRoles lacks category routing roles: {mapping!r}"
             )
-        else:
-            assert counter is None, (
-                f"omp modelRoles resolves advisor to the lanes' own model on every profile "
-                f"({roles!r}), so model_bands.omp.max must carry no counter"
-            )
+            assert mapping == expected_roles, f"omp {profile} modelRoles drifted: {mapping!r}"
+        assert category_models["lookup"]["model"] == "@smol"
+        assert category_models["mechanical"]["model"] == "@task"
+        assert category_models["research"]["model"] == "@task"
+        assert category_models["implement"]["model"] == "@task"
+        assert category_models["orchestrate"]["model"] == "@plan"
+        assert category_models["review"]["model"] == "@advisor"
+        assert category_models["refute"]["model"] == "@advisor"
+        assert category_models["refute"]["verifier_status"] == "reduced_independence"
 
     @staticmethod
     def _omp_model_roles() -> dict[str, dict[str, str]]:
@@ -413,16 +475,27 @@ class TestModelBandInvariants(unittest.TestCase):
                 f"(expected {hyphenated!r}) and 404s on the dotted form"
             )
 
-        bands = ai_models.load_model_bands(REPO / "home/.chezmoidata/ai_models")
-        for band, row in bands["claude_code"].items():
-            check(f"model_bands.claude_code.{band}", row.get("model", ""))
+        category_models = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")
+        for category, row in category_models["claude_code"].items():
+            check(f"category_models.claude_code.{category}", row.get("model", ""))
 
         for profile in ("personal", "work"):
             settings = json.loads((REPO / f"home/dot_claude/settings.{profile}.json").read_text(encoding="utf-8"))
             check(f"claude settings.{profile}.json model", settings.get("model", ""))
 
-    def test_gpt55_is_always_pinned_at_high_effort(self):
-        # Standing policy: gpt-5.5 is only ever run at high effort, in every harness and bucket.
+    def test_claude_code_mechanical_category_uses_sonnet46_high(self):
+        import ai_models
+
+        row = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["claude_code"]["mechanical"]
+
+        self.assertEqual("claude-sonnet-4-6", row["model"])
+        self.assertEqual("high", row["effort"])
+        self.assertNotEqual("claude-sonnet-4.6", row["model"])
+        self.assertNotEqual("claude-4.6-sonnet", row["model"])
+
+    def test_gpt55_is_always_pinned_at_xhigh_effort(self):
+        # Standing policy: gpt-5.5 is only ever run at xhigh effort, in every harness and category.
+        # Cursor spells the same tier as `extra-high` in the model id.
         # The effort lives in a different place per harness (a yaml `effort`, a model-id suffix,
         # a `:thinking` suffix, model_reasoning_effort, effortLevel), so drift is easy and silent.
         import ai_models
@@ -434,22 +507,15 @@ class TestModelBandInvariants(unittest.TestCase):
                 return
             # Cursor bakes effort into the id; Pi/OMP use a `:level` suffix.
             suffix = re.search(r"gpt-5\.5[-:]([a-z-]+)", model)
-            if suffix and suffix.group(1) not in ("high",):
-                offenders.append(f"{where}: model {model!r} is not high effort")
-            if effort is not None and effort != "high":
-                offenders.append(f"{where}: effort {effort!r} is not high (model {model!r})")
+            if suffix and suffix.group(1) not in ("xhigh", "extra-high"):
+                offenders.append(f"{where}: model {model!r} is not xhigh effort")
+            if effort is not None and effort != "xhigh":
+                offenders.append(f"{where}: effort {effort!r} is not xhigh (model {model!r})")
 
-        bands = ai_models.load_model_bands(REPO / "home/.chezmoidata/ai_models")
-        for harness, harness_bands in bands.items():
-            for band, row in harness_bands.items():
-                check(f"model_bands.{harness}.{band}", row.get("model", ""), row.get("effort"))
-                counter = row.get("counter")
-                if isinstance(counter, dict):
-                    check(
-                        f"model_bands.{harness}.{band}.counter",
-                        counter.get("model", ""),
-                        counter.get("effort"),
-                    )
+        category_models = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")
+        for harness, harness_categories in category_models.items():
+            for category, row in harness_categories.items():
+                check(f"category_models.{harness}.{category}", row.get("model", ""), row.get("effort"))
 
         registry = REPO / "home/.chezmoidata/ai_models"
         for harness in ("claude", "codex", "copilot", "cursor", "gemini", "pi", "omp"):
@@ -476,12 +542,18 @@ class TestModelBandInvariants(unittest.TestCase):
                     effort.group(1) if effort else None,
                 )
 
-        assert not offenders, "gpt-5.5 must always run at high effort:\n  " + "\n  ".join(offenders)
+            pi = json.loads((REPO / f"home/dot_pi/agent/readonly_settings.{profile}.json").read_text(encoding="utf-8"))
+            check(
+                f"pi readonly_settings.{profile}.json",
+                pi.get("defaultModel", ""),
+                pi.get("defaultThinkingLevel"),
+            )
 
-    def test_bands_are_short_context_by_default(self):
-        # Standing policy: short context everywhere. `long` is allowed only where the harness
-        # publishes no short variant of the wanted model, which today is Cursor alone — it ships
-        # Opus 5, Sonnet 5, Fable 5 and the GPT-5.x ids exclusively as 1M ids. Any other `long` row is
+        assert not offenders, "gpt-5.5 must always run at xhigh effort:\n  " + "\n  ".join(offenders)
+
+    def test_category_models_are_short_context_by_default(self):
+        # Standing policy: short context everywhere unless the model/harness lacks a short selector
+        # or the user explicitly requested long context for that harness. Any other `long` row is
         # drift, and an empty value is worse: it reads as "nobody decided" and hides the window.
         import ai_models
 
@@ -504,21 +576,17 @@ class TestModelBandInvariants(unittest.TestCase):
                         f"{where}: {model!r} is 1M-only on Cursor, so context must be 'long', got {context!r}"
                     )
                 return
+            if harness == "gemini":
+                if context != "long":
+                    offenders.append(f"{where}: Gemini categories are user-pinned to long context, got {context!r}")
+                return
             if context != "short":
                 offenders.append(f"{where}: context is {context!r}, expected 'short' (model {model!r})")
 
-        bands = ai_models.load_model_bands(REPO / "home/.chezmoidata/ai_models")
-        for harness, harness_bands in bands.items():
-            for band, row in harness_bands.items():
-                check(f"model_bands.{harness}.{band}", harness, row.get("model", ""), row.get("context"))
-                counter = row.get("counter")
-                if isinstance(counter, dict):
-                    check(
-                        f"model_bands.{harness}.{band}.counter",
-                        harness,
-                        counter.get("model", ""),
-                        counter.get("context"),
-                    )
+        category_models = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")
+        for harness, harness_categories in category_models.items():
+            for category, row in harness_categories.items():
+                check(f"category_models.{harness}.{category}", harness, row.get("model", ""), row.get("context"))
 
         # Copilot's contextTier is the only dial that turns the policy into a runtime request.
         copilot = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text(encoding="utf-8"))
@@ -544,13 +612,18 @@ class TestModelBandInvariants(unittest.TestCase):
         import model_mirrors
 
         default = "deepseek/deepseek-v4-flash-0731"
+        pi_default = "openai/gpt-5.5"
+        pi_mechanical = "deepseek/deepseek-v4-flash"
+        pi_refute = "anthropic/claude-sonnet-4.6"
         optional = "moonshotai/kimi-k3"
         glm = "z-ai/glm-5.2"
         counter = "openai/gpt-5.6-terra"
         default_selector = f"openrouter/{default}"
+        pi_default_selector = f"openrouter/{pi_default}"
+        pi_mechanical_selector = f"openrouter/{pi_mechanical}"
+        pi_refute_selector = f"openrouter/{pi_refute}"
         optional_selector = f"openrouter/{optional}"
         glm_selector = f"openrouter/{glm}"
-        counter_selector = f"openrouter/{counter}"
         expected_default_provider_routing = {
             "preferred_min_throughput": 24,
             "quantizations": ["fp8", "fp16", "bf16", "fp32"],
@@ -567,14 +640,16 @@ class TestModelBandInvariants(unittest.TestCase):
         provider_models = [
             row["id"] for row in ai_models.load_provider_models(registry) if row["provider"] == "openrouter"
         ]
-        # DeepSeek max carries every default lane; Kimi and GLM-5.2 stay selectable and Terra carries counter roles.
+        # Shared OpenRouter wrappers keep the DeepSeek/Kimi/GLM/Terra route. Pi has its own
+        # harness-native selector set because it can pass OpenRouter ids directly.
         self.assertEqual([default, optional, glm, counter], provider_models)
         self.assertEqual(
             [
-                {"id": default_selector, "recommended": True},
+                {"id": pi_default_selector, "recommended": True},
+                {"id": pi_mechanical_selector},
+                {"id": pi_refute_selector},
                 {"id": optional_selector},
                 {"id": glm_selector},
-                {"id": counter_selector},
             ],
             ai_models.load_pi_extra_models(registry),
         )
@@ -582,8 +657,8 @@ class TestModelBandInvariants(unittest.TestCase):
         for profile in ("work", "personal"):
             settings = json.loads((REPO / f"home/dot_pi/agent/readonly_settings.{profile}.json").read_text())
             self.assertEqual("openrouter", settings["defaultProvider"])
-            self.assertEqual(default, settings["defaultModel"])
-            self.assertEqual("max", settings["defaultThinkingLevel"])
+            self.assertEqual(pi_default, settings["defaultModel"])
+            self.assertEqual("xhigh", settings["defaultThinkingLevel"])
 
             pi_models = json.loads(
                 (
@@ -631,15 +706,16 @@ class TestModelBandInvariants(unittest.TestCase):
 
         pi_lane = ai_models.resolve_review_agent_model(registry, "pi", "reviewer")
         pi_verifier = ai_models.resolve_review_agent_model(registry, "pi", "adversarial-verifier")
-        self.assertEqual(f"{default_selector}:max", pi_lane["model"])
-        self.assertEqual(f"{counter_selector}:max", pi_verifier["model"])
-        bands = ai_models.load_model_bands(registry)["pi"]
-        self.assertEqual(f"{default_selector}:max", bands["cheap"]["model"])
-        self.assertEqual("max", bands["cheap"]["effort"])
-        for band in ("standard", "max"):
-            self.assertEqual(f"{default_selector}:max", bands[band]["model"], band)
-            self.assertEqual("max", bands[band]["effort"], band)
-        self.assertEqual(f"{counter_selector}:max", bands["max"]["counter"]["model"])
+        self.assertEqual(f"{pi_default_selector}:xhigh", pi_lane["model"])
+        self.assertEqual(f"{pi_refute_selector}:xhigh", pi_verifier["model"])
+        category_models = ai_models.load_category_models(registry)["pi"]
+        for category in ("lookup", "research", "implement", "orchestrate", "review"):
+            self.assertEqual(f"{pi_default_selector}:xhigh", category_models[category]["model"], category)
+            self.assertEqual("xhigh", category_models[category]["effort"], category)
+        self.assertEqual(f"{pi_mechanical_selector}:xhigh", category_models["mechanical"]["model"])
+        self.assertEqual("xhigh", category_models["mechanical"]["effort"])
+        self.assertEqual(f"{pi_refute_selector}:xhigh", category_models["refute"]["model"])
+        self.assertEqual("xhigh", category_models["refute"]["effort"])
 
         for relative in (
             "home/exact_bin/executable_,claude-openrouter",
@@ -705,73 +781,62 @@ class TestModelBandInvariants(unittest.TestCase):
         for variable in ("OPENROUTER_MODEL", "OPENROUTER_NITRO", "OPENROUTER_THINKING", "OPENROUTER_REASONING_EFFORT"):
             self.assertNotIn(variable, neovim)
 
-    def test_the_cheap_band_runs_the_codex_tier_wherever_the_catalog_has_it(self):
-        # `cheap` carries judgment-free `search` and `mechanical` work, so it takes gpt-5.3-codex at
-        # high effort on every harness whose catalog has it. Five cannot: Claude Code and Gemini are
-        # single-vendor, native Codex deliberately pins Sol/xhigh across every band, Cursor's Task
-        # tool takes only its own whitelist (user call 2026-08-14 pins every Cursor band to
-        # cursor-grok-4.6-xhigh), and Pi reaches models only through OpenRouter, where the cheap
-        # role is pinned to deepseek-v4-flash-0731:max. Each exception is spelled out so a future
-        # edit cannot quietly downgrade a harness that could have run the codex tier.
+    def test_lookup_category_stays_exact_retrieval_only(self):
+        # `lookup` is exact retrieval by a smarter caller, not semantic discovery. It can use the
+        # smallest local role because no conclusion-forming agent is allowed to bind to it.
         import ai_models
 
         expected = {
             "claude_code": ("claude-fable-5", "low"),  # Anthropic-only; all bands fable-5 (user call 2026-08-05)
-            "codex": ("gpt-5.6-sol", "xhigh"),  # user-selected all-band Codex policy
-            "copilot": ("claude-haiku-4.5", "high"),
-            "cursor": ("cursor-grok-4.6-xhigh", "xhigh"),  # all-band Cursor pin (user call 2026-08-14)
-            "gemini": ("gemini-3.7-flash", "high"),  # Google-only catalog
-            "pi": ("openrouter/deepseek/deepseek-v4-flash-0731:max", "max"),  # OpenRouter-only; cheap role route
-            "omp": ("@smol", "high"),  # a role token; the concrete pick is asserted below
+            "codex": ("gpt-5.5", "xhigh"),  # user-selected all-band Codex policy
+            "copilot": ("gpt-5.5", "xhigh"),
+            "cursor": ("gpt-5.6-sol-xhigh", "xhigh"),  # captured Cursor Task-enum primary selector
+            "gemini": ("gemini-3.1-pro-preview", "high"),  # agy's Gemini 3.1 Pro selector
+            "pi": ("openrouter/openai/gpt-5.5:xhigh", "xhigh"),  # OpenRouter-only lookup route
+            "omp": ("@smol", "xhigh"),  # a role token; the concrete pick is asserted below
         }
 
         path = REPO / "home/.chezmoidata/ai_models"
-        bands = ai_models.load_model_bands(path)
-        assert set(bands) == set(expected), (
-            f"harness set changed: {sorted(set(bands) ^ set(expected))}; add its cheap-band pick here"
+        category_models = ai_models.load_category_models(path)
+        assert set(category_models) == set(expected), (
+            f"harness set changed: {sorted(set(category_models) ^ set(expected))}; add its lookup pick here"
         )
         for harness, (model, effort) in expected.items():
-            row = bands[harness]["cheap"]
-            assert row["model"] == model, f"model_bands.{harness}.cheap.model is {row['model']!r}, expected {model!r}"
+            row = category_models[harness]["lookup"]
+            assert row["model"] == model, (
+                f"category_models.{harness}.lookup.model is {row['model']!r}, expected {model!r}"
+            )
             assert row["effort"] == effort, (
-                f"model_bands.{harness}.cheap.effort is {row['effort']!r}, expected {effort!r}"
+                f"category_models.{harness}.lookup.effort is {row['effort']!r}, expected {effort!r}"
             )
 
         # `composer-2.5-fast` is a speed tier with the same intelligence at 6x the price
-        # ($3/$15 against $0.5/$2.5, cursor.com/docs/models), so no band may reach for it.
-        for band, row in bands["cursor"].items():
+        # ($3/$15 against $0.5/$2.5, cursor.com/docs/models), so no category may reach for it.
+        for category, row in category_models["cursor"].items():
             assert row["model"] != "composer-2.5-fast", (
-                f"model_bands.cursor.{band} is composer-2.5-fast; composer-2.5 is the same model for a sixth"
+                f"category_models.cursor.{category} is composer-2.5-fast; composer-2.5 is the same model for a sixth"
             )
 
-        # OMP resolves its bands through modelRoles; @smol is deliberately composer-2.5 on personal
-        # (policy override), even though a codex-tier id is available in the catalog. Work routes
-        # smol through the OpenRouter deepseek deepseek-lanes-max preset (FP8-or-higher, 24 t/s
-        # sorted; qwen3.8-max and minimax-m3 rejected, user call 2026-08-06).
+        # OMP resolves lookup through modelRoles; @smol is DeepSeek V4 Flash xhigh on both profiles.
         roles = self._omp_model_roles()
-        assert "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max" in roles["work"]["smol"], (
-            f"omp work modelRoles.smol is {roles['work']['smol']!r}, expected openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max"
-        )
-        assert "composer-2.5" in roles["personal"]["smol"], (
-            f"omp personal modelRoles.smol is {roles['personal']['smol']!r}, expected composer-2.5"
-        )
+        for profile in ("work", "personal"):
+            assert roles[profile]["smol"] == "openrouter/deepseek/deepseek-v4-flash:xhigh"
 
-        # Copilot is the one harness where the cheap band reaches a deployed file rather than a
-        # rendered profile, so check the band actually landed on every cheap-bound built-in.
+        # Copilot is the one harness where the lookup category reaches a deployed file rather than a
+        # rendered profile, so check the model actually landed on every lookup-bound built-in.
         #
-        # Copilot may legitimately have none: `search` narrowed to judgment-free work only (see the
+        # Copilot may legitimately have none: `lookup` narrowed to exact retrieval only (see the
         # investigation note in tiering.yaml agent_bindings), and Copilot ships no such built-in —
-        # `explore` forms conclusions, so it is `research`. An empty set means the cheap band is
+        # `explore` forms conclusions, so it is `research`. An empty set means the lookup category is
         # simply unreachable on this harness, not that a pin was dropped, so the loop below is a
-        # no-op rather than a failure. If a cheap-bound Copilot agent is ever added, it is checked.
+        # no-op rather than a failure. If a lookup-bound Copilot agent is ever added, it is checked.
         bindings = ai_models.load_agent_bindings(path)
-        categories = ai_models.load_agent_categories(path)
         copilot = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text(encoding="utf-8"))[
             "subagents"
         ]["agents"]
-        cheap_agents = [name for name in copilot if categories.get(bindings.get(name, ""), {}).get("band") == "cheap"]
+        lookup_agents = [name for name in copilot if bindings.get(name) == "lookup"]
         copilot_model, copilot_effort = expected["copilot"]
-        for name in cheap_agents:
+        for name in lookup_agents:
             assert copilot[name]["model"] == copilot_model, (
                 f"copilot settings.json {name} model {copilot[name]['model']!r} != {copilot_model!r}"
             )
@@ -779,7 +844,7 @@ class TestModelBandInvariants(unittest.TestCase):
                 f"copilot settings.json {name} effortLevel is {copilot[name]['effortLevel']!r}, expected {copilot_effort!r}"
             )
 
-    def test_generated_subagent_rosters_match_the_band_registry(self):
+    def test_generated_subagent_rosters_match_the_category_registry(self):
         # Copilot pins subagent models inside a settings file the harness rewrites at runtime,
         # so it cannot be a chezmoi template over the registry. The generator reconciles it.
         import subprocess
@@ -791,11 +856,11 @@ class TestModelBandInvariants(unittest.TestCase):
             cwd=str(REPO),
         )
         assert result.returncode == 0, (
-            "Copilot subagent roster diverges from model_bands; run "
+            "Copilot subagent roster diverges from category_models; run "
             f"`python3 scripts/generate_subagent_models.py write`:\n{result.stderr}"
         )
 
-    def test_the_deployed_band_projection_is_current(self):
+    def test_the_deployed_agent_projection_is_current(self):
         # The hook runs from ~/.agents/hooks with no access to this repo, so it reads a flattened
         # projection instead of resolving anything. A stale projection is a silently wrong model on
         # every harness the hook enforces.
@@ -809,14 +874,17 @@ class TestModelBandInvariants(unittest.TestCase):
         )
         assert result.returncode == 0, result.stderr
 
-    def test_cursor_bands_stay_inside_the_task_tool_whitelist(self):
-        # Cursor IDE Task enum 2026-08-14 (this session): a far narrower list than
-        # `cursor-agent models`. Anything else fails the spawn with "Invalid model
-        # selection". Since Cursor has no loadable agent files, the band hook is the only tiering
-        # surface there, and a slug outside this list breaks delegation rather than repricing it.
+    def test_cursor_categories_stay_inside_the_captured_task_enum(self):
+        # Cursor validates Task.model against a narrower enum than `cursor-agent models` before the
+        # hook rewrite takes effect. The enum is the consumer contract; the broader catalog is only
+        # the source for main-session model availability.
         import ai_models
 
-        whitelist = {
+        mirrors = json.loads((REPO / "home/dot_config/ai/readonly_model-mirrors.v1.json").read_text(encoding="utf-8"))
+        curated = mirrors["harnesses"]["cursor"]["curated"]
+        assert curated["complete"] is True, "Cursor curated catalog must stay complete for category validation"
+        cursor_catalog = set(curated["models"])
+        cursor_task_models = {
             "claude-fable-5-medium",
             "claude-opus-5-high",
             "claude-sonnet-5-thinking-max",
@@ -828,19 +896,22 @@ class TestModelBandInvariants(unittest.TestCase):
             "gpt-5.6-terra-xhigh",
         }
 
-        bands = ai_models.load_model_bands(REPO / "home/.chezmoidata/ai_models")["cursor"]
-        for band, row in bands.items():
-            for label, pick in (("", row), (".counter", row.get("counter") or {})):
-                model = pick.get("model")
-                if not model:
-                    continue
-                assert model in whitelist, (
-                    f"model_bands.cursor.{band}{label} is {model!r}, which the Task tool cannot resolve; "
-                    f"pick one of {sorted(whitelist)}"
-                )
+        category_models = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["cursor"]
+        for category, row in category_models.items():
+            model = row.get("model")
+            if not model:
+                continue
+            assert model in cursor_task_models, (
+                f"category_models.cursor.{category} is {model!r}, which the captured Cursor Task enum does not "
+                f"contain; refresh the Task enum proof or pick one of {sorted(cursor_task_models)}"
+            )
+            assert model in cursor_catalog, (
+                f"category_models.cursor.{category} is {model!r}, which the verified Cursor catalog does not contain; "
+                f"refresh the catalog or pick one of {sorted(cursor_catalog)}"
+            )
 
     def test_claude_settings_keep_thinking_disabled(self):
-        # model_bands.claude_code declares thinking "off" for every Anthropic bucket. The only
+        # category_models.claude_code declares thinking "off" for every Anthropic category. The only
         # thing enforcing that is alwaysThinkingEnabled: false, which makes Hye() return false so
         # thinkingConfig resolves to {type:"disabled"} instead of {type:"adaptive"}. Dropping it
         # silently turns Opus 5 review lanes back into thinking lanes.
@@ -859,8 +930,8 @@ class TestModelBandInvariants(unittest.TestCase):
             )
 
     def test_copilot_launcher_disables_anthropic_thinking(self):
-        # Opus 5 thinks by default on Copilot. The registry pins Opus for review lanes as the
-        # non-thinking pick, which is only true while the launcher exports this env var:
+        # Anthropic models think by default on Copilot. The registry pins Sonnet/Fable lanes as
+        # non-thinking picks, which is only true while the launcher exports this env var:
         # app.js Q3e() feeds it to nativeModelClientDefaultOptionsJson, which sets thinkingBudget.
         self.assert_file_contains(
             "home/exact_lib/exact_,copilot/main.py",
