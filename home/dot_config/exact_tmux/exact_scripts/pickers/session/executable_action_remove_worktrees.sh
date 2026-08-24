@@ -9,6 +9,32 @@ fi
 set -euo pipefail
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 
+force_remove=0
+confirm_remove=0
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --force)
+      force_remove=1
+      shift
+      ;;
+    --confirm)
+      confirm_remove=1
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      exit 2
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
 sel_file="${1:-}"
 if [ -z "$sel_file" ] || [ ! -f "$sel_file" ]; then
   exit 0
@@ -61,6 +87,54 @@ trap _action_remove_cleanup EXIT
 
 realpath_or_self() {
   realpath "$1" 2> /dev/null || printf '%s' "$1"
+}
+
+run_force_confirmation() {
+  printf 'pick_session blocked this removal because selected worktree(s) have dirty files or unpushed commits.\n\n'
+  printf 'Selected path(s):\n'
+  while IFS=$'\t' read -r _display _kind path _meta _target _rest; do
+    [ -n "$path" ] || continue
+    printf '  %s\n' "$path"
+  done < "$sel_file" | LC_ALL=C sort -u
+  printf '\nForce delete anyway? Type y to continue: '
+
+  local answer
+  IFS= read -r answer || exit 0
+  case "$answer" in
+    y | Y | yes | YES)
+      exec "$0" --force "$sel_file"
+      ;;
+    *)
+      exit 0
+      ;;
+  esac
+}
+
+if [ "$confirm_remove" -eq 1 ]; then
+  run_force_confirmation
+fi
+
+launch_force_confirmation() {
+  local unsafe_count="$1"
+  [ -n "$unsafe_count" ] || unsafe_count=1
+  command -v tmux > /dev/null 2>&1 || return 0
+
+  local confirm_sel
+  confirm_sel="$(mktemp "${cache_dir}/pick_session_force_remove.XXXXXX" 2> /dev/null || true)"
+  [ -n "$confirm_sel" ] || return 0
+  if ! cp "$sel_file" "$confirm_sel" 2> /dev/null; then
+    rm -f "$confirm_sel" 2> /dev/null || true
+    return 0
+  fi
+
+  local confirm_cmd
+  confirm_cmd="$(printf '%q ' "$0" --confirm "$confirm_sel")"
+  if tmux display-popup -E -w 90% -h 40% -T "pick_session force remove" "$confirm_cmd" 2> /dev/null; then
+    return 0
+  fi
+
+  rm -f "$confirm_sel" 2> /dev/null || true
+  tmux display-message -d 6000 "pick_session: skipped ${unsafe_count} worktree(s) with dirty/unpushed work; force prompt failed" 2> /dev/null || true
 }
 
 tmux_opt() {
@@ -220,6 +294,9 @@ remove_paths_in_background() {
   #   accidentally kill the current session by path.
   local cmd
   cmd="cd $(printf %q "$root") && ,w remove --paths"
+  if [ "$force_remove" -eq 1 ]; then
+    cmd+=" --force"
+  fi
   local p
   for p in "${paths[@]}"; do
     cmd+=" $(printf %q "$p")"
@@ -404,20 +481,17 @@ fi
 # backgrounded `,w remove` all assume the removal will happen. Skipped paths
 # stay visible in the picker and keep their sessions.
 declare -A unsafe_wt=()
-if [ ${#pending_wt_paths[@]} -gt 0 ] && command -v ,w > /dev/null 2>&1; then
+if [ "$force_remove" -eq 0 ] && [ ${#pending_wt_paths[@]} -gt 0 ] && command -v ,w > /dev/null 2>&1; then
   while IFS= read -r _p; do
     [ -n "$_p" ] || continue
     unsafe_wt["$_p"]=1
   done < <(,w remove --preflight --paths "${pending_wt_paths[@]}" 2> /dev/null || true)
   if [ ${#unsafe_wt[@]} -gt 0 ]; then
-    declare -a _safe_wt=()
-    for _p in "${pending_wt_paths[@]}"; do
-      [ -n "${unsafe_wt[$_p]+x}" ] || _safe_wt+=("$_p")
-    done
-    pending_wt_paths=(${_safe_wt[@]+"${_safe_wt[@]}"})
+    launch_force_confirmation "${#unsafe_wt[@]}"
     if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
-      tmux display-message -d 6000 "pick_session: skipped ${#unsafe_wt[@]} worktree(s) with unsaved work (dirty/unpushed); remove manually with ,w remove --force" 2> /dev/null || true
+      tmux display-message -d 6000 "pick_session: confirmation required for ${#unsafe_wt[@]} worktree(s) with dirty/unpushed work" 2> /dev/null || true
     fi
+    exit 0
   fi
 fi
 # pending_plain_dirs is intentionally left unsorted/un-deduped: it stays

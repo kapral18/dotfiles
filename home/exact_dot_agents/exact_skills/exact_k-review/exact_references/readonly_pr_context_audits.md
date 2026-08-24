@@ -38,7 +38,7 @@ Keep it bounded. Before using the results, write:
    - search relevant public/team channels for the topic terms
    - read full matching threads
    - examples in this setup: `slack_search_public`, `slack_search_channels`, `slack_read_user_profile`, `slack_search_public_and_private` with explicit user consent
-   - search private channels or DMs only with explicit consent
+   - do not search private channels or DMs without explicit consent
 4. For each promising ambient hit, read enough full context to decide whether it informs the disputed topic:
    - GitHub issues/PRs/discussions: body, comments/replies/threads, linked references, and relevant diffs/files using the GitHub Context Intake + Reference Resolution rules in `pr_common.md`
    - Slack: the complete thread/conversation around the hit, not just the matching message;
@@ -82,7 +82,7 @@ This audit does not approve, reject, close, or post. It produces evidence for dr
    - Search relevant public/team channels for topic terms.
    - Read complete matching threads in timestamp order.
    - Distinguish decisions from speculation, proposals, and unresolved questions.
-   - Search private channels or DMs only with explicit user consent.
+   - Do not search private channels or DMs without explicit user consent.
    - If Slack is unavailable, or private-channel consent would be required, record that as skipped-with-reason.
 6. Classify the audit:
    - `intent`: clear / unclear / conflicting

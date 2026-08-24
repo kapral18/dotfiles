@@ -33,7 +33,7 @@ class TestReviewPolicyInvariants(unittest.TestCase):
             "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
             "Controller validation: reject and rerun any `live-ui-review` result that:",
             "uses the controller cwd or base/main runtime as the PR/head target for an explicit PR/branch review without proving that checkout is on the reviewed PR/head branch/sha",
-            "Accept without rerun a result that reports a valid Playwriter harness blocker:",
+            "Do not reject or rerun a result that reports a valid Playwriter harness blocker:",
             "`~/.agents/skills/k-review/references/pr-necessity-auditor.md`",
             "`~/.agents/skills/k-review/references/live-ui-review.md`",
         )
@@ -145,8 +145,8 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         self.assert_file_contains(
             worker,
             "`~/.agents/skills/k-review/references/judging_core.md`",
-            "Load only the files above; `k-review/SKILL.md`, `shared_rules.md`, `pr_common.md`, `lanes.md`, and mode files stay unloaded.",
-            "Leave repo-wide suites, full builds, and whole-suite test runs to the controller.",
+            "Do not load `k-review/SKILL.md`, `shared_rules.md`, `pr_common.md`, `lanes.md`, or a mode file.",
+            "Do not run repo-wide suites, full builds, or whole-suite test runs.",
         )
         # The controller must actually own the shared work the lanes were told to skip.
         self.assert_file_contains(
@@ -239,7 +239,7 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/readonly_SKILL.md",
             "disable-model-invocation: true",
-            "## Manual only — explicit request required",
+            "## Manual only — never automatic",
             "Load this skill only when the user explicitly asks, this turn, for Windows/VirtualBox verification",
             "~/.cache/live-ui-windows/registry.json",
             "start it with `VBoxManage startvm <vm> --type headless`",

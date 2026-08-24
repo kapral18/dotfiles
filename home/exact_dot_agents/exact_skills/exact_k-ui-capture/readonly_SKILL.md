@@ -15,6 +15,17 @@ caller inputs, applicability, the head-only model, proof capture, and the exact 
 `/k-build`'s live-UI proof phase and `k-compose-pr`'s publication packet load that reference directly;
 this entrypoint owns routing and the two direct entries below.
 
+## Non-Skippable Publication Gate
+
+Before any capture, upload, or PR/issue body/comment edit:
+
+1. Load `~/.agents/skills/k-ui-capture/references/proof-mode.md`.
+2. Produce the proof-mode return shape through `claim_map`.
+3. Proceed only when the target publication text has zero unmapped behavior claims.
+
+When the proof-mode return shape is missing, return `upload_status: skipped` or `pending_approval` and leave PR/issue body/comment media unchanged.
+Use only proof-mode captured or reused assets in this flow; classify synthetic clips, test-result clips, and prose caveats as inadequate publication assets.
+
 Other shared cores, loaded when their step applies:
 
 - runtime targets, Playwriter preflight, readiness, data/setup ladder: loaded by the proof-mode contract via `~/.agents/skills/k-review/references/live-ui-runtime.md`
@@ -84,12 +95,13 @@ Load `~/.agents/skills/k-github/references/attachments.md` and follow it end to 
 pre-upload QA, the browser-assisted upload, and the presentation rules for embedding.
 Upload only newly captured media; Step 3 supplies the URLs for reused pairs.
 Build the proof-mode Claim map before drafting embed text: every behavior claim in the body/comment maps to an inventory item with an adequate asset; drop unmapped claims.
-Place `baseline` pairs in the PR/issue body's main Screenshots/Videos section;
-place `intra-change` pairs in a separate comment/thread when requested for reviewer re-verification.
+Place `baseline` pairs in the PR/issue body's main Screenshots/Videos section.
+Place `intra-change` pairs in a separate comment/thread when requested for reviewer re-verification.
+Publish `head-only` proof only in an explicitly approved non-baseline location after the user sees the claim map.
 Uploading is a GitHub side effect — show the QA summary, claim map, and destination, and wait for explicit user approval before uploading.
 After upload, emit the ready-to-paste markdown block built per those presentation rules.
 
-Completion criterion: new media uploaded and markdown emitted with a complete claim map, or local manifest paths returned with upload marked `pending_approval`/`skipped`.
+Completion criterion: new media uploaded and markdown emitted with a complete claim map and a verified publication channel, or local manifest paths returned with upload marked `pending_approval`/`skipped`.
 
 ## Deliverable
 

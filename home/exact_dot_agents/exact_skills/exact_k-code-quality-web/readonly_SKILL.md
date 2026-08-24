@@ -9,7 +9,7 @@ Use this for browser-rendered markup and styling.
 
 ## Secondary Skill Escalation
 
-Load secondary skills only after read/diff evidence proves the surface is in scope.
+Do not load secondary skills until read/diff evidence proves the surface is in scope.
 
 - If the concrete web surface is React/JSX/TSX, also load the `~/.agents/skills/k-code-quality-react/SKILL.md` skill.
 

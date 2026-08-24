@@ -10,7 +10,7 @@ Backed by the local `,ai-kb` CLI: SQLite + FTS5 (BM25) + dense embeddings (`sqli
 Results are fused with Reciprocal Rank Fusion and diversified with Maximal Marginal Relevance. Fully local, no cloud, no MCP.
 Capsules persist under `~/.local/share/ai-kb/` (markdown sidecars + indexed SQLite mirror).
 
-Out of scope — use the named alternative instead:
+Do not use:
 
 - ephemeral per-session working context (current task spec, hook worklog/evidence trace under `/tmp/specs`):
   that is `,agent-memory` (see `~/.local/share/chezmoi/docs/topics/ai-assistants/knowledge-base/hook-memory.md`);
@@ -62,7 +62,7 @@ Shell quoting for `--title`/`--body` prose: Markdown backticks trigger shell com
 Use single-quoted prose or an argv-safe heredoc/stdin pattern for complex text;
 an unescaped backtick inside a double-quoted shell argument triggers substitution.
 
-Field selection (each affects retrieval — choose every field deliberately rather than defaulting):
+Field selection (each affects retrieval — choose, do not default):
 
 - `--kind` honestly: `gotcha`, `anti_pattern`, `pattern`/`recipe`, `principle`, `fact`, or `doc`; wrong kind hides kind-filtered search.
 - `--scope` by reuse breadth: `workspace`, `project`, `domain`, `universal`. Scope is the strongest retrieval gate.
@@ -88,7 +88,7 @@ On refusal, prefer `--supersedes <that-id>`; use `--force` only when the collisi
 A clamped `--confidence`, a defaulted `--source`, or a missing `--domain` prints a degraded-metadata warning —
 fix the metadata rather than ignoring it.
 
-Keep the KB clean: transient, session-only, or unverified notes belong in `,agent-memory`.
+Do not pollute the KB: skip transient, session-only, or unverified notes (those belong in `,agent-memory`).
 
 Output:
 
@@ -97,7 +97,7 @@ Output:
   It also carries ranking fields: `bm25_rank`, `vector_rank`, `bm25_score`, `cosine_score`, `rrf_score`, `mmr_selected`.
 - Fold the most relevant hits into your reasoning and cite them by `title` (and `id` when acting on one).
   Treat low-`confidence` or superseded-looking hits with caution; verify against the live repo before relying on them.
-- Superseded capsules are excluded from results by default; results are already RRF-ranked and MMR-diversified — keep that order.
+- Superseded capsules are excluded from results by default; results are already RRF-ranked and MMR-diversified — do not re-sort.
 
 Harvest (opt-in candidate aid, not a substitute for the inline `remember` habit):
 

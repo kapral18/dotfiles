@@ -9,7 +9,7 @@ disable-model-invocation: true
 The Windows/VirtualBox environment for live-UI verification.
 Connects Playwriter to a Windows guest's browser running in VirtualBox over CDP through a host NAT port-forward, then verifies exactly like the local-browser flow: the same target-packet resolution, readiness stability guard, screenshot & evidence capture, and data/setup ladder from the shared runtime contract.
 
-## Manual only — explicit request required
+## Manual only — never automatic
 
 `/k-deep-review`, `live-ui-review`, `/k-build`, and `k-ui-capture` verify the local browser only.
 None of them resolve, infer, or accept a Windows/VirtualBox requirement anymore —
@@ -30,7 +30,7 @@ Resolve the target packet and required runtime config the same way `k-ui-capture
 
 Proceed with the default — run both, mirroring the previous `windows_additional` behavior — and state the choice.
 Ask only when the user constrained verification scope; Windows-only (skip local) applies when the user says the path is Windows-exclusive.
-Resolve this once per invocation and keep that decision for every finding/criterion.
+Resolve this once per invocation; never re-decide it per finding/criterion.
 
 ## VirtualBox/CDP connection rung
 
@@ -43,7 +43,7 @@ Run this once per verification, before target-packet URL translation and before 
 2. Read `VMState` via `VBoxManage showvminfo <vm> --machinereadable`.
    - If not `running` and the harness is shell-capable, start it with `VBoxManage startvm <vm> --type headless` (verification only needs the CDP connection, not a visible window; headless avoids popping an unwanted window on the user's screen and works on hosts with no attached display session) and wait for `running`.
      Use `--type gui` instead only when the user explicitly asked to watch/interact with the VM.
-     Keep the type of an already-running VM as-is.
+     Never change the type of an already-running VM.
    - If the harness is read-only/Ask-mode or the start fails, return `Blocked` with the exact start command.
 3. Verify NIC1's attachment is `nat` (`VBoxManage showvminfo <vm> --machinereadable | grep '^nic1='`).
    VirtualBox's documented NAT gateway alias (`10.0.2.2`) is only guaranteed reachable for a NAT-attached NIC.
@@ -56,12 +56,12 @@ Run this once per verification, before target-packet URL translation and before 
      On refusal, or in a read-only/Ask-mode harness, return `Blocked` with that exact command.
 5. Connect: `playwriter session new --direct localhost:<hostport>`, then smoke-test with `context.pages()`.
    - On success, continue to target-packet URL translation and navigation using this session.
-     Store the page under a distinct `state` key (e.g. `state.windowsPage`), separate from the default `page` or another environment's page key.
+     Store the page under a distinct `state` key (e.g. `state.windowsPage`); never the default `page` or another environment's page key.
    - On connection refused/timeout, the guest has no browser listening on the debug port yet —
      a one-time manual step inside Windows this skill cannot perform (Guest Additions are intentionally out of scope;
      see Hard constraints below).
      Return `Blocked` with the exact one-time instructions: launch Edge/Chrome inside Windows with `--remote-debugging-port=9222 --user-data-dir=<a dedicated profile path>`.
-     Return once instead of retry-looping the connection.
+     Do not retry-loop the connection.
 6. Once connected, every rule from the loaded `live-ui-runtime.md` contract applies unchanged to this session:
    readiness stability guard, screenshot & evidence capture, the data/setup ladder, and the hard runtime constraints.
 

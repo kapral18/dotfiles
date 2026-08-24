@@ -16,7 +16,7 @@ Surface-specific skills (`k-github`, `k-google-workspace`, `k-review`, `babysit`
 Scope boundaries:
 
 - This skill governs **wording of external human-visible content** only.
-- **Whether and how to publish** (approval, bot-vs-human carve-out, draft → show payload → wait) is the Human-Visible Publication Gate in the SOP (`~/AGENTS.md`); defer to it as written there.
+- **Whether and how to publish** (approval, bot-vs-human carve-out, draft → show payload → wait) is the Human-Visible Publication Gate in the SOP (`~/AGENTS.md`); do not restate or weaken it here.
 - In-session chat/CLI responses stay SOP §5; this skill is for other humans.
 - Before drafting, apply every rule in `~/.agents/skills/k-communication/references/external-replies.md`.
 
@@ -46,9 +46,9 @@ Budgets (words of narrative; code blocks and links do not count):
 
 - No water. Every sentence carries a fact, request, or decision. Delete the rest.
 - Cut anything the reader infers from context (thread, diff, prior message, PR title).
-  The concern, file path, obvious effect, and what the reader just said are already in context — leave them out.
+  Do not restate the concern, file path, obvious effect, or what the reader just said.
 - Prefer no message over a low-signal message.
-  If the thread already has the correction or next step, and the only remaining contribution is historical color, attribution cleanup, or rephrasing someone else's point, choose no draft.
+  If the thread already has the correction or next step, and the only remaining contribution is historical color, attribution cleanup, or rephrasing someone else's point, do not draft.
 - No headline summaries, status prefixes, or `RE:`-style headers. Get to the substance.
 - Prefer the shortest form that carries full meaning: a one-line comment, a tight PR description, a single-sentence status update.
 - PR review summary bodies describe inline topics, not commands: prefer `Left inline comments on <topics>.`

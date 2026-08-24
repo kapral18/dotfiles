@@ -16,7 +16,7 @@ Use when:
 - the user asks for the single smartest, most impactful, or highest-leverage addition to a targeted / specific part of the codebase (e.g. "the tmux pickers", "the github skill", "@src/components/foo")
 - the target is a targeted part of the codebase (scoped dir/module/component), not the whole codebase, not only the current diff, and not the branch/PR/issue goal
 
-Route elsewhere for:
+Do not use:
 
 - whole-codebase improvements: `~/.agents/skills/k-improve-codebase/SKILL.md`
 - current branch, PR, or issue goal: `~/.agents/skills/k-improve-branch/SKILL.md`
@@ -29,7 +29,7 @@ First actions:
 2. Inspect the targeted part: its files, structure, tests, docs, and how it integrates with the rest of the repo.
 3. Identify up to three candidate improvements internally, grounded in the observed targeted part.
 4. Choose exactly one candidate only if it is clearly smart, accretive, useful, and compelling for this targeted part now.
-5. If no candidate clears that bar, say so and refrain from proposing a marginal change.
+5. If no candidate clears that bar, say so and do not propose a marginal change.
 
 Selection rules:
 

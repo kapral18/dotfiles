@@ -13,9 +13,9 @@ Every prompt and `-i`/`--url` input is uploaded to Google. That is the point of 
 This is one named image lane, not the default for raster work.
 Load it only when this turn names Nano Banana, `,nano-banana`, Gemini image, Google image gen/edit, or a `gemini-*-image` model.
 
-Out of scope:
+Do not use:
 
-- unnamed image, icon, sticker, illustration, or edit requests: leave this skill unloaded.
+- unnamed image, icon, sticker, illustration, or edit requests: do not load this skill.
 - SVG / vector output: the model returns raster bitmaps only.
 - photos that must not leave the machine: this CLI is cloud-only; stop and use the on-device editor instead.
 

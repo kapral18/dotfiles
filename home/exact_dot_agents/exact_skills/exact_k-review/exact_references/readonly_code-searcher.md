@@ -21,8 +21,8 @@ Load and follow `~/.agents/skills/k-semantic-code-search/SKILL.md` end to end:
 
 ## Hard constraints
 
-- Read-only investigation: stick to reads and non-mutating commands; file edits and state-changing commands are out of scope.
+- Read-only investigation: do not edit files or run state-changing commands.
 - Treat the index as a base snapshot; tie every finding to concrete paths/symbols/snippets.
 
 Return: the selected index (or `none` + reason), the distilled findings tied to paths/symbols, and a `Base context:` line when invoked for a review.
-Return distilled findings only; raw tool dumps stay in the lane.
+Do not return raw tool dumps.

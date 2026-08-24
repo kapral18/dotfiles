@@ -27,7 +27,7 @@ a page/component → UI) and state the assumption at the top of the prototype.
 
 1. **Throwaway from day one, and clearly marked.**
    Locate it close to where it will be used so context is obvious, but name it so a casual reader sees it is a prototype.
-   For throwaway UI routes, obey the project's existing routing convention rather than inventing a new top-level structure.
+   For throwaway UI routes, obey the project's existing routing convention; do not invent a new top-level structure.
 2. **One command to run.**
    Discover the project's existing task runner (`package.json` scripts, `Makefile`, `justfile`, `pyproject.toml`) and add the entry there.
    The user must start it without thinking.

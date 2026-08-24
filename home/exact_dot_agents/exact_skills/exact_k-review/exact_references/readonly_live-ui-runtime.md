@@ -29,7 +29,7 @@ the reviewed PR/head worktree in review mode, or the built/changed worktree in p
 
 ## Target packet
 
-Use the caller-supplied runtime targets when present; they are the only valid source — invented targets are out.
+Use the caller-supplied runtime targets when present; do not invent them.
 
 - Treat the runtime under verification as the runtime that contains the code being verified.
   The controller cwd is only execution context; it is not a target unless it is the same checkout and branch/sha as the code under verification.
@@ -54,14 +54,14 @@ Use the caller-supplied runtime targets when present; they are the only valid so
 - Follow `~/.agents/skills/k-playwriter/SKILL.md` and run `playwriter skill` before checking targets.
 - Use a fresh Playwriter session owned by this worker.
 - Store owned pages under distinct `state` keys (e.g. `state.headPage`, and `state.basePage` only when a base comparison is selected);
-  use a specific key, never generic `page`.
+  do not use generic `page`.
 - Remember that Playwriter sessions isolate `state`, but browser pages are shared.
-- Use only pages this worker created in this session; pages from other sessions or unrelated worktrees stay untouched.
+- Do not reuse pages from other sessions or unrelated worktrees.
 - Close only pages this worker created, or report their URLs in the final evidence.
 - Use Playwriter to check every browser/runtime target in the selected target packet for reachability/readiness.
 - Verify target branch identity with Playwriter evidence where possible.
 - Before any UI observation, verify the target identity from the selected packet.
-  If the target URL resolves to the base/main worktree or to the controller cwd while the runtime under verification is elsewhere, return `Blocked`; continuing on wrong-runtime evidence is invalid.
+  If the target URL resolves to the base/main worktree or to the controller cwd while the runtime under verification is elsewhere, return `Blocked`; do not continue with the wrong-runtime evidence.
 - If readiness or branch identity cannot be established, return `Blocked` with the missing evidence —
   except when the cause is a missing/un-started runtime the packet documents how to start:
   that routes to the runtime-start rung first (start it, then re-check), not to `Blocked`.
@@ -80,14 +80,14 @@ Run readiness before any UI observation.
 - At most one wait-and-observe retry for a missing readiness signal.
 - Stop on a repeated same-URL/same-snapshot observation.
 - Stop on repeated reloads or page instability.
-- Return `Blocked` after the bounded attempts above; keep the retry budget fixed instead of refreshing until the page becomes stable.
+- Return `Blocked`; do not keep refreshing until the page becomes stable.
 - If Playwriter fails before navigation with `browserType.connectOverCDP: Timeout`, replace its relay once with `playwriter serve --host 127.0.0.1 --replace`, then create a fresh session and smoke-test `context.pages()`.
-- If Playwriter fails before navigation for another reason, return `Blocked` with the exact error after that single bounded attempt.
+- If Playwriter fails before navigation for another reason, return `Blocked` with the exact error; do not retry indefinitely.
 
 ## Screenshot & evidence capture
 
 - Prefer selector state, URL, title, and focused DOM/accessibility observations before snapshots or screenshots.
-  Capture full page snapshots/screenshots only when they are needed to decide or explain the finding or proof under capture.
+  Do not capture full page snapshots/screenshots unless they are needed to decide or explain the finding or proof under capture.
 - Capture concrete evidence: URLs, steps, observed state, uncertainty, and screenshots/paths when required by the caller or useful.
 - UI-related review findings that may become drafted feedback after `/k-deep-review` or `live-ui-review` need screenshot proof as supporting evidence.
   Capture the smallest useful screenshot set unless a valid blocker or non-applicability result prevents it.
@@ -95,21 +95,21 @@ Run readiness before any UI observation.
   pre-navigation blockers must record why no screenshot exists.
 - When visual proof is needed, capture the smallest useful screenshot set as Playwriter artifacts.
   Store them in a distinct `/tmp/<folder-name>/` directory — one dedicated folder per single screenshot, per comparison pair (e.g. base + the runtime under verification), or per logically grouped set that proves one thing.
-  Always write screenshots inside a named folder, keeping each unrelated screenshot/pair/set in its own folder and `/tmp` itself free of loose files.
+  Never write screenshots loose in `/tmp`, and never mix an unrelated screenshot/pair/set into the same folder.
   Name the folder for what it captures (the finding, candidate, or acceptance criterion) so sibling sets stay separate.
-  Capture only distinct states; skip repeat navigations and duplicate states.
+  Do not screenshot every navigation or duplicate state.
 - For each screenshot, record a handoff entry with its folder and file path, description, target classification (the runtime under verification, base, or both selected targets), exact URL, the linked candidate/finding or acceptance criterion, suggested placement, md5, and pixel dimensions.
   Include any fidelity note for mocks or partial setup. Preserve handoff files; cleanup applies to seeded runtime data and owned pages.
 - Before returning, self-verify every handoff artifact while the environment is still up: each file exists and is non-empty;
   md5s are pairwise distinct across the handoff set; every capture supporting a finding includes enough surrounding UI to identify the screen, with a rough floor of 600px wide unless the finding is intrinsically about a tiny element, in which case capture both a context shot and the crop; transitions/fades are settled before capture, for example by verifying computed opacity is `1` or using a settled-state wait; and you have viewed/inspected each saved image and confirmed it shows what its caption claims.
   If two claimed moments or states are genuinely pixel-identical, keep one file, merge the captions, and state that explicitly.
   Re-capture immediately on any failure; after teardown, each artifact defect costs a full environment restart.
-- Numeric claims in your report, including timings and counts, must come from measured evidence such as file mtimes, logs, or explicit waits; report only measured numbers.
+- Numeric claims in your report, including timings and counts, must come from measured evidence such as file mtimes, logs, or explicit waits; never report numbers from impression.
   The controller treats unmeasured numbers as unusable.
 - The screenshot handoff is for the controller's upload step only.
   Never upload images or put local paths in GitHub review bodies/comments from this worker, and never add extra comments solely for image paths; when screenshots belong in a PR body, the controller uploads and embeds them via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md` behind explicit user approval.
 - Bound observation to the focused flow that can verify the finding or acceptance criterion.
-- Stay inside that focused flow.
+- Do not wander outside that focused flow.
   After five UI actions for a single finding or criterion, continue only when the next action is specifically tied to it and still inside the selected local/dev safety boundary.
 
 ## Runtime-start rung (the instance itself is absent)
@@ -149,7 +149,7 @@ If an applicable flow reaches an empty state or lacks the data needed to exercis
    - Limit setup recovery to one direct setup path and one named fallback path unless the caller explicitly asks for deeper runtime debugging.
    - If both fail, return `Blocked` with the exact failing request/step, response/error, and the setup needed to resume.
      Do not start broad source searches to debug the runtime unless that source lookup is needed to state the resume instruction.
-6. If faithful setup requires changing the runtime environment in a way this worker cannot safely apply live, surface it as `Blocked` instead of working around it with browser mocks.
+6. If faithful setup requires changing the runtime environment in a way this worker cannot safely apply live, do not work around it with browser mocks.
    Examples include changing how an instance is configured, started, or restarted. Return `Blocked` with:
    - affected target(s): base, the runtime under verification, or both
    - exact runtime prerequisite and the evidence that it is required
@@ -165,7 +165,7 @@ If an applicable flow reaches an empty state or lacks the data needed to exercis
    If target identity is ambiguous or appears non-local/non-dev, return `Blocked` instead of mutating.
 10. Only return `Blocked` for data after the allowed setup ladder is exhausted or unsafe.
     The ladder includes media/fixture inspection, existing-data checks, allowed local/dev runtime setup, selected-target-packet interactive fallback, and last-resort mock consideration.
-    If the blocker is a runtime environment prerequisite, return it as soon as identified, before any continuation to mocks.
+    If the blocker is a runtime environment prerequisite, return it as soon as identified; do not continue to mocks.
     Include the exact setup attempted, the runtime change that would still be required, and why it was not safe/possible in the worker.
 11. Only return `Not applicable` when the changed path/candidate/criterion is not UI/runtime-relevant or the functionality itself is absent from the target surface.
     Missing data is setup work or `Blocked`, not `Not applicable`.

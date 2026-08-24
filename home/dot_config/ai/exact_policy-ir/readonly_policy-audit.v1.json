@@ -13,7 +13,7 @@
       "consumer": "home/exact_dot_agents/exact_skills/exact_k-communication/exact_references/readonly_external-replies.md",
       "risk_tier": "standard",
       "eval_ref": "sop.6.5.external-human-replies.mechanical-only",
-      "text": "### 6.5 External Human Replies\n\nWording of content other humans read is owned by the `k-communication` skill;\nload it before drafting. §6 shape rules do not override its friendly register.\n\n- Choose no reply when it would only restate the thread or add attribution trivia, or turn a casual exchange into an investigation report.\n- Match the surface's register; avoid lab-report phrasing for simple social replies unless requested.\n- Use natural wording, or say that no message is worth sending.\n\n"
+      "text": "### 6.5 External Human Replies\n\nWording of content other humans read is owned by the `k-communication` skill;\nload it before drafting. \u00a76 shape rules do not override its friendly register.\n\n- Choose no reply when it would only restate the thread or add attribution trivia, or turn a casual exchange into an investigation report.\n- Match the surface's register; avoid lab-report phrasing for simple social replies unless requested.\n- Use natural wording, or say that no message is worth sending.\n\n"
     },
     "sop.6.6.examples": {
       "disposition": "retired-by-passing-ablation",
@@ -40,7 +40,7 @@
       "evidence": "minimal edit scope, semantic-delta preservation, no unrelated cleanup/removal without approval, targeted edits/full-rewrite diffing, introduced-only dead-code removal, sibling-consumer projection symmetry, semantic dedupe guard preservation, no unrequested abstractions/features/error handling, simplicity/no behavior loss, and artifact necessity without-it probe requirements were confirmed present in k-code-quality before this pass",
       "rule_sha256": "4b2d1c447aa70c367f9ab15accc59c566befcf15b2f8002e129c0f0dbd2c4f78",
       "eval_ref": "sop.5.code-quality.mechanical-only",
-      "consumer_sha256": "7a18e892c77bfa5289d004f52d0fefd51469058af1a4833570ededd76d995d7d"
+      "consumer_sha256": "d93c9e77af38c6ca8178010cc8028b7f0f7e361f3bd02c019efa28005defb20e"
     },
     "sop.6.5.external-human-replies": {
       "status": "mechanical-only",
@@ -48,7 +48,7 @@
       "method": "mechanical clause-presence sweep (no live model eval available this run)",
       "target_disposition": "skill",
       "consumer": "home/exact_dot_agents/exact_skills/exact_k-communication/exact_references/readonly_external-replies.md",
-      "evidence": "no-reply when restating the thread/attribution trivia/investigation-report, match the surface's register plus no lab-report phrasing for simple social replies, natural wording or no message, and SOP §6 shape not overriding the friendly register were confirmed present in k-communication/references/external-replies.md before this pass; skill Use-when plus a must-load pointer own routing; SOP 3.6 still owns always-on central wording ownership",
+      "evidence": "no-reply when restating the thread/attribution trivia/investigation-report, match the surface's register plus no lab-report phrasing for simple social replies, natural wording or no message, and SOP \u00a76 shape not overriding the friendly register were confirmed present in k-communication/references/external-replies.md before this pass; skill Use-when plus a must-load pointer own routing; SOP 3.6 still owns always-on central wording ownership",
       "rule_sha256": "eeb95ad036a65cb80b6a8bb983e9c6602fdf0e78bfe6cbd7a4f481b7e58f67d3",
       "eval_ref": "sop.6.5.external-human-replies.mechanical-only",
       "consumer_sha256": "1d18b251107fd940575ea28402a24012e66d13ab4623e635465f5c230c75f45a"
@@ -69,7 +69,7 @@
       "method": "user-requested prompt ablation after decision-fallback compression",
       "target_disposition": "retired-by-passing-ablation",
       "consumer": "home/readonly_AGENTS.md",
-      "evidence": "The user requested removing the visible Decision Fallbacks section as self-evident for current models; conflict handling remains in the binding contract as a direct question gate.",
+      "evidence": "The user requested removing the visible Decision Fallbacks section as self-evident for current models; conflict handling remains in the binding contract as a direct question gate. 2026-08-24: the removal caused a measured instruction-following regression, and the user requested restoration; the fallback rules now live in core as `### 1.2 Decision Fallbacks` (rule sop.1.2.decision-fallbacks). This record keeps only the original sop.7.exceptions rule id retired.",
       "rule_sha256": "28742be4e70d066e37f96b7457cd59ef98129b126575b5072995ea3937919e55",
       "eval_ref": "sop.7.exceptions.ablation-passed"
     }

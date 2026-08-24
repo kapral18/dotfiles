@@ -25,8 +25,6 @@ fi
 OPENROUTER_MODEL="deepseek/deepseek-v4-flash-0731"
 OPENROUTER_EFFORT="max"
 OPENROUTER_CONTEXT="short"
-CLAUDE_DEFAULT_CONTEXT_WINDOW=200000
-CLAUDE_EXTENDED_CONTEXT_SUFFIX="[1m]"
 
 args=()
 while [[ $# -gt 0 ]]; do
@@ -108,15 +106,8 @@ export OPENROUTER_API_KEY="$api_key"
 "$OPENROUTER_PRESET_HELPER" xhigh
 OPENROUTER_CONTEXT_WINDOW="$("$OPENROUTER_PRESET_HELPER" --context-window "$OPENROUTER_MODEL" "$OPENROUTER_CONTEXT")"
 readonly OPENROUTER_CONTEXT_WINDOW
-OPENROUTER_LONG_CONTEXT_WINDOW="$("$OPENROUTER_PRESET_HELPER" --context-window "$OPENROUTER_MODEL" long)"
-readonly OPENROUTER_LONG_CONTEXT_WINDOW
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
-OPENROUTER_CLAUDE_MODEL="$OPENROUTER_WIRE_MODEL"
-if [[ "$OPENROUTER_LONG_CONTEXT_WINDOW" -gt "$CLAUDE_DEFAULT_CONTEXT_WINDOW" ]] &&
-  [[ "$OPENROUTER_CONTEXT" == "long" || "$OPENROUTER_CONTEXT_WINDOW" == "$OPENROUTER_LONG_CONTEXT_WINDOW" ]]; then
-  OPENROUTER_CLAUDE_MODEL="$OPENROUTER_CLAUDE_MODEL$CLAUDE_EXTENDED_CONTEXT_SUFFIX"
-fi
-readonly OPENROUTER_CLAUDE_MODEL
+readonly OPENROUTER_CLAUDE_MODEL="$OPENROUTER_WIRE_MODEL"
 readonly OPENROUTER_PI_GPT55_WIRE_MODEL="openai/gpt-5.5@preset/effort-xhigh"
 readonly OPENROUTER_PI_DEEPSEEK_WIRE_MODEL="deepseek/deepseek-v4-flash@preset/effort-xhigh"
 readonly OPENROUTER_PI_SONNET_WIRE_MODEL="anthropic/claude-sonnet-4.6@preset/effort-xhigh"
@@ -125,10 +116,21 @@ readonly OPENROUTER_PI_SONNET_WIRE_MODEL="anthropic/claude-sonnet-4.6@preset/eff
 # that path with the Anthropic Messages schema, usage block included.
 # Claude Code's Agent tool accepts family aliases, not arbitrary OpenRouter model ids. The gate
 # maps Pi's OpenRouter-compatible categories to aliases; these defaults make the aliases resolve to
-# the backend lane models. The client-side effort dial only gates Claude Code's thinking-block
-# handling, and the preset already carries the real effort, so the client dial stays at high to
-# avoid suppressing thinking on lower picks.
-readonly CLAUDE_EFFORT="high"
+# the backend lane models. The OpenRouter preset carries the real effort; the Claude client effort
+# mirrors it when Claude supports the level, with low as the safe client gate for non-thinking presets.
+case "$OPENROUTER_EFFORT" in
+low | medium | high | xhigh | max)
+  CLAUDE_EFFORT="$OPENROUTER_EFFORT"
+  ;;
+none | minimal)
+  CLAUDE_EFFORT="low"
+  ;;
+*)
+  echo "Error: unsupported Claude client effort '$OPENROUTER_EFFORT'; choose: none, minimal, low, medium, high, xhigh, max." >&2
+  exit 2
+  ;;
+esac
+readonly CLAUDE_EFFORT
 export ANTHROPIC_MODEL="$OPENROUTER_CLAUDE_MODEL"
 export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"
 export ANTHROPIC_DEFAULT_SONNET_MODEL="$OPENROUTER_PI_SONNET_WIRE_MODEL"
@@ -137,6 +139,7 @@ export ANTHROPIC_DEFAULT_FABLE_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"
 export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"
 export CLAUDE_CODE_DISABLE_THINKING=1
 export CLAUDE_CODE_EFFORT_LEVEL="$CLAUDE_EFFORT"
+export CLAUDE_CODE_AUTO_COMPACT_WINDOW="$OPENROUTER_CONTEXT_WINDOW"
 unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE
 export AGENT_BAND_SCHEMA_HARNESS="pi"
 export AGENT_BAND_MODEL_FORMAT="openrouter-preset"

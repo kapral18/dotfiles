@@ -7,7 +7,7 @@ description: "Use when entity-level diff, blame, impact, dependency graph, histo
 
 Entity-level Git CLI. Shows what _entities_ changed (functions, classes, methods, structs) instead of what lines changed.
 
-Out of scope (use the named alternative):
+Do not use:
 
 - for merging branches (use the `k-weave` skill)
 - for line-level diffs where entity granularity adds no value
@@ -15,10 +15,10 @@ Out of scope (use the named alternative):
 
 First actions:
 
-1. Resolve the binary explicitly through the chezmoi-managed wrapper, independent of PATH order:
+1. Resolve the binary explicitly through the chezmoi-managed wrapper; do not trust PATH order:
    - `SEM_BIN="$HOME/bin/,sem"; [ -x "$SEM_BIN" ] || { echo "missing ~/bin/,sem; run chezmoi apply --no-tty ~/bin/,sem"; exit 1; }`
    - if `"$SEM_BIN" --version` reports a missing Homebrew formula, install it with `brew install ataraxy-labs/tap/sem`.
-   - Always invoke through `"$SEM_BIN"`, never bare `sem`; GNU parallel can also provide that command name.
+   - Never fall back to bare `sem`; GNU parallel can also provide that command name.
 2. Verify identity before relying on behavior: `"$SEM_BIN" --version` (or `--help`).
 3. Verify you're in a git repo: `git rev-parse --is-inside-work-tree`
 

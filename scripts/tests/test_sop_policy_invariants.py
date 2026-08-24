@@ -63,8 +63,8 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "home/readonly_AGENTS.md",
             "Every implementation summary must include: `Compatibility impact: none | removed (requested) | kept existing (requested)`",
             "with no shim, alias, wrapper, or deprecation path",
-            "Build further reasoning only on verified external behavior",
-            "label hypotheses explicitly and keep them out of downstream gating",
+            "Do not build further reasoning on unverified external behavior",
+            "label hypotheses explicitly and do not let them gate downstream steps",
             "Any locally verifiable assumption or guess must be verified via probes",
             "Resolve material unknowns before proceeding",
             "keep `/tmp` clones for reuse",
@@ -84,14 +84,14 @@ class TestSopPolicyInvariants(unittest.TestCase):
     def test_global_sop_keeps_workflow_and_state_machine_gates(self):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
-            "load only that spec",
+            "do not load specs broadly",
             "Select exactly one topic",
             "Keep topics broad/stable, avoid topic explosion",
             "conflicts with its target, action, or success and lacks a continuation signal",
             "ask the single most branch-eliminating question",
             "repeat until forks are empty and success criteria are testable",
             "For non-trivial or risky work, make the plan and per-step verification explicit enough to test",
-            "Restore alignment before any further speculative change",
+            "Do not make further speculative changes until alignment is restored",
             "Reframe tasks into observable checks when practical",
             "bug fixes get reproducing tests",
             "A repo-external `,proof` ledger is a durable receipt, not verification itself",
@@ -118,7 +118,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "home/exact_dot_agents/exact_skills/exact_k-proof/readonly_SKILL.md",
             "Use `,proof` only when at least one receipt trigger applies",
             "No other task property is a trigger by itself",
-            "checks that are already sufficient inline stay inline rather than being repackaged into a late ledger",
+            "Do not create a ledger near the final answer merely to repackage checks that are already sufficient inline",
             "Finalize the receipt",
             'tool_version: ",proof 0.2.0"',
         )
@@ -181,25 +181,25 @@ class TestSopPolicyInvariants(unittest.TestCase):
     def test_global_sop_keeps_side_effect_publication_and_git_gates(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-git/readonly_SKILL.md",
-            "Run `git commit` only when the user explicitly requested a commit in the current conversation",
+            "Never run `git commit` unless the user explicitly requested a commit in the current conversation",
             "Content approval is not commit authorization",
-            "`git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, or `git merge <remote>/<branch>` before pushing only when the user asks for it",
+            "Never run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, or `git merge <remote>/<branch>` automatically before pushing",
             "If push is rejected for divergence, non-fast-forward, lease failure, or diverged history, stop and ask how to proceed",
-            "Keep configured remote URLs out of output; always redact them",
+            "Never print configured remote URLs verbatim",
             "Resolve repository and PR identity with platform metadata (`gh repo view`, `gh pr view`) and list remote names with `git remote`",
             "Redaction is not permission to inspect credential-bearing configuration",
         )
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
-            "Run `git commit` only when the user explicitly requested a commit in the current conversation",
+            "Never run `git commit` unless the user explicitly requested a commit in the current conversation",
             "content approval is not commit authorization",
             "git push --force-with-lease",
             "Push the branch as-is. Every pre-push or history reconcile needs an explicit user request for that exact action",
             "If push is rejected for divergence, non-fast-forward, lease failure, or diverged history, stop and ask how to proceed",
             "If a human will see the result, draft it, show the exact payload and target, and wait for explicit approval before sending",
-            "publish only after that explicit approval, never spontaneously — even to bots",
+            "Human-authored replies/resolves are supervised; no auto-send. Never publish spontaneously, even to bots.",
             "Classify author type from platform API evidence, not display-name heuristics",
-            "Classify author type from platform API evidence, not display-name heuristics; evidence, not guessing, decides",
+            "Classify author type from platform API evidence, not display-name heuristics. Verify author type from platform evidence; do not guess",
             "Without a verified domain overlay, classify bots only from platform evidence",
             "does not restrict read-only inspection, local working-tree edits, or `/tmp` work",
             "Before any action or side effect that touches file paths in a repo with a CODEOWNERS file",
@@ -224,10 +224,25 @@ class TestSopPolicyInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
-            "Skills route authority: generic skills own portable mechanics; verified domain overlays own repo/org/product policy.",
+            "Skills are binding by intent: generic skills own portable mechanics; verified domain overlays own repo/org/product policy.",
             'Answer questions before acting; treat "can you check/fix/change" as action.',
+            "Think from first principles; treat unverified ideas as hypotheses until probed or sourced.",
             "Choose the narrowest complete path.",
             "Include impacted places needed for correctness; push back on unnecessary scope",
+            "Use deeper coverage by default for non-trivial work.",
+            "Use the light path only after proving the work is local, reversible, observable, and semantically simple.",
+            "Treat any Unknown as a deeper-coverage trigger.",
+            "Low-risk proof requires all four conditions:",
+            "local = only the requested surface changes;",
+            "reversible = no durable or external side effect;",
+            "observable = a focused local check can catch the failure;",
+            "simple = no ambiguous semantics, branching workflow, hidden consumer, or shared contract.",
+            "Deeper coverage means more source reads, counterexamples, preserved-behavior checks, and relevant skills.",
+            "### 1.2 Decision Fallbacks",
+            "If asked a question after making a change, explain reasoning and leave the change in place unless a revision is requested.",
+            'keep "this is correct as-is" available as the honest conclusion',
+            "unnecessary churn is a defect, not diligence",
+            "When uncertain whether to answer or act, answer first, then ask if action is needed.",
             "Handle secrets by reference: keep plaintext credentials out of commits, files, and visible output.",
             "Use a neutral factual tone; skip pandering, apologies, and unnecessary emotional commentary.",
             "Minimize reading load while preserving the facts that matter",
@@ -249,14 +264,13 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Ask one clarifying question when a remaining fork blocks progress",
             "Code citation format: `startLine:endLine:filepath`",
             "Think laterally about root causes and indirect effects",
-            "Verify beyond the first plausible explanation before concluding",
+            "Do not stop at the first plausible explanation; verify thoroughly",
             "surface the conflict and ask one direct question",
             '"Concise" means unpadded, not shallow.',
         )
         self.assert_file_not_contains(
             "home/readonly_AGENTS.md",
             "## 6. Decision Fallbacks",
-            "Treat unnecessary churn as a defect, not diligence",
             "### 6.6 Examples",
             "Use examples only when they replace a longer explanation",
         )
@@ -292,7 +306,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
             "Recall first with `,ai-kb search` when prior knowledge could help",
-            "guesses and session-only notes stay out",
+            "never store guesses or session-only notes",
             "Mid-task decisions, ideas, and unverified constraints worth keeping go to `,agent-memory note",
             "At the end of any substantive turn, silently self-check whether a durable verified reusable insight was produced",
             "not a checkpoint and not a reason to stop early",
@@ -356,6 +370,47 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "shared semantic-delta contract instead of adding per-domain checklists",
         )
 
+    def test_instruction_boundary_skill_replaces_affirmative_phrasing(self):
+        self.assertFalse(
+            (REPO / "home/exact_dot_agents/exact_skills/exact_k-affirmative-phrasing/readonly_SKILL.md").exists(),
+            "old k-affirmative-phrasing skill should be removed",
+        )
+        self.assert_file_contains(
+            "AGENTS.md",
+            "Instruction boundaries (mandatory for instruction text)",
+            "exact_k-instruction-boundaries/readonly_SKILL.md",
+            "default to hard standalone prohibitions for forbidden behavior",
+            "add affirmative wording only when it sharpens execution",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-instruction-boundaries/readonly_SKILL.md",
+            "name: k-instruction-boundaries",
+            "Default to hard boundaries for forbidden behavior",
+            "Do not soften a ban into a preference, implication, or positive-only sentence",
+            "Preserve standalone prohibitions when the forbidden set is clearer than the allowed set",
+            "Add affirmatives only where they reduce ambiguity",
+            "Use boundary/action/verification for high-risk gates",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-writing-great-skills/readonly_SKILL.md",
+            "load `~/.agents/skills/k-instruction-boundaries/SKILL.md`",
+        )
+        self.assert_file_contains(
+            "docs/topics/ai-assistants/skills/repo-workflow-and-code-intelligence.md",
+            "## `k-instruction-boundaries`",
+            "hard prohibitions by default",
+        )
+        self.assert_file_not_contains(
+            "AGENTS.md",
+            "k-affirmative-phrasing",
+            "Affirmative phrasing (mandatory for instruction text)",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-writing-great-skills/readonly_SKILL.md",
+            "k-affirmative-phrasing",
+            "phrasing instructions affirmatively instead of as prohibitions",
+        )
+
     def test_global_sop_does_not_carry_skill_routing_triggers(self):
         # Routing triggers live in each skill's `description` frontmatter (which harnesses
         # pass to the model); the model decides when to load. The SOP keeps only fail-closed
@@ -392,14 +447,14 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Match local style, structure, terminology, formatting, and contract strength",
             "Follow `.editorconfig` and existing project conventions",
             "## Secondary Skill Escalation",
-            "Load secondary skills only after read/diff evidence proves the surface is in scope.",
+            "Do not load secondary skills until read/diff evidence proves the surface is in scope.",
             "When invoked for a broad edit, first identify the concrete changed/read files and choose at most the relevant secondary skill(s).",
-            "Load React/web/test/design secondaries only for surfaces the evidence already puts in scope, never because they might become relevant later.",
+            "Do not load React/web/test/design secondaries merely because they might become relevant later.",
             "Load `~/.agents/skills/k-code-quality-react/SKILL.md` when changed/read files are React, JSX, TSX, hooks, or client-side component state.",
             "Load `~/.agents/skills/k-code-quality-tests/SKILL.md` when changed/read files are tests, fixtures, mocks, assertions, or test plans.",
             "Load `~/.agents/skills/k-code-quality-web/SKILL.md` when changed/read files touch browser-rendered HTML, CSS, layout, visual states, accessibility, or focus behavior.",
             "Load `~/.agents/skills/k-codebase-design/SKILL.md` when the task designs a module interface, decides where a seam goes, or aims to make code more testable.",
-            "`as any` and unnecessary type assertions hide real type errors",
+            "Use precise TypeScript types; `as any` and unnecessary type assertions hide real type errors.",
             "Use `snake_case` for new files unless the project dictates otherwise",
             "Use spaced literals: `{ key: 'value' }`, `[ 1, 2, 3 ]`",
             "Prefer ESM named imports",

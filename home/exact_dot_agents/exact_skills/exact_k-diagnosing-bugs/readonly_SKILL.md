@@ -11,7 +11,7 @@ The SOP owns the surrounding gates: verification loops (§3.5), runtime truth (�
 This skill is the debugging front-end that forces a **tight** feedback loop before any theorising, then routes into those gates.
 When you write the regression test, load `~/.agents/skills/k-code-quality-tests/SKILL.md`.
 
-## Skip this skill for
+## Do not use
 
 - trivial one-line fixes where the cause is already obvious from a stack trace — just fix it
 - as a substitute for the SOP's runtime-truth chain when the question is "is X set up correctly" rather than "why is X broken"
@@ -74,7 +74,7 @@ Run the loop, watch it go red.
 Confirm it produces the failure mode the **user** described (not a nearby one —
 wrong bug, wrong fix), that it reproduces across runs, and that you have captured the exact symptom.
 Then shrink to the **smallest scenario that still goes red**: cut inputs, callers, config, data, and steps one at a time, re-running after each cut.
-Done when every remaining element is load-bearing — removing any one makes it go green. Proceed only once reproduced **and** minimised.
+Done when every remaining element is load-bearing — removing any one makes it go green. Do not proceed until reproduced **and** minimised.
 
 ## Phase 3 — Hypothesise
 
@@ -85,7 +85,7 @@ Include a **negative control**: name an input your explanation calls irrelevant 
 if perturbing that "irrelevant" input flips the verdict, the explanation is not the real cause.
 A fluent, confident rationale is still a hypothesis — the loop and the negative control are the proof, not the narrative.
 Include the ranked list in the next user-visible message (or final report); they often re-rank it with domain knowledge.
-Mid-turn text may never reach the user, so proceed with testing on your own ranking rather than waiting on it.
+Mid-turn text may never reach the user, so never wait on it — proceed with testing on your own ranking.
 
 ## Phase 4 — Instrument
 

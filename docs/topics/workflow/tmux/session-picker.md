@@ -29,21 +29,21 @@ Rows are de-duplicated by path with priority `session > worktree > dir`.
 
 ## Important bindings
 
-| Key               | Action                                         |
-| ----------------- | ---------------------------------------------- |
-| `enter`           | Switch to or create/focus the selected session |
-| `tab`             | Mark/unmark row for batch actions              |
-| `ctrl-x`          | Kill selected sessions with optimistic hide    |
-| `alt-x`           | Remove selected worktrees with optimistic hide |
-| `ctrl-s`          | Enter send-command mode for selected rows      |
-| `alt-c`           | Create a worktree off the selected repo        |
-| `alt-o`           | Cycle all → dirty → review-needed → all        |
-| `ctrl-r`          | Quick refresh plus background full refresh     |
-| `alt-r`           | Force full refresh                             |
-| `alt-p` / `alt-i` | Open linked PR / issue in the browser          |
-| `alt-g`           | Switch to GitHub picker                        |
-| `ctrl-/`          | Toggle preview                                 |
-| `?`               | Show keybinding help in the preview            |
+| Key               | Action                                                          |
+| ----------------- | --------------------------------------------------------------- |
+| `enter`           | Switch to or create/focus the selected session                  |
+| `tab`             | Mark/unmark row for batch actions                               |
+| `ctrl-x`          | Kill selected sessions with optimistic hide                     |
+| `alt-x`           | Remove selected worktrees; dirty/unpushed rows ask before force |
+| `ctrl-s`          | Enter send-command mode for selected rows                       |
+| `alt-c`           | Create a worktree off the selected repo                         |
+| `alt-o`           | Cycle all → dirty → review-needed → all                         |
+| `ctrl-r`          | Quick refresh plus background full refresh                      |
+| `alt-r`           | Force full refresh                                              |
+| `alt-p` / `alt-i` | Open linked PR / issue in the browser                           |
+| `alt-g`           | Switch to GitHub picker                                         |
+| `ctrl-/`          | Toggle preview                                                  |
+| `?`               | Show keybinding help in the preview                             |
 
 The GitHub picker reuses many keys but rebinds `alt-r` to quote-reply. See [GitHub picker bindings](github-picker.md#important-bindings).
 

@@ -75,25 +75,25 @@ The controller owns:
 - applying fixes, drafting payloads, or touching GitHub only after the relevant `k-review`/`communication`/`github`/`git` gates
   - load `k-communication` before wording any human-visible draft
 
-Before fan-out, the controller loads at most one router section of the `k-review` skill, never the full skill.
+Before fan-out, the controller must not load or run the full `k-review` skill.
 
 That one section:
 
 - Resolve `authorship` using the review router's Role Detection procedure (`~/.agents/skills/k-review/SKILL.md`).
 - Do this before any worker launch because the PR necessity gate and final act phase depend on that value.
-- Derive authorship from Role Detection evidence; the change being checked out locally proves nothing about authorship.
+- Do not infer authorship from the change being checked out locally.
 - A branch tracking another person's fork is `other`.
 - Commits authored by someone else are `other`.
 - If authorship cannot be verified, it is `unknown`.
 
 Before fan-out, the controller may only gather route/scope, authorship, fix authorization, PR metadata needed for routing, and the base-context preflight.
-Leave implementation review analysis to the reviewer workers; the controller starts none of it before reviewer launch.
+Do not run implementation review analysis in the controller before reviewer launch.
 That includes semantic code search (`semantic_code_search`, `symbol_analysis`, `map_symbols_by_query`, `read_file_from_chunks`), coverage checklists, and candidate-finding investigation.
 `list_indices` is allowed only to earn the `Base context:` line.
 
 If a local-changes flow is attached to, assigned from, or adopted from a PR and the controller would use PR intent/scope to keep, drop, or fix a finding, treat that as a blocking intent dependency.
 Resolve it through the PR necessity/intent audit with the complete artifacts, or carry it as explicit uncertainty.
-Act only from complete, current PR artifacts; stale PR body or commit-title evidence alone is insufficient.
+Do not act from stale PR body or commit-title evidence alone.
 
 After workers return, the controller may consult only the minimum relevant review references for:
 
@@ -125,7 +125,7 @@ Reviewer workers own the full investigation methodology.
 The active harness owns subagent discovery and invocation.
 
 - Read `~/.agents/skills/k-review/references/runtime-harnesses.md` only for capability caveats.
-- Use only the custom-agent layers the harness actually exposes.
+- Never invent a custom-agent layer the harness does not expose.
 
 ## Default orchestration
 
@@ -144,18 +144,18 @@ Start a later phase only after the current phase returns; the final adversarial 
 In blocking phases, wait for completion notifications or use the harness's synchronous/blocking mechanism instead of polling background workers with long waits just to check status.
 If the harness cannot await background workers by id (for example Cursor), apply `runtime-harnesses.md`;
 launch the worker as the harness's real background subagent, then wait only through a harness-native subagent completion signal.
-Wait on subagents only through harness-native completion signals, never via blind fixed-interval sleep loops.
+Never loop blind fixed-interval sleeps waiting on a subagent.
 The same rule applies after `write_agent` follow-ups for addenda or reconciliation checks:
 send the follow-up, state that the phase is waiting only when there is observable worker progress, and end the turn unless the worker has already completed.
-The controller may read completed phase outputs, and performs later-phase analysis only after the current phase returns.
+The controller may read completed phase outputs, but it must not perform later-phase analysis while the current phase is still running.
 
 ### Worker lifecycle and progress truth
 
 A `write_agent` delivery acknowledgment is not progress.
-Narrate a background worker as running, working, or testing only when there is observable evidence:
+Never narrate a background worker as running, working, or testing unless there is observable evidence:
 artifact paths appearing, relevant processes still running, or a `read_agent` turn with content.
 If a worker turn returns a request-too-large/context-overflow error, or `read_agent` shows an empty response turn with no artifacts or processes, treat that worker context as dead.
-Instead of retrying into it, respawn a fresh worker with a tight self-contained packet or take over inline.
+Do not retry into it. Respawn a fresh worker with a tight self-contained packet or take over inline.
 Environment-heavy workers restart their environment on each turn anyway, so a fresh worker loses no useful runtime continuity.
 After three follow-up tasks to the same background worker, prefer respawn-fresh over further reuse unless the worker has a measured continuity need and still has observable progress.
 Any numeric or behavioral claim sourced from worker prose is a self-report, not evidence.
@@ -188,7 +188,7 @@ The fresh-eyes phase is not `n/a`: named fresh-eyes profiles and generic fresh-e
    - lane/verifier models: the review-model resolver values rendered into the deployed profiles;
      worker selection lines emit `model_required=<resolved value|inherit|default>` and the launch-confirmed `model_used`
 
-   Resolve `authorship` via the review router's Role Detection. Keep worker review analysis in the workers, out of the controller.
+   Resolve `authorship` via the review router's Role Detection. Do not duplicate worker review analysis in the controller.
 
 Resolve `fix_authorized` (the working-tree-edit permission for this run) once here, alongside `authorship`.
 It is `yes` when any of these hold:
@@ -212,7 +212,7 @@ Read-only reviewer workers run with MCP/SCSI disabled and structurally cannot ru
 You MUST invoke `list_indices` yourself, trying both `scsi-main` and `scsi-local`.
 Select the repo-matching index or prove none exists, and only then emit the `Base context:` line.
 The line must use the real `<reason>`: `SCSI used` / `not indexed` / `tools unavailable` / `user-selected none`.
-Emit a `Base context: SCSI=none` line only when you earned it by running `list_indices`.
+Never assert a `Base context: SCSI=none` line that you did not earn by running `list_indices`.
 If your own runtime also blocks `list_indices`, say so explicitly as `tools unavailable` rather than implying the gate ran.
 Keep the base-context preflight to base context only: run `semantic_code_search`, symbol analysis, code-chunk reads, broad code investigation, and finding construction only after reviewer workers launch.
 
@@ -241,7 +241,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      - mode is `local_changes.md`,
      - the local changes are attached to, assigned from, or adopted from a PR, and
      - PR intent/scope artifacts are needed to decide whether a local change is correct, stale, or fixable.
-   - Invoking `/k-deep-review` is the request for this PR meta-audit; a second user opt-in is unnecessary.
+   - Invoking `/k-deep-review` is the request for this PR meta-audit; do not require a second user opt-in.
    - Skip it for local changes and self-authored PRs only when PR intent/scope is not needed for controller judgment.
    - This worker is read-only and evidence-only.
    - Give it the scope packet plus the PR URL/number, base/head refs, changed paths, directly referenced issues/PRs, and any already-known user constraints.
@@ -274,13 +274,13 @@ The measured reason for this controller cache is concrete: one real review had 4
      - Launch one to three sighted lanes by default.
        Use four or five only when the user explicitly asks for maximum rigor or when multiple high-risk classes are present at once (security/auth, persisted data/migration, public API, state-machine behavior, deletion/replacement, or user-visible product flow).
      - Paste each selected lane's `Lens skill` line and `Checks` list verbatim into that worker's scope packet.
-       Workers load only their pasted lane entry, never `lanes.md`; pasting the entry costs a few lines instead of the whole registry.
+       Workers never load `lanes.md`; pasting the entry costs a few lines instead of the whole registry.
      - If more lenses are implicated than the budget allows, fold the extras into the closest launched lane as named secondary emphases and say which were folded.
      - State the roster and the scope-level evidence for each selected lane in the output.
    - Run any repo-wide suite, full build, or whole-suite test run **once here**, before the launch batch, and put the result in every scope packet.
-     Lanes are instructed to reuse shared work rather than repeat it; if the controller skips it, no lane covers it.
+     Lanes are instructed not to repeat shared work; if the controller skips it, no lane covers it.
    - Lane model selection is declarative, never steered at runtime: every repo-owned review profile's `model` frontmatter is rendered through `review-agent-model.partial` from the chezmoi model data (a concrete id, `inherit`, or omitted for the harness config default).
-     The controller launches named profiles as-is with zero lane model overrides;
+     The controller launches named profiles as-is and never passes lane model overrides;
      generic fresh-eyes launches pass the same resolved lane value as the profile-equivalent model because they cannot use a context-bearing reviewer profile.
      A wrong or stale model is fixed in the registry/bands, not the launch.
      The angles are this phase's diversity axis; cross-family checking is owned by the adversarial verification phase.
@@ -297,7 +297,7 @@ The measured reason for this controller cache is concrete: one real review had 4
    - Give each worker the scope packet and one angle from the roster above.
    - If `runtime-harnesses.md` says the active harness cannot fan out from the current context, run them as that file directs and state why.
    - This phase is blocking as a phase.
-     After the reviewer workers are launched, start adversarial verification, live UI verification, findings audit, or controller judgment only when every launched lane's output is available, fresh-eyes included when it was launched.
+     After the reviewer workers are launched, do not start adversarial verification, live UI verification, findings audit, or controller judgment until every launched lane's output is available, fresh-eyes included when it was launched.
    - Keep the parallel lanes concurrency-safe:
      - Prefer file reads, local source inspection, context-pack reads, `git show`/`git diff` reads, targeted line-bounded historical archaeology (`git blame -L`, `git log -n 5 -L`), isolated `/tmp` reproductions, and verification commands.
        The verification commands should improve finding validity or coverage.
@@ -314,7 +314,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      - Blindness is this lane's diversity axis.
        Its packet is only the diff scope (base ref, changed paths, or an explicit diff command), withholding the PR number/title/body, commit messages, issue text, thread content, prior findings, and controller narrative.
      - Launch mechanics, allowed reads, and the worker selection line fields are owned by `fresh-eyes.md`;
-       launch it as a generic worker rather than through the named reviewer profiles, which preload the `k-review` skill and PR context.
+       do not launch it through the named reviewer profiles, which preload the `k-review` skill and PR context.
      - This lane is part of the phase-3 barrier: live UI, findings audit, final adversarial verification, and judgment wait for it like any reviewer output.
 
 3. **Merge candidates and run conditional live UI verification.**
@@ -324,7 +324,7 @@ The measured reason for this controller cache is concrete: one real review had 4
    - Immediately after lane merge/dedup, and after the blocking PR necessity gate has passed when it applies, apply a read-only controller parity filter to replacement/test-migration candidates:
      - apply the Replacement/Migration Parity Gate from `judging_core.md` to replacement/test-migration candidates
      - drop candidates classified as `preserved_limitation` or `prose_drift`
-     - treat live-UI applicability as coming from runtime-reaching code; test-only UI code by itself stays out of scope
+     - do not treat test-only UI code as live-UI applicability by itself
    - Launch `live-ui-review` when changed paths or any merged candidate touch UI/runtime behavior and runtime evidence is applicable.
      For replacement/test-migration candidates, only `parity_gap`, `new_regression`, and `scope_expansion` can be kept candidates for this trigger.
    - A deterministic, unit, integration, or other-layer proof does NOT discharge a live-UI trigger when the runtime is startable.
@@ -332,7 +332,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      these are corroborating evidence, not substitutes for live verification.
      Once the trigger fires, skipping live UI is valid only via a packet-defined blocker.
      Valid blockers include a read-only/Ask-mode harness, an unstartable runtime, or another blocker the selected target packet recognizes.
-     Skip only via a packet-defined blocker, even when a non-runtime proof already exists or runtime evidence is judged "unlikely to change the verdict".
+     Do not skip because a non-runtime proof already exists or because runtime evidence is judged "unlikely to change the verdict".
      If the runtime is startable (runtime-start rung), start it and verify.
    - Hard runtime read-only/sandbox modes are not the review safety boundary.
      Use harness permissions that allow the lane's permitted verification tools, and enforce no-mutation behavior through the role contract.
@@ -356,11 +356,11 @@ The measured reason for this controller cache is concrete: one real review had 4
      - `controller_cwd` is where the review controller happens to run; it is not automatically the PR/head runtime.
      - `reviewed_head_worktree` is the checkout that contains the code under review for the PR/head branch/sha.
      - For local-changes mode, the current worktree may be `reviewed_head_worktree` only when it contains the changed code being reviewed.
-     - For an explicit PR/branch review invoked from another checkout (especially a base/main checkout), use `controller_cwd` as the PR/head target only when it is checked out to the reviewed PR/head branch/sha.
+     - For an explicit PR/branch review invoked from another checkout (especially a base/main checkout), do not use `controller_cwd` as the PR/head target unless it is checked out to the reviewed PR/head branch/sha.
        Reuse or create a worktree for the reviewed PR/head branch before live UI, or return a target-worktree blocker with the exact command/setup required.
      - Base/main is comparison-only: resolve/start a base target only when a distinct `reviewed_head_worktree` exists and the target packet requires base-vs-head comparison.
      - Identify which running runtime is head vs base only from the target packet's registry/discovery keyed by worktree path;
-       Identify head vs base only that way; probing a port (e.g. `curl localhost:5601`) silently mistakes an already-running base/main stack for the head runtime.
+       never decide head-vs-base by probing a port (e.g. `curl localhost:5601`), which silently mistakes an already-running base/main stack for the head runtime.
    - Resolve required runtime config once, before the first `live-ui-review` launch:
      from the changed paths and kept candidates, determine any runtime/feature-flag settings the path under review needs to be reachable.
      Pass them to the worker so the runtime is started correctly the first time instead of started default and reconfigured after a blocker.
@@ -369,7 +369,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      keep specific flag names and values in the packet/overlay, not here. When none are needed, pass an empty set.
    - Include the selected target/preflight packet and the resolved required runtime config in the worker prompt so the worker starts with it instead of rediscovering it.
    - Windows/VirtualBox coverage is out of scope for this flow: `live-ui-review` verifies the local browser only.
-     When the user explicitly wants Windows/VirtualBox coverage too, add the manual `~/.agents/skills/k-live-ui-windows/SKILL.md` skill to this turn's work by hand; explicit user request is the only trigger, PR/issue context is insufficient.
+     When the user explicitly wants Windows/VirtualBox coverage too, add the manual `~/.agents/skills/k-live-ui-windows/SKILL.md` skill to this turn's work by hand; never infer it from PR/issue context.
    - It returns one of:
      - `Not applicable`
      - comparison evidence with `ui_evidence_artifacts`
@@ -385,7 +385,7 @@ The measured reason for this controller cache is concrete: one real review had 4
    - Always audit kept reviewer findings (fresh-eyes clarity candidates included), worker-reported `verification_needed`, live UI evidence/artifacts/blockers or skip reason, and kept PR necessity draft concerns.
      Include only PR necessity concerns kept after the greenlight gate.
    - Maintain a verification ledger for every worker-reported `verification_needed` and every live UI / PR necessity blocker that can affect keep/drop/action.
-     The findings audit may recommend dispositions, but every ledger item must stay recorded until its fork is resolved with evidence, not assumed away.
+     The findings audit may recommend dispositions, but it must not erase a ledger item by assuming one branch of an unresolved fork.
    - If two or more reviewer lanes report the same or overlapping root cause, treat that as a merge/deduplication task, not as evidence that the issue is unnecessary.
      Collapse duplicates into one candidate and keep verifying/judging it unless a hard drop rule below is proven.
    - Inline the audit in the controller when the remaining set is trivial:
@@ -419,7 +419,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      Report `families=cross` only when the resolved verifier model is genuinely a different family than its lane model.
      Report `families=same (reduced independence)` when the resolver carries `verifier_status: reduced_independence` for a deliberate same-family capability-first pairing.
      Report `families=same (degraded)` when the harness cannot field a second family (`verifier_status: degraded`, `inherit`, or single-vendor surface).
-     Degradation or reduced independence must be reported, never silent; run the phase even when cross-family is unavailable.
+     Degradation or reduced independence must be reported, never silent; do not skip the phase because cross-family is unavailable.
    - Verdicts are evidence, not decisions: when recording each `confirmed` / `refuted` / `undecidable (needs <check>)` in the verification ledger, check that a `refuted` verdict's evidence addresses the candidate's actual claim; record it as `undecidable` otherwise.
      "Non-refuted" downstream means not validly refuted after that check.
 
@@ -427,7 +427,7 @@ The measured reason for this controller cache is concrete: one real review had 4
   These are the verifier's only look at the code, so keep them despite arriving late;
   they have also not passed the findings audit, so audit them before judgment.
   Run the `judging_core.md` Findings-Set Audit over them inline, then merge the survivors into the kept set.
-  Report how many the sweep produced and how many survived. The verifier runs once; its own sweep items get only the inline re-audit.
+  Report how many the sweep produced and how many survived. Do not relaunch the verifier over its own sweep items.
 
 1. **Aggregate.**
    Combine `pr-necessity-auditor` greenlight/skip status, each angle lane's output, fresh-eyes output or its skip reason, the verification ledger, live UI evidence/status/artifacts, findings audit result, and final adversarial verification verdicts/family status.
@@ -483,14 +483,14 @@ The measured reason for this controller cache is concrete: one real review had 4
    - `fix_authorized: yes` (own / assigned / adopted PR, or local-changes self flow):
      - apply the selected fixes in the working tree; no separate "fix" keyword is required
      - then run the post-act verification phase (an adopted/assigned PR is a change-producing flow;
-       run the fix-diff Post-Review Stage even though the PR was originally other-authored)
+       do not skip the fix-diff Post-Review Stage just because the PR was originally other-authored)
      - for PR-fix/thread modes, still draft thread replies/suggestions per `pr_fix.md` for anything not fixed in code;
        human-visible publishing (commit/push/post/resolve) stays on its own explicit-approval gate
    - `fix_authorized: no` (`authorship: other`/`unknown`, no assignee/takeover signal):
      - draft public-ready comments/suggestions only: no code edits, no fixes run, no posting
 4. **Post-act verification (only when the working tree was edited this flow).**
    This phase is mandatory after any applied fix from the Act step, including self-review and adopted/assigned PR takeovers.
-   Declare the change done only after this phase; the final summary is a report of it, not a substitute for it.
+   Do not declare the change done, and do not treat the final summary as a substitute for this phase.
    Because the working tree was edited, `fix_authorized` is `yes`, which carries full verification-mutation permission:
    bootstrap/install (`yarn kbn bootstrap` and equivalents), code generation, SCSI, `/tmp` repros, and re-running gates are all in-bounds here.
    Run a fix -> verify -> fix -> verify loop until the gates are green or a genuine blocker remains.
@@ -500,24 +500,24 @@ The measured reason for this controller cache is concrete: one real review had 4
      - If the gates cannot run yet because the environment is not prepared (e.g. repo not bootstrapped, deps not installed):
        prepare it (run `yarn kbn bootstrap` / the repo's install/setup) and then run the gates.
        Not-yet-bootstrapped is a setup step to perform, not a reason to stop, because the flow is fix-authorized.
-     - If a gate fails or types get worse: fix it in the working tree and re-run (the fix -> verify loop), continuing past every red gate until green or blocked.
+     - If a gate fails or types get worse: fix it in the working tree and re-run (the fix -> verify loop), do not stop at the first red gate.
      - Only treat it as a blocking stop-and-ask when setup itself fails or is impossible (bootstrap errors out, toolchain genuinely unavailable in this environment, or commands are undiscoverable after inspecting repo sources): then state exactly what failed, the evidence, and the exact command(s) for the user.
-       Report an un-run gate as an open blocker with the exact command; a closing summary presents verification as complete only when the gates ran.
+       Never fold an un-run gate into a closing summary as if verification were complete.
    - **Fix-diff Post-Review Stage (the four dimensions).**
-     Run the Post-Review Stage in `~/.agents/skills/k-review/references/judging_core.md` with the **fix diff** as the subject (this flow's `git diff` / staged set / commit range), always that fix diff rather than the original PR diff.
+     Run the Post-Review Stage in `~/.agents/skills/k-review/references/judging_core.md` with the **fix diff** as the subject (this flow's `git diff` / staged set / commit range), never the original PR diff.
      This is the controller's own work; the pre-action controller findings audit phase audits candidate findings and does NOT replace it.
      Apply the four canonical dimensions by name — redundancy, verbosity, semantic + logical duplication, gaps —
      anchor each finding in an exact location, resolve each in the working tree, and re-run the quality gates if the cleanup touched code.
    - **Resolve carried `verification_needed`.**
      For every `verification_needed` kept through judgment, make and report a per-item decision:
      either run the serial non-mutating/heavy check now, or explicitly carry it as a stated blocker with the reason it was not run.
-     Give every kept `verification_needed` a decided state: run or explicitly carried as a blocker.
+     Do not leave a kept `verification_needed` in an undecided state.
    - Report this phase in the Output `Post-act verification:` line: gates run/blocked (with command evidence or the exact blocker), fix-diff Post-Review Stage result per dimension (clean or what was cleaned), and each `verification_needed` decision.
 
 ## Premise corrections and completion gate
 
 If the user supplies new context that changes the target, intent, accepted behavior, or relevant artifacts after `/k-deep-review` has started or after it has produced a conclusion, rebuild the scope packet and restart from the earliest invalidated phase.
-If the controller intentionally leaves `/k-deep-review` mode for direct verification/editing, state that downgrade explicitly before making edits, and treat the stale deep-review judgment as superseded rather than a completed flow result.
+If the controller intentionally leaves `/k-deep-review` mode for direct verification/editing, state that downgrade explicitly before making edits and do not reuse the stale deep-review judgment as if the flow remained complete.
 
 Declare `/k-deep-review` complete only when every decisive verification-ledger item, intent dependency, pending-review reconciliation blocker, required live-UI trigger, and post-act verification item is resolved or carries a valid blocker.
 The final output may report blockers or remaining uncertainty, but it presents the flow as completed only when no unresolved item can change the action or verdict.
@@ -552,7 +552,7 @@ Controller validation: reject and rerun any `live-ui-review` result that:
 - omits applicability, exact URLs checked, browser preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and blockers/uncertainty
 - omits the selected `target_packet` source, including overlay source when an overlay supplied the packet
 
-Accept without rerun a result that reports a valid Playwriter harness blocker:
+Do not reject or rerun a result that reports a valid Playwriter harness blocker:
 
 - read-only/Ask-mode blocked Playwriter
 

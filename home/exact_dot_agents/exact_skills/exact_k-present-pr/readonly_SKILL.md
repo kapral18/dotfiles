@@ -18,7 +18,7 @@ This is not a code-review skill; it does not modify the repo under review.
 Deployed alongside this file:
 
 - `~/.agents/skills/k-present-pr/references/template.html` — the **proven** scaffold.
-  Copy it; fill the placeholder tokens; keep its CSS/JS as-is.
+  Copy it; fill the placeholder tokens; never rewrite its CSS/JS.
 - `~/.agents/skills/k-present-pr/references/authoring.md` — the design laws.
   It covers the review-readiness map, introduced-concepts primer, 5-act spine, fixed concept/notes sidebars, beat-to-beat continuity, one-medium-per-beat dedup, show-the-load-bearing-line, role classification, image prompting, and rail rules.
   Follow it; it is the difference between signal and a wall of text.
@@ -51,9 +51,9 @@ Repo/org-specific overlays:
   Refresh only PR metadata/comments that may have changed.
 - Default diagram budget: **one generated image** for the Act I goal-level contrast.
   Add a second only when the preflight proves it carries a distinct flow/state idea.
-  Use HTML flow nodes, cards, or diff beats — instead of generated images — for exact labels, symbol lists, and code-line insights.
+  Do not generate images for exact labels, symbol lists, or code-line insights; use HTML flow nodes, cards, or diff beats instead.
 - For repo-specific CI/build links, load the verified overlay and fetch only the compact facts needed for the story.
-  Dump full build metadata only when CI is itself the presentation thesis.
+  Do not dump full build metadata unless CI is itself the presentation thesis.
 - Prefer deterministic HTML/CSS/code beats over generated images for label-heavy visuals.
   Generated diagrams often stutter labels; exact labels and exact source lines belong in the HTML.
 - Keep command output compact. Save large raw evidence to files, then extract only the lines needed for the preflight and beats.
@@ -66,7 +66,7 @@ Repo/org-specific overlays:
   - the full PR body and every conversation comment (`gh pr view <n> --comments`),
   - every review and inline review-thread comment (`gh api --paginate repos/OWNER/REPO/pulls/<n>/reviews` and `.../pulls/<n>/comments`),
   - every linked/closing issue and all of its comments (`gh issue view <m> --comments`), and any PR/issue referenced transitively in the body, comments, or reviews — recurse until no new reference adds context.
-  - For repo-specific CI/build links, fetch directly only when the verified overlay says it is safe.
+  - For repo-specific CI/build links, do not fetch directly unless the verified overlay says it is safe.
     For Elastic Buildkite, load `k-elastic-domain`, then use the `k-buildkite` skill (`bk` CLI).
 - Read the **actual** diff hunks for the files you will feature — beats must contain real diff text, never paraphrased code.
 - If you need base-branch context (existing behavior, conventions, related call sites) and the repo is indexed, use the `k-semantic-code-search` skill as _supporting_ context only — validate against the local diff.
@@ -110,7 +110,7 @@ Per `authoring.md`:
   the clause that says why this beat follows the last.
   Read the bridges in order with visuals hidden — they must form one argument with no teleports.
   If they don't, reorder or rewrite before generating anything.
-- For each beat decide: **diagram-primary** or **diff-primary** — exactly one primary medium per idea.
+- For each beat decide: **diagram-primary** or **diff-primary** (never both for the same idea).
   Choose the medium by the idea's nature, not to rotate layouts.
   If the insight is a specific line/option, the beat **must show that real diff line**;
   a diagram may augment it but the diff line stays visible. Decide which 0–2 diagrams are worth generating; default to 1.
@@ -123,7 +123,7 @@ Per `authoring.md`:
 - When that named lane is in play: house style every prompt (dark `#0b1020` background, thin teal/blue/amber line art, labeled, no people, no title banner, each label spelled exactly once) and write `nb-<name>.png` in the output dir.
   View each generated image and regenerate any with text stutter/artifacts, especially the Act I hero diagram.
   If an image has repeated/misspelled labels after one regeneration, delete it and replace that idea with deterministic HTML/diff.
-  Cap label-heavy diagrams at that one regeneration attempt.
+  Do not spend more attempts on label-heavy diagrams.
 
 ### 5. Fill the template
 
@@ -137,7 +137,7 @@ Per `authoring.md`:
   two concepts sharing the same row makes the second link feel like a no-op.
 - Fill the readiness sections as structured artifacts, not prose dumps: layered map rows, topology rows, load-bearing-line rows, risk-attention cards, and an ordered GitHub handoff.
 - Replace every placeholder token; use the beat blocks already present as patterns (add/remove change beats, invariant cards, ledger rows as needed).
-- Reference images by **relative filename** only (same dir), never base64-inlined.
+- Reference images by **relative filename** only (same dir). Never base64-inline.
 - HTML-escape `<`, `>`, `&` inside all code beats.
 - Prefer template-token replacement or targeted block edits over regenerating a whole HTML body from scratch.
   Whole-body generation tends to introduce quote escaping and dropped-block cleanup loops.
@@ -169,7 +169,7 @@ Before opening for the user, verify with the `k-playwriter` skill:
   Use snapshots only on failure or with a tight `search` filter.
 - Assert **zero** `pageerror`/`console.error`, all `nb-*.png` resolve (no 404s), the left concept sidebar and right notes sidebar do not overlap the main column on wide desktop widths, the act-rail fallback remains usable when sidebars collapse, concept-note interactions work, and reveal animations fire.
   Fix and re-verify until clean.
-- Stop the exact server PID or exact listening port after verification, using that recorded PID/port rather than broad process-kill commands or large session listings.
+- Stop the exact server PID or exact listening port after verification; do not use broad process-kill commands or large session listings to find it.
 
 ### 7. Open for the user
 

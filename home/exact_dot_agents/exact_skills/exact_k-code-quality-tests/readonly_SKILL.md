@@ -41,4 +41,4 @@ The SOP still owns required verification loops and the rule that test-first fram
 - Waiting for async work: prefer a wait that settles the whole chain (yield a macrotask, or await the real signal) over a fixed number of ticks; a fixed count silently stops reaching the assertion when a step is added, turning every test in the block green-but-vacuous.
 - With multiple worktrees/checkouts in play, name the worktree and branch in the run description and confirm the run targets the intended one before interpreting results.
 - If a test cannot be run, state why and what evidence was verified instead.
-- Add snapshots or golden files only when they protect a meaningful contract.
+- Do not add snapshots or golden files unless they protect a meaningful contract.

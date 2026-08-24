@@ -21,7 +21,7 @@ GH_PAGER=cat gh api graphql -H "GraphQL-Features:issue_types" -f query='query { 
 ```
 
 - Use `gh issue create --type <IssueType> --body-file <file>` when approved.
-- If setting the approved issue type fails, stop and ask; labels-only creation needs explicit approval.
+- If setting the approved issue type fails, stop and ask; do not silently fall back to labels-only creation.
 
 ## Preflight ledger
 

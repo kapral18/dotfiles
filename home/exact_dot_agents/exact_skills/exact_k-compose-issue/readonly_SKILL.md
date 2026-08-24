@@ -13,10 +13,10 @@ Use when:
 Scope:
 
 - produces an issue title/body draft and issue publication packet only
-- create issues only via `~/.agents/skills/k-github/SKILL.md`; GitHub side effects stay outside this composer
+- do not create issues via `gh` here; use `~/.agents/skills/k-github/SKILL.md` for GitHub side effects
 - read-only `gh`/GitHub API use is allowed only to resolve and fully read PR/issue/comment/media references needed for the draft
 
-Out of scope:
+Do not use:
 
 - user wants to create/edit the issue in GitHub: `~/.agents/skills/k-github/SKILL.md`
 
@@ -36,14 +36,14 @@ First actions:
 3. Identify the problem statement, expected behavior, actual behavior, and reproduction from verified evidence.
 4. Keep repro steps concrete and ordered.
 5. Convert local-only observations into portable repro steps.
-   Keep public issue text free of session-specific URLs, machine hostnames, temp paths, workspace paths, browser automation session names, and local usernames.
+   Do not paste session-specific URLs, machine hostnames, temp paths, workspace paths, browser automation session names, or local usernames into public issue text.
 6. If logs/screenshots are referenced, include only what materially helps and redact secrets.
 7. If issue creation is in scope, verify `gh issue create --help` support for `--type name`.
    If the target repo exposes GitHub issue types, read the actual type names before choosing one.
 8. If the repo belongs to the `elastic` org or is `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.md`.
    Apply its issue composition section.
 9. Build the issue publication packet.
-   This is the single handoff gate to `k-github`; hand off only when every required field is present and unblocked. Required fields:
+   This is the single handoff gate to `k-github`; do not hand off while any required field is missing or `blocked`. Required fields:
    - `issue_type`: exact GitHub issue type, source evidence, and `status: approved_to_apply | pending_approval | not_applicable | blocked`.
      When the target repo supports GitHub issue types, this field is required; labels do not satisfy it.
    - `metadata`: labels, assignees, milestone, projects, source evidence, and `status: none | not_applicable | approved_to_apply | applied | deferred | pending_approval`.

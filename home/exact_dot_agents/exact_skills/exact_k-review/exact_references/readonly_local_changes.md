@@ -3,7 +3,7 @@
 Precondition:
 
 - You already loaded `~/.agents/skills/k-review/SKILL.md`.
-- Follow `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/shared_rules.md` (loaded once by the router; reuse that load).
+- Follow `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/shared_rules.md` (loaded once by the router; do not re-load).
 
 Use when:
 
@@ -18,7 +18,7 @@ This mode's verify-and-fix behavior assumes `authorship: self`.
 
 Resolve authorship via the router's Role Detection / Authorship section.
 
-Resolve `self` from that evidence, never merely from the change being checked out locally:
+Do not assume `self` just because the change is checked out locally:
 
 - a branch tracking another person's fork is `other`
 - commits authored by someone else are `other`
@@ -120,7 +120,7 @@ If the user says "one at a time" or "step by step":
 
 ## Extra Constraints
 
-- Commit/push only when explicitly asked.
+- Do not commit/push unless explicitly asked.
 - Code changes are expected and encouraged when `authorship: self`.
 - Under `other`/`unknown` authorship, this mode is draft-only (see Authorship Precondition).
 - Keep the internal findings queue in the review persistence spec (see shared_rules.md) so progress survives conversation pruning.

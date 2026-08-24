@@ -63,7 +63,7 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
   Treat any omitted Cursor subagent model as a matrix bypass.
 - Same-name custom profiles do **not** shadow native Cursor enum agents (`explore`, `debug`, `cursor_guide`, `unspecified`):
   custom profiles are carried as a separate `custom` oneof with a `name`, while native cases are distinct empty oneof variants.
-  Same-name templates will leave native Explore in place, so rely on distinct custom profile names instead.
+  Do not add same-name templates expecting them to override native Explore.
 - When the active Task schema exposes only generic subagent types, pass the same resolved values as explicit `model` arguments —
   the resolver stays the single source either way.
   Generic fresh-eyes launches pass the resolved lane model; never let Cursor `auto` choose the model for review workers.
@@ -71,7 +71,7 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
   Cursor source shows `readonly: true` blocks shell, write, delete, and MCP operations.
   Keep Cursor profile frontmatter and Task launches at `readonly: false`; the worker contracts enforce no-mutation behavior.
 - If a Cursor worker reports Ask/read-only mode blocked shell/git/`gh`/Playwriter, discard that launch result and rerun with `readonly: false` before accepting `verification_needed`.
-- If Cursor cannot await background subagent ids, wait through the native paths below instead of looping blind sleeps.
+- If Cursor cannot await background subagent ids, do not loop blind sleeps.
   Cursor source has a subagent await protocol, but the shell Await/AwaitShell path is for shell tasks and may reject subagent ids.
   Keep reviewer, PR-necessity, live-UI, and findings-audit workers as real Cursor background subagents;
   use Cursor Task `run_in_background=true` when the active Task schema exposes it. Wait through a Cursor-native subagent completion signal.
@@ -83,7 +83,7 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
   The managed `~/.copilot/settings.json` subagent entries also include resolver-aligned `model`/`effortLevel`/`contextTier` so stale target-only model overrides cannot survive Copilot's settings merge.
   Per-task model overrides are runtime-verified but reserved for fail-visible recovery, not steering, except generic fresh-eyes where the explicit model is the profile-equivalent resolved lane value.
 - Launch angle lanes as the `review-worker` agent type (model-invocable, not user-invocable).
-  Use `general-purpose` only when a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason.
+  Do not use `general-purpose` unless a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason.
 
 ## Pi and OMP
 

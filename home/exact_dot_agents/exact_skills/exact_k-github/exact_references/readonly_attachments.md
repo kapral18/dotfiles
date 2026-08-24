@@ -16,7 +16,7 @@ Load and follow `~/.agents/skills/k-playwriter/SKILL.md` before any browser acti
    Identify the exact target repository/object, verify the logged-in browser identity, and record whether the repository is public, private, or internal.
    Use an editor in that repository, preferably the exact target object's editor.
    If a direct upload request has no destination, ask which repository/object should own the attachment;
-   use only a comment box in the resolved destination.
+   never borrow an unrelated comment box.
    For an existing PR/issue, the Conversation tab's main comment box is a known surface:
    `textarea#new_comment_field` with a paired hidden `input[type="file"]#fc-new_comment_field`.
    For another editor, inspect the DOM and verify its paired file input rather than assuming an id convention.
@@ -31,7 +31,7 @@ Load and follow `~/.agents/skills/k-playwriter/SKILL.md` before any browser acti
    Restore the exact saved textarea value after each upload and verify it matches, preserving pre-existing draft text and keeping harvested markup out of anywhere it could be submitted accidentally.
 5. **Keep the URL in the resolved visibility context.**
    [GitHub documents](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/attaching-files) that public-repository uploads are accessible without authentication, while private/internal uploads require repository access.
-   Use the URL only in the resolved destination; it is repository/visibility-scoped, not account-scoped.
+   Use the URL in the resolved destination; do not describe it as account-scoped or assume it is safe across repository/visibility boundaries.
 
 ## Pre-upload QA
 
@@ -39,16 +39,16 @@ Before uploading any image or video:
 
 - Verify every file exists and is non-empty.
 - Verify dimensions are sane for the intended caption and placement.
-- Verify md5s are pairwise distinct across the batch; upload each distinct state exactly once, with duplicates excluded.
+- Verify md5s are pairwise distinct across the batch; do not upload duplicate captures as different states.
 - View every file in this session and confirm it matches its intended caption/placement.
-  Upload only images and videos you have viewed in this session.
+  Never upload an image or video you have not viewed in this session.
 - For videos, confirm the first proving frame starts at the behavior under test and the last proving frame still supports the caption.
   Trim login, welcome, idle loading, and setup-only lead-in before upload.
 - When the upload will sit under a PR/issue body or comment that names behaviors, build the proof-mode Claim map first (`~/.agents/skills/k-ui-capture/references/proof-mode.md`): every claim in the surrounding prose maps to an viewed asset that plainly shows that claim; drop unmapped claims before upload.
 
 ## Presentation in comment/issue/PR bodies
 
-- One image per line — keep each `<img>` tag on its own line, separate from other images and paragraphs;
+- One image per line — never place `<img>` tags adjacent on the same line or in the same paragraph;
   GitHub renders side-by-side images squeezed and unreadable.
 - Precede every image with its own bold title line (e.g. `**Before — sortable Description column:**`), a blank line, then the `<img>` tag, then a blank line.
 - Before/after pairs are two titled blocks, not a `before | after` row.

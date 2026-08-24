@@ -12,7 +12,7 @@ Treat the version as the identity to re-check (`node node_modules/backport/bin/b
 - The Kibana checkout used for backports is usually `~/.backport/repositories/elastic/kibana`.
   Backport branches are created and resolved there, not in your `~/work/kibana` worktrees.
   The tool derives this path from `repoOwner`/`repoName` (`getRepoPath` → `~/.backport/repositories/<owner>/<repo>`, or a `--dir` override) **independent of the process CWD**, so you can launch `node scripts/backport` from any checkout that has the wrapper (e.g. your operating `~/work/kibana`) and it still cherry-picks in the tool-owned checkout.
-  The tool resets/re-clones and re-prepares that checkout per target branch, so root any long-lived process (like the controlling tmux window) outside it.
+  The tool resets/re-clones and re-prepares that checkout per target branch, so do not root any long-lived process (like the controlling tmux window) inside it.
 - Kibana's configured `backportBinary` is `node scripts/backport` (from `.backportrc.json`).
   That wrapper is the right entrypoint for the **interactive** run a human drives.
 - The wrapper uses `require('backport')` (CommonJS).
@@ -89,7 +89,7 @@ node node_modules/backport/bin/backport --ls --onlyMissing --all \
 
 ## Target-Branch Policy (elastic/kibana)
 
-Decide targets from policy, then reconcile against what already exists. Sources (read live rather than hardcoding):
+Decide targets from policy, then reconcile against what already exists. Sources (read live, do not hardcode):
 
 - **Active release branches** — `versions.json` on `main` (`gh api repos/elastic/kibana/contents/versions.json`):
   `versions[]` with `branch` + `branchType`.
@@ -98,7 +98,7 @@ Decide targets from policy, then reconcile against what already exists. Sources 
 - **`.backportrc.json`** on `main`: `targetBranchChoices`, `targetPRLabels` (`backport`), `branchLabelMapping` (`^v9.5.0$` → `main`;
   `^v(\d+).(\d+).\d+$` → `$1.$2`, i.e. a `vX.Y.Z` label → branch `X.Y`), `autoMerge: true`, `autoMergeMethod: squash`.
 - **Source PR `backport:*` label** (see `~/.agents/skills/k-kibana-labels-propose/SKILL.md` for label semantics):
-  - `backport:skip` — the author marked it as not to be backported. Proceed only with explicit user confirmation.
+  - `backport:skip` — the author marked it as not to be backported. Do not proceed without explicit user confirmation.
   - `backport:all-open` — backport to all open release minors = the `versions.json` `branchType: "release"` branches.
   - `backport:version` + `vX.Y.Z` — backport to the specific `X.Y` branch(es).
 - **The tool's own suggestion** — each commit carries `suggestedTargetBranches`:
@@ -106,8 +106,11 @@ Decide targets from policy, then reconcile against what already exists. Sources 
   Available in the `--ls`/`--json` output for the PR.
 
 Reconcile before selecting targets: Kibana CI (`.github/workflows/on-merge.yml`) auto-creates backports when `backport:all-open`/`backport:version` is present on merge, so some target backports may already exist by the time you backport manually.
-The policy: the **only** source of truth for "already backported" is whether the source PR's merge commit is actually present on the target release branch (an ancestor of the upstream `elastic/kibana` remote-tracking ref for that branch, e.g. `elastic/<branch>`); the tool's `targetPullRequestStates` / `suggestedTargetBranches` and `gh pr list` are candidate hints only and can be stale or reflect an in-flight PR that never merged — treat only the ancestor check as proof the commit landed.
-The `k-kbn-backport` flow performs the per-branch presence check, fetching only the candidate branches from the upstream remote (a bare `git fetch`/`--all` is heavy on Kibana); suggest exactly the active release branches where the commit is absent.
+For "landed", branch history is the source of truth: check whether the source PR's merge commit or PR reference is present on the target release branch.
+For "safe to launch", existing target PRs are also authoritative: do not launch a branch when an `OPEN` or `MERGED` target PR already exists for the source PR, even if the local branch fetch has not caught up.
+The tool's `targetPullRequestStates` / `suggestedTargetBranches`, `gh search prs`, expected head-ref queries, and backport status comments are hints to locate those PRs; verify each hinted PR with `gh pr view`.
+The `k-kbn-backport` flow performs the per-branch presence check, fetches only candidate branches from the upstream remote (a bare `git fetch`/`--all` is heavy on Kibana), checks existing target PRs, and repeats the existing-PR check immediately before spawning the tmux run.
+Suggest exactly the active release branches where the commit/reference is absent and no `OPEN` or `MERGED` target PR exists.
 
 ## Per-Branch Flow And Naming
 

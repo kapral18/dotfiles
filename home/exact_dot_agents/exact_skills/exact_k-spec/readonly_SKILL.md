@@ -13,7 +13,7 @@ The SOP owns the surrounding gates: the Intent Loop mechanics (§3.1), compatibi
 This skill owns the packet contract and the acceptance-criteria discipline.
 Consumers: `/k-build` (in-session hands-free implementation), `~/.agents/skills/k-compose-issue/SKILL.md` (GitHub issue text + publication packet), and the `k-review` skill's plan mode (adversarial review of the packet itself).
 
-## Out of scope (use the named alternative)
+## Do not use
 
 - trivial single-edit changes where intent is already unambiguous — just do the work under the SOP
 - drafting issue/PR text from an already-clear problem: `~/.agents/skills/k-compose-issue/SKILL.md` / `k-compose-pr`
@@ -63,10 +63,10 @@ Consumers: `/k-build` (in-session hands-free implementation), `~/.agents/skills/
 
 4. **Assemble and persist the packet.**
    If the active topic is a session fallback (`session-<id>` — the hook default on main/master/dev with no named topic), bind this session to a named topic first: `,agent-memory select <stable-kebab-topic> --create --session-id <session-id>`.
-   Use the session id from the current Topic Buckets prompt when it is shown; leave `_active_topic.txt` unwritten.
+   Use the session id from the current Topic Buckets prompt when it is shown; do not write `_active_topic.txt`.
    Fill the template below, write it to `/tmp/specs/<pwd>/<topic>.spec.md` (same `<topic>` key as the active SOP intent spec), and show the full packet in the response — the packet is the deliverable.
    Then add or update a single `packet: /tmp/specs/<pwd>/<topic>.spec.md — <one-line status>` line in the intent spec `<topic>.txt`, so session-start injection carries the pointer and a fresh session knows the contract exists.
-   One packet in flight per topic: consumers (build lanes and plan review) read this file mid-flow, so author the next packet only after the current one's outcome is recorded in the `.txt` chain; parallel work belongs on separate topics.
+   One packet in flight per topic: consumers (build lanes and plan review) read this file mid-flow, so do not author the next packet until the current one's outcome is recorded in the `.txt` chain; parallel work belongs on separate topics.
    Never store secrets in it; `/tmp` is best-effort.
 
 5. **Hand off.** The packet is text only — this skill implements nothing and publishes nothing. Name the consumer moves.

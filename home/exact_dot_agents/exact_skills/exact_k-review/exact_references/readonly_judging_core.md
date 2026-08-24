@@ -1,6 +1,6 @@
 # Judging Core (Surface-Agnostic)
 
-- Mode files and `shared_rules.md` reference this file; keep these sections defined here only.
+- Mode files and `shared_rules.md` reference this file; do not duplicate these sections elsewhere.
 - Delivery-agnostic: no GitHub, SCSI, or delivery rules.
 - Surfaces needing PR/SCSI/GitHub-delivery rules layer them via `shared_rules.md`.
 
@@ -27,7 +27,7 @@ Use in every non-trivial review.
 
 Owned by the agent that decides keep/drop and acts (k-light-review, direct review modes, or a controller).
 Fan-out: the dedicated adversarial lane (cross-family preferred at equal capability, SOP §3.7) owns this pass;
-Read-only finder lanes only return candidates plus a reachability statement; self-refutation is owned elsewhere.
+read-only finder lanes only return candidates plus a reachability statement and do not self-refute.
 
 A candidate survives only when a genuine refutation attempt fails with evidence.
 Default to `undecidable`, not `keep`, when the deciding evidence is genuinely out of reach.
@@ -208,7 +208,7 @@ docs; maintainability/complexity; true nits.
 
 Subject: the **fix diff** a review just produced (see Post-Review Stage).
 
-These four dimensions are the only **canonical** ones: name them exactly, keeping each one's name, boundary, and shape as written.
+These four dimensions are the only **canonical** ones: name them exactly; do not rename, merge, or reshape them.
 
 1. **Redundancy** — the change repeats something existing:
    - re-implements an existing helper; re-states a rule already stated elsewhere; adds a path/branch/config that is already present
@@ -221,7 +221,7 @@ These four dimensions are the only **canonical** ones: name them exactly, keepin
 
 For each dimension, anchor any finding in evidence: exact file + location, duplicate's other location, stranded symbol.
 
-Assert a hygiene problem only after pointing at it.
+Do not assert a hygiene problem you have not pointed at.
 
 ## Findings-Set Audit (Run Before Final Refutation Or Acting)
 
@@ -232,7 +232,7 @@ In deeper fan-out orchestration, keep this in the controller by default and dele
 Before final adversarial refutation, fixing, drafting, or presenting findings, run the four dimensions (Post-Review Lens) over the finding set:
 
 - **Redundancy / semantic + logical duplication:** collapse two findings with the same root cause or anchor region into one;
-  present each issue exactly once, under one wording.
+  do not present the same issue twice under different wording.
 - **Verbosity:** trim finding text and proposed fixes to the smallest form that still carries the evidence.
 - **Gaps:** name any finding asserted without an exact anchor or without a decisive verification path, and either anchor it or drop it.
 
@@ -264,7 +264,7 @@ Read-only lanes report precise fixes for the parent to apply instead of editing.
 3. **Final refutation.**
    Run the Candidate Refutation Ladder or the available adversarial-verifier lane over the audited set;
    keep only survivors, record reachability, and drop refuted/unverified findings.
-4. **Fix each finding** highest severity first: verify from evidence, apply the smallest correct change, and commit/push only when asked.
+4. **Fix each finding** highest severity first: verify from evidence, apply the smallest correct change, and do not commit/push unless asked.
    For non-trivial or ambiguous fixes, state options and proceed with the recommended default unless the user intervenes.
 5. **Quality gates.** Run repo lint + type_check + tests; fix until green or report what remains and why.
 6. **Post-Review Stage.** Run it over this pass's fix diff, then re-run quality gates if cleanup touched code.

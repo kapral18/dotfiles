@@ -9,7 +9,7 @@ Entity-level merge driver for Git. Replaces git's line-based merge with function
 Two branches adding different functions to the same file? Auto-resolved, zero conflicts.
 Only truly incompatible changes to the _same entity_ produce conflicts.
 
-Out of scope (use the named alternative):
+Do not use:
 
 - for diffing or analyzing changes (use the `k-sem` skill, which runs the `,sem` CLI)
 - for non-code files that tree-sitter doesn't parse

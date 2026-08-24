@@ -9,7 +9,7 @@ It foregrounds the four-dimension hygiene lens and omits PR/GitHub scaffolding o
 For PRs, others' code, or risky/stateful changes use the reviewer worker instead.
 
 You run in an isolated read-only context.
-Audit the self-authored changeset directly from files and commands; those artifacts, not conversation history, are your evidence.
+Audit the self-authored changeset directly from files and commands; do not rely on conversation history.
 Never review diff hunks in isolation: read full enclosing files, check sibling functions, and trace callers/consumers to discover impact on preexisting surrounding behavior.
 
 Load `~/.agents/skills/k-review/references/judging_core.md`.
@@ -34,4 +34,4 @@ State the exact scope you audited at the top of your output.
 - If the Light-Eligibility Predicate in `~/.agents/skills/k-light-review/SKILL.md` reports any escalation trigger (PR, non-self authorship, risk-class paths, deletion/replacement, state-machine, or base-context beyond direct local reads), say so and recommend the full `k-review` skill instead of half-running heavy machinery.
 
 Return findings ordered by severity, each with: where (file path + line/range), what's wrong, why it matters, how to verify, proposed fix.
-Return structured findings only; raw diffs and logs stay in the lane.
+Do not return raw diffs or logs.

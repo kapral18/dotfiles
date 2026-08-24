@@ -1,6 +1,6 @@
 # Shared Review Rules
 
-All review modes load this file. Mode files reference these rules instead of duplicating them.
+All review modes load this file. Do not duplicate these rules in mode files.
 
 The surface-agnostic judging engine lives in `~/.agents/skills/k-review/references/judging_core.md`.
 
@@ -24,13 +24,13 @@ This file carries only the PR/SCSI/GitHub-delivery rules layered on top of that 
 
 ## Read-Only Probes
 
-- Start read-only investigation immediately; read-only `git`/`gh` checks need no confirmation.
+- Start read-only investigation immediately. Do not ask for confirmation before read-only `git`/`gh` checks.
 - In large repositories, make first-pass git probes bounded: use `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false` for status, diff names, upstream, and log probes.
   If a plain git probe produces no output after one short wait, stop it and rerun the bounded form.
 - Keep searches narrow by default: include path scopes, file globs, or exact symbols.
   When the harness provides native search/listing tools, prefer those for first-pass broad searches.
   Use shell `rg` only after narrowing by path, glob, or exact symbol; never run bare repo-root `rg <pattern>` in a large repository.
-  When a file list, count, or targeted lines answer the question, return those instead of broad repo-wide searches or full command output dumps.
+  Do not run broad repo-wide searches or dump full command output when a file list, count, or targeted lines answer the question.
 - When command output is saved/truncated, recover only the exact lines needed for the current decision unless the decision depends on every item.
 
 ## Hard Constraints
@@ -38,7 +38,7 @@ This file carries only the PR/SCSI/GitHub-delivery rules layered on top of that 
 - External truth applies: verify behavior under review (tests, repros, `/tmp` simulations) before asserting when practical.
 - Code changes:
   - **Read-only delegated workers**: their full contract is `~/.agents/skills/k-review/references/reviewer-worker.md`;
-    reference it there instead of restating it here. Controller-side obligations it creates:
+    do not restate it here. Controller-side obligations it creates:
     - run repo-wide suites, full builds, and whole-suite test runs **once** in the controller and pass the result into every lane's scope packet; lanes are told not to repeat them
     - resolve each returned `verification_needed` serially, or record why it stayed open
     - lanes return proposed fixes only; the controller owns every edit and side effect
@@ -46,7 +46,7 @@ This file carries only the PR/SCSI/GitHub-delivery rules layered on top of that 
     - find issues and fix them in the working tree immediately
     - code changes are expected as part of the workflow
     - no extra permission needed
-    - commit or push only when explicitly asked
+    - do not commit or push unless explicitly asked
   - **Local changes mode with `authorship: other` or `unknown`**: draft-only unless the user explicitly asks to fix/take over.
   - **PR review mode (self-review)**: same — find and fix in the working tree.
   - **PR review mode (reviewing others or unknown authorship):** stay draft-only;
@@ -57,7 +57,7 @@ This file carries only the PR/SCSI/GitHub-delivery rules layered on top of that 
   - any human-visible target stays supervised: draft -> show payload -> wait
   - ambiguous/mixed threads fail safe to human
 - Assume the user started the agent inside the intended repo/worktree/session:
-  - stay in the current worktree; create/switch worktrees only on explicit request
+  - do not create/switch worktrees proactively
   - if the user explicitly asks to create/switch a worktree:
     - use `~/.agents/skills/k-worktrees/SKILL.md`
     - for GitHub issue worktrees in agent contexts, prefer `,gh-worktree issue ... --branch ...`
@@ -78,7 +78,7 @@ Goal: compare the diff against how base (usually `main`) works today.
   - use the single obvious repo-matching index from `list_indices`
   - if multiple equally plausible repo-matching indices remain, ask the user which one represents the base branch
   - if no repo-matching index exists, treat semantic search as unavailable and fall back to local sources
-- Complete this preflight before moving on to base-context reasoning or comment drafting.
+- Do not move on to base-context reasoning or comment drafting until this preflight is complete.
 
 ### If the repo is indexed
 
@@ -145,7 +145,7 @@ History encodes invariants, past bug fixes, edge cases, and architectural contex
     - `working-tree`
     - `--cached + working-tree`
     - the explicit diff command from the scope packet
-- This line is reviewer metadata for the assistant's output. Keep it out of GitHub comment bodies.
+- This line is reviewer metadata for the assistant's output. Do not include it in GitHub comment bodies.
 
 ## Draft Style (Public-Ready)
 
@@ -161,7 +161,7 @@ History encodes invariants, past bug fixes, edge cases, and architectural contex
 - Keep anchoring/tooling limitations out of the comment body ("can't anchor inline", "not in diff hunks").
 - For UI-related comments, replies, or PR-level feedback drafted after `/k-deep-review` or `live-ui-review`, keep the screenshot handoff outside the body as UI evidence attachments.
   If screenshot evidence is missing without a valid blocker or non-applicability result, block/rerun instead of drafting text-only UI feedback.
-  Keep local screenshot paths out of GitHub comment, reply, review, or PR-level bodies; use UI evidence attachments instead.
+  Never put local screenshot paths in GitHub comment, reply, review, or PR-level bodies.
 - In review comment bodies, whenever you reference code, use a clickable source link to the exact location on the PR head SHA.
 - Code references include:
   - file path
@@ -169,7 +169,7 @@ History encodes invariants, past bug fixes, edge cases, and architectural contex
   - symbol
   - line/range
   - snippet location
-- Link every code/file reference; plain unlinked references are incomplete.
+- Do not leave plain unlinked code/file references.
 - **Commit references must be clickable links, never bare hashes or inline code.**
 - Use the full GitHub URL:
   - `https://github.com/OWNER/REPO/commit/FULL_SHA`
@@ -190,7 +190,7 @@ Terminology used in these skills:
 Content boundary:
 
 - A pending review must contain only public-ready review content: objective, presentable, and directly related to the code under review.
-- Exclude always:
+- Never include:
   - agent internal reasoning
   - excerpts of internal conversation
   - tool outputs
@@ -204,7 +204,7 @@ Content boundary:
 
 For PR modes, run Pending Review Intake and Existing Pending Review Reconciliation from `pr_common.md`.
 
-Keep this boundary here: draft/post/submit review feedback only after reconciliation is resolved when it is locally/API-verifiable.
+Keep this boundary here: if reconciliation is unknown and locally/API-verifiable, do not draft/post/submit review feedback.
 Every PR-review output that may become GitHub review feedback must include the `Pending review reconciliation:` line from `pr_common.md`.
 
 ## Review Verdict (PR Review Mode Only)
@@ -229,7 +229,7 @@ The internal findings queue and review progress are ephemeral by default.
 
 Survive conversation pruning by reusing the existing hook-managed memory system.
 
-Use only the existing store below; a parallel store would fragment state:
+Do not invent a parallel store:
 
 - Convention: `/tmp/specs/<pwd>/` from the parent SOP. Topic key: `review-<pr-number>` for PR modes (else `k-review`).
 - The agent-owned intent file is `<topic>.txt`.

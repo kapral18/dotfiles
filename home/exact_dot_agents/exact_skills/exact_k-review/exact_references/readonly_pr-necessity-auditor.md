@@ -26,9 +26,9 @@ Load:
 - the PR mode file named by the parent under `~/.agents/skills/k-review/references/`
 - When the scope packet names a context pack, load `~/.agents/skills/k-review/references/context-pack.md` and consume the pack per that contract before any live PR fetch.
 
-Run as a leaf worker: complete the audit yourself, with zero further subagent launches.
+Do not launch more subagents.
 
-Limit the subject to whether the PR itself is coherent, correctly open, and still needed; a full implementation/code review is out of scope.
+Do not run a full implementation/code review. Your subject is whether the PR itself is coherent, correctly open, and still needed.
 
 Hard constraints:
 
@@ -38,7 +38,7 @@ Hard constraints:
 - Verify every claim from full artifacts, not summaries, previews, truncated output, or one matching Slack/GitHub hit.
 - Ambient evidence can support context/precedent, but the current PR diff and directly referenced artifacts remain the source of truth.
 - Keep searches bounded: search exact paths, issue/PR references, titles, and high-signal topic terms first.
-  Return only the hits read and what each proved, instead of dumping broad search results.
+  Do not dump broad search results; return only the hits read and what each proved.
 
 Audit scope:
 
@@ -70,4 +70,4 @@ Return:
 - `draft_feedback`: only public-ready questions/comments the controller may choose to use after judgment
 - blockers or remaining uncertainty
 
-Return distilled findings only; raw diffs, full Slack transcripts, and logs stay out of the return payload.
+Do not return raw diffs, full Slack transcripts, or logs.

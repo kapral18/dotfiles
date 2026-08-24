@@ -47,7 +47,7 @@ If a feature/surface is absent on base because the PR introduces it, mark the ba
 Continue head-only verification against the PR/head target when the feature exists there.
 Return full `Not applicable` only when the candidate is not UI/runtime-relevant or the feature/surface is absent from every relevant target.
 
-Return `Not applicable` only for reachability/relevance reasons, never merely because the target runtime has no data.
+Do not return `Not applicable` just because the target runtime has no data.
 If the changed UI/runtime path exists but required data is absent, continue through the shared data/setup ladder and return `Blocked` only after those attempts are exhausted.
 
 ### Playwriter comparison

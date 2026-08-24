@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -119,8 +120,36 @@ def remove_path_prefixes_for_selection(rows):
 remove_mode_prefixes = remove_path_prefixes_for_selection(selected_rows) if mode == "remove" else set()
 
 
+def unsafe_remove_prefixes(prefixes):
+    if mode != "remove" or not prefixes:
+        return set()
+    if shutil.which(",w") is None:
+        return set(prefixes)
+    try:
+        proc = subprocess.run(
+            [",w", "remove", "--preflight", "--paths", *sorted(prefixes)],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+    except Exception:
+        return set(prefixes)
+    if proc.returncode != 0:
+        return set(prefixes)
+    return {resolve_path(line.strip()) for line in proc.stdout.splitlines() if line.strip()}
+
+
+unsafe_remove_mode_prefixes = unsafe_remove_prefixes(remove_mode_prefixes)
+optimistic_hide_enabled = not unsafe_remove_mode_prefixes
+if unsafe_remove_mode_prefixes:
+    remove_mode_prefixes = set()
+
+
 def append_mutation_tombstones():
     if mode not in ("kill", "remove"):
+        return
+    if mode == "remove" and not optimistic_hide_enabled:
         return
     xdg_cache = os.environ.get("XDG_CACHE_HOME", "").strip()
     cache_dir = Path(xdg_cache) / "tmux" if xdg_cache else (Path.home() / ".cache" / "tmux")
@@ -191,14 +220,14 @@ for raw in proc.stdout.splitlines():
         base_rows.append(raw)
         continue
     _display, kind, path, _meta, target = parts[:5]
-    if (kind, path, target) in selected:
+    if optimistic_hide_enabled and (kind, path, target) in selected:
         if mode == "kill" and kind == "worktree":
             pass
         else:
             continue
     base_rows.append(raw)
 
-if mode == "remove" and remove_mode_prefixes:
+if mode == "remove" and optimistic_hide_enabled and remove_mode_prefixes:
     pruned_rows = []
     for raw in base_rows:
         parts = raw.split("\t")

@@ -39,7 +39,7 @@ git clone <repo-url> /tmp/<tool-name>
 <tool> <subcommand> --help
 ```
 
-Source is for understanding; `--help` is the truth. Include only what can be verified against the installed binary.
+Source is for understanding; `--help` is the truth. Do not include anything that cannot be verified against the installed binary.
 
 1. Create the skill directory and files:
    - `home/exact_dot_agents/exact_skills/exact_<name>/readonly_SKILL.md`
@@ -75,7 +75,7 @@ Skip: tests, CI configs, unrelated docs.
 1. For each change in the diff:
    - Verify against `<tool> --help` / `<tool> <subcommand> --help`.
    - Update only the affected skill sections.
-   - Propagate only changes you can verify locally.
+   - Do not propagate changes you cannot verify locally.
 2. Update `tool_version` in frontmatter to the installed version.
 3. Upgrade is done when the diffed CLI changes are reflected in the skill, `tool_version` matches `<tool> --version`, and `chezmoi diff` shows only expected sections changed.
 

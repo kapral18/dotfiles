@@ -18,7 +18,7 @@ A logic prototype that answers the wrong question is pure waste; make the questi
 ### 2. Pick the language
 
 Use whatever the host project uses.
-Match its existing tooling conventions — reuse the project's package manager and runtime rather than adding new ones just for the prototype.
+Match its existing tooling conventions — do not add a new package manager or runtime just for the prototype.
 If the repo has no obvious runtime (e.g. a docs repo), ask.
 
 ### 3. Isolate the logic in a portable module

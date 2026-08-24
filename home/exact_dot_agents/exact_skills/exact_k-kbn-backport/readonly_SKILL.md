@@ -47,7 +47,7 @@ This skill orchestrates that tool; it does not restate it.
 - Understand the original commit/PR being backported before resolving anything;
   a faithful resolution requires knowing what the change intended and why.
 - Check whether each conflict is caused by missing prerequisite backports before hand-resolving; surface them and let the user decide —
-  opening prerequisite backport PRs is the user's call.
+  do not open prerequisite backport PRs yourself.
 - Resolve in context, adapting paths and implementation style to the destination branch;
   preserve destination-branch behavior unless the incoming PR intentionally changes it.
 - Stop points (hand back to the user):
@@ -56,7 +56,7 @@ This skill orchestrates that tool; it does not restate it.
   - a missing prerequisite that blocks faithful resolution
   - any path outside team ownership
   - a resolution you are not confident is faithful
-- Compatibility impact default: `none`. Add compatibility shims only when explicitly requested.
+- Compatibility impact default: `none`. Do not add compatibility shims unless explicitly requested.
 
 ## Compute Target Branches
 
@@ -71,9 +71,9 @@ Use the Target-Branch Policy in `references/backport-tool.md` for the authoritat
    - `backport:version` + `vX.Y.Z` → branch `X.Y` per the `branchLabelMapping`.
    - Otherwise fall back to the tool's `suggestedTargetBranches` for the PR, or ask the user.
      (These only seed the candidate set; presence on a branch is decided in step 4, not here.)
-4. Determine which candidates still need a backport by **actual commit presence** —
-   this is the only source of truth for "already backported".
-   Infer it only from actual commit presence; labels, PR titles, and the tool's `targetPullRequestStates`/`suggestedTargetBranches` can be stale, in-flight, or wrong.
+4. Reconcile candidates against both **landed branch history** and **existing target PRs**.
+   Branch history is the source of truth for "landed"; existing target PRs are the source of truth for "do not launch a duplicate".
+   Do not launch a branch when a target PR for that source PR is `OPEN` or `MERGED`, even if the local branch history check is stale.
    - Find the source PR's merge commit on the source branch: `gh pr view <N> --repo elastic/kibana --json mergeCommit -q .mergeCommit.oid`.
      Kibana squash-merges, so this is the single commit to look for.
    - Identify the upstream remote in the backport checkout — the one pointing at `elastic/kibana` (commonly `elastic`, not `origin`;
@@ -87,21 +87,32 @@ Use the Target-Branch Policy in `references/backport-tool.md` for the authoritat
      exit 1 = absent → still needs backporting, keep it).
      The squash commit's SHA differs per branch, so also confirm absence by content where the SHA check is inconclusive —
      search the branch for the source PR reference: `git log <upstream>/<branch> --grep '(#<N>)' --oneline` (a hit means it is already there).
-   - The branches to suggest are exactly the active release branches where the commit is **not** present.
-5. Present the proposed target branches (those still missing the commit) and, separately, any candidates dropped because the commit is already on that branch.
+   - Query existing target PRs before launch:
+     - Broad source-number search: `gh search prs --repo elastic/kibana <N> --json number,title,state,url,baseRefName,headRefName,mergedAt`
+     - Expected head refs for the authenticated fork: `gh api -X GET repos/elastic/kibana/pulls -F state=all -F head='<user>:backport/<branch>/pr-<N>'`
+     - Backport status comments or `targetPullRequestStates` are hints; verify each hinted PR URL with `gh pr view`.
+   - For each candidate branch:
+     - `MERGED` target PR → drop as already backported, even if the branch fetch has not caught up.
+     - `OPEN` target PR → drop as in flight and report the URL.
+     - `CLOSED` target PR with no landed branch history → keep as still needing backport.
+     - No target PR and no landed branch history → keep as still needing backport.
+   - Immediately before spawning the tmux run, repeat the existing-target-PR query for the final target set.
+     If anything changed, update the target set and resurface the publication payload before launching.
+   - The branches to suggest are exactly the active release branches with no landed commit/reference and no `OPEN` or `MERGED` target PR.
+5. Present the proposed target branches (those still missing the commit) and, separately, any candidates dropped because they are landed, merged PRs, or open in-flight PRs.
    Get the user's confirmation. Branch selection sometimes needs human judgment — treat ambiguity as a stop point.
 
 ## Drive The Backport Run
 
 This run **is** the backport.
 Launch the interactive tool once in a dedicated tmux window and let it walk the confirmed target branches one at a time;
-you only step in when it pauses on a conflict. Launch first; all pre-bootstrap, pre-resolve, or per-branch work waits for a conflict pause.
+you only step in when it pauses on a conflict. Do not pre-bootstrap, pre-resolve, or do any per-branch work before launching.
 Driving the window's TTY pane follows the repo's existing send-keys pattern (`~/.config/tmux/scripts/pickers/session/action_send_command.sh`): address the pane by the id you captured at spawn, then `tmux send-keys -t '<pane>' …`.
 
 Two locations are in play; keep them separate:
 
 - **Controlling window** — a dedicated tmux window running `node scripts/backport`, driven through its pane id.
-  Spawn it in the current tmux session (the one the agent is running in, rooted at the `~/work/kibana` checkout), keeping it out of `~/.backport/repositories/elastic/kibana`.
+  Spawn it in the current tmux session (the one the agent is running in, rooted at the `~/work/kibana` checkout), **never** in `~/.backport/repositories/elastic/kibana`.
   That tool-owned checkout is the tool's mutable workspace — it resets, re-clones, and re-prepares it for every target branch and may nuke it at any time, so a window rooted there can have its CWD pulled out from under it.
   The tool computes its checkout path from `repoOwner`/`repoName` under `~/.backport/repositories/`, independent of where it is launched, so launching from the operating checkout still backports into the tool-owned checkout correctly.
 - **Tool-owned checkout** — `~/.backport/repositories/elastic/kibana`, where the paused conflict state lives.
@@ -109,17 +120,17 @@ Two locations are in play; keep them separate:
 
 1. Spawn a dedicated controlling **window** in the current tmux session, detached, with its CWD on the operating checkout (not the tool-owned checkout) — e.g. `tmux new-window -d -n kbn-backport -c <operating-kibana-checkout> -PF '#{pane_id}'`, which creates the window in the current session without stealing focus and prints its pane id.
    Drive the run through that pane id (`capture-pane`/`send-keys -t '<pane>'`).
-   Own this window; use it instead of the user's existing shell pane or window.
+   Own this window; do not reuse the user's existing shell pane or window.
 2. Launch the run from that pane, passing the confirmed branches so you do not have to drive the checkbox prompt:
    - `tmux send-keys -t '<pane>' 'node scripts/backport --pr <N> -b <branch> [-b <branch> …]' C-m`
-   - Leave the editor unset (`--editor`/`$EDITOR`) for this pane; the tool only spawns one if configured, and an editor popup cannot be driven blind.
+   - Do not set an editor (`--editor`/`$EDITOR`) for this pane; the tool only spawns one if configured, and an editor popup cannot be driven blind.
 3. Poll the pane with `tmux capture-pane -p -t '<pane>'` to follow progress. Drive the run as a loop until it exits:
    - Cherry-pick succeeded for a branch → the tool pushes and opens the PR itself; continue watching.
    - Conflict pause (`Press ENTER when the conflicts are resolved and files are staged (Y/n)`) → work the per-conflict procedure against the tool-owned checkout (not the controlling window) for the current branch (Resolve A Conflict → Apply under Resolution Rules → stage → `yarn kbn bootstrap` + Validation), then Stage And Continue The Run sends ENTER to the controlling window's pane once it is staged, conflict-free, and validated.
      Only then does the run move to the next branch.
    - Run completed → capture the final summary and the opened backport PR URLs.
 4. If the launched `node scripts/backport` wrapper fails to start (e.g. `ERR_PACKAGE_PATH_NOT_EXPORTED`), report it and stop;
-   a silent fallback to a different mechanism is out of contract.
+   do not silently fall back to a different mechanism.
 5. Clean up the window you spawned (`tmux kill-window -t '<pane>'` — a pane id is a valid window target) once the run has exited and its output is captured.
    Keep it open only if the run ended with something needing the user's attention (failed/aborted run, unresolved conflict, or a blocked prerequisite) — say so and leave the window for inspection.
 

@@ -30,7 +30,7 @@ Reliable focus:
 await state.page.locator(".monaco-editor").first().click({ force: true });
 ```
 
-If clicking `codeEditorHint` directly, use `{ force: true }` too. Focus via `.monaco-editor` only; direct textarea clicks time out.
+If clicking `codeEditorHint` directly, use `{ force: true }` too. Never click the textarea directly.
 
 ## Setting content
 

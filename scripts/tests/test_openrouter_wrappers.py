@@ -474,10 +474,52 @@ printf 'model=%s\\neffort=%s\\nsubagent=%s\\nargs=%s\\n' \
         assert result.returncode == 0, result.stderr
         assert result.stdout.splitlines() == [
             f"model={OPENROUTER_WIRE_PIN}",
-            "effort=high",
+            "effort=max",
             "subagent=openai/gpt-5.5@preset/effort-xhigh",
-            f"args=--model {OPENROUTER_WIRE_PIN} --effort high -p review",
+            f"args=--model {OPENROUTER_WIRE_PIN} --effort max -p review",
         ]
+
+    def test_SHOULD_pass_supported_openrouter_effort_to_claude_client(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bindir = Path(tmp)
+            claude = bindir / "claude"
+            claude.write_text(
+                """#!/usr/bin/env bash
+printf 'model=%s\\neffort=%s\\nargs=%s\\n' "$ANTHROPIC_MODEL" "$CLAUDE_CODE_EFFORT_LEVEL" "$*"
+""",
+                encoding="utf-8",
+            )
+            claude.chmod(0o755)
+            cases = [
+                (["--effort", "low"], "deepseek/deepseek-v4-flash-0731@preset/effort-low", "low"),
+                (["--effort=xhigh"], "deepseek/deepseek-v4-flash-0731@preset/effort-xhigh", "xhigh"),
+                (["--effort", "none"], "deepseek/deepseek-v4-flash-0731@preset/effort-none", "low"),
+            ]
+            for argv, expected_model, expected_client_effort in cases:
+                with self.subTest(argv=argv):
+                    result = subprocess.run(
+                        [
+                            modern_bash(),
+                            str(REPO / "home/exact_bin/executable_,claude-openrouter"),
+                            *argv,
+                            "-p",
+                            "review",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        env={
+                            **os.environ,
+                            "PATH": f"{bindir}:{os.environ['PATH']}",
+                            "OPENROUTER_API_KEY": "fixture-key",
+                        },
+                    )
+
+                assert result.returncode == 0, result.stderr
+                assert result.stdout.splitlines() == [
+                    f"model={expected_model}",
+                    f"effort={expected_client_effort}",
+                    f"args=--model {expected_model} --effort {expected_client_effort} -p review",
+                ]
 
     def test_SHOULD_hard_pin_codex_and_copilot_routes_over_environment_values(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -775,7 +817,7 @@ touch "%s"
                 (
                     "home/exact_bin/executable_,claude-openrouter",
                     ["--context", "long"],
-                    "model=deepseek/deepseek-v4-flash-0731@preset/effort-max[1m]",
+                    "model=deepseek/deepseek-v4-flash-0731@preset/effort-max",
                 ),
                 (
                     "home/exact_bin/executable_,copilot-openrouter",

@@ -18,13 +18,13 @@ Common trigger in reviews:
 
 - Base-branch context for reviews (PR or local changes): learn how base works and what invariants exist, then compare against the local diff.
 
-Out of scope (use the named alternative):
+Do not use:
 
 - simple string/filename lookup: use local `rg` or file listing
 - as a replacement for local review of branch changes: use local repo tools for exact state (`git diff`, file reads, tests).
   SCSI is for base context.
 - purely mechanical pattern matching to drive a replace/edit: use local `rg`
-- current repo is not indexed (not present in `list_indices`): fall back to local sources
+- current repo is not indexed (not present in `list_indices`): do not use semantic code search
 
 First actions:
 
@@ -43,7 +43,7 @@ Review output contract (when invoked from a review skill):
 
 - Record the selected index (or "none") and include a `Base context:` line in the review output:
   - `Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<base>...HEAD`
-  - reviewer metadata only; keep it out of GitHub comment bodies
+  - reviewer metadata only; do not include in GitHub comment bodies
 
 Review preflight (blocking):
 

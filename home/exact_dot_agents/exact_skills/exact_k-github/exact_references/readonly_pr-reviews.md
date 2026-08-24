@@ -63,7 +63,7 @@ Reference for the `k-github` skill. Load when creating, reconciling, or submitti
   5. If any approved review feedback is UI-related and drafted after `/k-deep-review` or `live-ui-review`, compare it against the draft's `ui_evidence_attachments` ledger and block if screenshot evidence is missing without a valid blocker/non-applicability reason.
 - If no reconciliation ledger exists, run the review skill's Existing Pending Review Reconciliation before mutating GitHub.
 - If a pending review exists and the new payload is purely **additive** (net-new findings, no edits to existing draft comments):
-  - keep the single existing pending review (create/delete/recreate stays off the table)
+  - do not create a second pending review, and do not delete/recreate
   - append the net-new threads via GraphQL `addPullRequestReviewThread` against the existing `pullRequestReviewId`
   - show the exact pending review ID, the net-new comment bodies/anchors, and wait for explicit approval before posting
 - If the new payload must **change or drop** existing draft comments:

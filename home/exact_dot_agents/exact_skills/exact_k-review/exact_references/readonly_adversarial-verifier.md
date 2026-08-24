@@ -50,9 +50,9 @@ After returning every verdict, run one bounded sweep for what the candidate set 
   An unverified suspicion is not a candidate.
 - Return at most three, marked `new-candidate`, ordered by severity.
   Return none when nothing clears the bar; an empty sweep is a valid result and is better than a padded one.
-- Return only genuinely new items: an item that restates, re-severities, or re-words an existing candidate belongs in its verdict, not the sweep.
+- Do not restate, re-severity, or re-word an existing candidate as new.
   If it overlaps one you just judged, it is a verdict, not a sweep item.
-- Keep sweep work inside this lane's scope.
+- Do not expand scope to chase a sweep item.
   If deciding it needs work beyond this lane, return it as `undecidable (needs <exact check>)` instead.
 
 `new-candidate` items have not passed the findings audit. Say so; the controller re-audits them before judgment.
@@ -67,4 +67,4 @@ Default to `undecidable`, not `confirmed`, when the deciding evidence is genuine
 
 Then the miss sweep result: `new-candidate` items with the same fields as a finding (where, what is wrong, why it matters, how to verify, smallest proposed fix), or `Miss sweep: none above the bar`.
 
-Return distilled verdicts and sweep items only; raw diffs and logs stay in the lane.
+Do not return raw diffs or logs.

@@ -16,7 +16,7 @@ Use when:
 - the user asks for the single smartest, most impactful, or highest-leverage addition to the current branch, PR, or issue
 - the target is the branch/PR/issue goal, not only the uncommitted local diff, the whole codebase, or a targeted part
 
-Route elsewhere for:
+Do not use:
 
 - whole-codebase improvements: `~/.agents/skills/k-improve-codebase/SKILL.md`
 - current uncommitted/staged diff only: `~/.agents/skills/k-improve-local/SKILL.md`
@@ -28,7 +28,7 @@ First actions:
 1. Inspect current git status, branch name, branch diff/history, and any discoverable PR or issue context.
 2. Identify up to three candidate improvements internally, grounded in the observed branch, PR, or issue goal.
 3. Choose exactly one candidate only if it is clearly smart, accretive, useful, and compelling for this branch now.
-4. If no candidate clears that bar, say so and refrain from proposing a marginal change.
+4. If no candidate clears that bar, say so and do not propose a marginal change.
 
 Selection rules:
 

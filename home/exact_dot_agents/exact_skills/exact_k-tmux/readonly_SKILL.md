@@ -25,7 +25,7 @@ Treat the default tmux server as user-owned unless you prove otherwise.
 
 - Never run bare `tmux kill-server`.
   `kill-server` is allowed only with an isolated `-S "$sock"` or `-L "$name"` selector that this agent created in the same step.
-- Run bare server/session lifecycle or mutation commands against the default server (`new-session`, `kill-session`, `source-file`, `set-option`, `run-shell`, `display-popup`, `switch-client`, `attach`, `detach`, `send-keys`) only when the user explicitly asked to change the current tmux environment and the target was verified.
+- Do not run bare server/session lifecycle or mutation commands against the default server (`new-session`, `kill-session`, `source-file`, `set-option`, `run-shell`, `display-popup`, `switch-client`, `attach`, `detach`, `send-keys`) unless the user explicitly asked to change the current tmux environment and the target was verified.
 - Read-only commands against the current server are allowed when they are needed for observation:
   `display-message`, `list-sessions`, `list-windows`, `list-panes`, `capture-pane -p`, `show-options`, and `show-environment`.
   Keep target flags explicit when more than one session/window/pane exists.
@@ -44,7 +44,7 @@ tmux -S "$sock" show-options -gqv @some-option
 tmux -S "$sock" kill-server
 ```
 
-Keep each probe purely isolated or purely default-server; mixing selectors in one probe risks touching the live server.
+Do not mix isolated and default-server commands in one probe.
 If cleanup uses `kill-server`, verify it carries the isolated selector before executing.
 
 ## Interactive CLI Workflow
@@ -53,7 +53,7 @@ Use tmux panes when an interactive CLI needs iterative observation and input, bu
 
 1. Create a dedicated, named session or window for the workflow, for example `agent-<topic>-<pid>`.
 2. Start the CLI there rather than in the user's active pane unless the user asked you to take over that pane.
-3. Observe with `tmux capture-pane -p -t <target>` and `tmux list-panes -F ...`; infer state from captured output, never from memory.
+3. Observe with `tmux capture-pane -p -t <target>` and `tmux list-panes -F ...`; do not infer state from memory.
 4. Send input with `tmux send-keys -t <target> ...` only after the target pane is named in the command and the captured output shows the CLI is waiting for that input.
 5. Leave user-owned sessions running. Only tear down sessions/windows/panes that this agent created, and only by explicit target.
 

@@ -8,7 +8,7 @@ Concepts introduced by the PR are first-class content, not incidental prose. If 
 
 ## The preflight: make the context visible before HTML
 
-Write a compact authoring preflight before filling the template.
+Do not start filling the template until you have a compact authoring preflight.
 It is the working map that keeps the page from becoming "the diff, but prettier":
 
 - **Thesis:** one sentence naming the reviewer-visible outcome.
@@ -33,7 +33,7 @@ The page should make the reviewer ready to review; it should not review for them
 
 - **Mental model:** one compact before/after and why-now block. This answers "what system did I just enter?"
 - **Layered explanation:** business concept -> domain/data shape -> API/contract -> state/flow -> UI/runtime -> tests/guardrails.
-  Omit layers that truly do not exist, but keep every layer that carries behavior visible.
+  Omit layers that truly do not exist, but never hide a layer that carries behavior.
 - **Change topology:** group files by responsibility and dependency, not by path order.
   Name the group, its role, the files, and which group it enables or constrains.
 - **Load-bearing line index:** list the exact hunks/lines a reviewer should recognize before GitHub.
@@ -56,12 +56,12 @@ Use it for the concepts a reviewer must hold in working memory before the diff m
   - **How** this PR models, routes, validates, or changes it, with source anchors.
   - **Why** it matters for behavior, risk, or review attention.
 - **Vertical anchor stack:** concept cards stay one per row.
-  Keep them one per row, single-column: when two cards share the same vertical position, the second sidebar link appears to do nothing even if the hash changes.
+  Do not put them in a multi-column grid: when two cards share the same vertical position, the second sidebar link appears to do nothing even if the hash changes.
 - **Right fixed sidebar:** notes that would clutter the main column.
   Examples include caveats, glossary details, examples, non-obvious tradeoffs, migration constraints, reviewer shortcuts, or "watch this line" reminders.
   Notes follow both concept links and readiness/story links.
 - **Business code rule:** any non-trivial product/domain logic must get a concept card unless it is already established project vocabulary.
-  Give reviewers explicit business semantics instead of leaving them to infer it from symbol names alone.
+  Do not make reviewers infer business semantics from symbol names alone.
 - **No concept spam:** mechanical plumbing, generated code, pure style, and obvious tests do not become concepts.
   If the PR is purely mechanical, keep one explicit "No new business concepts" card and say which invariant or workflow is preserved.
 - **Interactive preference:** when a concept has moving parts, prefer deterministic HTML flow nodes, toggles, cards, or simple CSS/JS animation.
@@ -74,12 +74,12 @@ The most common failure is **semantic triplication** — a paragraph says X, the
 - Each beat delivers exactly **one** insight.
 - Each beat has exactly **one primary medium**: a diagram **or** a diff — never both stacked saying the same thing.
 - Prose is **connective tissue only**: it frames _why this beat matters_ or transitions to the next.
-  Leave the description of what the adjacent visual shows to the visual itself.
+  It must never describe what the adjacent visual already shows.
 - Pick the medium by the nature of the idea:
   - **Flow / contrast / state / "before→after"** → diagram is primary; text = one caption line + at most one "why it matters" line.
   - **The code itself is the point** → diff is primary; annotation = 1 short note per changed line-group. No diagram duplicating it.
   - **Exact labels / symbol lists / option names** → deterministic HTML flow, cards, or diff.
-    Ask an image model to reproduce exact text only when the label count is tiny and the image is genuinely the fastest explanation.
+    Do not ask an image model to reproduce exact text unless the label count is tiny and the image is genuinely the fastest explanation.
 - **Show the load-bearing line.**
   If the insight _is_ a specific line/option (a header set, a flag flipped, an arg threaded), that exact diff line MUST be visible in the beat.
   A diagram may set it up or contrast it, but must never _replace_ the code that is the point —
@@ -103,7 +103,7 @@ Walking a file top-to-bottom is just "the PR, slower." Order by the _story_:
    Each gets the medium that explains it fastest (medium chosen by the idea per the one law, not for visual rotation).
    Importance = how much room a beat gets.
    Split layout is rare: use it only when the diagram provides context and the diff is still the load-bearing medium.
-   Keep medium-by-idea and the load-bearing line even when tempted to "vary it".
+   Never let "vary it" override medium-by-idea or drop a load-bearing line.
 6. **Act III — Invariants held.**
    The "we didn't break X" reassurances, as a **compact card rail** (claim + one-line proof each), NOT full sections.
    This is where most dedup happens. At most one card carries a thumbnail.
@@ -113,7 +113,7 @@ Walking a file top-to-bottom is just "the PR, slower." Order by the _story_:
 
 ### Continuity: no teleports
 
-The reader must always know how they got here — every beat is reached by a visible thread, not dropped in.
+The reader must **never** wonder "how did we get here?" — every beat is reached by a visible thread, not dropped in.
 
 - **Between acts:** a **transition** — one big connective sentence with whitespace.
 - **Between beats inside an act:** each beat opens with **one connective clause** that ties it to the previous beat or the goal —
@@ -148,10 +148,10 @@ That is the entire trick to keeping a big PR a focused narrative instead of a wa
 ## Raster images (named Nano Banana / Gemini / Google image only)
 
 - Reserve diagrams for **goal-level flow/contrast** + **at most one additional state/flow idea**.
-  Default to a single Act I diagram and cap diagrams there; one diagram per file is out of scope.
+  Default to a single Act I diagram; you cannot (and must not) draw one diagram per file.
   Prefer deterministic HTML/diff unless this turn named Nano Banana, Gemini image, or Google image gen/edit.
 - When that named lane is in play, load the `k-nano-banana` skill. Reference images by **relative filename** in the same dir as the HTML.
-  Reference images by relative filename only; base64-inlining bloats the file and slows editing.
+  Do NOT base64-inline them — it bloats the file and slows editing.
 - Prompt for the house style every time so images cohere: `dark background #0b1020, thin teal/blue/amber line style, developer documentation, labeled, no people`, plus the specific BEFORE/AFTER or state.
 - **Verify each image by viewing it.** The model occasionally stutters text (e.g. "query.query.console") or adds a stray title banner.
   Regenerate if the most prominent images (Act I especially) have artifacts.
@@ -162,7 +162,7 @@ That is the entire trick to keeping a big PR a focused narrative instead of a wa
 
 ## Act-rail (navigation)
 
-- Labels can be **any length** — they wrap inside the left gutter when the Act rail is visible and hide below desktop widths, so leave widths alone per presentation.
+- Labels can be **any length** — they wrap inside the left gutter when the Act rail is visible and hide below desktop widths, so never hand-tune widths per presentation.
   On wide screens the concept sidebar replaces the rail as the primary fixed navigation.
 - One `<a>` per act; keep it to the 4 acts.
 
@@ -174,7 +174,7 @@ That is the entire trick to keeping a big PR a focused narrative instead of a wa
   It should make the main column lighter, not become a second article.
 - The **main column** remains the visual lane: concept primer cards, deterministic flows, real diffs, diagrams, and reveal animations.
 - Concept cards must remain a vertical anchor stack so each left-sidebar concept block has a distinct scroll destination.
-- On narrower screens, sidebars collapse away and the main concept cards remain the source of truth, so keep essential information in the main column, with sidebars as supplements.
+- On narrower screens, sidebars collapse away and the main concept cards remain the source of truth, so never put essential information only in a sidebar.
 - Verify desktop geometry: left concept sidebar, main column, and right notes sidebar must not overlap at the browser width used for validation.
 
 ## Template shape

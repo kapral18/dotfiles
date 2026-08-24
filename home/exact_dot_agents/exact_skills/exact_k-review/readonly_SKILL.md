@@ -19,7 +19,7 @@ Contract:
   - `~/.agents/skills/k-review/references/judging_core.md`
   - `~/.agents/skills/k-review/references/shared_rules.md`
   - `~/.agents/skills/k-review/references/authorship.md`
-- Mode files reference both files but reuse the already-loaded copies.
+- Mode files reference both files but do not re-load them.
 - For PR modes, also load `~/.agents/skills/k-review/references/pr_common.md` once.
   Load `~/.agents/skills/k-review/references/pr_context_audits.md` only when `pr_common.md`'s conditional Ambient Topic Exploration or PR Necessity + Correctly-Open Audit gate triggers.
 - Keep read-only PR inspection/review inside this router.
@@ -39,14 +39,14 @@ Standard review uses a bounded reviewer roster as an execution mechanism, not as
 
 ## Secondary Skill Escalation
 
-Load secondary skills only after read/diff evidence proves the surface is in scope.
+Do not load secondary skills until read/diff evidence proves the surface is in scope.
 
 - Load semantic code search only for base context after the selected mode requires base-branch context.
 - Load GitHub workflow only when the user explicitly asks to post/submit anything to GitHub.
 
 ## Draft-PR Policy
 
-- Review someone else's draft PR only when the user explicitly asks.
+- Never review someone else's draft PR unless the user explicitly asks.
 - If a PR is in draft state and the user did not explicitly request a review, stop and note: "This PR is a draft —
   skipping review unless you explicitly ask."
 - When a draft PR is reviewed (because explicitly asked), apply full thoroughness — a review is a review regardless of draft status.
@@ -105,13 +105,13 @@ Pick exactly one mode. If ambiguous, ask one fork-closing question and state a d
 
 ## Disambiguation (If Still Unclear)
 
-If the user's intent is still unclear, resolve via local context (evidence, not guesses):
+If the user's intent is still unclear, resolve via local context (do not guess):
 
 - If the subject is a document, issue body, or pasted text rather than a code target: plan review mode.
 - If not in a git repo:
   - Ask: "Is this a GitHub PR review (send URL/number), a local repo changes review, or a plan/design document review?"
 - If in a git repo:
-  - Run `git status --porcelain=v1 -b` (read-only, proceed without asking).
+  - Run `git status --porcelain=v1 -b` (read-only, do not ask to proceed).
   - Independently check both:
     - whether staged/unstaged changes exist
     - whether `,gh-prw --number` resolves a PR for the current branch

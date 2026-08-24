@@ -16,7 +16,7 @@ Use when:
 - the user asks for the single smartest, most impactful, or highest-leverage addition to the current repository
 - the target is the whole codebase, not only the current diff, branch, PR, issue, or a targeted part
 
-Route elsewhere for:
+Do not use:
 
 - current local changes only: `~/.agents/skills/k-improve-local/SKILL.md`
 - current branch, PR, or issue only: `~/.agents/skills/k-improve-branch/SKILL.md`
@@ -28,7 +28,7 @@ First actions:
 1. Inspect the repo shape, documentation, test/validation commands, and current git state.
 2. Identify up to three candidate improvements internally, grounded in observed code or docs.
 3. Choose exactly one candidate only if it is clearly smart, accretive, useful, and compelling for this repo now.
-4. If no candidate clears that bar, say so and refrain from proposing a marginal change.
+4. If no candidate clears that bar, say so and do not propose a marginal change.
 
 Selection rules:
 

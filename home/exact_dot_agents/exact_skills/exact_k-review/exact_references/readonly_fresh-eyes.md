@@ -22,10 +22,10 @@ Blindness constraints (they define this lane):
 - Never run `gh`, and never read PR/issue/thread content in any form.
 - Never read commit messages: no `git log`, no `git blame`; use `git show` only in the `<ref>:<path>` file-content form.
 - Allowed reads: the diff from the packet's scope, the post-change content of changed files, and surrounding worktree code needed to judge clarity.
-- Use this contract as the whole methodology for this lane; the `k-review` skill, its references, and mode files stay unloaded.
+- Do not load the `k-review` skill, its references, or mode files; this contract is the whole methodology for this lane.
 - Same mutation boundary as reviewer workers: strictly read-only and concurrency-safe;
   never edit files, run state-changing commands, or post anywhere.
-- Work alone in this lane; launching more subagents is out of scope.
+- Do not launch more subagents.
 
 What to flag (clarity only):
 
@@ -56,7 +56,7 @@ If the changed content is only generated/vendored/lockfile material, return `Not
 ## Launch (controller-facing)
 
 - Launch with the harness's generic read-only task mechanism.
-  Use only generic mechanisms here: the named reviewer profiles and any profile that preloads the `k-review` skill ingest PR context and unblind the lane.
+  Do not use the named reviewer profiles or any profile that preloads the `k-review` skill; those ingest PR context and unblind the lane.
 - Use the review model resolver (`review-agent-model.partial` / `resolve_review_agent_model`) as the model source.
   If the resolved value is concrete, pass it explicitly so the runtime cannot fall back to an implicit default or older built-in model.
   If the resolved value is `inherit` or empty/default by design, record that expected inheritance/default in `model_required`.

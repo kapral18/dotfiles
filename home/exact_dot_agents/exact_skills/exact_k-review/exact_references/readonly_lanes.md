@@ -9,11 +9,11 @@ The lane budget lives in the calling tier, not here.
 ## How the controller uses it
 
 1. Build the roster from scope-level evidence only: mode, changed paths, `git diff --stat`, `git diff --diff-filter=D --stat`, and the context pack manifest.
-   Roster selection is scope-level only — pick lanes from that evidence, leaving code bodies unread.
+   Roster selection is not implementation analysis — do not read code bodies to pick lanes.
 2. Always launch `correctness-regressions`.
 3. Add another lane only when its Trigger matches on that scope-level evidence **and** its lens would be under-covered inside an already-selected lane.
 4. Paste the selected lane's **Lens skill** line and **Checks** list verbatim into that worker's scope packet.
-   Workers receive only the pasted entry; pasting it costs a few lines instead of the whole registry.
+   Workers do not load this file; pasting the entry costs a few lines instead of the whole registry.
 5. Fold implicated lanes that exceed the budget into the closest launched lane as named secondary emphases, and say which were folded.
 6. Record each selection with the concrete evidence that triggered it, so an unproductive lane can be pruned from later runs.
 
@@ -140,4 +140,4 @@ When no skill exists for a lens, the Checks list is the whole contract.
 ## Adding a lane
 
 Add an entry only when a lens is genuinely under-covered by every existing one, and give it a scope-level Trigger that can be evaluated without reading code bodies.
-Wire a `Lens skill` only when a matching skill already exists; the Checks list alone is a complete contract, so a slot needs no skill created for it.
+Wire a `Lens skill` when a matching skill already exists; do not create a skill just to fill the slot.

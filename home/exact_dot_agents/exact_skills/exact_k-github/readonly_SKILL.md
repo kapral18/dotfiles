@@ -67,18 +67,18 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
 
 ## PR review side effects
 
-- Create-review payloads must omit `event`; `POST /reviews` without `event` creates a pending draft.
+- Never include `event` in create-review payloads; `POST /reviews` without `event` creates a pending draft.
   Publish only via a separate submit call after explicit approval.
-- Before create/append/delete-recreate/submit, reconcile current-account pending reviews with the new payload so feedback stays consolidated.
+- Before create/append/delete-recreate/submit, reconcile current-account pending reviews with the new payload; do not fragment feedback.
   Append net-new comments to an existing pending review; delete/recreate only to change or drop existing ones.
 - UI-related review feedback needs screenshot handoff evidence outside the body, or a valid blocker/non-applicability reason.
 - Full mechanics live in `~/.agents/skills/k-github/references/pr-reviews.md`.
 
 ## PR review comments
 
-- Use bash/zsh `$'...'` so `\n` becomes real line breaks; send only real line breaks, with literal `\n` excluded.
+- Use bash/zsh `$'...'` so `\n` becomes real line breaks; never send literal `\n`.
 - Commit references must be clickable full GitHub URLs.
-- UI-related comments/replies/PR-level feedback need screenshot handoff evidence outside the body; keep local screenshot paths out of it.
+- UI-related comments/replies/PR-level feedback need screenshot handoff evidence outside the body; never include local screenshot paths.
 - Follow `~/.agents/skills/k-review/references/pr_review.md` or `pr_fix.md` for anchoring/placement.
 - Comment examples live in `~/.agents/skills/k-github/references/pr-comments.md`.
 
@@ -101,5 +101,5 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
 
 - Before each side effect, restate exact target and action.
 - After each side effect, verify via read-back (`gh`/API) and report URL, identifier, or resulting state.
-- Add/modify repo `.github/*` templates only when explicitly asked.
+- Do not add/modify repo `.github/*` templates unless explicitly asked.
 - Sub-issues API creates real parent-child relationships; use `~/.agents/skills/k-github/references/sub-issues.md`.

@@ -14,7 +14,7 @@ tool_version: "letsfg 2026.4.66 (uv tool; --version unavailable); playwriter 0.1
   Hosted book pages hide booking links behind the website unlock/pay/share flow.
 - Open airline/OTA booking URLs only when the user asks.
   Opening is read-only, but checkout, passenger entry, payment, or final booking can create real-world side effects.
-- For search-only tasks, use the local `letsfg` CLI first; start a browser only when rendered UI is required.
+- Do not start a browser for search-only tasks. Use the local `letsfg` CLI first.
 
 ## First Actions
 
@@ -74,7 +74,7 @@ Use single quotes around `-e` snippets unless using a quoted heredoc, so the she
   This runs the CLI in a Docker container with Xvfb, avoiding visible local Chrome windows while keeping all browser-based connectors active.
 - Prefer `--mode fast` for interactive searches.
   Use the default full search only when the user wants maximum coverage and accepts a slower run.
-- Prefer direct `booking_url` fields returned by local results over constructing LetsFG hosted `/book/...` URLs.
+- Prefer direct `booking_url` fields returned by local results. Do not create LetsFG hosted `/book/...` URLs.
 - Summarize price, airline, route, departure/arrival, duration, stops, source, and direct booking URL when available.
 
 ## Safety
@@ -95,7 +95,7 @@ Use single quotes around `-e` snippets unless using a quoted heredoc, so the she
 - Local `letsfg search ... --json` returns offers with `booking_url`, `source_tier`, and `is_locked`.
   Local free search should return `source_tier: "free"` and `is_locked: false` for directly usable result links.
 - Some LetsFG connectors hard-code headed Chrome or CDP Chrome because their target sites block headless browsers.
-  Keep installed package files unpatched; prefer browserless search by default and treat browser connectors as explicit opt-in coverage.
+  Do not patch installed package files in-place; prefer browserless search by default and treat browser connectors as explicit opt-in coverage.
 - The system Python may not import `letsfg` because uv tools live in isolated environments.
   Prefer the `letsfg` executable instead of Python imports.
 - Playwriter has a hidden browser launcher: `playwriter browser start --headless`.

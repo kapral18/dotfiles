@@ -24,7 +24,7 @@ When the scope packet names a context pack, load `~/.agents/skills/k-review/refe
 
 Apply only the **Post-Review Lens (The Four Dimensions)**.
 
-Skip these; they belong to other phases:
+Do not run:
 
 - full coverage checklist
 - base-context gate
@@ -44,22 +44,22 @@ Hard constraints:
 - Group findings by the canonical dimensions: redundancy, verbosity, semantic + logical duplication, gaps.
 - Check whether each remaining finding is actionable and whether the proposed smallest fix is overengineered for the proved problem.
 - If a candidate is classified as `preserved_limitation` or `prose_drift`, report that it should be dropped;
-  keep it a drop recommendation rather than converting it into an actionable implementation finding.
+  do not convert it into an actionable implementation finding.
 - Check whether parent-supplied existing pending/submitted review content changes a candidate's disposition.
   It may make the candidate redundant, stale, conflicting, or mergeable into a single cleaner payload.
 - Check whether each screenshot is tied to a candidate the controller kept.
   It must have a useful description and be worth handing to the publication step for upload.
 - For UI-related kept findings that may become draft review feedback, missing screenshot handoff is a gap unless `live-ui-review` returned a valid blocker or non-applicability result.
   Recommend rerun/block rather than drafting a UI-related comment from text-only UI evidence.
-  Drop handoff entries only for findings the controller should drop, redundant screenshots, or screenshots with no useful link to the candidate; keep a relevant screenshot even when text evidence also exists.
+  Drop handoff entries only for findings the controller should drop, redundant screenshots, or screenshots with no useful link to the candidate; do not drop a relevant screenshot merely because text evidence also exists.
 - Treat parent-supplied `verification_needed` and blocker entries as sticky ledger items.
   You may recommend `resolved`, `run`, `blocked`, or `not needed with evidence`.
-  Keep every item on the ledger, and keep both branches of an unresolved intent/data fork open until the controller resolves them.
+  Do not erase an item or assume one branch of an unresolved intent/data fork.
 - Treat same-root-cause findings from two or more reviewer lanes as a merge/deduplication problem, not a reason to discard the issue as unnecessary.
   Recommend one merged candidate unless source/API/runtime evidence proves a hard drop reason.
 - Redundancy, verbosity, and semantic + logical duplication are payload-quality findings.
   They may justify merging, rewording, suppressing a duplicate copy, or asking the controller to verify an unresolved fork;
-  an evidence-backed substantive issue stays actionable regardless of them.
+  they do not make an evidence-backed substantive issue non-actionable by themselves.
 
 Return each finding with:
 
@@ -74,4 +74,4 @@ Also return a screenshot handoff audit: kept/dropped entries and why.
 Also return a verification-ledger audit.
 Include every parent-supplied `verification_needed` or blocker, the recommended disposition, and the evidence for that disposition.
 
-If a dimension is clean, say so for that dimension. Return structured findings only; raw diffs and logs stay in the lane.
+If a dimension is clean, say so for that dimension. Do not return raw diffs or logs.

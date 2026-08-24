@@ -21,9 +21,10 @@ These skills route non-code tools, browser automation, and generated visual asse
 
 | Field    | Value                                                                                                  |
 | -------- | ------------------------------------------------------------------------------------------------------ |
-| Use when | inspecting or changing Gmail, Drive, Calendar, Admin, Docs, Sheets via `gws`                           |
+| Use when | inspecting or changing Gmail, Drive, Calendar, Admin, Docs, Sheets, or Slides via `gws`                |
 | Source   | [`exact_k-google-workspace`](../../../../home/exact_dot_agents/exact_skills/exact_k-google-workspace/) |
 | Tool     | `gws` CLI                                                                                              |
+| Related  | generic Slides deck geometry and automation live in `references/slides-deck-design-and-automation.md`  |
 
 ## `k-letsfg`
 
@@ -65,7 +66,7 @@ These skills route non-code tools, browser automation, and generated visual asse
 | Use when | proving a built/changed UI matches its intended visual/behavior, auditing a diff for capturable UI changes, or capturing/uploading before/after PR screenshots and videos                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | Source   | [`exact_k-ui-capture`](../../../../home/exact_dot_agents/exact_skills/exact_k-ui-capture/)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | Related  | creation-side sibling of `live-ui-review`; proof mechanics live in its shared `references/proof-mode.md`, loaded directly by `/k-build` and `k-compose-pr`; existing-PR targets pass the published-proof gate, which reuses pairs passing adequacy (media type + frame match the behavior) and freshness checks instead of recapturing; claim map requires every embed claim to map to an adequate asset; shares [`live-ui-runtime.md`](../../../../home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_live-ui-runtime.md); upload via the `k-github` attachments flow |
-| Boundary | head-only proof capture with gated upload; per-behavior proof coverage (dedicated pairs by default, shared pair for same-trigger behaviors each plainly visible in it), video for interaction-only deltas; `baseline` (base↔head) vs `intra-change` (tip↔tip) framing with separate publication channels; not for reviewing others' changes (`k-review`/`/k-deep-review` own `live-ui-review`)                                                                                                                                                                                                  |
+| Boundary | head-only proof capture with gated upload; publication requires the proof-mode return shape through `claim_map`; synthetic clips, test-result clips, and prose caveats are inadequate publication assets; per-behavior proof coverage (dedicated pairs by default, shared pair for same-trigger behaviors each plainly visible in it), video for interaction-only deltas; `baseline` (base↔head) vs `intra-change` (tip↔tip) framing with separate publication channels; not for reviewing others' changes (`k-review`/`/k-deep-review` own `live-ui-review`)                                   |
 
 ## `k-live-ui-windows`
 

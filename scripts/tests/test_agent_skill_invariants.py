@@ -300,7 +300,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
             "Before `gh issue create`",
             "`k-compose-issue` issue publication packet",
             "gh issue create --type <IssueType>",
-            "labels-only creation needs explicit approval",
+            "do not silently fall back to labels-only creation",
             "issue type via GraphQL",
         )
 
@@ -324,7 +324,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
             "home/exact_dot_agents/exact_skills/exact_k-elastic-domain/readonly_SKILL.md",
             "generic skills must not invent fallback Kibana title style, labels, release-note state, or footer policy",
             "PR titles should use Kibana's bracketed area style",
-            "Use a Conventional Commit header as the PR title only when that exact area has precedent",
+            "Do not use a Conventional Commit header as the PR title unless that exact area has precedent",
         )
 
     def test_kibana_label_guidance_blocks_esql_label_from_console_mentions(self):
@@ -332,7 +332,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
             "home/exact_dot_agents/exact_skills/exact_k-kibana-labels-propose/readonly_SKILL.md",
             "this skill is the source of truth for `elastic/kibana` label/backport/version classification",
             "when all changed paths and the linked issue point to Console, propose `Feature:Console`",
-            "add `Feature:ES|QL` only when there is separate evidence",
+            "do not add `Feature:ES|QL` unless there is separate evidence",
             "pending_approval",
         )
 
@@ -375,7 +375,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
             "home/exact_dot_agents/exact_skills/exact_k-elastic-domain/readonly_SKILL.md",
             "`~/.agents/skills/k-elastic-domain/references/pr-issue-templates.md`",
             "include environment details when UI or deployment matters",
-            "leave unknown stack/deployment/browser fields blank or marked for follow-up rather than inventing them",
+            "leave unknown stack/deployment/browser fields blank or marked for follow-up; do not invent them",
         )
         self.assert_file_not_contains(
             "home/exact_dot_agents/exact_skills/exact_k-elastic-domain/readonly_SKILL.md",

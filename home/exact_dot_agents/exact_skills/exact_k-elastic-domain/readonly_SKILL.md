@@ -14,7 +14,7 @@ Use when:
 - another skill says to load this overlay
 - handling Elastic Buildkite, SCSI, Kibana labels, ownership, live UI, Dev Tools Console, or domain policy
 
-Use only as an overlay on a primary skill for review, GitHub, git, compose, posting, labeling, resolving, committing, pushing, or mutation.
+Do not use standalone for review, GitHub, git, compose, posting, labeling, resolving, committing, pushing, or mutation.
 Outside Elastic/Kibana contexts, use only when explicitly requested.
 
 ## Detection
@@ -31,7 +31,7 @@ If detection is unavailable, keep generic behavior and state Elastic-specific ru
 
 1. Run the primary skill's generic workflow first.
 2. Load this overlay only for domain additions below.
-3. Keep generic mechanics with primary skills: routing, PR intake, pending-review reconciliation, publication gates, and review judging stay there.
+3. Do not duplicate generic mechanics: routing, PR intake, pending-review reconciliation, publication gates, and review judging stay with primary skills.
 4. If this overlay conflicts with the primary skill, safer/gated behavior wins.
 
 ## GitHub and PR composition
@@ -49,7 +49,7 @@ Precedence for `elastic/kibana` PR composition:
 Public text sanitization:
 
 - For behavior/UI bugs, use portable local repro wording: `local Kibana`, `http://localhost:5601`, `a user with only <privilege>`, or explicit role/user setup.
-- Publish private hostnames, non-standard local domains, `/tmp/...`, absolute workspace paths, browser session names, or one-off local accounts only when the text tells readers how to create them.
+- Do not publish private hostnames, non-standard local domains, `/tmp/...`, absolute workspace paths, browser session names, or one-off local accounts unless the text tells readers how to create them.
 
 Elastic org PR bodies:
 
@@ -70,14 +70,14 @@ Elastic org PR bodies:
   For `Bugfix`, `## Root Cause` and `## Fix` are standalone; screenshots use the packet `screenshots` field and require uploaded embeds or explicit skip approval.
 - PR titles should use Kibana's bracketed area style when evidence chooses an area, e.g. `[Console] Fix ...`.
   Derive from linked issue, changed-path ownership, or same-area PR precedent; ask if multiple brackets remain plausible.
-  Use a Conventional Commit header as the PR title only when that exact area has precedent.
+  Do not use a Conventional Commit header as the PR title unless that exact area has precedent.
 - Include `## Release Note` only for `release_note:fix` or `release_note:feature`; omit for enhancement/skip/unverified states.
-- Complete the label proposal before body finalization; it is a required input, never skipped or deferred.
+- Do not skip/defer label proposal; body finalization requires it.
 - If reviewer/ownership guidance is requested, load `k-kibana-management-ownership`.
-- Use only verified issue numbers; choose `Closes #X` vs `Addresses #X` intentionally.
+- Never invent issue numbers; choose `Closes #X` vs `Addresses #X` intentionally.
 
 `elastic/kibana` issue bodies: include environment details when UI or deployment matters;
-leave unknown stack/deployment/browser fields blank or marked for follow-up rather than inventing them.
+leave unknown stack/deployment/browser fields blank or marked for follow-up; do not invent them.
 
 Templates live in `~/.agents/skills/k-elastic-domain/references/pr-issue-templates.md`.
 
@@ -90,7 +90,7 @@ Evidence-first: answer from issue/diff/codebase before asking; only genuine gaps
 
 ## Review and CI additions
 
-- Buildkite URLs for Elastic repos go through `k-buildkite` and `bk`, replacing direct `buildkite.com` fetches.
+- Buildkite URLs for Elastic repos go through `k-buildkite` and `bk`; do not fetch `buildkite.com` directly.
 - For `k-present-pr`, fetch only compact Buildkite facts needed for the story:
   build number, state, commit, and current-vs-historical failures.
 - Labels/backports/version targeting are propose-only through `k-kibana-labels-propose` unless the user approves GitHub mutation.

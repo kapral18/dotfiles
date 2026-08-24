@@ -19,6 +19,15 @@ The boundary is intentional: generic skills (`k-review`, `k-deep-review`, `k-git
 
 The overlay also carries a Kibana planning fork checklist (`references/kibana-planning-forks.md`) that the generic `k-spec` skill consults when the target repo is `elastic/kibana`: API versioning, Saved Objects/migrations, privileges, dependencies, feature flags, backports, test placement, alerting, and instrumentation forks. Adapted from the specialist `elicitation_questions` in [`elastic/plan`](https://github.com/elastic/plan) (`prompts/teams/elastic-kibana/`); refresh it by re-reading that directory upstream and folding in changes — curated, not mirrored.
 
+## `k-elastic-slides`
+
+| Field    | Value                                                                                                      |
+| -------- | ---------------------------------------------------------------------------------------------------------- |
+| Use when | manually generating, updating, or styling Elastic-themed Google Slides decks                               |
+| Source   | [`exact_k-elastic-slides`](../../../../home/exact_dot_agents/exact_skills/exact_k-elastic-slides/)         |
+| Routing  | manual                                                                                                     |
+| Related  | layers Elastic palette, ownership, and Kibana manifest sourcing over `k-google-workspace` Slides mechanics |
+
 ## `k-buildkite`
 
 | Field    | Value                                                                                    |

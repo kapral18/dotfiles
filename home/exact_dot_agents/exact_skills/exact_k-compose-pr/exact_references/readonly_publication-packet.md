@@ -36,14 +36,14 @@ Completion criterion: the packet is complete, or composition is blocked with exa
 
 - Keep it short and reviewable; prefer bullets over prose.
 - Test Plan must be evidence: commands run + observed result.
-- Keep required template sections as their own headings rather than collapsing them into `## Summary`.
+- Do not collapse required template sections into `## Summary`.
   Required explanatory sections such as `## Root Cause`, `## Fix`, `## Rationale`, or `## User-Facing Behavior` must appear as their own headings when selected by the template.
   Before handoff, compare final headings against the template checklist.
 - **PR Test Plan completeness gate**: if any linked/closing issue has `## Reproduction`, `Expected`, or `Actual`, adapt observable steps into `## Test Plan`; include the expected observable result after the fix; include commands run + observed results separately from manual/observable verification steps; if manual repro was not run, say so and keep portable reviewer-run steps.
 - For removed/replaced long-lived or “legacy” infrastructure, `## Root Cause` must carry why it existed and why it no longer applies;
-  saying “always wrong” requires origin evidence.
+  do not say “always wrong” without origin evidence.
 - For behavior/UI bugs, include portable local reproduction steps another reviewer can run from a normal checkout;
-  session-only validation notes are a supplement, never the repro itself.
+  do not replace repro with session-only validation notes.
 - Sanitize public PR text: no machine-specific hosts, ports, paths, temp files, workspace names, browser-session URLs, or local usernames.
   Prefer portable wording such as `local app`, `http://localhost:<port>`, `a user with only <privilege>`, or setup steps.
 - Screenshots: when captured, add `## Screenshots` with bold caption + `user-attachments` URL per shot.

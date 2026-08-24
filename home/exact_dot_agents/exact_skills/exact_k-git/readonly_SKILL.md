@@ -7,9 +7,9 @@ description: "Use for local git operations: status, diff, log, staging, branches
 
 External truth applies:
 
-- verify behavior from the actual repo/version (`git --version`, `git help <cmd>`) rather than memory.
+- verify behavior from the actual repo/version (`git --version`, `git help <cmd>`); do not rely on memory.
 
-Route elsewhere for:
+Do not use:
 
 - GitHub/`gh` operations (PRs, issues, labels, comments, reviews): `~/.agents/skills/k-github/SKILL.md`
 - Writing-only PR/issue composition: `~/.agents/skills/k-compose-pr/SKILL.md`, `~/.agents/skills/k-compose-issue/SKILL.md`
@@ -31,13 +31,13 @@ Large-repo probe safety:
 
 Remote credential-output safety:
 
-- Keep configured remote URLs out of output; always redact them.
+- Never print configured remote URLs verbatim.
   Commands such as `git remote -v`, `git remote get-url`, `git config --get remote.*.url`, and broad `git config --list` / `--show-origin` probes may expose credentials embedded as URL userinfo.
 - Resolve repository and PR identity with platform metadata (`gh repo view`, `gh pr view`) and list remote names with `git remote`;
   a named remote is sufficient for fetch/push commands.
 - Inspect an exact remote URL only when the task materially depends on URL semantics.
   Redact userinfo inside the local command pipeline before any output reaches the model, and return only the redacted value;
-  only the redacted URL may be emitted or interpolated into model-visible text.
+  never emit or interpolate the raw URL into model-visible text.
 - Redaction is not permission to inspect credential-bearing configuration.
   Prefer a probe that never reads the URL when remote names or platform metadata answer the question.
 
@@ -49,26 +49,26 @@ Safety protocol:
 
 Approvals:
 
-- Run `git commit` only when the user explicitly requested a commit in the current conversation.
+- Never run `git commit` unless the user explicitly requested a commit in the current conversation.
 - Content approval is not commit authorization: "make it generic", "fix it", "do it", or approval of file edits authorizes the edits, not a commit.
 - When a task would conventionally end with a commit, stop at the working tree and report the change set;
   the user commits or asks for one explicitly.
 - An explicit push request covers committing the changes it describes; absent that, leave the tree uncommitted.
-- Push only on an explicit push request.
+- Do not push without an explicit push request.
 
 Push policy (mandatory):
 
 - Interpret a user request to "push" as explicit approval for `git push --force-with-lease`.
 - Prefer explicit remote/branch in the restated command (example: `git push --force-with-lease origin <branch>`).
 - If upstream is missing, `git push --force-with-lease -u <remote> <branch>` is allowed.
-- Run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, or `git merge <remote>/<branch>` before pushing only when the user asks for it.
+- Never run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, or `git merge <remote>/<branch>` automatically before pushing.
 - If push is rejected for divergence, non-fast-forward, lease failure, or diverged history, stop and ask how to proceed.
-- Reconcile branch history only when the user explicitly asks for that exact action.
+- Do not reconcile branch history unless the user explicitly asks for that exact action.
 
 Amend policy (mandatory):
 
 - when the user explicitly says "amend", use `git commit --amend`
-- take amend requests at face value; the git author field reflects git config, not whether the agent created the commit
+- do not second-guess amend requests by inspecting the commit author; the git author field reflects git config, not whether the agent created the commit
 - if the amended commit was already pushed, the subsequent push will need `--force-with-lease` (covered by push policy above)
 
 Commit quality:
@@ -97,7 +97,7 @@ Branching:
 
 Merge policy:
 
-- merge into the base branch only via the GitHub UI, never via CLI
+- never merge into the base branch via CLI; merges happen via the GitHub UI
 
 Output:
 

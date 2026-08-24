@@ -12,13 +12,19 @@ Default interface:
 - Verify the local CLI first: `command -v gws`, `gws --version`, `gws --help`.
 - Before using a method in-session, inspect it with `gws schema <service.resource.method>`.
 - Then use direct `gws <service> <resource> [sub-resource] <method>` commands.
-- Use only service/resource/method names, params, request bodies, and scopes verified from `gws schema` output.
+- Do not invent service/resource/method names, params, request bodies, or scopes; verify them from `gws schema` output.
+
+Google Slides:
+
+- When designing, creating, or editing Google Slides, load `references/slides-deck-design-and-automation.md` and follow it.
+- Use `gws` for Slides reads and mutations.
+  Use browser automation only for visual verification or for UI-only gaps that `gws` cannot observe.
 
 When NOT to use:
 
 - GitHub activity: `~/.agents/skills/k-github/SKILL.md`
 - Local git activity: `~/.agents/skills/k-git/SKILL.md`
-- Browser automation for a Google Workspace task that `gws` already supports
+- Browser automation as the primary path for a Google Workspace task that `gws` supports
 - Unsupported Google products or UI-only flows that `gws` cannot perform (in that case, say `gws` does not cover the task and ask before switching tools)
   - Known gap with a verified UI fallback: anchored inline comments on a Google Doc (highlight a passage + comment).
     When the user wants those, load `references/docs-inline-comments.md` and follow it.
