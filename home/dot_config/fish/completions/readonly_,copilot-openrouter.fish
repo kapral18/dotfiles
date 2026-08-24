@@ -12,5 +12,5 @@ complete -c ',copilot-openrouter' -l interactive -s i -r -d 'Start interactive m
 complete -c ',copilot-openrouter' -l agent -x -d 'Use a custom Copilot agent'
 complete -c ',copilot-openrouter' -l allow-all -d 'Enable all permissions'
 complete -c ',copilot-openrouter' -l yolo -d 'Enable all permissions'
-complete -c ',copilot-openrouter' -l context -x -a 'default long_context' -d 'Set context tier'
+complete -c ',copilot-openrouter' -l context -x -a 'short long' -d 'Context tier (default short)'
 complete -c ',copilot-openrouter' -l help -s h -d 'Show Copilot help'

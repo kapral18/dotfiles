@@ -271,6 +271,37 @@ def parse_request(frontend: str, body: dict[str, Any]) -> Conversation:
     raise ValueError(f"unsupported frontend: {frontend}")
 
 
+def apply_claude_thinking(
+    payload: dict[str, Any],
+    effort: str | None,
+    thinking: str | None,
+    original_thinking: dict[str, Any] | None = None,
+    original_output_config: dict[str, Any] | None = None,
+) -> None:
+    """Apply the Copilot Claude backend's separate thinking and effort controls."""
+    if thinking == "off":
+        payload["thinking"] = {"type": "disabled"}
+        if effort and effort != "none":
+            payload["output_config"] = {"effort": effort}
+        return
+    if effort == "none":
+        payload["thinking"] = {"type": "disabled"}
+        return
+    if thinking == "on":
+        payload["thinking"] = {"type": "adaptive"}
+        if effort:
+            payload["output_config"] = {"effort": effort}
+        return
+    if effort:
+        payload["thinking"] = {"type": "adaptive"}
+        payload["output_config"] = {"effort": effort}
+        return
+    if original_thinking:
+        payload["thinking"] = original_thinking
+        if original_output_config:
+            payload["output_config"] = original_output_config
+
+
 def _decode_arguments(arguments: str) -> dict[str, Any]:
     try:
         value = json.loads(arguments or "{}")
@@ -373,6 +404,7 @@ def to_claude_payload(
     conversation: Conversation,
     model: ModelSpec,
     effort: str | None,
+    thinking: str | None,
     store: OpaqueContextStore,
 ) -> dict[str, Any]:
     messages: list[dict[str, Any]] = []
@@ -382,15 +414,17 @@ def to_claude_payload(
         ]
         calls = [block for block in turn["blocks"] if block.get("type") == "tool_call"]
         results = [block for block in turn["blocks"] if block.get("type") == "tool_result"]
-        thinking = [dict(block) for block in turn["blocks"] if block.get("type") in {"thinking", "redacted_thinking"}]
-        if calls and not thinking:
+        thinking_blocks = [
+            dict(block) for block in turn["blocks"] if block.get("type") in {"thinking", "redacted_thinking"}
+        ]
+        if calls and not thinking_blocks:
             for call in calls:
                 context = store.get(call["id"])
                 stored = context.get("claude_thinking") if context else None
                 if isinstance(stored, list):
-                    thinking = [dict(block) for block in stored if isinstance(block, dict)]
+                    thinking_blocks = [dict(block) for block in stored if isinstance(block, dict)]
                     break
-        assistant_blocks = [*thinking, *text_blocks]
+        assistant_blocks = [*thinking_blocks, *text_blocks]
         assistant_blocks.extend(
             {
                 "type": "tool_use",
@@ -436,13 +470,11 @@ def to_claude_payload(
             for tool in conversation.tools
         ]
     effective = conversation.requested_effort or effort
-    if effective == "none":
-        payload["thinking"] = {"type": "disabled"}
-    elif effective:
-        payload["thinking"] = {"type": "adaptive"}
-        payload["output_config"] = {"effort": effective}
-    elif conversation.original_thinking:
-        payload["thinking"] = conversation.original_thinking
-        if conversation.original_output_config:
-            payload["output_config"] = conversation.original_output_config
+    apply_claude_thinking(
+        payload,
+        effective,
+        thinking,
+        conversation.original_thinking,
+        conversation.original_output_config,
+    )
     return payload

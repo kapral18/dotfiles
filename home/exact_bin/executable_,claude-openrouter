@@ -24,6 +24,9 @@ fi
 # POST /api/v1/presets/<slug>/chat/completions.
 OPENROUTER_MODEL="deepseek/deepseek-v4-flash-0731"
 OPENROUTER_EFFORT="max"
+OPENROUTER_CONTEXT="short"
+CLAUDE_DEFAULT_CONTEXT_WINDOW=200000
+CLAUDE_EXTENDED_CONTEXT_SUFFIX="[1m]"
 
 args=()
 while [[ $# -gt 0 ]]; do
@@ -56,6 +59,18 @@ while [[ $# -gt 0 ]]; do
     OPENROUTER_EFFORT="minimal"
     shift
     ;;
+  --context)
+    [[ $# -ge 2 ]] || {
+      echo "Error: $1 requires a value." >&2
+      exit 2
+    }
+    OPENROUTER_CONTEXT="$2"
+    shift 2
+    ;;
+  --context=*)
+    OPENROUTER_CONTEXT="${1#*=}"
+    shift
+    ;;
   --fallback-model | --fallback-model=* | --agents | --agents=*)
     echo "Error: ,claude-openrouter pins OpenRouter; $1 is not supported." >&2
     exit 2
@@ -75,8 +90,12 @@ done
 
 # Every --model/--effort pair composes the same slug. `none` disables reasoning via
 # the `effort-none` workspace preset. OpenRouter rejects `ultra` on these slugs.
-if [[ -z "$OPENROUTER_MODEL" || -z "$OPENROUTER_EFFORT" ]]; then
-  echo "Error: --model and --effort require non-empty values." >&2
+if [[ -z "$OPENROUTER_MODEL" || -z "$OPENROUTER_EFFORT" || -z "$OPENROUTER_CONTEXT" ]]; then
+  echo "Error: --model, --effort, and --context require non-empty values." >&2
+  exit 2
+fi
+if [[ "$OPENROUTER_CONTEXT" != "short" && "$OPENROUTER_CONTEXT" != "long" ]]; then
+  echo "Error: unsupported context tier '$OPENROUTER_CONTEXT'; choose: short, long." >&2
   exit 2
 fi
 readonly OPENROUTER_PRESET_HELPER="$HOME/lib/shared/openrouter_presets.py"
@@ -87,7 +106,17 @@ fi
 export OPENROUTER_API_KEY="$api_key"
 "$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"
 "$OPENROUTER_PRESET_HELPER" xhigh
+OPENROUTER_CONTEXT_WINDOW="$("$OPENROUTER_PRESET_HELPER" --context-window "$OPENROUTER_MODEL" "$OPENROUTER_CONTEXT")"
+readonly OPENROUTER_CONTEXT_WINDOW
+OPENROUTER_LONG_CONTEXT_WINDOW="$("$OPENROUTER_PRESET_HELPER" --context-window "$OPENROUTER_MODEL" long)"
+readonly OPENROUTER_LONG_CONTEXT_WINDOW
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
+OPENROUTER_CLAUDE_MODEL="$OPENROUTER_WIRE_MODEL"
+if [[ "$OPENROUTER_LONG_CONTEXT_WINDOW" -gt "$CLAUDE_DEFAULT_CONTEXT_WINDOW" ]] &&
+  [[ "$OPENROUTER_CONTEXT" == "long" || "$OPENROUTER_CONTEXT_WINDOW" == "$OPENROUTER_LONG_CONTEXT_WINDOW" ]]; then
+  OPENROUTER_CLAUDE_MODEL="$OPENROUTER_CLAUDE_MODEL$CLAUDE_EXTENDED_CONTEXT_SUFFIX"
+fi
+readonly OPENROUTER_CLAUDE_MODEL
 readonly OPENROUTER_PI_GPT55_WIRE_MODEL="openai/gpt-5.5@preset/effort-xhigh"
 readonly OPENROUTER_PI_DEEPSEEK_WIRE_MODEL="deepseek/deepseek-v4-flash@preset/effort-xhigh"
 readonly OPENROUTER_PI_SONNET_WIRE_MODEL="anthropic/claude-sonnet-4.6@preset/effort-xhigh"
@@ -100,7 +129,7 @@ readonly OPENROUTER_PI_SONNET_WIRE_MODEL="anthropic/claude-sonnet-4.6@preset/eff
 # handling, and the preset already carries the real effort, so the client dial stays at high to
 # avoid suppressing thinking on lower picks.
 readonly CLAUDE_EFFORT="high"
-export ANTHROPIC_MODEL="$OPENROUTER_WIRE_MODEL"
+export ANTHROPIC_MODEL="$OPENROUTER_CLAUDE_MODEL"
 export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"
 export ANTHROPIC_DEFAULT_SONNET_MODEL="$OPENROUTER_PI_SONNET_WIRE_MODEL"
 export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OPENROUTER_PI_DEEPSEEK_WIRE_MODEL"
@@ -116,4 +145,4 @@ export ANTHROPIC_AUTH_TOKEN="$api_key"
 export ANTHROPIC_API_KEY=""
 unset ANTHROPIC_CUSTOM_HEADERS
 
-exec claude --model "$OPENROUTER_WIRE_MODEL" --effort "$CLAUDE_EFFORT" "${args[@]}"
+exec claude --model "$OPENROUTER_CLAUDE_MODEL" --effort "$CLAUDE_EFFORT" "${args[@]}"

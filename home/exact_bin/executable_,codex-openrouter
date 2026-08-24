@@ -58,6 +58,10 @@ while [[ $# -gt 0 ]]; do
     OPENROUTER_EFFORT="minimal"
     shift
     ;;
+  --context | --context=*)
+    echo "Error: ,codex-openrouter cannot apply --context because Codex 0.149.0 exposes no verified context-window override for custom providers." >&2
+    exit 2
+    ;;
   -c | -c=* | --config | --config=* | --profile | --profile=*)
     echo "Error: ,codex-openrouter pins OpenRouter; $1 is not supported." >&2
     exit 2

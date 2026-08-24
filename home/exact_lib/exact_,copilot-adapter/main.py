@@ -35,6 +35,7 @@ CURSOR_PINNED_OPTIONS = {"--base-url", "--local-agent-api-key", "--authless", "-
 class LaunchOptions:
     model_id: str | None
     effort: str | None
+    thinking: str | None
     context_tier: str
     forwarded: list[str]
     help: bool
@@ -53,6 +54,8 @@ Adapter options:
   -m, --model ID             Select a model from the live Copilot catalog
       --effort LEVEL         Set provider reasoning effort
       --reasoning-effort L   Alias for --effort
+      --thinking MODE        Set Claude backend thinking: auto, on, off
+      --no-thinking          Alias for --thinking off
       --context TIER         Select default or long_context
   -h, --help                 Show this wrapper help
 
@@ -70,6 +73,7 @@ def _required_value(argv: list[str], index: int, option: str) -> tuple[str, int]
 def parse_args(argv: list[str]) -> LaunchOptions:
     model_id = None
     effort = None
+    thinking = None
     context_tier = "default"
     forwarded: list[str] = []
     show_help = False
@@ -92,6 +96,14 @@ def parse_args(argv: list[str]) -> LaunchOptions:
         elif argument.startswith(("--effort=", "--reasoning-effort=")):
             effort = argument.split("=", 1)[1]
             index += 1
+        elif argument == "--thinking":
+            thinking, index = _required_value(argv, index, argument)
+        elif argument.startswith("--thinking="):
+            thinking = argument.split("=", 1)[1]
+            index += 1
+        elif argument == "--no-thinking":
+            thinking = "off"
+            index += 1
         elif argument == "--context":
             context_tier, index = _required_value(argv, index, argument)
         elif argument.startswith("--context="):
@@ -104,9 +116,13 @@ def parse_args(argv: list[str]) -> LaunchOptions:
         raise ValueError("--model requires a non-empty value")
     if effort == "":
         raise ValueError("--effort requires a non-empty value")
+    if thinking == "":
+        raise ValueError("--thinking requires a non-empty value")
+    if thinking not in {None, "auto", "on", "off"}:
+        raise ValueError(f"unsupported thinking mode {thinking!r}; choose: auto, on, off")
     if context_tier not in {"default", "long_context"}:
         raise ValueError(f"unsupported context tier {context_tier!r}; choose: default, long_context")
-    return LaunchOptions(model_id, effort, context_tier, forwarded, show_help)
+    return LaunchOptions(model_id, effort, thinking, context_tier, forwarded, show_help)
 
 
 def resolve_model(harness: str, options: LaunchOptions, models: dict[str, ModelSpec]) -> ModelSpec:
@@ -192,6 +208,7 @@ def child_command(
     loopback_token: str,
     model: ModelSpec,
     effort: str | None,
+    thinking: str | None,
     forwarded: list[str],
 ) -> tuple[list[str], dict[str, str]]:
     env = dict(os.environ)
@@ -199,6 +216,7 @@ def child_command(
         "ANTHROPIC_API_KEY",
         "ANTHROPIC_CUSTOM_HEADERS",
         "CLAUDE_CODE_OAUTH_TOKEN",
+        "CLAUDE_CODE_DISABLE_THINKING",
         "OPENAI_API_KEY",
         "COPILOT_GITHUB_TOKEN",
         "GH_TOKEN",
@@ -222,6 +240,8 @@ def child_command(
         command = [binary, "--model", frontend_model]
         if effort is not None:
             command.extend(["--effort", effort])
+        if thinking == "off":
+            env["CLAUDE_CODE_DISABLE_THINKING"] = "1"
         command.extend(forwarded)
         return command, env
     if harness == "cursor":
@@ -304,7 +324,9 @@ def launch(harness: str, argv: list[str]) -> int:
     loopback_token = secrets.token_urlsafe(32)
     effective_models = dict(models)
     effective_models[model.model_id] = model
-    server, thread = start_server(AdapterContext(loopback_token, tokens, effective_models))
+    server, thread = start_server(
+        AdapterContext(loopback_token, tokens, effective_models, effort=options.effort, thinking=options.thinking)
+    )
     base_url = f"http://127.0.0.1:{server.server_port}"
     try:
         command, env = child_command(
@@ -314,6 +336,7 @@ def launch(harness: str, argv: list[str]) -> int:
             loopback_token,
             model,
             options.effort,
+            options.thinking,
             options.forwarded,
         )
         return run_child(command, env)

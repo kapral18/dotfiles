@@ -24,6 +24,7 @@ from copilot_auth import (
     upstream_headers,
 )
 from copilot_wire import ANTHROPIC, CHAT, RESPONSES, PreparedRequest, WireTranslator, backend_endpoint
+from protocols import apply_claude_thinking
 
 MAX_REQUEST_BYTES = 32 * 1024 * 1024
 STREAM_CHUNK = 64 * 1024
@@ -62,6 +63,8 @@ class AdapterContext:
     loopback_token: str
     tokens: TokenProvider
     models: dict[str, ModelSpec]
+    effort: str | None = None
+    thinking: str | None = None
     translator: WireTranslator = field(default_factory=WireTranslator)
 
 
@@ -223,6 +226,34 @@ class AdapterHandler(BaseHTTPRequestHandler):
                 return error
         raise CopilotError("Copilot authentication retry failed")
 
+    def _body_with_launch_controls(self, body: bytes, frontend: str) -> bytes:
+        if self.context.effort is None and self.context.thinking is None:
+            return body
+        payload = json.loads(body)
+        if not isinstance(payload, dict):
+            raise ValueError("request body must be a JSON object")
+        if frontend == ANTHROPIC:
+            output_config = payload.get("output_config")
+            if not isinstance(output_config, dict):
+                output_config = {}
+            effort = self.context.effort if self.context.effort is not None else output_config.get("effort")
+            apply_claude_thinking(
+                payload,
+                effort if isinstance(effort, str) else None,
+                self.context.thinking,
+                payload.get("thinking") if isinstance(payload.get("thinking"), dict) else None,
+                output_config,
+            )
+        elif frontend == RESPONSES and self.context.effort is not None:
+            reasoning = payload.get("reasoning")
+            if not isinstance(reasoning, dict):
+                reasoning = {}
+                payload["reasoning"] = reasoning
+            reasoning["effort"] = self.context.effort
+        elif frontend == CHAT and self.context.effort is not None:
+            payload["reasoning_effort"] = self.context.effort
+        return json.dumps(payload, separators=(",", ":")).encode()
+
     def _pipe_upstream(self, upstream: Iterable[bytes]) -> None:
         try:
             status = getattr(upstream, "status", HTTPStatus.BAD_GATEWAY)
@@ -319,12 +350,22 @@ class AdapterHandler(BaseHTTPRequestHandler):
                 self._pipe_upstream(upstream)
                 return
             backend = backend_endpoint(frontend, model)
+            if self.context.thinking is not None and backend != ANTHROPIC:
+                raise ValueError("--thinking is supported only for Copilot Claude backend models")
             if frontend == backend:
+                body = self._body_with_launch_controls(body, frontend)
                 query = route.query if frontend == ANTHROPIC else ""
                 upstream = self._open(_upstream_path(backend, query), body, backend)
                 self._pipe_upstream(upstream)
                 return
-            prepared = self.context.translator.prepare(frontend, backend, body, model)
+            prepared = self.context.translator.prepare(
+                frontend,
+                backend,
+                body,
+                model,
+                self.context.effort,
+                self.context.thinking,
+            )
             upstream = self._open(_upstream_path(backend), prepared.body, backend)
             self._write_translation(upstream, frontend, backend, model, prepared)
         except (CopilotError, OSError, RuntimeError, ValueError) as error:

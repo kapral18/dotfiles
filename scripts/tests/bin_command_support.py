@@ -402,7 +402,20 @@ def _redirecting_endpoint(status: int = 302):
 def _install_openrouter_preset_stub(home: Path) -> None:
     preset_helper = home / "lib" / "shared" / "openrouter_presets.py"
     preset_helper.parent.mkdir(parents=True, exist_ok=True)
-    preset_helper.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+    preset_helper.write_text(
+        """#!/usr/bin/env bash
+if [[ "$1" == "--context-window" ]]; then
+  case "$3" in
+  short) echo 200000 ;;
+  long) echo 1048576 ;;
+  *) exit 1 ;;
+  esac
+  exit 0
+fi
+exit 0
+""",
+        encoding="utf-8",
+    )
     preset_helper.chmod(0o755)
 
 

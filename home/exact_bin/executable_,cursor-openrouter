@@ -92,6 +92,10 @@ while [[ $# -gt 0 ]]; do
     OPENROUTER_EFFORT="minimal"
     shift
     ;;
+  --context | --context=*)
+    echo "Error: ,cursor-openrouter cannot apply --context to OpenRouter provider slugs; cursor-agent-local forwards context suffixes literally." >&2
+    exit 2
+    ;;
   --base-url | --base-url=* | --local-agent-api-key | --local-agent-api-key=* | --enable-bedrock | --enable-local-bedrock | --authless)
     echo "Error: ,cursor-openrouter pins OpenRouter on the agent-cli-local route; $1 is not supported." >&2
     exit 2

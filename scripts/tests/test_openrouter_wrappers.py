@@ -237,6 +237,48 @@ class TestOpenRouterWrappers(unittest.TestCase):
 
         self.assertEqual(received_authorization_headers, [])
 
+    def test_SHOULD_resolve_openrouter_context_windows_from_catalog(self):
+        module = _load_openrouter_presets_module()
+
+        def response(payload: dict):
+            mocked = mock.MagicMock()
+            mocked.__enter__.return_value = io.BytesIO(json.dumps(payload).encode())
+            return mocked
+
+        catalog = {
+            "data": [
+                {
+                    "id": "openai/gpt-5.5",
+                    "context_length": 1050000,
+                    "pricing": {"overrides": [{"min_prompt_tokens": 272000}]},
+                },
+                {
+                    "id": "stealth/ox-alpha",
+                    "context_length": None,
+                    "pricing": None,
+                },
+            ]
+        }
+        endpoints = {
+            "data": {
+                "id": "stealth/ox-alpha",
+                "context_length": None,
+                "endpoints": [{"provider_name": "Stealth", "context_length": 1048576}],
+            }
+        }
+
+        with mock.patch.object(
+            module.URL_OPENER,
+            "open",
+            side_effect=[response(catalog), response(catalog), response(catalog), response(endpoints)],
+        ):
+            self.assertEqual(module.resolve_context_window("openai/gpt-5.5", "short", "active-key"), 272000)
+            self.assertEqual(module.resolve_context_window("openai/gpt-5.5", "long", "active-key"), 1050000)
+            self.assertEqual(
+                module.resolve_context_window("stealth/ox-alpha@preset/effort-max", "long", "active-key"),
+                1048576,
+            )
+
     def test_SHOULD_run_account_local_preset_preflight_in_every_wrapper(self):
         for relative in (
             "home/exact_bin/executable_,claude-openrouter",
@@ -336,6 +378,8 @@ class TestOpenRouterWrappers(unittest.TestCase):
                 source = (REPO / relative).read_text()
                 assert f'OPENROUTER_MODEL="{OPENROUTER_PIN}"' in source
                 assert 'OPENROUTER_EFFORT="max"' in source
+                if relative.endswith((",claude-openrouter", ",copilot-openrouter")):
+                    assert 'OPENROUTER_CONTEXT="short"' in source
                 assert "--no-thinking" in source
                 assert 'OPENROUTER_EFFORT="minimal"' in source
                 assert 'readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"' in source
@@ -703,6 +747,138 @@ touch "%s"
                         assert result.returncode == 0, result.stderr
                         assert expected in result.stdout
 
+    def test_SHOULD_apply_context_tier_where_the_openrouter_consumer_supports_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bindir = Path(tmp)
+            claude = bindir / "claude"
+            claude.write_text(
+                '#!/usr/bin/env bash\necho "model=$ANTHROPIC_MODEL"\n',
+                encoding="utf-8",
+            )
+            claude.chmod(0o755)
+            copilot_cli = bindir / "copilot"
+            copilot_cli.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            copilot_cli.chmod(0o755)
+            managed_copilot = bindir / ",copilot"
+            managed_copilot.write_text(
+                '#!/usr/bin/env bash\necho "prompt=$COPILOT_PROVIDER_MAX_PROMPT_TOKENS wire=$COPILOT_PROVIDER_WIRE_MODEL"\n',
+                encoding="utf-8",
+            )
+            managed_copilot.chmod(0o755)
+
+            cases = [
+                (
+                    "home/exact_bin/executable_,claude-openrouter",
+                    ["--context", "short"],
+                    "model=deepseek/deepseek-v4-flash-0731@preset/effort-max",
+                ),
+                (
+                    "home/exact_bin/executable_,claude-openrouter",
+                    ["--context", "long"],
+                    "model=deepseek/deepseek-v4-flash-0731@preset/effort-max[1m]",
+                ),
+                (
+                    "home/exact_bin/executable_,copilot-openrouter",
+                    ["--context=short"],
+                    "prompt=200000 wire=deepseek/deepseek-v4-flash-0731@preset/effort-max",
+                ),
+            ]
+            for relative, argv, expected in cases:
+                with self.subTest(command=relative):
+                    result = subprocess.run(
+                        [modern_bash(), str(REPO / relative), *argv],
+                        capture_output=True,
+                        text=True,
+                        env={
+                            **os.environ,
+                            "PATH": f"{bindir}:{os.environ['PATH']}",
+                            "OPENROUTER_API_KEY": "fixture-key",
+                        },
+                    )
+                    assert result.returncode == 0, result.stderr
+                    assert expected in result.stdout
+
+    def test_SHOULD_reject_context_tier_when_openrouter_consumer_has_no_verified_knob(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bindir = Path(tmp) / "bin"
+            bindir.mkdir()
+            codex = bindir / "codex"
+            codex.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            codex.chmod(0o755)
+            home = Path(tmp) / "home"
+            _install_shim_stub(home)
+            version = "2026.08.04-test"
+            local_bin = home / ".local" / "share" / "cursor-agent-local" / "versions" / version
+            local_bin.mkdir(parents=True)
+            local = local_bin / "cursor-agent-local"
+            local.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            local.chmod(0o755)
+            cursor_agent = bindir / "cursor-agent"
+            cursor_agent.write_text(f'#!/usr/bin/env bash\necho "{version}"\n', encoding="utf-8")
+            cursor_agent.chmod(0o755)
+
+            cases = {
+                "home/exact_bin/executable_,codex-openrouter": (
+                    {"CODEX_WRAPPER_BIN": str(codex)},
+                    "Codex 0.149.0 exposes no verified context-window override",
+                ),
+                "home/exact_bin/executable_,cursor-openrouter": (
+                    {"HOME": str(home)},
+                    "cursor-agent-local forwards context suffixes literally",
+                ),
+            }
+            for relative, (extra_env, expected) in cases.items():
+                with self.subTest(command=relative):
+                    result = subprocess.run(
+                        [modern_bash(), str(REPO / relative), "--context", "short"],
+                        capture_output=True,
+                        text=True,
+                        env={
+                            **os.environ,
+                            **extra_env,
+                            "PATH": f"{bindir}:{os.environ['PATH']}",
+                            "OPENROUTER_API_KEY": "fixture-key",
+                        },
+                    )
+                    assert result.returncode == 2
+                    assert expected in result.stderr
+
+    def test_SHOULD_allow_cursor_openrouter_models_with_shim_tool_adapters(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bindir = Path(tmp) / "bin"
+            bindir.mkdir()
+            home = Path(tmp) / "home"
+            _install_shim_stub(home)
+            version = "2026.08.04-test"
+            local_bin = home / ".local" / "share" / "cursor-agent-local" / "versions" / version
+            local_bin.mkdir(parents=True)
+            local = local_bin / "cursor-agent-local"
+            local.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            local.chmod(0o755)
+            cursor_agent = bindir / "cursor-agent"
+            cursor_agent.write_text(f'#!/usr/bin/env bash\necho "{version}"\n', encoding="utf-8")
+            cursor_agent.chmod(0o755)
+
+            result = subprocess.run(
+                [
+                    modern_bash(),
+                    str(REPO / "home/exact_bin/executable_,cursor-openrouter"),
+                    "--model",
+                    "stealth/ox-alpha",
+                ],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "PATH": f"{bindir}:{os.environ['PATH']}",
+                    "OPENROUTER_API_KEY": "fixture-key",
+                },
+            )
+
+        assert result.returncode == 0, result.stderr
+        assert "empty tool-mode responses" not in result.stderr
+
     def test_SHOULD_reject_empty_or_missing_model_and_effort_values(self):
         # Empty --model=/--effort= would compose a garbage wire id that only fails at the
         # provider; a trailing --model must exit 2, not crash on set -u.
@@ -859,6 +1035,32 @@ touch "%s"
         # non-tool requests pass through untouched (structure preserved, same object)
         via = module.rewrite_chat_completions({"model": "x", "messages": [{"role": "user", "content": "hi"}]})
         assert via == {"model": "x", "messages": [{"role": "user", "content": "hi"}]}
+
+    def test_SHOULD_strip_tools_for_ox_alpha_chat_completions(self):
+        module = self._load_shim_module()
+
+        payload = {
+            "model": "stealth/ox-alpha@preset/effort-max",
+            "messages": [{"role": "user", "content": "hi"}],
+            "tools": [
+                {
+                    "type": "function",
+                    "function": {"name": "Shell", "parameters": {"type": "object"}, "strict": True},
+                }
+            ],
+            "tool_choice": "auto",
+            "parallel_tool_calls": True,
+        }
+        rewritten = module.rewrite_chat_completions(payload)
+        assert "tools" not in rewritten
+        assert "tool_choice" not in rewritten
+        assert "parallel_tool_calls" not in rewritten
+        assert "tools" in payload
+
+        ordinary = dict(payload, model="deepseek/deepseek-v4-flash-0731@preset/effort-max")
+        ordinary_rewritten = module.rewrite_chat_completions(ordinary)
+        assert "tools" in ordinary_rewritten
+        assert "strict" not in ordinary_rewritten["tools"][0]["function"]
 
     def test_SHOULD_reject_chat_completions_whose_model_is_not_the_pinned_session_model(self):
         module = self._load_shim_module()
@@ -1198,6 +1400,86 @@ touch "%s"
                 assert error_body == ERROR_BODY
         finally:
             module.UPSTREAM = original_upstream
+            shim_server.shutdown()
+            shim_server.server_close()
+            fake_upstream.shutdown()
+            fake_upstream.server_close()
+            shim_thread.join(timeout=5)
+            upstream_thread.join(timeout=5)
+
+    def test_SHOULD_retry_empty_tool_mode_response_without_tools(self):
+        module = self._load_shim_module()
+
+        upstream_payloads: list[dict] = []
+
+        class _FallbackHandler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, _fmt, *_args):
+                return
+
+            def do_POST(self):
+                length = int(self.headers.get("Content-Length", 0) or 0)
+                upstream_payloads.append(json.loads(self.rfile.read(length)))
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                if len(upstream_payloads) == 1:
+                    body = b'data: {"choices":[{"delta":{"content":""},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n'
+                else:
+                    body = b'data: {"choices":[{"delta":{"content":"OK"},"finish_reason":null}]}\n\ndata: [DONE]\n\n'
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+        fake_upstream = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _FallbackHandler)
+        fake_upstream.daemon_threads = True
+        upstream_port = fake_upstream.server_address[1]
+        upstream_thread = threading.Thread(target=fake_upstream.serve_forever, daemon=True)
+        upstream_thread.start()
+
+        original_upstream = module.UPSTREAM
+        original_allowed = module.ALLOWED_MODEL
+        original_discovered = set(module.DISCOVERED_NO_TOOL_MODELS)
+        module.UPSTREAM = f"http://127.0.0.1:{upstream_port}"
+        module.API_KEY = "fixture-key"
+        module.ALLOWED_MODEL = "future/model@preset/effort-max"
+        module.DISCOVERED_NO_TOOL_MODELS.clear()
+
+        shim_server = module.ShimServer(("127.0.0.1", 0), module.ShimHandler)
+        shim_server.daemon_threads = True
+        shim_port = shim_server.server_address[1]
+        shim_thread = threading.Thread(target=shim_server.serve_forever, daemon=True)
+        shim_thread.start()
+
+        body = json.dumps(
+            {
+                "model": module.ALLOWED_MODEL,
+                "messages": [{"role": "user", "content": "hi"}],
+                "tools": [{"type": "function", "function": {"name": "Shell", "parameters": {"type": "object"}}}],
+                "tool_choice": "auto",
+                "parallel_tool_calls": True,
+                "stream": True,
+            }
+        ).encode()
+        try:
+            req = Request(
+                f"http://127.0.0.1:{shim_port}/api/v1/chat/completions",
+                data=body,
+                headers={"Content-Type": "application/json", "Content-Length": str(len(body))},
+                method="POST",
+            )
+            with urlopen(req, timeout=5) as resp:
+                downstream_body = resp.read()
+            assert b'"content":"OK"' in downstream_body
+            assert len(upstream_payloads) == 2
+            assert "tools" in upstream_payloads[0]
+            assert "tools" not in upstream_payloads[1]
+            assert "tool_choice" not in upstream_payloads[1]
+            assert "parallel_tool_calls" not in upstream_payloads[1]
+            assert "future/model" in module.DISCOVERED_NO_TOOL_MODELS
+        finally:
+            module.UPSTREAM = original_upstream
+            module.ALLOWED_MODEL = original_allowed
+            module.DISCOVERED_NO_TOOL_MODELS.clear()
+            module.DISCOVERED_NO_TOOL_MODELS.update(original_discovered)
             shim_server.shutdown()
             shim_server.server_close()
             fake_upstream.shutdown()

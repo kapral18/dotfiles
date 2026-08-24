@@ -149,6 +149,8 @@ class WireTranslator:
         backend: str,
         body: bytes,
         model: ModelSpec,
+        effort: str | None = None,
+        thinking: str | None = None,
     ) -> PreparedRequest:
         try:
             payload = json.loads(body)
@@ -162,7 +164,7 @@ class WireTranslator:
             translated = _CODEX["protocols"].anthropic_to_responses(
                 payload,
                 model_override=model.model_id,
-                effort_override=None,
+                effort_override=effort,
                 store=self._reasoning,
             )
             return PreparedRequest(json.dumps(translated, separators=(",", ":")).encode(), wants_stream, {})
@@ -172,7 +174,7 @@ class WireTranslator:
             translated = _CODEX["protocols"].chat_to_responses(
                 payload,
                 model_override=model.model_id,
-                effort_override=None,
+                effort_override=effort,
                 store=self._reasoning,
             )
             return PreparedRequest(json.dumps(translated, separators=(",", ":")).encode(), wants_stream, {})
@@ -184,14 +186,15 @@ class WireTranslator:
             translated = _GC["protocols"].to_gemini_payload(
                 conversation,
                 gc_model,
-                None,
+                effort,
                 self._context,
             )
         elif backend == ANTHROPIC:
             translated = _GC["protocols"].to_claude_payload(
                 conversation,
                 gc_model,
-                None,
+                effort,
+                thinking,
                 self._context,
             )
             translated.pop("anthropic_version", None)

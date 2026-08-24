@@ -59,6 +59,8 @@ class TestArgumentsAndModels(unittest.TestCase):
                 "--model",
                 "claude-sonnet-5",
                 "--reasoning-effort=high",
+                "--thinking",
+                "off",
                 "--context",
                 "long_context",
                 "-p",
@@ -71,8 +73,12 @@ class TestArgumentsAndModels(unittest.TestCase):
 
         self.assertEqual(options.model_id, "claude-sonnet-5")
         self.assertEqual(options.effort, "high")
+        self.assertEqual(options.thinking, "off")
         self.assertEqual(options.context_tier, "long_context")
         self.assertEqual(options.forwarded, ["-p", "hello", "--model", "underlying"])
+        self.assertEqual(main.parse_args(["--no-thinking"]).thinking, "off")
+        with self.assertRaisesRegex(ValueError, "choose: auto, on, off"):
+            main.parse_args(["--thinking", "maybe"])
 
     def test_SHOULD_accept_every_completion_capable_model_in_both_harnesses(self) -> None:
         models = {
@@ -226,6 +232,7 @@ class TestChildIsolation(unittest.TestCase):
                 "local-token",
                 claude_model,
                 "high",
+                "off",
                 ["-p", "hello"],
             )
             codex_command, codex_env = main.child_command(
@@ -235,6 +242,7 @@ class TestChildIsolation(unittest.TestCase):
                 "local-token",
                 codex_model,
                 "high",
+                None,
                 ["exec", "hello"],
             )
             cursor_command, cursor_env = main.child_command(
@@ -244,6 +252,7 @@ class TestChildIsolation(unittest.TestCase):
                 "local-token",
                 codex_model,
                 "high",
+                None,
                 ["-p", "hello"],
             )
 
@@ -254,6 +263,7 @@ class TestChildIsolation(unittest.TestCase):
         self.assertEqual(claude_env["ANTHROPIC_AUTH_TOKEN"], "local-token")
         self.assertEqual(claude_env["ANTHROPIC_MODEL"], "claude-sonnet-5[1m]")
         self.assertEqual(claude_env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"], "264000")
+        self.assertEqual(claude_env["CLAUDE_CODE_DISABLE_THINKING"], "1")
         self.assertNotIn("GH_TOKEN", claude_env)
         self.assertNotIn("GITHUB_TOKEN", claude_env)
         self.assertNotIn("ANTHROPIC_API_KEY", claude_env)
@@ -419,6 +429,7 @@ class TestFishCompletions(unittest.TestCase):
                 "-m": {"claude-sonnet-5", "gpt-5.3-codex", "gemini-3.5-flash"},
                 "--effort": {"medium"},
                 "--reasoning-effort": {"medium"},
+                "--thinking": {"auto", "on", "off"},
                 "--context": {"default", "long_context"},
             },
             "codex-copilot": {
@@ -426,6 +437,7 @@ class TestFishCompletions(unittest.TestCase):
                 "-m": {"claude-sonnet-5", "gpt-5.3-codex", "gemini-3.5-flash"},
                 "--effort": {"medium"},
                 "--reasoning-effort": {"medium"},
+                "--thinking": {"auto", "on", "off"},
                 "--context": {"default", "long_context"},
             },
         }
@@ -536,6 +548,8 @@ class TestLoopbackProxy(unittest.TestCase):
         self.assertEqual(self.upstream.request_headers["Copilot-Integration-Id"], "copilot-developer-cli")
 
     def test_SHOULD_map_messages_and_strip_only_the_unsupported_claude_beta(self) -> None:
+        object.__setattr__(self.adapter.context, "effort", "high")
+        object.__setattr__(self.adapter.context, "thinking", "off")
         body = b'{"model":"claude-sonnet-5[1m]","stream":true}'
         request = urllib.request.Request(
             f"http://127.0.0.1:{self.adapter.server_port}/v1/messages?beta=true",
@@ -553,7 +567,10 @@ class TestLoopbackProxy(unittest.TestCase):
             self.assertEqual(response.read(), b'data: {"type":"response.completed"}\n\n')
 
         self.assertEqual(self.upstream.request_path, "/v1/messages?beta=true")
-        self.assertEqual(self.upstream.request_body, b'{"model":"claude-sonnet-5","stream":true}')
+        upstream_body = json.loads(self.upstream.request_body)
+        self.assertEqual(upstream_body["model"], "claude-sonnet-5")
+        self.assertEqual(upstream_body["thinking"], {"type": "disabled"})
+        self.assertEqual(upstream_body["output_config"], {"effort": "high"})
         self.assertEqual(
             self.upstream.request_headers["Anthropic-Beta"],
             "prompt-caching-2024-07-31",
@@ -722,6 +739,8 @@ class TestLoopbackProxy(unittest.TestCase):
         self.assertIn(b'"type":"message_stop"', translated)
 
     def test_SHOULD_translate_responses_to_messages_for_a_claude_model(self) -> None:
+        object.__setattr__(self.adapter.context, "effort", "high")
+        object.__setattr__(self.adapter.context, "thinking", "off")
         self.upstream.response_body = (
             b"event: message_start\n"
             b'data: {"type":"message_start","message":{"usage":{"input_tokens":3}}}\n\n'
@@ -754,6 +773,8 @@ class TestLoopbackProxy(unittest.TestCase):
         upstream_body = json.loads(self.upstream.request_body)
         self.assertEqual(self.upstream.request_path, "/v1/messages")
         self.assertEqual(upstream_body["model"], "claude-sonnet-5")
+        self.assertEqual(upstream_body["thinking"], {"type": "disabled"})
+        self.assertEqual(upstream_body["output_config"], {"effort": "high"})
         self.assertEqual(upstream_body["messages"][0]["role"], "user")
         self.assertIn(b'"type":"response.output_text.delta"', translated)
         self.assertIn(b'"delta":"CLAUDE_OK"', translated)

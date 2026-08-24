@@ -20,6 +20,7 @@ fi
 # Every --model uses the same slug.
 OPENROUTER_MODEL="deepseek/deepseek-v4-flash-0731"
 OPENROUTER_EFFORT="max"
+OPENROUTER_CONTEXT="short"
 
 args=()
 while [[ $# -gt 0 ]]; do
@@ -52,6 +53,18 @@ while [[ $# -gt 0 ]]; do
     OPENROUTER_EFFORT="minimal"
     shift
     ;;
+  --context)
+    [[ $# -ge 2 ]] || {
+      echo "Error: $1 requires a value." >&2
+      exit 2
+    }
+    OPENROUTER_CONTEXT="$2"
+    shift 2
+    ;;
+  --context=*)
+    OPENROUTER_CONTEXT="${1#*=}"
+    shift
+    ;;
   --)
     args+=("$1")
     shift
@@ -67,8 +80,12 @@ done
 
 # Every --model/--effort pair composes the same slug. `none` disables reasoning via
 # the `effort-none` workspace preset. OpenRouter rejects `ultra` on these slugs.
-if [[ -z "$OPENROUTER_MODEL" || -z "$OPENROUTER_EFFORT" ]]; then
-  echo "Error: --model and --effort require non-empty values." >&2
+if [[ -z "$OPENROUTER_MODEL" || -z "$OPENROUTER_EFFORT" || -z "$OPENROUTER_CONTEXT" ]]; then
+  echo "Error: --model, --effort, and --context require non-empty values." >&2
+  exit 2
+fi
+if [[ "$OPENROUTER_CONTEXT" != "short" && "$OPENROUTER_CONTEXT" != "long" ]]; then
+  echo "Error: unsupported context tier '$OPENROUTER_CONTEXT'; choose: short, long." >&2
   exit 2
 fi
 readonly OPENROUTER_PRESET_HELPER="$HOME/lib/shared/openrouter_presets.py"
@@ -79,6 +96,8 @@ fi
 export OPENROUTER_API_KEY="$api_key"
 "$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"
 "$OPENROUTER_PRESET_HELPER" xhigh
+OPENROUTER_CONTEXT_WINDOW="$("$OPENROUTER_PRESET_HELPER" --context-window "$OPENROUTER_MODEL" "$OPENROUTER_CONTEXT")"
+readonly OPENROUTER_CONTEXT_WINDOW
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
 
 # Copilot picks the BYOK client kind once per launch, and only the anthropic one
@@ -91,7 +110,7 @@ export COPILOT_PROVIDER_BASE_URL="https://openrouter.ai/api"
 export COPILOT_PROVIDER_API_KEY="$api_key"
 export COPILOT_MODEL="$OPENROUTER_MODEL"
 export COPILOT_PROVIDER_WIRE_MODEL="$OPENROUTER_WIRE_MODEL"
-export COPILOT_PROVIDER_MAX_PROMPT_TOKENS="${COPILOT_OPENROUTER_MAX_PROMPT_TOKENS:-1048576}"
+export COPILOT_PROVIDER_MAX_PROMPT_TOKENS="${COPILOT_OPENROUTER_MAX_PROMPT_TOKENS:-$OPENROUTER_CONTEXT_WINDOW}"
 export COPILOT_PROVIDER_MAX_OUTPUT_TOKENS="${COPILOT_OPENROUTER_MAX_OUTPUT_TOKENS:-131072}"
 unset COPILOT_PROVIDER_MODEL_ID COPILOT_PROVIDER_WIRE_API
 

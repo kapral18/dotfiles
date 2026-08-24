@@ -7,4 +7,5 @@ complete -c ',claude-openrouter' -l effort -x -a '(__openrouter_catalog_efforts)
 complete -c ',claude-openrouter' -l reasoning-effort -x -a '(__openrouter_catalog_efforts)' -d 'Alias for --effort'
 complete -c ',claude-openrouter' -l thinking -x -a '(__openrouter_catalog_efforts)' -d 'Alias for --effort'
 complete -c ',claude-openrouter' -l no-thinking -d 'Minimal reasoning effort'
+complete -c ',claude-openrouter' -l context -x -a 'short long' -d 'Context tier (default short)'
 complete -c ',claude-openrouter' -s h -l help -d 'Show Claude Code help'

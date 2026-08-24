@@ -1,5 +1,7 @@
 complete -c ,claude-copilot -s m -l model -d "Select a Copilot model" -x -a "claude-sonnet-5 claude-sonnet-4.6 claude-sonnet-4.5 claude-haiku-4.5 claude-fable-5 claude-opus-4.8 claude-opus-4.8-fast claude-opus-4.7 claude-opus-4.6 claude-opus-4.5 gpt-5.6-sol gpt-5.5 gpt-5.6-terra gpt-5.6-luna gpt-5.4 gpt-5.3-codex gpt-5.4-mini gpt-5-mini gemini-3.1-pro-preview gemini-3.5-flash"
 complete -c ,claude-copilot -l effort -d "Set provider reasoning effort" -x -a "low medium high xhigh max"
 complete -c ,claude-copilot -l reasoning-effort -d "Alias for --effort" -x -a "low medium high xhigh max"
+complete -c ,claude-copilot -l thinking -d "Set Claude backend thinking" -x -a "auto on off"
+complete -c ,claude-copilot -l no-thinking -d "Disable Claude backend thinking"
 complete -c ,claude-copilot -l context -d "Select Copilot context tier" -x -a "default long_context"
 complete -c ,claude-copilot -s h -l help -d "Show wrapper help"
