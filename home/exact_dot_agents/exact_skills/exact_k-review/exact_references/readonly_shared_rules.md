@@ -8,6 +8,9 @@ It covers:
 
 - Truth Validation
 - State-Machine Gate
+- Async-Derived State Gate
+- Context-Divergence Gate
+- Scale-Behavior Gate
 - Deletion-Safety
 - Replacement/Migration Parity
 - Historical-Rationale

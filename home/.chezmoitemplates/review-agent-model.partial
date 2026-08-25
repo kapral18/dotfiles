@@ -20,13 +20,22 @@ review_model_overrides entries cover harness selectors that are not model_bands 
 {{- end -}}
 {{- $category := index $root.agent_bindings .agent -}}
 {{- $spec := index $root.agent_categories $category -}}
+{{- /* slot: lanes by default; verifier for counter-family categories; a caller may request an
+     auxiliary slot (e.g. "lanes_cross" for the cross-family finder lane). An absent override key for
+     an auxiliary slot falls back to the "lanes" override, then to the category pick, so single-vendor
+     harnesses degrade to the standard lane model instead of failing. */ -}}
 {{- $slot := "lanes" -}}
 {{- if eq $spec.family "counter" -}}
 {{- $slot = "verifier" -}}
 {{- end -}}
+{{- if hasKey . "slot" -}}
+{{- $slot = .slot -}}
+{{- end -}}
 {{- $override := index $root.review_model_overrides $overrideHarness -}}
 {{- if and $override (hasKey $override $slot) -}}
 {{- index $override $slot -}}
+{{- else if and $override (hasKey $override "lanes") -}}
+{{- index $override "lanes" -}}
 {{- else -}}
 {{- $pick := index (index $root.category_models $bandHarness) $category -}}
 {{- $pick.model -}}

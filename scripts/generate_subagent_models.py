@@ -28,7 +28,11 @@ CONTEXT_TIERS = {"short": "default", "long": "long_context"}
 
 
 def _pick(harness: str, agent: str) -> dict[str, str]:
-    resolved = ai_models.resolve_agent_model(REGISTRY, harness, agent)
+    if agent in ai_models.REVIEW_AUX_SLOTS:
+        # Aux-slot lanes take their override pick (e.g. copilot lanes_cross), not the category pick.
+        resolved = ai_models.resolve_review_agent_model(REGISTRY, harness, agent)
+    else:
+        resolved = ai_models.resolve_agent_model(REGISTRY, harness, agent)
     if resolved is None:
         raise SystemExit(f"{agent} is in the {harness} roster but has no agent_bindings entry in {REGISTRY}")
     return resolved

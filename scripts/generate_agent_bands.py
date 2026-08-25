@@ -46,7 +46,12 @@ def build() -> dict:
     for harness in sorted(category_models):
         agents = {}
         for agent in sorted(bindings):
-            pick = ai_models.resolve_agent_model(REGISTRY, harness, agent)
+            if agent in ai_models.REVIEW_AUX_SLOTS:
+                # Aux-slot lanes must project their override pick (e.g. cursor lanes_cross), or
+                # the hook would rewrite cross-family spawns back onto the standard lane model.
+                pick = ai_models.resolve_review_agent_model(REGISTRY, harness, agent)
+            else:
+                pick = ai_models.resolve_agent_model(REGISTRY, harness, agent)
             entry = {
                 "model": pick["model"],
             }

@@ -88,15 +88,22 @@ Apply under the Resolution Rules below, stage the resolved files, then `yarn kbn
 
 These checks need `node_modules` in place for the destination branch, so run `yarn kbn bootstrap` in the checkout first (it can take several minutes) — this is also why bootstrap happens here, per conflict, and not before the run.
 The checkout is re-prepared for each target branch, so run bootstrap again every time you reach this step, even if you already bootstrapped on an earlier branch in the same run.
-Then run the smallest checks that prove the adapted backport is correct:
+Then run the validation checklist. It is a fixed four-item gate, not a menu.
 
-- Focused Jest for changed tests, using the closest package config:
-  - `node scripts/jest --config=<package>/jest.config.js <test-file>`
-- ESLint on changed source and test files:
-  - `node scripts/eslint <changed-files>`
-- Scoped type check for the owning package:
-  - `node scripts/type_check --project <package>/tsconfig.json`
-- Kibana change check when available:
-  - `node scripts/check_changes.ts`
+Enumerate all four items before running any of them, then execute each in order.
+Familiarity is not a selection criterion: running "the checks I usually run" is exactly how items get silently skipped while validation still reads as done.
+Every item must end with an explicit status — `pass`, `fail`, or `unavailable` (with the reason) — before the run may continue.
+An item with no status is not passed, and an aggregate claim like "all validation passes" over unreported items is an overclaim, not a completion.
 
-If `scripts/check_changes.ts` or a branch-local validation script is missing, report it as unavailable and rely on the focused checks above.
+1. Focused Jest for changed tests, using the closest package config:
+   `node scripts/jest --config=<package>/jest.config.js <test-file>`
+2. ESLint on changed source and test files:
+   `node scripts/eslint <changed-files>`
+3. Scoped type check for the owning package:
+   `node scripts/type_check --project <package>/tsconfig.json`
+4. Kibana change check when available:
+   `node scripts/check_changes.ts`
+
+A `fail` blocks ENTER: fix the resolution or report the failure — never continue past a failing check.
+If `scripts/check_changes.ts` or a branch-local validation script is missing, report it as `unavailable` with the reason and rely on the focused checks above;
+silent omission of a missing script is the failure mode this rule exists to prevent.

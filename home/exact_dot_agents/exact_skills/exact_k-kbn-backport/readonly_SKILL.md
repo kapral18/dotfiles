@@ -154,14 +154,14 @@ Once the resolution is applied (Apply The Resolution, in `references/conflict-re
    - `git diff --cached -- <changed-files>`
 2. Stage only the resolved backport files:
    - `git add <resolved-files>`
-3. With the resolution staged, run `yarn kbn bootstrap` and Validation (`references/conflict-resolution.md`) so the verifiers actually run and pass before you continue.
+3. With the resolution staged, run `yarn kbn bootstrap` and Validation (`references/conflict-resolution.md`): all four checks, each ending with an explicit `pass`/`fail`/`unavailable` status. A check with no status is not passed, and validation is not complete until every item has one.
 4. Confirm there is nothing left to resolve:
    - `git diff --check --cached`
    - `git diff --name-only --diff-filter=U`
    - `git status --short --branch`
 5. Hand control back to the tool: send ENTER to the run's pane (`tmux send-keys -t '<pane>' C-m`) so it continues —
    pushing the branch and opening the backport PR for this target.
-   Send ENTER only after step 4 shows no remaining conflicts, the files are staged, and validation passed; the tool re-prompts otherwise.
+   Send ENTER only after step 4 shows no remaining conflicts, the files are staged, and every validation item has an explicit `pass` or `unavailable` status — no empty status cells; the tool re-prompts otherwise.
 6. Resume polling the pane (Drive The Backport Run): the run advances to the next target branch in the same checkout —
    handle its conflict the same way if one occurs, or capture the completion summary when the run exits.
 
@@ -172,6 +172,6 @@ When the run has exited, summarize the whole backport:
 - source PR/commit backported, and the target branches attempted
 - per target branch: the opened backport PR URL (or that it was skipped/failed and why)
 - missing/pending prerequisite backports found, each classified blocker or incidental (or "none found")
-- conflicts resolved and the validation commands + results
+- conflicts resolved and the validation results, itemized per check with `pass`/`fail`/`unavailable` — never an aggregate claim over unreported items
 - anything left for the user (unresolved conflicts, blocked prerequisites, branches needing manual attention)
 - `Compatibility impact: none | removed (requested) | kept existing (requested)`

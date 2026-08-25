@@ -26,6 +26,12 @@ SECTION_FILES = {
 REVIEW_BAND_HARNESSES = {"claude": "claude_code"}
 REVIEW_OVERRIDE_HARNESSES = {"claude_code": "claude"}
 
+# Agents rendered through an auxiliary override slot rather than the family-derived lanes/
+# verifier slot. An absent key for the aux slot falls back to the "lanes" override, then to the
+# category pick, so single-vendor harnesses degrade to the standard lane model (same chain as
+# review-agent-model.partial).
+REVIEW_AUX_SLOTS = {"review-worker-cross": "lanes_cross"}
+
 
 def section_path(registry, section_key):
     """Return the file inside ``registry`` that owns ``section_key``."""
@@ -159,12 +165,18 @@ def resolve_agent_model(registry, harness, agent):
     )
 
 
-def resolve_review_agent_model(registry, harness, agent):
+def resolve_review_agent_model(registry, harness, agent, slot=None):
     """Resolve the review profile model for ``agent`` on ``harness``.
 
     Sparse ``review_model_overrides`` entries handle harness selectors that cannot be derived
     from ``category_models`` (for example Claude ``inherit`` and Antigravity ``pro``). All other
     review roles use ``agent_bindings`` / ``agent_categories`` to choose their direct category pick.
+
+    The slot defaults to the family-derived lanes/verifier choice, then any auxiliary slot the
+    agent declares (REVIEW_AUX_SLOTS). An aux slot missing from the override falls back to the
+    "lanes" override, then to the category pick — the same chain review-agent-model.partial
+    renders, so single-vendor harnesss degrade instead of failing. Override picks merge the
+    category row underneath so effort/context stay available to consumers.
     """
     categories = load_agent_categories(registry)
     bindings = load_agent_bindings(registry)
@@ -174,32 +186,44 @@ def resolve_review_agent_model(registry, harness, agent):
         return None
 
     spec = categories[category]
-    slot = "verifier" if spec["family"] == "counter" else "lanes"
+    if slot is None:
+        slot = REVIEW_AUX_SLOTS.get(agent) or ("verifier" if spec["family"] == "counter" else "lanes")
     band_harness = REVIEW_BAND_HARNESSES.get(harness, harness)
     override_harness = REVIEW_OVERRIDE_HARNESSES.get(harness, harness)
 
     overrides = load_review_model_overrides(registry)
     override = overrides.get(override_harness, {})
-    if slot in override:
-        verifier_status = "degraded" if slot == "verifier" else None
-        return {
-            "model": override[slot],
-            "category": category,
-            "family": spec["family"],
-            "slot": slot,
-            "source": "override",
-            "degraded": spec["family"] == "counter",
-            "verifier_status": verifier_status,
-            "harness": harness,
-            "band_harness": band_harness,
-        }
 
     category_models = load_category_models(registry)
-    if band_harness not in category_models or category not in category_models[band_harness]:
+    row = category_models.get(band_harness, {}).get(category)
+    base = dict(row) if row else {}
+    row_verifier_status = base.pop("verifier_status", None)
+
+    model = override.get(slot)
+    if model is None and slot != "lanes" and override:
+        # Aux slots degrade to the standard lane override before the category pick.
+        slot = "lanes"
+        model = override.get("lanes")
+    if model is not None:
+        verifier_status = "degraded" if slot == "verifier" else None
+        return dict(
+            base,
+            model=model,
+            category=category,
+            family=spec["family"],
+            slot=slot,
+            source="override",
+            degraded=spec["family"] == "counter",
+            verifier_status=verifier_status,
+            harness=harness,
+            band_harness=band_harness,
+        )
+
+    if row is None:
         return None
 
-    pick = dict(category_models[band_harness][category])
-    verifier_status = pick.pop("verifier_status", None)
+    pick = base
+    verifier_status = row_verifier_status
     degraded = slot == "verifier" and verifier_status not in ("cross_family", "reduced_independence")
     if slot == "verifier":
         verifier_status = verifier_status or "degraded"

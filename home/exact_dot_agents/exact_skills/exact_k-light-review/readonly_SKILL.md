@@ -9,7 +9,7 @@ A light-rigor review for a low-risk self-authored changeset you want checked and
 It uses the same review machinery as `k-review`, but trims PR/GitHub scaffolding, live-UI work, broad base-context gathering, and multi-lane diversity when those are not needed.
 Light does not mean inline-only: use one read-only `change-auditor` worker plus adversarial refutation when the active harness can launch them.
 
-Load `~/.agents/skills/k-review/references/judging_core.md` and apply its Coverage Checklist, Severity, the relevant gates (Deletion-Safety / Historical-Rationale / State-Machine / Product-Flow / Signal-Quality / Systemic-Risk when triggered), and — foregrounded for this skill — the **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage**.
+Load `~/.agents/skills/k-review/references/judging_core.md` and apply its Coverage Checklist, Severity, the relevant gates (Deletion-Safety / Historical-Rationale / State-Machine / Async-Derived State / Context-Divergence / Scale-Behavior / Product-Flow / Signal-Quality / Systemic-Risk when triggered), and — foregrounded for this skill — the **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage**.
 
 Use when:
 

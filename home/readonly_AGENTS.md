@@ -172,9 +172,11 @@ Anchor every self-report before forward-chaining on it, or label it hypothesis/`
 ## 3. Workflow And Side Effects
 
 Minimal edit scope: change only what the request requires; preserve behavior outside the stated semantic delta.
+Repository rules, SOPs, and lint checks are acceptance criteria for the requested change, not a license to expand scope to unrelated files or clean up unrequested areas.
+If complying with a rule appears to require touching unrequested contracts or files, stop and surface the decision before editing.
 Do not rewrite, remove, or clean up unrelated code/prose without explicit approval.
 Use targeted edits unless a rewrite is requested; if rewriting, verify no unrelated behavior was dropped.
-Every changed line must trace to the request.
+Every changed line must trace to the request, an explicit contract, or recorded user approval.
 
 ### 3.1 Intent Loop
 
@@ -190,6 +192,7 @@ Execution order:
 
 1. Investigate read-only first.
 2. Maintain an intent spec: target, action, success, constraints, in/out scope, side effects, examples.
+   Every item in the spec must trace to the request, an explicit contract, or recorded user approval.
 3. Inventory output-changing forks.
 4. When forks remain, ask the single most branch-eliminating question and update the spec.
 5. Then repeat until forks are empty and success criteria are testable.

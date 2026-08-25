@@ -48,6 +48,7 @@ flowchart TB
 
     subgraph OTHER["Other terminal assistants"]
         TUI["tuicr: dot_config/tuicr/readonly_config.toml"]:::oc
+        CRUSH["Crush: dot_config/crush/readonly_crushrc → ~/.config/crush/crushrc<br/>option global-context-path $HOME/AGENTS.md injects the home SOP into every session<br/>project-local AGENTS.md still auto-discovered from cwd; local adds constraints, never weakens global"]:::oc
     end
 
     REG[[".chezmoidata/mcp_servers.yaml + ai_models/ (4 files)<br/>harness configs + scripts/model_capabilities.v1.json<br/>canonical policy/evidence inputs (see 11)"]]:::cursor

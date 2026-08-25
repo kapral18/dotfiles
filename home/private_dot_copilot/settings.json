@@ -18,6 +18,11 @@
         "contextTier": "default",
         "model": "gpt-5.5"
       },
+      "review-worker-cross": {
+        "effortLevel": "xhigh",
+        "contextTier": "default",
+        "model": "claude-fable-5"
+      },
       "adversarial-verifier": {
         "effortLevel": "high",
         "contextTier": "default",

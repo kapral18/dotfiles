@@ -53,13 +53,17 @@ Do not start a later phase until the current one completes.
    old rule, new rule, intended differences, preserved differences, and evidence belong in the packet, not mid-build memory.
    Approval of the packet is the hands-free authorization; proceed on in-scope work after it without re-asking permission.
 
-2. **Plan.** Decompose into steps, each with its own verification (SOP §3.5) — a criterion check, a targeted test, or a probe.
+2. **Plan and wave topology.**
+   Decompose into steps, each with its own verification (SOP §3.5) — a criterion check, a targeted test, or a probe.
+   Group independent, non-conflicting steps touching disjoint contracts into parallel execution waves (foundational types/schema first, parallel domain modules second, integration third).
    Run the Ownership Gate (SOP §3.3) over the paths the plan touches before any edit.
    Carry the packet's semantic delta into the plan: every intended difference and every locally observable preserved difference needs a check, probe, or named judgment row.
    For stateful/parser-like/branch-heavy targets, plan the SOP State-Machine Verification harness during planning.
 
-3. **Execute.** Work the steps in order; after each, run its verification and update the ledger.
-   Run checks bare — a piped check (`cmd | tail`) reports the pipe's exit code, not the check's.
+3. **Execute.**
+   Work waves in order; serial steps execute inline in the controller, while parallel steps dispatch subagent workers in category `implement` (resolved via `tiering.yaml`).
+   Enforce scratch-isolated worker returns: each delegated worker writes detailed implementation logs, traces, and file diffs to `/tmp/scratch/<pwd>/<topic>/step-<N>.log` and returns a single compact status line to the controller (`step <N>: green|red|blocked (<check> exit <N>, touched: <paths>)`).
+   Update the ledger after each step or wave. Run checks bare — a piped check (`cmd | tail`) reports the pipe's exit code, not the check's.
    Never proceed past a red step verification — fix or replan.
    Two consecutive failed attempts on the same criterion trigger the SOP §3.4 reset:
    stop implementing and end the flow as `blocked` with the captured failure, instead of thrashing.

@@ -24,6 +24,18 @@ review_model_overrides:
     # Antigravity's dynamic-subagent schema exposes abstract model tiers, not raw model ids.
     lanes: "pro"
     verifier: "pro"
+  copilot:
+    # Cross-family primary-finder lane (`lanes_cross` slot): Copilot review runs GPT-5.5, so the
+    # cross lane takes the Anthropic pick — same id as the refute row. Recall evidence: most
+    # confirmed defects are caught by exactly one reviewer perspective, so the always-on correctness
+    # lane gets family diversity before any angle fan-out.
+    lanes_cross: "claude-fable-5"
+  cursor:
+    # Cross-family primary-finder lane: Cursor review runs GPT-5.6 SOL, so the cross lane takes
+    # Opus 5 High (Task-enum whitelisted, long-context task id like the refute row).
+    lanes_cross: "claude-opus-5-high"
+# claude_code and codex are single-vendor catalogs: no lanes_cross entry exists, so an aux-slot
+# lookup falls back to `lanes` (or the category pick) and the flow reports finder_family degraded.
 
 # Model routing is two independent dimensions plus sparse review overrides. `agent_categories`
 # says what a kind of work needs and is portable — whether a findings audit needs top reasoning is
@@ -93,6 +105,9 @@ agent_bindings:
   pr-necessity-auditor: "review"
   reviewer: "review"
   review-worker: "review"
+  # Cross-family primary-finder lane; same `review` category, rendered through the `lanes_cross`
+  # override slot so single-vendor harnesses fall back to the standard lane model.
+  review-worker-cross: "review"
   deep-review: "orchestrate"
   review-controller: "orchestrate"
   # Repo-authored general roles.

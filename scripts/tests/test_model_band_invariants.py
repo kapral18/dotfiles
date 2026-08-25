@@ -37,6 +37,7 @@ class TestModelBandInvariants(unittest.TestCase):
         review_roles = (
             "deep-review",
             "review-worker",
+            "review-worker-cross",
             "findings-auditor",
             "pr-necessity-auditor",
             "live-ui-review",
@@ -68,6 +69,7 @@ class TestModelBandInvariants(unittest.TestCase):
         review_roles = (
             "deep-review",
             "review-worker",
+            "review-worker-cross",
             "findings-auditor",
             "pr-necessity-auditor",
             "live-ui-review",
@@ -149,10 +151,15 @@ class TestModelBandInvariants(unittest.TestCase):
         path = REPO / "home/.chezmoidata/ai_models"
         category_models = ai_models.load_category_models(path)
         overrides = ai_models.load_review_model_overrides(path)
-        expected_overrides = {"claude", "gemini"}
+        # Sparse by contract: claude/gemini override the lanes/verifier slots; copilot/cursor only
+        # declare the cross-family aux slot (lanes_cross) and fall back to the category pick for
+        # everything else. Single-vendor catalogs (claude_code, codex) declare nothing.
+        expected_overrides = {"claude", "gemini", "copilot", "cursor"}
         assert set(overrides) == expected_overrides, (
             f"review_model_overrides should stay sparse; unexpected keys {sorted(set(overrides) ^ expected_overrides)}"
         )
+        assert set(overrides["copilot"]) == {"lanes_cross"}
+        assert set(overrides["cursor"]) == {"lanes_cross"}
 
         review_agents = ("reviewer", "deep-review", "findings-auditor", "live-ui-review", "adversarial-verifier")
         review_harnesses = {
@@ -163,7 +170,7 @@ class TestModelBandInvariants(unittest.TestCase):
             for agent in review_agents:
                 pick = ai_models.resolve_review_agent_model(path, review_harness, agent)
                 assert pick is not None, f"{agent} does not resolve on {review_harness}"
-                if review_harness in overrides:
+                if pick["slot"] in overrides.get(review_harness, {}):
                     assert pick["source"] == "override"
                     assert pick["model"] == overrides[review_harness][pick["slot"]]
                     continue
@@ -178,6 +185,23 @@ class TestModelBandInvariants(unittest.TestCase):
                 if pick["slot"] == "verifier" and expected_row.get("verifier_status") == "reduced_independence":
                     assert pick["verifier_status"] == "reduced_independence"
                     assert pick["degraded"] is False
+
+        # The cross-family finder lane resolves through the lanes_cross aux slot where declared,
+        # and degrades to the standard lane model on single-vendor harnesses (template parity).
+        cross_expected = {"copilot": overrides["copilot"]["lanes_cross"], "cursor": overrides["cursor"]["lanes_cross"]}
+        for review_harness, model in cross_expected.items():
+            pick = ai_models.resolve_review_agent_model(path, review_harness, "review-worker-cross")
+            assert pick is not None, f"review-worker-cross does not resolve on {review_harness}"
+            assert pick["source"] == "override"
+            assert pick["model"] == model
+            assert "effort" in pick, "override picks merge the category row underneath"
+        for review_harness in ("claude", "codex"):
+            pick = ai_models.resolve_review_agent_model(path, review_harness, "review-worker-cross")
+            assert pick is not None, f"review-worker-cross does not resolve on {review_harness}"
+            lane = ai_models.resolve_review_agent_model(path, review_harness, "reviewer")
+            assert pick["model"] == lane["model"], (
+                f"{review_harness} review-worker-cross must degrade to the standard lane model"
+            )
 
     def test_orchestrate_category_matches_real_harness_config(self):
         # `orchestrate` is the session's own category, and it is the one category that reaches a real

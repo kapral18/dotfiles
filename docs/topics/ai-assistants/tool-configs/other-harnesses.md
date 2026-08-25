@@ -5,7 +5,7 @@ title: Other harnesses
 
 # Other harnesses
 
-This page covers assistant-adjacent tools that do not have their own page in this section: Codex, OpenCode, Oh My Pi, GitHub Copilot CLI, and tuicr. It stays at the configuration and rendering layer; [Cross-harness subagents](../subagents.md) owns runtime discovery, review fan-out hierarchy, source paths, and design notes.
+This page covers assistant-adjacent tools that do not have their own page in this section: Codex, OpenCode, Oh My Pi, GitHub Copilot CLI, Crush, and tuicr. It stays at the configuration and rendering layer; [Cross-harness subagents](../subagents.md) owns runtime discovery, review fan-out hierarchy, source paths, and design notes.
 
 Use it to answer three questions: which repo source owns the deployed config, which wrapper runs before the native binary, and which runtime-owned fields are allowed to survive a merge.
 
@@ -20,6 +20,7 @@ Use it to answer three questions: which repo source owns the deployed config, wh
 | Copilot MCP               | generated as stdio `type: "local"`, OAuth HTTP, or token-bridge stdio depending on the server block |
 | Copilot memory            | native SDK extension supplies context and worklog hooks                                             |
 | tuicr                     | single-sourced readonly review TUI config; labels are categories, not severity                      |
+| Crush                     | static `crushrc` injects the home SOP as a global context path                                      |
 | secrets                   | runtime API keys come from `pass`, not committed tool config files                                  |
 
 ## Codex and OpenCode
@@ -250,6 +251,17 @@ A live probe of Copilot 1.0.68 showed that its JSON command hooks run from `~/.c
 The active context path is the `agent-memory` extension. It registers `onSessionStart`, `onPostToolUse`, and `onPostToolUseFailure`, translates Copilot's camelCase SDK payloads to the shared snake_case script contract, and returns SDK `additionalContext`.
 
 The command-hook file and its legacy checksum row are cleaned up by the apply hook. Copilot has no shell-gate hooks; PR review anchor verification is instruction-owned by the review/GitHub skills.
+
+## Crush
+
+Crush auto-discovers project-local context files (such as `AGENTS.md`) from the working directory only. The home SOP is injected into every session through a global `crushrc`.
+
+| Surface       | Path                                                                                           | Target                    |
+| ------------- | ---------------------------------------------------------------------------------------------- | ------------------------- |
+| Global config | [`home/dot_config/crush/readonly_crushrc`](../../../../home/dot_config/crush/readonly_crushrc) | `~/.config/crush/crushrc` |
+| Home SOP      | [`home/readonly_AGENTS.md`](../../../../home/readonly_AGENTS.md) → `~/AGENTS.md`               | global context path       |
+
+The `crushrc` sets `option global-context-path "$HOME/AGENTS.md"`, so Crush loads the compiled home SOP in every session regardless of cwd. Project repos keep their own local `AGENTS.md`, which is discovered automatically; per the home SOP hierarchy, project-local instructions may add constraints but must not weaken the global SOP.
 
 ## tuicr (review TUI)
 

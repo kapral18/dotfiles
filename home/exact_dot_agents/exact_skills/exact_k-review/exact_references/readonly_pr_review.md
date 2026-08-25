@@ -79,6 +79,12 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
   workers never load `lanes.md`.
   Run any repo-wide suite or full build once here and pass the result into every scope packet — lanes are told not to repeat shared work.
   If the harness cannot delegate, run the finder pass inline and report `agent_lane=inline-degraded`.
+  Generation recall is bounded by perspective: refuters prune candidates but never expand them, and most confirmed defects are caught by exactly one reviewer perspective.
+  When the model resolver supports per-lane selection at equal capability (SOP §3.7), prefer two finder lanes from different model families;
+  otherwise one cross-family finder over same-family; never leave controller, finder, and refuter all same-family.
+  Report `finder_family=same|cross|two-cross` alongside `adversarial=`.
+  Launch the cross-family lane through the harness's `review-worker-cross` profile where one is fielded;
+  on single-vendor harnesses it resolves back to the standard lane model — report that honestly.
 - Run live UI only when UI/runtime evidence is needed for a candidate and a startable runtime is available;
   use `k-deep-review` for the full live-UI target-packet/controller graph.
 - Before adversarial verification, run the candidate queue through the Findings-Set Audit, Deduplication + Truth Filter, and Existing Pending Review Reconciliation; only implementation-verified findings that are not covered, not duplicated, and not dropped by the Replacement/Migration Parity Gate remain, and any current-account pending review is merged into one final payload.

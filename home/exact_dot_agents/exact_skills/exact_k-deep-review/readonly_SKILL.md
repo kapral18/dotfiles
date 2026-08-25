@@ -269,8 +269,11 @@ The measured reason for this controller cache is concrete: one real review had 4
      Use only lanes that file defines, listed there rather than re-listed here.
      Follow its selection procedure: scope-level evidence only (mode, changed paths, `git diff --stat`, `--diff-filter=D` status, context pack manifest); roster selection is not implementation analysis — select from scope-level evidence, leaving code bodies unread for it.
      - Always include `correctness-regressions`.
-       For a single-surface diff with no independent risk trigger, that one sighted lane is enough:
-       expert lenses own recall, and cross-family checking happens in final adversarial verification after findings audit.
+       For a single-surface diff with no independent risk trigger, that one sighted lane is enough.
+       Launch it on the cross-family lane pick (`lanes_cross` profile where the harness registry fields one):
+       generation recall bounds every later phase — refuters prune candidates but never expand them —
+       so the primary finder carries family diversity, angle lanes carry breadth diversity, and final adversarial verification keeps its own cross-family pass after findings audit.
+       When no cross-family lane is fieldable, report `finder_family=same (degraded)` and continue.
      - Launch one to three sighted lanes by default.
        Use four or five only when the user explicitly asks for maximum rigor or when multiple high-risk classes are present at once (security/auth, persisted data/migration, public API, state-machine behavior, deletion/replacement, or user-visible product flow).
      - Paste each selected lane's `Lens skill` line and `Checks` list verbatim into that worker's scope packet.
@@ -283,7 +286,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      The controller launches named profiles as-is and never passes lane model overrides;
      generic fresh-eyes launches pass the same resolved lane value as the profile-equivalent model because they cannot use a context-bearing reviewer profile.
      A wrong or stale model is fixed in the registry/bands, not the launch.
-     The angles are this phase's diversity axis; cross-family checking is owned by the adversarial verification phase.
+     The angles are this phase's breadth axis; family diversity sits at the primary finder (`lanes_cross` when fielded) and at final adversarial verification.
    - Emit all reviewer-lane launches, fresh-eyes included when it applies, in one message (a single tool-call batch).
    - Use the harness's native reviewer worker profiles or task mechanism (`review-worker`/`reviewer` profiles, or a generic task type carrying `reviewer-worker.md`); read `runtime-harnesses.md` for per-harness launch and model-inheritance caveats.
    - Hard-read-only caveat: for Cursor, follow `runtime-harnesses.md`.
