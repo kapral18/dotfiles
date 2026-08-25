@@ -202,6 +202,7 @@ Execution order:
   content approval is not commit authorization.
 - If a task would conventionally end with a commit, stop at the working tree and report the change set.
 - A push request authorizes committing the described changes and `git push --force-with-lease`; prefer explicit remote/branch.
+- A user-invoked `k-pr-fix-loop` approval packet authorizes only scoped PR-fix commits and a force-with-lease push to the current PR branch.
 - Push the branch as-is. Every pre-push or history reconcile needs an explicit user request for that exact action.
   That covers `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, and `git merge <remote>/<branch>`.
 - If push is rejected for divergence, non-fast-forward, lease failure, or diverged history, stop and ask how to proceed.
@@ -301,9 +302,16 @@ Rules:
 Gate every external action that emits human-visible content or mutates human-visible state:
 GitHub PRs/issues/comments/reviews/releases/gists, Slack, email, chat, thread resolution, and similar surfaces.
 
-- If a human will see the result, draft it, show the exact payload and target, and wait for explicit approval before sending.
+- If a human will see the result, draft it, show the exact payload and target, and wait for explicit approval before sending unless a bounded approval packet applies.
 - Human-authored replies/resolves are supervised; no auto-send. Never publish spontaneously, even to bots.
   Verified bot-authored threads may be auto-replied/resolved only inside an explicitly invoked flow.
+- A bounded approval packet may authorize a sequence of related human-visible side effects when the user's request or approval defines the target, scope, intended outcome, and allowed effect types.
+  Before using one, verify the specific step is inside the packet and is required to complete, confirm, or keep truthful the approved sequence.
+  Use the skill or reference that defines that approval packet, apply the exact payload, and read back the result.
+  Do not re-prompt solely because a later step in the same packet is human-visible or follows an already approved public mutation.
+- Do not use a bounded approval packet for a new target, broader scope, optional/discretionary content, unrelated metadata, reviewer replies/resolves, labels, or any side effect not necessary for the approved sequence.
+  Stop and ask instead.
+- A user-invoked `k-pr-fix-loop` approval packet is explicit approval for scoped PR-fix replies/resolves, PR body edits, and needed PR media uploads in that loop only.
 - Classify author type from platform API evidence, not display-name heuristics. Verify author type from platform evidence; do not guess.
   Valid evidence: GitHub `user.type == "Bot"`, login ending in `[bot]`, or a verified-domain bot allowlist.
   If author type is ambiguous, unknown, mixed human+bot, or unavailable, fail safe to human supervision.
@@ -318,6 +326,7 @@ GitHub PRs/issues/comments/reviews/releases/gists, Slack, email, chat, thread re
 ## 4. Tooling And Memory
 
 - Use native read/edit/list tools for file operations.
+- Dotfiles are chezmoi-managed on this machine.
 - Harness-native search/listing tools are the interop layer for broad code search: prefer native Grep/Glob/search tools first;
   use shell `rg` only after narrowing by path, glob, or exact symbol. Never run bare repo-root `rg <pattern>` in a large repository.
 - Use structured reasoning tools when available; use `/tmp` for experiments and troubleshooting.

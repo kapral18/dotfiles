@@ -160,8 +160,8 @@ Review-specific mechanics only:
 - Verify the outcome against the current head before replying/resolving (the author's claim is not proof).
 - If the thread asked for a code/doc change you made: reply `Fixed in <full commit URL>` (keep in-thread explanations short).
 - If a thread is obsolete because later commits superseded the hunk: `Superseded by <commit link>` (optionally one link to the new canonical thread).
-- Resolve/unresolve and any reply to a human author stay gated by `shared_rules.md` Posting Boundary and the SOP publication gate:
-  draft first, show exact payload + target, then wait for approval.
+- Resolve/unresolve and any reply to a human author stay gated by `shared_rules.md` Posting Boundary and the SOP publication gate.
+  Exception: when `k-pr-fix-loop` explicitly invokes this mode, its approval packet satisfies the approval requirement for scoped PR-fix replies/resolves after the exact target and payload are verified.
 
 ## Drain Mode (Batch, Explicitly Invoked)
 
@@ -173,6 +173,7 @@ In Drain Mode:
 - continue until no unresolved actionable thread remains
 - proceed thread to thread; re-ask "what next?" only at genuine decision forks
 - keep the Human-Visible Publication Gate (SOP, `~/AGENTS.md`) fully in force
+- when entered through `k-pr-fix-loop`, apply its bounded approval packet instead of re-prompting for scoped commits, pushes, PR updates, uploads, replies, or resolves
 
 Author-type classification (do first, per thread, verified — not guessed):
 
@@ -195,17 +196,15 @@ Per-thread branch:
 - **Human-authored thread:**
   - run the same workflow
   - make any code fix in the working tree
-  - stop before publishing
-  - queue the drafted reply + resolve recommendation
-  - surface it for supervision
-  - do not post or resolve
+  - in ordinary Drain Mode: stop before publishing, queue the drafted reply + resolve recommendation, surface it for supervision, and do not post or resolve
+  - in `k-pr-fix-loop`: post the scoped reply and resolve after exact target/payload verification and read-back
   - continue investigating/queuing remaining threads
-  - never publish a human-visible reply/resolve without explicit approval
+  - never publish a human-visible reply/resolve without explicit approval or a bounded `k-pr-fix-loop` approval packet
 
 Loop control:
 
-- Commit/push still require explicit approval (git skill) regardless of mode;
-  in Drain Mode, commits and pushes always wait for that approval.
+- Commit/push still require explicit approval (git skill) in ordinary Drain Mode.
+  In `k-pr-fix-loop`, the bounded approval packet is that approval for scoped commits and force-with-lease pushes to the current PR branch.
 - After each thread, append the decision to the review persistence spec (see shared_rules.md) so the loop is resumable after pruning.
 - End condition:
   - no unresolved actionable threads remain

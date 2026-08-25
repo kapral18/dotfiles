@@ -55,6 +55,60 @@ class TestTmuxPickerShellHelpers(unittest.TestCase):
                     "PR 1\tpr\t/path/one\t\turl-1\tmatch-one\nIssue 2\tissue\t/path/two\t\turl-2\tmatch-two\n"
                 )
 
+    def test_dispatch_async_preserves_fzf_listen_env_for_server_job(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fake_bin = root / "bin"
+            fake_bin.mkdir()
+            tmux_log = root / "tmux.log"
+            selection = root / "selection.tsv"
+            selection.write_text("row\tdir\t/path\t\t\t\n")
+            deployed_lib = root / "pickers/lib"
+            deployed_lib.mkdir(parents=True)
+            script = deployed_lib / "dispatch_async.sh"
+            snap = deployed_lib / "snapshot_fzf_selection.sh"
+            script.write_text((TMUX_PICKERS / "lib/executable_dispatch_async.sh").read_text())
+            snap.write_text((TMUX_PICKERS / "lib/executable_snapshot_fzf_selection.sh").read_text())
+            script.chmod(0o755)
+            snap.chmod(0o755)
+
+            tmux = fake_bin / "tmux"
+            tmux.write_text(
+                "#!/usr/bin/env bash\n"
+                'if [ "${1:-}" = run-shell ]; then\n'
+                f"  printf '%s\\n' \"$*\" > {shlex.quote(str(tmux_log))}\n"
+                "  exit 0\n"
+                "fi\n"
+                "exit 1\n"
+            )
+            tmux.chmod(0o755)
+
+            result = subprocess.run(
+                [modern_bash(), str(script), "/bin/echo", str(selection)],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "PATH": f"{fake_bin}:{os.environ['PATH']}",
+                    "XDG_CACHE_HOME": str(root / "cache"),
+                    "TMUX": "mock,1,0",
+                    "FZF_SOCK": "/tmp/fzf.sock",
+                },
+            )
+
+            assert result.returncode == 0, result.stderr
+            logged = tmux_log.read_text()
+            assert "FZF_SOCK=/tmp/fzf.sock" in logged
+
+    def test_pick_session_alt_x_runs_remove_action_synchronously(self):
+        script = TMUX_PICKERS / "session/executable_pick_session.sh"
+        text = script.read_text()
+
+        assert '--bind "alt-x:execute($(printf %q "$rm_cmd") {+f})+reload($remove_reload)+deselect-all"' in text
+        assert (
+            '--bind "alt-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$rm_cmd") {+f})' not in text
+        )
+
     def test_session_name_for_entry_uses_worktree_target_root(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp) / "home"
@@ -337,14 +391,14 @@ exit 1
             mutation_file = cache_dir / "pick_session_mutations.tsv"
             assert not mutation_file.exists() or str(worktree) not in mutation_file.read_text()
 
-    def test_action_remove_launches_force_confirmation_for_preflight_blocked_worktree(self):
+    def test_action_remove_prompts_and_cancels_for_preflight_blocked_worktree(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             home = root / "home"
             fake_bin = root / "bin"
             cache_dir = home / ".cache/tmux"
             worktree = home / "work/kibana/fix/context-menu"
-            tmux_log = root / "tmux.log"
+            fzf_log = root / "fzf.log"
             fake_bin.mkdir()
             cache_dir.mkdir(parents=True)
             worktree.mkdir(parents=True)
@@ -362,6 +416,156 @@ exit 1
             )
             fake_w.chmod(0o755)
 
+            fzf = fake_bin / "fzf"
+            fzf.write_text(
+                "#!/usr/bin/env bash\n"
+                'input="$(cat)"\n'
+                f'printf \'%s\\n%s\\n\' "$*" "$input" > {shlex.quote(str(fzf_log))}\n'
+                "printf 'cancel\\tCancel - keep worktree(s)\\n'\n"
+            )
+            fzf.chmod(0o755)
+
+            script = TMUX_PICKERS / "session/executable_action_remove_worktrees.sh"
+            result = subprocess.run(
+                [modern_bash(), str(script), str(selection)],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "XDG_CACHE_HOME": str(home / ".cache"),
+                    "PATH": f"{fake_bin}:{os.environ['PATH']}",
+                    "TMUX": "",
+                },
+            )
+
+            assert result.returncode == 0, result.stderr
+            assert "Force delete - discard dirty/unpushed work" in fzf_log.read_text()
+            assert str(worktree) in fzf_log.read_text()
+            assert not (cache_dir / "pick_session_pending.tsv").exists()
+            assert not (cache_dir / "pick_session_mutations.tsv").exists()
+
+    def test_action_remove_prompts_and_force_deletes_for_preflight_blocked_worktree(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            fake_bin = root / "bin"
+            cache_dir = home / ".cache/tmux"
+            worktree = home / "work/kibana/fix/context-menu"
+            fake_bin.mkdir()
+            cache_dir.mkdir(parents=True)
+            worktree.mkdir(parents=True)
+            subprocess.run(["git", "init", str(worktree)], check=True, capture_output=True, text=True)
+
+            selection = root / "selection.tsv"
+            selection.write_text(f"ctx\tsession\t{worktree}\tsess_wt:fix/context-menu|repo=work/kibana\tctx\tctx\n")
+
+            fake_w = fake_bin / ",w"
+            fake_w.write_text(
+                "#!/usr/bin/env bash\n"
+                'if [ "${1:-}" = remove ] && [ "${2:-}" = --preflight ]; then\n'
+                f"  printf '%s\\n' {shlex.quote(str(worktree))}\n"
+                "fi\n"
+            )
+            fake_w.chmod(0o755)
+
+            fzf = fake_bin / "fzf"
+            fzf.write_text("#!/usr/bin/env bash\nprintf 'force\\tForce delete - discard dirty/unpushed work\\n'\n")
+            fzf.chmod(0o755)
+            zoxide = fake_bin / "zoxide"
+            zoxide.write_text("#!/usr/bin/env bash\nexit 0\n")
+            zoxide.chmod(0o755)
+
+            script = TMUX_PICKERS / "session/executable_action_remove_worktrees.sh"
+            result = subprocess.run(
+                [modern_bash(), str(script), str(selection)],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "XDG_CACHE_HOME": str(home / ".cache"),
+                    "PATH": f"{fake_bin}:{os.environ['PATH']}",
+                    "TMUX": "",
+                },
+            )
+
+            assert result.returncode == 0, result.stderr
+            mutations = (cache_dir / "pick_session_mutations.tsv").read_text()
+            assert f"\tPATH_PREFIX\t{worktree.resolve()}\n" in mutations
+
+    def test_action_remove_with_force_flag_bypasses_preflight(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            fake_bin = root / "bin"
+            cache_dir = home / ".cache/tmux"
+            worktree = home / "work/kibana/fix/context-menu"
+            fake_bin.mkdir()
+            cache_dir.mkdir(parents=True)
+            worktree.mkdir(parents=True)
+            subprocess.run(["git", "init", str(worktree)], check=True, capture_output=True, text=True)
+
+            selection = root / "selection.tsv"
+            selection.write_text(f"ctx\tsession\t{worktree}\tsess_wt:fix/context-menu|repo=work/kibana\tctx\tctx\n")
+
+            # ,w preflight should never be called when --force is passed
+            fake_w = fake_bin / ",w"
+            fake_w.write_text(
+                '#!/usr/bin/env bash\nif [ "${1:-}" = remove ] && [ "${2:-}" = --preflight ]; then\n  exit 1\nfi\n'
+            )
+            fake_w.chmod(0o755)
+
+            zoxide = fake_bin / "zoxide"
+            zoxide.write_text("#!/usr/bin/env bash\nexit 0\n")
+            zoxide.chmod(0o755)
+
+            script = TMUX_PICKERS / "session/executable_action_remove_worktrees.sh"
+            result = subprocess.run(
+                [modern_bash(), str(script), "--force", str(selection)],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "XDG_CACHE_HOME": str(home / ".cache"),
+                    "PATH": f"{fake_bin}:{os.environ['PATH']}",
+                    "TMUX": "",
+                },
+            )
+
+            assert result.returncode == 0, result.stderr
+            mutations = (cache_dir / "pick_session_mutations.tsv").read_text()
+            assert f"\tPATH_PREFIX\t{worktree.resolve()}\n" in mutations
+
+    def test_action_remove_force_dispatch_places_force_before_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            fake_bin = root / "bin"
+            cache_dir = home / ".cache/tmux"
+            repo = home / "work/kibana/main"
+            worktree = home / "work/kibana/fix/context-menu"
+            fake_bin.mkdir()
+            cache_dir.mkdir(parents=True)
+            repo.mkdir(parents=True)
+            subprocess.run(["git", "init", str(repo)], check=True, capture_output=True, text=True)
+            subprocess.run(
+                ["git", "-C", str(repo), "commit", "--allow-empty", "-m", "init"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(repo), "worktree", "add", "-b", "fix/context-menu", str(worktree)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            selection = root / "selection.tsv"
+            selection.write_text(f"ctx\tsession\t{worktree}\tsess_wt:fix/context-menu|repo=work/kibana\tctx\tctx\n")
+
             fake_tmux = fake_bin / "tmux"
             fake_tmux.write_text(
                 "#!/usr/bin/env bash\n"
@@ -370,23 +574,19 @@ exit 1
                 "    if [ \"${2:-}\" = -p ]; then printf 'current\\n'; fi\n"
                 "    exit 0\n"
                 "    ;;\n"
-                "  list-sessions)\n"
-                "    exit 0\n"
-                "    ;;\n"
-                "  display-popup)\n"
-                f"    printf '%s\\n' \"$*\" >> {shlex.quote(str(tmux_log))}\n"
-                "    exit 0\n"
-                "    ;;\n"
-                "  show-option)\n"
+                "  list-sessions|show-option)\n"
                 "    exit 0\n"
                 "    ;;\n"
                 "esac\n"
             )
             fake_tmux.chmod(0o755)
+            fake_w = fake_bin / ",w"
+            fake_w.write_text("#!/usr/bin/env bash\nexit 0\n")
+            fake_w.chmod(0o755)
 
             script = TMUX_PICKERS / "session/executable_action_remove_worktrees.sh"
             result = subprocess.run(
-                [modern_bash(), str(script), str(selection)],
+                [modern_bash(), str(script), "--force", str(selection)],
                 capture_output=True,
                 text=True,
                 env={
@@ -399,10 +599,9 @@ exit 1
             )
 
             assert result.returncode == 0, result.stderr
-            assert "display-popup" in tmux_log.read_text()
-            assert "--confirm" in tmux_log.read_text()
-            assert not (cache_dir / "pick_session_pending.tsv").exists()
-            assert not (cache_dir / "pick_session_mutations.tsv").exists()
+            rm_log = (cache_dir / "pick_session_remove_worktrees.log").read_text()
+            assert f",w remove --force --paths {worktree.resolve()}" in rm_log
+            assert ",w remove --paths --force" not in rm_log
 
     def test_send_command_passes_cache_target_to_shared_naming(self):
         action = TMUX_PICKERS / "session/executable_action_send_command.sh"

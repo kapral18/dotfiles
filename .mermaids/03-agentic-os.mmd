@@ -13,7 +13,7 @@ flowchart TB
         AG["readonly_AGENTS.md → ~/AGENTS.md (compiled core SOP)"]:::gov
         CL["symlink_CLAUDE.md → ~/CLAUDE.md → ~/AGENTS.md (compiled core SOP)"]:::gov
         GM["dot_gemini/config/symlink_AGENTS.md → ~/.gemini/config/AGENTS.md → ~/AGENTS.md"]:::gov
-        SK["home/exact_dot_agents/exact_skills/ → ~/.agents/skills/<br/>54 skill entrypoints, intent-routed (see 03b)"]:::gov
+        SK["home/exact_dot_agents/exact_skills/ → ~/.agents/skills/<br/>52 skill entrypoints, intent-routed (see 03b)"]:::gov
         AG -->|Use when… load| SK
         CL --> SK
     end

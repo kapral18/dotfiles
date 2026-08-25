@@ -56,6 +56,8 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
 
 - Any GitHub side effect needs explicit approval unless the user instructed otherwise:
   create/edit PRs/issues, comments/reviews, metadata, merge, release, uploads.
+- A user-invoked `k-pr-fix-loop` approval packet is explicit approval for scoped PR body edits, needed PR media uploads, review-thread replies, and resolving addressed threads in that loop only.
+- Existing PR body/title edits follow `references/pr-create.md`; that packet decides whether the user's approval for the current PR workflow covers the edit or whether a draft must be surfaced first.
 - Approval to "create a PR" authorizes the GitHub side effect, but not invented human-visible content.
   If title/body/labels were not provided, draft the full payload, show target repo/base/head, and get approval before `gh pr create`.
 - Before using a known-bot allowlist, verify/load the domain overlay; otherwise classify bots only from GitHub `user.type == "Bot"` or login ending `[bot]`.

@@ -24,6 +24,14 @@ Before `gh pr create` or PR body/title edit, require the `k-compose-pr` PR publi
 Stop if the packet is missing, any required field is missing, or any required field is `blocked`.
 Exempt: backport PRs opened by the `k-kbn-backport` tool flow — that skill's upfront publication approval gates them instead.
 
+Approval handling:
+
+- For `gh pr create`, approval must cover the exact title/body unless the user already provided them.
+- For an existing PR body/title edit, approval for the current PR workflow satisfies approval only when the packet proves the edit is required to complete, confirm, or keep truthful the approved sequence.
+  This includes fix/test evidence from scoped commits or pushes already authorized in the same sequence.
+- If the body/title wording is discretionary, has unresolved placeholders, or changes the PR beyond the same requested update, draft the exact payload and wait for approval.
+- This packet never authorizes unrelated metadata, reviewer replies/resolves, labels, invented prose, or a different target.
+
 Packet requirements:
 
 - UI-facing changes and linked screenshots/media: screenshot status and captured proof folder/filename mapping.
@@ -39,6 +47,7 @@ Before the side effect, show:
 - `target`: repo, base, head, draft/readiness
 - `title`: exact title plus source/rationale
 - `body`: body file/path or full text source, linked issue keyword, footer state
+- `body_title_delta`: existing PR only; current read-back, exact replacement/delta, and evidence that the edit is required by the approved sequence
 - `composition_packet`: template, screenshots, test plan, metadata, statuses, blockers
 - `intake`: full linked issue/PR/comment bodies read; comments/replies status; skipped items with reasons
 - `test_plan`: observable/manual steps, expected result, commands run, observed results

@@ -17,7 +17,7 @@ This skill requires a source PR number. If none was provided, ask the user for i
 
 The tool pushes branches and opens the backport PRs itself, so the launch is a human-visible publication action.
 Before launch, surface the exact payload each target PR gets: title from the source commit, `# Backport …` body, `backport` label, assignees/reviewers, and squash auto-merge on clean cherry-picks (`.backportrc.json`), alongside the computed target branches.
-The user's backport request plus that surfaced payload is the publication approval for every PR the run creates; no per-PR approval.
+The user's backport request plus that surfaced payload is the bounded approval packet for every PR the run creates; no per-PR approval.
 If the targets or payload change after launch, surface that before continuing.
 
 Read `~/.agents/skills/k-kbn-backport/references/backport-tool.md` first.

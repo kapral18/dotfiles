@@ -144,7 +144,7 @@ return {
     optional = true,
     opts = function(_, opts)
       opts.linters_by_ft = vim.tbl_deep_extend("force", opts.linters_by_ft or {}, {
-        go = { "golangci-lint" },
+        go = { "golangcilint" },
       })
       return opts
     end,

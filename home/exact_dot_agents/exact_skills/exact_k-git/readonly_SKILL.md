@@ -53,12 +53,14 @@ Approvals:
 - Content approval is not commit authorization: "make it generic", "fix it", "do it", or approval of file edits authorizes the edits, not a commit.
 - When a task would conventionally end with a commit, stop at the working tree and report the change set;
   the user commits or asks for one explicitly.
+- A user-invoked `k-pr-fix-loop` approval packet is an explicit commit request for scoped PR-fix commits on the current PR branch.
 - An explicit push request covers committing the changes it describes; absent that, leave the tree uncommitted.
 - Do not push without an explicit push request.
 
 Push policy (mandatory):
 
 - Interpret a user request to "push" as explicit approval for `git push --force-with-lease`.
+- A user-invoked `k-pr-fix-loop` approval packet is an explicit force-with-lease push request for the current PR branch only.
 - Prefer explicit remote/branch in the restated command (example: `git push --force-with-lease origin <branch>`).
 - If upstream is missing, `git push --force-with-lease -u <remote> <branch>` is allowed.
 - Never run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, or `git merge <remote>/<branch>` automatically before pushing.

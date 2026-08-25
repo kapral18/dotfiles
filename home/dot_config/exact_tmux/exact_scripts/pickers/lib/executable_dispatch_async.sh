@@ -47,23 +47,22 @@ for a in "$@"; do
   extra+=" $(printf %q "$a")"
 done
 
-# Propagate fzf's `--listen` env vars (FZF_SOCK / FZF_PORT / FZF_API_KEY) to
-# the background consumer. fzf sets these on every child process it spawns
-# (execute, execute-silent, transform, ...), so `dispatch_async.sh` always
-# inherits them when invoked from inside a binding. `tmux run-shell -b`,
-# however, uses the tmux server's env and would drop them, so we inline the
-# assignments into the command string. The consumer can then post follow-up
-# actions (e.g. a reload after the work completes) back to the running fzf.
+# Propagate fzf's `--listen` env vars to the background consumer. fzf sets its
+# vars on every child process it spawns (execute, execute-silent, transform, ...).
+# `tmux run-shell -b`, however, uses the tmux server's env and would drop them,
+# so we inline the assignments into the command string. The consumer can then
+# post follow-up actions back to fzf.
 fzf_env_prefix=""
-if [ -n "${FZF_SOCK:-}" ]; then
-  fzf_env_prefix+="FZF_SOCK=$(printf %q "$FZF_SOCK") "
-fi
-if [ -n "${FZF_PORT:-}" ]; then
-  fzf_env_prefix+="FZF_PORT=$(printf %q "$FZF_PORT") "
-fi
-if [ -n "${FZF_API_KEY:-}" ]; then
-  fzf_env_prefix+="FZF_API_KEY=$(printf %q "$FZF_API_KEY") "
-fi
+append_env_prefix() {
+  local name="$1"
+  local value="${!name:-}"
+  [ -n "$value" ] || return 0
+  fzf_env_prefix+="${name}=$(printf %q "$value") "
+}
+
+append_env_prefix FZF_SOCK
+append_env_prefix FZF_PORT
+append_env_prefix FZF_API_KEY
 
 if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   tmux run-shell -b "${fzf_env_prefix}$(printf %q "$consumer") $(printf %q "$snap")${extra}" 2> /dev/null || true

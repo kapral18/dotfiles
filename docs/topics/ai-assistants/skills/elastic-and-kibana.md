@@ -78,6 +78,7 @@ Detached `,kbn-stack --detach` starts record the Kibana process log as `kbn_log`
 | Use when | running an end-to-end Kibana backport workflow                                                 |
 | Source   | [`exact_k-kbn-backport`](../../../../home/exact_dot_agents/exact_skills/exact_k-kbn-backport/) |
 | Routing  | manual                                                                                         |
+| Boundary | launch payload plus user request is the bounded approval packet for every created backport PR  |
 
 ## `k-kbn-standup`
 

@@ -54,7 +54,8 @@ This file carries only the PR/SCSI/GitHub-delivery rules layered on top of that 
 - Post to GitHub, submit reviews, apply labels, or resolve threads only when explicitly asked.
 - Exception per the Human-Visible Publication Gate (SOP, `~/AGENTS.md`):
   - a **verified bot-authored** thread may be auto-replied/auto-resolved inside an explicitly-invoked flow
-  - any human-visible target stays supervised: draft -> show payload -> wait
+  - a bounded SOP approval packet may apply only through its owning skill or reference
+  - every other human-visible target stays supervised: draft -> show payload -> wait
   - ambiguous/mixed threads fail safe to human
 - Assume the user started the agent inside the intended repo/worktree/session:
   - do not create/switch worktrees proactively
@@ -254,9 +255,9 @@ Do not invent a parallel store:
 - If the user asks to post/submit/apply anything to GitHub:
   - keep the draft content from the review mode
   - then invoke the `k-github` skill via the Skill tool
-  - get explicit approval for the GitHub side effect
+  - confirm explicit approval or an approval packet defined by the relevant skill/reference for the GitHub side effect
 - Human-Visible Publication Gate (SOP, `~/AGENTS.md`):
-  - explicit approval is absolute for any human-visible target
-  - the only automation carve-out is a verified bot-authored thread
+  - explicit approval or an approval packet defined by the relevant skill/reference is required for any human-visible target
+  - automation carve-outs are the SOP-defined packets only; do not infer new ones here
   - see `pr_fix.md` Drain Mode
   - bot-authored threads may be auto-replied/auto-resolved only inside a flow the user already invoked

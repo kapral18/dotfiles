@@ -98,7 +98,7 @@ Build the proof-mode Claim map before drafting embed text: every behavior claim 
 Place `baseline` pairs in the PR/issue body's main Screenshots/Videos section.
 Place `intra-change` pairs in a separate comment/thread when requested for reviewer re-verification.
 Publish `head-only` proof only in an explicitly approved non-baseline location after the user sees the claim map.
-Uploading is a GitHub side effect — show the QA summary, claim map, and destination, and wait for explicit user approval before uploading.
+Uploading is a GitHub side effect: show QA summary, claim map, and destination, then confirm explicit approval or a workflow-defined approval packet.
 After upload, emit the ready-to-paste markdown block built per those presentation rules.
 
 Completion criterion: new media uploaded and markdown emitted with a complete claim map and a verified publication channel, or local manifest paths returned with upload marked `pending_approval`/`skipped`.

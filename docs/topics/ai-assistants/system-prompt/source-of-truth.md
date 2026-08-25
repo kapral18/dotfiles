@@ -47,6 +47,8 @@ Update the source and then verify the rendered effect.
 | `~/.copilot/copilot-instructions.md` | symlink to `~/AGENTS.md`                            |
 | `~/.agents/skills/*/SKILL.md`        | rendered from `home/exact_dot_agents/exact_skills/` |
 
+The deployed SOP carries a short managed-home reminder: dotfiles are chezmoi-managed on this machine.
+
 ## Compiled ownership (policy compiler)
 
 `scripts/compile_ai_policy.py` compiles `home/readonly_AGENTS.md` from a versioned policy IR (`scripts/ai_policy_ir.py`) instead of treating the file as hand-authored prose. Stage 1 established byte-for-byte compilation from one IR rule per numbered SOP heading. Live rule IDs follow the current heading numbers. Stage 2 moves ablated rules out of the always-loaded core by changing their disposition and consumer while freezing their original text for provenance.

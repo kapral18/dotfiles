@@ -391,7 +391,7 @@ fzf_common_binds=(
   --bind "ctrl-s:$send_mode"
   --bind "esc:execute-silent(rm -f $mode_flag $wt_mode_flag)+$send_restore"
   --bind "ctrl-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$kill_cmd") {+f})+reload($kill_reload)+deselect-all"
-  --bind "alt-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$rm_cmd") {+f})+reload($remove_reload)+deselect-all"
+  --bind "alt-x:execute($(printf %q "$rm_cmd") {+f})+reload($remove_reload)+deselect-all"
   --bind "alt-y:execute-silent(printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | xclip -sel clip 2>/dev/null)"
   --bind "alt-Y:execute-silent(printf '%s\n' {+} | cut -f5 | sed '/^[[:space:]]*$/d' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f5 | sed '/^[[:space:]]*$/d' | xclip -sel clip 2>/dev/null)"
   --bind "alt-1:change-query(${filter_quick_1}/)"

@@ -46,6 +46,19 @@ class TestAgentSkillInvariants(unittest.TestCase):
             assert match, f"{entry} has no frontmatter name"
             assert match.group("name") == expected, f"{entry} frontmatter name {match.group('name')!r} != {expected!r}"
 
+    def test_skill_description_with_colon_is_quoted(self):
+        skills_root = REPO / "home/exact_dot_agents/exact_skills"
+        description_re = re.compile(r"^description:\s+(?P<value>[^\"'\n].*:.*)$", re.MULTILINE)
+        for skill_dir in sorted(p for p in skills_root.iterdir() if p.is_dir()):
+            entry = next(
+                (skill_dir / c for c in ("readonly_SKILL.md", "SKILL.md") if (skill_dir / c).is_file()),
+                None,
+            )
+            if entry is None:
+                continue
+            match = description_re.search(entry.read_text(encoding="utf-8"))
+            assert not match, f"{entry} has an unquoted description containing ':': {match.group('value')}"
+
     def test_pi_review_controller_named_roles_have_profiles(self):
         agents_dir = REPO / "home/dot_pi/agent/exact_agents"
         profiles = {path.name.removesuffix(".md.tmpl") for path in agents_dir.glob("*.md.tmpl")}

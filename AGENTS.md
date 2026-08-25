@@ -100,7 +100,7 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
 1. **Brewfile** (per-category partials under `home/.chezmoitemplates/brews/`, assembled into `home/readonly_dot_Brewfile.tmpl`) —
    macOS apps/formulas/casks via Homebrew
 2. **Cargo** (`home/readonly_dot_default-cargo-crates`) — Rust packages
-3. **Go** (`home/readonly_dot_default-golang-pkgs`) — Go packages
+3. **Go** (`home/readonly_dot_default-golang-pkgs.tmpl`) — Go packages
 4. **Gems** (`home/readonly_dot_default-gems`) — Ruby packages
 5. **yarn** (`home/readonly_dot_default-yarn-pkgs`) — Node.js/JavaScript packages
 6. **uv** (`home/readonly_dot_default-uv-tools.tmpl`) — Python tools/packages
@@ -128,10 +128,11 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
    - **Homebrew first**: search likely names with `brew search <term>` and verify candidates with `brew info <formula-or-cask>`.
      Test repo name, normalized name, `<name>-cli`, collapsed owner/repo names, and official tap names.
    - **Cargo**: `cargo search <package> --limit 5` — for Rust packages
-   - **Go**: `go get -u <import-path>` — search pkg.go.dev or verify from GitHub
+   - **Go**: verify the import path on pkg.go.dev or the official repository; for installability, use `go install <import-path>@latest` or a versioned equivalent.
    - **Gems**: `gem search <package>` — Ruby packages
    - **yarn**: `yarn info <package>` — Node.js/JavaScript packages
-   - **uv**: `uv pip search <package>` — Python tools
+   - **uv**: verify the package on PyPI or the official repository; for tool installability, use `uv tool install <package>`.
+     Do not use `uv pip search`; current `uv` does not support that command.
    - **Manual (.dmg / release asset)**: verified GitHub releases
 5. **Stop at the first suitable match** and add it to that location only.
 6. **Use verified package names, URLs, and sources.** Ask the user when verification cannot resolve them.
@@ -193,7 +194,11 @@ Non-trivial logic belongs in colocated scripts written in an appropriate languag
 
 ## Bin Commands & Shell Completions (Mandatory)
 
-User commands live in `home/exact_bin/executable_,<name>` (deployed to `~/bin/,<name>`; the leading comma is the convention).
+Repo-owned standalone user commands MUST use the comma namespace.
+
+- Source files live in `home/exact_bin/executable_,<name>` and deploy to `~/bin/,<name>`; the leading comma is part of the command name.
+- Do not add unprefixed standalone commands under `~/bin`.
+
 Commands are self-contained across deployed `$HOME` surfaces.
 `~/bin/` scripts cannot call repo-only `scripts/` helpers because `scripts/` is not deployed to `$HOME`.
 For commands over ~200 lines or with multiple logical subsystems, keep `~/bin/,<name>` as a thin launcher.
@@ -215,6 +220,15 @@ Small single-purpose commands may stay directly in `home/exact_bin/`.
 When adding a new `~/bin/` command or `home/exact_lib/exact_,<name>/` command library, also update its catalog row under `docs/topics/workflow/custom-commands/`.
 Also update the `.mermaids/07c-bin-commands.mmd` node, plus the relevant census count in `scripts/verify_mermaids.py` and the diagram/README anchors.
 This follows Documentation Hygiene.
+
+---
+
+## Agent Skill Naming (Mandatory)
+
+Repo-owned skills MUST use the `k-` namespace.
+Source directories live under `home/exact_dot_agents/exact_skills/exact_k-<name>/`, and the skill entrypoint frontmatter `name` MUST be `k-<name>`.
+References to those skills MUST use the deployed path `~/.agents/skills/k-<name>/SKILL.md`.
+Do not add unprefixed repo-owned skill directories, frontmatter names, or skill references.
 
 ---
 
@@ -294,6 +308,7 @@ The compiled ownership model lives in `docs/topics/ai-assistants/system-prompt/s
 | `home/dot_cursor/symlink_AGENTS.md`                        | `~/.cursor/AGENTS.md`                |
 | `home/dot_codex/symlink_AGENTS.md`                         | `~/.codex/AGENTS.md`                 |
 | `home/dot_config/opencode/symlink_AGENTS.md`               | `~/.config/opencode/AGENTS.md`       |
+| `home/dot_omp/private_agent/symlink_AGENTS.md`             | `~/.omp/agent/AGENTS.md`             |
 | `home/private_dot_copilot/symlink_copilot-instructions.md` | `~/.copilot/copilot-instructions.md` |
 | `home/exact_dot_agents/exact_skills/`                      | `~/.agents/skills/`                  |
 

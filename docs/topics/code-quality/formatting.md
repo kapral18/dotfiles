@@ -59,7 +59,7 @@ Each group's output is buffered and flushed in a fixed order after all groups fi
 
 [`.editorconfig`](../../../.editorconfig) provides baseline indent/whitespace rules that most editors (VSCode, Neovim, JetBrains, etc.) pick up automatically.
 
-Neovim uses `conform.nvim` to run the same formatters on save. Both paths read from the same config files (`.prettierrc`, `.stylua.toml`, `ruff.toml`, `.editorconfig`) so editor formatting and `bin/fmt` always agree.
+Neovim uses `conform.nvim` to run the same formatters on save. Both paths read from the same config files (`.prettierrc`, `.stylua.toml`, `ruff.toml`, `.editorconfig`) so editor formatting and `bin/fmt` always agree. Go linting is separate: Neovim's `nvim-lint` registry key is `golangcilint`, while the installed executable/Mason package remains `golangci-lint`.
 
 YAML uses a `printWidth: 200` override in `.prettierrc` so prettier handles indentation without wrapping long command strings that embed shell and Go template syntax.
 
