@@ -59,6 +59,23 @@ return {
       },
     },
     opts = {
+      event_handlers = {
+        {
+          -- the git_status source runs `git status --ignored=traditional` synchronously
+          -- (~6s in kibana) and then discards the "!" ignored entries it fetched
+          -- (sources/git_status/lib/items.lua skips them). Drop the flag to make
+          -- <leader>ge instant; the async filesystem source fetches ignored files
+          -- separately via `git ls-files`, so gitignored dimming is unaffected.
+          event = "before_git_status",
+          handler = function(payload)
+            for i, arg in ipairs(payload.status_args) do
+              if arg == "--ignored=traditional" then
+                payload.status_args[i] = "--ignored=no"
+              end
+            end
+          end,
+        },
+      },
       enable_git_status = true,
       git_status_async = true,
       git_status_async_options = {
