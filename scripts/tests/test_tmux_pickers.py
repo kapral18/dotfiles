@@ -100,14 +100,345 @@ class TestTmuxPickerShellHelpers(unittest.TestCase):
             logged = tmux_log.read_text()
             assert "FZF_SOCK=/tmp/fzf.sock" in logged
 
-    def test_pick_session_alt_x_runs_remove_action_synchronously(self):
+    def test_pick_session_alt_x_uses_inline_bgtransform_confirmation(self):
         script = TMUX_PICKERS / "session/executable_pick_session.sh"
         text = script.read_text()
 
-        assert '--bind "alt-x:execute($(printf %q "$rm_cmd") {+f})+reload($remove_reload)+deselect-all"' in text
         assert (
-            '--bind "alt-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$rm_cmd") {+f})' not in text
+            '--bind "alt-x:${altx_check_cue}+bg-transform($(printf %q "$altx_cmd") $(printf %q "$rm_confirm_flag") $(printf %q "$rm_cmd") {+f} $(printf %q "$rm_pending_snap"))"'
+            in text
         )
+        assert '--bind "alt-x:execute(' not in text
+        # esc must clear the confirm flag and the transform's run marker so a
+        # cancelled flow can never turn a later alt-x into an accidental force.
+        assert "esc:execute-silent(rm -f $mode_flag $wt_mode_flag $rm_confirm_flag ${rm_confirm_flag}.run)" in text
+
+    def test_pick_session_alt_x_composes_instant_feedback_and_fast_hide(self):
+        script = TMUX_PICKERS / "session/executable_pick_session.sh"
+        text = script.read_text()
+
+        # In-progress feedback comes from the binding's own prompt swap applied
+        # at keypress time, never from a picker takeover or a helper-painted UI.
+        assert "ALTX_CHECK_ACTIONS" not in text
+        assert 'altx_check_cue="change-prompt(⏳ removing…)"' in text
+        # Cancelled checks hand the cue back via this export.
+        assert 'export ALTX_RESTORE_ACTIONS="$altx_visual_restore"' in text
+        # The optimistic hide reloads the live row-set source file filtered by
+        # the checked snapshot (no items rescan), then restores the visuals.
+        assert (
+            '_altx_hide_reload="$(snapshot_reload_command "${_altx_hide_matcher} ${_altx_pending_q} ${altx_src_q}")"'
+            in text
+        )
+        for var in ("altx_safe_actions", "altx_force_actions"):
+            assert f'{var}="reload(${{_altx_hide_reload}})+deselect-all+${{altx_visual_restore}}"' in text
+        # The items-rescan hide path that replaced the alt-x keypress latency.
+        assert "remove_reload=" not in text
+
+    def test_altx_hide_matches_plain_projections_and_display_keeps_ansi(self):
+        # fzf hands {+f} snapshots back --ansi-stripped while the item stream
+        # keeps its SGR codes, so the hide compares plain projections at the
+        # one comparison site and prints survivors unchanged. Display paths
+        # must never strip — that bleaches every row's colors.
+        pick = (TMUX_PICKERS / "session/executable_pick_session.sh").read_text()
+        assert (
+            '_altx_hide_awk=\'FILENAME==ARGV[1]{t=$0;gsub(/\\033\\[[0-9;]*m/,"",t);p[t]=1;next}'
+            '{t=$0;gsub(/\\033\\[[0-9;]*m/,"",t);if(!(t in p))print}\'' in pick
+        )
+        assert (
+            '_altx_hide_reload="$(snapshot_reload_command "${_altx_hide_matcher} ${_altx_pending_q} ${altx_src_q}")"'
+            in pick
+        )
+        assert "_ansi_strip_cmd" not in pick
+        assert '| tee "$sort_source_file" | SHELL="$fzf_shell" fzf' in pick
+        for name in (
+            "executable_live_refresh.sh",
+            "executable_fzf_reload.sh",
+            "executable_action_only_cycle.sh",
+        ):
+            text = (TMUX_PICKERS / f"session/{name}").read_text()
+            assert "gsub(" not in text, f"{name} must not strip ANSI from display rows"
+            assert r"\033" not in text, f"{name} must not strip ANSI from display rows"
+
+    def test_altx_transform_safe_selection_emits_hide_without_touching_confirm_flag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_dir = root / "cache/tmux"
+            picker_dir = root / ".config/tmux/scripts/pickers/session"
+            lib_dir = root / ".config/tmux/scripts/pickers/lib"
+            cache_dir.mkdir(parents=True)
+            picker_dir.mkdir(parents=True)
+            lib_dir.mkdir(parents=True)
+            for name in ("executable_dispatch_async.sh",):
+                (lib_dir / name.split("executable_")[1]).write_text((TMUX_PICKERS / f"lib/{name}").read_text())
+            selection = root / "selection.tsv"
+            selection.write_text("ctx\tworktree\t/tmp/wt\twt:|repo=r\t/tmp/root\n")
+            pending_snap = cache_dir / "pending.tsv"
+            confirm_flag = cache_dir / "confirm.flag"
+            safe_check = picker_dir / "safe_rm.sh"
+            safe_check.write_text("#!/usr/bin/env bash\nexit 0\n")  # --check always safe
+            safe_check.chmod(0o755)
+
+            # Stage a logging dispatch_async so the test observes what the safe
+            # branch dispatches (helper resolves ../lib relative to its own path,
+            # and we run a staged copy of the helper — see below).
+            dispatch_log = root / "dispatch.log"
+            lib_dir = picker_dir.parent / "lib"
+            lib_dir.mkdir(exist_ok=True)
+            dispatch = lib_dir / "dispatch_async.sh"
+            dispatch.write_text(f"#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" >> {shlex.quote(str(dispatch_log))}\n")
+            dispatch.chmod(0o755)
+            staged_helper = picker_dir / "altx_remove_transform.sh"
+            staged_helper.write_text((TMUX_PICKERS / "session/executable_altx_remove_transform.sh").read_text())
+            staged_helper.chmod(0o755)
+
+            result = subprocess.run(
+                [
+                    modern_bash(),
+                    str(staged_helper),
+                    str(confirm_flag),
+                    str(safe_check),
+                    str(selection),
+                    str(pending_snap),
+                ],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "ALTX_SAFE_ACTIONS": "SAFE+HIDE",
+                    "ALTX_CONFIRM_ACTIONS": "CONFIRM",
+                    "ALTX_FORCE_ACTIONS": "FORCE",
+                },
+            )
+
+            assert result.returncode == 0, result.stderr
+            assert result.stdout.strip() == "SAFE+HIDE"
+            assert pending_snap.read_text() == selection.read_text()
+            assert not confirm_flag.exists()
+            assert not (confirm_flag.parent / "confirm.flag.busy").exists()
+            dispatched = dispatch_log.read_text()
+            assert "--force" not in dispatched
+            assert str(pending_snap) in dispatched
+
+    def test_altx_transform_blocked_selection_enters_confirm_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_dir = root / "cache/tmux"
+            picker_dir = root / ".config/tmux/scripts/pickers/session"
+            cache_dir.mkdir(parents=True)
+            picker_dir.mkdir(parents=True)
+            blocked_w = picker_dir / "blocked_rm.sh"
+            blocked_w.write_text('#!/usr/bin/env bash\n[ "${1:-}" = --check ] && exit 3\nexit 0\n')
+            blocked_w.chmod(0o755)
+            selection = root / "selection.tsv"
+            selection.write_text("ctx\tworktree\t/tmp/wt\twt:|repo=r\t/tmp/root\n")
+            pending_snap = cache_dir / "pending.tsv"
+            confirm_flag = cache_dir / "confirm.flag"
+
+            result = subprocess.run(
+                [
+                    modern_bash(),
+                    str(TMUX_PICKERS / "session/executable_altx_remove_transform.sh"),
+                    str(confirm_flag),
+                    str(blocked_w),
+                    str(selection),
+                    str(pending_snap),
+                ],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "ALTX_SAFE_ACTIONS": "SAFE+HIDE",
+                    "ALTX_CONFIRM_ACTIONS": "CONFIRM+SWAP",
+                    "ALTX_FORCE_ACTIONS": "FORCE",
+                },
+            )
+
+            assert result.returncode == 0, result.stderr
+            assert result.stdout.strip() == "CONFIRM+SWAP"
+            assert confirm_flag.exists()
+
+            # Second alt-x while confirmed force-dispatches the PENDING snapshot
+            # (not the live selection) through dispatch_async.sh and clears the
+            # flag. The helper resolves dispatch_async.sh relative to its own
+            # path, so stage a fixture copy under <fixture pickers>/session.
+            dispatch_log = root / "dispatch.log"
+            lib_dir = picker_dir.parent / "lib"
+            lib_dir.mkdir(exist_ok=True)
+            dispatch = lib_dir / "dispatch_async.sh"
+            dispatch.write_text(f"#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" >> {shlex.quote(str(dispatch_log))}\n")
+            dispatch.chmod(0o755)
+            staged_helper = picker_dir / "altx_remove_transform.sh"
+            staged_helper.write_text((TMUX_PICKERS / "session/executable_altx_remove_transform.sh").read_text())
+            staged_helper.chmod(0o755)
+            live_selection = root / "live.tsv"
+            live_selection.write_text("different\trow\n")
+
+            result2 = subprocess.run(
+                [
+                    modern_bash(),
+                    str(staged_helper),
+                    str(confirm_flag),
+                    str(blocked_w),
+                    str(live_selection),
+                    str(pending_snap),
+                ],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "ALTX_SAFE_ACTIONS": "SAFE+HIDE",
+                    "ALTX_CONFIRM_ACTIONS": "CONFIRM+SWAP",
+                    "ALTX_FORCE_ACTIONS": "FORCE+RESTORE",
+                },
+            )
+
+            assert result2.returncode == 0, result.stderr
+            assert result2.stdout.strip() == "FORCE+RESTORE"
+            assert not confirm_flag.exists()
+            dispatched = dispatch_log.read_text()
+            assert "--force" in dispatched
+            assert str(pending_snap) in dispatched
+            assert str(live_selection) not in dispatched
+
+    def test_altx_transform_collapses_rapid_presses_with_busy_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_dir = root / "cache/tmux"
+            picker_dir = root / ".config/tmux/scripts/pickers/session"
+            cache_dir.mkdir(parents=True)
+            picker_dir.mkdir(parents=True)
+            slow_check = picker_dir / "slow_rm.sh"
+            # Long enough for a second press to land while busy, short enough
+            # that the first press completes and prints its actions.
+            slow_check.write_text("#!/usr/bin/env bash\nsleep 1.5\n")
+            slow_check.chmod(0o755)
+            selection = root / "selection.tsv"
+            selection.write_text("ctx\tworktree\t/tmp/wt\twt:|repo=r\t/tmp/root\n")
+            pending_snap = cache_dir / "pending.tsv"
+            confirm_flag = cache_dir / "confirm.flag"
+
+            first = subprocess.Popen(
+                [
+                    modern_bash(),
+                    str(TMUX_PICKERS / "session/executable_altx_remove_transform.sh"),
+                    str(confirm_flag),
+                    str(slow_check),
+                    str(selection),
+                    str(pending_snap),
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env={**os.environ, "ALTX_SAFE_ACTIONS": "FIRST"},
+            )
+            # Wait until the busy marker exists, then fire the second press.
+            busy = Path(f"{confirm_flag}.busy")
+            deadline = time.time() + 10
+            while not busy.exists() and time.time() < deadline:
+                time.sleep(0.02)
+
+            second = subprocess.run(
+                [
+                    modern_bash(),
+                    str(TMUX_PICKERS / "session/executable_altx_remove_transform.sh"),
+                    str(confirm_flag),
+                    str(slow_check),
+                    str(selection),
+                    str(pending_snap),
+                ],
+                capture_output=True,
+                text=True,
+                env={**os.environ, "ALTX_SAFE_ACTIONS": "SECOND"},
+            )
+
+            assert second.returncode == 0, second.stderr
+            assert second.stdout.strip() == ""  # second press swallowed while busy
+
+    def test_altx_transform_flashes_status_message_during_check(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_dir = root / "cache/tmux"
+            picker_dir = root / ".config/tmux/scripts/pickers/session"
+            picker_dir.mkdir(parents=True)
+            cache_dir.mkdir(parents=True)
+            check_rm = picker_dir / "check_rm.sh"
+            check_rm.write_text('#!/usr/bin/env bash\nsleep 0.3\n[ "${1:-}" = --check ] && exit 3\nexit 0\n')
+            check_rm.chmod(0o755)
+            selection = root / "selection.tsv"
+            selection.write_text("ctx\tworktree\t/tmp/wt\twt:|repo=r\t/tmp/root\n")
+            pending_snap = cache_dir / "pending.tsv"
+            confirm_flag = cache_dir / "confirm.flag"
+
+            result = subprocess.run(
+                [
+                    modern_bash(),
+                    str(TMUX_PICKERS / "session/executable_altx_remove_transform.sh"),
+                    str(confirm_flag),
+                    str(check_rm),
+                    str(selection),
+                    str(pending_snap),
+                ],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "ALTX_CONFIRM_ACTIONS": "CONFIRM+SWAP",
+                },
+            )
+
+            assert result.returncode == 0, result.stderr
+            assert result.stdout.strip() == "CONFIRM+SWAP"
+            # Progress never depends on a tmux status message or any external
+            # painter: the helper emits actions only.
+            assert "display-message" not in (TMUX_PICKERS / "session/executable_altx_remove_transform.sh").read_text()
+
+    def test_altx_transform_cancelled_check_does_not_enter_confirm_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_dir = root / "cache/tmux"
+            picker_dir = root / ".config/tmux/scripts/pickers/session"
+            picker_dir.mkdir(parents=True)
+            cache_dir.mkdir(parents=True)
+            slow_check = picker_dir / "slow_blocked.sh"
+            slow_check.write_text('#!/usr/bin/env bash\nsleep 1.5\n[ "${1:-}" = --check ] && exit 3\nexit 0\n')
+            slow_check.chmod(0o755)
+            selection = root / "selection.tsv"
+            selection.write_text("ctx\tworktree\t/tmp/wt\twt:|repo=r\t/tmp/root\n")
+            pending_snap = cache_dir / "pending.tsv"
+            confirm_flag = cache_dir / "confirm.flag"
+
+            first = subprocess.Popen(
+                [
+                    modern_bash(),
+                    str(TMUX_PICKERS / "session/executable_altx_remove_transform.sh"),
+                    str(confirm_flag),
+                    str(slow_check),
+                    str(selection),
+                    str(pending_snap),
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env={
+                    **os.environ,
+                    "ALTX_CONFIRM_ACTIONS": "CONFIRM+SWAP",
+                    "ALTX_RESTORE_ACTIONS": "RESTORE+VISUALS",
+                },
+            )
+            run_marker = Path(f"{confirm_flag}.run")
+            deadline = time.time() + 10
+            while not run_marker.exists() and time.time() < deadline:
+                time.sleep(0.02)
+            # The picker's esc binding removes this marker while the check is
+            # still running; the helper must hand the removing… cue back by
+            # echoing the restore actions instead of arming confirm mode.
+            run_marker.unlink()
+
+            out, err = first.communicate(timeout=30)
+
+            assert first.returncode == 0, err
+            assert out.strip() == "RESTORE+VISUALS"  # cue handed back, nothing armed
+            assert not confirm_flag.exists()  # confirm mode never arms after cancel
 
     def test_session_name_for_entry_uses_worktree_target_root(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -391,15 +722,14 @@ exit 1
             mutation_file = cache_dir / "pick_session_mutations.tsv"
             assert not mutation_file.exists() or str(worktree) not in mutation_file.read_text()
 
-    def test_action_remove_prompts_and_cancels_for_preflight_blocked_worktree(self):
+    def test_action_remove_check_mode_reports_blocked_with_zero_side_effects(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             home = root / "home"
             fake_bin = root / "bin"
             cache_dir = home / ".cache/tmux"
             worktree = home / "work/kibana/fix/context-menu"
-            fzf_log = root / "fzf.log"
-            fake_bin.mkdir()
+            fake_bin.mkdir(parents=True)
             cache_dir.mkdir(parents=True)
             worktree.mkdir(parents=True)
             subprocess.run(["git", "init", str(worktree)], check=True, capture_output=True, text=True)
@@ -416,18 +746,48 @@ exit 1
             )
             fake_w.chmod(0o755)
 
-            fzf = fake_bin / "fzf"
-            fzf.write_text(
-                "#!/usr/bin/env bash\n"
-                'input="$(cat)"\n'
-                f'printf \'%s\\n%s\\n\' "$*" "$input" > {shlex.quote(str(fzf_log))}\n'
-                "printf 'cancel\\tCancel - keep worktree(s)\\n'\n"
+            script = TMUX_PICKERS / "session/executable_action_remove_worktrees.sh"
+            result = subprocess.run(
+                [modern_bash(), str(script), "--check", str(selection)],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "XDG_CACHE_HOME": str(home / ".cache"),
+                    "PATH": f"{fake_bin}:{os.environ['PATH']}",
+                    "TMUX": "",
+                },
             )
-            fzf.chmod(0o755)
+
+            assert result.returncode == 3, result.stderr
+            assert not (cache_dir / "pick_session_pending.tsv").exists()
+            assert not (cache_dir / "pick_session_mutations.tsv").exists()
+            assert not (cache_dir / "pick_session_remove_worktrees.log").exists()
+
+    def test_action_remove_check_mode_passes_safe_selection_silently(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            fake_bin = root / "bin"
+            cache_dir = home / ".cache/tmux"
+            worktree = home / "work/kibana/fix/context-menu"
+            fake_bin.mkdir(parents=True)
+            cache_dir.mkdir(parents=True)
+            worktree.mkdir(parents=True)
+            subprocess.run(["git", "init", str(worktree)], check=True, capture_output=True, text=True)
+
+            selection = root / "selection.tsv"
+            selection.write_text(f"ctx\tsession\t{worktree}\tsess_wt:fix/context-menu|repo=work/kibana\tctx\tctx\n")
+
+            # Preflight prints nothing => nothing is dirty/unpushed => safe.
+            fake_w = fake_bin / ",w"
+            fake_w.write_text("#!/usr/bin/env bash\nexit 0\n")
+            fake_w.chmod(0o755)
 
             script = TMUX_PICKERS / "session/executable_action_remove_worktrees.sh"
             result = subprocess.run(
-                [modern_bash(), str(script), str(selection)],
+                [modern_bash(), str(script), "--check", str(selection)],
                 capture_output=True,
                 text=True,
                 env={
@@ -440,19 +800,23 @@ exit 1
             )
 
             assert result.returncode == 0, result.stderr
-            assert "Force delete - discard dirty/unpushed work" in fzf_log.read_text()
-            assert str(worktree) in fzf_log.read_text()
             assert not (cache_dir / "pick_session_pending.tsv").exists()
             assert not (cache_dir / "pick_session_mutations.tsv").exists()
+            assert not (cache_dir / "pick_session_remove_worktrees.log").exists()
 
-    def test_action_remove_prompts_and_force_deletes_for_preflight_blocked_worktree(self):
+    def test_action_remove_aborts_cleanly_when_async_run_hits_blocked_preflight(self):
+        """Backstop: the picker gates via --check before dispatching; if state
+        changes between that check and this run, this async run must abort with
+        no tombstones/pending rows and surface a display-message instead of
+        prompting or forcing."""
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             home = root / "home"
             fake_bin = root / "bin"
             cache_dir = home / ".cache/tmux"
+            tmux_log = root / "tmux.log"
             worktree = home / "work/kibana/fix/context-menu"
-            fake_bin.mkdir()
+            fake_bin.mkdir(parents=True)
             cache_dir.mkdir(parents=True)
             worktree.mkdir(parents=True)
             subprocess.run(["git", "init", str(worktree)], check=True, capture_output=True, text=True)
@@ -469,16 +833,62 @@ exit 1
             )
             fake_w.chmod(0o755)
 
-            fzf = fake_bin / "fzf"
-            fzf.write_text("#!/usr/bin/env bash\nprintf 'force\\tForce delete - discard dirty/unpushed work\\n'\n")
-            fzf.chmod(0o755)
+            fake_tmux = fake_bin / "tmux"
+            fake_tmux.write_text(
+                f"#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" >> {shlex.quote(str(tmux_log))}\nexit 0\n"
+            )
+            fake_tmux.chmod(0o755)
+
+            script = TMUX_PICKERS / "session/executable_action_remove_worktrees.sh"
+            result = subprocess.run(
+                [modern_bash(), str(script), str(selection)],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "XDG_CACHE_HOME": str(home / ".cache"),
+                    "PATH": f"{fake_bin}:{os.environ['PATH']}",
+                    "TMUX": "mock,1,0",
+                },
+            )
+
+            assert result.returncode == 0, result.stderr
+            logged = tmux_log.read_text()
+            assert "blocked" in logged and "alt-x again to force" in logged
+            assert not (cache_dir / "pick_session_pending.tsv").exists()
+            assert not (cache_dir / "pick_session_mutations.tsv").exists()
+
+    def test_action_remove_accepts_force_flag_trailing_the_selection(self):
+        """dispatch_async appends extras after the snapshot, so `--force` may
+        follow the sel path; it must still bypass the preflight."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            fake_bin = root / "bin"
+            cache_dir = home / ".cache/tmux"
+            worktree = home / "work/kibana/fix/context-menu"
+            fake_bin.mkdir(parents=True)
+            cache_dir.mkdir(parents=True)
+            worktree.mkdir(parents=True)
+            subprocess.run(["git", "init", str(worktree)], check=True, capture_output=True, text=True)
+
+            selection = root / "selection.tsv"
+            selection.write_text(f"ctx\tsession\t{worktree}\tsess_wt:fix/context-menu|repo=work/kibana\tctx\tctx\n")
+
+            # ,w preflight would block everything; --force must never reach it.
+            fake_w = fake_bin / ",w"
+            fake_w.write_text(
+                '#!/usr/bin/env bash\nif [ "${1:-}" = remove ] && [ "${2:-}" = --preflight ]; then\n  exit 1\nfi\n'
+            )
+            fake_w.chmod(0o755)
             zoxide = fake_bin / "zoxide"
             zoxide.write_text("#!/usr/bin/env bash\nexit 0\n")
             zoxide.chmod(0o755)
 
             script = TMUX_PICKERS / "session/executable_action_remove_worktrees.sh"
             result = subprocess.run(
-                [modern_bash(), str(script), str(selection)],
+                [modern_bash(), str(script), str(selection), "--force"],
                 capture_output=True,
                 text=True,
                 env={

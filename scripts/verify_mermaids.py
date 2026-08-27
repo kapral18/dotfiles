@@ -58,11 +58,11 @@ CENSUS: list[Claim] = [
     Claim(
         name="total effective git files",
         globs=None,
-        claimed=1416,
+        claimed=1417,
         anchors=[
-            ("README.md", "1416 files in the effective git file set"),
-            ("00-overview.mmd", "1416 files in the effective git file set"),
-            ("00-overview.mmd", "file census (1416 total)"),
+            ("README.md", "1417 files in the effective git file set"),
+            ("00-overview.mmd", "1417 files in the effective git file set"),
+            ("00-overview.mmd", "file census (1417 total)"),
         ],
     ),
     Claim(
@@ -83,8 +83,8 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/dot_config/exact_tmux/",
         globs=["home/dot_config/exact_tmux/*"],
-        claimed=116,
-        anchors=[("05-tmux-pickers.mmd", "exact_tmux/ (116)"), ("00-overview.mmd", "tmux 116")],
+        claimed=117,
+        anchors=[("05-tmux-pickers.mmd", "exact_tmux/ (117)"), ("00-overview.mmd", "tmux 117")],
     ),
     Claim(
         name="home/dot_config/exact_nvim/",

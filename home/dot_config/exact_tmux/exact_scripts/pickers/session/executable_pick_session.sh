@@ -250,6 +250,10 @@ pin_first_cmd="$HOME/.config/tmux/scripts/pickers/lib/pin_session_first.sh"
 
 kill_cmd="$HOME/.config/tmux/scripts/pickers/session/action_kill_sessions.sh"
 rm_cmd="$HOME/.config/tmux/scripts/pickers/session/action_remove_worktrees.sh"
+altx_cmd="$HOME/.config/tmux/scripts/pickers/session/altx_remove_transform.sh"
+if [ ! -x "$altx_cmd" ]; then
+  die "tmux: missing script: $altx_cmd"
+fi
 live_refresh_cmd="$HOME/.config/tmux/scripts/pickers/session/live_refresh.sh"
 hide_selected_cmd="$HOME/.config/tmux/scripts/pickers/session/items_hide_selected.sh"
 update_cmd="$HOME/.config/tmux/scripts/pickers/session/index_update.sh"
@@ -264,7 +268,9 @@ mode_flag="${cache_dir}/pick_session_send_mode.$$"
 wt_mode_flag="${cache_dir}/pick_session_wt_mode.$$"
 wt_branch_tmp="${cache_dir}/pick_session_wt_branch.$$.txt"
 only_mode_flag="${cache_dir}/pick_session_only_mode.$$"
-_pick_session_pid_scoped_files+=("$cmd_tmp" "$mode_flag" "$wt_mode_flag" "$wt_branch_tmp" "$only_mode_flag")
+rm_confirm_flag="${cache_dir}/pick_session_rm_confirm.$$"
+rm_pending_snap="${cache_dir}/pick_session_rm_pending.$$.tsv"
+_pick_session_pid_scoped_files+=("$cmd_tmp" "$mode_flag" "$wt_mode_flag" "$wt_branch_tmp" "$only_mode_flag" "$rm_confirm_flag" "$rm_pending_snap")
 
 # alt-1/alt-2 quick filters jump to the first two scan-root segments via their
 # trailing-slash labels (e.g. `work/` surfaces `~/work/`). Overridable so the
@@ -336,7 +342,6 @@ snapshot_reload_command() {
 ctrl_r_reload="$(snapshot_reload_command "$filter_cmd --refresh --force-order")"
 alt_r_reload="$(snapshot_reload_command "$filter_cmd --force-refresh --force-order")"
 kill_reload="$(snapshot_reload_command "$hide_selected_cmd {+f} kill {q}")"
-remove_reload="$(snapshot_reload_command "$hide_selected_cmd {+f} remove {q}")"
 
 # fzf send-mode: ctrl-s enters a modal where the query line becomes a command
 # prompt. enter dispatches the command to selected sessions; esc cancels.
@@ -356,6 +361,39 @@ remove_reload="$(snapshot_reload_command "$hide_selected_cmd {+f} remove {q}")"
 _modal_header='?=help  ctrl-/=preview  alt-y=copy  alt-o=filter  alt-c=new wt  alt-g=GitHub'
 _modal_rebind='ctrl-s,ctrl-x,alt-x,alt-y,alt-c,alt-o,alt-p,alt-i,alt-g,change'
 send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header($_modal_header)+clear-query+deselect-all+rebind($_modal_rebind)+unbind(esc)"
+
+# alt-x removal runs as a two-phase state machine inside this fzf instance
+# (see altx_remove_transform.sh). The helper echoes these action strings back
+# to fzf; the in-progress cue is the binding's own prompt swap, not a takeover:
+# - CHECK start: alt-x first repaints the query line as "⏳ removing…" before
+#   launching the helper, so the preflight pause reads as progress instantly.
+# - SAFE (nothing dirty/unpushed): async removal + optimistic hide reloaded
+#   from $PICK_SESSION_SORT_SOURCE_FILE (the live row set each reload tees),
+#   filtered by the checked snapshot. Snapshot-filtered: no items rescan
+#   between the keypress and rows vanishing. Prompt restores with the reload.
+# - BLOCKED: only prompt/ghost/header swap, offering a second alt-x as FORCE.
+# - FORCE confirmed: same instant hide + visual restore. esc in either state
+#   clears the confirm flag and the transform's run marker (aborting an
+#   in-flight check) via the shared esc binding and restores standard visuals.
+_altx_pending_q="$(printf %q "$rm_pending_snap")"
+altx_src_q="$(printf %q "$sort_source_file")"
+altx_visual_restore="change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header($_modal_header)"
+altx_check_cue="change-prompt(⏳ removing…)"
+# fzf --ansi hands {+f} snapshots back color-stripped while the row source
+# keeps its SGR codes, so the hide matches each source row's plain projection
+# against the snapshot and prints survivors unchanged — rows keep their colors.
+# FILENAME==ARGV[1] (not NR==FNR) so an empty snapshot still reads as
+# "nothing selected" and never blanks the row set.
+_altx_hide_awk='FILENAME==ARGV[1]{t=$0;gsub(/\033\[[0-9;]*m/,"",t);p[t]=1;next}{t=$0;gsub(/\033\[[0-9;]*m/,"",t);if(!(t in p))print}'
+_altx_hide_matcher="LC_ALL=C awk $(printf %q "${_altx_hide_awk}")"
+_altx_hide_reload="$(snapshot_reload_command "${_altx_hide_matcher} ${_altx_pending_q} ${altx_src_q}")"
+altx_safe_actions="reload(${_altx_hide_reload})+deselect-all+${altx_visual_restore}"
+altx_confirm_actions="change-prompt(❯ force: )+change-ghost(alt-x again = force  esc = cancel)+change-header(BLOCKED: dirty or unpushed work in selected worktree(s))"
+altx_force_actions="reload(${_altx_hide_reload})+deselect-all+${altx_visual_restore}"
+export ALTX_SAFE_ACTIONS="$altx_safe_actions"
+export ALTX_CONFIRM_ACTIONS="$altx_confirm_actions"
+export ALTX_FORCE_ACTIONS="$altx_force_actions"
+export ALTX_RESTORE_ACTIONS="$altx_visual_restore"
 send_mode="execute-silent(touch $mode_flag)+disable-search+change-prompt(❯ send: )+change-ghost()+change-header(enter=send  esc=cancel)+clear-query+unbind($_modal_rebind)+rebind(esc)"
 
 # alt-c worktree-create modal: query line becomes a "new branch" prompt.
@@ -389,9 +427,9 @@ fzf_common_binds=(
   --bind "load:unbind(esc)"
   --bind "$enter_transform"
   --bind "ctrl-s:$send_mode"
-  --bind "esc:execute-silent(rm -f $mode_flag $wt_mode_flag)+$send_restore"
+  --bind "esc:execute-silent(rm -f $mode_flag $wt_mode_flag $rm_confirm_flag ${rm_confirm_flag}.run)+$send_restore"
   --bind "ctrl-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$kill_cmd") {+f})+reload($kill_reload)+deselect-all"
-  --bind "alt-x:execute($(printf %q "$rm_cmd") {+f})+reload($remove_reload)+deselect-all"
+  --bind "alt-x:${altx_check_cue}+bg-transform($(printf %q "$altx_cmd") $(printf %q "$rm_confirm_flag") $(printf %q "$rm_cmd") {+f} $(printf %q "$rm_pending_snap"))"
   --bind "alt-y:execute-silent(printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | xclip -sel clip 2>/dev/null)"
   --bind "alt-Y:execute-silent(printf '%s\n' {+} | cut -f5 | sed '/^[[:space:]]*$/d' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f5 | sed '/^[[:space:]]*$/d' | xclip -sel clip 2>/dev/null)"
   --bind "alt-1:change-query(${filter_quick_1}/)"

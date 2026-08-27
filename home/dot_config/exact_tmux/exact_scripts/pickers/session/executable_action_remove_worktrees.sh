@@ -10,11 +10,16 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 
 force_remove=0
+check_only=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --force)
       force_remove=1
+      shift
+      ;;
+    --check)
+      check_only=1
       shift
       ;;
     --)
@@ -31,6 +36,17 @@ while [ $# -gt 0 ]; do
 done
 
 sel_file="${1:-}"
+shift || true
+
+# Flags may also trail the selection path (dispatch_async.sh appends extras
+# after the snapshot), so scan what's left of the args for them too.
+for _arg in "$@"; do
+  case "$_arg" in
+    --force) force_remove=1 ;;
+    --check) check_only=1 ;;
+  esac
+done
+
 if [ -z "$sel_file" ] || [ ! -f "$sel_file" ]; then
   exit 0
 fi
@@ -80,61 +96,6 @@ trap _action_remove_cleanup EXIT
 
 realpath_or_self() {
   realpath "$1" 2> /dev/null || printf '%s' "$1"
-}
-
-run_force_confirmation() {
-  local header choice
-  header="$(
-    printf 'pick_session blocked this removal because selected worktree(s) have dirty files or unpushed commits.\n\n'
-    printf 'Selected path(s):\n'
-    while IFS=$'\t' read -r _display _kind path _meta _target _rest; do
-      [ -n "$path" ] || continue
-      printf '  %s\n' "$path"
-    done < "$sel_file" | LC_ALL=C sort -u
-    printf '\nChoose Force delete only if you want to discard that work.'
-  )"
-
-  if command -v fzf > /dev/null 2>&1; then
-    choice="$(
-      {
-        printf 'cancel\tCancel - keep worktree(s)\n'
-        printf 'force\tForce delete - discard dirty/unpushed work\n'
-      } | fzf \
-        --height=100% \
-        --layout=reverse \
-        --border=none \
-        --no-multi \
-        --cycle \
-        --exit-0 \
-        --delimiter=$'\t' \
-        --with-nth=2 \
-        --prompt='pick_session force remove > ' \
-        --header="$header" \
-        2> /dev/null || true
-    )"
-    case "$choice" in
-      force$'\t'*)
-        return 0
-        ;;
-      *)
-        return 1
-        ;;
-    esac
-  fi
-
-  printf '%s\n\n' "$header"
-  printf 'Force delete anyway? Type y to continue: '
-
-  local answer
-  IFS= read -r answer || return 1
-  case "$answer" in
-    y | Y | yes | YES)
-      return 0
-      ;;
-    *)
-      return 1
-      ;;
-  esac
 }
 
 tmux_opt() {
@@ -477,10 +438,30 @@ if [ ${#pending_wt_paths[@]} -gt 0 ]; then
   mapfile -t pending_wt_paths < <(printf '%s\n' "${pending_wt_paths[@]}" | sed '/^$/d' | LC_ALL=C sort -u)
 fi
 
+# Check-only mode (picker's alt-x transform): resolve selections exactly like
+# a real run, then report the preflight verdict with zero side effects.
+# Exit 0 = safe to remove without force; exit 3 = blocked (dirty/unpushed).
+if [ "$check_only" -eq 1 ]; then
+  if [ "$force_remove" -eq 1 ] || [ ${#pending_wt_paths[@]} -eq 0 ] || ! command -v ,w > /dev/null 2>&1; then
+    exit 0
+  fi
+  _check_blocked=0
+  while IFS= read -r _p; do
+    [ -n "$_p" ] || continue
+    _check_blocked=1
+    break
+  done < <(,w remove --preflight --paths "${pending_wt_paths[@]}" 2> /dev/null || true)
+  if [ "$_check_blocked" -eq 1 ]; then
+    exit 3
+  fi
+  exit 0
+fi
+
 # Preflight worktrees for unsaved work (dirty files, unpushed commits) BEFORE
 # any destructive step below: session kills, pending/tombstone writes, and the
-# backgrounded `,w remove` all assume the removal will happen. Skipped paths
-# stay visible in the picker and keep their sessions.
+# backgrounded `,w remove` all assume the removal will happen. Non-forced runs
+# are gated by the picker's alt-x `--check` first; reaching this gate blocked
+# means state changed since that check, so abort cleanly instead of forcing.
 declare -A unsafe_wt=()
 if [ "$force_remove" -eq 0 ] && [ ${#pending_wt_paths[@]} -gt 0 ] && command -v ,w > /dev/null 2>&1; then
   while IFS= read -r _p; do
@@ -488,11 +469,8 @@ if [ "$force_remove" -eq 0 ] && [ ${#pending_wt_paths[@]} -gt 0 ] && command -v 
     unsafe_wt["$_p"]=1
   done < <(,w remove --preflight --paths "${pending_wt_paths[@]}" 2> /dev/null || true)
   if [ ${#unsafe_wt[@]} -gt 0 ]; then
-    if ! run_force_confirmation; then
-      exit 0
-    fi
-    force_remove=1
-    unsafe_wt=()
+    tmux display-message -d 4000 "pick_session: blocked — selected worktree(s) have unsaved work; press alt-x again to force" 2> /dev/null || true
+    exit 0
   fi
 fi
 # pending_plain_dirs is intentionally left unsorted/un-deduped: it stays

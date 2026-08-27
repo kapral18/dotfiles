@@ -24,7 +24,7 @@ Selection / Actions
   enter           open (switch/create)
   tab             toggle multi-select on current row
   ctrl-x          kill selected session(s) (optimistic hide)
-  alt-x           remove selected worktree(s) (optimistic hide)
+  alt-x           remove selected worktree(s) (press again to force when blocked)
   alt-y           copy underlying path(s) to clipboard
   alt-Y           copy canonical session name(s) to clipboard
   alt-c           create worktree off the selected repo (,w add)

@@ -135,7 +135,7 @@ fi
 snapshot_reload_command() {
   local command="$1"
   if [ -z "${PICK_SESSION_SORT_SOURCE_FILE:-}" ]; then
-    printf '%s' "$command"
+    printf '{ %s; }' "$command"
     return
   fi
   printf '{ %s | tee "${PICK_SESSION_SORT_SOURCE_FILE}.new.$$"; mv -f "${PICK_SESSION_SORT_SOURCE_FILE}.new.$$" "$PICK_SESSION_SORT_SOURCE_FILE"; }' "$command"
