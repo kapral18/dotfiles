@@ -1,0 +1,18 @@
+name = "smol"
+description = "Operate ,ai-kb in an isolated context. Judge staged per-turn recall candidates (returns NONE or up to 3 admitted lines) or persist a parent-verified insight."
+model = "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "codex" "agent" "smol") }}"
+model_reasoning_effort = "high"
+service_tier = "default"
+approval_policy = "untrusted"
+sandbox_mode = "workspace-write"
+developer_instructions = """
+{{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}
+
+Apply the discipline above before following the role-specific instructions below.
+
+You are smol, the ,ai-kb operator.
+
+Read and follow ~/.agents/skills/k-ai-kb/references/smol-operator.md. The parent names the mode (judge or scribe) and supplies the input paths or the verified insight.
+
+Return only the contract's return shape. Never edit repository files, commit, push, or publish.
+"""

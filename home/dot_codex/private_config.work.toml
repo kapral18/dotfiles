@@ -40,3 +40,6 @@ config_file = "~/.codex/agents/pr-necessity-auditor.toml"
 
 [agents.review-worker]
 config_file = "~/.codex/agents/review-worker.toml"
+
+[agents.smol]
+config_file = "~/.codex/agents/smol.toml"

@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -1243,13 +1244,219 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
             assert json.loads(seen_path.read_text()) == ["capsule-a"]
             assert perturn == {}
 
+    def test_perturn_recall_stages_candidates_and_injects_pointer_only(self):
+        # Staging contract: gate-passing rows go to the candidates file in full,
+        # the injected context is only the smol pointer (never capsule bodies),
+        # and the seen-file stays untouched — admissions are smol's write.
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            env = make_aikb_stub(
+                Path(tmp),
+                [
+                    {
+                        "id": "capsule-a",
+                        "title": "Staged capsule title sentinel",
+                        "body": "staged capsule body sentinel",
+                        "kind": "gotcha",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                        "cosine_score": 0.8,
+                    }
+                ],
+            )
+
+            result = run_perturn_recall(
+                tmp,
+                {
+                    "conversation_id": "stage-once",
+                    "hook_event_name": "UserPromptSubmit",
+                    "workspace_roots": [tmp],
+                    "prompt": "recall guidance for this staging test",
+                },
+                env,
+            )
+
+            context = result["hookSpecificOutput"]["additionalContext"]
+            candidates_path = spec_dir / ".recall-candidates-stage-once.json"
+            assert "### ,ai-kb candidates staged" in context
+            assert str(candidates_path) in context
+            assert "k-ai-kb/references/smol-operator.md" in context
+            # The judge contract needs the session-state paths; the pointer must carry them.
+            assert "Session state: " in context
+            assert ".worklog.jsonl" in context
+            assert "Staged capsule title sentinel" not in context
+            assert "staged capsule body sentinel" not in context
+            staged_rows = json.loads(candidates_path.read_text())
+            assert [row["id"] for row in staged_rows] == ["capsule-a"]
+            assert staged_rows[0]["body"] == "staged capsule body sentinel"
+            assert json.loads((spec_dir / ".recall-staged-stage-once.json").read_text()) == ["capsule-a"]
+            assert not (spec_dir / ".recall-seen-stage-once.json").exists()
+
+    def test_perturn_recall_without_session_key_stages_nothing_and_injects_nothing(self):
+        # Staging is session-scoped state: without a session key there is nothing to
+        # stage against, so keyless payloads get no pointer and no capsule bodies —
+        # recall degrades to the pull path instead of reintroducing unjudged injection.
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            env = make_aikb_stub(
+                Path(tmp),
+                [
+                    {
+                        "id": "capsule-a",
+                        "title": "Keyless capsule title sentinel",
+                        "body": "keyless capsule body sentinel",
+                        "kind": "gotcha",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                        "cosine_score": 0.8,
+                    }
+                ],
+            )
+
+            result = run_perturn_recall(
+                tmp,
+                {
+                    "hook_event_name": "UserPromptSubmit",
+                    "workspace_roots": [tmp],
+                    "prompt": "recall guidance for this staging test",
+                },
+                env,
+            )
+
+            assert result == {}
+            if spec_dir.exists():
+                assert not list(spec_dir.glob(".recall-candidates-*"))
+                assert not list(spec_dir.glob(".recall-staged-*"))
+
+    def test_perturn_recall_rewarm_fires_when_hybrid_rows_lack_cosine(self):
+        # Search runs connect-only, so a cold resident embedder returns rows
+        # without cosine_score; the absolute gate then suppresses staging.
+        # The hook must fire a detached embed_client ensure so the NEXT turn
+        # regains the dense lane, while this turn still stages/injects nothing.
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            env = make_aikb_stub(
+                Path(tmp),
+                [
+                    {
+                        "id": "capsule-a",
+                        "title": "Cold embedder capsule",
+                        "kind": "gotcha",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                    }
+                ],
+            )
+            fake_home = Path(tmp) / "home"
+            marker = fake_home / "rewarm-marker.txt"
+            client = fake_home / "lib" / ",ai-kb" / "embed_client.py"
+            client.parent.mkdir(parents=True)
+            client.write_text(
+                f"import pathlib, sys\npathlib.Path({str(marker)!r}).write_text(' '.join(sys.argv[1:]))\n"
+            )
+            env["HOME"] = str(fake_home)
+
+            result = run_perturn_recall(
+                tmp,
+                {
+                    "conversation_id": "cold-embedder",
+                    "hook_event_name": "UserPromptSubmit",
+                    "workspace_roots": [tmp],
+                    "prompt": "recall guidance for this staging test",
+                },
+                env,
+            )
+
+            assert result == {}
+            if spec_dir.exists():
+                assert not list(spec_dir.glob(".recall-candidates-cold-embedder*"))
+            deadline = time.time() + 5
+            while not marker.exists() and time.time() < deadline:
+                time.sleep(0.05)
+            assert marker.exists(), "detached embed_client ensure never ran"
+            assert marker.read_text() == "ensure"
+
+            # Warm phase: rows that carry cosine_score must NOT fire the
+            # re-warm — an always-fire regression would spawn embed_client on
+            # every turn. The wait window is one-sided (a very slow spawn could
+            # land after it) but the spawn lands in milliseconds in practice.
+            marker.unlink()
+            env = make_aikb_stub(
+                Path(tmp),
+                [
+                    {
+                        "id": "capsule-warm",
+                        "title": "Warm embedder capsule",
+                        "kind": "gotcha",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                        "cosine_score": 0.8,
+                    }
+                ],
+            )
+            env["HOME"] = str(fake_home)
+            run_perturn_recall(
+                tmp,
+                {
+                    "conversation_id": "warm-embedder",
+                    "hook_event_name": "UserPromptSubmit",
+                    "workspace_roots": [tmp],
+                    "prompt": "recall guidance for this staging test",
+                },
+                env,
+            )
+            assert list(spec_dir.glob(".recall-candidates-warm-embedder*")), "warm search never staged"
+            time.sleep(0.8)
+            assert not marker.exists(), "re-warm fired despite warm cosine rows"
+
+    def test_perturn_recall_does_not_repoint_already_staged_candidates(self):
+        # The staged ledger dedups the pointer: an identical candidate set on the
+        # next prompt injects nothing, while a genuinely new capsule id re-points.
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            payload = {
+                "conversation_id": "repoint-guard",
+                "hook_event_name": "UserPromptSubmit",
+                "workspace_roots": [tmp],
+                "prompt": "recall guidance for this staging test",
+            }
+            row_a = {
+                "id": "capsule-a",
+                "title": "First staged capsule",
+                "kind": "gotcha",
+                "scope": "project",
+                "workspace_path": workspace,
+                "cosine_score": 0.8,
+            }
+            env = make_aikb_stub(Path(tmp), [row_a])
+
+            first = run_perturn_recall(tmp, payload, env)
+            second = run_perturn_recall(tmp, payload, env)
+            env = make_aikb_stub(Path(tmp), [row_a, {**row_a, "id": "capsule-b", "title": "New staged capsule"}])
+            third = run_perturn_recall(tmp, payload, env)
+
+            assert "### ,ai-kb candidates staged" in first["hookSpecificOutput"]["additionalContext"]
+            assert second == {}
+            assert "### ,ai-kb candidates staged" in third["hookSpecificOutput"]["additionalContext"]
+            staged_rows = json.loads((spec_dir / ".recall-candidates-repoint-guard.json").read_text())
+            assert [row["id"] for row in staged_rows] == ["capsule-a", "capsule-b"]
+            assert json.loads((spec_dir / ".recall-staged-repoint-guard.json").read_text()) == [
+                "capsule-a",
+                "capsule-b",
+            ]
+
     def test_perturn_recall_hybrid_gate_uses_best_cosine_and_preserves_fused_order(self):
         # Hybrid rows are RRF+MMR fused-rank order, not best-cosine-first: row0 has no
         # cosine at all and a later row is the strongest hit. The gate must scan every
-        # row for the best available cosine (not assume rows[0] holds it) to recall, and
-        # the surviving rows must keep their original fused presentation order.
+        # row for the best available cosine (not assume rows[0] holds it), and the
+        # staged candidate set must keep the original fused presentation order.
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             env = make_aikb_stub(
                 Path(tmp),
                 [
@@ -1290,6 +1497,7 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
             result = run_perturn_recall(
                 tmp,
                 {
+                    "conversation_id": "fused-order",
                     "hook_event_name": "UserPromptSubmit",
                     "workspace_roots": [tmp],
                     "prompt": "recall guidance for this hybrid gate test",
@@ -1298,15 +1506,15 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
             )
 
             context = result["hookSpecificOutput"]["additionalContext"]
-            first_pos = context.index("First fused row missing cosine")
-            second_pos = context.index("Second fused row strongest cosine")
-            third_pos = context.index("Third fused row within floor")
-            assert first_pos < second_pos < third_pos
-            assert "Fourth fused row below floor" not in context
+            assert "### ,ai-kb candidates staged" in context
+            assert "fused row" not in context
+            staged_rows = json.loads((spec_dir / ".recall-candidates-fused-order.json").read_text())
+            assert [row["id"] for row in staged_rows] == ["capsule-first", "capsule-second", "capsule-third"]
 
     def test_perturn_recall_hybrid_gate_suppresses_below_absolute_threshold(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             env = make_aikb_stub(
                 Path(tmp),
                 [
@@ -1332,6 +1540,7 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
             result = run_perturn_recall(
                 tmp,
                 {
+                    "conversation_id": "gate-suppress",
                     "hook_event_name": "UserPromptSubmit",
                     "workspace_roots": [tmp],
                     "prompt": "recall guidance for this hybrid gate test",
@@ -1340,6 +1549,7 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
             )
 
             assert result == {}
+            assert not (spec_dir / ".recall-candidates-gate-suppress.json").exists()
 
     def test_session_context_warmstart_unions_prior_seen_ids(self):
         # A resume/compact fires a second warm start in the same conversation.
@@ -1848,21 +2058,164 @@ console.log(JSON.stringify({ first, second, seen, statusCalls }));
                 ["status", "--json", "--workspace", "/tmp/workspace", "--session-id", "pi/session"],
             ]
 
-    def test_pi_recall_hybrid_gate_contract_matches_perturn_recall(self):
-        extension = (REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts").read_text()
+    def test_pi_recall_keyless_session_stages_nothing_at_runtime(self):
+        extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"
+        with tempfile.TemporaryDirectory() as tmp:
+            spec_file = Path(tmp) / "pi-memory.txt"
+            spec_file.write_text("target: persist pi recall dedupe\n")
+            rows = [
+                {
+                    "id": "capsule-a",
+                    "title": "Pi resume capsule",
+                    "body": "must never stage without a session key",
+                    "kind": "gotcha",
+                    "scope": "project",
+                    "workspace_path": "/tmp/workspace",
+                    "cosine_score": 0.99,
+                }
+            ]
+            search_log = Path(tmp) / "search.jsonl"
+            script = """
+const mod = await import(process.argv[1]);
+const specFile = process.argv[2];
+const workspace = "/tmp/workspace";
+const sessionId = "pi/session";
+function makePi() {
+  const handlers = {};
+  return {
+    handlers,
+    async exec(command, args) {
+      if (command === ",ai-kb" && args[0] === "--help") return { code: 0, killed: false, stdout: "" };
+      if (command === ",agent-memory") {
+        return {
+          code: 0,
+          killed: false,
+          stdout: JSON.stringify({
+            workspace,
+            selected_topic: "",
+            session_key: "",
+            is_named_topic: false,
+            spec_file: specFile,
+            spec_exists: true
+          })
+        };
+      }
+      if (command === "cat") return { code: 1, killed: false, stdout: "" };
+      if (command === "python3" && args[0].endsWith("/lib/,ai-kb/embed_client.py") && args[1] === "ensure") {
+        return { code: 0, killed: false, stdout: "{}" };
+      }
+      throw new Error(`unexpected exec: ${command} ${args.join(" ")}`);
+    },
+    on(event, handler) { handlers[event] = handler; }
+  };
+}
+const pi = makePi();
+await mod.default(pi);
+await pi.handlers.session_start(
+  { type: "session_start", reason: "startup" },
+  { sessionManager: { getSessionId() { return sessionId; } } }
+);
+const result = await pi.handlers.before_agent_start(
+  { prompt: "cursor task band gate rewrites the subagent model param, how do I launch a pinned verifier lane?" },
+  {
+    cwd: workspace,
+    getContextUsage() { return null; },
+    sessionManager: { getSessionId() { return sessionId; } }
+  }
+);
+console.log(JSON.stringify({ result: result ?? null }));
+"""
+            env = make_aikb_stub(Path(tmp), rows)
+            env["NODE_NO_WARNINGS"] = "1"
+            env["AI_KB_STUB_LOG"] = str(search_log)
+            env["HOME"] = str(Path(tmp) / "home")
+            result = subprocess.run(
+                ["node", "--input-type=module", "-e", script, str(extension), str(spec_file)],
+                cwd=str(REPO),
+                capture_output=True,
+                text=True,
+                env=env,
+                check=True,
+            )
+            payload = json.loads(result.stdout)
+
+            # A keyless session must inject nothing, stage nothing, and never search.
+            assert payload["result"] is None
+            assert sorted(Path(tmp).glob(".recall-*")) == []
+            assert not search_log.exists()
+
+    def test_pi_recall_staging_contract_matches_perturn_recall(self):
+        import re
+
+        pi_extension = (REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts").read_text()
+        omp_extension = (REPO / "home/dot_omp/private_agent/extensions/ai-kb-recall.ts").read_text()
         hook = (HOOKS / "executable_perturn_recall.py").read_text()
 
-        assert "if (!cosines.length) return []" in extension
-        assert "const topCosine = Math.max(...cosines)" in extension
-        assert "return c == null || c >= cosineFloor" in extension
-        assert '"--mode",\n    mode,' in extension
-        assert '"--workspace-gate",' in extension
+        # Candidate-filter parity: the cosine gate/floor and workspace gate are unchanged.
+        for extension in (pi_extension, omp_extension):
+            assert "if (!cosines.length) return []" in extension
+            assert "const topCosine = Math.max(...cosines)" in extension
+            assert "return c == null || c >= cosineFloor" in extension
+            assert '"--mode",\n    mode,' in extension
+            assert '"--workspace-gate",' in extension
 
         assert "if not cosines:\n        return []" in hook
         assert "top = max(cosines)" in hook
         assert "not isinstance(cosine, (int, float)) or cosine >= floor" in hook
         assert '"--mode",\n                "hybrid",' in hook
         assert '"--workspace-gate",' in hook
+
+        # Staging parity: same state-file names, per-turn path stages instead of
+        # injecting bodies, and the pointer tokens carry identical values.
+        assert '.recall-candidates-{session_key_value}.json"' in hook
+        assert '.recall-staged-{session_key_value}.json"' in hook
+        for extension in (pi_extension, omp_extension):
+            assert ".recall-candidates-${sessionId}.json" in extension
+            assert ".recall-staged-${sessionId}.json" in extension
+            assert "stageCandidates(rows, status.spec_file, status.session_key)" in extension
+            assert "Relevant Learnings for this request" not in extension
+
+        # Keyless-session guard parity: both sides stage nothing without a session key.
+        assert 'pointer = stage_candidates(rows, seen, spec_path, key) if key and rows else ""' in hook
+        for extension in (pi_extension, omp_extension):
+            assert "return status.session_key ? status : null" in extension
+
+        # Cold-embedder re-warm parity: all-None cosine rows fire a detached
+        # embed_client ensure on both sides (runtime-proven for the hook by
+        # test_perturn_recall_rewarm_fires_when_hybrid_rows_lack_cosine).
+        # Pin the exact trigger predicate and spawn shape: the TS branch has no
+        # runtime test, so an inverted/weakened predicate or a dropped error
+        # listener must fail here instead of shipping silently.
+        assert "rewarm_embedder()" in hook
+        for extension in (pi_extension, omp_extension):
+            assert (
+                'if (mode === "hybrid" && rows.length && !rows.some((row) => typeof row.cosine_score === "number")) {'
+                in extension
+            )
+            assert "rewarmEmbedder()" in extension
+            # Scope the spawn-shape pins to the rewarmEmbedder body: the same
+            # strings appear in other detached-spawn helpers, so a file-wide
+            # pin would keep passing with the rewarm listener deleted.
+            rewarm_fn = extension[
+                extension.index("function rewarmEmbedder") : extension.index(
+                    "\n}", extension.index("function rewarmEmbedder")
+                )
+            ]
+            assert 'spawn("python3", [client, "ensure"], { detached: true, stdio: "ignore" })' in rewarm_fn
+            # spawn ENOENT emits an async "error" event; without a listener it
+            # crashes the host process (verified by live node probe).
+            assert 'child.on("error", () => {})' in rewarm_fn
+            assert "child.unref()" in rewarm_fn
+
+        def token(text: str, name: str) -> str:
+            match = re.search(rf'{name} = "([^"]+)"', text)
+            assert match, f"{name} missing"
+            return match.group(1)
+
+        for name in ("SMOL_CONTRACT_PATH", "STAGING_HEADER"):
+            hook_value = token(hook, name)
+            assert token(pi_extension, f"const {name}") == hook_value
+            assert token(omp_extension, f"const {name}") == hook_value
 
 
 class BandGateTests(unittest.TestCase):

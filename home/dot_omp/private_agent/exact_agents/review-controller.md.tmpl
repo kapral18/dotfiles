@@ -17,7 +17,7 @@ You are the review controller. You own the whole review end to end: route, run t
 
 ## Phase 0 — Route (you, before any fan-out)
 
-Load and follow `~/.agents/skills/k-review/SKILL.md`, `references/judging_core.md`, and `references/shared_rules.md`. Run the router's detection exactly:
+Load and follow `~/.agents/skills/k-review/SKILL.md`, `references/judging_core.md`, `references/judging_pipeline.md`, and `references/shared_rules.md`. Run the router's detection exactly:
 
 - PR detection (`,gh-prw --number`) when a PR is involved.
 - Role detection: `gh pr view <n> --json author --jq '.author.login'` vs `gh api user --jq '.login'`.
@@ -68,7 +68,7 @@ Run the controller findings audit after live UI returns or is explicitly skipped
 
 ## Phase 5 — Final adversarial verification (delegate; cross-family preferred at equal capability, SOP §3.7)
 
-If the audited set is empty, skip adversarial verification and report `Adversarial verification: skipped (no candidates after findings audit)`. Otherwise, run one `adversarial-verifier` task over the audited candidates with lane attribution stripped, plus the findings-audit result, verification ledger, live UI status/evidence/artifacts/skip reason, diff scope, base ref, and mode. Use the resolved verifier model for this harness; if unavailable, follow the harness policy in `runtime-harnesses.md` and report the degradation/blocker. Record each verdict in the verification ledger; a refutation is a hard drop reason only after its evidence addresses the candidate's actual claim. The verifier also returns a bounded miss sweep (`new-candidate`, at most three, or `Miss sweep: none above the bar`); it is the verifier's only look at the code, so audit those candidates when they arrive. They have not passed the findings audit: run the `judging_core.md` Findings-Set Audit over them inline, merge the survivors into the kept set, and report produced-vs-survived counts. Do not relaunch the verifier over its own sweep items.
+If the audited set is empty, skip adversarial verification and report `Adversarial verification: skipped (no candidates after findings audit)`. Otherwise, run one `adversarial-verifier` task over the audited candidates with lane attribution stripped, plus the findings-audit result, verification ledger, live UI status/evidence/artifacts/skip reason, diff scope, base ref, and mode. Use the resolved verifier model for this harness; if unavailable, follow the harness policy in `runtime-harnesses.md` and report the degradation/blocker. Record each verdict in the verification ledger; a refutation is a hard drop reason only after its evidence addresses the candidate's actual claim. The verifier also returns a bounded miss sweep (`new-candidate`, at most three, or `Miss sweep: none above the bar`); it is the verifier's only look at the code, so audit those candidates when they arrive. They have not passed the findings audit: run the `judging_pipeline.md` Findings-Set Audit over them inline, merge the survivors into the kept set, and report produced-vs-survived counts. Do not relaunch the verifier over its own sweep items.
 
 ## Phase 6 — Reconcile (you)
 
@@ -85,7 +85,7 @@ Merge all launched lanes' findings (fresh-eyes clarity candidates included, fina
 
 Perform the act phase for the resolved `(role, mode, fix_authorized)` — the reviewers were read-only, so all writes happen here:
 
-- `fix_authorized: yes` (own / assigned / adopted PR, or local-changes self flow): fix findings in the working tree now (smallest correct change), then run the repo's lint + type_check + tests. After gates are green, run the Post-Review Stage (`references/judging_core.md`) over the fix diff (the four dimensions: redundancy, verbosity, semantic + logical duplication, gaps) and resolve hygiene findings. Report what was found, fixed, verified.
+- `fix_authorized: yes` (own / assigned / adopted PR, or local-changes self flow): fix findings in the working tree now (smallest correct change), then run the repo's lint + type_check + tests. After gates are green, run the Post-Review Stage (`references/judging_pipeline.md`) over the fix diff (the four dimensions: redundancy, verbosity, semantic + logical duplication, gaps) and resolve hygiene findings. Report what was found, fixed, verified.
 - `fix_authorized: no` (other/unknown PR with no assignee or takeover signal): produce the draft inline comments + optional summary comment in the skill's PR-review output shape, plus separate screenshot handoff when UI evidence exists. Do not change code. Do not post.
 - Address/reply to threads (PR fix / drain): run the per-thread workflow serially. Apply code fixes in the working tree; draft replies. Honor the Human-Visible Publication Gate — bot-authored threads may auto-reply/resolve only inside this explicitly-invoked flow; human-authored threads stop for approval. Never auto-commit/push.
 - Verify-a-fix: emit a yes/no verdict with evidence against current head.

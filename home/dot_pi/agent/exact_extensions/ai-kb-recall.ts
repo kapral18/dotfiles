@@ -13,9 +13,11 @@
 //   1. Verification prefix re-injection after compaction or material context growth.
 //      Context fill + compaction track real decay better than a turn count.
 //   2. Per-turn (every substantive prompt): query = the user's actual prompt — the
-//      highest-relevance signal — deduped against capsules already injected this session.
+//      highest-relevance signal. Gate-passing rows are staged in full to a per-session
+//      candidates file and only a pointer to the smol judge is injected — capsule bodies
+//      never enter the parent context from this path (matching executable_perturn_recall.py).
 //      The same pass appends the shared precision-first correction directive when a
-//      prompt reads as a user correction, matching executable_perturn_recall.py.
+//      prompt reads as a user correction.
 //
 // Both share the same relevance gate as the Python warm-start: `,ai-kb search
 // --workspace-gate` keeps only capsules local to this workspace or scoped
@@ -37,7 +39,6 @@ const SESSION_CONTEXT_TIMEOUT_MS = 15_000
 const SEARCH_STDOUT_MAX_BYTES = 1024 * 1024
 const SESSION_CONTEXT_HOOK = "session_context.py"
 const WARMSTART_LIMIT = 3
-const PERTURN_LIMIT = 3
 const SEARCH_FETCH = 6
 const QUERY_MAX_CHARS = 600
 const BODY_MAX_CHARS = 240
@@ -77,6 +78,9 @@ const PERTURN_MIN_TOP_COSINE = 0.55
 // (e.g. chezmoi query top 0.61 -> floor 0.52 drops 0.49 ,ai-kb-internals capsules) while
 // preserving genuine secondary matches when the result set is uniformly weak.
 const PERTURN_COSINE_FLOOR_FRACTION = 0.85
+// Staging contract tokens, pinned by the parity test against executable_perturn_recall.py.
+const SMOL_CONTRACT_PATH = "~/.agents/skills/k-ai-kb/references/smol-operator.md"
+const STAGING_HEADER = "### ,ai-kb candidates staged"
 // Re-inject the verification prefix once context-window fill has grown by at least this
 // many percentage points since it was last injected (decay proxy). Compaction forces a
 // re-inject regardless, since it summarizes/drops the prior prefix.
@@ -142,25 +146,21 @@ type CorrectionSignal = "unrequested-action" | "omission-correction" | "unverifi
 
 interface RecallProfile {
   enabled: boolean
-  limit: number
   fetch: number
   queryChars: number
-  bodyChars: number
   timeoutMs: number
 }
 
 const BALANCED_PROFILE: RecallProfile = {
   enabled: true,
-  limit: PERTURN_LIMIT,
   fetch: SEARCH_FETCH,
   queryChars: QUERY_MAX_CHARS,
-  bodyChars: BODY_MAX_CHARS,
   timeoutMs: EXEC_TIMEOUT_MS,
 }
 const RECALL_PROFILES: Record<AgentDepth, RecallProfile> = {
-  fast: { enabled: false, limit: 0, fetch: 0, queryChars: 0, bodyChars: 0, timeoutMs: 0 },
+  fast: { enabled: false, fetch: 0, queryChars: 0, timeoutMs: 0 },
   balanced: BALANCED_PROFILE,
-  deep: { enabled: true, limit: 5, fetch: 12, queryChars: 1200, bodyChars: 360, timeoutMs: 9_000 },
+  deep: { enabled: true, fetch: 12, queryChars: 1200, timeoutMs: 9_000 },
 }
 
 function agentDepth(): AgentDepth {
@@ -390,6 +390,14 @@ function seenFileFor(specFile: string, sessionId: string): string {
   return join(dirname(specFile), `.recall-seen-${sessionId}.json`)
 }
 
+function candidatesFileFor(specFile: string, sessionId: string): string {
+  return join(dirname(specFile), `.recall-candidates-${sessionId}.json`)
+}
+
+function stagedFileFor(specFile: string, sessionId: string): string {
+  return join(dirname(specFile), `.recall-staged-${sessionId}.json`)
+}
+
 function contextKeyFor(status: MemoryStatus): string {
   return `${status.selected_topic}\0${status.spec_file}`
 }
@@ -410,6 +418,25 @@ async function saveSeen(path: string, seen: Set<string>): Promise<void> {
     await writeFile(path, JSON.stringify([...seen].sort()))
   } catch {
     // Recall-state persistence is best effort; never block a turn.
+  }
+}
+
+function rewarmEmbedder(): void {
+  // Fire-and-forget resident-embedder restart so the next turn regains the dense lane.
+  // Search runs connect-only (AI_EMBED_CONNECT_ONLY=1, never spawns the embedder), so once
+  // the resident embedder idles out every hybrid row comes back without cosine_score and the
+  // absolute cosine gate suppresses staging for the rest of the session. `ensure` is
+  // flock-guarded, so concurrent turns racing into it are safe; the detached spawn adds no
+  // latency to this turn.
+  try {
+    const client = join(process.env.HOME || homedir(), "lib", ",ai-kb", "embed_client.py")
+    const child = spawn("python3", [client, "ensure"], { detached: true, stdio: "ignore" })
+    // spawn failures (e.g. ENOENT) surface as an async "error" event that a
+    // try/catch cannot intercept; without a listener it crashes the host.
+    child.on("error", () => {})
+    child.unref()
+  } catch {
+    // Re-warm is best effort; never block or fail a turn on it.
   }
 }
 
@@ -437,8 +464,12 @@ async function searchCapsules(
   const result = await runSearch(flat, searchArgs, mode === "hybrid", profile.timeoutMs)
   if (result.killed || result.code !== 0 || !result.stdout.trim()) return []
   try {
-    const rows = JSON.parse(result.stdout)
-    return Array.isArray(rows) ? applyRelevanceFloor(rows as Capsule[], mode) : []
+    const parsed = JSON.parse(result.stdout)
+    const rows = Array.isArray(parsed) ? (parsed as Capsule[]) : []
+    if (mode === "hybrid" && rows.length && !rows.some((row) => typeof row.cosine_score === "number")) {
+      rewarmEmbedder()
+    }
+    return applyRelevanceFloor(rows, mode)
   } catch {
     return []
   }
@@ -536,6 +567,38 @@ function gateAndFormat(
     lines.push(body ? `- **${title}** (${kind}): ${body}` : `- **${title}** (${kind})`)
   }
   return lines
+}
+
+// Stage gate-passing rows for the smol judge; return a pointer block only when at least
+// one candidate id is new to the session. Mirrors stage_candidates in
+// executable_perturn_recall.py: the seen-file filters ids smol already admitted, the
+// staged ledger dedups the pointer, the candidates file holds full rows, and every state
+// write fails open (no pointer without a written file). The seen-file is read fresh from
+// disk because smol appends to it outside this process.
+async function stageCandidates(rows: Capsule[], specFile: string, sessionKey: string): Promise<string> {
+  const seen = await loadSeen(seenFileFor(specFile, sessionKey))
+  const candidates = rows.filter((row) => row.id && !seen.has(row.id))
+  if (!candidates.length) return ""
+  const stagedPath = stagedFileFor(specFile, sessionKey)
+  const staged = await loadSeen(stagedPath)
+  const candidateIds = new Set(candidates.map((row) => String(row.id)))
+  if (![...candidateIds].some((id) => !staged.has(id))) return ""
+  const candidatesPath = candidatesFileFor(specFile, sessionKey)
+  try {
+    await mkdir(dirname(candidatesPath), { recursive: true })
+    await writeFile(candidatesPath, JSON.stringify(candidates, null, 2))
+  } catch {
+    return ""
+  }
+  await saveSeen(stagedPath, new Set([...staged, ...candidateIds]))
+  const worklogPath = specFile.replace(/\.txt$/, ".worklog.jsonl")
+  return [
+    STAGING_HEADER,
+    `${candidates.length} candidate(s): ${candidatesPath}`,
+    `Session state: ${specFile} + ${worklogPath}`,
+    `Delegate to the \`smol\` subagent (judge mode) per ${SMOL_CONTRACT_PATH}, passing those paths and the current prompt; inject only its returned lines (\`NONE\` = inject nothing).`,
+    "Do not read the candidates file into this context.",
+  ].join("\n")
 }
 
 export default async function (pi: ExtensionAPI) {
@@ -671,20 +734,13 @@ export default async function (pi: ExtensionAPI) {
       // 2. Per-turn: highest-relevance retrieval using the actual prompt (pi-only capability).
       const prompt = typeof event.prompt === "string" ? event.prompt : ""
       if (prompt.trim().length >= MIN_PROMPT_CHARS) {
-        // Per-turn uses the actual prompt and hybrid retrieval: the vector lane + MMR
-        // suppress capsules that only share surface words with the prompt, and rrf_score
-        // is the floor signal. This is where cross-domain lexical noise was leaking in.
+        // Per-turn uses the actual prompt and hybrid retrieval as the candidate filter,
+        // then stages the survivors for the smol judge instead of injecting bodies —
+        // similarity alone was admitting cross-domain lexical noise into the parent.
         const rows = await searchCapsules(workspace, prompt, "hybrid", perturnProfile)
-        const lines = gateAndFormat(
-          rows,
-          state.injectedIds,
-          perturnProfile.limit,
-          perturnProfile.bodyChars,
-        )
-        if (lines.length) {
-          blocks.push(
-            ["### Relevant Learnings for this request (,ai-kb)", "Matched to your prompt; verify before relying on them.", ...lines].join("\n"),
-          )
+        if (rows.length) {
+          const pointer = await stageCandidates(rows, status.spec_file, status.session_key)
+          if (pointer) blocks.push(pointer)
         }
         const directive = correctionDirective(prompt)
         if (directive) blocks.push(directive)

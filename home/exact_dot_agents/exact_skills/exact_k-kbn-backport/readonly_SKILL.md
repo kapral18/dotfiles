@@ -154,7 +154,8 @@ Once the resolution is applied (Apply The Resolution, in `references/conflict-re
    - `git diff --cached -- <changed-files>`
 2. Stage only the resolved backport files:
    - `git add <resolved-files>`
-3. With the resolution staged, run `yarn kbn bootstrap` and Validation (`references/conflict-resolution.md`): all four checks, each ending with an explicit `pass`/`fail`/`unavailable` status. A check with no status is not passed, and validation is not complete until every item has one.
+3. With the resolution staged, run `yarn kbn bootstrap` and Validation (`references/conflict-resolution.md`) so the verifiers actually run and pass before you continue: all four checks, each ending with an explicit `pass`/`fail`/`unavailable` status.
+   A check with no status is not passed, and validation is not complete until every item has one.
 4. Confirm there is nothing left to resolve:
    - `git diff --check --cached`
    - `git diff --name-only --diff-filter=U`
@@ -172,6 +173,7 @@ When the run has exited, summarize the whole backport:
 - source PR/commit backported, and the target branches attempted
 - per target branch: the opened backport PR URL (or that it was skipped/failed and why)
 - missing/pending prerequisite backports found, each classified blocker or incidental (or "none found")
-- conflicts resolved and the validation results, itemized per check with `pass`/`fail`/`unavailable` — never an aggregate claim over unreported items
+- conflicts resolved and the validation results, itemized per check with `pass`/`fail`/`unavailable` —
+  never an aggregate claim over unreported items
 - anything left for the user (unresolved conflicts, blocked prerequisites, branches needing manual attention)
 - `Compatibility impact: none | removed (requested) | kept existing (requested)`

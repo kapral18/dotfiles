@@ -31,7 +31,7 @@ Applies to:
 - self-review.
 - k-light-review.
 
-The stage applies the canonical **four dimensions** defined verbatim in `judging_core.md`, never renamed:
+The stage applies the canonical **four dimensions** defined verbatim in `judging_pipeline.md`, never renamed:
 
 | Dimension                          | Meaning                                                                                                                                                                                            |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -68,12 +68,12 @@ Direct `k-review`/`k-light-review` run `adversarial-verifier` when the harness s
 
 [`k-light-review`](../../../../home/exact_dot_agents/exact_skills/exact_k-light-review) is a separate skill for proportional-depth, in-place audits of low-risk self-authored changes.
 
-| Keeps                                                      | Drops                                                                             |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `judging_core.md` coverage checklist + trigger-based gates | mandatory SCSI/base-context preflight                                             |
-| four-dimension post-review lens                            | GitHub machinery                                                                  |
-| candidate refutation ladder + findings-set audit           | multi-agent fan-out + adversarial verification (cross-family preferred, SOP §3.5) |
-| opt-in base context                                        | PR-thread/CI-specific rules                                                       |
+| Keeps                                                                            | Drops                                                                             |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `judging_pipeline.md` coverage checklist + `judging_core.md` trigger-based gates | mandatory SCSI/base-context preflight                                             |
+| four-dimension post-review lens                                                  | GitHub machinery                                                                  |
+| candidate refutation ladder + findings-set audit                                 | multi-agent fan-out + adversarial verification (cross-family preferred, SOP §3.5) |
+| opt-in base context                                                              | PR-thread/CI-specific rules                                                       |
 
 A **light-eligibility predicate** is evaluated first. It is the single source both the `k-review` router and `change-auditor` reference, replacing any subjective "is this low-risk?" call.
 
@@ -90,6 +90,6 @@ Any trigger escalates to full `k-review`. The router applies the same predicate 
 
 `change-auditor` (Claude + Pi) is the read-only delegated form.
 
-Both `k-light-review` and `k-review`'s local-changes mode run the shared **Verify-and-Fix Loop** in `judging_core.md`: build queue → findings-set audit → final refutation → fix → quality gates → post-review stage.
+Both `k-light-review` and `k-review`'s local-changes mode run the shared **Verify-and-Fix Loop** in `judging_pipeline.md`: build queue → findings-set audit → final refutation → fix → quality gates → post-review stage.
 
 Each mode only adds its own base-context stance and scaffolding on top.

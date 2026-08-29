@@ -750,6 +750,7 @@
         "models": [
           "openrouter/openai/gpt-5.5",
           "openrouter/deepseek/deepseek-v4-flash",
+          "openrouter/google/gemini-3.7-flash",
           "openrouter/anthropic/claude-sonnet-4.6",
           "openrouter/moonshotai/kimi-k3",
           "openrouter/z-ai/glm-5.2"
@@ -776,6 +777,7 @@
         "models": [
           "openrouter/openai/gpt-5.5",
           "openrouter/deepseek/deepseek-v4-flash",
+          "openrouter/google/gemini-3.7-flash",
           "openrouter/anthropic/claude-sonnet-4.6",
           "openrouter/moonshotai/kimi-k3",
           "openrouter/z-ai/glm-5.2"
@@ -908,6 +910,7 @@
           "openai/gpt-5.6-terra",
           "openai/gpt-5.5",
           "deepseek/deepseek-v4-flash",
+          "google/gemini-3.7-flash",
           "anthropic/claude-sonnet-4.6"
         ],
         "provenance": [

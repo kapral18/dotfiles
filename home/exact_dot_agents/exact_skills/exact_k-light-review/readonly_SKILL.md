@@ -9,7 +9,9 @@ A light-rigor review for a low-risk self-authored changeset you want checked and
 It uses the same review machinery as `k-review`, but trims PR/GitHub scaffolding, live-UI work, broad base-context gathering, and multi-lane diversity when those are not needed.
 Light does not mean inline-only: use one read-only `change-auditor` worker plus adversarial refutation when the active harness can launch them.
 
-Load `~/.agents/skills/k-review/references/judging_core.md` and apply its Coverage Checklist, Severity, the relevant gates (Deletion-Safety / Historical-Rationale / State-Machine / Async-Derived State / Context-Divergence / Scale-Behavior / Product-Flow / Signal-Quality / Systemic-Risk when triggered), and — foregrounded for this skill — the **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage**.
+Load `~/.agents/skills/k-review/references/judging_core.md` and apply its Severity and the relevant gates (Deletion-Safety / Historical-Rationale / State-Machine / Async-Derived State / Context-Divergence / Scale-Behavior / Product-Flow / Signal-Quality / Systemic-Risk when triggered).
+Load `~/.agents/skills/k-review/references/judging_pipeline.md` and apply its Coverage Checklist and — foregrounded for this skill —
+the **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage**.
 
 Use when:
 
@@ -53,7 +55,7 @@ If a trigger surfaces mid-pass, stop and switch to `k-review` rather than half-d
    Enforce anti-tunnel-vision: audit enclosing files, sibling consumers, and call sites alongside the diff.
    The worker returns candidate findings and proposed fixes only; the parent owns edits.
 4. **Controller findings audit.**
-   Inline the Findings-Set Audit from `judging_core.md` over the candidate set:
+   Inline the Findings-Set Audit from `judging_pipeline.md` over the candidate set:
    remove duplicates, unsupported claims, gaps, overengineering, and unactionable fixes before adversarial work.
    Report `findings_audit=inline`.
 5. **Final adversarial refutation.**
@@ -63,7 +65,7 @@ If a trigger surfaces mid-pass, stop and switch to `k-review` rather than half-d
    No finding may be fixed or reported until it survives this final pass.
    If a fix here reopens findings and a further round is warranted, hand off to `~/.agents/skills/k-converge/SKILL.md` rather than looping ad hoc.
 6. **Fix survivors.**
-   Apply the Verify-and-Fix Loop's fix, quality-gate, and Post-Review Stage steps from `judging_core.md` over the surviving findings.
+   Apply the Verify-and-Fix Loop's fix, quality-gate, and Post-Review Stage steps from `judging_pipeline.md` over the surviving findings.
    The **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage** are foregrounded for this skill.
    Do not commit or push unless explicitly asked.
 

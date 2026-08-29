@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -230,6 +231,12 @@ console.log(JSON.stringify({ warmCalls, content: result?.message?.content ?? "" 
     return json.loads(result.stdout), searches
 
 
+def _strip_candidates_path(context: str) -> str:
+    """Normalize the per-run candidates/session-state paths so depth-parity can compare pointers."""
+    context = re.sub(r"\S*\.recall-candidates-\S*\.json", "<candidates>", context)
+    return re.sub(r"Session state: \S+ \+ \S+", "Session state: <spec> + <worklog>", context)
+
+
 class TestRecallDepth(unittest.TestCase):
     """WHEN automatic recall consumes AI_AGENT_DEPTH."""
 
@@ -244,8 +251,11 @@ class TestRecallDepth(unittest.TestCase):
         fast, fast_searches = _run_recall(root / "fast", "fast", prompt)
         deep, deep_searches = _run_recall(root / "deep", "deep", prompt)
 
-        self.assertEqual(unset, balanced)
-        self.assertEqual(invalid, balanced)
+        def pointer(result: dict) -> str:
+            return _strip_candidates_path(result["hookSpecificOutput"]["additionalContext"])
+
+        self.assertEqual(pointer(unset), pointer(balanced))
+        self.assertEqual(pointer(invalid), pointer(balanced))
         self.assertEqual(
             {**unset_searches[0], "args": [*unset_searches[0]["args"][:7], "<workspace>", "--json"]},
             {**balanced_searches[0], "args": [*balanced_searches[0]["args"][:7], "<workspace>", "--json"]},
@@ -259,7 +269,9 @@ class TestRecallDepth(unittest.TestCase):
         self.assertEqual(unset_searches[0]["args"][5], "hybrid")
         self.assertEqual(len(unset_searches[0]["query"]), 601)
         self.assertEqual(unset_searches[0]["connect_only"], "1")
-        self.assertEqual(unset["hookSpecificOutput"]["additionalContext"].count("- **"), 3)
+        unset_context = unset["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("### ,ai-kb candidates staged", unset_context)
+        self.assertNotIn("- **", unset_context)
 
         self.assertEqual(fast, {})
         self.assertEqual(fast_searches, [])
@@ -269,7 +281,9 @@ class TestRecallDepth(unittest.TestCase):
         self.assertEqual(deep_searches[0]["args"][5], "hybrid")
         self.assertEqual(len(deep_searches[0]["query"]), 1201)
         self.assertEqual(deep_searches[0]["connect_only"], "1")
-        self.assertEqual(deep["hookSpecificOutput"]["additionalContext"].count("- **"), 5)
+        deep_context = deep["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("### ,ai-kb candidates staged", deep_context)
+        self.assertNotIn("- **", deep_context)
 
     def test_fast_session_start_does_not_warm_resident(self) -> None:
         root = _test_root(self, "warm")
@@ -318,8 +332,14 @@ class TestRecallDepth(unittest.TestCase):
         fast, fast_searches = _run_pi_depth(root / "fast", "fast")
         deep, deep_searches = _run_pi_depth(root / "deep", "deep")
 
-        self.assertEqual(unset, balanced)
-        self.assertEqual(invalid, balanced)
+        self.assertEqual(
+            {**unset, "content": _strip_candidates_path(unset["content"])},
+            {**balanced, "content": _strip_candidates_path(balanced["content"])},
+        )
+        self.assertEqual(
+            {**invalid, "content": _strip_candidates_path(invalid["content"])},
+            {**balanced, "content": _strip_candidates_path(balanced["content"])},
+        )
         self.assertEqual(
             {**unset_searches[0], "args": [*unset_searches[0]["args"][:7], "<workspace>", "--json"]},
             {**balanced_searches[0], "args": [*balanced_searches[0]["args"][:7], "<workspace>", "--json"]},
@@ -329,7 +349,8 @@ class TestRecallDepth(unittest.TestCase):
             {**balanced_searches[0], "args": [*balanced_searches[0]["args"][:7], "<workspace>", "--json"]},
         )
         self.assertEqual(unset["warmCalls"], 0)
-        self.assertEqual(unset["content"].count("- **"), 3)
+        self.assertIn("### ,ai-kb candidates staged", unset["content"])
+        self.assertNotIn("- **", unset["content"])
         self.assertEqual(unset_searches[0]["args"][3], "6")
         self.assertEqual(unset_searches[0]["connect_only"], "1")
 
@@ -337,7 +358,8 @@ class TestRecallDepth(unittest.TestCase):
         self.assertEqual(fast_searches, [])
 
         self.assertEqual(deep["warmCalls"], 0)
-        self.assertEqual(deep["content"].count("- **"), 5)
+        self.assertIn("### ,ai-kb candidates staged", deep["content"])
+        self.assertNotIn("- **", deep["content"])
         self.assertEqual(deep_searches[0]["args"][3], "12")
         self.assertEqual(deep_searches[0]["connect_only"], "1")
 
@@ -678,11 +700,23 @@ class TestWorklogQueue(unittest.TestCase):
         old = time.time() - 200
         stale_worklog = self.spec_dir / "session-stale.worklog.jsonl"
         stale_seen = self.spec_dir / ".recall-seen-stale.json"
+        stale_candidates = self.spec_dir / ".recall-candidates-stale.json"
+        stale_staged = self.spec_dir / ".recall-staged-stale.json"
         fresh_worklog = self.spec_dir / "session-fresh.worklog.jsonl"
+        fresh_candidates = self.spec_dir / ".recall-candidates-fresh.json"
         named_worklog = self.spec_dir / "named-topic.worklog.jsonl"
-        for path in (stale_worklog, stale_seen, fresh_worklog, named_worklog):
+        all_paths = (
+            stale_worklog,
+            stale_seen,
+            stale_candidates,
+            stale_staged,
+            fresh_worklog,
+            fresh_candidates,
+            named_worklog,
+        )
+        for path in all_paths:
             path.write_text("{}\n", encoding="utf-8")
-        for path in (stale_worklog, stale_seen, named_worklog):
+        for path in (stale_worklog, stale_seen, stale_candidates, stale_staged, named_worklog):
             os.utime(path, (old, old))
 
         removed = worklog_queue.cleanup_stale_state(
@@ -690,10 +724,13 @@ class TestWorklogQueue(unittest.TestCase):
             config=worklog_queue.QueueConfig(cleanup_age_seconds=100),
         )
 
-        self.assertEqual(removed, 2)
+        self.assertEqual(removed, 4)
         self.assertFalse(stale_worklog.exists())
         self.assertFalse(stale_seen.exists())
+        self.assertFalse(stale_candidates.exists())
+        self.assertFalse(stale_staged.exists())
         self.assertTrue(fresh_worklog.exists())
+        self.assertTrue(fresh_candidates.exists())
         self.assertTrue(named_worklog.exists())
 
     def test_cleanup_then_session_key_reuse_does_not_duplicate_event_ids(self) -> None:

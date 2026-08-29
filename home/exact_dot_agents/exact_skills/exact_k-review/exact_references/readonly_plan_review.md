@@ -49,7 +49,7 @@ Walk the plan end-to-end, ordered by risk:
 
 ## Findings Audit And Adversarial Pass
 
-Run the Findings-Set Audit from `judging_core.md` in the controller over the candidate plan findings before adversarial verification.
+Run the Findings-Set Audit from `judging_pipeline.md` in the controller over the candidate plan findings before adversarial verification.
 If the audited candidate plan set is empty, skip adversarial work and report `Adversarial verification: skipped (no candidates after findings audit)`.
 Otherwise, run an `adversarial-verifier` lane over the audited candidate plan findings before output when the harness supports subagents;
 if not, rerun the Candidate Refutation Ladder inline and report `adversarial=inline-degraded`.

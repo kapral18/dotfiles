@@ -18,3 +18,9 @@ prevent_idle_sleep = true
 # ai-kb is the sole durable semantic store (see docs/topics/ai-assistants/knowledge-base.md);
 # pin codex's experimental auto-memory off so a default flip can't create a second one.
 memories = false
+
+# Role registry. Without an entry here the files under ~/.codex/agents/ are never read;
+# `spawn_agent` only sees roles named in this table. Review lanes stay work-only; smol
+# (the ,ai-kb operator) is needed on every profile.
+[agents.smol]
+config_file = "~/.codex/agents/smol.toml"

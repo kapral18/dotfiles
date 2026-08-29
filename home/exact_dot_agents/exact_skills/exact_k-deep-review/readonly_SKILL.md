@@ -429,7 +429,7 @@ The measured reason for this controller cache is concrete: one real review had 4
 - The verifier also returns a bounded miss sweep (`new-candidate` items, at most three, or `Miss sweep: none above the bar`).
   These are the verifier's only look at the code, so keep them despite arriving late;
   they have also not passed the findings audit, so audit them before judgment.
-  Run the `judging_core.md` Findings-Set Audit over them inline, then merge the survivors into the kept set.
+  Run the `judging_pipeline.md` Findings-Set Audit over them inline, then merge the survivors into the kept set.
   Report how many the sweep produced and how many survived. Do not relaunch the verifier over its own sweep items.
 
 1. **Aggregate.**
@@ -507,7 +507,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      - Only treat it as a blocking stop-and-ask when setup itself fails or is impossible (bootstrap errors out, toolchain genuinely unavailable in this environment, or commands are undiscoverable after inspecting repo sources): then state exactly what failed, the evidence, and the exact command(s) for the user.
        Never fold an un-run gate into a closing summary as if verification were complete.
    - **Fix-diff Post-Review Stage (the four dimensions).**
-     Run the Post-Review Stage in `~/.agents/skills/k-review/references/judging_core.md` with the **fix diff** as the subject (this flow's `git diff` / staged set / commit range), never the original PR diff.
+     Run the Post-Review Stage in `~/.agents/skills/k-review/references/judging_pipeline.md` with the **fix diff** as the subject (this flow's `git diff` / staged set / commit range), never the original PR diff.
      This is the controller's own work; the pre-action controller findings audit phase audits candidate findings and does NOT replace it.
      Apply the four canonical dimensions by name — redundancy, verbosity, semantic + logical duplication, gaps —
      anchor each finding in an exact location, resolve each in the working tree, and re-run the quality gates if the cleanup touched code.

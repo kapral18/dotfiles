@@ -31,7 +31,7 @@ Check Role Detection from the router (`SKILL.md`):
   - draft comments/suggestions
   - do not change code
   - run the PR Necessity + Correctly-Open Audit in `pr_context_audits.md`
-  - apply the Findings-Set Audit (`judging_core.md`) to surviving PR-diff candidate findings before drafting
+  - apply the Findings-Set Audit (`judging_pipeline.md`) to surviving PR-diff candidate findings before drafting
   - surface redundancy / verbosity / semantic + logical duplication / gaps as read-only finding-set findings
 - **Self-review (user is the author):**
   - find issues and fix them in the working tree immediately
@@ -102,7 +102,8 @@ Return a `Pending review draft` containing:
 - `Base context:` line (see shared_rules.md)
 - `Pending review reconciliation:` line (see pr_common.md)
 - `review_submission`: the exact submit `event` recommendation and PR-level review `body`;
-  keep the body neutral and short (for example, `Left a few inline comments on <topics>.`) and include it in any posting approval payload
+  keep the body as a short acknowledgement (for example, `Looks good.` for a clean approval, or `Left inline feedback.` when comments exist) and include it in any posting approval payload.
+  Do not repeat, summarize, or enumerate details that are already in inline comments.
 - `inline_comments`: one draft per finding worth commenting, each with:
   - Where (file path + line/range when possible)
   - Comment body
@@ -112,7 +113,8 @@ Return a `Pending review draft` containing:
 - `ui_evidence_attachments`: for UI-related findings drafted after `/k-deep-review` or `live-ui-review`, screenshot handoff paths/descriptions/placement for the upload step, or the blocker/non-applicability reason screenshots are absent.
   Do not put local screenshot paths in comment bodies.
 - `pr_necessity_audit` (for other-authored/unknown PRs): classifications and any draft feedback/questions about intent, correctly-open status, need, or overlapping work
-- `summary_comment` (optional): short PR-level comment
+- `summary_comment` (optional): short PR-level comment.
+  Use it only when a PR-level comment is explicitly needed, and never to repeat inline-comment content.
 
 ### Iterative (when the user asks for one-at-a-time)
 

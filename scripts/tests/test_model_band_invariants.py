@@ -108,6 +108,9 @@ class TestModelBandInvariants(unittest.TestCase):
         self.assertEqual("claude-fable-5", rows["refute"]["model"])
         self.assertEqual("high", rows["refute"]["effort"])
         self.assertEqual("cross_family", rows["refute"]["verifier_status"])
+        self.assertEqual("claude-sonnet-4.6", rows["memory"]["model"])
+        self.assertEqual("high", rows["memory"]["effort"])
+        self.assertEqual("short", rows["memory"]["context"])
 
     def test_cursor_category_matrix_uses_task_enum_models_with_requested_exceptions(self):
         import ai_models
@@ -126,6 +129,9 @@ class TestModelBandInvariants(unittest.TestCase):
         self.assertEqual("high", rows["refute"]["effort"])
         self.assertEqual("long", rows["refute"]["context"])
         self.assertEqual("cross_family", rows["refute"]["verifier_status"])
+        # memory stays the cheap Task-enum pick: the plain composer id, never a `-fast` variant.
+        self.assertEqual("composer-2.5", rows["memory"]["model"])
+        self.assertEqual("short", rows["memory"]["context"])
 
     def test_gemini_category_matrix_uses_pro_with_flash_mechanical_long_context(self):
         import ai_models
@@ -140,7 +146,24 @@ class TestModelBandInvariants(unittest.TestCase):
         self.assertEqual("gemini-3.7-flash", rows["mechanical"]["model"])
         self.assertEqual("high", rows["mechanical"]["effort"])
         self.assertEqual("long", rows["mechanical"]["context"])
+        self.assertEqual("gemini-3.7-flash", rows["memory"]["model"])
         self.assertEqual("degraded", rows["refute"]["verifier_status"])
+
+    def test_memory_category_binds_smol_and_projects_into_the_deployed_bands(self):
+        # smol is the ,ai-kb operator: every harness must resolve it through the memory
+        # category, and the deployed band projection must pin the same pick so the band
+        # gate clamps delegated smol calls.
+        import ai_models
+
+        registry = REPO / "home/.chezmoidata/ai_models"
+        assert ai_models.load_agent_bindings(registry)["smol"] == "memory"
+        category_models = ai_models.load_category_models(registry)
+        bands = json.loads((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_text(encoding="utf-8"))
+        for harness, rows in category_models.items():
+            with self.subTest(harness=harness):
+                pick = ai_models.resolve_agent_model(registry, harness, "smol")
+                self.assertEqual(rows["memory"]["model"], pick["model"])
+                self.assertEqual(rows["memory"]["model"], bands["harnesses"][harness]["agents"]["smol"]["model"])
 
     def test_review_model_resolver_uses_category_models_except_declared_overrides(self):
         # Review routing has one source rule: override only for harness selectors that
@@ -251,8 +274,11 @@ class TestModelBandInvariants(unittest.TestCase):
 
         self.assertEqual(category_models["mechanical"]["model"], "gpt-5.4")
         self.assertEqual(category_models["mechanical"]["effort"], "high")
+        # memory is the deliberately-cheap smol row: it reuses the verified mechanical pair.
+        self.assertEqual(category_models["memory"]["model"], "gpt-5.4")
+        self.assertEqual(category_models["memory"]["effort"], "high")
         for category, row in category_models.items():
-            if category == "mechanical":
+            if category in ("mechanical", "memory"):
                 continue
             with self.subTest(surface="category", name=category):
                 self.assertEqual(row["model"], expected_model)
@@ -276,12 +302,21 @@ class TestModelBandInvariants(unittest.TestCase):
         for profile in agents:
             config = profile.read_text(encoding="utf-8")
             with self.subTest(surface="agent_profile", name=profile.name):
-                self.assertIn("review-agent-model.partial", config)
                 self.assertIn('"harness" "codex"', config)
+                self.assertRegex(config, re.compile(rf'^service_tier\s*=\s*"{expected_service_tier}"$', re.MULTILINE))
+                if profile.name == "readonly_smol.toml.tmpl":
+                    # smol is a bindings-resolved memory agent, not a review lane: it goes
+                    # through agent-model.partial and carries the memory row's effort.
+                    self.assertIn('includeTemplate "agent-model.partial"', config)
+                    memory_effort = category_models["memory"]["effort"]
+                    self.assertRegex(
+                        config, re.compile(rf'^model_reasoning_effort\s*=\s*"{memory_effort}"$', re.MULTILINE)
+                    )
+                    continue
+                self.assertIn("review-agent-model.partial", config)
                 self.assertRegex(
                     config, re.compile(rf'^model_reasoning_effort\s*=\s*"{expected_effort}"$', re.MULTILINE)
                 )
-                self.assertRegex(config, re.compile(rf'^service_tier\s*=\s*"{expected_service_tier}"$', re.MULTILINE))
 
     def test_every_bound_agent_resolves_on_every_harness(self):
         # The three-table lookup is only useful if it is total: an agent bound to a category that
@@ -444,6 +479,13 @@ class TestModelBandInvariants(unittest.TestCase):
         assert category_models["review"]["model"] == "@advisor"
         assert category_models["refute"]["model"] == "@advisor"
         assert category_models["refute"]["verifier_status"] == "reduced_independence"
+        # memory deliberately bypasses the role table: modelRoles.smol (deepseek) failed the
+        # live scribe probes, and pinning the direct id leaves the lookup lane on @smol untouched.
+        # The `:high` suffix is load-bearing: agent frontmatter carries only the model string
+        # (agent-model.partial renders `$pick.model`), and omp's spawn precedence honors an
+        # explicit `:level` suffix while the `effort` YAML field is never rendered for omp.
+        assert category_models["memory"]["model"] == "openrouter/google/gemini-3.7-flash:high"
+        assert category_models["memory"]["effort"] == "high"
 
     @staticmethod
     def _omp_model_roles() -> dict[str, dict[str, str]]:
@@ -671,6 +713,8 @@ class TestModelBandInvariants(unittest.TestCase):
             [
                 {"id": pi_default_selector, "recommended": True},
                 {"id": pi_mechanical_selector},
+                # memory lane (smol): gemini-3.7-flash, live-probed 2026-08-29.
+                {"id": "openrouter/google/gemini-3.7-flash"},
                 {"id": pi_refute_selector},
                 {"id": optional_selector},
                 {"id": glm_selector},
@@ -740,6 +784,10 @@ class TestModelBandInvariants(unittest.TestCase):
         self.assertEqual("xhigh", category_models["mechanical"]["effort"])
         self.assertEqual(f"{pi_refute_selector}:xhigh", category_models["refute"]["model"])
         self.assertEqual("xhigh", category_models["refute"]["effort"])
+        # memory moved off deepseek after the live scribe-dedupe failure (2026-08-29);
+        # gemini-3.7-flash tops out at `high` — no xhigh exists for it.
+        self.assertEqual("openrouter/google/gemini-3.7-flash:high", category_models["memory"]["model"])
+        self.assertEqual("high", category_models["memory"]["effort"])
 
         for relative in (
             "home/exact_bin/executable_,claude-openrouter",

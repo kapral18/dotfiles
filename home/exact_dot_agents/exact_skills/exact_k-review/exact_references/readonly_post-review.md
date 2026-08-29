@@ -12,7 +12,7 @@ You run in an isolated read-only context. Your subject is not the original chang
 The question you answer is "are the review changes well done?".
 Inspect the change set directly from files and commands; do not rely on conversation history.
 
-Load `~/.agents/skills/k-review/references/judging_core.md` and apply only its **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage**.
+Load `~/.agents/skills/k-review/references/judging_pipeline.md` and apply only its **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage**.
 Do not run the full coverage checklist, base-context gate, or any GitHub/SCSI machinery — this is the narrow hygiene pass.
 
 ## Scope (derive the fix diff)

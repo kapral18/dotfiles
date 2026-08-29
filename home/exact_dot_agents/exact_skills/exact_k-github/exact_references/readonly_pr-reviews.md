@@ -24,6 +24,8 @@ Reference for the `k-github` skill. Load when creating, reconciling, or submitti
 > 5. Before that submit call, show the exact submit `event` and PR-level review
 >    `body` alongside the inline-comment payload; submit only the exact approved
 >    summary body, never an invented or revised one.
+>    The body is a short acknowledgement, not a second review; do not repeat,
+>    summarize, or enumerate details already present in inline comments.
 > 6. For code-review feedback, default to inline anchored `comments[]` (not body-only summary),
 >    unless the user explicitly asks for PR-level summary feedback.
 > 7. In `body` and each inline comment body,
@@ -97,7 +99,8 @@ If explicitly asked to POST a batch as a draft (PENDING) review:
   - If a file has multiple hunks (or repeated target lines), create separate comments and verify the correct hunk/occurrence.
   - Common trap: the patch changes when new commits are pushed.
     Always re-fetch the patch from the current PR head before computing positions.
-- Keep the pending review summary body empty; fill it only when the user explicitly wants a public summary.
+- Keep the draft pending-review body empty unless the user explicitly wants a non-empty draft body to submit later.
+  On submit, use the exact approved short acknowledgement body. Do not copy inline-comment details into the submit body.
 
 ## Embedding screenshot images in review comments
 
@@ -144,6 +147,9 @@ mutation($reviewId: ID!, $body: String!) {
 
 - The submitted review body is whatever you submit with the final event call.
   Show it in the approval payload before submission, even when the inline comments were already approved.
+- The submitted review body should stay short and sweet: acknowledge the review outcome.
+  For a clean approval, use an acknowledgement that does not claim inline comments exist (for example, `Looks good.`).
+  When inline comments exist, do not repeat, summarize, or enumerate their details.
 - For COMMENT/REQUEST_CHANGES, treat the body as required: always include the exact approved body.
 - UI gotcha: switching the event type (e.g. Comment -> Approve) can drop the typed summary text in some flows.
   For API-based submission, prevent this by always sending the intended `body` with the submit request.

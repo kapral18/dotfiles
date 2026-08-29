@@ -1,17 +1,24 @@
 #!/usr/bin/env python3
-"""Per-turn durable-memory recall, injected into the CURRENT turn.
+"""Per-turn durable-memory recall: stage candidates, inject a pointer only.
 
 UserPromptSubmit-style hook: receives the user's prompt on stdin and returns
 `additionalContext` that rides along with this same request — it never
 re-prompts the agent or starts a new request/response cycle (the failure mode
 of the removed stop-hook nudges).
 
+Capsule bodies never enter the parent context from this hook. Rows that pass
+the hybrid cosine gate are written in full to a per-session candidates file
+under the spec dir, and the injected context is one pointer block telling the
+parent to delegate judgment to the `smol` subagent (contract:
+`~/.agents/skills/k-ai-kb/references/smol-operator.md`). The pointer fires only
+when at least one candidate id is new to the session (tracked in the staged
+ledger); the seen-file (ids smol admitted) is written by smol, never here.
+
 Mirrors pi's `ai-kb-recall.ts` per-turn recall contract exactly (one behavioral
 contract across harnesses): hybrid retrieval with the prompt as the query, an
 absolute top-hit cosine gate, a cosine tail floor relative to the top hit, the
-workspace/domain/universal scope gate, and per-session dedup of injected
-capsule ids (shared with the session_context warm-start via the seen-file), plus
-the same precision-first correction-directive injection carried by the pi
+workspace/domain/universal scope gate, staged-ledger pointer dedup, plus the
+same precision-first correction-directive injection carried by the pi
 extension.
 """
 
@@ -33,30 +40,30 @@ except Exception:  # pragma: no cover - fail-open if deployed without the siblin
     correction_detector = None
 
 # Balanced constants mirror home/dot_pi/agent/exact_extensions/ai-kb-recall.ts exactly.
-PERTURN_LIMIT = 3
 SEARCH_FETCH = 6
 QUERY_MAX_CHARS = 600
-BODY_MAX_CHARS = 240
 MIN_PROMPT_CHARS = 12
 PERTURN_MIN_TOP_COSINE = 0.55
 PERTURN_COSINE_FLOOR_FRACTION = 0.85
 SEARCH_TIMEOUT = 6
 
+# Staging contract tokens, pinned by the pi/omp mirror parity test.
+SMOL_CONTRACT_PATH = "~/.agents/skills/k-ai-kb/references/smol-operator.md"
+STAGING_HEADER = "### ,ai-kb candidates staged"
+
 
 @dataclass(frozen=True)
 class RecallProfile:
     enabled: bool
-    limit: int
     fetch: int
     query_chars: int
-    body_chars: int
     timeout: int
 
 
 RECALL_PROFILES = {
-    "fast": RecallProfile(False, 0, 0, 0, 0, 0),
-    "balanced": RecallProfile(True, PERTURN_LIMIT, SEARCH_FETCH, QUERY_MAX_CHARS, BODY_MAX_CHARS, SEARCH_TIMEOUT),
-    "deep": RecallProfile(True, 5, 12, 1200, 360, 9),
+    "fast": RecallProfile(False, 0, 0, 0),
+    "balanced": RecallProfile(True, SEARCH_FETCH, QUERY_MAX_CHARS, SEARCH_TIMEOUT),
+    "deep": RecallProfile(True, 12, 1200, 9),
 }
 
 
@@ -102,6 +109,14 @@ def seen_file_for(spec_path: Path, session_key_value: str) -> Path:
     return spec_path.parent / f".recall-seen-{session_key_value}.json"
 
 
+def candidates_file_for(spec_path: Path, session_key_value: str) -> Path:
+    return spec_path.parent / f".recall-candidates-{session_key_value}.json"
+
+
+def staged_file_for(spec_path: Path, session_key_value: str) -> Path:
+    return spec_path.parent / f".recall-staged-{session_key_value}.json"
+
+
 def load_seen(path: Path | None) -> set[str]:
     if path is None:
         return set()
@@ -130,6 +145,28 @@ def search_timeout(profile: RecallProfile) -> float:
         except ValueError:
             pass
     return float(profile.timeout)
+
+
+def rewarm_embedder() -> None:
+    """Fire-and-forget resident-embedder restart so the next turn regains the dense lane.
+
+    Search runs connect-only (`AI_EMBED_CONNECT_ONLY=1`, never spawns the embedder), so once
+    the resident embedder idles out every hybrid row comes back without `cosine_score` and the
+    absolute cosine gate suppresses staging for the rest of the session. `ensure` is
+    flock-guarded, so concurrent turns racing into it are safe; the detached spawn adds no
+    latency to this turn.
+    """
+    client = Path.home() / "lib" / ",ai-kb" / "embed_client.py"
+    try:
+        subprocess.Popen(
+            ["python3", str(client), "ensure"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except OSError:
+        pass
 
 
 def search_capsules(workspace: Path, query: str, profile: RecallProfile) -> list:
@@ -169,7 +206,10 @@ def search_capsules(workspace: Path, query: str, profile: RecallProfile) -> list
         rows = json.loads(result.stdout)
     except json.JSONDecodeError:
         return []
-    return apply_hybrid_floor(rows if isinstance(rows, list) else [])
+    rows = rows if isinstance(rows, list) else []
+    if rows and not any(isinstance(row.get("cosine_score"), (int, float)) for row in rows):
+        rewarm_embedder()
+    return apply_hybrid_floor(rows)
 
 
 # Signals whose shape is "a claim you already made may be wrong". These get the
@@ -215,28 +255,42 @@ def correction_directive(prompt: str, probe_budget_signal_value: str | None = No
     return "\n".join(lines)
 
 
-def gate_and_format(rows: list, seen: set[str], profile: RecallProfile) -> list[str]:
-    """Format rows the KB already workspace-gated, deduped per session.
+def stage_candidates(rows: list, seen: set[str], spec_path: Path, key: str) -> str:
+    """Write gate-passing rows to the candidates file; return the pointer block.
 
-    The cross-repo scope gate is owned by `,ai-kb search --workspace-gate`;
-    this hook only enforces the per-session seen-id dedupe and prompt caps.
+    The cross-repo scope gate is owned by `,ai-kb search --workspace-gate`.
+    This hook filters ids smol already admitted (seen-file) and points the
+    parent at the staged set only when at least one id is new to the session
+    (staged ledger). Rejected-but-staged ids never re-point; they stay
+    re-judgeable through the pull path. Returns "" when nothing new is staged
+    or any state write fails (fail-open: no partial pointer without a file).
     """
-    lines: list[str] = []
-    for row in rows:
-        if len(lines) >= profile.limit:
-            break
-        capsule_id = str(row.get("id") or "")
-        if capsule_id and capsule_id in seen:
-            continue
-        title = collapse(str(row.get("title") or ""), 200)
-        if not title:
-            continue
-        if capsule_id:
-            seen.add(capsule_id)
-        kind = str(row.get("kind") or "note")
-        body = collapse(str(row.get("body") or ""), profile.body_chars)
-        lines.append(f"- **{title}** ({kind}): {body}" if body else f"- **{title}** ({kind})")
-    return lines
+    candidates = [row for row in rows if str(row.get("id") or "") and str(row.get("id")) not in seen]
+    if not candidates:
+        return ""
+    staged_path = staged_file_for(spec_path, key)
+    staged = load_seen(staged_path)
+    candidate_ids = {str(row.get("id")) for row in candidates}
+    if not candidate_ids - staged:
+        return ""
+    candidates_path = candidates_file_for(spec_path, key)
+    try:
+        candidates_path.parent.mkdir(parents=True, exist_ok=True)
+        candidates_path.write_text(json.dumps(candidates, indent=2))
+    except OSError:
+        return ""
+    save_seen(staged_path, staged | candidate_ids)
+    worklog_path = spec_path.with_name(spec_path.stem + ".worklog.jsonl")
+    return "\n".join(
+        [
+            STAGING_HEADER,
+            f"{len(candidates)} candidate(s): {candidates_path}",
+            f"Session state: {spec_path} + {worklog_path}",
+            f"Delegate to the `smol` subagent (judge mode) per {SMOL_CONTRACT_PATH}, passing those paths and the current prompt;"
+            " inject only its returned lines (`NONE` = inject nothing).",
+            "Do not read the candidates file into this context.",
+        ]
+    )
 
 
 def main() -> None:
@@ -252,12 +306,13 @@ def main() -> None:
         return
 
     key = session_key(payload)
-    seen_path = seen_file_for(spec_path, key) if key else None
-    seen = load_seen(seen_path)
+    seen = load_seen(seen_file_for(spec_path, key) if key else None)
     profile = RECALL_PROFILES[agent_depth()]
 
     rows = search_capsules(workspace, prompt, profile)
-    lines = gate_and_format(rows, seen, profile)
+    # Staging is session-scoped state; without a session key there is nothing
+    # to stage against, and per-turn recall degrades to the pull path.
+    pointer = stage_candidates(rows, seen, spec_path, key) if key and rows else ""
 
     # Probe-budget signal: emit when the prior turn's probes had too many failures.
     # Computed here (not inside `detect()`) because the spec dir is in scope and the
@@ -268,24 +323,13 @@ def main() -> None:
         budget = correction_detector.probe_budget_signal(spec_path.parent, key)
 
     directive = correction_directive(prompt, probe_budget_signal_value=budget)
-    if not lines and not directive:
+    if not pointer and not directive:
         emit({})
         return
 
-    if lines:
-        save_seen(seen_path, seen)
-
     context_blocks = []
-    if lines:
-        context_blocks.append(
-            "\n".join(
-                [
-                    "### Relevant Learnings for this request (,ai-kb)",
-                    "Matched to your prompt; verify before relying on them.",
-                    *lines,
-                ]
-            )
-        )
+    if pointer:
+        context_blocks.append(pointer)
     if directive:
         context_blocks.append(directive)
     context = "\n\n".join(context_blocks)

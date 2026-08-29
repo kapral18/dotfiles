@@ -47,11 +47,13 @@ Budgets (words of narrative; code blocks and links do not count):
 - No water. Every sentence carries a fact, request, or decision. Delete the rest.
 - Cut anything the reader infers from context (thread, diff, prior message, PR title).
   Do not restate the concern, file path, obvious effect, or what the reader just said.
+- PR review submit bodies are acknowledgements, not summaries.
+  Do not repeat, summarize, or enumerate details already present in inline comments.
 - Prefer no message over a low-signal message.
   If the thread already has the correction or next step, and the only remaining contribution is historical color, attribution cleanup, or rephrasing someone else's point, do not draft.
 - No headline summaries, status prefixes, or `RE:`-style headers. Get to the substance.
 - Prefer the shortest form that carries full meaning: a one-line comment, a tight PR description, a single-sentence status update.
-- PR review summary bodies describe inline topics, not commands: prefer `Left inline comments on <topics>.`
+- PR review summary bodies are short acknowledgements: prefer `Looks good.` for clean approvals and `Left inline feedback.` when comments exist.
 
 ## Default Shape
 

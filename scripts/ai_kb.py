@@ -90,6 +90,15 @@ DECAY_PENALTY_WEIGHT = 0.1
 # decay`: decay measures dormancy (no retrievals), not mere age.
 DECAY_RECENT_DAYS = 14
 
+# Hybrid-search recency preference inside near-duplicate groups: when two
+# retrieved capsules are at least this semantically close, the newer one
+# takes the better rank slot of the pair. 0.85 matches the curate
+# contradiction band — close enough to describe the same thing, but below
+# the write-time dedupe bar (0.95), so such pairs exist exactly where a
+# knowledge update landed without a supersede link. Rank-neutral outside
+# the group: members exchange rank slots, every other hit keeps its rank.
+NEAR_DUPLICATE_RECENCY_COSINE = 0.85
+
 # Write-time near-duplicate refusal threshold: `remember` refuses a new
 # capsule whose embedding cosine against an existing same-kind live
 # capsule is at or above this value (mirrors the `curate` dedupe
@@ -1467,6 +1476,13 @@ class KnowledgeBase:
         ranking without being filtered out — a still-relevant decayed
         capsule can still surface.
 
+        Hybrid mode also prefers recency inside near-duplicate groups:
+        when same-kind, same-workspace capsules sit within
+        NEAR_DUPLICATE_RECENCY_COSINE of each other, they exchange rank
+        slots so the newest ranks first (and survives MMR). Dormant
+        (decayed) capsules never join a group, and hits outside a group
+        keep their rank.
+
         Every returned capsule is stamped as retrieved
         (`retrieved_at`/`retrieval_count`, decay cleared) so curation can
         distinguish dormant memory from memory that keeps earning recall.
@@ -1571,7 +1587,17 @@ class KnowledgeBase:
         # vector space. For BM25-only / vector-only modes we skip MMR
         # (those modes are explicit "I want pure-X" requests).
         if mode == "hybrid":
-            hits = self._apply_mmr(hits, limit)
+            vectors = self._fetch_vectors([h.id for h in hits])
+            recency = {row["id"]: (row["created_at"], row["id"]) for row in ordered_rows}
+            decay_by_id = {
+                row["id"]: float(row["decay_score"]) if "decay_score" in row.keys() and row["decay_score"] else 0.0
+                for row in ordered_rows
+            }
+            groups = self._prefer_newer_near_duplicates(hits, vectors, recency, decay_by_id)
+            hits.sort(key=lambda h: h.rrf_score, reverse=True)
+            hits = self._apply_mmr(hits, limit, vectors=vectors)
+            if groups:
+                self._restore_newest_group_members(hits, groups)
         else:
             for h in hits[:limit]:
                 h.mmr_selected = True
@@ -1722,7 +1748,140 @@ class KnowledgeBase:
             ).fetchall()
         return {r["id"]: r for r in rows}
 
-    def _apply_mmr(self, hits: list[Hit], k: int) -> list[Hit]:
+    def _fetch_vectors(self, ids: list[str]) -> dict[str, list[float]]:
+        """Bulk-fetch unpacked embeddings for a candidate set.
+
+        Returns {} when the embed module or the vectors are unavailable so
+        callers can degrade the same way MMR always has (top-k by RRF).
+        """
+        if not ids:
+            return {}
+        try:
+            from embed import unpack_vector
+        except Exception:
+            return {}
+        placeholders = ",".join("?" * len(ids))
+        with self.connect() as db:
+            rows = db.execute(
+                f"SELECT id, embedding FROM capsules WHERE id IN ({placeholders})",
+                tuple(ids),
+            ).fetchall()
+        vectors: dict[str, list[float]] = {}
+        for r in rows:
+            v = unpack_vector(r["embedding"])
+            if v:
+                vectors[r["id"]] = v
+        return vectors
+
+    def _prefer_newer_near_duplicates(
+        self,
+        hits: list[Hit],
+        vectors: dict[str, list[float]],
+        recency: dict[str, tuple[str, str]],
+        decay: dict[str, float],
+    ) -> list[list[Hit]]:
+        """Within a near-duplicate group, let the newer capsule take the better rank.
+
+        A knowledge update often lands as a fresh capsule semantically on top of
+        an older one — below the write-dedupe bar or force-written — with no
+        supersede link, and the older row can outrank the newer correction on
+        lexical rank alone. Grouping is greedy complete-linkage in rank order:
+        a hit joins a group only when its cosine reaches
+        NEAR_DUPLICATE_RECENCY_COSINE against EVERY member, so a chain of
+        pairwise-similar drifting capsules cannot transitively bridge two hits
+        that are not near-duplicates of each other. Each group is reordered
+        (positions and RRF scores both, so lane ties cannot mask the swap) so
+        recency order and rank order agree ((created_at, id) tuple; ids carry
+        microseconds, so same-second writes still order deterministically). The
+        group occupies the same rank slots it did before, so every hit outside
+        the group keeps its rank.
+
+        Update semantics bound the group: only same-kind, same-workspace hits
+        group (a cross-workspace twin is a parallel note, and a fact/gotcha
+        near-pair is curate's contradiction case for human adjudication), and a
+        dormant hit (decay_score > 0) never joins — recency preference must not
+        undo the decay penalty that already sank it.
+
+        Returns the multi-member groups with members in recency order (newest
+        first) so the caller can keep the newest member alive through MMR
+        (`_restore_newest_group_members`).
+        """
+        if len(hits) < 2 or not vectors:
+            return []
+        try:
+            from embed import cosine
+        except Exception:
+            return []
+
+        eligible = [i for i, h in enumerate(hits) if not decay.get(h.id) and vectors.get(h.id)]
+        if len(eligible) < 2:
+            return []
+
+        groups: list[list[int]] = []
+        for i in eligible:
+            vec_i = vectors[hits[i].id]
+            placed = False
+            for group in groups:
+                if all(
+                    hits[j].kind == hits[i].kind
+                    and hits[j].workspace_path == hits[i].workspace_path
+                    and cosine(vectors[hits[j].id], vec_i) >= NEAR_DUPLICATE_RECENCY_COSINE
+                    for j in group
+                ):
+                    group.append(i)
+                    placed = True
+                    break
+            if not placed:
+                groups.append([i])
+
+        reordered: list[list[Hit]] = []
+        for indices in groups:
+            if len(indices) < 2:
+                continue
+            positions = sorted(indices)
+            slots = sorted((hits[i].rrf_score for i in indices), reverse=True)
+            members = sorted(
+                (hits[i] for i in indices),
+                key=lambda m: recency.get(m.id, ("", m.id)),
+                reverse=True,
+            )
+            for position, member, slot in zip(positions, members, slots):
+                member.rrf_score = slot
+                hits[position] = member
+            reordered.append(members)
+        return reordered
+
+    @staticmethod
+    def _restore_newest_group_members(selected: list[Hit], groups: list[list[Hit]]) -> None:
+        """When a near-duplicate group survives MMR, its newest member is the survivor.
+
+        MMR penalizes a candidate by its similarity to the already-selected
+        hits, so when a third selected capsule sits closer to the group's
+        newest member than to an older twin, MMR can keep the stale twin and
+        drop the correction — inverting the recency preference. Swap the
+        newest member into the best-ranked older survivor's slot instead. If
+        MMR kept no member of a group, nothing is restored — the group lost
+        the slot competition outright. The swap keeps the result size and
+        slot positions; the swapped-in member is itself a near-duplicate of
+        the one swapped out, so the diversity cost is a deliberate trade to
+        keep the correction over the stale twin.
+        """
+        selected_ids = {h.id for h in selected}
+        for members in groups:
+            newest = members[0]
+            if newest.id in selected_ids:
+                continue
+            member_ids = {m.id for m in members}
+            for idx, kept in enumerate(selected):
+                if kept.id in member_ids:
+                    kept.mmr_selected = False
+                    newest.mmr_selected = True
+                    selected[idx] = newest
+                    selected_ids.discard(kept.id)
+                    selected_ids.add(newest.id)
+                    break
+
+    def _apply_mmr(self, hits: list[Hit], k: int, vectors: dict[str, list[float]] | None = None) -> list[Hit]:
         """Maximal Marginal Relevance diversification.
 
         Iteratively pick the hit that maximizes
@@ -1735,25 +1894,14 @@ class KnowledgeBase:
         if not hits or k <= 0:
             return []
         try:
-            from embed import cosine, unpack_vector
+            from embed import cosine
         except Exception:
             for h in hits[:k]:
                 h.mmr_selected = True
             return hits[:k]
 
-        # Bulk-fetch embeddings for the candidate set.
-        ids = [h.id for h in hits]
-        placeholders = ",".join("?" * len(ids))
-        with self.connect() as db:
-            rows = db.execute(
-                f"SELECT id, embedding FROM capsules WHERE id IN ({placeholders})",
-                tuple(ids),
-            ).fetchall()
-        vectors: dict[str, list[float]] = {}
-        for r in rows:
-            v = unpack_vector(r["embedding"])
-            if v:
-                vectors[r["id"]] = v
+        if vectors is None:
+            vectors = self._fetch_vectors([h.id for h in hits])
 
         if not vectors:
             for h in hits[:k]:

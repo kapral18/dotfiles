@@ -49,7 +49,7 @@ Write-time dedup refuses a case-insensitive title collision or same-kind cosine 
 
 ## Retrieval
 
-Hybrid search combines FTS5/BM25 and cosine (`sqlite-vec` via [`vec_runner.py`](../../../../scripts/vec_runner.py)), then applies RRF and MMR. Workspace matches receive a soft boost and superseded capsules stay hidden. Without embeddings, `bm25` remains available and `hybrid` returns its lexical lane; a vector-runner failure surfaces instead of silently changing hybrid semantics. Escape hatches: `AI_KB_DISABLE_EMBED=1` and `AI_KB_DISABLE_VEC=1`.
+Hybrid search combines FTS5/BM25 and cosine (`sqlite-vec` via [`vec_runner.py`](../../../../scripts/vec_runner.py)), then applies RRF and MMR. Workspace matches receive a soft boost and superseded capsules stay hidden. Inside a retrieved near-duplicate group (same kind and workspace, pairwise cosine ≥ 0.85), the newest capsule takes the group's best rank and survives MMR — an un-adjudicated knowledge update outranks the stale twin it corrects; decayed capsules never join a group, and hits outside a group keep their rank. Without embeddings, `bm25` remains available and `hybrid` returns its lexical lane; a vector-runner failure surfaces instead of silently changing hybrid semantics. Escape hatches: `AI_KB_DISABLE_EMBED=1` and `AI_KB_DISABLE_VEC=1`.
 
 ## Embedding lanes
 
@@ -58,7 +58,7 @@ Hybrid search combines FTS5/BM25 and cosine (`sqlite-vec` via [`vec_runner.py`](
 | One-shot | CLI, `remember`, `reembed` | `embed_runner.py` (PEP 723 uv)                                                    |
 | Resident | Per-turn recall only       | `embed_worker.py` + `embed_client.py`; generation-specific socket; 300s idle exit |
 
-Per-turn callers set `AI_EMBED_CONNECT_ONLY=1` and never spawn or replace the worker. Session start may run a bounded `ensure` when depth is not `fast`. Runtime state and sockets are user-only; bounded socket payloads carry prompt text, and the worker never logs or echoes it. See [Runtime recall wiring](cross-agent-memory.md) for depth budgets and harness warm-up.
+Per-turn search calls set `AI_EMBED_CONNECT_ONLY=1` and never block a turn on worker startup. Session start may run a bounded `ensure` when depth is not `fast`; when a per-turn hybrid search returns at least one row and none carries a `cosine_score` (worker idled out), the recall hook fires a detached best-effort `ensure` so a later turn regains the dense lane; an empty result set does not trigger it (no evidence of coldness), so a cold worker with zero lexical matches waits for the next lexical hit or the next session-start `ensure`. Runtime state and sockets are user-only; bounded socket payloads carry prompt text, and the worker never logs or echoes it. See [Runtime recall wiring](cross-agent-memory.md) for depth budgets and harness warm-up.
 
 ## Worklog harvest
 

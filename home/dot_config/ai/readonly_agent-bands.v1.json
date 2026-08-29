@@ -183,6 +183,11 @@
           "effort": "medium",
           "alias": "fable"
         },
+        "smol": {
+          "model": "claude-sonnet-4-6",
+          "effort": "low",
+          "alias": "sonnet"
+        },
         "task": {
           "model": "claude-fable-5",
           "effort": "medium",
@@ -341,6 +346,10 @@
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
+        "smol": {
+          "model": "gpt-5.4",
+          "effort": "high"
+        },
         "task": {
           "model": "gpt-5.5",
           "effort": "xhigh"
@@ -496,6 +505,10 @@
         "security-review": {
           "model": "gpt-5.5",
           "effort": "xhigh"
+        },
+        "smol": {
+          "model": "claude-sonnet-4.6",
+          "effort": "high"
         },
         "task": {
           "model": "gpt-5.5",
@@ -653,6 +666,9 @@
           "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
         },
+        "smol": {
+          "model": "composer-2.5"
+        },
         "task": {
           "model": "gpt-5.6-sol-xhigh",
           "effort": "xhigh"
@@ -807,6 +823,10 @@
         },
         "security-review": {
           "model": "gemini-3.1-pro-preview",
+          "effort": "high"
+        },
+        "smol": {
+          "model": "gemini-3.7-flash",
           "effort": "high"
         },
         "task": {
@@ -965,6 +985,10 @@
           "model": "@advisor",
           "effort": "xhigh"
         },
+        "smol": {
+          "model": "openrouter/google/gemini-3.7-flash:high",
+          "effort": "high"
+        },
         "task": {
           "model": "@task",
           "effort": "xhigh"
@@ -1120,6 +1144,10 @@
         "security-review": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
           "effort": "xhigh"
+        },
+        "smol": {
+          "model": "openrouter/google/gemini-3.7-flash:high",
+          "effort": "high"
         },
         "task": {
           "model": "openrouter/openai/gpt-5.5:xhigh",

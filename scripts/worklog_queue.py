@@ -31,7 +31,12 @@ DEFAULT_MAX_WORKLOG_LINES = 200
 DEFAULT_WORKER_IDLE_SECONDS = 0.08
 DEFAULT_WORKER_MAX_SECONDS = 2.0
 DEFAULT_CLEANUP_AGE_SECONDS = 7 * 24 * 60 * 60
-STALE_STATE_GLOBS = ("session-*.worklog.jsonl", ".recall-seen-*.json")
+STALE_STATE_GLOBS = (
+    "session-*.worklog.jsonl",
+    ".recall-seen-*.json",
+    ".recall-candidates-*.json",
+    ".recall-staged-*.json",
+)
 MAX_STALE_REMOVALS_PER_PASS = 64
 
 
@@ -561,8 +566,9 @@ def migrate_worklog(spec_dir: Path, source_name: str, target_name: str, *, confi
 def cleanup_stale_state(spec_dir: Path, *, config: QueueConfig = QueueConfig()) -> int:
     """Age-gated sweep of per-session state nothing will read again.
 
-    Removes `session-*` fallback worklogs and `.recall-seen-*` dedupe files
-    whose mtime is older than `cleanup_age_seconds` (same policy as drained
+    Removes `session-*` fallback worklogs and per-session recall state
+    (`.recall-seen-*` dedupe, `.recall-candidates-*` staging, `.recall-staged-*`
+    ledgers) whose mtime is older than `cleanup_age_seconds` (same policy as drained
     queue dirs). Named-topic worklogs are never candidates: the `session-`
     prefix is reserved for per-session fallback buckets. Fallback worklog
     removal takes the same per-target lock as flush and re-checks the mtime

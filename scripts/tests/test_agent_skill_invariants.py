@@ -256,7 +256,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
 
     def test_review_flows_iterate_to_fixed_point(self):
         self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_core.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_pipeline.md",
             "**Fixed point.**",
             "Repeat until no new surviving findings or hygiene findings remain",
             "Repeat until the four dimensions return clean",
@@ -322,14 +322,31 @@ class TestAgentSkillInvariants(unittest.TestCase):
             "home/exact_dot_agents/exact_skills/exact_k-compose-pr/readonly_SKILL.md",
             "PR title/body or publication packet",
             "Load `~/.agents/skills/k-compose-pr/references/publication-packet.md`",
+            "Treat changed paths as scope clues only",
+            "Verify each proposed Test Plan command or manual step",
             "PR publication packet",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-compose-pr/exact_references/readonly_publication-packet.md",
             "The gate is not complete from previews or sliced fields",
             "PR Test Plan completeness gate",
+            "Test Plan must be evidence: runnable command or manual step, expected result, and observed result.",
+            "Before proposing a Test Plan command or manual step",
+            "do not present it as runnable Test Plan evidence",
+            "Test Plan MUST NOT mirror or enumerate changed test paths",
+            "part of a command or concrete repro step",
+            "Manual Test Plan steps must be reader-executable",
+            "Do not combine setup, choice, and verification in one sentence.",
+            "run the false-positive check",
+            "Preserve required setup state",
+            "when that state makes the old bug observable",
+            "manual-only, keep executed commands and observed local validation",
             "include the expected observable result after the fix",
             "pending_approval",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-compose-pr/exact_references/readonly_publication-packet.md",
+            "Test Plan must be evidence: commands run + observed result.",
         )
 
     def test_kibana_domain_owns_pr_title_and_metadata_boundaries(self):
@@ -381,6 +398,120 @@ class TestAgentSkillInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-github/exact_references/readonly_sub-issues.md",
             "Mutations: `addSubIssue`, `removeSubIssue`, `reprioritizeSubIssue`",
+        )
+
+    def test_pr_review_submission_uses_short_summary_and_team_aware_verdict(self):
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_authorship.md",
+            "`author_relation`",
+            "For `authorship: other` or `unknown`",
+            "`immediate_team`: verified from a loaded domain overlay",
+            "`outside_or_unknown_team`: any author not verified as immediate team",
+            "Do not infer immediate-team membership",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_shared_rules.md",
+            """**Self-review** (`authorship: self`):
+  - Fix issues in the working tree before recommending a GitHub review verdict.
+  - **Comment only** if the user explicitly asks to post self-review notes with remaining non-blocking findings.
+  - **Approve** when no findings remain.
+  - Do not request changes on the user's own PR from this flow.""",
+            """**Immediate-team author**:
+  - **Request changes** only for a CRITICAL blocker that must be addressed before merge.
+  - **Comment only** when findings remain below CRITICAL. Trust teammates to judge whether comment-level feedback should block.
+  - **Approve** when no findings remain.""",
+            """**Outside or unknown-team author**:
+  - **Request changes** for CRITICAL or HIGH findings that must be addressed before merge.
+  - **Comment only** for MEDIUM findings.
+  - **Approve with comments** for LOW findings or true nits.
+  - **Approve** when no findings remain.""",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_review.md",
+            "keep the body as a short acknowledgement",
+            "`Looks good.` for a clean approval",
+            "`Left inline feedback.` when comments exist",
+            "Do not repeat, summarize, or enumerate details that are already in inline comments",
+            "Use it only when a PR-level comment is explicitly needed, and never to repeat inline-comment content",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-github/exact_references/readonly_pr-reviews.md",
+            "The body is a short acknowledgement, not a second review",
+            "Do not copy inline-comment details into the submit body",
+            "Keep the draft pending-review body empty unless the user explicitly wants a non-empty draft body to submit later",
+            "The submitted review body should stay short and sweet",
+            "For a clean approval, use an acknowledgement that does not claim inline comments exist",
+            "acknowledge the review outcome",
+            "do not repeat, summarize, or enumerate their details",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-github/exact_references/readonly_pr-reviews.md",
+            "Keep the pending review summary body empty; fill it only when the user explicitly wants a public summary.",
+            "public summary",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-communication/readonly_SKILL.md",
+            "PR review submit bodies are acknowledgements, not summaries",
+            "Do not repeat, summarize, or enumerate details already present in inline comments",
+            "PR review summary bodies are short acknowledgements",
+            "`Looks good.` for clean approvals",
+            "`Left inline feedback.` when comments exist",
+        )
+        self.assert_file_contains(
+            "docs/topics/ai-assistants/reviews/replies-publication-and-history.md",
+            "Review submit summary bodies are short acknowledgements",
+            "Do not repeat details already present in inline comments",
+        )
+        self.assert_file_contains(
+            "docs/topics/ai-assistants/skills/review-and-delivery.md",
+            "Review submit bodies stay short: acknowledge the review outcome",
+            "when inline comments exist, do not repeat their details",
+            "For immediate-team PR authors, clean reviews approve, findings below CRITICAL use comment review, and CRITICAL blockers request changes; outside or unknown-team authors use the normal severity ladder.",
+        )
+        for relative_path in (
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_review.md",
+            "home/exact_dot_agents/exact_skills/exact_k-github/exact_references/readonly_pr-reviews.md",
+            "home/exact_dot_agents/exact_skills/exact_k-communication/readonly_SKILL.md",
+            "docs/topics/ai-assistants/reviews/replies-publication-and-history.md",
+            "docs/topics/ai-assistants/skills/review-and-delivery.md",
+        ):
+            self.assert_file_not_contains(
+                relative_path,
+                "Left a few inline comments",
+                "Left a few comments inline",
+                "Left inline comments on <topics>",
+                "PR review summary bodies describe inline topics, not commands",
+                "acknowledge that comments were left inline",
+                "public draft body",
+            )
+        for relative_path in (
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_shared_rules.md",
+            "docs/topics/ai-assistants/reviews/replies-publication-and-history.md",
+            "docs/topics/ai-assistants/skills/review-and-delivery.md",
+        ):
+            self.assert_file_not_contains(
+                relative_path,
+                "**Approve**: no CRITICAL/HIGH findings remain; all findings are LOW/MEDIUM nits or suggestions.",
+                "**Request changes**: at least one CRITICAL or HIGH finding that must be addressed before merge.",
+                "**Comment only**: findings exist but are informational/advisory; merge is not blocked.",
+            )
+
+    def test_review_router_dirty_pr_docs_match_source(self):
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md",
+            "If both are true: default to local changes mode (verify and fix working tree).",
+            "Note the PR exists in output so the user can switch if needed.",
+        )
+        self.assert_file_contains(
+            "docs/topics/ai-assistants/reviews/replies-publication-and-history.md",
+            "When both a dirty working tree and a current-branch PR exist, the router defaults to local changes mode",
+            "notes that the PR exists so the user can switch if needed",
+            "SOP `3.8` in the single source",
+        )
+        self.assert_file_not_contains(
+            "docs/topics/ai-assistants/reviews/replies-publication-and-history.md",
+            "the router asks which target to review instead of silently forcing local review first",
+            "SOP `3.6` in the single source",
         )
 
     def test_elastic_domain_skill_extracts_pr_issue_templates_reference(self):

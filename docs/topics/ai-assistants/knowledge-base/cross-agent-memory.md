@@ -49,17 +49,20 @@ Gates in `session_context.py` — all must pass:
 
 Review/unbound topics: no warm-start. Separate from resident embedder warm-up (per-turn path only).
 
-## Per-turn recall gates
+## Per-turn recall: staged candidates, smol judgment
 
-`perturn_recall.py` / Pi `ai-kb-recall.ts` — `hybrid` mode, dedupe via `.recall-seen-<session-key>.json`:
+`perturn_recall.py` / Pi + OMP `ai-kb-recall.ts` — `hybrid` mode as the candidate filter:
 
-| Gate                | Value                                                                |
-| ------------------- | -------------------------------------------------------------------- |
-| Query               | current prompt                                                       |
-| Absolute cosine     | ≥ `0.55` (best row, not rank-0 — RRF order is relevance-blind)       |
-| Relative tail floor | `0.85` of best cosine (`0.60` for BM25 warm-start)                   |
-| Scope               | workspace-local, `domain`, `universal` via `--workspace-gate`        |
-| Connect-only        | `AI_EMBED_CONNECT_ONLY=1`; unavailable worker → omit block, continue |
+| Gate                | Value                                                                                                                                                                                                                  |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Query               | current prompt                                                                                                                                                                                                         |
+| Absolute cosine     | ≥ `0.55` (best row, not rank-0 — RRF order is relevance-blind)                                                                                                                                                         |
+| Relative tail floor | `0.85` of best cosine (`0.60` for BM25 warm-start)                                                                                                                                                                     |
+| Scope               | workspace-local, `domain`, `universal` via `--workspace-gate`                                                                                                                                                          |
+| Connect-only        | `AI_EMBED_CONNECT_ONLY=1`; unavailable worker → omit block, continue                                                                                                                                                   |
+| Cold re-warm        | ≥1 row and none carries `cosine_score` → fire detached best-effort `embed_client.py ensure` (flock-guarded) so a later turn regains the dense lane; this turn still stages nothing; an empty result set never fires it |
+
+Capsule bodies are never injected per-turn. Gate-passing rows go in full to `.recall-candidates-<session-key>.json`, and the hook injects a `### ,ai-kb candidates staged` pointer only when at least one candidate id is new to the session (`.recall-staged-<session-key>.json` ledger). The pointer names the candidates file plus the session-state paths (topic spec + worklog), so the judge never guesses its inputs; sessions without a session key stage nothing and degrade to the pull path. The parent delegates judgment to the `smol` subagent ([operator contract](../../../../home/exact_dot_agents/exact_skills/exact_k-ai-kb/exact_references/readonly_smol-operator.md)): counterfactual test against the topic spec + worklog tail, return of ≤3 admitted lines or `NONE`, admitted ids appended to `.recall-seen-<session-key>.json`. Ids the hook filters out: seen ids (already admitted) never re-stage; staged-but-unadmitted ids never re-point but stay pullable via `,ai-kb search`/`get`. Delegation route per surface: the harness's native `smol` profile where reachable; otherwise a harness-CLI one-shot on the memory-category model (e.g. `cursor-agent --model <memory pick> --print` — the Cursor IDE Task tool has a fixed subagent set and cannot reach `smol`); inline application of the operator contract only when no isolated spawn exists (see the `k-ai-kb` skill).
 
 Queries travel over stdin and are never written to process arguments. Tail trimming drops weak rows without reordering BM25 or fused/MMR results. Correction patterns may inject an anti-pattern note directive; durable writes still require verified `remember`.
 
@@ -67,11 +70,11 @@ Queries travel over stdin and are never written to process arguments. Tail trimm
 
 Unset/invalid → `balanced`.
 
-| Depth      | BM25 startup | Resident warm-up | Fetch/inject | Prompt cap (chars) | Body cap (chars) | Timeout |
-| ---------- | ------------ | ---------------- | ------------ | ------------------ | ---------------- | ------- |
-| `fast`     | yes          | skipped          | disabled     | —                  | —                | —       |
-| `balanced` | yes          | requested        | 6 / 3        | 600                | 240              | 6s      |
-| `deep`     | yes          | requested        | 12 / 5       | 1200               | 360              | 9s      |
+| Depth      | BM25 startup | Resident warm-up | Fetch    | Prompt cap (chars) | Timeout |
+| ---------- | ------------ | ---------------- | -------- | ------------------ | ------- |
+| `fast`     | yes          | skipped          | disabled | —                  | —       |
+| `balanced` | yes          | requested        | 6        | 600                | 6s      |
+| `deep`     | yes          | requested        | 12       | 1200               | 9s      |
 
 `fast` removes per-turn retrieval, not thresholds. Budgets fixture-backed: [`recall_worklog_state_machine.py`](../../../../scripts/tests/recall_worklog_state_machine.py). `AI_KB_RECALL_TIMEOUT` can raise per-turn timeout only.
 

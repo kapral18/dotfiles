@@ -34,6 +34,8 @@ First actions:
    Complete that gate per `pr_common.md` before summarizing.
 3. If the body needs contested, historical, product, or team-precedent context not settled by direct refs, run Ambient Topic Exploration from `~/.agents/skills/k-review/references/pr_context_audits.md`.
 4. Extract only verified evidence: summary, Test Plan, migration notes.
+   Treat changed paths as scope clues only; do not turn them into PR body or Test Plan content unless they are part of a reviewer-runnable command or repro step.
+   Verify each proposed Test Plan command or manual step from local source, CLI help, linked issue steps, or a safe probe before including it.
 5. If issue linkage or test evidence is missing after intake, keep placeholders instead of inventing details.
 6. If the repo is in `elastic`, load `~/.agents/skills/k-elastic-domain/SKILL.md` and apply its GitHub/PR composition section.
 7. Load `~/.agents/skills/k-compose-pr/references/publication-packet.md`, then build the PR publication packet.

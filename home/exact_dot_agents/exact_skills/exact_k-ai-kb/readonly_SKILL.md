@@ -18,6 +18,19 @@ Do not use:
 - semantic CODE search over a repo (how a codebase works, base-branch context): `~/.agents/skills/k-semantic-code-search/SKILL.md`
 - simple string/filename lookup: local `rg` / file reads
 
+Smol delegation (the KB boundary operator):
+
+`,ai-kb` stays the only persistence layer; the `smol` subagent (category `memory`, contract `~/.agents/skills/k-ai-kb/references/smol-operator.md`) operates both directions of its boundary so candidate dumps and write mechanics never occupy the parent context.
+
+- Read path: the per-turn recall hook stages candidates to `/tmp/specs/<workspace>/.recall-candidates-<session-key>.json` and injects a pointer line, never capsule bodies.
+  On seeing that pointer, delegate judgment to `smol` (judge mode) with the candidates path, the topic spec/worklog paths, and the current prompt.
+  Fold in only the lines it returns; `NONE` means inject nothing. Do not read the candidates file into the parent context.
+- Write path: after verifying an insight in-session, delegate persistence to `smol` (scribe mode) with the one-line insight, evidence anchors, and suggested kind/scope.
+  Smol owns search-first dedupe, `--supersedes`, metadata selection, and read-back of the stored id.
+- CLI one-shot fallback: when the harness's native subagent surface cannot reach the smol profile (fixed subagent set, or a model-pinning gate the spawn rejects), spawn the harness CLI print/exec mode with the memory-category model and a prompt that loads the operator contract (e.g. `cursor-agent --model <memory pick> --print "<judge/scribe prompt>"`); the isolation guarantee holds.
+- Inline fallback: only when no isolated spawn exists at all, apply the operator contract yourself;
+  the judge/scribe rules bind regardless of who executes them.
+
 First actions (read):
 
 Search before working when prior knowledge could help:
@@ -76,7 +89,8 @@ Field selection (each affects retrieval — choose, do not default):
 - `--supersedes <id>` when replacing stale/wrong recall; it links both directions and retires the old capsule. Non-existent ids error.
 - `--refs <id-or-ref>` (repeatable) for related capsules or anchors.
 
-Body structure for retrieval: the body is embedded (title+body) and BM25-indexed, and the per-turn recall gates on cosine similarity to the user's prompt.
+Body structure for retrieval: the body is embedded (title+body) and BM25-indexed;
+per-turn recall stages candidates gated on cosine similarity to the user's prompt, and the smol judge admits only what the session state needs.
 The body must contain the literal terms a future query would use — exact symbol names, file paths, error strings, flag names, version numbers — not a paraphrase.
 Front-load them; a body that describes the insight in generic prose will not match a specific future query.
 

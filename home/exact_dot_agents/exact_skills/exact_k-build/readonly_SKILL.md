@@ -95,7 +95,7 @@ Do not start a later phase until the current one completes.
    Judge the returned verdicts; a `refuted` row goes back to phase 3 (or `blocked` with the reason).
 
 7. **Post-review stage.**
-   Run the Post-Review Stage from `~/.agents/skills/k-review/references/judging_core.md` over the full implementation diff, applying the four canonical dimensions by name — redundancy, verbosity, semantic + logical duplication, gaps.
+   Run the Post-Review Stage from `~/.agents/skills/k-review/references/judging_pipeline.md` over the full implementation diff, applying the four canonical dimensions by name — redundancy, verbosity, semantic + logical duplication, gaps.
    Resolve each finding in the working tree; re-run mechanical gates for changed artifacts when applicable.
    Repeat the Post-Review Stage until it returns clean, or until a verified blocker/requirements reset stops the loop.
    If cleanup changed any in-scope artifact, rerun packet checks and adversarial verification before reporting.

@@ -19,7 +19,7 @@ The subject is:
 - any existing current-account pending review/comments/replies supplied by the parent
   - include these because they affect duplication, actionability, or proposed payload merging
 
-Load `~/.agents/skills/k-review/references/judging_core.md`.
+Load `~/.agents/skills/k-review/references/judging_pipeline.md`.
 When the scope packet names a context pack, load `~/.agents/skills/k-review/references/context-pack.md` and consume the pack per that contract before any live PR fetch.
 
 Apply only the **Post-Review Lens (The Four Dimensions)**.

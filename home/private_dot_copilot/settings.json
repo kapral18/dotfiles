@@ -48,6 +48,11 @@
         "contextTier": "default",
         "model": "claude-fable-5"
       },
+      "smol": {
+        "effortLevel": "high",
+        "contextTier": "default",
+        "model": "claude-sonnet-4.6"
+      },
       "explore": {
         "effortLevel": "xhigh",
         "contextTier": "default",

@@ -34,6 +34,7 @@ Classification is example-anchored judgment, not a countable metric. Each catego
 | `orchestrate` | Orchestration            | Session default: decide what to delegate, judge what comes back, resolve ambiguity       | Stays in the main session — ambiguity resolution is not delegable without losing the context needed to do it                                      |
 | `review`      | Review                   | Review a change and audit findings                                                       | Delegate to a review lane                                                                                                                         |
 | `refute`      | Adversarial verification | Break a conclusion: adversarial verification, criteria refutation, blind clarity         | Delegate; prefer a **different model family** than the lane being refuted at equal capability — capability outranks diversity (`family: counter`) |
+| `memory`      | Memory operations        | Judge staged `,ai-kb` recall candidates against session state; operate capsule writes    | Delegate to `smol`; bounded small-context judgment, so it resolves to each harness's small/fast pick                                              |
 
 `general-purpose` is bound to `implement`, not `lookup`, despite being the cheapest thing to reach for: it carries `tools: "*"` and is the only delegated agent that can edit anything.
 
@@ -122,6 +123,7 @@ The env var that does not help is `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING`: it is
 | ------------------------------------------------ | ------------------- | ------ | -------- | ------- | --------------- |
 | `lookup`                                         | `claude-fable-5`    | low    | off      | short   | —               |
 | `mechanical`                                     | `claude-sonnet-4-6` | high   | off      | short   | —               |
+| `memory`                                         | `claude-sonnet-4-6` | low    | off      | short   | —               |
 | `research`, `implement`, `orchestrate`, `review` | `claude-fable-5`    | medium | off      | short   | —               |
 | `refute`                                         | `claude-fable-5`    | medium | off      | short   | degraded        |
 
@@ -137,7 +139,7 @@ Context stays short: bare `claude-fable-5` is the short-window selector, and the
 
 | Category                                                             | Model     | Effort | Verifier status    |
 | -------------------------------------------------------------------- | --------- | ------ | ------------------ |
-| `mechanical`                                                         | `gpt-5.4` | high   | —                  |
+| `mechanical`, `memory`                                               | `gpt-5.4` | high   | —                  |
 | `lookup`, `research`, `implement`, `orchestrate`, `review`, `refute` | `gpt-5.5` | xhigh  | `refute`: degraded |
 
 Codex is single-vendor (OpenAI only); there is no cross-family split to make here, so `refute` reports `degraded`. Native Codex 0.149.0 lists `gpt-5.5` with `xhigh` and `gpt-5.4` with `high` among supported reasoning levels (`codex debug models --bundled`; native default is `low`). The bundled `gpt-5.4` row is hidden and carries an upgrade note to `gpt-5.6-terra`; `mechanical` still uses it as deliberate user policy. Every other Codex category, root profile, and named role pins `gpt-5.5` at xhigh effort (user call 2026-08-24), and every profile pins `service_tier = "default"`. Codex carries effort per profile as `model_reasoning_effort`, and the gate rewrites both model fields on `spawn_agent`. Codex exposes no context-tier dial, so every category is short by construction.
@@ -147,7 +149,7 @@ Codex is single-vendor (OpenAI only); there is no cross-family split to make her
 | Category                                                   | Model               | Effort                                                         | Verifier status |
 | ---------------------------------------------------------- | ------------------- | -------------------------------------------------------------- | --------------- |
 | `lookup`, `research`, `implement`, `orchestrate`, `review` | `gpt-5.5`           | xhigh                                                          | —               |
-| `mechanical`                                               | `claude-sonnet-4.6` | high (non-thinking via `COPILOT_DISABLE_ANTHROPIC_THINKING=1`) | —               |
+| `mechanical`, `memory`                                     | `claude-sonnet-4.6` | high (non-thinking via `COPILOT_DISABLE_ANTHROPIC_THINKING=1`) | —               |
 | `refute`                                                   | `claude-fable-5`    | high (non-thinking via `COPILOT_DISABLE_ANTHROPIC_THINKING=1`) | cross_family    |
 
 Copilot's captured catalog includes `gpt-5.5`, `claude-sonnet-4.6`, and `claude-fable-5`; Copilot CLI 1.0.80 accepts `xhigh` as a reasoning effort. User call 2026-08-24: Copilot defaults categories to `gpt-5.5`/xhigh, with `mechanical` on `claude-sonnet-4.6`/high and `refute` on `claude-fable-5`/high. Effort is not an agent _frontmatter_ field, but `~/.copilot/settings.json` carries `subagents.agents.<name>.effortLevel`, so per-lane effort is pinnable there. That file is source JSON the merge script reads and the artifact ledger records as a `json-declared` baseline path, so it cannot be a template; `scripts/generate_subagent_models.py` writes it from the category registry instead and an invariant fails when the two drift. Model IDs stay catalog-native: Copilot uses dotted 4.x IDs such as `claude-opus-4.8`, but the Opus 5 ID is `claude-opus-5`.
@@ -160,6 +162,7 @@ Copilot is the only harness with a live context dial: `subagents.agents.<name>.c
 | ---------------------------------------------------------- | ----------------------- | ------ | ------- | --------------- |
 | `lookup`, `research`, `implement`, `orchestrate`, `review` | `gpt-5.6-sol-xhigh`     | xhigh  | long    | —               |
 | `mechanical`                                               | `cursor-grok-4.6-xhigh` | xhigh  | short   | —               |
+| `memory`                                                   | `composer-2.5`          | —      | short   | —               |
 | `refute`                                                   | `claude-opus-5-high`    | high   | long    | cross_family    |
 
 Cursor's categories are read by the gate alone, because `cursor-agent` does not discover home-level agent files. That matters for which ids are legal: the `Task` tool has historically taken a far narrower whitelist than the ids `cursor-agent models` lists. The captured Task enum in Cursor IDE on 2026-08-14 includes `gpt-5.6-sol-xhigh`, `cursor-grok-4.6-xhigh`, and `claude-opus-5-high`; category rows stay inside that list while the live Task enum is not locally inspectable. No category names `composer-2.8-fast`: Cursor prices Composer 2.8 at $0.5/$2.8 and describes the fast variant as "A faster variant with the same intelligence" at $3/M input and $15/M output, so `-fast` buys speed at 6x, never a cheaper rung. An invariant keeps `-fast` ids out of every category.
@@ -171,7 +174,7 @@ User call 2026-08-24: Cursor mirrors Copilot's category shape on spawnable Curso
 | Category                                                             | Model                    | Effort | Context | Verifier status    |
 | -------------------------------------------------------------------- | ------------------------ | ------ | ------- | ------------------ |
 | `lookup`, `research`, `implement`, `orchestrate`, `review`, `refute` | `gemini-3.1-pro-preview` | high   | long    | `refute`: degraded |
-| `mechanical`                                                         | `gemini-3.7-flash`       | high   | long    | —                  |
+| `mechanical`, `memory`                                               | `gemini-3.7-flash`       | high   | long    | —                  |
 
 Google-only catalog, so `refute` reports `degraded`: there is no second family inside Antigravity. User call 2026-08-24: use Gemini 3.1 Pro with long context everywhere except mechanical, which stays on Gemini 3.7 Flash and also requests long context. Antigravity 1.1.18 exposes Gemini 3.1 Pro as the selector `gemini-3.1-pro-preview` in `agy models`. The `,ai` launcher reads the generated `agent-bands.v1.json` default and passes `--model gemini-3.1-pro-preview --effort high`; dynamic review subagents expose only abstract model tiers, so `review_model_overrides.gemini.{lanes,verifier}` stores `pro` and the controller passes it to `invoke_subagent`.
 
@@ -181,9 +184,10 @@ Google-only catalog, so `refute` reports `degraded`: there is no second family i
 | ---------------------------------------------------------- | ---------------------------------------------- | ------ | --------------- |
 | `lookup`, `research`, `implement`, `orchestrate`, `review` | `openrouter/openai/gpt-5.5:xhigh`              | xhigh  | —               |
 | `mechanical`                                               | `openrouter/deepseek/deepseek-v4-flash:xhigh`  | xhigh  | —               |
+| `memory`                                                   | `openrouter/google/gemini-3.7-flash:high`      | high   | —               |
 | `refute`                                                   | `openrouter/anthropic/claude-sonnet-4.6:xhigh` | xhigh  | cross_family    |
 
-User call 2026-08-24: Pi runs primary categories on OpenRouter GPT-5.5 at xhigh thinking, keeps mechanical on DeepSeek V4 Flash at xhigh, and moves refute to Claude Sonnet 4.6 at xhigh. Kimi and GLM-5.2 remain selectable Pi models, but they are not category defaults.
+User call 2026-08-24: Pi runs primary categories on OpenRouter GPT-5.5 at xhigh thinking, keeps mechanical on DeepSeek V4 Flash at xhigh, and moves refute to Claude Sonnet 4.6 at xhigh. Kimi and GLM-5.2 remain selectable Pi models, but they are not category defaults. User call 2026-08-29: `memory` moves to Gemini 3.7 Flash after DeepSeek stored a known duplicate in the live scribe probe; the model tops out at `high` (no `xhigh`).
 
 Pi has no hook system, so profiles are the only lever and the gate never runs there. Pi's default model/thinking is config-file based, but Pi also supports `--model`, `--thinking`, and model strings suffixed with `:<thinking>`. The `,ai` OpenRouter route reads the generated Pi mirror and pins the recommended route to `openrouter/openai/gpt-5.5` at thinking `xhigh`. `pi-subagents` has per-task/per-agent `model` but no separate per-task `thinking`; use the suffix form `openrouter/openai/gpt-5.5:xhigh` for subagent pins. That suffix is a thinking level, not a separate effort dial: `pi-subagents` 0.38.0 parses it with `splitKnownThinkingSuffix` against `THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"]` (`src/shared/model-info.ts`), and `@earendil-works/pi-agent-core` declares the same union in `dist/types.d.ts:254`. So `claude-sonnet-5:high` means thinking high, and `off` is the only non-thinking value — Pi cannot express "high effort, non-thinking" because both live on one dial. The `:<level>` suffix is a thinking dial, not a context tier — Pi exposes no context selector, so every row is short by construction.
 
@@ -194,11 +198,14 @@ OMP is the one harness with native role indirection, so category rows are spelle
 | Category                              | Token      | Work profile                                   | Personal profile                               |
 | ------------------------------------- | ---------- | ---------------------------------------------- | ---------------------------------------------- |
 | `lookup`                              | `@smol`    | `openrouter/deepseek/deepseek-v4-flash:xhigh`  | `openrouter/deepseek/deepseek-v4-flash:xhigh`  |
+| `memory` (direct id, not a role)      | —          | `openrouter/google/gemini-3.7-flash:high`      | `openrouter/google/gemini-3.7-flash:high`      |
 | `mechanical`, `research`, `implement` | `@task`    | `openrouter/openai/gpt-5.5:xhigh`              | `openrouter/openai/gpt-5.5:xhigh`              |
 | `orchestrate`                         | `@plan`    | `openrouter/openai/gpt-5.5:xhigh`              | `openrouter/openai/gpt-5.5:xhigh`              |
 | `review`, `refute`                    | `@advisor` | `openrouter/anthropic/claude-sonnet-4.6:xhigh` | `openrouter/anthropic/claude-sonnet-4.6:xhigh` |
 
 Verified on 17.2.4: a profile carrying `model: "@smol"` runs on `modelRoles.smol`, and an unknown token fails loudly with `Error: No model selected.` rather than falling back. Provider and model are separated by `/`, never `:` — `cursor:` parses as a bogus provider. Like Pi, OMP's `:<level>` suffix is a single thinking dial the runtime maps straight onto `reasoning`, so "high effort, non-thinking" is not expressible here. User call 2026-08-24: both OMP profiles route default/vision/slow/plan/task to OpenRouter GPT-5.5 xhigh, `smol` to DeepSeek V4 Flash xhigh, and `advisor` to Sonnet 4.6 xhigh.
+
+`memory` bypasses the role table on purpose: DeepSeek V4 Flash failed the live scribe probes (stored a known duplicate on Pi; hung as OMP scribe, killed at 9 min, 2026-08-28), while Gemini 3.7 Flash returned the correct `duplicate of <id>` on the same fixture (2026-08-29). Pinning the direct id keeps `modelRoles.smol` — and the `lookup` lane riding it — unchanged. Gemini 3.7 Flash tops out at `high` (no `xhigh`). The `:high` suffix in the row is load-bearing: [`agent-model.partial`](../../../home/.chezmoitemplates/agent-model.partial) renders only the model string into the agent frontmatter (the registry `effort` field is never rendered for OMP), and OMP's spawn precedence honors an explicit `:level` suffix over its defaults (`task/executor.ts`: effort > `:level` suffix > agent-definition default > pattern-derived).
 
 `modelRoles.advisor` is enabled for primary turns and spawned agents. Review and refute both resolve `@advisor` (same-family Sonnet 4.6), and `verifier_status: reduced_independence` makes that reporting explicit.
 

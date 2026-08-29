@@ -223,13 +223,15 @@ cursor_models:
   - id: "kimi-k3-max"
 
 # Pi's OpenRouter picker is a strict route. GPT-5.5 carries primary categories, DeepSeek V4 Flash
-# carries mechanical, and Sonnet 4.6 carries refute; Kimi and GLM-5.2 remain selectable.
+# carries mechanical, Gemini 3.7 Flash carries memory (live-probed 2026-08-29; tops out at :high),
+# and Sonnet 4.6 carries refute; Kimi and GLM-5.2 remain selectable.
 # Pi resolves the `openrouter/` prefix through its own built-in provider, so no generated provider
 # block backs these entries.
 pi_extra_models:
   - id: "openrouter/openai/gpt-5.5"
     recommended: true
   - id: "openrouter/deepseek/deepseek-v4-flash"
+  - id: "openrouter/google/gemini-3.7-flash"
   - id: "openrouter/anthropic/claude-sonnet-4.6"
   - id: "openrouter/moonshotai/kimi-k3"
   - id: "openrouter/z-ai/glm-5.2"

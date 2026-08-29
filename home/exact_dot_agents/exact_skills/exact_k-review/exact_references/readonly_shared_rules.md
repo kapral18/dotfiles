@@ -2,26 +2,12 @@
 
 All review modes load this file. Do not duplicate these rules in mode files.
 
-The surface-agnostic judging engine lives in `~/.agents/skills/k-review/references/judging_core.md`.
+The surface-agnostic judging engine lives in two files under `~/.agents/skills/k-review/references/`:
 
-It covers:
+- `judging_core.md` covers Truth Validation, the Candidate Refutation Ladder, the gates (State-Machine, Async-Derived State, Context-Divergence, Scale-Behavior, Deletion-Safety, Replacement/Migration Parity, Historical-Rationale, Semantic-Projection, Product-Flow, Signal-Quality, Systemic-Risk), and Severity.
+- `judging_pipeline.md` covers the Coverage Checklist, Post-Review Lens + Stage, Findings-Set Audit, and Verify-and-Fix Loop.
 
-- Truth Validation
-- State-Machine Gate
-- Async-Derived State Gate
-- Context-Divergence Gate
-- Scale-Behavior Gate
-- Deletion-Safety
-- Replacement/Migration Parity
-- Historical-Rationale
-- Product-Flow Lens
-- Signal-Quality Gate
-- Systemic-Risk Checks
-- Coverage Checklist
-- Severity
-- Post-Review Lens + Stage
-
-Load it alongside this file.
+Load both alongside this file.
 
 This file carries only the PR/SCSI/GitHub-delivery rules layered on top of that core.
 
@@ -213,13 +199,24 @@ Every PR-review output that may become GitHub review feedback must include the `
 
 ## Review Verdict (PR Review Mode Only)
 
-After all findings are drafted, recommend an overall verdict:
+After all findings are drafted, recommend an overall verdict from `authorship`, severity, and `author_relation`:
 
-- **Approve**: no CRITICAL/HIGH findings remain; all findings are LOW/MEDIUM nits or suggestions.
-- **Request changes**: at least one CRITICAL or HIGH finding that must be addressed before merge.
-- **Comment only**: findings exist but are informational/advisory; merge is not blocked.
+- **Self-review** (`authorship: self`):
+  - Fix issues in the working tree before recommending a GitHub review verdict.
+  - **Comment only** if the user explicitly asks to post self-review notes with remaining non-blocking findings.
+  - **Approve** when no findings remain.
+  - Do not request changes on the user's own PR from this flow.
+- **Immediate-team author**:
+  - **Request changes** only for a CRITICAL blocker that must be addressed before merge.
+  - **Comment only** when findings remain below CRITICAL. Trust teammates to judge whether comment-level feedback should block.
+  - **Approve** when no findings remain.
+- **Outside or unknown-team author**:
+  - **Request changes** for CRITICAL or HIGH findings that must be addressed before merge.
+  - **Comment only** for MEDIUM findings.
+  - **Approve with comments** for LOW findings or true nits.
+  - **Approve** when no findings remain.
 
-State the recommendation and the reason.
+State the recommendation and one short reason.
 
 Example:
 

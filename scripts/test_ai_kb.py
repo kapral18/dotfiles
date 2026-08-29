@@ -899,6 +899,268 @@ class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
             ranked = {h["id"]: h["rrf_score"] for h in hits}
             assert ranked[fresh.id] > ranked[stale.id], ranked
 
+    def test_newer_near_duplicate_outranks_older_lexical_winner(self):
+        # Recency preference inside near-duplicate groups: a knowledge update
+        # written on top of an older capsule (force-written, no supersede link)
+        # must take the older twin's rank even when the older twin wins the
+        # lexical lane, while unrelated hits keep their rank slots.
+        import ai_kb
+
+        class RecencyEmbedder:
+            model = "test/recency-embedder"
+
+            @staticmethod
+            def embed_one(text: str) -> list[float]:
+                # The newer twin sits at cosine ~0.995 to the older one (>= the
+                # 0.85 group bar) but strictly BELOW it against the query, so the
+                # older twin wins BOTH lanes and holds a strictly higher RRF
+                # score. A mutation that swaps positions without transferring
+                # RRF scores is then undone by the post-pass re-sort and caught.
+                # The unrelated capsule is orthogonal (cosine 0.0).
+                lowered = text.lower()
+                if "updated correction" in lowered:
+                    return [0.995, 0.0999, 0.0]
+                if "gnarly" in lowered:
+                    return [1.0, 0.0, 0.0]
+                return [0.0, 1.0, 0.0]
+
+            def embed(self, texts: list[str]) -> list[list[float]]:
+                return [self.embed_one(t) for t in texts]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp), embedder=RecencyEmbedder())
+            older = kb.remember(
+                title="Gnarly probe semantics",
+                body="gnarly probe semantics old truth",
+                kind="fact",
+            )
+            newer = kb.remember(
+                title="Gnarly probe correction",
+                body="gnarly probe updated correction",
+                kind="fact",
+                # Cosine ~0.995 to the older twin — inside the write-dedupe
+                # band, so force-write to model the un-adjudicated
+                # near-duplicate that recency preference exists for.
+                force=True,
+            )
+            unrelated = kb.remember(
+                title="Tmux pane capture",
+                body="completely different capsule about tmux",
+                kind="fact",
+            )
+
+            hits = kb.search("gnarly probe semantics", limit=3, mode="hybrid")
+
+            assert {h["id"] for h in hits} == {older.id, newer.id, unrelated.id}
+            # The older twin wins both lanes (exact lexical match and the
+            # higher query cosine), so ranking newer first proves the recency
+            # pass acted — and that it transferred RRF scores, not just slots.
+            assert hits[0]["id"] == newer.id, [h["title"] for h in hits]
+            # MMR keeps diversifying after the swap: the orthogonal capsule
+            # ranks above the older twin, which is now the group's shadow.
+            assert [h["id"] for h in hits[1:]] == [unrelated.id, older.id]
+
+    def test_cross_kind_near_duplicate_never_joins_recency_group(self):
+        # A fact/gotcha near-pair is curate's contradiction case for human
+        # adjudication, not an update chain: the newest cross-kind capsule must
+        # not steal the fact group's top slot even at cosine 1.0.
+        import ai_kb
+
+        class CrossKindEmbedder:
+            model = "test/cross-kind-embedder"
+
+            @staticmethod
+            def embed_one(text: str) -> list[float]:
+                if "gnarly" in text.lower():
+                    return [1.0, 0.0, 0.0]
+                return [0.0, 1.0, 0.0]
+
+            def embed(self, texts: list[str]) -> list[list[float]]:
+                return [self.embed_one(t) for t in texts]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp), embedder=CrossKindEmbedder())
+            older = kb.remember(
+                title="Gnarly probe semantics",
+                body="gnarly probe semantics old truth",
+                kind="fact",
+            )
+            newer = kb.remember(
+                title="Gnarly probe correction",
+                body="gnarly probe updated correction",
+                kind="fact",
+                force=True,
+            )
+            cross_kind = kb.remember(
+                title="Gnarly probe gotcha",
+                body="gnarly probe gotcha note",
+                kind="gotcha",
+                force=True,
+            )
+
+            hits = kb.search("gnarly probe semantics", limit=3, mode="hybrid")
+
+            assert {h["id"] for h in hits} == {older.id, newer.id, cross_kind.id}
+            # The newest capsule overall is the gotcha; the fact group's newest
+            # member (not the gotcha) must hold the top slot.
+            assert hits[0]["id"] == newer.id, [h["title"] for h in hits]
+
+    def test_drift_chain_does_not_transitively_bridge_non_duplicates(self):
+        # Complete-linkage grouping: A~B (0.906) and B~C (0.906) but A~C only
+        # 0.642, so C must not join {A, B} and must not take A's slot even
+        # though C is the newest of the three. B (a true near-duplicate of A)
+        # still takes A's slot.
+        import ai_kb
+
+        class ChainEmbedder:
+            model = "test/chain-embedder"
+
+            @staticmethod
+            def embed_one(text: str) -> list[float]:
+                lowered = text.lower()
+                if "chaintip" in lowered:
+                    return [0.6417, 0.7670, 0.0]
+                if "chainmid" in lowered:
+                    return [0.906, 0.4233, 0.0]
+                if "chainbase" in lowered:
+                    return [1.0, 0.0, 0.0]
+                return [0.0, 0.0, 1.0]
+
+            def embed(self, texts: list[str]) -> list[list[float]]:
+                return [self.embed_one(t) for t in texts]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp), embedder=ChainEmbedder())
+            base = kb.remember(
+                title="Transitive chain base",
+                body="transitive chain probe chainbase base truth",
+                kind="fact",
+            )
+            mid = kb.remember(
+                title="Transitive chain middle",
+                body="transitive chain probe chainmid middle update",
+                kind="fact",
+                force=True,
+            )
+            tip = kb.remember(
+                title="Transitive chain tip",
+                body="transitive chain probe chaintip tip drift",
+                kind="fact",
+                force=True,
+            )
+
+            hits = kb.search("transitive chain probe chainbase base truth", limit=3, mode="hybrid")
+
+            assert {h["id"] for h in hits} == {base.id, mid.id, tip.id}
+            # mid is a true near-duplicate of base and newer, so it takes
+            # base's slot; tip (newest, but only chained through mid) must not.
+            assert hits[0]["id"] == mid.id, [h["title"] for h in hits]
+            assert hits[0]["id"] != tip.id
+
+    def test_recency_swap_holds_on_exact_rrf_tie(self):
+        # When the twins tie in RRF (one wins BM25, the other wins the vector
+        # lane by the same margin), score transfer alone is invisible: the
+        # post-pass stable sort keeps list order. The position transfer is the
+        # tie-breaker, so drive the pass directly with an exact tie and assert
+        # the newest member ends up first.
+        import ai_kb
+
+        def hit(hid: str, rrf: float) -> "ai_kb.Hit":
+            return ai_kb.Hit(
+                id=hid,
+                title=hid,
+                body=hid,
+                snippet="",
+                source=None,
+                tags=[],
+                kind="fact",
+                scope="project",
+                workspace_path=None,
+                domain_tags=[],
+                confidence=0.9,
+                bm25_rank=None,
+                vector_rank=None,
+                bm25_score=None,
+                cosine_score=None,
+                rrf_score=rrf,
+                mmr_selected=False,
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp))
+            older = hit("older", 0.02)
+            newer = hit("newer", 0.02)
+            hits = [older, newer]
+            vectors = {"older": [1.0, 0.0, 0.0], "newer": [1.0, 0.0, 0.0]}
+            recency = {
+                "older": ("2026-01-01T00:00:00", "older"),
+                "newer": ("2026-02-01T00:00:00", "newer"),
+            }
+
+            groups = kb._prefer_newer_near_duplicates(hits, vectors, recency, {})
+
+            hits.sort(key=lambda h: h.rrf_score, reverse=True)
+            assert [h.id for h in hits] == ["newer", "older"], [h.id for h in hits]
+            assert [[m.id for m in g] for g in groups] == [["newer", "older"]]
+
+    def test_newest_group_member_survives_mmr_over_older_twin(self):
+        # MMR penalizes by similarity to already-selected hits: with a top hit
+        # sharing the newer twin's vector exactly, plain MMR would keep the
+        # older twin (less similar to the top hit) and drop the correction.
+        # The post-MMR restore step must swap the newest member back in.
+        import ai_kb
+
+        class RestoreEmbedder:
+            model = "test/restore-embedder"
+
+            @staticmethod
+            def embed_one(text: str) -> list[float]:
+                lowered = text.lower()
+                if "restoreold" in lowered:
+                    return [0.866, 0.5, 0.0]
+                if "restore" in lowered:
+                    return [1.0, 0.0, 0.0]
+                return [0.0, 0.0, 1.0]
+
+            def embed(self, texts: list[str]) -> list[list[float]]:
+                return [self.embed_one(t) for t in texts]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp), embedder=RestoreEmbedder())
+            older = kb.remember(
+                title="Restore probe stale",
+                body="mmr restore probe restoreold stale truth",
+                kind="fact",
+            )
+            newer = kb.remember(
+                title="Restore probe correction",
+                body="mmr restore probe restorenew corrected truth",
+                kind="fact",
+                force=True,
+            )
+            top = kb.remember(
+                title="Restore probe query twin",
+                body="mmr restore probe restorex exact query match",
+                kind="gotcha",
+                force=True,
+            )
+
+            hits = kb.search("mmr restore probe restorex exact query match", limit=2, mode="hybrid")
+
+            ids = [h["id"] for h in hits]
+            assert ids[0] == top.id, [h["title"] for h in hits]
+            # Without the restore step MMR keeps the older twin here.
+            assert ids[1] == newer.id, [h["title"] for h in hits]
+            assert all(h["mmr_selected"] for h in hits)
+
+            # With room for everything the restore step must be a no-op: the
+            # newest member is already selected, so nothing is swapped and no
+            # id is duplicated (guards the `newest in selected` skip — without
+            # it the older twin would be overwritten by a second `newer`).
+            full = kb.search("mmr restore probe restorex exact query match", limit=3, mode="hybrid")
+            full_ids = [h["id"] for h in full]
+            assert sorted(full_ids) == sorted([top.id, newer.id, older.id]), full_ids
+
     def test_hybrid_mode_marks_mmr_selected(self):
         import ai_kb
 

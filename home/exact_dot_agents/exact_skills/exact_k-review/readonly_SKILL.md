@@ -17,6 +17,7 @@ Contract:
   - `~/.agents/skills/k-review/references/plan_review.md`
 - Before entering any mode, load once:
   - `~/.agents/skills/k-review/references/judging_core.md`
+  - `~/.agents/skills/k-review/references/judging_pipeline.md`
   - `~/.agents/skills/k-review/references/shared_rules.md`
   - `~/.agents/skills/k-review/references/authorship.md`
 - Mode files reference both files but do not re-load them.

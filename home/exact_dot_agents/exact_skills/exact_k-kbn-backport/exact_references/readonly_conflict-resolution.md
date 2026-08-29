@@ -95,15 +95,10 @@ Familiarity is not a selection criterion: running "the checks I usually run" is 
 Every item must end with an explicit status — `pass`, `fail`, or `unavailable` (with the reason) — before the run may continue.
 An item with no status is not passed, and an aggregate claim like "all validation passes" over unreported items is an overclaim, not a completion.
 
-1. Focused Jest for changed tests, using the closest package config:
-   `node scripts/jest --config=<package>/jest.config.js <test-file>`
-2. ESLint on changed source and test files:
-   `node scripts/eslint <changed-files>`
-3. Scoped type check for the owning package:
-   `node scripts/type_check --project <package>/tsconfig.json`
-4. Kibana change check when available:
-   `node scripts/check_changes.ts`
+1. Focused Jest for changed tests, using the closest package config: `node scripts/jest --config=<package>/jest.config.js <test-file>`
+2. ESLint on changed source and test files: `node scripts/eslint <changed-files>`
+3. Scoped type check for the owning package: `node scripts/type_check --project <package>/tsconfig.json`
+4. Kibana change check when available: `node scripts/check_changes.ts`
 
 A `fail` blocks ENTER: fix the resolution or report the failure — never continue past a failing check.
-If `scripts/check_changes.ts` or a branch-local validation script is missing, report it as `unavailable` with the reason and rely on the focused checks above;
-silent omission of a missing script is the failure mode this rule exists to prevent.
+If `scripts/check_changes.ts` or a branch-local validation script is missing, report it as `unavailable` with the reason and rely on the focused checks above; silent omission of a missing script is the failure mode this rule exists to prevent.

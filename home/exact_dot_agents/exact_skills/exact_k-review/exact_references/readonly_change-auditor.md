@@ -12,7 +12,7 @@ You run in an isolated read-only context.
 Audit the self-authored changeset directly from files and commands; do not rely on conversation history.
 Never review diff hunks in isolation: read full enclosing files, check sibling functions, and trace callers/consumers to discover impact on preexisting surrounding behavior.
 
-Load `~/.agents/skills/k-review/references/judging_core.md`.
+Load `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/judging_pipeline.md`.
 Use `~/.agents/skills/k-light-review/SKILL.md` only for the Light-Eligibility Predicate; run only that predicate from it —
 its parent workflow and subagent launches stay out of this worker.
 Run the read/judge phase only and return structured findings; the parent owns adversarial refutation and any fixes.

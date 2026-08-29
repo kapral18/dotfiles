@@ -20,7 +20,7 @@ Load when building the required PR publication packet for `k-github`. The gate i
   reuse each pair that passes its adequacy and freshness checks, and recapture stale, inadequate, partial, or unmapped items.
   For non-visual UI behavior bugs (clipboard, keyboard, focus, network), capture human-visible trigger/result states and record the non-visual assertion in the Test Plan.
   Captured proof includes folder/filename mapping; explicit skips include user approval evidence.
-- `test_plan`: issue reproduction/expected/actual coverage, commands run, and observed results.
+- `test_plan`: reviewer-runnable steps, issue reproduction/expected/actual coverage, commands run, and observed results.
   If a matching `,proof` ledger exists, select it with `,proof list --json` and inspect `,proof --topic <topic> status --json`.
   Consume it as completion proof only when `allowed` is true, `finalized_at` is set, and `seal_status` is `ok`.
   Run `,proof --topic <topic> report` and quote criteria, evidence IDs, and verdicts instead of raw logs.
@@ -35,7 +35,16 @@ Completion criterion: the packet is complete, or composition is blocked with exa
 ## Body rules
 
 - Keep it short and reviewable; prefer bullets over prose.
-- Test Plan must be evidence: commands run + observed result.
+- Test Plan must be evidence: runnable command or manual step, expected result, and observed result.
+- Before proposing a Test Plan command or manual step, verify it from local source, CLI help, linked issue steps, or a safe probe.
+  If it is not verified, keep it as a composer-only placeholder outside the PR body; do not present it as runnable Test Plan evidence.
+- Test Plan MUST NOT mirror or enumerate changed test paths, spec filenames, fixtures, snapshots, or diff file lists as the plan.
+  Mention a path only when it is part of a command or concrete repro step a reviewer can run from a normal checkout.
+- Manual Test Plan steps must be reader-executable: each step has one action or one expected observation, using literal UI labels, commands, field values, keystrokes, and API names.
+  Do not combine setup, choice, and verification in one sentence.
+- Before simplifying a behavioral Test Plan, run the false-positive check: would the plan still pass without the fix?
+  Preserve required setup state, such as warming a cache before testing cache invalidation, when that state makes the old bug observable.
+- If the requested `## Test Plan` must be manual-only, keep executed commands and observed local validation in the publication packet or a separate non-Test-Plan section instead of mixing them into the manual steps.
 - Do not collapse required template sections into `## Summary`.
   Required explanatory sections such as `## Root Cause`, `## Fix`, `## Rationale`, or `## User-Facing Behavior` must appear as their own headings when selected by the template.
   Before handoff, compare final headings against the template checklist.

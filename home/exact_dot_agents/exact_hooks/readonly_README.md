@@ -19,6 +19,8 @@ Runtime state is kept outside chezmoi and outside worktrees:
 /tmp/specs/<workspace-path-without-leading-slash>/<topic>.txt
 /tmp/specs/<workspace-path-without-leading-slash>/<topic>.worklog.jsonl
 /tmp/specs/<workspace-path-without-leading-slash>/.recall-seen-<session-key>.json
+/tmp/specs/<workspace-path-without-leading-slash>/.recall-candidates-<session-key>.json
+/tmp/specs/<workspace-path-without-leading-slash>/.recall-staged-<session-key>.json
 /tmp/specs/<workspace-path-without-leading-slash>/.worklog-queue-v1/<session-key>/
 /tmp/specs/<workspace-path-without-leading-slash>/.worklog-locks-v1/
 ```
@@ -53,9 +55,12 @@ The hook runs `,ai-kb search` with the spec text as the query (`bm25` lane, no e
 It surfaces up to three capsules via `--workspace-gate`, which makes the KB itself keep only capsules local to this workspace or scoped `domain`/`universal`, so durable memory seeds the session automatically.
 Unbound, ad-hoc/`session-*`, and review topics get no capsule warm-start.
 This is the only automatic session-start capsule retrieval; supported runtimes also perform per-turn recall.
-Adapters that send neither `AI_EMBED_WARM=1` nor `warm_embedder: true` have no per-turn injection wiring, so their session context carries a `### Recall Notice` directing the agent to run `,ai-kb search` itself mid-task.
+Adapters that send neither `AI_EMBED_WARM=1` nor `warm_embedder: true` have no per-turn staging wiring, so their session context carries a `### Recall Notice` directing the agent to run `,ai-kb search` itself mid-task.
 The hook reads the KB but never writes it; persistence stays agent-driven.
-Warm-start and per-turn recall persist injected capsule IDs in `.recall-seen-<session-key>.json`.
+Per-turn recall never injects capsule bodies: `perturn_recall.py` (and the pi/omp mirrors) writes gate-passing rows in full to `.recall-candidates-<session-key>.json` and injects a `### ,ai-kb candidates staged` pointer only when at least one candidate id is new to the session (tracked in `.recall-staged-<session-key>.json`).
+The parent delegates judgment to the `smol` subagent (`~/.agents/skills/k-ai-kb/references/smol-operator.md`), which admits at most 3 lines or `NONE` against the accumulated session state.
+The warm-start persists injected capsule IDs in `.recall-seen-<session-key>.json`;
+per-turn additions to that file are smol's admissions, never the hook's.
 The canonical session key follows `conversation_id`, then `session_id`, then `generation_id`;
 Pi persists the same state across extension reloads and session resumes.
 
@@ -71,19 +76,19 @@ Resident FastEmbed warm-up is a separate, explicit lifecycle for automatic per-t
 
 `AI_AGENT_DEPTH` applies one automatic recall contract to Claude, OpenCode, Copilot, Codex, Cursor, and Pi:
 
-| Depth      | Startup BM25 | Resident warm-up | Per-turn fetch / inject | Prompt / body caps | Timeout |
-| ---------- | ------------ | ---------------- | ----------------------- | ------------------ | ------- |
-| `fast`     | unchanged    | skipped          | disabled                | n/a                | n/a     |
-| `balanced` | unchanged    | requested        | 6 / 3                   | 600 / 240 chars    | 6s      |
-| `deep`     | unchanged    | requested        | 12 / 5                  | 1200 / 360 chars   | 9s      |
+| Depth      | Startup BM25 | Resident warm-up | Per-turn fetch | Prompt cap | Timeout |
+| ---------- | ------------ | ---------------- | -------------- | ---------- | ------- |
+| `fast`     | unchanged    | skipped          | disabled       | n/a        | n/a     |
+| `balanced` | unchanged    | requested        | 6              | 600 chars  | 6s      |
+| `deep`     | unchanged    | requested        | 12             | 1200 chars | 9s      |
 
 Unset, empty, or invalid values resolve to `balanced`, which is the prior behavior.
-Every enabled profile keeps the existing `hybrid` mode, `0.55` top-cosine gate, `0.85` tail floor, the KB-owned `--workspace-gate` scope gate, session dedupe, stdin-only query transport, and connect-only resident contract.
+Every enabled profile keeps the existing `hybrid` mode, `0.55` top-cosine gate, `0.85` tail floor, the KB-owned `--workspace-gate` scope gate, staged-ledger pointer dedupe, stdin-only query transport, and connect-only resident contract.
 
 Requested warm-up is bounded and fail-open.
 Shared `perturn_recall.py` and Pi's hybrid query path set `AI_EMBED_CONNECT_ONLY=1`;
 the current-turn hot path never spawns, restarts, evicts, or replaces a worker.
-A missing or invalid worker yields no recall block and does not interrupt the request.
+A missing or invalid worker yields no staged candidates or pointer and does not interrupt the request.
 Default/manual `,ai-kb`, `remember`, and `reembed` remain on the one-shot `embed_runner.py` path.
 
 The deployed `~/lib/,ai-kb/embed_client.py` selects a generation-specific Unix socket from protocol version, complete worker source, model, and expected dimension.
@@ -95,8 +100,7 @@ The worker exits after 300 inactive seconds while removing only its own socket i
 Session-start context is bounded without injecting partial memory.
 An oversized active topic spec is omitted with a pointer to the full file instead of being sliced into the prompt.
 Only whole recent worklog entries are included. Worklogs are trimmed during serialized queue flush so runtime state does not grow forever.
-The same flush pass also removes `session-*` fallback worklogs and `.recall-seen-*` dedupe files older than seven days;
-named-topic worklogs are never swept.
+The same flush pass also removes `session-*` fallback worklogs and per-session recall state (`.recall-seen-*`, `.recall-candidates-*`, `.recall-staged-*`) older than seven days; named-topic worklogs are never swept.
 
 Tool adapters invoke `worklog_dispatcher.sh`, which captures the JSON payload and launches `worklog_recorder.py` without waiting for filesystem bookkeeping.
 The recorder durably enqueues a session-sequenced event, and a transient worker flushes it under a per-target lock.

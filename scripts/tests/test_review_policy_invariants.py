@@ -105,7 +105,7 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         for mode_file, ordering in (
             (
                 "exact_k-review/exact_references/readonly_local_changes.md",
-                "Run the Findings-Set Audit from `judging_core.md` in the controller over the candidate set before adversarial verification.",
+                "Run the Findings-Set Audit from `judging_pipeline.md` in the controller over the candidate set before adversarial verification.",
             ),
             (
                 "exact_k-review/exact_references/readonly_pr_review.md",

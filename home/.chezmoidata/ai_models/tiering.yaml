@@ -75,6 +75,12 @@ agent_categories:
   refute:
     family: "counter"
     contract: "adversarial-verification"
+  # Bounded judgment and `,ai-kb` operation over caller-scoped inputs (staged recall candidates,
+  # one-line insights): the work is small-context and latency-sensitive, so the category resolves
+  # to each harness's small/fast pick, never the research/implement tiers.
+  memory:
+    family: "primary"
+    contract: "memory-operations"
 
 # Every delegable agent name across every harness, mapped to its category. Names are the ones the
 # harness itself uses, so built-ins (Copilot's `explore`, Codex's `worker`, Gemini's `generalist`,
@@ -114,6 +120,9 @@ agent_bindings:
   code-searcher: "research"
   researcher: "research"
   claude-code-guide: "research"
+  # ,ai-kb operator: judges staged per-turn recall candidates against session state and owns
+  # capsule write mechanics (k-ai-kb/references/smol-operator.md).
+  smol: "memory"
   # Claude Code built-ins the repo overrides.
   Explore: "research"
   Plan: "orchestrate"
@@ -210,6 +219,12 @@ category_models:
       thinking: "off"
       context: "short"
       verifier_status: "degraded"
+    # memory: smallest verified id in this catalog; low effort is verified claude syntax (lookup row).
+    memory:
+      model: "claude-sonnet-4-6"
+      effort: "low"
+      thinking: "off"
+      context: "short"
   codex:
     # User call 2026-08-24: Codex mechanical uses `gpt-5.4` at high effort; every other Codex
     # category runs `gpt-5.5` at xhigh effort. Keeping every category explicit lets the gate close
@@ -254,6 +269,12 @@ category_models:
       thinking: ""
       context: "short"
       verifier_status: "degraded"
+    # memory: reuses the verified mechanical pair (gpt-5.4/high); lower efforts unverified on this catalog.
+    memory:
+      model: "gpt-5.4"
+      effort: "high"
+      thinking: ""
+      context: "short"
   copilot:
     # `context: short` is settings.json `contextTier: "default"`; long would be `"long_context"`.
     # User call 2026-08-24: Copilot defaults to gpt-5.5 at xhigh effort for every category except
@@ -297,6 +318,12 @@ category_models:
       thinking: "off"
       context: "short"
       verifier_status: "cross_family"
+    # memory: reuses the verified mechanical pair (claude-sonnet-4.6/high, catalog-checked by invariants).
+    memory:
+      model: "claude-sonnet-4.6"
+      effort: "high"
+      thinking: "off"
+      context: "short"
   cursor:
     # Cursor is the only harness that splits effort and thinking into separate ids (plain
     # `claude-fable-5-medium` vs `claude-fable-5-thinking-*`). Opus 5, Fable 5 and the GPT-5.x ids
@@ -354,6 +381,12 @@ category_models:
       thinking: ""
       context: "long"
       verifier_status: "cross_family"
+    # memory: composer-2.5 is Task-enum whitelisted and cheap ($0.5/$2.5); the plain id, never `-fast`.
+    memory:
+      model: "composer-2.5"
+      effort: ""
+      thinking: ""
+      context: "short"
   gemini:
     # Google-only catalog, so refute reports degraded. User call 2026-08-24: use Gemini 3.1 Pro
     # everywhere except mechanical, which stays on Gemini 3.7 Flash. Antigravity 1.1.18 spells
@@ -395,6 +428,12 @@ category_models:
       thinking: ""
       context: "long"
       verifier_status: "degraded"
+    # memory: flash is the small Google pick, same verified pair as mechanical.
+    memory:
+      model: "gemini-3.7-flash"
+      effort: "high"
+      thinking: ""
+      context: "long"
   pi:
     # Pi only ever reaches OpenRouter here. User call 2026-08-24: primary categories use GPT-5.5
     # at xhigh thinking, mechanical uses DeepSeek V4 Flash at xhigh, and refute uses Claude Sonnet
@@ -437,6 +476,14 @@ category_models:
       thinking: ""
       context: "short"
       verifier_status: "cross_family"
+    # memory: gemini-3.7-flash replaces deepseek-v4-flash after live scribe probes 2026-08-29 —
+    # deepseek stored a known duplicate; gemini returned `duplicate of <id>` on the same fixture.
+    # The model exposes `high` as its top thinking level (no xhigh).
+    memory:
+      model: "openrouter/google/gemini-3.7-flash:high"
+      effort: "high"
+      thinking: ""
+      context: "short"
   omp:
     # OMP is the one harness with native role indirection, so the category rows are spelled as
     # `@role` tokens and readonly_config.yml.tmpl's `modelRoles` resolves them per profile.
@@ -487,3 +534,15 @@ category_models:
       thinking: ""
       context: "short"
       verifier_status: "reduced_independence"
+    # memory: direct OpenRouter id, not @smol — modelRoles.smol resolves to deepseek-v4-flash,
+    # which hung as omp scribe (killed at 9 min, 2026-08-28) and stored a duplicate on pi;
+    # gemini-3.7-flash passed the same scribe fixture. The `:high` suffix is load-bearing:
+    # agent-model.partial renders only `model` into the agent frontmatter (effort below is
+    # informational), and omp's spawn precedence honors an explicit `:level` suffix
+    # (task/executor.ts: effort > `:level` suffix > agent default > pattern-derived).
+    # The model exposes `high` as its top thinking level (no xhigh).
+    memory:
+      model: "openrouter/google/gemini-3.7-flash:high"
+      effort: "high"
+      thinking: ""
+      context: "short"

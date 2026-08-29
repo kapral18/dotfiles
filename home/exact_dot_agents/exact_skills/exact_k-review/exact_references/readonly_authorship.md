@@ -18,6 +18,10 @@ When a PR is involved:
 - Run: `gh pr view <number> --json author --jq '.author.login'`
 - Compare against: `gh api user --jq '.login'`
 - Match -> `self`; mismatch -> `other`; cannot resolve -> `unknown`.
+- For `authorship: other` or `unknown`, also classify `author_relation` for the review verdict:
+  - `immediate_team`: verified from a loaded domain overlay, repo/team evidence, or explicit user-provided context.
+  - `outside_or_unknown_team`: any author not verified as immediate team.
+  - Do not infer immediate-team membership from org membership, CODEOWNERS, username familiarity, or prior memory alone.
 
 When there is no PR (local changes / branch-delta / commit-range review):
 
