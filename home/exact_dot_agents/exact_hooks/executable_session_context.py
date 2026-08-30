@@ -58,22 +58,20 @@ WARMSTART_RELEVANCE_FLOOR_FRACTION = 0.6
 
 AIKB_REMINDER = (
     "### Durable Memory (,ai-kb)\n"
-    "Recall before non-trivial work by searching with the ACTUAL task as the query: "
-    '`,ai-kb search "<the concrete thing you are about to do>" --limit 5 --json` '
-    "(a precise task query returns the most relevant capsules). "
-    "Persist verified, reusable insights before finishing with DELIBERATE metadata "
-    "(each field drives retrieval/curation — do not leave defaults): "
-    "`,ai-kb remember --title <searchable, names the exact symbol/file/error> "
-    "--body <front-loaded with the literal identifiers a future query would use> "
-    "--kind <fact|gotcha|pattern|anti_pattern|recipe|principle|doc> "
-    "--scope <workspace|project|domain|universal> --source <path:line|command|URL you verified> "
-    '--confidence <0..1, honest> --domain <tag>` — add `--workspace "$(pwd)"` only for '
-    "workspace/project scope. See the ai-kb skill for the full write contract."
+    "The `smol` operator (~/.agents/skills/k-ai-kb/references/smol-operator.md) owns the KB boundary in both directions. "
+    "Recall before non-trivial work by delegating the ACTUAL task as a recall query to `smol` (judge mode, query-recall variant); "
+    "fold in only its returned lines (`NONE` = inject nothing). "
+    "Persist verified, reusable insights before finishing by handing `smol` (scribe mode) the one-line insight, "
+    "evidence anchors, and suggested kind/scope; scribe owns search-first dedupe, metadata selection, and read-back. "
+    "Do not run `,ai-kb search`/`get`/`remember` inline in the parent session; "
+    "only when no isolated spawn exists, apply the inline fallback per the k-ai-kb skill "
+    "(~/.agents/skills/k-ai-kb/references/cli.md) with every metadata field deliberate."
 )
 NO_PERTURN_RECALL_NOTICE = (
     "### Recall Notice\n"
     "This harness has no automatic per-turn `,ai-kb` recall: only session-start context is injected. "
-    'Run `,ai-kb search "<the concrete thing you are working on>" --limit 5` yourself whenever the task shifts, '
+    "Delegate a recall query to the `smol` operator (judge mode) whenever the task shifts — "
+    "inline `,ai-kb search` only where no isolated spawn exists — "
     "and record mid-task decisions/ideas with `,agent-memory note` so they survive the session."
 )
 
@@ -106,8 +104,8 @@ def per_turn_recall_requested(payload: dict) -> bool:
     Adapters with per-turn retrieval (Claude, Gemini, OpenCode, Copilot,
     Codex, Cursor, Pi) request the resident warm-up via `AI_EMBED_WARM=1` or the
     `warm_embedder` payload flag; an adapter that sends neither has no
-    per-turn hook surface, so its mid-session recall must come from the
-    agent's own `,ai-kb search` (the Recall Notice below).
+    per-turn hook surface, so its mid-session recall must come from a
+    delegated smol recall query (the Recall Notice below).
     """
     if os.environ.get(AI_EMBED_WARM_ENV, "").strip().lower() in TRUE_VALUES:
         return True

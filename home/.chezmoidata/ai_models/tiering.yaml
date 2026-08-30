@@ -331,48 +331,60 @@ category_models:
     # `cursor-agent models` (2026.08.21-4bf0f61: "Cursor Grok 4.6 Extra High").
     #
     # These categories are read by the band hook alone, and the Task tool takes a far narrower whitelist
-    # than `cursor-agent models`. Live Task enum (Cursor IDE 2026-08-14): claude-fable-5-medium,
+    # than `cursor-agent models`. Live Task enum (probed 2026-08-29, cursor-agent 2026.08.28-a7f9513,
+    # via Task-spawn "Invalid model selection" rejection listing): claude-fable-5-high,
     # claude-opus-5-high, claude-sonnet-5-thinking-max, composer-2.5, composer-2.5-fast,
-    # cursor-grok-4.5-high-fast, cursor-grok-4.6-xhigh, gpt-5.6-sol-xhigh, gpt-5.6-terra-xhigh.
+    # cursor-grok-4.5-high-fast, cursor-grok-4.6-xhigh-fast, gemini-3.7-flash-high,
+    # gpt-5.6-sol-high, gpt-5.6-terra-max.
     # Anything else fails the spawn with "Invalid model selection", so categories here must stay inside
     # that list even where a better id exists for a main session: kimi-k3 and
     # claude-fable-5-low/-max are sellable to a main session but are not on that whitelist.
     #
-    # User call 2026-08-24: match Copilot's default shape where the Cursor Task enum can spawn it.
-    # Primary categories use GPT-5.6 SOL Extra High, mechanical stays on Cursor Grok 4.6 Extra High,
-    # and refute uses Opus 5 High. The primary/refute rows are long-context task ids.
+    # User call 2026-08-24 (remapped 2026-08-29 after the Task enum rotated): match Copilot's default
+    # shape where the Cursor Task enum can spawn it. Primary categories use GPT-5.6 SOL High
+    # (sol-xhigh left the enum), refute uses Opus 5 High. The primary/refute rows are long-context
+    # task ids.
+    #
+    # User call 2026-08-30: the cheap lanes (mechanical, memory) use `auto` and let Cursor route
+    # between Composer/Grok/other small models. `auto` is a router selector, not a catalog model:
+    # it is absent from the Task rejection listing above but a live Task spawn with model "auto"
+    # (unbound subagent_type, so the band gate stayed no-op) was accepted and ran
+    # (probed 2026-08-30, cursor-agent 2026.08.28-a7f9513); caller-supplied models are validated
+    # before hook rewrites apply (harness-capabilities), so that probe exercises the real enum.
+    # Interactive `cursor-agent --model auto` completed a full turn in a tmux probe the same day,
+    # and `cursor-agent models` lists `auto - Auto (default)`.
     #
     # `-fast` is a speed tier, not a cheaper model: cursor.com/docs/models prices Composer 2.5 at
     # $0.5/$2.5 and calls the fast variant "A faster variant with the same intelligence ... at $3/M
     # input and $15/M output tokens". No category may reach for a `-fast` id.
     lookup:
-      model: "gpt-5.6-sol-xhigh"
-      effort: "xhigh"
+      model: "gpt-5.6-sol-high"
+      effort: "high"
       thinking: ""
       context: "long"
     mechanical:
-      model: "cursor-grok-4.6-xhigh"
-      effort: "xhigh"
+      model: "auto"
+      effort: ""
       thinking: ""
       context: "short"
     research:
-      model: "gpt-5.6-sol-xhigh"
-      effort: "xhigh"
+      model: "gpt-5.6-sol-high"
+      effort: "high"
       thinking: ""
       context: "long"
     implement:
-      model: "gpt-5.6-sol-xhigh"
-      effort: "xhigh"
+      model: "gpt-5.6-sol-high"
+      effort: "high"
       thinking: ""
       context: "long"
     orchestrate:
-      model: "gpt-5.6-sol-xhigh"
-      effort: "xhigh"
+      model: "gpt-5.6-sol-high"
+      effort: "high"
       thinking: ""
       context: "long"
     review:
-      model: "gpt-5.6-sol-xhigh"
-      effort: "xhigh"
+      model: "gpt-5.6-sol-high"
+      effort: "high"
       thinking: ""
       context: "long"
     refute:
@@ -381,9 +393,9 @@ category_models:
       thinking: ""
       context: "long"
       verifier_status: "cross_family"
-    # memory: composer-2.5 is Task-enum whitelisted and cheap ($0.5/$2.5); the plain id, never `-fast`.
+    # memory: `auto` (user call 2026-08-30) — Cursor's router picks the small model; probes above.
     memory:
-      model: "composer-2.5"
+      model: "auto"
       effort: ""
       thinking: ""
       context: "short"

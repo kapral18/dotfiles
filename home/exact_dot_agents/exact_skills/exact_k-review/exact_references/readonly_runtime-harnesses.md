@@ -54,12 +54,13 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
 
 ## Cursor
 
-- Cursor source supports custom subagent types (`SubagentType.custom.name`) and loads `.cursor/agents` profile files.
-  Launch angle lanes through the `review-worker` profile and the verifier through the `adversarial-verifier` profile;
+- Cursor source supports custom subagent types (`SubagentType.custom.name`) and loads **project-level** `.cursor/agents` profile files only;
+  user-level `~/.cursor/agents` is never scanned (probed 2026-08-30, cursor-agent 2026.08.28-a7f9513), so home-deployed profiles are unreachable.
+  Where a workspace carries `review-worker`/`adversarial-verifier` profiles, launch lanes through them;
   both carry resolver-rendered `model` frontmatter.
-- Resolved `lanes` are `gpt-5.6-sol-xhigh`; resolved `verifier` is `claude-opus-5-high`.
+- Resolved `lanes` are `gpt-5.6-sol-high`; resolved `verifier` is `claude-opus-5-high`.
   `category_models.cursor.refute` carries `verifier_status: cross_family`, so the adversarial verifier runs as a cross-family lane.
-  Omitted/default Cursor subagents can resolve to `composer-2.8-fast`; the CLI default selector is `auto`.
+  Omitted/default Cursor subagents can resolve to `composer-2.5-fast`; the CLI default selector is `auto`.
   Treat any omitted Cursor subagent model as a matrix bypass.
 - Same-name custom profiles do **not** shadow native Cursor enum agents (`explore`, `debug`, `cursor_guide`, `unspecified`):
   custom profiles are carried as a separate `custom` oneof with a `name`, while native cases are distinct empty oneof variants.

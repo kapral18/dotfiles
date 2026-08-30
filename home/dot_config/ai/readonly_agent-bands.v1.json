@@ -523,159 +523,159 @@
     "cursor": {
       "agents": {
         "Explore": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "Plan": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "adversarial-verifier": {
           "model": "claude-opus-5-high",
           "effort": "high"
         },
         "best-of-n-runner": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "browser_agent": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "bugbot": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "change-auditor": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "claude": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "claude-code-guide": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "cli_help": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "code-review": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "code-searcher": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "codebase_investigator": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "criteria-verifier": {
           "model": "claude-opus-5-high",
           "effort": "high"
         },
         "cursor-guide": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "deep-review": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "default": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "explore": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "explorer": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "findings-auditor": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "fresh-eyes": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "general-purpose": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "generalPurpose": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "generalist": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "live-ui-review": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "post-review": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "pr-necessity-auditor": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "rem-agent": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "research": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "researcher": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "review-controller": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "review-worker": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "review-worker-cross": {
           "model": "claude-opus-5-high",
-          "effort": "xhigh"
+          "effort": "high"
         },
         "reviewer": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "rubber-duck": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "security-review": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "smol": {
-          "model": "composer-2.5"
+          "model": "auto"
         },
         "task": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         },
         "worker": {
-          "model": "gpt-5.6-sol-xhigh",
-          "effort": "xhigh"
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
         }
       }
     },

@@ -858,7 +858,11 @@ class TestAgentHooks(unittest.TestCase):
 
             assert "target: wire memory systems" in context
             assert "Durable Memory (,ai-kb)" in context
-            assert ",ai-kb remember" in context
+            # The reminder routes both KB directions through the smol operator and
+            # forbids parent-inline CLI use outside the no-spawn fallback.
+            assert "smol" in context
+            assert "scribe mode" in context
+            assert "Do not run `,ai-kb search`/`get`/`remember` inline" in context
             assert "No Named Topic Active" not in context
 
     def test_session_context_warmstart_injects_relevant_learnings_for_named_topic(self):
@@ -1282,6 +1286,11 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
             assert "### ,ai-kb candidates staged" in context
             assert str(candidates_path) in context
             assert "k-ai-kb/references/smol-operator.md" in context
+            # Harnesses with a fixed Task subagent set (cursor) route to a generic isolated
+            # spawn on the memory-band model; harness-CLI one-shots are an external mechanism
+            # and stay out of the flow.
+            assert "spawn a generic isolated subagent" in context
+            assert "never a harness-CLI one-shot" in context
             # The judge contract needs the session-state paths; the pointer must carry them.
             assert "Session state: " in context
             assert ".worklog.jsonl" in context
@@ -2143,6 +2152,89 @@ console.log(JSON.stringify({ result: result ?? null }));
             assert payload["result"] is None
             assert sorted(Path(tmp).glob(".recall-*")) == []
             assert not search_log.exists()
+
+    def test_pi_recall_injects_probe_budget_directive_from_fresh_ad_hoc_ledger(self):
+        # The probe-budget consumer must fire through the real extension, not just
+        # exist as source text: seed a fresh ad-hoc ledger next to the spec file and
+        # assert the before_agent_start message carries the note; a stale ledger must
+        # inject nothing (freshness cap keeps other sessions' failures out).
+        from datetime import datetime, timezone
+
+        extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"
+        script = """
+const mod = await import(process.argv[1]);
+const specFile = process.argv[2];
+const workspace = "/tmp/workspace";
+const sessionId = "pi/session-budget";
+const handlers = {};
+const pi = {
+  async exec(command, args) {
+    if (command === ",ai-kb" && args[0] === "--help") return { code: 0, killed: false, stdout: "" };
+    if (command === ",agent-memory") {
+      return {
+        code: 0,
+        killed: false,
+        stdout: JSON.stringify({
+          workspace,
+          selected_topic: "budget-topic",
+          session_key: "pi-session-budget",
+          is_named_topic: false,
+          spec_file: specFile,
+          spec_exists: false
+        })
+      };
+    }
+    if (command === "cat") return { code: 1, killed: false, stdout: "" };
+    if (command === "python3" && args[0].endsWith("/lib/,ai-kb/embed_client.py") && args[1] === "ensure") {
+      return { code: 0, killed: false, stdout: "{}" };
+    }
+    throw new Error(`unexpected exec: ${command} ${args.join(" ")}`);
+  },
+  on(event, handler) { handlers[event] = handler; }
+};
+await mod.default(pi);
+await handlers.session_start(
+  { type: "session_start", reason: "startup" },
+  { sessionManager: { getSessionId() { return sessionId; } } }
+);
+const result = await handlers.before_agent_start(
+  { prompt: "why did you choose sqlite here?" },
+  {
+    cwd: workspace,
+    getContextUsage() { return null; },
+    sessionManager: { getSessionId() { return sessionId; } }
+  }
+);
+console.log(JSON.stringify({ content: result?.message?.content ?? null }));
+"""
+        for label, ts, expect_fire in (
+            ("fresh", datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), True),
+            ("stale", "2026-01-01T00:00:00Z", False),
+        ):
+            with self.subTest(ledger=label), tempfile.TemporaryDirectory() as tmp:
+                spec_file = Path(tmp) / "budget-topic.txt"
+                ledger = Path(tmp) / "ad-hoc.probe-ledger.jsonl"
+                ledger.write_text(
+                    "\n".join(json.dumps({"ts": ts, "result": "fail", "summary": "s"}) for _ in range(3)) + "\n",
+                    encoding="utf-8",
+                )
+                env = make_aikb_stub(Path(tmp), [])
+                env["NODE_NO_WARNINGS"] = "1"
+                env["HOME"] = str(Path(tmp) / "home")
+                result = subprocess.run(
+                    ["node", "--input-type=module", "-e", script, str(extension), str(spec_file)],
+                    cwd=str(REPO),
+                    capture_output=True,
+                    text=True,
+                    env=env,
+                    check=True,
+                )
+                content = json.loads(result.stdout)["content"]
+                if expect_fire:
+                    assert content is not None and "probe-budget-exhausted" in content
+                    assert "Probe-budget hint" in content
+                else:
+                    assert content is None
 
     def test_pi_recall_staging_contract_matches_perturn_recall(self):
         import re

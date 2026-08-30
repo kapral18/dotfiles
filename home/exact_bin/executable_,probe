@@ -15,6 +15,10 @@
 #     dropped and a warning is printed (probes should always be running inside a
 #     hook-armed session anyway).
 #   - Writes to `<spec_dir>/<session_key>.probe-ledger.jsonl`.
+#   - The `ad-hoc` fallback ledger is not a dead end: the per-turn hook
+#     (`correction_detector.probe_budget_signal`) reads it when no session-keyed
+#     ledger exists, restricted to entries at most 4 hours old, so probes recorded
+#     from a plain shell still drive the probe-budget hint.
 #
 # Bounded write: at most 200 lines, drops the oldest when over.
 set -euo pipefail

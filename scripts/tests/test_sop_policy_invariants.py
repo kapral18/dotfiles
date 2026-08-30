@@ -177,6 +177,34 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "home/exact_bin/executable_,probe",
             ".probe-ledger.jsonl",
         )
+        # `,probe` from a plain shell has no harness session id and records under the
+        # `ad-hoc` key, so the reader must keep its freshness-capped ad-hoc fallback or
+        # the hint never fires anywhere in practice.
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_hooks/correction_detector.py",
+            'PROBE_AD_HOC_KEY = "ad-hoc"',
+            "PROBE_AD_HOC_MAX_AGE_SECONDS",
+        )
+        # Every per-turn surface that reimplements the correction directive must also
+        # carry the probe-budget consumer, or the hint silently fires on some harnesses
+        # and not others: pi/omp mirror it in TypeScript, Antigravity rides the
+        # premise-nudge PreInvocation drain because it has no user-prompt hook.
+        for mirror in (
+            "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts",
+            "home/dot_omp/private_agent/extensions/ai-kb-recall.ts",
+        ):
+            self.assert_file_contains(
+                mirror,
+                "probe-budget-exhausted",
+                ".probe-ledger.jsonl",
+                'PROBE_AD_HOC_KEY = "ad-hoc"',
+                "Probe-budget hint",
+            )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_hooks/executable_premise_nudge.py",
+            "probe_budget_signal",
+            "PROBE_BUDGET_NOTE",
+        )
 
     def test_global_sop_keeps_side_effect_publication_and_git_gates(self):
         self.assert_file_contains(
@@ -310,7 +338,8 @@ class TestSopPolicyInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
-            "Recall first with `,ai-kb search` when prior knowledge could help",
+            "Recall first through `smol` when prior knowledge could help",
+            "Do not run `,ai-kb search`/`,ai-kb get` inline in the parent session",
             "never store guesses or session-only notes",
             "Mid-task decisions, ideas, and unverified constraints worth keeping go to `,agent-memory note",
             "At the end of any substantive turn, silently self-check whether a durable verified reusable insight was produced",
@@ -434,9 +463,10 @@ class TestSopPolicyInvariants(unittest.TestCase):
     def test_ai_kb_skill_owns_quoting_caveat_not_sop(self):
         # Shell-quoting for `,ai-kb remember` arguments is mechanical and command-specific
         # with a loud failure mode (shell error or garbled capsule), not universal or silent.
-        # It belongs in the skill, not the always-on SOP.
+        # It belongs with the runner-facing CLI contract (the smol operator's reference),
+        # not the always-on SOP.
         self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-ai-kb/readonly_SKILL.md",
+            "home/exact_dot_agents/exact_skills/exact_k-ai-kb/exact_references/readonly_cli.md",
             "Markdown backticks trigger shell command substitution unless single-quoted or escaped",
             "an unescaped backtick inside a double-quoted shell argument triggers substitution",
         )

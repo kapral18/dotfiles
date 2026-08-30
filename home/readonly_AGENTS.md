@@ -345,14 +345,20 @@ GitHub PRs/issues/comments/reviews/releases/gists, Slack, email, chat, thread re
 ### 4.1 Durable Memory
 
 Durable cross-session knowledge lives in `,ai-kb`; ephemeral working context lives in `/tmp/specs`.
+The `smol` operator owns both directions of the KB boundary so capsule dumps and write mechanics never occupy the parent context.
+The k-ai-kb skill (`~/.agents/skills/k-ai-kb/SKILL.md`) owns the delegation packets and the fallback ladder.
 
-- Recall first with `,ai-kb search` when prior knowledge could help: starting non-trivial work or hitting a likely known setup gotcha.
-- Persist only verified durable/reusable insights with `,ai-kb remember`; never store guesses or session-only notes.
+- Recall first through `smol` when prior knowledge could help (starting non-trivial work or hitting a likely known setup gotcha):
+  delegate the concrete task query (judge mode) and fold in only its returned lines.
+- On a `,ai-kb candidates staged` pointer, delegate judgment to `smol` and fold in only its returned lines (`NONE` = inject nothing).
+  Do not read the staged candidates file into the parent context.
+- Persist only verified durable/reusable insights; never store guesses or session-only notes. Delegate persistence to `smol` (scribe mode).
+- Do not run `,ai-kb search`/`,ai-kb get` inline in the parent session, and do not run `,ai-kb remember` inline either;
+  the k-ai-kb skill defines the only fallbacks.
 - Mid-task decisions, ideas, and unverified constraints worth keeping go to `,agent-memory note <kind> "<text>" --ref <anchor>`;
   `,ai-kb harvest` later surfaces candidates for verified durable writes.
-- Resolve live CLI interfaces from `,ai-kb --help` / `,ai-kb remember --help`, not memory.
 - At the end of any substantive turn, silently self-check whether a durable verified reusable insight was produced.
-  If yes, persist inline with deliberate metadata — just the write, no announcement or separate summary; otherwise skip.
+  If yes, persist through the scribe path above — just the write, no announcement or separate summary; otherwise skip.
   End-of-turn capture is a standing habit, not a checkpoint and not a reason to stop early. No per-session cap; dedup before writing.
 
 ## 5. User Response Shape

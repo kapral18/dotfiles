@@ -322,6 +322,60 @@ class TestPremiseNudgeWireFormat(unittest.TestCase):
                 {},
             )
 
+    def test_when_antigravity_preinvocation_sees_fresh_probe_failures_should_inject_budget_note(self):
+        # Antigravity has no user-prompt hook, so the probe-budget hint rides the same
+        # PreInvocation drain as queued premise nudges. `,probe` in a plain shell writes
+        # under the `ad-hoc` key; the reader's freshness-capped fallback must close the loop.
+        from datetime import datetime, timezone
+
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = (Path(tmp) / "workspace").resolve()
+            workspace.mkdir()
+            spec_dir = Path(tmp, "specs", str(workspace).lstrip("/"))
+            spec_dir.mkdir(parents=True)
+            fresh = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            rows = [json.dumps({"ts": fresh, "result": "fail", "summary": "s"}) for _ in range(3)]
+            (spec_dir / "ad-hoc.probe-ledger.jsonl").write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+            injected = run_hook(
+                {
+                    "conversationId": "agy-budget",
+                    "workspacePaths": [str(workspace)],
+                    "invocationNum": 1,
+                },
+                env_extra={
+                    "AGENT_MEMORY_SPEC_ROOT": str(Path(tmp) / "specs"),
+                    "AGENT_HOOK_OUTPUT": "antigravity",
+                    "AGENT_HOOK_EVENT": "PreInvocation",
+                },
+            )
+            message = injected["injectSteps"][0]["ephemeralMessage"]
+            self.assertIn("probe-budget-exhausted", message)
+            self.assertIn("Probe-budget hint", message)
+
+    def test_when_antigravity_preinvocation_sees_only_stale_probe_failures_should_stay_silent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = (Path(tmp) / "workspace").resolve()
+            workspace.mkdir()
+            spec_dir = Path(tmp, "specs", str(workspace).lstrip("/"))
+            spec_dir.mkdir(parents=True)
+            rows = [json.dumps({"ts": "2026-01-01T00:00:00Z", "result": "fail", "summary": "s"}) for _ in range(5)]
+            (spec_dir / "ad-hoc.probe-ledger.jsonl").write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+            result = run_hook(
+                {
+                    "conversationId": "agy-budget-stale",
+                    "workspacePaths": [str(workspace)],
+                    "invocationNum": 1,
+                },
+                env_extra={
+                    "AGENT_MEMORY_SPEC_ROOT": str(Path(tmp) / "specs"),
+                    "AGENT_HOOK_OUTPUT": "antigravity",
+                    "AGENT_HOOK_EVENT": "PreInvocation",
+                },
+            )
+            self.assertEqual(result, {})
+
     def test_when_antigravity_pretool_has_no_premise_should_allow_explicitly(self):
         # Empty `{}` on Antigravity PreToolUse denies run_command with an empty reason.
         result = run_hook(

@@ -30,6 +30,11 @@ from pathlib import Path
 
 from hook_common import emit, read_payload, session_key, spec_dir_for, workspace_root
 
+try:
+    import correction_detector
+except Exception:  # pragma: no cover - deployed alongside; fail open without it
+    correction_detector = None
+
 # `git` accepts global options before the subcommand, so `git -C <path> clean -fd` is the same
 # destructive command as `git clean -fd`. Anchoring on `git\s+<sub>` missed every such form, and
 # `-C` is the norm rather than the exception in agent use (bounded probes are written that way).
@@ -144,6 +149,25 @@ def _store_antigravity_nudge(payload: dict, context: str) -> None:
     os.replace(temporary, pending / f"{stem}.txt")
 
 
+def _probe_budget_note(payload: dict) -> str:
+    """Antigravity has no user-prompt hook, so the probe-budget hint rides PreInvocation.
+
+    Emits only the signal header and the note: the prompt-correction framing and the
+    convergence nudge of `perturn_recall.correction_directive` presume a user prompt,
+    which this event does not carry.
+    """
+    if correction_detector is None:
+        return ""
+    try:
+        spec_dir = spec_dir_for(workspace_root(payload))
+        signal = correction_detector.probe_budget_signal(spec_dir, session_key(payload))
+    except Exception:
+        return ""
+    if not signal:
+        return ""
+    return "\n".join((f"### User correction signal: {signal}", correction_detector.PROBE_BUDGET_NOTE))
+
+
 def _emit_antigravity_pending(payload: dict) -> int:
     contexts: list[str] = []
     for path in sorted(_pending_dir(payload).glob("*.txt")):
@@ -154,6 +178,9 @@ def _emit_antigravity_pending(payload: dict) -> int:
             path.unlink()
         except OSError:
             continue
+    note = _probe_budget_note(payload)
+    if note and note not in contexts:
+        contexts.append(note)
     emit({"additional_context": "\n\n".join(contexts)} if contexts else {})
     return 0
 

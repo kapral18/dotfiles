@@ -132,11 +132,17 @@ class TestProbeBudgetSignal(unittest.TestCase):
     def tearDown(self) -> None:
         self.tmp.cleanup()
 
-    def _write_ledger(self, key: str, results: list[str]) -> Path:
+    def _write_ledger(self, key: str, results: list[str], ts: str = "2026-01-01T00:00:00Z") -> Path:
         path = self.spec_dir / f"{key}.probe-ledger.jsonl"
-        lines = [json.dumps({"ts": "2026-01-01T00:00:00Z", "result": r, "summary": "s"}) for r in results]
+        lines = [json.dumps({"ts": ts, "result": r, "summary": "s"}) for r in results]
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         return path
+
+    @staticmethod
+    def _fresh_ts() -> str:
+        from datetime import datetime, timezone
+
+        return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     def test_when_threshold_failures_in_window_should_fire(self):
         self._write_ledger("sess", ["fail", "pass", "fail", "fail"])
@@ -163,6 +169,39 @@ class TestProbeBudgetSignal(unittest.TestCase):
         path = self.spec_dir / "sess.probe-ledger.jsonl"
         valid_fails = "\n".join(json.dumps({"result": "fail"}) for _ in range(2))
         path.write_text("not-json\n" + valid_fails + "\n", encoding="utf-8")
+        self.assertIsNone(correction_detector.probe_budget_signal(self.spec_dir, "sess"))
+
+    def test_when_session_ledger_missing_should_fall_back_to_fresh_ad_hoc(self):
+        # `,probe` in a plain shell has no harness session id and records under
+        # `ad-hoc`; the reader must still close the loop for the hook's real key.
+        self._write_ledger("ad-hoc", ["fail", "fail", "fail"], ts=self._fresh_ts())
+        self.assertEqual(
+            correction_detector.probe_budget_signal(self.spec_dir, "sess"),
+            "probe-budget-exhausted",
+        )
+
+    def test_when_ad_hoc_entries_are_stale_should_not_fire(self):
+        # The ad-hoc ledger is shared across sessions in a workspace; entries
+        # older than the freshness cap must not fire a new session's first turn.
+        self._write_ledger("ad-hoc", ["fail"] * 5, ts="2026-01-01T00:00:00Z")
+        self.assertIsNone(correction_detector.probe_budget_signal(self.spec_dir, "sess"))
+
+    def test_when_session_ledger_has_entries_should_ignore_ad_hoc(self):
+        self._write_ledger("sess", ["pass", "pass"])
+        self._write_ledger("ad-hoc", ["fail", "fail", "fail"], ts=self._fresh_ts())
+        self.assertIsNone(correction_detector.probe_budget_signal(self.spec_dir, "sess"))
+
+    def test_when_session_key_is_empty_should_still_use_fresh_ad_hoc(self):
+        self._write_ledger("ad-hoc", ["fail", "fail", "fail"], ts=self._fresh_ts())
+        self.assertEqual(
+            correction_detector.probe_budget_signal(self.spec_dir, ""),
+            "probe-budget-exhausted",
+        )
+
+    def test_when_ad_hoc_entries_lack_timestamps_should_not_fire(self):
+        path = self.spec_dir / "ad-hoc.probe-ledger.jsonl"
+        lines = [json.dumps({"result": "fail"}) for _ in range(5)]
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         self.assertIsNone(correction_detector.probe_budget_signal(self.spec_dir, "sess"))
 
     def test_when_correction_pattern_matches_should_outrank_probe_budget_signal(self):

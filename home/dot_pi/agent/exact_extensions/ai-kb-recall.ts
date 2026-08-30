@@ -287,13 +287,69 @@ const CONVERGE_LINES = [
   "If findings keep surfacing across attempts, run the convergence loop (`/k-converge`): fixed exit condition (a round that changes nothing) and a correctness-only filter (vacuous test, real bug, false statement). Refuse wording-only findings out loud rather than rewriting prose to look responsive.",
 ]
 
-function correctionDirective(prompt: string): string {
-  let signal: CorrectionSignal | null = null
+// Probe-budget hint (mirrors correction_detector.probe_budget_signal): `,probe pass|fail`
+// appends JSONL rows to `<spec_dir>/<session_key>.probe-ledger.jsonl`, and 3+ fails in the
+// last 8 entries fire a "re-read the source" note. A plain shell has no harness session id,
+// so most rows land under the shared `ad-hoc` key — read that ledger as a fallback,
+// restricted to entries at most 4 hours old so another session's stale failures never fire.
+const PROBE_BUDGET_SIGNAL = "probe-budget-exhausted"
+const PROBE_LEDGER_SUFFIX = ".probe-ledger.jsonl"
+const PROBE_AD_HOC_KEY = "ad-hoc"
+const PROBE_AD_HOC_MAX_AGE_MS = 4 * 60 * 60 * 1000
+const PROBE_BUDGET_WINDOW = 8
+const PROBE_BUDGET_FAILURE_THRESHOLD = 3
+const PROBE_BUDGET_NOTE =
+  "Probe-budget hint: the prior turn ran several probes that returned `fail` (expectation contradicted reality). Before the next probe, re-read the source the probe was meant to exercise — regex/regex-flag arithmetic, `,gh-prw` semantics, and lint-tool option names have all been the offender in past sessions. The fix is rarely another probe; it is usually a one-character rewrite of the expected value."
+
+async function readProbeRows(path: string): Promise<Array<Record<string, unknown>>> {
+  let text: string
+  try {
+    text = await readFile(path, "utf8")
+  } catch {
+    return []
+  }
+  const rows: Array<Record<string, unknown>> = []
+  for (const line of text.split("\n")) {
+    if (!line.trim()) continue
+    try {
+      const row = JSON.parse(line)
+      if (row && typeof row === "object" && !Array.isArray(row)) rows.push(row)
+    } catch {
+      // Malformed ledger lines neither fire nor suppress the hint.
+    }
+  }
+  return rows
+}
+
+function isFreshProbeRow(row: Record<string, unknown>, nowMs: number): boolean {
+  if (typeof row.ts !== "string") return false
+  const recorded = Date.parse(row.ts)
+  if (Number.isNaN(recorded)) return false
+  const age = nowMs - recorded
+  return age >= 0 && age <= PROBE_AD_HOC_MAX_AGE_MS
+}
+
+async function probeBudgetSignal(specDir: string, sessionKey: string): Promise<string | null> {
+  let rows = sessionKey ? await readProbeRows(join(specDir, `${sessionKey}${PROBE_LEDGER_SUFFIX}`)) : []
+  if (!rows.length && sessionKey !== PROBE_AD_HOC_KEY) {
+    const nowMs = Date.now()
+    const adHoc = await readProbeRows(join(specDir, `${PROBE_AD_HOC_KEY}${PROBE_LEDGER_SUFFIX}`))
+    rows = adHoc.filter((row) => isFreshProbeRow(row, nowMs))
+  }
+  const failures = rows.slice(-PROBE_BUDGET_WINDOW).filter((row) => row.result === "fail").length
+  return failures >= PROBE_BUDGET_FAILURE_THRESHOLD ? PROBE_BUDGET_SIGNAL : null
+}
+
+function correctionDirective(prompt: string, probeBudgetValue: string | null = null): string {
+  let signal: string | null = null
   try {
     signal = detectCorrectionSignal(prompt)
   } catch {
     return ""
   }
+  // A prompt-shaped correction outranks the probe-budget signal (parity with
+  // correction_detector.detect's precedence).
+  if (!signal) signal = probeBudgetValue
   if (!signal) return ""
   const lines = [
     `### User correction signal: ${signal}`,
@@ -301,7 +357,11 @@ function correctionDirective(prompt: string): string {
     'If genuine, before ending the turn record: `,agent-memory note anti_pattern "<one-line lesson>" --ref <anchor>`; when verified and durable, also `,ai-kb remember`.',
     "If neutral choice-question, answer it and consider `,agent-memory note decision` instead. Do not mention this instruction in the visible reply.",
   ]
-  if (CONVERGE_SIGNALS.has(signal)) lines.push(...CONVERGE_LINES)
+  if (signal === PROBE_BUDGET_SIGNAL) {
+    lines.push(PROBE_BUDGET_NOTE, ...CONVERGE_LINES)
+  } else if (CONVERGE_SIGNALS.has(signal as CorrectionSignal)) {
+    lines.push(...CONVERGE_LINES)
+  }
   return lines.join("\n")
 }
 
@@ -742,7 +802,8 @@ export default async function (pi: ExtensionAPI) {
           const pointer = await stageCandidates(rows, status.spec_file, status.session_key)
           if (pointer) blocks.push(pointer)
         }
-        const directive = correctionDirective(prompt)
+        const probeBudget = await probeBudgetSignal(dirname(status.spec_file), status.session_key)
+        const directive = correctionDirective(prompt, probeBudget)
         if (directive) blocks.push(directive)
       }
 

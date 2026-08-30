@@ -288,6 +288,9 @@ def stage_candidates(rows: list, seen: set[str], spec_path: Path, key: str) -> s
             f"Session state: {spec_path} + {worklog_path}",
             f"Delegate to the `smol` subagent (judge mode) per {SMOL_CONTRACT_PATH}, passing those paths and the current prompt;"
             " inject only its returned lines (`NONE` = inject nothing).",
+            "When native `smol` is unreachable (e.g. a fixed Task subagent set), spawn a generic isolated subagent"
+            " on the memory-band model with the smol operator contract per the k-ai-kb skill;"
+            " never a harness-CLI one-shot and never the subagent type's own default model.",
             "Do not read the candidates file into this context.",
         ]
     )

@@ -1,5 +1,5 @@
 name = "smol"
-description = "Operate ,ai-kb in an isolated context. Judge staged per-turn recall candidates (returns NONE or up to 3 admitted lines) or persist a parent-verified insight."
+description = "Operate ,ai-kb in an isolated context. Judge staged per-turn recall candidates or an ad-hoc recall query (returns NONE or up to 3 admitted lines), or persist a parent-verified insight."
 model = "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "codex" "agent" "smol") }}"
 model_reasoning_effort = "high"
 service_tier = "default"

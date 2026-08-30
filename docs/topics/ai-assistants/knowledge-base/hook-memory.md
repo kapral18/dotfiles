@@ -40,6 +40,8 @@ Ephemeral session memory: inject context at start, record tool events to a crash
 
 `correction_detector.py` fires on narrow conduct patterns; `perturn_recall.py` injects a same-turn directive to `,agent-memory note anti_pattern` when genuine, and `,ai-kb remember` only after verification. Fail-open; no automatic writes.
 
+It also carries the probe-budget hint: `,probe pass|fail` appends to `<spec_dir>/<session_key>.probe-ledger.jsonl`, and 3+ fails in the last 8 entries inject a "re-read the source" note on the next prompt. Shell-recorded probes land under the `ad-hoc` key, which the reader consumes as a freshness-capped (4h) fallback. The pi/omp `ai-kb-recall.ts` mirrors implement the same consumer, and Antigravity receives the note through the premise-nudge `PreInvocation` drain.
+
 ## Clean session / clean-room
 
 Force no injection: `AGENT_HOOK_CONTEXT=0`, or `_no_session_context` (workspace) or `<topic>.no_context`.

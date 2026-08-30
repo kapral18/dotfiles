@@ -1,7 +1,7 @@
 {{- /* model frontmatter is rendered through agent-model.partial from home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 name: smol
-description: Operate ,ai-kb in an isolated context. Judge staged per-turn recall candidates (returns NONE or up to 3 admitted lines) or persist a parent-verified insight.
+description: Operate ,ai-kb in an isolated context. Judge staged per-turn recall candidates or an ad-hoc recall query (returns NONE or up to 3 admitted lines), or persist a parent-verified insight.
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "omp" "agent" "smol") }}"
 tools: read, grep, glob, bash
 ---

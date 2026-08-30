@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 
 MIN_PROMPT_CHARS = 12
@@ -27,6 +28,13 @@ CONJUNCTION_WINDOW_CHARS = 160
 # prompt is *not* a correction, surfaces a "expectation may be wrong" hint.
 # Counted as a per-turn signal, never a block: same fail-open shape as premise_nudge.
 PROBE_LEDGER_REL_PATH = ".probe-ledger.jsonl"
+# `,probe` cannot see the hook payload's session id from a plain shell, so most
+# ledgers land under the `ad-hoc` key. The reader accepts that ledger as a
+# fallback, but only entries fresh enough to belong to the current work session:
+# the ad-hoc file is shared by every session in the workspace, and without a
+# freshness cap yesterday's failures would fire the hint on today's first turn.
+PROBE_AD_HOC_KEY = "ad-hoc"
+PROBE_AD_HOC_MAX_AGE_SECONDS = 4 * 60 * 60
 PROBE_BUDGET_WINDOW = 8  # rolling window of probes evaluated by the budget check
 PROBE_BUDGET_FAILURE_THRESHOLD = 3  # 3+ of the last 8 failed => hint
 PROBE_BUDGET_NOTE = (
@@ -111,28 +119,49 @@ def _read_ledger(path: Path | None) -> list[str]:
     return [line for line in content.splitlines() if line.strip()]
 
 
-def probe_budget_signal(spec_dir: Path | None, session_key_value: str) -> str | None:
-    """Return the `probe-budget-exhausted` signal iff the prior turn spent too many probes.
-
-    Reads only the most recent PROBE_BUDGET_WINDOW entries from the session-scoped
-    ledger so a long session does not accumulate stale failures. Returns None when
-    the ledger is missing/empty/unreadable or when there is no session key (parent
-    sessions don't drive the budget).
-    """
-    if spec_dir is None:
-        return None
-    path = _probe_ledger_for(spec_dir, session_key_value)
-    entries = _read_ledger(path)[-PROBE_BUDGET_WINDOW:]
-    if not entries:
-        return None
-    failures = 0
-    for raw in entries:
+def _parse_rows(lines: list[str]) -> list[dict]:
+    rows = []
+    for raw in lines:
         try:
             row = json.loads(raw)
         except ValueError:
             continue
-        if row.get("result") == "fail":
-            failures += 1
+        if isinstance(row, dict):
+            rows.append(row)
+    return rows
+
+
+def _is_fresh(row: dict, now: datetime) -> bool:
+    ts = row.get("ts")
+    if not isinstance(ts, str):
+        return False
+    try:
+        recorded = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return False
+    age = (now - recorded).total_seconds()
+    return 0 <= age <= PROBE_AD_HOC_MAX_AGE_SECONDS
+
+
+def probe_budget_signal(spec_dir: Path | None, session_key_value: str) -> str | None:
+    """Return the `probe-budget-exhausted` signal iff the prior turn spent too many probes.
+
+    Reads the most recent PROBE_BUDGET_WINDOW entries from the session-scoped
+    ledger so a long session does not accumulate stale failures. When that ledger
+    is missing or empty (the common case: `,probe` runs in a shell that has no
+    harness session id and writes under the `ad-hoc` key), falls back to the
+    workspace's shared `ad-hoc` ledger restricted to entries at most
+    PROBE_AD_HOC_MAX_AGE_SECONDS old, so another session's stale failures never
+    fire the hint. Returns None when neither ledger yields entries.
+    """
+    if spec_dir is None:
+        return None
+    rows = _parse_rows(_read_ledger(_probe_ledger_for(spec_dir, session_key_value)))
+    if not rows and session_key_value != PROBE_AD_HOC_KEY:
+        now = datetime.now(timezone.utc)
+        ad_hoc_rows = _parse_rows(_read_ledger(_probe_ledger_for(spec_dir, PROBE_AD_HOC_KEY)))
+        rows = [row for row in ad_hoc_rows if _is_fresh(row, now)]
+    failures = sum(1 for row in rows[-PROBE_BUDGET_WINDOW:] if row.get("result") == "fail")
     if failures < PROBE_BUDGET_FAILURE_THRESHOLD:
         return None
     return "probe-budget-exhausted"

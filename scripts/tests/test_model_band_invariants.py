@@ -119,18 +119,23 @@ class TestModelBandInvariants(unittest.TestCase):
 
         for category in ("lookup", "research", "implement", "orchestrate", "review"):
             with self.subTest(category=category):
-                self.assertEqual("gpt-5.6-sol-xhigh", rows[category]["model"])
-                self.assertEqual("xhigh", rows[category]["effort"])
+                self.assertEqual("gpt-5.6-sol-high", rows[category]["model"])
+                self.assertEqual("high", rows[category]["effort"])
                 self.assertEqual("long", rows[category]["context"])
-        self.assertEqual("cursor-grok-4.6-xhigh", rows["mechanical"]["model"])
-        self.assertEqual("xhigh", rows["mechanical"]["effort"])
+        # Cheap lanes use the `auto` router selector (user call 2026-08-30): Cursor picks the
+        # small model itself. Live-verified 2026-08-30 (cursor-agent 2026.08.28-a7f9513): a Task
+        # spawn with an explicit model "auto" was accepted (caller models are validated before
+        # hook rewrites, so the probe hit the real enum), and interactive `cursor-agent --model
+        # auto` completed a full turn.
+        self.assertEqual("auto", rows["mechanical"]["model"])
+        self.assertEqual("", rows["mechanical"]["effort"])
         self.assertEqual("short", rows["mechanical"]["context"])
         self.assertEqual("claude-opus-5-high", rows["refute"]["model"])
         self.assertEqual("high", rows["refute"]["effort"])
         self.assertEqual("long", rows["refute"]["context"])
         self.assertEqual("cross_family", rows["refute"]["verifier_status"])
-        # memory stays the cheap Task-enum pick: the plain composer id, never a `-fast` variant.
-        self.assertEqual("composer-2.5", rows["memory"]["model"])
+        # memory (smol) rides the same `auto` router pick.
+        self.assertEqual("auto", rows["memory"]["model"])
         self.assertEqual("short", rows["memory"]["context"])
 
     def test_gemini_category_matrix_uses_pro_with_flash_mechanical_long_context(self):
@@ -862,7 +867,7 @@ class TestModelBandInvariants(unittest.TestCase):
             "claude_code": ("claude-fable-5", "low"),  # Anthropic-only; all bands fable-5 (user call 2026-08-05)
             "codex": ("gpt-5.5", "xhigh"),  # user-selected all-band Codex policy
             "copilot": ("gpt-5.5", "xhigh"),
-            "cursor": ("gpt-5.6-sol-xhigh", "xhigh"),  # captured Cursor Task-enum primary selector
+            "cursor": ("gpt-5.6-sol-high", "high"),  # captured Cursor Task-enum primary selector
             "gemini": ("gemini-3.1-pro-preview", "high"),  # agy's Gemini 3.1 Pro selector
             "pi": ("openrouter/openai/gpt-5.5:xhigh", "xhigh"),  # OpenRouter-only lookup route
             "omp": ("@smol", "xhigh"),  # a role token; the concrete pick is asserted below
@@ -956,22 +961,33 @@ class TestModelBandInvariants(unittest.TestCase):
         curated = mirrors["harnesses"]["cursor"]["curated"]
         assert curated["complete"] is True, "Cursor curated catalog must stay complete for category validation"
         cursor_catalog = set(curated["models"])
+        # Probed 2026-08-29 (cursor-agent 2026.08.28-a7f9513) from the Task-spawn
+        # "Invalid model selection" rejection listing.
         cursor_task_models = {
-            "claude-fable-5-medium",
+            "claude-fable-5-high",
             "claude-opus-5-high",
             "claude-sonnet-5-thinking-max",
             "composer-2.5",
             "composer-2.5-fast",
             "cursor-grok-4.5-high-fast",
-            "cursor-grok-4.6-xhigh",
-            "gpt-5.6-sol-xhigh",
-            "gpt-5.6-terra-xhigh",
+            "cursor-grok-4.6-xhigh-fast",
+            "gemini-3.7-flash-high",
+            "gpt-5.6-sol-high",
+            "gpt-5.6-terra-max",
         }
 
         category_models = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["cursor"]
         for category, row in category_models.items():
             model = row.get("model")
             if not model:
+                continue
+            if model == "auto":
+                # `auto` is Cursor's router selector, not a catalog model, so it is deliberately
+                # absent from both sets above (same policy as the copilot catalog's `auto`
+                # exclusion). Live-verified 2026-08-30 (cursor-agent 2026.08.28-a7f9513): a Task
+                # spawn passing model "auto" through an unbound subagent_type (band gate no-op)
+                # was accepted by the enum validation that runs before hook rewrites, and an
+                # interactive `cursor-agent --model auto` tmux session completed a full turn.
                 continue
             assert model in cursor_task_models, (
                 f"category_models.cursor.{category} is {model!r}, which the captured Cursor Task enum does not "
