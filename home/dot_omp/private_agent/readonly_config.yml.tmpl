@@ -54,6 +54,8 @@ defaultThinkingLevel: high
 # yarn remains the installer.
 startup:
   checkUpdate: false
+  quiet: true
+  showSplash: false
 
 memory:
   backend: off
@@ -75,18 +77,18 @@ task:
   enableEffort: true
   enableLsp: true
   maxRecursionDepth: 2
+  agentAdvisor:
+    task: "on"
 
 retry:
   enabled: true
-  maxRetries: 5
+  maxRetries: 3
 
 symbolPreset: nerd
 
 theme:
-  dark: titanium
-
-setupVersion: 1
-
+  dark: dark-catppuccin
+setupVersion: 2
 # web_search: unlisted ids stay in the fallback chain, so every unused provider
 # is excluded. Listing perplexity is an OpenRouter sonar-pro opt-in. Keyless
 # scrapers are duckduckgo/startpage/ecosia/google/mojeek/public. Personal keeps
@@ -146,3 +148,30 @@ providers:
     - synthetic
     - searxng
 # {{ end }}
+composer:
+  shape: rule
+terminal:
+  showProgress: true
+display:
+  cacheMissMarker: true
+steeringMode: one-at-a-time
+tools:
+  approvalMode: yolo
+  approval:
+    {}
+features:
+  unexpectedStopDetection: smart
+edit:
+  mode: hashline
+astGrep:
+  enabled: true
+generate_image:
+  enabled: true
+computer:
+  enabled: true
+checkpoint:
+  enabled: true
+github:
+  enabled: true
+grep:
+  contextBefore: 1 
