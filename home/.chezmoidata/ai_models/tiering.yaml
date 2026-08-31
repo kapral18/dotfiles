@@ -502,9 +502,17 @@ category_models:
     # Installed omp/18.0.3 exposes default/smol/vision/slow/plan/task/advisor via
     # `omp config get modelRoles`; use those role names as local inspiration, not as the
     # portable taxonomy.
-    # User call 2026-08-24: every OMP profile resolves default/vision/slow/plan/task to
-    # openrouter/openai/gpt-5.5:xhigh, smol to openrouter/deepseek/deepseek-v4-flash:xhigh, and
-    # advisor to openrouter/anthropic/claude-sonnet-4.6:xhigh.
+    # User call 2026-08-30: the work profile rides the Cursor backend — default/vision/slow/plan/task
+    # resolve to cursor/gpt-5.5:xhigh (unlike the category_models.cursor rows, which stay on
+    # gpt-5.6-sol-high only because the Cursor Task enum lacks gpt-5.5), smol to cursor/default
+    # (Cursor's "Auto" router id; the discovered cursor catalog names it `default`, display "Auto",
+    # reasoning off), and advisor to cursor/claude-opus-5-high:high.
+    # All three routes probed live 2026-08-30 on omp/18.0.10
+    # (print-mode turns report provider "cursor" with the expected model ids).
+    # The personal profile rides the Codex backend (user call 2026-08-30): default/vision/slow/plan/task
+    # and advisor on openai-codex/gpt-5.5:xhigh (the openai-codex catalog is OpenAI-only, matching the
+    # codex harness rows), smol on cursor/default. The openai-codex/gpt-5.5:xhigh route was probed live
+    # the same day; the personal machine's own codex/cursor auth is not locally verifiable from this box.
     # Review/refute stay on @advisor (same-family), so refute reports reduced_independence.
     # Verified 17.2.4: a profile carrying `model: "@smol"` runs on modelRoles.smol, and an
     # unknown token fails loudly with `Error: No model selected.` rather than falling back.
@@ -546,8 +554,8 @@ category_models:
       thinking: ""
       context: "short"
       verifier_status: "reduced_independence"
-    # memory: direct OpenRouter id, not @smol — modelRoles.smol resolves to deepseek-v4-flash,
-    # which hung as omp scribe (killed at 9 min, 2026-08-28) and stored a duplicate on pi;
+    # memory: direct OpenRouter id, not @smol — modelRoles.smol resolved to deepseek-v4-flash when
+    # this row was pinned; deepseek hung as omp scribe (killed at 9 min, 2026-08-28) and stored a duplicate on pi;
     # gemini-3.7-flash passed the same scribe fixture. The `:high` suffix is load-bearing:
     # agent-model.partial renders only `model` into the agent frontmatter (effort below is
     # informational), and omp's spawn precedence honors an explicit `:level` suffix

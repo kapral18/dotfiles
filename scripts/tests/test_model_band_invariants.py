@@ -462,20 +462,35 @@ class TestModelBandInvariants(unittest.TestCase):
         roles = self._omp_model_roles()
 
         assert set(roles) == {"work", "personal"}, f"unexpected OMP profiles {sorted(roles)}"
+        # User call 2026-08-30: work rides the Cursor backend, personal rides the Codex backend,
+        # and both profiles pin smol to cursor/default — the discovered cursor catalog's "Auto"
+        # router id (reasoning off, so no :level suffix). The openai-codex catalog is OpenAI-only,
+        # so the personal advisor shares gpt-5.5 with the primaries.
         expected_roles = {
-            "default": "openrouter/openai/gpt-5.5:xhigh",
-            "smol": "openrouter/deepseek/deepseek-v4-flash:xhigh",
-            "vision": "openrouter/openai/gpt-5.5:xhigh",
-            "slow": "openrouter/openai/gpt-5.5:xhigh",
-            "plan": "openrouter/openai/gpt-5.5:xhigh",
-            "task": "openrouter/openai/gpt-5.5:xhigh",
-            "advisor": "openrouter/anthropic/claude-sonnet-4.6:xhigh",
+            "work": {
+                "default": "cursor/gpt-5.5:xhigh",
+                "smol": "cursor/default",
+                "vision": "cursor/gpt-5.5:xhigh",
+                "slow": "cursor/gpt-5.5:xhigh",
+                "plan": "cursor/gpt-5.5:xhigh",
+                "task": "cursor/gpt-5.5:xhigh",
+                "advisor": "cursor/claude-opus-5-high:high",
+            },
+            "personal": {
+                "default": "openai-codex/gpt-5.5:xhigh",
+                "smol": "cursor/default",
+                "vision": "openai-codex/gpt-5.5:xhigh",
+                "slow": "openai-codex/gpt-5.5:xhigh",
+                "plan": "openai-codex/gpt-5.5:xhigh",
+                "task": "openai-codex/gpt-5.5:xhigh",
+                "advisor": "openai-codex/gpt-5.5:xhigh",
+            },
         }
         for profile, mapping in roles.items():
             assert {"default", "smol", "plan", "task", "advisor"} <= set(mapping), (
                 f"omp {profile} modelRoles lacks category routing roles: {mapping!r}"
             )
-            assert mapping == expected_roles, f"omp {profile} modelRoles drifted: {mapping!r}"
+            assert mapping == expected_roles[profile], f"omp {profile} modelRoles drifted: {mapping!r}"
         assert category_models["lookup"]["model"] == "@smol"
         assert category_models["mechanical"]["model"] == "@task"
         assert category_models["research"]["model"] == "@task"
@@ -806,8 +821,9 @@ class TestModelBandInvariants(unittest.TestCase):
             self.assertIn('OPENROUTER_EFFORT="max"', source)
 
         omp = (REPO / "home/dot_omp/private_agent/readonly_config.yml.tmpl").read_text()
-        # OMP's work-profile modelRoles route through OpenRouter (user call 2026-08-06); the
-        # provider order must keep listing it for both profiles.
+        # Neither profile's modelRoles route through OpenRouter anymore (work → Cursor backend,
+        # personal → Codex backend, 2026-08-30); the provider order must keep listing openrouter
+        # for both profiles because the memory lane and models.yml preset routes still ride it.
         self.assertIn("  - openrouter\n", omp)
         omp_models = (REPO / "home/dot_omp/private_agent/readonly_models.yml").read_text()
         # OMP 17.2.9 does not put modelOverrides…compat.extraBody.provider on the wire, so the
@@ -894,10 +910,11 @@ class TestModelBandInvariants(unittest.TestCase):
                 f"category_models.cursor.{category} is composer-2.5-fast; composer-2.5 is the same model for a sixth"
             )
 
-        # OMP resolves lookup through modelRoles; @smol is DeepSeek V4 Flash xhigh on both profiles.
+        # OMP resolves lookup through modelRoles; @smol is Cursor's Auto router on both profiles
+        # (user call 2026-08-30).
         roles = self._omp_model_roles()
-        for profile in ("work", "personal"):
-            assert roles[profile]["smol"] == "openrouter/deepseek/deepseek-v4-flash:xhigh"
+        assert roles["work"]["smol"] == "cursor/default"
+        assert roles["personal"]["smol"] == "cursor/default"
 
         # Copilot is the one harness where the lookup category reaches a deployed file rather than a
         # rendered profile, so check the model actually landed on every lookup-bound built-in.

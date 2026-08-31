@@ -28,3 +28,30 @@ top-p = 0.95
 top-k = 20
 min-p = 0.00
 load-on-startup = false
+
+# Hybrid thinking model; thinking on by default (reasoning_effort=xhigh in the chat template),
+# so reasoning stays on the [*] auto default. Unsloth thinking-mode sampling below; the
+# instruct (non-thinking) profile would be temp 0.7, top-p 0.80, presence-penalty 1.5.
+# Max context 262144 = the [*] ctx-size default.
+[qwen3.8-27b]
+model = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.8-27B-UD-Q4_K_XL.gguf
+mmproj = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.8-27B-mmproj-F16.gguf
+temp = 1.0
+top-p = 0.95
+top-k = 20
+min-p = 0.00
+load-on-startup = false
+
+# Same Qwen3.8-27B weights in the unsloth instruct (non-thinking) profile:
+# reasoning forced off, temp 0.7, top-p 0.80, presence penalty 1.5.
+# The router loads presets on demand, so the two ids never occupy RAM together unless both are loaded.
+[qwen3.8-27b-instruct]
+model = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.8-27B-UD-Q4_K_XL.gguf
+mmproj = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.8-27B-mmproj-F16.gguf
+reasoning = off
+temp = 0.7
+top-p = 0.80
+top-k = 20
+min-p = 0.00
+presence-penalty = 1.5
+load-on-startup = false

@@ -1,6 +1,6 @@
 # Completions for Cursor's local llama.cpp launcher.
 
-set -l __cursor_llama_cpp_models nemotron-3.5 qwen3.5-9b
+set -l __cursor_llama_cpp_models nemotron-3.5 qwen3.5-9b qwen3.8-27b qwen3.8-27b-instruct
 set -l __cursor_llama_cpp_subs install-shell-integration uninstall-shell-integration login logout mcp plugin worker status whoami models bedrock about update create-chat generate-rule rule agent ls resume help
 
 complete -c ',cursor-llama-cpp' -f

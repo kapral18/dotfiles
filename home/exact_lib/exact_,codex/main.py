@@ -17,6 +17,8 @@ DEFAULT_REAL_CODEX = "codex"
 LOCAL_MODELS = {
     "nemotron-3.5",
     "qwen3.5-9b",
+    "qwen3.8-27b",
+    "qwen3.8-27b-instruct",
 }
 
 

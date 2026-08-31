@@ -30,3 +30,12 @@ unsloth/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF|NVIDIA-Nemotron-3.5-Lightning
 # https://huggingface.co/unsloth/Qwen3.5-9B-GGUF
 unsloth/Qwen3.5-9B-GGUF|Qwen3.5-9B-UD-Q4_K_XL.gguf
 unsloth/Qwen3.5-9B-GGUF|mmproj-F16.gguf|Qwen3.5-9B-mmproj-F16.gguf
+
+# Unsloth Qwen3.8-27B Dynamic Q4_K_XL (~17.6 GB) plus F16 mmproj companion.
+# Hybrid thinking model, thinking on by default at reasoning_effort=xhigh; models.ini carries the
+# unsloth thinking-mode sampling (temp 1.0, top_p 0.95, top_k 20, min_p 0.0).
+# An external MTP draft exists upstream (MTP/mtp-Qwen3.8-27B-Q4_0.gguf); not added — llama.cpp
+# external-MTP support for it is unverified, unlike Nemotron's in-model draft-mtp.
+# https://huggingface.co/unsloth/Qwen3.8-27B-GGUF
+unsloth/Qwen3.8-27B-GGUF|Qwen3.8-27B-UD-Q4_K_XL.gguf
+unsloth/Qwen3.8-27B-GGUF|mmproj-F16.gguf|Qwen3.8-27B-mmproj-F16.gguf

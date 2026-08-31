@@ -32,7 +32,7 @@ flowchart TB
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (OpenRouter selectors)"]:::exec
         CODEX["Codex: dot_codex/private_config.{work,personal}.toml<br/>+ ,codex bearer-token env wrapper for hosted MCP"]:::exec
         PI["Pi: dot_pi/agent/* (OpenRouter GPT-5.5 xhigh default/review lanes; Sonnet refute)"]:::exec
-        OMP["OMP: dot_omp/private_agent/readonly_config.yml.tmpl<br/>work + personal: OpenRouter GPT-5.5 xhigh roles; smol DeepSeek Flash; advisor Sonnet 4.6<br/>+ generated ~/.omp/agent/mcp.json token bridges"]:::exec
+        OMP["OMP: dot_omp/private_agent/readonly_config.yml.tmpl<br/>work: Cursor GPT-5.5 xhigh roles; smol cursor/default (Auto); advisor Opus 5 High<br/>personal: Codex GPT-5.5 xhigh roles incl. advisor; smol cursor/default (Auto)<br/>+ generated ~/.omp/agent/mcp.json token bridges"]:::exec
         COPILOT["Copilot CLI: private_dot_copilot/* (settings + gates + review agents;<br/>MCP stdio-only, OAuth http unusable)"]:::exec
         TUICR["tuicr: dot_config/tuicr/readonly_config.toml"]:::exec
         LOCAL["llama.cpp (local, opt-in)"]:::exec

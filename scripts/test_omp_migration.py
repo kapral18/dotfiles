@@ -86,19 +86,36 @@ class TestOmpMigration(unittest.TestCase):
         return result.stdout
 
     def test_config_renders_profile_specific_model_roles(self):
-        role_values = (
-            "default: openrouter/openai/gpt-5.5:xhigh",
-            "smol: openrouter/deepseek/deepseek-v4-flash:xhigh",
-            "vision: openrouter/openai/gpt-5.5:xhigh",
-            "slow: openrouter/openai/gpt-5.5:xhigh",
-            "plan: openrouter/openai/gpt-5.5:xhigh",
-            "task: openrouter/openai/gpt-5.5:xhigh",
-            "advisor: openrouter/anthropic/claude-sonnet-4.6:xhigh",
-            "modelProviderOrder:\n  - openrouter\n  - cursor\n  - openai-codex\n  - anthropic\n  - openai\n",
+        provider_order = (
+            "modelProviderOrder:\n  - openrouter\n  - cursor\n  - openai-codex\n  - anthropic\n  - openai\n"
+        )
+        # Work rides the Cursor backend (user call 2026-08-30); smol is cursor/default, the
+        # discovered cursor catalog's "Auto" router id (reasoning off, so no :level suffix).
+        work_role_values = (
+            "default: cursor/gpt-5.5:xhigh",
+            "smol: cursor/default",
+            "vision: cursor/gpt-5.5:xhigh",
+            "slow: cursor/gpt-5.5:xhigh",
+            "plan: cursor/gpt-5.5:xhigh",
+            "task: cursor/gpt-5.5:xhigh",
+            "advisor: cursor/claude-opus-5-high:high",
+            provider_order,
+        )
+        # Personal rides the Codex backend (user call 2026-08-30); the openai-codex catalog is
+        # OpenAI-only, so the advisor role shares gpt-5.5 with the primaries.
+        personal_role_values = (
+            "default: openai-codex/gpt-5.5:xhigh",
+            "smol: cursor/default",
+            "vision: openai-codex/gpt-5.5:xhigh",
+            "slow: openai-codex/gpt-5.5:xhigh",
+            "plan: openai-codex/gpt-5.5:xhigh",
+            "task: openai-codex/gpt-5.5:xhigh",
+            "advisor: openai-codex/gpt-5.5:xhigh",
+            provider_order,
         )
         expected_values = {
-            True: role_values,
-            False: role_values,
+            True: work_role_values,
+            False: personal_role_values,
         }
         shared_values = (
             "modelRoles:\n",
@@ -115,11 +132,16 @@ class TestOmpMigration(unittest.TestCase):
             "setupVersion: 1\n",
         )
 
+        absent_values = {
+            True: "default: openai-codex/gpt-5.5:xhigh",
+            False: "default: cursor/gpt-5.5:xhigh",
+        }
         for is_work, values in expected_values.items():
             with self.subTest(is_work=is_work):
                 config = self.render_omp_config(is_work)
 
                 self.assertNotIn("{{", config)
+                self.assertNotIn(absent_values[is_work], config)
                 for value in (*values, *shared_values):
                     self.assertIn(value, config)
 

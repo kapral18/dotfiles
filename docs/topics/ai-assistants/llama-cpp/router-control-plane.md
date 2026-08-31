@@ -24,10 +24,12 @@ llama.cpp model routing and per-model defaults live in an INI preset:
 
 The shipped preset defines these short model ids:
 
-| ID             | GGUF path                                                                   | Use                                      |
-| -------------- | --------------------------------------------------------------------------- | ---------------------------------------- |
-| `nemotron-3.5` | `~/.llama.cpp/models/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-UD-Q4_K_XL.gguf` | Unsloth Nemotron agentic model           |
-| `qwen3.5-9b`   | `~/.llama.cpp/models/Qwen3.5-9B-UD-Q4_K_XL.gguf`                            | Unsloth Qwen3.5 9B + dest-renamed mmproj |
+| ID                     | GGUF path                                                                   | Use                                               |
+| ---------------------- | --------------------------------------------------------------------------- | ------------------------------------------------- |
+| `nemotron-3.5`         | `~/.llama.cpp/models/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-UD-Q4_K_XL.gguf` | Unsloth Nemotron agentic model                    |
+| `qwen3.5-9b`           | `~/.llama.cpp/models/Qwen3.5-9B-UD-Q4_K_XL.gguf`                            | Unsloth Qwen3.5 9B + dest-renamed mmproj          |
+| `qwen3.8-27b`          | `~/.llama.cpp/models/Qwen3.8-27B-UD-Q4_K_XL.gguf`                           | Unsloth Qwen3.8 27B + dest-renamed mmproj         |
+| `qwen3.8-27b-instruct` | same `Qwen3.8-27B-UD-Q4_K_XL.gguf`                                          | Non-thinking instruct profile of the same weights |
 
 They inherit shared `[*]` defaults:
 
@@ -39,10 +41,12 @@ They inherit shared `[*]` defaults:
 - `reasoning=auto`
 - `nemotron-3.5` sets in-model NextN MTP (`spec-type=draft-mtp`, `spec-draft-n-max=2`) plus Unsloth thinking sampling (`temp=0.6`, `top-p=0.95`, `min-p=0.01`)
 - `qwen3.5-9b` forces `reasoning=on` (Small-series thinking is off by default) plus Unsloth coding sampling (`temp=0.6`, `top-p=0.95`, `top-k=20`, `min-p=0`)
+- `qwen3.8-27b` keeps `reasoning=auto` (hybrid thinking, on by default at `reasoning_effort=xhigh`) plus Unsloth thinking-mode sampling (`temp=1.0`, `top-p=0.95`, `top-k=20`, `min-p=0`)
+- `qwen3.8-27b-instruct` forces `reasoning=off` plus Unsloth instruct-mode sampling (`temp=0.7`, `top-p=0.80`, `top-k=20`, `min-p=0`, `presence-penalty=1.5`); same weights, loaded on demand as a separate preset
 
 Switch with `,llama-cpp load <id>` / `,llama-cpp unload <id>`.
 
-The served default `ctx-size` is `262144`, matching Nemotron and Qwen3.5-9B. Claude Code's local settings use `autoCompactWindow=200000` to compact before the default 262144-token server context fills.
+The served default `ctx-size` is `262144`, matching Nemotron, Qwen3.5-9B, and Qwen3.8-27B. Claude Code's local settings use `autoCompactWindow=200000` to compact before the default 262144-token server context fills.
 
 ```bash
 ,llama-cpp serve

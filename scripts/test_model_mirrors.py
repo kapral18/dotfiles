@@ -51,6 +51,8 @@ class TestStaticModelMirrors(unittest.TestCase):
             {
                 "nemotron-3.5",
                 "qwen3.5-9b",
+                "qwen3.8-27b",
+                "qwen3.8-27b-instruct",
             },
         )
 
@@ -82,6 +84,13 @@ class TestStaticModelMirrors(unittest.TestCase):
             "unsloth/Qwen3.5-9B-GGUF|mmproj-F16.gguf|Qwen3.5-9B-mmproj-F16.gguf",
             manifest,
         )
+        self.assertIn("unsloth/Qwen3.8-27B-GGUF|Qwen3.8-27B-UD-Q4_K_XL.gguf", manifest)
+        self.assertIn(
+            "unsloth/Qwen3.8-27B-GGUF|mmproj-F16.gguf|Qwen3.8-27B-mmproj-F16.gguf",
+            manifest,
+        )
+        # The upstream external MTP draft must stay out of the download entries (comment-only mention is fine).
+        self.assertNotIn("|MTP/", manifest)
         self.assertNotIn("unsloth/Qwen3.6-27B-MTP-GGUF|", manifest)
         self.assertNotIn("unsloth/Qwen3.6-27B-GGUF|", manifest)
         self.assertNotIn("deepreinforce-ai/", manifest)
@@ -101,12 +110,33 @@ class TestStaticModelMirrors(unittest.TestCase):
         self.assertIn("temp = 0.6", nemotron_block)
         self.assertIn("top-p = 0.95", nemotron_block)
         self.assertIn("min-p = 0.01", nemotron_block)
-        qwen35_block = router_text.split("[qwen3.5-9b]", 1)[1]
+        qwen35_block = router_text.split("[qwen3.5-9b]", 1)[1].split("[qwen3.8-27b]", 1)[0]
         self.assertIn("reasoning = on", qwen35_block)
         self.assertNotIn("spec-type = draft-mtp", qwen35_block)
         self.assertIn("temp = 0.6", qwen35_block)
         self.assertIn("top-k = 20", qwen35_block)
         self.assertIn("min-p = 0.00", qwen35_block)
+        # Hybrid thinking (on by default): [*] reasoning=auto stands, unsloth thinking-mode sampling.
+        qwen38_block = router_text.split("[qwen3.8-27b]", 1)[1].split("[qwen3.8-27b-instruct]", 1)[0]
+        self.assertNotIn("reasoning = on", qwen38_block)
+        self.assertNotIn("reasoning = off", qwen38_block)
+        self.assertNotIn("spec-type = draft-mtp", qwen38_block)
+        self.assertNotIn("presence-penalty", qwen38_block)
+        self.assertIn("Qwen3.8-27B-UD-Q4_K_XL.gguf", qwen38_block)
+        self.assertIn("Qwen3.8-27B-mmproj-F16.gguf", qwen38_block)
+        self.assertIn("temp = 1.0", qwen38_block)
+        self.assertIn("top-p = 0.95", qwen38_block)
+        self.assertIn("top-k = 20", qwen38_block)
+        self.assertIn("min-p = 0.00", qwen38_block)
+        # Instruct profile: same weights, thinking forced off, unsloth instruct-mode sampling.
+        qwen38_instruct_block = router_text.split("[qwen3.8-27b-instruct]", 1)[1]
+        self.assertIn("Qwen3.8-27B-UD-Q4_K_XL.gguf", qwen38_instruct_block)
+        self.assertIn("reasoning = off", qwen38_instruct_block)
+        self.assertIn("temp = 0.7", qwen38_instruct_block)
+        self.assertIn("top-p = 0.80", qwen38_instruct_block)
+        self.assertIn("top-k = 20", qwen38_instruct_block)
+        self.assertIn("min-p = 0.00", qwen38_instruct_block)
+        self.assertIn("presence-penalty = 1.5", qwen38_instruct_block)
 
         ini_ggufs = set(re.findall(r"/([^/\s]+\.gguf)$", router_text, flags=re.MULTILINE))
         manifest_files = {

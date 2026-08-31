@@ -78,7 +78,12 @@ printf 'base=%s\nkey=%s\nband-model=%s\nargs=%s\n' \\
                 self.assertIn("exec ,llama-cpp run --", wrapper.read_text())
 
     def test_SHOULD_offer_router_ids_from_every_llama_cpp_harness_completion(self):
-        cases = (("ne", "nemotron-3.5"), ("qwen3.5", "qwen3.5-9b"))
+        cases = (
+            ("ne", "nemotron-3.5"),
+            ("qwen3.5", "qwen3.5-9b"),
+            ("qwen3.8", "qwen3.8-27b"),
+            ("qwen3.8-27b-i", "qwen3.8-27b-instruct"),
+        )
         for harness in ("claude", "codex", "cursor", "opencode"):
             for prefix, model_id in cases:
                 with self.subTest(harness=harness, model=model_id):

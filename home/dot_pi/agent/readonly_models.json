@@ -69,6 +69,34 @@
             "cacheRead": 0,
             "cacheWrite": 0
           }
+        },
+        {
+          "id": "qwen3.8-27b",
+          "name": "Qwen3.8 27B UD-Q4_K_XL (llama.cpp)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 262144,
+          "maxTokens": 32768,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
+        },
+        {
+          "id": "qwen3.8-27b-instruct",
+          "name": "Qwen3.8 27B UD-Q4_K_XL instruct (llama.cpp)",
+          "reasoning": false,
+          "input": ["text"],
+          "contextWindow": 262144,
+          "maxTokens": 32768,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
         }
       ]
     }

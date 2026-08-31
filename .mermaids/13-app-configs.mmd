@@ -29,7 +29,7 @@ flowchart TB
     end
 
     subgraph LOCALAI["Local LLM runtime"]
-        LLAMA["llama.cpp/models.ini.tmpl (nemotron-3.5 · qwen3.5-9b)<br/>← readonly_dot_default-llama-cpp-models.tmpl<br/>→ ,llama-cpp / four *-llama-cpp harnesses (see 02/07c)<br/>shared lifecycle auto-starts loopback router; 600s grace; explicit owned stop"]:::misc
+        LLAMA["llama.cpp/models.ini.tmpl (nemotron-3.5 · qwen3.5-9b · qwen3.8-27b{,-instruct})<br/>← readonly_dot_default-llama-cpp-models.tmpl<br/>→ ,llama-cpp / four *-llama-cpp harnesses (see 02/07c)<br/>shared lifecycle auto-starts loopback router; 600s grace; explicit owned stop"]:::misc
         SDIMAGE["sd-image/readonly_models.txt → ~/.config/sd-image/models.txt<br/>,image-local + sd-cli; FLUX.2 klein 9B gen; -i edit; not llama-server"]:::misc
     end
 
