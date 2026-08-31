@@ -32,8 +32,8 @@ The curated GGUF model list is a chezmoi-templated manifest: [`home/readonly_dot
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | `nemotron-3.5`         | `unsloth/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF` `NVIDIA-Nemotron-3.5-Lightning-30B-A3B-UD-Q4_K_XL.gguf` (~25.5 GB) | Unsloth Dynamic quant; in-model NextN MTP + thinking sampling in `models.ini`                      |
 | `qwen3.5-9b`           | `unsloth/Qwen3.5-9B-GGUF` `Qwen3.5-9B-UD-Q4_K_XL.gguf` (~6.0 GB) plus dest `Qwen3.5-9B-mmproj-F16.gguf`                 | Unsloth Dynamic quant; mmproj dest-renamed so the Hugging Face `mmproj-F16.gguf` name stays unique |
-| `qwen3.8-27b`          | `unsloth/Qwen3.8-27B-GGUF` `Qwen3.8-27B-UD-Q4_K_XL.gguf` (~17.6 GB) plus dest `Qwen3.8-27B-mmproj-F16.gguf`             | Unsloth Dynamic quant; hybrid thinking; unsloth thinking-mode sampling in `models.ini`             |
-| `qwen3.8-27b-instruct` | same `Qwen3.8-27B-UD-Q4_K_XL.gguf` weights (no extra download)                                                          | Non-thinking profile: `reasoning=off` plus unsloth instruct-mode sampling in `models.ini`          |
+| `qwen3.8-27b`          | `unsloth/Qwen3.8-27B-GGUF` `Qwen3.8-27B-UD-Q4_K_XL.gguf` (~17.6 GB) plus dest `Qwen3.8-27B-mmproj-F16.gguf`             | Unsloth Dynamic quant; hybrid thinking; work profile caps router context at 128k                   |
+| `qwen3.8-27b-instruct` | same `Qwen3.8-27B-UD-Q4_K_XL.gguf` weights (no extra download)                                                          | Non-thinking profile; work profile caps router context at 128k                                     |
 
 The router loads one preset at a time on demand. Weights stay on disk.
 

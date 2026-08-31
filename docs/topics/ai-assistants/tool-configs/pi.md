@@ -58,7 +58,7 @@ Automatic context compaction triggers when context exceeds `contextWindow − re
 
 `keepRecentTokens` is raised from Pi's `20000` default to preserve far more high-fidelity recent context before any lossy summarization. The setting is global, not per-model.
 
-`80000` is sized for the 262144-token local Nemotron window, ~30% recent-verbatim. It remains below the configured OpenRouter default's context limit.
+`80000` is sized for the 262144-token local Nemotron window, ~30% recent-verbatim. It also remains below the work-profile Qwen3.8 131072-token context and the configured OpenRouter default's context limit.
 
 ### Prompt-cache and compaction diagnostics
 

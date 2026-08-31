@@ -27,7 +27,7 @@ flowchart TB
 
     subgraph EXECL["3 · Execution (per-tool, .work/.personal merged at apply)"]
         CURSOR["Cursor (primary): dot_cursor/hooks.json + filtered MCP<br/>exact_agents/ review controller+PR gate+workers → ~/.cursor/agents/"]:::exec
-        CLAUDE["Claude Code: dot_claude/settings.{work,personal,llama-cpp}.json"]:::exec
+        CLAUDE["Claude Code: dot_claude/settings.{work,personal}.json + settings.llama-cpp*.json.tmpl"]:::exec
         GEMINI["Antigravity: config/symlink_AGENTS.md + symlink_skills + generated mcp_config.json"]:::exec
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (OpenRouter selectors)"]:::exec
         CODEX["Codex: dot_codex/private_config.{work,personal}.toml<br/>+ ,codex bearer-token env wrapper for hosted MCP"]:::exec

@@ -136,6 +136,21 @@ class TestCheckPlan(unittest.TestCase):
         assert "test_mcp_registry.py" in plan.tests
         assert "tests/test_tmux_pickers.py" not in plan.tests
 
+    def test_WHEN_llama_model_sources_change_SHOULD_run_model_mirror_shard(self):
+        changed = (
+            "home/dot_config/llama.cpp/models.ini.tmpl",
+            "home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl",
+            "home/dot_pi/agent/readonly_models.json",
+            "home/dot_pi/agent/readonly_models.personal.json",
+            "home/readonly_dot_default-llama-cpp-models.tmpl",
+        )
+        for path in changed:
+            with self.subTest(path=path):
+                plan = plan_check(REPO, full=False, changed=(path,), add_delete=False)
+                assert "test_model_mirrors.py" in plan.tests
+                if path == "home/dot_config/llama.cpp/models.ini.tmpl":
+                    assert "tests/test_llama_cpp_lifecycle.py" in plan.tests
+
     def test_WHEN_copilot_adapter_changes_SHOULD_skip_bin_commands_and_pickers(self):
         plan = plan_check(
             REPO,

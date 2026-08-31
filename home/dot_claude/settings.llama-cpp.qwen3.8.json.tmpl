@@ -1,0 +1,32 @@
+{
+  "autoCompactWindow": {{ if eq .isWork true }}100000{{ else }}200000{{ end }},
+  "env": {
+    "CLAUDE_CODE_ATTRIBUTION_HEADER": "0"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.agents/hooks/premise_nudge.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.agents/hooks/premise_nudge.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

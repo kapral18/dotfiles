@@ -8,8 +8,10 @@ import importlib.util
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 from unittest import mock
 
@@ -18,6 +20,40 @@ from _test_support import FIXTURES, REPO
 
 MIRROR_PATH = REPO / "home/dot_config/ai/readonly_model-mirrors.v1.json"
 PROBE_CASES = json.loads((FIXTURES / "model_probe_cases.json").read_text())
+
+
+def render_chezmoi_template(path, *, is_work):
+    if shutil.which("chezmoi") is None:
+        raise unittest.SkipTest("chezmoi is required to render templates")
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml") as config:
+        config.write(f"[data]\nisWork = {str(is_work).lower()}\n")
+        config.flush()
+        result = subprocess.run(
+            ["chezmoi", "--source", str(REPO), "--config", config.name, "execute-template"],
+            input=path.read_text(),
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=str(REPO),
+        )
+    return result.stdout
+
+
+def parse_ini_settings(block):
+    settings = {}
+    for raw_line in block.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        settings[key.strip()] = value.strip()
+    return settings
+
+
+def effective_ini_settings(text, section):
+    defaults = parse_ini_settings(text.split("[*]", 1)[1].split("\n[", 1)[0])
+    section_block = text.split(f"[{section}]", 1)[1].split("\n[", 1)[0]
+    return defaults | parse_ini_settings(section_block)
 
 
 class TestStaticModelMirrors(unittest.TestCase):
@@ -61,17 +97,69 @@ class TestStaticModelMirrors(unittest.TestCase):
             {model["id"] for model in pi_personal["providers"]["llama-cpp"]["models"]},
             expected,
         )
+        pi_work_context = {model["id"]: model["contextWindow"] for model in pi_work["providers"]["llama-cpp"]["models"]}
+        pi_personal_context = {
+            model["id"]: model["contextWindow"] for model in pi_personal["providers"]["llama-cpp"]["models"]
+        }
+        preserved_262k_models = ("nemotron-3.5", "qwen3.5-9b")
+        for model_id in preserved_262k_models:
+            with self.subTest(consumer="pi", model=model_id):
+                self.assertEqual(262144, pi_work_context[model_id])
+                self.assertEqual(262144, pi_personal_context[model_id])
+        self.assertEqual(131072, pi_work_context["qwen3.8-27b"])
+        self.assertEqual(131072, pi_work_context["qwen3.8-27b-instruct"])
+        self.assertEqual(262144, pi_personal_context["qwen3.8-27b"])
+        self.assertEqual(262144, pi_personal_context["qwen3.8-27b-instruct"])
 
         for profile in ("work", "personal"):
             config = model_mirrors._read_jsonc(REPO / f"home/dot_config/opencode/readonly_opencode.{profile}.jsonc")
             self.assertEqual(set(config["provider"]["llama-cpp"]["models"]), expected)
 
-        codex = json.loads((REPO / "home/dot_codex/readonly_llama-cpp-model-catalog.json").read_text())
-        self.assertEqual({model["slug"] for model in codex["models"]}, expected)
+        codex_template = REPO / "home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl"
+        codex_work = json.loads(render_chezmoi_template(codex_template, is_work=True))
+        codex_personal = json.loads(render_chezmoi_template(codex_template, is_work=False))
+        self.assertEqual({model["slug"] for model in codex_work["models"]}, expected)
+        self.assertEqual({model["slug"] for model in codex_personal["models"]}, expected)
+        codex_work_context = {model["slug"]: model["context_window"] for model in codex_work["models"]}
+        codex_personal_context = {model["slug"]: model["context_window"] for model in codex_personal["models"]}
+        codex_work_max_context = {model["slug"]: model["max_context_window"] for model in codex_work["models"]}
+        codex_personal_max_context = {model["slug"]: model["max_context_window"] for model in codex_personal["models"]}
+        codex_work_compact = {model["slug"]: model["auto_compact_token_limit"] for model in codex_work["models"]}
+        codex_personal_compact = {
+            model["slug"]: model["auto_compact_token_limit"] for model in codex_personal["models"]
+        }
+        for model_id in preserved_262k_models:
+            with self.subTest(consumer="codex", model=model_id):
+                self.assertEqual(262144, codex_work_context[model_id])
+                self.assertEqual(262144, codex_personal_context[model_id])
+                self.assertEqual(262144, codex_work_max_context[model_id])
+                self.assertEqual(262144, codex_personal_max_context[model_id])
+                self.assertEqual(200000, codex_work_compact[model_id])
+                self.assertEqual(200000, codex_personal_compact[model_id])
+        self.assertEqual(131072, codex_work_context["qwen3.8-27b"])
+        self.assertEqual(131072, codex_work_context["qwen3.8-27b-instruct"])
+        self.assertEqual(131072, codex_work_max_context["qwen3.8-27b"])
+        self.assertEqual(131072, codex_work_max_context["qwen3.8-27b-instruct"])
+        self.assertEqual(100000, codex_work_compact["qwen3.8-27b"])
+        self.assertEqual(100000, codex_work_compact["qwen3.8-27b-instruct"])
+        self.assertEqual(262144, codex_personal_context["qwen3.8-27b"])
+        self.assertEqual(262144, codex_personal_context["qwen3.8-27b-instruct"])
+        self.assertEqual(262144, codex_personal_max_context["qwen3.8-27b"])
+        self.assertEqual(262144, codex_personal_max_context["qwen3.8-27b-instruct"])
+        self.assertEqual(200000, codex_personal_compact["qwen3.8-27b"])
+        self.assertEqual(200000, codex_personal_compact["qwen3.8-27b-instruct"])
 
         router_text = (REPO / "home/dot_config/llama.cpp/models.ini.tmpl").read_text()
+        router_work = render_chezmoi_template(REPO / "home/dot_config/llama.cpp/models.ini.tmpl", is_work=True)
+        router_personal = render_chezmoi_template(REPO / "home/dot_config/llama.cpp/models.ini.tmpl", is_work=False)
         router_ids = set(re.findall(r"^\[([^*][^]]*)\]$", router_text, flags=re.MULTILINE))
         self.assertEqual(router_ids, expected)
+        for model_id in preserved_262k_models:
+            with self.subTest(consumer="router", model=model_id):
+                self.assertEqual("262144", effective_ini_settings(router_work, model_id).get("ctx-size"))
+                self.assertEqual("262144", effective_ini_settings(router_work, model_id).get("n-predict"))
+                self.assertEqual("262144", effective_ini_settings(router_personal, model_id).get("ctx-size"))
+                self.assertEqual("262144", effective_ini_settings(router_personal, model_id).get("n-predict"))
 
         manifest = (REPO / "home/readonly_dot_default-llama-cpp-models.tmpl").read_text()
         self.assertIn(
@@ -128,6 +216,12 @@ class TestStaticModelMirrors(unittest.TestCase):
         self.assertIn("top-p = 0.95", qwen38_block)
         self.assertIn("top-k = 20", qwen38_block)
         self.assertIn("min-p = 0.00", qwen38_block)
+        qwen38_work_settings = effective_ini_settings(router_work, "qwen3.8-27b")
+        qwen38_personal_settings = effective_ini_settings(router_personal, "qwen3.8-27b")
+        self.assertEqual("131072", qwen38_work_settings.get("ctx-size"))
+        self.assertEqual("131072", qwen38_work_settings.get("n-predict"))
+        self.assertEqual("262144", qwen38_personal_settings.get("ctx-size"))
+        self.assertEqual("262144", qwen38_personal_settings.get("n-predict"))
         # Instruct profile: same weights, thinking forced off, unsloth instruct-mode sampling.
         qwen38_instruct_block = router_text.split("[qwen3.8-27b-instruct]", 1)[1]
         self.assertIn("Qwen3.8-27B-UD-Q4_K_XL.gguf", qwen38_instruct_block)
@@ -137,6 +231,12 @@ class TestStaticModelMirrors(unittest.TestCase):
         self.assertIn("top-k = 20", qwen38_instruct_block)
         self.assertIn("min-p = 0.00", qwen38_instruct_block)
         self.assertIn("presence-penalty = 1.5", qwen38_instruct_block)
+        qwen38_instruct_work_settings = effective_ini_settings(router_work, "qwen3.8-27b-instruct")
+        qwen38_instruct_personal_settings = effective_ini_settings(router_personal, "qwen3.8-27b-instruct")
+        self.assertEqual("131072", qwen38_instruct_work_settings.get("ctx-size"))
+        self.assertEqual("131072", qwen38_instruct_work_settings.get("n-predict"))
+        self.assertEqual("262144", qwen38_instruct_personal_settings.get("ctx-size"))
+        self.assertEqual("262144", qwen38_instruct_personal_settings.get("n-predict"))
 
         ini_ggufs = set(re.findall(r"/([^/\s]+\.gguf)$", router_text, flags=re.MULTILINE))
         manifest_files = {

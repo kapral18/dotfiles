@@ -32,10 +32,14 @@ load-on-startup = false
 # Hybrid thinking model; thinking on by default (reasoning_effort=xhigh in the chat template),
 # so reasoning stays on the [*] auto default. Unsloth thinking-mode sampling below; the
 # instruct (non-thinking) profile would be temp 0.7, top-p 0.80, presence-penalty 1.5.
-# Max context 262144 = the [*] ctx-size default.
+# Work machines cap Qwen3.8 at 128k; personal machines inherit the 262144 [*] default.
 [qwen3.8-27b]
 model = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.8-27B-UD-Q4_K_XL.gguf
 mmproj = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.8-27B-mmproj-F16.gguf
+{{ if eq .isWork true }}
+ctx-size = 131072
+n-predict = 131072
+{{ end }}
 temp = 1.0
 top-p = 0.95
 top-k = 20
@@ -48,6 +52,10 @@ load-on-startup = false
 [qwen3.8-27b-instruct]
 model = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.8-27B-UD-Q4_K_XL.gguf
 mmproj = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.8-27B-mmproj-F16.gguf
+{{ if eq .isWork true }}
+ctx-size = 131072
+n-predict = 131072
+{{ end }}
 reasoning = off
 temp = 0.7
 top-p = 0.80

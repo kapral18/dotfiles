@@ -89,7 +89,7 @@ if should_refresh "$@" && command -v python3 >/dev/null 2>&1 && [[ -f "$config" 
   # Without it, ,mcp-token --login cannot drive cursor-agent against OAuth HTTP shapes.
   mint_mcp="${HOME}/.cache/mcp-token/oauth-mint/.cursor/mcp.json"
   if ! [[ -f "$mint_mcp" ]]; then
-    if python3 - "$config" <<'PY'
+    if python3 - "$config" <<'PY'; then
 import json, sys
 try:
     servers = json.load(open(sys.argv[1])).get("mcpServers", {})
@@ -103,7 +103,6 @@ for spec in servers.values():
         raise SystemExit(0)
 raise SystemExit(1)
 PY
-    then
       echo ",cursor: MCP bridge servers are configured but OAuth mint workspace is missing:" >&2
       echo "  $mint_mcp" >&2
       echo ",cursor: re-run chezmoi apply (hook 07-generate-mcp-configs) then retry." >&2

@@ -5,11 +5,31 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import unittest
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import REPO
+
+
+def render_chezmoi_template(path, *, is_work):
+    if shutil.which("chezmoi") is None:
+        raise unittest.SkipTest("chezmoi is required to render templates")
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml") as config:
+        config.write(f"[data]\nisWork = {str(is_work).lower()}\n")
+        config.flush()
+        result = subprocess.run(
+            ["chezmoi", "--source", str(REPO), "--config", config.name, "execute-template"],
+            input=path.read_text(encoding="utf-8"),
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=str(REPO),
+        )
+    return result.stdout
 
 
 class TestAgentSkillInvariants(unittest.TestCase):
@@ -177,7 +197,8 @@ class TestAgentSkillInvariants(unittest.TestCase):
         configs = (
             "home/dot_claude/settings.personal.json",
             "home/dot_claude/settings.work.json",
-            "home/dot_claude/settings.llama-cpp.json",
+            "home/dot_claude/settings.llama-cpp.json.tmpl",
+            "home/dot_claude/settings.llama-cpp.qwen3.8.json.tmpl",
             "home/dot_codex/hooks.json.tmpl",
             "home/dot_cursor/hooks.json",
             "home/dot_gemini/config/readonly_hooks.json",
@@ -192,8 +213,25 @@ class TestAgentSkillInvariants(unittest.TestCase):
         assert checked, "no hook references found; the regex or the config list is stale"
 
     def test_claude_llama_cpp_settings_disable_attribution_header(self):
-        settings = json.loads((REPO / "home/dot_claude/settings.llama-cpp.json").read_text(encoding="utf-8"))
+        settings = json.loads(
+            render_chezmoi_template(REPO / "home/dot_claude/settings.llama-cpp.json.tmpl", is_work=True)
+        )
         self.assertEqual(settings["env"]["CLAUDE_CODE_ATTRIBUTION_HEADER"], "0")
+        self.assertEqual(settings["autoCompactWindow"], 200000)
+        qwen38_settings = json.loads(
+            render_chezmoi_template(REPO / "home/dot_claude/settings.llama-cpp.qwen3.8.json.tmpl", is_work=True)
+        )
+        self.assertEqual(qwen38_settings["env"]["CLAUDE_CODE_ATTRIBUTION_HEADER"], "0")
+        self.assertEqual(qwen38_settings["autoCompactWindow"], 100000)
+
+        personal_settings = json.loads(
+            render_chezmoi_template(REPO / "home/dot_claude/settings.llama-cpp.json.tmpl", is_work=False)
+        )
+        self.assertEqual(personal_settings["autoCompactWindow"], 200000)
+        qwen38_personal_settings = json.loads(
+            render_chezmoi_template(REPO / "home/dot_claude/settings.llama-cpp.qwen3.8.json.tmpl", is_work=False)
+        )
+        self.assertEqual(qwen38_personal_settings["autoCompactWindow"], 200000)
 
     def test_ai_docs_track_current_runtime_contracts(self):
         self.assert_file_contains(

@@ -126,5 +126,104 @@ printf 'base=%s\nkey=%s\nband-model=%s\nargs=%s\n' \\
         assert "--force\tInterrupt active consumers and stop the owned router" in force.stdout
 
 
+class TestClaudeLlamaCppWrapper(unittest.TestCase):
+    """WHEN Claude Code launches against the local llama.cpp router."""
+
+    def run_wrapper(self, argv, *, extra_env=None, settings_override=None):
+        wrapper = REPO / "home/exact_bin/executable_,claude-llama-cpp"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            claude_dir = home / ".claude"
+            bindir = root / "bin"
+            claude_dir.mkdir(parents=True)
+            bindir.mkdir()
+            for name in (
+                "settings.llama-cpp.json",
+                "settings.llama-cpp.qwen3.8.json",
+                "custom-settings.json",
+            ):
+                (claude_dir / name).write_text("{}\n", encoding="utf-8")
+
+            claude = bindir / "claude"
+            claude.write_text(
+                """#!/usr/bin/env bash
+printf 'base=%s\nkey=%s\nargs=%s\n' "$ANTHROPIC_BASE_URL" "$ANTHROPIC_API_KEY" "$*"
+""",
+                encoding="utf-8",
+            )
+            claude.chmod(0o755)
+            lifecycle = bindir / ",llama-cpp"
+            lifecycle.write_text(
+                '#!/usr/bin/env bash\n[[ "$1" == run && "$2" == -- ]] || exit 2\nshift 2\nexec "$@"\n',
+                encoding="utf-8",
+            )
+            lifecycle.chmod(0o755)
+
+            env = {
+                **os.environ,
+                "HOME": str(home),
+                "PATH": f"{bindir}:{os.environ['PATH']}",
+                "LLAMA_CPP_HOST": "127.0.0.9",
+                "LLAMA_CPP_PORT": "9090",
+                "LLAMA_CPP_API_KEY": "fixture-local-key",
+            }
+            if settings_override:
+                env["CLAUDE_LLAMA_CPP_SETTINGS"] = str(claude_dir / settings_override)
+            if extra_env:
+                env.update(extra_env)
+            result = subprocess.run(
+                [modern_bash(), str(wrapper), *argv],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            return result, home
+
+    def test_SHOULD_select_settings_for_the_effective_local_model(self):
+        cases = (
+            ((), {}, "settings.llama-cpp.json", "--model nemotron-3.5"),
+            (
+                ("--model", "qwen3.8-27b", "-p", "review"),
+                {},
+                "settings.llama-cpp.qwen3.8.json",
+                "--model qwen3.8-27b -p review",
+            ),
+            (("--model=qwen3.8-27b-instruct",), {}, "settings.llama-cpp.qwen3.8.json", "--model=qwen3.8-27b-instruct"),
+            (("-m", "qwen3.8-27b-instruct"), {}, "settings.llama-cpp.qwen3.8.json", "-m qwen3.8-27b-instruct"),
+            (("-m", "qwen3.5-9b"), {}, "settings.llama-cpp.json", "-m qwen3.5-9b"),
+            (
+                ("--", "--model", "qwen3.8-27b"),
+                {},
+                "settings.llama-cpp.json",
+                "--model nemotron-3.5 -- --model qwen3.8-27b",
+            ),
+            ((), {"CLAUDE_LLAMA_CPP_MODEL": "qwen3.8-27b"}, "settings.llama-cpp.qwen3.8.json", "--model qwen3.8-27b"),
+        )
+        for argv, extra_env, settings_name, forwarded in cases:
+            with self.subTest(argv=argv, env=extra_env):
+                result, home = self.run_wrapper(argv, extra_env=extra_env)
+
+                assert result.returncode == 0, result.stderr
+                assert result.stdout.splitlines() == [
+                    "base=http://127.0.0.9:9090",
+                    "key=fixture-local-key",
+                    f"args=--settings {home}/.claude/{settings_name} {forwarded}",
+                ]
+
+    def test_SHOULD_respect_an_explicit_settings_override(self):
+        result, home = self.run_wrapper(
+            ("--model", "qwen3.8-27b"),
+            settings_override="custom-settings.json",
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == [
+            "base=http://127.0.0.9:9090",
+            "key=fixture-local-key",
+            f"args=--settings {home}/.claude/custom-settings.json --model qwen3.8-27b",
+        ]
+
+
 if __name__ == "__main__":
     unittest.main()

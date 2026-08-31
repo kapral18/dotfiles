@@ -75,7 +75,7 @@
           "name": "Qwen3.8 27B UD-Q4_K_XL (llama.cpp)",
           "reasoning": true,
           "input": ["text"],
-          "contextWindow": 262144,
+          "contextWindow": 131072,
           "maxTokens": 32768,
           "cost": {
             "input": 0,
@@ -89,7 +89,7 @@
           "name": "Qwen3.8 27B UD-Q4_K_XL instruct (llama.cpp)",
           "reasoning": false,
           "input": ["text"],
-          "contextWindow": 262144,
+          "contextWindow": 131072,
           "maxTokens": 32768,
           "cost": {
             "input": 0,

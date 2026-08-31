@@ -11,7 +11,7 @@ The router control plane is the local runtime layer for llama.cpp models. It map
 
 `models.ini` is the preset: it names the models and their per-model defaults. `,llama-cpp` is the operator interface: it manages the shared server lifecycle and calls the model API.
 
-The shipped preset defines these model ids. They inherit shared `[*]` defaults unless a section overrides `ctx-size` / `n-predict`. The router loads one at a time on demand.
+The shipped preset defines these model ids. They inherit shared `[*]` defaults unless a section overrides `ctx-size` / `n-predict`; the work profile caps both Qwen3.8 presets at 128k. The router loads one at a time on demand.
 
 ## Using it
 
@@ -34,6 +34,7 @@ The shipped preset defines these short model ids:
 They inherit shared `[*]` defaults:
 
 - `ctx-size=262144`
+- work profile only: `qwen3.8-27b` and `qwen3.8-27b-instruct` override `ctx-size=131072` and `n-predict=131072`
 - Metal offload
 - flash attention
 - Jinja chat templates
@@ -46,7 +47,7 @@ They inherit shared `[*]` defaults:
 
 Switch with `,llama-cpp load <id>` / `,llama-cpp unload <id>`.
 
-The served default `ctx-size` is `262144`, matching Nemotron, Qwen3.5-9B, and Qwen3.8-27B. Claude Code's local settings use `autoCompactWindow=200000` to compact before the default 262144-token server context fills.
+The served default `ctx-size` is `262144`, matching Nemotron and Qwen3.5-9B on both profiles and Qwen3.8-27B on personal. Work Qwen3.8 uses `131072`; Claude Code selects a Qwen3.8-specific settings file that renders `autoCompactWindow=100000` on work and `200000` on personal.
 
 ```bash
 ,llama-cpp serve

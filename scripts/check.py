@@ -232,7 +232,29 @@ TEST_RULES: tuple[TestRule, ...] = (
         tests=("tests/test_openrouter_wrappers.py",),
     ),
     TestRule(
-        prefixes=("home/.chezmoidata/ai_models/", "scripts/ai_models.py", "scripts/model_mirrors.py"),
+        prefixes=(
+            "home/exact_bin/executable_,claude-llama-cpp",
+            "home/exact_bin/executable_,codex-llama-cpp",
+            "home/exact_bin/executable_,cursor-llama-cpp",
+            "home/exact_bin/executable_,opencode-llama-cpp",
+            "home/dot_config/fish/completions/readonly_,claude-llama-cpp.fish",
+            "home/dot_config/fish/completions/readonly_,codex-llama-cpp.fish",
+            "home/dot_config/fish/completions/readonly_,cursor-llama-cpp.fish",
+            "home/dot_config/fish/completions/readonly_,opencode-llama-cpp.fish",
+        ),
+        tests=("tests/test_cursor_llama_cpp.py",),
+    ),
+    TestRule(
+        prefixes=(
+            "home/.chezmoidata/ai_models/",
+            "home/dot_config/llama.cpp/",
+            "home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl",
+            "home/dot_pi/agent/readonly_models.json",
+            "home/dot_pi/agent/readonly_models.personal.json",
+            "home/readonly_dot_default-llama-cpp-models.tmpl",
+            "scripts/ai_models.py",
+            "scripts/model_mirrors.py",
+        ),
         tests=(
             "test_ai_launcher.py",
             "test_ai_models.py",
@@ -291,7 +313,7 @@ TEST_RULES: tuple[TestRule, ...] = (
     TestRule(prefixes=("scripts/install_github_zip_bundle.py",), tests=("tests/test_install_github_zip_bundle.py",)),
     TestRule(
         prefixes=(
-            "home/dot_config/llama-cpp/",
+            "home/dot_config/llama.cpp/",
             "scripts/sync_llama_cpp_models.py",
             "home/.chezmoiscripts/run_onchange_after_07-sync-llama-cpp-models.sh.tmpl",
         ),

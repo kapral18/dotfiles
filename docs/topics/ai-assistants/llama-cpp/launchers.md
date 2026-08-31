@@ -17,7 +17,7 @@ OpenCode reads providers from `~/.config/opencode/opencode.jsonc`, so its launch
 
 Cursor's cloud build rejects local provider flags. `,cursor-llama-cpp` therefore runs the version-matched `agent-cli-local` flavor, pins its provider environment to llama.cpp, and rewrites `-m` to Cursor's `--model` flag.
 
-Claude Code has one global `autoCompactWindow`, but cloud `opus[1m]` and local llama.cpp need different values. The llama.cpp launcher loads an additive settings file with `autoCompactWindow: 200000` and `CLAUDE_CODE_ATTRIBUTION_HEADER=0`, and leaves plain cloud Claude sessions untouched.
+Claude Code has one global `autoCompactWindow`, but cloud `opus[1m]`, 262144-token local models, and work Qwen3.8 need different values. The llama.cpp launcher picks a model-scoped additive settings file: base local models use `200000`, work Qwen3.8 uses `100000`, and plain cloud Claude sessions stay untouched.
 
 ## Using it
 
@@ -106,21 +106,23 @@ The wrapper:
 - exports `ANTHROPIC_BASE_URL=http://${LLAMA_CPP_HOST:-127.0.0.1}:${LLAMA_CPP_PORT:-8080}`.
 - sets `ANTHROPIC_API_KEY=$LLAMA_CPP_API_KEY`.
 - defaults the key to `sk-no-key-required` because llama.cpp accepts unauthenticated local requests unless started with `--api-key`.
-- invokes `claude --settings ~/.claude/settings.llama-cpp.json "$@"`.
+- invokes `claude --settings ~/.claude/settings.llama-cpp*.json "$@"`.
 
 Pass `--model` / `-m nemotron-3.5` to pick the model.
 
 The wrapper injects its default `--model $CLAUDE_LLAMA_CPP_MODEL` only when you did not pass one, so there is no duplicate flag.
 
-| Variable                    | Default                                 | Purpose                                                             |
-| --------------------------- | --------------------------------------- | ------------------------------------------------------------------- |
-| `LLAMA_CPP_HOST`            | `127.0.0.1`                             | Same as `,llama-cpp`                                                |
-| `LLAMA_CPP_PORT`            | `8080`                                  | Same as `,llama-cpp`                                                |
-| `LLAMA_CPP_API_KEY`         | `sk-no-key-required`                    | Sent as `ANTHROPIC_API_KEY` (Claude Code uses this for bearer auth) |
-| `CLAUDE_LLAMA_CPP_MODEL`    | `nemotron-3.5`                          | Default model; overridden by a caller `--model`/`-m`, empty to skip |
-| `CLAUDE_LLAMA_CPP_SETTINGS` | `$HOME/.claude/settings.llama-cpp.json` | Point at an alternate llama.cpp settings file                       |
+| Variable                    | Default              | Purpose                                                             |
+| --------------------------- | -------------------- | ------------------------------------------------------------------- |
+| `LLAMA_CPP_HOST`            | `127.0.0.1`          | Same as `,llama-cpp`                                                |
+| `LLAMA_CPP_PORT`            | `8080`               | Same as `,llama-cpp`                                                |
+| `LLAMA_CPP_API_KEY`         | `sk-no-key-required` | Sent as `ANTHROPIC_API_KEY` (Claude Code uses this for bearer auth) |
+| `CLAUDE_LLAMA_CPP_MODEL`    | `nemotron-3.5`       | Default model; overridden by a caller `--model`/`-m`, empty to skip |
+| `CLAUDE_LLAMA_CPP_SETTINGS` | model-derived        | Point at an alternate llama.cpp settings file                       |
 
-`autoCompactWindow=200000` leaves a ~62k token buffer under the 262144-token server context for the next turn's prompt, tool outputs, and model reply.
+The wrapper derives the settings file from the effective model before `--`. `nemotron-3.5` and `qwen3.5-9b` use `~/.claude/settings.llama-cpp.json` with `autoCompactWindow=200000`; `qwen3.8-27b` and `qwen3.8-27b-instruct` use `~/.claude/settings.llama-cpp.qwen3.8.json`, which renders `100000` on work and `200000` on personal.
+
+`autoCompactWindow=100000` leaves a ~31k token buffer under the work Qwen3.8 131072-token server context. `200000` leaves a ~62k token buffer under the 262144-token server context.
 
 `env.CLAUDE_CODE_ATTRIBUTION_HEADER=0` stops Claude Code from prepending a per-request `x-anthropic-billing-header` that would miss the llama.cpp KV cache. Claude Code 2.1.220 copies `--settings` `env` into `process.env` and treats `"0"` as off.
 
@@ -136,11 +138,12 @@ Cloud Claude sessions are unaffected — plain `claude ...` still reads only `~/
 
 - [`home/exact_bin/executable_,codex`](../../../../home/exact_bin/executable_,codex) → `~/bin/,codex`
 - [`home/exact_lib/exact_,codex/main.py`](../../../../home/exact_lib/exact_,codex/main.py) → `~/lib/,codex/main.py`
-- [`home/dot_codex/readonly_llama-cpp-model-catalog.json`](../../../../home/dot_codex/readonly_llama-cpp-model-catalog.json) → `~/.codex/llama-cpp-model-catalog.json` (defines the local llama.cpp router ids)
+- [`home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl`](../../../../home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl) → `~/.codex/llama-cpp-model-catalog.json` (defines the local llama.cpp router ids and profile-specific context metadata)
 - [`home/exact_bin/executable_,codex-llama-cpp`](../../../../home/exact_bin/executable_,codex-llama-cpp) → `~/bin/,codex-llama-cpp`
 - [`home/exact_bin/executable_,cursor-llama-cpp`](../../../../home/exact_bin/executable_,cursor-llama-cpp) → `~/bin/,cursor-llama-cpp`
 - [`home/exact_lib/exact_,cursor-agent-local/install.sh`](../../../../home/exact_lib/exact_,cursor-agent-local/install.sh) → version-matched local-provider Cursor binary
 - [`home/dot_config/opencode/readonly_opencode.personal.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.personal.jsonc) / [`readonly_opencode.work.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.work.jsonc) — declare the `llama-cpp` provider
 - [`home/exact_bin/executable_,opencode-llama-cpp`](../../../../home/exact_bin/executable_,opencode-llama-cpp) → `~/bin/,opencode-llama-cpp`
-- [`home/dot_claude/settings.llama-cpp.json`](../../../../home/dot_claude/settings.llama-cpp.json) → `~/.claude/settings.llama-cpp.json` (`autoCompactWindow: 200000` and `CLAUDE_CODE_ATTRIBUTION_HEADER=0`)
+- [`home/dot_claude/settings.llama-cpp.json.tmpl`](../../../../home/dot_claude/settings.llama-cpp.json.tmpl) → `~/.claude/settings.llama-cpp.json` (base local `autoCompactWindow` and `CLAUDE_CODE_ATTRIBUTION_HEADER=0`)
+- [`home/dot_claude/settings.llama-cpp.qwen3.8.json.tmpl`](../../../../home/dot_claude/settings.llama-cpp.qwen3.8.json.tmpl) → `~/.claude/settings.llama-cpp.qwen3.8.json` (work Qwen3.8 `autoCompactWindow` and `CLAUDE_CODE_ATTRIBUTION_HEADER=0`)
 - [`home/exact_bin/executable_,claude-llama-cpp`](../../../../home/exact_bin/executable_,claude-llama-cpp) → `~/bin/,claude-llama-cpp`
