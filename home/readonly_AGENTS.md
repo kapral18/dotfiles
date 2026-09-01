@@ -90,7 +90,7 @@ Treat unverified external behavior as unknown; the only admissible evidence is p
 
 ### 2.3 Mechanism Claims (Feasibility Assertions)
 
-Mechanism claims are 2.1 claims, not design opinion: "feasible via M", "M supports X", "we can do X with M", and recommendations naming M.
+Mechanism claims are 2.2 claims, not design opinion: "feasible via M", "M supports X", "we can do X with M", and recommendations naming M.
 Anchor that M can/supports X (exact mechanism, call pattern, local source) before asserting or recommending it, not merely before coding.
 Confidence-by-association is not evidence: M doing X in context A does not prove X' in context B.
 If unverified, state it as open ("X might be possible via M — unverified"), never as a basis for choosing options.
@@ -98,7 +98,7 @@ If a design decision depends on the claim, verify it _before presenting the opti
 
 ### 2.4 Self-Claims (Falsification Before Assertion)
 
-A claim about your own work is a 2.1 claim too.
+A claim about your own work is a 2.2 claim too.
 Examples: "this is fixed", "the tests cover it", "I verified X", "that is not reachable", "this is blocked".
 Before asserting one, name what would make it false and check that. State the falsifier you ran, not the conclusion alone.
 
@@ -115,7 +115,7 @@ Before asserting one, name what would make it false and check that. State the fa
   a missing version, binary, or credential is usually obtainable.
 
 Applies at assertion time, not at end of task: falsify or demote a claim before it gates the next step.
-When the falsifier is not locally runnable, label the claim `unverified`; downstream use follows `2.1` item 9.
+When the falsifier is not locally runnable, label the claim `unverified`; downstream use follows `2.2` item 9.
 
 For catalogued recurring failure shapes (identity mismatch, PR-number misread, premature verdicts, probe-budget exhaustion, etc.), see `~/.agents/references/failure-modes.md`.
 
@@ -162,12 +162,12 @@ Compacted, previewed, sliced, truncated, or capped output is an index, not truth
 
 ### 2.8 Self-Report Skepticism
 
-A model's self-report is a 2.1b claim, not evidence.
+A model's self-report is a 2.2 claim, not evidence.
 That covers rationale, chain-of-thought, "done", status line, plan, and every sub-agent/reviewer/verifier report.
 Verify outcomes against an independent signal (tests, probes, diffs, runtime behavior) before relying on them;
 sub-agent/reviewer/verifier "done"/"passed"/"verified" is supervised evidence, not proof — re-check the underlying artifact per `2.4`.
-If a rationale says an input, file, or condition is irrelevant, perturb it per the `3.4` self-consistency loop.
-Anchor every self-report before forward-chaining on it, or label it hypothesis/`Unknown` (per `2.1` item 9).
+If a rationale says an input, file, or condition is irrelevant, perturb it per the `3.5` self-consistency loop.
+Anchor every self-report before forward-chaining on it, or label it hypothesis/`Unknown` (per `2.2` item 9).
 
 ## 3. Workflow And Side Effects
 
@@ -248,7 +248,7 @@ Make success observable. Reframe tasks into observable checks when practical:
   Otherwise inline anchors are the proof trail.
   Invoke `,proof` only on a concrete trigger above; "the task feels non-trivial" is insufficient.
 - Multi-step plans need independently verifiable steps. Stop at a failing verification step: back up or replan before proceeding.
-  Repeated same-class failure triggers `3.3 Requirements Reset`.
+  Repeated same-class failure triggers `3.4 Requirements Reset`.
 - Behavioral verification must exercise the semantic delta: at least one intended difference and one preserved difference when both are locally observable.
   A check that proves only the requested positive path is incomplete unless the change has no preserved behavioral surface.
 - Self-consistency check: when a rationale claims inputs/files/conditions are irrelevant, perturb those and confirm stability.
