@@ -280,9 +280,8 @@ These are actionable categories, not severity. Severity (`CRITICAL`/`HIGH`/`MEDI
 Some API keys are loaded into the shell from `pass` in [`home/dot_config/fish/readonly_config.fish.tmpl`](../../../../home/dot_config/fish/readonly_config.fish.tmpl). That means your password-store is part of the runtime wiring for AI tools.
 
 ```bash
-echo "${OPENAI_API_KEY:+set}"
-echo "${ANTHROPIC_API_KEY:+set}"
 echo "${GEMINI_API_KEY:+set}"
+echo "${OPENROUTER_API_KEY:+set}"
 ```
 
 Do not commit literal secrets into tool config files; keep them in `pass` and load at runtime. See [Security and secrets](../../security/security-and-secrets.md).

@@ -138,22 +138,6 @@ end
 # Those steer Gemini Developer API clients (including Antigravity) onto Vertex.
 
 # ------------------------------------
-# OpenAI API Key Configuration
-# ------------------------------------
-
-if type -q pass; and test -z "$OPENAI_API_KEY"
-    set -gx OPENAI_API_KEY (pass openai/api/token)
-end
-
-# ------------------------------------
-# Anthropic API Key Configuration
-# ------------------------------------
-
-if type -q pass; and test -z "$ANTHROPIC_API_KEY"
-    set -gx ANTHROPIC_API_KEY (pass anthropic/api/token)
-end
-
-# ------------------------------------
 # OpenRouter API Key Configuration
 # ------------------------------------
 

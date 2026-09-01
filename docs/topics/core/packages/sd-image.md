@@ -23,7 +23,7 @@ All 3 `,image-*` cloud commands auto-orient and strip metadata from temporary in
 ,image-codex -i photo.jpg "add shorts to the kid" -o edited.png
 ```
 
-`,image-openai` calls the native GPT Image 2 Images API with `OPENAI_API_KEY`, falling back to `pass show openai/api/token`. GPT Image 2 always uses high input fidelity. The command exposes quality, arbitrary valid size, PNG/JPEG/WebP, JPEG/WebP compression, background, repeated inputs, and a mask applied to the first input:
+`,image-openai` calls the native GPT Image 2 Images API with `OPENAI_API_KEY` when that is set in the environment, otherwise reading `pass show openai/api/token`. The shell does not export that variable, so the `pass` path is the normal one. GPT Image 2 always uses high input fidelity. The command exposes quality, arbitrary valid size, PNG/JPEG/WebP, JPEG/WebP compression, background, repeated inputs, and a mask applied to the first input:
 
 ```bash
 ,image-openai "a cat astronaut" --quality high --size 2048x2048

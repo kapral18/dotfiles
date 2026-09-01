@@ -67,9 +67,8 @@ echo "$SSH_AUTH_SOCK"
 ### Confirm API key loading behavior
 
 ```bash
-echo "${OPENAI_API_KEY:+set}"
-echo "${ANTHROPIC_API_KEY:+set}"
 echo "${GEMINI_API_KEY:+set}"
+echo "${OPENROUTER_API_KEY:+set}"
 ```
 
 ## Ignore Globs (fd / ripgrep / fzf)
