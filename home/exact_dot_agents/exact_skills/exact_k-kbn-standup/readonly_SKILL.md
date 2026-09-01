@@ -22,6 +22,7 @@ Resolve the rest at runtime:
 `BASELINE` = the `Message_ts` of the user's own **last multi-bullet standup post** in `#admin-ux-internal` (not a Slackbot reminder, not chatter).
 Find it via `slack_search_public_and_private` `from:<@USER> in:#admin-ux-internal` (`slack_search_public` misses this private channel).
 Read it fully — you must not repeat its items and should report status deltas (e.g. `waiting on review` → `merged`).
+Read it for content only, never for format. Slack stores posted links as `<URL|label>`, so a correct prior standup renders in a syntax that section 3 forbids. Take items and status from it; take link syntax only from section 3.
 
 Done when `BASELINE` is that newest `#admin-ux-internal` post's `Message_ts` and the post has been read.
 
@@ -147,13 +148,15 @@ Done when the compiled standup is in team format, uses those section headings wi
 
 ## 4. Deliver
 
-`slack_send_message_draft` strips the URL target from both `[label](URL)` and `<URL|label>`, leaving plain label text.
+Emit `[label](URL)` only. Never emit `<URL|label>`: Slack's composer converts pasted `[label](URL)` into real hyperlinks, so the Markdown form is what the paste path needs.
+(`slack_send_message_draft` strips the URL target from both forms, leaving plain label text — one more reason it is not the delivery path.)
 Never invoke `slack_send_message` or `slack_send_message_draft`. Do not copy until the user says they are ready.
 
 - Paste target = newest Slackbot reminder thread that tags `@admin-ux-team`: `slack_search_public_and_private` `from:<@USLACKBOT> "share your daily update" in:#admin-ux-internal`, `sort=timestamp`, `include_bots=true` (private channel; `slack_search_public` misses it).
   If none exists, the paste target is a standalone message in `#admin-ux-internal`.
   Never paste or post the compiled standup in `#kibana-management`.
 - Show the compiled standup inside a fenced raw code block (` ```text `) so the assistant UI rendering layer does not obscure or render Markdown links, and show the paste target, then ask if they are ready for `pbcopy`. A yes in the invoking prompt counts.
-- On yes: copy the compiled standup as plain text with `pbcopy`, then verify `pbpaste` exactly matches the source and contains one Markdown link per artifact.
+- On yes: copy the compiled standup as plain text with `pbcopy`, then verify `pbpaste` exactly matches the source and contains one `[label](URL)` per artifact.
+  Also run the negative check `pbpaste | grep -c '<https'` and require `0`; a grep built from what you just wrote confirms itself and catches nothing.
 
-Done when the user has seen the compiled standup inside a fenced code block and paste target, and after a yes `pbpaste` matches with one Markdown link per artifact.
+Done when the user has seen the compiled standup inside a fenced code block and paste target, and after a yes `pbpaste` matches with one `[label](URL)` per artifact and `grep -c '<https'` returns `0`.
