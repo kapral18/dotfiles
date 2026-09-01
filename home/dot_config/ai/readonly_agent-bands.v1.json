@@ -11,7 +11,7 @@
         },
         "Plan": {
           "model": "claude-fable-5",
-          "effort": "medium",
+          "effort": "xhigh",
           "alias": "fable"
         },
         "adversarial-verifier": {
@@ -81,12 +81,12 @@
         },
         "deep-review": {
           "model": "claude-fable-5",
-          "effort": "medium",
+          "effort": "xhigh",
           "alias": "fable"
         },
         "default": {
           "model": "claude-fable-5",
-          "effort": "medium",
+          "effort": "xhigh",
           "alias": "fable"
         },
         "explore": {
@@ -156,7 +156,7 @@
         },
         "review-controller": {
           "model": "claude-fable-5",
-          "effort": "medium",
+          "effort": "xhigh",
           "alias": "fable"
         },
         "review-worker": {

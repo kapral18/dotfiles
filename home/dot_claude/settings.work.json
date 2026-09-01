@@ -4,7 +4,7 @@
     "defaultMode": "bypassPermissions"
   },
   "model": "claude-fable-5",
-  "effortLevel": "medium",
+  "effortLevel": "xhigh",
   "hooks": {
     "SessionStart": [
       {

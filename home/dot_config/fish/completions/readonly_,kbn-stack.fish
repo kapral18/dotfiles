@@ -15,6 +15,7 @@ complete -c ,kbn-stack -l project-type -d "Serverless project type" -x -a "es se
 complete -c ,kbn-stack -l data -d "ES data folder name under ~/work/kibana/es_data" -x -a "(__complete_es_data_folders)"
 complete -c ,kbn-stack -l slot -d "Force a specific slot number" -x
 complete -c ,kbn-stack -l detach -d "Agent mode: background ES+Kibana, wait until ready, record started_by=agent"
+complete -c ,kbn-stack -l isolated-es -d "Own ES for this worktree instead of sharing a version-compatible one (also implied by -E/--data/non-default --es-heap)"
 complete -c ,kbn-stack -l stop -d "Tear down this worktree's stack (recorded pids and interactive port owners' process groups) and drop its registry entry"
 complete -c ,kbn-stack -l stop-all -d "Tear down every registered stack, including interactive tmux, then clear the registry"
 complete -c ,kbn-stack -l status -d "List registered stacks with live process and port state"

@@ -119,13 +119,14 @@ The env var that does not help is `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING`: it is
 
 ### Claude Code
 
-| Category                                         | Model               | Effort | Thinking | Context | Verifier status |
-| ------------------------------------------------ | ------------------- | ------ | -------- | ------- | --------------- |
-| `lookup`                                         | `claude-fable-5`    | low    | off      | short   | —               |
-| `mechanical`                                     | `claude-sonnet-4-6` | high   | off      | short   | —               |
-| `memory`                                         | `claude-sonnet-4-6` | low    | off      | short   | —               |
-| `research`, `implement`, `orchestrate`, `review` | `claude-fable-5`    | medium | off      | short   | —               |
-| `refute`                                         | `claude-fable-5`    | medium | off      | short   | degraded        |
+| Category                          | Model               | Effort | Thinking | Context | Verifier status |
+| --------------------------------- | ------------------- | ------ | -------- | ------- | --------------- |
+| `lookup`                          | `claude-fable-5`    | low    | off      | short   | —               |
+| `mechanical`                      | `claude-sonnet-4-6` | high   | off      | short   | —               |
+| `memory`                          | `claude-sonnet-4-6` | low    | off      | short   | —               |
+| `research`, `implement`, `review` | `claude-fable-5`    | medium | off      | short   | —               |
+| `orchestrate`                     | `claude-fable-5`    | xhigh  | off      | short   | —               |
+| `refute`                          | `claude-fable-5`    | medium | off      | short   | degraded        |
 
 Claude Code cannot take a cross-vendor counter: it accepts only Claude-family selectors, and an unknown id is not remapped — it reaches the API and returns `API model not found`. `refute` therefore resolves to Fable 5 and reports `degraded`. Fable 5 carries lookup and conclusion-forming categories (user call, 2026-08-05, following the Cursor GPT-5.6 exit); mechanical work uses Claude Sonnet 4.6 at high effort. The Claude Code selector is `claude-sonnet-4-6`, while Copilot uses dotted `claude-sonnet-4.6`. The 2026-08-03 opus-ban exemption for this harness is superseded — Opus is no longer an active pick here. `claude-fable-5` is verified inside the installed 2.1.222 bundle and `fable` is a first-class Agent-tool alias there; the API-key route short-circuits on billing before model validation, so a live `-p` probe cannot prove id validity on this machine. `alwaysThinkingEnabled: false` keeps the pick non-thinking.
 

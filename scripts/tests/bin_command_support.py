@@ -111,12 +111,16 @@ def _load_kbn_stack_command():
 
 
 @contextlib.contextmanager
-def _patched_ports(kbn_stack, alive_slots: dict[int, tuple[bool, bool]]):
+def _patched_ports(kbn_stack, alive_slots: dict[int, tuple[bool, bool]], squatted_ports: frozenset = frozenset()):
     """Make ,kbn-stack port liveness deterministic for slot-reclamation tests.
 
     ``alive_slots`` maps slot -> (kbn_alive, es_alive). port_listener_pids reports
     a synthetic pid for ports whose half is alive; kill_port_listeners records the
     port and clears it; save_registry is captured instead of writing to disk.
+    listener_identity_ok accepts any live port except those in ``squatted_ports``,
+    whose listener is treated as a foreign process outside the owner's tree.
+    kill_pid_group is recorded in ``killed_groups`` so no test path under the
+    fixture ever signals a real process group.
     """
     alive_ports: set[int] = set()
     for slot, (kbn_alive, es_alive) in alive_slots.items():
@@ -126,10 +130,12 @@ def _patched_ports(kbn_stack, alive_slots: dict[int, tuple[bool, bool]]):
         if es_alive:
             alive_ports.add(cfg["es_http"])
 
-    state: dict = {"killed": [], "saved": []}
+    state: dict = {"killed": [], "saved": [], "killed_groups": []}
     original_listeners = kbn_stack.port_listener_pids
     original_kill = kbn_stack.kill_port_listeners
     original_save = kbn_stack.save_registry
+    original_identity = kbn_stack.listener_identity_ok
+    original_kill_group = kbn_stack.kill_pid_group
 
     def fake_listeners(port):
         return [10000 + port] if port in alive_ports else []
@@ -141,15 +147,23 @@ def _patched_ports(kbn_stack, alive_slots: dict[int, tuple[bool, bool]]):
         state["killed"].append(port)
         return True
 
+    def fake_identity(port, owner_pid):
+        listeners = fake_listeners(port)
+        return bool(listeners) and port not in squatted_ports, listeners
+
     kbn_stack.port_listener_pids = fake_listeners
     kbn_stack.kill_port_listeners = fake_kill
     kbn_stack.save_registry = lambda reg: state["saved"].append({k: dict(v) for k, v in reg.items()})
+    kbn_stack.listener_identity_ok = fake_identity
+    kbn_stack.kill_pid_group = state["killed_groups"].append
     try:
         yield state
     finally:
         kbn_stack.port_listener_pids = original_listeners
         kbn_stack.kill_port_listeners = original_kill
         kbn_stack.save_registry = original_save
+        kbn_stack.listener_identity_ok = original_identity
+        kbn_stack.kill_pid_group = original_kill_group
 
 
 _HANG_AFTER_UNBIND_SERVER = """\

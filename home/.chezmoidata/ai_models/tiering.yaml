@@ -205,7 +205,7 @@ category_models:
       context: "short"
     orchestrate:
       model: "claude-fable-5"
-      effort: "medium"
+      effort: "xhigh"
       thinking: "off"
       context: "short"
     review:

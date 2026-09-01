@@ -11,6 +11,8 @@ Stacks are started per worktree by `,kbn-stack`, which records each running stac
 Load and follow `~/.agents/skills/k-kbn-stack/SKILL.md` for command mechanics, registry inspection, required `-K` flag parity, and teardown ownership.
 Each entry has `slot`, `branch`, `backend`, `kbn_url`, `es_url`, `cookie_name`, `kbn_flags`, `ready`, `started_by`, and `start_mode`.
 Detached agent starts also record `kbn_log`. `kbn_flags` is the list of extra `key=value` Kibana settings the stack was started with.
+A worktree entry with `es_key` uses a shared ES instance (registry reserved key `__es__`, keyed by ES version);
+its `es_url` already points at that instance, so target resolution is unchanged.
 Default starts inject `plugins.allowlistPluginGroups.0=platform` unless `--groups all` was passed (no allowlist flags) or an explicit `-K plugins.allowlistPluginGroups…` was supplied.
 User `-K` flags are recorded after any injected allowlist flags.
 `ready` is true only once Kibana has answered `/api/status`; detached starts additionally require the port listener to belong to the spawned Kibana's process tree before flipping it.
@@ -19,11 +21,13 @@ for legacy entries with no `started_by`, infer `agent` only when recorded proces
 Stacks run on plain `http://localhost:<port>` with a per-slot cookie name, so there are no fixed hostnames or fixed ports to assume.
 
 A stack may be started interactively by the user (tmux) or by an agent in background mode via `,kbn-stack --detach`.
-The detach path starts ES + Kibana headless, waits until Kibana is ready, sets `ready: true`, and returns.
+The detach path starts ES + Kibana headless (attaching to a compatible live shared ES starts only Kibana), waits until Kibana is ready, sets `ready: true`, and returns.
 Both paths flip the registry entry's `ready` to true once Kibana answers `/api/status`, so a stack the user started by hand in tmux from the current worktree is discoverable here and marked user-owned.
 Treat a registry entry as a usable target only when `ready` is true; an entry with `ready: false` is still booting (or failed) and must not be used as a live target.
 
-Backend parallelism: `snapshot` stacks are fully parallel (one per worktree, isolated by slot).
+Backend parallelism: `snapshot` stacks are fully parallel (one Kibana per worktree, isolated by slot).
+Override-free snapshot starts share one background ES per package.json version and share its `.kibana*` saved objects;
+pass `--isolated-es` when base-vs-head comparison or the data ladder needs saved-object/data isolation between worktrees.
 `serverless` stacks are single-instance per host because kbn-es runs fixed `es01`/`es02` Docker containers.
 A registry entry with `"exclusive": true` is serverless and only one can be live at a time;
 starting a serverless stack for one worktree may tear down another agent-owned serverless stack, while a user-owned serverless stack must stay running.
@@ -61,6 +65,7 @@ Backing/data endpoints:
 If the registry has no `ready:true` entry for a required worktree (always PR/head, plus base only when comparison is required), the stack is missing — this is a runtime-start step, not a target blocker.
 Before reusing a `ready:true` entry, correlate it with liveness evidence for that registry entry:
 recorded `kbn_pid`/`es_pid` when present, derived Kibana/ES port listeners for the entry's `slot`, and the referenced `log`/`kbn_log` paths.
+For an entry with `es_key`, take ES liveness from the `__es__` instance (its `es_http` listener or `es_pid`), not from the entry's slot-derived ES ports.
 Use this only to validate or reject the entry keyed by the reviewed worktree;
 never use a port probe to discover or substitute an arbitrary localhost target.
 If a ready entry's process/port/log evidence contradicts the registry, treat it as stale or corrupt:
