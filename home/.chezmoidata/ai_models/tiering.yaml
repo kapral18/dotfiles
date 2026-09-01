@@ -29,7 +29,7 @@ review_model_overrides:
     # cross lane takes the Anthropic pick — same id as the refute row. Recall evidence: most
     # confirmed defects are caught by exactly one reviewer perspective, so the always-on correctness
     # lane gets family diversity before any angle fan-out.
-    lanes_cross: "claude-fable-5"
+    lanes_cross: "claude-fable-5.1"
   cursor:
     # Cross-family primary-finder lane: Cursor review runs GPT-5.6 SOL, so the cross lane takes
     # Opus 5 High (Task-enum whitelisted, long-context task id like the refute row).
@@ -172,11 +172,12 @@ category_models:
     # so no cross-vendor counter is expressible here. alwaysThinkingEnabled:false keeps the
     # top-category model non-thinking; that is what `thinking: "off"` means on this harness.
     #
-    # Fable 5 carries lookup and conclusion-forming categories (user call, 2026-08-05, following
-    # the Cursor GPT-5.6 exit); mechanical work uses Claude Sonnet 4.6 high. Claude Code hyphenates the
-    # version selector as `claude-sonnet-4-6` (not Copilot's dotted `claude-sonnet-4.6`). The API-key
-    # route short-circuits on billing before model validation, so a live `-p` probe cannot prove id
-    # validity on this machine. The cost-driven opus-5 ban exemption (closed 2026-08-03) is superseded
+    # Fable carries lookup and conclusion-forming categories (Fable 5 user call 2026-08-05, following
+    # the Cursor GPT-5.6 exit; bumped to 5.1 on 2026-09-01); mechanical work uses Claude Sonnet 4.6 high.
+    # Claude Code hyphenates the version selector as `claude-sonnet-4-6` (not Copilot's dotted
+    # `claude-sonnet-4.6`), hence `claude-fable-5-1`. The installed 2.1.241 bundle names only
+    # `claude-fable-5`; `claude-fable-5-1` is unverified because the API-key route short-circuits on
+    # billing before model validation, so a live `-p` probe cannot prove id validity on this machine. The cost-driven opus-5 ban exemption (closed 2026-08-03) is superseded
     # — opus is off this harness too. Claude Code is Anthropic-only, so the glm/terra/kimi
     # substitution chain does not apply here and the verifier stays families=same (degraded).
     #
@@ -184,7 +185,7 @@ category_models:
     # separate all of them; the profile frontmatter's exact id is what holds each category. That is the
     # same collision the two sonnet bands used to have, documented in band_gate.py `_claude`.
     lookup:
-      model: "claude-fable-5"
+      model: "claude-fable-5-1"
       effort: "low"
       thinking: "off"
       context: "short"
@@ -194,27 +195,27 @@ category_models:
       thinking: "off"
       context: "short"
     research:
-      model: "claude-fable-5"
+      model: "claude-fable-5-1"
       effort: "medium"
       thinking: "off"
       context: "short"
     implement:
-      model: "claude-fable-5"
+      model: "claude-fable-5-1"
       effort: "medium"
       thinking: "off"
       context: "short"
     orchestrate:
-      model: "claude-fable-5"
+      model: "claude-fable-5-1"
       effort: "xhigh"
       thinking: "off"
       context: "short"
     review:
-      model: "claude-fable-5"
+      model: "claude-fable-5-1"
       effort: "medium"
       thinking: "off"
       context: "short"
     refute:
-      model: "claude-fable-5"
+      model: "claude-fable-5-1"
       effort: "medium"
       thinking: "off"
       context: "short"
@@ -279,6 +280,8 @@ category_models:
     # `context: short` is settings.json `contextTier: "default"`; long would be `"long_context"`.
     # User call 2026-08-24: Copilot defaults to gpt-5.5 at xhigh effort for every category except
     # mechanical and refute. Mechanical uses Sonnet 4.6 high; refute uses Fable 5 high.
+    # Fable 5.1 is not in the Copilot catalog: `copilot -p --model claude-fable-5.1` (and `-5-1`)
+    # returned "is not available" on Copilot CLI 1.0.82 (probed 2026-09-01), so refute stays on 5.
     # Non-thinking Anthropic models still need COPILOT_DISABLE_ANTHROPIC_THINKING=1, which the
     # `,copilot` launcher exports; it zeroes the thinking budget while effortLevel still ships as
     # reasoning_effort.
@@ -313,7 +316,7 @@ category_models:
       thinking: ""
       context: "short"
     refute:
-      model: "claude-fable-5"
+      model: "claude-fable-5.1"
       effort: "high"
       thinking: "off"
       context: "short"
@@ -326,7 +329,7 @@ category_models:
       context: "short"
   cursor:
     # Cursor is the only harness that splits effort and thinking into separate ids (plain
-    # `claude-fable-5-medium` vs `claude-fable-5-thinking-*`). Opus 5, Fable 5 and the GPT-5.x ids
+    # `claude-fable-5-1-medium` vs `claude-fable-5-1-thinking-*`). Opus 5, Fable 5/5.1 and the GPT-5.x ids
     # exist only as 1M ids here. `cursor-grok-4.6-xhigh` is not a 1M label in live
     # `cursor-agent models` (2026.08.21-4bf0f61: "Cursor Grok 4.6 Extra High").
     #
@@ -338,7 +341,7 @@ category_models:
     # gpt-5.6-sol-high, gpt-5.6-terra-max.
     # Anything else fails the spawn with "Invalid model selection", so categories here must stay inside
     # that list even where a better id exists for a main session: kimi-k3 and
-    # claude-fable-5-low/-max are sellable to a main session but are not on that whitelist.
+    # claude-fable-5-1-low/-max are sellable to a main session but are not on that whitelist.
     #
     # User call 2026-08-24 (remapped 2026-08-29 after the Task enum rotated): match Copilot's default
     # shape where the Cursor Task enum can spawn it. Primary categories use GPT-5.6 SOL High

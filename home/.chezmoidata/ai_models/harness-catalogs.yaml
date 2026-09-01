@@ -169,8 +169,11 @@ cursor_models:
   # load-bearing for Cursor category routes and OMP cursor-provider roles. See `category_models.cursor`
   # in tiering.yaml for the taxonomy's actual picks (marked recommended below where they match).
   # claude-fable-5-high was verified in cursor-agent 2026.08.21-4bf0f61 for main-session catalog
-  # completeness. Cursor delegated refute stays on the Task-enum `claude-opus-5-high` id.
+  # completeness; claude-fable-5-1-high (Cursor hyphenates the point version) was verified in live
+  # `cursor-agent models` 2026.08.31-4057e58. Cursor delegated refute stays on the Task-enum
+  # `claude-opus-5-high` id.
   - id: "claude-fable-5-high"
+  - id: "claude-fable-5-1-high"
   - id: "claude-sonnet-5-low"
   - id: "claude-sonnet-5-medium"
   - id: "claude-sonnet-5-high"
@@ -246,6 +249,9 @@ copilot_models:
   - id: "claude-sonnet-4.5"
   - id: "claude-haiku-4.5"
   - id: "claude-fable-5"
+  # Pending org enablement (requested 2026-09-01). Live probe on Copilot CLI 1.0.82 the same day:
+  # `copilot -p --model claude-fable-5.1` -> "not available"; refute/lanes_cross already pin it.
+  - id: "claude-fable-5.1"
   - id: "claude-opus-5"
   - id: "claude-opus-4.8"
   - id: "claude-opus-4.8-fast"

@@ -21,12 +21,12 @@
       "review-worker-cross": {
         "effortLevel": "xhigh",
         "contextTier": "default",
-        "model": "claude-fable-5"
+        "model": "claude-fable-5.1"
       },
       "adversarial-verifier": {
         "effortLevel": "high",
         "contextTier": "default",
-        "model": "claude-fable-5"
+        "model": "claude-fable-5.1"
       },
       "findings-auditor": {
         "effortLevel": "xhigh",
@@ -46,7 +46,7 @@
       "criteria-verifier": {
         "effortLevel": "high",
         "contextTier": "default",
-        "model": "claude-fable-5"
+        "model": "claude-fable-5.1"
       },
       "smol": {
         "effortLevel": "high",

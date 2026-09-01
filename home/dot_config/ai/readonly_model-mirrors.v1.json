@@ -13,8 +13,8 @@
   "defaults": {
     "harnesses": {
       "claude": {
-        "personal": "claude-fable-5",
-        "work": "claude-fable-5"
+        "personal": "claude-fable-5-1",
+        "work": "claude-fable-5-1"
       },
       "codex": {
         "personal": "gpt-5.5",
@@ -98,7 +98,7 @@
       "curated": {
         "complete": true,
         "models": [
-          "claude-fable-5"
+          "claude-fable-5-1"
         ],
         "provenance": [
           {
@@ -125,7 +125,7 @@
       "recommended": {
         "complete": true,
         "models": [
-          "claude-fable-5"
+          "claude-fable-5-1"
         ],
         "provenance": [
           {
@@ -220,6 +220,7 @@
           "claude-sonnet-4.5",
           "claude-haiku-4.5",
           "claude-fable-5",
+          "claude-fable-5.1",
           "claude-opus-5",
           "claude-opus-4.8",
           "claude-opus-4.8-fast",
@@ -252,7 +253,7 @@
         "models": [
           "auto",
           "gpt-5.5",
-          "claude-fable-5"
+          "claude-fable-5.1"
         ],
         "provenance": [
           {
@@ -293,7 +294,7 @@
         "models": [
           "auto",
           "gpt-5.5",
-          "claude-fable-5"
+          "claude-fable-5.1"
         ],
         "provenance": [
           {
@@ -492,6 +493,7 @@
           "gpt-5.6-terra-xhigh",
           "gpt-5.6-terra-xhigh-fast",
           "claude-fable-5-high",
+          "claude-fable-5-1-high",
           "claude-sonnet-5-low",
           "claude-sonnet-5-medium",
           "claude-sonnet-5-high",

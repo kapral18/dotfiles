@@ -118,7 +118,7 @@ def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str,
     # Claude's Agent tool constrains `model` to the family aliases sonnet|opus|haiku|fable
     # (claude-code 2.1.222; anything else fails updatedInput schema validation), and each alias
     # resolves through one ANTHROPIC_DEFAULT_*_MODEL. The alias is a lossy projection of the band:
-    # all three bands (claude-fable-5) spell `fable`, so the alias cannot separate them and the
+    # all three bands (claude-fable-5-1) spell `fable`, so the alias cannot separate them and the
     # hook cannot hold a cheap-band agent below medium-effort Fable — the profile frontmatter's
     # exact id is what does that, and it wins whenever no `model` is passed.
     #

@@ -5,162 +5,162 @@
     "claude_code": {
       "agents": {
         "Explore": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "Plan": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "xhigh",
           "alias": "fable"
         },
         "adversarial-verifier": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "best-of-n-runner": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "browser_agent": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "bugbot": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "change-auditor": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "claude": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "claude-code-guide": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "cli_help": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "low",
           "alias": "fable"
         },
         "code-review": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "code-searcher": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "codebase_investigator": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "criteria-verifier": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "cursor-guide": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "deep-review": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "xhigh",
           "alias": "fable"
         },
         "default": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "xhigh",
           "alias": "fable"
         },
         "explore": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "explorer": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "findings-auditor": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "fresh-eyes": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "general-purpose": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "generalPurpose": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "generalist": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "live-ui-review": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "post-review": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "pr-necessity-auditor": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "rem-agent": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "research": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "researcher": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "review-controller": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "xhigh",
           "alias": "fable"
         },
         "review-worker": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
@@ -169,17 +169,17 @@
           "effort": "medium"
         },
         "reviewer": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "rubber-duck": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "security-review": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
@@ -189,12 +189,12 @@
           "alias": "sonnet"
         },
         "task": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
         "worker": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         }
@@ -371,7 +371,7 @@
           "effort": "xhigh"
         },
         "adversarial-verifier": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5.1",
           "effort": "high"
         },
         "best-of-n-runner": {
@@ -415,7 +415,7 @@
           "effort": "xhigh"
         },
         "criteria-verifier": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5.1",
           "effort": "high"
         },
         "cursor-guide": {
@@ -491,7 +491,7 @@
           "effort": "xhigh"
         },
         "review-worker-cross": {
-          "model": "claude-fable-5",
+          "model": "claude-fable-5.1",
           "effort": "xhigh"
         },
         "reviewer": {

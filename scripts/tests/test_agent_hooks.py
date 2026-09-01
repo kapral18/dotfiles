@@ -2322,7 +2322,7 @@ class BandGateTests(unittest.TestCase):
         "harnesses": {
             "claude_code": {
                 "agents": {
-                    "Explore": {"band": "cheap", "model": "claude-fable-5", "alias": "fable"},
+                    "Explore": {"band": "cheap", "model": "claude-fable-5-1", "alias": "fable"},
                     "searcher": {"band": "cheap", "model": "claude-haiku-4-5", "alias": "haiku"},
                     "reviewer": {"band": "max", "model": "claude-opus-5", "alias": "opus"},
                 }
@@ -2458,7 +2458,7 @@ class BandGateTests(unittest.TestCase):
         )
 
     def test_claude_cannot_separate_bands_sharing_an_alias_and_says_so(self):
-        # All three bands (claude-fable-5) project to `fable`, so an
+        # All three bands (claude-fable-5-1) project to `fable`, so an
         # explicit `model: "fable"` on a cheap-band agent is indistinguishable from its own
         # band and passes. This is the Agent-tool alias schema limit, not a gate bug; the profile
         # frontmatter's exact id is what holds the band whenever no `model` argument is passed.

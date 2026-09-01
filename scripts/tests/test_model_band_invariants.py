@@ -105,7 +105,7 @@ class TestModelBandInvariants(unittest.TestCase):
         self.assertEqual("xhigh", settings["effortLevel"])
         self.assertEqual("claude-sonnet-4.6", rows["mechanical"]["model"])
         self.assertEqual("high", rows["mechanical"]["effort"])
-        self.assertEqual("claude-fable-5", rows["refute"]["model"])
+        self.assertEqual("claude-fable-5.1", rows["refute"]["model"])
         self.assertEqual("high", rows["refute"]["effort"])
         self.assertEqual("cross_family", rows["refute"]["verifier_status"])
         self.assertEqual("claude-sonnet-4.6", rows["memory"]["model"])
@@ -880,7 +880,10 @@ class TestModelBandInvariants(unittest.TestCase):
         import ai_models
 
         expected = {
-            "claude_code": ("claude-fable-5", "low"),  # Anthropic-only; all bands fable-5 (user call 2026-08-05)
+            "claude_code": (
+                "claude-fable-5-1",
+                "low",
+            ),  # Anthropic-only; all bands fable (5: user call 2026-08-05; 5.1: 2026-09-01)
             "codex": ("gpt-5.5", "xhigh"),  # user-selected all-band Codex policy
             "copilot": ("gpt-5.5", "xhigh"),
             "cursor": ("gpt-5.6-sol-high", "high"),  # captured Cursor Task-enum primary selector
