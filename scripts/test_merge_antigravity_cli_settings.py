@@ -34,13 +34,13 @@ class TestMergeAntigravityCliSettings(unittest.TestCase):
         policy = {
             "enableTelemetry": False,
             "modelProvider": "gemini",
-            "model": "Gemini 3.1 Pro",
+            "model": "Gemini 3.8 Flash (High)",
         }
 
         merged = merge_antigravity_cli_settings(live, policy)
 
         self.assertEqual(merged["modelProvider"], "gemini")
-        self.assertEqual(merged["model"], "Gemini 3.1 Pro")
+        self.assertEqual(merged["model"], "Gemini 3.8 Flash (High)")
         self.assertEqual(merged["enableTelemetry"], False)
         self.assertEqual(merged["trustedWorkspaces"], ["/tmp/live"])
         self.assertEqual(merged["permissions"], {"allow": ["command(ls)"]})
@@ -78,7 +78,7 @@ class TestMergeAntigravityCliSettings(unittest.TestCase):
     def test_SHOULD_pin_policy_file_to_gemini_api_key_path(self):
         policy = json.loads(POLICY.read_text(encoding="utf-8"))
         self.assertEqual(policy["modelProvider"], "gemini")
-        self.assertEqual(policy["model"], "Gemini 3.1 Pro")
+        self.assertEqual(policy["model"], "Gemini 3.8 Flash (High)")
         self.assertIs(policy["enableTelemetry"], False)
         self.assertNotIn("gcp", policy)
 

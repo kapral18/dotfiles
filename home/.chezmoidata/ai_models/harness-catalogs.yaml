@@ -68,6 +68,10 @@ cursor_models:
   - id: "gemini-3.5-flash"
     recommended: true
     recommendation_rank: 6
+  - id: "gemini-3.8"
+  - id: "gemini-3.8-flash-high"
+  - id: "gemini-3.8-flash-low"
+  - id: "gemini-3.8-flash-medium"
   - id: "gpt-5-mini"
   - id: "gpt-5.1"
   - id: "gpt-5.1-codex-max-high"

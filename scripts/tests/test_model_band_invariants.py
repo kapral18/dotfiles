@@ -148,10 +148,10 @@ class TestModelBandInvariants(unittest.TestCase):
                 self.assertEqual("gemini-3.1-pro-preview", rows[category]["model"])
                 self.assertEqual("high", rows[category]["effort"])
                 self.assertEqual("long", rows[category]["context"])
-        self.assertEqual("gemini-3.7-flash", rows["mechanical"]["model"])
+        self.assertEqual("gemini-3.8-flash", rows["mechanical"]["model"])
         self.assertEqual("high", rows["mechanical"]["effort"])
         self.assertEqual("long", rows["mechanical"]["context"])
-        self.assertEqual("gemini-3.7-flash", rows["memory"]["model"])
+        self.assertEqual("gemini-3.8-flash", rows["memory"]["model"])
         self.assertEqual("degraded", rows["refute"]["verifier_status"])
 
     def test_memory_category_binds_smol_and_projects_into_the_deployed_bands(self):
@@ -992,6 +992,7 @@ class TestModelBandInvariants(unittest.TestCase):
             "cursor-grok-4.5-high-fast",
             "cursor-grok-4.6-xhigh-fast",
             "gemini-3.7-flash-high",
+            "gemini-3.8-flash-high",
             "gpt-5.6-sol-high",
             "gpt-5.6-terra-max",
         }

@@ -24,10 +24,8 @@ import sys
 AI_ENTRYPOINT_NAMES = {
     "AGENTS.md",
     "CLAUDE.md",
-    "GEMINI.md",
     "readonly_AGENTS.md",
     "readonly_CLAUDE.md",
-    "readonly_GEMINI.md",
 }
 AI_SKILL_PATH_MARKERS = (
     "/exact_skills/",

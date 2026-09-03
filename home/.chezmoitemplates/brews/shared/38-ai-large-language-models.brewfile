@@ -10,6 +10,15 @@ cask "antigravity-cli"
 # https://antigravity.google/product/antigravity-2
 cask "antigravity"
 
+# OpenAI Codex desktop app (`Codex.app`); the cask is deprecated upstream and
+# the Codex CLI can also install the app with `codex app`
+# https://chatgpt.com/codex?app-landing-page=true
+cask "codex-app"
+
+# Anthropic Claude desktop app (`Claude.app`)
+# https://claude.com/download
+cask "claude"
+
 # Terminal tool to right-size LLM models to your hardware (RAM, CPU, GPU)
 # https://github.com/AlexsJones/llmfit
 brew "llmfit"

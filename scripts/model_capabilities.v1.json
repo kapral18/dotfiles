@@ -71,6 +71,11 @@
         "complete": true,
         "mode": "fixed",
         "models": [
+          "gemini-3.8",
+          "gemini-3.8-flash",
+          "gemini-3.8-flash-high",
+          "gemini-3.8-flash-medium",
+          "gemini-3.8-flash-low",
           "gemini-3.7-flash",
           "gemini-3.7-flash-high",
           "gemini-3.7-flash-medium",
@@ -81,12 +86,12 @@
           "gemini-3.5-flash",
           "gemini-3.1-pro-preview"
         ],
-        "source": "agy 1.1.18 models output plus existing base-model --effort selector policy"
+        "source": "agy 1.1.25 models output plus existing base-model --effort selector policy"
       },
       "identity": {
         "binary": "agy",
         "package": "Homebrew cask antigravity-cli",
-        "version": "1.1.18"
+        "version": "1.1.25"
       },
       "live_probe": {
         "reason": "static snapshot only; no live agy-models adapter is implemented",

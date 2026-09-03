@@ -38,8 +38,20 @@ lib/,palantir
 # Obsolete gemini-cli config & directories (superseded by antigravity)
 .gemini/GEMINI.md
 .gemini/settings.json
+.gemini/settings.json.bak-premise-nudge
+.gemini/settings.json.orig
 .gemini/agents
 .gemini/commands
+.gemini/google_accounts.json
+.gemini/installation_id
+.gemini/mcp-oauth-tokens-v2.json
+.gemini/projects.json
+.gemini/state.json
+.gemini/trustedFolders.json
+.gemini/history
+.gemini/tmp
+.gemini/extensions
+.gemini/.env
 # Retired Vertex harness adapter + wrappers
 bin/,claude-vertex
 bin/,codex-vertex

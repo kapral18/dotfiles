@@ -22,7 +22,9 @@ Resolve the rest at runtime:
 `BASELINE` = the `Message_ts` of the user's own **last multi-bullet standup post** in `#admin-ux-internal` (not a Slackbot reminder, not chatter).
 Find it via `slack_search_public_and_private` `from:<@USER> in:#admin-ux-internal` (`slack_search_public` misses this private channel).
 Read it fully — you must not repeat its items and should report status deltas (e.g. `waiting on review` → `merged`).
-Read it for content only, never for format. Slack stores posted links as `<URL|label>`, so a correct prior standup renders in a syntax that section 3 forbids. Take items and status from it; take link syntax only from section 3.
+Read it for content only, never for format.
+Slack stores posted links as `<URL|label>`, so a correct prior standup renders in a syntax that section 3 forbids.
+Take items and status from it; take link syntax only from section 3.
 
 Done when `BASELINE` is that newest `#admin-ux-internal` post's `Message_ts` and the post has been read.
 
@@ -148,7 +150,8 @@ Done when the compiled standup is in team format, uses those section headings wi
 
 ## 4. Deliver
 
-Emit `[label](URL)` only. Never emit `<URL|label>`: Slack's composer converts pasted `[label](URL)` into real hyperlinks, so the Markdown form is what the paste path needs.
+Emit `[label](URL)` only.
+Never emit `<URL|label>`: Slack's composer converts pasted `[label](URL)` into real hyperlinks, so the Markdown form is what the paste path needs.
 (`slack_send_message_draft` strips the URL target from both forms, leaving plain label text — one more reason it is not the delivery path.)
 Never invoke `slack_send_message` or `slack_send_message_draft`. Do not copy until the user says they are ready.
 

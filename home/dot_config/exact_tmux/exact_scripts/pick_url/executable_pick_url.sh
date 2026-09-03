@@ -61,11 +61,29 @@ if [[ -z "${TMUX:-}" ]]; then
   die "tmux: not running inside tmux"
 fi
 
-if [[ "${limit}" == 'screen' ]]; then
-  items="$(tmux capture-pane -J -p -e | python3 "$script_dir/lib/strip_cr.py" --extract-candidates --extra-filter "${extra_filter}" | nl -w3 -s '  ')"
-else
-  items="$(tmux capture-pane -J -p -e -S -"${limit}" | python3 "$script_dir/lib/strip_cr.py" --extract-candidates --extra-filter "${extra_filter}" | nl -w3 -s '  ')"
+# When the pane is scrolled back in copy mode, capture-pane without -S/-E
+# returns the live bottom screen, not the lines the user is looking at.
+# Shift the range so the scrolled viewport is what gets scanned. Only copy-mode
+# offsets map onto the pane's scrollback; other modes (view-mode, tree-mode)
+# draw their own screen, so they keep the plain capture.
+scroll_position=0
+pane_height=0
+IFS='|' read -r pane_mode scroll_position pane_height <<< "$(tmux display-message -p '#{pane_mode}|#{scroll_position}|#{pane_height}')"
+if [[ "${pane_mode:-}" != 'copy-mode' || ! "${scroll_position:-}" =~ ^[0-9]+$ || ! "${pane_height:-}" =~ ^[0-9]+$ ]]; then
+  scroll_position=0
 fi
+
+capture_flags=()
+if [[ "${limit}" == 'screen' ]]; then
+  if ((scroll_position > 0)); then
+    capture_flags=(-S "-${scroll_position}" -E "$((pane_height - scroll_position - 1))")
+  fi
+elif [[ "${limit}" =~ ^[0-9]+$ ]] && ((scroll_position > limit)); then
+  capture_flags=(-S "-${scroll_position}")
+else
+  capture_flags=(-S "-${limit}")
+fi
+items="$(tmux capture-pane -J -p -e ${capture_flags[@]+"${capture_flags[@]}"} | python3 "$script_dir/lib/strip_cr.py" --extract-candidates --extra-filter "${extra_filter}" | nl -w3 -s '  ')"
 
 if [[ -z "${items}" ]]; then
   tmux display-message 'tmux: no URLs found'

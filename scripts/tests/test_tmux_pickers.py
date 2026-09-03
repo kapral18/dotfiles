@@ -1764,6 +1764,128 @@ exit 1
             assert "blob/.../src/platform/pl" not in offered
             assert "…" not in offered
 
+    def test_when_pick_url_captures_should_follow_viewport_and_history_contracts(self):
+        script = TMUX_PICKERS.parent / "pick_url/executable_pick_url.sh"
+        viewport_url = "https://example.com/viewport"
+        bottom_url = "https://example.com/live-bottom"
+        mismatch_url = "https://example.com/argument-mismatch"
+        cases = [
+            ("not in copy mode", "||38", "screen", "capture-pane -J -p -e", (bottom_url,)),
+            ("copy mode at bottom", "copy-mode|0|38", "screen", "capture-pane -J -p -e", (bottom_url,)),
+            (
+                "shallow copy-mode scroll",
+                "copy-mode|1|38",
+                "screen",
+                "capture-pane -J -p -e -S -1 -E 36",
+                (viewport_url,),
+            ),
+            (
+                "copy-mode visible-line boundary",
+                "copy-mode|37|38",
+                "screen",
+                "capture-pane -J -p -e -S -37 -E 0",
+                (viewport_url,),
+            ),
+            (
+                "deep copy-mode scroll",
+                "copy-mode|65|38",
+                "screen",
+                "capture-pane -J -p -e -S -65 -E -28",
+                (viewport_url,),
+            ),
+            (
+                "numeric limit covers viewport",
+                "copy-mode|65|38",
+                "100",
+                "capture-pane -J -p -e -S -100",
+                (viewport_url, bottom_url),
+            ),
+            (
+                "numeric limit expands to viewport",
+                "copy-mode|65|38",
+                "50",
+                "capture-pane -J -p -e -S -65",
+                (viewport_url, bottom_url),
+            ),
+            (
+                "numeric limit outside copy mode",
+                "||38",
+                "50",
+                "capture-pane -J -p -e -S -50",
+                (viewport_url, bottom_url),
+            ),
+            ("view mode keeps plain capture", "view-mode|28|38", "screen", "capture-pane -J -p -e", (bottom_url,)),
+            ("tree mode keeps plain capture", "tree-mode||38", "screen", "capture-pane -J -p -e", (bottom_url,)),
+            ("malformed scroll position", "copy-mode|bad|38", "screen", "capture-pane -J -p -e", (bottom_url,)),
+            ("malformed pane height", "copy-mode|65|bad", "screen", "capture-pane -J -p -e", (bottom_url,)),
+        ]
+
+        for label, pane_state, history_limit, expected_capture_args, expected_urls in cases:
+            with self.subTest(case=label), tempfile.TemporaryDirectory() as tmp:
+                tmp_path = Path(tmp)
+                viewport = tmp_path / "viewport.txt"
+                viewport.write_text(f"see {viewport_url}\n")
+                bottom = tmp_path / "bottom.txt"
+                bottom.write_text(f"see {bottom_url}\n")
+                mismatch = tmp_path / "mismatch.txt"
+                mismatch.write_text(f"see {mismatch_url}\n")
+                items = tmp_path / "items.txt"
+                args_log = tmp_path / "capture-args.txt"
+                fake_bin = tmp_path / "bin"
+                fake_bin.mkdir()
+                fake_tmux = fake_bin / "tmux"
+                fake_tmux.write_text(
+                    "#!/usr/bin/env bash\n"
+                    'case "$1" in\n'
+                    "  show)\n"
+                    '    if [[ "$*" == *"@pick_url_history_limit"* ]]; then printf "%s\\n" "$HISTORY_LIMIT"; fi\n'
+                    "    ;;\n"
+                    "  capture-pane)\n"
+                    '    printf "%s\\n" "$*" > "$CAPTURE_ARGS"\n'
+                    '    if [[ "$*" != "$EXPECTED_CAPTURE_ARGS" ]]; then\n'
+                    '      cat "$MISMATCH_FIXTURE"\n'
+                    '    elif [[ "$*" == *" -E "* ]]; then\n'
+                    '      cat "$VIEWPORT_FIXTURE"\n'
+                    '    elif [[ "$*" == *" -S "* ]]; then\n'
+                    '      cat "$VIEWPORT_FIXTURE" "$BOTTOM_FIXTURE"\n'
+                    "    else\n"
+                    '      cat "$BOTTOM_FIXTURE"\n'
+                    "    fi\n"
+                    "    ;;\n"
+                    '  display-message) [[ "$*" == *"-p"* ]] && printf "%s\\n" "$PANE_STATE" ;;\n'
+                    "  *) exit 0 ;;\n"
+                    "esac\n"
+                )
+                fake_tmux.chmod(0o755)
+                fake_fzf = fake_bin / "fzf"
+                fake_fzf.write_text('#!/usr/bin/env bash\ncat > "$FZF_ITEMS"\nexit 1\n')
+                fake_fzf.chmod(0o755)
+
+                result = subprocess.run(
+                    [modern_bash(), str(script)],
+                    capture_output=True,
+                    text=True,
+                    env={
+                        **os.environ,
+                        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+                        "TMUX": "fake",
+                        "HISTORY_LIMIT": history_limit,
+                        "PANE_STATE": pane_state,
+                        "EXPECTED_CAPTURE_ARGS": expected_capture_args,
+                        "BOTTOM_FIXTURE": str(bottom),
+                        "VIEWPORT_FIXTURE": str(viewport),
+                        "MISMATCH_FIXTURE": str(mismatch),
+                        "CAPTURE_ARGS": str(args_log),
+                        "FZF_ITEMS": str(items),
+                    },
+                )
+
+                assert result.returncode == 0, result.stderr
+                assert args_log.read_text().strip() == expected_capture_args, args_log.read_text()
+                offered = items.read_text()
+                for url in (viewport_url, bottom_url, mismatch_url):
+                    assert (url in offered) is (url in expected_urls)
+
     def test_pick_url_joins_unbordered_wrapped_urls_across_lines(self):
         strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
         payload = (

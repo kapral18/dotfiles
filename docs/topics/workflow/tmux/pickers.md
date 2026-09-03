@@ -32,6 +32,7 @@ The session and GitHub pickers are siblings: `alt-g` switches between them in pl
 
 ### Behavior
 
+- Scans the lines you are looking at: when the pane is scrolled back in copy mode, the capture range shifts to the scrolled viewport (with a numeric `@pick_url_history_limit`, the scan extends back at least to that viewport). With the default `screen` setting, an unscrolled pane keeps the plain screen capture; a numeric limit keeps scanning its configured history.
 - De-duplicates path-prefix URLs: if both `https://site/x` and `https://site/x/y` are detected, it keeps the deeper path entry.
 - Runs `fzf` with `FZF_DEFAULT_OPTS` cleared so global defaults don't distort the popup UI.
 - Sanitizes captured pane text before extraction: strips ANSI/control sequences, rewrites OSC 8 hyperlinks to their target URL (including wrapped labels), normalizes embedded whitespace and escaped-whitespace corruption (`\\n`, `\\r`, `\\t`) in OSC targets and in each extracted candidate, and strips invisible Unicode format characters (for example zero-width space `U+200B`, ZWJ/ZWNJ, BOM, bidi marks). Visible pane text is left otherwise intact, so a literal `\n` in prose is not silently deleted.
