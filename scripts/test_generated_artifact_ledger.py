@@ -91,7 +91,7 @@ class TestGeneratedArtifactLedger(unittest.TestCase):
                 json.dumps(
                     {
                         "effortLevel": "xhigh",
-                        "subagents": {"agents": {"review-worker": {"effortLevel": "xhigh"}}},
+                        "subagents": {"agents": {"k-agent-review-worker": {"effortLevel": "xhigh"}}},
                     }
                 )
             )
@@ -102,7 +102,7 @@ class TestGeneratedArtifactLedger(unittest.TestCase):
                     {
                         "effortLevel": "xhigh",
                         "model": "runtime-owned",
-                        "subagents": {"agents": {"review-worker": {"effortLevel": "xhigh"}}},
+                        "subagents": {"agents": {"k-agent-review-worker": {"effortLevel": "xhigh"}}},
                     }
                 )
             )

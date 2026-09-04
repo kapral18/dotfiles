@@ -7,14 +7,14 @@ title: Hook memory
 
 Ephemeral session memory: inject context at start, record tool events to a crash-safe worklog, bind sessions to named topic buckets. Shared hooks deploy to `~/.agents/hooks/`; harness adapters differ — see [Runtime recall wiring](cross-agent-memory.md).
 
-| Piece                                           | Role                                                                         |
-| ----------------------------------------------- | ---------------------------------------------------------------------------- |
-| `session_context.py`                            | Session start: prefix, topic index/spec, worklog tail                        |
-| `worklog_dispatcher.sh` → `worklog_recorder.py` | Post-tool: async JSONL append                                                |
-| `perturn_recall.py` + `correction_detector.py`  | Per-prompt: stage AI-KB candidates for the smol judge + correction directive |
-| `/tmp/specs/<workspace>/`                       | Specs, worklogs, bindings (outside chezmoi/worktrees)                        |
-| `,agent-memory`                                 | User/agent control plane                                                     |
-| `spec_mirror.py`                                | Reboot survival → `~/.local/state/agent-specs/`                              |
+| Piece                                           | Role                                                                                   |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `session_context.py`                            | Session start: prefix, topic index/spec, worklog tail                                  |
+| `worklog_dispatcher.sh` → `worklog_recorder.py` | Post-tool: async JSONL append                                                          |
+| `perturn_recall.py` + `correction_detector.py`  | Per-prompt: stage AI-KB candidates for the `k-agent-smol` judge + correction directive |
+| `/tmp/specs/<workspace>/`                       | Specs, worklogs, bindings (outside chezmoi/worktrees)                                  |
+| `,agent-memory`                                 | User/agent control plane                                                               |
+| `spec_mirror.py`                                | Reboot survival → `~/.local/state/agent-specs/`                                        |
 
 ## Topic lifecycle
 
@@ -74,15 +74,15 @@ _active_topic.txt
 .worklog-queue-v1/<session-key>/  .worklog-locks-v1/
 ```
 
-| Contract          | Behavior                                                                                                                                                                                                                                                                                    |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Ordering          | Atomic sequence files and stable `worklog_id`/`session_key`/`worklog_seq` make replay idempotent; activity and target locks keep harvest complete and shared-topic logs ordered                                                                                                             |
-| Bounds            | At most 256 pending events or 1 MiB per session; each worklog retains 200 complete JSONL records                                                                                                                                                                                            |
-| Lifecycle         | The tool-call recorder flushes synchronously with no idle wait; the background flusher exits after 80 ms idle or two seconds total; seven-day cleanup covers drained queue/error state plus stale `session-*` worklogs and `.recall-seen-*`/`.recall-candidates-*`/`.recall-staged-*` files |
-| Failure behavior  | Tool calls fail open; startup warns about queue errors; harvest refuses pending/error state                                                                                                                                                                                                 |
-| Copilot subagents | `COPILOT_AGENT_SESSION_ID` routes writes to the parent session key; startup/read injection remains isolated                                                                                                                                                                                 |
-| Recall state      | Session key: `conversation_id` → `session_id` → `generation_id`. `.recall-seen-*` holds admitted ids (warm-start injections + smol admissions); per-turn staging adds `.recall-candidates-*` (full rows for the smol judge) and `.recall-staged-*` (pointer dedupe ledger)                  |
-| Reboot survival   | `spec_mirror.py` mirrors named topics and `_active_topic.txt` to `~/.local/state/agent-specs/`, restores only missing files, and excludes `current`/`session-*`; wipe/merge forget removals                                                                                                 |
+| Contract          | Behavior                                                                                                                                                                                                                                                                                       |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ordering          | Atomic sequence files and stable `worklog_id`/`session_key`/`worklog_seq` make replay idempotent; activity and target locks keep harvest complete and shared-topic logs ordered                                                                                                                |
+| Bounds            | At most 256 pending events or 1 MiB per session; each worklog retains 200 complete JSONL records                                                                                                                                                                                               |
+| Lifecycle         | The tool-call recorder flushes synchronously with no idle wait; the background flusher exits after 80 ms idle or two seconds total; seven-day cleanup covers drained queue/error state plus stale `session-*` worklogs and `.recall-seen-*`/`.recall-candidates-*`/`.recall-staged-*` files    |
+| Failure behavior  | Tool calls fail open; startup warns about queue errors; harvest refuses pending/error state                                                                                                                                                                                                    |
+| Copilot subagents | `COPILOT_AGENT_SESSION_ID` routes writes to the parent session key; startup/read injection remains isolated                                                                                                                                                                                    |
+| Recall state      | Session key: `conversation_id` → `session_id` → `generation_id`. `.recall-seen-*` holds admitted ids (warm-start injections + `k-agent-smol` admissions); per-turn staging adds `.recall-candidates-*` (full rows for the `k-agent-smol` judge) and `.recall-staged-*` (pointer dedupe ledger) |
+| Reboot survival   | `spec_mirror.py` mirrors named topics and `_active_topic.txt` to `~/.local/state/agent-specs/`, restores only missing files, and excludes `current`/`session-*`; wipe/merge forget removals                                                                                                    |
 
 ## Sources and verification
 

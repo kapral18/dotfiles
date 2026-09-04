@@ -97,36 +97,36 @@ agent_categories:
 # `cli_help` is the one genuine `lookup` member: it reads `--help` and reports what it says.
 agent_bindings:
   # Repo-authored review roles.
-  adversarial-verifier: "refute"
-  criteria-verifier: "refute"
+  k-agent-adversarial-verifier: "refute"
+  k-agent-criteria-verifier: "refute"
   # `review`, not `refute`: fresh-eyes reads the diff blind for clarity, it does not audit a
   # conclusion, and its contract (k-review/references/fresh-eyes.md) pins it to the registry
   # LANES value. Binding it to `refute` pointed the band gate at the counter model while every
   # fresh-eyes profile rendered `lanes`, so profile and gate disagreed on the same agent.
-  fresh-eyes: "review"
-  change-auditor: "review"
-  findings-auditor: "review"
-  live-ui-review: "review"
-  post-review: "review"
-  pr-necessity-auditor: "review"
-  reviewer: "review"
-  review-worker: "review"
+  k-agent-fresh-eyes: "review"
+  k-agent-change-auditor: "review"
+  k-agent-findings-auditor: "review"
+  k-agent-live-ui-review: "review"
+  k-agent-post-review: "review"
+  k-agent-pr-necessity-auditor: "review"
+  k-agent-reviewer: "review"
+  k-agent-review-worker: "review"
   # Cross-family primary-finder lane; same `review` category, rendered through the `lanes_cross`
   # override slot so single-vendor harnesses fall back to the standard lane model.
-  review-worker-cross: "review"
-  deep-review: "orchestrate"
-  review-controller: "orchestrate"
+  k-agent-review-worker-cross: "review"
+  k-agent-deep-review: "orchestrate"
+  k-agent-review-controller: "orchestrate"
   # Repo-authored general roles.
-  code-searcher: "research"
-  researcher: "research"
-  claude-code-guide: "research"
-  # ,ai-kb operator: judges staged per-turn recall candidates against session state and owns
+  k-agent-code-searcher: "research"
+  k-agent-researcher: "research"
+  # k-agent-smol ,ai-kb operator: judges staged per-turn recall candidates against session state and owns
   # capsule write mechanics (k-ai-kb/references/smol-operator.md).
-  smol: "memory"
+  k-agent-smol: "memory"
   # Claude Code built-ins the repo overrides.
   Explore: "research"
   Plan: "orchestrate"
   claude: "implement"
+  claude-code-guide: "research"
   general-purpose: "implement"
   # Copilot built-ins.
   explore: "research"

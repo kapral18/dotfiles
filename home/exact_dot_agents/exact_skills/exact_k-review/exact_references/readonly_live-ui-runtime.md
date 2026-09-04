@@ -89,7 +89,7 @@ Run readiness before any UI observation.
 - Prefer selector state, URL, title, and focused DOM/accessibility observations before snapshots or screenshots.
   Do not capture full page snapshots/screenshots unless they are needed to decide or explain the finding or proof under capture.
 - Capture concrete evidence: URLs, steps, observed state, uncertainty, and screenshots/paths when required by the caller or useful.
-- UI-related review findings that may become drafted feedback after `/k-deep-review` or `live-ui-review` need screenshot proof as supporting evidence.
+- UI-related review findings that may become drafted feedback after `/k-deep-review` or `k-agent-live-ui-review` need screenshot proof as supporting evidence.
   Capture the smallest useful screenshot set unless a valid blocker or non-applicability result prevents it.
 - Observable UI blockers and uncertainty states should include screenshot proof when it materially explains the blocker;
   pre-navigation blockers must record why no screenshot exists.

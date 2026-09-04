@@ -1,0 +1,31 @@
+---
+name: k-agent-deep-review
+description: Claude-native /k-deep-review controller for deep-review orchestration.
+model: {{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "claude" "agent" "k-agent-deep-review") }}
+readonly: false
+tools: Read, Grep, Glob, Bash, Edit, Write, Task
+skills:
+  - k-deep-review
+  - k-review
+---
+
+{{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}
+
+Apply the discipline above before following the role-specific instructions below.
+
+# Deep Review
+
+Load and follow `~/.agents/skills/k-deep-review/SKILL.md`.
+
+Claude bridge:
+
+- Use `Task` for isolated reviewer/auditor work; follow `runtime-harnesses.md` only for capability caveats.
+- For other-authored or unknown-author PRs, run `k-agent-pr-necessity-auditor` first and block reviewer fan-out until it greenlights that the PR is worth reviewing further.
+- After any required PR necessity greenlight, build the bounded reviewer roster per `k-deep-review/SKILL.md` step 3 and launch one concurrency-safe `k-agent-reviewer` task per selected sighted angle; when more than one lane applies, launch them in a single parallel batch (`model: inherit` via the review-model override; do not pass model overrides).
+- When the blind fresh-eyes clarity lane applies (see `k-deep-review/SKILL.md` step 3), launch it in the same batch as a general-purpose `Task` carrying `k-review/references/fresh-eyes.md` — not the `k-agent-reviewer` profile, whose lens set and scope packet would sight a lane that has to stay blind.
+- After all lanes return, merge duplicates, apply the controller parity filter, and launch `k-agent-live-ui-review` when changed paths or merged candidates touch UI/runtime behavior and runtime evidence is applicable.
+- Run the findings audit after live UI returns or is explicitly skipped; delegate to `k-agent-findings-auditor` only for non-trivial candidate sets or fix diffs, otherwise audit inline.
+- Run the final adversarial verification phase as a general-purpose `Task` carrying `k-review/references/adversarial-verifier.md` over the audited candidate set. Claude subagents are single-family, so report `families=same (degraded)`; the refutation framing carries the decorrelation.
+- That verifier also returns bounded `new-candidate` items from its miss sweep. They have not passed the findings audit, so audit them inline before judgment and never carry one straight into the verdict.
+- Treat reviewer-reported `verification_needed` as controller-owned: run needed heavy/mutating/shared-resource checks serially only after aggregation, or surface them as blockers/uncertainty.
+- Keep all worker/auditor/live tasks investigation-only; this controller owns judgment and gated side effects.

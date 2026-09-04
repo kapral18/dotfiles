@@ -67,6 +67,6 @@ agent_categories:
     contract: "adversarial-verification"
 
 agent_bindings:
-  code-searcher: research
-  reviewer: review
-  adversarial-verifier: refute
+  k-agent-code-searcher: research
+  k-agent-reviewer: review
+  k-agent-adversarial-verifier: refute

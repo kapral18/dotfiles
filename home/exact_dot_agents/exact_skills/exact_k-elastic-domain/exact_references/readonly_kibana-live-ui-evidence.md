@@ -17,7 +17,7 @@ This file carries the worker conduct and evidence contract: safety boundary, scr
 
 ## Screenshot handoff
 
-- Capture screenshots whenever the generic `live-ui-review` contract requires them for UI findings that may become review feedback.
+- Capture screenshots whenever the generic `k-agent-live-ui-review` contract requires them for UI findings that may become review feedback.
   Otherwise capture screenshots only when they materially improve a candidate finding or blocker.
   For pre-navigation blockers, record why no screenshot exists.
 - Store screenshots as Playwriter artifacts in a distinct `/tmp/<folder-name>/` directory —
@@ -49,7 +49,7 @@ When the user wants to point at specific real Kibana UI elements, use `,artifact
 
 ## Controller validation for Kibana overlay
 
-Reject and rerun any `live-ui-review` result for this overlay that:
+Reject and rerun any `k-agent-live-ui-review` result for this overlay that:
 
 - reports only generic localhost probing
 - omits any selected exact target URL

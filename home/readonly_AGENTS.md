@@ -278,6 +278,9 @@ A disposable harness under `/tmp/state-machine-verification/<pwd>/<topic>/<slug>
 Delegable work is classified before it is delegated, and the category — not a model name — is what you choose.
 Categories map to per-harness model rows centrally, so naming one correctly is the whole cost decision; the harness resolves the model.
 
+Repo-owned custom subagent identifiers MUST use the `k-agent-<role>` namespace.
+Harness-native subagent identifiers MUST remain unchanged; do not prefix or alias them.
+
 - `lookup` — exact scoped retrieval: read a specified help page, list requested files, or return raw pointers selected by the caller.
   No edits, no importance ranking, no conclusions.
 - `mechanical` — deterministic edits with a stated rule: renames, import fixes, mechanical migrations, formatting the tool cannot do.
@@ -345,14 +348,15 @@ GitHub PRs/issues/comments/reviews/releases/gists, Slack, email, chat, thread re
 ### 4.1 Durable Memory
 
 Durable cross-session knowledge lives in `,ai-kb`; ephemeral working context lives in `/tmp/specs`.
-The `smol` operator owns both directions of the KB boundary so capsule dumps and write mechanics never occupy the parent context.
+The `k-agent-smol` operator owns both directions of the KB boundary so capsule dumps and write mechanics never occupy the parent context.
 The k-ai-kb skill (`~/.agents/skills/k-ai-kb/SKILL.md`) owns the delegation packets and the fallback ladder.
 
-- Recall first through `smol` when prior knowledge could help (starting non-trivial work or hitting a likely known setup gotcha):
+- Recall first through `k-agent-smol` when prior knowledge could help (starting non-trivial work or hitting a likely known setup gotcha):
   delegate the concrete task query (judge mode) and fold in only its returned lines.
-- On a `,ai-kb candidates staged` pointer, delegate judgment to `smol` and fold in only its returned lines (`NONE` = inject nothing).
+- On a `,ai-kb candidates staged` pointer, delegate judgment to `k-agent-smol` and fold in only its returned lines (`NONE` = inject nothing).
   Do not read the staged candidates file into the parent context.
-- Persist only verified durable/reusable insights; never store guesses or session-only notes. Delegate persistence to `smol` (scribe mode).
+- Persist only verified durable/reusable insights; never store guesses or session-only notes.
+  Delegate persistence to `k-agent-smol` (scribe mode).
 - Do not run `,ai-kb search`/`,ai-kb get` inline in the parent session, and do not run `,ai-kb remember` inline either;
   the k-ai-kb skill defines the only fallbacks.
 - Mid-task decisions, ideas, and unverified constraints worth keeping go to `,agent-memory note <kind> "<text>" --ref <anchor>`;

@@ -58,10 +58,10 @@ WARMSTART_RELEVANCE_FLOOR_FRACTION = 0.6
 
 AIKB_REMINDER = (
     "### Durable Memory (,ai-kb)\n"
-    "The `smol` operator (~/.agents/skills/k-ai-kb/references/smol-operator.md) owns the KB boundary in both directions. "
-    "Recall before non-trivial work by delegating the ACTUAL task as a recall query to `smol` (judge mode, query-recall variant); "
+    "The `k-agent-smol` operator (~/.agents/skills/k-ai-kb/references/smol-operator.md) owns the KB boundary in both directions. "
+    "Recall before non-trivial work by delegating the ACTUAL task as a recall query to `k-agent-smol` (judge mode, query-recall variant); "
     "fold in only its returned lines (`NONE` = inject nothing). "
-    "Persist verified, reusable insights before finishing by handing `smol` (scribe mode) the one-line insight, "
+    "Persist verified, reusable insights before finishing by handing `k-agent-smol` (scribe mode) the one-line insight, "
     "evidence anchors, and suggested kind/scope; scribe owns search-first dedupe, metadata selection, and read-back. "
     "Do not run `,ai-kb search`/`get`/`remember` inline in the parent session; "
     "only when no isolated spawn exists, apply the inline fallback per the k-ai-kb skill "
@@ -70,7 +70,7 @@ AIKB_REMINDER = (
 NO_PERTURN_RECALL_NOTICE = (
     "### Recall Notice\n"
     "This harness has no automatic per-turn `,ai-kb` recall: only session-start context is injected. "
-    "Delegate a recall query to the `smol` operator (judge mode) whenever the task shifts — "
+    "Delegate a recall query to the `k-agent-smol` operator (judge mode) whenever the task shifts — "
     "inline `,ai-kb search` only where no isolated spawn exists — "
     "and record mid-task decisions/ideas with `,agent-memory note` so they survive the session."
 )
@@ -105,7 +105,7 @@ def per_turn_recall_requested(payload: dict) -> bool:
     Codex, Cursor, Pi) request the resident warm-up via `AI_EMBED_WARM=1` or the
     `warm_embedder` payload flag; an adapter that sends neither has no
     per-turn hook surface, so its mid-session recall must come from a
-    delegated smol recall query (the Recall Notice below).
+    delegated k-agent-smol recall query (the Recall Notice below).
     """
     if os.environ.get(AI_EMBED_WARM_ENV, "").strip().lower() in TRUE_VALUES:
         return True

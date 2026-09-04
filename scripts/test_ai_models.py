@@ -93,18 +93,18 @@ class TestAiModels(unittest.TestCase):
             "contract": "adversarial-verification",
         }
         assert load_agent_bindings(path) == {
-            "code-searcher": "research",
-            "reviewer": "review",
-            "adversarial-verifier": "refute",
+            "k-agent-code-searcher": "research",
+            "k-agent-reviewer": "review",
+            "k-agent-adversarial-verifier": "refute",
         }
 
     def test_resolve_agent_model_reports_a_missing_counter_as_degraded(self):
         from ai_models import resolve_agent_model
 
         path = str(FIXTURES / "ai_models")
-        assert resolve_agent_model(path, "claude_code", "code-searcher")["model"] == "model-c"
+        assert resolve_agent_model(path, "claude_code", "k-agent-code-searcher")["model"] == "model-c"
 
-        refuter = resolve_agent_model(path, "claude_code", "adversarial-verifier")
+        refuter = resolve_agent_model(path, "claude_code", "k-agent-adversarial-verifier")
         assert refuter["model"] == "model-counter"
         assert refuter["degraded"] is False
 
@@ -116,29 +116,29 @@ class TestAiModels(unittest.TestCase):
 
         path = str(FIXTURES / "ai_models")
 
-        claude_lane = resolve_review_agent_model(path, "claude", "reviewer")
+        claude_lane = resolve_review_agent_model(path, "claude", "k-agent-reviewer")
         assert claude_lane["model"] == "inherit"
         assert claude_lane["slot"] == "lanes"
         assert claude_lane["source"] == "override"
 
-        claude_refuter = resolve_review_agent_model(path, "claude_code", "adversarial-verifier")
+        claude_refuter = resolve_review_agent_model(path, "claude_code", "k-agent-adversarial-verifier")
         assert claude_refuter["model"] == "inherit"
         assert claude_refuter["slot"] == "verifier"
         assert claude_refuter["source"] == "override"
         assert claude_refuter["degraded"] is True
         assert claude_refuter["verifier_status"] == "degraded"
 
-        gemini = resolve_review_agent_model(path, "gemini", "reviewer")
+        gemini = resolve_review_agent_model(path, "gemini", "k-agent-reviewer")
         assert gemini["model"] == "pro"
         assert gemini["source"] == "override"
 
-        codex_lane = resolve_review_agent_model(path, "codex", "reviewer")
+        codex_lane = resolve_review_agent_model(path, "codex", "k-agent-reviewer")
         assert codex_lane["model"] == "codex-max"
         assert codex_lane["slot"] == "lanes"
         assert codex_lane["source"] == "category_models"
         assert codex_lane["degraded"] is False
 
-        codex_refuter = resolve_review_agent_model(path, "codex", "adversarial-verifier")
+        codex_refuter = resolve_review_agent_model(path, "codex", "k-agent-adversarial-verifier")
         assert codex_refuter["model"] == "codex-max"
         assert codex_refuter["slot"] == "verifier"
         assert codex_refuter["source"] == "category_models"
@@ -146,7 +146,7 @@ class TestAiModels(unittest.TestCase):
         assert codex_refuter["verifier_status"] == "degraded"
 
         assert resolve_review_agent_model(path, "codex", "not-an-agent") is None
-        assert resolve_review_agent_model(path, "missing", "reviewer") is None
+        assert resolve_review_agent_model(path, "missing", "k-agent-reviewer") is None
 
     def test_category_model_entries_keep_empty_strings_and_trailing_comments(self):
         from ai_models import load_category_models

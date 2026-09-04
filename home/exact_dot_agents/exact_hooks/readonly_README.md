@@ -55,13 +55,13 @@ The hook runs `,ai-kb search` with the spec text as the query (`bm25` lane, no e
 It surfaces up to three capsules via `--workspace-gate`, which makes the KB itself keep only capsules local to this workspace or scoped `domain`/`universal`, so durable memory seeds the session automatically.
 Unbound, ad-hoc/`session-*`, and review topics get no capsule warm-start.
 This is the only automatic session-start capsule retrieval; supported runtimes also perform per-turn recall.
-Adapters that send neither `AI_EMBED_WARM=1` nor `warm_embedder: true` have no per-turn staging wiring, so their session context carries a `### Recall Notice` directing the agent to delegate mid-task recall queries to the `smol` operator (inline `,ai-kb search` only where no isolated spawn exists).
+Adapters that send neither `AI_EMBED_WARM=1` nor `warm_embedder: true` have no per-turn staging wiring, so their session context carries a `### Recall Notice` directing the agent to delegate mid-task recall queries to the `k-agent-smol` operator (inline `,ai-kb search` only where no isolated spawn exists).
 The hook reads the KB but never writes it; persistence stays agent-driven.
 Per-turn recall never injects capsule bodies: `perturn_recall.py` (and the pi/omp mirrors) writes gate-passing rows in full to `.recall-candidates-<session-key>.json` and injects a `### ,ai-kb candidates staged` pointer only when at least one candidate id is new to the session (tracked in `.recall-staged-<session-key>.json`).
-The parent delegates judgment to the `smol` subagent (`~/.agents/skills/k-ai-kb/references/smol-operator.md`), which admits at most 3 lines or `NONE` against the accumulated session state.
-The pointer also names the fallback route: when native `smol` is unreachable (a fixed Task subagent set, as on Cursor), the parent spawns a generic isolated subagent on the memory-band model carrying the smol operator contract (Cursor: `Task` `subagent_type: shell`, `model: auto`), never a harness-CLI one-shot and never the type's own default model.
+The parent delegates judgment to the `k-agent-smol` subagent (`~/.agents/skills/k-ai-kb/references/smol-operator.md`), which admits at most 3 lines or `NONE` against the accumulated session state.
+The pointer also names the fallback route: when the `k-agent-smol` profile is unreachable (a fixed Task subagent set, as on Cursor), the parent spawns a generic isolated subagent on the memory-band model carrying the smol operator contract (Cursor: `Task` `subagent_type: shell`, `model: auto`), never a harness-CLI one-shot and never the type's own default model.
 The warm-start persists injected capsule IDs in `.recall-seen-<session-key>.json`;
-per-turn additions to that file are smol's admissions, never the hook's.
+per-turn additions to that file are k-agent-smol's admissions, never the hook's.
 The canonical session key follows `conversation_id`, then `session_id`, then `generation_id`;
 Pi persists the same state across extension reloads and session resumes.
 

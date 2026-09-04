@@ -7,7 +7,7 @@ description: "Use for local/ad-hoc audits of low-risk self-authored changes; esc
 
 A light-rigor review for a low-risk self-authored changeset you want checked and fixed in place.
 It uses the same review machinery as `k-review`, but trims PR/GitHub scaffolding, live-UI work, broad base-context gathering, and multi-lane diversity when those are not needed.
-Light does not mean inline-only: use one read-only `change-auditor` worker plus adversarial refutation when the active harness can launch them.
+Light does not mean inline-only: use one read-only `k-agent-change-auditor` worker plus adversarial refutation when the active harness can launch them.
 
 Load `~/.agents/skills/k-review/references/judging_core.md` and apply its Severity and the relevant gates (Deletion-Safety / Historical-Rationale / State-Machine / Async-Derived State / Context-Divergence / Scale-Behavior / Product-Flow / Signal-Quality / Systemic-Risk when triggered).
 Load `~/.agents/skills/k-review/references/judging_pipeline.md` and apply its Coverage Checklist and — foregrounded for this skill —
@@ -22,7 +22,7 @@ Use when:
 
 Evaluate this before reviewing; it replaces any subjective "is this low-risk?" judgment.
 This section is the single source for the light-vs-`k-review` routing decision;
-the `k-review` router and the delegated `change-auditor` reference it rather than re-listing triggers.
+the `k-review` router and the delegated `k-agent-change-auditor` reference it rather than re-listing triggers.
 
 The change is **light-eligible** only when **none** of these escalation triggers holds:
 
@@ -50,7 +50,7 @@ If a trigger surfaces mid-pass, stop and switch to `k-review` rather than half-d
    use the most direct sufficient source (`git show <base>:<path>` + `rg`, or local file reads).
    Do not omit needed base context because SCSI would be heavier; escalate to `k-review` when direct local reads are not enough.
 3. **Candidate audit.**
-   Launch one read-only `change-auditor` worker when the harness supports subagents;
+   Launch one read-only `k-agent-change-auditor` worker when the harness supports subagents;
    otherwise run the same read/judge pass inline and report `agent_lane=inline-degraded`.
    Enforce anti-tunnel-vision: audit enclosing files, sibling consumers, and call sites alongside the diff.
    The worker returns candidate findings and proposed fixes only; the parent owns edits.
@@ -60,7 +60,7 @@ If a trigger surfaces mid-pass, stop and switch to `k-review` rather than half-d
    Report `findings_audit=inline`.
 5. **Final adversarial refutation.**
    If the audited candidate set is empty, skip adversarial work and report `Adversarial verification: skipped (no candidates after findings audit)`.
-   Otherwise, run `adversarial-verifier` over the audited candidate set when the harness supports it;
+   Otherwise, run `k-agent-adversarial-verifier` over the audited candidate set when the harness supports it;
    if not, run the Candidate Refutation Ladder inline and report `adversarial=inline-degraded`.
    No finding may be fixed or reported until it survives this final pass.
    If a fix here reopens findings and a further round is warranted, hand off to `~/.agents/skills/k-converge/SKILL.md` rather than looping ad hoc.

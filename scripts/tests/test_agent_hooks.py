@@ -860,7 +860,7 @@ class TestAgentHooks(unittest.TestCase):
             assert "Durable Memory (,ai-kb)" in context
             # The reminder routes both KB directions through the smol operator and
             # forbids parent-inline CLI use outside the no-spawn fallback.
-            assert "smol" in context
+            assert "k-agent-smol" in context
             assert "scribe mode" in context
             assert "Do not run `,ai-kb search`/`get`/`remember` inline" in context
             assert "No Named Topic Active" not in context
@@ -2324,7 +2324,7 @@ class BandGateTests(unittest.TestCase):
                 "agents": {
                     "Explore": {"band": "cheap", "model": "claude-fable-5-1", "alias": "fable"},
                     "searcher": {"band": "cheap", "model": "claude-haiku-4-5", "alias": "haiku"},
-                    "reviewer": {"band": "max", "model": "claude-opus-5", "alias": "opus"},
+                    "k-agent-reviewer": {"band": "max", "model": "claude-opus-5", "alias": "opus"},
                 }
             },
             "cursor": {"agents": {"bugbot": {"band": "max", "model": "claude-opus-5-high"}}},
@@ -2346,7 +2346,7 @@ class BandGateTests(unittest.TestCase):
                         "model": "openrouter/deepseek/deepseek-v4-flash:xhigh",
                         "effort": "xhigh",
                     },
-                    "adversarial-verifier": {
+                    "k-agent-adversarial-verifier": {
                         "band": "counter",
                         "model": "openrouter/anthropic/claude-sonnet-4.6:xhigh",
                         "effort": "xhigh",
@@ -2452,7 +2452,7 @@ class BandGateTests(unittest.TestCase):
         self.assertEqual(
             self.gate(
                 "claude_code",
-                {"tool_name": "Agent", "tool_input": {"subagent_type": "reviewer", "model": "haiku"}},
+                {"tool_name": "Agent", "tool_input": {"subagent_type": "k-agent-reviewer", "model": "haiku"}},
             ),
             {},
         )
@@ -2543,7 +2543,7 @@ class BandGateTests(unittest.TestCase):
 
         verifier = self.gate(
             "claude_code",
-            {"tool_name": "Agent", "tool_input": {"subagent_type": "adversarial-verifier", "prompt": "p"}},
+            {"tool_name": "Agent", "tool_input": {"subagent_type": "k-agent-adversarial-verifier", "prompt": "p"}},
             override={"AGENT_BAND_SCHEMA_HARNESS": "pi", "AGENT_BAND_MODEL_FORMAT": "openrouter-preset"},
         )
         self.assertEqual(verifier["hookSpecificOutput"]["updatedInput"]["model"], "sonnet")

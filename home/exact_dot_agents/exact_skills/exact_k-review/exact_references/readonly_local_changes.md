@@ -89,8 +89,7 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 
 ## Agent-Assisted Verify-and-Fix Workflow
 
-Launch one `reviewer`/`review-worker` `correctness-regressions` lane for the scoped diff when the harness supports subagents;
-add one extra lane only for an independently evidenced risk class.
+Launch one `k-agent-reviewer`/`k-agent-review-worker` `correctness-regressions` lane for the scoped diff when the harness supports subagents; add one extra lane only for an independently evidenced risk class.
 Select both from `lanes.md` and paste the chosen lane's `Lens skill` line and `Checks` list into the worker's scope packet;
 workers never load `lanes.md`.
 Run any repo-wide suite or full build once here and pass the result into every scope packet — lanes are told not to repeat shared work.
@@ -99,7 +98,7 @@ Run live UI only when UI/runtime evidence is needed for a candidate and a starta
 use `k-deep-review` for the full live-UI target-packet/controller graph.
 Run the Findings-Set Audit from `judging_pipeline.md` in the controller over the candidate set before adversarial verification.
 If the audited candidate set is empty, skip adversarial work and report `Adversarial verification: skipped (no candidates after findings audit)`.
-Otherwise, run `adversarial-verifier` over the audited candidate set before fixing;
+Otherwise, run `k-agent-adversarial-verifier` over the audited candidate set before fixing;
 if no verifier lane is available, run the Candidate Refutation Ladder inline and report `adversarial=inline-degraded`.
 Then apply the Verify-and-Fix Loop's fix, quality-gate, and Post-Review Stage steps from `judging_pipeline.md` over surviving findings.
 Then output a concise **summary**:

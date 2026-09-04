@@ -7,7 +7,7 @@ description: "Use when proving UI visual/behavior, auditing a diff for capturabl
 
 The creation-side live-UI proof skill: verify a **built or changed** UI against its **intended visual, state, or behavior**, capture the before/after screenshots and videos that prove it, and (when asked) upload them to GitHub.
 This is the creation-side sibling of `live-ui-review.md`: same runtime machinery, opposite direction.
-`live-ui-review` compares PR/head against base to find regressions for `/k-deep-review` to judge;
+`k-agent-live-ui-review` compares PR/head against base to find regressions for `/k-deep-review` to judge;
 this skill proves the built runtime matches its intent.
 
 The mechanics live in one shared contract — load `~/.agents/skills/k-ui-capture/references/proof-mode.md` and follow it end to end:
@@ -35,7 +35,7 @@ Other shared cores, loaded when their step applies:
 ## Out of scope (use the named alternative)
 
 - reviewing an existing PR or someone else's changes, or hunting regressions:
-  `~/.agents/skills/k-review/SKILL.md` / `/k-deep-review` (which owns `live-ui-review`)
+  `~/.agents/skills/k-review/SKILL.md` / `/k-deep-review` (which owns `k-agent-live-ui-review`)
 - a change with no UI/runtime surface: there is no UI proof to capture — skip
 - generic browser automation with no intended UI state/behavior to check against: `~/.agents/skills/k-playwriter/SKILL.md` directly
 

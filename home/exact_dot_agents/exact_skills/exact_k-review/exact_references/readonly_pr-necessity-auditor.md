@@ -4,7 +4,7 @@ Shared contract for review runtime subagents. Load this file only for the matchi
 
 ## Role: PR necessity auditor
 
-Use for `pr-necessity-auditor` and equivalent read-only PR intent/necessity lanes.
+Use for `k-agent-pr-necessity-auditor` and equivalent read-only PR intent/necessity lanes.
 
 The parent supplies:
 

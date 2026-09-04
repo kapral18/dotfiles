@@ -73,7 +73,7 @@ graph TB
 
     %% ---- C13 Persistent intent memory --------------------------------------
     C13{{"C13 · INTENT MEMORY<br/>sessions rehydrate, don't restart cold"}}:::concept
-    C13 --> I13["INVARIANT: per-(workspace,topic) spec/worklog persists in<br/>/tmp/specs with named topics mirrored/restored via persistent state;<br/>sessionStart injects it bounded; review topics run clean-room;<br/>depth-bounded per-turn recall only connects to a session-warmed generation<br/>and stages candidates for the smol judge instead of injecting capsule bodies;<br/>tool events enter a bounded crash-safe session queue off the critical path."]:::inv
+    C13 --> I13["INVARIANT: per-(workspace,topic) spec/worklog persists in<br/>/tmp/specs with named topics mirrored/restored via persistent state;<br/>sessionStart injects it bounded; review topics run clean-room;<br/>depth-bounded per-turn recall only connects to a session-warmed generation<br/>and stages candidates for the k-agent-smol judge instead of injecting capsule bodies;<br/>tool events enter a bounded crash-safe session queue off the critical path."]:::inv
     I13 --> R13["realized by: session_context.py · perturn_recall.py<br/>spec_mirror.py · worklog_queue.py · ,agent-memory · ,ai-kb"]:::realize
 
     %% ---- how concepts compose ----------------------------------------------

@@ -34,7 +34,7 @@ Reference for the `k-github` skill. Load when creating, reconciling, or submitti
 >    `position` anchor is inside the intended diff hunk immediately before creating or submitting the review.
 >    Verify against the fresh diff, since full-file line numbers, stale patches, and memory drift out of sync.
 > 9. Read existing current-account pending reviews and reconcile them with the payload so review feedback stays consolidated, never fragmented.
-> 10. For UI-related review feedback drafted after `/k-deep-review` or `live-ui-review`, verify the approved draft includes `ui_evidence_attachments` or a valid blocker/non-applicability reason.
+> 10. For UI-related review feedback drafted after `/k-deep-review` or `k-agent-live-ui-review`, verify the approved draft includes `ui_evidence_attachments` or a valid blocker/non-applicability reason.
 >     Keep local screenshot paths out of `body` and inline comment bodies; show the handoff separately in the approval payload.
 
 - Definition: a "pending review" is a PR review whose API `state` is `PENDING`.
@@ -62,7 +62,7 @@ Reference for the `k-github` skill. Load when creating, reconciling, or submitti
   3. For each review with `state == "PENDING"` and `user.login` matching the current login, read draft comments:
      `gh api --paginate repos/OWNER/REPO/pulls/NUM/reviews/REVIEW_ID/comments`.
   4. Compare the pending review body/comments against the approved draft from `k-review`/`k-deep-review` and its `Pending review reconciliation:` ledger.
-  5. If any approved review feedback is UI-related and drafted after `/k-deep-review` or `live-ui-review`, compare it against the draft's `ui_evidence_attachments` ledger and block if screenshot evidence is missing without a valid blocker/non-applicability reason.
+  5. If any approved review feedback is UI-related and drafted after `/k-deep-review` or `k-agent-live-ui-review`, compare it against the draft's `ui_evidence_attachments` ledger and block if screenshot evidence is missing without a valid blocker/non-applicability reason.
 - If no reconciliation ledger exists, run the review skill's Existing Pending Review Reconciliation before mutating GitHub.
 - If a pending review exists and the new payload is purely **additive** (net-new findings, no edits to existing draft comments):
   - do not create a second pending review, and do not delete/recreate

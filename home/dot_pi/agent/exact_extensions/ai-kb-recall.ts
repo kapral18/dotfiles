@@ -14,7 +14,7 @@
 //      Context fill + compaction track real decay better than a turn count.
 //   2. Per-turn (every substantive prompt): query = the user's actual prompt — the
 //      highest-relevance signal. Gate-passing rows are staged in full to a per-session
-//      candidates file and only a pointer to the smol judge is injected — capsule bodies
+//      candidates file and only a pointer to the k-agent-smol judge is injected — capsule bodies
 //      never enter the parent context from this path (matching executable_perturn_recall.py).
 //      The same pass appends the shared precision-first correction directive when a
 //      prompt reads as a user correction.
@@ -629,12 +629,12 @@ function gateAndFormat(
   return lines
 }
 
-// Stage gate-passing rows for the smol judge; return a pointer block only when at least
+// Stage gate-passing rows for the k-agent-smol judge; return a pointer block only when at least
 // one candidate id is new to the session. Mirrors stage_candidates in
-// executable_perturn_recall.py: the seen-file filters ids smol already admitted, the
+// executable_perturn_recall.py: the seen-file filters ids k-agent-smol already admitted, the
 // staged ledger dedups the pointer, the candidates file holds full rows, and every state
 // write fails open (no pointer without a written file). The seen-file is read fresh from
-// disk because smol appends to it outside this process.
+// disk because k-agent-smol appends to it outside this process.
 async function stageCandidates(rows: Capsule[], specFile: string, sessionKey: string): Promise<string> {
   const seen = await loadSeen(seenFileFor(specFile, sessionKey))
   const candidates = rows.filter((row) => row.id && !seen.has(row.id))
@@ -656,7 +656,7 @@ async function stageCandidates(rows: Capsule[], specFile: string, sessionKey: st
     STAGING_HEADER,
     `${candidates.length} candidate(s): ${candidatesPath}`,
     `Session state: ${specFile} + ${worklogPath}`,
-    `Delegate to the \`smol\` subagent (judge mode) per ${SMOL_CONTRACT_PATH}, passing those paths and the current prompt; inject only its returned lines (\`NONE\` = inject nothing).`,
+    `Delegate to the \`k-agent-smol\` subagent (judge mode) per ${SMOL_CONTRACT_PATH}, passing those paths and the current prompt; inject only its returned lines (\`NONE\` = inject nothing).`,
     "Do not read the candidates file into this context.",
   ].join("\n")
 }
@@ -795,7 +795,7 @@ export default async function (pi: ExtensionAPI) {
       const prompt = typeof event.prompt === "string" ? event.prompt : ""
       if (prompt.trim().length >= MIN_PROMPT_CHARS) {
         // Per-turn uses the actual prompt and hybrid retrieval as the candidate filter,
-        // then stages the survivors for the smol judge instead of injecting bodies —
+        // then stages the survivors for the k-agent-smol judge instead of injecting bodies —
         // similarity alone was admitting cross-domain lexical noise into the parent.
         const rows = await searchCapsules(workspace, prompt, "hybrid", perturnProfile)
         if (rows.length) {

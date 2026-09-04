@@ -11,13 +11,13 @@ Connects Playwriter to a Windows guest's browser running in VirtualBox over CDP 
 
 ## Manual only — never automatic
 
-`/k-deep-review`, `live-ui-review`, `/k-build`, and `k-ui-capture` verify the local browser only.
+`/k-deep-review`, `k-agent-live-ui-review`, `/k-build`, and `k-ui-capture` verify the local browser only.
 None of them resolve, infer, or accept a Windows/VirtualBox requirement anymore —
 that entire environment-selection concept was purged from those flows and lives only here.
 
 Load this skill only when the user explicitly asks, this turn, for Windows/VirtualBox verification.
 Treat only that explicit request as the trigger: a PR/issue/spec hint is insufficient, and so is an unrelated/ambiguous mention of the word "Windows" (e.g. a UI panel or feature literally named "Windows").
-If the user wants Windows coverage alongside an in-flight `k-ui-capture` or `live-ui-review` check, add this skill to that turn's work by hand; keep it out of either flow's default path.
+If the user wants Windows coverage alongside an in-flight `k-ui-capture` or `k-agent-live-ui-review` check, add this skill to that turn's work by hand; keep it out of either flow's default path.
 
 ## Load first
 
@@ -80,7 +80,7 @@ Scope this to URLs the browser actually navigates to; backing/data endpoints the
 
 ## Return exactly
 
-Whatever return shape the check you're running already uses (the proof-mode contract's per-criterion verdicts, or `live-ui-review`'s comparison evidence), plus:
+Whatever return shape the check you're running already uses (the proof-mode contract's per-criterion verdicts, or `k-agent-live-ui-review`'s comparison evidence), plus:
 
 - `environment`: `windows-vbox` (and `local` too when the user chose local-also), with VM name, VM state transition, the NAT/CDP host port used, and the connection result
 - the URL translation applied (source host-facing URL -> guest-facing URL) or the exact reason none was available

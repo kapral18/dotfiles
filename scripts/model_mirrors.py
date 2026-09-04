@@ -32,13 +32,13 @@ CAPABILITIES_REL = Path("scripts/model_capabilities.v1.json")
 MIRROR_REL = Path("home/dot_config/ai/readonly_model-mirrors.v1.json")
 HARNESSES = ("cursor", "claude", "codex", "gemini", "opencode", "pi", "copilot")
 COPILOT_REVIEW_POLICY_AGENTS = (
-    "deep-review",
-    "review-worker",
-    "findings-auditor",
-    "pr-necessity-auditor",
-    "live-ui-review",
-    "adversarial-verifier",
-    "criteria-verifier",
+    "k-agent-deep-review",
+    "k-agent-review-worker",
+    "k-agent-findings-auditor",
+    "k-agent-pr-necessity-auditor",
+    "k-agent-live-ui-review",
+    "k-agent-adversarial-verifier",
+    "k-agent-criteria-verifier",
 )
 PROVIDERS = (
     "llama-cpp",

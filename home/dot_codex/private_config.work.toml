@@ -23,23 +23,23 @@ memories = false
 # Role registry. Without an entry here the files under ~/.codex/agents/ are never read;
 # `spawn_agent` only sees roles named in this table. Descriptions and models live in the
 # role file itself, so each entry is just the pointer.
-[agents.adversarial-verifier]
-config_file = "~/.codex/agents/adversarial-verifier.toml"
+[agents.k-agent-adversarial-verifier]
+config_file = "~/.codex/agents/k-agent-adversarial-verifier.toml"
 
-[agents.criteria-verifier]
-config_file = "~/.codex/agents/criteria-verifier.toml"
+[agents.k-agent-criteria-verifier]
+config_file = "~/.codex/agents/k-agent-criteria-verifier.toml"
 
-[agents.findings-auditor]
-config_file = "~/.codex/agents/findings-auditor.toml"
+[agents.k-agent-findings-auditor]
+config_file = "~/.codex/agents/k-agent-findings-auditor.toml"
 
-[agents.live-ui-review]
-config_file = "~/.codex/agents/live-ui-review.toml"
+[agents.k-agent-live-ui-review]
+config_file = "~/.codex/agents/k-agent-live-ui-review.toml"
 
-[agents.pr-necessity-auditor]
-config_file = "~/.codex/agents/pr-necessity-auditor.toml"
+[agents.k-agent-pr-necessity-auditor]
+config_file = "~/.codex/agents/k-agent-pr-necessity-auditor.toml"
 
-[agents.review-worker]
-config_file = "~/.codex/agents/review-worker.toml"
+[agents.k-agent-review-worker]
+config_file = "~/.codex/agents/k-agent-review-worker.toml"
 
-[agents.smol]
-config_file = "~/.codex/agents/smol.toml"
+[agents.k-agent-smol]
+config_file = "~/.codex/agents/k-agent-smol.toml"

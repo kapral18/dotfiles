@@ -12,6 +12,7 @@ import tempfile
 import unittest
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
+import ai_models
 from _test_support import REPO
 
 
@@ -66,6 +67,67 @@ class TestAgentSkillInvariants(unittest.TestCase):
             assert match, f"{entry} has no frontmatter name"
             assert match.group("name") == expected, f"{entry} frontmatter name {match.group('name')!r} != {expected!r}"
 
+    def test_repo_authored_subagents_use_k_agent_namespace(self):
+        native_names = {
+            "Explore",
+            "Plan",
+            "best-of-n-runner",
+            "browser_agent",
+            "bugbot",
+            "claude",
+            "claude-code-guide",
+            "cli_help",
+            "code-review",
+            "codebase_investigator",
+            "cursor-guide",
+            "default",
+            "explore",
+            "explorer",
+            "general-purpose",
+            "generalPurpose",
+            "generalist",
+            "rem-agent",
+            "research",
+            "rubber-duck",
+            "security-review",
+            "task",
+            "worker",
+        }
+        profile_roots = (
+            REPO / "home/dot_claude/exact_agents",
+            REPO / "home/dot_codex/exact_agents",
+            REPO / "home/dot_cursor/exact_agents",
+            REPO / "home/dot_omp/private_agent/exact_agents",
+            REPO / "home/dot_pi/agent/exact_agents",
+            REPO / "home/private_dot_copilot/exact_agents",
+        )
+        name_re = re.compile(r'^name(?:\s*=|:)\s*"?(?P<name>[^"\n]+)"?$', re.MULTILINE)
+        profile_names: dict[str, set[str]] = {}
+
+        for root in profile_roots:
+            names: set[str] = set()
+            for profile in sorted(path for path in root.iterdir() if path.name.endswith(".tmpl")):
+                match = name_re.search(profile.read_text(encoding="utf-8"))
+                assert match, f"{profile} has no frontmatter name"
+                name = match.group("name")
+                names.add(name)
+                if name not in native_names:
+                    assert name.startswith("k-agent-"), f"repo-authored subagent lacks k-agent- prefix: {name}"
+
+                source_name = profile.name.removeprefix("readonly_")
+                for suffix in (".agent.md.tmpl", ".toml.tmpl", ".md.tmpl"):
+                    source_name = source_name.removesuffix(suffix)
+                assert source_name == name, f"{profile} filename does not match its agent name {name!r}"
+            profile_names[str(root.relative_to(REPO))] = names
+
+        claude_native_profiles = {"Explore", "Plan", "claude", "claude-code-guide", "general-purpose"}
+        assert claude_native_profiles <= profile_names["home/dot_claude/exact_agents"]
+
+        bindings = ai_models.load_agent_bindings(REPO / "home/.chezmoidata/ai_models")
+        assert native_names <= set(bindings), "native subagent bindings must keep their harness identifiers"
+        native_aliases = {f"k-agent-{name}" for name in native_names}
+        assert native_aliases.isdisjoint(bindings), "native subagent identifiers must not gain k-agent aliases"
+
     def test_skill_description_with_colon_is_quoted(self):
         skills_root = REPO / "home/exact_dot_agents/exact_skills"
         description_re = re.compile(r"^description:\s+(?P<value>[^\"'\n].*:.*)$", re.MULTILINE)
@@ -82,14 +144,14 @@ class TestAgentSkillInvariants(unittest.TestCase):
     def test_pi_review_controller_named_roles_have_profiles(self):
         agents_dir = REPO / "home/dot_pi/agent/exact_agents"
         profiles = {path.name.removesuffix(".md.tmpl") for path in agents_dir.glob("*.md.tmpl")}
-        controller = (agents_dir / "review-controller.md.tmpl").read_text(encoding="utf-8")
+        controller = (agents_dir / "k-agent-review-controller.md.tmpl").read_text(encoding="utf-8")
         required = {
-            "reviewer",
-            "fresh-eyes",
-            "adversarial-verifier",
-            "pr-necessity-auditor",
-            "live-ui-review",
-            "findings-auditor",
+            "k-agent-reviewer",
+            "k-agent-fresh-eyes",
+            "k-agent-adversarial-verifier",
+            "k-agent-pr-necessity-auditor",
+            "k-agent-live-ui-review",
+            "k-agent-findings-auditor",
         }
 
         assert required <= profiles, f"Pi review controller references missing profiles: {sorted(required - profiles)}"

@@ -31,7 +31,7 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
-            "Controller validation: reject and rerun any `live-ui-review` result that:",
+            "Controller validation: reject and rerun any `k-agent-live-ui-review` result that:",
             "uses the controller cwd or base/main runtime as the PR/head target for an explicit PR/branch review without proving that checkout is on the reviewed PR/head branch/sha",
             "Do not reject or rerun a result that reports a valid Playwriter harness blocker:",
             "`~/.agents/skills/k-review/references/pr-necessity-auditor.md`",
@@ -60,28 +60,28 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_fresh-eyes.md",
-            "Pi/OMP: launch the `fresh-eyes` agent profile",
+            "Pi/OMP: launch the `k-agent-fresh-eyes` agent profile",
             "model_required=<resolved lanes value|inherit|default>",
             "model_status=exact",
         )
         self.assert_file_contains(
-            "home/dot_pi/agent/exact_agents/fresh-eyes.md.tmpl",
+            "home/dot_pi/agent/exact_agents/k-agent-fresh-eyes.md.tmpl",
             "review-agent-model.partial",
             '"harness" "pi"',
-            '"agent" "fresh-eyes"',
+            '"agent" "k-agent-fresh-eyes"',
         )
         self.assert_file_contains(
-            "home/dot_omp/private_agent/exact_agents/fresh-eyes.md.tmpl",
+            "home/dot_omp/private_agent/exact_agents/k-agent-fresh-eyes.md.tmpl",
             "review-agent-model.partial",
             '"harness" "omp"',
-            '"agent" "fresh-eyes"',
+            '"agent" "k-agent-fresh-eyes"',
         )
         self.assert_file_not_contains(
-            "home/dot_pi/agent/exact_agents/fresh-eyes.md.tmpl",
+            "home/dot_pi/agent/exact_agents/k-agent-fresh-eyes.md.tmpl",
             ".model_tier_map.pi.review.model",
         )
         self.assert_file_not_contains(
-            "home/dot_omp/private_agent/exact_agents/fresh-eyes.md.tmpl",
+            "home/dot_omp/private_agent/exact_agents/k-agent-fresh-eyes.md.tmpl",
             ".model_tier_map.omp.review.model",
         )
         self.assert_file_not_contains(
@@ -122,8 +122,8 @@ class TestReviewPolicyInvariants(unittest.TestCase):
                 ordering,
             )
         for controller in (
-            "home/dot_pi/agent/exact_agents/review-controller.md.tmpl",
-            "home/dot_omp/private_agent/exact_agents/review-controller.md.tmpl",
+            "home/dot_pi/agent/exact_agents/k-agent-review-controller.md.tmpl",
+            "home/dot_omp/private_agent/exact_agents/k-agent-review-controller.md.tmpl",
         ):
             self.assert_file_contains(
                 controller,
@@ -159,12 +159,12 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         # Pi `skills:` injects a name/description/location catalog (pi-subagents
         # src/agents/skills.ts buildSkillInjection) that re-invites the router.
         self.assert_file_not_contains(
-            "home/dot_pi/agent/exact_agents/reviewer.md.tmpl",
+            "home/dot_pi/agent/exact_agents/k-agent-reviewer.md.tmpl",
             "skills: k-review",
         )
         # OMP `autoloadSkills` injects the skill body itself. Check the frontmatter block,
         # not the whole file, so the prose explaining the omission does not trip the assert.
-        omp_reviewer = REPO / "home/dot_omp/private_agent/exact_agents/reviewer.md.tmpl"
+        omp_reviewer = REPO / "home/dot_omp/private_agent/exact_agents/k-agent-reviewer.md.tmpl"
         omp_frontmatter = omp_reviewer.read_text(encoding="utf-8").split("---")[1]
         assert "autoloadSkills" not in omp_frontmatter, (
             "OMP reviewer frontmatter must not autoload a skill: it injects the skill body, "
@@ -172,17 +172,17 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         )
         # Claude `skills:` is an allowlist where omitting loads every discovered skill,
         # so it must stay present and stay narrowed to the lens set.
-        claude_reviewer = "home/dot_claude/exact_agents/reviewer.md.tmpl"
+        claude_reviewer = "home/dot_claude/exact_agents/k-agent-reviewer.md.tmpl"
         self.assert_file_contains(claude_reviewer, "skills:", "  - k-code-quality")
         self.assert_file_not_contains(claude_reviewer, "  - k-review")
         # Every harness lane profile still points at the one shared contract.
         for profile in (
-            "home/dot_cursor/exact_agents/readonly_review-worker.md.tmpl",
-            "home/dot_codex/exact_agents/readonly_review-worker.toml.tmpl",
-            "home/private_dot_copilot/exact_agents/readonly_review-worker.agent.md.tmpl",
-            "home/dot_claude/exact_agents/reviewer.md.tmpl",
-            "home/dot_pi/agent/exact_agents/reviewer.md.tmpl",
-            "home/dot_omp/private_agent/exact_agents/reviewer.md.tmpl",
+            "home/dot_cursor/exact_agents/readonly_k-agent-review-worker.md.tmpl",
+            "home/dot_codex/exact_agents/readonly_k-agent-review-worker.toml.tmpl",
+            "home/private_dot_copilot/exact_agents/readonly_k-agent-review-worker.agent.md.tmpl",
+            "home/dot_claude/exact_agents/k-agent-reviewer.md.tmpl",
+            "home/dot_pi/agent/exact_agents/k-agent-reviewer.md.tmpl",
+            "home/dot_omp/private_agent/exact_agents/k-agent-reviewer.md.tmpl",
         ):
             self.assert_file_contains(profile, "k-review/references/reviewer-worker.md")
 
@@ -227,14 +227,14 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         # Sweep candidates bypass the audit unless each controller re-audits them inline.
         for controller in (
             "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
-            "home/dot_pi/agent/exact_agents/review-controller.md.tmpl",
-            "home/dot_omp/private_agent/exact_agents/review-controller.md.tmpl",
+            "home/dot_pi/agent/exact_agents/k-agent-review-controller.md.tmpl",
+            "home/dot_omp/private_agent/exact_agents/k-agent-review-controller.md.tmpl",
         ):
             self.assert_file_contains(controller, "new-candidate", "Findings-Set Audit")
 
     def test_live_ui_windows_is_manual_only_and_purged_from_automatic_flows(self):
         # The Windows/VirtualBox environment is a standalone manual-only skill now;
-        # `/k-deep-review`, `/k-build`, `live-ui-review`, and `ui-proof` must carry none of its
+        # `/k-deep-review`, `/k-build`, `k-agent-live-ui-review`, and `ui-proof` must carry none of its
         # auto-inference or environment-selection machinery.
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/readonly_SKILL.md",
@@ -271,7 +271,7 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
-            "Windows/VirtualBox coverage is out of scope for this flow: `live-ui-review` verifies the local browser only.",
+            "Windows/VirtualBox coverage is out of scope for this flow: `k-agent-live-ui-review` verifies the local browser only.",
             "add the manual `~/.agents/skills/k-live-ui-windows/SKILL.md` skill to this turn's work by hand",
         )
         self.assert_file_not_contains(

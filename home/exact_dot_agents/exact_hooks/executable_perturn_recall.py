@@ -9,10 +9,10 @@ of the removed stop-hook nudges).
 Capsule bodies never enter the parent context from this hook. Rows that pass
 the hybrid cosine gate are written in full to a per-session candidates file
 under the spec dir, and the injected context is one pointer block telling the
-parent to delegate judgment to the `smol` subagent (contract:
+parent to delegate judgment to the `k-agent-smol` subagent (contract:
 `~/.agents/skills/k-ai-kb/references/smol-operator.md`). The pointer fires only
 when at least one candidate id is new to the session (tracked in the staged
-ledger); the seen-file (ids smol admitted) is written by smol, never here.
+ledger); the seen-file (ids k-agent-smol admitted) is written by k-agent-smol, never here.
 
 Mirrors pi's `ai-kb-recall.ts` per-turn recall contract exactly (one behavioral
 contract across harnesses): hybrid retrieval with the prompt as the query, an
@@ -259,7 +259,7 @@ def stage_candidates(rows: list, seen: set[str], spec_path: Path, key: str) -> s
     """Write gate-passing rows to the candidates file; return the pointer block.
 
     The cross-repo scope gate is owned by `,ai-kb search --workspace-gate`.
-    This hook filters ids smol already admitted (seen-file) and points the
+    This hook filters ids k-agent-smol already admitted (seen-file) and points the
     parent at the staged set only when at least one id is new to the session
     (staged ledger). Rejected-but-staged ids never re-point; they stay
     re-judgeable through the pull path. Returns "" when nothing new is staged
@@ -286,10 +286,10 @@ def stage_candidates(rows: list, seen: set[str], spec_path: Path, key: str) -> s
             STAGING_HEADER,
             f"{len(candidates)} candidate(s): {candidates_path}",
             f"Session state: {spec_path} + {worklog_path}",
-            f"Delegate to the `smol` subagent (judge mode) per {SMOL_CONTRACT_PATH}, passing those paths and the current prompt;"
+            f"Delegate to the `k-agent-smol` subagent (judge mode) per {SMOL_CONTRACT_PATH}, passing those paths and the current prompt;"
             " inject only its returned lines (`NONE` = inject nothing).",
-            "When native `smol` is unreachable (e.g. a fixed Task subagent set), spawn a generic isolated subagent"
-            " on the memory-band model with the smol operator contract per the k-ai-kb skill;"
+            "When the `k-agent-smol` profile is unreachable (e.g. a fixed Task subagent set), spawn a generic isolated subagent"
+            " on the memory-band model with the k-agent-smol operator contract per the k-ai-kb skill;"
             " never a harness-CLI one-shot and never the subagent type's own default model.",
             "Do not read the candidates file into this context.",
         ]

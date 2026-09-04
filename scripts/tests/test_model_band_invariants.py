@@ -35,14 +35,14 @@ class TestModelBandInvariants(unittest.TestCase):
         ]
 
         review_roles = (
-            "deep-review",
-            "review-worker",
-            "review-worker-cross",
-            "findings-auditor",
-            "pr-necessity-auditor",
-            "live-ui-review",
-            "adversarial-verifier",
-            "criteria-verifier",
+            "k-agent-deep-review",
+            "k-agent-review-worker",
+            "k-agent-review-worker-cross",
+            "k-agent-findings-auditor",
+            "k-agent-pr-necessity-auditor",
+            "k-agent-live-ui-review",
+            "k-agent-adversarial-verifier",
+            "k-agent-criteria-verifier",
         )
         for role in review_roles:
             expected = ai_models.resolve_review_agent_model(registry, "copilot", role)
@@ -67,14 +67,14 @@ class TestModelBandInvariants(unittest.TestCase):
 
         category_models = ai_models.load_category_models(registry)["copilot"]
         review_roles = (
-            "deep-review",
-            "review-worker",
-            "review-worker-cross",
-            "findings-auditor",
-            "pr-necessity-auditor",
-            "live-ui-review",
-            "adversarial-verifier",
-            "criteria-verifier",
+            "k-agent-deep-review",
+            "k-agent-review-worker",
+            "k-agent-review-worker-cross",
+            "k-agent-findings-auditor",
+            "k-agent-pr-necessity-auditor",
+            "k-agent-live-ui-review",
+            "k-agent-adversarial-verifier",
+            "k-agent-criteria-verifier",
         )
 
         used: set[str] = set()
@@ -154,21 +154,23 @@ class TestModelBandInvariants(unittest.TestCase):
         self.assertEqual("gemini-3.8-flash", rows["memory"]["model"])
         self.assertEqual("degraded", rows["refute"]["verifier_status"])
 
-    def test_memory_category_binds_smol_and_projects_into_the_deployed_bands(self):
-        # smol is the ,ai-kb operator: every harness must resolve it through the memory
+    def test_memory_category_binds_k_agent_smol_and_projects_into_the_deployed_bands(self):
+        # k-agent-smol is the ,ai-kb operator: every harness must resolve it through the memory
         # category, and the deployed band projection must pin the same pick so the band
-        # gate clamps delegated smol calls.
+        # gate clamps delegated k-agent-smol calls.
         import ai_models
 
         registry = REPO / "home/.chezmoidata/ai_models"
-        assert ai_models.load_agent_bindings(registry)["smol"] == "memory"
+        assert ai_models.load_agent_bindings(registry)["k-agent-smol"] == "memory"
         category_models = ai_models.load_category_models(registry)
         bands = json.loads((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_text(encoding="utf-8"))
         for harness, rows in category_models.items():
             with self.subTest(harness=harness):
-                pick = ai_models.resolve_agent_model(registry, harness, "smol")
+                pick = ai_models.resolve_agent_model(registry, harness, "k-agent-smol")
                 self.assertEqual(rows["memory"]["model"], pick["model"])
-                self.assertEqual(rows["memory"]["model"], bands["harnesses"][harness]["agents"]["smol"]["model"])
+                self.assertEqual(
+                    rows["memory"]["model"], bands["harnesses"][harness]["agents"]["k-agent-smol"]["model"]
+                )
 
     def test_review_model_resolver_uses_category_models_except_declared_overrides(self):
         # Review routing has one source rule: override only for harness selectors that
@@ -189,7 +191,13 @@ class TestModelBandInvariants(unittest.TestCase):
         assert set(overrides["copilot"]) == {"lanes_cross"}
         assert set(overrides["cursor"]) == {"lanes_cross"}
 
-        review_agents = ("reviewer", "deep-review", "findings-auditor", "live-ui-review", "adversarial-verifier")
+        review_agents = (
+            "k-agent-reviewer",
+            "k-agent-deep-review",
+            "k-agent-findings-auditor",
+            "k-agent-live-ui-review",
+            "k-agent-adversarial-verifier",
+        )
         review_harnesses = {
             "claude_code": "claude",
             **{harness: harness for harness in category_models if harness != "claude_code"},
@@ -218,15 +226,15 @@ class TestModelBandInvariants(unittest.TestCase):
         # and degrades to the standard lane model on single-vendor harnesses (template parity).
         cross_expected = {"copilot": overrides["copilot"]["lanes_cross"], "cursor": overrides["cursor"]["lanes_cross"]}
         for review_harness, model in cross_expected.items():
-            pick = ai_models.resolve_review_agent_model(path, review_harness, "review-worker-cross")
+            pick = ai_models.resolve_review_agent_model(path, review_harness, "k-agent-review-worker-cross")
             assert pick is not None, f"review-worker-cross does not resolve on {review_harness}"
             assert pick["source"] == "override"
             assert pick["model"] == model
             assert "effort" in pick, "override picks merge the category row underneath"
         for review_harness in ("claude", "codex"):
-            pick = ai_models.resolve_review_agent_model(path, review_harness, "review-worker-cross")
+            pick = ai_models.resolve_review_agent_model(path, review_harness, "k-agent-review-worker-cross")
             assert pick is not None, f"review-worker-cross does not resolve on {review_harness}"
-            lane = ai_models.resolve_review_agent_model(path, review_harness, "reviewer")
+            lane = ai_models.resolve_review_agent_model(path, review_harness, "k-agent-reviewer")
             assert pick["model"] == lane["model"], (
                 f"{review_harness} review-worker-cross must degrade to the standard lane model"
             )
@@ -289,7 +297,12 @@ class TestModelBandInvariants(unittest.TestCase):
                 self.assertEqual(row["model"], expected_model)
                 self.assertEqual(row["effort"], expected_effort)
 
-        for role in ("review-worker", "findings-auditor", "adversarial-verifier", "criteria-verifier"):
+        for role in (
+            "k-agent-review-worker",
+            "k-agent-findings-auditor",
+            "k-agent-adversarial-verifier",
+            "k-agent-criteria-verifier",
+        ):
             with self.subTest(surface="review_resolver", name=role):
                 self.assertEqual(ai_models.resolve_review_agent_model(registry, "codex", role)["model"], expected_model)
 
@@ -309,8 +322,8 @@ class TestModelBandInvariants(unittest.TestCase):
             with self.subTest(surface="agent_profile", name=profile.name):
                 self.assertIn('"harness" "codex"', config)
                 self.assertRegex(config, re.compile(rf'^service_tier\s*=\s*"{expected_service_tier}"$', re.MULTILINE))
-                if profile.name == "readonly_smol.toml.tmpl":
-                    # smol is a bindings-resolved memory agent, not a review lane: it goes
+                if profile.name == "readonly_k-agent-smol.toml.tmpl":
+                    # k-agent-smol is a bindings-resolved memory agent, not a review lane: it goes
                     # through agent-model.partial and carries the memory row's effort.
                     self.assertIn('includeTemplate "agent-model.partial"', config)
                     memory_effort = category_models["memory"]["effort"]
@@ -371,7 +384,7 @@ class TestModelBandInvariants(unittest.TestCase):
         for harness, harness_categories in category_models.items():
             review = harness_categories["review"]
             refute = harness_categories["refute"]
-            pick = ai_models.resolve_agent_model(path, harness, "adversarial-verifier")
+            pick = ai_models.resolve_agent_model(path, harness, "k-agent-adversarial-verifier")
             verifier_status = refute.get("verifier_status")
             if verifier_status == "reduced_independence":
                 assert harness in reduced_independence_harnesses, (
@@ -605,7 +618,7 @@ class TestModelBandInvariants(unittest.TestCase):
 
         registry = REPO / "home/.chezmoidata/ai_models"
         for harness in ("claude", "codex", "copilot", "cursor", "gemini", "pi", "omp"):
-            for role in ("reviewer", "adversarial-verifier", "criteria-verifier"):
+            for role in ("k-agent-reviewer", "k-agent-adversarial-verifier", "k-agent-criteria-verifier"):
                 pick = ai_models.resolve_review_agent_model(registry, harness, role)
                 if pick:
                     check(f"review model {harness}.{role}", pick["model"], None)
@@ -792,8 +805,8 @@ class TestModelBandInvariants(unittest.TestCase):
             self.assertNotIn(glm, openrouter_models)
             self.assertNotIn(counter, openrouter_models)
 
-        pi_lane = ai_models.resolve_review_agent_model(registry, "pi", "reviewer")
-        pi_verifier = ai_models.resolve_review_agent_model(registry, "pi", "adversarial-verifier")
+        pi_lane = ai_models.resolve_review_agent_model(registry, "pi", "k-agent-reviewer")
+        pi_verifier = ai_models.resolve_review_agent_model(registry, "pi", "k-agent-adversarial-verifier")
         self.assertEqual(f"{pi_default_selector}:xhigh", pi_lane["model"])
         self.assertEqual(f"{pi_refute_selector}:xhigh", pi_verifier["model"])
         category_models = ai_models.load_category_models(registry)["pi"]

@@ -8,47 +8,47 @@
   "showTipsOnStartup": false,
   "subagents": {
     "agents": {
-      "deep-review": {
+      "k-agent-deep-review": {
         "effortLevel": "xhigh",
         "contextTier": "default",
         "model": "gpt-5.5"
       },
-      "review-worker": {
+      "k-agent-review-worker": {
         "effortLevel": "xhigh",
         "contextTier": "default",
         "model": "gpt-5.5"
       },
-      "review-worker-cross": {
+      "k-agent-review-worker-cross": {
         "effortLevel": "xhigh",
         "contextTier": "default",
         "model": "claude-fable-5.1"
       },
-      "adversarial-verifier": {
+      "k-agent-adversarial-verifier": {
         "effortLevel": "high",
         "contextTier": "default",
         "model": "claude-fable-5.1"
       },
-      "findings-auditor": {
+      "k-agent-findings-auditor": {
         "effortLevel": "xhigh",
         "contextTier": "default",
         "model": "gpt-5.5"
       },
-      "pr-necessity-auditor": {
+      "k-agent-pr-necessity-auditor": {
         "effortLevel": "xhigh",
         "contextTier": "default",
         "model": "gpt-5.5"
       },
-      "live-ui-review": {
+      "k-agent-live-ui-review": {
         "effortLevel": "xhigh",
         "contextTier": "default",
         "model": "gpt-5.5"
       },
-      "criteria-verifier": {
+      "k-agent-criteria-verifier": {
         "effortLevel": "high",
         "contextTier": "default",
         "model": "claude-fable-5.1"
       },
-      "smol": {
+      "k-agent-smol": {
         "effortLevel": "high",
         "contextTier": "default",
         "model": "claude-sonnet-4.6"

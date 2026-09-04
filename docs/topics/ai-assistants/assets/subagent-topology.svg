@@ -16,7 +16,7 @@
   <text class="text" x="455" y="178">Runtime profiles</text><text class="small" x="455" y="208">Cursor, Copilot, Claude,</text><text class="small" x="455" y="234">Codex, Gemini, Pi</text>
   <path class="line" d="M680 195 H770"/>
   <rect class="box" x="770" y="130" width="240" height="130"/>
-  <text class="text" x="805" y="178">Controller</text><text class="small" x="805" y="208">deep-review or</text><text class="small" x="805" y="234">review-controller</text>
+  <text class="text" x="805" y="178">Controller</text><text class="small" x="805" y="208">k-agent-deep-review or</text><text class="small" x="805" y="234">k-agent-review-controller</text>
   <path class="line" d="M890 260 V330"/>
   <rect class="worker" x="520" y="360" width="230" height="120"/>
   <text class="text" x="555" y="405">Reviewers</text><text class="small" x="555" y="435">bounded roster + verify</text>

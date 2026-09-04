@@ -30,7 +30,7 @@ REVIEW_OVERRIDE_HARNESSES = {"claude_code": "claude"}
 # verifier slot. An absent key for the aux slot falls back to the "lanes" override, then to the
 # category pick, so single-vendor harnesses degrade to the standard lane model (same chain as
 # review-agent-model.partial).
-REVIEW_AUX_SLOTS = {"review-worker-cross": "lanes_cross"}
+REVIEW_AUX_SLOTS = {"k-agent-review-worker-cross": "lanes_cross"}
 
 
 def section_path(registry, section_key):

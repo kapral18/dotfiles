@@ -43,16 +43,16 @@ idea/issue
 
 ## `/k-build` phase topology
 
-| Phase                 | Owner                    | Gate                                                                                                                                                |
-| --------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Spec gate          | controller + human       | packet exists, checks red-proven; explicit approval                                                                                                 |
-| 2. Plan               | controller               | per-step verification defined; wave topology grouped; Ownership Gate over touched paths                                                             |
-| 3. Execute            | controller + workers     | waves worked in order; parallel workers report scratch logs + 1-line status; criteria ledger updated; §3.4 reset on 2×                              |
-| 4. Mechanical gates   | controller               | repo lint/type/tests discovered, run, looped to green                                                                                               |
-| 5. Live-UI proof      | proof-mode (inline)      | visual criteria verified head-only against the built runtime; each proof set captured to its own distinct `/tmp/<folder-name>/` and opened/provided |
-| 6. Adversarial verify | `criteria-verifier` lane | checks re-run from clean tree; refutation verdicts + scope audit                                                                                    |
-| 7. Post-review stage  | controller               | four dimensions over the implementation diff                                                                                                        |
-| 8. Report             | controller + human       | mandated output block; completion gate                                                                                                              |
+| Phase                 | Owner                            | Gate                                                                                                                                                |
+| --------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Spec gate          | controller + human               | packet exists, checks red-proven; explicit approval                                                                                                 |
+| 2. Plan               | controller                       | per-step verification defined; wave topology grouped; Ownership Gate over touched paths                                                             |
+| 3. Execute            | controller + workers             | waves worked in order; parallel workers report scratch logs + 1-line status; criteria ledger updated; §3.4 reset on 2×                              |
+| 4. Mechanical gates   | controller                       | repo lint/type/tests discovered, run, looped to green                                                                                               |
+| 5. Live-UI proof      | proof-mode (inline)              | visual criteria verified head-only against the built runtime; each proof set captured to its own distinct `/tmp/<folder-name>/` and opened/provided |
+| 6. Adversarial verify | `k-agent-criteria-verifier` lane | checks re-run from clean tree; refutation verdicts + scope audit                                                                                    |
+| 7. Post-review stage  | controller                       | four dimensions over the implementation diff                                                                                                        |
+| 8. Report             | controller + human               | mandated output block; completion gate                                                                                                              |
 
 The **criteria ledger** is the run's spine. It has one row per acceptance criterion (`red` / `green` / `judgment-met` / `judgment-unmet` / `blocked`), each with command-level evidence, plus a verification verdict (`confirmed` / `refuted` / `undecidable`).
 
@@ -64,7 +64,7 @@ Worker contract: [`k-build/references/criteria-verifier.md`](../../../home/exact
 
 The lane owns refutation order (claim truth → criterion truth → reachability → durability), a scope audit against the packet's binding out-of-scope list, and missing-criteria candidates.
 
-Per-harness profiles are rendered through the same review-model resolver the review verifier uses. Cursor, Copilot, Codex, Pi, and OMP ship a `criteria-verifier` profile; Antigravity defines the role dynamically and invokes its `pro` tier.
+Per-harness profiles are rendered through the same review-model resolver the review verifier uses. Cursor, Copilot, Codex, Pi, and OMP ship a `k-agent-criteria-verifier` profile; Antigravity defines the role dynamically and invokes its `pro` tier.
 
 Claude runs the lane degraded on the session model with refutation framing, reported as `families=same (degraded)`. This mirrors the adversarial-verifier convention in [Cross-harness subagents](subagents.md).
 
@@ -72,7 +72,7 @@ Claude runs the lane degraded on the session model with refutation framing, repo
 
 When any acceptance criterion's evidence is visual — a `judgment:` criterion naming a screenshot/visual comparison, or an in-scope UI-facing change with a stated visual goal — `/k-build` runs the proof-mode contract, [`k-ui-capture/references/proof-mode.md`](../../../home/exact_dot_agents/exact_skills/exact_k-ui-capture/exact_references/readonly_proof-mode.md), owned by the [`k-ui-capture`](../../../home/exact_dot_agents/exact_skills/exact_k-ui-capture/readonly_SKILL.md) skill.
 
-It is the creation-side sibling of the review flow's `live-ui-review`: same runtime machinery, opposite direction. `live-ui-review` compares PR/head against base to find regressions; the proof-mode contract verifies the **built** runtime head-only against its **intended visual** and captures the proof media set — screenshots for static deltas, videos for interactive ones — that proves it. Inventory items carry a comparison frame (`baseline` vs `intra-change`) and embed text must pass the claim map (every named behavior maps to an adequate asset).
+It is the creation-side sibling of the review flow's `k-agent-live-ui-review`: same runtime machinery, opposite direction. `k-agent-live-ui-review` compares PR/head against base to find regressions; the proof-mode contract verifies the **built** runtime head-only against its **intended visual** and captures the proof media set — screenshots for static deltas, videos for interactive ones — that proves it. Inventory items carry a comparison frame (`baseline` vs `intra-change`) and embed text must pass the claim map (every named behavior maps to an adequate asset).
 
 Both share one mode-neutral contract — [`k-review/references/live-ui-runtime.md`](../../../home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_live-ui-runtime.md) — for target-packet resolution, Playwriter preflight, readiness, runtime start, the data/setup ladder, screenshot artifacts, and the runtime safety boundary.
 

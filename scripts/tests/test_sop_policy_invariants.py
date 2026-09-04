@@ -335,10 +335,12 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Classify by the work, not by the caller",
             "A skill that names a category owns that choice",
             "Capability outranks family diversity every time",
+            "Repo-owned custom subagent identifiers MUST use the `k-agent-<role>` namespace.",
+            "Harness-native subagent identifiers MUST remain unchanged; do not prefix or alias them.",
         )
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
-            "Recall first through `smol` when prior knowledge could help",
+            "Recall first through `k-agent-smol` when prior knowledge could help",
             "Do not run `,ai-kb search`/`,ai-kb get` inline in the parent session",
             "never store guesses or session-only notes",
             "Mid-task decisions, ideas, and unverified constraints worth keeping go to `,agent-memory note",

@@ -1,0 +1,19 @@
+# model frontmatter is rendered through review-agent-model.partial from home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file
+name = "k-agent-review-worker"
+description = "Read-only /k-deep-review investigation worker. Use for each Codex review lane; returns evidence-backed candidate findings and never edits or posts."
+model = "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "codex" "agent" "k-agent-review-worker") }}"
+model_reasoning_effort = "xhigh"
+service_tier = "default"
+approval_policy = "untrusted"
+sandbox_mode = "workspace-write"
+developer_instructions = """
+{{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}
+
+Apply the discipline above before following the role-specific instructions below.
+
+You are a Codex /k-deep-review investigation worker.
+
+Read and follow ~/.agents/skills/k-review/references/reviewer-worker.md. The parent controller supplies the scope packet and assigned angle.
+
+Return evidence-backed candidate findings only. Never edit files, post comments, resolve threads, commit, push, or decide what should be fixed/commented on.
+"""

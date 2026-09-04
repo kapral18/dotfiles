@@ -188,18 +188,18 @@ class TestOmpMigration(unittest.TestCase):
     def test_selected_agents_use_omp_frontmatter_schema(self):
         agents = REPO / "home/dot_omp/private_agent/exact_agents"
         required = {
-            "researcher",
-            "reviewer",
-            "review-controller",
-            "code-searcher",
-            "change-auditor",
-            "findings-auditor",
-            "live-ui-review",
-            "post-review",
-            "pr-necessity-auditor",
-            "adversarial-verifier",
-            "fresh-eyes",
-            "criteria-verifier",
+            "k-agent-researcher",
+            "k-agent-reviewer",
+            "k-agent-review-controller",
+            "k-agent-code-searcher",
+            "k-agent-change-auditor",
+            "k-agent-findings-auditor",
+            "k-agent-live-ui-review",
+            "k-agent-post-review",
+            "k-agent-pr-necessity-auditor",
+            "k-agent-adversarial-verifier",
+            "k-agent-fresh-eyes",
+            "k-agent-criteria-verifier",
         }
         seen = {p.name.removesuffix(".md.tmpl") for p in agents.glob("*.md.tmpl")}
 

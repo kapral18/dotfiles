@@ -1,6 +1,6 @@
 # Kibana Live UI Overlay
 
-Kibana live UI target packet for verified `elastic/kibana` `/k-deep-review`, `live-ui-review`, `k-ui-capture`, and (when manually invoked) `k-live-ui-windows` flows.
+Kibana live UI target packet for verified `elastic/kibana` `/k-deep-review`, `k-agent-live-ui-review`, `k-ui-capture`, and (when manually invoked) `k-live-ui-windows` flows.
 Use it when no explicit parent/user/repo target packet was supplied.
 The runtime targets, preflight, and data/setup ladder below are mode-neutral:
 review flows compare PR/head against base, and `k-ui-capture`'s proof-mode contract verifies the built runtime head-only against its intended visual.
@@ -90,7 +90,7 @@ A default `,kbn-stack` start does not enable these, so a stack started or reused
 That would otherwise cost a reconfigure/restart round-trip mid-verification.
 
 `required_kbn_flags` is a list of `key=value` Kibana settings the change under review needs.
-The controller resolves it once before the first `live-ui-review` launch and includes it in this packet;
+The controller resolves it once before the first `k-agent-live-ui-review` launch and includes it in this packet;
 this worker uses the supplied value as-is.
 When the parent supplies none, treat it as the empty list and start/reuse stacks with default config.
 

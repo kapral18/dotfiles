@@ -14,11 +14,6 @@
           "effort": "xhigh",
           "alias": "fable"
         },
-        "adversarial-verifier": {
-          "model": "claude-fable-5-1",
-          "effort": "medium",
-          "alias": "fable"
-        },
         "best-of-n-runner": {
           "model": "claude-fable-5-1",
           "effort": "medium",
@@ -30,11 +25,6 @@
           "alias": "fable"
         },
         "bugbot": {
-          "model": "claude-fable-5-1",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "change-auditor": {
           "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
@@ -59,17 +49,7 @@
           "effort": "medium",
           "alias": "fable"
         },
-        "code-searcher": {
-          "model": "claude-fable-5-1",
-          "effort": "medium",
-          "alias": "fable"
-        },
         "codebase_investigator": {
-          "model": "claude-fable-5-1",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "criteria-verifier": {
           "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
@@ -77,11 +57,6 @@
         "cursor-guide": {
           "model": "claude-fable-5-1",
           "effort": "medium",
-          "alias": "fable"
-        },
-        "deep-review": {
-          "model": "claude-fable-5-1",
-          "effort": "xhigh",
           "alias": "fable"
         },
         "default": {
@@ -95,16 +70,6 @@
           "alias": "fable"
         },
         "explorer": {
-          "model": "claude-fable-5-1",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "findings-auditor": {
-          "model": "claude-fable-5-1",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "fresh-eyes": {
           "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
@@ -124,20 +89,84 @@
           "effort": "medium",
           "alias": "fable"
         },
-        "live-ui-review": {
+        "k-agent-adversarial-verifier": {
           "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
-        "post-review": {
+        "k-agent-change-auditor": {
           "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
         },
-        "pr-necessity-auditor": {
+        "k-agent-code-searcher": {
           "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
+        },
+        "k-agent-criteria-verifier": {
+          "model": "claude-fable-5-1",
+          "effort": "medium",
+          "alias": "fable"
+        },
+        "k-agent-deep-review": {
+          "model": "claude-fable-5-1",
+          "effort": "xhigh",
+          "alias": "fable"
+        },
+        "k-agent-findings-auditor": {
+          "model": "claude-fable-5-1",
+          "effort": "medium",
+          "alias": "fable"
+        },
+        "k-agent-fresh-eyes": {
+          "model": "claude-fable-5-1",
+          "effort": "medium",
+          "alias": "fable"
+        },
+        "k-agent-live-ui-review": {
+          "model": "claude-fable-5-1",
+          "effort": "medium",
+          "alias": "fable"
+        },
+        "k-agent-post-review": {
+          "model": "claude-fable-5-1",
+          "effort": "medium",
+          "alias": "fable"
+        },
+        "k-agent-pr-necessity-auditor": {
+          "model": "claude-fable-5-1",
+          "effort": "medium",
+          "alias": "fable"
+        },
+        "k-agent-researcher": {
+          "model": "claude-fable-5-1",
+          "effort": "medium",
+          "alias": "fable"
+        },
+        "k-agent-review-controller": {
+          "model": "claude-fable-5-1",
+          "effort": "xhigh",
+          "alias": "fable"
+        },
+        "k-agent-review-worker": {
+          "model": "claude-fable-5-1",
+          "effort": "medium",
+          "alias": "fable"
+        },
+        "k-agent-review-worker-cross": {
+          "model": "inherit",
+          "effort": "medium"
+        },
+        "k-agent-reviewer": {
+          "model": "claude-fable-5-1",
+          "effort": "medium",
+          "alias": "fable"
+        },
+        "k-agent-smol": {
+          "model": "claude-sonnet-4-6",
+          "effort": "low",
+          "alias": "sonnet"
         },
         "rem-agent": {
           "model": "claude-fable-5-1",
@@ -145,30 +174,6 @@
           "alias": "fable"
         },
         "research": {
-          "model": "claude-fable-5-1",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "researcher": {
-          "model": "claude-fable-5-1",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "review-controller": {
-          "model": "claude-fable-5-1",
-          "effort": "xhigh",
-          "alias": "fable"
-        },
-        "review-worker": {
-          "model": "claude-fable-5-1",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "review-worker-cross": {
-          "model": "inherit",
-          "effort": "medium"
-        },
-        "reviewer": {
           "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
@@ -182,11 +187,6 @@
           "model": "claude-fable-5-1",
           "effort": "medium",
           "alias": "fable"
-        },
-        "smol": {
-          "model": "claude-sonnet-4-6",
-          "effort": "low",
-          "alias": "sonnet"
         },
         "task": {
           "model": "claude-fable-5-1",
@@ -210,10 +210,6 @@
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
-        "adversarial-verifier": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
         "best-of-n-runner": {
           "model": "gpt-5.5",
           "effort": "xhigh"
@@ -223,10 +219,6 @@
           "effort": "xhigh"
         },
         "bugbot": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
-        "change-auditor": {
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
@@ -246,23 +238,11 @@
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
-        "code-searcher": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
         "codebase_investigator": {
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
-        "criteria-verifier": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
         "cursor-guide": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
-        "deep-review": {
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
@@ -278,14 +258,6 @@
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
-        "findings-auditor": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
-        "fresh-eyes": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
         "general-purpose": {
           "model": "gpt-5.5",
           "effort": "xhigh"
@@ -298,43 +270,75 @@
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
-        "live-ui-review": {
+        "k-agent-adversarial-verifier": {
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
-        "post-review": {
+        "k-agent-change-auditor": {
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
-        "pr-necessity-auditor": {
+        "k-agent-code-searcher": {
           "model": "gpt-5.5",
           "effort": "xhigh"
+        },
+        "k-agent-criteria-verifier": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-deep-review": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-findings-auditor": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-fresh-eyes": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-live-ui-review": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-post-review": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-pr-necessity-auditor": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-researcher": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-review-controller": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-review-worker": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-review-worker-cross": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-reviewer": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-smol": {
+          "model": "gpt-5.4",
+          "effort": "high"
         },
         "rem-agent": {
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "research": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
-        "researcher": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
-        "review-controller": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
-        "review-worker": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
-        "review-worker-cross": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
-        "reviewer": {
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
@@ -345,10 +349,6 @@
         "security-review": {
           "model": "gpt-5.5",
           "effort": "xhigh"
-        },
-        "smol": {
-          "model": "gpt-5.4",
-          "effort": "high"
         },
         "task": {
           "model": "gpt-5.5",
@@ -370,10 +370,6 @@
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
-        "adversarial-verifier": {
-          "model": "claude-fable-5.1",
-          "effort": "high"
-        },
         "best-of-n-runner": {
           "model": "gpt-5.5",
           "effort": "xhigh"
@@ -383,10 +379,6 @@
           "effort": "xhigh"
         },
         "bugbot": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
-        "change-auditor": {
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
@@ -406,23 +398,11 @@
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
-        "code-searcher": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
         "codebase_investigator": {
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
-        "criteria-verifier": {
-          "model": "claude-fable-5.1",
-          "effort": "high"
-        },
         "cursor-guide": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
-        "deep-review": {
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
@@ -438,14 +418,6 @@
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
-        "findings-auditor": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
-        "fresh-eyes": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
         "general-purpose": {
           "model": "gpt-5.5",
           "effort": "xhigh"
@@ -458,43 +430,75 @@
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
-        "live-ui-review": {
+        "k-agent-adversarial-verifier": {
+          "model": "claude-fable-5.1",
+          "effort": "high"
+        },
+        "k-agent-change-auditor": {
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
-        "post-review": {
+        "k-agent-code-searcher": {
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
-        "pr-necessity-auditor": {
+        "k-agent-criteria-verifier": {
+          "model": "claude-fable-5.1",
+          "effort": "high"
+        },
+        "k-agent-deep-review": {
           "model": "gpt-5.5",
           "effort": "xhigh"
+        },
+        "k-agent-findings-auditor": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-fresh-eyes": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-live-ui-review": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-post-review": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-pr-necessity-auditor": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-researcher": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-review-controller": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-review-worker": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-review-worker-cross": {
+          "model": "claude-fable-5.1",
+          "effort": "xhigh"
+        },
+        "k-agent-reviewer": {
+          "model": "gpt-5.5",
+          "effort": "xhigh"
+        },
+        "k-agent-smol": {
+          "model": "claude-sonnet-4.6",
+          "effort": "high"
         },
         "rem-agent": {
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
         "research": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
-        "researcher": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
-        "review-controller": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
-        "review-worker": {
-          "model": "gpt-5.5",
-          "effort": "xhigh"
-        },
-        "review-worker-cross": {
-          "model": "claude-fable-5.1",
-          "effort": "xhigh"
-        },
-        "reviewer": {
           "model": "gpt-5.5",
           "effort": "xhigh"
         },
@@ -505,10 +509,6 @@
         "security-review": {
           "model": "gpt-5.5",
           "effort": "xhigh"
-        },
-        "smol": {
-          "model": "claude-sonnet-4.6",
-          "effort": "high"
         },
         "task": {
           "model": "gpt-5.5",
@@ -530,10 +530,6 @@
           "model": "gpt-5.6-sol-high",
           "effort": "high"
         },
-        "adversarial-verifier": {
-          "model": "claude-opus-5-high",
-          "effort": "high"
-        },
         "best-of-n-runner": {
           "model": "gpt-5.6-sol-high",
           "effort": "high"
@@ -543,10 +539,6 @@
           "effort": "high"
         },
         "bugbot": {
-          "model": "gpt-5.6-sol-high",
-          "effort": "high"
-        },
-        "change-auditor": {
           "model": "gpt-5.6-sol-high",
           "effort": "high"
         },
@@ -566,23 +558,11 @@
           "model": "gpt-5.6-sol-high",
           "effort": "high"
         },
-        "code-searcher": {
-          "model": "gpt-5.6-sol-high",
-          "effort": "high"
-        },
         "codebase_investigator": {
           "model": "gpt-5.6-sol-high",
           "effort": "high"
         },
-        "criteria-verifier": {
-          "model": "claude-opus-5-high",
-          "effort": "high"
-        },
         "cursor-guide": {
-          "model": "gpt-5.6-sol-high",
-          "effort": "high"
-        },
-        "deep-review": {
           "model": "gpt-5.6-sol-high",
           "effort": "high"
         },
@@ -598,14 +578,6 @@
           "model": "gpt-5.6-sol-high",
           "effort": "high"
         },
-        "findings-auditor": {
-          "model": "gpt-5.6-sol-high",
-          "effort": "high"
-        },
-        "fresh-eyes": {
-          "model": "gpt-5.6-sol-high",
-          "effort": "high"
-        },
         "general-purpose": {
           "model": "gpt-5.6-sol-high",
           "effort": "high"
@@ -618,43 +590,74 @@
           "model": "gpt-5.6-sol-high",
           "effort": "high"
         },
-        "live-ui-review": {
+        "k-agent-adversarial-verifier": {
+          "model": "claude-opus-5-high",
+          "effort": "high"
+        },
+        "k-agent-change-auditor": {
           "model": "gpt-5.6-sol-high",
           "effort": "high"
         },
-        "post-review": {
+        "k-agent-code-searcher": {
           "model": "gpt-5.6-sol-high",
           "effort": "high"
         },
-        "pr-necessity-auditor": {
+        "k-agent-criteria-verifier": {
+          "model": "claude-opus-5-high",
+          "effort": "high"
+        },
+        "k-agent-deep-review": {
           "model": "gpt-5.6-sol-high",
           "effort": "high"
+        },
+        "k-agent-findings-auditor": {
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
+        },
+        "k-agent-fresh-eyes": {
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
+        },
+        "k-agent-live-ui-review": {
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
+        },
+        "k-agent-post-review": {
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
+        },
+        "k-agent-pr-necessity-auditor": {
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
+        },
+        "k-agent-researcher": {
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
+        },
+        "k-agent-review-controller": {
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
+        },
+        "k-agent-review-worker": {
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
+        },
+        "k-agent-review-worker-cross": {
+          "model": "claude-opus-5-high",
+          "effort": "high"
+        },
+        "k-agent-reviewer": {
+          "model": "gpt-5.6-sol-high",
+          "effort": "high"
+        },
+        "k-agent-smol": {
+          "model": "auto"
         },
         "rem-agent": {
           "model": "gpt-5.6-sol-high",
           "effort": "high"
         },
         "research": {
-          "model": "gpt-5.6-sol-high",
-          "effort": "high"
-        },
-        "researcher": {
-          "model": "gpt-5.6-sol-high",
-          "effort": "high"
-        },
-        "review-controller": {
-          "model": "gpt-5.6-sol-high",
-          "effort": "high"
-        },
-        "review-worker": {
-          "model": "gpt-5.6-sol-high",
-          "effort": "high"
-        },
-        "review-worker-cross": {
-          "model": "claude-opus-5-high",
-          "effort": "high"
-        },
-        "reviewer": {
           "model": "gpt-5.6-sol-high",
           "effort": "high"
         },
@@ -665,9 +668,6 @@
         "security-review": {
           "model": "gpt-5.6-sol-high",
           "effort": "high"
-        },
-        "smol": {
-          "model": "auto"
         },
         "task": {
           "model": "gpt-5.6-sol-high",
@@ -689,10 +689,6 @@
           "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
-        "adversarial-verifier": {
-          "model": "gemini-3.1-pro-preview",
-          "effort": "high"
-        },
         "best-of-n-runner": {
           "model": "gemini-3.1-pro-preview",
           "effort": "high"
@@ -702,10 +698,6 @@
           "effort": "high"
         },
         "bugbot": {
-          "model": "gemini-3.1-pro-preview",
-          "effort": "high"
-        },
-        "change-auditor": {
           "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
@@ -725,23 +717,11 @@
           "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
-        "code-searcher": {
-          "model": "gemini-3.1-pro-preview",
-          "effort": "high"
-        },
         "codebase_investigator": {
           "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
-        "criteria-verifier": {
-          "model": "gemini-3.1-pro-preview",
-          "effort": "high"
-        },
         "cursor-guide": {
-          "model": "gemini-3.1-pro-preview",
-          "effort": "high"
-        },
-        "deep-review": {
           "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
@@ -757,14 +737,6 @@
           "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
-        "findings-auditor": {
-          "model": "gemini-3.1-pro-preview",
-          "effort": "high"
-        },
-        "fresh-eyes": {
-          "model": "gemini-3.1-pro-preview",
-          "effort": "high"
-        },
         "general-purpose": {
           "model": "gemini-3.1-pro-preview",
           "effort": "high"
@@ -777,16 +749,68 @@
           "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
-        "live-ui-review": {
+        "k-agent-adversarial-verifier": {
           "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
-        "post-review": {
+        "k-agent-change-auditor": {
           "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
-        "pr-necessity-auditor": {
+        "k-agent-code-searcher": {
           "model": "gemini-3.1-pro-preview",
+          "effort": "high"
+        },
+        "k-agent-criteria-verifier": {
+          "model": "gemini-3.1-pro-preview",
+          "effort": "high"
+        },
+        "k-agent-deep-review": {
+          "model": "gemini-3.1-pro-preview",
+          "effort": "high"
+        },
+        "k-agent-findings-auditor": {
+          "model": "gemini-3.1-pro-preview",
+          "effort": "high"
+        },
+        "k-agent-fresh-eyes": {
+          "model": "gemini-3.1-pro-preview",
+          "effort": "high"
+        },
+        "k-agent-live-ui-review": {
+          "model": "gemini-3.1-pro-preview",
+          "effort": "high"
+        },
+        "k-agent-post-review": {
+          "model": "gemini-3.1-pro-preview",
+          "effort": "high"
+        },
+        "k-agent-pr-necessity-auditor": {
+          "model": "gemini-3.1-pro-preview",
+          "effort": "high"
+        },
+        "k-agent-researcher": {
+          "model": "gemini-3.1-pro-preview",
+          "effort": "high"
+        },
+        "k-agent-review-controller": {
+          "model": "gemini-3.1-pro-preview",
+          "effort": "high"
+        },
+        "k-agent-review-worker": {
+          "model": "gemini-3.1-pro-preview",
+          "effort": "high"
+        },
+        "k-agent-review-worker-cross": {
+          "model": "pro",
+          "effort": "high"
+        },
+        "k-agent-reviewer": {
+          "model": "gemini-3.1-pro-preview",
+          "effort": "high"
+        },
+        "k-agent-smol": {
+          "model": "gemini-3.8-flash",
           "effort": "high"
         },
         "rem-agent": {
@@ -797,36 +821,12 @@
           "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
-        "researcher": {
-          "model": "gemini-3.1-pro-preview",
-          "effort": "high"
-        },
-        "review-controller": {
-          "model": "gemini-3.1-pro-preview",
-          "effort": "high"
-        },
-        "review-worker": {
-          "model": "gemini-3.1-pro-preview",
-          "effort": "high"
-        },
-        "review-worker-cross": {
-          "model": "pro",
-          "effort": "high"
-        },
-        "reviewer": {
-          "model": "gemini-3.1-pro-preview",
-          "effort": "high"
-        },
         "rubber-duck": {
           "model": "gemini-3.1-pro-preview",
           "effort": "high"
         },
         "security-review": {
           "model": "gemini-3.1-pro-preview",
-          "effort": "high"
-        },
-        "smol": {
-          "model": "gemini-3.8-flash",
           "effort": "high"
         },
         "task": {
@@ -849,10 +849,6 @@
           "model": "@plan",
           "effort": "xhigh"
         },
-        "adversarial-verifier": {
-          "model": "@advisor",
-          "effort": "xhigh"
-        },
         "best-of-n-runner": {
           "model": "@task",
           "effort": "xhigh"
@@ -862,10 +858,6 @@
           "effort": "xhigh"
         },
         "bugbot": {
-          "model": "@advisor",
-          "effort": "xhigh"
-        },
-        "change-auditor": {
           "model": "@advisor",
           "effort": "xhigh"
         },
@@ -885,24 +877,12 @@
           "model": "@advisor",
           "effort": "xhigh"
         },
-        "code-searcher": {
-          "model": "@task",
-          "effort": "xhigh"
-        },
         "codebase_investigator": {
           "model": "@task",
           "effort": "xhigh"
         },
-        "criteria-verifier": {
-          "model": "@advisor",
-          "effort": "xhigh"
-        },
         "cursor-guide": {
           "model": "@task",
-          "effort": "xhigh"
-        },
-        "deep-review": {
-          "model": "@plan",
           "effort": "xhigh"
         },
         "default": {
@@ -917,14 +897,6 @@
           "model": "@task",
           "effort": "xhigh"
         },
-        "findings-auditor": {
-          "model": "@advisor",
-          "effort": "xhigh"
-        },
-        "fresh-eyes": {
-          "model": "@advisor",
-          "effort": "xhigh"
-        },
         "general-purpose": {
           "model": "@task",
           "effort": "xhigh"
@@ -937,17 +909,69 @@
           "model": "@task",
           "effort": "xhigh"
         },
-        "live-ui-review": {
+        "k-agent-adversarial-verifier": {
           "model": "@advisor",
           "effort": "xhigh"
         },
-        "post-review": {
+        "k-agent-change-auditor": {
           "model": "@advisor",
           "effort": "xhigh"
         },
-        "pr-necessity-auditor": {
+        "k-agent-code-searcher": {
+          "model": "@task",
+          "effort": "xhigh"
+        },
+        "k-agent-criteria-verifier": {
           "model": "@advisor",
           "effort": "xhigh"
+        },
+        "k-agent-deep-review": {
+          "model": "@plan",
+          "effort": "xhigh"
+        },
+        "k-agent-findings-auditor": {
+          "model": "@advisor",
+          "effort": "xhigh"
+        },
+        "k-agent-fresh-eyes": {
+          "model": "@advisor",
+          "effort": "xhigh"
+        },
+        "k-agent-live-ui-review": {
+          "model": "@advisor",
+          "effort": "xhigh"
+        },
+        "k-agent-post-review": {
+          "model": "@advisor",
+          "effort": "xhigh"
+        },
+        "k-agent-pr-necessity-auditor": {
+          "model": "@advisor",
+          "effort": "xhigh"
+        },
+        "k-agent-researcher": {
+          "model": "@task",
+          "effort": "xhigh"
+        },
+        "k-agent-review-controller": {
+          "model": "@plan",
+          "effort": "xhigh"
+        },
+        "k-agent-review-worker": {
+          "model": "@advisor",
+          "effort": "xhigh"
+        },
+        "k-agent-review-worker-cross": {
+          "model": "@advisor",
+          "effort": "xhigh"
+        },
+        "k-agent-reviewer": {
+          "model": "@advisor",
+          "effort": "xhigh"
+        },
+        "k-agent-smol": {
+          "model": "openrouter/google/gemini-3.7-flash:high",
+          "effort": "high"
         },
         "rem-agent": {
           "model": "@task",
@@ -957,26 +981,6 @@
           "model": "@task",
           "effort": "xhigh"
         },
-        "researcher": {
-          "model": "@task",
-          "effort": "xhigh"
-        },
-        "review-controller": {
-          "model": "@plan",
-          "effort": "xhigh"
-        },
-        "review-worker": {
-          "model": "@advisor",
-          "effort": "xhigh"
-        },
-        "review-worker-cross": {
-          "model": "@advisor",
-          "effort": "xhigh"
-        },
-        "reviewer": {
-          "model": "@advisor",
-          "effort": "xhigh"
-        },
         "rubber-duck": {
           "model": "@task",
           "effort": "xhigh"
@@ -984,10 +988,6 @@
         "security-review": {
           "model": "@advisor",
           "effort": "xhigh"
-        },
-        "smol": {
-          "model": "openrouter/google/gemini-3.7-flash:high",
-          "effort": "high"
         },
         "task": {
           "model": "@task",
@@ -1009,10 +1009,6 @@
           "model": "openrouter/openai/gpt-5.5:xhigh",
           "effort": "xhigh"
         },
-        "adversarial-verifier": {
-          "model": "openrouter/anthropic/claude-sonnet-4.6:xhigh",
-          "effort": "xhigh"
-        },
         "best-of-n-runner": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
           "effort": "xhigh"
@@ -1022,10 +1018,6 @@
           "effort": "xhigh"
         },
         "bugbot": {
-          "model": "openrouter/openai/gpt-5.5:xhigh",
-          "effort": "xhigh"
-        },
-        "change-auditor": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
           "effort": "xhigh"
         },
@@ -1045,23 +1037,11 @@
           "model": "openrouter/openai/gpt-5.5:xhigh",
           "effort": "xhigh"
         },
-        "code-searcher": {
-          "model": "openrouter/openai/gpt-5.5:xhigh",
-          "effort": "xhigh"
-        },
         "codebase_investigator": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
           "effort": "xhigh"
         },
-        "criteria-verifier": {
-          "model": "openrouter/anthropic/claude-sonnet-4.6:xhigh",
-          "effort": "xhigh"
-        },
         "cursor-guide": {
-          "model": "openrouter/openai/gpt-5.5:xhigh",
-          "effort": "xhigh"
-        },
-        "deep-review": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
           "effort": "xhigh"
         },
@@ -1077,14 +1057,6 @@
           "model": "openrouter/openai/gpt-5.5:xhigh",
           "effort": "xhigh"
         },
-        "findings-auditor": {
-          "model": "openrouter/openai/gpt-5.5:xhigh",
-          "effort": "xhigh"
-        },
-        "fresh-eyes": {
-          "model": "openrouter/openai/gpt-5.5:xhigh",
-          "effort": "xhigh"
-        },
         "general-purpose": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
           "effort": "xhigh"
@@ -1097,43 +1069,75 @@
           "model": "openrouter/openai/gpt-5.5:xhigh",
           "effort": "xhigh"
         },
-        "live-ui-review": {
+        "k-agent-adversarial-verifier": {
+          "model": "openrouter/anthropic/claude-sonnet-4.6:xhigh",
+          "effort": "xhigh"
+        },
+        "k-agent-change-auditor": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
           "effort": "xhigh"
         },
-        "post-review": {
+        "k-agent-code-searcher": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
           "effort": "xhigh"
         },
-        "pr-necessity-auditor": {
+        "k-agent-criteria-verifier": {
+          "model": "openrouter/anthropic/claude-sonnet-4.6:xhigh",
+          "effort": "xhigh"
+        },
+        "k-agent-deep-review": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
           "effort": "xhigh"
+        },
+        "k-agent-findings-auditor": {
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
+        },
+        "k-agent-fresh-eyes": {
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
+        },
+        "k-agent-live-ui-review": {
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
+        },
+        "k-agent-post-review": {
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
+        },
+        "k-agent-pr-necessity-auditor": {
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
+        },
+        "k-agent-researcher": {
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
+        },
+        "k-agent-review-controller": {
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
+        },
+        "k-agent-review-worker": {
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
+        },
+        "k-agent-review-worker-cross": {
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
+        },
+        "k-agent-reviewer": {
+          "model": "openrouter/openai/gpt-5.5:xhigh",
+          "effort": "xhigh"
+        },
+        "k-agent-smol": {
+          "model": "openrouter/google/gemini-3.7-flash:high",
+          "effort": "high"
         },
         "rem-agent": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
           "effort": "xhigh"
         },
         "research": {
-          "model": "openrouter/openai/gpt-5.5:xhigh",
-          "effort": "xhigh"
-        },
-        "researcher": {
-          "model": "openrouter/openai/gpt-5.5:xhigh",
-          "effort": "xhigh"
-        },
-        "review-controller": {
-          "model": "openrouter/openai/gpt-5.5:xhigh",
-          "effort": "xhigh"
-        },
-        "review-worker": {
-          "model": "openrouter/openai/gpt-5.5:xhigh",
-          "effort": "xhigh"
-        },
-        "review-worker-cross": {
-          "model": "openrouter/openai/gpt-5.5:xhigh",
-          "effort": "xhigh"
-        },
-        "reviewer": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
           "effort": "xhigh"
         },
@@ -1144,10 +1148,6 @@
         "security-review": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
           "effort": "xhigh"
-        },
-        "smol": {
-          "model": "openrouter/google/gemini-3.7-flash:high",
-          "effort": "high"
         },
         "task": {
           "model": "openrouter/openai/gpt-5.5:xhigh",

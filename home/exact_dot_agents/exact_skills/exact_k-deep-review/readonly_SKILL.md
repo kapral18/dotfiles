@@ -55,19 +55,19 @@ The controller owns:
   - user constraints
   - expected output shape
   - intent dependencies needed for judgment, if any: PR body, PR discussion/review threads, linked issues/PRs, Slack threads, design artifacts, commit messages, or branch history
-- running the conditional blocking `pr-necessity-auditor` before implementation review
+- running the conditional blocking `k-agent-pr-necessity-auditor` before implementation review
   - applies to other-authored/unknown PRs
   - applies to local flows with a PR-intent dependency
 - materializing the read-only review context pack before reviewer fan-out and putting the pack path plus manifest `head_sha` in every scope packet
 - launching the reviewer workers after any required PR necessity greenlight: the angle lanes plus the conditional blind fresh-eyes clarity lane
-- running conditional `live-ui-review` verification after lane merge/dedup, before the findings audit
+- running conditional `k-agent-live-ui-review` verification after lane merge/dedup, before the findings audit
   - applies when changed paths or merged candidate findings touch UI/runtime behavior
   - requires applicable runtime evidence
   - requires screenshot handoff evidence for any UI-related finding that may become draft review feedback, unless live UI returns a valid blocker or non-applicability result
 - running the controller findings audit phase after live UI returns evidence/non-applicability/blocker or is explicitly skipped;
-  delegate to `findings-auditor` only when a findings-audit delegation condition is true
+  delegate to `k-agent-findings-auditor` only when a findings-audit delegation condition is true
 - running the final adversarial verification pass (cross-family preferred at equal capability, SOP §3.7) over the audited candidate set
-- aggregating worker outputs, `pr-necessity-auditor` status, reviewer findings, live UI status/evidence/artifacts/skip reason, audit output, and final adversarial verification verdicts
+- aggregating worker outputs, `k-agent-pr-necessity-auditor` status, reviewer findings, live UI status/evidence/artifacts/skip reason, audit output, and final adversarial verification verdicts
 - deciding which worker-reported `verification_needed` items deserve serial controller verification
 - judging kept/dropped findings after aggregation
 - reconciling PR-mode draft payloads before preparing or posting final review feedback
@@ -234,7 +234,7 @@ Workers consult the pack first and fall back to live commands only for facts the
 The measured reason for this controller cache is concrete: one real review had 42 changed files fetched 87 times via `git show` and `gh pr view` re-fetched 14 times across stateless lanes.
 
 1. **Run conditional blocking PR necessity/intent audit.**
-   - Run `pr-necessity-auditor` before any implementation reviewer when:
+   - Run `k-agent-pr-necessity-auditor` before any implementation reviewer when:
      - mode is `pr_review.md` or `pr_fix.md`, and
      - `authorship` is `other` or `unknown`.
    - Also run it as a blocking PR intent audit when all of these hold:
@@ -288,7 +288,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      A wrong or stale model is fixed in the registry/bands, not the launch.
      The angles are this phase's breadth axis; family diversity sits at the primary finder (`lanes_cross` when fielded) and at final adversarial verification.
    - Emit all reviewer-lane launches, fresh-eyes included when it applies, in one message (a single tool-call batch).
-   - Use the harness's native reviewer worker profiles or task mechanism (`review-worker`/`reviewer` profiles, or a generic task type carrying `reviewer-worker.md`); read `runtime-harnesses.md` for per-harness launch and model-inheritance caveats.
+   - Use the harness's native reviewer worker profiles or task mechanism (`k-agent-review-worker`/`k-agent-reviewer` profiles, or a generic task type carrying `reviewer-worker.md`); read `runtime-harnesses.md` for per-harness launch and model-inheritance caveats.
    - Hard-read-only caveat: for Cursor, follow `runtime-harnesses.md`.
      Cursor Task launches and Cursor profile shims for `/k-deep-review` must use `readonly: false`.
      If a worker reports Ask/read-only mode blocked shell/git/`gh`/Playwriter, discard that launch result and rerun with `readonly: false`.
@@ -328,7 +328,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      - apply the Replacement/Migration Parity Gate from `judging_core.md` to replacement/test-migration candidates
      - drop candidates classified as `preserved_limitation` or `prose_drift`
      - do not treat test-only UI code as live-UI applicability by itself
-   - Launch `live-ui-review` when changed paths or any merged candidate touch UI/runtime behavior and runtime evidence is applicable.
+   - Launch `k-agent-live-ui-review` when changed paths or any merged candidate touch UI/runtime behavior and runtime evidence is applicable.
      For replacement/test-migration candidates, only `parity_gap`, `new_regression`, and `scope_expansion` can be kept candidates for this trigger.
    - A deterministic, unit, integration, or other-layer proof does NOT discharge a live-UI trigger when the runtime is startable.
      Examples include a resolution/compile harness, a passing test, or a static trace;
@@ -339,9 +339,9 @@ The measured reason for this controller cache is concrete: one real review had 4
      If the runtime is startable (runtime-start rung), start it and verify.
    - Hard runtime read-only/sandbox modes are not the review safety boundary.
      Use harness permissions that allow the lane's permitted verification tools, and enforce no-mutation behavior through the role contract.
-   - Use those permissions only for the lane's permitted verification tools: read-only shell/git/`gh` for investigation workers, or Playwriter commands for `live-ui-review`.
-     `live-ui-review` may also run explicit local/dev runtime data setup against verified targets.
-   - Mode boundary: default `live-ui-review` is verification-only.
+   - Use those permissions only for the lane's permitted verification tools: read-only shell/git/`gh` for investigation workers, or Playwriter commands for `k-agent-live-ui-review`.
+     `k-agent-live-ui-review` may also run explicit local/dev runtime data setup against verified targets.
+   - Mode boundary: default `k-agent-live-ui-review` is verification-only.
    - Keep behavior-level read-only constraints in the prompt:
      - no repo edits
      - no file writes except Playwriter artifacts under `/tmp`
@@ -364,21 +364,21 @@ The measured reason for this controller cache is concrete: one real review had 4
      - Base/main is comparison-only: resolve/start a base target only when a distinct `reviewed_head_worktree` exists and the target packet requires base-vs-head comparison.
      - Identify which running runtime is head vs base only from the target packet's registry/discovery keyed by worktree path;
        never decide head-vs-base by probing a port (e.g. `curl localhost:5601`), which silently mistakes an already-running base/main stack for the head runtime.
-   - Resolve required runtime config once, before the first `live-ui-review` launch:
+   - Resolve required runtime config once, before the first `k-agent-live-ui-review` launch:
      from the changed paths and kept candidates, determine any runtime/feature-flag settings the path under review needs to be reachable.
      Pass them to the worker so the runtime is started correctly the first time instead of started default and reconfigured after a blocker.
      The concrete settings and the start-time mechanism are owned by the selected target packet.
      For example, the Kibana overlay owns `required_kbn_flags` -> `,kbn-stack -K`;
      keep specific flag names and values in the packet/overlay, not here. When none are needed, pass an empty set.
    - Include the selected target/preflight packet and the resolved required runtime config in the worker prompt so the worker starts with it instead of rediscovering it.
-   - Windows/VirtualBox coverage is out of scope for this flow: `live-ui-review` verifies the local browser only.
+   - Windows/VirtualBox coverage is out of scope for this flow: `k-agent-live-ui-review` verifies the local browser only.
      When the user explicitly wants Windows/VirtualBox coverage too, add the manual `~/.agents/skills/k-live-ui-windows/SKILL.md` skill to this turn's work by hand; never infer it from PR/issue context.
    - It returns one of:
      - `Not applicable`
      - comparison evidence with `ui_evidence_artifacts`
      - target/branch/runtime/data blocker for the controller to surface
    - For an applicable UI-related candidate that may become draft review feedback, screenshots are required supporting evidence.
-     If `live-ui-review` confirms or materially supports the candidate without screenshot handoff entries, rerun the worker or carry a blocker; draft the comment only with screenshot-backed UI evidence.
+     If `k-agent-live-ui-review` confirms or materially supports the candidate without screenshot handoff entries, rerun the worker or carry a blocker; draft the comment only with screenshot-backed UI evidence.
    - Rerun a blocked live-UI result automatically only for a missing/un-started local runtime in a shell-capable harness when the selected target packet documents a start command.
      That case is the runtime-start rung, not a terminal blocker; have the runtime started and rerun rather than surfacing it as remaining uncertainty.
    - A read-only/Ask-mode Playwriter block is a valid blocker to surface.
@@ -394,7 +394,7 @@ The measured reason for this controller cache is concrete: one real review had 4
    - Inline the audit in the controller when the remaining set is trivial:
      - no candidate findings, or
      - one straightforward evidence-backed finding with no lane disagreement, no live UI blocker, no PR-necessity concern kept after greenlight, and no fix diff to audit.
-   - Keep the audit in the controller by default; delegate to `findings-auditor` only when the remaining set is non-trivial:
+   - Keep the audit in the controller by default; delegate to `k-agent-findings-auditor` only when the remaining set is non-trivial:
      - two or more candidate findings
      - any HIGH/CRITICAL candidate
      - disagreement among reviewer lanes, live UI evidence, or PR necessity concerns, or likely duplication
@@ -416,9 +416,9 @@ The measured reason for this controller cache is concrete: one real review had 4
 
 5. **Run final adversarial verification.**
    - If the audited set is empty, skip adversarial verification and report `Adversarial verification: skipped (no candidates after findings audit)`.
-   - Otherwise, launch one adversarial-verifier worker following `~/.agents/skills/k-review/references/adversarial-verifier.md`.
+   - Otherwise, launch one `k-agent-adversarial-verifier` worker following `~/.agents/skills/k-review/references/adversarial-verifier.md`.
      Give it the audited candidates with lane attribution stripped, plus the findings-audit result, verification ledger, live UI status/evidence/artifacts/skip reason, diff scope, base ref, and mode.
-   - Model rule — the one lane where model identity matters: the review-model resolver assigns each harness its verifier model from `category_models.<harness>.refute` or a sparse override, and the deployed `adversarial-verifier` profile carries it (named-profile controllers such as Pi/OMP pass the rendered resolver value per task).
+   - Model rule — the one lane where model identity matters: the review-model resolver assigns each harness its verifier model from `category_models.<harness>.refute` or a sparse override, and the deployed `k-agent-adversarial-verifier` profile carries it (named-profile controllers such as Pi/OMP pass the rendered resolver value per task).
      Report `families=cross` only when the resolved verifier model is genuinely a different family than its lane model.
      Report `families=same (reduced independence)` when the resolver carries `verifier_status: reduced_independence` for a deliberate same-family capability-first pairing.
      Report `families=same (degraded)` when the harness cannot field a second family (`verifier_status: degraded`, `inherit`, or single-vendor surface).
@@ -433,7 +433,7 @@ The measured reason for this controller cache is concrete: one real review had 4
   Report how many the sweep produced and how many survived. Do not relaunch the verifier over its own sweep items.
 
 1. **Aggregate.**
-   Combine `pr-necessity-auditor` greenlight/skip status, each angle lane's output, fresh-eyes output or its skip reason, the verification ledger, live UI evidence/status/artifacts, findings audit result, and final adversarial verification verdicts/family status.
+   Combine `k-agent-pr-necessity-auditor` greenlight/skip status, each angle lane's output, fresh-eyes output or its skip reason, the verification ledger, live UI evidence/status/artifacts, findings audit result, and final adversarial verification verdicts/family status.
 2. **Judge in the controller.**
    - Apply mode-correct reconciliation:
      - all modes: collapse duplicate worker findings, apply the severity model, and keep findings that are implementation-verified, not covered by existing evidence, and not dropped by the parity/deduplication filters.
@@ -451,7 +451,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      Reject and re-task on mismatch: illegible crops, duplicate/byte-identical files under different captions, mid-animation captures, wrong target, wrong state, or any image that does not prove the claimed behavior.
      Every published image is controller-viewed first.
      Verify screenshot paths when possible and surface them only in final `UI evidence attachments:`.
-     If screenshot handoff is missing, rerun `live-ui-review` or block with the exact reason;
+     If screenshot handoff is missing, rerun `k-agent-live-ui-review` or block with the exact reason;
      draft a UI-related comment only with screenshot-backed UI evidence.
      Keep local paths out of GitHub review bodies, and carry image paths only in `UI evidence attachments:` rather than extra comments;
      with explicit user approval, upload and embed screenshots as `user-attachments` URLs via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md`.
@@ -463,7 +463,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      - candidates refuted by the adversarial verifier, after the controller checks the refutation's source/API/runtime evidence addresses the candidate's actual claim
      - findings that only a worker asserted without evidence and without a decisive `verification_needed` path
      - PR necessity claims that rely only on ambient precedent without proving the current PR's actual diff and directly referenced artifacts
-   - A findings-auditor drop recommendation or an adversarial-verifier verdict is advisory.
+   - A `k-agent-findings-auditor` drop recommendation or a `k-agent-adversarial-verifier` verdict is advisory.
      The controller must name the hard drop reason and evidence; otherwise keep the finding, merge it with a duplicate, run the needed verification, or block with explicit uncertainty.
    - For every verification-ledger item, record one disposition:
      - `resolved`: evidence makes it irrelevant or answers the fork,
@@ -527,17 +527,17 @@ The final output may report blockers or remaining uncertainty, but it presents t
 
 ## PR necessity audit
 
-`pr-necessity-auditor` is the blocking PR-mode/intent worker from orchestration step 2: evidence-only:
+`k-agent-pr-necessity-auditor` is the blocking PR-mode/intent worker from orchestration step 2: evidence-only:
 it decides, posts, resolves, edits, commits, and pushes nothing.
 Orchestration step 2 owns when it runs and how its result gates reviewer fan-out.
 Full audit scope (author intent, correctly-open checks, duplicate/superseding-work search) and hard constraints live in `~/.agents/skills/k-review/references/pr-necessity-auditor.md`.
 
 ## Live UI review
 
-`live-ui-review` is the conditional UI/runtime verifier from the "Merge candidates and run conditional live UI verification" orchestration phase: applicability trigger, mode boundary, target-packet selection, worktree identity, and required runtime config are owned there.
+`k-agent-live-ui-review` is the conditional UI/runtime verifier from the "Merge candidates and run conditional live UI verification" orchestration phase: applicability trigger, mode boundary, target-packet selection, worktree identity, and required runtime config are owned there.
 Full worker-facing procedure lives in `~/.agents/skills/k-review/references/live-ui-review.md`, which loads the shared runtime contract `~/.agents/skills/k-review/references/live-ui-runtime.md` (preflight, readiness stability guard, runtime-start rung, data/setup ladder, hard runtime constraints); `live-ui-review.md` adds the base-vs-head Playwriter comparison and the exact return shape.
 
-Controller validation: reject and rerun any `live-ui-review` result that:
+Controller validation: reject and rerun any `k-agent-live-ui-review` result that:
 
 - does not match the selected target packet
 - uses the controller cwd or base/main runtime as the PR/head target for an explicit PR/branch review without proving that checkout is on the reviewed PR/head branch/sha

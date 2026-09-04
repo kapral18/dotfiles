@@ -27,7 +27,7 @@ class TestMergeCopilotSettings(unittest.TestCase):
             "subagents": {
                 "runtimeOnly": {"keep": True},
                 "agents": {
-                    "review-worker": {"model": "stale", "effortLevel": "low"},
+                    "k-agent-review-worker": {"model": "stale", "effortLevel": "low"},
                     "removed-reviewer": {"model": "obsolete"},
                 },
             },
@@ -37,12 +37,12 @@ class TestMergeCopilotSettings(unittest.TestCase):
             "effortLevel": "xhigh",
             "subagents": {
                 "agents": {
-                    "review-worker": {
+                    "k-agent-review-worker": {
                         "model": "gpt-5.5",
                         "effortLevel": "medium",
                         "contextTier": "long_context",
                     },
-                    "adversarial-verifier": {
+                    "k-agent-adversarial-verifier": {
                         "model": "claude-opus-4.8",
                         "effortLevel": "high",
                         "contextTier": "long_context",

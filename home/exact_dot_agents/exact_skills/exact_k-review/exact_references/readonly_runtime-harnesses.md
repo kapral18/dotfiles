@@ -38,7 +38,7 @@ Claude subagent model overrides are limited to the installed SDK schema (`sonnet
 ## Codex
 
 Codex's model surface is OpenAI-only, so the adversarial verifier is `families=same (degraded)` here.
-Launch angle lanes as `review-worker` agents; the verifier as the `adversarial-verifier` agent.
+Launch angle lanes as `k-agent-review-worker` agents; the verifier as the `k-agent-adversarial-verifier` agent.
 Registry: both values are concrete (`gpt-5.5` at xhigh effort via profile `model` + `model_reasoning_effort`);
 every Codex role also pins `service_tier = "default"`.
 Always pass an explicit model when launching a native Codex `spawn_agent`/generic subagent:
@@ -48,6 +48,7 @@ the installed catalog does not make omitted defaults auditable, and uncataloged 
 
 Run `/k-deep-review` in the main Antigravity session. Dynamic subagents cannot invoke further subagents.
 Antigravity has no repo-owned profile-file surface; define each needed role with `define_subagent`, point its system prompt at the matching shared role contract, then launch it through `invoke_subagent`.
+Every dynamically defined repo-owned role MUST use its `k-agent-<role>` identifier.
 The `invoke_subagent` model field accepts only `inherit`, `flash_lite`, `flash`, or `pro`, so the registry stores `pro` for both lanes and verifier.
 Use `pro` for review, audit, and refutation lanes.
 The model surface is Gemini-only, so report `families=same (degraded)` for adversarial verification.
@@ -56,7 +57,7 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
 
 - Cursor source supports custom subagent types (`SubagentType.custom.name`) and loads **project-level** `.cursor/agents` profile files only;
   user-level `~/.cursor/agents` is never scanned (probed 2026-08-30, cursor-agent 2026.08.28-a7f9513), so home-deployed profiles are unreachable.
-  Where a workspace carries `review-worker`/`adversarial-verifier` profiles, launch lanes through them;
+  Where a workspace carries `k-agent-review-worker`/`k-agent-adversarial-verifier` profiles, launch lanes through them;
   both carry resolver-rendered `model` frontmatter.
 - Resolved `lanes` are `gpt-5.6-sol-high`; resolved `verifier` is `claude-opus-5-high`.
   `category_models.cursor.refute` carries `verifier_status: cross_family`, so the adversarial verifier runs as a cross-family lane.
@@ -80,10 +81,10 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
 
 ## Copilot CLI
 
-- Copilot profiles carry resolver-rendered `model` frontmatter (`lanes` on workers/auditors/controller, `verifier` on `adversarial-verifier`).
+- Copilot profiles carry resolver-rendered `model` frontmatter (`lanes` on workers/auditors/controller, `verifier` on `k-agent-adversarial-verifier`).
   The managed `~/.copilot/settings.json` subagent entries also include resolver-aligned `model`/`effortLevel`/`contextTier` so stale target-only model overrides cannot survive Copilot's settings merge.
   Per-task model overrides are runtime-verified but reserved for fail-visible recovery, not steering, except generic fresh-eyes where the explicit model is the profile-equivalent resolved lane value.
-- Launch angle lanes as the `review-worker` agent type (model-invocable, not user-invocable).
+- Launch angle lanes as the `k-agent-review-worker` agent type (model-invocable, not user-invocable).
   Do not use `general-purpose` unless a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason.
 
 ## Pi and OMP

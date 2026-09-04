@@ -32,7 +32,7 @@ The flow is a phased investigation pipeline, not a loose collection of agents. T
 
 The controller first resolves the route and scope packet: PR/local mode, role, target diff/PR/thread set, base branch, user constraints, expected output, and any intent dependencies needed for judgment.
 
-For other-authored or unknown-author PRs, `pr-necessity-auditor` runs first and blocks fan-out until it greenlights implementation review. It also runs as an intent audit for local changes attached to an assigned/adopted PR when PR body, discussion, Slack, issues, or history are needed to judge the local diff.
+For other-authored or unknown-author PRs, `k-agent-pr-necessity-auditor` runs first and blocks fan-out until it greenlights implementation review. It also runs as an intent audit for local changes attached to an assigned/adopted PR when PR body, discussion, Slack, issues, or history are needed to judge the local diff.
 
 PR necessity checks:
 
@@ -76,7 +76,7 @@ Findings audit can recommend a disposition, but it cannot erase the dependency o
 
 ### Live UI and evidence handoff
 
-`live-ui-review` starts after lane merge/dedup when UI/runtime is relevant and checks applicable candidates with Playwriter against a controller-supplied target packet. Any UI-related finding that may become review feedback needs screenshot handoff evidence, unless the worker returns a valid blocker or non-applicability result.
+`k-agent-live-ui-review` starts after lane merge/dedup when UI/runtime is relevant and checks applicable candidates with Playwriter against a controller-supplied target packet. Any UI-related finding that may become review feedback needs screenshot handoff evidence, unless the worker returns a valid blocker or non-applicability result.
 
 Live UI can return:
 
@@ -95,7 +95,7 @@ If a kept UI finding lacks screenshots without a valid blocker or non-applicabil
 
 The findings audit runs after live UI and before final adversarial verification. The controller audits inline for trivial sets: zero or one straightforward finding with no disagreement, blocker, or fix diff.
 
-For non-trivial sets, including material `verification_needed`, the controller delegates to `findings-auditor`. It flags redundancy, verbosity, semantic + logical duplication, gaps, actionability problems, overengineered proposed fixes, and verification-ledger disposition problems.
+For non-trivial sets, including material `verification_needed`, the controller delegates to `k-agent-findings-auditor`. It flags redundancy, verbosity, semantic + logical duplication, gaps, actionability problems, overengineered proposed fixes, and verification-ledger disposition problems.
 
 When two or more reviewer lanes report the same root cause, the audit should merge/dedupe it into one candidate unless hard evidence proves a drop reason.
 
@@ -123,14 +123,14 @@ It merges still-valid pending feedback with net-new findings into one payload, d
 
 ### Reviewer lane mapping
 
-| Runtime        | Worker lanes                                                                            |
-| -------------- | --------------------------------------------------------------------------------------- |
-| Cursor/Copilot | `review-worker` once per selected sighted angle (resolved lane model)                   |
-| Claude         | `reviewer` once per selected sighted angle through `Task` with `model: inherit`         |
-| Codex          | `spawn_agent` `review-worker` agents, one per selected sighted angle                    |
-| Antigravity    | `review-worker` once per selected sighted angle                                         |
-| any (blind)    | conditional fresh-eyes via a generic read-only task (Pi/OMP: thin `fresh-eyes` profile) |
-| verify (cross) | `adversarial-verifier` on the resolved verifier model (different family when available) |
+| Runtime        | Worker lanes                                                                                    |
+| -------------- | ----------------------------------------------------------------------------------------------- |
+| Cursor/Copilot | `k-agent-review-worker` once per selected sighted angle (resolved lane model)                   |
+| Claude         | `k-agent-reviewer` once per selected sighted angle through `Task` with `model: inherit`         |
+| Codex          | `spawn_agent` `k-agent-review-worker` agents, one per selected sighted angle                    |
+| Antigravity    | `k-agent-review-worker` once per selected sighted angle                                         |
+| any (blind)    | conditional fresh-eyes via a generic read-only task (Pi/OMP: thin `k-agent-fresh-eyes` profile) |
+| verify (cross) | `k-agent-adversarial-verifier` on the resolved verifier model (different family when available) |
 
 ### Model policy
 
@@ -156,7 +156,7 @@ The review's diversity comes from angles plus the adversarial verify pass (cross
 
 For verified `elastic/kibana` targets, `k-elastic-domain` supplies Kibana targets, mapped Elasticsearch endpoints, Dev Tools Console fallback, and runtime-blocker rules. Generic review contracts do not inline those targets.
 
-`live-ui-review` and `k-ui-capture`'s proof-mode contract verify the local browser only; there is no automatic or context-inferred Windows/VirtualBox path in this flow. Windows/VirtualBox coverage is the separate manual [`k-live-ui-windows`](../../../../home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/) skill: load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn, never from PR/issue/spec inference.
+`k-agent-live-ui-review` and `k-ui-capture`'s proof-mode contract verify the local browser only; there is no automatic or context-inferred Windows/VirtualBox path in this flow. Windows/VirtualBox coverage is the separate manual [`k-live-ui-windows`](../../../../home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/) skill: load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn, never from PR/issue/spec inference.
 
 When `k-live-ui-windows` is used against a Kibana target, `k-elastic-domain` rewrites `kbn_url`/`es_url` to the guest-reachable NAT gateway address and folds `server.host=0.0.0.0` into the required Kibana flags. The manual skill owns only the CDP connection mechanics, never Kibana-specific hostnames or flags.
 

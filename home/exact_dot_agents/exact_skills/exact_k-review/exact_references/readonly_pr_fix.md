@@ -98,7 +98,7 @@ Iteration contract:
 
 6. Run the Findings-Set Audit from `judging_pipeline.md` over this thread's candidate set before choosing reply/fix/ask.
    - If the audited set is empty, skip adversarial work and report `Adversarial verification: skipped (no candidates after findings audit)`.
-   - Otherwise, run `adversarial-verifier` over the audited candidate set before applying a fix or drafting a reply;
+   - Otherwise, run `k-agent-adversarial-verifier` over the audited candidate set before applying a fix or drafting a reply;
      if no verifier lane is available, run the Candidate Refutation Ladder inline and report `adversarial=inline-degraded`.
 
 7. Choose a response type (one per thread):
@@ -229,7 +229,7 @@ Loop control:
   - proposed change
   - verification run: lint / type_check / tests (what you ran, pass/fail, key error signal if failed)
 - Draft reply body
-- `ui_evidence_attachments` when the reply is UI-related and drafted after `/k-deep-review` or `live-ui-review`:
+- `ui_evidence_attachments` when the reply is UI-related and drafted after `/k-deep-review` or `k-agent-live-ui-review`:
   screenshot handoff paths/descriptions/placement, or the blocker/non-applicability reason screenshots are absent.
   Do not put local screenshot paths in the reply body.
 - Recommendation: `resolve` | `keep_open`

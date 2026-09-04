@@ -1,6 +1,6 @@
 # `,ai-kb` CLI contract (runner-facing)
 
-This is the interface for whoever actually runs the CLI: the `smol` operator by default, the parent session only inside the k-ai-kb no-spawn inline fallback.
+This is the interface for whoever actually runs the CLI: the `k-agent-smol` operator by default, the parent session only inside the k-ai-kb no-spawn inline fallback.
 Running these commands in a parent session outside that fallback breaks the isolation boundary the operator exists to hold.
 
 ## Read: search and get
@@ -69,7 +69,7 @@ Field selection (each affects retrieval — choose, do not default):
 - `--refs <id-or-ref>` (repeatable) for related capsules or anchors.
 
 Body structure for retrieval: the body is embedded (title+body) and BM25-indexed;
-per-turn recall stages candidates gated on cosine similarity to the user's prompt, and the smol judge admits only what the session state needs.
+per-turn recall stages candidates gated on cosine similarity to the user's prompt, and the `k-agent-smol` judge admits only what the session state needs.
 The body must contain the literal terms a future query would use — exact symbol names, file paths, error strings, flag names, version numbers — not a paraphrase.
 Front-load them; a body that describes the insight in generic prose will not match a specific future query.
 

@@ -355,8 +355,8 @@ class TestStaticModelMirrors(unittest.TestCase):
             return model
 
         pins = [
-            ai_models.resolve_review_agent_model(registry, "pi", "reviewer")["model"],
-            ai_models.resolve_review_agent_model(registry, "pi", "adversarial-verifier")["model"],
+            ai_models.resolve_review_agent_model(registry, "pi", "k-agent-reviewer")["model"],
+            ai_models.resolve_review_agent_model(registry, "pi", "k-agent-adversarial-verifier")["model"],
         ]
         for row in ai_models.load_category_models(registry)["pi"].values():
             pins.append(row["model"])

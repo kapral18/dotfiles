@@ -9,12 +9,12 @@ Wiring that lets every governed harness **read** the durable KB with bounded aut
 
 ## Persistence vs injection
 
-| Path      | Behavior                                                                                                       |
-| --------- | -------------------------------------------------------------------------------------------------------------- |
-| Explicit  | `,ai-kb search` / `get` / `remember` — run by the `smol` operator; parent-inline only in the no-spawn fallback |
-| Automatic | Only where a safe context-injection channel exists; gated and capped                                           |
+| Path      | Behavior                                                                                                               |
+| --------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Explicit  | `,ai-kb search` / `get` / `remember` — run by the `k-agent-smol` operator; parent-inline only in the no-spawn fallback |
+| Automatic | Only where a safe context-injection channel exists; gated and capped                                                   |
 
-Runtimes without injection (e.g. Cursor cloud) retain the explicit smol-mediated path only.
+Runtimes without injection (e.g. Cursor cloud) retain the explicit `k-agent-smol`-mediated path only.
 
 ## Harness matrix
 
@@ -33,7 +33,7 @@ Shared scripts: `session_context.py` (start), `perturn_recall.py` (per-turn), `w
 
 Shared prefix source: [`prefix.txt`](../../../../home/dot_config/exact_tmux/agent_prompts/prefix.txt). Custom subagent profiles render it directly; manual tmux prompt wrapping uses the same text.
 
-Without warm-up signal: session context includes `### Recall Notice` (delegate mid-task recall queries to `smol`). `AI_AGENT_DEPTH=fast` skips warm-up and per-turn retrieval.
+Without warm-up signal: session context includes `### Recall Notice` (delegate mid-task recall queries to `k-agent-smol`). `AI_AGENT_DEPTH=fast` skips warm-up and per-turn retrieval.
 
 ## Startup warm-start (BM25 only)
 
@@ -49,7 +49,7 @@ Gates in `session_context.py` — all must pass:
 
 Review/unbound topics: no warm-start. Separate from resident embedder warm-up (per-turn path only).
 
-## Per-turn recall: staged candidates, smol judgment
+## Per-turn recall: staged candidates, k-agent-smol judgment
 
 `perturn_recall.py` / Pi + OMP `ai-kb-recall.ts` — `hybrid` mode as the candidate filter:
 
@@ -62,7 +62,7 @@ Review/unbound topics: no warm-start. Separate from resident embedder warm-up (p
 | Connect-only        | `AI_EMBED_CONNECT_ONLY=1`; unavailable worker → omit block, continue                                                                                                                                                   |
 | Cold re-warm        | ≥1 row and none carries `cosine_score` → fire detached best-effort `embed_client.py ensure` (flock-guarded) so a later turn regains the dense lane; this turn still stages nothing; an empty result set never fires it |
 
-Capsule bodies are never injected per-turn. Gate-passing rows go in full to `.recall-candidates-<session-key>.json`, and the hook injects a `### ,ai-kb candidates staged` pointer only when at least one candidate id is new to the session (`.recall-staged-<session-key>.json` ledger). The pointer names the candidates file plus the session-state paths (topic spec + worklog), so the judge never guesses its inputs; sessions without a session key stage nothing and degrade to the pull path. The parent delegates judgment to the `smol` subagent ([operator contract](../../../../home/exact_dot_agents/exact_skills/exact_k-ai-kb/exact_references/readonly_smol-operator.md)): counterfactual test against the topic spec + worklog tail, return of ≤3 admitted lines or `NONE`, admitted ids appended to `.recall-seen-<session-key>.json`. Ids the hook filters out: seen ids (already admitted) never re-stage; staged-but-unadmitted ids never re-point but stay pullable through a `smol` recall query (the operator runs `,ai-kb search`/`get` in its own context). Delegation route per surface: the harness's native `smol` profile where reachable; otherwise a harness-CLI one-shot on the memory-category model (e.g. `cursor-agent --model <memory pick> --print` — Cursor sessions whose Task schema exposes only the fixed generic subagent set cannot reach `smol`); inline application of the operator contract only when no isolated spawn exists (see the `k-ai-kb` skill). The staged pointer itself names this fallback route and forbids substituting a generic subagent type, so a fixed-enum session goes straight to the one-shot instead of burning failed Task spawns.
+Capsule bodies are never injected per-turn. Gate-passing rows go in full to `.recall-candidates-<session-key>.json`, and the hook injects a `### ,ai-kb candidates staged` pointer only when at least one candidate id is new to the session (`.recall-staged-<session-key>.json` ledger). The pointer names the candidates file plus the session-state paths (topic spec + worklog), so the judge never guesses its inputs; sessions without a session key stage nothing and degrade to the pull path. The parent delegates judgment to the `k-agent-smol` subagent ([operator contract](../../../../home/exact_dot_agents/exact_skills/exact_k-ai-kb/exact_references/readonly_smol-operator.md)): counterfactual test against the topic spec + worklog tail, return of ≤3 admitted lines or `NONE`, admitted ids appended to `.recall-seen-<session-key>.json`. Ids the hook filters out: seen ids (already admitted) never re-stage; staged-but-unadmitted ids never re-point but stay pullable through a `k-agent-smol` recall query (the operator runs `,ai-kb search`/`get` in its own context). Delegation route per surface: the harness's named `k-agent-smol` profile where reachable; otherwise a harness-CLI one-shot on the memory-category model (e.g. `cursor-agent --model <memory pick> --print` — Cursor sessions whose Task schema exposes only the fixed generic subagent set cannot reach `k-agent-smol`); inline application of the operator contract only when no isolated spawn exists (see the `k-ai-kb` skill). The staged pointer itself names this fallback route and forbids substituting a generic subagent type, so a fixed-enum session goes straight to the one-shot instead of burning failed Task spawns.
 
 Queries travel over stdin and are never written to process arguments. Tail trimming drops weak rows without reordering BM25 or fused/MMR results. Correction patterns may inject an anti-pattern note directive; durable writes still require verified `remember`.
 

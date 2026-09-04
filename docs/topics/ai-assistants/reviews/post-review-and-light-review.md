@@ -42,13 +42,13 @@ The stage applies the canonical **four dimensions** defined verbatim in `judging
 
 Post-review behavior:
 
-| Context                   | Behavior                                             |
-| ------------------------- | ---------------------------------------------------- |
-| own work / self-review    | fix hygiene findings in the working tree and re-gate |
-| reviewing others          | surface hygiene findings                             |
-| read-only subagent        | surface hygiene findings                             |
-| trivial candidate set     | controller audits inline                             |
-| non-trivial candidate set | `post-review` / `findings-auditor` runs the lens     |
+| Context                   | Behavior                                                         |
+| ------------------------- | ---------------------------------------------------------------- |
+| own work / self-review    | fix hygiene findings in the working tree and re-gate             |
+| reviewing others          | surface hygiene findings                                         |
+| read-only subagent        | surface hygiene findings                                         |
+| trivial candidate set     | controller audits inline                                         |
+| non-trivial candidate set | `k-agent-post-review` / `k-agent-findings-auditor` runs the lens |
 
 ### Refuting and auditing findings (before acting)
 
@@ -56,13 +56,13 @@ Two engine passes run _before_ fixing or drafting, distinct from the post-review
 
 **Findings-set audit** runs before final refutation or acting. The same four dimensions apply to the _finding list and its proposed fixes_, not the fix diff: collapse same-root-cause duplicates, trim verbose findings, and drop unanchored, unactionable, or overengineered items.
 
-In `/k-deep-review`, this is the `findings-auditor`'s job when the candidate set is non-trivial.
+In `/k-deep-review`, this is the `k-agent-findings-auditor`'s job when the candidate set is non-trivial.
 
 **Candidate refutation ladder** runs as the final pass over the audited candidate set. The deciding agent tries to kill each remaining finding in order: claim truth, reachability, severity, proposed fix, already-covered.
 
 A candidate survives only when refutation fails with evidence. Every kept finding states reachability, and an unreachable path loses its severity.
 
-Direct `k-review`/`k-light-review` run `adversarial-verifier` when the harness supports it; otherwise they run the ladder inline and report the degraded path. In `/k-deep-review`, the adversarial lane (cross-family preferred at equal capability, SOP §3.5) owns it after findings audit, and read-only finder lanes only return candidates plus reachability.
+Direct `k-review`/`k-light-review` run `k-agent-adversarial-verifier` when the harness supports it; otherwise they run the ladder inline and report the degraded path. In `/k-deep-review`, the adversarial lane (cross-family preferred at equal capability, SOP §3.5) owns it after findings audit, and read-only finder lanes only return candidates plus reachability.
 
 ## Reference: light review
 
@@ -75,7 +75,7 @@ Direct `k-review`/`k-light-review` run `adversarial-verifier` when the harness s
 | candidate refutation ladder + findings-set audit                                 | multi-agent fan-out + adversarial verification (cross-family preferred, SOP §3.5) |
 | opt-in base context                                                              | PR-thread/CI-specific rules                                                       |
 
-A **light-eligibility predicate** is evaluated first. It is the single source both the `k-review` router and `change-auditor` reference, replacing any subjective "is this low-risk?" call.
+A **light-eligibility predicate** is evaluated first. It is the single source both the `k-review` router and `k-agent-change-auditor` reference, replacing any subjective "is this low-risk?" call.
 
 The change is light-eligible only when none of these escalate:
 
@@ -88,7 +88,7 @@ The change is light-eligible only when none of these escalate:
 
 Any trigger escalates to full `k-review`. The router applies the same predicate in reverse, offering `k-light-review` for a self-authored, no-PR, trigger-free diff.
 
-`change-auditor` (Claude + Pi) is the read-only delegated form.
+`k-agent-change-auditor` (Claude + Pi) is the read-only delegated form.
 
 Both `k-light-review` and `k-review`'s local-changes mode run the shared **Verify-and-Fix Loop** in `judging_pipeline.md`: build queue → findings-set audit → final refutation → fix → quality gates → post-review stage.
 

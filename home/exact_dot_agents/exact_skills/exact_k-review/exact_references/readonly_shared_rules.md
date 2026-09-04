@@ -149,7 +149,7 @@ History encodes invariants, past bug fixes, edge cases, and architectural contex
 - Keep explanations simple; prefer tiny examples, pseudocode, or ASCII sketches.
 - Skip redundant "Ref:" links when the comment is already attached to the exact line.
 - Keep anchoring/tooling limitations out of the comment body ("can't anchor inline", "not in diff hunks").
-- For UI-related comments, replies, or PR-level feedback drafted after `/k-deep-review` or `live-ui-review`, keep the screenshot handoff outside the body as UI evidence attachments.
+- For UI-related comments, replies, or PR-level feedback drafted after `/k-deep-review` or `k-agent-live-ui-review`, keep the screenshot handoff outside the body as UI evidence attachments.
   If screenshot evidence is missing without a valid blocker or non-applicability result, block/rerun instead of drafting text-only UI feedback.
   Never put local screenshot paths in GitHub comment, reply, review, or PR-level bodies.
 - In review comment bodies, whenever you reference code, use a clickable source link to the exact location on the PR head SHA.
