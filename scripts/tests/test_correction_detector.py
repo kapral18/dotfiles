@@ -132,8 +132,9 @@ class TestProbeBudgetSignal(unittest.TestCase):
     def tearDown(self) -> None:
         self.tmp.cleanup()
 
-    def _write_ledger(self, key: str, results: list[str], ts: str = "2026-01-01T00:00:00Z") -> Path:
+    def _write_ledger(self, key: str, results: list[str], ts: str | None = None) -> Path:
         path = self.spec_dir / f"{key}.probe-ledger.jsonl"
+        ts = ts or self._fresh_ts()
         lines = [json.dumps({"ts": ts, "result": r, "summary": "s"}) for r in results]
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         return path
@@ -154,6 +155,25 @@ class TestProbeBudgetSignal(unittest.TestCase):
     def test_when_below_threshold_should_not_fire(self):
         self._write_ledger("sess", ["fail", "fail", "pass", "pass"])
         self.assertIsNone(correction_detector.probe_budget_signal(self.spec_dir, "sess"))
+
+    def test_when_failures_are_older_than_the_recent_window_should_not_fire(self):
+        # Agents record only failures, so without a time window the third failure of a
+        # session would fire the hint on every later turn.
+        from datetime import datetime, timedelta, timezone
+
+        # Two hours old: outside the 30-minute recency window. Pinned as an absolute age so a
+        # loosened constant cannot drag the fixture with it.
+        stale = datetime.now(timezone.utc) - timedelta(hours=2)
+        self.assertLess(correction_detector.PROBE_RECENT_WINDOW_SECONDS, 2 * 60 * 60)
+        self._write_ledger("sess", ["fail", "fail", "fail"], ts=stale.strftime("%Y-%m-%dT%H:%M:%SZ"))
+        self.assertIsNone(correction_detector.probe_budget_signal(self.spec_dir, "sess"))
+
+    def test_when_recent_failures_only_should_fire_without_pass_rows(self):
+        self._write_ledger("sess", ["fail", "fail", "fail"])
+        self.assertEqual(
+            correction_detector.probe_budget_signal(self.spec_dir, "sess"),
+            "probe-budget-exhausted",
+        )
 
     def test_when_old_failures_left_the_rolling_window_should_not_fire(self):
         self._write_ledger("sess", ["fail"] * 3 + ["pass"] * correction_detector.PROBE_BUDGET_WINDOW)

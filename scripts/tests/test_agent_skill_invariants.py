@@ -357,10 +357,10 @@ class TestAgentSkillInvariants(unittest.TestCase):
     def test_review_flows_iterate_to_fixed_point(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_pipeline.md",
-            "**Fixed point.**",
-            "Repeat until no new surviving findings or hygiene findings remain",
-            "Repeat until the four dimensions return clean",
-            "verified blocker/Requirements Reset stops the loop",
+            "**Bound.** One fix round, then one refutation round over the fix diff",
+            "it is not redesigned in-review",
+            "**Second pass.** Re-run the four dimensions once after cleanup",
+            "only a verified blocker or a Requirements Reset ends the stage earlier",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-build/readonly_SKILL.md",
@@ -369,7 +369,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_local_changes.md",
-            "following its fixed-point repeat rule until clean or blocked",
+            "with its one second pass; survivors are reported, not edited again",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_fix.md",

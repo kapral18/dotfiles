@@ -22,21 +22,25 @@ MIN_PROMPT_CHARS = 12
 DETECT_MAX_CHARS = 20000
 CONJUNCTION_WINDOW_CHARS = 160
 
-# Probe-budget signal tuning. The `,probe` helper appends one line per probe attempt
-# (`pass` or `fail`) to a session-scoped ledger next to the active topic spec; the
-# per-turn hook reads the recent window and, when many have failed and the user's
-# prompt is *not* a correction, surfaces a "expectation may be wrong" hint.
+# Probe-budget signal tuning. The `,probe` helper appends one line per recorded probe
+# to a session-scoped ledger next to the active topic spec. Agents record only failed
+# probes (prefix.txt), so the ledger is a failure log, not a pass/fail ratio: the
+# per-turn hook counts recent failures and, when enough landed within a short window
+# and the user's prompt is *not* a correction, surfaces a "expectation may be wrong" hint.
 # Counted as a per-turn signal, never a block: same fail-open shape as premise_nudge.
 PROBE_LEDGER_REL_PATH = ".probe-ledger.jsonl"
 # `,probe` cannot see the hook payload's session id from a plain shell, so most
 # ledgers land under the `ad-hoc` key. The reader accepts that ledger as a
-# fallback, but only entries fresh enough to belong to the current work session:
-# the ad-hoc file is shared by every session in the workspace, and without a
-# freshness cap yesterday's failures would fire the hint on today's first turn.
+# fallback; the ad-hoc file is shared by every session in the workspace, and the
+# recency window below is what keeps yesterday's failures from firing the hint on
+# today's first turn.
 PROBE_AD_HOC_KEY = "ad-hoc"
-PROBE_AD_HOC_MAX_AGE_SECONDS = 4 * 60 * 60
-PROBE_BUDGET_WINDOW = 8  # rolling window of probes evaluated by the budget check
-PROBE_BUDGET_FAILURE_THRESHOLD = 3  # 3+ of the last 8 failed => hint
+PROBE_BUDGET_WINDOW = 8  # rolling window of ledger rows evaluated by the budget check
+PROBE_BUDGET_FAILURE_THRESHOLD = 3  # 3+ failures in the window => hint
+# A fails-only ledger would otherwise fire forever after the third failure of a long
+# session, and the shared ad-hoc ledger would carry other sessions' failures: only
+# failures recorded within this many seconds count toward the threshold.
+PROBE_RECENT_WINDOW_SECONDS = 30 * 60
 PROBE_BUDGET_NOTE = (
     "Probe-budget hint: the prior turn ran several probes that returned `fail` (expectation "
     "contradicted reality). Before the next probe, re-read the source the probe was meant to "
@@ -131,7 +135,7 @@ def _parse_rows(lines: list[str]) -> list[dict]:
     return rows
 
 
-def _is_fresh(row: dict, now: datetime) -> bool:
+def _is_fresh(row: dict, now: datetime, max_age_seconds: int) -> bool:
     ts = row.get("ts")
     if not isinstance(ts, str):
         return False
@@ -140,28 +144,32 @@ def _is_fresh(row: dict, now: datetime) -> bool:
     except ValueError:
         return False
     age = (now - recorded).total_seconds()
-    return 0 <= age <= PROBE_AD_HOC_MAX_AGE_SECONDS
+    return 0 <= age <= max_age_seconds
 
 
 def probe_budget_signal(spec_dir: Path | None, session_key_value: str) -> str | None:
     """Return the `probe-budget-exhausted` signal iff the prior turn spent too many probes.
 
     Reads the most recent PROBE_BUDGET_WINDOW entries from the session-scoped
-    ledger so a long session does not accumulate stale failures. When that ledger
+    ledger and counts only failures recorded within PROBE_RECENT_WINDOW_SECONDS,
+    so a fails-only ledger from a long session does not fire on every turn. When that ledger
     is missing or empty (the common case: `,probe` runs in a shell that has no
     harness session id and writes under the `ad-hoc` key), falls back to the
-    workspace's shared `ad-hoc` ledger restricted to entries at most
-    PROBE_AD_HOC_MAX_AGE_SECONDS old, so another session's stale failures never
-    fire the hint. Returns None when neither ledger yields entries.
+    workspace's shared `ad-hoc` ledger; the same recency window keeps another
+    session's stale failures from firing the hint. Returns None when neither
+    ledger yields entries.
     """
     if spec_dir is None:
         return None
+    now = datetime.now(timezone.utc)
     rows = _parse_rows(_read_ledger(_probe_ledger_for(spec_dir, session_key_value)))
     if not rows and session_key_value != PROBE_AD_HOC_KEY:
-        now = datetime.now(timezone.utc)
-        ad_hoc_rows = _parse_rows(_read_ledger(_probe_ledger_for(spec_dir, PROBE_AD_HOC_KEY)))
-        rows = [row for row in ad_hoc_rows if _is_fresh(row, now)]
-    failures = sum(1 for row in rows[-PROBE_BUDGET_WINDOW:] if row.get("result") == "fail")
+        rows = _parse_rows(_read_ledger(_probe_ledger_for(spec_dir, PROBE_AD_HOC_KEY)))
+    failures = sum(
+        1
+        for row in rows[-PROBE_BUDGET_WINDOW:]
+        if row.get("result") == "fail" and _is_fresh(row, now, PROBE_RECENT_WINDOW_SECONDS)
+    )
     if failures < PROBE_BUDGET_FAILURE_THRESHOLD:
         return None
     return "probe-budget-exhausted"

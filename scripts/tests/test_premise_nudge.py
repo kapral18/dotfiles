@@ -325,7 +325,7 @@ class TestPremiseNudgeWireFormat(unittest.TestCase):
     def test_when_antigravity_preinvocation_sees_fresh_probe_failures_should_inject_budget_note(self):
         # Antigravity has no user-prompt hook, so the probe-budget hint rides the same
         # PreInvocation drain as queued premise nudges. `,probe` in a plain shell writes
-        # under the `ad-hoc` key; the reader's freshness-capped fallback must close the loop.
+        # under the `ad-hoc` key; the reader's ad-hoc fallback (30-minute failure window) must close the loop.
         from datetime import datetime, timezone
 
         with tempfile.TemporaryDirectory() as tmp:

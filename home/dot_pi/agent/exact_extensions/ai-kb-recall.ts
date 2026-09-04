@@ -31,7 +31,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { spawn } from "node:child_process"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { homedir } from "node:os"
-import { dirname, join } from "node:path"
+import { basename, dirname, join } from "node:path"
 
 const EXEC_TIMEOUT_MS = 6_000
 // The shared hook can spend up to 5s warming embeddings, then 6s on BM25.
@@ -287,17 +287,19 @@ const CONVERGE_LINES = [
   "If findings keep surfacing across attempts, run the convergence loop (`/k-converge`): fixed exit condition (a round that changes nothing) and a correctness-only filter (vacuous test, real bug, false statement). Refuse wording-only findings out loud rather than rewriting prose to look responsive.",
 ]
 
-// Probe-budget hint (mirrors correction_detector.probe_budget_signal): `,probe pass|fail`
+// Probe-budget hint (mirrors correction_detector.probe_budget_signal): `,probe fail`
 // appends JSONL rows to `<spec_dir>/<session_key>.probe-ledger.jsonl`, and 3+ fails in the
 // last 8 entries fire a "re-read the source" note. A plain shell has no harness session id,
 // so most rows land under the shared `ad-hoc` key — read that ledger as a fallback,
-// restricted to entries at most 4 hours old so another session's stale failures never fire.
+// the 30-minute failure window below keeps another session's stale failures from firing.
 const PROBE_BUDGET_SIGNAL = "probe-budget-exhausted"
 const PROBE_LEDGER_SUFFIX = ".probe-ledger.jsonl"
 const PROBE_AD_HOC_KEY = "ad-hoc"
-const PROBE_AD_HOC_MAX_AGE_MS = 4 * 60 * 60 * 1000
 const PROBE_BUDGET_WINDOW = 8
 const PROBE_BUDGET_FAILURE_THRESHOLD = 3
+// Agents record failures only, so count just the ones recorded recently (mirrors
+// correction_detector.PROBE_RECENT_WINDOW_SECONDS).
+const PROBE_RECENT_WINDOW_MS = 30 * 60 * 1000
 const PROBE_BUDGET_NOTE =
   "Probe-budget hint: the prior turn ran several probes that returned `fail` (expectation contradicted reality). Before the next probe, re-read the source the probe was meant to exercise — regex/regex-flag arithmetic, `,gh-prw` semantics, and lint-tool option names have all been the offender in past sessions. The fix is rarely another probe; it is usually a one-character rewrite of the expected value."
 
@@ -321,22 +323,23 @@ async function readProbeRows(path: string): Promise<Array<Record<string, unknown
   return rows
 }
 
-function isFreshProbeRow(row: Record<string, unknown>, nowMs: number): boolean {
+function isFreshProbeRow(row: Record<string, unknown>, nowMs: number, maxAgeMs: number): boolean {
   if (typeof row.ts !== "string") return false
   const recorded = Date.parse(row.ts)
   if (Number.isNaN(recorded)) return false
   const age = nowMs - recorded
-  return age >= 0 && age <= PROBE_AD_HOC_MAX_AGE_MS
+  return age >= 0 && age <= maxAgeMs
 }
 
 async function probeBudgetSignal(specDir: string, sessionKey: string): Promise<string | null> {
+  const nowMs = Date.now()
   let rows = sessionKey ? await readProbeRows(join(specDir, `${sessionKey}${PROBE_LEDGER_SUFFIX}`)) : []
   if (!rows.length && sessionKey !== PROBE_AD_HOC_KEY) {
-    const nowMs = Date.now()
-    const adHoc = await readProbeRows(join(specDir, `${PROBE_AD_HOC_KEY}${PROBE_LEDGER_SUFFIX}`))
-    rows = adHoc.filter((row) => isFreshProbeRow(row, nowMs))
+    rows = await readProbeRows(join(specDir, `${PROBE_AD_HOC_KEY}${PROBE_LEDGER_SUFFIX}`))
   }
-  const failures = rows.slice(-PROBE_BUDGET_WINDOW).filter((row) => row.result === "fail").length
+  const failures = rows
+    .slice(-PROBE_BUDGET_WINDOW)
+    .filter((row) => row.result === "fail" && isFreshProbeRow(row, nowMs, PROBE_RECENT_WINDOW_MS)).length
   return failures >= PROBE_BUDGET_FAILURE_THRESHOLD ? PROBE_BUDGET_SIGNAL : null
 }
 
@@ -456,6 +459,19 @@ function candidatesFileFor(specFile: string, sessionId: string): string {
 
 function stagedFileFor(specFile: string, sessionId: string): string {
   return join(dirname(specFile), `.recall-staged-${sessionId}.json`)
+}
+
+function pointedFileFor(specFile: string, sessionId: string): string {
+  return join(dirname(specFile), `.recall-pointed-${sessionId}.json`)
+}
+
+async function alreadyPointed(path: string, topic: string): Promise<boolean> {
+  try {
+    const parsed = JSON.parse(await readFile(path, "utf8"))
+    return Boolean(parsed) && typeof parsed === "object" && parsed.topic === topic
+  } catch {
+    return false
+  }
 }
 
 function contextKeyFor(status: MemoryStatus): string {
@@ -630,7 +646,8 @@ function gateAndFormat(
 }
 
 // Stage gate-passing rows for the k-agent-smol judge; return a pointer block only when at least
-// one candidate id is new to the session. Mirrors stage_candidates in
+// one candidate id is new to the session and the session has not been pointed at this topic
+// yet (one judge spawn per session-topic binding, not one per prompt). Mirrors stage_candidates in
 // executable_perturn_recall.py: the seen-file filters ids k-agent-smol already admitted, the
 // staged ledger dedups the pointer, the candidates file holds full rows, and every state
 // write fails open (no pointer without a written file). The seen-file is read fresh from
@@ -650,12 +667,26 @@ async function stageCandidates(rows: Capsule[], specFile: string, sessionKey: st
   } catch {
     return ""
   }
+  // Marker first, ledger second: a failed marker write leaves the ids unstaged so the next
+  // turn retries instead of silently consuming this session's one pointer.
+  const pointedPath = pointedFileFor(specFile, sessionKey)
+  const topic = basename(specFile, ".txt")
+  const pointed = await alreadyPointed(pointedPath, topic)
+  if (!pointed) {
+    try {
+      await writeFile(pointedPath, JSON.stringify({ topic }))
+    } catch {
+      return ""
+    }
+  }
   await saveSeen(stagedPath, new Set([...staged, ...candidateIds]))
+  if (pointed) return ""
   const worklogPath = specFile.replace(/\.txt$/, ".worklog.jsonl")
   return [
     STAGING_HEADER,
     `${candidates.length} candidate(s): ${candidatesPath}`,
     `Session state: ${specFile} + ${worklogPath}`,
+    "This pointer fires once per session-topic binding; later turns stage new rows into the same file for pull-path recall.",
     `Delegate to the \`k-agent-smol\` subagent (judge mode) per ${SMOL_CONTRACT_PATH}, passing those paths and the current prompt; inject only its returned lines (\`NONE\` = inject nothing).`,
     "Do not read the candidates file into this context.",
   ].join("\n")

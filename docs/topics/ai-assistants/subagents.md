@@ -19,6 +19,8 @@ There are two portable layers:
 
 Every custom subagent profile is a chezmoi template that renders the shared tmux `prefix.txt` preamble before role instructions. Child contexts therefore start with the same verification discipline as parent sessions.
 
+Only the active root/main session orchestrates multiple agents or lanes. Delegated children are always leaf workers: they complete the assigned packet, perform its normal verification, and return evidence or a blocker to the parent without launching descendants or inventing extra lanes inline.
+
 Repo-owned custom subagent identifiers use the `k-agent-<role>` namespace. Harness-native identifiers retain their original names; the repo must not prefix or alias them.
 
 The role body itself is single-sourced. Each per-tool profile is a thin shim: harness-native model, tool/permission, and sandbox metadata + the `prefix.txt` preamble + `Load and follow ~/.agents/skills/k-review/references/<role>.md`.
@@ -106,6 +108,8 @@ Claude carries no profile for `k-agent-criteria-verifier`. This follows the same
 ## Review hierarchy
 
 The phase order these profiles serve — necessity gate → bounded reviewer roster → live UI when applicable → findings audit → final adversarial verification → controller act — is owned by [Deep-review topology](reviews/deep-review-topology.md). This page only maps profiles to harnesses.
+
+A controller profile may orchestrate only when it is running as the active root/main session. If another agent delegates to that profile as a child, the leaf-worker boundary wins: the child ignores the orchestration request, completes any remaining leaf-scoped work, and returns the result plus the conflict instead of spawning or simulating downstream lanes.
 
 Workers never edit files, post comments, resolve threads, or decide final action. They return candidate findings plus evidence and `verification_needed` items for the controller ledger.
 

@@ -1,6 +1,8 @@
 # Deep Review Context Pack Contract
 
-Shared read-only intake contract for `/k-deep-review` workers. Load this file when the parent scope packet names a context pack.
+Shared intake contract for every review tier.
+The controller produces the pack (`pr_snapshot.md` owns the fetch commands and the drift checks);
+workers load this file when the parent scope packet names a pack and read it only.
 The blind fresh-eyes lane is the one exception: its own contract restricts it to `diff.patch`, `files/`, and `base/` and forbids pack metadata and live fallbacks.
 
 A context pack is an optimization and consistency boundary, not a new source of truth.
@@ -27,20 +29,27 @@ Read from it only: leave it exactly as generated — no writes, in-place refresh
 
 The pack may contain:
 
-- `manifest.json` — `{pr, owner, repo, head_sha, base_sha, base_ref, mode, authorship, generated_at, files[]}`;
+- `manifest.json` — `{pr, owner, repo, head_sha, base_sha, base_ref, mode, authorship, snapshot_at, discussion_at, files[]}`;
   each `files[]` entry names a changed path with status/additions/deletions.
-- `pr.json`
+  `snapshot_at` is when head-bound content was fetched; `discussion_at` is when `threads.json` was last fetched or refreshed.
+- `pr.json` — the full `gh pr view --json` payload, present only when a PR exists.
 - `body.md`
-- `comments.json`
-- `reviews.json`
-- `review_comments.json`
+- `threads.json` — one paginated GraphQL snapshot of reviews, review threads with every comment and reply, and issue comments;
+  each comment carries `databaseId`, `createdAt`, `updatedAt`, `isMinimized`, and author `login` + `__typename`.
+  This is the only discussion artifact; there are no separate REST comment or review files.
 - `checks.json`
 - `diff.patch`
 - `files/<path>` — head content for every changed file.
 - `base/<path>` — base content for every changed file when available.
+- `media/<sha256-prefix>.<ext>` plus `media/manifest.json` — every attachment referenced by the body, a comment, or a reference, downloaded once and `file`-verified (plain GET for public assets, browser session for private ones; on SAML-SSO orgs a token yields the sign-in page, not the file); manifest rows carry `url`, `path`, `source`, `sha256`, `bytes`, `content_type`, `fetched_at`.
+- `refs/<pr|issue>-<owner>-<repo>-<number>.json` — every linked or closing PR/issue the intake gate read, with body, comments, state, and `updatedAt`.
 
-The JSON snapshots are complete/paginated snapshots produced by the controller (`pr.json` is the full `gh pr view --json` payload, present only when a PR exists).
-Do not replace them with summaries or partial live queries.
+The JSON snapshots are complete/paginated snapshots produced by the controller. Do not replace them with summaries or partial live queries.
+
+## Lifetime
+
+The pack is a cache of refetchable data under `/tmp`: not mirrored, not swept, rebuilt or refreshed by the controller's drift checks (head and discussion) and discarded rather than trusted when they find a change.
+Durable review state lives in the review spec, never in the pack.
 
 ## Freshness gate
 
@@ -56,8 +65,8 @@ After a stale or missing result, use live reads consistently for the affected ar
 
 ## Consumption rules
 
-- Read changed-file content, base changed-file content, PR metadata, discussions, reviews, checks, and the unified diff from the pack when the pack contains them.
-- Never re-fetch with `gh pr view`, `gh api` comment/review pagination, or `git show <head>:<changed-path>` for artifacts already present in the pack.
+- Read changed-file content, base changed-file content, PR metadata, discussions, reviews, checks, media, linked references, and the unified diff from the pack when the pack contains them.
+- Never re-fetch with `gh pr view`, `gh api` comment/review pagination, attachment downloads, linked PR/issue reads, or `git show <head>:<changed-path>` for artifacts already present in the pack.
 - Use live commands for material the pack does not contain: history/blame, symbol searches, files outside the changed set, base-repo context, external references, runtime checks, or follow-up evidence named by your role contract.
 - If a single expected changed file is absent from `files/` or `base/`, fetch only that missing file live and report the missing path in the return block.
 - Keep worker-local notes and disposable probes outside the pack.

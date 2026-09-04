@@ -233,6 +233,8 @@ Survive conversation pruning by reusing the existing hook-managed memory system.
 Do not invent a parallel store:
 
 - Convention: `/tmp/specs/<pwd>/` from the parent SOP. Topic key: `review-<pr-number>` for PR modes (else `k-review`).
+  Take `<pr-number>` from the `,gh-prw --number` output of this session, never from memory or a context summary;
+  a summarized context has produced a wrong number before, and the wrong bucket then carries every later turn.
 - The agent-owned intent file is `<topic>.txt`.
 - The hook system additionally maintains `<topic>.worklog.jsonl`.
 - Inspect review state only with a topic- or session-bound `,agent-memory status`;
@@ -247,6 +249,23 @@ Do not invent a parallel store:
   - PR body obligations still open (sections to update, deletions to disclose)
   - open audit questions (e.g. unresolved `,kbn-pr-audit` findings)
   - current position in the queue (for iterative/Drain Mode) and base-context metadata
+- Review identity and lane ledger (write before the first lane launch, update on every launch and return):
+  - `pr: <owner/repo>#<n>` (or `local: <base>..<head>`), `pack: <root>`, `base_sha`, `head_sha`, `snapshot_at`, `discussion_at`
+  - `lane: <id or description> angle=<lane> model=<value> launch_wait=<blocking|background> state=launched|returned|discarded`
+  - the adversarial verifier and any memory judge/scribe spawn are lanes too; record them the same way
+- Verified-fact and media ledger:
+  - `fact: <claim> — <anchor> — <verified_at>` for every fact this session verified
+  - `media: <file> — <caption> — viewed` for every image viewed; view each image once
+  - `round: <n> fixed=<files> gates=<result>` after every fix round
+- After a context summary, a `fact:` or `media:` line this session wrote with an anchor is trusted.
+  Re-verify it only when a new finding depends on it or Drift reports its artifact changed.
+  Re-reading the pack, re-viewing media, or re-running a gate to confirm a ledgered fact is a defect, not diligence.
+  SOP §2.8 skepticism applies to other agents' reports, not to this session's anchored ledger.
+- Before launching any lane, re-read `<topic>.txt`.
+  A lane in `state=launched` is awaited or collected, never relaunched: a second launch of the same angle is a bug, not diversity.
+  After a context summary, the ledger is the only record of what is already running; trust it over recall.
+- Do not present a verdict, a findings summary, or a draft while any lane is `state=launched`;
+  collect it first, or mark it `discarded` with a reason and say so in the output.
 - On subsequent turns, check for the spec file first and resume from it if present.
 
 ## Posting Boundary

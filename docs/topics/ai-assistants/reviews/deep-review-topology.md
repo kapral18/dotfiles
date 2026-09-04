@@ -7,7 +7,7 @@ title: Deep-review topology
 
 `/k-deep-review` is the orchestration entrypoint. Cursor, Copilot, Claude, Codex, and Antigravity bridge it through their native isolation mechanisms where available.
 
-The flow is a phased investigation pipeline, not a loose collection of agents. The key invariant is phase ownership: workers investigate; the controller judges and performs any gated side effect.
+The flow is a phased investigation pipeline, not a loose collection of agents. The key invariant is phase ownership: the active root/main controller owns every fan-out decision; delegated workers execute one assigned leaf lane, return, and never create descendant or inline self-assigned lanes.
 
 ![Deep-review phase order: route, blocking PR necessity, bounded registry-model reviewer roster, lane merge/dedup, conditional live UI, findings audit, final adversarial verification (cross-family preferred at equal capability, SOP §3.7), controller judgment, and gated action](../assets/deep-review-flow.svg)
 

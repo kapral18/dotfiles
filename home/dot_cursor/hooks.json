@@ -16,7 +16,7 @@
     "preToolUse": [
       {
         "command": "AGENT_BAND_HARNESS=cursor $HOME/.agents/hooks/band_gate.py",
-        "matcher": "Task|Agent|spawn_agent|subagent",
+        "matcher": "Task|Agent|spawn_agent|subagent|Subagent",
         "timeout": 10
       }
     ],

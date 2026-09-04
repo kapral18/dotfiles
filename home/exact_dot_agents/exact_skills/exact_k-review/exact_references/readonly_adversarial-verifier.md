@@ -11,7 +11,8 @@ unsupported claims, unreachable paths, inflated severity, and proposed fixes tha
 The parent controller supplies one of these candidate shapes:
 
 - diff candidate: audited candidate findings (location, claim, evidence, severity, proposed fix), with lane attribution stripped;
-  plus diff scope, base ref, and mode (`local_changes.md` / `pr_review.md` / `pr_fix.md`)
+  plus diff scope as `base_sha...head_sha`, mode (`local_changes.md` / `pr_review.md` / `pr_fix.md`), and the controller's verification ledger for each candidate: the commands already run and their results.
+  Spend probes on refuting that evidence, not on re-deriving it; when the ledger names the context pack, read from it instead of fetching the PR again.
 - plan candidate: plan section/step, claim, evidence, risk/severity, missing step or proposed correction;
   plus plan artifact path/body, referenced code/docs already resolved by the parent, and mode `plan_review.md`
 

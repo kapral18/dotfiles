@@ -50,6 +50,13 @@ def _pick(harness: str, agent: str) -> dict[str, Any] | None:
     return projection.get("harnesses", {}).get(harness, {}).get("agents", {}).get(agent)
 
 
+def _counter_models(harness: str) -> set[str]:
+    """Registry picks for the refute/cross-family slots on this harness (may be empty)."""
+    projection = _load()
+    models = projection.get("harnesses", {}).get(harness, {}).get("counter_models", [])
+    return {m for m in models if isinstance(m, str) and m}
+
+
 def _override(harness: str) -> dict[str, Any] | None:
     """One model for every band, for a route whose catalog is a single model.
 
@@ -149,7 +156,8 @@ def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str,
 
 def _cursor(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]) -> dict[str, Any]:
     # Verified against cursor-agent 2026.07.23: updated_input replaces the whole input object
-    # rather than merging, so the untouched keys have to be echoed back.
+    # rather than merging, so the untouched keys have to be echoed back. Transcript exports now
+    # label the tool `Subagent`; the payload shape is assumed unchanged (not re-verified).
     return {"updated_input": dict(tool_input, model=pick["model"])}
 
 
@@ -193,7 +201,11 @@ ADAPTERS = {
 # spawn_agent takes agent_type (task_name is a label, not a role) while Cursor and Claude use
 # subagent_type. Order matters only in that the first present key wins.
 AGENT_KEYS = ("subagent_type", "agent_type", "agent", "agent_name", "role", "subagent")
-DELEGATION_TOOLS = {"Task", "Agent", "spawn_agent", "subagent", "task"}
+# Cursor transcript exports label the delegation tool `Subagent` (2026-09-04) while the
+# cursor-agent bundle still names the call type `taskToolCall`; which of the two the preToolUse
+# payload carries as `tool_name` is unverified, so both are matched here, in the hooks.json
+# matcher, and in the Copilot extension's verbatim mirror of this set.
+DELEGATION_TOOLS = {"Task", "Agent", "spawn_agent", "subagent", "Subagent", "task"}
 
 
 def _agent_name(payload: dict[str, Any], tool_input: dict[str, Any]) -> str:
@@ -238,6 +250,20 @@ def main() -> int:
     if pick is None:
         print("{}")
         return 0
+
+    # A generic subagent type binds to `implement` (Cursor `generalPurpose`, Copilot `task`), but
+    # the adversarial verifier and the cross-family finder are launched through that same generic
+    # type on harnesses with no reachable profile, carrying the registry's counter pick as an
+    # explicit `model`. Rewriting that launch to the generic type's band would silently collapse
+    # the refute lane back onto the finder family, so on an `implement`-bound type a registry
+    # counter model passes untouched. Every other bound agent (memory, research, review, ...)
+    # asking for a counter model is still a matrix bypass and gets rewritten, and so is any
+    # non-registry model on the generic type. Claude keeps its own alias-rank logic in the adapter.
+    if harness != "claude_code" and not override and pick.get("category") == "implement":
+        asked = tool_input.get("model")
+        if isinstance(asked, str) and asked in _counter_models(schema_harness):
+            print("{}")
+            return 0
 
     pick = _format_pick(pick, harness, schema_harness)
     print(json.dumps(adapter(payload, pick, tool_input) or {}, sort_keys=True))

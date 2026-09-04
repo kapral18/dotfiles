@@ -285,6 +285,102 @@ class TestRecallDepth(unittest.TestCase):
         self.assertIn("### ,ai-kb candidates staged", deep_context)
         self.assertNotIn("- **", deep_context)
 
+    def test_pointer_fires_once_per_session_topic_even_when_new_candidates_stage(self) -> None:
+        # A judge spawn per prompt cost more than the lines it admitted (36k tokens for 2 lines
+        # in one measured turn). The staged ledger alone would not stop a re-point when new
+        # capsule ids arrive, so the pointed marker has to.
+        root = _test_root(self, "pointed")
+        root.mkdir(parents=True)
+        prompt = "pointer once per session " + ("detail " * 40)
+        first, _ = _run_recall(root / "s", "balanced", prompt)
+        context = first["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("### ,ai-kb candidates staged", context)
+        self.assertIn("once per session-topic binding", context)
+        markers = list((root / "s").rglob(".recall-pointed-depth-balanced.json"))
+        self.assertEqual(len(markers), 1, markers)
+        # Simulate a later turn that stages genuinely new ids: drop the staged ledger so the
+        # ids look new again. Without the pointed marker this would re-point.
+        for staged in (root / "s").rglob(".recall-staged-depth-balanced.json"):
+            staged.unlink()
+        second, _ = _run_recall(root / "s", "balanced", prompt)
+        self.assertEqual(second, {})
+        # A different topic binding is a different pointer budget.
+        markers[0].write_text(json.dumps({"topic": "some-other-topic"}), encoding="utf-8")
+        for staged in (root / "s").rglob(".recall-staged-depth-balanced.json"):
+            staged.unlink()
+        third, _ = _run_recall(root / "s", "balanced", prompt)
+        self.assertIn("### ,ai-kb candidates staged", third["hookSpecificOutput"]["additionalContext"])
+
+    def test_pi_pointer_fires_once_per_session_topic(self) -> None:
+        # The TypeScript mirror has to enforce the same cap as perturn_recall.py, in node.
+        root = _test_root(self, "pi-pointed")
+        root.mkdir(parents=True)
+        workspace = root / "workspace"
+        workspace.mkdir(parents=True, exist_ok=True)
+        workspace = workspace.resolve()
+        bindir, log = _make_search_stub(root, workspace)
+        script = """
+import { rm, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+const mod = await import(process.argv[1]);
+const workspace = process.argv[2];
+const specFile = process.argv[3];
+const handlers = {};
+const pi = {
+  async exec(command, args) {
+    if (command === ",ai-kb" && args[0] === "--help") return { code: 0, killed: false, stdout: "" };
+    if (command === ",agent-memory") {
+      return { code: 0, killed: false, stdout: JSON.stringify({ workspace, selected_topic: "current", session_key: "pi-pointed-session", is_named_topic: false, spec_file: specFile, spec_exists: false }) };
+    }
+    if (command === "python3") return { code: 0, killed: false, stdout: "{}" };
+    if (command === "cat") return { code: 1, killed: false, stdout: "" };
+    throw new Error(`unexpected exec: ${command} ${args.join(" ")}`);
+  },
+  on(event, handler) { handlers[event] = handler; }
+};
+await mod.default(pi);
+const ctx = { cwd: workspace, getContextUsage() { return null; }, sessionManager: { getSessionId() { return "pi-pointed-session"; } } };
+await handlers.session_start({ type: "session_start", reason: "startup" }, ctx);
+const prompt = { prompt: "pi pointer once per session " + "detail ".repeat(40) };
+const run = async () => (await handlers.before_agent_start(prompt, ctx))?.message?.content ?? "";
+const first = await run();
+await rm(join(dirname(specFile), ".recall-staged-pi-pointed-session.json"), { force: true });
+const second = await run();
+await writeFile(join(dirname(specFile), ".recall-pointed-pi-pointed-session.json"), JSON.stringify({ topic: "elsewhere" }));
+await rm(join(dirname(specFile), ".recall-staged-pi-pointed-session.json"), { force: true });
+const third = await run();
+// Probe budget: failures older than the 30-minute window must not fire; fresh ones must.
+const ledger = join(dirname(specFile), "pi-pointed-session.probe-ledger.jsonl");
+const row = (ageMs) => JSON.stringify({ ts: new Date(Date.now() - ageMs).toISOString().replace(/\\.\\d{3}Z$/, "Z"), result: "fail", summary: "s" });
+await writeFile(ledger, [row(3600e3), row(3600e3), row(3600e3)].join("\\n") + "\\n");
+const staleProbes = await run();
+await writeFile(ledger, [row(60e3), row(60e3), row(60e3)].join("\\n") + "\\n");
+const freshProbes = await run();
+console.log(JSON.stringify({ first, second, third, staleProbes, freshProbes }));
+"""
+        env = _base_env(root)
+        env["PATH"] = f"{bindir}{os.pathsep}{env.get('PATH', '')}"
+        env["SEARCH_LOG"] = str(log)
+        env["HOME"] = str(root / "home")
+        env["NODE_NO_WARNINGS"] = "1"
+        env["AI_AGENT_DEPTH"] = "balanced"
+        spec_file = root / "specs" / "current.txt"
+        result = subprocess.run(
+            ["node", "--input-type=module", "-e", script, str(PI_EXTENSION), str(workspace), str(spec_file)],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO),
+            env=env,
+            check=True,
+        )
+        runs = json.loads(result.stdout)
+        self.assertIn("### ,ai-kb candidates staged", runs["first"])
+        self.assertIn("once per session-topic binding", runs["first"])
+        self.assertEqual(runs["second"], "", "new ids after the first pointer must stage silently")
+        self.assertIn("### ,ai-kb candidates staged", runs["third"], "a different topic binding re-points")
+        self.assertNotIn("Probe-budget hint", runs["staleProbes"], "hour-old failures are outside the window")
+        self.assertIn("Probe-budget hint", runs["freshProbes"], "three fresh failures fire the hint")
+
     def test_fast_session_start_does_not_warm_resident(self) -> None:
         root = _test_root(self, "warm")
         deployed = _deploy_hooks(root)
@@ -702,6 +798,7 @@ class TestWorklogQueue(unittest.TestCase):
         stale_seen = self.spec_dir / ".recall-seen-stale.json"
         stale_candidates = self.spec_dir / ".recall-candidates-stale.json"
         stale_staged = self.spec_dir / ".recall-staged-stale.json"
+        stale_pointed = self.spec_dir / ".recall-pointed-stale.json"
         fresh_worklog = self.spec_dir / "session-fresh.worklog.jsonl"
         fresh_candidates = self.spec_dir / ".recall-candidates-fresh.json"
         named_worklog = self.spec_dir / "named-topic.worklog.jsonl"
@@ -710,13 +807,14 @@ class TestWorklogQueue(unittest.TestCase):
             stale_seen,
             stale_candidates,
             stale_staged,
+            stale_pointed,
             fresh_worklog,
             fresh_candidates,
             named_worklog,
         )
         for path in all_paths:
             path.write_text("{}\n", encoding="utf-8")
-        for path in (stale_worklog, stale_seen, stale_candidates, stale_staged, named_worklog):
+        for path in (stale_worklog, stale_seen, stale_candidates, stale_staged, stale_pointed, named_worklog):
             os.utime(path, (old, old))
 
         removed = worklog_queue.cleanup_stale_state(
@@ -724,11 +822,12 @@ class TestWorklogQueue(unittest.TestCase):
             config=worklog_queue.QueueConfig(cleanup_age_seconds=100),
         )
 
-        self.assertEqual(removed, 4)
+        self.assertEqual(removed, 5)
         self.assertFalse(stale_worklog.exists())
         self.assertFalse(stale_seen.exists())
         self.assertFalse(stale_candidates.exists())
         self.assertFalse(stale_staged.exists())
+        self.assertFalse(stale_pointed.exists())
         self.assertTrue(fresh_worklog.exists())
         self.assertTrue(fresh_candidates.exists())
         self.assertTrue(named_worklog.exists())

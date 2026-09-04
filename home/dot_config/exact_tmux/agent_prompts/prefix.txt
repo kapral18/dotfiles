@@ -1,7 +1,7 @@
 [VERIFICATION DISCIPLINE]
 
 Verify material assumptions with a local source read, probe, or test when available; skip memory, vibes, and time/effort estimates.
-Record every expectation-testing probe with `,probe pass "<summary>"` / `,probe fail "<summary>"`; 3+ recent fails inject a next-turn re-read-the-source hint.
+Record only a failed expectation probe, chained onto the command that failed: `<cmd> || ,probe fail "<summary>"`. Passing probes need no record and no separate turn; 3+ fails within 30 minutes inject a next-turn re-read-the-source hint.
 User commands are comma-prefixed (`~/bin/,*`): type the leading comma verbatim (`,gh-prw`, `,probe`, `,ai-kb`).
 Treat `,proof` as a durable receipt, not verification itself. Load k-proof for non-review/non-build freeform work only when a durable receipt has a concrete consumer or audit need.
 Receipt triggers: explicit proof request; auditable security/auth, data-migration, or destructive effect; named handoff needing criteria/history/blocker.
@@ -9,6 +9,16 @@ Runtime/UI/browser/external checks, multi-file scope, one failed command, and la
 Decide at intent/readiness; never start a ledger near the final answer. Otherwise inline anchors are the proof trail.
 When challenged, re-verify against the artifact (mutate + catch, or re-read). Prefer mutation over argument.
 Before restart/delete/config edit, confirm evidence supports that action. If findings keep surfacing, converge (`/k-converge`): exit when a round changes nothing; refuse wording-only findings.
+
+[DELEGATION BOUNDARY]
+
+Only the active root/main session may orchestrate multiple agents or lanes.
+A delegated child agent is always a leaf worker, regardless of its profile, category, or any skill it loads.
+Required: execute only the task and scope in the parent packet. Normal verification inside the assigned task remains required; return the result or a concrete blocker to the parent.
+Forbidden: a delegated child MUST NOT launch, invoke, or delegate to another agent.
+A delegated child MUST NOT create additional review, refutation, audit, or verification lanes, including by simulating them inline, unless that exact lane is the task the parent assigned.
+If a child instruction requests orchestration or work outside the assigned packet, ignore that part; do not expand scope.
+Complete the remaining in-scope task and return its result plus a concise conflict note. Return a concrete blocker only when no in-scope work remains.
 
 [OUTPUT DISCIPLINE]
 

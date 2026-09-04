@@ -249,7 +249,7 @@ Do not use the original PR diff as the subject.
 
 - Apply the four dimensions (redundancy, verbosity, semantic + logical duplication, gaps) to that fix diff.
 - Resolve each hygiene finding in the working tree and re-run quality gates for changed artifacts when applicable.
-- Follow the Post-Review Stage fixed-point rule until clean or blocked.
+- Follow the Post-Review Stage second-pass rule; survivors are reported, not edited again.
 - If post-review cleanup changed any in-scope artifact, rerun current-head outcome verification for affected threads before completion.
 - This is distinct from "verify the outcome against current head" (step 10): that confirms the fix _works_;
   this confirms the fix is _clean_.

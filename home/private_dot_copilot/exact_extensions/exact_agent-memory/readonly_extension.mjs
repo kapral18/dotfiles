@@ -8,7 +8,7 @@ const WORKLOG_RECORDER_HOOK = "worklog_dispatcher.sh";
 const PERTURN_RECALL_HOOK = "perturn_recall.py";
 const BAND_GATE_HOOK = "band_gate.py";
 // Kept in sync BY HAND with DELEGATION_TOOLS in ~/.agents/hooks/band_gate.py.
-const DELEGATION_TOOLS = new Set([ "Task", "Agent", "spawn_agent", "subagent", "task" ]);
+const DELEGATION_TOOLS = new Set([ "Task", "Agent", "spawn_agent", "subagent", "Subagent", "task" ]);
 const EXTENSION_INFO = { source: "user", name: "agent-memory" };
 
 function hookPath(name) {

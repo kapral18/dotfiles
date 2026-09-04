@@ -15,14 +15,22 @@ Contract:
   - `~/.agents/skills/k-review/references/pr_review.md`
   - `~/.agents/skills/k-review/references/pr_fix.md`
   - `~/.agents/skills/k-review/references/plan_review.md`
-- Before entering any mode, load once:
+- Before entering any mode, load once, each in one read:
   - `~/.agents/skills/k-review/references/judging_core.md`
   - `~/.agents/skills/k-review/references/judging_pipeline.md`
   - `~/.agents/skills/k-review/references/shared_rules.md`
   - `~/.agents/skills/k-review/references/authorship.md`
-- Mode files reference both files but do not re-load them.
-- For PR modes, also load `~/.agents/skills/k-review/references/pr_common.md` once.
-  Load `~/.agents/skills/k-review/references/pr_context_audits.md` only when `pr_common.md`'s conditional Ambient Topic Exploration or PR Necessity + Correctly-Open Audit gate triggers.
+- Mode files reference those files but do not re-load them.
+- For PR modes, also load `~/.agents/skills/k-review/references/pr_common.md` and `~/.agents/skills/k-review/references/pr_snapshot.md` once.
+- Every reference stays under 20 KB so one read returns it whole (`scripts/verify_agent_file_sizes.py`);
+  a concatenated bundle would be truncated by the strictest harness view tool, so there is none.
+- Load `~/.agents/skills/k-review/references/pr_context_audits.md` only when `pr_common.md`'s conditional Ambient Topic Exploration or PR Necessity + Correctly-Open Audit gate triggers.
+- Reference and open skill files under `~/.agents/skills/` only.
+  `~/.cursor/skills` is a symlink to the same tree; opening a file under both paths is a duplicate read of the same bytes.
+- After a context summary, re-open only the files the active mode needs; the summary is not a substitute for them.
+- Do not load `k-github`, `k-git`, `k-compose-pr`, `k-communication`, `k-kibana-labels-propose`, or a CI skill at intake;
+  label, release-note, and version checks run only when the user asks for labels or a PR body.
+  Load `k-buildkite` only when the CI Coverage Gate needs a job's contents, and `k-github` only at the posting step.
 - Keep read-only PR inspection/review inside this router.
   Invoke the `k-github` skill (via the Skill tool) only when the user explicitly asks to post/submit anything to GitHub.
 - If the user wants review analysis and GitHub posting in the same request:

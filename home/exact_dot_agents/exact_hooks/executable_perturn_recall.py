@@ -117,6 +117,18 @@ def staged_file_for(spec_path: Path, session_key_value: str) -> Path:
     return spec_path.parent / f".recall-staged-{session_key_value}.json"
 
 
+def pointed_file_for(spec_path: Path, session_key_value: str) -> Path:
+    return spec_path.parent / f".recall-pointed-{session_key_value}.json"
+
+
+def already_pointed(pointed_path: Path, topic: str) -> bool:
+    """True when this session already received the pointer for `topic`."""
+    try:
+        return json.loads(pointed_path.read_text()).get("topic") == topic
+    except (OSError, json.JSONDecodeError, AttributeError, TypeError):
+        return False
+
+
 def load_seen(path: Path | None) -> set[str]:
     if path is None:
         return set()
@@ -261,9 +273,12 @@ def stage_candidates(rows: list, seen: set[str], spec_path: Path, key: str) -> s
     The cross-repo scope gate is owned by `,ai-kb search --workspace-gate`.
     This hook filters ids k-agent-smol already admitted (seen-file) and points the
     parent at the staged set only when at least one id is new to the session
-    (staged ledger). Rejected-but-staged ids never re-point; they stay
-    re-judgeable through the pull path. Returns "" when nothing new is staged
-    or any state write fails (fail-open: no partial pointer without a file).
+    (staged ledger) and only once per session-topic binding (pointed marker):
+    a judge spawn per prompt cost more than the lines it admitted, so later
+    turns stage silently and the pull path owns mid-task recall. Rejected-but-
+    staged ids never re-point. Returns "" when nothing new is staged, the
+    session was already pointed at this topic, or any state write fails
+    (fail-open: no partial pointer without a file).
     """
     candidates = [row for row in rows if str(row.get("id") or "") and str(row.get("id")) not in seen]
     if not candidates:
@@ -279,13 +294,26 @@ def stage_candidates(rows: list, seen: set[str], spec_path: Path, key: str) -> s
         candidates_path.write_text(json.dumps(candidates, indent=2))
     except OSError:
         return ""
+    # Marker first, ledger second: if the marker write fails, the ids stay unstaged so the next
+    # turn retries instead of silently consuming this session's one pointer.
+    pointed_path = pointed_file_for(spec_path, key)
+    topic = spec_path.stem
+    pointed = already_pointed(pointed_path, topic)
+    if not pointed:
+        try:
+            pointed_path.write_text(json.dumps({"topic": topic}))
+        except OSError:
+            return ""
     save_seen(staged_path, staged | candidate_ids)
+    if pointed:
+        return ""
     worklog_path = spec_path.with_name(spec_path.stem + ".worklog.jsonl")
     return "\n".join(
         [
             STAGING_HEADER,
             f"{len(candidates)} candidate(s): {candidates_path}",
             f"Session state: {spec_path} + {worklog_path}",
+            "This pointer fires once per session-topic binding; later turns stage new rows into the same file for pull-path recall.",
             f"Delegate to the `k-agent-smol` subagent (judge mode) per {SMOL_CONTRACT_PATH}, passing those paths and the current prompt;"
             " inject only its returned lines (`NONE` = inject nothing).",
             "When the `k-agent-smol` profile is unreachable (e.g. a fixed Task subagent set), spawn a generic isolated subagent"

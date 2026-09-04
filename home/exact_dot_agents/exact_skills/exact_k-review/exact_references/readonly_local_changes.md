@@ -44,9 +44,9 @@ Goal:
 
 Treat every finding as something to resolve right now, not something to note for later.
 
-- If something is wrong: fix it.
-- If something is missing (tests, docs, error handling): add it.
-- If something needs improvement: improve it.
+- If a changed line is wrong: fix it inside the behavior the diff already changes.
+- If a test or doc for the changed behavior is missing: add it.
+- Missing error handling, states, or flows are proposals under the Fix scope rule in `judging_pipeline.md`, not in-review additions.
 - Report what you found and what you did — proceed with each fix directly, asking permission only when the change is large or ambiguous.
 - All fixes are edits to working-tree files only. Commit or push only when explicitly asked.
 
@@ -89,6 +89,8 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 
 ## Agent-Assisted Verify-and-Fix Workflow
 
+Before any launch, apply the review identity and lane ledger in `shared_rules.md` (Review Persistence):
+record every launch there, never relaunch an angle the ledger shows as `launched`, and never present findings while a lane is outstanding.
 Launch one `k-agent-reviewer`/`k-agent-review-worker` `correctness-regressions` lane for the scoped diff when the harness supports subagents; add one extra lane only for an independently evidenced risk class.
 Select both from `lanes.md` and paste the chosen lane's `Lens skill` line and `Checks` list into the worker's scope packet;
 workers never load `lanes.md`.
@@ -100,7 +102,7 @@ Run the Findings-Set Audit from `judging_pipeline.md` in the controller over the
 If the audited candidate set is empty, skip adversarial work and report `Adversarial verification: skipped (no candidates after findings audit)`.
 Otherwise, run `k-agent-adversarial-verifier` over the audited candidate set before fixing;
 if no verifier lane is available, run the Candidate Refutation Ladder inline and report `adversarial=inline-degraded`.
-Then apply the Verify-and-Fix Loop's fix, quality-gate, and Post-Review Stage steps from `judging_pipeline.md` over surviving findings.
+Then apply the Verify-and-Fix Loop's fix, targeted-check, Post-Review Stage, and bound steps from `judging_pipeline.md` over surviving findings.
 Then output a concise **summary**:
 
 - `Base context:` line (see shared_rules.md)
@@ -115,7 +117,7 @@ If the user says "one at a time" or "step by step":
 
 - Process exactly one finding per turn through the loop: state it, verify and refute it, fix it, run quality gates.
 - Stop and wait for the user before the next finding.
-- Run the Post-Review Stage after the last finding is resolved, following its fixed-point repeat rule until clean or blocked.
+- Run the Post-Review Stage after the last finding is resolved, with its one second pass; survivors are reported, not edited again.
 
 ## Extra Constraints
 

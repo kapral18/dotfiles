@@ -12,3 +12,4 @@ home/dot_config/exact_nvim/
 *.toml
 *.toml.tmpl
 home/dot_config/ai/readonly_model-mirrors.v1.json
+home/dot_config/ai/readonly_agent-bands.v1.json

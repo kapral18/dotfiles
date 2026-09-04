@@ -26,7 +26,7 @@ import ai_models
 REPO = Path(__file__).resolve().parent.parent
 REGISTRY = REPO / "home/.chezmoidata/ai_models"
 PROJECTION = REPO / "home/dot_config/ai/readonly_agent-bands.v1.json"
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.2.0"  # 1.1.0: harnesses.<h>.counter_models; 1.2.0: agents.<name>.category
 KIND = "ai.agent-bands"
 CLAUDE_ALIASES = ("opus", "sonnet", "haiku", "fable")
 
@@ -54,6 +54,10 @@ def build() -> dict:
                 pick = ai_models.resolve_agent_model(REGISTRY, harness, agent)
             entry = {
                 "model": pick["model"],
+                # The gate's counter-model pass-through applies only to `implement`-bound generic
+                # types (Cursor `generalPurpose`, Copilot `task`, ...), never to a cheap-band or
+                # research-band profile asking for the refute model.
+                "category": bindings[agent],
             }
             if pick["effort"]:
                 entry["effort"] = pick["effort"]
@@ -62,7 +66,16 @@ def build() -> dict:
                 if alias:
                     entry["alias"] = alias
             agents[agent] = entry
-        harnesses[harness] = {"agents": agents}
+        # Counter models: the refute and cross-family-slot picks. The gate lets an explicit
+        # `model` equal to one of these pass on generic subagent types, so a verifier launched as
+        # Cursor `generalPurpose` keeps its family instead of being rewritten to `implement`.
+        counter = []
+        for agent in sorted(bindings):
+            if bindings[agent] == "refute" or agent in ai_models.REVIEW_AUX_SLOTS:
+                model = agents[agent]["model"]
+                if model and model != "inherit" and model not in counter:
+                    counter.append(model)
+        harnesses[harness] = {"agents": agents, "counter_models": counter}
 
     return {
         "schema_version": SCHEMA_VERSION,

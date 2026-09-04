@@ -1422,8 +1422,10 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
             assert not marker.exists(), "re-warm fired despite warm cosine rows"
 
     def test_perturn_recall_does_not_repoint_already_staged_candidates(self):
-        # The staged ledger dedups the pointer: an identical candidate set on the
-        # next prompt injects nothing, while a genuinely new capsule id re-points.
+        # The staged ledger dedups identical candidate sets, and the pointed marker
+        # caps the pointer at one per session-topic binding: a genuinely new capsule id
+        # is still staged into the candidates file for the pull path, but it does not
+        # spawn another judge (one measured judge cost 36k tokens for 2 admitted lines).
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
             spec_dir = SPEC_ROOT / workspace.lstrip("/")
@@ -1449,14 +1451,88 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
             third = run_perturn_recall(tmp, payload, env)
 
             assert "### ,ai-kb candidates staged" in first["hookSpecificOutput"]["additionalContext"]
+            assert "once per session-topic binding" in first["hookSpecificOutput"]["additionalContext"]
             assert second == {}
-            assert "### ,ai-kb candidates staged" in third["hookSpecificOutput"]["additionalContext"]
+            assert third == {}, "a new capsule id must stage silently, not re-point the same session"
+            pointed = json.loads((spec_dir / ".recall-pointed-repoint-guard.json").read_text())
+            assert set(pointed) == {"topic"} and pointed["topic"]
             staged_rows = json.loads((spec_dir / ".recall-candidates-repoint-guard.json").read_text())
             assert [row["id"] for row in staged_rows] == ["capsule-a", "capsule-b"]
             assert json.loads((spec_dir / ".recall-staged-repoint-guard.json").read_text()) == [
                 "capsule-a",
                 "capsule-b",
             ]
+
+    def test_perturn_recall_repoints_when_the_session_rebinds_to_another_topic(self):
+        # The pointer budget is per session-topic binding, not per session: rebinding the
+        # session to another topic mid-way must re-point once for the new topic and then
+        # go silent again. A marker keyed on the session alone would never re-point.
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            binding = spec_dir / ".session-topic-rebind.txt"
+            payload = {
+                "conversation_id": "rebind",
+                "hook_event_name": "UserPromptSubmit",
+                "workspace_roots": [tmp],
+                "prompt": "recall guidance for this staging test",
+            }
+            row = {
+                "id": "capsule-a",
+                "title": "First staged capsule",
+                "kind": "gotcha",
+                "scope": "project",
+                "workspace_path": workspace,
+                "cosine_score": 0.8,
+            }
+            env = make_aikb_stub(Path(tmp), [row])
+            staged = spec_dir / ".recall-staged-rebind.json"
+
+            binding.write_text("topic-alpha\n", encoding="utf-8")
+            first = run_perturn_recall(tmp, payload, env)
+            assert "### ,ai-kb candidates staged" in first["hookSpecificOutput"]["additionalContext"]
+            assert "topic-alpha.txt" in first["hookSpecificOutput"]["additionalContext"]
+            assert json.loads((spec_dir / ".recall-pointed-rebind.json").read_text()) == {"topic": "topic-alpha"}
+
+            binding.write_text("topic-beta\n", encoding="utf-8")
+            staged.unlink()
+            second = run_perturn_recall(tmp, payload, env)
+            assert "topic-beta.txt" in second["hookSpecificOutput"]["additionalContext"], second
+            assert json.loads((spec_dir / ".recall-pointed-rebind.json").read_text()) == {"topic": "topic-beta"}
+
+            staged.unlink()
+            assert run_perturn_recall(tmp, payload, env) == {}
+
+    def test_perturn_recall_keeps_ids_unstaged_when_the_pointed_marker_cannot_be_written(self):
+        # If the staged ledger were committed before the marker, a failed marker write would
+        # leave the ids "already staged" with no pointer ever sent: the session's one pointer
+        # consumed for nothing. A directory at the marker path forces the write to fail.
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            (spec_dir / ".recall-pointed-marker-fails.json").mkdir()
+            payload = {
+                "conversation_id": "marker-fails",
+                "hook_event_name": "UserPromptSubmit",
+                "workspace_roots": [tmp],
+                "prompt": "recall guidance for this staging test",
+            }
+            row = {
+                "id": "capsule-a",
+                "title": "First staged capsule",
+                "kind": "gotcha",
+                "scope": "project",
+                "workspace_path": workspace,
+                "cosine_score": 0.8,
+            }
+            env = make_aikb_stub(Path(tmp), [row])
+            assert run_perturn_recall(tmp, payload, env) == {}
+            assert not (spec_dir / ".recall-staged-marker-fails.json").exists(), "ids must stay unstaged"
+            (spec_dir / ".recall-pointed-marker-fails.json").rmdir()
+            recovered = run_perturn_recall(tmp, payload, env)
+            assert "### ,ai-kb candidates staged" in recovered["hookSpecificOutput"]["additionalContext"]
 
     def test_perturn_recall_hybrid_gate_uses_best_cosine_and_preserves_fused_order(self):
         # Hybrid rows are RRF+MMR fused-rank order, not best-cosine-first: row0 has no

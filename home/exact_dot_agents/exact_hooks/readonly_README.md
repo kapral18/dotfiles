@@ -57,7 +57,9 @@ Unbound, ad-hoc/`session-*`, and review topics get no capsule warm-start.
 This is the only automatic session-start capsule retrieval; supported runtimes also perform per-turn recall.
 Adapters that send neither `AI_EMBED_WARM=1` nor `warm_embedder: true` have no per-turn staging wiring, so their session context carries a `### Recall Notice` directing the agent to delegate mid-task recall queries to the `k-agent-smol` operator (inline `,ai-kb search` only where no isolated spawn exists).
 The hook reads the KB but never writes it; persistence stays agent-driven.
-Per-turn recall never injects capsule bodies: `perturn_recall.py` (and the pi/omp mirrors) writes gate-passing rows in full to `.recall-candidates-<session-key>.json` and injects a `### ,ai-kb candidates staged` pointer only when at least one candidate id is new to the session (tracked in `.recall-staged-<session-key>.json`).
+Per-turn recall never injects capsule bodies: `perturn_recall.py` (and the pi/omp mirrors) writes gate-passing rows in full to `.recall-candidates-<session-key>.json` and injects a `### ,ai-kb candidates staged` pointer only when at least one candidate id is new to the session (tracked in `.recall-staged-<session-key>.json`) and only once per session-topic binding (`.recall-pointed-<session-key>.json` records the topic that was pointed at).
+Later turns keep staging new rows into the candidates file for the pull path, but do not re-point:
+one judge spawn per session, not one per prompt.
 The parent delegates judgment to the `k-agent-smol` subagent (`~/.agents/skills/k-ai-kb/references/smol-operator.md`), which admits at most 3 lines or `NONE` against the accumulated session state.
 The pointer also names the fallback route: when the `k-agent-smol` profile is unreachable (a fixed Task subagent set, as on Cursor), the parent spawns a generic isolated subagent on the memory-band model carrying the smol operator contract (Cursor: `Task` `subagent_type: shell`, `model: auto`), never a harness-CLI one-shot and never the type's own default model.
 The warm-start persists injected capsule IDs in `.recall-seen-<session-key>.json`;
@@ -65,9 +67,10 @@ per-turn additions to that file are k-agent-smol's admissions, never the hook's.
 The canonical session key follows `conversation_id`, then `session_id`, then `generation_id`;
 Pi persists the same state across extension reloads and session resumes.
 
-Per-turn recall also carries the probe-budget hint: `,probe pass|fail` appends to `<spec_dir>/<session_key>.probe-ledger.jsonl`, and `correction_detector.probe_budget_signal` fires `probe-budget-exhausted` when 3+ of the last 8 entries failed.
+Per-turn recall also carries the probe-budget hint: `,probe fail` appends to `<spec_dir>/<session_key>.probe-ledger.jsonl` (agents record failures only, chained onto the failing command), and `correction_detector.probe_budget_signal` fires `probe-budget-exhausted` when 3+ of the last 8 entries are failures recorded within the last 30 minutes.
 Because a plain shell usually has no harness session id, `,probe` writes under the `ad-hoc` key;
-the reader falls back to that shared ledger when the session-keyed one is missing or empty, restricted to entries at most 4 hours old so another session's stale failures cannot fire the hint.
+the reader falls back to that shared ledger when the session-keyed one is missing or empty;
+the same 30-minute failure window keeps another session's stale failures from firing the hint.
 The pi/omp `ai-kb-recall.ts` mirrors carry the same consumer with identical thresholds and note text.
 Antigravity has no user-prompt hook, so `premise_nudge.py` computes the signal during its `PreInvocation` drain and injects the note alongside any queued premise nudges.
 

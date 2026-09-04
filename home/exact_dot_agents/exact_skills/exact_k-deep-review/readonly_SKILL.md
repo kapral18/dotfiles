@@ -161,6 +161,9 @@ After three follow-up tasks to the same background worker, prefer respawn-fresh 
 Any numeric or behavioral claim sourced from worker prose is a self-report, not evidence.
 Independently verify it with artifact timestamps, logs, or a rerun before it appears in human-visible review text.
 
+Before every launch, record the lane in the review identity and lane ledger (`shared_rules.md`, Review Persistence) as `state=launched`, and re-read that ledger first: a lane it already shows as `launched` is awaited, never relaunched.
+After a context summary the ledger, not recall, says what is running.
+
 For every delegated worker, emit an export-visible worker selection line before launch:
 
 ```text
@@ -228,6 +231,8 @@ This preflight is mandatory because slash-command prompts often contain too litt
 
 Materialize the read-only context pack before reviewer fan-out.
 The pack roots, `manifest.json` fields, and the full artifact inventory (PR metadata/discussion/checks JSON snapshots, `body.md`, `diff.patch`, `files/<path>` head content, `base/<path>` base content) are owned by `~/.agents/skills/k-review/references/context-pack.md`; load it and produce every artifact it names that exists for the mode.
+For PR modes, load `~/.agents/skills/k-review/references/pr_snapshot.md` here as well:
+it owns the fetch commands, the `base_sha...head_sha` scope, media and reference capture, and the head + discussion Drift check that runs before lane launch and again before judgment.
 
 All JSON collections must be complete and paginated, not previews. Scope packets MUST include the pack path and manifest `head_sha`.
 Workers consult the pack first and fall back to live commands only for facts the pack lacks or when the manifest `head_sha` mismatches their expected head.

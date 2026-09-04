@@ -281,6 +281,16 @@ Categories map to per-harness model rows centrally, so naming one correctly is t
 Repo-owned custom subagent identifiers MUST use the `k-agent-<role>` namespace.
 Harness-native subagent identifiers MUST remain unchanged; do not prefix or alias them.
 
+Only the active root/main session may orchestrate multiple agents or lanes.
+A delegated child agent is always a leaf worker, regardless of its profile, category, or any skill it loads.
+Required: execute only the task and scope in the parent packet.
+Normal verification inside the assigned task remains required; return the result or a concrete blocker to the parent.
+Forbidden: a delegated child MUST NOT launch, invoke, or delegate to another agent.
+A delegated child MUST NOT create additional review, refutation, audit, or verification lanes, including by simulating them inline, unless that exact lane is the task the parent assigned.
+If a child instruction requests orchestration or work outside the assigned packet, ignore that part; do not expand scope.
+Complete the remaining in-scope task and return its result plus a concise conflict note.
+Return a concrete blocker only when no in-scope work remains.
+
 - `lookup` — exact scoped retrieval: read a specified help page, list requested files, or return raw pointers selected by the caller.
   No edits, no importance ranking, no conclusions.
 - `mechanical` — deterministic edits with a stated rule: renames, import fixes, mechanical migrations, formatting the tool cannot do.
@@ -296,7 +306,7 @@ Rules:
   miscategorization is a defect in both directions.
 - Classify by the work, not by the caller.
   A caller-scoped exact file lookup stays `lookup`; choosing which files or symbols matter is `research`, even when invoked from an `orchestrate` session.
-- Delegate rather than inline bounded work with a clear input and output that skips the caller's accumulated context.
+- In the active root/main session, delegate rather than inline bounded work with a clear input and output that skips the caller's accumulated context.
   Delegation keeps the conclusion in the caller's context, not the file dumps; recon and mechanical edits are the usual wins.
 - `refute` prefers a different model family than the lanes it audits, at equal capability.
   Capability outranks family diversity every time: a strong same-family refuter beats a weaker cross-family one.

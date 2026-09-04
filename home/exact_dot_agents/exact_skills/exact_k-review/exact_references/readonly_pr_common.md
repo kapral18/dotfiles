@@ -10,6 +10,11 @@ All PR review modes load this file; do not duplicate these rules in mode files.
   - Resolve PR number via `,gh-prw --number`.
   - If `,gh-prw` fails once, stop and ask the user for the PR URL/number.
 
+## PR Snapshot (blocking before diff analysis)
+
+Load and follow `~/.agents/skills/k-review/references/pr_snapshot.md`: it owns the one-fetch context pack production, media and reference capture, diff scope and file truth, the head + discussion Drift check, and the pack lifetime.
+Every PR mode runs it before diff analysis and its Drift check at every boundary it names.
+
 ## Merge-Conflict Check (Do After PR Resolution)
 
 - Run: `gh pr view <number> --json mergeable,mergeStateStatus --jq '{mergeable, mergeStateStatus}'`
@@ -94,7 +99,8 @@ For GitHub, prefer complete `--json` fields or API pagination over `jq` slices o
 Keep a short intake ledger for composition/review work: object read, full-body/comments status, linked objects followed, and reproduction/expected/actual sections found/absent.
 
 1. Maintain a visited set by canonical URL/object ID so recursion is exhaustive without looping.
-2. Seed the queue from the primary PR:
+2. Seed the queue from the primary PR, reading from the context pack (one fetch per object;
+   the pack is the complete artifact, and linked items land in `refs/`):
    - PR description/body, reading every line including template text, checkboxes, code blocks, quotes, collapsible sections, and footnotes
    - PR conversation/timeline comments, review bodies/comments/threads, and every reply, including resolved/outdated state when available
    - any `PENDING` review and draft comments authored by the current account, using Pending Review Intake above
@@ -106,11 +112,8 @@ Keep a short intake ledger for composition/review work: object read, full-body/c
      - inspect the full diff or exact files when the referenced PR is cited as precedent, fix, regression, or evidence for a claim
    - Issues: read raw body line-by-line, state, labels/milestone when relevant, all comments/replies/timeline text, linked PRs/issues, and every attachment/media/reference.
    - Comments/threads: read the parent comment plus every reply end-to-end; include author, timestamp/order, resolved/outdated/minimized state, and any referenced code or links.
-   - Images/screenshots: download to `/tmp` with `curl -sL -o /tmp/<name> <url>`, then inspect the file, including visible text, UI state, annotations, and error messages.
-   - GIFs/videos: download to `/tmp`; inspect first/last frames and every significant frame or scene/state transition;
-     cover UI changes, overlays, terminal output changes, and before/after states;
-     use local tooling (`ffmpeg`/`ffprobe`, browser/player, image extraction, OCR/vision when available);
-     inspect audio/captions/transcripts when present
+   - Images/screenshots: download into the pack per pr_snapshot.md → Media (plain GET for public assets, browser session for private ones, `file`-verified, manifest row), then inspect the file, including visible text, UI state, annotations, and error messages.
+   - GIFs/videos: download into the pack per pr_snapshot.md → Media; inspect first/last frames and every significant frame or scene/state transition; cover UI changes, overlays, terminal output changes, and before/after states; use local tooling (`ffmpeg`/`ffprobe`, browser/player, image extraction, OCR/vision when available); inspect audio/captions/transcripts when present
    - Buildkite URLs (`buildkite.com/...`): **do not fetch directly** (authenticated pages commonly 403).
      Load and follow `~/.agents/skills/k-buildkite/SKILL.md` — use `bk` CLI to retrieve build/job info.
      For Elastic repos, route through `k-elastic-domain` first when available, but do not skip Buildkite solely because the overlay cannot load.
@@ -132,6 +135,10 @@ Run this second layer only when direct PR/issue context does not settle shared u
 the discussion shows disagreement, conflicting claims, or unclear ownership/requirements;
 the user asks for deep context, history, "why", or precedent; a candidate finding depends on product intent, team convention, prior incidents, or decisions not proven by the directly referenced artifacts; or direct references are sparse, contradictory, or omit the rationale behind the current disagreement.
 Skip it for routine implementation reviews where the diff, base context, and direct references are enough.
+
+Before running it, append `ambient: trigger=<condition> evidence=<thread id, claim, or user request>` to the review spec;
+with no recordable trigger it does not run.
+It never runs under a correctness-only constraint, and a self-authored PR with no review threads and no contested claim has no trigger.
 
 When triggered, load and follow `~/.agents/skills/k-review/references/pr_context_audits.md` for the bounded search procedure, the required `topic / queries / sources searched / hits read / stop reason` ledger, and the stop conditions.
 

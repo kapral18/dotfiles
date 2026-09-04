@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import unittest
@@ -442,6 +443,99 @@ class TestModelBandInvariants(unittest.TestCase):
                 if not any("band_gate.py" in command for command in commands):
                     continue
                 assert entry.get("matcher"), f"{path} {key} wires band_gate.py with no matcher"
+
+    def test_the_band_gate_rewrites_cursor_subagent_launches_but_keeps_counter_models(self) -> None:
+        # Cursor transcript exports label the delegation tool `Subagent` (2026-09-04) while the
+        # bundle still says `taskToolCall`; the hook payload name is unverified, so a matcher or
+        # DELEGATION_TOOLS that knows only one of them can let every Cursor lane run on whatever
+        # model the caller typed. The gate must also leave the registry's
+        # refute pick alone on a generic subagent type, or a cross-family verifier launched as
+        # `generalPurpose` is rewritten back onto the finder family.
+        import subprocess
+
+        hooks = json.loads((REPO / "home/dot_cursor/hooks.json").read_text(encoding="utf-8"))
+        matchers = [e["matcher"] for e in hooks["hooks"]["preToolUse"] if "band_gate.py" in e.get("command", "")]
+        assert matchers and all(re.fullmatch(matchers[0], name) for name in ("Subagent", "Task")), matchers
+
+        projection = REPO / "home/dot_config/ai/readonly_agent-bands.v1.json"
+        cursor = json.loads(projection.read_text(encoding="utf-8"))["harnesses"]["cursor"]
+        implement_model = cursor["agents"]["generalPurpose"]["model"]
+        refute_model = cursor["agents"]["k-agent-adversarial-verifier"]["model"]
+        assert refute_model in cursor["counter_models"]
+        assert refute_model != implement_model
+
+        def gate(tool_name: str, model: str) -> dict:
+            payload = {
+                "tool_name": tool_name,
+                "tool_input": {"subagent_type": "generalPurpose", "model": model, "prompt": "x"},
+            }
+            result = subprocess.run(
+                [sys.executable, str(REPO / "home/exact_dot_agents/exact_hooks/executable_band_gate.py")],
+                input=json.dumps(payload),
+                capture_output=True,
+                text=True,
+                env={**os.environ, "AGENT_BAND_HARNESS": "cursor", "AGENT_BANDS_FILE": str(projection)},
+                check=True,
+            )
+            return json.loads(result.stdout)
+
+        bypass = gate("Subagent", "claude-opus-5-high")
+        assert bypass["updated_input"]["model"] == implement_model, bypass
+        assert bypass["updated_input"]["prompt"] == "x", "Cursor updated_input must echo untouched keys"
+        assert gate("Task", "claude-opus-5-high")["updated_input"]["model"] == implement_model
+        assert gate("Subagent", refute_model) == {}, "registry counter model must pass through untouched"
+        # Only the generic `implement` type may carry the counter model; a bound cheap-band or
+        # research-band profile asking for it is still an escape and gets its own band back.
+        smol_model = cursor["agents"]["k-agent-smol"]["model"]
+        assert cursor["agents"]["k-agent-smol"]["category"] == "memory"
+        smol = subprocess.run(
+            [sys.executable, str(REPO / "home/exact_dot_agents/exact_hooks/executable_band_gate.py")],
+            input=json.dumps(
+                {"tool_name": "Subagent", "tool_input": {"subagent_type": "k-agent-smol", "model": refute_model}}
+            ),
+            capture_output=True,
+            text=True,
+            env={**os.environ, "AGENT_BAND_HARNESS": "cursor", "AGENT_BANDS_FILE": str(projection)},
+            check=True,
+        )
+        assert json.loads(smol.stdout)["updated_input"]["model"] == smol_model, smol.stdout
+        assert gate("Shell", "claude-opus-5-high") == {}, "non-delegation tools stay no-ops"
+
+        # A BYOK route pins every band to one wire model; the counter pass-through must not
+        # let a registry id escape that route.
+        byok = subprocess.run(
+            [sys.executable, str(REPO / "home/exact_dot_agents/exact_hooks/executable_band_gate.py")],
+            input=json.dumps(
+                {"tool_name": "Subagent", "tool_input": {"subagent_type": "generalPurpose", "model": refute_model}}
+            ),
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "AGENT_BAND_HARNESS": "cursor",
+                "AGENT_BANDS_FILE": str(projection),
+                "AGENT_BAND_MODEL_OVERRIDE": "byok/one-model",
+            },
+            check=True,
+        )
+        assert json.loads(byok.stdout)["updated_input"]["model"] == "byok/one-model"
+
+        # Claude's Agent tool takes family aliases only; a full registry id must still reach the
+        # alias clamp instead of passing through as a "counter model".
+        claude = json.loads(projection.read_text(encoding="utf-8"))["harnesses"]["claude_code"]
+        full_id = claude["counter_models"][0]
+        alias = claude["agents"]["general-purpose"]["alias"]
+        clamp = subprocess.run(
+            [sys.executable, str(REPO / "home/exact_dot_agents/exact_hooks/executable_band_gate.py")],
+            input=json.dumps(
+                {"tool_name": "Agent", "tool_input": {"subagent_type": "general-purpose", "model": full_id}}
+            ),
+            capture_output=True,
+            text=True,
+            env={**os.environ, "AGENT_BAND_HARNESS": "claude_code", "AGENT_BANDS_FILE": str(projection)},
+            check=True,
+        )
+        assert json.loads(clamp.stdout)["hookSpecificOutput"]["updatedInput"]["model"] == alias, clamp.stdout
 
     def test_the_band_gate_is_wired_on_every_claude_profile(self) -> None:
         # The band gate is the only thing enforcing per-call cost bands on Claude Code, and

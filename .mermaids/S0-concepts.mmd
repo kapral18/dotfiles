@@ -43,7 +43,7 @@ graph TB
 
     %% ---- C7 Intent-routed governance ---------------------------------------
     C7{{"C7 · GOVERNED AGENTS<br/>LLMs are deterministic systems, not chatbots"}}:::concept
-    C7 --> I7["INVARIANT: agents load SOP entrypoints + intent-matched skills,<br/>keep generic workflows domain-neutral, use detached orchestration only on<br/>an explicit user request, and pass fail-closed gates before human-visible side effects."]:::inv
+    C7 --> I7["INVARIANT: agents load SOP entrypoints + intent-matched skills,<br/>keep generic workflows domain-neutral, only the active root/main session orchestrates agents or lanes,<br/>use detached orchestration only on an explicit user request, and pass fail-closed gates before human-visible side effects."]:::inv
     I7 --> R7["realized by: home/readonly_AGENTS.md + symlinked harness entrypoints<br/>exact_skills Use when routing · domain overlays · exact_hooks fail-closed gates"]:::realize
 
     %% ---- C8 Evidence anchoring (SOP discipline) ----------------------------

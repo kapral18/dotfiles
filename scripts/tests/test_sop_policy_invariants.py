@@ -58,6 +58,50 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Any premature stopping, including checkpoint commentary, is an operational failure",
         )
 
+    def test_delegated_agents_are_leaf_workers(self):
+        for policy in (
+            "home/readonly_AGENTS.md",
+            "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
+        ):
+            self.assert_file_contains(
+                policy,
+                "Only the active root/main session may orchestrate multiple agents or lanes",
+                "A delegated child agent is always a leaf worker",
+                "MUST NOT launch, invoke, or delegate to another agent",
+                "MUST NOT create additional review, refutation, audit, or verification lanes",
+                "Normal verification inside the assigned task remains required",
+                "return the result or a concrete blocker to the parent",
+                "ignore that part; do not expand scope",
+                "Complete the remaining in-scope task",
+                "Return a concrete blocker only when no in-scope work remains",
+            )
+
+        self.assert_file_contains(
+            "docs/topics/ai-assistants/subagents.md",
+            "Only the active root/main session orchestrates multiple agents or lanes",
+            "A controller profile may orchestrate only when it is running as the active root/main session",
+            "Delegated children are always leaf workers",
+            "completes any remaining leaf-scoped work",
+        )
+        self.assert_file_contains(
+            "docs/topics/ai-assistants/reviews/deep-review-topology.md",
+            "the active root/main controller owns every fan-out decision",
+            "delegated workers execute one assigned leaf lane",
+        )
+        self.assert_file_contains(
+            "docs/topics/ai-assistants/assets/deep-review-flow.svg",
+            "Every delegated worker is a leaf",
+            "active root/main controller owns fan-out",
+        )
+        self.assert_file_contains(
+            ".mermaids/S0-concepts.mmd",
+            "only the active root/main session orchestrates agents or lanes",
+        )
+        self.assert_file_contains(
+            ".mermaids/03b-agent-skills-hooks.mmd",
+            "every delegated child is a leaf worker",
+        )
+
     def test_global_sop_keeps_truth_runtime_and_completion_gates(self):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
@@ -165,8 +209,14 @@ class TestSopPolicyInvariants(unittest.TestCase):
         # filename contract so one side cannot drift away silently.
         self.assert_file_contains(
             "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
-            ',probe pass "<summary>"',
             ',probe fail "<summary>"',
+            "Passing probes need no record and no separate turn",
+        )
+        # A standalone `,probe pass` turn is a model turn spent on bookkeeping the worklog
+        # hook already captures; the producer must not ask for it.
+        self.assert_file_not_contains(
+            "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
+            ',probe pass "<summary>"',
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_hooks/correction_detector.py",
@@ -178,12 +228,12 @@ class TestSopPolicyInvariants(unittest.TestCase):
             ".probe-ledger.jsonl",
         )
         # `,probe` from a plain shell has no harness session id and records under the
-        # `ad-hoc` key, so the reader must keep its freshness-capped ad-hoc fallback or
-        # the hint never fires anywhere in practice.
+        # `ad-hoc` key, so the reader must keep its ad-hoc fallback, bounded by the
+        # failure recency window, or the hint never fires anywhere in practice.
         self.assert_file_contains(
             "home/exact_dot_agents/exact_hooks/correction_detector.py",
             'PROBE_AD_HOC_KEY = "ad-hoc"',
-            "PROBE_AD_HOC_MAX_AGE_SECONDS",
+            "PROBE_RECENT_WINDOW_SECONDS",
         )
         # Every per-turn surface that reimplements the correction directive must also
         # carry the probe-budget consumer, or the hint silently fires on some harnesses

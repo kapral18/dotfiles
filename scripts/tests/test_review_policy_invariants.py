@@ -186,6 +186,62 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         ):
             self.assert_file_contains(profile, "k-review/references/reviewer-worker.md")
 
+    def test_self_authored_fix_loop_is_bounded_scoped_and_gated_once(self):
+        # A measured Cursor session (2026-09-04) turned one review defect into a 2.5-hour
+        # feature build: three redesigns, a shared-component API change, six full-suite runs,
+        # and a dead session with 11 uncommitted files. The loop is bounded, the fix scope is
+        # the diff's own behavior, and the repo-wide gate runs once.
+        pipeline = "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_pipeline.md"
+        self.assert_file_contains(
+            pipeline,
+            "**Fix scope:** a fix stays inside the behavior the reviewed diff already changes.",
+            "a new user-visible state (loading, error, retry), a new prop or export on a component outside the diff's package",
+            "it does not build the feature",
+            "runs once, after the last fix and before the report, launched in the background",
+            "never block a turn on it and never re-run it per iteration",
+            "`k-converge` is the only unbounded loop",
+            "append `round: <n> fixed=<files> gates=<result>` to the review spec",
+        )
+        self.assert_file_not_contains(
+            pipeline,
+            "Repeat until no new surviving findings or hygiene findings remain",
+            "Repeat until the four dimensions return clean",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_local_changes.md",
+            "Missing error handling, states, or flows are proposals under the Fix scope rule",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_local_changes.md",
+            "If something is missing (tests, docs, error handling): add it.",
+        )
+        # The state harness must be an oracle, not a test-name grep (session records 259, 384).
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_core.md",
+            "The harness is an executable independent oracle",
+            "checks that test names appear in a test file, is not a harness",
+            "report `harness=tests` and write no manifest",
+        )
+        # After compaction the session trusts its own anchored ledger (34 image views, record 71).
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_shared_rules.md",
+            "`fact: <claim> — <anchor> — <verified_at>`",
+            "`media: <file> — <caption> — viewed`",
+            "a `fact:` or `media:` line this session wrote with an anchor is trusted",
+            "SOP §2.8 skepticism applies to other agents' reports, not to this session's anchored ledger",
+        )
+        # Ambient exploration needs a recorded trigger; five Slack calls found nothing on a
+        # self-authored PR with zero threads.
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_common.md",
+            "append `ambient: trigger=<condition> evidence=<thread id, claim, or user request>` to the review spec",
+            "It never runs under a correctness-only constraint",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md",
+            "`k-kibana-labels-propose`, or a CI skill at intake",
+        )
+
     def test_expert_lane_registry_is_the_single_roster_source(self):
         lanes = "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_lanes.md"
         self.assert_file_contains(

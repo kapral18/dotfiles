@@ -56,6 +56,10 @@ Examples include parsers, tokenizers, formatters, routing/matching logic, retry/
 
 In review-only PR mode for someone else's work, keep the worktree read-only, use the harness to verify claims when safe, and surface missing or inadequate state-machine coverage as a test gap when risk remains.
 
+The harness is an executable independent oracle: it loads the implementation (or a faithful extraction of the predicate) and compares its outputs against a table the harness computes on its own.
+A script that runs the existing tests, or checks that test names appear in a test file, is not a harness.
+When the focused tests are the only executable check, report `harness=tests` and write no manifest.
+
 ## Async-Derived State Gate (Run On Values Resolved Over Time)
 
 Trigger: the diff adds or changes a conditional, default injection, reset, or visibility gate whose predicate derives from an asynchronously-resolved source — promise resolution, readiness callbacks, fetched collections, subscription emissions, lazy initialization.

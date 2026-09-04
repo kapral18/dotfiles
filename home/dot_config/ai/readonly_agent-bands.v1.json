@@ -1,1163 +1,1459 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.2.0",
   "kind": "ai.agent-bands",
   "harnesses": {
     "claude_code": {
       "agents": {
         "Explore": {
           "model": "claude-fable-5-1",
+          "category": "research",
           "effort": "medium",
           "alias": "fable"
         },
         "Plan": {
           "model": "claude-fable-5-1",
+          "category": "orchestrate",
           "effort": "xhigh",
           "alias": "fable"
         },
         "best-of-n-runner": {
           "model": "claude-fable-5-1",
+          "category": "implement",
           "effort": "medium",
           "alias": "fable"
         },
         "browser_agent": {
           "model": "claude-fable-5-1",
+          "category": "implement",
           "effort": "medium",
           "alias": "fable"
         },
         "bugbot": {
           "model": "claude-fable-5-1",
+          "category": "review",
           "effort": "medium",
           "alias": "fable"
         },
         "claude": {
           "model": "claude-fable-5-1",
+          "category": "implement",
           "effort": "medium",
           "alias": "fable"
         },
         "claude-code-guide": {
           "model": "claude-fable-5-1",
+          "category": "research",
           "effort": "medium",
           "alias": "fable"
         },
         "cli_help": {
           "model": "claude-fable-5-1",
+          "category": "lookup",
           "effort": "low",
           "alias": "fable"
         },
         "code-review": {
           "model": "claude-fable-5-1",
+          "category": "review",
           "effort": "medium",
           "alias": "fable"
         },
         "codebase_investigator": {
           "model": "claude-fable-5-1",
+          "category": "research",
           "effort": "medium",
           "alias": "fable"
         },
         "cursor-guide": {
           "model": "claude-fable-5-1",
+          "category": "research",
           "effort": "medium",
           "alias": "fable"
         },
         "default": {
           "model": "claude-fable-5-1",
+          "category": "orchestrate",
           "effort": "xhigh",
           "alias": "fable"
         },
         "explore": {
           "model": "claude-fable-5-1",
+          "category": "research",
           "effort": "medium",
           "alias": "fable"
         },
         "explorer": {
           "model": "claude-fable-5-1",
+          "category": "research",
           "effort": "medium",
           "alias": "fable"
         },
         "general-purpose": {
           "model": "claude-fable-5-1",
+          "category": "implement",
           "effort": "medium",
           "alias": "fable"
         },
         "generalPurpose": {
           "model": "claude-fable-5-1",
+          "category": "implement",
           "effort": "medium",
           "alias": "fable"
         },
         "generalist": {
           "model": "claude-fable-5-1",
+          "category": "implement",
           "effort": "medium",
           "alias": "fable"
         },
         "k-agent-adversarial-verifier": {
           "model": "claude-fable-5-1",
+          "category": "refute",
           "effort": "medium",
           "alias": "fable"
         },
         "k-agent-change-auditor": {
           "model": "claude-fable-5-1",
+          "category": "review",
           "effort": "medium",
           "alias": "fable"
         },
         "k-agent-code-searcher": {
           "model": "claude-fable-5-1",
+          "category": "research",
           "effort": "medium",
           "alias": "fable"
         },
         "k-agent-criteria-verifier": {
           "model": "claude-fable-5-1",
+          "category": "refute",
           "effort": "medium",
           "alias": "fable"
         },
         "k-agent-deep-review": {
           "model": "claude-fable-5-1",
+          "category": "orchestrate",
           "effort": "xhigh",
           "alias": "fable"
         },
         "k-agent-findings-auditor": {
           "model": "claude-fable-5-1",
+          "category": "review",
           "effort": "medium",
           "alias": "fable"
         },
         "k-agent-fresh-eyes": {
           "model": "claude-fable-5-1",
+          "category": "review",
           "effort": "medium",
           "alias": "fable"
         },
         "k-agent-live-ui-review": {
           "model": "claude-fable-5-1",
+          "category": "review",
           "effort": "medium",
           "alias": "fable"
         },
         "k-agent-post-review": {
           "model": "claude-fable-5-1",
+          "category": "review",
           "effort": "medium",
           "alias": "fable"
         },
         "k-agent-pr-necessity-auditor": {
           "model": "claude-fable-5-1",
+          "category": "review",
           "effort": "medium",
           "alias": "fable"
         },
         "k-agent-researcher": {
           "model": "claude-fable-5-1",
+          "category": "research",
           "effort": "medium",
           "alias": "fable"
         },
         "k-agent-review-controller": {
           "model": "claude-fable-5-1",
+          "category": "orchestrate",
           "effort": "xhigh",
           "alias": "fable"
         },
         "k-agent-review-worker": {
           "model": "claude-fable-5-1",
+          "category": "review",
           "effort": "medium",
           "alias": "fable"
         },
         "k-agent-review-worker-cross": {
           "model": "inherit",
+          "category": "review",
           "effort": "medium"
         },
         "k-agent-reviewer": {
           "model": "claude-fable-5-1",
+          "category": "review",
           "effort": "medium",
           "alias": "fable"
         },
         "k-agent-smol": {
           "model": "claude-sonnet-4-6",
+          "category": "memory",
           "effort": "low",
           "alias": "sonnet"
         },
         "rem-agent": {
           "model": "claude-fable-5-1",
+          "category": "research",
           "effort": "medium",
           "alias": "fable"
         },
         "research": {
           "model": "claude-fable-5-1",
+          "category": "research",
           "effort": "medium",
           "alias": "fable"
         },
         "rubber-duck": {
           "model": "claude-fable-5-1",
+          "category": "research",
           "effort": "medium",
           "alias": "fable"
         },
         "security-review": {
           "model": "claude-fable-5-1",
+          "category": "review",
           "effort": "medium",
           "alias": "fable"
         },
         "task": {
           "model": "claude-fable-5-1",
+          "category": "implement",
           "effort": "medium",
           "alias": "fable"
         },
         "worker": {
           "model": "claude-fable-5-1",
+          "category": "implement",
           "effort": "medium",
           "alias": "fable"
         }
-      }
+      },
+      "counter_models": [
+        "claude-fable-5-1"
+      ]
     },
     "codex": {
       "agents": {
         "Explore": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "Plan": {
           "model": "gpt-5.5",
+          "category": "orchestrate",
           "effort": "xhigh"
         },
         "best-of-n-runner": {
           "model": "gpt-5.5",
+          "category": "implement",
           "effort": "xhigh"
         },
         "browser_agent": {
           "model": "gpt-5.5",
+          "category": "implement",
           "effort": "xhigh"
         },
         "bugbot": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "claude": {
           "model": "gpt-5.5",
+          "category": "implement",
           "effort": "xhigh"
         },
         "claude-code-guide": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "cli_help": {
           "model": "gpt-5.5",
+          "category": "lookup",
           "effort": "xhigh"
         },
         "code-review": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "codebase_investigator": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "cursor-guide": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "default": {
           "model": "gpt-5.5",
+          "category": "orchestrate",
           "effort": "xhigh"
         },
         "explore": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "explorer": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "general-purpose": {
           "model": "gpt-5.5",
+          "category": "implement",
           "effort": "xhigh"
         },
         "generalPurpose": {
           "model": "gpt-5.5",
+          "category": "implement",
           "effort": "xhigh"
         },
         "generalist": {
           "model": "gpt-5.5",
+          "category": "implement",
           "effort": "xhigh"
         },
         "k-agent-adversarial-verifier": {
           "model": "gpt-5.5",
+          "category": "refute",
           "effort": "xhigh"
         },
         "k-agent-change-auditor": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-code-searcher": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "k-agent-criteria-verifier": {
           "model": "gpt-5.5",
+          "category": "refute",
           "effort": "xhigh"
         },
         "k-agent-deep-review": {
           "model": "gpt-5.5",
+          "category": "orchestrate",
           "effort": "xhigh"
         },
         "k-agent-findings-auditor": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-fresh-eyes": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-live-ui-review": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-post-review": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-pr-necessity-auditor": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-researcher": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "k-agent-review-controller": {
           "model": "gpt-5.5",
+          "category": "orchestrate",
           "effort": "xhigh"
         },
         "k-agent-review-worker": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-review-worker-cross": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-reviewer": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-smol": {
           "model": "gpt-5.4",
+          "category": "memory",
           "effort": "high"
         },
         "rem-agent": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "research": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "rubber-duck": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "security-review": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "task": {
           "model": "gpt-5.5",
+          "category": "implement",
           "effort": "xhigh"
         },
         "worker": {
           "model": "gpt-5.5",
+          "category": "implement",
           "effort": "xhigh"
         }
-      }
+      },
+      "counter_models": [
+        "gpt-5.5"
+      ]
     },
     "copilot": {
       "agents": {
         "Explore": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "Plan": {
           "model": "gpt-5.5",
+          "category": "orchestrate",
           "effort": "xhigh"
         },
         "best-of-n-runner": {
           "model": "gpt-5.5",
+          "category": "implement",
           "effort": "xhigh"
         },
         "browser_agent": {
           "model": "gpt-5.5",
+          "category": "implement",
           "effort": "xhigh"
         },
         "bugbot": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "claude": {
           "model": "gpt-5.5",
+          "category": "implement",
           "effort": "xhigh"
         },
         "claude-code-guide": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "cli_help": {
           "model": "gpt-5.5",
+          "category": "lookup",
           "effort": "xhigh"
         },
         "code-review": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "codebase_investigator": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "cursor-guide": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "default": {
           "model": "gpt-5.5",
+          "category": "orchestrate",
           "effort": "xhigh"
         },
         "explore": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "explorer": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "general-purpose": {
           "model": "gpt-5.5",
+          "category": "implement",
           "effort": "xhigh"
         },
         "generalPurpose": {
           "model": "gpt-5.5",
+          "category": "implement",
           "effort": "xhigh"
         },
         "generalist": {
           "model": "gpt-5.5",
+          "category": "implement",
           "effort": "xhigh"
         },
         "k-agent-adversarial-verifier": {
           "model": "claude-fable-5.1",
+          "category": "refute",
           "effort": "high"
         },
         "k-agent-change-auditor": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-code-searcher": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "k-agent-criteria-verifier": {
           "model": "claude-fable-5.1",
+          "category": "refute",
           "effort": "high"
         },
         "k-agent-deep-review": {
           "model": "gpt-5.5",
+          "category": "orchestrate",
           "effort": "xhigh"
         },
         "k-agent-findings-auditor": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-fresh-eyes": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-live-ui-review": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-post-review": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-pr-necessity-auditor": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-researcher": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "k-agent-review-controller": {
           "model": "gpt-5.5",
+          "category": "orchestrate",
           "effort": "xhigh"
         },
         "k-agent-review-worker": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-review-worker-cross": {
           "model": "claude-fable-5.1",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-reviewer": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-smol": {
           "model": "claude-sonnet-4.6",
+          "category": "memory",
           "effort": "high"
         },
         "rem-agent": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "research": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "rubber-duck": {
           "model": "gpt-5.5",
+          "category": "research",
           "effort": "xhigh"
         },
         "security-review": {
           "model": "gpt-5.5",
+          "category": "review",
           "effort": "xhigh"
         },
         "task": {
           "model": "gpt-5.5",
+          "category": "implement",
           "effort": "xhigh"
         },
         "worker": {
           "model": "gpt-5.5",
+          "category": "implement",
           "effort": "xhigh"
         }
-      }
+      },
+      "counter_models": [
+        "claude-fable-5.1"
+      ]
     },
     "cursor": {
       "agents": {
         "Explore": {
           "model": "gpt-5.6-sol-high",
+          "category": "research",
           "effort": "high"
         },
         "Plan": {
           "model": "gpt-5.6-sol-high",
+          "category": "orchestrate",
           "effort": "high"
         },
         "best-of-n-runner": {
           "model": "gpt-5.6-sol-high",
+          "category": "implement",
           "effort": "high"
         },
         "browser_agent": {
           "model": "gpt-5.6-sol-high",
+          "category": "implement",
           "effort": "high"
         },
         "bugbot": {
           "model": "gpt-5.6-sol-high",
+          "category": "review",
           "effort": "high"
         },
         "claude": {
           "model": "gpt-5.6-sol-high",
+          "category": "implement",
           "effort": "high"
         },
         "claude-code-guide": {
           "model": "gpt-5.6-sol-high",
+          "category": "research",
           "effort": "high"
         },
         "cli_help": {
           "model": "gpt-5.6-sol-high",
+          "category": "lookup",
           "effort": "high"
         },
         "code-review": {
           "model": "gpt-5.6-sol-high",
+          "category": "review",
           "effort": "high"
         },
         "codebase_investigator": {
           "model": "gpt-5.6-sol-high",
+          "category": "research",
           "effort": "high"
         },
         "cursor-guide": {
           "model": "gpt-5.6-sol-high",
+          "category": "research",
           "effort": "high"
         },
         "default": {
           "model": "gpt-5.6-sol-high",
+          "category": "orchestrate",
           "effort": "high"
         },
         "explore": {
           "model": "gpt-5.6-sol-high",
+          "category": "research",
           "effort": "high"
         },
         "explorer": {
           "model": "gpt-5.6-sol-high",
+          "category": "research",
           "effort": "high"
         },
         "general-purpose": {
           "model": "gpt-5.6-sol-high",
+          "category": "implement",
           "effort": "high"
         },
         "generalPurpose": {
           "model": "gpt-5.6-sol-high",
+          "category": "implement",
           "effort": "high"
         },
         "generalist": {
           "model": "gpt-5.6-sol-high",
+          "category": "implement",
           "effort": "high"
         },
         "k-agent-adversarial-verifier": {
           "model": "claude-fable-5-1-thinking-high",
+          "category": "refute",
           "effort": "high"
         },
         "k-agent-change-auditor": {
           "model": "gpt-5.6-sol-high",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-code-searcher": {
           "model": "gpt-5.6-sol-high",
+          "category": "research",
           "effort": "high"
         },
         "k-agent-criteria-verifier": {
           "model": "claude-fable-5-1-thinking-high",
+          "category": "refute",
           "effort": "high"
         },
         "k-agent-deep-review": {
           "model": "gpt-5.6-sol-high",
+          "category": "orchestrate",
           "effort": "high"
         },
         "k-agent-findings-auditor": {
           "model": "gpt-5.6-sol-high",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-fresh-eyes": {
           "model": "gpt-5.6-sol-high",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-live-ui-review": {
           "model": "gpt-5.6-sol-high",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-post-review": {
           "model": "gpt-5.6-sol-high",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-pr-necessity-auditor": {
           "model": "gpt-5.6-sol-high",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-researcher": {
           "model": "gpt-5.6-sol-high",
+          "category": "research",
           "effort": "high"
         },
         "k-agent-review-controller": {
           "model": "gpt-5.6-sol-high",
+          "category": "orchestrate",
           "effort": "high"
         },
         "k-agent-review-worker": {
           "model": "gpt-5.6-sol-high",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-review-worker-cross": {
           "model": "claude-fable-5-1-thinking-high",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-reviewer": {
           "model": "gpt-5.6-sol-high",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-smol": {
-          "model": "auto"
+          "model": "auto",
+          "category": "memory"
         },
         "rem-agent": {
           "model": "gpt-5.6-sol-high",
+          "category": "research",
           "effort": "high"
         },
         "research": {
           "model": "gpt-5.6-sol-high",
+          "category": "research",
           "effort": "high"
         },
         "rubber-duck": {
           "model": "gpt-5.6-sol-high",
+          "category": "research",
           "effort": "high"
         },
         "security-review": {
           "model": "gpt-5.6-sol-high",
+          "category": "review",
           "effort": "high"
         },
         "task": {
           "model": "gpt-5.6-sol-high",
+          "category": "implement",
           "effort": "high"
         },
         "worker": {
           "model": "gpt-5.6-sol-high",
+          "category": "implement",
           "effort": "high"
         }
-      }
+      },
+      "counter_models": [
+        "claude-fable-5-1-thinking-high"
+      ]
     },
     "gemini": {
       "agents": {
         "Explore": {
           "model": "gemini-3.1-pro-preview",
+          "category": "research",
           "effort": "high"
         },
         "Plan": {
           "model": "gemini-3.1-pro-preview",
+          "category": "orchestrate",
           "effort": "high"
         },
         "best-of-n-runner": {
           "model": "gemini-3.1-pro-preview",
+          "category": "implement",
           "effort": "high"
         },
         "browser_agent": {
           "model": "gemini-3.1-pro-preview",
+          "category": "implement",
           "effort": "high"
         },
         "bugbot": {
           "model": "gemini-3.1-pro-preview",
+          "category": "review",
           "effort": "high"
         },
         "claude": {
           "model": "gemini-3.1-pro-preview",
+          "category": "implement",
           "effort": "high"
         },
         "claude-code-guide": {
           "model": "gemini-3.1-pro-preview",
+          "category": "research",
           "effort": "high"
         },
         "cli_help": {
           "model": "gemini-3.1-pro-preview",
+          "category": "lookup",
           "effort": "high"
         },
         "code-review": {
           "model": "gemini-3.1-pro-preview",
+          "category": "review",
           "effort": "high"
         },
         "codebase_investigator": {
           "model": "gemini-3.1-pro-preview",
+          "category": "research",
           "effort": "high"
         },
         "cursor-guide": {
           "model": "gemini-3.1-pro-preview",
+          "category": "research",
           "effort": "high"
         },
         "default": {
           "model": "gemini-3.1-pro-preview",
+          "category": "orchestrate",
           "effort": "high"
         },
         "explore": {
           "model": "gemini-3.1-pro-preview",
+          "category": "research",
           "effort": "high"
         },
         "explorer": {
           "model": "gemini-3.1-pro-preview",
+          "category": "research",
           "effort": "high"
         },
         "general-purpose": {
           "model": "gemini-3.1-pro-preview",
+          "category": "implement",
           "effort": "high"
         },
         "generalPurpose": {
           "model": "gemini-3.1-pro-preview",
+          "category": "implement",
           "effort": "high"
         },
         "generalist": {
           "model": "gemini-3.1-pro-preview",
+          "category": "implement",
           "effort": "high"
         },
         "k-agent-adversarial-verifier": {
           "model": "gemini-3.1-pro-preview",
+          "category": "refute",
           "effort": "high"
         },
         "k-agent-change-auditor": {
           "model": "gemini-3.1-pro-preview",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-code-searcher": {
           "model": "gemini-3.1-pro-preview",
+          "category": "research",
           "effort": "high"
         },
         "k-agent-criteria-verifier": {
           "model": "gemini-3.1-pro-preview",
+          "category": "refute",
           "effort": "high"
         },
         "k-agent-deep-review": {
           "model": "gemini-3.1-pro-preview",
+          "category": "orchestrate",
           "effort": "high"
         },
         "k-agent-findings-auditor": {
           "model": "gemini-3.1-pro-preview",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-fresh-eyes": {
           "model": "gemini-3.1-pro-preview",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-live-ui-review": {
           "model": "gemini-3.1-pro-preview",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-post-review": {
           "model": "gemini-3.1-pro-preview",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-pr-necessity-auditor": {
           "model": "gemini-3.1-pro-preview",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-researcher": {
           "model": "gemini-3.1-pro-preview",
+          "category": "research",
           "effort": "high"
         },
         "k-agent-review-controller": {
           "model": "gemini-3.1-pro-preview",
+          "category": "orchestrate",
           "effort": "high"
         },
         "k-agent-review-worker": {
           "model": "gemini-3.1-pro-preview",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-review-worker-cross": {
           "model": "pro",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-reviewer": {
           "model": "gemini-3.1-pro-preview",
+          "category": "review",
           "effort": "high"
         },
         "k-agent-smol": {
           "model": "gemini-3.8-flash",
+          "category": "memory",
           "effort": "high"
         },
         "rem-agent": {
           "model": "gemini-3.1-pro-preview",
+          "category": "research",
           "effort": "high"
         },
         "research": {
           "model": "gemini-3.1-pro-preview",
+          "category": "research",
           "effort": "high"
         },
         "rubber-duck": {
           "model": "gemini-3.1-pro-preview",
+          "category": "research",
           "effort": "high"
         },
         "security-review": {
           "model": "gemini-3.1-pro-preview",
+          "category": "review",
           "effort": "high"
         },
         "task": {
           "model": "gemini-3.1-pro-preview",
+          "category": "implement",
           "effort": "high"
         },
         "worker": {
           "model": "gemini-3.1-pro-preview",
+          "category": "implement",
           "effort": "high"
         }
-      }
+      },
+      "counter_models": [
+        "gemini-3.1-pro-preview",
+        "pro"
+      ]
     },
     "omp": {
       "agents": {
         "Explore": {
           "model": "@task",
+          "category": "research",
           "effort": "xhigh"
         },
         "Plan": {
           "model": "@plan",
+          "category": "orchestrate",
           "effort": "xhigh"
         },
         "best-of-n-runner": {
           "model": "@task",
+          "category": "implement",
           "effort": "xhigh"
         },
         "browser_agent": {
           "model": "@task",
+          "category": "implement",
           "effort": "xhigh"
         },
         "bugbot": {
           "model": "@advisor",
+          "category": "review",
           "effort": "xhigh"
         },
         "claude": {
           "model": "@task",
+          "category": "implement",
           "effort": "xhigh"
         },
         "claude-code-guide": {
           "model": "@task",
+          "category": "research",
           "effort": "xhigh"
         },
         "cli_help": {
           "model": "@smol",
+          "category": "lookup",
           "effort": "xhigh"
         },
         "code-review": {
           "model": "@advisor",
+          "category": "review",
           "effort": "xhigh"
         },
         "codebase_investigator": {
           "model": "@task",
+          "category": "research",
           "effort": "xhigh"
         },
         "cursor-guide": {
           "model": "@task",
+          "category": "research",
           "effort": "xhigh"
         },
         "default": {
           "model": "@plan",
+          "category": "orchestrate",
           "effort": "xhigh"
         },
         "explore": {
           "model": "@task",
+          "category": "research",
           "effort": "xhigh"
         },
         "explorer": {
           "model": "@task",
+          "category": "research",
           "effort": "xhigh"
         },
         "general-purpose": {
           "model": "@task",
+          "category": "implement",
           "effort": "xhigh"
         },
         "generalPurpose": {
           "model": "@task",
+          "category": "implement",
           "effort": "xhigh"
         },
         "generalist": {
           "model": "@task",
+          "category": "implement",
           "effort": "xhigh"
         },
         "k-agent-adversarial-verifier": {
           "model": "@advisor",
+          "category": "refute",
           "effort": "xhigh"
         },
         "k-agent-change-auditor": {
           "model": "@advisor",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-code-searcher": {
           "model": "@task",
+          "category": "research",
           "effort": "xhigh"
         },
         "k-agent-criteria-verifier": {
           "model": "@advisor",
+          "category": "refute",
           "effort": "xhigh"
         },
         "k-agent-deep-review": {
           "model": "@plan",
+          "category": "orchestrate",
           "effort": "xhigh"
         },
         "k-agent-findings-auditor": {
           "model": "@advisor",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-fresh-eyes": {
           "model": "@advisor",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-live-ui-review": {
           "model": "@advisor",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-post-review": {
           "model": "@advisor",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-pr-necessity-auditor": {
           "model": "@advisor",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-researcher": {
           "model": "@task",
+          "category": "research",
           "effort": "xhigh"
         },
         "k-agent-review-controller": {
           "model": "@plan",
+          "category": "orchestrate",
           "effort": "xhigh"
         },
         "k-agent-review-worker": {
           "model": "@advisor",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-review-worker-cross": {
           "model": "@advisor",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-reviewer": {
           "model": "@advisor",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-smol": {
           "model": "openrouter/google/gemini-3.7-flash:high",
+          "category": "memory",
           "effort": "high"
         },
         "rem-agent": {
           "model": "@task",
+          "category": "research",
           "effort": "xhigh"
         },
         "research": {
           "model": "@task",
+          "category": "research",
           "effort": "xhigh"
         },
         "rubber-duck": {
           "model": "@task",
+          "category": "research",
           "effort": "xhigh"
         },
         "security-review": {
           "model": "@advisor",
+          "category": "review",
           "effort": "xhigh"
         },
         "task": {
           "model": "@task",
+          "category": "implement",
           "effort": "xhigh"
         },
         "worker": {
           "model": "@task",
+          "category": "implement",
           "effort": "xhigh"
         }
-      }
+      },
+      "counter_models": [
+        "@advisor"
+      ]
     },
     "pi": {
       "agents": {
         "Explore": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "research",
           "effort": "xhigh"
         },
         "Plan": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "orchestrate",
           "effort": "xhigh"
         },
         "best-of-n-runner": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "implement",
           "effort": "xhigh"
         },
         "browser_agent": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "implement",
           "effort": "xhigh"
         },
         "bugbot": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "review",
           "effort": "xhigh"
         },
         "claude": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "implement",
           "effort": "xhigh"
         },
         "claude-code-guide": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "research",
           "effort": "xhigh"
         },
         "cli_help": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "lookup",
           "effort": "xhigh"
         },
         "code-review": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "review",
           "effort": "xhigh"
         },
         "codebase_investigator": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "research",
           "effort": "xhigh"
         },
         "cursor-guide": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "research",
           "effort": "xhigh"
         },
         "default": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "orchestrate",
           "effort": "xhigh"
         },
         "explore": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "research",
           "effort": "xhigh"
         },
         "explorer": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "research",
           "effort": "xhigh"
         },
         "general-purpose": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "implement",
           "effort": "xhigh"
         },
         "generalPurpose": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "implement",
           "effort": "xhigh"
         },
         "generalist": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "implement",
           "effort": "xhigh"
         },
         "k-agent-adversarial-verifier": {
           "model": "openrouter/anthropic/claude-sonnet-4.6:xhigh",
+          "category": "refute",
           "effort": "xhigh"
         },
         "k-agent-change-auditor": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-code-searcher": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "research",
           "effort": "xhigh"
         },
         "k-agent-criteria-verifier": {
           "model": "openrouter/anthropic/claude-sonnet-4.6:xhigh",
+          "category": "refute",
           "effort": "xhigh"
         },
         "k-agent-deep-review": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "orchestrate",
           "effort": "xhigh"
         },
         "k-agent-findings-auditor": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-fresh-eyes": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-live-ui-review": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-post-review": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-pr-necessity-auditor": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-researcher": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "research",
           "effort": "xhigh"
         },
         "k-agent-review-controller": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "orchestrate",
           "effort": "xhigh"
         },
         "k-agent-review-worker": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-review-worker-cross": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-reviewer": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "review",
           "effort": "xhigh"
         },
         "k-agent-smol": {
           "model": "openrouter/google/gemini-3.7-flash:high",
+          "category": "memory",
           "effort": "high"
         },
         "rem-agent": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "research",
           "effort": "xhigh"
         },
         "research": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "research",
           "effort": "xhigh"
         },
         "rubber-duck": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "research",
           "effort": "xhigh"
         },
         "security-review": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "review",
           "effort": "xhigh"
         },
         "task": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "implement",
           "effort": "xhigh"
         },
         "worker": {
           "model": "openrouter/openai/gpt-5.5:xhigh",
+          "category": "implement",
           "effort": "xhigh"
         }
-      }
+      },
+      "counter_models": [
+        "openrouter/anthropic/claude-sonnet-4.6:xhigh",
+        "openrouter/openai/gpt-5.5:xhigh"
+      ]
     }
   }
 }

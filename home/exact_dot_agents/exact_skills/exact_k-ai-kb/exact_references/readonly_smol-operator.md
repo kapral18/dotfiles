@@ -17,8 +17,8 @@ The parent tells you which mode this invocation runs: **judge** (decide what sta
 
 ## Judge mode (read path)
 
-The per-turn recall hook staged candidate capsules instead of injecting them, or the parent handed you an ad-hoc recall query.
-Decide what, if anything, the parent actually needs.
+The recall hook staged candidate capsules instead of injecting them (it points the parent here once per session-topic binding;
+later staging is silent), or the parent handed you an ad-hoc recall query. Decide what, if anything, the parent actually needs.
 
 Inputs (paths supplied by the parent's pointer line):
 

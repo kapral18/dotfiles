@@ -56,7 +56,8 @@ On the first turn (or when starting a fresh review):
 - run the PR Necessity + Correctly-Open Audit in pr_context_audits.md when reviewing someone else's PR or when authorship is unknown
 - run Existing Pending Review Reconciliation in pr_common.md before producing the final review draft
 - all review threads/replies (end-to-end)
-- full diff and enclosing files (never review diff hunks in isolation; inspect surrounding callers and sibling consumers)
+- full diff, scoped and read per pr_snapshot.md, and enclosing files (never review diff hunks in isolation;
+  inspect surrounding callers and sibling consumers)
 - historical provenance: in large repos, run targeted line-bounded probes (`git blame -L <start>,<end>` / `git log -n 5 -L`) on modified existing logic to understand why it was built and ensure past bug fixes are preserved
 - targeted local verification for risky claims (see pr_common.md)
 
@@ -64,8 +65,8 @@ On later turns (iterative/continued):
 
 - keep working from the internal findings queue
 - do not re-read everything unless needed
-- if the PR changed, run the intake gate for changed artifacts before relying on the prior queue
-- if a new comment/link/reference appears, run the intake gate for that artifact before relying on the prior queue
+- run the Drift check first (head and discussion, pr_snapshot.md); only the artifacts it reports as changed go through the intake gate again before relying on the prior queue
+- a new comment, link, or reference surfaces through that Drift diff, not through recall; run the intake gate for exactly those artifacts
 
 ## Base-Branch Context
 
@@ -73,6 +74,8 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 
 ## Agent-Assisted Review Contract
 
+- Before any launch, apply the review identity and lane ledger in `shared_rules.md` (Review Persistence):
+  record identity and every launch there, never relaunch an angle the ledger shows as `launched`, and never draft while a lane is outstanding.
 - Launch one `k-agent-reviewer`/`k-agent-review-worker` `correctness-regressions` lane for the PR diff when the harness supports subagents;
   add one extra lane only for an independently evidenced risk class.
   Select both from `lanes.md` and paste the chosen lane's `Lens skill` line and `Checks` list into the worker's scope packet;

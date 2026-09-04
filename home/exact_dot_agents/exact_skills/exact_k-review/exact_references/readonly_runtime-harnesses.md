@@ -55,6 +55,11 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
 
 ## Cursor
 
+- Transcript exports label the delegation tool `Subagent` (2026-09-04 export), while the cursor-agent 2026.09.02 bundle still names the call type `taskToolCall`; the `tool_name` the preToolUse hook receives is unverified.
+  The band gate therefore matches both `Task` and `Subagent`; a launch that passes a non-registry `model` is rewritten to the subagent type's band either way.
+- Generic adversarial-verifier launch: `subagent_type: generalPurpose` with `model:` set to the registry refute value.
+  The gate leaves a registry counter model untouched on a generic type, so the cross-family verifier survives the rewrite;
+  any other explicit model does not.
 - Cursor source supports custom subagent types (`SubagentType.custom.name`) and loads **project-level** `.cursor/agents` profile files only;
   user-level `~/.cursor/agents` is never scanned (probed 2026-08-30, cursor-agent 2026.08.28-a7f9513), so home-deployed profiles are unreachable.
   Where a workspace carries `k-agent-review-worker`/`k-agent-adversarial-verifier` profiles, launch lanes through them;

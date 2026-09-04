@@ -65,7 +65,7 @@ If a trigger surfaces mid-pass, stop and switch to `k-review` rather than half-d
    No finding may be fixed or reported until it survives this final pass.
    If a fix here reopens findings and a further round is warranted, hand off to `~/.agents/skills/k-converge/SKILL.md` rather than looping ad hoc.
 6. **Fix survivors.**
-   Apply the Verify-and-Fix Loop's fix, quality-gate, and Post-Review Stage steps from `judging_pipeline.md` over the surviving findings.
+   Apply the Verify-and-Fix Loop's fix, targeted-check, Post-Review Stage, and bound steps from `judging_pipeline.md` over the surviving findings.
    The **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage** are foregrounded for this skill.
    Do not commit or push unless explicitly asked.
 

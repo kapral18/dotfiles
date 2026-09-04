@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="820" viewBox="0 0 1500 820" role="img" aria-labelledby="title desc">
   <title id="title">Deep-review end-to-end phase order</title>
-  <desc id="desc">The controller routes and scopes, optionally runs PR necessity or intent audit first, launches a bounded registry-model reviewer roster plus optional blind fresh-eyes lane, merges and dedupes candidates, runs live UI when applicable, audits findings, runs final adversarial verification (cross-family preferred at equal capability), judges, acts, and then runs post-act verification whenever the working tree was edited.</desc>
+  <desc id="desc">The active root or main controller routes and scopes, optionally runs PR necessity or intent audit first, launches a bounded registry-model reviewer roster plus optional blind fresh-eyes lane, merges and dedupes candidates, runs live UI when applicable, audits findings, runs final adversarial verification (cross-family preferred at equal capability), judges, acts, and then runs post-act verification whenever the working tree was edited. Every delegated worker is a leaf and never launches or simulates another lane.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#7dd3fc"/></marker>
     <style>
@@ -9,7 +9,7 @@
   </defs>
   <rect class="bg" width="1500" height="820" rx="24"/>
   <text class="title" x="48" y="58">/k-deep-review: phase-owned review graph</text>
-  <text class="small" x="48" y="88">Workers investigate. The controller aggregates, judges, reconciles, and performs any gated side effect.</text>
+  <text class="small" x="48" y="88">Leaf workers investigate. The active root/main controller owns fan-out, judgment, reconciliation, and gated side effects.</text>
   <rect class="phase" x="70" y="150" width="230" height="116"/>
   <text class="text" x="100" y="190">1. Route + scope</text><text class="small" x="100" y="220">mode, authorship,</text><text class="small" x="100" y="246">PR/diff, constraints</text>
   <path class="line" d="M300 208 H380"/>
