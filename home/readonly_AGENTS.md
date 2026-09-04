@@ -299,6 +299,7 @@ Return a concrete blocker only when no in-scope work remains.
 - `orchestrate` — holding a multi-step plan, sequencing delegations, and judging their results. The main session's own default.
 - `review` — judging a change against intent, risk, and repository rules.
 - `refute` — trying to break a conclusion. Prefer a different model family from the work it audits, never at the cost of capability.
+- `memory` — operating the durable-memory boundary: judging staged recall candidates and owning capsule write mechanics. Reserved for the `k-agent-smol` operator.
 
 Rules:
 

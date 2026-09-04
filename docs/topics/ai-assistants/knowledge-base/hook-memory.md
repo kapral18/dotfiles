@@ -71,6 +71,7 @@ _active_topic.txt
 .session-topic-<session-id>.txt
 <topic>.txt / <topic>.worklog.jsonl
 .recall-seen-<session-key>.json
+.recall-pointed-<session-key>.json
 .worklog-queue-v1/<session-key>/  .worklog-locks-v1/
 ```
 
@@ -78,10 +79,10 @@ _active_topic.txt
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Ordering          | Atomic sequence files and stable `worklog_id`/`session_key`/`worklog_seq` make replay idempotent; activity and target locks keep harvest complete and shared-topic logs ordered                                                                                                                |
 | Bounds            | At most 256 pending events or 1 MiB per session; each worklog retains 200 complete JSONL records                                                                                                                                                                                               |
-| Lifecycle         | The tool-call recorder flushes synchronously with no idle wait; the background flusher exits after 80 ms idle or two seconds total; seven-day cleanup covers drained queue/error state plus stale `session-*` worklogs and `.recall-seen-*`/`.recall-candidates-*`/`.recall-staged-*` files    |
+| Lifecycle         | The tool-call recorder flushes synchronously with no idle wait; the background flusher exits after 80 ms idle or two seconds total; seven-day cleanup covers drained queue/error state plus stale `session-*` worklogs and `.recall-seen-*`/`.recall-candidates-*`/`.recall-staged-*`/`.recall-pointed-*` files    |
 | Failure behavior  | Tool calls fail open; startup warns about queue errors; harvest refuses pending/error state                                                                                                                                                                                                    |
 | Copilot subagents | `COPILOT_AGENT_SESSION_ID` routes writes to the parent session key; startup/read injection remains isolated                                                                                                                                                                                    |
-| Recall state      | Session key: `conversation_id` → `session_id` → `generation_id`. `.recall-seen-*` holds admitted ids (warm-start injections + `k-agent-smol` admissions); per-turn staging adds `.recall-candidates-*` (full rows for the `k-agent-smol` judge) and `.recall-staged-*` (pointer dedupe ledger) |
+| Recall state      | Session key: `conversation_id` → `session_id` → `generation_id`. `.recall-seen-*` holds admitted ids (warm-start injections + `k-agent-smol` admissions); per-turn staging adds `.recall-candidates-*` (full rows for the `k-agent-smol` judge), `.recall-staged-*` (pointer dedupe ledger), and `.recall-pointed-*` (once-per-session-topic pointer marker, written before the staged ledger so a failed write retries next turn instead of losing the pointer) |
 | Reboot survival   | `spec_mirror.py` mirrors named topics and `_active_topic.txt` to `~/.local/state/agent-specs/`, restores only missing files, and excludes `current`/`session-*`; wipe/merge forget removals                                                                                                    |
 
 ## Sources and verification

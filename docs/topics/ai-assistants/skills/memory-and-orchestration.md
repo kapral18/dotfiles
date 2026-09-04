@@ -55,6 +55,14 @@ Fork-closing consults a domain overlay's planning fork checklist when the verifi
 | Source   | [`exact_k-build`](../../../../home/exact_dot_agents/exact_skills/exact_k-build/)                                 |
 | Routing  | manual                                                                                                           |
 
+## `k-converge`
+
+| Field    | Value                                                                                                     |
+| -------- | ----------------------------------------------------------------------------------------------------------- |
+| Use when | re-attacking a claim or changeset until a round yields no correctness findings                              |
+| Source   | [`exact_k-converge`](../../../../home/exact_dot_agents/exact_skills/exact_k-converge/)                       |
+| Routing  | manual (`disable-model-invocation: true`); loaded by path as the bounded-loop procedure for `k-build`, `k-review`, and `k-light-review` |
+
 ## `k-text-tournament`
 
 | Field    | Value                                                                                                                                              |

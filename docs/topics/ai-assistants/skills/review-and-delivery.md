@@ -48,6 +48,17 @@ Controller preflight includes task-shaped `,ai-kb search` recall; relevant capsu
 
 PR creation and edits are human-visible publication flows. The skill requires full context intake before composition, an explicit publication preflight ledger for title/body/Test Plan/metadata, user approval for invented human-visible text, and read-back comparison after `gh pr create` or `gh pr edit`. Review-comment posting preserves review-side UI evidence attachments in the approval/preflight handoff, including md5s, dimensions, and controller image-QA status, while keeping local screenshot paths out of GitHub bodies. Keep PR reviewer fields unset; GitHub handles reviewer assignment automatically. Review submit bodies stay short: acknowledge the review outcome, and when inline comments exist, do not repeat their details. For immediate-team PR authors, clean reviews approve, findings below CRITICAL use comment review, and CRITICAL blockers request changes; outside or unknown-team authors use the normal severity ladder. Requested local-file uploads use the destination repository's web editor because the API cannot create `user-attachments` assets. The browser flow preserves existing draft text, treats attachment visibility as repository-scoped, and keeps embedding behind the publication gate. Pre-upload QA views every file, checks pairwise-distinct md5s, and rejects missing, empty, or dimensionally implausible images before upload.
 
+## `k-pr-fix-loop`
+
+| Field    | Value                                                                                                                                     |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | working actionable PR review comments through critical assessment, fix, verify, commit, push, PR update, reply, and resolve, with no per-step approval |
+| Source   | [`exact_k-pr-fix-loop`](../../../../home/exact_dot_agents/exact_skills/exact_k-pr-fix-loop/)                                                 |
+| Routing  | manual (`disable-model-invocation: true`); invoke only on explicit user request for this loop                                                |
+| Boundary | a bounded approval packet for this loop's normal effects only (scoped edits, verification, commit, force-with-lease push to the current PR branch, PR body updates, media uploads, review-thread replies/resolves) — does not authorize merging, rebasing, pulling/merging base, unrelated metadata changes, or broad refactors |
+
+Thin wrapper that sequences `k-review` (`references/pr_fix.md` in Drain Mode), `k-code-quality`/`k-code-quality-tests`, `k-git`, and `k-github`.
+
 ## `k-compose-pr`
 
 | Field    | Value                                                                                      |

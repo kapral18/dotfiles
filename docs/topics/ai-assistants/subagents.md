@@ -44,7 +44,7 @@ Verified discovery anchors:
 | ----------- | ------------------------------------------------------------------------------------------------------- |
 | Cursor CLI  | bundled `~/.cursor/skills-cursor/create-subagent/SKILL.md`; `cursor-agent 2026.06.15-18-00-12-6f5a2cf`  |
 | Copilot CLI | `copilot --agent <name>`, `/agent`, and `copilot help config`; version `copilot 1.0.63`                 |
-| Claude Code | `claude --agent`, `--agents`, `claude agents`, and `Task.subagent_type`; version `claude 2.1.179`       |
+| Claude Code | `claude --agent`, `--agents`, `claude agents`, and `Task.subagent_type`; version `claude 2.1.260`       |
 | Codex CLI   | `$CODEX_HOME/agents/*.toml` plus `multi_agent.spawn_agent` / `wait`; source `openai/codex@45f603302c45` |
 | Antigravity | `~/.gemini/config/skills` symlink + progressive skill disclosure; dynamic subagent protocol             |
 
