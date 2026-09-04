@@ -32,8 +32,8 @@ review_model_overrides:
     lanes_cross: "claude-fable-5.1"
   cursor:
     # Cross-family primary-finder lane: Cursor review runs GPT-5.6 SOL, so the cross lane takes
-    # Opus 5 High (Task-enum whitelisted, long-context task id like the refute row).
-    lanes_cross: "claude-opus-5-high"
+    # Fable 5.1 Thinking High (Task-enum whitelisted, long-context task id like the refute row).
+    lanes_cross: "claude-fable-5-1-thinking-high"
 # claude_code and codex are single-vendor catalogs: no lanes_cross entry exists, so an aux-slot
 # lookup falls back to `lanes` (or the category pick) and the flow reports finder_family degraded.
 
@@ -339,14 +339,14 @@ category_models:
     # claude-opus-5-high, claude-sonnet-5-thinking-max, composer-2.5, composer-2.5-fast,
     # cursor-grok-4.5-high-fast, cursor-grok-4.6-xhigh-fast, gemini-3.7-flash-high,
     # gpt-5.6-sol-high, gpt-5.6-terra-max.
-    # Anything else fails the spawn with "Invalid model selection", so categories here must stay inside
-    # that list even where a better id exists for a main session: kimi-k3 and
-    # claude-fable-5-1-low/-max are sellable to a main session but are not on that whitelist.
+    # Live Task validation on 2026-09-04 (cursor-agent 2026.09.02-c22c1a3) listed
+    # claude-fable-5-1-thinking-high but rejected claude-fable-5-1-high. Categories must use a
+    # Task-accepted id even where a different id exists for a main session.
     #
-    # User call 2026-08-24 (remapped 2026-08-29 after the Task enum rotated): match Copilot's default
+    # User call 2026-08-24 (remapped 2026-09-04 after the Task enum rotated): match Copilot's default
     # shape where the Cursor Task enum can spawn it. Primary categories use GPT-5.6 SOL High
-    # (sol-xhigh left the enum), refute uses Opus 5 High. The primary/refute rows are long-context
-    # task ids.
+    # (sol-xhigh left the enum), while refute uses Fable 5.1 Thinking High. The primary/refute rows
+    # are long-context task ids.
     #
     # User call 2026-08-30: the cheap lanes (mechanical, memory) use `auto` and let Cursor route
     # between Composer/Grok/other small models. `auto` is a router selector, not a catalog model:
@@ -391,7 +391,7 @@ category_models:
       thinking: ""
       context: "long"
     refute:
-      model: "claude-opus-5-high"
+      model: "claude-fable-5-1-thinking-high"
       effort: "high"
       thinking: ""
       context: "long"

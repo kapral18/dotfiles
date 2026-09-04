@@ -59,7 +59,7 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
   user-level `~/.cursor/agents` is never scanned (probed 2026-08-30, cursor-agent 2026.08.28-a7f9513), so home-deployed profiles are unreachable.
   Where a workspace carries `k-agent-review-worker`/`k-agent-adversarial-verifier` profiles, launch lanes through them;
   both carry resolver-rendered `model` frontmatter.
-- Resolved `lanes` are `gpt-5.6-sol-high`; resolved `verifier` is `claude-opus-5-high`.
+- Resolved `lanes` are `gpt-5.6-sol-high`; resolved `verifier` is `claude-fable-5-1-thinking-high`.
   `category_models.cursor.refute` carries `verifier_status: cross_family`, so the adversarial verifier runs as a cross-family lane.
   Omitted/default Cursor subagents can resolve to `composer-2.5-fast`; the CLI default selector is `auto`.
   Treat any omitted Cursor subagent model as a matrix bypass.

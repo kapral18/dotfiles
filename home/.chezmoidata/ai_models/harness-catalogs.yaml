@@ -174,10 +174,11 @@ cursor_models:
   # in tiering.yaml for the taxonomy's actual picks (marked recommended below where they match).
   # claude-fable-5-high was verified in cursor-agent 2026.08.21-4bf0f61 for main-session catalog
   # completeness; claude-fable-5-1-high (Cursor hyphenates the point version) was verified in live
-  # `cursor-agent models` 2026.08.31-4057e58. Cursor delegated refute stays on the Task-enum
-  # `claude-opus-5-high` id.
+  # `cursor-agent models` 2026.08.31-4057e58. The thinking-high variant was verified in both the
+  # main-session catalog and Task validation on cursor-agent 2026.09.02-c22c1a3 (2026-09-04).
   - id: "claude-fable-5-high"
   - id: "claude-fable-5-1-high"
+  - id: "claude-fable-5-1-thinking-high"
   - id: "claude-sonnet-5-low"
   - id: "claude-sonnet-5-medium"
   - id: "claude-sonnet-5-high"

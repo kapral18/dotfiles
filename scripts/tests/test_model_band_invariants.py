@@ -130,7 +130,7 @@ class TestModelBandInvariants(unittest.TestCase):
         self.assertEqual("auto", rows["mechanical"]["model"])
         self.assertEqual("", rows["mechanical"]["effort"])
         self.assertEqual("short", rows["mechanical"]["context"])
-        self.assertEqual("claude-opus-5-high", rows["refute"]["model"])
+        self.assertEqual("claude-fable-5-1-thinking-high", rows["refute"]["model"])
         self.assertEqual("high", rows["refute"]["effort"])
         self.assertEqual("long", rows["refute"]["context"])
         self.assertEqual("cross_family", rows["refute"]["verifier_status"])
@@ -997,6 +997,8 @@ class TestModelBandInvariants(unittest.TestCase):
         # Probed 2026-08-29 (cursor-agent 2026.08.28-a7f9513) from the Task-spawn
         # "Invalid model selection" rejection listing.
         cursor_task_models = {
+            # Listed by Task validation on cursor-agent 2026.09.02-c22c1a3 (2026-09-04).
+            "claude-fable-5-1-thinking-high",
             "claude-fable-5-high",
             "claude-opus-5-high",
             "claude-sonnet-5-thinking-max",
