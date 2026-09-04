@@ -1266,12 +1266,12 @@ class EvalScaffoldTest(unittest.TestCase):
                 ],
             )
         assert code == 0
-        assert report["cell_count"] == 4608
-        assert report["estimated_requests"] == 4608
-        assert report["estimated_input_tokens"] == 18_432_000
-        assert report["estimated_output_tokens"] == 4_608_000
-        assert report["estimated_total_tokens"] == 23_040_000
-        assert report["unsupported_cell_count"] == 1536
+        assert report["cell_count"] == 4752
+        assert report["estimated_requests"] == 4752
+        assert report["estimated_input_tokens"] == 19_008_000
+        assert report["estimated_output_tokens"] == 4_752_000
+        assert report["estimated_total_tokens"] == 23_760_000
+        assert report["unsupported_cell_count"] == 1584
         assert "unsupported_cells" not in report
         # Codex and Copilot leave this list because their subagents have statically pinned models.
         # Antigravity exposes only runtime dynamic-subagent model tiers.
@@ -1280,13 +1280,13 @@ class EvalScaffoldTest(unittest.TestCase):
                 "reason": "subagent_model_binding is 'runtime', not 'static'",
                 "harness": harness,
                 "agent_role": "subagent-static-pinned",
-                "count": 384,
+                "count": 396,
             }
             for harness in ("cursor", "gemini", "generic", "opencode")
         ]
         assert report["unsupported_summary"] == expected_unsupported
         assert sum(item["count"] for item in report["unsupported_summary"]) == report["unsupported_cell_count"]
-        assert report["risk_tiers"]["scenario_counts"]["standard"] == 69
+        assert report["risk_tiers"]["scenario_counts"]["standard"] == 72
         assert report["risk_tiers"]["cell_counts"]["safety"] == 288
         assert report["risk_tiers"]["unknown_rule_ids"] == []
         assert report["max_authorized_spend"] is None
@@ -1321,9 +1321,9 @@ class EvalScaffoldTest(unittest.TestCase):
             code, report = self._capture_json(evals.main, command)
             assert code == 2
             assert report["unblocked_count"] == 0
-            assert report["blocked_count"] == 4608
-            assert report["unsupported_cell_count"] == 1536
-            assert sum(item["count"] for item in report["unsupported_summary"]) == 1536
+            assert report["blocked_count"] == 4752
+            assert report["unsupported_cell_count"] == 1584
+            assert sum(item["count"] for item in report["unsupported_summary"]) == 1584
             assert {cell["status"] for cell in report["cells"]} == {"blocked"}
             assert {cell["repetition"] for cell in report["cells"]} == {1}
 
