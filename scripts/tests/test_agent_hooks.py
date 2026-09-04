@@ -838,8 +838,25 @@ class TestAgentHooks(unittest.TestCase):
             assert "verdict: Approve" not in context
             assert "Recent Hook Worklog" not in context
             assert (
-                len(context) <= len((REPO / "home/dot_config/exact_tmux/agent_prompts/prefix.txt").read_text()) + 1800
+                len(context) <= len((REPO / "home/dot_config/exact_tmux/agent_prompts/prefix.txt").read_text()) + 2000
             )
+
+    def test_session_context_keeps_prefix_tail_beyond_old_cap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_home = Path(tmp) / "config"
+            prefix_path = config_home / "tmux" / "agent_prompts" / "prefix.txt"
+            prefix_path.parent.mkdir(parents=True)
+            prefix_path.write_text(("P" * 3500) + "PREFIX_TAIL")
+            env = dict(os.environ)
+            env["XDG_CONFIG_HOME"] = str(config_home)
+
+            result = run_hook(
+                "executable_session_context.py",
+                {"hook_event_name": "sessionStart", "workspace_roots": [tmp]},
+                env=env,
+            )
+
+            assert "PREFIX_TAIL" in result["additional_context"]
 
     def test_session_context_appends_aikb_reminder_with_named_topic(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1742,6 +1759,7 @@ const mod = await import(process.argv[1]);
 const workspace = process.argv[2];
 let specFile = process.argv[3];
 let selectedTopic = "current";
+const verificationPrefix = "P".repeat(3500) + "PREFIX_TAIL";
 const handlers = {};
 const pi = {
   async exec(command, args) {
@@ -1764,7 +1782,7 @@ const pi = {
       return { code: 0, killed: false, stdout: "{}" };
     }
     if (command === "cat" && args[0].endsWith("/tmux/agent_prompts/prefix.txt")) {
-      return { code: 0, killed: false, stdout: "VERIFICATION_PREFIX" };
+      return { code: 0, killed: false, stdout: verificationPrefix };
     }
     if (command === "cat") return { code: 1, killed: false, stdout: "" };
     throw new Error(`unexpected exec: ${command} ${args.join(" ")}`);
@@ -1822,14 +1840,14 @@ console.log(JSON.stringify({
 
             assert "SHARED_SESSION_CONTEXT::pi-session-context" in payload["first"]["message"]["content"]
             assert payload["second"] is None
-            assert "VERIFICATION_PREFIX" in payload["grown"]["message"]["content"]
+            assert "PREFIX_TAIL" in payload["grown"]["message"]["content"]
             assert (
                 "SHARED_SESSION_CONTEXT::pi-session-context::topic shift"
                 in payload["topicChanged"]["message"]["content"]
             )
-            assert "VERIFICATION_PREFIX" in payload["compacted"]["message"]["content"]
+            assert "PREFIX_TAIL" in payload["compacted"]["message"]["content"]
             assert payload["afterCompactionBaseline"] is None
-            assert "VERIFICATION_PREFIX" in payload["grownAfterCompaction"]["message"]["content"]
+            assert "PREFIX_TAIL" in payload["grownAfterCompaction"]["message"]["content"]
             assert "SHARED_SESSION_CONTEXT::pi-session-context" in payload["resumed"]["message"]["content"]
             hook_payloads = [json.loads(line) for line in payload_log.read_text().splitlines()]
             assert hook_payloads == [
@@ -2318,6 +2336,14 @@ console.log(JSON.stringify({ content: result?.message?.content ?? null }));
         pi_extension = (REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts").read_text()
         omp_extension = (REPO / "home/dot_omp/private_agent/extensions/ai-kb-recall.ts").read_text()
         hook = (HOOKS / "executable_perturn_recall.py").read_text()
+
+        session_context = (HOOKS / "executable_session_context.py").read_text()
+        python_limit = int(re.search(r"^MAX_PREFIX_CHARS = (\d+)$", session_context, re.MULTILINE).group(1))
+        prefix_length = len((REPO / "home/dot_config/exact_tmux/agent_prompts/prefix.txt").read_text().strip())
+        assert prefix_length <= python_limit
+        for extension in (pi_extension, omp_extension):
+            extension_limit = int(re.search(r"^const PREFIX_MAX_CHARS = (\d+)$", extension, re.MULTILINE).group(1))
+            assert extension_limit == python_limit
 
         # Candidate-filter parity: the cosine gate/floor and workspace gate are unchanged.
         for extension in (pi_extension, omp_extension):

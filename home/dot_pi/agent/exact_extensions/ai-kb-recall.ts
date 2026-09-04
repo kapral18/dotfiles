@@ -45,7 +45,7 @@ const BODY_MAX_CHARS = 240
 const MIN_PROMPT_CHARS = 12
 const DETECT_MAX_CHARS = 20_000
 const CONJUNCTION_WINDOW_CHARS = 160
-const PREFIX_MAX_CHARS = 3000
+const PREFIX_MAX_CHARS = 6000
 const AI_AGENT_DEPTH = "AI_AGENT_DEPTH"
 // bm25/warm-start relative relevance floor: after the top hit, drop any hit whose
 // bm25Relevance() is worse than this fraction of the best hit's magnitude. Absolute

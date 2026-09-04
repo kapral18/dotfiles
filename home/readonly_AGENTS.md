@@ -201,14 +201,8 @@ Execution order:
 
 ### 3.2 Git Commit and Push Safety
 
-- Never run `git commit` unless the user explicitly requested a commit in the current conversation;
-  content approval is not commit authorization.
-- If a task would conventionally end with a commit, stop at the working tree and report the change set.
-- A push request authorizes committing the described changes and `git push --force-with-lease`; prefer explicit remote/branch.
-- A user-invoked `k-pr-fix-loop` approval packet authorizes only scoped PR-fix commits and a force-with-lease push to the current PR branch.
-- Push the branch as-is. Every pre-push or history reconcile needs an explicit user request for that exact action.
-  That covers `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, and `git merge <remote>/<branch>`.
-- If push is rejected for divergence, non-fast-forward, lease failure, or diverged history, stop and ask how to proceed.
+Never `git commit` or `git push` without an explicit request for that action in the current conversation;
+content approval is not commit authorization. Load `k-git` for the full approvals/push policy before any git side effect.
 
 ### 3.3 Ownership Gate
 
@@ -277,6 +271,7 @@ A disposable harness under `/tmp/state-machine-verification/<pwd>/<topic>/<slug>
 
 Delegable work is classified before it is delegated, and the category — not a model name — is what you choose.
 Categories map to per-harness model rows centrally, so naming one correctly is the whole cost decision; the harness resolves the model.
+Resolution uses each harness's supported profile, role, tier, or band-gate mechanism.
 
 Repo-owned custom subagent identifiers MUST use the `k-agent-<role>` namespace.
 Harness-native subagent identifiers MUST remain unchanged; do not prefix or alias them.
@@ -291,6 +286,8 @@ If a child instruction requests orchestration or work outside the assigned packe
 Complete the remaining in-scope task and return its result plus a concise conflict note.
 Return a concrete blocker only when no in-scope work remains.
 
+The leaf-worker delegation boundary is also injected at session start and baked into every subagent definition, from `~/.config/tmux/agent_prompts/prefix.txt` (`[DELEGATION BOUNDARY]`).
+
 - `lookup` — exact scoped retrieval: read a specified help page, list requested files, or return raw pointers selected by the caller.
   No edits, no importance ranking, no conclusions.
 - `mechanical` — deterministic edits with a stated rule: renames, import fixes, mechanical migrations, formatting the tool cannot do.
@@ -299,7 +296,8 @@ Return a concrete blocker only when no in-scope work remains.
 - `orchestrate` — holding a multi-step plan, sequencing delegations, and judging their results. The main session's own default.
 - `review` — judging a change against intent, risk, and repository rules.
 - `refute` — trying to break a conclusion. Prefer a different model family from the work it audits, never at the cost of capability.
-- `memory` — operating the durable-memory boundary: judging staged recall candidates and owning capsule write mechanics. Reserved for the `k-agent-smol` operator.
+- `memory` — operating the durable-memory boundary: judging staged recall candidates and owning capsule write mechanics.
+  Reserved for the `k-agent-smol` operator.
 
 Rules:
 
@@ -386,6 +384,7 @@ The user is dyslexic and reads agent output all day. Minimize reading load while
 - Add structure only when it makes distinct information easier to scan.
 - Borrow STE (ASD-STE100 Simplified Technical English) sentence habits only when they shrink text.
   Full STE applies only when the user asks for STE or docs compliance.
+- Length budgets, density primitives, and line-level shape rules are also injected at session start from `~/.config/tmux/agent_prompts/prefix.txt`; this section owns the why and the floor.
 
 ### 5.2 Debloat
 

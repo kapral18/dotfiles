@@ -42,7 +42,10 @@ EMBED_WARM_TIMEOUT_SECONDS = 4
 GH_IDENTITY_TIMEOUT_SECONDS = 2
 
 PREFIX_REL_PATH = "tmux/agent_prompts/prefix.txt"
-MAX_PREFIX_CHARS = 3000
+# Sized to hold the whole prefix.txt discipline core with headroom. A silent mid-sentence
+# truncation here drops the tail rules (time neutrality, line-shape) from every session,
+# and greps against the file still find them — so raise this whenever prefix.txt grows.
+MAX_PREFIX_CHARS = 6000
 
 WARMSTART_LIMIT = 3
 WARMSTART_QUERY_CHARS = 600
