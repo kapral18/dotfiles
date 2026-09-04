@@ -102,3 +102,24 @@ An item with no status is not passed, and an aggregate claim like "all validatio
 
 A `fail` blocks ENTER: fix the resolution or report the failure — never continue past a failing check.
 If `scripts/check_changes.ts` or a branch-local validation script is missing, report it as `unavailable` with the reason and rely on the focused checks above; silent omission of a missing script is the failure mode this rule exists to prevent.
+
+## Stage And Continue The Run
+
+Once the resolution is applied (Apply The Resolution, in `references/conflict-resolution.md`), stage and gate it, then hand back to the run:
+
+1. Review final diffs:
+   - `git diff -- <changed-files>`
+   - `git diff --cached -- <changed-files>`
+2. Stage only the resolved backport files:
+   - `git add <resolved-files>`
+3. With the resolution staged, run `yarn kbn bootstrap` and Validation (`references/conflict-resolution.md`) so the verifiers actually run and pass before you continue: all four checks, each ending with an explicit `pass`/`fail`/`unavailable` status.
+   A check with no status is not passed, and validation is not complete until every item has one.
+4. Confirm there is nothing left to resolve:
+   - `git diff --check --cached`
+   - `git diff --name-only --diff-filter=U`
+   - `git status --short --branch`
+5. Hand control back to the tool: send ENTER to the run's pane (`tmux send-keys -t '<pane>' C-m`) so it continues —
+   pushing the branch and opening the backport PR for this target.
+   Send ENTER only after step 4 shows no remaining conflicts, the files are staged, and every validation item has an explicit `pass` or `unavailable` status — no empty status cells; the tool re-prompts otherwise.
+6. Resume polling the pane (Drive The Backport Run): the run advances to the next target branch in the same checkout —
+   handle its conflict the same way if one occurs, or capture the completion summary when the run exits.

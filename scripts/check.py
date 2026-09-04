@@ -167,6 +167,10 @@ GATES: tuple[Gate, ...] = (
 
 TEST_RULES: tuple[TestRule, ...] = (
     TestRule(
+        prefixes=("home/exact_dot_agents/exact_skills/exact_k-present-pr/",),
+        tests=("tests/test_present_pr_template.py",),
+    ),
+    TestRule(
         prefixes=(
             "home/dot_config/exact_tmux/exact_scripts/pickers/",
             "home/dot_config/exact_tmux/exact_scripts/pick_url/",

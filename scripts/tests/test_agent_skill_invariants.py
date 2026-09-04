@@ -238,6 +238,10 @@ class TestAgentSkillInvariants(unittest.TestCase):
         # k-code-quality-tests owns the no-op-revert mechanic; debugging only points at it.
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-diagnosing-bugs/readonly_SKILL.md",
+            "Before regression-test or fix work, read and follow `~/.agents/skills/k-diagnosing-bugs/references/fix-and-cleanup.md` in full through cleanup and post-mortem.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-diagnosing-bugs/exact_references/readonly_fix-and-cleanup.md",
             "revert the fix in place",
         )
 
@@ -357,8 +361,19 @@ class TestAgentSkillInvariants(unittest.TestCase):
     def test_review_flows_iterate_to_fixed_point(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_pipeline.md",
+            "Controller: before proposing/applying review fixes, load `~/.agents/skills/k-review/references/review_fixes.md` for fix scope and the verify-and-fix spine.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_review_fixes.md",
             "**Bound.** One fix round, then one refutation round over the fix diff",
             "it is not redesigned in-review",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_pipeline.md",
+            "Before the Post-Review Stage, load `~/.agents/skills/k-review/references/review_post_stage.md`.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_review_post_stage.md",
             "**Second pass.** Re-run the four dimensions once after cleanup",
             "only a verified blocker or a Requirements Reset ends the stage earlier",
         )
@@ -452,6 +467,10 @@ class TestAgentSkillInvariants(unittest.TestCase):
     def test_kibana_domain_owns_pr_title_and_metadata_boundaries(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-elastic-domain/readonly_SKILL.md",
+            "Before preparing that text or its domain metadata, read and follow `~/.agents/skills/k-elastic-domain/references/github-composition.md` in full.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-elastic-domain/exact_references/readonly_github-composition.md",
             "generic skills must not invent fallback Kibana title style, labels, release-note state, or footer policy",
             "PR titles should use Kibana's bracketed area style",
             "Do not use a Conventional Commit header as the PR title unless that exact area has precedent",
@@ -469,6 +488,10 @@ class TestAgentSkillInvariants(unittest.TestCase):
     def test_git_commit_style_does_not_control_pr_titles(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-git/readonly_SKILL.md",
+            "Before composing a commit message or running commit, amend, or push commands, MUST load and follow `~/.agents/skills/k-git/references/commit-push.md`.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-git/exact_references/readonly_commit-push.md",
             "commit-message style does not transfer to PR titles",
             "PR titles are owned by `k-github` plus any verified domain overlay",
         )
@@ -511,6 +534,10 @@ class TestAgentSkillInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_shared_rules.md",
+            "Before drafting review comments/replies/descriptions or recommending a PR verdict, load `~/.agents/skills/k-review/references/review_delivery.md`.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_review_delivery.md",
             """**Self-review** (`authorship: self`):
   - Fix issues in the working tree before recommending a GitHub review verdict.
   - **Comment only** if the user explicitly asks to post self-review notes with remaining non-blocking findings.
@@ -617,6 +644,10 @@ class TestAgentSkillInvariants(unittest.TestCase):
     def test_elastic_domain_skill_extracts_pr_issue_templates_reference(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-elastic-domain/readonly_SKILL.md",
+            "Before preparing that text or its domain metadata, read and follow `~/.agents/skills/k-elastic-domain/references/github-composition.md` in full.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-elastic-domain/exact_references/readonly_github-composition.md",
             "`~/.agents/skills/k-elastic-domain/references/pr-issue-templates.md`",
             "include environment details when UI or deployment matters",
             "leave unknown stack/deployment/browser fields blank or marked for follow-up; do not invent them",
@@ -639,6 +670,13 @@ class TestAgentSkillInvariants(unittest.TestCase):
             "home/exact_dot_agents/exact_skills/exact_k-kbn-backport/readonly_SKILL.md",
             "`~/.agents/skills/k-kbn-backport/references/conflict-resolution.md`",
             "Triggered only when the run pauses with a conflict on the current target branch.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-kbn-backport/readonly_SKILL.md",
+            "When the run pauses on a conflict, MUST load and follow Stage And Continue The Run in `~/.agents/skills/k-kbn-backport/references/conflict-resolution.md` before sending ENTER.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-kbn-backport/exact_references/readonly_conflict-resolution.md",
             "Apply The Resolution, in `references/conflict-resolution.md`",
             "Validation (`references/conflict-resolution.md`) so the verifiers actually run and pass",
         )

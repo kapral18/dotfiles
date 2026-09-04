@@ -63,7 +63,7 @@ If a trigger surfaces mid-pass, stop and switch to `k-review` rather than half-d
    Otherwise, run `k-agent-adversarial-verifier` over the audited candidate set when the harness supports it;
    if not, run the Candidate Refutation Ladder inline and report `adversarial=inline-degraded`.
    No finding may be fixed or reported until it survives this final pass.
-   If a fix here reopens findings and a further round is warranted, hand off to `~/.agents/skills/k-converge/SKILL.md` rather than looping ad hoc.
+   If a fix here reopens findings and a further round is warranted, hand off to `~/.agents/skills/k-converge/SKILL.md` under its workflow-handoff contract; recheck light eligibility first.
 6. **Fix survivors.**
    Apply the Verify-and-Fix Loop's fix, targeted-check, Post-Review Stage, and bound steps from `judging_pipeline.md` over the surviving findings.
    The **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage** are foregrounded for this skill.

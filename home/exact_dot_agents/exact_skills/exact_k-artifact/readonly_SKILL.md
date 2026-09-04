@@ -11,35 +11,21 @@ Artifacts and runtime state live under `~/.cache/agent-artifacts` (or `$XDG_CACH
 The current cwd/git root and tmux session are identity metadata only; keep the worktree clean —
 artifacts live in the cache dir, never in a repo `.agent-artifacts/`, and `.gitignore` stays untouched.
 
-The generated-artifact chrome starts with only a fixed Feedback button at the top right.
-Feedback mode is hidden and capture is disabled by default, so artifact controls remain interactive without selection highlights or interception.
-Opening Feedback reveals the dock and enables a cursor-following hover highlight;
-users then click or select content to pin a stronger highlight.
-Cmd-click toggles additional targets into a multi-selection (teal highlight) so one prompt can address several pinned targets at once;
-a plain click returns to single-anchor mode, and multi-target items reach `poll` with a `targets` array alongside the first target's fields.
-Text selections promote the highlight to the surrounding card, section, list item, or table row.
-Repeated Alt-clicks expand the pinned highlight upward through ancestor elements, up to the top `html` element.
-Closing Feedback hides the chrome and highlights again while preserving queued feedback.
-The open dock expands upward into an anchor card and attaches that context when users add feedback to the tray.
+## Generated artifacts
 
-The live overlay mode injects the same feedback idea into an already-open real page through Playwriter. It does not iframe the target app.
-It adds a namespaced Shadow DOM dock, intercepts page clicks while capture is active, has a pause/resume button for normal app use, and can be removed without changing app source.
-Live feedback captures minimal DOM context: URL, title, selector, role/label, compact text or selection, bounding rect, ancestor hints, and Cmd-click/Ctrl-click multi-target arrays.
+Before authoring, writing, opening, or updating a generated artifact, MUST load and follow `~/.agents/skills/k-artifact/references/generated-artifacts.md`.
+It owns generated feedback behavior, semantic metadata, ambient theming, and the generated-artifact workflow.
+
+## Live overlays
+
+Before injecting or using a live-page overlay, MUST load and follow `~/.agents/skills/k-artifact/references/live-overlay.md`.
+It owns Playwriter attachment, injection, live feedback, CSP fallback, and removal.
+
+## Common behavior
 
 Feedback is sent as batches, so treat `poll` output as a grouped set of requested changes.
 `poll` also returns an `archive` path for the delivered JSONL so feedback can be recovered if the agent crashes after receiving it.
 Design artifact contents with an original look that fits the task, rather than copying the visual language of Lavish or any other third-party artifact tool.
-
-Author generated artifacts with semantic feedback metadata whenever the artifact contains distinct things a user may point at.
-Tag meaningful regions with `data-artifact-id`, plus optional `data-artifact-kind`, `data-artifact-label`, `data-artifact-title`, `data-artifact-summary`, and `data-artifact-parent`.
-Embed a compact manifest in `<script type="application/json" id="agent-artifact-manifest">` with `artifactId`, `entities`, and `relations` or `edges`.
-Use IDs for meaning and relationships for context; CSS selectors remain a fallback locator.
-When a user clicks or Cmd-clicks tagged content, `poll` returns `entity_id`, `entity_kind`, `entity_label`, `entity`, `entity_ancestors`, and `relations` alongside the selector/text fields.
-Choose IDs that are stable inside the artifact and readable by an agent, such as `entity.section.auth-options.option.jwt` or `chart.latency.series.p95`.
-
-`write` and `open` inject a low-specificity ambient theme by default.
-The theme is inferred from broad local worktree signals such as dotfiles, docs, web app, or codebase markers.
-Use `,artifact theme` or `,artifact theme --json` before authoring when you need to understand the current style vocabulary.
 
 Do not use:
 
@@ -63,30 +49,6 @@ Do not use:
 ,artifact list
 ,artifact clean
 ```
-
-## Workflow
-
-1. Run `,artifact theme` to see the detected ambient style.
-2. Generate original standalone HTML in `/tmp` or stream it directly to `,artifact write <name> --open`.
-   Add semantic metadata to selectable sections, cards, table rows, graph nodes, chart series, options, risks, claims, or other entities that feedback may target.
-3. Tell the user the browser artifact is open and that its Feedback button enables annotation mode.
-   Keep the agent running `,artifact poll <name>` when waiting for feedback.
-4. When `poll` returns feedback, read the returned `batches`/`prompts` and apply the whole batch.
-   Update the cached artifact with `,artifact write <name> --open`, then poll again if more feedback is expected.
-5. Run `,artifact poll-stop <name>` when you are no longer waiting for that artifact's feedback.
-   Run `,artifact stop` when the local review session is no longer needed.
-
-## Live Overlay Workflow
-
-1. Load and follow the Playwriter skill first; live overlay injection depends on a real browser page.
-2. Navigate or attach to the target page with Playwriter and verify it is the intended local/dev target.
-3. Run `,artifact live script <name>` and inject the returned JavaScript into the Playwriter page with `page.evaluate`.
-4. Tell the user the overlay is armed.
-   Capture mode intercepts page clicks; use the overlay's Pause button when normal page interaction is needed.
-5. Keep `,artifact poll <name>` running. Apply returned feedback batches as usual, using the live context fields when they are present.
-6. If a strict page CSP blocks posting to the local artifact server, retrieve retained batches with `window.__agentArtifactLiveOverlay.drain()` through Playwriter.
-   Report the blocker/fallback.
-7. Remove the overlay with its Remove button, or call `window.__agentArtifactLiveOverlay.destroy()` from Playwriter.
 
 ## Poller Lifecycle
 

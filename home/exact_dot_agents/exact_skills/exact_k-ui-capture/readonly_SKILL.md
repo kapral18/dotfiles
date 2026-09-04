@@ -29,7 +29,7 @@ Use only proof-mode captured or reused assets in this flow; classify synthetic c
 Other shared cores, loaded when their step applies:
 
 - runtime targets, Playwriter preflight, readiness, data/setup ladder: loaded by the proof-mode contract via `~/.agents/skills/k-review/references/live-ui-runtime.md`
-- video recording mechanics: the Video Recording section of `~/.agents/skills/k-playwriter/SKILL.md`
+- video recording mechanics: before recording, load and follow `~/.agents/skills/k-playwriter/references/video-recording.md` in full
 - pre-upload QA, browser-assisted upload, and markdown embedding rules: `~/.agents/skills/k-github/references/attachments.md`
 
 ## Out of scope (use the named alternative)
@@ -47,31 +47,10 @@ Pick exactly one entry from what the request supplies:
   Skip the audit: run the proof-mode contract with the user's described target as the oracle. Steps 3-5 apply; upload only when asked.
 - **Diff audit** — the user wants UI changes discovered and proven ("capture media proof for this diff/PR"). Run steps 1-5 in order.
 
-## Step 1 — Audit the diff for capturable UI changes
+## Steps 1–2 — Audit the diff and assemble capture inputs
 
-Inspect the change set and itemize what can be visually proven:
-
-1. Resolve the diff: `git diff origin/<base>...HEAD` plus staged/unstaged working-tree changes, or `gh pr diff <n>` when a PR is named.
-2. Load `~/.agents/skills/k-ui-capture/references/proof-mode.md` and build its Behavior inventory:
-   apply the split test (one item per independently observable difference), the classification test (static state → screenshot pair;
-   interactive sequence, timing, or continuous behavior → video pair), the coverage plan (dedicated pair per item by default;
-   one shared pair when same-trigger items are each plainly visible in it), and the baseline test (`baseline` vs `intra-change` vs head-only) to every user-visible change.
-   Mechanical, test-only, or non-rendered changes are not capture items.
-3. When the diff has no user-visible surface, report `Not applicable` with the changed-file evidence and stop.
-
-Completion criterion: every changed file is accounted for as part of an inventory item or explicitly excluded, every item carries its media classification, or a `Not applicable` verdict with evidence ends the run.
-
-## Step 2 — Assemble the capture inputs
-
-Build the exact inputs the proof-mode contract's Caller supplies section requires, per item:
-
-- the built/changed worktree path and branch/sha, and the changed UI paths from Step 1
-- the intended visual/UI state or behavior (the oracle), derived from the diff, linked issue/PR context, or the user's description;
-  ask the user once when an item's oracle stays ambiguous after that
-- the selected target packet and required runtime config, resolved as the proof-mode contract's Caller supplies section directs
-- a distinct `/tmp/ui-capture-<item-slug>/` output folder per item, or per shared pair when the coverage plan consolidates items
-
-Completion criterion: every item has a testable oracle and a complete input set, or the item is reported blocked with what is missing.
+For the Diff audit entry, before inspecting the diff or assembling its capture inputs, read and follow `~/.agents/skills/k-ui-capture/references/diff-audit.md` in full.
+Follow both completion criteria before Step 3. The Direct verify entry skips these steps as specified above.
 
 ## Step 3 — Reuse check against published PR proof
 
@@ -91,17 +70,9 @@ Completion criterion: every routed item has a `met`/`unmet`/`blocked` verdict an
 
 ## Step 5 — Gated upload and markdown
 
-Load `~/.agents/skills/k-github/references/attachments.md` and follow it end to end:
-pre-upload QA, the browser-assisted upload, and the presentation rules for embedding.
-Upload only newly captured media; Step 3 supplies the URLs for reused pairs.
-Build the proof-mode Claim map before drafting embed text: every behavior claim in the body/comment maps to an inventory item with an adequate asset; drop unmapped claims.
-Place `baseline` pairs in the PR/issue body's main Screenshots/Videos section.
-Place `intra-change` pairs in a separate comment/thread when requested for reviewer re-verification.
-Publish `head-only` proof only in an explicitly approved non-baseline location after the user sees the claim map.
-Uploading is a GitHub side effect: show QA summary, claim map, and destination, then confirm explicit approval or a workflow-defined approval packet.
-After upload, emit the ready-to-paste markdown block built per those presentation rules.
-
-Completion criterion: new media uploaded and markdown emitted with a complete claim map and a verified publication channel, or local manifest paths returned with upload marked `pending_approval`/`skipped`.
+Before preparing an upload or embed markdown, read and follow `~/.agents/skills/k-ui-capture/references/upload-and-markdown.md` in full.
+Upload only when asked and explicitly approved or covered by a workflow-defined approval packet;
+otherwise return local manifest paths with `pending_approval`/`skipped`.
 
 ## Deliverable
 

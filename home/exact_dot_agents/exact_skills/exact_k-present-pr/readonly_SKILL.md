@@ -18,12 +18,15 @@ This is not a code-review skill; it does not modify the repo under review.
 Deployed alongside this file:
 
 - `~/.agents/skills/k-present-pr/references/template.html` — the **proven** scaffold.
-  Copy it; fill the placeholder tokens; never rewrite its CSS/JS.
+  Use the bundled `scripts/template.py` to copy its fixed CSS/JS; never rewrite its CSS/JS.
 - `~/.agents/skills/k-present-pr/references/authoring.md` — the design laws.
   It covers the review-readiness map, introduced-concepts primer, 5-act spine, fixed concept/notes sidebars, beat-to-beat continuity, one-medium-per-beat dedup, show-the-load-bearing-line, role classification, image prompting, and rail rules.
   Follow it; it is the difference between signal and a wall of text.
 
-Read both fully before writing any HTML.
+Read `authoring.md` fully before writing any HTML.
+Create the output directory, then run `python3 ~/.agents/skills/k-present-pr/scripts/template.py prepare ~/.agents/skills/k-present-pr/references/template.html <output>/<slug>.content.html`.
+Read the entire prepared `.content.html` before editing it; it contains all editable markup and template instructions.
+The helper reads the complete template and replaces only its fixed CSS/JS with reserved markers; do not alter those markers.
 
 ## Contract
 
@@ -127,7 +130,7 @@ Per `authoring.md`:
 
 ### 5. Fill the template
 
-- Copy `template.html` to `<output>/<slug>-presentation.html`.
+- Edit the prepared `<output>/<slug>.content.html`.
 - First resize the content blocks to match the preflight: remove unused concept cards, sidebar notes, sample beats/cards/rows and duplicate only the blocks the story needs.
 - Fill the concept primer, review-readiness map, and both sidebars before Act I/II beats.
   The left sidebar must name each introduced concept by concept area/layer and include the readiness map plus Act I-IV story links;
@@ -141,7 +144,9 @@ Per `authoring.md`:
 - HTML-escape `<`, `>`, `&` inside all code beats.
 - Prefer template-token replacement or targeted block edits over regenerating a whole HTML body from scratch.
   Whole-body generation tends to introduce quote escaping and dropped-block cleanup loops.
-- Run cheap static checks before browser verification:
+- Run `python3 ~/.agents/skills/k-present-pr/scripts/template.py render ~/.agents/skills/k-present-pr/references/template.html <output>/<slug>.content.html <output>/<slug>-presentation.html` to restore the exact fixed CSS/JS.
+  After further content edits, render again. Do not open or verify the unassembled `.content.html` as the presentation.
+- Run cheap static checks on the rendered presentation before browser verification:
   - placeholder check must target real template tokens only, e.g. `\{\{[A-Z0-9_]+\}\}`;
     grep for that token shape rather than generic braces, because the template contains normal CSS/JS braces.
   - every changed file/group appears exactly once in the ledger,

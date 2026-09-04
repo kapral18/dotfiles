@@ -36,6 +36,33 @@ The `description` frontmatter is the primary routing signal. For non-manual skil
 | Entrypoint | `SKILL.md` in each skill folder                                                          |
 | References | optional `references/` under the skill folder                                            |
 
+## Loading procedures by branch and phase
+
+Entrypoints retain routing, shared boundaries, and mandatory load triggers. Complete branch procedures live in references; a reference is required before its matching action, not optional background reading. Review controllers record phase, evidence, and unresolved gates in the existing review spec. After compaction they reopen instructions needed by the current phase and revisit gates invalidated by new evidence.
+
+| Skill                     | Conditionally loaded procedure                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `k-review`                | State, change, and product gates; drafting/delivery; fix loop; post-review stage                        |
+| `k-deep-review`           | Scope, necessity, roster, findings audit, adversarial verification, judgment, live-UI result validation |
+| `k-artifact`              | Generated HTML or live overlay                                                                          |
+| `k-cli-skills`            | New skill authoring or installed-version upgrade                                                        |
+| `k-communication`         | Existing-thread reply procedure; `external-replies.md` remains required for all external drafting       |
+| `k-diagnosing-bugs`       | Fix and cleanup after assessment                                                                        |
+| `k-elastic-domain`        | GitHub composition or commit attribution                                                                |
+| `k-git`                   | Commit/push details before the corresponding operation                                                  |
+| `k-kbn-stack`             | Runtime lifecycle and isolation before start, reuse, stop, or runtime interpretation                    |
+| `k-kbn-backport`          | Staging and continuing a conflicted run, in the existing conflict reference                             |
+| `k-kibana-console-monaco` | Typed demo Enter handling                                                                               |
+| `k-letsfg`                | Rendered-UI browser fallback                                                                            |
+| `k-playwriter`            | Video recording and frame verification                                                                  |
+| `k-research`              | Source inspection or multi-source claims                                                                |
+| `k-ui-capture`            | Diff inventory or upload/embedding                                                                      |
+| `k-walkthrough`           | Diagram node metadata and example                                                                       |
+
+`k-present-pr` instead uses a bundled template helper: the model reads the complete editable HTML while the helper preserves fixed CSS/JS. Authoring and browser verification remain required.
+
+Measure the entrypoint plus every reference actually needed for the path. Splitting alone does not reduce a complete workflow's total: all-branch paths add routing overhead. These changes target irrelevant branch reads and phase reloading; they do not retire rules or establish universal model-behavior equivalence.
+
 ## Cross-skill hygiene
 
 - Composition skills sanitize public GitHub text before drafting or posting.

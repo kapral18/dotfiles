@@ -23,6 +23,17 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         for snippet in snippets:
             assert snippet not in text, f"{relative_path} should not contain: {snippet}"
 
+    def assert_ordered_steps(self, relative_path: str, *steps: str) -> None:
+        # Markdown formatters renumber separated lists; the labels and execution order bind.
+        text = (REPO / relative_path).read_text(encoding="utf-8")
+        previous = -1
+        for step in steps:
+            label = re.sub(r"^\d+\.\s+", "", step)
+            match = re.search(r"^\d+\. " + re.escape(label) + r"$", text, re.MULTILINE)
+            self.assertIsNotNone(match, f"{relative_path} is missing ordered step: {step}")
+            self.assertGreater(match.start(), previous, f"{relative_path} has reordered step: {step}")
+            previous = match.start()
+
     def test_deep_review_dedups_restated_worker_descriptions_keeps_controller_validation(self):
         self.assert_file_not_contains(
             "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
@@ -31,11 +42,18 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
+            "Before accepting, rejecting, or rerunning a live-UI worker result, load and follow this complete result-validation procedure.\nRequired reference: `~/.agents/skills/k-deep-review/references/live-ui-validation.md`.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/exact_references/readonly_live-ui-validation.md",
             "Controller validation: reject and rerun any `k-agent-live-ui-review` result that:",
             "uses the controller cwd or base/main runtime as the PR/head target for an explicit PR/branch review without proving that checkout is on the reviewed PR/head branch/sha",
             "Do not reject or rerun a result that reports a valid Playwriter harness blocker:",
-            "`~/.agents/skills/k-review/references/pr-necessity-auditor.md`",
             "`~/.agents/skills/k-review/references/live-ui-review.md`",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
+            "`~/.agents/skills/k-review/references/pr-necessity-auditor.md`",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr-necessity-auditor.md",
@@ -50,6 +68,13 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
             "named fresh-eyes profiles and generic fresh-eyes launches both use the resolved lane model",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
+            "Before route/scope discovery or rebuilding its packet, load and follow this complete phase procedure.\nRequired reference: `~/.agents/skills/k-deep-review/references/route-scope.md`.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/exact_references/readonly_route-scope.md",
             "model_required=<resolved value|inherit|default>",
         )
         self.assert_file_contains(
@@ -98,9 +123,19 @@ class TestReviewPolicyInvariants(unittest.TestCase):
             "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
             "5. findings audit, inline or delegated by the findings-audit delegation conditions",
             "6. final adversarial verification (cross-family preferred at equal capability, SOP §3.7) over the audited candidate set",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
+            "Before selecting or launching reviewer lanes, load and follow this complete phase procedure, including the fresh-eyes trigger and launch barrier.\nRequired reference: `~/.agents/skills/k-deep-review/references/reviewer-roster.md`.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/exact_references/readonly_reviewer-roster.md",
+            "Launch one to three sighted lanes by default.",
+        )
+        self.assert_ordered_steps(
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
             "4. **Run controller findings audit on candidate findings.**",
             "5. **Run final adversarial verification.**",
-            "Launch one to three sighted lanes by default.",
         )
         for mode_file, ordering in (
             (
@@ -151,7 +186,14 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         # The controller must actually own the shared work the lanes were told to skip.
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
+            "Before selecting or launching reviewer lanes, load and follow this complete phase procedure, including the fresh-eyes trigger and launch barrier.\nRequired reference: `~/.agents/skills/k-deep-review/references/reviewer-roster.md`.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/exact_references/readonly_reviewer-roster.md",
             "Run any repo-wide suite, full build, or whole-suite test run **once here**",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
             "Lanes deliberately do not load `k-review/SKILL.md`, `shared_rules.md`, `pr_common.md`, `lanes.md`, or a mode file.",
         )
         # Three harnesses can put the router back into a lane through profile frontmatter,
@@ -194,6 +236,10 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         pipeline = "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_pipeline.md"
         self.assert_file_contains(
             pipeline,
+            "Controller: before proposing/applying review fixes, load `~/.agents/skills/k-review/references/review_fixes.md` for fix scope and the verify-and-fix spine.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_review_fixes.md",
             "**Fix scope:** a fix stays inside the behavior the reviewed diff already changes.",
             "a new user-visible state (loading, error, retry), a new prop or export on a component outside the diff's package",
             "it does not build the feature",
@@ -202,11 +248,16 @@ class TestReviewPolicyInvariants(unittest.TestCase):
             "`k-converge` is the only unbounded loop",
             "append `round: <n> fixed=<files> gates=<result>` to the review spec",
         )
-        self.assert_file_not_contains(
+        for owner in (
             pipeline,
-            "Repeat until no new surviving findings or hygiene findings remain",
-            "Repeat until the four dimensions return clean",
-        )
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_review_fixes.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_review_post_stage.md",
+        ):
+            self.assert_file_not_contains(
+                owner,
+                "Repeat until no new surviving findings or hygiene findings remain",
+                "Repeat until the four dimensions return clean",
+            )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_local_changes.md",
             "Missing error handling, states, or flows are proposals under the Fix scope rule",
@@ -218,6 +269,10 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         # The state harness must be an oracle, not a test-name grep (session records 259, 384).
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_core.md",
+            "## State-Machine Verification Gate\n\nApply SOP `### 3.6 State-Machine Verification` to reviewed behavior that is stateful, parser-like, branch-heavy, or dependent on ordered conditions.\n\nExamples include parsers, tokenizers, formatters, routing/matching logic, retry/workflow loops, permission matrices, compatibility-sensitive branching, multi-flag control flow.\n\nRequired reference: `judging_state.md` (matching heading).",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_state.md",
             "The harness is an executable independent oracle",
             "checks that test names appear in a test file, is not a harness",
             "report `harness=tests` and write no manifest",
@@ -281,8 +336,17 @@ class TestReviewPolicyInvariants(unittest.TestCase):
             "Do not generate new findings; the finder lanes own discovery.",
         )
         # Sweep candidates bypass the audit unless each controller re-audits them inline.
-        for controller in (
+        self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
+            "new-candidate",
+            "Before deciding whether to skip or launch final adversarial verification, load and follow this complete phase procedure, including its miss-sweep audit.\nRequired reference: `~/.agents/skills/k-deep-review/references/adversarial-verification.md`.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/exact_references/readonly_adversarial-verification.md",
+            "new-candidate",
+            "Findings-Set Audit",
+        )
+        for controller in (
             "home/dot_pi/agent/exact_agents/k-agent-review-controller.md.tmpl",
             "home/dot_omp/private_agent/exact_agents/k-agent-review-controller.md.tmpl",
         ):
@@ -372,6 +436,13 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-research/readonly_SKILL.md",
             "## Multi-source claim branch",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-research/readonly_SKILL.md",
+            "Before collecting, verifying, deepening, or synthesizing those claims, read and follow `~/.agents/skills/k-research/references/multi-source-claims.md` in full.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-research/exact_references/readonly_multi-source-claims.md",
             "A finder never verifies its own claim.",
             "primary-source URL",
             "exact supporting quote",

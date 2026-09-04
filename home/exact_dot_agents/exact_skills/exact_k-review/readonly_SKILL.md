@@ -20,7 +20,8 @@ Contract:
   - `~/.agents/skills/k-review/references/judging_pipeline.md`
   - `~/.agents/skills/k-review/references/shared_rules.md`
   - `~/.agents/skills/k-review/references/authorship.md`
-- Mode files reference those files but do not re-load them.
+- Mode files reference those files but do not re-load them while in context.
+- Follow required phase references; ledger phase, references, completed evidence, and open gates. Blocked gates stay blocking.
 - For PR modes, also load `~/.agents/skills/k-review/references/pr_common.md` and `~/.agents/skills/k-review/references/pr_snapshot.md` once.
 - Every reference stays under 20 KB so one read returns it whole (`scripts/verify_agent_file_sizes.py`);
   a concatenated bundle would be truncated by the strictest harness view tool, so there is none.
@@ -28,6 +29,7 @@ Contract:
 - Reference and open skill files under `~/.agents/skills/` only.
   `~/.cursor/skills` is a symlink to the same tree; opening a file under both paths is a duplicate read of the same bytes.
 - After a context summary, re-open only the files the active mode needs; the summary is not a substitute for them.
+  Resume from Review Persistence; apply PR Drift. Reopen invalidated gates; never replay completed phases or relaunch outstanding lanes.
 - Do not load `k-github`, `k-git`, `k-compose-pr`, `k-communication`, `k-kibana-labels-propose`, or a CI skill at intake;
   label, release-note, and version checks run only when the user asks for labels or a PR body.
   Load `k-buildkite` only when the CI Coverage Gate needs a job's contents, and `k-github` only at the posting step.
@@ -42,8 +44,7 @@ Standard review uses a bounded reviewer roster as an execution mechanism, not as
 
 - finder work is delegated when the active harness can launch workers
 - every mode runs adversarial/refutation before acting or drafting
-- when refutation keeps yielding findings round after round, switch to `~/.agents/skills/k-converge/SKILL.md`:
-  it fixes the exit condition and the correctness-only filter so rounds terminate instead of turning into prose churn
+- when refutation keeps yielding findings round after round, switch to `~/.agents/skills/k-converge/SKILL.md` and follow its workflow-handoff contract
 - live UI runs only when UI/runtime evidence is needed; use `k-deep-review` when the user asks for maximum rigor, mandatory deep orchestration, fresh-eyes/context-pack treatment, or the full PR necessity/controller graph
 
 ## Secondary Skill Escalation

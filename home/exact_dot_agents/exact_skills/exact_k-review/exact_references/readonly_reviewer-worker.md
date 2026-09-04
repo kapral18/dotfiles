@@ -8,7 +8,7 @@ lane models are resolver-rendered in the profiles (`review-agent-model.partial`)
 ## Load exactly this
 
 - this file
-- `~/.agents/skills/k-review/references/judging_core.md`
+- `~/.agents/skills/k-review/references/judging_core.md`, plus the conditional references it requires for matching gates or assigned checks
 - `~/.agents/skills/k-review/references/context-pack.md`, when the scope packet names a pack
 - the lens skill named by your lane entry, when it names one
 

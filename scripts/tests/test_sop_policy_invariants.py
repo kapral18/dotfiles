@@ -273,15 +273,22 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "A user-invoked `k-pr-fix-loop` approval packet is an explicit commit request for scoped PR-fix commits on the current PR branch",
             "An explicit push request covers committing the changes it describes",
             "Do not push without an explicit push request",
+            "Never print configured remote URLs verbatim",
+            "Resolve repository and PR identity with platform metadata (`gh repo view`, `gh pr view`) and list remote names with `git remote`",
+            "Redaction is not permission to inspect credential-bearing configuration",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-git/readonly_SKILL.md",
+            "Before composing a commit message or running commit, amend, or push commands, MUST load and follow `~/.agents/skills/k-git/references/commit-push.md`.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-git/exact_references/readonly_commit-push.md",
             'Interpret a user request to "push" as explicit approval for `git push --force-with-lease`',
             "A user-invoked `k-pr-fix-loop` approval packet is an explicit force-with-lease push request for the current PR branch only",
             "Prefer explicit remote/branch in the restated command",
             "Never run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, or `git merge <remote>/<branch>` automatically before pushing",
             "If push is rejected for divergence, non-fast-forward, lease failure, or diverged history, stop and ask how to proceed",
             "Do not reconcile branch history unless the user explicitly asks for that exact action",
-            "Never print configured remote URLs verbatim",
-            "Resolve repository and PR identity with platform metadata (`gh repo view`, `gh pr view`) and list remote names with `git remote`",
-            "Redaction is not permission to inspect credential-bearing configuration",
         )
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
@@ -455,6 +462,13 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Missing/extra/unproven rows are candidates",
             "Compare fix delta with requested delta",
             "Trigger: semantic delta changes how a domain relationship is interpreted",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_core.md",
+            "## Semantic-Projection & Sibling-Consumer Gate\n\nTrigger: semantic delta changes how a domain relationship is interpreted, projected, stored, rendered, compared, filtered, or serialized.\n\nRequired reference: `judging_change.md` (matching heading).",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_change.md",
             "Delta divergence",
         )
         self.assert_file_contains(

@@ -60,7 +60,7 @@ Build this inventory before the published-proof gate and before any capture; bot
    - static state — the changed surface is fully visible in one settled rendered state: before/after screenshot pair.
      Setup actions may happen off-camera before the screenshot, such as opening a menu, command palette, popover, or modal.
      If the fix changes only that opened surface's static styling, copy, layout, visibility, or contrast, keep it screenshot-classified.
-   - interactive sequence — the fixed behavior is the action sequence itself, the transition/result across time, or a single behavior that needs multiple states to be understood: short before/after video pair (Playwright `recordVideo`, see the Video Recording section of `~/.agents/skills/k-playwriter/SKILL.md`).
+   - interactive sequence — the fixed behavior is the action sequence itself, the transition/result across time, or a single behavior that needs multiple states to be understood: short before/after video pair (Playwright `recordVideo`, before recording, load and follow `~/.agents/skills/k-playwriter/references/video-recording.md` in full).
      The video drives the same trigger on both sides — before: perform the action, show the old outcome; after:
      repeat it, show the new outcome.
    - Multi-state proof without action semantics can use a small ordered screenshot set when that conveys the behavior clearly;
@@ -120,7 +120,7 @@ Apply on every capture run (any repo):
    Finish every after-clip for tip A before swapping tree/runtime state to tip B for before-clips (or the reverse planned order);
    keep each tip's batch complete under that tip's tree.
 5. **Clip focus.**
-   Start published clips at the proving interaction; trim login, welcome, and idle load lead-in before pre-upload QA (see the Video Recording section of `~/.agents/skills/k-playwriter/SKILL.md`).
+   Start published clips at the proving interaction; trim login, welcome, and idle load lead-in before pre-upload QA (before recording, load and follow `~/.agents/skills/k-playwriter/references/video-recording.md` in full).
 6. **Isolation.**
    Run capture as its own workstream: finish or park unrelated merges, history rewrites, and CI-fix churn before starting recorders so the worktree under the camera stays the intended tip.
 

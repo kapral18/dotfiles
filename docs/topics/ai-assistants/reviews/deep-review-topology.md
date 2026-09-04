@@ -28,6 +28,8 @@ The flow is a phased investigation pipeline, not a loose collection of agents. T
 
 ## Using it
 
+Phase procedures live under `k-deep-review/references/`: `route-scope.md`, `pr-necessity.md`, `reviewer-roster.md`, `findings-audit.md`, `adversarial-verification.md`, `judgment.md`, and `live-ui-validation.md`. The entrypoint requires each before its decision/action, including checking whether the necessity gate can be skipped. The existing review ledger records phase, completed gates, unresolved obligations, and evidence. Compaction reloads the current procedure; changed premises restart the earliest invalidated phase.
+
 ### Route and scope
 
 The controller first resolves the route and scope packet: PR/local mode, role, target diff/PR/thread set, base branch, user constraints, expected output, and any intent dependencies needed for judgment.

@@ -57,11 +57,15 @@ Fork-closing consults a domain overlay's planning fork checklist when the verifi
 
 ## `k-converge`
 
-| Field    | Value                                                                                                     |
-| -------- | ----------------------------------------------------------------------------------------------------------- |
-| Use when | re-attacking a claim or changeset until a round yields no correctness findings                              |
-| Source   | [`exact_k-converge`](../../../../home/exact_dot_agents/exact_skills/exact_k-converge/)                       |
+| Field    | Value                                                                                                                                   |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | re-attacking a claim or changeset until a round yields no correctness findings                                                          |
+| Source   | [`exact_k-converge`](../../../../home/exact_dot_agents/exact_skills/exact_k-converge/)                                                  |
 | Routing  | manual (`disable-model-invocation: true`); loaded by path as the bounded-loop procedure for `k-build`, `k-review`, and `k-light-review` |
+
+Each round pins its own snapshot while retaining the original review scope, prior findings, and mutation inventory. Existing staging and working changes are preserved. A dry verdict requires zero changes, completed regression checks and fresh refutation, and no unresolved findings or mutation verdicts. Equivalent mutations require behavioral evidence; mutation counts measure selected coverage, not confidence. Reusing verified raw artifacts never replaces fresh judgments or required checks.
+
+The shared `workflow-handoff.md` reference governs entry from explicitly invoked `k-build`, `k-review`, and `k-light-review` flows. Each caller supplies its existing scope, findings, evidence, checks, gates, and authorization; builds retain the approved packet/criteria ledger and light reviews recheck eligibility. Convergence replaces only the bounded-pass repetition/check schedule. Fix-scope, read-only, ownership, reset, decision, and publication limits remain binding. Results return to the caller’s ledger and remaining completion gates; the handoff grants no new side-effect permissions.
 
 ## `k-text-tournament`
 

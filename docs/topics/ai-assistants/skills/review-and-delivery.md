@@ -15,6 +15,8 @@ These skills govern review methodology, GitHub side effects, and human-readable 
 | Source   | [`exact_k-review`](../../../../home/exact_dot_agents/exact_skills/exact_k-review/)               |
 | Related  | [Review workflow](../reviews/index.md)                                                           |
 
+`k-review` keeps all applicability triggers in `judging_core.md` and loads `judging_state.md`, `judging_change.md`, or `judging_product.md` before the matching check. Delivery, fixes, and the fix-diff stage use `review_delivery.md`, `review_fixes.md`, and `review_post_stage.md`. Direct reviewer/refuter contracts permit the same required gate references while retaining their read-only role boundaries.
+
 ## `k-deep-review`
 
 | Field    | Value                                                                                        |
@@ -25,6 +27,8 @@ These skills govern review methodology, GitHub side effects, and human-readable 
 | Related  | [Deep-review topology](../reviews/deep-review-topology.md)                                   |
 
 The controller now materializes a read-only context pack before fan-out and puts its path plus `head_sha` in every worker scope packet. Workers load `context-pack.md`, verify the manifest freshness gate, and report `pack_used`, `pack_stale`, or `pack_missing` instead of re-fetching PR artifacts already present in the pack.
+
+The deep controller loads complete procedures at their owning phases through seven references: `route-scope`, `pr-necessity`, `reviewer-roster`, `findings-audit`, `adversarial-verification`, `judgment`, and `live-ui-validation`. Phase order, worker boundaries, action permissions, and completion gates remain in the entrypoint. Resume uses the existing ledger and current instructions; new evidence reopens affected phases.
 
 After lane merge/dedup, applicable `k-agent-live-ui-review` runs first, then findings audit cleans the candidate set, then final adversarial verification tries to refute the audited findings and sweeps for what every lane missed. The sighted reviewer roster is bounded: one baseline lane for simple single-surface diffs, extra lanes only for scope-evidenced independent risk. Lenses, triggers, and checks come from `k-review/references/lanes.md`, and the controller pastes the selected entry into the packet so a lane never loads the catalog, the router, or the mode files.
 
@@ -50,11 +54,11 @@ PR creation and edits are human-visible publication flows. The skill requires fu
 
 ## `k-pr-fix-loop`
 
-| Field    | Value                                                                                                                                     |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Use when | working actionable PR review comments through critical assessment, fix, verify, commit, push, PR update, reply, and resolve, with no per-step approval |
-| Source   | [`exact_k-pr-fix-loop`](../../../../home/exact_dot_agents/exact_skills/exact_k-pr-fix-loop/)                                                 |
-| Routing  | manual (`disable-model-invocation: true`); invoke only on explicit user request for this loop                                                |
+| Field    | Value                                                                                                                                                                                                                                                                                                                           |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | working actionable PR review comments through critical assessment, fix, verify, commit, push, PR update, reply, and resolve, with no per-step approval                                                                                                                                                                          |
+| Source   | [`exact_k-pr-fix-loop`](../../../../home/exact_dot_agents/exact_skills/exact_k-pr-fix-loop/)                                                                                                                                                                                                                                    |
+| Routing  | manual (`disable-model-invocation: true`); invoke only on explicit user request for this loop                                                                                                                                                                                                                                   |
 | Boundary | a bounded approval packet for this loop's normal effects only (scoped edits, verification, commit, force-with-lease push to the current PR branch, PR body updates, media uploads, review-thread replies/resolves) — does not authorize merging, rebasing, pulling/merging base, unrelated metadata changes, or broad refactors |
 
 Thin wrapper that sequences `k-review` (`references/pr_fix.md` in Drain Mode), `k-code-quality`/`k-code-quality-tests`, `k-git`, and `k-github`.
@@ -99,3 +103,7 @@ The default message shape is three parts: the point in the first sentence, the d
 | Use when | building an HTML scrollytelling walkthrough of a PR or local diff                          |
 | Source   | [`exact_k-present-pr`](../../../../home/exact_dot_agents/exact_skills/exact_k-present-pr/) |
 | Routing  | manual                                                                                     |
+
+Read all of `authoring.md`. Run the bundled `scripts/template.py prepare TEMPLATE DRAFT` and read the entire editable draft before filling it. `render TEMPLATE DRAFT OUTPUT` restores the template's exact fixed CSS/JS into a self-contained presentation. Keep its reserved markers unchanged, render again after content edits, and run all static and browser checks on the final output before opening it for the user. The canonical template remains unchanged; the helper replaces only the fixed-code read/copy operation.
+
+Marker validation rejects unknown raw editing comments while allowing HTML-escaped marker text in visible code examples.

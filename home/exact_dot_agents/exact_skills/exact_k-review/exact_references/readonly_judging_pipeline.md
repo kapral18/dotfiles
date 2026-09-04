@@ -4,6 +4,10 @@
 - Delivery-agnostic: no GitHub, SCSI, or delivery rules.
 - Finding-generation gates, the Candidate Refutation Ladder, and the severity definitions live in `judging_core.md`.
 
+Controller: before proposing/applying review fixes, load `~/.agents/skills/k-review/references/review_fixes.md` for fix scope and the verify-and-fix spine.
+Before the Post-Review Stage, load `~/.agents/skills/k-review/references/review_post_stage.md`.
+Read-only/no-fix paths do not load execution mechanics.
+
 ## Coverage Checklist (Do Not Skip)
 
 On PR surfaces, first apply the CI Coverage Gate (`pr_common.md`).
@@ -59,41 +63,10 @@ Merging duplicate findings is a deduplication task, never evidence that the unde
 
 ## Post-Review Stage (Run On Any Change-Producing Flow)
 
-Trigger: a flow has applied fixes and mechanical quality gates are green.
-Applied-fix flows include local-changes verify-and-fix, PR-fix self-fixes, k-light-review, or any pass that edited the working tree.
-Mechanical quality gates: lint, type_check, tests. Subject: the **fixes themselves** (the changes the review just made).
-
-1. **Derive the fix diff.** Scope to what this pass changed; original diff under review is not the subject.
-2. **Run the four dimensions** over that fix diff: redundancy, verbosity, semantic + logical duplication, gaps.
-3. **Resolve in the working tree.** Fix the smallest correct change now. In read-only contexts, surface a finding + proposed fix.
-4. **Re-check if edited.**
-   If post-review fixes touched code, re-run the targeted checks for the touched files (focused tests, lint on those files);
-   the repo-wide gate runs once per delivery (Verify-and-Fix step 5).
-5. **Second pass.** Re-run the four dimensions once after cleanup.
-   Hygiene that survives the second pass is reported, not edited again; only a verified blocker or a Requirements Reset ends the stage earlier.
-
-This stage closes the loop: lint/types/tests prove fixes _work_; the four dimensions prove fixes are _clean_.
+Before auditing a produced fix diff, load `review_post_stage.md` (matching heading).
+Read-only roles report proposed fixes; they never gain edit permission.
 
 ## Verify-and-Fix Loop (Self-Authored Change-Producing Review)
 
-Shared verify-and-fix spine for self-authored, fix-authorized review surfaces. Each surface sets scope and base-context stance first.
-Read-only lanes report precise fixes for the parent to apply instead of editing.
-
-1. **Build the findings queue.** Walk the whole diff against the Coverage Checklist, ordered by severity.
-2. **Audit the set.** Run the Findings-Set Audit over candidate findings and proposed fixes.
-3. **Final refutation.**
-   Run the Candidate Refutation Ladder (`judging_core.md`) or the available `k-agent-adversarial-verifier` lane over the audited set;
-   keep only survivors, record reachability, and drop refuted/unverified findings.
-4. **Fix each finding** highest severity first: verify from evidence, apply the smallest correct change, and do not commit/push unless asked.
-   For non-trivial or ambiguous fixes, state options and proceed with the recommended default unless the user intervenes.
-   **Fix scope:** a fix stays inside the behavior the reviewed diff already changes.
-   It becomes a proposal, reported with the smallest change and left unapplied, when it needs a new user-visible state (loading, error, retry), a new prop or export on a component outside the diff's package, a file outside the packages the diff touches, or new translated strings beyond the changed component.
-   A review that finds a defect it cannot fix inside that scope reports the defect; it does not build the feature.
-5. **Targeted checks.** Per fix, run the focused tests and lint for the touched files.
-   The repo-wide gate (full suite, type check, check script) runs once, after the last fix and before the report, launched in the background and collected on its completion signal; never block a turn on it and never re-run it per iteration.
-6. **Post-Review Stage.** Run it over this pass's fix diff, then re-run the targeted checks if cleanup touched code.
-7. **Bound.** One fix round, then one refutation round over the fix diff (Candidate Refutation Ladder or the verifier lane).
-   A finding the refuter raises against the fix goes to the user as a decision with the smallest proposed change;
-   it is not redesigned in-review.
-   After the round, append `round: <n> fixed=<files> gates=<result>` to the review spec and emit a one-line status to the user.
-   `k-converge` is the only unbounded loop, and it runs only when the user invokes it.
+For controller fix proposals/execution, load `review_fixes.md` (matching heading).
+Read-only roles report proposed fixes; they never gain edit permission.

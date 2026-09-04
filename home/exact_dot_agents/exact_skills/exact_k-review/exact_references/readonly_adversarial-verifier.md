@@ -17,7 +17,7 @@ The parent controller supplies one of these candidate shapes:
   plus plan artifact path/body, referenced code/docs already resolved by the parent, and mode `plan_review.md`
 
 Load `~/.agents/skills/k-review/references/judging_core.md` for the severity definitions, Truth Validation Framework, and Replacement/Migration Parity Gate classes.
-Load only `judging_core.md` (and the context pack when named) from the review tree; discovery belongs to other lanes.
+Load only `judging_core.md`, its conditional references required by the candidate or assigned check, and the context pack when named from the review tree; discovery belongs to other lanes.
 When the scope packet names a context pack, load `~/.agents/skills/k-review/references/context-pack.md` and consume the pack per that contract before any live PR fetch.
 
 Per candidate, attempt refutation in this order and stop at the first decisive result:

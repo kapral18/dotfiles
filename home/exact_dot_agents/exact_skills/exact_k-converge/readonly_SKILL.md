@@ -8,9 +8,11 @@ disable-model-invocation: true
 
 Loop adversarial rounds against a claim or changeset until a round comes back **dry**.
 Dry means one full round produced zero changes to code, tests, or published text.
+Required verification and fresh refutation must finish, with no unresolved correctness findings or mutation verdicts.
 
 `disable-model-invocation: true` blocks direct auto-invocation of this skill only.
-Sibling skills' explicitly invoked flows (`k-build`, `k-review`, `k-light-review`) may still load this file by path as their bounded-loop procedure.
+Explicitly invoked `k-build`, `k-review`, or `k-light-review` flows may hand off here.
+Before a handoff, load and follow `~/.agents/skills/k-converge/references/workflow-handoff.md` in full.
 
 Convergence fails in two directions, and both are defects:
 
@@ -23,7 +25,7 @@ The filter below is what makes dry reachable. Set it before round 1, not after a
 
 State both in the open, before the first round:
 
-- **Exit**: a round with zero changes to code, tests, or published text.
+- **Exit**: a full round with zero changes to code, tests, or published text, completed required verification and fresh refutation, and no unresolved correctness findings or mutation verdicts.
 - **Filter**: act only on a **correctness** finding. Three classes:
   - (a) a test that can pass while the code is broken — vacuous, non-discriminating, passes for the wrong reason
   - (b) a production bug: wrong behavior, unhandled input, regression against base
@@ -36,29 +38,48 @@ Completion criterion: exit and filter are written down and the filter names the 
 
 ## Step 2 — Pin the baseline
 
-Record what a change would be measured against: HEAD sha, `git status` (expect clean), and a hash of any published text (PR/issue body) you might edit.
+Record the original review scope, HEAD sha, `git status`, index state, and recoverable contents/hashes of scoped working files, including untracked files.
+Hash any targeted published text (PR/issue body); record not applicable when there is no publication target.
+Existing staged or unstaged changes are valid input. Never clean, reset, or unstage them to establish a baseline.
 
-Without a pinned baseline you cannot tell a dry round from an unobserved one.
+Pin a new snapshot at each round's start; retain the original scope, prior fixes, findings, and mutation inventory across rounds.
+Compare round changes against that round's snapshot. Never narrow review or regression scope to only the latest fixes.
+Unexpected source, input, dependency, or environment drift invalidates affected evidence;
+resolve it and rerun affected verification before relying on that evidence.
 
-Completion criterion: sha, tree state, and body hash captured.
+Completion criterion: original scope and current round snapshot captured; pre-existing changes recoverable;
+publication hash or non-applicability recorded.
 
 ## Step 3 — Mutate before you argue
 
-**Mutation is the strongest available signal, and it is cheap.** Run it before spawning any reviewer.
+Run mutation probes before spawning any reviewer in every round.
+First verify the unmutated control passes the checks used as mutation oracles.
 
 For every behavioral change in the diff, break the production code deliberately and check whether a test fails.
 Cover each branch of each new predicate: invert it, force each return value, neuter each guard, make each regex match nothing and everything, and raise each cap to effectively infinite.
 
-A mutation no test catches is a class (a) finding.
-Record mutation-count caught vs total; that ratio is the confidence claim you are entitled to make.
+Verify each mutation actually applied and exercises the intended contract.
+Count it as caught only when a test fails for that violation; unrelated setup, syntax, or harness failures do not count.
+A surviving contract-breaking mutation is a class (a) finding.
+Exempt an equivalent mutation only with evidence of unchanged observable behavior across its affected contract;
+uncertainty remains unresolved. Repair invalid probes and replace equivalent probes where needed to exercise the behavioral change.
+Never use those classifications to erase a coverage gap.
+Report caught/total valid contract-breaking mutations, equivalent and invalid probes with evidence, and unresolved verdicts separately.
+The ratio measures the selected mutations' coverage, not confidence in correctness.
+For instruction artifacts, distinguish text/structure preservation from consumer behavior;
+string-presence or deletion checks do not prove agent compliance.
 
-Restore after each mutation and verify the tree is clean at the end.
+Restore after each mutation from a copy and verify exact restoration of working contents and index state, including pre-existing changes.
 
-Completion criterion: every behavioral change in the diff has at least one mutation, each with a caught/uncaught verdict, and the tree is clean.
+Completion criterion: every behavioral change has a valid contract-breaking probe, every verdict has evidence, and no mutation residue remains.
+Unresolved probes prevent a dry verdict.
 
 ## Step 4 — Fan out refuters under the filter
 
-Spawn independent refuters, each on a distinct dimension (correctness, published claims, test integrity, environment/CI).
+Spawn fresh refutation passes every round, each on a distinct dimension (correctness, published claims, test integrity, environment/CI).
+Keep their judgments independent.
+Verified raw artifacts may be reused after checking identity, hashes, and dependencies;
+prior verdicts never replace fresh refutation or required checks.
 Give each the filter verbatim and tell it to return "no correctness findings" rather than pad.
 
 Two rules that come from real failures:
@@ -76,6 +97,7 @@ Fix class (a)/(b)/(c) findings. List refusals with reasons.
 Class (c) fixes that amend commits or edit published text must pass the SOP §3.2 commit gate and §3.8 publication approval before being applied; working-tree fixes need no gate.
 
 After fixing, re-run the mutation probes that cover the touched code.
+Every round must also rerun all required regression checks for the full review scope; targeted post-fix probes do not replace them.
 A fix that quietly weakens a test is the failure this step exists to catch — a test-harness "improvement" can neutralize the very tests it was meant to protect.
 
 Beware the **no-op revert**: `git stash` on a file whose change is already committed stashes nothing, so the tests trivially pass and you conclude "verified by reverting".
@@ -85,8 +107,11 @@ Completion criterion: every finding is fixed or explicitly refused, and post-fix
 
 ## Step 6 — Round verdict
 
-Compare against the Step 2 baseline. Changed anything? Increment the round and return to Step 3 — the fix itself is now unverified.
-Changed nothing? The loop is dry; stop.
+Compare against this round's Step 2 snapshot. Changed anything?
+Increment the round, pin its snapshot in Step 2, and repeat Steps 3–5 over the full retained scope. Changed nothing?
+Stop as dry only after required verification and fresh refutation finish with no unresolved correctness findings or mutation verdicts.
+Incomplete checks, pending refuters, unexplained drift, and unresolved findings are not dry.
+Continue locally resolvable work; report a verified external blocker when it prevents completion.
 
 Report per round: mutations caught/total, findings by class, refusals, and what changed.
 
