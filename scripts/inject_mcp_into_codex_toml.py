@@ -48,16 +48,19 @@ def _valid_approval_mode(value: object) -> bool:
 
 
 def _parse_toml_table_path(line: str) -> list[str] | None:
+    # None leaves the current table unchanged; [] resets an unsupported header.
     stripped = line.strip()
-    if not stripped.startswith("[") or not stripped.endswith("]") or stripped.startswith("[["):
+    if not stripped.startswith("["):
         return None
+    if stripped.startswith("[["):
+        return []
 
-    inner = stripped[1:-1].strip()
+    inner = stripped[1:]
     raw_parts: list[str] = []
     current: list[str] = []
     quote: str | None = None
     escape = False
-    for char in inner:
+    for index, char in enumerate(inner):
         if quote is not None:
             current.append(char)
             if escape:
@@ -74,13 +77,18 @@ def _parse_toml_table_path(line: str) -> list[str] | None:
         elif char == ".":
             raw_parts.append("".join(current).strip())
             current = []
+        elif char == "]":
+            trailing = inner[index + 1 :].strip()
+            if trailing and not trailing.startswith("#"):
+                return []
+            raw_parts.append("".join(current).strip())
+            parts = [_parse_toml_key(part) for part in raw_parts]
+            return [part for part in parts if part is not None] if all(part is not None for part in parts) else []
+        elif char == "#":
+            return []
         else:
             current.append(char)
-    if quote is not None or escape:
-        return None
-    raw_parts.append("".join(current).strip())
-    parts = [_parse_toml_key(part) for part in raw_parts]
-    return [part for part in parts if part is not None] if all(part is not None for part in parts) else None
+    return []
 
 
 def _parse_toml_string_value(raw_value: str) -> str | None:

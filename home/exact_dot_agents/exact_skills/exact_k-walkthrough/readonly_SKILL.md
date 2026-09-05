@@ -80,9 +80,4 @@ Written walkthroughs do not require this reference.
 - Progressive disclosure: start high-level, then explore specific components
 - Clarify relationships: show data flow, control flow, and dependency relationships
 
-## Tools (If Available)
-
-Some agent environments expose walkthrough-specific tools. If present, they are typically used like:
-
-- `walkthrough(topic, context)` to explore relationships and structure
-- `walkthrough_diagram(code, summary, nodes)` to render an interactive diagram
+When available, tool calls are `walkthrough(topic, context)` and `walkthrough_diagram(code, summary, nodes)`.

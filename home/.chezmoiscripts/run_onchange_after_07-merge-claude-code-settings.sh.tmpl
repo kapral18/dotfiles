@@ -42,5 +42,7 @@ chezmoi_record_artifact --id claude-settings \
   --producer 07-merge-claude-code-settings --profile "$profile" \
   --target "$HOME/.claude/settings.json" --ownership-adapter whole-file \
   --input "$src" \
+  --input "$source_dir/.chezmoidata/ai_models/tiering.yaml" \
   --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --transform "$source_dir/.chezmoiscripts/run_onchange_after_07-merge-claude-code-settings.sh.tmpl" \
   --consumer claude

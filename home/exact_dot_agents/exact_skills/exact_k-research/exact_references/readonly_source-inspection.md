@@ -2,11 +2,8 @@
 
 ## Source-inspection branch
 
-First actions:
-
-1. Identify or confirm the canonical upstream repo.
-2. Resolve the exact ref that answers the user's question before reading code.
-3. Clone or refresh `/tmp/agent-src/<owner>/<repo>`, then inspect locally at that ref.
+Identify the canonical upstream and question-specific ref before reading code;
+clone or refresh `/tmp/agent-src/<owner>/<repo>`, then inspect that ref locally.
 
 ### Procedure
 

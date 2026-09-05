@@ -28,7 +28,8 @@ The `~/.agents/skills/k-code-quality/SKILL.md` skill still applies unless local 
 
 Do not load secondary skills until read/diff evidence proves the surface is in scope.
 
-- If markup, styling, or accessibility semantics change, also load the `~/.agents/skills/k-code-quality-web/SKILL.md` skill.
+- If markup, styling, or accessibility semantics change, load `~/.agents/skills/k-code-quality-web/SKILL.md` unless its full text is already loaded for this active invocation.
+  Reuse that load through reciprocal references; read fresh on a new invocation or after its text changes or is pruned.
 
 ## UI Behavior
 

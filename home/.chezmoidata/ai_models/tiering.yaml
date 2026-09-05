@@ -227,11 +227,10 @@ category_models:
       thinking: "off"
       context: "short"
   codex:
-    # User call 2026-08-24: Codex mechanical uses `gpt-5.4` at high effort; every other Codex
-    # category runs `gpt-5.5` at xhigh effort. Keeping every category explicit lets the gate close
-    # native subagent defaults. OpenAI-only, hence refute reports families=same degraded.
-    # Bundled catalog (codex-cli 0.149.0): gpt-5.4 supports high but is hidden and carries an
-    # upgrade note to gpt-5.6-terra; this row is a deliberate user policy.
+    # Codex 0.153.2 retires gpt-5.4 and names gpt-5.6-terra as its replacement.
+    # Mechanical and memory keep high effort on Terra; the session default is gpt-6-astra/high.
+    # Lookup, research, implement, review and refute retain gpt-5.5/xhigh.
+    # Explicit categories close native subagent defaults. OpenAI-only refute remains degraded.
     # Bundled catalog (codex-cli 0.149.0): gpt-5.5 supports xhigh; native default is low, so the
     # pin is load-bearing.
     lookup:
@@ -240,7 +239,7 @@ category_models:
       thinking: ""
       context: "short"
     mechanical:
-      model: "gpt-5.4"
+      model: "gpt-5.6-terra"
       effort: "high"
       thinking: ""
       context: "short"
@@ -255,8 +254,8 @@ category_models:
       thinking: ""
       context: "short"
     orchestrate:
-      model: "gpt-5.5"
-      effort: "xhigh"
+      model: "gpt-6-astra"
+      effort: "high"
       thinking: ""
       context: "short"
     review:
@@ -270,9 +269,9 @@ category_models:
       thinking: ""
       context: "short"
       verifier_status: "degraded"
-    # memory: reuses the verified mechanical pair (gpt-5.4/high); lower efforts unverified on this catalog.
+    # memory: reuses the mechanical replacement pair and preserves high effort.
     memory:
-      model: "gpt-5.4"
+      model: "gpt-5.6-terra"
       effort: "high"
       thinking: ""
       context: "short"

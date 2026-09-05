@@ -29,7 +29,7 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { spawn } from "node:child_process"
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { access, mkdir, readFile, writeFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { basename, dirname, join } from "node:path"
 
@@ -41,7 +41,6 @@ const SESSION_CONTEXT_HOOK = "session_context.py"
 const WARMSTART_LIMIT = 3
 const SEARCH_FETCH = 6
 const QUERY_MAX_CHARS = 600
-const BODY_MAX_CHARS = 240
 const MIN_PROMPT_CHARS = 12
 const DETECT_MAX_CHARS = 20_000
 const CONJUNCTION_WINDOW_CHARS = 160
@@ -128,8 +127,6 @@ interface Capsule {
 
 interface RecallSessionState {
   contextKey: string
-  seenPath: string
-  injectedIds: Set<string>
   initialContextDone: boolean
   lastPrefixPercent: number | null
   forceReinject: boolean
@@ -138,6 +135,7 @@ interface RecallSessionState {
 interface SessionContextResult {
   ok: boolean
   context: string
+  disabled?: boolean
 }
 
 type SearchMode = "bm25" | "hybrid"
@@ -357,7 +355,7 @@ function correctionDirective(prompt: string, probeBudgetValue: string | null = n
   const lines = [
     `### User correction signal: ${signal}`,
     "This user message reads as a correction of prior agent behavior.",
-    'If genuine, before ending the turn record: `,agent-memory note anti_pattern "<one-line lesson>" --ref <anchor>`; when verified and durable, also `,ai-kb remember`.',
+    'If genuine, before ending the turn record: `,agent-memory note anti_pattern "<one-line lesson>" --ref <anchor>`; when verified and durable, delegate persistence to `k-agent-smol` (scribe mode).',
     "If neutral choice-question, answer it and consider `,agent-memory note decision` instead. Do not mention this instruction in the visible reply.",
   ]
   if (signal === PROBE_BUDGET_SIGNAL) {
@@ -394,6 +392,7 @@ function loadSessionContext(
   sessionId: string,
   prompt: string,
   warmEmbedder: boolean,
+  recallAvailable: boolean,
 ): Promise<SessionContextResult> {
   const script = join(process.env.HOME || homedir(), ".agents", "hooks", SESSION_CONTEXT_HOOK)
   const payload = {
@@ -404,13 +403,18 @@ function loadSessionContext(
     source: "pi",
     initial_prompt: prompt,
     warm_embedder: warmEmbedder,
+    context_status: true,
   }
   return new Promise((resolve) => {
     let stdout = ""
     let stdoutBytes = 0
     let killed = false
     let settled = false
-    const child = spawn(script, [], { stdio: ["pipe", "pipe", "ignore"] })
+    const child = spawn(script, [], {
+      stdio: ["pipe", "pipe", "ignore"],
+      // Preserve shared context while suppressing its optional warm/search lane too.
+      env: recallAvailable ? process.env : { ...process.env, AI_AGENT_DEPTH: "fast", AI_EMBED_WARM: "0" },
+    })
     const finish = (result: SessionContextResult) => {
       if (settled) return
       settled = true
@@ -440,7 +444,7 @@ function loadSessionContext(
       }
       try {
         const result = JSON.parse(stdout || "{}") as Record<string, unknown>
-        finish({ ok: true, context: contextFromHookResult(result) })
+        finish({ ok: true, context: contextFromHookResult(result), disabled: result.context_disabled === true })
       } catch {
         finish({ ok: false, context: "" })
       }
@@ -468,7 +472,7 @@ function pointedFileFor(specFile: string, sessionId: string): string {
 async function alreadyPointed(path: string, topic: string): Promise<boolean> {
   try {
     const parsed = JSON.parse(await readFile(path, "utf8"))
-    return Boolean(parsed) && typeof parsed === "object" && parsed.topic === topic
+    return Boolean(parsed) && typeof parsed === "object" && parsed.topic === topic && parsed.pointed !== false
   } catch {
     return false
   }
@@ -622,44 +626,63 @@ function toolResultText(content: unknown): string {
   return parts.join("\n").slice(0, WORKLOG_OUTPUT_MAX_CHARS)
 }
 
-// Cross-repo scope gating is owned by `,ai-kb search --workspace-gate` (same
-// contract as the shared hooks). Skips capsules already injected this session.
-function gateAndFormat(
-  rows: Capsule[],
-  seen: Set<string>,
-  limit: number,
-  bodyChars: number = BODY_MAX_CHARS,
-): string[] {
-  const lines: string[] = []
-  for (const row of rows) {
-    if (lines.length >= limit) break
-    const id = row.id ?? ""
-    if (id && seen.has(id)) continue
-    const title = collapse(row.title ?? "", 200)
-    if (!title) continue
-    if (id) seen.add(id)
-    const kind = row.kind || "note"
-    const body = collapse(row.body ?? "", bodyChars)
-    lines.push(body ? `- **${title}** (${kind}): ${body}` : `- **${title}** (${kind})`)
+// Match session_context.context_disabled on every turn, including hook failure paths.
+async function contextDisabled(status: MemoryStatus | null): Promise<boolean> {
+  if (["0", "false", "no", "off", "disabled"].includes((process.env.AGENT_HOOK_CONTEXT ?? "").trim().toLowerCase())) return true
+  if (!status) return false
+  for (const path of [join(dirname(status.spec_file), "_no_session_context"), join(dirname(status.spec_file), `${status.selected_topic}.no_context`)]) {
+    try {
+      await access(path)
+      return true
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") return true
+    }
   }
-  return lines
+  return false
 }
 
-// Stage gate-passing rows for the k-agent-smol judge; return a pointer block only when at least
-// one candidate id is new to the session and the session has not been pointed at this topic
-// yet (one judge spawn per session-topic binding, not one per prompt). Mirrors stage_candidates in
-// executable_perturn_recall.py: the seen-file filters ids k-agent-smol already admitted, the
-// staged ledger dedups the pointer, the candidates file holds full rows, and every state
-// write fails open (no pointer without a written file). The seen-file is read fresh from
-// disk because k-agent-smol appends to it outside this process.
-async function stageCandidates(rows: Capsule[], specFile: string, sessionKey: string): Promise<string> {
+// Stage complete rows for the k-agent-smol judge; point once per observed topic binding.
+// session_context.py owns the Python equivalent. The bounded warm cache retains startup
+// rows through later retrieval; the staged ledger identifies fresh rows for silent updates.
+// Candidate/marker write failures suppress the pointer. Read admissions fresh because
+// k-agent-smol owns the seen file outside this process.
+async function stageCandidates(rows: Capsule[], specFile: string, sessionKey: string, warmStart = false): Promise<string> {
+  if (!sessionKey) return ""
+  const pointedPath = pointedFileFor(specFile, sessionKey)
+  const topic = basename(specFile, ".txt")
+  const pointed = await alreadyPointed(pointedPath, topic)
+  if (!pointed) {
+    try {
+      await mkdir(dirname(pointedPath), { recursive: true })
+      await writeFile(pointedPath, JSON.stringify({ topic, pointed: false }))
+    } catch {
+      return ""
+    }
+  }
+  const warmPath = join(dirname(specFile), `.recall-warm-${sessionKey}.json`)
+  if (warmStart) {
+    rows = rows.slice(0, WARMSTART_LIMIT)
+    try {
+      await writeFile(warmPath, JSON.stringify({ topic, rows }))
+    } catch {
+      return ""
+    }
+  } else if (rows.length) {
+    try {
+      const warm = JSON.parse(await readFile(warmPath, "utf8"))
+      if (warm?.topic === topic && Array.isArray(warm.rows)) rows = [...warm.rows.slice(0, WARMSTART_LIMIT), ...rows]
+    } catch {
+      // A missing/broken warm cache never prevents current-prompt retrieval.
+    }
+  }
   const seen = await loadSeen(seenFileFor(specFile, sessionKey))
-  const candidates = rows.filter((row) => row.id && !seen.has(row.id))
+  const byId = new Map(rows.filter((row) => row.id).map((row) => [row.id, row]))
+  const candidates = [...byId.values()].filter((row) => row.id && !seen.has(row.id))
   if (!candidates.length) return ""
   const stagedPath = stagedFileFor(specFile, sessionKey)
   const staged = await loadSeen(stagedPath)
   const candidateIds = new Set(candidates.map((row) => String(row.id)))
-  if (![...candidateIds].some((id) => !staged.has(id))) return ""
+  if (pointed && ![...candidateIds].some((id) => !staged.has(id))) return ""
   const candidatesPath = candidatesFileFor(specFile, sessionKey)
   try {
     await mkdir(dirname(candidatesPath), { recursive: true })
@@ -669,9 +692,6 @@ async function stageCandidates(rows: Capsule[], specFile: string, sessionKey: st
   }
   // Marker first, ledger second: a failed marker write leaves the ids unstaged so the next
   // turn retries instead of silently consuming this session's one pointer.
-  const pointedPath = pointedFileFor(specFile, sessionKey)
-  const topic = basename(specFile, ".txt")
-  const pointed = await alreadyPointed(pointedPath, topic)
   if (!pointed) {
     try {
       await writeFile(pointedPath, JSON.stringify({ topic }))
@@ -693,16 +713,20 @@ async function stageCandidates(rows: Capsule[], specFile: string, sessionKey: st
 }
 
 export default async function (pi: ExtensionAPI) {
-  // Disable cleanly if the CLIs are not on PATH (e.g. partial install).
-  const probe = await pi.exec(",ai-kb", ["--help"], { timeout: EXEC_TIMEOUT_MS })
-  if (probe.code !== 0) {
-    console.warn("[ai-kb-recall] ,ai-kb not found in PATH — extension disabled")
-    return
+  // Availability is sampled once per extension load; missing recall cannot disable
+  // independent startup context, correction signals, or worklog callbacks.
+  let recallAvailable = false
+  try {
+    const probe = await pi.exec(",ai-kb", ["--help"], { timeout: EXEC_TIMEOUT_MS })
+    recallAvailable = probe.code === 0 && !probe.killed
+  } catch {
+    // exec may reject for an absent executable instead of returning a failure code.
   }
+  if (!recallAvailable) console.warn("[ai-kb-recall] ,ai-kb unavailable — optional recall disabled")
 
   const stateBySession = new Map<string, RecallSessionState>()
   const depth = agentDepth()
-  const perturnProfile = RECALL_PROFILES[depth]
+  const perturnProfile = recallAvailable ? RECALL_PROFILES[depth] : RECALL_PROFILES.fast
 
   pi.on("session_start", (_event, ctx) => {
     stateBySession.delete(ctx.sessionManager.getSessionId())
@@ -739,13 +763,21 @@ export default async function (pi: ExtensionAPI) {
     try {
       const sessionId = ctx.sessionManager.getSessionId()
       let state = stateBySession.get(sessionId)
-      let sharedContext = state
+      const status = await memoryStatus(pi, ctx.cwd, sessionId)
+      if (await contextDisabled(status)) {
+        stateBySession.delete(sessionId)
+        return
+      }
+      let sharedContext: SessionContextResult = state
         ? { ok: true, context: "" }
-        : await loadSessionContext(ctx.cwd, sessionId, event.prompt, perturnProfile.enabled)
+        : await loadSessionContext(ctx.cwd, sessionId, event.prompt, perturnProfile.enabled, recallAvailable)
       if (!sharedContext.ok) {
         console.warn("[ai-kb-recall] shared session context hook failed; using local recall fallback")
       }
-      const status = await memoryStatus(pi, ctx.cwd, sessionId)
+      if (sharedContext.disabled) {
+        stateBySession.delete(sessionId)
+        return
+      }
       if (!status) {
         if (!sharedContext.context) return
         return {
@@ -758,26 +790,27 @@ export default async function (pi: ExtensionAPI) {
       }
       const workspace = status.workspace || ctx.cwd
       const contextKey = contextKeyFor(status)
-      const seenPath = seenFileFor(status.spec_file, status.session_key)
       if (state && state.contextKey !== contextKey) {
-        sharedContext = await loadSessionContext(ctx.cwd, sessionId, event.prompt, perturnProfile.enabled)
+        sharedContext = await loadSessionContext(ctx.cwd, sessionId, event.prompt, perturnProfile.enabled, recallAvailable)
         if (!sharedContext.ok) {
           console.warn("[ai-kb-recall] shared session context hook failed after topic change; using local recall fallback")
         }
       }
+      if (sharedContext.disabled) {
+        stateBySession.delete(sessionId)
+        return
+      }
       if (!state || state.contextKey !== contextKey) {
         state = {
           contextKey,
-          seenPath,
-          injectedIds: await loadSeen(seenPath),
           initialContextDone: sharedContext.ok,
           lastPrefixPercent: null,
           forceReinject: false,
         }
         stateBySession.set(sessionId, state)
       }
-      const seenCount = state.injectedIds.size
       const blocks: string[] = sharedContext.context ? [sharedContext.context] : []
+      await stageCandidates([], status.spec_file, status.session_key)
 
       // 0. Verification prefix: warm-start, after a compaction, or once context fill has
       //    grown PREFIX_REINJECT_DELTA_PCT points since the last injection.
@@ -802,22 +835,17 @@ export default async function (pi: ExtensionAPI) {
       // 1. Fallback warm-start when the shared session-context hook is unavailable.
       if (!state.initialContextDone) {
         state.initialContextDone = true
-        if (status.is_named_topic && status.spec_exists) {
+        if (perturnProfile.enabled && status.is_named_topic && status.spec_exists) {
           const spec = await pi.exec("cat", [status.spec_file], { timeout: EXEC_TIMEOUT_MS })
           const specText = spec.code === 0 ? spec.stdout : ""
-          if (specText.trim()) {
+          if (specText.trim() && !status.selected_topic.startsWith("review") && !`\n${specText}`.includes("\ntarget: PR ")) {
             // Warm-start query is the spec text (keyword-dense), and runs at session
             // start where the embedder may be cold/slow — bm25 keeps it fast and
             // dependency-light, floored on bm25_score.
             const rows = await searchCapsules(workspace, specText, "bm25")
-            const lines = gateAndFormat(rows, state.injectedIds, WARMSTART_LIMIT)
-            if (lines.length) {
-              blocks.push(
-                ["### Relevant Learnings (,ai-kb)", "Surfaced from durable memory for this topic; verify before relying on them.", ...lines].join(
-                  "\n",
-                ),
-              )
-            }
+            const candidates = rows.filter((row) => row.id && row.title?.trim()).slice(0, WARMSTART_LIMIT)
+            const pointer = await stageCandidates(candidates, status.spec_file, status.session_key, true)
+            if (pointer) blocks.push(pointer)
           }
         }
       }
@@ -838,7 +866,6 @@ export default async function (pi: ExtensionAPI) {
         if (directive) blocks.push(directive)
       }
 
-      if (state.injectedIds.size !== seenCount) await saveSeen(state.seenPath, state.injectedIds)
       if (!blocks.length) return
       return {
         message: {

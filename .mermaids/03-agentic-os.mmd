@@ -11,11 +11,15 @@ flowchart TB
 
     subgraph GOV["1 · Governance (entrypoints, chezmoi-managed)"]
         AG["readonly_AGENTS.md → ~/AGENTS.md (compiled core SOP)"]:::gov
-        CL["symlink_CLAUDE.md → ~/CLAUDE.md → ~/AGENTS.md (compiled core SOP)"]:::gov
+        CL["readonly_CLAUDE.md → ~/CLAUDE.md native @AGENTS.md import<br/>dot_claude/symlink_CLAUDE.md → ~/.claude/CLAUDE.md → ~/AGENTS.md<br/>repo CLAUDE.md → native project AGENTS.md import; canonical paths deduplicated"]:::gov
         GM["dot_gemini/config/symlink_AGENTS.md → ~/.gemini/config/AGENTS.md → ~/AGENTS.md"]:::gov
-        SK["home/exact_dot_agents/exact_skills/ → ~/.agents/skills/<br/>52 skill entrypoints, intent-routed (see 03b)"]:::gov
+        SK["home/exact_dot_agents/exact_skills/ → ~/.agents/skills/<br/>57 skill entrypoints, intent-routed (see 03b)"]:::gov
         AG -->|Use when… load| SK
         CL --> SK
+        CG["dot_cursor/plugins/local/exact_k-sop/<br/>contained alwaysApply rule includes the canonical full SOP;<br/>hosted/authenticated local: 2 SOP bodies inside HOME (baseline 2), 1 outside;<br/>explicit authless/Bedrock local disables plugins; no .cursorignore"]:::gov
+        AG --> CG
+        POLICY["compile_ai_policy.py + ai_policy_ir.py + operative capability snapshot<br/>explicit missing manifests and malformed/empty eval matrices fail;<br/>source description bytes distinguish all declarations from non-manual budget subset;<br/>eval scaffold cells remain blocked, not model-compliance evidence"]:::gov
+        AG --> POLICY
     end
 
     subgraph CTX["2 · Context (single sources of truth)"]
@@ -31,7 +35,7 @@ flowchart TB
         GEMINI["Antigravity: config/symlink_AGENTS.md + symlink_skills + generated mcp_config.json"]:::exec
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (OpenRouter selectors)"]:::exec
         CODEX["Codex: dot_codex/private_config.{work,personal}.toml<br/>+ ,codex bearer-token env wrapper for hosted MCP"]:::exec
-        PI["Pi: dot_pi/agent/* (OpenRouter GPT-5.5 xhigh default/review lanes; Sonnet refute)"]:::exec
+        PI["Pi: dot_pi/agent/* (OpenRouter GPT-5.5 xhigh default/review lanes; Sonnet refute)<br/>runtime-parity before_agent_start appends canonical SOP iff absent;<br/>native tool_call blocks Git effects; model-band adapter unconfigured"]:::exec
         OMP["OMP: dot_omp/private_agent/readonly_config.yml.tmpl<br/>work: Cursor GPT-5.5 xhigh roles; smol cursor/default (Auto); advisor Opus 5 High<br/>personal: Codex GPT-5.5 xhigh roles incl. advisor; smol cursor/default (Auto)<br/>+ generated ~/.omp/agent/mcp.json token bridges"]:::exec
         COPILOT["Copilot CLI: private_dot_copilot/* (settings + gates + review agents;<br/>MCP stdio-only, OAuth http unusable)"]:::exec
         TUICR["tuicr: dot_config/tuicr/readonly_config.toml"]:::exec
@@ -43,10 +47,10 @@ flowchart TB
     SK -. symlinked or natively discovered by .-> CURSOR & CLAUDE & OPENCODE & CODEX & PI & OMP & COPILOT & GEMINI
 
     subgraph HOOKS["Shared lifecycle hooks — detail in 03b"]
-        H["Cursor + Antigravity session context and worklog adapters<br/>pre-shell/pre-tool git gate (fail closed)"]:::ctx
+        H["Cursor + Antigravity session context and worklog adapters<br/>pre-shell/pre-tool git gate (fail closed: exec + expandable heredoc substitutions)<br/>startup/per-turn recall stages complete candidates; only smol judgments enter parent context"]:::ctx
     end
     GOV -.enforced at runtime by.-> HOOKS
-    MEM[("/tmp/specs/<pwd>/<topic>.* (ephemeral memory, ,agent-memory)")]:::data
+    MEM[("/tmp/specs/<pwd>/<topic>.* (ephemeral memory)<br/>,agent-memory → ~/lib/,agent-memory/ rendered from canonical Python sources;<br/>no runtime checkout/chezmoi dependency; persistent named-topic mirror")]:::data
     KBDB[(",ai-kb durable knowledge store")]:::data
     HOOKS <--> MEM
     SK <--> KBDB

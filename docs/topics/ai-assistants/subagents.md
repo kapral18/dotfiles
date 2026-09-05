@@ -23,7 +23,7 @@ Only the active root/main session orchestrates multiple agents or lanes. Delegat
 
 Repo-owned custom subagent identifiers use the `k-agent-<role>` namespace. Harness-native identifiers retain their original names; the repo must not prefix or alias them.
 
-The role body itself is single-sourced. Each per-tool profile is a thin shim: harness-native model, tool/permission, and sandbox metadata + the `prefix.txt` preamble + `Load and follow ~/.agents/skills/k-review/references/<role>.md`.
+The role body itself is single-sourced. Each per-tool profile is a thin shim: supported harness-native model and tool metadata + the `prefix.txt` preamble + `Load and follow ~/.agents/skills/k-review/references/<role>.md`.
 
 ## Using it
 
@@ -66,22 +66,22 @@ The delegated-subagent contract for every role lives once under `k-review/refere
 
 The "Loads contract" column is the `k-review/references/<role>.md` file the profile delegates to:
 
-| Agent                                                    | Loads contract                           | Work it owns                                                                            |
-| -------------------------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------- |
-| `k-agent-deep-review`                                    | `k-deep-review/SKILL`                    | Controller: route, PR-necessity gate, bounded reviewer roster, live UI, audit, act      |
-| `k-agent-review-controller` (Pi/OMP)                     | `k-deep-review/SKILL` + `k-review/SKILL` | Pi/OMP controller for PR gates, reviews, audits, fixes/drafts/verdict                   |
-| `k-agent-review-worker`                                  | `reviewer-worker`                        | Registry-model selected angle lane (Cursor/Copilot/Codex/Antigravity)                   |
-| `k-agent-reviewer`                                       | `reviewer-worker`                        | Pi/OMP concrete registry lane; Claude inherited read-only angle lane                    |
-| `k-agent-fresh-eyes` (Pi/OMP profile; generic elsewhere) | `fresh-eyes`                             | Conditional blind zero-context clarity lane                                             |
-| `k-agent-adversarial-verifier`                           | `adversarial-verifier`                   | Cross-family refutation over audited candidates                                         |
-| `k-agent-pr-necessity-auditor`                           | `pr-necessity-auditor`                   | Blocking PR necessity / intent gate                                                     |
-| `k-agent-findings-auditor`                               | `findings-auditor`                       | Non-trivial findings or named fix-diff audit                                            |
-| `k-agent-live-ui-review`                                 | `live-ui-review`                         | Verification-only live UI reviewer; screenshot handoff required for feedback candidates |
-| `k-agent-post-review`                                    | `post-review`                            | Four-dimension hygiene audit of a review's fix diff                                     |
-| `k-agent-criteria-verifier`                              | `k-build/references/criteria-verifier`   | `/k-build` refutation lane over the criteria ledger + scope audit                       |
-| `k-agent-change-auditor`                                 | `change-auditor`                         | Proportional-depth audit of a self-authored changeset                                   |
-| `k-agent-researcher`                                     | `researcher`                             | Clone and inspect external GitHub source                                                |
-| `k-agent-code-searcher`                                  | `code-searcher`                          | SCSI semantic investigation / base-branch context                                       |
+| Agent                                                    | Loads contract                              | Work it owns                                                                            |
+| -------------------------------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `k-agent-deep-review`                                    | `k-deep-review/SKILL`                       | Controller: route, PR-necessity gate, bounded reviewer roster, live UI, audit, act      |
+| `k-agent-review-controller` (Pi/OMP)                     | Guarded dispatch to canonical review skills | Root-only review routing; delegated children execute only their assigned leaf packet    |
+| `k-agent-review-worker`                                  | `reviewer-worker`                           | Registry-model selected angle lane (Cursor/Copilot/Codex/Antigravity)                   |
+| `k-agent-reviewer`                                       | `reviewer-worker`                           | Pi/OMP concrete registry lane; Claude inherited read-only angle lane                    |
+| `k-agent-fresh-eyes` (Pi/OMP profile; generic elsewhere) | `fresh-eyes`                                | Conditional blind zero-context clarity lane                                             |
+| `k-agent-adversarial-verifier`                           | `adversarial-verifier`                      | Cross-family refutation plus the canonical bounded miss sweep                           |
+| `k-agent-pr-necessity-auditor`                           | `pr-necessity-auditor`                      | Blocking PR necessity / intent gate                                                     |
+| `k-agent-findings-auditor`                               | `findings-auditor`                          | Non-trivial findings or named fix-diff audit                                            |
+| `k-agent-live-ui-review`                                 | `live-ui-review`                            | Verification-only live UI reviewer; screenshot handoff required for feedback candidates |
+| `k-agent-post-review`                                    | `post-review`                               | Four-dimension hygiene audit of a review's fix diff                                     |
+| `k-agent-criteria-verifier`                              | `k-build/references/criteria-verifier`      | `/k-build` refutation lane over the criteria ledger + scope audit                       |
+| `k-agent-change-auditor`                                 | `change-auditor`                            | Proportional-depth audit of a self-authored changeset                                   |
+| `k-agent-researcher`                                     | `researcher`                                | Clone and inspect external GitHub source                                                |
+| `k-agent-code-searcher`                                  | `code-searcher`                             | SCSI semantic investigation / base-branch context                                       |
 
 ## Reference and wiring
 
@@ -112,6 +112,14 @@ The phase order these profiles serve — necessity gate → bounded reviewer ros
 A controller profile may orchestrate only when it is running as the active root/main session. If another agent delegates to that profile as a child, the leaf-worker boundary wins: the child ignores the orchestration request, completes any remaining leaf-scoped work, and returns the result plus the conflict instead of spawning or simulating downstream lanes.
 
 Workers never edit files, post comments, resolve threads, or decide final action. They return candidate findings plus evidence and `verification_needed` items for the controller ledger.
+
+## Context loading and authority
+
+Claude 2.1.260 and OMP 18.1.10 eagerly inject explicitly preloaded skill bodies. Narrow auditor, post-review, live-UI, and PR-necessity profiles preload only required skills; the assigned role reference supplies conditional methodology. Claude reviewers select their assigned lenses through `reviewer-worker.md`. Omitting Claude’s `skills` field preloads no skill bodies. Pi’s skill list contributes metadata, so it is not treated as the same body-loading mechanism.
+
+Codex 0.153.2 projects model/instruction overrides from role files and inherits the parent’s permissions. Role `approval_policy` and `sandbox_mode` fields are ignored and are omitted from these templates. Read-only review behavior remains an instruction boundary, not a role-specific sandbox guarantee.
+
+Pi/OMP controller files retain native profile notes and dispatch to the canonical workflow only in an active root session. Their installed CLIs have no `--agent` root-selection flag; normal profile invocation creates a leaf child. Duplicated phase implementations and eager controller-body preloads are omitted.
 
 ## Design notes
 

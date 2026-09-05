@@ -59,6 +59,8 @@ These skills route non-code tools, browser automation, and generated visual asse
 | Source   | [`exact_k-playwriter`](../../../../home/exact_dot_agents/exact_skills/exact_k-playwriter/) |
 | Boundary | rendered browser behavior only; prefer non-browser tools for static file or source checks  |
 
+Playwriter documentation loads common safeguards plus complete operation recipes before use. The bundled `scripts/read_docs.py` selects sections only for its audited installed version and exact document hash; unknown sources and recorder work read the whole manual. After compaction, reload common guidance and active profiles. Callers use this same contract, avoiding a second unconditional full read. The original document stays installed and unchanged. Recorder and fallback paths can cost more than the former single full read. Conflicting recipes remain subordinate to explicit rules, caller limits, and narrowly scoped verified domain exceptions.
+
 ## `k-ui-capture`
 
 | Field    | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |

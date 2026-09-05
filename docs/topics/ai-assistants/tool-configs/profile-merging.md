@@ -33,9 +33,9 @@ All merge scripts live under [`home/.chezmoiscripts/`](../../../../home/.chezmoi
 
 ## Using it
 
-Pi targets are installed readonly.
+Pi targets are installed readonly. Both shared write helpers enforce the requested file mode even when content already matches, without rewriting matching bytes. The string helper compares the exact bytes it would write (`desired` plus one newline), so missing or extra trailing newlines are corrected.
 
-Codex rebuilds from its profile base and reattaches only MCP approvals, hook trust, valid project trust, and valid TUI counters.
+Codex rebuilds from its profile base and reattaches only MCP approvals, hook trust, valid project trust, and valid TUI counters. Trailing comments on TOML table headers preserve the same runtime state as equivalent uncommented headers.
 
 Copilot recursively preserves undeclared runtime settings, lets declared policy win, and replaces only `subagents.agents` exactly so stale agents and per-agent overrides cannot survive.
 
@@ -56,9 +56,13 @@ The row carries:
 - ownership adapter
 - expected owned semantic hash
 - consumer
-- local version probe
+- local consumer probe (defaults to `--version`; `record --probe-arg` overrides its arguments)
 
 Copilot MCP rendering is apply-time only: `run_onchange_after_07-merge-copilot-config.sh.tmpl` owns the target and its `copilot-mcp` ledger row. Runtime `,copilot` does not render config or change the ledger; it only replaces bare `--resume` with a locally selected `--session-id=<id>` to avoid Copilot 1.0.73's MCP startup race. Hosted authentication rotates inside the per-request stdio bridges.
+
+Claude settings provenance includes the selected settings file, model-tier registry, and the owning merge-hook template. Registry changes report `input-drift`; changes to the hook itself report `transform-drift`, even before target bytes change.
+
+Claude MCP merging rejects malformed existing JSON before writing, preserves unrelated live keys, and creates a missing file even for an empty registry. The Cursor OAuth mint artifact names its actual consumer, `,mcp-token`, and probes `--help` because that command has no `--version` option. Claude model-mirror defaults, curated models, recommendations, and provenance follow `category_models.claude_code.orchestrate`, the same owner used by the settings renderer.
 
 ### `,doctor ai`
 

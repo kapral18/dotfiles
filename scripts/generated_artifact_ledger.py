@@ -575,6 +575,7 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--exclude-section", action="append")
     record.add_argument("--exclude-key", action="append")
     record.add_argument("--consumer", required=True)
+    record.add_argument("--probe-arg", action="append", help="Repeat for probe arguments; defaults to --version")
 
     forget = subcommands.add_parser("forget")
     forget.add_argument("--id", required=True, dest="artifact_id")
@@ -607,7 +608,7 @@ def main(argv: list[str] | None = None) -> int:
                     "references": args.references or [],
                     "ownership": ownership,
                     "consumer": {"id": args.consumer, "command": [args.consumer]},
-                    "live_probe": {"kind": "command", "argv": [args.consumer, "--version"]},
+                    "live_probe": {"kind": "command", "argv": [args.consumer, *(args.probe_arg or ["--version"])]},
                 },
             )
             return 0

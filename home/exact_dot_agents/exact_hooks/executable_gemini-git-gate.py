@@ -75,7 +75,7 @@ ENV_SPLIT_OPTS = {"-S", "--split-string"}
 ENV_TERMINAL_OPTS = {"--help", "--version"}
 INERT_TEXT_COMMANDS = {"cat", "echo", "egrep", "fgrep", "grep", "head", "printf", "rg", "tail", "wc"}
 SHELL_COMMAND_WRAPPERS = {"bash", "dash", "fish", "ksh", "sh", "zsh"}
-DIRECT_EXECUTION_WRAPPERS = {"command", "doas", "env", "nohup", "sudo", "time"}
+DIRECT_EXECUTION_WRAPPERS = {"command", "doas", "env", "exec", "nohup", "sudo", "time"}
 WRAPPER_FLAGS = {
     "command": {"-p", "-v", "-V"},
     "doas": {"-n", "-s"},
@@ -225,8 +225,8 @@ def _tokenize(command: str) -> list[str]:
     return list(lexer)
 
 
-def _read_heredoc_word(command_line: str, start: int) -> tuple[str, int] | None:
-    """Read a here-doc delimiter word with shell quoting removed."""
+def _read_heredoc_word(command_line: str, start: int) -> tuple[str, int, bool] | None:
+    """Read a delimiter with quote removal and retain its body expansion policy."""
     i = start
     while i < len(command_line) and command_line[i] in " \t":
         i += 1
@@ -235,6 +235,7 @@ def _read_heredoc_word(command_line: str, start: int) -> tuple[str, int] | None:
 
     chars: list[str] = []
     quote = ""
+    expand = True
     while i < len(command_line):
         char = command_line[i]
         if quote == "'":
@@ -247,7 +248,7 @@ def _read_heredoc_word(command_line: str, start: int) -> tuple[str, int] | None:
         if quote == '"':
             if char == '"':
                 quote = ""
-            elif char == "\\" and i + 1 < len(command_line):
+            elif char == "\\" and i + 1 < len(command_line) and command_line[i + 1] in '$`"\\':
                 i += 1
                 chars.append(command_line[i])
             else:
@@ -255,9 +256,11 @@ def _read_heredoc_word(command_line: str, start: int) -> tuple[str, int] | None:
             i += 1
             continue
         if char == "\\" and i + 1 < len(command_line):
+            expand = False
             i += 1
             chars.append(command_line[i])
         elif char in {"'", '"'}:
+            expand = False
             quote = char
         elif char.isspace() or char in "();<>|&":
             break
@@ -266,7 +269,7 @@ def _read_heredoc_word(command_line: str, start: int) -> tuple[str, int] | None:
         i += 1
 
     delimiter = "".join(chars)
-    return (delimiter, i) if delimiter else None
+    return (delimiter, i, expand) if not quote and (delimiter or not expand) else None
 
 
 def _is_shell_comment_start(command_line: str, index: int) -> bool:
@@ -317,9 +320,9 @@ def _strip_shell_comments(command: str) -> str:
     return "".join(output)
 
 
-def _heredoc_delimiters(command_line: str) -> list[tuple[str, bool]]:
+def _heredoc_delimiters(command_line: str) -> list[tuple[str, bool, bool]]:
     """Return here-doc delimiters declared by one shell command line."""
-    delimiters: list[tuple[str, bool]] = []
+    delimiters: list[tuple[str, bool, bool]] = []
     quote = ""
     i = 0
     while i < len(command_line):
@@ -353,40 +356,40 @@ def _heredoc_delimiters(command_line: str) -> list[tuple[str, bool]]:
             if word is None:
                 i += 2
                 continue
-            delimiter, i = word
-            delimiters.append((delimiter, strip_tabs))
+            delimiter, i, expand = word
+            delimiters.append((delimiter, strip_tabs, expand))
             continue
         i += 1
     return delimiters
 
 
-def _extract_heredoc_bodies(command: str) -> tuple[str, list[tuple[str, str]]] | None:
-    """Remove here-doc bodies and return each body with its declaring command line."""
+def _extract_heredoc_bodies(command: str) -> tuple[str, list[tuple[str, str, bool]]] | None:
+    """Remove bodies, retaining each declaration and delimiter expansion policy."""
     output_lines: list[str] = []
-    bodies: list[tuple[str, str]] = []
-    pending: list[tuple[str, bool, str, list[str]]] = []
+    bodies: list[tuple[str, str, bool]] = []
+    pending: list[tuple[str, bool, bool, str, list[str]]] = []
 
     for line in command.splitlines(keepends=True):
         if pending:
-            delimiter, strip_tabs, declaration, body_lines = pending[0]
+            delimiter, strip_tabs, expand, declaration, body_lines = pending[0]
             candidate = line.rstrip("\r\n")
             if strip_tabs:
                 candidate = candidate.lstrip("\t")
             if candidate == delimiter:
-                bodies.append((declaration, "".join(body_lines)))
+                bodies.append((declaration, "".join(body_lines), expand))
                 pending.pop(0)
             else:
                 body_lines.append(line)
             continue
 
         output_lines.append(line)
-        for delimiter, strip_tabs in _heredoc_delimiters(line):
-            pending.append((delimiter, strip_tabs, line, []))
+        for delimiter, strip_tabs, expand in _heredoc_delimiters(line):
+            pending.append((delimiter, strip_tabs, expand, line, []))
 
     return None if pending else ("".join(output_lines), bodies)
 
 
-def _extract_substitution_bodies(command: str) -> list[str] | None:
+def _extract_substitution_bodies(command: str, *, heredoc: bool = False) -> list[str] | None:
     """Extract the inner text of every `$(...)` and backtick substitution.
 
     Returns None on unbalanced delimiters or quotes (caller decides how to fail
@@ -394,6 +397,8 @@ def _extract_substitution_bodies(command: str) -> list[str] | None:
     Single-quoted text is literal in the shell, so substitution-looking text
     inside single quotes is skipped; double quotes do not suppress
     substitution, so bodies there are still classified.
+    In an expandable heredoc, outer quotes are data; quotes inside a
+    substitution still belong to its executable command list.
     """
     bodies: list[str] = []
     i = 0
@@ -408,7 +413,7 @@ def _extract_substitution_bodies(command: str) -> list[str] | None:
         if char == "\\":
             i += 2
             continue
-        if quote == "":
+        if not heredoc and quote == "":
             if char == "'":
                 quote = "'"
                 i += 1
@@ -417,7 +422,7 @@ def _extract_substitution_bodies(command: str) -> list[str] | None:
                 quote = '"'
                 i += 1
                 continue
-        elif char == '"':
+        elif not heredoc and char == '"':
             quote = ""
             i += 1
             continue
@@ -482,11 +487,46 @@ def _extract_substitution_bodies(command: str) -> list[str] | None:
     return bodies
 
 
+def _exec_command_index(tokens: list[str], start: int) -> int | None:
+    """Locate exec's utility after redirections, flags, and an optional argv[0]."""
+    i = start
+    options = True
+    argv0 = False
+    while i < len(tokens):
+        token = tokens[i]
+        if token.isdigit() and i + 1 < len(tokens) and tokens[i + 1].startswith(("<", ">")):
+            i += 1
+            token = tokens[i]
+        if re.fullmatch(r"[<>]{1,2}|<>|[<>]&|>\|", token):
+            i += 2
+            continue
+        if argv0:
+            argv0 = False
+            i += 1
+            continue
+        if not options:
+            return i
+        if token == "--":
+            options = False
+            i += 1
+            continue
+        if re.fullmatch(r"-[cl]*a.*|-[cl]+", token):
+            # -a accepts an attached value, or consumes exactly one next word.
+            if token[1:].lstrip("cl") == "a":
+                argv0 = True
+            i += 1
+            continue
+        return None if token.startswith("-") else i
+    return None
+
+
 def _wrapper_command_index(wrapper: str, tokens: list[str], start: int) -> int | None:
     """Locate a direct-execution wrapper's target command, failing closed on unknown options."""
     if wrapper == "env":
         result = _env_command_index(tokens, start, dict(os.environ))
         return None if result is None else result[0]
+    if wrapper == "exec":
+        return _exec_command_index(tokens, start)
 
     flags = WRAPPER_FLAGS[wrapper]
     options_with_value = WRAPPER_OPTS_WITH_VALUE.get(wrapper, set())
@@ -672,7 +712,14 @@ def classify_command(command: str) -> str:
     if extracted is None:
         return "deny"
     heredoc_stripped, heredoc_bodies = extracted
-    for declaration, body in heredoc_bodies:
+    for declaration, body, expand in heredoc_bodies:
+        if expand:
+            substitutions = _extract_substitution_bodies(body, heredoc=True)
+            if substitutions is None:
+                if GIT_WORD.search(body):
+                    return "deny"
+            elif any(classify_command(substitution) == "deny" for substitution in substitutions):
+                return "deny"
         if _heredoc_declaration_runs_shell(declaration) and classify_command(body) == "deny":
             return "deny"
     command = _strip_shell_comments(heredoc_stripped)

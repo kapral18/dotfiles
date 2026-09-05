@@ -77,7 +77,7 @@ chezmoi_record_artifact --id cursor-mcp-oauth-mint \
   --transform "$source_dir/../scripts/mcp_registry.py" \
   --transform "$source_dir/../scripts/yaml_parser.py" \
   --transform "$source_dir/../scripts/chezmoi_lib.sh" \
-  --consumer mcp-token
+  --consumer ,mcp-token --probe-arg=--help
 
 # Claude Code — merge mcpServers into existing .claude.json
 python3 "$gen" "$yaml_src" "$is_work" claude >"$tmp"

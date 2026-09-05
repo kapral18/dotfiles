@@ -86,13 +86,11 @@ Apply under the Resolution Rules below, stage the resolved files, then `yarn kbn
 
 ## Validation
 
-These checks need `node_modules` in place for the destination branch, so run `yarn kbn bootstrap` in the checkout first (it can take several minutes) — this is also why bootstrap happens here, per conflict, and not before the run.
-The checkout is re-prepared for each target branch, so run bootstrap again every time you reach this step, even if you already bootstrapped on an earlier branch in the same run.
-Then run the validation checklist. It is a fixed four-item gate, not a menu.
-
-Enumerate all four items before running any of them, then execute each in order.
+Run `yarn kbn bootstrap` in the paused checkout before validation on every conflicting target branch:
+each target re-prepares the tree, so prior-branch `node_modules` is insufficient. Do not bootstrap before the run.
+The checklist is a fixed four-item gate, not a menu: enumerate all four before executing them in order.
 Familiarity is not a selection criterion: running "the checks I usually run" is exactly how items get silently skipped while validation still reads as done.
-Every item must end with an explicit status — `pass`, `fail`, or `unavailable` (with the reason) — before the run may continue.
+Every item needs `pass`, `fail`, or `unavailable` (with reason) before continuation.
 An item with no status is not passed, and an aggregate claim like "all validation passes" over unreported items is an overclaim, not a completion.
 
 1. Focused Jest for changed tests, using the closest package config: `node scripts/jest --config=<package>/jest.config.js <test-file>`

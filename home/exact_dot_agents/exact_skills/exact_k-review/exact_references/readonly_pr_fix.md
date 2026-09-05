@@ -260,5 +260,5 @@ Do not use the original PR diff as the subject.
 Follow `shared_rules.md` Posting Boundary and the SOP commit/push + publication gates. Mode-specific deltas:
 
 - Drain Mode may auto-reply/auto-resolve only verified bot-authored threads inside an explicitly invoked Drain Mode flow.
-- Human-visible human-authored replies/resolves are always supervised.
+- Human-authored replies/resolves require supervision unless the explicitly invoked `k-pr-fix-loop` supplies its scoped approval packet.
 - Ambiguous/mixed threads fail safe to human.

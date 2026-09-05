@@ -11,8 +11,8 @@ the reviewed PR/head worktree in review mode, or the built/changed worktree in p
 ## Mode boundary
 
 - Default: verification only.
-- Tool-level non-read-only is allowed only for Playwriter commands.
-  It is also allowed for explicit local/dev runtime data setup permitted by the selected target packet.
+- Tool-level non-read-only is allowed only for Playwriter, the documented relay recovery below, packet-permitted local/dev data setup and runtime lifecycle commands, and setup explicitly authorized by the selected environment adapter.
+  Runtime ownership, scope, and approval limits still bind each operation.
 - Behavior-level read-only still applies to the repository, GitHub, git, and publishing surfaces.
 - Local/dev runtime data setup is allowed when required to verify an applicable UI/runtime path.
 - Starting a runtime the selected target packet documents how to start (in a shell-capable harness) is a setup step to perform, not a blocker.
@@ -38,10 +38,9 @@ Use the caller-supplied runtime targets when present; do not invent them.
   a base/main runtime stays a base/main runtime.
 - Base targets are comparison-only and exist only when the caller's mode selects a base comparison.
   Use or start a base runtime only when the selected packet requires comparison and a distinct runtime under verification exists.
-- If no caller-supplied packet was supplied and the target repo/object is verified as `elastic/kibana`, load the fallback target packet.
-  The fallback packet is `~/.agents/skills/k-elastic-domain/references/kibana-live-ui.md`.
-- For all other targets, use only explicit user-provided or repo-documented local/dev targets.
-- If no verified Kibana fallback packet and no trustworthy target packet exists, return `Blocked` with the missing target evidence instead of probing arbitrary localhost ports.
+- When no caller-supplied packet exists, use explicit user-provided or repo-documented local/dev targets;
+  otherwise verify the target repo/org and load its matching domain overlay for a concrete packet.
+- If no trustworthy packet exists, return `Blocked` with the missing target evidence instead of probing arbitrary localhost ports or borrowing another domain's defaults.
 - The target packet owns browser/runtime targets, backing/data endpoints, repo-specific local/dev data setup permissions, and blocker criteria.
 
 ## Preflight
@@ -51,7 +50,7 @@ Use the caller-supplied runtime targets when present; do not invent them.
   Go to the Data/setup ladder runtime-start rung, start the runtime, then resolve its target URL and continue preflight.
   The reachability/readiness and "blocker invalid unless every target is reported" rules below apply only after the runtime-start rung;
   never use them to skip starting a startable runtime.
-- Follow `~/.agents/skills/k-playwriter/SKILL.md` and run `playwriter skill` before checking targets.
+- Follow `~/.agents/skills/k-playwriter/SKILL.md` and complete its Documentation contract before checking targets.
 - Use a fresh Playwriter session owned by this worker.
 - Store owned pages under distinct `state` keys (e.g. `state.headPage`, and `state.basePage` only when a base comparison is selected);
   do not use generic `page`.
@@ -172,15 +171,18 @@ If an applicable flow reaches an empty state or lacks the data needed to exercis
 
 ## Hard runtime constraints
 
-- Verification only. Never edit files, post comments, resolve threads, commit, push, or decide what the caller should fix/comment on.
+- Verification only.
+  Never edit repository files, post comments, resolve threads, commit, push, or decide what the caller should fix/comment on.
   Local/dev runtime data setup is allowed only as defined in the data/setup ladder above.
 - Never run git write commands.
 - Never use ApplyPatch or file-editing tools.
 - Never write files except Playwriter artifacts under `/tmp`, including focused screenshots captured for UI evidence handoff;
   store each screenshot/pair/set in its own distinct `/tmp/<folder-name>/` directory, never loose directly in `/tmp`.
+  Exception: the selected packet's documented lifecycle commands and explicitly selected environment adapter may maintain their required runtime/connection state and logs within their ownership and approval limits.
+  This exception never permits repository edits or unrelated file writes.
 - Runtime data mutations must be local/dev-only, focused, named in the evidence, and tied to the exact target/backing endpoint used.
   They must be cleaned up or reported.
-- Do not apply runtime environment changes or restart services from this worker.
-  Surface those as `Blocked` instructions for the user to apply, then continue in a later run after reload.
+- Do not apply runtime environment changes or restart services beyond the documented relay recovery, packet-authorized start/owned replacement/teardown, or explicitly selected environment adapter's approved setup.
+  Return other runtime prerequisites as `Blocked` with user instructions; resume after the user applies them and reloads.
 - If the harness is read-only/Ask-mode and blocks Playwriter, return `Blocked`.
 - If Playwriter loops, reloads repeatedly, or cannot reach a stable snapshot, return `Blocked`.

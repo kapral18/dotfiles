@@ -28,6 +28,9 @@ npx knip --reporter json          # machine-readable output
 
 ## Workflow
 
+For find/check/report requests, inspect configuration hints and report findings or required config corrections;
+do not edit configuration or code. Run the cleanup steps below only when the user asked for cleanup/removal.
+
 1. Run `npx knip`.
 2. Address configuration hints (adjust `knip.json`) until a re-run of `npx knip` reports no new configuration hints and no previously-seen false positive reappears.
 3. Fix reported issues in priority order:

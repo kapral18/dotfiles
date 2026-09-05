@@ -799,6 +799,8 @@ class TestWorklogQueue(unittest.TestCase):
         stale_candidates = self.spec_dir / ".recall-candidates-stale.json"
         stale_staged = self.spec_dir / ".recall-staged-stale.json"
         stale_pointed = self.spec_dir / ".recall-pointed-stale.json"
+        stale_warm = self.spec_dir / ".recall-warm-stale.json"
+        fresh_warm = self.spec_dir / ".recall-warm-fresh.json"
         fresh_worklog = self.spec_dir / "session-fresh.worklog.jsonl"
         fresh_candidates = self.spec_dir / ".recall-candidates-fresh.json"
         named_worklog = self.spec_dir / "named-topic.worklog.jsonl"
@@ -808,13 +810,23 @@ class TestWorklogQueue(unittest.TestCase):
             stale_candidates,
             stale_staged,
             stale_pointed,
+            stale_warm,
+            fresh_warm,
             fresh_worklog,
             fresh_candidates,
             named_worklog,
         )
         for path in all_paths:
             path.write_text("{}\n", encoding="utf-8")
-        for path in (stale_worklog, stale_seen, stale_candidates, stale_staged, stale_pointed, named_worklog):
+        for path in (
+            stale_worklog,
+            stale_seen,
+            stale_candidates,
+            stale_staged,
+            stale_pointed,
+            stale_warm,
+            named_worklog,
+        ):
             os.utime(path, (old, old))
 
         removed = worklog_queue.cleanup_stale_state(
@@ -822,12 +834,14 @@ class TestWorklogQueue(unittest.TestCase):
             config=worklog_queue.QueueConfig(cleanup_age_seconds=100),
         )
 
-        self.assertEqual(removed, 5)
+        self.assertEqual(removed, 6)
         self.assertFalse(stale_worklog.exists())
         self.assertFalse(stale_seen.exists())
         self.assertFalse(stale_candidates.exists())
         self.assertFalse(stale_staged.exists())
         self.assertFalse(stale_pointed.exists())
+        self.assertFalse(stale_warm.exists())
+        self.assertTrue(fresh_warm.exists())
         self.assertTrue(fresh_worklog.exists())
         self.assertTrue(fresh_candidates.exists())
         self.assertTrue(named_worklog.exists())

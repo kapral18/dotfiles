@@ -6,14 +6,13 @@ disable-model-invocation: true
 
 # Live UI Windows
 
-The Windows/VirtualBox environment for live-UI verification.
-Connects Playwriter to a Windows guest's browser running in VirtualBox over CDP through a host NAT port-forward, then verifies exactly like the local-browser flow: the same target-packet resolution, readiness stability guard, screenshot & evidence capture, and data/setup ladder from the shared runtime contract.
+Connect Playwriter to the VirtualBox Windows guest browser through a host NAT port-forward over CDP.
+Apply the shared runtime contract's target resolution, readiness guard, screenshots/evidence, and data/setup ladder.
 
 ## Manual only — never automatic
 
-`/k-deep-review`, `k-agent-live-ui-review`, `/k-build`, and `k-ui-capture` verify the local browser only.
-None of them resolve, infer, or accept a Windows/VirtualBox requirement anymore —
-that entire environment-selection concept was purged from those flows and lives only here.
+`/k-deep-review`, `k-agent-live-ui-review`, `/k-build`, and `k-ui-capture` default to local-browser verification.
+Only this manually invoked skill adds Windows/VirtualBox coverage.
 
 Load this skill only when the user explicitly asks, this turn, for Windows/VirtualBox verification.
 Treat only that explicit request as the trigger: a PR/issue/spec hint is insufficient, and so is an unrelated/ambiguous mention of the word "Windows" (e.g. a UI panel or feature literally named "Windows").
@@ -21,7 +20,7 @@ If the user wants Windows coverage alongside an in-flight `k-ui-capture` or `k-a
 
 ## Load first
 
-Load `~/.agents/skills/k-review/references/live-ui-runtime.md` for target-packet resolution (including the `elastic/kibana` fallback via `~/.agents/skills/k-elastic-domain/references/kibana-live-ui.md`), Playwriter preflight, the readiness stability guard, screenshot & evidence capture, the data/setup ladder, and the hard runtime constraints.
+Load `~/.agents/skills/k-review/references/live-ui-runtime.md` for target-packet resolution, Playwriter preflight, the readiness stability guard, screenshot & evidence capture, the data/setup ladder, and the hard runtime constraints.
 This skill adds only the guest-connection rung below, the URL translation lookup, and its own hard constraints.
 
 Resolve the target packet and required runtime config the same way `k-ui-capture`'s direct-verify entry does when no controller supplies them; the oracle (an intended visual/state to match, or a base-vs-head comparison) comes from whichever check the user asked for.
@@ -67,7 +66,7 @@ Run this once per verification, before target-packet URL translation and before 
 
 ## Target URL translation
 
-If the resolved target packet's browser-navigation URL points at the host (e.g. `localhost`/`127.0.0.1`), the target packet owns the guest-reachable translation for that URL and any additional runtime config the backend needs to accept non-loopback connections — for `elastic/kibana`, see `~/.agents/skills/k-elastic-domain/references/kibana-live-ui.md`'s Windows/VirtualBox environment translation section.
+If the resolved target packet's browser-navigation URL points at the host (e.g. `localhost`/`127.0.0.1`), the target packet owns the guest-reachable translation and any runtime config needed to accept non-loopback connections.
 Ask the packet for that translation; use only packet-supplied translations, never an invented one for an unfamiliar packet.
 If the packet supplies no translation, return `Blocked` instead of guessing a guest-facing hostname.
 Scope this to URLs the browser actually navigates to; backing/data endpoints the worker calls directly stay host-facing and untranslated.

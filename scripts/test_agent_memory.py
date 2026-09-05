@@ -7,7 +7,9 @@ import contextlib
 import io
 import json
 import os
+import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -32,6 +34,42 @@ class AgentMemoryEnvMixin:
 
 class TestAgentMemory(AgentMemoryEnvMixin, unittest.TestCase):
     """WHEN wiping hook memory for a workspace."""
+
+    def test_worklog_selection_is_atomic_and_bounded(self):
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "topic.worklog.jsonl"
+            cases = [
+                (["old", "new"], 3000, ["old", "new"]),
+                (["older", "x" * 4000], 3000, ["older"]),
+                (["x" * 4000], 3000, []),
+                (["é" * 1200, "z" * 1900], 3000, ["z" * 1900]),
+                (["a" * 100, "b" * 2990], 3000, []),
+            ]
+            for rows, limit, expected in cases:
+                with self.subTest(lengths=list(map(len, rows))):
+                    raw = "\n".join(rows) + "\n"
+                    path.write_text(raw)
+                    text = agent_memory.transcript_tail(path, limit=limit)
+                    self.assertLessEqual(len(text), limit)
+                    self.assertEqual([line for line in text.splitlines() if not line.startswith("[omitted")], expected)
+                    self.assertEqual(path.read_text(), raw)
+            path.write_text("old\nnew\n")
+            self.assertEqual(agent_memory.transcript_tail(path, lines=1), "new")
+            path.write_text("")
+            self.assertEqual(agent_memory.transcript_tail(path), "")
+
+    def test_review_markdown_headings_omit_conclusions(self):
+        import agent_memory
+
+        for heading in ("findings:", "## Findings", "### VERDICT: ###", "# Verified facts", "###### Net"):
+            with self.subTest(heading=heading):
+                text = "target: PR owner/repo#123\nInspect findings in the diff.\n" + heading + "\nOLD_CONCLUSION"
+                rendered, review = agent_memory.bounded_spec_text(text, Path("review.txt"), "review-123")
+                self.assertTrue(review)
+                self.assertIn("Inspect findings in the diff.", rendered)
+                self.assertNotIn("OLD_CONCLUSION", rendered)
 
     def test_wipe_current_deletes_explicit_active_topic_files(self):
         import agent_memory
@@ -1025,6 +1063,47 @@ class TestAgentMemoryMirror(AgentMemoryEnvMixin, unittest.TestCase):
     def _roots(self, stack: contextlib.ExitStack):
         return TestAgentMemoryNote._roots(self, stack)
 
+    def test_removed_sentinel_stays_removed_before_and_after_sync(self):
+        import agent_memory
+        import spec_mirror
+
+        for sync_first in (False, True):
+            with self.subTest(sync_first=sync_first), contextlib.ExitStack() as stack:
+                workspace = self._roots(stack)
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                spec_dir.mkdir(parents=True)
+                (spec_dir / "topic.txt").write_text("original")
+                sentinel = spec_dir / "topic.no_context"
+                sentinel.touch()
+                spec_mirror.sync_topic(spec_dir, workspace, "topic")
+                sentinel.unlink()
+                (spec_dir / "topic.txt").write_text("live edit")
+                if sync_first:
+                    spec_mirror.sync_topic(spec_dir, workspace, "topic")
+                spec_mirror.restore_topics(spec_dir, workspace)
+                self.assertFalse(sentinel.exists())
+                self.assertEqual((spec_dir / "topic.txt").read_text(), "live edit")
+                spec_mirror.sync_topic(spec_dir, workspace, "topic")
+                self.assertFalse((spec_mirror.mirror_dir_for(workspace) / sentinel.name).exists())
+
+    def test_missing_whole_topic_restores_sentinel_even_after_empty_sync(self):
+        import agent_memory
+        import spec_mirror
+
+        with contextlib.ExitStack() as stack:
+            workspace = self._roots(stack)
+            spec_dir = agent_memory.spec_dir_for(workspace)
+            spec_dir.mkdir(parents=True)
+            (spec_dir / "topic.txt").write_text("recover me")
+            (spec_dir / "topic.no_context").touch()
+            spec_mirror.sync_topic(spec_dir, workspace, "topic")
+            for path in spec_dir.iterdir():
+                path.unlink()
+            spec_mirror.sync_topic(spec_dir, workspace, "topic")
+            restored = spec_mirror.restore_topics(spec_dir, workspace)
+            self.assertEqual(set(restored), {"topic.txt", "topic.no_context"})
+            self.assertEqual(spec_mirror.restore_topics(spec_dir, workspace), [])
+
     def test_note_syncs_named_topic_to_mirror(self):
         import agent_memory
         import spec_mirror
@@ -1095,6 +1174,122 @@ class TestAgentMemoryMirror(AgentMemoryEnvMixin, unittest.TestCase):
             restored = spec_mirror.restore_topics(spec_dir, workspace)
             assert "doomed.txt" not in restored
             assert not (spec_dir / "doomed.txt").exists()
+
+
+class TestDeployedAgentMemory(unittest.TestCase):
+    """WHEN the deployed command has no checkout or chezmoi at runtime."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.repo = Path(__file__).resolve().parents[1]
+        chezmoi = shutil.which("chezmoi")
+        if not chezmoi:
+            raise unittest.SkipTest("chezmoi is required to render the deployed command library")
+        cls.rendered = {}
+        for name in ("agent_memory", "spec_mirror", "worklog_queue"):
+            template = cls.repo / f"home/exact_lib/exact_,agent-memory/readonly_{name}.py.tmpl"
+            result = subprocess.run(
+                [chezmoi, "--source", str(cls.repo / "home"), "execute-template", "--file", str(template)],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            cls.rendered[name] = result.stdout
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix="agent memory standalone ")
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name).resolve()
+        self.lib = self.root / "lib/,agent-memory"
+        self.lib.mkdir(parents=True)
+        for name, text in self.rendered.items():
+            (self.lib / f"{name}.py").write_text(text)
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        self.launcher = self.bin / ",agent-memory"
+        shutil.copy2(self.repo / "home/exact_bin/executable_,agent-memory", self.launcher)
+        self.launcher.chmod(0o755)
+        for name, target in (("python3", sys.executable), ("bash", "/bin/bash"), ("git", "/usr/bin/git")):
+            (self.bin / name).symlink_to(target)
+        self.workspace = self.root / "workspace with spaces"
+        self.workspace.mkdir()
+        self.env = {
+            "HOME": str(self.root),
+            "PATH": str(self.bin),
+            "AGENT_MEMORY_SPEC_ROOT": str(self.root / "specs"),
+            "AGENT_MEMORY_MIRROR_ROOT": str(self.root / "mirror"),
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "GIT_OPTIONAL_LOCKS": "0",
+        }
+        self.spec = self.root / "specs" / str(self.workspace).lstrip(os.sep)
+
+    def run_cli(self, *args, launcher=None):
+        result = subprocess.run(
+            [str(launcher or self.launcher), *args, "--workspace", str(self.workspace)],
+            cwd=self.workspace,
+            env=self.env,
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout
+
+    def test_should_ignore_source_overrides_and_resolve_symlinked_invocation(self):
+        alias = self.bin / "memory alias"
+        alias.symlink_to(self.launcher)
+        for override in (None, str(self.repo / "home"), str(self.root / "absent checkout")):
+            if override is None:
+                self.env.pop("CHEZMOI_SOURCE_DIR", None)
+            else:
+                self.env["CHEZMOI_SOURCE_DIR"] = override
+            for launcher in (self.launcher, alias):
+                with self.subTest(override=override, launcher=launcher):
+                    state = json.loads(self.run_cli("status", "--json", launcher=launcher))
+                    self.assertEqual(state["workspace"], str(self.workspace))
+                    self.assertEqual(state["selected_topic"], "current")
+                    self.assertFalse(state["spec_exists"])
+
+    def test_should_preserve_binding_queue_notes_and_mirror_recovery(self):
+        self.env["CHEZMOI_SOURCE_DIR"] = str(self.root / "missing source")
+        self.spec.mkdir(parents=True)
+        enqueue = (
+            "import sys; from pathlib import Path; sys.path.insert(0, sys.argv[1]); import worklog_queue as q; "
+            "p=Path(sys.argv[2]); q.enqueue(p, 'session1', 'session-session1', "
+            "p/'session-session1.worklog.jsonl', {'ts':'2000-01-01T00:00:00+00:00','event':'pre-bind'}, "
+            "start_worker=False)"
+        )
+        subprocess.run([sys.executable, "-c", enqueue, str(self.lib), str(self.spec)], env=self.env, check=True)
+        selected = self.run_cli("select", "launcher-topic", "--session-id", "session1", "--create")
+        self.assertIn("migrated: 1 pre-bind worklog events", selected)
+        self.assertIn('"event": "pre-bind"', selected)
+        self.assertFalse((self.spec / "session-session1.worklog.jsonl").exists())
+        self.run_cli("note", "fact", "quoted text with spaces", "--session-id", "session1", "--ref", "file:12")
+        worklog = self.spec / "launcher-topic.worklog.jsonl"
+        rows = [json.loads(line) for line in worklog.read_text().splitlines()]
+        self.assertEqual([row["event"] for row in rows], ["pre-bind", "note"])
+        self.assertEqual(rows[1]["text"], "quoted text with spaces")
+        self.assertEqual(rows[1]["refs"], "file:12")
+        expected = worklog.read_bytes()
+        worklog.unlink()
+        (self.spec / "launcher-topic.txt").unlink()
+        state = json.loads(self.run_cli("status", "--session-id", "session1", "--json"))
+        self.assertEqual(state["selected_topic"], "launcher-topic")
+        self.assertTrue(state["spec_exists"])
+        self.assertEqual(worklog.read_bytes(), expected)
+
+    def test_should_preserve_explicit_active_pointer_reset_after_restore(self):
+        cases = ((False, False, True), (True, True, True), (False, True, True), (False, True, False))
+        for dry_run, reset, live_pointer in cases:
+            with self.subTest(dry_run=dry_run, reset=reset, live_pointer=live_pointer):
+                self.run_cli("use", "active-topic")
+                pointer = self.spec / "_active_topic.txt"
+                if not live_pointer:
+                    pointer.unlink()
+                flags = (["--dry-run"] if dry_run else []) + (["--reset-active"] if reset else [])
+                self.run_cli("wipe-current", "--topic", "active-topic", *flags)
+                self.run_cli("status", "--json")
+                self.assertEqual(pointer.exists(), not reset or dry_run)
+                self.assertEqual((self.spec / "active-topic.txt").exists(), dry_run)
 
 
 if __name__ == "__main__":

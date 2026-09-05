@@ -162,8 +162,8 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         ):
             self.assert_file_contains(
                 controller,
-                "## Phase 4 — Findings audit (delegate, read-only)",
-                "## Phase 5 — Final adversarial verification (delegate; cross-family preferred at equal capability, SOP §3.7)",
+                "load and follow `~/.agents/skills/k-deep-review/SKILL.md` in full",
+                "Follow its required phase references at their owning phase",
             )
             # The audit runs before the verifier, so it cannot consume adversarial verdicts;
             # applying those verdicts belongs to the later reconcile phase.
@@ -212,11 +212,10 @@ class TestReviewPolicyInvariants(unittest.TestCase):
             "OMP reviewer frontmatter must not autoload a skill: it injects the skill body, "
             "and k-review would re-add the router that reviewer-worker.md forbids"
         )
-        # Claude `skills:` is an allowlist where omitting loads every discovered skill,
-        # so it must stay present and stay narrowed to the lens set.
+        # Claude 2.1.260 initializes the preload list as e.skills ?? []; omission loads
+        # no bodies. The shared worker contract selects the assigned lane's lens.
         claude_reviewer = "home/dot_claude/exact_agents/k-agent-reviewer.md.tmpl"
-        self.assert_file_contains(claude_reviewer, "skills:", "  - k-code-quality")
-        self.assert_file_not_contains(claude_reviewer, "  - k-review")
+        self.assert_file_not_contains(claude_reviewer, "skills:", "would load every discovered skill")
         # Every harness lane profile still points at the one shared contract.
         for profile in (
             "home/dot_cursor/exact_agents/readonly_k-agent-review-worker.md.tmpl",
@@ -227,6 +226,65 @@ class TestReviewPolicyInvariants(unittest.TestCase):
             "home/dot_omp/private_agent/exact_agents/k-agent-reviewer.md.tmpl",
         ):
             self.assert_file_contains(profile, "k-review/references/reviewer-worker.md")
+
+    def test_pi_omp_controller_dispatch_preserves_leaf_and_root_routes(self):
+        for path in (
+            "home/dot_pi/agent/exact_agents/k-agent-review-controller.md.tmpl",
+            "home/dot_omp/private_agent/exact_agents/k-agent-review-controller.md.tmpl",
+        ):
+            with self.subTest(profile=path):
+                source = (REPO / path).read_text(encoding="utf-8")
+                self.assertIn('include "dot_config/exact_tmux/agent_prompts/prefix.txt"', source)
+                self.assertIn("A delegated child MUST NOT launch, invoke, or delegate to another agent", source)
+                self.assertIn("execute only the task and scope in the parent packet", source)
+                self.assertIn("The profile name never grants root authority", source)
+                self.assertLess(source.index("## Session boundary"), source.index("## Root dispatch"))
+                self.assertIn("Plan/design/document review", source)
+                self.assertIn("feedback only", source)
+                self.assertIn("Standard review", source)
+                self.assertIn("Do not promote standard review to deep review", source)
+                self.assertIn("explicitly invoked deep review", source)
+                self.assertIn("Before fan-out, do not load or run the full `k-review` router", source)
+                self.assertNotIn("autoloadSkills:", source.split("---")[1])
+                self.assertNotIn("## Phase 0", source)
+                self.assertIn("Native invocation notes", source)
+        self.assert_file_contains(
+            "home/dot_pi/agent/exact_agents/k-agent-review-controller.md.tmpl",
+            'context: "fresh"',
+            "concurrency: <lanes>",
+            "`:<thinking>`",
+            "does not consume a separate `thinking` field",
+        )
+        self.assert_file_contains(
+            "home/dot_omp/private_agent/exact_agents/k-agent-review-controller.md.tmpl",
+            "one parallel `task` call",
+            "take precedence over the parent session model",
+        )
+
+    def test_narrow_auditors_load_only_role_required_skills(self):
+        for harness, directory, key in (
+            ("claude", "home/dot_claude/exact_agents", "skills"),
+            ("omp", "home/dot_omp/private_agent/exact_agents", "autoloadSkills"),
+        ):
+            for role, required in (
+                ("findings-auditor", []),
+                ("post-review", []),
+                ("live-ui-review", ["k-playwriter"]),
+                ("pr-necessity-auditor", ["k-review"]),
+            ):
+                path = f"{directory}/k-agent-{role}.md.tmpl"
+                with self.subTest(harness=harness, role=role):
+                    source = (REPO / path).read_text(encoding="utf-8")
+                    frontmatter = source.split("---")[1]
+                    match = re.search(rf"^{key}:([^\n]*(?:\n  - [^\n]+)*)", frontmatter, re.MULTILINE)
+                    actual = re.findall(r"k-[a-z-]+", match.group(1)) if match else []
+                    self.assertEqual(actual, required, path)
+                    self.assertIn(f"k-review/references/{role}.md", source)
+                    self.assertIn('include "dot_config/exact_tmux/agent_prompts/prefix.txt"', source)
+
+    def test_catchall_child_has_no_parent_fanout_exception(self):
+        self.assert_file_contains("home/dot_claude/exact_agents/claude.md.tmpl", "Do not spawn additional agents.")
+        self.assert_file_not_contains("home/dot_claude/exact_agents/claude.md.tmpl", "unless the parent")
 
     def test_self_authored_fix_loop_is_bounded_scoped_and_gated_once(self):
         # A measured Cursor session (2026-09-04) turned one review defect into a 2.5-hour
@@ -335,6 +393,20 @@ class TestReviewPolicyInvariants(unittest.TestCase):
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_adversarial-verifier.md",
             "Do not generate new findings; the finder lanes own discovery.",
         )
+        # Native wrappers must not prohibit the shared contract's bounded sweep.
+        profiles = sorted((REPO / "home").glob("**/*adversarial-verifier*.tmpl"))
+        self.assertEqual(len(profiles), 5)
+        for profile in profiles:
+            with self.subTest(profile=profile):
+                source = profile.read_text(encoding="utf-8")
+                self.assertIn("verdicts plus the bounded miss sweep", source.lower())
+                self.assertIn("k-review/references/adversarial-verifier.md", source)
+                self.assertNotIn("verdicts only", source.lower())
+                self.assertNotIn("or generate new findings", source)
+        self.assert_file_contains(
+            "home/dot_codex/exact_agents/readonly_k-agent-adversarial-verifier.toml.tmpl",
+            "Never edit files, post comments, resolve threads, commit, or push.",
+        )
         # Sweep candidates bypass the audit unless each controller re-audits them inline.
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
@@ -350,7 +422,11 @@ class TestReviewPolicyInvariants(unittest.TestCase):
             "home/dot_pi/agent/exact_agents/k-agent-review-controller.md.tmpl",
             "home/dot_omp/private_agent/exact_agents/k-agent-review-controller.md.tmpl",
         ):
-            self.assert_file_contains(controller, "new-candidate", "Findings-Set Audit")
+            self.assert_file_contains(
+                controller,
+                "load and follow `~/.agents/skills/k-deep-review/SKILL.md` in full",
+                "Follow its required phase references at their owning phase",
+            )
 
     def test_live_ui_windows_is_manual_only_and_purged_from_automatic_flows(self):
         # The Windows/VirtualBox environment is a standalone manual-only skill now;
@@ -391,6 +467,10 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
+            "Before merging candidates, evaluating applicability, selecting targets/config, or launching live UI, load and follow `~/.agents/skills/k-deep-review/references/live-ui-validation.md` in full.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/exact_references/readonly_live-ui-validation.md",
             "Windows/VirtualBox coverage is out of scope for this flow: `k-agent-live-ui-review` verifies the local browser only.",
             "add the manual `~/.agents/skills/k-live-ui-windows/SKILL.md` skill to this turn's work by hand",
         )

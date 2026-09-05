@@ -10,8 +10,7 @@ Default interface:
 
 - Use `gws` for Google Workspace activity.
 - Verify the local CLI first: `command -v gws`, `gws --version`, `gws --help`.
-- Before using a method in-session, inspect it with `gws schema <service.resource.method>`.
-- Then use direct `gws <service> <resource> [sub-resource] <method>` commands.
+- Use the execution loop below: inspect each method with `gws schema <service.resource.method>` before calling `gws <service> <resource> [sub-resource] <method>` in-session.
 - Do not invent service/resource/method names, params, request bodies, or scopes; verify them from `gws schema` output.
 
 Google Slides:

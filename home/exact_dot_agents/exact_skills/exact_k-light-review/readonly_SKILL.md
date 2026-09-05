@@ -5,9 +5,9 @@ description: "Use for local/ad-hoc audits of low-risk self-authored changes; esc
 
 # Light Review
 
-A light-rigor review for a low-risk self-authored changeset you want checked and fixed in place.
-It uses the same review machinery as `k-review`, but trims PR/GitHub scaffolding, live-UI work, broad base-context gathering, and multi-lane diversity when those are not needed.
-Light does not mean inline-only: use one read-only `k-agent-change-auditor` worker plus adversarial refutation when the active harness can launch them.
+Check and fix low-risk self-authored changes in place with shared `k-review` machinery.
+Omit unneeded PR/GitHub scaffolding, live UI, broad base context, and multi-lane diversity.
+Use one read-only `k-agent-change-auditor` plus adversarial refutation when the harness can launch them.
 
 Load `~/.agents/skills/k-review/references/judging_core.md` and apply its Severity and the relevant gates (Deletion-Safety / Historical-Rationale / State-Machine / Async-Derived State / Context-Divergence / Scale-Behavior / Product-Flow / Signal-Quality / Systemic-Risk when triggered).
 Load `~/.agents/skills/k-review/references/judging_pipeline.md` and apply its Coverage Checklist and — foregrounded for this skill —

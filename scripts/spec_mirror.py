@@ -78,6 +78,16 @@ def sync_topic(spec_dir: Path, workspace: Path, topic: str) -> "list[str]":
         return []
     mirror_dir = mirror_dir_for(workspace)
     synced: "list[str]" = []
+    # A live topic makes absence of its sentinel an explicit enabled state.
+    # An entirely missing topic is reboot recovery, not a deletion request.
+    if any((spec_dir / f"{topic}{suffix}").is_file() for suffix in (".txt", ".worklog.jsonl")):
+        sentinel = f"{topic}.no_context"
+        try:
+            if not (spec_dir / sentinel).exists() and (mirror_dir / sentinel).is_file():
+                (mirror_dir / sentinel).unlink()
+                synced.append(sentinel)
+        except OSError:
+            pass
     for suffix in TOPIC_SUFFIXES:
         name = f"{topic}{suffix}"
         if _copy_if_changed(spec_dir / name, mirror_dir / name):
@@ -97,6 +107,14 @@ def restore_topics(spec_dir: Path, workspace: Path) -> "list[str]":
     restored: "list[str]" = []
     try:
         entries = sorted(mirror_dir.iterdir())
+        # Snapshot before restoring: files restored below must not turn a lost
+        # topic into a live topic for the sentinel decision in this same pass.
+        live_topics = {
+            path.name.removesuffix(suffix)
+            for suffix in (".txt", ".worklog.jsonl")
+            for path in spec_dir.glob(f"*{suffix}")
+            if path.is_file()
+        }
     except OSError:
         return restored
     for src in entries:
@@ -113,6 +131,8 @@ def restore_topics(spec_dir: Path, workspace: Path) -> "list[str]":
             continue
         if topic and not is_mirrored_topic(topic):
             continue
+        if name.endswith(".no_context") and topic in live_topics:
+            continue
         dst = spec_dir / name
         try:
             if dst.exists():
@@ -122,6 +142,14 @@ def restore_topics(spec_dir: Path, workspace: Path) -> "list[str]":
         if _copy_if_changed(src, dst):
             restored.append(name)
     return restored
+
+
+def forget_active_pointer(workspace: Path) -> None:
+    """Honor an explicit active-selection reset even if its live copy is gone."""
+    try:
+        (mirror_dir_for(workspace) / ACTIVE_POINTER).unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 def forget_topic(workspace: Path, topic: str) -> "list[str]":

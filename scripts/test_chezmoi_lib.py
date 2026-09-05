@@ -16,6 +16,72 @@ from _test_support import REPO, SCRIPTS
 LIB = SCRIPTS / "chezmoi_lib.sh"
 
 
+class TestChezmoiWriteHelpers(unittest.TestCase):
+    """WHEN generated content is written with a declared mode."""
+
+    def test_SHOULD_enforce_modes_without_rewriting_current_bytes_or_checksums(self):
+        for helper in ("write", "install"):
+            with self.subTest(helper=helper), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                target = root / "nested/config.json"
+                source = root / "source.json"
+                source.write_text("{}\n")
+                env = os.environ.copy()
+                env.update(
+                    {
+                        "XDG_STATE_HOME": str(root / "state"),
+                        "LIB": str(LIB),
+                        "TARGET": str(target),
+                        "SOURCE": str(source),
+                    }
+                )
+                command = (
+                    'source "$LIB"; chezmoi_write_if_changed "{}" "$TARGET" 0600'
+                    if helper == "write"
+                    else 'source "$LIB"; chezmoi_install_if_changed "$SOURCE" "$TARGET" 0600'
+                )
+                initial_cases = (
+                    (None, False),
+                    (b"stale", False),
+                    (b"{}\n", True),
+                    (b"{}", False),
+                    (b"{}\n\n", False),
+                )
+                for initial, exact_current in initial_cases:
+                    manifest = root / "state/chezmoi/managed_configs.tsv"
+                    if manifest.exists():
+                        manifest.unlink()
+                    if initial is not None:
+                        target.write_bytes(initial)
+                        target.chmod(0o644)
+                    elif target.exists():
+                        target.unlink()
+                    before = target.stat() if target.exists() else None
+                    result = subprocess.run(["bash", "-c", command], env=env, capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(target.read_bytes(), b"{}\n")
+                    self.assertEqual(target.stat().st_mode & 0o777, 0o600)
+                    if exact_current:
+                        self.assertEqual(
+                            (target.stat().st_ino, target.stat().st_mtime_ns), (before.st_ino, before.st_mtime_ns)
+                        )
+                    rows = manifest.read_text().splitlines()
+                    self.assertEqual(len(rows), 1)
+                    self.assertEqual(rows[0].split("\t")[:2], [str(target), hashlib.sha256(b"{}\n").hexdigest()])
+                    manifest_before = manifest.stat()
+                    target_before = target.stat()
+                    repeated = subprocess.run(["bash", "-c", command], env=env, capture_output=True, text=True)
+                    self.assertEqual(repeated.returncode, 0, repeated.stderr)
+                    self.assertEqual(
+                        (target.stat().st_ino, target.stat().st_mtime_ns),
+                        (target_before.st_ino, target_before.st_mtime_ns),
+                    )
+                    self.assertEqual(
+                        (manifest.stat().st_ino, manifest.stat().st_mtime_ns),
+                        (manifest_before.st_ino, manifest_before.st_mtime_ns),
+                    )
+
+
 class TestChezmoiManagedConfigLedger(unittest.TestCase):
     """WHEN generated-config checksums are recorded or retired."""
 

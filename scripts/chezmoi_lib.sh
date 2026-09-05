@@ -6,8 +6,8 @@
 #
 # Provides:
 #   chezmoi_pick_src   – resolve work vs personal source file
-#   chezmoi_write_if_changed – atomic string write, skip if unchanged
-#   chezmoi_install_if_changed – file copy via install(1), skip if unchanged
+#   chezmoi_write_if_changed – string write, enforce mode without rewriting current bytes
+#   chezmoi_install_if_changed – file copy via install(1), enforce mode without recopying current bytes
 #   chezmoi_record_checksum – record a file's sha256 in the managed-configs manifest
 #   chezmoi_forget_checksum – retire a literal path from the managed-configs manifest
 #   chezmoi_record_artifact – record one ownership-aware generated AI artifact
@@ -69,13 +69,14 @@ chezmoi_forget_artifact() {
 
 # Write a string to a target file only if content differs.
 #   chezmoi_write_if_changed <desired_content> <target_path> [mode]
-# Creates parent directories. Returns 0 if written or already current.
+# Creates parent directories and enforces mode even when content is current.
 chezmoi_write_if_changed() {
   local desired="$1" target="$2" mode="${3:-0644}"
 
   mkdir -p "$(dirname "$target")"
 
-  if [ -f "$target" ] && [ "$(cat "$target")" = "$desired" ]; then
+  if [ -f "$target" ] && printf '%s\n' "$desired" | cmp -s - "$target"; then
+    chmod "$mode" "$target"
     chezmoi_record_checksum "$target"
     return 0
   fi
@@ -87,13 +88,14 @@ chezmoi_write_if_changed() {
 
 # Copy a source file to target via install(1) only if content differs.
 #   chezmoi_install_if_changed <src_path> <target_path> [mode]
-# Creates parent directories. Returns 0 if copied or already current.
+# Creates parent directories and enforces mode even when content is current.
 chezmoi_install_if_changed() {
   local src="$1" target="$2" mode="${3:-0644}"
 
   mkdir -p "$(dirname "$target")"
 
   if [ -f "$target" ] && cmp -s "$src" "$target"; then
+    chmod "$mode" "$target"
     chezmoi_record_checksum "$target"
     return 0
   fi

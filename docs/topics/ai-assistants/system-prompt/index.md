@@ -12,7 +12,7 @@ Read these pages as human documentation about the system's contract: where the p
 
 | Slice                                                                   | Owns                                                                                                      |
 | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| [Source of truth](source-of-truth.md)                                   | single file, symlink fan-out, and update workflow                                                         |
+| [Source of truth](source-of-truth.md)                                   | canonical body, native delivery paths, and update workflow                                                |
 | [Truth and verification](truth-and-verification.md)                     | compatibility, external truth, runtime truth, completion, compact-output recovery, self-report skepticism |
 | [Execution workflow](execution-workflow.md)                             | reverse interview, persistent specs, verification loops, state-machine harnesses                          |
 | [Side-effect gates](side-effect-gates.md)                               | git push safety, ownership, publication, bot/human split                                                  |
@@ -34,12 +34,14 @@ The mental model is layered:
 | Surface           | Source                                                                                                                             | Target                               |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
 | Single SOP source | [`home/readonly_AGENTS.md`](../../../../home/readonly_AGENTS.md)                                                                   | `~/AGENTS.md`                        |
-| Claude            | [`home/symlink_CLAUDE.md`](../../../../home/symlink_CLAUDE.md)                                                                     | `~/CLAUDE.md`                        |
+| Claude            | [`home/readonly_CLAUDE.md`](../../../../home/readonly_CLAUDE.md)                                                                   | `~/CLAUDE.md`                        |
 | Antigravity       | [`home/dot_gemini/config/symlink_AGENTS.md`](../../../../home/dot_gemini/config/symlink_AGENTS.md)                                 | `~/.gemini/config/AGENTS.md`         |
 | Cursor            | [`home/dot_cursor/symlink_AGENTS.md`](../../../../home/dot_cursor/symlink_AGENTS.md)                                               | `~/.cursor/AGENTS.md`                |
 | Codex             | [`home/dot_codex/symlink_AGENTS.md`](../../../../home/dot_codex/symlink_AGENTS.md)                                                 | `~/.codex/AGENTS.md`                 |
 | OpenCode          | [`home/dot_config/opencode/symlink_AGENTS.md`](../../../../home/dot_config/opencode/symlink_AGENTS.md)                             | `~/.config/opencode/AGENTS.md`       |
 | Copilot           | [`home/private_dot_copilot/symlink_copilot-instructions.md`](../../../../home/private_dot_copilot/symlink_copilot-instructions.md) | `~/.copilot/copilot-instructions.md` |
+
+Claude’s native global alias is `~/.claude/CLAUDE.md`; the home `CLAUDE.md` uses `@AGENTS.md`. See [source of truth](source-of-truth.md) for Pi and Cursor delivery adapters and native limitations.
 
 ## Related
 

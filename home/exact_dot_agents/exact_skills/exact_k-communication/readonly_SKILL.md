@@ -5,8 +5,8 @@ description: "Use when drafting human-visible communication; apply canonical ton
 
 # Communication (Centralized Tone & Style)
 
-Single source of truth for **how to word** any human-directed communication produced on the user's behalf, on **any** surface and in either direction.
-The surfaces named below are examples, not an exhaustive list — this applies to any channel where a human reads what you wrote.
+Owns wording of human-directed communication produced on the user's behalf, on any surface and in either direction;
+examples below are non-exhaustive.
 
 - **Proactive:** PR/issue descriptions, commit/release messages, announcements, status updates, a new comment that starts a thread.
 - **In response:** replies to a comment/message/thread (see "When Responding To An Existing Message/Thread").
@@ -18,7 +18,14 @@ Scope boundaries:
 - This skill governs **wording of external human-visible content** only.
 - **Whether and how to publish** (approval, bot-vs-human carve-out, draft → show payload → wait) is the Human-Visible Publication Gate in the SOP (`~/AGENTS.md`); do not restate or weaken it here.
 - In-session chat/CLI responses stay SOP §5; this skill is for other humans.
-- Before drafting, apply every rule in `~/.agents/skills/k-communication/references/external-replies.md`.
+
+## External register
+
+Apply every rule before drafting text another human will read. In-session SOP §5 shape rules do not override this skill's friendly register.
+
+- Choose no reply when it would only restate the thread or add attribution trivia, or turn a casual exchange into an investigation report.
+- Match the surface's register; keep simple social replies in natural conversational phrasing, using lab-report phrasing only when requested.
+- Use natural wording, or say that no message is worth sending.
 
 ## Core Tone
 
@@ -71,9 +78,8 @@ That is the whole message. Add sections only when the content genuinely needs th
 
 ## Structure (Longer-Form Artifacts)
 
-Brevity outranks structure: prefer the shortest structure that still delivers a complete essence.
-For PR/issue descriptions, release notes, or multi-point messages, structure must earn its space —
-reach for a density primitive before prose; add sections only when they carry information a shorter form lacks:
+For PR/issue descriptions, release notes, or multi-point messages, use the shortest complete structure.
+Reach for a density primitive before prose; add sections only when a shorter form cannot carry their information:
 
 - **Verdict line** for status / decision / ack.
 - **Bulleted anchor list** for a set of findings, changes, or asks — one clause per bullet with a link/anchor.
@@ -81,7 +87,7 @@ reach for a density primitive before prose; add sections only when they carry in
 - **`## Summary` / `## Why`** only when the content genuinely needs sections.
 
 - Lead with what changed / what's being asked; rationale and detail after.
-- One idea per bullet. Drop bullets that restate each other or the section heading.
+- Drop bullets that restate each other or the section heading.
 - A later section may not restate an item already given in an earlier list; refer by name and add only new information.
 
 ## References To Code / Commits / Artifacts

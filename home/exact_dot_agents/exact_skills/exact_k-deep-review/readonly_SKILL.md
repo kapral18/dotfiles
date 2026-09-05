@@ -8,16 +8,9 @@ disable-model-invocation: true
 
 This is the controller contract for `/k-deep-review`.
 
-The controller:
-
-- routes
-- delegates
-- aggregates
-- judges
-- performs gated side effects
-
-The substantive review work happens in isolated reviewer workers that load the shared `k-review` skill themselves.
-Two exceptions: the blind fresh-eyes clarity lane loads only `k-review/references/fresh-eyes.md`, and the adversarial verifier loads `judging_core.md` and its required conditional references through `k-review/references/adversarial-verifier.md`.
+The controller routes, delegates, aggregates, judges, and performs gated side effects.
+Isolated reviewers load the role-specific `k-review` references listed under Controller boundary, not the full review router.
+The blind fresh-eyes lane loads only `k-review/references/fresh-eyes.md`; the adversarial verifier loads `judging_core.md` and required conditional references through `k-review/references/adversarial-verifier.md`.
 
 The reviewer-worker lanes are read-only:
 
@@ -43,37 +36,9 @@ The `k-review` skill and its references remain the source-of-truth methodology w
 
 ## Controller boundary
 
-The controller owns:
-
-- route and scope discovery:
-  - mode: local changes, PR review, or PR fix
-  - authorship: `self` / `other` / `unknown`
-  - PR number or diff range
-  - base branch
-  - staged/unstaged state
-  - thread IDs
-  - user constraints
-  - expected output shape
-  - intent dependencies needed for judgment, if any: PR body, PR discussion/review threads, linked issues/PRs, Slack threads, design artifacts, commit messages, or branch history
-- running the conditional blocking `k-agent-pr-necessity-auditor` before implementation review
-  - applies to other-authored/unknown PRs
-  - applies to local flows with a PR-intent dependency
-- materializing the read-only review context pack before reviewer fan-out and putting the pack path plus manifest `head_sha` in every scope packet
-- launching the reviewer workers after any required PR necessity greenlight: the angle lanes plus the conditional blind fresh-eyes clarity lane
-- running conditional `k-agent-live-ui-review` verification after lane merge/dedup, before the findings audit
-  - applies when changed paths or merged candidate findings touch UI/runtime behavior
-  - requires applicable runtime evidence
-  - requires screenshot handoff evidence for any UI-related finding that may become draft review feedback, unless live UI returns a valid blocker or non-applicability result
-- running the controller findings audit phase after live UI returns evidence/non-applicability/blocker or is explicitly skipped;
-  delegate to `k-agent-findings-auditor` only when a findings-audit delegation condition is true
-- running the final adversarial verification pass (cross-family preferred at equal capability, SOP §3.7) over the audited candidate set
-- aggregating worker outputs, `k-agent-pr-necessity-auditor` status, reviewer findings, live UI status/evidence/artifacts/skip reason, audit output, and final adversarial verification verdicts
-- deciding which worker-reported `verification_needed` items deserve serial controller verification
-- judging kept/dropped findings after aggregation
-- reconciling PR-mode draft payloads before preparing or posting final review feedback
-  - compare against existing current-account pending reviews, submitted review comments, and replies
-- applying fixes, drafting payloads, or touching GitHub only after the relevant `k-review`/`communication`/`github`/`git` gates
-  - load `k-communication` before wording any human-visible draft
+The controller owns every phase in Default orchestration: route/scope and authorship, conditional blocking PR necessity, context-pack production, reviewer launch, live UI, findings audit, final adversarial verification, aggregation/judgment, serial verification, PR reconciliation, and gated action.
+Follow each phase's complete procedure and its declared conditions; the phase order and Output section retain the required evidence/status fields.
+Intent dependencies may include the PR body, discussion/review threads, linked issues/PRs, Slack threads, design artifacts, commit messages, or branch history.
 
 Before fan-out, the controller must not load or run the full `k-review` skill.
 
@@ -198,67 +163,9 @@ Before selecting or launching reviewer lanes, load and follow this complete phas
 Required reference: `~/.agents/skills/k-deep-review/references/reviewer-roster.md`.
 
 1. **Merge candidates and run conditional live UI verification.**
-   - After every launched reviewer lane returns, collapse same-root-cause/same-anchor duplicates into one merged candidate each (merge/dedup only; no new controller investigation).
-   - If the merged set is empty, skip live UI, findings audit, and final adversarial verification;
-     report the skip reason and continue to action/output with no findings.
-   - Immediately after lane merge/dedup, and after the blocking PR necessity gate has passed when it applies, apply a read-only controller parity filter to replacement/test-migration candidates:
-     - apply the Replacement/Migration Parity Gate from `judging_core.md` to replacement/test-migration candidates
-     - drop candidates classified as `preserved_limitation` or `prose_drift`
-     - do not treat test-only UI code as live-UI applicability by itself
-   - Launch `k-agent-live-ui-review` when changed paths or any merged candidate touch UI/runtime behavior and runtime evidence is applicable.
-     For replacement/test-migration candidates, only `parity_gap`, `new_regression`, and `scope_expansion` can be kept candidates for this trigger.
-   - A deterministic, unit, integration, or other-layer proof does NOT discharge a live-UI trigger when the runtime is startable.
-     Examples include a resolution/compile harness, a passing test, or a static trace;
-     these are corroborating evidence, not substitutes for live verification.
-     Once the trigger fires, skipping live UI is valid only via a packet-defined blocker.
-     Valid blockers include a read-only/Ask-mode harness, an unstartable runtime, or another blocker the selected target packet recognizes.
-     Do not skip because a non-runtime proof already exists or because runtime evidence is judged "unlikely to change the verdict".
-     If the runtime is startable (runtime-start rung), start it and verify.
-   - Hard runtime read-only/sandbox modes are not the review safety boundary.
-     Use harness permissions that allow the lane's permitted verification tools, and enforce no-mutation behavior through the role contract.
-   - Use those permissions only for the lane's permitted verification tools: read-only shell/git/`gh` for investigation workers, or Playwriter commands for `k-agent-live-ui-review`.
-     `k-agent-live-ui-review` may also run explicit local/dev runtime data setup against verified targets.
-   - Mode boundary: default `k-agent-live-ui-review` is verification-only.
-   - Keep behavior-level read-only constraints in the prompt:
-     - no repo edits
-     - no file writes except Playwriter artifacts under `/tmp`
-     - no GitHub mutations
-     - no git writes
-     - no commits or pushes
-   - For post-fix UI verification, launch a separate fix-capable Playwriter task after judgment.
-   - A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording.
-     For live UI, an overlay may provide a concrete target packet; the worker receives the packet, not an unresolved overlay concept.
-   - Select a live UI target packet before launch:
-     - If the target repo/object is verified as `elastic/kibana` and no explicit user-provided or repo-documented local/dev target packet exists, load `~/.agents/skills/k-elastic-domain/SKILL.md`.
-       Include the Kibana live-UI target packet from `~/.agents/skills/k-elastic-domain/references/kibana-live-ui.md`.
-     - Otherwise use the explicit user-provided or repo-documented local/dev target packet.
-   - Resolve target worktree identity before launch:
-     - `controller_cwd` is where the review controller happens to run; it is not automatically the PR/head runtime.
-     - `reviewed_head_worktree` is the checkout that contains the code under review for the PR/head branch/sha.
-     - For local-changes mode, the current worktree may be `reviewed_head_worktree` only when it contains the changed code being reviewed.
-     - For an explicit PR/branch review invoked from another checkout (especially a base/main checkout), do not use `controller_cwd` as the PR/head target unless it is checked out to the reviewed PR/head branch/sha.
-       Reuse or create a worktree for the reviewed PR/head branch before live UI, or return a target-worktree blocker with the exact command/setup required.
-     - Base/main is comparison-only: resolve/start a base target only when a distinct `reviewed_head_worktree` exists and the target packet requires base-vs-head comparison.
-     - Identify which running runtime is head vs base only from the target packet's registry/discovery keyed by worktree path;
-       never decide head-vs-base by probing a port (e.g. `curl localhost:5601`), which silently mistakes an already-running base/main stack for the head runtime.
-   - Resolve required runtime config once, before the first `k-agent-live-ui-review` launch:
-     from the changed paths and kept candidates, determine any runtime/feature-flag settings the path under review needs to be reachable.
-     Pass them to the worker so the runtime is started correctly the first time instead of started default and reconfigured after a blocker.
-     The concrete settings and the start-time mechanism are owned by the selected target packet.
-     For example, the Kibana overlay owns `required_kbn_flags` -> `,kbn-stack -K`;
-     keep specific flag names and values in the packet/overlay, not here. When none are needed, pass an empty set.
-   - Include the selected target/preflight packet and the resolved required runtime config in the worker prompt so the worker starts with it instead of rediscovering it.
-   - Windows/VirtualBox coverage is out of scope for this flow: `k-agent-live-ui-review` verifies the local browser only.
-     When the user explicitly wants Windows/VirtualBox coverage too, add the manual `~/.agents/skills/k-live-ui-windows/SKILL.md` skill to this turn's work by hand; never infer it from PR/issue context.
-   - It returns one of:
-     - `Not applicable`
-     - comparison evidence with `ui_evidence_artifacts`
-     - target/branch/runtime/data blocker for the controller to surface
-   - For an applicable UI-related candidate that may become draft review feedback, screenshots are required supporting evidence.
-     If `k-agent-live-ui-review` confirms or materially supports the candidate without screenshot handoff entries, rerun the worker or carry a blocker; draft the comment only with screenshot-backed UI evidence.
-   - Rerun a blocked live-UI result automatically only for a missing/un-started local runtime in a shell-capable harness when the selected target packet documents a start command.
-     That case is the runtime-start rung, not a terminal blocker; have the runtime started and rerun rather than surfacing it as remaining uncertainty.
-   - A read-only/Ask-mode Playwriter block is a valid blocker to surface.
+
+   Before merging candidates, evaluating applicability, selecting targets/config, or launching live UI, load and follow `~/.agents/skills/k-deep-review/references/live-ui-validation.md` in full.
+   It owns this phase's complete procedure and result validation; a summary is not sufficient.
 
 2. **Run controller findings audit on candidate findings.**
 
@@ -362,7 +269,7 @@ Return:
 - UI evidence attachments: for kept UI findings, local screenshot artifact paths with descriptions, target URL/branch, and suggested embedding placement.
   Use `none` only when no kept UI finding needs draft feedback, or when a valid blocker/non-applicability result explains why no screenshot exists.
   Keep this separate from GitHub review bodies because local paths are only for the upload step.
-- Closeout memory: persist verified reusable insights via `,ai-kb remember` and record correction-class lessons via `,agent-memory note anti_pattern`; write only verified, durable items.
+- Closeout memory: delegate verified reusable insights through `~/.agents/skills/k-ai-kb/SKILL.md` and record correction-class lessons via `,agent-memory note anti_pattern`; write only verified, durable items.
 - Remaining uncertainty or gated side effects.
 - Completion gate: clear, or blocked with the unresolved item.
 - `Compatibility impact: none | removed (requested) | kept existing (requested)`.

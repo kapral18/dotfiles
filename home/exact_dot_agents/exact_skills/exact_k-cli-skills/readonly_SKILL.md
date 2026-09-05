@@ -5,8 +5,10 @@ description: "Use when creating a new CLI tool skill or upgrading an existing CL
 
 # CLI Tool Skills
 
-This skill owns the mechanics specific to CLI-tool skills.
-For the general craft of writing any skill well — invocation choice, information hierarchy, leading words, completion criteria, and pruning — load `~/.agents/skills/k-writing-great-skills/SKILL.md`.
+This skill owns CLI mechanics.
+Apply `~/.agents/skills/k-writing-great-skills/SKILL.md` for invocation, hierarchy, leading words, completion criteria, and pruning.
+Load that craft contract when entering here directly; when it called this skill, continue under the contract it already loaded instead of recursively loading it again.
+Read it fresh when its text changes or is pruned.
 
 Skills that document a CLI tool must include `tool_version` in frontmatter:
 

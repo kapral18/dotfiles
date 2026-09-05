@@ -167,6 +167,25 @@ GATES: tuple[Gate, ...] = (
 
 TEST_RULES: tuple[TestRule, ...] = (
     TestRule(
+        prefixes=(
+            "home/dot_config/exact_tmux/exact_scripts/agent_prompt_wrap/",
+            "home/dot_config/exact_tmux/exact_conf.d/readonly_45-agent-prompt-wrap.conf",
+        ),
+        tests=("tests/test_agent_prompt_wrap.py",),
+    ),
+    TestRule(
+        prefixes=("scripts/merge_claude_mcp.py",),
+        tests=("test_generate_mcp_configs.py",),
+    ),
+    TestRule(
+        prefixes=("home/readonly_AGENTS.md", "home/dot_cursor/plugins/local/exact_k-sop/"),
+        tests=("tests/test_agent_skill_invariants.py",),
+    ),
+    TestRule(
+        prefixes=("home/exact_dot_agents/exact_skills/exact_k-playwriter/",),
+        tests=("tests/test_playwriter_skill_docs.py",),
+    ),
+    TestRule(
         prefixes=("home/exact_dot_agents/exact_skills/exact_k-present-pr/",),
         tests=("tests/test_present_pr_template.py",),
     ),
@@ -209,6 +228,15 @@ TEST_RULES: tuple[TestRule, ...] = (
             "tests/test_agent_skill_invariants.py",
         ),
     ),
+    TestRule(
+        prefixes=(
+            "home/exact_bin/executable_,agent-memory",
+            "home/exact_lib/exact_,agent-memory/",
+            "home/dot_config/fish/completions/readonly_,agent-memory.fish",
+        ),
+        tests=("test_agent_memory.py",),
+    ),
+    TestRule(prefixes=("home/dot_config/fish/completions/readonly_,q.fish",), tests=("tests/test_q.py",)),
     TestRule(
         prefixes=("scripts/tests/bin_command_support.py",),
         tests=(

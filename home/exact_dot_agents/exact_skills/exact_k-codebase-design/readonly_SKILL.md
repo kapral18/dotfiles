@@ -5,12 +5,10 @@ description: "Use for module interfaces, seams, deepening, testability, AI navig
 
 # Codebase Design
 
-Design **deep modules**: a lot of behaviour behind a small interface, placed at a clean seam, testable through that interface.
-Use this language and these principles wherever code is being designed or restructured.
-The aim is leverage for callers, locality for maintainers, and testability for everyone.
-
-This skill owns design vocabulary only.
-The SOP owns compatibility, minimal edit scope, and verification; `k-code-quality` owns implementation style.
+Design **deep modules**: much behaviour behind a small interface at a clean seam, testable through that interface.
+Use this vocabulary and these principles when designing or restructuring code:
+leverage for callers, locality for maintainers, testability for everyone.
+This skill owns design vocabulary; the SOP owns compatibility, edit scope, and verification, and `k-code-quality` owns implementation style.
 When the design is settled and you write tests through the new interface, load `~/.agents/skills/k-code-quality-tests/SKILL.md`.
 
 ## Use when

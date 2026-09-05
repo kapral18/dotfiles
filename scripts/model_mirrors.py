@@ -278,13 +278,14 @@ def _catalog_policy(
 
 
 def _load_claude_policy(repo_root: Path) -> tuple[list[str], list[str], dict[str, str]]:
-    profiles = {
-        "work": repo_root / "home/dot_claude/settings.work.json",
-        "personal": repo_root / "home/dot_claude/settings.personal.json",
-    }
-    defaults = {name: _read_json(path)["model"] for name, path in profiles.items()}
-    models = _unique(list(defaults.values()))
-    return models, models, defaults
+    categories = ai_models.load_category_models(repo_root / AI_MODELS_REGISTRY)
+    try:
+        model = categories["claude_code"]["orchestrate"]["model"]
+    except (KeyError, TypeError) as err:
+        raise ValueError("category_models.claude_code.orchestrate requires a model") from err
+    if not isinstance(model, str) or MODEL_ID_RE.fullmatch(model) is None:
+        raise ValueError("category_models.claude_code.orchestrate model is invalid")
+    return [model], [model], {"work": model, "personal": model}
 
 
 def _load_codex_policy(repo_root: Path) -> tuple[list[str], list[str], dict[str, str]]:
@@ -611,10 +612,7 @@ def _registry_provenance(section: str) -> dict[str, Any]:
 
 def _harness_policy_provenance(harness: str, set_name: str) -> list[dict[str, Any]]:
     profile_sources = {
-        "claude": [
-            _provenance("config", "home/dot_claude/settings.work.json"),
-            _provenance("config", "home/dot_claude/settings.personal.json"),
-        ],
+        "claude": [_registry_provenance("category_models")],
         "codex": [
             _provenance("config", "home/dot_codex/private_config.work.toml"),
             _provenance("config", "home/dot_codex/private_config.personal.toml"),

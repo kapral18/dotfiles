@@ -39,7 +39,6 @@ This affects mode behavior:
 
 - **`self` (user owns the change):**
   - find issues and fix them in the working tree
-  - fix, rather than only comment
   - draft review comments only if the user plans to post self-review notes
 - **`other` / `unknown`:**
   - produce draft comments/suggestions only

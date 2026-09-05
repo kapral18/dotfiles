@@ -11,7 +11,8 @@ Use this for browser-rendered markup and styling.
 
 Do not load secondary skills until read/diff evidence proves the surface is in scope.
 
-- If the concrete web surface is React/JSX/TSX, also load the `~/.agents/skills/k-code-quality-react/SKILL.md` skill.
+- If the concrete web surface is React/JSX/TSX, load `~/.agents/skills/k-code-quality-react/SKILL.md` unless its full text is already loaded for this active invocation.
+  Reuse that load through reciprocal references; read fresh on a new invocation or after its text changes or is pruned.
 
 ## Markup And Semantics
 

@@ -6,8 +6,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Sequence, TextIO
 
 OPENROUTER_PROVIDER = "openrouter"
@@ -16,6 +18,8 @@ Q_MODEL = "inclusionai/ling-3.0-flash"
 # Empty append skips ~/.pi/agent/APPEND_SYSTEM.md discovery. Pi still appends cwd.
 Q_SYSTEM_PROMPT = "Be brief. Use tools when the question needs them."
 Q_APPEND_SYSTEM_PROMPT = ""
+Q_LITERAL_TEMPLATE = Path(__file__).with_name("q_literal.md")
+Q_LITERAL_TEMPLATE_TEXT = "---\ntitle: Literal prompt transport\n---\n\n$1\n"
 
 
 class PlanError(ValueError):
@@ -41,7 +45,7 @@ def _parser() -> argparse.ArgumentParser:
         description=(
             "One-shot OpenRouter pi agent with tools. Uses a short system prompt "
             "and skips APPEND_SYSTEM.md, skills, context files, extensions, "
-            "themes, and prompt templates."
+            "themes, and discovered prompt templates. Prompt text is passed literally."
         ),
         allow_abbrev=False,
     )
@@ -74,6 +78,15 @@ def parse_q(
 def leaf_argv(prompt: str) -> tuple[str, ...]:
     """Return the pi argv for a one-shot OpenRouter agent with discovery flags off."""
 
+    try:
+        template = Q_LITERAL_TEMPLATE.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as error:
+        raise PlanError(f"cannot read literal prompt template: {Q_LITERAL_TEMPLATE}") from error
+    if template != Q_LITERAL_TEMPLATE_TEXT:
+        raise PlanError(f"invalid literal prompt template: {Q_LITERAL_TEMPLATE}")
+    if "\0" in prompt:
+        raise PlanError("q prompt contains a NUL character")
+
     return (
         "pi",
         "--provider",
@@ -92,9 +105,11 @@ def leaf_argv(prompt: str) -> tuple[str, ...]:
         "--no-themes",
         "--no-context-files",
         "--no-prompt-templates",
+        "--prompt-template",
+        str(Q_LITERAL_TEMPLATE),
         "--no-extensions",
         "-p",
-        prompt,
+        f"/q_literal {shlex.quote(prompt)}",
     )
 
 

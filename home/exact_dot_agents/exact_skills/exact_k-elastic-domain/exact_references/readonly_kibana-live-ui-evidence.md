@@ -9,10 +9,12 @@ This file carries the worker conduct and evidence contract: safety boundary, scr
 - Never use ApplyPatch or file-editing tools.
 - Write files only as Playwriter artifacts under `/tmp`, including focused screenshots;
   store each screenshot/pair/set in its own distinct `/tmp/<folder-name>/` directory rather than loose directly in `/tmp`.
+  Exception: documented stack lifecycle commands and an explicitly selected environment adapter may maintain only their required runtime/connection state and logs under the shared runtime contract's ownership and approval limits.
 - Mutating local/dev runtime data via Playwriter actions, local Kibana APIs, Dev Tools Console, or local Elasticsearch API calls is allowed for verification after target readiness/identity is established.
 - Do not mutate production, shared cloud, GitHub, git, repo files, committed files, labels, reviews, comments, branches, or user-visible external state.
 - Runtime data mutations must be local/dev-only, focused, named in the evidence, tied to the exact target/Elasticsearch endpoint used, and cleaned up or reported.
-- Surface ES/Kibana runtime environment changes and service restarts as `Blocked` instructions for the user to apply, then continue in a later run after reload; applying or restarting from this worker is out of scope.
+- Do not apply ES/Kibana environment changes or restart services beyond this packet's documented runtime-start, safe agent-owned replacement, and owned-stack teardown rules.
+  Return other runtime prerequisites as `Blocked` with user instructions; resume after the user applies them and reloads.
 - If target identity is ambiguous or appears non-local/non-dev, return `Blocked` instead of mutating.
 
 ## Screenshot handoff

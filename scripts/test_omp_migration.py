@@ -126,10 +126,10 @@ class TestOmpMigration(unittest.TestCase):
             "dev:\n  autoqaConsent: granted\n",
             "skills:\n  enabled: true\n  enableSkillCommands: true\n",
             "task:\n  isolation:\n    mode: auto\n  enableEffort: true\n  enableLsp: true\n  maxRecursionDepth: 2\n",
-            "retry:\n  enabled: true\n  maxRetries: 5\n",
+            "retry:\n  enabled: true\n  maxRetries: 3\n",
             "symbolPreset: nerd\n",
-            "theme:\n  dark: titanium\n",
-            "setupVersion: 1\n",
+            "theme:\n  dark: dark-catppuccin\n",
+            "setupVersion: 2\n",
         )
 
         absent_values = {

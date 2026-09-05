@@ -34,6 +34,21 @@ def render_chezmoi_template(path, *, is_work):
 
 
 class TestAgentSkillInvariants(unittest.TestCase):
+    def test_cursor_global_plugin_should_render_complete_sop_without_owning_other_plugins(self):
+        plugin = REPO / "home/dot_cursor/plugins/local/exact_k-sop"
+        manifest = json.loads((plugin / "dot_cursor-plugin/readonly_plugin.json").read_text())
+        self.assertEqual(manifest["name"], "k-sop")
+        self.assertEqual(manifest["rules"], "./rules")
+        for is_work in (False, True):
+            with self.subTest(is_work=is_work):
+                rendered = render_chezmoi_template(plugin / "rules/readonly_sop.md.tmpl", is_work=is_work)
+                self.assertEqual(
+                    rendered,
+                    "---\nalwaysApply: true\n---\n" + (REPO / "home/readonly_AGENTS.md").read_text(),
+                )
+        self.assertFalse((REPO / "home/dot_cursor/exact_plugins").exists())
+        self.assertFalse((REPO / "home/dot_cursor/plugins/exact_local").exists())
+
     def assert_file_contains(self, relative_path: str, *snippets: str) -> None:
         text = (REPO / relative_path).read_text(encoding="utf-8")
         for snippet in snippets:
@@ -342,9 +357,16 @@ class TestAgentSkillInvariants(unittest.TestCase):
             "`/improve-…`",
             "**anything → compose-issue.**",
         )
+        self.assert_file_contains(
+            "home/readonly_CLAUDE.md",
+            "@AGENTS.md",
+        )
+        self.assert_file_contains(
+            "home/dot_claude/symlink_CLAUDE.md",
+            "../AGENTS.md",
+        )
         self.assert_file_not_contains(
             ".mermaids/03-agentic-os.mmd",
-            "readonly_CLAUDE.md",
             "readonly_GEMINI.md",
         )
         self.assert_file_not_contains(

@@ -296,14 +296,16 @@ zip_opt|sd-cli|leejet/stable-diffusion.cpp|master-820-de298c2|sd-*-bin-Darwin-ma
 
 ## Updating Home SOP Files
 
-Home SOPs are installed into `$HOME` by chezmoi.
-`home/readonly_AGENTS.md` is the generated always-loaded core SOP; the other entrypoints are symlinks to it.
+Home SOPs are installed into `$HOME` by chezmoi. `home/readonly_AGENTS.md` is the generated core SOP.
+Native global entrypoints link to it; `~/CLAUDE.md` uses Claude's native `@AGENTS.md` import to avoid a second full body in Cursor's ancestor scan.
+`~/.claude/CLAUDE.md` is Claude's global entrypoint. This repository's `CLAUDE.md` imports its project `AGENTS.md`.
 The compiled ownership model lives in `docs/topics/ai-assistants/system-prompt/source-of-truth.md`.
 
 | Source                                                     | Target                               |
 | ---------------------------------------------------------- | ------------------------------------ |
 | `home/readonly_AGENTS.md`                                  | `~/AGENTS.md`                        |
-| `home/symlink_CLAUDE.md`                                   | `~/CLAUDE.md`                        |
+| `home/readonly_CLAUDE.md`                                  | `~/CLAUDE.md`                        |
+| `home/dot_claude/symlink_CLAUDE.md`                        | `~/.claude/CLAUDE.md`                |
 | `home/dot_gemini/config/symlink_AGENTS.md`                 | `~/.gemini/config/AGENTS.md`         |
 | `home/dot_cursor/symlink_AGENTS.md`                        | `~/.cursor/AGENTS.md`                |
 | `home/dot_codex/symlink_AGENTS.md`                         | `~/.codex/AGENTS.md`                 |

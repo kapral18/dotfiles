@@ -6,9 +6,7 @@ disable-model-invocation: true
 
 # Improve Branch
 
-What is the single most compelling, high-leverage addition you could make toward the goal of the current branch (and its PR/issue, when they exist)?
-
-Only propose it if it is genuinely compelling. It is fine to refrain when you have no strong suggestion — no change beats a marginal one.
+Propose the single most compelling, high-leverage addition to the current branch goal, including its PR/issue when present.
 
 Use when:
 

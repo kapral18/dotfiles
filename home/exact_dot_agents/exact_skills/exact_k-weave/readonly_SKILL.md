@@ -6,8 +6,7 @@ description: "Use when preparing/previewing merges, resolving semantic Git confl
 # weave
 
 Entity-level merge driver for Git. Replaces git's line-based merge with function/class-level merge via tree-sitter.
-Two branches adding different functions to the same file? Auto-resolved, zero conflicts.
-Only truly incompatible changes to the _same entity_ produce conflicts.
+Two branches adding different functions to the same file can auto-resolve; input guards can still reject the merge.
 
 Do not use:
 
@@ -37,9 +36,9 @@ After `,weave-setup-local`, use `git merge` as normal — weave acts as the merg
 
 1. Parses base, ours, theirs into entities (functions, classes, methods) via tree-sitter
 2. Matches entities across versions by identity (name + type + scope)
-3. Different entities changed → auto-resolved, no conflict
-4. Same entity changed by both → attempts intra-entity merge, conflicts only if truly incompatible
-5. Falls back to line-level merge for files >1MB, binary files, or unsupported types
+3. Different entities changed → attempts auto-resolution, subject to input and merge guards
+4. Same entity changed by both → attempts intra-entity merge; unresolved or guard-rejected cases conflict
+5. Falls back to line-level merge for files >1MB or unsupported text types; `weave-driver` rejects binary input
 
 ## Conflict markers
 
@@ -59,11 +58,15 @@ export function process(data: any) {
 
 ## Supported languages
 
-TypeScript, TSX, JavaScript, Python, Go, Rust, Java, C, C++, Ruby, C#, PHP, Swift, Kotlin, Elixir, Bash, HCL/Terraform, Fortran, Vue, XML, ERB, JSON, YAML, TOML, CSV, Markdown.
+TypeScript, TSX, JavaScript, Python, Go, Rust, Java, C, C++, Ruby, C#, PHP, Swift, Kotlin, Elixir, Bash, HCL/Terraform, Fortran, XML, JSON, YAML, TOML, CSV, Markdown.
+
+Setup omits dedicated patterns for `.vue`, `.svelte`, `.erb`, and `.hs`.
+Compound names such as `.svelte.ts` can still match `*.ts`; preview and direct-driver calls can also attempt entity merging.
 
 ## Notes
 
 - `,weave-setup-local` configures weave via `.git/info/attributes` + repo-local git config, so nothing is added to repo history.
 - Use `,weave-setup-local` instead of `weave setup` for day-to-day use: `weave setup` writes a repo-root `.gitattributes` (tracked by default) and tends to show up in PR diffs.
-- Zero regressions across real-world benchmarks (git/git, CPython, Go, TypeScript, Flask).
+- Upstream reports wins and regressions across real-world benchmarks (git/git, CPython, Go, TypeScript, Flask);
+  see its [versioned results](https://github.com/Ataraxy-Labs/weave/blob/v0.5.4/README.md#real-world-benchmarks).
 - Conflict markers include the entity name and conflict reason for faster manual resolution.

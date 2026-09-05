@@ -250,9 +250,9 @@
           "effort": "xhigh"
         },
         "Plan": {
-          "model": "gpt-5.5",
+          "model": "gpt-6-astra",
           "category": "orchestrate",
-          "effort": "xhigh"
+          "effort": "high"
         },
         "best-of-n-runner": {
           "model": "gpt-5.5",
@@ -300,9 +300,9 @@
           "effort": "xhigh"
         },
         "default": {
-          "model": "gpt-5.5",
+          "model": "gpt-6-astra",
           "category": "orchestrate",
-          "effort": "xhigh"
+          "effort": "high"
         },
         "explore": {
           "model": "gpt-5.5",
@@ -350,9 +350,9 @@
           "effort": "xhigh"
         },
         "k-agent-deep-review": {
-          "model": "gpt-5.5",
+          "model": "gpt-6-astra",
           "category": "orchestrate",
-          "effort": "xhigh"
+          "effort": "high"
         },
         "k-agent-findings-auditor": {
           "model": "gpt-5.5",
@@ -385,9 +385,9 @@
           "effort": "xhigh"
         },
         "k-agent-review-controller": {
-          "model": "gpt-5.5",
+          "model": "gpt-6-astra",
           "category": "orchestrate",
-          "effort": "xhigh"
+          "effort": "high"
         },
         "k-agent-review-worker": {
           "model": "gpt-5.5",
@@ -405,7 +405,7 @@
           "effort": "xhigh"
         },
         "k-agent-smol": {
-          "model": "gpt-5.4",
+          "model": "gpt-5.6-terra",
           "category": "memory",
           "effort": "high"
         },

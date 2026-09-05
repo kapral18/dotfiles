@@ -17,6 +17,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 CORE = REPO / "home" / "exact_lib" / "exact_,q" / "main.py"
 LAUNCHER = REPO / "home" / "exact_bin" / "executable_,q"
+LITERAL_TEMPLATE = CORE.with_name("q_literal.md")
 
 
 def load_core():
@@ -79,9 +80,11 @@ class TestQ(unittest.TestCase):
                 "--no-themes",
                 "--no-context-files",
                 "--no-prompt-templates",
+                "--prompt-template",
+                str(LITERAL_TEMPLATE),
                 "--no-extensions",
                 "-p",
-                "hello world",
+                "/q_literal 'hello world'",
             ],
             argv[1:],
         )
@@ -104,7 +107,111 @@ class TestQ(unittest.TestCase):
     def test_when_q_reads_stdin_it_uses_that_as_the_prompt(self) -> None:
         result = self.run_q("--dry-run", stdin="from stdin\n", check=True)
         payload = json.loads(result.stdout)
-        self.assertEqual("from stdin\n", payload["argv"][-1])
+        self.assertEqual("/q_literal 'from stdin\n'", payload["argv"][-1])
+
+    def test_when_literal_template_is_missing_or_corrupt_it_fails_before_execution(self) -> None:
+        core = load_core()
+        with tempfile.TemporaryDirectory() as tmp:
+            template = Path(tmp) / "q_literal.md"
+            core.Q_LITERAL_TEMPLATE = template
+            with self.assertRaisesRegex(core.PlanError, "cannot read literal prompt template"):
+                core.leaf_argv("hello")
+            for content in (b"$2\n", b"---\ntitle: Literal prompt transport\n---\n$1 extra\n", b"\xff"):
+                template.write_bytes(content)
+                with self.subTest(content=content), self.assertRaises(core.PlanError):
+                    core.leaf_argv("hello")
+
+    def test_when_prompt_contains_nul_it_fails_visibly(self) -> None:
+        result = self.run_q(stdin="hello\0world")
+        self.assertEqual(2, result.returncode)
+        self.assertIn("q prompt contains a NUL character", result.stderr)
+
+    @unittest.skipUnless(shutil.which("pi") and shutil.which("node"), "Pi and Node are not installed")
+    def test_when_native_pi_expands_literal_transport_it_preserves_prompt_bytes_and_flags(self) -> None:
+        pi = Path(shutil.which("pi") or "pi").resolve()
+        package = next((p for p in pi.parents if (p / "dist/cli/args.js").is_file()), None)
+        if package is None:
+            self.skipTest("installed Pi does not expose its native parser modules")
+        prompts = [
+            "hello world",
+            "--help",
+            "- bullet item",
+            "@mention explain this",
+            "  leading\n  spaces\n",
+            "  a'b\"c $1 $@ $ARGUMENTS \r\n tail  ",
+            "---\nx: true\n---\nbody",
+            "/skill:foo quoted",
+            "\ufeffbom",
+        ]
+        core = load_core()
+        requests = [{"prompt": prompt, "argv": core.leaf_argv(prompt)[1:]} for prompt in prompts]
+        script = """
+import { readFileSync } from 'node:fs';
+const { parseArgs } = await import(process.argv[1]);
+const { loadPromptTemplates, expandPromptTemplate } = await import(process.argv[2]);
+const rows = JSON.parse(readFileSync(0, 'utf8')).map(({ prompt, argv }) => {
+  const parsed = parseArgs(argv);
+  const templates = loadPromptTemplates({
+    cwd: process.cwd(), agentDir: process.cwd(),
+    promptPaths: parsed.promptTemplates ?? [], includeDefaults: false,
+  });
+  return {
+    prompt: expandPromptTemplate(parsed.messages[0] ?? "", templates),
+    diagnostics: parsed.diagnostics, fileArgs: parsed.fileArgs,
+    model: parsed.model, provider: parsed.provider, print: parsed.print,
+    systemPrompt: parsed.systemPrompt, appendSystemPrompt: parsed.appendSystemPrompt,
+    noSession: parsed.noSession, thinking: parsed.thinking, offline: parsed.offline,
+    noSkills: parsed.noSkills, noThemes: parsed.noThemes,
+    noContextFiles: parsed.noContextFiles, noPromptTemplates: parsed.noPromptTemplates,
+    noExtensions: parsed.noExtensions, noTools: parsed.noTools ?? false,
+    templates: templates.map(({ content }) => content),
+  };
+});
+console.log(JSON.stringify(rows));
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            result = subprocess.run(
+                [
+                    "node",
+                    "--input-type=module",
+                    "-e",
+                    script,
+                    (package / "dist/cli/args.js").as_uri(),
+                    (package / "dist/core/prompt-templates.js").as_uri(),
+                ],
+                input=json.dumps(requests),
+                text=True,
+                capture_output=True,
+                cwd=tmp,
+                check=True,
+            )
+        rows = json.loads(result.stdout)
+        self.assertEqual(len(prompts), len(rows))
+        for prompt, row in zip(prompts, rows):
+            with self.subTest(prompt=prompt):
+                self.assertEqual(prompt, row.pop("prompt"))
+                self.assertEqual(
+                    {
+                        "diagnostics": [],
+                        "fileArgs": [],
+                        "model": "inclusionai/ling-3.0-flash",
+                        "provider": "openrouter",
+                        "print": True,
+                        "systemPrompt": "Be brief. Use tools when the question needs them.",
+                        "appendSystemPrompt": [""],
+                        "noSession": True,
+                        "thinking": "off",
+                        "offline": True,
+                        "noSkills": True,
+                        "noThemes": True,
+                        "noContextFiles": True,
+                        "noPromptTemplates": True,
+                        "noExtensions": True,
+                        "noTools": False,
+                        "templates": ["$1"],
+                    },
+                    row,
+                )
 
     def test_when_q_executes_the_fake_pi_receives_the_stripped_argv(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -157,6 +264,7 @@ class TestQ(unittest.TestCase):
             deployed = home / "lib" / ",q"
             deployed.mkdir(parents=True)
             shutil.copy2(CORE, deployed / "main.py")
+            shutil.copy2(LITERAL_TEMPLATE, deployed / "q_literal.md")
             env = {**os.environ, "HOME": str(home)}
             result = subprocess.run(
                 ["/bin/bash", str(LAUNCHER), "--dry-run", "ping"],
@@ -174,18 +282,25 @@ class TestQ(unittest.TestCase):
     @unittest.skipUnless(shutil.which("fish"), "fish is not installed")
     def test_when_fish_completes_q_it_offers_dry_run(self) -> None:
         completion = REPO / "home" / "dot_config" / "fish" / "completions" / "readonly_,q.fish"
-        result = subprocess.run(
-            [
-                shutil.which("fish") or "fish",
-                "-c",
-                "source $argv[1]; complete -C ',q -'",
-                str(completion),
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            xdg_config = home / ".config"
+            xdg_config.mkdir(parents=True)
+            result = subprocess.run(
+                [
+                    shutil.which("fish") or "fish",
+                    "-c",
+                    "source $argv[1]; complete -C ',q -'",
+                    str(completion),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                env={**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(xdg_config)},
+            )
         tokens = {line.split("\t", 1)[0] for line in result.stdout.splitlines() if line.strip()}
+        self.assertIn("-h", tokens)
+        self.assertIn("--help", tokens)
         self.assertIn("--dry-run", tokens)
 
 

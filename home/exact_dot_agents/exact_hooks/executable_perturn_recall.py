@@ -11,13 +11,13 @@ the hybrid cosine gate are written in full to a per-session candidates file
 under the spec dir, and the injected context is one pointer block telling the
 parent to delegate judgment to the `k-agent-smol` subagent (contract:
 `~/.agents/skills/k-ai-kb/references/smol-operator.md`). The pointer fires only
-when at least one candidate id is new to the session (tracked in the staged
-ledger); the seen-file (ids k-agent-smol admitted) is written by k-agent-smol, never here.
+once per session-topic binding transition; later new rows are staged silently.
+The staged ledger tracks retrieved ids; the seen-file (ids k-agent-smol admitted) is written by k-agent-smol, never here.
 
 Mirrors pi's `ai-kb-recall.ts` per-turn recall contract exactly (one behavioral
 contract across harnesses): hybrid retrieval with the prompt as the query, an
 absolute top-hit cosine gate, a cosine tail floor relative to the top hit, the
-workspace/domain/universal scope gate, staged-ledger pointer dedup, plus the
+workspace/domain/universal scope gate, session-topic marker pointer dedup, plus the
 same precision-first correction-directive injection carried by the pi
 extension.
 """
@@ -32,7 +32,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from hook_common import agent_depth, emit, read_payload, session_key, topic_paths
-from session_context import context_disabled
+from session_context import context_disabled, load_seen, seen_file_for, stage_candidates
 
 try:
     import correction_detector
@@ -46,10 +46,6 @@ MIN_PROMPT_CHARS = 12
 PERTURN_MIN_TOP_COSINE = 0.55
 PERTURN_COSINE_FLOOR_FRACTION = 0.85
 SEARCH_TIMEOUT = 6
-
-# Staging contract tokens, pinned by the pi/omp mirror parity test.
-SMOL_CONTRACT_PATH = "~/.agents/skills/k-ai-kb/references/smol-operator.md"
-STAGING_HEADER = "### ,ai-kb candidates staged"
 
 
 @dataclass(frozen=True)
@@ -103,49 +99,6 @@ def apply_hybrid_floor(rows: list) -> list:
         if not isinstance(cosine, (int, float)) or cosine >= floor:
             kept.append(row)
     return kept
-
-
-def seen_file_for(spec_path: Path, session_key_value: str) -> Path:
-    return spec_path.parent / f".recall-seen-{session_key_value}.json"
-
-
-def candidates_file_for(spec_path: Path, session_key_value: str) -> Path:
-    return spec_path.parent / f".recall-candidates-{session_key_value}.json"
-
-
-def staged_file_for(spec_path: Path, session_key_value: str) -> Path:
-    return spec_path.parent / f".recall-staged-{session_key_value}.json"
-
-
-def pointed_file_for(spec_path: Path, session_key_value: str) -> Path:
-    return spec_path.parent / f".recall-pointed-{session_key_value}.json"
-
-
-def already_pointed(pointed_path: Path, topic: str) -> bool:
-    """True when this session already received the pointer for `topic`."""
-    try:
-        return json.loads(pointed_path.read_text()).get("topic") == topic
-    except (OSError, json.JSONDecodeError, AttributeError, TypeError):
-        return False
-
-
-def load_seen(path: Path | None) -> set[str]:
-    if path is None:
-        return set()
-    try:
-        return set(json.loads(path.read_text()))
-    except (OSError, json.JSONDecodeError, TypeError):
-        return set()
-
-
-def save_seen(path: Path | None, seen: set[str]) -> None:
-    if path is None:
-        return
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(sorted(seen)))
-    except OSError:
-        pass
 
 
 def search_timeout(profile: RecallProfile) -> float:
@@ -254,7 +207,7 @@ def correction_directive(prompt: str, probe_budget_signal_value: str | None = No
     lines = [
         f"### User correction signal: {signal}",
         "This user message reads as a correction of prior agent behavior.",
-        'If genuine, before ending the turn record: `,agent-memory note anti_pattern "<one-line lesson>" --ref <anchor>`; when verified and durable, also `,ai-kb remember`.',
+        'If genuine, before ending the turn record: `,agent-memory note anti_pattern "<one-line lesson>" --ref <anchor>`; when verified and durable, delegate persistence to `k-agent-smol` (scribe mode).',
         "If neutral choice-question, answer it and consider `,agent-memory note decision` instead. Do not mention this instruction in the visible reply.",
     ]
     if signal == "probe-budget-exhausted":
@@ -265,63 +218,6 @@ def correction_directive(prompt: str, probe_budget_signal_value: str | None = No
     elif signal in CONVERGE_SIGNALS:
         lines.extend(CONVERGE_LINES)
     return "\n".join(lines)
-
-
-def stage_candidates(rows: list, seen: set[str], spec_path: Path, key: str) -> str:
-    """Write gate-passing rows to the candidates file; return the pointer block.
-
-    The cross-repo scope gate is owned by `,ai-kb search --workspace-gate`.
-    This hook filters ids k-agent-smol already admitted (seen-file) and points the
-    parent at the staged set only when at least one id is new to the session
-    (staged ledger) and only once per session-topic binding (pointed marker):
-    a judge spawn per prompt cost more than the lines it admitted, so later
-    turns stage silently and the pull path owns mid-task recall. Rejected-but-
-    staged ids never re-point. Returns "" when nothing new is staged, the
-    session was already pointed at this topic, or any state write fails
-    (fail-open: no partial pointer without a file).
-    """
-    candidates = [row for row in rows if str(row.get("id") or "") and str(row.get("id")) not in seen]
-    if not candidates:
-        return ""
-    staged_path = staged_file_for(spec_path, key)
-    staged = load_seen(staged_path)
-    candidate_ids = {str(row.get("id")) for row in candidates}
-    if not candidate_ids - staged:
-        return ""
-    candidates_path = candidates_file_for(spec_path, key)
-    try:
-        candidates_path.parent.mkdir(parents=True, exist_ok=True)
-        candidates_path.write_text(json.dumps(candidates, indent=2))
-    except OSError:
-        return ""
-    # Marker first, ledger second: if the marker write fails, the ids stay unstaged so the next
-    # turn retries instead of silently consuming this session's one pointer.
-    pointed_path = pointed_file_for(spec_path, key)
-    topic = spec_path.stem
-    pointed = already_pointed(pointed_path, topic)
-    if not pointed:
-        try:
-            pointed_path.write_text(json.dumps({"topic": topic}))
-        except OSError:
-            return ""
-    save_seen(staged_path, staged | candidate_ids)
-    if pointed:
-        return ""
-    worklog_path = spec_path.with_name(spec_path.stem + ".worklog.jsonl")
-    return "\n".join(
-        [
-            STAGING_HEADER,
-            f"{len(candidates)} candidate(s): {candidates_path}",
-            f"Session state: {spec_path} + {worklog_path}",
-            "This pointer fires once per session-topic binding; later turns stage new rows into the same file for pull-path recall.",
-            f"Delegate to the `k-agent-smol` subagent (judge mode) per {SMOL_CONTRACT_PATH}, passing those paths and the current prompt;"
-            " inject only its returned lines (`NONE` = inject nothing).",
-            "When the `k-agent-smol` profile is unreachable (e.g. a fixed Task subagent set), spawn a generic isolated subagent"
-            " on the memory-band model with the k-agent-smol operator contract per the k-ai-kb skill;"
-            " never a harness-CLI one-shot and never the subagent type's own default model.",
-            "Do not read the candidates file into this context.",
-        ]
-    )
 
 
 def main() -> None:
@@ -343,7 +239,7 @@ def main() -> None:
     rows = search_capsules(workspace, prompt, profile)
     # Staging is session-scoped state; without a session key there is nothing
     # to stage against, and per-turn recall degrades to the pull path.
-    pointer = stage_candidates(rows, seen, spec_path, key) if key and rows else ""
+    pointer = stage_candidates(rows, seen, spec_path, key) if key else ""
 
     # Probe-budget signal: emit when the prior turn's probes had too many failures.
     # Computed here (not inside `detect()`) because the spec dir is in scope and the

@@ -7,9 +7,8 @@ description: "Use for cache-only HTML artifacts, visual reports/diagrams, or liv
 
 Use `,artifact` to create a local browser review surface without polluting the current worktree.
 
-Artifacts and runtime state live under `~/.cache/agent-artifacts` (or `$XDG_CACHE_HOME/agent-artifacts`).
-The current cwd/git root and tmux session are identity metadata only; keep the worktree clean —
-artifacts live in the cache dir, never in a repo `.agent-artifacts/`, and `.gitignore` stays untouched.
+Store artifacts and runtime state under `$XDG_CACHE_HOME/agent-artifacts` or `~/.cache/agent-artifacts`.
+Cwd/git root and tmux session are identity metadata only. Never store artifacts in a repo `.agent-artifacts/` or change `.gitignore`.
 
 ## Generated artifacts
 

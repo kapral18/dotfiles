@@ -8,8 +8,8 @@
 2. Pressing `Escape` while **no** widget is open bubbles out of Monaco and moves focus to an EUI element (`document.activeElement` becomes an Emotion `css-*` node, not `textarea.inputarea`).
    Every later key goes nowhere.
 
-For content setup, import (below) is still the simplest route.
-For typed demos/videos where keystrokes must be visible, use this verified recipe:
+For content setup, use the import procedure in `~/.agents/skills/k-kibana-console-monaco/SKILL.md`.
+For typed demos/videos requiring visible keystrokes, use this recipe:
 
 ```js
 const widgetVisible = (page) =>

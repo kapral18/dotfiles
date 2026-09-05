@@ -113,6 +113,16 @@ class TestCheckPlan(unittest.TestCase):
         assert "verify-agent-policy" in plan.gates
         assert "fish-history-merge" in plan.extra
 
+    def test_WHEN_q_fish_completion_changes_SHOULD_run_q_shard(self):
+        plan = plan_check(
+            REPO,
+            full=False,
+            changed=("home/dot_config/fish/completions/readonly_,q.fish",),
+            add_delete=False,
+        )
+        assert plan.tests == ("tests/test_q.py",)
+        assert plan.gates == ("verify-bin-surface",)
+
     def test_WHEN_check_py_changes_SHOULD_run_test_check(self):
         plan = plan_check(REPO, full=False, changed=("scripts/check.py",), add_delete=False)
         assert "test_check.py" in plan.tests

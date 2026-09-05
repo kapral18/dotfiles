@@ -19,13 +19,13 @@ Cursor CLI is the primary interactive assistant harness. Its user-level hooks (s
 
 ## Tmux agent prompt wrap
 
-When running an AI coding agent (`claude`, `cursor-agent`, `pi`, or `copilot`) inside tmux, `Alt-Enter` is intercepted to prepend a compact verification discipline and leave the prompt editable.
+When running an AI coding agent (`claude`, `cursor-agent`, `pi`, or `copilot`) in the foreground of a tmux pane, `Alt-Enter` is intercepted to prepend a compact verification discipline and leave the prompt editable.
 
 - **Binding:** `Alt-Enter` (inserts the wrapped prompt)
 - **Toggle:** `prefix` + `W` (toggles wrapping on/off for the session)
 - **Prefix text:** [`home/dot_config/exact_tmux/agent_prompts/prefix.txt`](../../../../home/dot_config/exact_tmux/agent_prompts/prefix.txt)
 
-Plain `Enter` is never touched. Press it when the wrapped prompt is ready to send. `Alt-Enter` is passed through untouched in non-agent panes or when the toggle is OFF.
+Plain `Enter` is never touched. Press it when the wrapped prompt is ready to send. `Alt-Enter` is passed through untouched in non-agent panes or when the toggle is OFF. Background or stopped agents do not activate wrapping.
 
 The same `prefix.txt` is also injected automatically:
 

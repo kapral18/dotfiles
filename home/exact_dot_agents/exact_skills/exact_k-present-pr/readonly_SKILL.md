@@ -52,7 +52,7 @@ Repo/org-specific overlays:
 
 - If `/tmp/specs/<pwd>/` or `/tmp/present-pr/<repo>-<pr-or-branch>/` already contains evidence for the same PR/head SHA, reuse it after verifying the head SHA still matches.
   Refresh only PR metadata/comments that may have changed.
-- Default diagram budget: **one generated image** for the Act I goal-level contrast.
+- When this turn names Nano Banana, Gemini image, or Google image gen/edit, the default diagram budget is **one generated image** for the Act I goal-level contrast.
   Add a second only when the preflight proves it carries a distinct flow/state idea.
   Do not generate images for exact labels, symbol lists, or code-line insights; use HTML flow nodes, cards, or diff beats instead.
 - For repo-specific CI/build links, load the verified overlay and fetch only the compact facts needed for the story.
@@ -74,41 +74,19 @@ Repo/org-specific overlays:
 - Read the **actual** diff hunks for the files you will feature — beats must contain real diff text, never paraphrased code.
 - If you need base-branch context (existing behavior, conventions, related call sites) and the repo is indexed, use the `k-semantic-code-search` skill as _supporting_ context only — validate against the local diff.
 
-### 2. Find the goal, readiness map, introduced concepts, and classify every file
+### 2. Build the review model and classify every file
 
-Per `authoring.md`:
-
-- State the single **goal/thesis** in one sentence.
-- Build a **review-readiness map** before writing the story:
-  - mental model: before/after behavior, why now, and the review posture this page should create,
-  - layered explanation: business concept -> domain/data shape -> API/contract -> state/flow -> UI/runtime -> tests/guardrails,
-  - change topology: responsibility groups, files in each group, and how groups depend on each other,
-  - load-bearing line index: exact hunks/lines that deserve reviewer attention and why,
-  - invariants/non-changes: what the PR intentionally preserves,
-  - risk-attention map: areas to inspect later in GitHub, phrased as "check this" not "this is wrong",
-  - GitHub handoff order: primary hunks first, guardrails second, mechanical files last.
-- Build an **introduced concepts inventory** before writing beats.
-  Include each business/domain concept, the layer it belongs to, the source anchors that introduced it, what a reviewer must understand first, and which right-sidebar note supports it.
-  If a PR introduces no new domain concept, write a single "no new concepts" entry explaining that the change is mechanical/plumbing.
-- Explain business code through the **what/how/why triad**.
-  Cover what the domain concept means, how the PR models or changes it, and why that matters to product/user/system behavior.
-  Keep it accurate, source-anchored, and cognitively accessible without dumbing down symbol/API names.
-- Classify each changed file/hunk: PRIMARY (≤3) | SUPPORTING | GUARDRAIL | CLEANUP.
-- Only PRIMARY (and key SUPPORTING) earn Act II beats; the rest become Act IV ledger rows.
-  This is what keeps a large multi-file PR a focused narrative.
+Apply `authoring.md`'s Review-readiness map, Introduced concepts, and Role classification sections in full.
+State the single goal/thesis in one sentence; include the intended review posture in the mental model.
+For each introduced concept, record what the reviewer must understand first and its supporting right-sidebar note.
+For a PR with no new domain concepts, keep one explicit no-new-concepts entry explaining its mechanical/plumbing scope and preserved invariant/workflow.
+Complete the readiness map, introduced-concepts inventory, what/how/why explanations, and every changed file/hunk's role before planning beats.
 
 ### 3. Plan the beats (one idea, one medium each — as a chain)
 
 - Map the goal + classified changes onto the 5-act spine.
-- Before touching the HTML, write a compact **authoring preflight** in your notes:
-  - goal/thesis + target reviewer,
-  - evidence cache status (new vs reused, PR/head SHA, refreshed sources),
-  - review-readiness map: mental model, layered explanation, topology groups, load-bearing line index, invariants/non-changes, risk-attention map, and GitHub handoff order,
-  - introduced concepts inventory: concept area/layer/name, what/how/why, source anchors, left-sidebar label, right-sidebar note, and best teaching medium,
-  - every changed file/hunk with role, source anchor, and why it matters,
-  - Act II beats in order, each with its bridge from the previous beat,
-  - primary medium per beat (`diagram` or `diff`) and the exact source line/image each beat needs,
-  - ledger rows, invariant cards, scorecard claims, image filenames, verification checks, and command-output budget.
+- Before touching HTML, write the full **authoring preflight** from `authoring.md` in your notes.
+  Include concept area/layer/name, exact image filenames, invariant cards, scorecard claims, and the command-output budget alongside its required fields.
 - **Order the Act II beats as a causal chain**, then write the one-line **bridge** for each seam (and between acts):
   the clause that says why this beat follows the last.
   Read the bridges in order with visuals hidden — they must form one argument with no teleports.
@@ -131,14 +109,8 @@ Per `authoring.md`:
 ### 5. Fill the template
 
 - Edit the prepared `<output>/<slug>.content.html`.
-- First resize the content blocks to match the preflight: remove unused concept cards, sidebar notes, sample beats/cards/rows and duplicate only the blocks the story needs.
-- Fill the concept primer, review-readiness map, and both sidebars before Act I/II beats.
-  The left sidebar must name each introduced concept by concept area/layer and include the readiness map plus Act I-IV story links;
-  the main concept cards must explain what/how/why; the right sidebar must hold clarifying notes, caveats, examples, or reviewer shortcuts for the active concept or story section that would otherwise clutter the main story.
-- Keep concept cards in a vertical anchor stack, not a multi-column grid.
-  Every concept sidebar block must visibly navigate to its own main-card position;
-  two concepts sharing the same row makes the second link feel like a no-op.
-- Fill the readiness sections as structured artifacts, not prose dumps: layered map rows, topology rows, load-bearing-line rows, risk-attention cards, and an ordered GitHub handoff.
+- Apply `authoring.md`'s Template shape and Fixed sidebars rules: resize to the preflight and fill the concept primer, readiness map, and both sidebars before Act I/II.
+  Keep readiness sections as structured artifacts: layered-map, topology, and load-bearing-line rows, risk-attention cards, and an ordered GitHub handoff.
 - Replace every placeholder token; use the beat blocks already present as patterns (add/remove change beats, invariant cards, ledger rows as needed).
 - Reference images by **relative filename** only (same dir). Never base64-inline.
 - HTML-escape `<`, `>`, `&` inside all code beats.
@@ -159,7 +131,7 @@ Per `authoring.md`:
     the act rail fallback remains usable on narrower layouts,
   - every sidebar note is reachable from a concept or readiness/story link and has a source/caveat anchor,
   - each referenced `nb-*` image exists and no unreferenced `nb-*` image remains in the output dir,
-  - every load-bearing source line appears in a diff beat,
+  - every insight that is a specific source line/option shows that exact diff line in its beat,
   - no beat repeats the same idea in prose + visual + card.
 
 ### 6. Verify in a real browser (mandatory)

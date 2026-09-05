@@ -6,9 +6,9 @@ disable-model-invocation: true
 
 # Build
 
-This is the controller contract for `/k-build` — the creation-side sibling of `/k-deep-review`.
-It implements an approved **spec packet** (from the `k-spec` skill) hands-free: the human touches the flow at exactly two gates —
-packet approval before execution, and the final report. Everything between runs without asking, inside the side-effect boundary below.
+`/k-build`, the creation-side sibling of `/k-deep-review`, implements an approved `k-spec` **spec packet** hands-free.
+Its two human gates are packet approval before execution and the final report;
+intervening work proceeds without asking within the side-effect boundary below.
 
 The SOP owns the surrounding gates: per-step verification loops (§3.5), requirements reset (§3.4), compatibility (§2.1), and state-machine verification (`### 3.6 State-Machine Verification`).
 The `k-code-quality` skill owns minimal edit scope at point of use.
@@ -47,8 +47,8 @@ Do not start a later phase until the current one completes.
 1. **Spec gate (human gate 1).**
    Obtain the spec packet: the active `/tmp/specs/<pwd>/<topic>.spec.md`, a user-supplied file, or — when none exists —
    run the `k-spec` skill now.
-   If any criterion lacks a run-once red check or a `judgment:` tag, return to the `k-spec` skill;
-   criteria are authored there, never backfilled mid-build. Present the packet and stop for explicit approval.
+   If any criterion lacks a run-once check (red, or green and explicitly labelled as a regression guard) or a `judgment:` tag, return to the `k-spec` skill; criteria are authored there, never backfilled mid-build.
+   Present the packet and stop for explicit approval.
    If the packet is not proven mechanical-only and lacks a semantic delta, return to `k-spec` before presenting it:
    old rule, new rule, intended differences, preserved differences, and evidence belong in the packet, not mid-build memory.
    Approval of the packet is the hands-free authorization; proceed on in-scope work after it without re-asking permission.

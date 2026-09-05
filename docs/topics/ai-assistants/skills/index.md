@@ -36,6 +36,14 @@ The `description` frontmatter is the primary routing signal. For non-manual skil
 | Entrypoint | `SKILL.md` in each skill folder                                                          |
 | References | optional `references/` under the skill folder                                            |
 
+Inventory both `readonly_SKILL.md` and plain `SKILL.md` source files; the shared tree currently contains 57 skills. Audit the complete instruction references and incoming callers as well as each entrypoint. Templates, executable helpers, and invocation metadata have separate consumers and must be accounted for without treating them all as instruction prose.
+
+## Semantic maintenance
+
+For each skill, identify its distinct triggers, required actions, ordering, exceptions, forbidden effects, and output contract before rewriting. Compress repeated wording only when every affected entry path still reaches the complete rule. Keep independently reachable guards at their point of use.
+
+Record equivalent rewrites separately from corrections to contradictory instructions. A retained skill needs a reason grounded in its contract; it is not a claim that further improvement is impossible. Verify changed decisions with realistic allowed, forbidden, and resume cases, including required references and caller handoffs. File conservation and passing formatting checks do not establish behavioral equivalence.
+
 ## Loading procedures by branch and phase
 
 Entrypoints retain routing, shared boundaries, and mandatory load triggers. Complete branch procedures live in references; a reference is required before its matching action, not optional background reading. Review controllers record phase, evidence, and unresolved gates in the existing review spec. After compaction they reopen instructions needed by the current phase and revisit gates invalidated by new evidence.
@@ -46,7 +54,7 @@ Entrypoints retain routing, shared boundaries, and mandatory load triggers. Comp
 | `k-deep-review`           | Scope, necessity, roster, findings audit, adversarial verification, judgment, live-UI result validation |
 | `k-artifact`              | Generated HTML or live overlay                                                                          |
 | `k-cli-skills`            | New skill authoring or installed-version upgrade                                                        |
-| `k-communication`         | Existing-thread reply procedure; `external-replies.md` remains required for all external drafting       |
+| `k-communication`         | Existing-thread reply procedure; shared external-register rules are inline in the entrypoint            |
 | `k-diagnosing-bugs`       | Fix and cleanup after assessment                                                                        |
 | `k-elastic-domain`        | GitHub composition or commit attribution                                                                |
 | `k-git`                   | Commit/push details before the corresponding operation                                                  |
@@ -81,3 +89,5 @@ Four skills are adapted from Matt Pocock's [`mattpocock/skills`](https://github.
 | `k-codebase-design`      | [`k-codebase-design`](https://github.com/mattpocock/skills/tree/main/skills/engineering/codebase-design)            |
 | `k-diagnosing-bugs`      | [`k-diagnosing-bugs`](https://github.com/mattpocock/skills/tree/main/skills/engineering/diagnosing-bugs)            |
 | `k-prototype`            | [`k-prototype`](https://github.com/mattpocock/skills/tree/main/skills/engineering/prototype)                        |
+
+The comprehensive audit includes all 57 entrypoints and their owned references, including plain `SKILL.md` files. Changes preserve mandatory loads and distinct contracts while removing repeated explanations and recursive loads within one invocation. Explicit corrections align spec/build regression guards, review miss-sweep auditing, capture/publication timing, scoped runtime lifecycle exceptions, and read-only tool requests. These corrections are intentional semantic differences; bounded decision checks and clause correspondence do not prove universal model equivalence.

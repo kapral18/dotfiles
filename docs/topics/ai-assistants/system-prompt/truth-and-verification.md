@@ -13,12 +13,14 @@ This page is the verification contract behind implementation summaries, setup cl
 
 | SOP section                  | Contract                                                                                                                                           |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `2.0 Compatibility`          | classify and state compatibility before edits; no unrequested shims, aliases, wrappers, or deprecation paths                                       |
-| `2.1 External Truth`         | inspect local source, binaries, versions, docs, and locally-verifiable guesses before relying on behavior; hypotheses cannot gate downstream steps |
-| `2.2 Runtime Truth`          | setup questions require source config → rendered config → consumer → safe live probe                                                               |
-| `2.3 Completion`             | stop only after locally-verifiable unknowns are resolved                                                                                           |
-| `2.4 Complete Artifacts`     | compacted/sliced/capped output is an index; recover raw context before relying on content or composing human-visible output                        |
-| `2.5 Self-Report Skepticism` | a model's own rationale, chain-of-thought, `done`, status, and plan are hypotheses about the process, not evidence                                 |
+| `2.1 Compatibility Gate`     | classify and state compatibility before edits; no unrequested shims, aliases, wrappers, or deprecation paths                                       |
+| `2.2 External Truth`         | inspect local source, binaries, versions, docs, and locally-verifiable guesses before relying on behavior; hypotheses cannot gate downstream steps |
+| `2.3 Mechanism Claims`       | verify the exact mechanism, call pattern, and local source before asserting feasibility; unverified mechanisms cannot drive decisions              |
+| `2.4 Self-Claims`            | falsify own-work claims before asserting them; negative claims need counterexample probes and passing tests need discriminating mutations          |
+| `2.5 Runtime Truth`          | setup questions require source config → rendered config → consumer → safe live probe                                                               |
+| `2.6 Completion`             | stop only after locally-verifiable unknowns are resolved                                                                                           |
+| `2.7 Complete Artifacts`     | compacted/sliced/capped output is an index; recover raw context before relying on content or composing human-visible output                        |
+| `2.8 Self-Report Skepticism` | a model's own rationale, chain-of-thought, `done`, status, and plan are hypotheses about the process, not evidence                                 |
 
 Self-report skepticism also applies to any sub-agent, reviewer, or verifier report. Verify the outcome against an independent signal.
 

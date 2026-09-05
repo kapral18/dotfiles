@@ -6,9 +6,7 @@ disable-model-invocation: true
 
 # Improve Targeted
 
-What is the single most compelling, high-leverage addition you could make to a specific targeted part of the codebase (a directory, module, package, feature area, or component)?
-
-Only propose it if it is genuinely compelling. It is fine to refrain when you have no strong suggestion — no change beats a marginal one.
+Propose the single most compelling, high-leverage addition to a directory, module, package, feature area, or component.
 
 Use when:
 

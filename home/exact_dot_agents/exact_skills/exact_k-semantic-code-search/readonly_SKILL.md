@@ -33,11 +33,8 @@ First actions:
 3. Cast a multi-angle query net: brainstorm a cluster of diverse queries exploring how changed functionality affects preexisting surrounding behavior, sibling consumers, callers, and downstream pipelines.
 4. Drill down using symbol analysis and chunk reads on relevant matching paths to map full impact.
 
-Important limitation:
-
-- the semantic index is a snapshot (typically of `main`)
-- use it to learn base-branch context and patterns
-- for PRs/branches, compare semantic (base) findings against local branch diff for what actually changed
+Important limitation: the semantic index is a snapshot (typically of `main`);
+use it for base-branch context and patterns, then compare PR/branch findings against the local diff.
 
 Review output contract (when invoked from a review skill):
 
@@ -78,7 +75,7 @@ Index usage:
   - verify it exists in `list_indices`
   - if it does not exist, stop and ask which index to use
 - otherwise:
-  - always run `list_indices` first (evidence, not guesses) - if you have both `scsi-main` and `scsi-local`, run `list_indices` on both before concluding "not indexed"
+  - if both `scsi-main` and `scsi-local` exist, run `list_indices` on both before concluding "not indexed"
   - if `list_indices` returns no usable results, fall back to local sources instead of semantic search
   - if `list_indices` returns an obvious match for the current repo, use it - "obvious" means you can justify the selection from evidence (for example: index name clearly includes the repo name, or it is the only index that matches the repo you're in)
   - if multiple equally plausible indices remain after evidence-based filtering, ask the user which index to use
@@ -87,7 +84,6 @@ Output:
 
 - State the selected index (or `none`) and why.
 - Keep semantic findings tied to concrete paths/symbols/snippets.
-- For reviews, use semantic findings as base context only, then compare against the local diff.
 
 Passing `index`:
 

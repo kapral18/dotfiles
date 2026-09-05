@@ -18,7 +18,7 @@ This catalog is not a skill: it has no procedure to invoke. Its consumer is the 
 
 **Mode.** The branch suffix `259250` is read as a PR number; `gh pr view 259250` returns "could not resolve"; the agent falls back to "no PR, review the local branch" without trying the standard `gh pr view` (no args) or `,gh-prw` fallbacks.
 
-**Falsifier.** `,gh-prw` already probes the current branch + commit SHA and is the first check. If it cannot resolve the user's claim, the k-github `Targeting` fallback chain runs: `gh pr view --repo OWNER/REPO <n>` → `gh pr view` (no args) → `gh pr view --head <branch>` → `gh issue view <n>`.
+**Falsifier.** `,gh-prw` already probes the current branch + commit SHA and is the first check. If it cannot resolve the user's claim, load and follow the complete `Targeting` fallback chain in `~/.agents/skills/k-github/SKILL.md` before declaring that no PR exists.
 
 **Prevention.** `k-github/SKILL.md` Targeting section documents the chain and explicitly warns against declaring "no PR exists" before step 5.
 

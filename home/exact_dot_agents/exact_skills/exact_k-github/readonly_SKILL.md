@@ -23,7 +23,7 @@ Defaults:
   1. `,gh-prw --number <n>` — handles the typical case (number, branch, commit SHA).
   2. `gh pr view --repo <upstream-fork-owner>/<repo> <n>` — for branches that target a different fork than the authenticated `gh` account (verified via `gh auth status`, not assumed from `git config`).
   3. `gh pr view` (no args) — relies on the branch's tracked remote, regardless of authenticated `gh` account.
-  4. `gh pr view --head <branch>` — covers branches that exist on a fork but lack a default-remote config.
+  4. `gh pr view <branch> --repo <owner>/<repo>` — use the verified target repository when the branch is on a fork without a default-remote config.
   5. `gh issue view <n> --repo <owner>/<repo>` — covers the common case where a number is an issue, not a PR.
      Three rounds of guessing "this number is the PR" without trying any of those is the failure mode.
 - Implicit current issue: resolve with `,gh-issuew --number` / `,gh-issuew --url`; same fallback applies if the helper fails.

@@ -1,7 +1,7 @@
 {{- /* model frontmatter is rendered through review-agent-model.partial from home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 name: k-agent-adversarial-verifier
-description: Cross-family refutation lane over audited deep-review candidates; returns verdicts only.
+description: Cross-family refutation lane over audited deep-review candidates; returns verdicts plus the bounded miss sweep.
 model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "cursor" "agent" "k-agent-adversarial-verifier") }}"
 readonly: false
 ---

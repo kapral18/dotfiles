@@ -17,7 +17,7 @@ this entrypoint owns routing and the two direct entries below.
 
 ## Non-Skippable Publication Gate
 
-Before any capture, upload, or PR/issue body/comment edit:
+Before any upload or PR/issue body/comment edit:
 
 1. Load `~/.agents/skills/k-ui-capture/references/proof-mode.md`.
 2. Produce the proof-mode return shape through `claim_map`.
@@ -54,9 +54,8 @@ Follow both completion criteria before Step 3. The Direct verify entry skips the
 
 ## Step 3 — Reuse check against published PR proof
 
-When the target PR already exists, run the proof-mode contract's Existing published proof gate before any capture:
-collect the PR's published before/after media, map each inventory item to the published pair conveying its contrast (shared pairs allowed per the coverage plan), and reuse a pair only when it passes both the adequacy check (media type matches the item's classification and that item's contrast is plainly visible) and the freshness check against the item's changed paths.
-Reuse the URLs of passing pairs; carry every stale, inadequate, partial, or unmapped item into Step 4. Skip this step when no PR exists yet.
+When the target PR already exists, run the proof-mode contract's Existing published proof gate in full before any capture.
+Carry reused URLs forward; route all other inventory items to Step 4. Skip this step when no PR exists yet.
 
 Completion criterion: every inventory item is classified `reused` with its existing URLs or routed to capture with the adequacy/staleness evidence.
 

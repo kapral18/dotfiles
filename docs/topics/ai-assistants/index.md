@@ -54,14 +54,14 @@ Entrypoints installed into `$HOME`:
 | Source                                                                                                                          | Target                               | Notes                                            |
 | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------ |
 | [`home/readonly_AGENTS.md`](../../../home/readonly_AGENTS.md)                                                                   | `~/AGENTS.md`                        | Single SOP source                                |
-| [`home/symlink_CLAUDE.md`](../../../home/symlink_CLAUDE.md)                                                                     | `~/CLAUDE.md`                        | Symlink to `~/AGENTS.md`                         |
+| [`home/readonly_CLAUDE.md`](../../../home/readonly_CLAUDE.md)                                                                   | `~/CLAUDE.md`                        | Native `@AGENTS.md` import                       |
 | [`home/dot_gemini/config/symlink_AGENTS.md`](../../../home/dot_gemini/config/symlink_AGENTS.md)                                 | `~/.gemini/config/AGENTS.md`         | Global Antigravity rule symlink to `~/AGENTS.md` |
 | [`home/dot_cursor/symlink_AGENTS.md`](../../../home/dot_cursor/symlink_AGENTS.md)                                               | `~/.cursor/AGENTS.md`                | Symlink to `~/AGENTS.md`                         |
 | [`home/dot_codex/symlink_AGENTS.md`](../../../home/dot_codex/symlink_AGENTS.md)                                                 | `~/.codex/AGENTS.md`                 | Symlink to `~/AGENTS.md`                         |
 | [`home/dot_config/opencode/symlink_AGENTS.md`](../../../home/dot_config/opencode/symlink_AGENTS.md)                             | `~/.config/opencode/AGENTS.md`       | Symlink to `~/AGENTS.md`                         |
 | [`home/private_dot_copilot/symlink_copilot-instructions.md`](../../../home/private_dot_copilot/symlink_copilot-instructions.md) | `~/.copilot/copilot-instructions.md` | Symlink to `~/AGENTS.md`                         |
 
-There is one real SOP file. The harness entrypoints above are symlinked to it, so the always-on instruction layer stays identical across harnesses.
+There is one canonical SOP body. Harness-specific imports, aliases, and native loader adapters deliver it; see [source of truth](system-prompt/source-of-truth.md) for delivery paths and verified limitations. Claude also uses the native global `~/.claude/CLAUDE.md` alias outside `$HOME`. Cursor uses a contained local plugin when native user-local plugins are enabled.
 
 Skills live under `~/.agents/skills/`; the chezmoi source is [`home/exact_dot_agents/exact_skills/`](../../../home/exact_dot_agents/exact_skills/).
 

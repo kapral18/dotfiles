@@ -7,8 +7,8 @@
      - Always include `correctness-regressions`.
        For a single-surface diff with no independent risk trigger, that one sighted lane is enough.
        Launch it on the cross-family lane pick (`lanes_cross` profile where the harness registry fields one):
-       generation recall bounds every later phase — refuters prune candidates but never expand them —
-       so the primary finder carries family diversity, angle lanes carry breadth diversity, and final adversarial verification keeps its own cross-family pass after findings audit.
+       the primary finder carries family diversity and angle lanes carry breadth diversity;
+       final adversarial verification keeps its cross-family pass after findings audit, with only the bounded miss sweep permitted by its contract.
        When no cross-family lane is fieldable, report `finder_family=same (degraded)` and continue.
      - Launch one to three sighted lanes by default.
        Use four or five only when the user explicitly asks for maximum rigor or when multiple high-risk classes are present at once (security/auth, persisted data/migration, public API, state-machine behavior, deletion/replacement, or user-visible product flow).

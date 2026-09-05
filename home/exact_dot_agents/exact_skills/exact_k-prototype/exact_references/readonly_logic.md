@@ -32,8 +32,8 @@ The TUI around it is throwaway; the logic module is not. Pick the shape that fit
 - **A class/module with a clear method surface** when the logic genuinely owns ongoing internal state.
 
 Keep it pure: no I/O, no terminal code, no `console.log` for control flow.
-The TUI imports it and calls in; nothing flows the other direction.
-This is what makes the prototype useful past its lifetime — the validated reducer/machine/function set lifts into the real module, the TUI shell gets deleted.
+The TUI imports and calls the logic; dependencies never point back to the TUI.
+The validated reducer/machine/functions can move into real code; the TUI shell gets deleted.
 
 ### 4. Build the smallest TUI that exposes the state
 

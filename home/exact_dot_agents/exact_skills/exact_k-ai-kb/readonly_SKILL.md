@@ -5,9 +5,9 @@ description: "Use for non-trivial repo/domain starts, setup gotchas, or storing 
 
 # AI Knowledge Base Skill
 
-Durable, structured, cross-session memory shared across agents (cursor-cli, pi, local sessions).
-Backed by the local `,ai-kb` CLI: SQLite + FTS5 (BM25) + dense embeddings (`sqlite-vec`), RRF-fused and MMR-diversified.
-Fully local, no cloud, no MCP. Capsules persist under `~/.local/share/ai-kb/` (markdown sidecars + indexed SQLite mirror).
+Durable cross-session memory shared by cursor-cli, pi, and local sessions.
+The local `,ai-kb` CLI stores capsules under `~/.local/share/ai-kb/` as markdown sidecars plus an indexed SQLite mirror.
+Retrieval: FTS5/BM25 + `sqlite-vec` dense embeddings, RRF fusion, MMR diversity; no cloud or MCP.
 
 Do not use:
 

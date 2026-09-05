@@ -113,6 +113,8 @@ These skills operate on local repositories, code search, cleanup, external sourc
 | Source   | [`exact_k-weave`](../../../../home/exact_dot_agents/exact_skills/exact_k-weave/) |
 | Tool     | `weave` CLI                                                                      |
 
+Setup omits dedicated patterns for `.vue`, `.svelte`, `.erb`, and `.hs`. Compound names such as `.svelte.ts` can still match `*.ts`; preview and direct-driver calls can also attempt entity merging.
+
 ## `k-research`
 
 | Field    | Value                                                                                                                 |

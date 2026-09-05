@@ -61,6 +61,10 @@ Before final adversarial refutation, fixing, drafting, or presenting findings, r
 Also check each surviving finding for **actionability** (is the smallest fix concrete?) and **overengineering** (does the proposed fix exceed the proved problem?).
 Merging duplicate findings is a deduplication task, never evidence that the underlying issue is unnecessary; keep the merged candidate.
 
+When the final adversarial verifier returns bounded `new-candidate` miss-sweep items, run this Findings-Set Audit over them inline before judgment, drafting, or fixes.
+Merge surviving items into the candidate set and report returned/surviving counts; do not relaunch the verifier over its own sweep items.
+Existing evidence, parity, applicability, fix-scope, and publication gates still apply.
+
 ## Post-Review Stage (Run On Any Change-Producing Flow)
 
 Before auditing a produced fix diff, load `review_post_stage.md` (matching heading).

@@ -5,6 +5,9 @@
   },
   "model": "claude-fable-5-1",
   "effortLevel": "xhigh",
+  "agentPushNotifEnabled": true,
+  "tui": "fullscreen",
+  "modelSettings": { "claude-fable-5-1": { "effortLevel": "high" } },
   "hooks": {
     "SessionStart": [
       {

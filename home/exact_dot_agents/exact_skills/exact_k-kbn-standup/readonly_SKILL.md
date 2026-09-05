@@ -146,7 +146,7 @@ SDH is metadata, not a category.
 Only when evidence directly identifies the activity as SDH work, use `:sdh:` in the summary where the word “SDH” would appear.
 Do not append `:sdh:` to artifact/category icons or propagate it to merely related activity.
 
-Done when the compiled standup is in team format, uses those section headings with empty groups omitted and blank lines after each heading and between sections, every authored or contributed-commit source PR is its own bullet under `PRs` except a source PR with its qualifying backports, reviewed PRs are listed under `Reviews` (excluding PRs already covered as contributed-commit bullets), no issue shares a bullet with a PR, every shareable artifact is a `[label](URL)`, every PR link is followed by `:merged:` or `:pr-open:`, and every issue link is followed by `🐛` or `:ticket:`.
+Done when every rule in this Compile section passes: section order/spacing, per-artifact grouping and deduplication, shareable links, per-link icons, and evidence-backed SDH placement.
 
 ## 4. Deliver
 

@@ -202,5 +202,58 @@ mcp_servers:
         }
 
 
+class TestMergeClaudeMcp(unittest.TestCase):
+    """WHEN replacing declared MCP servers in a runtime-owned Claude config."""
+
+    def _merge(self, desired, current):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        source, target = root / "desired.json", root / "live.json"
+        source.write_text(desired)
+        if current is not None:
+            target.write_text(current)
+        result = subprocess.run(
+            [sys.executable, str(REPO / "scripts/merge_claude_mcp.py"), str(source), str(target)],
+            capture_output=True,
+            text=True,
+        )
+        return result, target, source
+
+    def test_SHOULD_reject_invalid_documents_without_writing_live_bytes(self):
+        valid = '{"mcpServers":{"declared":{"command":"safe"}}}'
+        for invalid in ('{"runtime_state":"preserve",', "[]", '{"mcpServers":[]}'):
+            for source_invalid in (False, True):
+                with self.subTest(invalid=invalid, source_invalid=source_invalid):
+                    current = valid if source_invalid else invalid
+                    result, target, _ = self._merge(invalid if source_invalid else valid, current)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(target.read_text(), current)
+                    self.assertIn("Error:", result.stderr)
+
+    def test_SHOULD_bootstrap_missing_targets_including_an_empty_registry(self):
+        for servers in ({}, {"declared": {"command": "safe"}}):
+            with self.subTest(servers=servers):
+                result, target, _ = self._merge(json.dumps({"mcpServers": servers}), None)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(target.read_text()), {"mcpServers": servers})
+
+    def test_SHOULD_preserve_runtime_state_and_skip_an_identical_second_write(self):
+        result, target, source = self._merge(
+            '{"mcpServers":{"declared":{"command":"safe"}}}',
+            '{"runtime_state":{"nested":"preserve"},"mcpServers":{"retired":{"command":"old"}}}',
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            json.loads(target.read_text()),
+            {"runtime_state": {"nested": "preserve"}, "mcpServers": {"declared": {"command": "safe"}}},
+        )
+        before = (target.read_bytes(), target.stat().st_mtime_ns)
+        subprocess.run(
+            [sys.executable, str(REPO / "scripts/merge_claude_mcp.py"), str(source), str(target)], check=True
+        )
+        self.assertEqual((target.read_bytes(), target.stat().st_mtime_ns), before)
+
+
 if __name__ == "__main__":
     unittest.main()

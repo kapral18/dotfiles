@@ -6,9 +6,7 @@ disable-model-invocation: true
 
 # Improve Codebase
 
-What is the single most compelling, high-leverage addition you could make in this codebase?
-
-Only propose it if it is genuinely compelling. It is fine to refrain when you have no strong suggestion — no change beats a marginal one.
+Propose the single most compelling, high-leverage addition to the current codebase.
 
 Use when:
 

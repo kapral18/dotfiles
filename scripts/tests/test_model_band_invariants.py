@@ -277,26 +277,28 @@ class TestModelBandInvariants(unittest.TestCase):
                 f"category_models.codex.orchestrate.effort {codex_orchestrate['effort']!r}"
             )
 
-    def test_codex_defaults_and_agent_lanes_are_gpt55_xhigh_except_mechanical(self):
+    def test_codex_defaults_and_agent_lanes_keep_effort_across_retired_model_migration(self):
         import ai_models
 
         registry = REPO / "home/.chezmoidata/ai_models"
         expected_model = "gpt-5.5"
         expected_effort = "xhigh"
+        expected_root_model = "gpt-6-astra"
+        expected_root_effort = "high"
         expected_service_tier = "default"
         category_models = ai_models.load_category_models(registry)["codex"]
 
-        self.assertEqual(category_models["mechanical"]["model"], "gpt-5.4")
+        self.assertEqual(category_models["mechanical"]["model"], "gpt-5.6-terra")
         self.assertEqual(category_models["mechanical"]["effort"], "high")
-        # memory is the deliberately-cheap smol row: it reuses the verified mechanical pair.
-        self.assertEqual(category_models["memory"]["model"], "gpt-5.4")
+        # Codex 0.153.2 names Terra as the retired GPT-5.4 replacement; both retain high effort.
+        self.assertEqual(category_models["memory"]["model"], "gpt-5.6-terra")
         self.assertEqual(category_models["memory"]["effort"], "high")
         for category, row in category_models.items():
             if category in ("mechanical", "memory"):
                 continue
             with self.subTest(surface="category", name=category):
-                self.assertEqual(row["model"], expected_model)
-                self.assertEqual(row["effort"], expected_effort)
+                self.assertEqual(row["model"], expected_root_model if category == "orchestrate" else expected_model)
+                self.assertEqual(row["effort"], expected_root_effort if category == "orchestrate" else expected_effort)
 
         for role in (
             "k-agent-review-worker",
@@ -310,9 +312,9 @@ class TestModelBandInvariants(unittest.TestCase):
         for profile in ("personal", "work"):
             config = (REPO / f"home/dot_codex/private_config.{profile}.toml").read_text(encoding="utf-8")
             with self.subTest(surface="root_profile", name=profile):
-                self.assertRegex(config, re.compile(rf'^model\s*=\s*"{re.escape(expected_model)}"$', re.MULTILINE))
+                self.assertRegex(config, re.compile(rf'^model\s*=\s*"{re.escape(expected_root_model)}"$', re.MULTILINE))
                 self.assertRegex(
-                    config, re.compile(rf'^model_reasoning_effort\s*=\s*"{expected_effort}"$', re.MULTILINE)
+                    config, re.compile(rf'^model_reasoning_effort\s*=\s*"{expected_root_effort}"$', re.MULTILINE)
                 )
                 self.assertRegex(config, re.compile(rf'^service_tier\s*=\s*"{expected_service_tier}"$', re.MULTILINE))
 
@@ -336,6 +338,32 @@ class TestModelBandInvariants(unittest.TestCase):
                 self.assertRegex(
                     config, re.compile(rf'^model_reasoning_effort\s*=\s*"{expected_effort}"$', re.MULTILINE)
                 )
+
+    def test_codex_roles_use_supported_overrides_and_keep_instruction_boundaries(self):
+        # Codex 0.153.2 core/src/agent/role.rs AgentRoleOverrides projects these fields.
+        # approval_policy/sandbox_mode are ignored; role_tests.rs keeps parent.permissions.
+        supported = {
+            "developer_instructions",
+            "model",
+            "model_reasoning_effort",
+            "model_reasoning_summary",
+            "model_verbosity",
+            "personality",
+            "service_tier",
+            "features",
+            "skills",
+        }
+        for path in sorted((REPO / "home/dot_codex/exact_agents").glob("*.toml.tmpl")):
+            with self.subTest(profile=path.name):
+                source = path.read_text(encoding="utf-8")
+                header, instructions = source.split('developer_instructions = """', 1)
+                keys = set(re.findall(r"^(\w+)\s*=", header, re.MULTILINE)) - {"name", "description"}
+                self.assertLessEqual(keys, supported)
+                self.assertIn('include "dot_config/exact_tmux/agent_prompts/prefix.txt"', instructions)
+                self.assertRegex(instructions, r"Read and follow ~/.agents/skills/k-[^\s]+/references/[^\s]+\.md")
+                self.assertIn("Never edit", instructions)
+                self.assertIn("commit", instructions)
+                self.assertIn("push", instructions)
 
     def test_every_bound_agent_resolves_on_every_harness(self):
         # The three-table lookup is only useful if it is total: an agent bound to a category that

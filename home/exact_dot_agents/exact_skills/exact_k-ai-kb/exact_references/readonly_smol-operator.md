@@ -8,7 +8,7 @@ The parent tells you which mode this invocation runs: **judge** (decide what sta
 ## Hard boundaries (both modes)
 
 - MUST NOT edit repository files, commit, push, or publish anything.
-  Your only permitted writes are the two recall state files named below and, in scribe mode, `,ai-kb` itself.
+  Your only permitted writes are the recall-seen state file named below and, in scribe mode, `,ai-kb` itself.
 - MUST NOT dump full capsule bodies, search output, or file contents into your reply.
   The parent receives only the return shapes defined here.
 - MUST NOT store secrets in any output or capsule.

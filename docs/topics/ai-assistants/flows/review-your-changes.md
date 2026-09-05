@@ -35,11 +35,11 @@ What you get that rung 1 doesn't: exhaustive PR context intake (every comment th
 /k-deep-review PR #4321
 ```
 
-The controller launches a bounded reviewer roster: one sighted `correctness-regressions` lane for simple single-surface diffs, evidence-triggered extra lanes for independent risk classes, and a blind "fresh eyes" lane only when the diff has comprehension-risk signals. Each lane is a real expert lens with its own checks and, where one exists, its own quality skill — not a generalist told to emphasize a keyword. After lane merge/dedup, applicable UI/runtime candidates get live UI evidence first; the audited candidate set then goes to a **different-family model whose only job is to refute it**, which also returns a short sweep of what every lane missed.
+The controller launches a bounded reviewer roster: one sighted `correctness-regressions` lane for simple single-surface diffs, evidence-triggered extra lanes for independent risk classes, and a blind "fresh eyes" lane only when the diff has comprehension-risk signals. Each lane is a real expert lens with its own checks and, where one exists, its own quality skill — not a generalist told to emphasize a keyword. After lane merge/dedup, applicable UI/runtime candidates get live UI evidence first; the audited candidate set then goes to a **refuter, with cross-family selection preferred at equal capability**, which also returns a short sweep of what every lane missed.
 
 Expect a structured report: roster, lane yield (what each lane returned versus what survived), live UI status when applicable, findings-audit status, verifier verdict counts (`confirmed/refuted/undecidable`), miss-sweep counts, kept/dropped findings with reasons, draft comments awaiting your go-ahead, and UI evidence attachments for UI feedback.
 
-Use it when the change needs independent review plus adversarial refutation (cross-family preferred at equal capability, SOP §3.5). It scales from one sighted lane + verifier to extra lanes only when scope evidence warrants them.
+Use it when the change needs independent review plus adversarial refutation (cross-family preferred at equal capability, SOP §3.7). It scales from one sighted lane + verifier to extra lanes only when scope evidence warrants them.
 
 ## Reading any review's output
 

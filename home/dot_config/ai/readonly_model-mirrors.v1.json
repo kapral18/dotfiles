@@ -17,8 +17,8 @@
         "work": "claude-fable-5-1"
       },
       "codex": {
-        "personal": "gpt-5.5",
-        "work": "gpt-5.5"
+        "personal": "gpt-6-astra",
+        "work": "gpt-6-astra"
       },
       "copilot": {
         "default": "auto"
@@ -84,12 +84,9 @@
             "version": "2.1.206"
           },
           {
-            "kind": "config",
-            "source": "home/dot_claude/settings.work.json"
-          },
-          {
-            "kind": "config",
-            "source": "home/dot_claude/settings.personal.json"
+            "kind": "registry",
+            "section": "category_models",
+            "source": "home/.chezmoidata/ai_models/tiering.yaml"
           }
         ],
         "reason": null,
@@ -102,12 +99,9 @@
         ],
         "provenance": [
           {
-            "kind": "config",
-            "source": "home/dot_claude/settings.work.json"
-          },
-          {
-            "kind": "config",
-            "source": "home/dot_claude/settings.personal.json"
+            "kind": "registry",
+            "section": "category_models",
+            "source": "home/.chezmoidata/ai_models/tiering.yaml"
           }
         ],
         "reason": null,
@@ -129,12 +123,9 @@
         ],
         "provenance": [
           {
-            "kind": "config",
-            "source": "home/dot_claude/settings.work.json"
-          },
-          {
-            "kind": "config",
-            "source": "home/dot_claude/settings.personal.json"
+            "kind": "registry",
+            "section": "category_models",
+            "source": "home/.chezmoidata/ai_models/tiering.yaml"
           }
         ],
         "reason": null,
@@ -168,7 +159,7 @@
       "curated": {
         "complete": true,
         "models": [
-          "gpt-5.5"
+          "gpt-6-astra"
         ],
         "provenance": [
           {
@@ -195,7 +186,7 @@
       "recommended": {
         "complete": true,
         "models": [
-          "gpt-5.5"
+          "gpt-6-astra"
         ],
         "provenance": [
           {

@@ -39,6 +39,9 @@ complete -c ',agent-memory' -n "not __fish_seen_subcommand_from $__agent_memory_
     -a wipe-current -d 'Delete selected hook memory topic files'
 
 complete -c ',agent-memory' -l workspace -r -d 'Workspace path'
+complete -c ',agent-memory' -s h -l help -d 'Show command help'
+complete -c ',agent-memory' -n '__fish_seen_subcommand_from status' \
+    -l json -d 'Emit machine-readable topic status'
 complete -c ',agent-memory' -n "__fish_seen_subcommand_from status select note wipe-current" \
     -l session-id -r -d 'Agent runtime session id'
 complete -c ',agent-memory' -n "__fish_seen_subcommand_from status note wipe-current" \

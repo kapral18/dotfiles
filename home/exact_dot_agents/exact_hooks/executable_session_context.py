@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -49,7 +50,6 @@ MAX_PREFIX_CHARS = 6000
 
 WARMSTART_LIMIT = 3
 WARMSTART_QUERY_CHARS = 600
-WARMSTART_BODY_CHARS = 240
 WARMSTART_SEARCH_TIMEOUT = 6
 TOPIC_BUCKET_LIMIT = 8
 TOPIC_BUCKET_SUMMARY_CHARS = 180
@@ -115,21 +115,151 @@ def per_turn_recall_requested(payload: dict) -> bool:
     return payload.get("warm_embedder") is True
 
 
-def aikb_warmstart(workspace: Path, query: str, injected_ids: list[str] | None = None) -> str:
-    """Inject a small, relevance-gated block of durable learnings at session start.
+# Staging contract tokens, pinned by the pi/omp mirror parity test.
+SMOL_CONTRACT_PATH = "~/.agents/skills/k-ai-kb/references/smol-operator.md"
+STAGING_HEADER = "### ,ai-kb candidates staged"
+
+
+def seen_file_for(spec_path: Path, session_key_value: str) -> Path:
+    return spec_path.parent / f".recall-seen-{session_key_value}.json"
+
+
+def candidates_file_for(spec_path: Path, session_key_value: str) -> Path:
+    return spec_path.parent / f".recall-candidates-{session_key_value}.json"
+
+
+def staged_file_for(spec_path: Path, session_key_value: str) -> Path:
+    return spec_path.parent / f".recall-staged-{session_key_value}.json"
+
+
+def pointed_file_for(spec_path: Path, session_key_value: str) -> Path:
+    return spec_path.parent / f".recall-pointed-{session_key_value}.json"
+
+
+def already_pointed(pointed_path: Path, topic: str) -> bool:
+    """True when this session already received the pointer for `topic`."""
+    try:
+        marker = json.loads(pointed_path.read_text())
+        return marker.get("topic") == topic and marker.get("pointed", True) is True
+    except (OSError, json.JSONDecodeError, AttributeError, TypeError):
+        return False
+
+
+def load_seen(path: Path | None) -> set[str]:
+    if path is None:
+        return set()
+    try:
+        return set(json.loads(path.read_text()))
+    except (OSError, json.JSONDecodeError, TypeError):
+        return set()
+
+
+def save_seen(path: Path | None, seen: set[str]) -> None:
+    if path is None:
+        return
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(sorted(seen)))
+    except OSError:
+        pass
+
+
+def stage_candidates(rows: list, seen: set[str], spec_path: Path, key: str, *, warm_start: bool = False) -> str:
+    """Write gate-passing rows to the candidates file; return the pointer block.
+
+    The cross-repo scope gate is owned by `,ai-kb search --workspace-gate`.
+    This hook filters ids k-agent-smol already admitted (seen-file) and points the
+    parent at the staged set once per session-topic binding transition (pointed marker):
+    a judge spawn per prompt cost more than the lines it admitted, so later
+    turns stage silently and the pull path owns mid-task recall. A new binding
+    may re-point unadmitted ids. Returns "" when nothing new is staged, the
+    session was already pointed at this topic, or any state write fails
+    (fail-open: no partial pointer without a file).
+    """
+    if not key:
+        return ""
+    pointed_path = pointed_file_for(spec_path, key)
+    topic = spec_path.stem
+    pointed = already_pointed(pointed_path, topic)
+    if not pointed:
+        try:
+            pointed_path.parent.mkdir(parents=True, exist_ok=True)
+            pointed_path.write_text(json.dumps({"topic": topic, "pointed": False}))
+        except OSError:
+            return ""
+    warm_path = spec_path.parent / f".recall-warm-{key}.json"
+    if warm_start:
+        rows = rows[:WARMSTART_LIMIT]
+        try:
+            warm_path.write_text(json.dumps({"topic": topic, "rows": rows}))
+        except OSError:
+            return ""
+    elif rows:
+        try:
+            warm = json.loads(warm_path.read_text())
+            if warm.get("topic") == topic and isinstance(warm.get("rows"), list):
+                rows = [*warm["rows"][:WARMSTART_LIMIT], *rows]
+        except (OSError, json.JSONDecodeError, AttributeError, TypeError):
+            pass
+    # Startup contributes at most three rows; each later retrieval replaces its own lane.
+    # A current retrieval may refresh the same id without growing a cumulative history.
+    by_id = {str(row.get("id")): row for row in rows if row.get("id")}
+    candidates = [row for key_id, row in by_id.items() if key_id not in seen]
+    if not candidates:
+        return ""
+    staged_path = staged_file_for(spec_path, key)
+    staged = load_seen(staged_path)
+    candidate_ids = {str(row.get("id")) for row in candidates}
+    if pointed and not candidate_ids - staged:
+        return ""
+    candidates_path = candidates_file_for(spec_path, key)
+    try:
+        candidates_path.parent.mkdir(parents=True, exist_ok=True)
+        candidates_path.write_text(json.dumps(candidates, indent=2))
+    except OSError:
+        return ""
+    # Marker first, ledger second: if the marker write fails, the ids stay unstaged so the next
+    # turn retries instead of silently consuming this session's one pointer.
+    if not pointed:
+        try:
+            pointed_path.write_text(json.dumps({"topic": topic}))
+        except OSError:
+            return ""
+    save_seen(staged_path, staged | candidate_ids)
+    if pointed:
+        return ""
+    worklog_path = spec_path.with_name(spec_path.stem + ".worklog.jsonl")
+    return "\n".join(
+        [
+            STAGING_HEADER,
+            f"{len(candidates)} candidate(s): {candidates_path}",
+            f"Session state: {spec_path} + {worklog_path}",
+            "This pointer fires once per session-topic binding; later turns stage new rows into the same file for pull-path recall.",
+            f"Delegate to the `k-agent-smol` subagent (judge mode) per {SMOL_CONTRACT_PATH}, passing those paths and the current prompt;"
+            " inject only its returned lines (`NONE` = inject nothing).",
+            "When the `k-agent-smol` profile is unreachable (e.g. a fixed Task subagent set), spawn a generic isolated subagent"
+            " on the memory-band model with the k-agent-smol operator contract per the k-ai-kb skill;"
+            " never a harness-CLI one-shot and never the subagent type's own default model.",
+            "Do not read the candidates file into this context.",
+        ]
+    )
+
+
+def aikb_warmstart(workspace: Path, query: str) -> list:
+    """Retrieve complete relevance-gated candidates for startup judgment.
 
     Fires only for named-topic sessions (gated by the caller). Uses the active
     topic spec as the query and the bm25 lane (no embedder) to stay fast and
     dependency-light inside the hook timeout. `--workspace-gate` makes the KB
     itself keep only capsules that are local to this workspace or deliberately
     cross-project (domain/universal scope), so a large or unrelated KB cannot
-    stuff the context with noise. Returns an empty string on any failure or
+    stuff the context with noise. Returns an empty list on any failure or
     when no relevant capsule clears the gate.
     """
     aikb = shutil.which(",ai-kb")
     query = " ".join(query.split())[:WARMSTART_QUERY_CHARS].strip()
     if not aikb or not query:
-        return ""
+        return []
 
     try:
         result = subprocess.run(
@@ -153,50 +283,20 @@ def aikb_warmstart(workspace: Path, query: str, injected_ids: list[str] | None =
             timeout=WARMSTART_SEARCH_TIMEOUT,
         )
     except (OSError, subprocess.TimeoutExpired):
-        return ""
+        return []
 
     if result.returncode != 0 or not result.stdout.strip():
-        return ""
+        return []
 
     try:
         rows = json.loads(result.stdout)
     except json.JSONDecodeError:
-        return ""
+        return []
 
     rows = _apply_relevance_floor(rows if isinstance(rows, list) else [])
 
-    # Cross-repo scope gating is owned by `,ai-kb search --workspace-gate`;
-    # this hook only applies the relevance floor, caps, and formatting.
-    selected: list[str] = []
-    for row in rows if isinstance(rows, list) else []:
-        if len(selected) >= WARMSTART_LIMIT:
-            break
-        title = " ".join(str(row.get("title") or "").split()).strip()
-        if not title:
-            continue
-        body = " ".join(str(row.get("body") or "").split()).strip()
-        if len(body) > WARMSTART_BODY_CHARS:
-            body = body[:WARMSTART_BODY_CHARS].rstrip() + "…"
-        kind = str(row.get("kind") or "note")
-        line = f"- **{title}** ({kind})"
-        if body:
-            line += f": {body}"
-        selected.append(line)
-        capsule_id = str(row.get("id") or "")
-        if injected_ids is not None and capsule_id:
-            injected_ids.append(capsule_id)
-
-    if not selected:
-        return ""
-
-    return "\n".join(
-        [
-            "### Relevant Learnings (,ai-kb)",
-            "Surfaced from durable memory for this topic; verify before relying on them, "
-            "and search again with your specific task for more.",
-            *selected,
-        ]
-    )
+    # Keep complete rows: only the isolated judge admits memory into parent context.
+    return [row for row in rows if row.get("id") and str(row.get("title") or "").strip()][:WARMSTART_LIMIT]
 
 
 def _apply_relevance_floor(rows: list) -> list:
@@ -421,7 +521,9 @@ def is_review_topic(topic: str, text: str) -> bool:
 def neutral_review_spec(text: str, spec_path: Path) -> str:
     lines: list[str] = []
     for line in text.splitlines():
-        normalized = line.strip().rstrip(":").lower()
+        heading = re.sub(r"^#{1,6}\s+", "", line.strip())
+        heading = re.sub(r"\s+#+\s*$", "", heading)
+        normalized = heading.rstrip(":").lower()
         if normalized in REVIEW_CONCLUSION_HEADINGS:
             break
         lines.append(line)
@@ -465,6 +567,28 @@ def spec_context(spec_path: Path, topic: str) -> str:
     return bounded_or_omitted(text, spec_path)
 
 
+def context_for_harness(parts: list[str], optional_parts: list[tuple[int, str]]) -> str:
+    """Cursor carriers cap trimmed context at 10,000 JavaScript UTF-16 units.
+
+    Omit whole optional artifacts, retaining a read pointer. Never slice a rule,
+    spec, or JSONL row to fit. Other harnesses retain their existing envelope.
+    """
+    context = "\n".join(parts)
+    if os.environ.get("AGENT_HOOK_HARNESS") != "cursor":
+        return context
+    selected = list(parts)
+    for index, pointer in optional_parts:
+        if len(context.encode("utf-16-le")) // 2 <= 10_000:
+            return context
+        selected[index] = pointer
+        context = "\n".join(selected)
+    if len(context.encode("utf-16-le")) // 2 > 10_000:
+        raise ValueError(
+            "Required startup instructions exceed Cursor's 10,000 UTF-16-unit context limit; refusing partial instructions"
+        )
+    return context
+
+
 def main() -> None:
     payload = read_payload()
     if os.environ.get("AGENT_HOOK_OUTPUT") == "antigravity" and payload.get("invocation_num") != 0:
@@ -483,7 +607,7 @@ def main() -> None:
         workspace, topic, spec_path, worklog_path = topic_paths(payload)
 
     if context_disabled(spec_path, topic):
-        emit({})
+        emit({"context_disabled": True} if payload.get("context_status") is True else {})
         return
 
     try:
@@ -504,6 +628,7 @@ def main() -> None:
 
     warm_resident_embedder(payload)
 
+    optional_parts: list[tuple[int, str]] = []
     parts = [
         "## Agent Hook Context",
         f"- Workspace: `{workspace}`",
@@ -520,14 +645,22 @@ def main() -> None:
 
     spec_dir = spec_path.parent
     key = session_key(payload)
+    if key:
+        stage_candidates([], set(), spec_path, key)
     has_session_binding = bool(key and session_topic_path(spec_dir, key).exists())
     no_session_key_default_branch = not key and is_default_branch_workspace(workspace)
     if not has_session_binding and should_offer_topic_buckets(spec_path, topic, no_session_key_default_branch):
         parts.extend(["", topic_buckets_context(spec_dir, payload)])
+        optional_parts.append(
+            (
+                len(parts) - 1,
+                f"### Topic Buckets\nBucket details omitted for Cursor’s context limit. Inspect `{spec_dir}` and bind with `,agent-memory select <topic> --session-id {key or '<session-id>'}` before relying on prior state.",
+            )
+        )
         if not per_turn_recall_requested(payload):
             parts.extend(["", NO_PERTURN_RECALL_NOTICE])
         parts.extend(["", AIKB_REMINDER])
-        context = "\n".join(parts)
+        context = context_for_harness(parts, optional_parts)
         emit(
             {
                 "additional_context": context,
@@ -547,33 +680,29 @@ def main() -> None:
         spec_text = spec_context(spec_path, topic)
         if spec_text:
             parts.extend(["", "### Active Topic Spec", spec_text])
+            optional_parts.append(
+                (
+                    len(parts) - 1,
+                    f"Spec omitted for Cursor’s context limit. Read `{spec_path}` before relying on prior state.",
+                )
+            )
 
     worklog = "" if is_review else transcript_tail(worklog_path, lines=MAX_WORKLOG_LINES, limit=MAX_WORKLOG_CHARS)
     if worklog:
         parts.extend(["", "### Recent Hook Worklog", worklog])
+        optional_parts.insert(
+            0,
+            (
+                len(parts) - 1,
+                f"Worklog omitted for Cursor’s context limit. Read complete rows from `{worklog_path}` when prior activity is needed.",
+            ),
+        )
 
-    if is_named_topic(topic) and not is_review and spec_text_source.strip():
-        injected_ids: list[str] = []
-        warmstart = aikb_warmstart(workspace, spec_text_source, injected_ids)
-        if warmstart:
-            parts.extend(["", warmstart])
-        # Record injected capsule ids so the per-turn recall hook
-        # (perturn_recall.py) never re-injects them this session. Load-union-save
-        # rather than overwrite so a resume/compact firing a second warm start
-        # cannot drop ids the per-turn hook (or an earlier warm start) already
-        # recorded, which would re-inject already-seen capsules.
-        if injected_ids and key:
-            seen_path = spec_path.parent / f".recall-seen-{key}.json"
-            try:
-                seen_path.parent.mkdir(parents=True, exist_ok=True)
-                try:
-                    existing = set(json.loads(seen_path.read_text()))
-                except (OSError, json.JSONDecodeError, TypeError):
-                    existing = set()
-                merged = existing | set(injected_ids)
-                seen_path.write_text(json.dumps(sorted(merged)))
-            except OSError:
-                pass
+    if key and is_named_topic(topic) and not is_review and spec_text_source.strip() and agent_depth() != "fast":
+        rows = aikb_warmstart(workspace, spec_text_source)
+        pointer = stage_candidates(rows, load_seen(seen_file_for(spec_path, key)), spec_path, key, warm_start=True)
+        if pointer:
+            parts.extend(["", pointer])
 
     if not per_turn_recall_requested(payload):
         parts.extend(["", NO_PERTURN_RECALL_NOTICE])
@@ -582,7 +711,7 @@ def main() -> None:
     if spec_mirror is not None:
         spec_mirror.sync_topic(spec_dir, workspace, topic)
 
-    context = "\n".join(parts)
+    context = context_for_harness(parts, optional_parts)
     emit(
         {
             "additional_context": context,

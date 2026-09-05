@@ -5,9 +5,7 @@ description: "Use for ideas, feature requests, bugs, or another skill needing a 
 
 # Spec
 
-Develop an intent into a **spec packet**: the smallest artifact that lets implementation run hands-free and verification run without judgment calls.
-A spec packet is the hardened, hand-off-able form of the SOP §3.1 intent spec —
-same discipline, plus acceptance criteria a machine can check.
+Develop the SOP §3.1 intent spec into a **spec packet**: the smallest handoff for hands-free implementation, with machine-checkable acceptance criteria and explicitly tagged judgment criteria.
 
 The SOP owns the surrounding gates: the Intent Loop mechanics (§3.1), compatibility intent (§2.1), and external/runtime truth (§2.2/§2.5).
 This skill owns the packet contract and the acceptance-criteria discipline.
@@ -22,7 +20,7 @@ Consumers: `/k-build` (in-session hands-free implementation), `~/.agents/skills/
 ## Workflow
 
 1. **Necessity check.**
-   Before developing the idea, verify the work is needed: search for existing or superseding work (`git log`, `gh` issue/PR search when a repo target exists, `,ai-kb search` with the concrete goal).
+   Before developing the idea, verify the work is needed: inspect `git log`, search `gh` issues/PRs when a repo target exists, and delegate concrete-goal recall through `~/.agents/skills/k-ai-kb/SKILL.md`.
    Done when you can state one of: `new work`, `duplicates <ref>`, `superseded by <ref>`, or `already exists at <path>` — with the evidence.
    On anything but `new work`, stop and surface it instead of drafting.
 
@@ -59,7 +57,7 @@ Consumers: `/k-build` (in-session hands-free implementation), `~/.agents/skills/
 
    Banned wording in criteria: "works", "correctly", "properly", "as expected" —
    if you cannot say what observable changes, the fork behind it is still open; go back to step 2.
-   Done when every criterion carries a run-once red check or an explicit `judgment:` tag, and at least one criterion is checked for any workspace-mutating goal.
+   Done when every criterion carries a run-once check (red, or green and explicitly labelled as a regression guard) or an explicit `judgment:` tag, and at least one criterion is checked for any workspace-mutating goal.
 
 4. **Assemble and persist the packet.**
    If the active topic is a session fallback (`session-<id>` — the hook default on main/master/dev with no named topic), bind this session to a named topic first: `,agent-memory select <stable-kebab-topic> --create --session-id <session-id>`.

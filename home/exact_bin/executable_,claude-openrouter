@@ -103,7 +103,12 @@ if [[ ! -x "$OPENROUTER_PRESET_HELPER" ]]; then
 fi
 export OPENROUTER_API_KEY="$api_key"
 "$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"
-"$OPENROUTER_PRESET_HELPER" xhigh
+if [[ "$OPENROUTER_EFFORT" != "xhigh" ]]; then
+  "$OPENROUTER_PRESET_HELPER" xhigh
+fi
+if [[ "$OPENROUTER_EFFORT" != "high" ]]; then
+  "$OPENROUTER_PRESET_HELPER" high
+fi
 OPENROUTER_CONTEXT_WINDOW="$("$OPENROUTER_PRESET_HELPER" --context-window "$OPENROUTER_MODEL" "$OPENROUTER_CONTEXT")"
 readonly OPENROUTER_CONTEXT_WINDOW
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
@@ -111,6 +116,7 @@ readonly OPENROUTER_CLAUDE_MODEL="$OPENROUTER_WIRE_MODEL"
 readonly OPENROUTER_PI_GPT55_WIRE_MODEL="openai/gpt-5.5@preset/effort-xhigh"
 readonly OPENROUTER_PI_DEEPSEEK_WIRE_MODEL="deepseek/deepseek-v4-flash@preset/effort-xhigh"
 readonly OPENROUTER_PI_SONNET_WIRE_MODEL="anthropic/claude-sonnet-4.6@preset/effort-xhigh"
+readonly OPENROUTER_PI_MEMORY_WIRE_MODEL="google/gemini-3.7-flash@preset/effort-high"
 
 # Claude Code appends /v1/messages, so the base URL stops at /api. OpenRouter answers
 # that path with the Anthropic Messages schema, usage block included.
@@ -132,7 +138,7 @@ none | minimal)
 esac
 readonly CLAUDE_EFFORT
 export ANTHROPIC_MODEL="$OPENROUTER_CLAUDE_MODEL"
-export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_PI_MEMORY_WIRE_MODEL"
 export ANTHROPIC_DEFAULT_SONNET_MODEL="$OPENROUTER_PI_SONNET_WIRE_MODEL"
 export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OPENROUTER_PI_DEEPSEEK_WIRE_MODEL"
 export ANTHROPIC_DEFAULT_FABLE_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"

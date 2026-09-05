@@ -22,7 +22,8 @@ It is the working map that keeps the page from becoming "the diff, but prettier"
 - **Act II chain:** 1-3 beats in causal order.
   Each beat has a bridge from the previous beat, one primary medium, and the exact diff line or image it needs.
 - **Compression plan:** which files stay in the Act IV ledger only, which invariants become cards, which scorecard claims close the story, and which command outputs must stay summarized.
-- **Image budget:** default one Act I contrast image; add a second only when it carries a distinct flow/state idea.
+- **Image budget:** when the named Nano Banana / Gemini / Google image lane applies, default to one Act I contrast image;
+  add a second only when it carries a distinct flow/state idea.
   Use deterministic HTML/diff beats for exact labels, symbol lists, and code-line insights.
 - **Verification checklist:** no unfilled placeholder tokens, every referenced `nb-*` image exists, concept/sidebar references are consistent, and every changed file/group appears in the ledger.
   Code must be HTML-escaped, and no idea should repeat in multiple adjacent media.

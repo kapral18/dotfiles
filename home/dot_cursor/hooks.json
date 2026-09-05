@@ -3,7 +3,7 @@
   "hooks": {
     "sessionStart": [
       {
-        "command": "AI_EMBED_WARM=1 $HOME/.agents/hooks/session_context.py",
+        "command": "AGENT_HOOK_HARNESS=cursor AI_EMBED_WARM=1 $HOME/.agents/hooks/session_context.py",
         "timeout": 10
       }
     ],

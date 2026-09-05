@@ -6,9 +6,7 @@ disable-model-invocation: true
 
 # Converge
 
-Loop adversarial rounds against a claim or changeset until a round comes back **dry**.
-Dry means one full round produced zero changes to code, tests, or published text.
-Required verification and fresh refutation must finish, with no unresolved correctness findings or mutation verdicts.
+Loop adversarial rounds against a claim or changeset until **dry**: the complete exit condition declared in Step 1.
 
 `disable-model-invocation: true` blocks direct auto-invocation of this skill only.
 Explicitly invoked `k-build`, `k-review`, or `k-light-review` flows may hand off here.

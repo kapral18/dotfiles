@@ -14,7 +14,8 @@ tool_version: "letsfg 2026.4.66 (uv tool; --version unavailable); playwriter 0.1
   Hosted book pages hide booking links behind the website unlock/pay/share flow.
 - Open airline/OTA booking URLs only when the user asks.
   Opening is read-only, but checkout, passenger entry, payment, or final booking can create real-world side effects.
-- Do not start a browser for search-only tasks. Use the local `letsfg` CLI first.
+- Do not start a host browser or Playwriter for search-only tasks.
+  Use `,letsfg-docker`; its connector browsers stay inside the virtual display.
 
 ## First Actions
 
@@ -28,7 +29,7 @@ letsfg --help
 letsfg search --help
 ```
 
-1. For a known one-way or round-trip date, use the docker wrapper for browserless search with full coverage:
+1. For a known one-way or round-trip date, use the docker wrapper for full connector coverage without visible local browser windows:
 
 ```bash
 ,letsfg-docker search AMS EVN 2026-05-13 --mode fast --limit 10 --json --max-browsers 2
@@ -36,7 +37,7 @@ letsfg search --help
 
 Use `--return YYYY-MM-DD` for round trips, `--currency EUR` when the user specifies currency, `--direct` for direct-only, and `--cabin M|W|C|F` for cabin class.
 
-1. For nearby, soon, cheapest-date, or flexible-date requests, search dates locally without browser connectors and rank the returned offers.
+1. For nearby, soon, cheapest-date, or flexible-date requests, search dates through the docker wrapper and rank the returned offers.
    Default to the next 14 days from today when the user gives no range.
    The ready-to-run script (concurrent per-date `,letsfg-docker search` + price/date ranking) lives in `~/.agents/skills/k-letsfg/references/flexible-date-search.md`.
 
@@ -78,7 +79,8 @@ Use `--return YYYY-MM-DD` for round trips, `--currency EUR` when the user specif
 - Local `letsfg search ... --json` returns offers with `booking_url`, `source_tier`, and `is_locked`.
   Local free search should return `source_tier: "free"` and `is_locked: false` for directly usable result links.
 - Some LetsFG connectors hard-code headed Chrome or CDP Chrome because their target sites block headless browsers.
-  Do not patch installed package files in-place; prefer browserless search by default and treat browser connectors as explicit opt-in coverage.
+  Do not patch installed package files in-place.
+  Use `,letsfg-docker` to keep those connectors inside the virtual display; rendered-UI Playwriter work still requires the browser-fallback trigger.
 - The system Python may not import `letsfg` because uv tools live in isolated environments.
   Prefer the `letsfg` executable instead of Python imports.
 - Before using the rendered-UI browser launcher, read and follow `~/.agents/skills/k-letsfg/references/browser-fallback.md` in full.

@@ -8,7 +8,8 @@ All PR review modes load this file; do not duplicate these rules in mode files.
 - Otherwise:
   - Set `GH_PAGER=cat` for all `gh` calls (prevents interactive pager hangs).
   - Resolve PR number via `,gh-prw --number`.
-  - If `,gh-prw` fails once, stop and ask the user for the PR URL/number.
+  - If `,gh-prw` fails, follow PR Detection in `~/.agents/skills/k-review/SKILL.md` before asking for the URL/number;
+    this loads targeting rules only, not another review workflow.
 
 ## PR Snapshot (blocking before diff analysis)
 

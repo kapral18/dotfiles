@@ -29,8 +29,8 @@ If detection is unavailable, keep generic behavior and state Elastic-specific ru
 
 ## Layering contract
 
-1. Run the primary skill's generic workflow first.
-2. Load this overlay only for domain additions below.
+1. Follow the primary skill's generic workflow.
+2. Apply the relevant domain additions below before the generic step they govern.
 3. Do not duplicate generic mechanics: routing, PR intake, pending-review reconciliation, publication gates, and review judging stay with primary skills.
 4. If this overlay conflicts with the primary skill, safer/gated behavior wins.
 

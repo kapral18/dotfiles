@@ -13,7 +13,6 @@
      "Non-refuted" downstream means not validly refuted after that check.
 
 - The verifier also returns a bounded miss sweep (`new-candidate` items, at most three, or `Miss sweep: none above the bar`).
-  These are the verifier's only look at the code, so keep them despite arriving late;
-  they have also not passed the findings audit, so audit them before judgment.
+  These late additions have not passed the findings audit; audit them before judgment.
   Run the `judging_pipeline.md` Findings-Set Audit over them inline, then merge the survivors into the kept set.
   Report how many the sweep produced and how many survived. Do not relaunch the verifier over its own sweep items.

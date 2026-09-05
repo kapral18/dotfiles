@@ -87,6 +87,8 @@ def _split_thinking_suffix(model: str) -> tuple[str, str | None]:
 
 def _claude_alias_for_backend_model(model: str) -> str | None:
     lowered = model.lower()
+    if lowered == "google/gemini-3.7-flash":
+        return "opus"
     if "claude" in lowered or "anthropic" in lowered or "sonnet" in lowered:
         return "sonnet"
     if "deepseek" in lowered:

@@ -31,8 +31,7 @@ Extract or ask for:
 - Slide type: showcase, architecture grid, agenda/overview, ownership map, or cleanup pass.
 - Source content: user-provided text, local repo paths, screenshots, or manifest discovery request.
 
-If the prompt includes a Slides URL, parse `presentationId` from `/d/<id>/` and `slideId` from `#slide=id.<id>`.
-Read the current presentation with `gws` before planning mutations.
+Resolve URL IDs under the mandatory generic Slides reference; read the current presentation with `gws` before planning mutations.
 
 ## Elastic Content Rules
 

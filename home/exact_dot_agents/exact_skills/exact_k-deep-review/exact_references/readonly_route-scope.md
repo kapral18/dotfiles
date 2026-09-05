@@ -43,14 +43,13 @@ Never assert a `Base context: SCSI=none` line that you did not earn by running `
 If your own runtime also blocks `list_indices`, say so explicitly as `tools unavailable` rather than implying the gate ran.
 Keep the base-context preflight to base context only: run `semantic_code_search`, symbol analysis, code-chunk reads, broad code investigation, and finding construction only after reviewer workers launch.
 
-Run durable-memory recall before fan-out with task-shaped queries, not the raw user prompt. At minimum run:
+Before fan-out, delegate task-shaped recall through `~/.agents/skills/k-ai-kb/SKILL.md` with both queries:
 
-```bash
-,ai-kb search "deep-review <mode> pitfalls gotchas" --limit 5 --json
-,ai-kb search "<target repo/domain> review live-ui evidence gotchas" --limit 5 --json
-```
+- `deep-review <mode> pitfalls gotchas`
+- `<target repo/domain> review live-ui evidence gotchas`
 
-Fold relevant capsule lessons into the scope packet as constraints, and cite capsule ids in the controller's plan.
+Fold only the judge's admitted lines into the scope packet as constraints, citing capsule ids in the controller's plan.
+Apply only that skill's declared fallbacks; the controller must not run the search inline outside its no-spawn fallback.
 This preflight is mandatory because slash-command prompts often contain too little semantic content for per-turn recall to surface the right capsules.
 
 Materialize the read-only context pack before reviewer fan-out.

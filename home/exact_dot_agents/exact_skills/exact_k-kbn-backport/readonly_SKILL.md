@@ -7,9 +7,8 @@ disable-model-invocation: true
 # Kibana Backport End-To-End
 
 Use this skill only when explicitly invoked by name, typically as "run/resolve the backport for PR `<N>`".
-It takes a source PR number and drives the whole backport.
-It computes the target branches, launches the interactive `node scripts/backport` run in a dedicated tmux window, drives that run, resolves every cherry-pick conflict faithfully, and stages the result.
-The tool then pushes the branches and opens the backport PRs; this skill stops only where your judgment is genuinely required.
+Compute targets, drive one interactive `node scripts/backport` run in a dedicated tmux window, faithfully resolve and stage every conflict, and let the tool push branches and open PRs.
+Stop only at the user-decision boundaries in Contract.
 
 This skill requires a source PR number. If none was provided, ask the user for it before doing anything else.
 
@@ -111,12 +110,11 @@ Driving the window's TTY pane follows the repo's existing send-keys pattern (`~/
 
 Two locations are in play; keep them separate:
 
-- **Controlling window** — a dedicated tmux window running `node scripts/backport`, driven through its pane id.
-  Spawn it in the current tmux session (the one the agent is running in, rooted at the `~/work/kibana` checkout), **never** in `~/.backport/repositories/elastic/kibana`.
-  That tool-owned checkout is the tool's mutable workspace — it resets, re-clones, and re-prepares it for every target branch and may nuke it at any time, so a window rooted there can have its CWD pulled out from under it.
-  The tool computes its checkout path from `repoOwner`/`repoName` under `~/.backport/repositories/`, independent of where it is launched, so launching from the operating checkout still backports into the tool-owned checkout correctly.
-- **Tool-owned checkout** — `~/.backport/repositories/elastic/kibana`, where the paused conflict state lives.
-  All per-conflict resolution commands (git inspection, edits, `yarn kbn bootstrap`, validation, `git add`) run there, addressed explicitly (`git -C ~/.backport/repositories/elastic/kibana …` or a separate shell `cd`'d into it) — not in the controlling window's pane.
+- **Controlling window** — run `node scripts/backport` through its captured pane id in the current tmux session, rooted at the operating `~/work/kibana` checkout.
+  Never root it in `~/.backport/repositories/elastic/kibana`: the tool resets/re-clones/re-prepares that mutable checkout per target and may remove its CWD at any time.
+  The tool derives its checkout from `repoOwner`/`repoName` under `~/.backport/repositories/`, independent of launch CWD.
+- **Tool-owned checkout** — paused conflicts live at `~/.backport/repositories/elastic/kibana`.
+  Run git inspection, edits, `yarn kbn bootstrap`, validation, and `git add` there via `git -C ~/.backport/repositories/elastic/kibana …` or a separate shell `cd`'d into it; never in the controlling pane.
 
 1. Spawn a dedicated controlling **window** in the current tmux session, detached, with its CWD on the operating checkout (not the tool-owned checkout) — e.g. `tmux new-window -d -n kbn-backport -c <operating-kibana-checkout> -PF '#{pane_id}'`, which creates the window in the current session without stealing focus and prints its pane id.
    Drive the run through that pane id (`capture-pane`/`send-keys -t '<pane>'`).

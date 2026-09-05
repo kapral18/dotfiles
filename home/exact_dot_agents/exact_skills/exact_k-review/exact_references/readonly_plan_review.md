@@ -43,7 +43,7 @@ Walk the plan end-to-end, ordered by risk:
 5. **Gates by content:** planned removals get the Deletion-Safety Audit and Historical-Rationale Gate;
    planned replacements the Replacement/Migration Parity Gate; stateful/parser-like planned behavior must include a State-Machine Verification step in the plan; cross-module/deploy plans the Systemic-Risk Checks; user-facing flows the Product-Flow Lens; alerting/monitoring work the Signal-Quality Gate.
 6. **Gaps:** missing steps, unowned risks, absent rollback/verification, and co-edit-set members the plan does not mention (docs, diagrams, configs).
-7. **Compatibility intent (SOP `2.0`):** the plan's compatibility posture is explicit and matches the request;
+7. **Compatibility intent (SOP `2.1`):** the plan's compatibility posture is explicit and matches the request;
    flag unrequested shims/legacy paths.
 8. **Simplicity:** flag steps a simpler approach makes unnecessary; name the simpler path and its tradeoff.
 

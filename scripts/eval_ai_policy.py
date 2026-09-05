@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -34,7 +35,10 @@ except ImportError:  # pragma: no cover - repo has no PyYAML dependency by conve
 def _load_matrix(path: Path) -> dict:
     text = path.read_text(encoding="utf-8")
     if yaml is not None:
-        return yaml.safe_load(text)
+        try:
+            return yaml.safe_load(text)
+        except yaml.YAMLError as err:
+            raise ValueError(f"invalid matrix YAML: {err}") from err
     return _parse_minimal_yaml(text)
 
 
@@ -45,27 +49,49 @@ def _parse_minimal_yaml(text: str) -> dict:
     hand-parses YAML sections rather than adding a dependency). Only supports
     the flat list-of-scalars-under-a-key shape the fixture matrix uses.
     """
-    result: dict[str, list[str]] = {}
+    result: dict[str, list] = {}
     current_key = None
     for raw_line in text.splitlines():
         line = raw_line.split("#", 1)[0].rstrip()
         if not line.strip():
             continue
-        if not line.startswith(" ") and line.endswith(":"):
+        if re.fullmatch(r"[a-z_]+:", line):
             current_key = line[:-1].strip()
+            if current_key in result:
+                raise ValueError(f"duplicate matrix dimension: {current_key}")
             result[current_key] = []
-        elif line.strip().startswith("- ") and current_key is not None:
-            result[current_key].append(line.strip()[2:].strip().strip('"'))
+        elif re.match(r"^  - ", line) and current_key is not None:
+            value = line[4:].strip()
+            try:
+                value = json.loads(value)
+            except ValueError:
+                if not re.fullmatch(r"[a-zA-Z0-9_.:/-]+", value):
+                    raise ValueError(f"unsupported matrix scalar: {value!r}") from None
+            result[current_key].append(value)
+        else:
+            raise ValueError(f"unsupported matrix line: {line!r}")
     return result
 
 
 def _dimensions(matrix: dict) -> tuple[list, list, list, list, int]:
-    harnesses = matrix.get("harnesses", [])
-    models = matrix.get("frontier_models", [])
-    roles = matrix.get("agent_roles", [])
-    scenarios = matrix.get("scenarios", [])
-    repetitions = int(matrix.get("repetitions", [1])[0]) if matrix.get("repetitions") else 1
-    return harnesses, models, roles, scenarios, repetitions
+    if not isinstance(matrix, dict):
+        raise ValueError("matrix must be a mapping of nonempty dimensions")
+    dimensions = []
+    for key in ("harnesses", "frontier_models", "agent_roles", "scenarios"):
+        values = matrix.get(key)
+        if not isinstance(values, list) or not values or any(not isinstance(v, str) or not v.strip() for v in values):
+            raise ValueError(f"matrix {key} must be a nonempty list of nonempty strings")
+        dimensions.append(values)
+    raw = matrix.get("repetitions", [1])
+    if not isinstance(raw, list) or len(raw) != 1 or type(raw[0]) not in (int, str):
+        raise ValueError("matrix repetitions must be a one-item list containing a positive integer")
+    try:
+        repetitions = int(raw[0])
+    except ValueError as err:
+        raise ValueError("matrix repetitions must be a positive integer") from err
+    if repetitions <= 0:
+        raise ValueError("matrix repetitions must be a positive integer")
+    return (*dimensions, repetitions)
 
 
 def _cells(matrix: dict) -> list[dict]:
@@ -260,12 +286,16 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    if args.cmd == "plan":
-        return cmd_plan(args)
-    if args.cmd == "verify-routing":
-        return cmd_verify_routing(args)
-    if args.cmd == "verify-behavior":
-        return cmd_verify_behavior(args)
+    try:
+        if args.cmd == "plan":
+            return cmd_plan(args)
+        if args.cmd == "verify-routing":
+            return cmd_verify_routing(args)
+        if args.cmd == "verify-behavior":
+            return cmd_verify_behavior(args)
+    except (ValueError, OSError) as err:
+        print(f"error: {err}", file=sys.stderr)
+        return 1
     parser.error(f"unknown command {args.cmd!r}")
     return 2
 

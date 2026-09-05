@@ -17,11 +17,10 @@ The SOP still owns evidence, minimal edit scope, and human-visible gates; a skil
 
 Every `SKILL.md` is either model-invoked or user-invoked.
 
-- **Model-invoked** (default; omit `disable-model-invocation`) keeps a model-facing `description`.
-  The agent can fire it autonomously and other skills can reach it, but the description is permanent context load.
-- **User-invoked** (`disable-model-invocation: true`) is reachable only when the human types it.
-  It has zero model context load and a human-facing one-line description, but the human must remember it exists.
-  A user-invoked skill can invoke model-invoked skills but cannot reach another user-invoked one.
+- **Model-invoked** (default; omit `disable-model-invocation`): keep a model-facing routing description for autonomous selection and skill-to-skill use.
+- **User-invoked** (`disable-model-invocation: true`): use a human-facing one-line description and require explicit invocation for its workflow unless an applicable caller contract authorizes a scoped handoff.
+  Explicit instruction-file loads and authorized handoffs remain possible; loading a file alone grants no workflow or side-effect authority.
+  Do not infer context cost or harness discovery behavior from this flag; verify the active loader before making those claims.
 
 Stay model-invoked only when the agent or another skill must reach the skill autonomously.
 Reuse is a reason to extract a skill, not a reason to make it model-invoked.
@@ -70,7 +69,8 @@ Hunt restatements a leading word retires: â€œfast, deterministic, low-overheadâ€
 
 - **Single source of truth**: one meaning, one authoritative place.
 - **Relevance**: every line must still bear on the skill; stale or never-used lines go.
-- **No-ops**: if a line changes no behavior versus the model default, delete it rather than trimming it.
+- **No-ops**: delete a line only after verifying it changes no required behavior on any reachable invocation.
+  Assumed model defaults are not evidence; preserve unique requirements and independently reachable guards.
 - **Hard size bound (references)**: keep reference files under 20 KB (`make check` enforces this under `home/exact_dot_agents/`).
   `SKILL.md` is skill-loader delivered and exempt, but nearing the bound is a sprawl signal;
   disclose sections behind pointers or split before squeezing qualifiers.

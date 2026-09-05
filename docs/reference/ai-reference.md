@@ -16,7 +16,7 @@ See [The Agentic Operating System](../topics/ai-assistants/index.md) and [SOP so
 | Cursor CLI hooks       | [`home/dot_cursor/hooks.json`](../../home/dot_cursor/hooks.json)                                 |
 | Antigravity hooks      | [`home/dot_gemini/config/readonly_hooks.json`](../../home/dot_gemini/config/readonly_hooks.json) |
 
-`~/CLAUDE.md`, `~/.gemini/config/AGENTS.md`, `~/.cursor/AGENTS.md`, `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`, and `~/.copilot/copilot-instructions.md` are symlinks to `~/AGENTS.md`.
+`~/CLAUDE.md` imports `@AGENTS.md`; `~/.claude/CLAUDE.md` links to `~/AGENTS.md` for Claude's global loader. `~/.gemini/config/AGENTS.md`, `~/.cursor/AGENTS.md`, `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`, and `~/.copilot/copilot-instructions.md` are symlinks to `~/AGENTS.md`.
 
 ### Git commit/push safety gate
 

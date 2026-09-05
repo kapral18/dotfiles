@@ -62,18 +62,18 @@ In `/k-deep-review`, this is the `k-agent-findings-auditor`'s job when the candi
 
 A candidate survives only when refutation fails with evidence. Every kept finding states reachability, and an unreachable path loses its severity.
 
-Direct `k-review`/`k-light-review` run `k-agent-adversarial-verifier` when the harness supports it; otherwise they run the ladder inline and report the degraded path. In `/k-deep-review`, the adversarial lane (cross-family preferred at equal capability, SOP §3.5) owns it after findings audit, and read-only finder lanes only return candidates plus reachability.
+Direct `k-review`/`k-light-review` run `k-agent-adversarial-verifier` when the harness supports it; otherwise they run the ladder inline and report the degraded path. In `/k-deep-review`, the adversarial lane (cross-family preferred at equal capability, SOP §3.7) owns it after findings audit, and read-only finder lanes only return candidates plus reachability.
 
 ## Reference: light review
 
 [`k-light-review`](../../../../home/exact_dot_agents/exact_skills/exact_k-light-review) is a separate skill for proportional-depth, in-place audits of low-risk self-authored changes.
 
-| Keeps                                                                            | Drops                                                                             |
-| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `judging_pipeline.md` coverage checklist + `judging_core.md` trigger-based gates | mandatory SCSI/base-context preflight                                             |
-| four-dimension post-review lens                                                  | GitHub machinery                                                                  |
-| candidate refutation ladder + findings-set audit                                 | multi-agent fan-out + adversarial verification (cross-family preferred, SOP §3.5) |
-| opt-in base context                                                              | PR-thread/CI-specific rules                                                       |
+| Keeps                                                                            | Drops                                 |
+| -------------------------------------------------------------------------------- | ------------------------------------- |
+| `judging_pipeline.md` coverage checklist + `judging_core.md` trigger-based gates | mandatory SCSI/base-context preflight |
+| four-dimension post-review lens                                                  | GitHub machinery                      |
+| candidate refutation ladder + findings-set audit                                 | multi-lane reviewer roster            |
+| opt-in base context                                                              | PR-thread/CI-specific rules           |
 
 A **light-eligibility predicate** is evaluated first. It is the single source both the `k-review` router and `k-agent-change-auditor` reference, replacing any subjective "is this low-risk?" call.
 
@@ -85,6 +85,7 @@ The change is light-eligible only when none of these escalate:
 - the diff deletes or replaces/migrates code.
 - the diff is state-machine-like.
 - correctness needs base context beyond direct local reads.
+- live UI/runtime evidence is needed because local static reads cannot prove the finding or fix.
 
 Any trigger escalates to full `k-review`. The router applies the same predicate in reverse, offering `k-light-review` for a self-authored, no-PR, trigger-free diff.
 

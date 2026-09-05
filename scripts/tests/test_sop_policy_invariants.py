@@ -376,15 +376,15 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Use examples only when they replace a longer explanation",
         )
         self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-communication/exact_references/readonly_external-replies.md",
+            "home/exact_dot_agents/exact_skills/exact_k-communication/readonly_SKILL.md",
             "Choose no reply when it would only restate the thread",
             "Match the surface's register",
             "Use natural wording, or say that no message is worth sending",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-communication/readonly_SKILL.md",
-            "Before drafting, apply every rule in `~/.agents/skills/k-communication/references/external-replies.md`.",
-            "prefer the shortest structure that still delivers a complete essence",
+            "Apply every rule before drafting text another human will read.",
+            "use the shortest complete structure",
         )
         self.assert_file_not_contains(
             "home/readonly_AGENTS.md",
@@ -584,7 +584,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "home/exact_dot_agents/exact_skills/exact_k-code-quality-react/readonly_SKILL.md",
             "Use when editing, reviewing, or refactoring React/JSX/TSX components, hooks",
             "## Secondary Skill Escalation",
-            "If markup, styling, or accessibility semantics change, also load the `~/.agents/skills/k-code-quality-web/SKILL.md` skill.",
+            "If markup, styling, or accessibility semantics change, load `~/.agents/skills/k-code-quality-web/SKILL.md` unless its full text is already loaded for this active invocation.",
             "Use one functional React component per file when writing React",
             "Prefer hooks and composition over class components or inheritance",
         )
@@ -598,7 +598,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "home/exact_dot_agents/exact_skills/exact_k-code-quality-web/readonly_SKILL.md",
             "Use for browser-rendered markup, CSS, layout, visual states, accessibility, or focus behavior edits/reviews",
             "## Secondary Skill Escalation",
-            "If the concrete web surface is React/JSX/TSX, also load the `~/.agents/skills/k-code-quality-react/SKILL.md` skill.",
+            "If the concrete web surface is React/JSX/TSX, load `~/.agents/skills/k-code-quality-react/SKILL.md` unless its full text is already loaded for this active invocation.",
             "Prefer semantic HTML and existing design-system primitives",
             "Preserve accessible names, roles, focus order, and keyboard reachability",
         )

@@ -18,9 +18,8 @@ When you write the regression test, load `~/.agents/skills/k-code-quality-tests/
 
 ## Phase 1 — Build a feedback loop
 
-**This is the skill.** Everything else is mechanical.
-With a **tight** pass/fail signal that goes red on _this_ bug, you will find the cause;
-bisection, hypotheses, and instrumentation all consume it. Spend disproportionate effort here.
+Bisection, hypotheses, and instrumentation use a **tight** pass/fail signal that goes red on _this_ bug.
+Spend disproportionate effort establishing it.
 
 Ways to construct one — try roughly in this order:
 

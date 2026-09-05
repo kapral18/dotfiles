@@ -144,8 +144,8 @@ def _check_capabilities(rules: list[ir.Rule], repo_root: Path) -> None:
         capabilities.check_rule_capability(rule, snapshot)
 
 
-def _iter_skill_descriptions(repo_root: Path):
-    """Yield (entry_path, size_bytes, description_bytes) for every model-invoked skill."""
+def _iter_skill_descriptions(repo_root: Path, *, non_manual_only: bool = False):
+    """Yield source byte counts; invocation metadata does not prove native visibility."""
     skills_root = repo_root / SKILLS_ROOT
     if not skills_root.is_dir():
         return
@@ -157,7 +157,7 @@ def _iter_skill_descriptions(repo_root: Path):
         if entry is None:
             continue
         frontmatter = entry.read_text(encoding="utf-8").split("---", 2)
-        if len(frontmatter) >= 2 and "disable-model-invocation: true" in frontmatter[1]:
+        if non_manual_only and len(frontmatter) >= 2 and "disable-model-invocation: true" in frontmatter[1]:
             continue
         description_bytes = 0
         if len(frontmatter) >= 2:
@@ -229,7 +229,8 @@ def cmd_verify(args: argparse.Namespace) -> int:
 
     expected_manifest = _build_manifest(rules, rendered)
     manifest = expected_manifest
-    if manifest_rel is not None and (manifest_path := repo_root / manifest_rel).is_file():
+    if manifest_rel is not None:
+        manifest_path = repo_root / manifest_rel
         manifest = _load_manifest(manifest_path)
         if manifest != expected_manifest:
             print(f"verify: {manifest_path} does not match the recompiled manifest", file=sys.stderr)
@@ -307,16 +308,18 @@ def cmd_verify_budgets(args: argparse.Namespace) -> int:
             ok = False
 
     description_total = 0
-    for entry, size, description_bytes in _iter_skill_descriptions(repo_root):
+    for entry, size, description_bytes in _iter_skill_descriptions(repo_root, non_manual_only=True):
         if size > args.skill_max_bytes:
             print(f"verify-budgets: {entry.relative_to(repo_root)} is {size} bytes (max {args.skill_max_bytes})")
             ok = False
         description_total += description_bytes
 
     print(
-        f"verify-budgets: combined model-visible descriptions {description_total} bytes "
+        f"verify-budgets: declared non-manual descriptions {description_total} bytes "
         f"(max {args.description_total_max_bytes})"
     )
+    all_descriptions = sum(desc for _, _, desc in _iter_skill_descriptions(repo_root))
+    print(f"verify-budgets: all declared descriptions {all_descriptions} bytes (native visibility not measured)")
     if description_total > args.description_total_max_bytes:
         print("verify-budgets: description total exceeds budget", file=sys.stderr)
         ok = False
@@ -506,12 +509,17 @@ def cmd_measure(args: argparse.Namespace) -> int:
     description_bytes = sum(desc for _, _, desc in _iter_skill_descriptions(repo_root))
 
     report = {
+        "measurement_basis": "UTF-8 source bytes for core SOP and declared skill descriptions; not live prompt tokens or skill bodies",
         "repo_controlled_bytes": {
             "core_sop": core_bytes,
             "skill_descriptions": description_bytes,
             "total": core_bytes + description_bytes,
         },
+        "declared_non_manual_description_bytes": sum(
+            desc for _, _, desc in _iter_skill_descriptions(repo_root, non_manual_only=True)
+        ),
         "uncontrolled_unknown": [
+            "harness-specific skill description visibility",
             "harness-owned system prompt",
             "tool schemas",
             "conversation history",

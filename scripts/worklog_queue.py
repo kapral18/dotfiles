@@ -37,6 +37,7 @@ STALE_STATE_GLOBS = (
     ".recall-candidates-*.json",
     ".recall-staged-*.json",
     ".recall-pointed-*.json",
+    ".recall-warm-*.json",
 )
 MAX_STALE_REMOVALS_PER_PASS = 64
 
@@ -568,7 +569,7 @@ def cleanup_stale_state(spec_dir: Path, *, config: QueueConfig = QueueConfig()) 
     """Age-gated sweep of per-session state nothing will read again.
 
     Removes `session-*` fallback worklogs and per-session recall state
-    (`.recall-seen-*` dedupe, `.recall-candidates-*` staging, `.recall-staged-*`, `.recall-pointed-*`
+    (`.recall-seen-*` dedupe, `.recall-candidates-*` staging, `.recall-staged-*`, `.recall-pointed-*`, `.recall-warm-*`
     ledgers) whose mtime is older than `cleanup_age_seconds` (same policy as drained
     queue dirs). Named-topic worklogs are never candidates: the `session-`
     prefix is reserved for per-session fallback buckets. Fallback worklog

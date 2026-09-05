@@ -35,8 +35,8 @@ SELECT_CONTEXT_WORKLOG_CHARS = 3000
 # Mirrors MAX_SPEC_CHARS + REVIEW_CONCLUSION_HEADINGS in
 # home/exact_dot_agents/exact_hooks/executable_session_context.py — change both
 # together. `,agent-memory select` is a second clean-room entrypoint (agent_memory.py
-# cannot import session_context.py: it always runs from the repo source via the
-# `,agent-memory` launcher, while session_context.py is deployed standalone to
+# cannot import session_context.py: it runs from its own deployed command library,
+# while session_context.py is deployed standalone to
 # ~/.agents/hooks/ and imports only its sibling hook_common.py).
 SELECT_CONTEXT_MAX_SPEC_CHARS = 2500
 REVIEW_CONCLUSION_HEADINGS = (
@@ -135,15 +135,31 @@ def transcript_tail(
     except OSError:
         return ""
 
-    tail: list[str] = []
-    total = 0
-    for line in reversed(raw_lines):
-        next_total = total + len(line) + 1
-        if tail and (len(tail) >= lines or next_total > limit):
-            break
-        tail.append(line)
-        total = next_total
-    return "\n".join(reversed(tail))
+    if lines <= 0 or limit <= 0:
+        return ""
+    selected: list[str] = []
+    selected_chars = 0
+    omitted = 0
+    for line in reversed(raw_lines[-lines:]):
+        line_len = len(line) + (1 if selected else 0)
+        if selected_chars + line_len > limit:
+            omitted += 1
+            continue
+        selected.append(line)
+        selected_chars += line_len
+
+    # Reserve room for the omission notice without splitting an atomic row.
+    while omitted:
+        notice = f"[omitted {omitted} worklog entr{'y' if omitted == 1 else 'ies'} to keep context atomic]"
+        body = "\n".join(reversed(selected))
+        result = notice + ("\n" + body if selected else "")
+        if len(result) <= limit:
+            return result
+        if not selected:
+            return ""
+        selected.pop()
+        omitted += 1
+    return "\n".join(reversed(selected))
 
 
 def is_review_topic(topic: str, text: str) -> bool:
@@ -160,7 +176,9 @@ def neutral_review_spec(text: str, spec_path: Path) -> str:
     """
     lines: list[str] = []
     for line in text.splitlines():
-        normalized = line.strip().rstrip(":").lower()
+        heading = re.sub(r"^#{1,6}\s+", "", line.strip())
+        heading = re.sub(r"\s+#+\s*$", "", heading)
+        normalized = heading.rstrip(":").lower()
         if normalized in REVIEW_CONCLUSION_HEADINGS:
             break
         lines.append(line)
@@ -685,6 +703,9 @@ def cmd_wipe_current(args: argparse.Namespace) -> int:
         print(path)
 
     if args.reset_active and not args.dry_run:
+        mirror = _mirror_module()
+        if mirror is not None:
+            mirror.forget_active_pointer(workspace)
         active_pointer = spec_dir / "_active_topic.txt"
         if active_pointer.exists():
             active_pointer.unlink()

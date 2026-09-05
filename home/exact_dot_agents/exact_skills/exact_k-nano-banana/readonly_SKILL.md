@@ -10,8 +10,7 @@ Wraps the `,nano-banana` CLI (`~/bin/,nano-banana` → `~/lib/,nano-banana/main.
 One prompt in, one raster file out, via Gemini Nano Banana 2 (`gemini-3.1-flash-image`).
 Every prompt and `-i`/`--url` input is uploaded to Google. That is the point of this tool.
 
-This is one named image lane, not the default for raster work.
-Load it only when this turn names Nano Banana, `,nano-banana`, Gemini image, Google image gen/edit, or a `gemini-*-image` model.
+This named image lane is not the raster default. Load it only for the explicit this-turn names checked in First actions, step 1.
 
 Do not use:
 

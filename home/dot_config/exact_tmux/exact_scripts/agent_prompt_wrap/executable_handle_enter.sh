@@ -18,7 +18,7 @@
 #
 # Detection: pane_current_command alone is not sufficient (cursor-agent and pi
 # both show as `node`). We inspect the foreground processes on the pane's TTY
-# via `ps -t <tty> -o command=` and pattern-match the full command line.
+# via `ps`, filter to running foreground process groups, and match the command line.
 
 set -uo pipefail
 
@@ -39,15 +39,16 @@ pane_tty="$(tmux display -p -t "$PANE_ID" '#{pane_tty}' 2> /dev/null || true)"
 tty_short="${pane_tty#/dev/}"
 [ -z "$tty_short" ] && pass_through
 
-# Match full command lines. Anchored to avoid matching e.g. `pip` for `pi`,
-# `pioneer` for `pi`, or any binary that merely contains the substring.
+# Match the executable or Node/Bun script, never an unrelated command's arguments.
+# Anchoring also excludes names such as `pip` and `pioneer`.
 #   - claude / claude.exe at end of a path component
 #   - cursor-agent at end of a path component
 #   - pi at end of a path component
 #   - copilot / copilot.exe at end of a path component
-#   - pi-coding-agent npm module path (covers Node-launched pi forks)
-fg_cmd="$(ps -t "$tty_short" -o command= -ww 2> /dev/null || true)"
-if ! printf '%s' "$fg_cmd" | grep -qE '(/|^)(claude(\.exe)?|cursor-agent|pi|copilot(\.exe)?)( |$)|pi-coding-agent'; then
+#   - pi-coding-agent npm script path (covers Node-launched pi forks)
+fg_cmd="$(ps -t "$tty_short" -o pgid=,tpgid=,stat=,command= -ww 2> /dev/null \
+  | awk '$1 == $2 && $3 !~ /T/ { $1 = $2 = $3 = ""; sub(/^ +/, ""); print }' || true)"
+if ! printf '%s' "$fg_cmd" | grep -qE '^([^ ]*/)?(claude(\.exe)?|cursor-agent|pi|copilot(\.exe)?)( |$)|^([^ ]*/)?(node|bun)( --(use-system-ca|enable-source-maps|no-warnings))* ([^ ]*/)?((claude(\.exe)?|cursor-agent|pi|copilot(\.exe)?)( |$)|pi-coding-agent/[^ ]+( |$))'; then
   pass_through
 fi
 

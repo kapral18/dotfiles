@@ -73,13 +73,13 @@
     },
     {
       "harness": "pi",
-      "version_evidence": "home/dot_pi/agent/exact_agents/*.md.tmpl are per-role profiles (verified by scripts/tests/test_invariants.py test_pi_review_controller_named_roles_have_profiles); no hook system, so a profile's model is the only binding",
+      "version_evidence": "Pi 0.85.0 (@earendil-works/pi-coding-agent): runtime-parity.ts tool_call handler returns {block:true}; installed ExtensionRunner.emitToolCall and AgentSession beforeToolCall forward it to pi-agent-core prepareToolCall. Offline native loop probe used the exact extracted root callback: blocked push never executed the stub tool, allowed status executed it once; no model request — probed 2026-09-05. Named child profiles retain static model binding.",
       "instruction_entrypoints": ["home/dot_pi/agent/exact_agents/*.md.tmpl"],
-      "hook_support": "none",
+      "hook_support": "blocking",
       "model_mutable": true,
       "subagent_model_binding": "static",
       "mutation_scope": "",
-      "evidence_freshness": "2026-08-02"
+      "evidence_freshness": "2026-09-05"
     },
     {
       "harness": "omp",

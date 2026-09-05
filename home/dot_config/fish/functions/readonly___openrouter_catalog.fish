@@ -2,7 +2,7 @@
 # GET /api/v1/models?supported_parameters=reasoning, cached 1h.
 # A model stays listed when reasoning.supported_efforts is missing
 # (live: inclusionai/ling-3.0-flash). Empty efforts use the full ladder.
-# Offline/no-key falls back to the route-policy model trio.
+# Offline/no-key falls back to the route-policy model list.
 set -g __openrouter_catalog_cache ~/.cache/,openrouter/models.tsv
 set -g __openrouter_catalog_ttl 3600
 

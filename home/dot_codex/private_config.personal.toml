@@ -5,8 +5,8 @@ sandbox_mode = "danger-full-access"
 web_search = "cached"
 check_for_update_on_startup = true
 personality = "pragmatic"
-model = "gpt-5.5"
-model_reasoning_effort = "xhigh"
+model = "gpt-6-astra"
+model_reasoning_effort = "high"
 service_tier = "default"
 
 # __MCP_SERVERS__

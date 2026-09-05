@@ -286,6 +286,44 @@ class TestStaticModelMirrors(unittest.TestCase):
         self.assertNotIn("new-live", cursor["curated"]["models"])
         self.assertEqual(["openrouter/openai/gpt-5.5"], pi_recommended)
 
+    def test_SHOULD_follow_the_Claude_category_and_ignore_static_profile_models(self):
+        import model_mirrors
+
+        original = model_mirrors.build_static_mirror(REPO)
+        categories = model_mirrors.ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")
+        categories["claude_code"]["orchestrate"]["model"] = "claude-owner-probe"
+        with mock.patch.object(model_mirrors.ai_models, "load_category_models", return_value=categories):
+            changed = model_mirrors.build_static_mirror(REPO)
+        self.assertEqual(
+            changed["defaults"]["harnesses"]["claude"], {"work": "claude-owner-probe", "personal": "claude-owner-probe"}
+        )
+        for name in ("curated", "recommended"):
+            self.assertEqual(changed["harnesses"]["claude"][name]["models"], ["claude-owner-probe"])
+        changed["harnesses"]["claude"] = original["harnesses"]["claude"]
+        changed["defaults"]["harnesses"]["claude"] = original["defaults"]["harnesses"]["claude"]
+        self.assertEqual(changed, original)
+        read_json = model_mirrors._read_json
+
+        def stale_profile(path):
+            value = read_json(path)
+            if path.parent.name == "dot_claude":
+                value["model"] = "irrelevant-static-probe"
+            return value
+
+        with mock.patch.object(model_mirrors, "_read_json", side_effect=stale_profile):
+            self.assertEqual(model_mirrors.build_static_mirror(REPO), original)
+
+    def test_SHOULD_reject_a_missing_or_malformed_Claude_category(self):
+        import model_mirrors
+
+        for category in ({}, {"model": ""}, {"model": 42}, {"model": "bad model"}, None):
+            with self.subTest(category=category):
+                categories = model_mirrors.ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")
+                categories["claude_code"]["orchestrate"] = category
+                with mock.patch.object(model_mirrors.ai_models, "load_category_models", return_value=categories):
+                    with self.assertRaisesRegex(ValueError, "claude_code.orchestrate"):
+                        model_mirrors.build_static_mirror(REPO)
+
     def test_SHOULD_encode_unknown_and_error_without_empty_success(self):
         import model_mirrors
 
@@ -438,10 +476,7 @@ class TestStaticModelMirrors(unittest.TestCase):
         )
 
         expected = {
-            "claude": {
-                ("home/dot_claude/settings.work.json", None),
-                ("home/dot_claude/settings.personal.json", None),
-            },
+            "claude": {registry("category_models")},
             "codex": {
                 ("home/dot_codex/private_config.work.toml", None),
                 ("home/dot_codex/private_config.personal.toml", None),

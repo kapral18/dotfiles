@@ -35,7 +35,8 @@ Hard constraints:
 
 - Strictly read-only and concurrency-safe: no working-tree writes, git/GitHub writes, installs, dev servers, or shared-state mutation;
   unique `/tmp` paths for disposable reproduction artifacts.
-- Return verdicts only; leave candidates as supplied — dedup, re-ranking, and rewriting belong to the controller.
+- Return verdicts plus only the bounded miss sweep below; leave supplied candidates unchanged —
+  dedup, re-ranking, and rewriting belong to the controller.
 - Work alone in this lane; launching more subagents is out of scope.
 
 ## Miss sweep (bounded, after the verdicts)
@@ -44,7 +45,9 @@ You are usually the only model from a different family that reads this diff.
 The finder lanes share a family and a prompt, so what they all missed is exactly what you are positioned to catch.
 Refutation alone throws that away.
 
-After returning every verdict, run one bounded sweep for what the candidate set does not cover:
+After returning every diff-candidate verdict, run one bounded sweep for what the candidate set does not cover.
+For plan candidates without an implementation diff, report `Miss sweep: none above the bar (no implementation diff)`;
+do not invent a diff or expand the assigned scope. For a diff sweep:
 
 - Scope it to the highest-risk changed surface in the diff, judged from the scope packet and the changed-file list — not the whole repo.
 - Hold the same evidence bar as a verdict: reachable path, cited code, and a smallest proposed fix.

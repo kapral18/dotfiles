@@ -15,6 +15,62 @@ import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 
 
 class TestGeneratedArtifactLedger(unittest.TestCase):
+    def test_cli_probes_default_version_and_explicit_arguments_without_touching_target(self):
+        import generated_artifact_ledger as ledger_module
+
+        for arguments, expected in (
+            ([], ["--version"]),
+            (["--probe-arg=--help"], ["--help"]),
+            (["--probe-arg=inspect", "--probe-arg=--local"], ["inspect", "--local"]),
+        ):
+            with self.subTest(arguments=arguments), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                ledger = root / "ledger.json"
+                source, transform, target = self._fixture(root)
+                before = target.read_bytes()
+                consumer = root / "consumer"
+                consumer.write_text(
+                    "#!/usr/bin/env python3\nimport sys\nraise SystemExit(0 if sys.argv[1:] == "
+                    + repr(expected)
+                    + " else 7)\n"
+                )
+                consumer.chmod(0o700)
+                self.assertEqual(
+                    ledger_module.main(
+                        [
+                            "--ledger",
+                            str(ledger),
+                            "record",
+                            "--id",
+                            "fixture",
+                            "--producer",
+                            "hook",
+                            "--profile",
+                            "work",
+                            "--target",
+                            str(target),
+                            "--input",
+                            str(source),
+                            "--transform",
+                            str(transform),
+                            "--ownership-adapter",
+                            "whole-file",
+                            "--consumer",
+                            str(consumer),
+                            *arguments,
+                        ]
+                    ),
+                    0,
+                )
+                self.assertTrue(ledger_module.report_payload(ledger, live=True)["ok"])
+                row = ledger_module.load_ledger(ledger)["artifacts"]["fixture"]
+                self.assertEqual(row["consumer"], {"id": str(consumer), "command": [str(consumer)]})
+                self.assertEqual(row["live_probe"]["argv"], [str(consumer), *expected])
+                row["live_probe"]["argv"] = [str(consumer), "--wrong"]
+                ledger_module.record_artifact(ledger, row)
+                self.assertFalse(ledger_module.report_payload(ledger, live=True)["ok"])
+                self.assertEqual(target.read_bytes(), before)
+
     def _fixture(self, root: Path):
         source = root / "source.json"
         transform = root / "transform.py"

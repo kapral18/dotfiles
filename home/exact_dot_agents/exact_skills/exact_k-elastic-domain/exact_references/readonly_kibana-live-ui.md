@@ -9,16 +9,11 @@ review flows compare PR/head against base, and `k-ui-capture`'s proof-mode contr
 
 Stacks are started per worktree by `,kbn-stack`, which records each running stack in `~/.cache/kbn-stack/registry.json` keyed by absolute worktree path.
 Load and follow `~/.agents/skills/k-kbn-stack/SKILL.md` for command mechanics, registry inspection, required `-K` flag parity, and teardown ownership.
-Each entry has `slot`, `branch`, `backend`, `kbn_url`, `es_url`, `cookie_name`, `kbn_flags`, `ready`, `started_by`, and `start_mode`.
-Detached agent starts also record `kbn_log`. `kbn_flags` is the list of extra `key=value` Kibana settings the stack was started with.
-A worktree entry with `es_key` uses a shared ES instance (registry reserved key `__es__`, keyed by ES version);
-its `es_url` already points at that instance, so target resolution is unchanged.
-Default starts inject `plugins.allowlistPluginGroups.0=platform` unless `--groups all` was passed (no allowlist flags) or an explicit `-K plugins.allowlistPluginGroups…` was supplied.
-User `-K` flags are recorded after any injected allowlist flags.
-`ready` is true only once Kibana has answered `/api/status`; detached starts additionally require the port listener to belong to the spawned Kibana's process tree before flipping it.
-`started_by` is `user` for interactive/manual starts and `agent` for `--detach`;
-for legacy entries with no `started_by`, infer `agent` only when recorded process ids are present, otherwise treat the entry as user-owned.
-Stacks run on plain `http://localhost:<port>` with a per-slot cookie name, so there are no fixed hostnames or fixed ports to assume.
+The mandatory stack skill's runtime-lifecycle reference owns registry fields, shared `__es__`/`es_key` handling, ready/process checks, and legacy ownership inference.
+Use its `kbn_url` and `es_url`; shared entries already point `es_url` at the shared instance.
+Stacks use plain `http://localhost:<port>` and per-slot cookies; do not assume fixed hostnames or ports.
+`kbn_flags` records injected allowlist flags before user `-K key=value` settings.
+Default starts inject `plugins.allowlistPluginGroups.0=platform` unless `--groups all` or explicit `-K plugins.allowlistPluginGroups…` suppresses injection.
 
 A stack may be started interactively by the user (tmux) or by an agent in background mode via `,kbn-stack --detach`.
 The detach path starts ES + Kibana headless (attaching to a compatible live shared ES starts only Kibana), waits until Kibana is ready, sets `ready: true`, and returns.
@@ -132,7 +127,7 @@ Only applies when the manually-invoked `~/.agents/skills/k-live-ui-windows/SKILL
   If a `ready:true` stack with `started_by: "agent"` is missing a required flag, the worker may stop and recreate it only when doing so will not conflict with another active task; record the replacement in the evidence.
   A stack this worker just started via Rung 0 already carries the flags, so no parity check is needed for it.
 - Load `~/.agents/skills/k-kbn-stack/SKILL.md` before starting, stopping, or reusing stack targets.
-- Read `~/.agents/skills/k-playwriter/SKILL.md` and run `playwriter skill` before checking targets.
+- Read `~/.agents/skills/k-playwriter/SKILL.md` and complete its Documentation contract before checking targets.
 - Run in a fresh Playwriter session owned by this worker.
 - Store owned pages under distinct `state` keys for base and head; do not reuse an unrelated generic page.
 - Close only pages this worker created, or leave their URLs in the blocker/evidence.

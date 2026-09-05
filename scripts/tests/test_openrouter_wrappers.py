@@ -30,6 +30,134 @@ class TestOpenRouterWrappers(unittest.TestCase):
         self.wrapper_home_environment.stop()
         self.wrapper_home_directory.cleanup()
 
+    def _openrouter_route_fixture(self):
+        home = Path(self.wrapper_home_directory.name)
+        bindir = home / "bin"
+        bindir.mkdir()
+        capture = (
+            f"#!{sys.executable}\nimport json,os,sys\n"
+            "print(json.dumps({'env': dict(os.environ), 'argv': sys.argv[1:]}))\n"
+        )
+        local = home / ".local/share/cursor-agent-local/versions/fixture/cursor-agent-local"
+        for path in (local, *(bindir / name for name in ("claude", "copilot", ",copilot", "codex"))):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(capture)
+            path.chmod(0o755)
+        calls = home / "preset-calls"
+        helper = home / "lib/shared/openrouter_presets.py"
+        helper.write_text(
+            '#!/bin/sh\nif [ "$1" = "--context-window" ]; then echo 200000; exit; fi\n'
+            'printf "%s\\n" "$1" >> "$PRESET_CALLS"\n'
+        )
+        env = {
+            **os.environ,
+            "HOME": str(home),
+            "PATH": f"{bindir}:{os.environ['PATH']}",
+            "OPENROUTER_API_KEY": "fixture-key",
+            "CURSOR_AGENT_LOCAL_VERSION": "fixture",
+            "CODEX_WRAPPER_BIN": str(bindir / "codex"),
+            "PRESET_CALLS": str(calls),
+        }
+        return calls, env
+
+    def _assert_openrouter_roles(self, harness, observed, band_gate, shim, projection):
+        # Independent category contract, also checked against the generated registry.
+        wires = {
+            "memory": "google/gemini-3.7-flash@preset/effort-high",
+            "mechanical": "deepseek/deepseek-v4-flash@preset/effort-xhigh",
+            "refute": "anthropic/claude-sonnet-4.6@preset/effort-xhigh",
+        }
+        default_wire = "openai/gpt-5.5@preset/effort-xhigh"
+        gate_env = {**observed["env"], "AGENT_BAND_HARNESS": "claude_code" if harness == "claude" else harness}
+        with mock.patch.dict(os.environ, gate_env, clear=True):
+            # Mechanical has no current named binding; its alias remains a preserved input.
+            aliases = {
+                "opus": wires["memory"],
+                "haiku": wires["mechanical"],
+                "sonnet": wires["refute"],
+                "fable": default_wire,
+            }
+            for alias, wire in aliases.items():
+                base, effort = wire.split("@preset/effort-")
+                pick = band_gate._format_pick({"model": f"openrouter/{base}:{effort}"}, "claude_code", "pi")
+                self.assertEqual(pick.get("alias"), alias)
+                if harness == "claude":
+                    self.assertEqual(observed["env"][f"ANTHROPIC_DEFAULT_{alias.upper()}_MODEL"], wire)
+            for role, pick in projection["harnesses"]["pi"]["agents"].items():
+                expected = wires.get(pick["category"], default_wire)
+                base, thinking = pick["model"].removeprefix("openrouter/").rsplit(":", 1)
+                self.assertEqual(f"{base}@preset/effort-{thinking}", expected)
+                gate_input = json.dumps(
+                    {
+                        "tool_name": "Agent",
+                        "tool_input": {"subagent_type": role, "model": "unregistered-model", "prompt": "fixture"},
+                    }
+                )
+                gate_output = io.StringIO()
+                with (
+                    mock.patch.object(sys, "stdin", io.StringIO(gate_input)),
+                    mock.patch.object(sys, "stdout", gate_output),
+                ):
+                    self.assertEqual(band_gate.main(), 0)
+                output = json.loads(gate_output.getvalue())
+                updated = output.get(
+                    "updated_input",
+                    output.get("modifiedArgs", output.get("hookSpecificOutput", {}).get("updatedInput", {})),
+                )
+                model = updated.get("model")
+                if harness == "claude":
+                    self.assertIn(model, aliases, (role, output))
+                    model = observed["env"][f"ANTHROPIC_DEFAULT_{model.upper()}_MODEL"]
+                self.assertEqual(model, expected, (harness, role))
+                if harness == "cursor":
+                    allowed = observed["env"]["CURSOR_AGENT_ALLOWED_MODEL"]
+                    self.assertIsNone(shim.enforce_allowed_model({"model": model}, allowed))
+                    self.assertIsNotNone(shim.enforce_allowed_model({"model": "unregistered-model"}, allowed))
+
+    def test_SHOULD_route_memory_and_prepare_each_required_effort_once(self):
+        """WHEN a wrapper inherits Pi categories, every bound role reaches its wire model."""
+        import importlib.util
+
+        modules = []
+        for name, path in (
+            ("shim_contract", "home/exact_lib/exact_,cursor-agent-shim/shim.py"),
+            ("band_contract", "home/exact_dot_agents/exact_hooks/executable_band_gate.py"),
+        ):
+            spec = importlib.util.spec_from_file_location(name, REPO / path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            modules.append(module)
+        shim, band_gate = modules
+        band_gate.PROJECTION = REPO / "home/dot_config/ai/readonly_agent-bands.v1.json"
+        projection = json.loads(band_gate.PROJECTION.read_text())
+        calls, env = self._openrouter_route_fixture()
+        for harness in ("claude", "codex", "copilot", "cursor"):
+            for effort in ("none", "high", "xhigh", "max"):
+                with self.subTest(harness=harness, effort=effort):
+                    calls.write_text("")
+                    result = subprocess.run(
+                        [
+                            modern_bash(),
+                            str(REPO / f"home/exact_bin/executable_,{harness}-openrouter"),
+                            *(["--no-shim"] if harness == "cursor" else []),
+                            "--model",
+                            "moonshotai/kimi-k3",
+                            "--effort",
+                            effort,
+                            "-p",
+                            "fixture",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        env=env,
+                    )
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    observed = json.loads(result.stdout)
+                    self.assertCountEqual(calls.read_text().splitlines(), set((effort, "high", "xhigh")))
+                    wire = f"moonshotai/kimi-k3@preset/effort-{effort}"
+                    self.assertTrue(wire in observed["argv"] or wire in observed["env"].values())
+                    self._assert_openrouter_roles(harness, observed, band_gate, shim, projection)
+
     def test_SHOULD_create_only_a_missing_preset_in_the_active_account(self):
         module = _load_openrouter_presets_module()
         existing_response = mock.MagicMock()
@@ -305,7 +433,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
 
     def test_SHOULD_map_claude_tiers_to_the_pi_openrouter_backend_schema(self):
         source = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()
-        assert 'export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"' in source
+        assert 'export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_PI_MEMORY_WIRE_MODEL"' in source
         assert 'export ANTHROPIC_DEFAULT_SONNET_MODEL="$OPENROUTER_PI_SONNET_WIRE_MODEL"' in source
         assert 'export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OPENROUTER_PI_DEEPSEEK_WIRE_MODEL"' in source
         assert 'export ANTHROPIC_DEFAULT_FABLE_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"' in source
@@ -645,7 +773,7 @@ printf 'base=%s\nkey=%s\nallowed=%s\nschema=%s\nformat=%s\nband-model=%s\nargs=%
         assert result.stdout.splitlines() == [
             "base=http://127.0.0.1:9876/api/v1",
             "key=fixture-key",
-            "allowed=deepseek/deepseek-v4-flash-0731@preset/effort-max,openai/gpt-5.5@preset/effort-xhigh,deepseek/deepseek-v4-flash@preset/effort-xhigh,anthropic/claude-sonnet-4.6@preset/effort-xhigh",
+            "allowed=deepseek/deepseek-v4-flash-0731@preset/effort-max,openai/gpt-5.5@preset/effort-xhigh,deepseek/deepseek-v4-flash@preset/effort-xhigh,anthropic/claude-sonnet-4.6@preset/effort-xhigh,google/gemini-3.7-flash@preset/effort-high",
             "schema=pi",
             "format=openrouter-preset",
             "band-model=",

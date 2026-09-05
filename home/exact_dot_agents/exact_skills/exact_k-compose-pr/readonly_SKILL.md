@@ -40,7 +40,7 @@ First actions:
 6. If the repo is in `elastic`, load `~/.agents/skills/k-elastic-domain/SKILL.md` and apply its GitHub/PR composition section.
 7. Load `~/.agents/skills/k-compose-pr/references/publication-packet.md`, then build the PR publication packet.
    Do not hand off while any required field is missing or `blocked`.
-8. Keep the packet with the draft for `k-github`: title source, body source, linked issue intake, template, screenshots, Test Plan, metadata, and unresolved placeholders.
+8. Keep title/body sources, linked issue intake, and unresolved placeholders with the draft and publication packet for `k-github`.
 
 Rules:
 

@@ -8,7 +8,9 @@ policy artifacts without repairing stale generated files.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import io
 import json
 import subprocess
 import tempfile
@@ -173,6 +175,21 @@ class PolicyIRTest(unittest.TestCase):
 class CapabilitySnapshotTest(unittest.TestCase):
     """WHEN a rule claims a harness capability the snapshot must prove or reject."""
 
+    def test_pi_blocking_snapshot_admits_hook_rules_without_claiming_mutation(self):
+        snapshot = capabilities.load_snapshot(REPO)
+        rule = ir.Rule(
+            id="probe",
+            text="t",
+            disposition="hook",
+            consumer="c",
+            risk_tier="standard",
+            eval_ref="e",
+            harness_scope="pi",
+        )
+        capabilities.check_rule_capability(rule, snapshot)
+        self.assertEqual(snapshot["pi"].hook_support, "blocking")
+        self.assertEqual(snapshot["pi"].mutation_scope, "")
+
     def _snapshot(self, **overrides):
         base = {
             "harness": "codex",
@@ -280,6 +297,53 @@ class CapabilitySnapshotTest(unittest.TestCase):
 
 class CompilerTest(unittest.TestCase):
     """WHEN compiling the IR into readonly_AGENTS.md and its provenance manifest."""
+
+    def test_explicit_missing_manifest_fails_but_omission_recomputes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_fixture_repo(root)
+            args = ["verify", "--all-targets", "--repo-root", str(root)]
+            self.assertEqual(compiler.main(args), 0)
+            with contextlib.redirect_stderr(io.StringIO()) as error:
+                self.assertEqual(compiler.main([*args, "--manifest", "missing.json"]), 1)
+            self.assertIn("missing.json", error.getvalue())
+            self.assertEqual(compiler.main(args), 0)
+
+    def test_description_accounting_separates_all_declared_from_budget_subset(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_fixture_repo(root)
+            for name, desc, flag in (("auto", "é", ""), ("manual", "visible", "disable-model-invocation: true\n")):
+                entry = root / compiler.SKILLS_ROOT / f"exact_k-{name}" / "readonly_SKILL.md"
+                entry.parent.mkdir()
+                entry.write_text(f'---\nname: k-{name}\ndescription: "{desc}"\n{flag}---\n', encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(compiler.main(["measure", "--repo-root", str(root)]), 0)
+            report = json.loads(out.getvalue())
+            self.assertEqual(report["repo_controlled_bytes"]["skill_descriptions"], 9)
+            self.assertEqual(report["repo_controlled_bytes"]["total"], len(FIXTURE_SOP.encode()) + 9)
+            self.assertEqual(report["declared_non_manual_description_bytes"], 2)
+            self.assertIn("harness-specific skill description visibility", report["uncontrolled_unknown"])
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                code = compiler.main(
+                    [
+                        "verify-budgets",
+                        "--repo-root",
+                        str(root),
+                        "--core-max-bytes",
+                        "9999",
+                        "--overlay-max-bytes",
+                        "9999",
+                        "--skill-max-bytes",
+                        "9999",
+                        "--description-total-max-bytes",
+                        "2",
+                    ]
+                )
+            self.assertEqual(code, 0)
+            self.assertIn("declared non-manual descriptions 2 bytes", out.getvalue())
+            self.assertIn("all declared descriptions 9 bytes", out.getvalue())
+            self.assertNotIn("model-visible", out.getvalue())
 
     def test_generate_is_deterministic(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1234,6 +1298,53 @@ Ownership body.
 
 class EvalScaffoldTest(unittest.TestCase):
     """WHEN checking live-eval scaffolding without issuing live requests."""
+
+    def test_minimal_parser_cannot_silently_ignore_malformed_repetitions(self):
+        valid = "harnesses:\n  - pi\nfrontier_models:\n  - m\nagent_roles:\n  - primary\nscenarios:\n  - s\n"
+        for suffix in (
+            "repetitions: 0\n",
+            "repetitions:\n  - 0\n",
+            "repetitions:\n  - true\n",
+            "repetitions:\n    nested: 1\n",
+        ):
+            with self.subTest(suffix=suffix), self.assertRaises(ValueError):
+                evals._cells(evals._parse_minimal_yaml(valid + suffix))
+        self.assertEqual(len(evals._cells(evals._parse_minimal_yaml(valid + "repetitions:\n  - 2\n"))), 2)
+
+    def test_dimensions_reject_vacuous_or_malformed_matrices(self):
+        valid = {"harnesses": ["pi"], "frontier_models": ["m"], "agent_roles": ["primary"], "scenarios": ["s"]}
+        for key in valid:
+            for value in (None, [], "pi", [""], [1], [{}]):
+                with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                    evals._cells({**valid, key: value})
+            with self.subTest(missing=key), self.assertRaises(ValueError):
+                evals._cells({k: v for k, v in valid.items() if k != key})
+        for value in ([], [0], [-1], ["bad"], [1, 2], True, 2, [True], [1.5]):
+            with self.subTest(repetitions=value), self.assertRaises(ValueError):
+                evals._cells({**valid, "repetitions": value})
+        for matrix in (None, [], "bad"):
+            with self.subTest(matrix=matrix), self.assertRaises(ValueError):
+                evals._cells(matrix)
+        self.assertEqual([cell["repetition"] for cell in evals._cells(valid)], [1])
+        self.assertEqual([cell["repetition"] for cell in evals._cells({**valid, "repetitions": ["2"]})], [1, 2])
+
+    def test_empty_matrix_fails_all_cli_modes_without_success_report(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            matrix = Path(tmp) / "matrix.yaml"
+            matrix.write_text("harnesses:\n  - pi\nfrontier_models:\n  - m\nagent_roles:\n  - primary\nscenarios:\n")
+            for mode, extra in (
+                ("plan", []),
+                ("verify-routing", ["--runs-root", tmp]),
+                ("verify-behavior", ["--runs-root", tmp, "--baseline-ref", "base", "--candidate-ref", "head"]),
+            ):
+                with (
+                    self.subTest(mode=mode),
+                    contextlib.redirect_stdout(io.StringIO()) as out,
+                    contextlib.redirect_stderr(io.StringIO()) as error,
+                ):
+                    self.assertEqual(evals.main([mode, "--matrix", str(matrix), *extra]), 1)
+                    self.assertEqual(out.getvalue(), "")
+                    self.assertIn("scenarios", error.getvalue())
 
     def _capture_json(self, fn, args):
         import contextlib

@@ -82,7 +82,7 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
   workers never load `lanes.md`.
   Run any repo-wide suite or full build once here and pass the result into every scope packet — lanes are told not to repeat shared work.
   If the harness cannot delegate, run the finder pass inline and report `agent_lane=inline-degraded`.
-  Generation recall is bounded by perspective: refuters prune candidates but never expand them, and most confirmed defects are caught by exactly one reviewer perspective.
+  Finder lanes own full candidate generation; the final verifier may add only the bounded miss-sweep items its contract permits.
   When the model resolver supports per-lane selection at equal capability (SOP §3.7), prefer two finder lanes from different model families;
   otherwise one cross-family finder over same-family; never leave controller, finder, and refuter all same-family.
   Report `finder_family=same|cross|two-cross` alongside `adversarial=`.

@@ -1,8 +1,8 @@
 # Elastic/Kibana PR and Issue Body Templates
 
 Reference for the `k-elastic-domain` skill. Load when drafting an `elastic/kibana` PR or issue body and a copy-paste template is needed.
-Policy (footer placement, release-note inclusion rule, title-bracket rule, issue-body field rules) lives in the core `SKILL.md`, not here —
-this file is templates only.
+Policy (footer placement, release-note inclusion, title brackets, and issue-body fields) lives in `~/.agents/skills/k-elastic-domain/references/github-composition.md`.
+This file is templates only.
 
 ## PR template: Default (copy then delete unused sections)
 

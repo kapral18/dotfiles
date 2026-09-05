@@ -31,6 +31,92 @@ def _table_body(document: str, heading: str) -> str | None:
 class TestInjectMcpIntoCodexToml(unittest.TestCase):
     """WHEN injecting MCP servers into Codex TOML."""
 
+    def _render_existing(self, content: str) -> str:
+        with tempfile.TemporaryDirectory() as tmp:
+            existing = Path(tmp) / "config.toml"
+            existing.write_text(content)
+            return run_script(
+                [
+                    "inject_mcp_into_codex_toml.py",
+                    str(FIXTURES / "codex_base.toml"),
+                    str(FIXTURES / "mcp_servers.yaml"),
+                    "false",
+                    "codex",
+                    str(existing),
+                ]
+            )
+
+    def test_SHOULD_preserve_all_runtime_buckets_with_commented_quoted_headers(self):
+        project = '/tmp/hash#dot.]quote"slash\\'
+        content = "\n".join(
+            [
+                f"[projects.{json.dumps(project)}]",
+                'trust_level = "trusted"',
+                "[hooks.state.'hook#dot.]']",
+                'trusted_hash = "sha256:abc"',
+                "[tui.model_availability_nux]",
+                '"gpt-5.5" = 2',
+                "[mcp_servers.http-tool]",
+                'default_tools_approval_mode = "prompt"',
+                "[mcp_servers.http-tool.tools.'search#dot.]']",
+                'approval_mode = "approve"',
+            ]
+        )
+        expected = self._render_existing(content)
+        commented = "\n".join(
+            line + " # runtime state ]" if line.startswith("[") else line for line in content.splitlines()
+        )
+        actual = self._render_existing(commented)
+        self.assertEqual(actual, expected)
+        self.assertEqual(_table_body(actual, f"projects.{json.dumps(project)}"), 'trust_level = "trusted"')
+        self.assertEqual(_table_body(actual, 'hooks.state."hook#dot.]"'), 'trusted_hash = "sha256:abc"')
+        self.assertEqual(_table_body(actual, "tui.model_availability_nux"), '"gpt-5.5" = 2')
+        self.assertIn('default_tools_approval_mode = "prompt"', _table_body(actual, "mcp_servers.http-tool"))
+        self.assertEqual(_table_body(actual, 'mcp_servers.http-tool.tools."search#dot.]"'), 'approval_mode = "approve"')
+
+    def test_SHOULD_reset_runtime_context_at_invalid_array_and_unowned_tables(self):
+        for boundary in (
+            "[unrelated] # another table",
+            "[[unrelated]]",
+            "[invalid table]",
+            "[unclosed",
+            '["unterminated]',
+            '["trailing\\',
+            "[unrelated] trailing",
+            "[unrelated # invalid]",
+        ):
+            with self.subTest(boundary=boundary):
+                content = "\n".join(
+                    [
+                        '[projects."/tmp/repo"]',
+                        'trust_level = "trusted"',
+                        boundary,
+                        'trust_level = "untrusted"',
+                        "[hooks.state.startup]",
+                        'trusted_hash = "sha256:good"',
+                        boundary,
+                        'trusted_hash = "sha256:leaked"',
+                        "[tui.model_availability_nux]",
+                        '"kept" = 1',
+                        boundary,
+                        '"leaked" = 2',
+                        "[mcp_servers.http-tool]",
+                        'default_tools_approval_mode = "prompt"',
+                        boundary,
+                        'default_tools_approval_mode = "auto"',
+                        "[mcp_servers.http-tool.tools.search]",
+                        'approval_mode = "approve"',
+                        boundary,
+                        'approval_mode = "auto"',
+                    ]
+                )
+                actual = self._render_existing(content)
+                self.assertEqual(_table_body(actual, 'projects."/tmp/repo"'), 'trust_level = "trusted"')
+                self.assertEqual(_table_body(actual, "hooks.state.startup"), 'trusted_hash = "sha256:good"')
+                self.assertEqual(_table_body(actual, "tui.model_availability_nux"), '"kept" = 1')
+                self.assertIn('default_tools_approval_mode = "prompt"', _table_body(actual, "mcp_servers.http-tool"))
+                self.assertEqual(_table_body(actual, "mcp_servers.http-tool.tools.search"), 'approval_mode = "approve"')
+
     def test_golden(self):
         actual = run_script(
             [

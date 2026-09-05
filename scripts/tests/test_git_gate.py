@@ -50,6 +50,50 @@ class TestClassifyCommand(unittest.TestCase):
         assert gate.classify_command("git commit") == "deny"
         assert gate.classify_command("git push") == "deny"
 
+    def test_when_exec_wraps_git_should_classify_its_actual_target(self):
+        for options in ("", "-- ", "-l ", "-c ", "-cl ", "-a name ", "-a push ", "-aname "):
+            for subcommand, expected in (("push", "deny"), ("commit", "deny"), ("status", "allow")):
+                command = f"exec {options}git {subcommand}"
+                with self.subTest(command=command):
+                    self.assertEqual(gate.classify_command(command), expected)
+        for command in ("exec echo 'git push'", "exec stat .git/index.lock", "exec sh -c git push"):
+            with self.subTest(command=command):
+                self.assertEqual(gate.classify_command(command), "allow")
+
+    def test_when_heredoc_expands_should_classify_substitutions_only(self):
+        for body in ("$(git push)", "`git commit`", "'$(git push)'", '"$(git push)"', "# $(git push)"):
+            for delimiter in ("EOF", "'EOF'", '"EOF"', r"\EOF", "E'OF'"):
+                command = f"cat <<{delimiter}\n{body}\nEOF"
+                with self.subTest(command=command):
+                    self.assertEqual(gate.classify_command(command), "deny" if delimiter == "EOF" else "allow")
+        for body in ("git push", "$(git status)", r"\$(git push)", r"\`git push\`", "unclosed 'quote"):
+            with self.subTest(body=body):
+                self.assertEqual(gate.classify_command(f"cat <<EOF\n{body}\nEOF"), "allow")
+
+    def test_when_heredocs_mix_quoting_should_keep_each_expansion_policy(self):
+        self.assertEqual(gate.classify_command("cat <<'A' <<B\n$(git push)\nA\n$(git status)\nB"), "allow")
+        self.assertEqual(gate.classify_command("cat <<A <<'B'\n$(git push)\nA\n$(git status)\nB"), "deny")
+        self.assertEqual(gate.classify_command("cat <<-EOF\n\t$(git push)\n\tEOF"), "deny")
+        self.assertEqual(gate.classify_command("exec sh <<'EOF'\ngit push\nEOF"), "deny")
+
+    def test_when_exec_has_leading_redirections_should_find_git_target(self):
+        for redirect in ("> /dev/null", "2>/dev/null", "2>&1", "3<&0"):
+            for action, expected in (("push", "deny"), ("status", "allow")):
+                command = f"exec {redirect} git {action}"
+                with self.subTest(command=command):
+                    self.assertEqual(gate.classify_command(command), expected)
+        self.assertEqual(gate.classify_command("exec -a '<git>' echo push"), "allow")
+        self.assertEqual(gate.classify_command("exec -- >/dev/null git push"), "deny")
+        self.assertEqual(gate.classify_command("exec -a >/dev/null name git push"), "deny")
+
+    def test_when_heredoc_delimiter_is_empty_should_keep_quoted_body_inert(self):
+        self.assertEqual(gate.classify_command("cat <<''\n$(git push)\n\n"), "allow")
+        self.assertEqual(gate.classify_command('cat <<""\n`git push`\n\n'), "allow")
+
+    def test_when_quoted_delimiter_keeps_backslash_should_match_its_literal_end(self):
+        command = 'cat <<"E\\OF"\n$(git push)\nE\\OF'
+        self.assertEqual(gate.classify_command(command), "allow")
+
     def test_denies_case_variant_git_executable(self):
         assert gate.classify_command("GIT push") == "deny"
         assert gate.classify_command("/usr/bin/GIT commit") == "deny"
@@ -256,6 +300,17 @@ NODE"""
 
 class TestGateHookProcess(unittest.TestCase):
     """WHEN the hook script runs as a real subprocess against each harness payload shape."""
+
+    def test_when_exec_or_heredoc_runs_git_should_ask_in_each_harness(self):
+        for command in ("exec git push", "cat <<EOF\n$(git commit)\nEOF"):
+            for payload, key, expected in (
+                ({"command": command}, "permission", "ask"),
+                ({"toolCall": {"name": "run_command", "args": {"CommandLine": command}}}, "decision", "force_ask"),
+            ):
+                with self.subTest(command=command, harness=key):
+                    result = run_gate(json.dumps(payload))
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(json.loads(result.stdout)[key], expected)
 
     def test_cursor_shape_denies_commit_with_ask_permission(self):
         payload = json.dumps({"hook_event_name": "beforeShellExecution", "command": "git -C . commit"})

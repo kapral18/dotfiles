@@ -3,6 +3,7 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { spawn } from "node:child_process"
+import { readFileSync, realpathSync } from "node:fs"
 import { setTimeout as delay } from "node:timers/promises"
 import { homedir } from "node:os"
 import { join } from "node:path"
@@ -102,6 +103,24 @@ async function confirmWithTimeout(request: Promise<boolean>): Promise<boolean> {
 export default function (pi: ExtensionAPI) {
   pi.on("session_start", () => {
     enableSearchTools(pi)
+  })
+
+  pi.on("before_agent_start", (event) => {
+    const sopPath = join(process.env.HOME || homedir(), "AGENTS.md")
+    try {
+      const canonical = realpathSync(sopPath)
+      const loaded = event.systemPromptOptions?.contextFiles?.some(({ path }) => {
+        try { return realpathSync(path) === canonical } catch { return false }
+      })
+      if (loaded) return
+      const sop = readFileSync(canonical, "utf8").trim()
+      if (!sop || event.systemPrompt.includes(sop)) return
+      return {
+        systemPrompt: `${event.systemPrompt}\n\n<project_context>\n<project_instructions path=${JSON.stringify(sopPath)}>\n${sop}\n</project_instructions>\n</project_context>`,
+      }
+    } catch (error) {
+      console.error(`Could not load global SOP ${sopPath}: ${error}`)
+    }
   })
 
   pi.on("tool_call", async (event, ctx) => {

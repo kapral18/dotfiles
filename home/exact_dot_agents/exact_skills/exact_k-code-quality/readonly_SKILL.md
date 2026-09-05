@@ -5,8 +5,8 @@ description: "Use when editing, reviewing, or refactoring implementation code or
 
 # Code Quality
 
-Use this for repository artifact quality: implementation style, maintainability, minimal edit scope, semantic dedupe, and artifact necessity.
-The core SOP still owns compatibility and verification; this skill owns the code-quality contract at the point of use.
+Owns repository-artifact style, maintainability, edit scope, semantic dedupe, and artifact necessity at point of use.
+The SOP owns compatibility and verification.
 
 ## First Actions
 

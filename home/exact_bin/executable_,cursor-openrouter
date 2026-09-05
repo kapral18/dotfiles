@@ -45,10 +45,9 @@ fi
 OPENROUTER_MODEL="deepseek/deepseek-v4-flash-0731"
 OPENROUTER_EFFORT="max"
 # The strict-mode shim is now the session guardrail too, so it is always on for the
-# pinned route: the allowlist rejects any /chat/completions whose model is not the
-# pinned wire id before it reaches OpenRouter (a subagent/profile/resume escape can
-# never bill a different model), and `strict` is stripped from openai/* tool
-# schemas. `--no-shim` is the explicit direct-OpenRouter route and drops the
+# pinned route: the allowlist admits the primary wire id and the declared Pi lane
+# wire ids, rejecting other /chat/completions model ids before OpenRouter. `strict`
+# is stripped from openai/* tool schemas. `--no-shim` is the explicit direct-OpenRouter route and drops the
 # guardrail and the strict fix.
 USE_SHIM=1
 
@@ -126,17 +125,23 @@ if [[ ! -x "$OPENROUTER_PRESET_HELPER" ]]; then
 fi
 export OPENROUTER_API_KEY="$api_key"
 "$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"
-"$OPENROUTER_PRESET_HELPER" xhigh
+if [[ "$OPENROUTER_EFFORT" != "xhigh" ]]; then
+  "$OPENROUTER_PRESET_HELPER" xhigh
+fi
+if [[ "$OPENROUTER_EFFORT" != "high" ]]; then
+  "$OPENROUTER_PRESET_HELPER" high
+fi
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
 readonly OPENROUTER_PI_GPT55_WIRE_MODEL="openai/gpt-5.5@preset/effort-xhigh"
 readonly OPENROUTER_PI_DEEPSEEK_WIRE_MODEL="deepseek/deepseek-v4-flash@preset/effort-xhigh"
 readonly OPENROUTER_PI_SONNET_WIRE_MODEL="anthropic/claude-sonnet-4.6@preset/effort-xhigh"
+readonly OPENROUTER_PI_MEMORY_WIRE_MODEL="google/gemini-3.7-flash@preset/effort-high"
 
-# The shim's session guardrail: only the pinned wire model may appear on
-# /chat/completions in this session. Subagents, profiles, resumes, and
+# The shim's session guardrail admits the selected primary and declared Pi lanes
+# on /chat/completions in this session. Subagents, profiles, resumes, and
 # caller-supplied Task.model all resolve before the request body is built, so
 # this env is the one knob the shim checks against.
-export CURSOR_AGENT_ALLOWED_MODEL="$OPENROUTER_WIRE_MODEL,$OPENROUTER_PI_GPT55_WIRE_MODEL,$OPENROUTER_PI_DEEPSEEK_WIRE_MODEL,$OPENROUTER_PI_SONNET_WIRE_MODEL"
+export CURSOR_AGENT_ALLOWED_MODEL="$OPENROUTER_WIRE_MODEL,$OPENROUTER_PI_GPT55_WIRE_MODEL,$OPENROUTER_PI_DEEPSEEK_WIRE_MODEL,$OPENROUTER_PI_SONNET_WIRE_MODEL,$OPENROUTER_PI_MEMORY_WIRE_MODEL"
 
 # The env fallbacks (CURSOR_LOCAL_AGENT_BASE_URL/API_KEY, ANTHROPIC_BASE_URL/AUTH_TOKEN) sit below
 # the flags the CLI receives, so inherited values cannot escape the pinned route; drop them anyway
@@ -210,7 +215,7 @@ export CURSOR_LOCAL_AGENT_API_KEY="$api_key"
 # Delegated Task lanes emit in Cursor's tool shape, but model choices come from Pi's
 # OpenRouter-compatible category matrix. The gate strips the `openrouter/` prefix and turns
 # `:<level>` into `@preset/effort-<level>`; the shim allowlist above admits only the session pin
-# and those Pi lane wire models.
+# and those Pi lane wire models, including Gemini memory at high effort.
 unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE
 export AGENT_BAND_SCHEMA_HARNESS="pi"
 export AGENT_BAND_MODEL_FORMAT="openrouter-preset"

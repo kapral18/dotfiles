@@ -882,7 +882,7 @@ class TestAgentHooks(unittest.TestCase):
             assert "Do not run `,ai-kb search`/`get`/`remember` inline" in context
             assert "No Named Topic Active" not in context
 
-    def test_session_context_warmstart_injects_relevant_learnings_for_named_topic(self):
+    def test_session_context_warmstart_stages_complete_candidates_for_named_topic(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
             spec_dir = SPEC_ROOT / workspace.lstrip("/")
@@ -894,6 +894,7 @@ class TestAgentHooks(unittest.TestCase):
                 Path(tmp),
                 [
                     {
+                        "id": "local-capsule",
                         "title": "Local capsule that should surface",
                         "body": "B" * 400,
                         "kind": "gotcha",
@@ -905,10 +906,86 @@ class TestAgentHooks(unittest.TestCase):
             payload = {"hook_event_name": "sessionStart", "workspace_roots": [tmp], "session_id": "warm-session"}
             context = run_hook("executable_session_context.py", payload, env=env)["additional_context"]
 
-            assert "### Relevant Learnings (,ai-kb)" in context
-            assert "Local capsule that should surface" in context
-            assert "(gotcha)" in context
-            assert "…" in context  # body truncated to the bound
+            assert "### ,ai-kb candidates staged" in context
+            assert "Local capsule that should surface" not in context
+            assert "B" * 100 not in context
+            rows = json.loads((spec_dir / ".recall-candidates-warm-session.json").read_text())
+            assert rows[0]["body"] == "B" * 400
+            assert not (spec_dir / ".recall-seen-warm-session.json").exists()
+
+    def test_cursor_startup_budget_omits_whole_artifacts_in_utf16_units(self):
+        for fill in ("x", "😀"):
+            with self.subTest(fill=fill), tempfile.TemporaryDirectory() as tmp:
+                workspace = str(Path(tmp).resolve())
+                spec_dir = SPEC_ROOT / workspace.lstrip("/")
+                spec_dir.mkdir(parents=True, exist_ok=True)
+                bind_session_topic(spec_dir, "cursor-cap", "maximal-topic")
+                spec_path = spec_dir / "maximal-topic.txt"
+                spec_body = "target: " + fill * 2492
+                spec_path.write_text(spec_body)
+                worklog_path = spec_dir / "maximal-topic.worklog.jsonl"
+                worklog_body = json.dumps({"body": fill * 2980}, ensure_ascii=False) + "\n"
+                worklog_path.write_text(worklog_body)
+                config = Path(tmp) / "config"
+                prefix = config / "tmux/agent_prompts/prefix.txt"
+                prefix.parent.mkdir(parents=True)
+                prefix_body = (REPO / "home/dot_config/exact_tmux/agent_prompts/prefix.txt").read_text().strip()
+                prefix.write_text(prefix_body)
+                env = {**hook_env(), "AI_AGENT_DEPTH": "fast", "XDG_CONFIG_HOME": str(config)}
+                payload = {"session_id": "cursor-cap", "workspace_roots": [workspace], "warm_embedder": True}
+                original = run_hook(
+                    "executable_session_context.py", payload, env={**env, "AGENT_HOOK_HARNESS": "other"}
+                )["additional_context"]
+                bounded = run_hook(
+                    "executable_session_context.py", payload, env={**env, "AGENT_HOOK_HARNESS": "cursor"}
+                )["additional_context"]
+                lengths = subprocess.run(
+                    [
+                        "node",
+                        "-e",
+                        "const fs=require('fs'); console.log(JSON.stringify(JSON.parse(fs.readFileSync(0,'utf8')).map(s=>s.trim().length)))",
+                    ],
+                    input=json.dumps([original, bounded]),
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                original_units, bounded_units = json.loads(lengths.stdout)
+                self.assertGreater(original_units, 10000)
+                self.assertLessEqual(bounded_units, 10000)
+                self.assertIn(prefix_body, bounded)
+                self.assertIn("Durable Memory (,ai-kb)", bounded)
+                self.assertIn(str(worklog_path), bounded)
+                self.assertNotIn(worklog_body.strip(), bounded)
+                self.assertEqual(worklog_path.read_text(), worklog_body)
+                self.assertEqual(spec_path.read_text(), spec_body)
+                if fill == "x":
+                    self.assertIn(spec_body, bounded)
+                else:
+                    self.assertNotIn(fill * 100, bounded)
+                    self.assertIn(str(spec_path), bounded)
+
+    def test_named_startup_fast_and_disable_status_do_not_search(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            bind_session_topic(spec_dir, "gated-startup", "named-topic")
+            (spec_dir / "named-topic.txt").write_text("target: a substantive named task")
+            env = make_aikb_stub(Path(tmp), [{"id": "A", "title": "LEAK", "scope": "universal"}])
+            log = Path(tmp) / "search-log.jsonl"
+            env["AI_KB_STUB_LOG"] = str(log)
+            payload = {"workspace_roots": [tmp], "session_id": "gated-startup"}
+            fast = run_hook("executable_session_context.py", payload, env={**env, "AI_AGENT_DEPTH": "fast"})
+            self.assertIn("a substantive named task", fast["additional_context"])
+            self.assertFalse(log.exists())
+            disabled = {**env, "AGENT_HOOK_CONTEXT": "off"}
+            self.assertEqual(run_hook("executable_session_context.py", payload, env=disabled), {})
+            self.assertEqual(
+                run_hook("executable_session_context.py", {**payload, "context_status": True}, env=disabled),
+                {"context_disabled": True},
+            )
+            self.assertFalse(log.exists())
 
     def test_session_context_restores_named_topic_from_mirror_after_spec_loss(self):
         """A wiped /tmp/specs (reboot) self-heals named topics from the persistent mirror."""
@@ -982,6 +1059,7 @@ class TestAgentHooks(unittest.TestCase):
                 Path(tmp),
                 [
                     {
+                        "id": "foreign",
                         "title": "Foreign project capsule",
                         "body": "from another repo",
                         "kind": "gotcha",
@@ -989,6 +1067,7 @@ class TestAgentHooks(unittest.TestCase):
                         "workspace_path": "/some/other/repo",
                     },
                     {
+                        "id": "universal",
                         "title": "Universal principle capsule",
                         "body": "applies everywhere",
                         "kind": "principle",
@@ -1005,7 +1084,9 @@ class TestAgentHooks(unittest.TestCase):
             context = run_hook("executable_session_context.py", payload, env=env)["additional_context"]
 
             assert "Foreign project capsule" not in context  # other-workspace project scope: gated out
-            assert "Universal principle capsule" in context  # universal scope: allowed cross-project
+            assert "Universal principle capsule" not in context
+            rows = json.loads((spec_dir / ".recall-candidates-warm-gate-session.json").read_text())
+            assert [row["id"] for row in rows] == ["universal"]
 
     def test_agent_memory_select_binds_only_one_session_to_topic_bucket(self):
         with self.make_git_workspace("main") as tmp:
@@ -1235,6 +1316,18 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
                 env=env,
             )["additional_context"]
             seen_path = spec_dir / ".recall-seen-conversation-a.json"
+            env = make_aikb_stub(
+                Path(tmp),
+                [
+                    {
+                        "id": "capsule-b",
+                        "title": "Current prompt candidate",
+                        "body": "B",
+                        "scope": "universal",
+                        "cosine_score": 0.8,
+                    }
+                ],
+            )
             deployed_hooks = Path(tmp) / "deployed-hooks"
             deployed_hooks.mkdir()
             for source, target in (
@@ -1261,9 +1354,13 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
             assert result.returncode == 0, result.stderr
             perturn = json.loads(result.stdout or "{}")
 
-            assert "Conversation-scoped capsule" in warmstart
-            assert json.loads(seen_path.read_text()) == ["capsule-a"]
+            assert "### ,ai-kb candidates staged" in warmstart
+            assert "Conversation-scoped capsule" not in warmstart
+            assert not seen_path.exists()
             assert perturn == {}
+            staged = json.loads((spec_dir / ".recall-candidates-conversation-a.json").read_text())
+            assert [row["id"] for row in staged] == ["capsule-a", "capsule-b"]
+            assert staged[0]["body"] == "inject once"
 
     def test_perturn_recall_stages_candidates_and_injects_pointer_only(self):
         # Staging contract: gate-passing rows go to the candidates file in full,
@@ -1504,7 +1601,6 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
                 "cosine_score": 0.8,
             }
             env = make_aikb_stub(Path(tmp), [row])
-            staged = spec_dir / ".recall-staged-rebind.json"
 
             binding.write_text("topic-alpha\n", encoding="utf-8")
             first = run_perturn_recall(tmp, payload, env)
@@ -1513,13 +1609,14 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
             assert json.loads((spec_dir / ".recall-pointed-rebind.json").read_text()) == {"topic": "topic-alpha"}
 
             binding.write_text("topic-beta\n", encoding="utf-8")
-            staged.unlink()
             second = run_perturn_recall(tmp, payload, env)
+            assert "hookSpecificOutput" in second, second
             assert "topic-beta.txt" in second["hookSpecificOutput"]["additionalContext"], second
             assert json.loads((spec_dir / ".recall-pointed-rebind.json").read_text()) == {"topic": "topic-beta"}
 
-            staged.unlink()
             assert run_perturn_recall(tmp, payload, env) == {}
+            binding.write_text("topic-alpha\n", encoding="utf-8")
+            assert "topic-alpha.txt" in run_perturn_recall(tmp, payload, env)["additional_context"]
 
     def test_perturn_recall_keeps_ids_unstaged_when_the_pointed_marker_cannot_be_written(self):
         # If the staged ledger were committed before the marker, a failed marker write would
@@ -1653,11 +1750,9 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
             assert result == {}
             assert not (spec_dir / ".recall-candidates-gate-suppress.json").exists()
 
-    def test_session_context_warmstart_unions_prior_seen_ids(self):
+    def test_session_context_warmstart_preserves_judge_owned_seen_ids(self):
         # A resume/compact fires a second warm start in the same conversation.
-        # The seen-file must load-union-save so capsules already recorded (by an
-        # earlier warm start or the per-turn recall hook) are never dropped and
-        # re-injected. Overwrite semantics would clobber the prior id.
+        # Startup must not admit any retrieved candidate or overwrite prior judge admissions.
         with self.make_git_workspace("feature/warm-union") as tmp:
             workspace = str(Path(tmp).resolve())
             spec_dir = SPEC_ROOT / workspace.lstrip("/")
@@ -1690,7 +1785,8 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
                 env=env,
             )
 
-            assert json.loads(seen_path.read_text()) == ["capsule-a", "capsule-prior"]
+            assert json.loads(seen_path.read_text()) == ["capsule-prior"]
+            assert json.loads((spec_dir / ".recall-candidates-warm-union.json").read_text())[0]["id"] == "capsule-a"
 
     def test_opencode_worklog_adapter_passes_session_id(self):
         extension = REPO / "home/dot_config/opencode/plugins/agent-memory.ts"
@@ -1858,6 +1954,7 @@ console.log(JSON.stringify({
                     "session_id": "pi-session-context",
                     "source": "pi",
                     "warm_embedder": True,
+                    "context_status": True,
                     "workspace_roots": [str(Path(tmp).resolve())],
                 },
                 {
@@ -1867,6 +1964,7 @@ console.log(JSON.stringify({
                     "session_id": "pi-session-context",
                     "source": "pi",
                     "warm_embedder": True,
+                    "context_status": True,
                     "workspace_roots": [str(Path(tmp).resolve())],
                 },
                 {
@@ -1876,6 +1974,7 @@ console.log(JSON.stringify({
                     "session_id": "pi-session-context",
                     "source": "pi",
                     "warm_embedder": True,
+                    "context_status": True,
                     "workspace_roots": [str(Path(tmp).resolve())],
                 },
             ]
@@ -2032,7 +2131,7 @@ console.log(JSON.stringify({
             assert snippet in omp_text
         assert "the OMP safety gate refused this command" in omp_text
 
-    def test_pi_recall_uses_session_binding_and_persists_seen_capsules(self):
+    def test_pi_recall_uses_session_binding_and_stages_unadmitted_capsules(self):
         extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"
         with tempfile.TemporaryDirectory() as tmp:
             spec_file = Path(tmp) / "pi-memory.txt"
@@ -2136,9 +2235,11 @@ console.log(JSON.stringify({ first, second, seen, statusCalls }));
             )
             payload = json.loads(result.stdout)
 
-            assert "Pi resume capsule" in payload["first"]["message"]["content"]
+            assert "### ,ai-kb candidates staged" in payload["first"]["message"]["content"]
+            assert "Pi resume capsule" not in payload["first"]["message"]["content"]
+            assert json.loads((Path(tmp) / ".recall-candidates-pi-session.json").read_text()) == rows
             assert payload.get("second") is None
-            assert payload["seen"] == ["capsule-a"]
+            assert payload["seen"] == []
             searches = [json.loads(line) for line in search_log.read_text().splitlines()]
             expected_search = {
                 "args": [
@@ -2361,8 +2462,8 @@ console.log(JSON.stringify({ content: result?.message?.content ?? null }));
 
         # Staging parity: same state-file names, per-turn path stages instead of
         # injecting bodies, and the pointer tokens carry identical values.
-        assert '.recall-candidates-{session_key_value}.json"' in hook
-        assert '.recall-staged-{session_key_value}.json"' in hook
+        assert '.recall-candidates-{session_key_value}.json"' in session_context
+        assert '.recall-staged-{session_key_value}.json"' in session_context
         for extension in (pi_extension, omp_extension):
             assert ".recall-candidates-${sessionId}.json" in extension
             assert ".recall-staged-${sessionId}.json" in extension
@@ -2370,7 +2471,7 @@ console.log(JSON.stringify({ content: result?.message?.content ?? null }));
             assert "Relevant Learnings for this request" not in extension
 
         # Keyless-session guard parity: both sides stage nothing without a session key.
-        assert 'pointer = stage_candidates(rows, seen, spec_path, key) if key and rows else ""' in hook
+        assert 'pointer = stage_candidates(rows, seen, spec_path, key) if key else ""' in hook
         for extension in (pi_extension, omp_extension):
             assert "return status.session_key ? status : null" in extension
 
@@ -2407,9 +2508,214 @@ console.log(JSON.stringify({ content: result?.message?.content ?? null }));
             return match.group(1)
 
         for name in ("SMOL_CONTRACT_PATH", "STAGING_HEADER"):
-            hook_value = token(hook, name)
+            hook_value = token(session_context, name)
             assert token(pi_extension, f"const {name}") == hook_value
             assert token(omp_extension, f"const {name}") == hook_value
+
+    def test_staging_binding_and_warm_cache_state_table(self):
+        script = r"""
+import json,sys,tempfile
+from pathlib import Path
+sys.path.insert(0,sys.argv[1])
+from executable_session_context import stage_candidates,neutral_review_spec,context_for_harness
+import os
+with tempfile.TemporaryDirectory() as tmp:
+    d=Path(tmp); a=d/'alpha.txt'; b=d/'beta.txt'
+    A={'id':'A','title':'warm','body':'full-body'*100}; B={'id':'B','title':'current'}
+    def step(topic,rows,expected_pointer,expected_ids=None,**kwargs):
+        out=stage_candidates(rows,set(),topic,'session',**kwargs)
+        assert bool(out)==expected_pointer,(topic,rows,out)
+        if expected_ids is not None:
+            assert [r['id'] for r in json.loads((d/'.recall-candidates-session.json').read_text())]==expected_ids
+    step(a,[A],True,['A'],warm_start=True)
+    step(a,[B],False,['A','B'])
+    assert json.loads((d/'.recall-candidates-session.json').read_text())[0]==A
+    step(b,[],False)
+    step(a,[A],True,['A'])
+    step(b,[],False)
+    step(b,[B],True,['B'])
+    step(b,[B],False,['B'])
+    step(a,[B],True,['A','B'])
+    # A judge's admission filters both retrieval lanes without mutating the seen file.
+    (d/'.recall-seen-session.json').write_text('["A"]')
+    stage_candidates([B],{'A'},a,'session')
+    # Force a fresh row to exercise same-binding rewrite and both-lane admission filtering.
+    stage_candidates([{'id':'C'}],{'A'},a,'session')
+    assert [r['id'] for r in json.loads((d/'.recall-candidates-session.json').read_text())]==['C']
+    assert (d/'.recall-seen-session.json').read_text()=='["A"]'
+    # Missing/bad warm state cannot suppress current retrieval or import another topic.
+    (d/'.recall-warm-session.json').write_text('invalid')
+    step(b,[B],True,['B'])
+    (d/'.recall-warm-session.json').unlink()
+    step(a,[A],True,['A'])
+    # A warm-cache write failure emits no partial pointer; next attempt remains eligible.
+    (d/'.recall-warm-failed.json').mkdir()
+    assert not stage_candidates([A],set(),a,'failed',warm_start=True)
+    assert not (d/'.recall-candidates-failed.json').exists()
+    (d/'.recall-warm-failed.json').rmdir()
+    assert stage_candidates([A],set(),a,'failed',warm_start=True)
+    assert not stage_candidates([A],set(),a,'')
+    assert stage_candidates([{'id':str(i)} for i in range(8)],set(),a,'bounded',warm_start=True)
+    assert len(json.loads((d/'.recall-warm-bounded.json').read_text())['rows'])==3
+    # All supported ATX equivalents strip conclusions; ordinary mentions stay intact.
+    for heading in ['findings:', 'VERDICT', '# Findings', '###### Verified facts: ###', '  ## Inline comments ##']:
+        out=neutral_review_spec('target: PR 1\n'+heading+'\nOLD_CONCLUSION',a)
+        assert 'OLD_CONCLUSION' not in out,heading
+        assert 'target: PR 1' in out
+    for heading in ['findings are expected', '####### Findings', '#Findings', 'verify findings before publishing']:
+        assert 'PRESERVED' in neutral_review_spec(heading+'\nPRESERVED',a),heading
+os.environ['AGENT_HOOK_HARNESS']='cursor'
+assert context_for_harness(['😀'*5000],[])=='😀'*5000
+assert context_for_harness(['😀'*5000+'x'],[(0,'Read complete artifact at /tmp/example')])=='Read complete artifact at /tmp/example'
+try:
+    context_for_harness(['😀'*5000+'x'],[])
+except ValueError:
+    pass
+else:
+    raise AssertionError('oversized mandatory instructions were silently accepted')
+os.environ['AGENT_HOOK_HARNESS']='other'
+assert context_for_harness(['😀'*5000+'x'],[(0,'pointer')])=='😀'*5000+'x'
+print('binding/warm-cache/clean-room table passed')
+"""
+        result = subprocess.run([sys.executable, "-c", script, str(HOOKS)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("table passed", result.stdout)
+
+    def test_pi_and_omp_context_permission_and_recall_transitions(self):
+        script = r"""
+import assert from 'node:assert/strict';
+import {realpath,mkdtemp,mkdir,copyFile,chmod,writeFile,readFile,unlink,rename} from 'node:fs/promises';
+import {join} from 'node:path';
+const root=process.argv[1];
+const extension=process.argv[2];
+const tmp=await realpath(await mkdtemp('/tmp/setup-hooks-runtime-'));
+const hooks=join(tmp,'.agents/hooks');await mkdir(hooks,{recursive:true});
+for(const [src,dst] of [['executable_session_context.py','session_context.py'],['executable_perturn_recall.py','perturn_recall.py'],['hook_common.py','hook_common.py']]){
+ await copyFile(join(root,'home/exact_dot_agents/exact_hooks',src),join(hooks,dst));await chmod(join(hooks,dst),0o755);
+}
+process.env.HOME=tmp;process.env.AI_AGENT_DEPTH='fast';process.env.AGENT_MEMORY_SPEC_ROOT=join(tmp,'specs');process.env.AGENT_MEMORY_MIRROR_ROOT=join(tmp,'mirror');process.env.XDG_CONFIG_HOME=join(tmp,'.config');
+const bin=join(tmp,'bin');await mkdir(bin);process.env.PATH=`${bin}:${process.env.PATH}`;
+await writeFile(join(bin,'gh'),'#!/bin/sh\nexit 1\n');await chmod(join(bin,'gh'),0o755);
+const searchLog=join(tmp,'search.jsonl');const rowsPath=join(tmp,'rows.json');
+await writeFile(rowsPath,JSON.stringify([{id:'A',title:'UNJUDGED_TITLE',body:'UNJUDGED_BODY'.repeat(50),scope:'universal',bm25_score:-10,cosine_score:0.8}]));
+await writeFile(join(bin,',ai-kb'),`#!/usr/bin/env python3\nimport json,sys\nif sys.argv[1:2]==['search']:\n query=sys.stdin.read()\n with open(${JSON.stringify(searchLog)},'a') as f: f.write(json.dumps({'args':sys.argv[1:],'query':query})+'\\n')\n print(open(${JSON.stringify(rowsPath)}).read())\n`);await chmod(join(bin,',ai-kb'),0o755);
+const worklog=join(tmp,'captured.jsonl');await writeFile(join(hooks,'worklog_dispatcher.sh'),`#!/usr/bin/env python3\nimport sys\nwith open(${JSON.stringify(worklog)},'a') as f:f.write(sys.stdin.read()+'\\n')\n`);await chmod(join(hooks,'worklog_dispatcher.sh'),0o755);
+await mkdir(join(tmp,'.config/tmux/agent_prompts'),{recursive:true});await writeFile(join(tmp,'.config/tmux/agent_prompts/prefix.txt'),'PREFIX_SENTINEL');
+const specDir=join(process.env.AGENT_MEMORY_SPEC_ROOT,tmp.slice(1));await mkdir(specDir,{recursive:true});
+let topic='alpha';const key='callback-session';let statusAvailable=true;let percent=5;
+async function bind(value,text='target: current task'){topic=value;await writeFile(join(specDir,`.session-topic-${key}.txt`),value);await writeFile(join(specDir,`${value}.txt`),text)}
+await bind('alpha');
+const mod=await import(extension);let handlers={};
+const api={on(k,v){handlers[k]=v},async exec(cmd,args){if(cmd===',ai-kb')return {code:0,stdout:'',killed:false};
+ if(cmd===',agent-memory')return statusAvailable?{code:0,killed:false,stdout:JSON.stringify({workspace:tmp,selected_topic:topic,session_key:key,is_named_topic:true,spec_file:join(specDir,`${topic}.txt`),spec_exists:true})}:{code:1,stdout:'',killed:false};
+ if(cmd==='cat'){try{return {code:0,stdout:await readFile(args[0],'utf8'),killed:false}}catch{return {code:1,stdout:'',killed:false}}}throw new Error(cmd)}};
+const ctx={cwd:tmp,getContextUsage(){return {percent}},sessionManager:{getSessionId(){return key}}};
+await mod.default(api);
+const content=async(prompt='Did you actually verify this claim?')=>(await handlers.before_agent_start({prompt},ctx))?.message?.content??'';
+process.env.AGENT_HOOK_CONTEXT='0';assert.equal(await content(),'');await handlers.session_compact({},ctx);percent=80;assert.equal(await content(),'');
+await handlers.tool_result({toolName:'bash',input:{command:'echo captured'},content:[{text:'captured'}]},ctx);
+delete process.env.AGENT_HOOK_CONTEXT;let enabled=await content();assert(enabled.includes('PREFIX_SENTINEL'));assert(enabled.includes('User correction signal'));assert(enabled.includes('delegate persistence to `k-agent-smol` (scribe mode)'));assert(!enabled.includes('UNJUDGED')); 
+for(const sentinel of ['_no_session_context','alpha.no_context']){await writeFile(join(specDir,sentinel),'');assert.equal(await content(),'');await handlers.session_compact({},ctx);assert.equal(await content(),'');await unlink(join(specDir,sentinel));assert((await content()).includes('PREFIX_SENTINEL'))}
+await rename(join(hooks,'session_context.py'),join(hooks,'saved_context.py'));
+await handlers.session_start({},ctx);await writeFile(join(specDir,'alpha.no_context'),'');assert.equal(await content(),'');await unlink(join(specDir,'alpha.no_context'));assert((await content()).includes('User correction signal'));assert(!await readFile(searchLog,'utf8').catch(()=>''),'fast fallback searched');
+// Balanced fallback preserves retrieval while staging full rows and never admitting them.
+process.env.AI_AGENT_DEPTH='balanced';handlers={};await mod.default(api);let first=await content('short');assert(first.includes('candidates staged'));assert(!first.includes('UNJUDGED'));assert.equal(JSON.parse(await readFile(join(specDir,`.recall-candidates-${key}.json`),'utf8'))[0].body,'UNJUDGED_BODY'.repeat(50));assert.equal(await readFile(join(specDir,`.recall-seen-${key}.json`),'utf8').catch(()=>''),'');
+assert(!(await content('short')).includes('candidates staged'));
+await writeFile(rowsPath,JSON.stringify([{id:'B',title:'prompt-specific',body:'B',cosine_score:0.8}]));
+assert(!(await content('A substantive prompt for memory')).includes('candidates staged'));
+assert.deepEqual(JSON.parse(await readFile(join(specDir,`.recall-candidates-${key}.json`),'utf8')).map(r=>r.id),['A','B']);
+await writeFile(rowsPath,JSON.stringify([{id:'A',title:'UNJUDGED_TITLE',body:'body',bm25_score:-10,cosine_score:0.8}]));
+await bind('beta');assert((await content('short')).includes('candidates staged'));assert(!(await content('short')).includes('candidates staged'));await bind('alpha');assert((await content('short')).includes('candidates staged'));
+await writeFile(rowsPath,'[]');await bind('beta');assert(!(await content('short')).includes('candidates staged'));await writeFile(rowsPath,JSON.stringify([{id:'A',title:'UNJUDGED_TITLE',body:'body',bm25_score:-10,cosine_score:0.8}]));await bind('alpha');assert((await content('short')).includes('candidates staged'));
+await writeFile(rowsPath,'[]');await bind('beta');await content('short');await writeFile(rowsPath,JSON.stringify([{id:'A',title:'UNJUDGED_TITLE',body:'body',bm25_score:-10,cosine_score:0.8}]));assert((await content('A substantive prompt for memory')).includes('candidates staged'));assert(!(await content('A substantive prompt for memory')).includes('candidates staged'));
+// Clean-room fallback must not send prior conclusions as a BM25 query.
+const before=(await readFile(searchLog,'utf8')).split('\n').filter(Boolean).length;
+await bind('review-case','target: ordinary\n## Findings\nOLD_CONCLUSION');assert(!(await content('short')).includes('UNJUDGED'));
+await bind('other-case','target: PR 123\n## Findings\nOLD_CONCLUSION');await content('short');
+assert.equal((await readFile(searchLog,'utf8')).split('\n').filter(Boolean).length,before);
+// A successful empty hook is not a disabled hook.
+await writeFile(join(hooks,'session_context.py'),'#!/usr/bin/env python3\nprint("{}")\n');await chmod(join(hooks,'session_context.py'),0o755);await handlers.session_start({},ctx);assert((await content()).includes('User correction signal'));
+// Explicit disable remains effective if the status CLI is unavailable.
+statusAvailable=false;process.env.AGENT_HOOK_CONTEXT='off';assert.equal(await content(),'');delete process.env.AGENT_HOOK_CONTEXT;
+for(let i=0;i<1000;i++){if((await readFile(worklog,'utf8').catch(()=>'')))break;await new Promise(r=>setTimeout(r,10))}assert((await readFile(worklog,'utf8')).includes('captured'));
+console.log(JSON.stringify({extension,cases:27,worklogCaptured:true,temporaryHome:tmp}));
+"""
+        for extension in (
+            REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts",
+            REPO / "home/dot_omp/private_agent/extensions/ai-kb-recall.ts",
+        ):
+            with self.subTest(extension=str(extension)):
+                result = subprocess.run(
+                    ["node", "--no-warnings", "--input-type=module", "-e", script, str(REPO), str(extension)],
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertTrue(json.loads(result.stdout)["worklogCaptured"])
+
+    def test_pi_and_omp_partial_install_keeps_independent_callbacks(self):
+        script = r"""
+import assert from 'node:assert/strict';
+import {realpath,mkdtemp,mkdir,copyFile,chmod,writeFile,readFile,rename} from 'node:fs/promises';
+import {join} from 'node:path';
+const root=process.argv[1], extension=process.argv[2];
+const mod=await import(extension);
+let cases=0;
+for(const failure of ['absent','failed','killed','throws']){
+ for(const helper of ['available','missing']){
+ for(const review of [false,true]){
+  const tmp=await realpath(await mkdtemp('/tmp/hooks-partial-install-'));
+  const hooks=join(tmp,'.agents/hooks');await mkdir(hooks,{recursive:true});
+  for(const [src,dst] of [['executable_session_context.py','session_context.py'],['hook_common.py','hook_common.py']]){await copyFile(join(root,'home/exact_dot_agents/exact_hooks',src),join(hooks,dst));await chmod(join(hooks,dst),0o755)}
+  if(helper==='missing')await rename(join(hooks,'session_context.py'),join(hooks,'disabled.py'));
+  process.env.HOME=tmp;process.env.AI_AGENT_DEPTH='deep';process.env.AI_EMBED_WARM='1';process.env.AGENT_MEMORY_SPEC_ROOT=join(tmp,'specs');process.env.AGENT_MEMORY_MIRROR_ROOT=join(tmp,'mirror');process.env.XDG_CONFIG_HOME=join(tmp,'.config');delete process.env.AGENT_HOOK_CONTEXT;
+  const specDir=join(process.env.AGENT_MEMORY_SPEC_ROOT,tmp.slice(1));await mkdir(specDir,{recursive:true});
+  const key='partial';const topic=review?'review-partial':'ordinary';const specFile=join(specDir,`${topic}.txt`);await writeFile(specFile,review?'target: PR 123\n## Findings\nPRIOR_CONCLUSION':'target: current named task');await writeFile(join(specDir,`.session-topic-${key}.txt`),topic);
+  const prefixPath=join(tmp,'.config/tmux/agent_prompts/prefix.txt');await mkdir(join(tmp,'.config/tmux/agent_prompts'),{recursive:true});await writeFile(prefixPath,'PREFIX_PARTIAL');
+  const bin=join(tmp,'bin');await mkdir(bin);const log=join(tmp,'search.jsonl'), worklog=join(tmp,'worklog.jsonl');process.env.PATH=`${bin}:${process.env.PATH}`;
+  for(const [file,text] of [['gh','#!/bin/sh\nexit 1\n'],[',ai-kb',`#!/usr/bin/env python3\nimport sys\nwith open(${JSON.stringify(log)},'a') as f:f.write('SEARCH_ATTEMPT\\n')\nprint('[]')\n`]]){await writeFile(join(bin,file),text);await chmod(join(bin,file),0o755)}
+  await writeFile(join(hooks,'worklog_dispatcher.sh'),`#!/usr/bin/env python3\nimport sys\nwith open(${JSON.stringify(worklog)},'a') as f:f.write(sys.stdin.read()+'\\n')\n`);await chmod(join(hooks,'worklog_dispatcher.sh'),0o755);
+  let probeCount=0, available=false;const handlers={};
+  const api={on(k,v){handlers[k]=v},async exec(cmd,args){
+   if(cmd===',ai-kb'){probeCount++;if(available)return {code:0,killed:false,stdout:''};if(failure==='throws')throw new Error('ENOENT');return {code:failure==='absent'?127:failure==='failed'?1:0,killed:failure==='killed',stdout:''}}
+   if(cmd===',agent-memory')return {code:0,killed:false,stdout:JSON.stringify({workspace:tmp,selected_topic:topic,session_key:key,is_named_topic:true,spec_file:specFile,spec_exists:true})};
+   if(cmd==='cat')return {code:0,killed:false,stdout:await readFile(args[0],'utf8')};throw new Error(cmd)
+  }};
+  await mod.default(api);
+  assert.equal(typeof handlers.before_agent_start,'function',`${failure}/${helper}: context callback missing`);
+  assert.equal(typeof handlers.tool_result,'function',`${failure}/${helper}: worklog callback missing`);
+  const ctx={cwd:tmp,getContextUsage(){return {percent:5}},sessionManager:{getSessionId(){return key}}};
+  await handlers.session_start({},ctx);
+  const run=async()=> (await handlers.before_agent_start({prompt:'Did you actually verify this claim?'},ctx))?.message?.content??'';
+  let first=await run();assert(first.includes('PREFIX_PARTIAL'));assert(first.includes('User correction signal'));assert(!first.includes('PRIOR_CONCLUSION'));
+  if(helper==='available')assert(first.includes(review?'target: PR 123':'target: current named task'));
+  await handlers.session_compact({},ctx);assert((await run()).includes('PREFIX_PARTIAL'));
+  process.env.AGENT_HOOK_CONTEXT='off';assert.equal(await run(),'');
+  await handlers.tool_result({toolName:'bash',input:{command:'safe'},content:[{text:'WORKLOG_CAPTURED'}]},ctx);
+  delete process.env.AGENT_HOOK_CONTEXT;assert((await run()).includes('User correction signal'));
+  // A command installed later stays optional-disabled until extension reload; no periodic probe.
+  available=true;await run();assert.equal(probeCount,1);
+  assert.equal(await readFile(log,'utf8').catch(()=>''),'');
+  for(let i=0;i<1000;i++){if(await readFile(worklog,'utf8').catch(()=>''))break;await new Promise(r=>setTimeout(r,10))}
+  assert((await readFile(worklog,'utf8')).includes('WORKLOG_CAPTURED'));
+  cases++;
+ }
+ }
+}
+console.log(JSON.stringify({extension,cases}));
+"""
+        for extension in (
+            REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts",
+            REPO / "home/dot_omp/private_agent/extensions/ai-kb-recall.ts",
+        ):
+            with self.subTest(extension=str(extension)):
+                result = subprocess.run(
+                    ["node", "--no-warnings", "--input-type=module", "-e", script, str(REPO), str(extension)],
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(result.stdout)["cases"], 16)
 
 
 class BandGateTests(unittest.TestCase):

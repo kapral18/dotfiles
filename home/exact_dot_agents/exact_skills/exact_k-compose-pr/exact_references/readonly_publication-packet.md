@@ -8,16 +8,10 @@ Load when building the required PR publication packet for `k-github`. The gate i
   If an overlay provides templates, load the actual template file and draft against one selected template.
 - `screenshots`: `captured | not_applicable | blocked | explicitly_skipped`.
   Visual proof is required when the diff touches UI/runtime behavior, linked context includes screenshots/media, or the Test Plan includes manual UI steps.
-  Build the proof-mode contract's Behavior inventory first (`~/.agents/skills/k-ui-capture/references/proof-mode.md`):
-  screenshot pair for fixed static states, including opened menus/popovers/palettes reached by setup actions;
-  video pair only when the fixed behavior is the interaction sequence, timing, continuous action, or cannot be conveyed by screenshots.
-  Follow its coverage plan: a dedicated before/after pair per behavior by default, or one shared pair when same-trigger behaviors are each plainly visible in it, captioned with every covered behavior.
-  Tag each item with the baseline test (`baseline` vs `intra-change` vs head-only): body Screenshots/Videos carry `baseline` pairs;
-  mid-change tip↔tip pairs go in a separate comment when requested.
-  Before embedding, complete the Claim map so every behavior claim in the body maps to an adequate asset.
+  Load and follow `~/.agents/skills/k-ui-capture/references/proof-mode.md` in full:
+  build its Behavior inventory first, apply its coverage plan and comparison frames, run its Existing published proof gate before capturing for an existing PR, and complete its Claim map before embedding.
   Required proof means reuse a `/k-build` live-UI proof manifest, or run that proof-mode contract head-only.
-  When the PR already exists and carries published before/after proof, run the proof-mode Existing published proof gate first:
-  reuse each pair that passes its adequacy and freshness checks, and recapture stale, inadequate, partial, or unmapped items.
+  Body Screenshots/Videos carry `baseline` pairs; mid-change tip↔tip pairs go in a separate comment when requested.
   For non-visual UI behavior bugs (clipboard, keyboard, focus, network), capture human-visible trigger/result states and record the non-visual assertion in the Test Plan.
   Captured proof includes folder/filename mapping; explicit skips include user approval evidence.
 - `test_plan`: reviewer-runnable steps, issue reproduction/expected/actual coverage, commands run, and observed results.

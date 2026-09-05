@@ -106,6 +106,8 @@ Why `APPEND_SYSTEM.md`, not `SYSTEM.md`:
 
 **Scope:** this is harness parity, not a replacement for `AGENTS.md`.
 
+`runtime-parity.ts` supplies the full home SOP outside `$HOME` through `before_agent_start`. It preserves the existing system prompt and skips insertion when a canonical native context path or the complete SOP body is already present. Explicit no-extension workflows bypass this adapter. A missing SOP emits a diagnostic and preserves the base prompt.
+
 Ported mechanics are the set difference:
 
 ```text

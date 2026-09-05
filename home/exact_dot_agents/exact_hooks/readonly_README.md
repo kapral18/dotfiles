@@ -21,6 +21,8 @@ Runtime state is kept outside chezmoi and outside worktrees:
 /tmp/specs/<workspace-path-without-leading-slash>/.recall-seen-<session-key>.json
 /tmp/specs/<workspace-path-without-leading-slash>/.recall-candidates-<session-key>.json
 /tmp/specs/<workspace-path-without-leading-slash>/.recall-staged-<session-key>.json
+/tmp/specs/<workspace-path-without-leading-slash>/.recall-pointed-<session-key>.json
+/tmp/specs/<workspace-path-without-leading-slash>/.recall-warm-<session-key>.json
 /tmp/specs/<workspace-path-without-leading-slash>/.worklog-queue-v1/<session-key>/
 /tmp/specs/<workspace-path-without-leading-slash>/.worklog-locks-v1/
 ```
@@ -49,21 +51,26 @@ Copilot sub-agents run with `COPILOT_AGENT_SESSION_ID` set to the parent session
 Worklog writes (`worklog_recorder.py` via `topic_paths_for_write`) and the `,agent-memory` CLI resolve the parent's selected topic, or its `session-<parent>` fallback on default branches, so sub-agent activity lands in the parent's bucket.
 Hook startup/read/inject paths ignore that variable, so blind lanes receive no parent context.
 
-For a session-bound named topic with a non-empty `<topic>.txt` spec, `session_context.py` injects the full spec/worklog context and a relevance-gated `### Relevant Learnings (,ai-kb)` block.
+For a session-bound named topic with a non-empty `<topic>.txt` spec, `session_context.py` injects bounded spec/worklog context and stages startup recall for judgment.
 A session-bound named topic is neither `current` nor a `session-*` fallback.
 The hook runs `,ai-kb search` with the spec text as the query (`bm25` lane, no embedder, bounded by the hook timeout).
-It surfaces up to three capsules via `--workspace-gate`, which makes the KB itself keep only capsules local to this workspace or scoped `domain`/`universal`, so durable memory seeds the session automatically.
-Unbound, ad-hoc/`session-*`, and review topics get no capsule warm-start.
-This is the only automatic session-start capsule retrieval; supported runtimes also perform per-turn recall.
-Adapters that send neither `AI_EMBED_WARM=1` nor `warm_embedder: true` have no per-turn staging wiring, so their session context carries a `### Recall Notice` directing the agent to delegate mid-task recall queries to the `k-agent-smol` operator (inline `,ai-kb search` only where no isolated spawn exists).
+It stages up to three full capsule rows via `--workspace-gate`, which keeps workspace-local, `domain`, or `universal` capsules.
+Unbound, ad-hoc/`session-*`, review, and `fast` topics get no capsule warm-start.
+Startup and per-turn hooks MUST NOT inject raw capsule bodies or mark candidates admitted.
+Adapters that send neither `AI_EMBED_WARM=1` nor `warm_embedder: true` have no per-turn staging wiring, so session context carries a `### Recall Notice` directing the agent to delegate mid-task recall queries to `k-agent-smol` (inline search only where no isolated spawn exists).
 The hook reads the KB but never writes it; persistence stays agent-driven.
-Per-turn recall never injects capsule bodies: `perturn_recall.py` (and the pi/omp mirrors) writes gate-passing rows in full to `.recall-candidates-<session-key>.json` and injects a `### ,ai-kb candidates staged` pointer only when at least one candidate id is new to the session (tracked in `.recall-staged-<session-key>.json`) and only once per session-topic binding (`.recall-pointed-<session-key>.json` records the topic that was pointed at).
-Later turns keep staging new rows into the candidates file for the pull path, but do not re-point:
-one judge spawn per session, not one per prompt.
-The parent delegates judgment to the `k-agent-smol` subagent (`~/.agents/skills/k-ai-kb/references/smol-operator.md`), which admits at most 3 lines or `NONE` against the accumulated session state.
-The pointer also names the fallback route: when the `k-agent-smol` profile is unreachable (a fixed Task subagent set, as on Cursor), the parent spawns a generic isolated subagent on the memory-band model carrying the smol operator contract (Cursor: `Task` `subagent_type: shell`, `model: auto`), never a harness-CLI one-shot and never the type's own default model.
-The warm-start persists injected capsule IDs in `.recall-seen-<session-key>.json`;
-per-turn additions to that file are k-agent-smol's admissions, never the hook's.
+
+Startup and per-turn recall write full gate-passing rows to `.recall-candidates-<session-key>.json`.
+A `### ,ai-kb candidates staged` pointer is emitted once per observed session-topic binding when candidates exist.
+`.recall-pointed-<session-key>.json` tracks the observed topic and whether its pointer was emitted;
+observing an empty topic transition still changes the binding.
+Later turns in the same binding update candidates without another pointer; `.recall-staged-<session-key>.json` records staged IDs.
+A bounded `.recall-warm-<session-key>.json` cache preserves up to three startup rows across the immediate per-turn staging pass;
+it never mixes topics or accumulates historical prompts.
+The parent delegates judgment to `k-agent-smol` (`~/.agents/skills/k-ai-kb/references/smol-operator.md`), which admits at most 3 lines or `NONE` against accumulated session state.
+Only the judge's admissions update `.recall-seen-<session-key>.json`.
+If the named profile is unreachable, spawn a generic isolated subagent with the memory-category selection and the complete operator contract (Cursor: `Task`, `subagent_type: shell`, `model: auto`).
+NEVER use a harness-CLI one-shot for judge/scribe work; inline fallback applies only when no isolated spawn exists.
 The canonical session key follows `conversation_id`, then `session_id`, then `generation_id`;
 Pi persists the same state across extension reloads and session resumes.
 
@@ -88,12 +95,12 @@ Resident FastEmbed warm-up is a separate, explicit lifecycle for automatic per-t
 
 | Depth      | Startup BM25 | Resident warm-up | Per-turn fetch | Prompt cap | Timeout |
 | ---------- | ------------ | ---------------- | -------------- | ---------- | ------- |
-| `fast`     | unchanged    | skipped          | disabled       | n/a        | n/a     |
-| `balanced` | unchanged    | requested        | 6              | 600 chars  | 6s      |
-| `deep`     | unchanged    | requested        | 12             | 1200 chars | 9s      |
+| `fast`     | skipped      | skipped          | disabled       | n/a        | n/a     |
+| `balanced` | enabled      | requested        | 6              | 600 chars  | 6s      |
+| `deep`     | enabled      | requested        | 12             | 1200 chars | 9s      |
 
 Unset, empty, or invalid values resolve to `balanced`, which is the prior behavior.
-Every enabled profile keeps the existing `hybrid` mode, `0.55` top-cosine gate, `0.85` tail floor, the KB-owned `--workspace-gate` scope gate, staged-ledger pointer dedupe, stdin-only query transport, and connect-only resident contract.
+Every enabled profile keeps the existing `hybrid` mode, `0.55` top-cosine gate, `0.85` tail floor, the KB-owned `--workspace-gate` scope gate, session-topic marker pointer dedupe, stdin-only query transport, and connect-only resident contract.
 
 Requested warm-up is bounded and fail-open.
 Shared `perturn_recall.py` and Pi's hybrid query path set `AI_EMBED_CONNECT_ONLY=1`;
@@ -109,8 +116,11 @@ The worker exits after 300 inactive seconds while removing only its own socket i
 
 Session-start context is bounded without injecting partial memory.
 An oversized active topic spec is omitted with a pointer to the full file instead of being sliced into the prompt.
-Only whole recent worklog entries are included. Worklogs are trimmed during serialized queue flush so runtime state does not grow forever.
-The same flush pass also removes `session-*` fallback worklogs and per-session recall state (`.recall-seen-*`, `.recall-candidates-*`, `.recall-staged-*`) older than seven days; named-topic worklogs are never swept.
+Only whole recent worklog entries are included; omission notices count against the same cap.
+Cursor startup additionally enforces its 10,000 UTF-16-unit carrier limit: omit whole optional worklog, spec, or bucket blocks with file pointers before rejecting an oversized mandatory prefix.
+Never slice the mandatory instructions to fit the carrier.
+Worklogs are trimmed during serialized queue flush so runtime state does not grow forever.
+The same flush pass also removes `session-*` fallback worklogs and per-session recall state (`.recall-seen-*`, `.recall-candidates-*`, `.recall-staged-*`, `.recall-pointed-*`, `.recall-warm-*`) older than seven days; named-topic worklogs are never swept.
 
 Tool adapters invoke `worklog_dispatcher.sh`, which captures the JSON payload and launches `worklog_recorder.py` without waiting for filesystem bookkeeping.
 The recorder durably enqueues a session-sequenced event, and a transient worker flushes it under a per-target lock.
@@ -121,6 +131,7 @@ Failures stay in bounded error ledgers: agents fail open, session startup warns,
 Review topics run in clean-room mode by default.
 When the active topic name starts with `review` or the spec targets a PR, startup context keeps neutral metadata such as target, state, diff, and files.
 It omits prior `verified facts`, `findings`, `verdict`, inline comments, and recent worklog tails.
+Plain headings and ATX headings at levels 1–6, including closing hashes, select the same clean-room sections.
 Read the spec manually only when you intentionally want prior-session conclusions.
 
 To start a clean session with no injected topic/worklog context, use one of:
@@ -132,6 +143,12 @@ touch /tmp/specs/<workspace-path-without-leading-slash>/<topic>.no_context
 ```
 
 The sentinel files are intentionally outside the worktree. Remove them to restore session context injection.
+Disable checks apply on every turn, including correction, growth, and compaction paths;
+worklog recording and native SOP loading remain active.
+Removing a live topic sentinel also retires its mirrored copy; whole-topic loss still restores the sentinel with the topic.
+Pi/OMP register shared context, correction, and worklog callbacks even when `,ai-kb` is unavailable; only retrieval and warm-up are skipped.
+
+The standalone `,agent-memory` launcher uses `~/lib/,agent-memory/`; it requires no source checkout or runtime chezmoi lookup.
 
 Use `,agent-memory` to set the active topic or as a dead switch for persisted hook memory:
 
@@ -164,13 +181,15 @@ and `recipe` for a working command/step sequence worth deferring to the verified
 Front-load the literal identifiers a future query would use — the note text becomes the candidate title/body.
 `wipe-current` deletes only the selected topic files (`.txt`, `.worklog.jsonl`, `.no_context`). It keeps other topics in the same workspace.
 On default branches without an explicit active topic, it targets the latest `session-*` topic.
+`--reset-active` removes both live and mirrored active pointers, even when the live pointer is already absent;
+ordinary wipe and dry-run preserve them.
 
 No hook runs on `stop`, and no hook re-prompts the agent.
 Two disciplines that earlier lived in `stop` hooks now live in the SOP, enforced by instruction rather than by an auto-submitted follow-up:
 
-- Evidence anchoring: visible factual/runtime claims must carry a hard source anchor or an explicit `Unknown` demotion (`~/CLAUDE.md` §2.2 / §2.6).
+- Evidence anchoring: visible factual/runtime claims must carry a hard source anchor or an explicit `Unknown` demotion (`~/AGENTS.md` §2.2 / §2.6).
   The earlier `evidence_anchor.py` hook re-prompted per turn and was removed as noise.
-- Durable-learning capture: as the last step of a substantive turn the agent self-vets and persists durable insights inline with `,ai-kb remember` (`~/CLAUDE.md` §4.1).
+- Durable-learning capture: as the last step of a substantive turn the agent self-vets durable insights and delegates verified persistence to `k-agent-smol` in scribe mode (`~/AGENTS.md` §4.1).
   This replaces the earlier `learning_reminder.py` stop hook, which auto-submitted a "persist learnings" prompt capped at once per conversation.
   The SOP habit has no cap and never injects a fake user turn.
 

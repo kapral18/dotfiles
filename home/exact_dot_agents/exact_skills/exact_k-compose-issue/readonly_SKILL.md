@@ -36,7 +36,7 @@ First actions:
 3. Identify the problem statement, expected behavior, actual behavior, and reproduction from verified evidence.
 4. Keep repro steps concrete and ordered.
 5. Convert local-only observations into portable repro steps.
-   Do not paste session-specific URLs, machine hostnames, temp paths, workspace paths, browser automation session names, or local usernames into public issue text.
+   Do not paste session-specific URLs, machine hostnames, temp paths, workspace paths, browser automation session names, or local usernames into public issue text unless the issue explicitly instructs how to create them.
 6. If logs/screenshots are referenced, include only what materially helps and redact secrets.
 7. If issue creation is in scope, verify `gh issue create --help` support for `--type name`.
    If the target repo exposes GitHub issue types, read the actual type names before choosing one.
@@ -54,9 +54,7 @@ First actions:
 
 Rules:
 
-- be concrete and reproducible
-- prefer numbered repro steps
-- include logs/screenshots only if they add diagnostic value; redact secrets
+- Prefer numbered repro steps.
 - public issue text must be portable for other maintainers:
   - use generic terms like `local app`, `http://localhost:<port>`, `a user with only <privilege>`, or explicit setup steps
   - include private hostnames, non-standard local domains, `/tmp/...`, absolute `$HOME` paths, Playwriter/session IDs, or one-off local account names only when the issue explicitly instructs how to create them

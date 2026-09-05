@@ -10,7 +10,8 @@ This file adds only the proof-mode specifics: the head-only model, the intended 
 
 This contract runs **inline** in its caller, which already holds Playwriter and local/dev mutation permissions.
 It is not a `/k-deep-review` read-only reviewer lane and needs no isolated subagent profile;
-the shared read-only constraints still bind everything except Playwriter commands and packet-permitted local/dev data setup.
+The shared runtime contract owns the exact Playwriter, local/dev setup, lifecycle, and environment-adapter exceptions;
+its read-only and approval constraints remain binding.
 
 ## Caller supplies
 
@@ -20,7 +21,7 @@ the shared read-only constraints still bind everything except Playwriter command
   - a spec acceptance criterion tagged `judgment:` whose evidence is visual (`/k-build`)
   - a linked issue/design mockup, screenshot, UI behavior repro, or the PR's stated UI goal (`k-compose-pr`)
   - the user's described target, or the diff-derived intended delta confirmed with the user (`k-ui-capture`)
-- selected target packet, including overlay source when an overlay supplied it (`elastic/kibana` → `~/.agents/skills/k-elastic-domain/references/kibana-live-ui.md`)
+- selected target packet resolved through the shared runtime contract, including the verified overlay source when an overlay supplied it
 - required runtime config (feature-flag/settings the path needs to be reachable), or an empty set
 - the `/tmp` output location: each visual/UI criterion's proof set goes in its own distinct `/tmp/<folder-name>/` folder (never a single shared dump), named for the criterion — e.g. `/tmp/<topic>-<criterion-slug>/`
 
@@ -77,10 +78,13 @@ Build this inventory before the published-proof gate and before any capture; bot
    - `intra-change` — a delta between two tips on the same change branch (a mid-change regression and its fix).
      Before = earlier tip; after = later tip.
      Use this only when a human needs visual proof of that mid-change fix; it is a separate proof class from the product delta vs base.
-     When the base never reaches the old state (capability absent on base), keep the item as head-only proof of the new capability, or as `intra-change` when comparing two branch tips.
-     Capture only before-states the chosen frame can actually produce.
-     Publication channel: `baseline` pairs embed in the PR/issue body's main Screenshots/Videos section;
-     `intra-change` pairs publish in a separate comment/thread when requested for reviewer re-verification, and stay out of the body's main before/after section so they are not read as base↔head.
+   - `head-only` — proof of a new capability whose old state the base cannot reach.
+     When comparing two change-branch tips, use `intra-change` instead.
+
+   Capture only before-states the chosen frame can actually produce.
+   Publication channel: `baseline` pairs embed in the PR/issue body's main Screenshots/Videos section;
+   `intra-change` pairs publish in a separate comment/thread when requested for reviewer re-verification, and stay out of the body's main before/after section so they are not read as base↔head.
+
 6. **Claim map — prose ⊆ assets.**
    Before drafting embed markdown or editing a PR/issue body/comment that cites proof, list every behavior claim the text will make and the inventory item + asset that proves it.
    Emit the embed only when every claim has an adequate mapped asset (sufficiency test).

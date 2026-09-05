@@ -68,7 +68,7 @@ If the user mentions or strongly implies a PR (PR/pull request, PR review, threa
 - First step is PR discovery via `,gh-prw` (read-only):
   - `,gh-prw --number` returns the current branch's PR number when one exists.
   - `,gh-prw --number <n>` resolves a specific number, URL, branch, or commit SHA against the upstream repo.
-- If `,gh-prw` cannot resolve the user's claim, run the k-github `Targeting` fallback chain (`gh pr view [--repo OWNER/REPO] <n>` → `gh pr view` (no args) → `gh pr view --head <branch>` → `gh issue view <n>`).
+- If `,gh-prw` cannot resolve the user's claim, run the k-github `Targeting` fallback chain (`gh pr view [--repo OWNER/REPO] <n>` → `gh pr view` (no args) → `gh pr view <branch> --repo <owner>/<repo>` → `gh issue view <n>`).
   Treat the first `could not resolve` as a hint, not an answer.
 - Step `gh auth status` once up front so the authenticated principal is known before any of the above.
   Identity mismatches between `gh api user` and the branch's tracked remote are facts, not hypotheses.

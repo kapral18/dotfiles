@@ -25,17 +25,10 @@ The parent tells you what the fixes are. Resolve the change set in this order:
 
 State the exact diff scope you audited at the top of your output.
 
-## The four dimensions (canonical — name them exactly)
+## The four dimensions
 
-Apply each over the fix diff, anchoring every finding in evidence (exact file + location, the duplicate's other location, the stranded symbol):
-
-1. **Redundancy** — the fix repeats something already present.
-   Examples: re-implements an existing helper, re-states an existing rule, or adds an already-present path/branch/config.
-2. **Verbosity** — the fix is bloated beyond what the change needs (narration comments, ceremony, over-explanation, more code/prose than required).
-3. **Semantic + logical duplication** — two places now express the same meaning/behavior via different text.
-   Examples: parallel branches that should be one, or divergent-but-equivalent logic. The subtle axis literal-clone detectors miss.
-4. **Gaps** — the fix is incomplete.
-   Examples: dead code the fix itself stranded, an unupdated co-edit-set member like a doc/diagram/census, a half-applied rename, or a referenced-but-missing file/symbol.
+Apply the canonical **Post-Review Lens (The Four Dimensions)** from the already-required `judging_pipeline.md` to the fix diff.
+Keep its exact dimension names, definitions, examples, and evidence anchors.
 
 ## Hard constraints
 

@@ -277,23 +277,28 @@ def transcript_tail(path: Path, lines: int = 20, limit: int = 4000) -> str:
     except OSError:
         return ""
 
+    if lines <= 0 or limit <= 0:
+        return ""
     selected: list[str] = []
     selected_chars = 0
     omitted = 0
     for line in reversed(content[-lines:]):
         line_len = len(line) + (1 if selected else 0)
-        if selected and selected_chars + line_len > limit:
-            omitted += 1
-            continue
-        if not selected and line_len > limit:
+        if selected_chars + line_len > limit:
             omitted += 1
             continue
         selected.append(line)
         selected_chars += line_len
 
-    selected.reverse()
-    if omitted:
-        selected.insert(
-            0, f"[omitted {omitted} older worklog entr{'y' if omitted == 1 else 'ies'} to keep context atomic]"
-        )
-    return "\n".join(selected)
+    # Reserve room for the omission notice without splitting an atomic row.
+    while omitted:
+        notice = f"[omitted {omitted} worklog entr{'y' if omitted == 1 else 'ies'} to keep context atomic]"
+        body = "\n".join(reversed(selected))
+        result = notice + ("\n" + body if selected else "")
+        if len(result) <= limit:
+            return result
+        if not selected:
+            return ""
+        selected.pop()
+        omitted += 1
+    return "\n".join(reversed(selected))
