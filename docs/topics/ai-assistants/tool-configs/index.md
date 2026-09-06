@@ -6,13 +6,13 @@ title: Tool Configs
 
 Per-assistant config is generated from a small set of source registries and profile-specific files. MCP servers and model lists stay single-sourced in [MCP servers](../mcp.md) and [Model registry & routing](../model-registry.md).
 
-| Navigation slice                                    | Owns                                                                 |
-| --------------------------------------------------- | -------------------------------------------------------------------- |
-| [Cursor and prompt wrap](cursor-and-prompt-wrap.md) | `agent` alias, tmux `Alt-Enter` verification prefix, injection paths |
-| [Profile-based merging](profile-merging.md)         | `.work` / `.personal` sources and `run_onchange` merge scripts       |
-| [Claude and Antigravity](claude-gemini.md)          | Claude settings plus Antigravity rules, hooks, skills, and MCP       |
-| [Pi coding agent](pi.md)                            | Pi packages, settings/models, APPEND_SYSTEM parity layer             |
-| [Other harnesses](other-harnesses.md)               | Codex, OpenCode, Copilot, tuicr, secrets                             |
+| Navigation slice                                    | Owns                                                                                 |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| [Cursor and prompt wrap](cursor-and-prompt-wrap.md) | `agent` alias, tmux `Alt-Enter` verification prefix, growth-gated re-injection paths |
+| [Profile-based merging](profile-merging.md)         | `.work` / `.personal` sources and `run_onchange` merge scripts                       |
+| [Claude and Antigravity](claude-gemini.md)          | Claude settings plus Antigravity rules, hooks, skills, and MCP                       |
+| [Pi coding agent](pi.md)                            | Pi packages, settings/models, APPEND_SYSTEM parity layer                             |
+| [Other harnesses](other-harnesses.md)               | Codex, OpenCode, Copilot, tuicr, secrets                                             |
 
 ## Source model
 

@@ -32,7 +32,7 @@ Shared scripts: `session_context.py` (start), `perturn_recall.py` (per-turn), `w
 | Antigravity  | first `PreInvocation`                              | explicit search only    | `PostToolUse`         | Camel-case payloads; `injectSteps[].ephemeralMessage`; no per-turn prompt hook             |
 | Cursor cloud | none                                               | none                    | none                  | Explicit agent-pull only                                                                   |
 
-Shared prefix source: [`prefix.txt`](../../../../home/dot_config/exact_tmux/agent_prompts/prefix.txt). Custom subagent profiles render it directly; manual tmux prompt wrapping uses the same text.
+Shared reinforcement source: [`prefix.txt`](../../../../home/dot_config/exact_tmux/agent_prompts/prefix.txt), a compiler-verified excerpt of the SOP. `perturn_recall.py` re-injects it only after material context growth (200k tokens read from the Claude transcript or Codex rollout; a prompt-interval fallback where no usage signal exists) or a compaction, so it lands near the current prompt exactly when the top-of-context rules have diluted. Session start injects no prefix. Custom subagent profiles render the sibling `leaf-boundary.txt`; manual tmux prompt wrapping uses `prefix.txt`.
 
 Without warm-up signal: session context includes `### Recall Notice` (delegate mid-task recall queries to `k-agent-smol`). `AI_AGENT_DEPTH=fast` skips startup retrieval, warm-up, and per-turn retrieval. Cursor omits whole optional context blocks with source pointers to fit its carrier; mandatory instructions stay complete.
 

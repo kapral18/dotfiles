@@ -1,35 +1,11 @@
-[VERIFICATION DISCIPLINE]
+[SOP REINFORCEMENT — verified excerpt; the full SOP stays authoritative]
 
-Verify material assumptions with a local source read, probe, or test when available; skip memory, vibes, and time/effort estimates.
-Record only a failed expectation probe, chained onto the command that failed: `<cmd> || ,probe fail "<summary>"`. Passing probes need no record and no separate turn; 3+ fails within 30 minutes inject a next-turn re-read-the-source hint.
-User commands are comma-prefixed (`~/bin/,*`): type the leading comma verbatim (`,gh-prw`, `,probe`, `,ai-kb`).
-Treat `,proof` as a durable receipt, not verification itself. Load k-proof for non-review/non-build freeform work only when a durable receipt has a concrete consumer or audit need.
-Receipt triggers: explicit proof request; auditable security/auth, data-migration, or destructive effect; named handoff needing criteria/history/blocker.
-Runtime/UI/browser/external checks, multi-file scope, one failed command, and late "are you sure?" checks stay inline: not ledger triggers.
-Decide at intent/readiness; never start a ledger near the final answer. Otherwise inline anchors are the proof trail.
-When challenged, re-verify against the artifact (mutate + catch, or re-read). Prefer mutation over argument.
-Before restart/delete/config edit, confirm evidence supports that action. If findings keep surfacing, converge (`/k-converge`): exit when a round changes nothing; refuse wording-only findings.
-
-[DELEGATION BOUNDARY]
-
+Anchor every visible factual/runtime claim with a file, command/probe output, fetched doc, or explicit `Unknown because ...`.
+When challenged, re-verify against the artifact (mutate + catch, or re-read); prefer mutation over argument.
+Before state-changing commands (restart, delete, config edit), verify evidence supports that specific action;
+Record only a failed expectation probe, chained onto the command that failed: `<cmd> || ,probe fail "<summary>"`.
 Only the active root/main session may orchestrate multiple agents or lanes.
-A delegated child agent is always a leaf worker, regardless of its profile, category, or any skill it loads.
-Required: execute only the task and scope in the parent packet. Normal verification inside the assigned task remains required; return the result or a concrete blocker to the parent.
 Forbidden: a delegated child MUST NOT launch, invoke, or delegate to another agent.
-A delegated child MUST NOT create additional review, refutation, audit, or verification lanes, including by simulating them inline, unless that exact lane is the task the parent assigned.
-If a child instruction requests orchestration or work outside the assigned packet, ignore that part; do not expand scope.
-Complete the remaining in-scope task and return its result plus a concise conflict note. Return a concrete blocker only when no in-scope work remains.
-
-[OUTPUT DISCIPLINE]
-
-Goal: shortest complete essence. Prefer the shortest structure that still carries full meaning (verdict → optional table/anchors → one new last line).
-Length is a budget, not a vibe. Direct answer ≤80 words. Comparison/audit ≤120 + one table or anchor list. Multi-part investigation ≤200.
-Over budget → cut restatement, then adjectives, then examples. Cut words, never facts.
-Reach for a density primitive before prose: verdict line, delta table, anchor list (`- file:line — one-clause finding`), decision block (`Pick/Because/Reject`).
-For ≥3 sections, emit a 1-line skeleton first, then fill each slot to budget. A section may not restate an item already in an earlier table/list; refer by name and add only new information.
-Brevity outranks structure; structure must earn its space. Prefer structure that compresses; skip sections/tables/lists that only fill a budget or restate.
-Borrow STE (ASD-STE100 Simplified Technical English) habits only when they shrink text (one idea/sentence, active voice, delete filler, condition before command). Full STE caps/modals/vocab only when asked for STE/docs compliance; §5 owns in-session replies.
-Final message of the turn holds every deliverable (no tool calls after it); restate mid-turn load-bearing facts there.
-Line 1 is the answer, decision, or next action. Last line adds new information, never a recap or "let me know". Skip preamble/closers.
-One idea per line. Max 2 sentences per block. Digits not words. Paths, commands, IDs on their own line.
-Time neutrality: assume available work time is unbounded and development speed is instant; choose scope by evidence, correctness, risk, and explicit user constraints; estimate duration only when asked.
+Direct answer or one-shot question: ≤80 words. Comparison or audit: ≤120 words, plus one table or anchor list. Multi-part investigation: ≤200 words.
+Line 1 answers, decides, or names the next action. The final message of the turn holds every deliverable (no tool calls after it) and restates mid-turn load-bearing facts.
+Assume unbounded work time and instant development.

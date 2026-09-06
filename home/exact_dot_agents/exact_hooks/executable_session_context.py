@@ -42,11 +42,6 @@ EMBED_WARM_TIMEOUT_SECONDS = 4
 # the wrong repo for five rounds before discovering `gh auth status` (see failure-modes doc).
 GH_IDENTITY_TIMEOUT_SECONDS = 2
 
-PREFIX_REL_PATH = "tmux/agent_prompts/prefix.txt"
-# Sized to hold the whole prefix.txt discipline core with headroom. A silent mid-sentence
-# truncation here drops the tail rules (time neutrality, line-shape) from every session,
-# and greps against the file still find them — so raise this whenever prefix.txt grows.
-MAX_PREFIX_CHARS = 6000
 
 WARMSTART_LIMIT = 3
 WARMSTART_QUERY_CHARS = 600
@@ -324,30 +319,6 @@ def _apply_relevance_floor(rows: list) -> list:
         if not isinstance(raw, (int, float)) or -float(raw) >= floor:
             kept.append(row)
     return kept
-
-
-def prefix_block() -> str:
-    """Inject the verification-discipline prefix at session start.
-
-    Reads the same `prefix.txt` the tmux agent-prompt wrap pastes manually, so the
-    grounding discipline is in context from the first turn without the user having
-    to paste it. The file is the single source of truth and now holds only the
-    discipline core (no forward-pointing "User prompt follows:" line). This path
-    injects a standalone sessionStart context block — the user's first prompt is a
-    separate later message, not glued after this text — so it frames the discipline
-    as applying to subsequent prompts rather than claiming one follows.
-    Returns an empty string if the file is missing or empty.
-    """
-    config_home = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
-    path = Path(config_home) / PREFIX_REL_PATH
-    try:
-        text = path.read_text(errors="replace").strip()
-    except OSError:
-        return ""
-    if not text:
-        return ""
-    core = text[:MAX_PREFIX_CHARS]
-    return f"{core}\n\nApply the discipline above to this session's prompts."
 
 
 def collapse(text: str, max_chars: int) -> str:
@@ -635,10 +606,6 @@ def main() -> None:
         f"- Active topic: `{topic}`",
     ]
 
-    prefix = prefix_block()
-    if prefix:
-        parts.extend(["", prefix])
-
     gh_identity = gh_identity_line()
     if gh_identity:
         parts.extend(["", gh_identity])
@@ -647,6 +614,15 @@ def main() -> None:
     key = session_key(payload)
     if key:
         stage_candidates([], set(), spec_path, key)
+    if key and str(payload.get("source") or "").lower() == "compact":
+        # Claude Code re-fires SessionStart after a compaction; the summary dropped
+        # any earlier reinforcement, so the next prompt must re-inject it.
+        try:
+            import reinforcement
+        except ImportError:
+            pass
+        else:
+            reinforcement.mark_compaction(spec_path.parent, key)
     has_session_binding = bool(key and session_topic_path(spec_dir, key).exists())
     no_session_key_default_branch = not key and is_default_branch_workspace(workspace)
     if not has_session_binding and should_offer_topic_buckets(spec_path, topic, no_session_key_default_branch):

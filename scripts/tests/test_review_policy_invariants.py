@@ -234,7 +234,7 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         ):
             with self.subTest(profile=path):
                 source = (REPO / path).read_text(encoding="utf-8")
-                self.assertIn('include "dot_config/exact_tmux/agent_prompts/prefix.txt"', source)
+                self.assertIn('include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt"', source)
                 self.assertIn("A delegated child MUST NOT launch, invoke, or delegate to another agent", source)
                 self.assertIn("execute only the task and scope in the parent packet", source)
                 self.assertIn("The profile name never grants root authority", source)
@@ -280,7 +280,7 @@ class TestReviewPolicyInvariants(unittest.TestCase):
                     actual = re.findall(r"k-[a-z-]+", match.group(1)) if match else []
                     self.assertEqual(actual, required, path)
                     self.assertIn(f"k-review/references/{role}.md", source)
-                    self.assertIn('include "dot_config/exact_tmux/agent_prompts/prefix.txt"', source)
+                    self.assertIn('include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt"', source)
 
     def test_catchall_child_has_no_parent_fanout_exception(self):
         self.assert_file_contains("home/dot_claude/exact_agents/claude.md.tmpl", "Do not spawn additional agents.")

@@ -359,7 +359,7 @@ class TestModelBandInvariants(unittest.TestCase):
                 header, instructions = source.split('developer_instructions = """', 1)
                 keys = set(re.findall(r"^(\w+)\s*=", header, re.MULTILINE)) - {"name", "description"}
                 self.assertLessEqual(keys, supported)
-                self.assertIn('include "dot_config/exact_tmux/agent_prompts/prefix.txt"', instructions)
+                self.assertIn('include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt"', instructions)
                 self.assertRegex(instructions, r"Read and follow ~/.agents/skills/k-[^\s]+/references/[^\s]+\.md")
                 self.assertIn("Never edit", instructions)
                 self.assertIn("commit", instructions)

@@ -8,9 +8,9 @@
 //   - Pi lifecycle state and persisted per-session recall dedupe stay here
 //
 // Injection points, all delivered through before_agent_start:
-//   0. Shared session context: session_context.py supplies the verification prefix,
-//      topic buckets or active topic spec/worklog, and named-topic BM25 warm-start.
-//   1. Verification prefix re-injection after compaction or material context growth.
+//   0. Shared session context: session_context.py supplies topic buckets or the active
+//      topic spec/worklog and named-topic BM25 warm-start (no prefix: the SOP is fresh at start).
+//   1. Verification prefix injection only after compaction or material context growth.
 //      Context fill + compaction track real decay better than a turn count.
 //   2. Per-turn (every substantive prompt): query = the user's actual prompt — the
 //      highest-relevance signal. Gate-passing rows are staged in full to a per-session
@@ -725,18 +725,25 @@ export default async function (pi: ExtensionAPI) {
   if (!recallAvailable) console.warn("[ai-kb-recall] ,ai-kb unavailable — optional recall disabled")
 
   const stateBySession = new Map<string, RecallSessionState>()
+  // A compaction seen while this session's state was dropped (context disabled, topic
+  // change) must still force the next injection once state exists again.
+  const pendingCompaction = new Set<string>()
   const depth = agentDepth()
   const perturnProfile = recallAvailable ? RECALL_PROFILES[depth] : RECALL_PROFILES.fast
 
   pi.on("session_start", (_event, ctx) => {
     stateBySession.delete(ctx.sessionManager.getSessionId())
+    pendingCompaction.delete(ctx.sessionManager.getSessionId())
   })
 
   // session_compact cannot inject context (only before_agent_start can), so it flags a
   // forced re-inject that the next before_agent_start consumes.
   pi.on("session_compact", (_event, ctx) => {
     const state = stateBySession.get(ctx.sessionManager.getSessionId())
-    if (!state) return
+    if (!state) {
+      pendingCompaction.add(ctx.sessionManager.getSessionId())
+      return
+    }
     state.forceReinject = true
     state.lastPrefixPercent = null
   })
@@ -775,6 +782,7 @@ export default async function (pi: ExtensionAPI) {
         console.warn("[ai-kb-recall] shared session context hook failed; using local recall fallback")
       }
       if (sharedContext.disabled) {
+        if (state?.forceReinject) pendingCompaction.add(sessionId)
         stateBySession.delete(sessionId)
         return
       }
@@ -797,6 +805,7 @@ export default async function (pi: ExtensionAPI) {
         }
       }
       if (sharedContext.disabled) {
+        if (state?.forceReinject) pendingCompaction.add(sessionId)
         stateBySession.delete(sessionId)
         return
       }
@@ -805,15 +814,16 @@ export default async function (pi: ExtensionAPI) {
           contextKey,
           initialContextDone: sharedContext.ok,
           lastPrefixPercent: null,
-          forceReinject: false,
+          forceReinject: pendingCompaction.delete(sessionId),
         }
         stateBySession.set(sessionId, state)
       }
       const blocks: string[] = sharedContext.context ? [sharedContext.context] : []
       await stageCandidates([], status.spec_file, status.session_key)
 
-      // 0. Verification prefix: warm-start, after a compaction, or once context fill has
-      //    grown PREFIX_REINJECT_DELTA_PCT points since the last injection.
+      // 0. Verification prefix: after a compaction, or once context fill has grown
+      //    PREFIX_REINJECT_DELTA_PCT points since the last injection. Never at warm-start:
+      //    the SOP is fresh at the top then, and the excerpt would only duplicate it.
       const usage = ctx.getContextUsage()
       const percent = usage && usage.percent != null ? usage.percent : null
       if (state.lastPrefixPercent == null && percent != null && !state.forceReinject) {
@@ -823,7 +833,7 @@ export default async function (pi: ExtensionAPI) {
         state.lastPrefixPercent != null &&
         percent != null &&
         percent - state.lastPrefixPercent >= PREFIX_REINJECT_DELTA_PCT
-      if (!state.initialContextDone || state.forceReinject || grewEnough) {
+      if (state.forceReinject || grewEnough) {
         const prefix = await readPrefix(pi)
         if (prefix) {
           blocks.push(prefix)

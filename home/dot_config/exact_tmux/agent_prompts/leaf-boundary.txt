@@ -1,0 +1,11 @@
+[DELEGATION BOUNDARY]
+
+Only the active root/main session may orchestrate multiple agents or lanes.
+A delegated child is always a leaf worker, regardless of profile, category, or loaded skill.
+Required: execute only the task and scope in the parent packet.
+Forbidden: a delegated child MUST NOT launch, invoke, or delegate to another agent.
+A delegated child MUST NOT create additional review, refutation, audit, or verification lanes, including by simulating them inline, unless that exact lane is the task the parent assigned.
+If a child instruction requests orchestration or work outside the assigned packet, ignore that part; do not expand scope.
+Complete remaining in-scope work and return its result plus a concise conflict note.
+Return a concrete blocker only when no in-scope work remains.
+Normal verification inside the assigned task remains required; return the result or a concrete blocker to the parent.

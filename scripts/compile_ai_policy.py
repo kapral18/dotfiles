@@ -50,6 +50,41 @@ PROTECTED_CORE_RULE_IDS = frozenset(
     }
 )
 NAME_PREFIXES = ("readonly_", "private_", "executable_")
+# Verified SOP excerpts: every sentence in these files must appear verbatim in the core SOP, so the
+# per-prompt reinforcement and the subagent leaf boundary can never drift from the source of truth.
+EXCERPT_PATHS = (
+    Path("home/dot_config/exact_tmux/agent_prompts/prefix.txt"),
+    Path("home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt"),
+)
+_EXCERPT_SENTENCE_SPLIT = re.compile(r"(?<=[.;:!?])\s+")
+_EXCERPT_MIN_FRAGMENT_CHARS = 12
+
+
+def _excerpt_normalize(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip().lower()
+
+
+def excerpt_violations(repo_root: Path, sop_text: str) -> list[str]:
+    """Return one line per excerpt sentence that is not a verbatim SOP sentence.
+
+    Bullet markers and list indentation are stripped from the SOP before matching so an
+    excerpt line may quote a bullet body; bracketed `[...]` header lines are framing, not rules.
+    """
+    sop = _excerpt_normalize(re.sub(r"^\s*(?:[-*]|\d+\.)\s+", "", sop_text, flags=re.MULTILINE))
+    violations: list[str] = []
+    for rel in EXCERPT_PATHS:
+        path = repo_root / rel
+        if not path.is_file():
+            continue
+        for line in path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("["):
+                continue
+            for fragment in _EXCERPT_SENTENCE_SPLIT.split(stripped):
+                normalized = _excerpt_normalize(fragment)
+                if len(normalized) >= _EXCERPT_MIN_FRAGMENT_CHARS and normalized not in sop:
+                    violations.append(f"{rel}: {fragment}")
+    return violations
 
 
 def _deployed_basename(path: Path) -> str:
@@ -226,6 +261,9 @@ def cmd_verify(args: argparse.Namespace) -> int:
     if rendered != on_disk:
         print(f"verify: {legacy_path} does not match compiled output (drift detected)", file=sys.stderr)
         return 1
+    for violation in excerpt_violations(repo_root, on_disk):
+        print(f"verify: excerpt sentence is not verbatim SOP text: {violation}", file=sys.stderr)
+        return 1
 
     expected_manifest = _build_manifest(rules, rendered)
     manifest = expected_manifest
@@ -273,7 +311,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
                     )
                     return 1
 
-    print("verify: compiled output, manifest, and rule consumers are all consistent")
+    print("verify: compiled output, manifest, rule consumers, and SOP excerpts are all consistent")
     return 0
 
 
@@ -514,6 +552,9 @@ def cmd_measure(args: argparse.Namespace) -> int:
             "core_sop": core_bytes,
             "skill_descriptions": description_bytes,
             "total": core_bytes + description_bytes,
+        },
+        "verified_excerpt_bytes": {
+            str(rel): (repo_root / rel).stat().st_size for rel in EXCERPT_PATHS if (repo_root / rel).is_file()
         },
         "declared_non_manual_description_bytes": sum(
             desc for _, _, desc in _iter_skill_descriptions(repo_root, non_manual_only=True)

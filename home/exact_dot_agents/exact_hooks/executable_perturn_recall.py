@@ -38,6 +38,10 @@ try:
     import correction_detector
 except Exception:  # pragma: no cover - fail-open if deployed without the sibling module.
     correction_detector = None
+try:
+    import reinforcement
+except ImportError:  # pragma: no cover - deployed alongside; fail-open when absent
+    reinforcement = None
 
 # Balanced constants mirror home/dot_pi/agent/exact_extensions/ai-kb-recall.ts exactly.
 SEARCH_FETCH = 6
@@ -220,12 +224,19 @@ def correction_directive(prompt: str, probe_budget_signal_value: str | None = No
     return "\n".join(lines)
 
 
+def reinforcement_block(payload: dict, spec_dir: Path, key: str) -> str:
+    """Verified SOP excerpt, due only after material context growth or a compaction."""
+    if reinforcement is None:
+        return ""
+    try:
+        return reinforcement.block(payload, spec_dir, key)
+    except Exception:
+        return ""
+
+
 def main() -> None:
     payload = read_payload()
     prompt = str(payload.get("prompt") or "")
-    if len(prompt.strip()) < MIN_PROMPT_CHARS:
-        emit({})
-        return
 
     workspace, topic, spec_path, _ = topic_paths(payload)
     if context_disabled(spec_path, topic):
@@ -233,6 +244,13 @@ def main() -> None:
         return
 
     key = session_key(payload)
+    reinforce = reinforcement_block(payload, spec_path.parent, key)
+    # Short prompts skip recall (nothing to search on) but still count toward
+    # reinforcement, which is keyed on context growth rather than prompt text.
+    if len(prompt.strip()) < MIN_PROMPT_CHARS:
+        emit(_output(payload, reinforce) if reinforce else {})
+        return
+
     seen = load_seen(seen_file_for(spec_path, key) if key else None)
     profile = RECALL_PROFILES[agent_depth()]
 
@@ -250,16 +268,14 @@ def main() -> None:
         budget = correction_detector.probe_budget_signal(spec_path.parent, key)
 
     directive = correction_directive(prompt, probe_budget_signal_value=budget)
-    if not pointer and not directive:
+    context_blocks = [block for block in (reinforce, pointer, directive) if block]
+    if not context_blocks:
         emit({})
         return
+    emit(_output(payload, "\n\n".join(context_blocks)))
 
-    context_blocks = []
-    if pointer:
-        context_blocks.append(pointer)
-    if directive:
-        context_blocks.append(directive)
-    context = "\n\n".join(context_blocks)
+
+def _output(payload: dict, context: str) -> dict:
     # Echo the firing event name: Claude Code sends UserPromptSubmit, Gemini
     # CLI sends BeforeAgent — both expect it mirrored in hookSpecificOutput.
     # Cursor reads the top-level snake key from beforeSubmitPrompt output
@@ -267,15 +283,13 @@ def main() -> None:
     # not the echoed cursor-native one), so emit both channels like
     # session_context.py; the codex adapter strips to hookSpecificOutput via
     # AGENT_HOOK_OUTPUT=hook_specific in emit().
-    emit(
-        {
-            "additional_context": context,
-            "hookSpecificOutput": {
-                "hookEventName": str(payload.get("hook_event_name") or "UserPromptSubmit"),
-                "additionalContext": context,
-            },
-        }
-    )
+    return {
+        "additional_context": context,
+        "hookSpecificOutput": {
+            "hookEventName": str(payload.get("hook_event_name") or "UserPromptSubmit"),
+            "additionalContext": context,
+        },
+    }
 
 
 if __name__ == "__main__":

@@ -61,15 +61,17 @@ class TestCheckPlan(unittest.TestCase):
         assert "tests/test_invariants.py" not in plan.tests
 
     def test_WHEN_agent_prompt_prefix_changes_SHOULD_not_run_slow_picker_shards(self):
-        plan = plan_check(
-            REPO,
-            full=False,
-            changed=("home/dot_config/exact_tmux/agent_prompts/prefix.txt",),
-            add_delete=False,
-        )
-        assert "tests/test_sop_policy_invariants.py" in plan.tests
-        for shard in SLOW_SHARDS:
-            assert shard not in plan.tests
+        for excerpt in ("prefix.txt", "leaf-boundary.txt"):
+            with self.subTest(excerpt=excerpt):
+                plan = plan_check(
+                    REPO,
+                    full=False,
+                    changed=(f"home/dot_config/exact_tmux/agent_prompts/{excerpt}",),
+                    add_delete=False,
+                )
+                assert "tests/test_sop_policy_invariants.py" in plan.tests
+                for shard in SLOW_SHARDS:
+                    assert shard not in plan.tests
 
     def test_WHEN_hook_readme_changes_SHOULD_not_run_hook_runtime_shards(self):
         plan = plan_check(

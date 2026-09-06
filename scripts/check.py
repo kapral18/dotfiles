@@ -299,6 +299,7 @@ TEST_RULES: tuple[TestRule, ...] = (
         prefixes=(
             "home/readonly_AGENTS.md",
             "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
+            "home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt",
             "home/dot_config/ai/exact_policy-ir/",
             "docs/topics/ai-assistants/system-prompt/source-of-truth.md",
         ),

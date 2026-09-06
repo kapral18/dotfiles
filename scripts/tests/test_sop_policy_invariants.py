@@ -66,9 +66,9 @@ class TestSopPolicyInvariants(unittest.TestCase):
                 "Complete remaining in-scope work and return its result plus a concise conflict note",
             ),
             (
-                "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
-                "A delegated child agent is always a leaf worker",
-                "Complete the remaining in-scope task",
+                "home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt",
+                "A delegated child is always a leaf worker, regardless of profile, category, or loaded skill",
+                "Complete remaining in-scope work and return its result plus a concise conflict note",
             ),
         ):
             self.assert_file_contains(
@@ -175,25 +175,30 @@ class TestSopPolicyInvariants(unittest.TestCase):
             'tool_version: ",proof 0.2.0"',
         )
         self.assert_file_contains(
-            "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
-            "Treat `,proof` as a durable receipt, not verification itself",
-            "only when a durable receipt has a concrete consumer or audit need",
-            "not ledger triggers",
-            "never start a ledger near the final answer",
-            "Otherwise inline anchors are the proof trail",
-            "[OUTPUT DISCIPLINE]",
-            "Goal: shortest complete essence",
-            "Length is a budget, not a vibe",
-            "Direct answer ≤80 words",
-            "Comparison/audit ≤120",
+            "home/readonly_AGENTS.md",
+            "A repo-external `,proof` ledger is a durable receipt, not verification itself",
+            "Runtime/UI/browser/external checks are not ledger triggers by themselves",
+            "retroactive creation near the final answer is invalid",
+            "Otherwise use inline anchors",
+            "Use the shortest complete shape",
+            "Length is a hard budget per task class, not a vibe",
+            "Direct answer or one-shot question: ≤80 words",
+            "Comparison or audit: ≤120 words",
             "Reach for a density primitive before prose",
             "verdict line, delta table, anchor list",
             "emit a 1-line skeleton",
             "may not restate an item already in an earlier table/list",
             "Brevity outranks structure; structure must earn its space",
-            "Borrow STE (ASD-STE100 Simplified Technical English) habits only when they shrink text",
-            "§5 owns in-session replies",
-            "assume available work time is unbounded and development speed is instant",
+            "Borrow STE (ASD-STE100 Simplified Technical English) sentence habits only when they shrink text",
+            "Assume unbounded work time and instant development.",
+        )
+        # The reinforcement excerpt keeps only the hard budgets and the deliverable rule.
+        self.assert_file_contains(
+            "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
+            "[SOP REINFORCEMENT",
+            "Direct answer or one-shot question: ≤80 words",
+            "The final message of the turn holds every deliverable",
+            "Assume unbounded work time and instant development.",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-compose-pr/exact_references/readonly_publication-packet.md",
@@ -216,9 +221,14 @@ class TestSopPolicyInvariants(unittest.TestCase):
         # correction detector consumes the ledger. Pin both ends plus the ledger
         # filename contract so one side cannot drift away silently.
         self.assert_file_contains(
-            "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
+            "home/readonly_AGENTS.md",
             ',probe fail "<summary>"',
             "Passing probes need no record and no separate turn",
+        )
+        # The reinforcement excerpt re-injects the producer line after context growth.
+        self.assert_file_contains(
+            "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
+            ',probe fail "<summary>"',
         )
         # A standalone `,probe pass` turn is a model turn spent on bookkeeping the worklog
         # hook already captures; the producer must not ask for it.
@@ -351,7 +361,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Full STE applies only when the user asks for STE or docs compliance",
             "### 1.1 Time Neutrality",
             "## 5. User Response Shape",
-            "Cut restatement, filler, adjectives, and examples before facts",
+            "Over budget: cut restatement, then adjectives, then examples. Cut words, never facts.",
             "Direct answer or one-shot question: ≤80 words",
             "Comparison or audit: ≤120 words",
             "Multi-part investigation: ≤200 words",
@@ -359,7 +369,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Base scope on correctness, evidence, risk, and explicit user constraints",
             "Defer only for missing evidence, a user decision fork, or an external blocker",
             "Line 1 answers, decides, or names the next action",
-            "Keep every deliverable in the final response after tool work completes",
+            "The final message of the turn holds every deliverable",
             "cap at 5",
             "Ask one clarifying question when a remaining fork blocks progress",
             "Code citation format: `startLine:endLine:filepath`",
@@ -621,3 +631,23 @@ class TestSopPolicyInvariants(unittest.TestCase):
         assert "also load the `~/.agents/skills/k-code-quality-tests/SKILL.md` skill" not in first_actions
         assert "also load the `~/.agents/skills/k-code-quality-web/SKILL.md` skill" not in first_actions
         assert "also load the `~/.agents/skills/k-codebase-design/SKILL.md` skill" not in first_actions
+
+    def test_reinforcement_excerpts_are_verbatim_sop_and_stay_small(self):
+        # prefix.txt is re-injected after context growth; leaf-boundary.txt rides in every
+        # subagent profile. Both must quote the SOP verbatim (compiler-verified) and stay
+        # small, or they recreate the duplicated-context cost they replaced.
+        import compile_ai_policy as compiler
+
+        sop = (REPO / "home/readonly_AGENTS.md").read_text(encoding="utf-8")
+        self.assertEqual(compiler.excerpt_violations(REPO, sop), [])
+        for rel, ceiling in (
+            ("home/dot_config/exact_tmux/agent_prompts/prefix.txt", 1200),
+            ("home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt", 1000),
+        ):
+            size = (REPO / rel).stat().st_size
+            self.assertLessEqual(size, ceiling, f"{rel} grew to {size} bytes; keep the excerpt compact")
+        self.assert_file_not_contains(
+            "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
+            "[VERIFICATION DISCIPLINE]",
+            "[OUTPUT DISCIPLINE]",
+        )

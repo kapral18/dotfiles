@@ -27,13 +27,15 @@ When running an AI coding agent (`claude`, `cursor-agent`, `pi`, or `copilot`) i
 
 Plain `Enter` is never touched. Press it when the wrapped prompt is ready to send. `Alt-Enter` is passed through untouched in non-agent panes or when the toggle is OFF. Background or stopped agents do not activate wrapping.
 
-The same `prefix.txt` is also injected automatically:
+`prefix.txt` is a compiler-verified excerpt of the SOP (`compile_ai_policy.py verify` rejects any sentence that is not verbatim SOP text). It is also injected automatically, but never at session start, where the full SOP is fresh:
 
-| Consumer                 | Injection path                                              |
-| ------------------------ | ----------------------------------------------------------- |
-| `cursor-agent`, `claude` | command hook runs `session_context.py` at `SessionStart`    |
-| `copilot`                | agent-memory SDK `onSessionStart` runs `session_context.py` |
-| `pi`                     | `ai-kb-recall.ts` at first `before_agent_start`             |
-| custom subagents         | rendered as the first body/developer-instructions block     |
+| Consumer                                     | Injection path                                                                                                                               |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `claude`, `codex`, `cursor-agent`, `copilot` | per-prompt hook `perturn_recall.py` re-injects after 200k tokens of context growth (Claude transcript / Codex rollout usage) or a compaction |
+| `cursor-agent`, `copilot` without usage data | same hook, prompt-interval fallback (`AGENT_REINFORCE_PROMPTS`, default 10)                                                                  |
+| `pi`, `omp`                                  | `ai-kb-recall.ts` re-injects after 20 points of context fill growth or a compaction                                                          |
+| custom subagents                             | render the sibling `leaf-boundary.txt` (SOP §3.7 leaf-worker boundary) as the first body/developer-instructions block                        |
+
+Tuning: `AGENT_REINFORCE=off` disables re-injection; `AGENT_REINFORCE_DELTA_TOKENS` changes the growth threshold. State lives in `<session-key>.reinforce.json` next to the topic spec.
 
 `Alt-Enter` remains the manual way to prepend the prefix to a specific prompt as a direct user message.

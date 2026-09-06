@@ -165,6 +165,7 @@ def run_perturn_recall(tmp: str, payload: dict, env: dict) -> dict:
             ("hook_common.py", "hook_common.py"),
             ("executable_session_context.py", "session_context.py"),
             ("executable_perturn_recall.py", "perturn_recall.py"),
+            ("reinforcement.py", "reinforcement.py"),
         ):
             (deployed_hooks / target).write_text((HOOKS / source).read_text())
     result = subprocess.run(
@@ -841,12 +842,14 @@ class TestAgentHooks(unittest.TestCase):
                 len(context) <= len((REPO / "home/dot_config/exact_tmux/agent_prompts/prefix.txt").read_text()) + 2000
             )
 
-    def test_session_context_keeps_prefix_tail_beyond_old_cap(self):
+    def test_session_context_no_longer_injects_the_prefix_at_session_start(self):
+        # The SOP is fresh at the top of a new session; the excerpt only earns its place
+        # after context growth or a compaction (see the reinforcement tests below).
         with tempfile.TemporaryDirectory() as tmp:
             config_home = Path(tmp) / "config"
             prefix_path = config_home / "tmux" / "agent_prompts" / "prefix.txt"
             prefix_path.parent.mkdir(parents=True)
-            prefix_path.write_text(("P" * 3500) + "PREFIX_TAIL")
+            prefix_path.write_text("PREFIX_SENTINEL_START")
             env = dict(os.environ)
             env["XDG_CONFIG_HOME"] = str(config_home)
 
@@ -856,7 +859,185 @@ class TestAgentHooks(unittest.TestCase):
                 env=env,
             )
 
-            assert "PREFIX_TAIL" in result["additional_context"]
+            assert "PREFIX_SENTINEL_START" not in result["additional_context"]
+            assert "Apply the discipline above" not in result["additional_context"]
+
+    @staticmethod
+    def _write_claude_transcript(path: Path, context_tokens: int) -> None:
+        rows = [
+            {"type": "user", "message": {"role": "user", "content": "hello"}},
+            {
+                "type": "assistant",
+                "message": {
+                    "model": "claude-fable-5-1",
+                    "usage": {
+                        "input_tokens": 2,
+                        "cache_read_input_tokens": context_tokens - 2,
+                        "cache_creation_input_tokens": 0,
+                        "output_tokens": 10,
+                    },
+                },
+            },
+        ]
+        path.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
+
+    def _reinforcement_env(self, tmp: str, **extra: str) -> dict:
+        config_home = Path(tmp) / "config"
+        prefix_path = config_home / "tmux" / "agent_prompts" / "prefix.txt"
+        prefix_path.parent.mkdir(parents=True, exist_ok=True)
+        prefix_path.write_text("PREFIX_SENTINEL_REINFORCE")
+        env = make_aikb_stub(Path(tmp), [])
+        env["XDG_CONFIG_HOME"] = str(config_home)
+        env.update(extra)
+        return env
+
+    def test_perturn_reinforcement_fires_only_after_material_context_growth(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            env = self._reinforcement_env(tmp)
+            transcript = Path(tmp) / "transcript.jsonl"
+            payload = {
+                "hook_event_name": "UserPromptSubmit",
+                "session_id": "reinforce-growth",
+                "workspace_roots": [tmp],
+                "transcript_path": str(transcript),
+                "prompt": "a substantive prompt for reinforcement",
+            }
+
+            self._write_claude_transcript(transcript, 20_000)
+            first = run_perturn_recall(tmp, payload, env)
+            assert "PREFIX_SENTINEL_REINFORCE" not in json.dumps(first), "first observation is the baseline"
+
+            self._write_claude_transcript(transcript, 150_000)
+            steady = run_perturn_recall(tmp, payload, env)
+            assert "PREFIX_SENTINEL_REINFORCE" not in json.dumps(steady), "130k growth is under the 200k threshold"
+
+            self._write_claude_transcript(transcript, 221_000)
+            grown = run_perturn_recall(tmp, payload, env)
+            context = grown["hookSpecificOutput"]["additionalContext"]
+            assert context.startswith("PREFIX_SENTINEL_REINFORCE")
+            assert "Apply the discipline above to this and later prompts" in context
+            assert grown["additional_context"] == context
+
+            again = run_perturn_recall(tmp, payload, env)
+            assert "PREFIX_SENTINEL_REINFORCE" not in json.dumps(again), "baseline moved to the injection point"
+
+            state = json.loads((spec_dir / "reinforce-growth.reinforce.json").read_text())
+            assert state["reinjections"] == 1
+            assert state["last_reason"] == "growth"
+            assert state["last_tokens"] == 221_000
+
+    def test_perturn_reinforcement_fires_after_compaction_signal_or_shrink(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env = self._reinforcement_env(tmp)
+            transcript = Path(tmp) / "transcript.jsonl"
+            payload = {
+                "hook_event_name": "UserPromptSubmit",
+                "session_id": "reinforce-compact",
+                "workspace_roots": [tmp],
+                "transcript_path": str(transcript),
+                "prompt": "a substantive prompt for reinforcement",
+            }
+            self._write_claude_transcript(transcript, 90_000)
+            run_perturn_recall(tmp, payload, env)  # baseline
+
+            # Claude Code re-fires SessionStart with source=compact after a compaction.
+            run_hook(
+                "executable_session_context.py",
+                {
+                    "hook_event_name": "SessionStart",
+                    "source": "compact",
+                    "session_id": "reinforce-compact",
+                    "workspace_roots": [tmp],
+                },
+                env=env,
+            )
+            forced = run_perturn_recall(tmp, payload, env)
+            assert forced["hookSpecificOutput"]["additionalContext"].startswith("PREFIX_SENTINEL_REINFORCE")
+
+            # A large shrink of the observed context reads as a compaction on harnesses
+            # that give no explicit signal.
+            self._write_claude_transcript(transcript, 40_000)
+            shrunk = run_perturn_recall(tmp, payload, env)
+            assert shrunk["hookSpecificOutput"]["additionalContext"].startswith("PREFIX_SENTINEL_REINFORCE")
+
+            self._write_claude_transcript(transcript, 41_000)
+            assert "PREFIX_SENTINEL_REINFORCE" not in json.dumps(run_perturn_recall(tmp, payload, env))
+
+    def test_perturn_reinforcement_reads_codex_rollout_token_counts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env = self._reinforcement_env(tmp)
+            rollout = Path(tmp) / "rollout.jsonl"
+            payload = {
+                "hook_event_name": "UserPromptSubmit",
+                "session_id": "reinforce-codex",
+                "workspace_roots": [tmp],
+                "transcript_path": str(rollout),
+                "prompt": "a substantive prompt for reinforcement",
+            }
+
+            def write(tokens: int) -> None:
+                rows = [
+                    {"type": "session_meta", "payload": {"id": "reinforce-codex"}},
+                    {
+                        "type": "event_msg",
+                        "payload": {
+                            "type": "token_count",
+                            "info": {
+                                "last_token_usage": {"input_tokens": tokens, "output_tokens": 5},
+                                "model_context_window": 258400,
+                            },
+                        },
+                    },
+                ]
+                rollout.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
+
+            write(22_000)
+            run_perturn_recall(tmp, payload, env)
+            write(223_000)
+            grown = run_perturn_recall(tmp, payload, env)
+            assert grown["hookSpecificOutput"]["additionalContext"].startswith("PREFIX_SENTINEL_REINFORCE")
+
+    def test_perturn_reinforcement_falls_back_to_a_prompt_interval_without_usage(self):
+        # Cursor/Copilot payloads carry no transcript; the interval is the documented proxy.
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            env = self._reinforcement_env(tmp, AGENT_REINFORCE_PROMPTS="3")
+            payload = {
+                "hook_event_name": "UserPromptSubmit",
+                "conversation_id": "reinforce-interval",
+                "workspace_roots": [tmp],
+                "prompt": "a substantive prompt for reinforcement",
+            }
+            outcomes = [
+                "PREFIX_SENTINEL_REINFORCE" in json.dumps(run_perturn_recall(tmp, payload, env)) for _ in range(5)
+            ]
+            assert outcomes == [False, False, False, True, False]
+            state = json.loads((spec_dir / "reinforce-interval.reinforce.json").read_text())
+            assert state["last_reason"] == "prompt-count"
+
+    def test_perturn_reinforcement_counts_short_prompts_and_honours_the_kill_switch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env = self._reinforcement_env(tmp)
+            transcript = Path(tmp) / "transcript.jsonl"
+            payload = {
+                "hook_event_name": "UserPromptSubmit",
+                "session_id": "reinforce-short",
+                "workspace_roots": [tmp],
+                "transcript_path": str(transcript),
+                "prompt": "go",
+            }
+            self._write_claude_transcript(transcript, 10_000)
+            assert run_perturn_recall(tmp, payload, env) == {}
+            self._write_claude_transcript(transcript, 215_000)
+            short = run_perturn_recall(tmp, payload, env)
+            assert short["hookSpecificOutput"]["additionalContext"].startswith("PREFIX_SENTINEL_REINFORCE")
+            assert "candidates staged" not in short["hookSpecificOutput"]["additionalContext"]
+
+            self._write_claude_transcript(transcript, 500_000)
+            assert run_perturn_recall(tmp, payload, {**env, "AGENT_REINFORCE": "off"}) == {}
 
     def test_session_context_appends_aikb_reminder_with_named_topic(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -927,10 +1108,7 @@ class TestAgentHooks(unittest.TestCase):
                 worklog_body = json.dumps({"body": fill * 2980}, ensure_ascii=False) + "\n"
                 worklog_path.write_text(worklog_body)
                 config = Path(tmp) / "config"
-                prefix = config / "tmux/agent_prompts/prefix.txt"
-                prefix.parent.mkdir(parents=True)
-                prefix_body = (REPO / "home/dot_config/exact_tmux/agent_prompts/prefix.txt").read_text().strip()
-                prefix.write_text(prefix_body)
+                config.mkdir()
                 env = {**hook_env(), "AI_AGENT_DEPTH": "fast", "XDG_CONFIG_HOME": str(config)}
                 payload = {"session_id": "cursor-cap", "workspace_roots": [workspace], "warm_embedder": True}
                 original = run_hook(
@@ -951,19 +1129,25 @@ class TestAgentHooks(unittest.TestCase):
                     check=True,
                 )
                 original_units, bounded_units = json.loads(lengths.stdout)
-                self.assertGreater(original_units, 10000)
                 self.assertLessEqual(bounded_units, 10000)
-                self.assertIn(prefix_body, bounded)
                 self.assertIn("Durable Memory (,ai-kb)", bounded)
-                self.assertIn(str(worklog_path), bounded)
-                self.assertNotIn(worklog_body.strip(), bounded)
                 self.assertEqual(worklog_path.read_text(), worklog_body)
+                if fill == "x":
+                    # Same character counts, one UTF-16 unit each: fits, nothing is omitted.
+                    self.assertLessEqual(original_units, 10000)
+                    self.assertEqual(bounded, original)
+                    self.assertIn(worklog_body.strip(), bounded)
+                else:
+                    # Two UTF-16 units per emoji: over the cap. Optional artifacts are omitted
+                    # in order until the context fits: the worklog goes first and, once the
+                    # remainder fits, the spec is retained whole (never sliced).
+                    self.assertGreater(original_units, 10000)
+                    self.assertIn(str(worklog_path), bounded)
+                    self.assertNotIn(worklog_body.strip(), bounded)
+                    self.assertIn(spec_body, bounded)
                 self.assertEqual(spec_path.read_text(), spec_body)
                 if fill == "x":
                     self.assertIn(spec_body, bounded)
-                else:
-                    self.assertNotIn(fill * 100, bounded)
-                    self.assertIn(str(spec_path), bounded)
 
     def test_named_startup_fast_and_disable_status_do_not_search(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -2439,7 +2623,8 @@ console.log(JSON.stringify({ content: result?.message?.content ?? null }));
         hook = (HOOKS / "executable_perturn_recall.py").read_text()
 
         session_context = (HOOKS / "executable_session_context.py").read_text()
-        python_limit = int(re.search(r"^MAX_PREFIX_CHARS = (\d+)$", session_context, re.MULTILINE).group(1))
+        reinforcement = (HOOKS / "reinforcement.py").read_text()
+        python_limit = int(re.search(r"^MAX_PREFIX_CHARS = (\d+)$", reinforcement, re.MULTILINE).group(1))
         prefix_length = len((REPO / "home/dot_config/exact_tmux/agent_prompts/prefix.txt").read_text().strip())
         assert prefix_length <= python_limit
         for extension in (pi_extension, omp_extension):
@@ -2687,7 +2872,7 @@ for(const failure of ['absent','failed','killed','throws']){
   const ctx={cwd:tmp,getContextUsage(){return {percent:5}},sessionManager:{getSessionId(){return key}}};
   await handlers.session_start({},ctx);
   const run=async()=> (await handlers.before_agent_start({prompt:'Did you actually verify this claim?'},ctx))?.message?.content??'';
-  let first=await run();assert(first.includes('PREFIX_PARTIAL'));assert(first.includes('User correction signal'));assert(!first.includes('PRIOR_CONCLUSION'));
+  let first=await run();assert(!first.includes('PREFIX_PARTIAL'));assert(first.includes('User correction signal'));assert(!first.includes('PRIOR_CONCLUSION'));
   if(helper==='available')assert(first.includes(review?'target: PR 123':'target: current named task'));
   await handlers.session_compact({},ctx);assert((await run()).includes('PREFIX_PARTIAL'));
   process.env.AGENT_HOOK_CONTEXT='off';assert.equal(await run(),'');

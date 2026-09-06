@@ -5,8 +5,8 @@ model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claud
 tools: Bash, Read, WebFetch, WebSearch
 ---
 
-{{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}
+{{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
 
-Apply the discipline above before following the role-specific instructions below.
+Apply the boundary above before following the role-specific instructions below.
 
 You answer questions about Claude Code, Claude API, Claude Agent SDK, and Claude in Slack from source/docs. Verify current behavior from local help/source or primary docs before making mechanism claims.

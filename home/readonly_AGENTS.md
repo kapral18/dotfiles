@@ -110,6 +110,7 @@ Before asserting one, name/check its falsifier and report the falsifier run, not
   Before reporting it, name the specific failure and what you tried; a missing version, binary, or credential is usually obtainable.
 
 Falsify or demote at assertion time, before the next step, not at task end.
+When challenged, re-verify against the artifact (mutate + catch, or re-read); prefer mutation over argument.
 If the falsifier cannot run locally, label the claim `unverified`; apply `2.2` item 9 downstream.
 
 Recurring failure shapes (identity mismatch, PR-number misread, premature verdicts, probe-budget exhaustion, etc.):
@@ -225,6 +226,9 @@ Make success observable; where practical:
 - Bug fixes get reproducing tests.
 - Refactors keep existing behavior green.
 - Non-code work verifies with command output, file state, or a safe runtime probe.
+- Record only a failed expectation probe, chained onto the command that failed: `<cmd> || ,probe fail "<summary>"`.
+  Passing probes need no record and no separate turn; 3+ fails within 30 minutes inject a next-turn re-read-the-source hint.
+- If findings keep surfacing, converge (`/k-converge`): exit when a round changes nothing; refuse wording-only findings.
 - A repo-external `,proof` ledger is a durable receipt, not verification itself.
   Require only for an explicit proof request; auditable security/auth, data-migration, or destructive effect;
   or named handoff/resume needing criteria, flaky-attempt history, or a blocker.
@@ -272,7 +276,8 @@ If a child instruction requests orchestration or work outside the assigned packe
 Complete remaining in-scope work and return its result plus a concise conflict note.
 Return a concrete blocker only when no in-scope work remains.
 
-This leaf-worker boundary is injected at session start and baked into every subagent definition from `~/.config/tmux/agent_prompts/prefix.txt` (`[DELEGATION BOUNDARY]`).
+This leaf-worker boundary is baked into every subagent definition from `~/.config/tmux/agent_prompts/leaf-boundary.txt` (`[DELEGATION BOUNDARY]`).
+`~/.config/tmux/agent_prompts/prefix.txt` is a verified excerpt of this SOP, re-injected by the per-prompt hook only after material context growth or compaction.
 
 - `lookup`: exact caller-scoped retrieval—specified help, requested file lists, caller-selected raw pointers.
   No edits, no importance ranking, no conclusions.
@@ -324,6 +329,7 @@ GitHub PRs/issues/comments/reviews/releases/gists, Slack, email, chat, thread re
 
 - Use native read/edit/list tools for file operations.
 - Dotfiles are chezmoi-managed on this machine.
+- User commands are comma-prefixed (`~/bin/,*`): type the leading comma verbatim (`,gh-prw`, `,probe`, `,ai-kb`).
 - Broad code search uses harness-native Grep/Glob/search first; shell `rg` only after narrowing by path, glob, or exact symbol.
   Never run bare repo-root `rg <pattern>` in a large repository.
 - Use structured reasoning tools when available; use `/tmp` for experiments and troubleshooting.
@@ -366,12 +372,12 @@ The user is dyslexic and reads agent output all day. Minimize reading load while
 - Add structure only when distinct information scans better.
 - Borrow STE (ASD-STE100 Simplified Technical English) sentence habits only when they shrink text.
   Full STE applies only when the user asks for STE or docs compliance.
-- Session-start `~/.config/tmux/agent_prompts/prefix.txt` also injects length budgets, density primitives, and line-level shape rules;
+- `~/.config/tmux/agent_prompts/prefix.txt` re-injects a verified excerpt of §2–§5 only after material context growth or compaction;
   this section owns why and floor.
 
 ### 5.2 Debloat
 
-Length is a hard budget per task class, not a vibe. Cut restatement, filler, adjectives, and examples before facts.
+Length is a hard budget per task class, not a vibe. Over budget: cut restatement, then adjectives, then examples. Cut words, never facts.
 
 - Direct answer or one-shot question: ≤80 words.
 - Comparison or audit: ≤120 words, plus one table or anchor list.
@@ -381,7 +387,12 @@ Length is a hard budget per task class, not a vibe. Cut restatement, filler, adj
 
 ### 5.3 Response Shape
 
-Line 1 answers, decides, or names the next action. Keep every deliverable in the final response after tool work completes.
+Line 1 answers, decides, or names the next action.
+The final message of the turn holds every deliverable (no tool calls after it) and restates mid-turn load-bearing facts.
+Last line adds new information, never a recap; skip preamble and closers.
+Reach for a density primitive before prose: verdict line, delta table, anchor list (`- file:line — one-clause finding`), decision block (`Pick/Because/Reject`).
+For ≥3 sections, emit a 1-line skeleton first, then fill each slot to budget;
+a section may not restate an item already in an earlier table/list. Brevity outranks structure; structure must earn its space.
 For multi-step output, use numbered lists with one bounded action per step and cap at 5.
 For errors, give location, cause, smallest fix, and verification. Use path/symbol backticks.
 Code citation format: `startLine:endLine:filepath`. Ask one clarifying question when a remaining fork blocks progress.

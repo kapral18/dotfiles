@@ -17,13 +17,13 @@ There are two portable layers:
 | Skills (`~/.agents/skills/`) | Yes       | Cross-harness source of truth for methodology and routing                |
 | Subagents                    | No        | Runtime-specific wrappers that load a skill in an isolated child context |
 
-Every custom subagent profile is a chezmoi template that renders the shared tmux `prefix.txt` preamble before role instructions. Child contexts therefore start with the same verification discipline as parent sessions.
+Every custom subagent profile is a chezmoi template that renders the shared `leaf-boundary.txt` preamble (the SOP §3.7 leaf-worker boundary, verbatim) before role instructions. Children already load the full SOP through their harness context files, so the preamble restates only the boundary that a child must never cross.
 
 Only the active root/main session orchestrates multiple agents or lanes. Delegated children are always leaf workers: they complete the assigned packet, perform its normal verification, and return evidence or a blocker to the parent without launching descendants or inventing extra lanes inline.
 
 Repo-owned custom subagent identifiers use the `k-agent-<role>` namespace. Harness-native identifiers retain their original names; the repo must not prefix or alias them.
 
-The role body itself is single-sourced. Each per-tool profile is a thin shim: supported harness-native model and tool metadata + the `prefix.txt` preamble + `Load and follow ~/.agents/skills/k-review/references/<role>.md`.
+The role body itself is single-sourced. Each per-tool profile is a thin shim: supported harness-native model and tool metadata + the `leaf-boundary.txt` preamble + `Load and follow ~/.agents/skills/k-review/references/<role>.md`.
 
 ## Using it
 
@@ -123,7 +123,7 @@ Pi/OMP controller files retain native profile notes and dispatch to the canonica
 
 ## Design notes
 
-- Profile bodies start with `prefix.txt`, then instruct the child to load the wrapped skill or runtime contract.
+- Profile bodies start with `leaf-boundary.txt`, then instruct the child to load the wrapped skill or runtime contract.
 - Cursor/Copilot `k-deep-review` profiles load only the `/k-deep-review` skill.
 - Reviewer/auditor/live profiles load the runtime contracts, and reviewer workers load shared `k-review` methodology inside child contexts.
 - Cursor loads project-level `.cursor/agents` (the Task protocol has a custom subagent-name field), but never user-level `~/.cursor/agents` — the deployed user-level profiles are unreachable at runtime. They stay deployed deliberately (user call 2026-08-30): upstream documents user-level discovery, so the gap is a cursor-agent bug, and the profiles activate the moment it is fixed. Until then, Cursor `k-agent-smol`/review delegation rides the generic-spawn fallback and the band gate.

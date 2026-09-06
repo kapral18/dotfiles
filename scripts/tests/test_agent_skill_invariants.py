@@ -226,11 +226,16 @@ class TestAgentSkillInvariants(unittest.TestCase):
                 "re-verify it against the artifact",
                 "/k-converge",
             )
-        # Shared discipline block carries the mechanism for every harness.
+        # The core SOP carries the mechanism for every harness; the reinforcement excerpt
+        # re-injects the challenge rule after context growth.
+        self.assert_file_contains(
+            "home/readonly_AGENTS.md",
+            "prefer mutation over argument",
+            "/k-converge",
+        )
         self.assert_file_contains(
             "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
-            "Prefer mutation over argument",
-            "/k-converge",
+            "prefer mutation over argument",
         )
         # Every SDLC surface that already runs adversarial work points at the bounded loop.
         # Assert the load-bearing handoff phrase, not the bare token: a passing mention in a
