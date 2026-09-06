@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from pathlib import Path
 
 from hook_common import bounded_text, emit, read_payload, session_key, topic_paths_for_write, utc_now
 
@@ -65,6 +66,16 @@ def _record(spec_dir, key: str, topic: str, worklog_path, entry: dict) -> str:
     return ""
 
 
+def _context_label(payload: dict) -> str:
+    """Which context produced the event: a child agent (Claude Code passes agent_id/agent_type
+    only for child calls; transcript_path stays the parent's) or the main transcript."""
+    agent_id = payload.get("agent_id")
+    if isinstance(agent_id, str) and agent_id:
+        return f"agent-{agent_id}:{payload.get('agent_type') or ''}".rstrip(":")
+    value = payload.get("transcript_path")
+    return Path(value).stem[:16] if isinstance(value, str) and value else ""
+
+
 def main() -> None:
     if os.environ.get("AGENT_WORKLOG_DISPATCHED") == "1":
         try:
@@ -81,6 +92,8 @@ def main() -> None:
         "event": payload.get("hook_event_name"),
         "model": payload.get("model"),
         "tool_name": payload.get("tool_name"),
+        # Which context produced the event: the main transcript or a child agent's own file.
+        "context": _context_label(payload),
         "command": command_from(payload),
         "duration": payload.get("duration"),
         "status": payload.get("status"),

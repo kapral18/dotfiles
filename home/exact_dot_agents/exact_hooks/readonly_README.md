@@ -133,6 +133,15 @@ State is `<session-key>.reinforce.json` next to the topic spec; every failure pa
 Worklogs are trimmed during serialized queue flush so runtime state does not grow forever.
 The same flush pass also removes `session-*` fallback worklogs and per-session recall state (`.recall-seen-*`, `.recall-candidates-*`, `.recall-staged-*`, `.recall-pointed-*`, `.recall-warm-*`) older than seven days; named-topic worklogs are never swept.
 
+`read_gate.py` refuses a second whole-file read whose bytes match an earlier read in the same context, naming that read and the escape hatches (offset/limit or any ranged read, `sed -n`, `AGENT_READ_GATE=off`).
+Before refusing it re-opens the history store and checks that the recorded result still reproduces the file;
+a truncated preview, missing row, or garbled copy allows the read silently and notes the reason in the ledger.
+A changed file is always allowed with a "changed since your read" note. First reads, slices, pipes and redirects are never touched.
+Ledger `.reads-<context>.json` is keyed by child `agent_id` (Claude Code passes the parent's `transcript_path` for children) or by session;
+entries from before a compaction epoch never block.
+Coverage: Claude Code and Codex (hooks.json), Pi (`read-gate.ts`), Cursor (`beforeReadFile`/shell events, history in `~/.config/cursor/chats/*/<conversation_id>/store.db`, `stop` token shrink = compaction), Copilot (extension `onPreToolUse`/`onPostToolUse`, history in `session-state/<id>/events.jsonl`, `session.compaction_complete` resets).
+OMP supersedes earlier reads itself and is left alone; Antigravity is unwired (transcript shape unverified).
+
 Tool adapters invoke `worklog_dispatcher.sh`, which captures the JSON payload and launches `worklog_recorder.py` without waiting for filesystem bookkeeping.
 The recorder durably enqueues a session-sequenced event, and a transient worker flushes it under a per-target lock.
 Queue records are atomically published and fsynced; stable IDs make crash replay idempotent, and target output is timestamp-ordered for harvest.

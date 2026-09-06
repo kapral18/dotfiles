@@ -28,6 +28,10 @@
       {
         "command": "$HOME/.agents/hooks/premise_nudge.py",
         "timeout": 10
+      },
+      {
+        "command": "AGENT_HOOK_HARNESS=cursor $HOME/.agents/hooks/read_gate.py",
+        "timeout": 10
       }
     ],
     "postToolUse": [
@@ -56,6 +60,22 @@
       },
       {
         "command": "$HOME/.agents/hooks/premise_nudge.py",
+        "timeout": 10
+      },
+      {
+        "command": "AGENT_HOOK_HARNESS=cursor $HOME/.agents/hooks/read_gate.py",
+        "timeout": 10
+      }
+    ],
+    "beforeReadFile": [
+      {
+        "command": "AGENT_HOOK_HARNESS=cursor $HOME/.agents/hooks/read_gate.py",
+        "timeout": 10
+      }
+    ],
+    "stop": [
+      {
+        "command": "AGENT_HOOK_HARNESS=cursor $HOME/.agents/hooks/read_gate.py",
         "timeout": 10
       }
     ]

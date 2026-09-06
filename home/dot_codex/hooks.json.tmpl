@@ -24,7 +24,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "shell",
+        "matcher": "Bash|shell",
         "hooks": [
           {
             "type": "command",
@@ -34,7 +34,17 @@
         ]
       },
       {
-        "matcher": "spawn_agent",
+        "matcher": "Bash|shell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh -c 'AGENT_HOOK_OUTPUT=hook_specific exec {{ .chezmoi.homeDir }}/.agents/hooks/read_gate.py'",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": ".*spawn_agent",
         "hooks": [
           {
             "type": "command",
@@ -46,11 +56,21 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "shell",
+        "matcher": "Bash|shell",
         "hooks": [
           {
             "type": "command",
             "command": "/bin/sh -c 'AGENT_HOOK_OUTPUT=hook_specific exec {{ .chezmoi.homeDir }}/.agents/hooks/premise_nudge.py'",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|shell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh -c 'AGENT_HOOK_OUTPUT=hook_specific exec {{ .chezmoi.homeDir }}/.agents/hooks/read_gate.py'",
             "timeout": 10
           }
         ]

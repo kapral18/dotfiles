@@ -7,6 +7,11 @@ const SESSION_CONTEXT_HOOK = "session_context.py";
 const WORKLOG_RECORDER_HOOK = "worklog_dispatcher.sh";
 const PERTURN_RECALL_HOOK = "perturn_recall.py";
 const BAND_GATE_HOOK = "band_gate.py";
+const READ_GATE_HOOK = "read_gate.py";
+// Copilot's file reader is `view` (args.path) and its shell is `bash` (args.command); the
+// session event log under ~/.copilot/session-state/<id>/events.jsonl holds every tool result
+// verbatim plus session.compaction_complete markers (probed 2026-09-06).
+const READ_GATED_TOOLS = new Set([ "view", "bash" ]);
 // Kept in sync BY HAND with DELEGATION_TOOLS in ~/.agents/hooks/band_gate.py.
 const DELEGATION_TOOLS = new Set([ "Task", "Agent", "spawn_agent", "subagent", "Subagent", "task" ]);
 const EXTENSION_INFO = { source: "user", name: "agent-memory" };
@@ -37,9 +42,11 @@ export function sessionStartPayload(input, invocation = {}) {
 
 export function postToolUsePayload(input, invocation = {}, eventName = "postToolUse") {
     const result = input?.toolResult || {};
+    const sessionId = sessionIdFrom(input, invocation);
     return {
         hook_event_name: eventName,
-        session_id: sessionIdFrom(input, invocation),
+        session_id: sessionId,
+        transcript_path: sessionEventsPath(sessionId),
         cwd: input?.workingDirectory,
         workspace_roots: workspaceRoots(input),
         tool_name: input?.toolName,
@@ -63,15 +70,53 @@ export function postToolUseFailurePayload(input, invocation = {}) {
     };
 }
 
+function sessionEventsPath(sessionId) {
+    const home = process.env.HOME || homedir();
+    return sessionId ? join(home, ".copilot", "session-state", sessionId, "events.jsonl") : "";
+}
+
 export function preToolUsePayload(input, invocation = {}) {
+    const sessionId = sessionIdFrom(input, invocation);
     return {
         hook_event_name: "PreToolUse",
-        session_id: sessionIdFrom(input, invocation),
+        session_id: sessionId,
+        transcript_path: sessionEventsPath(sessionId),
         cwd: input?.workingDirectory,
         workspace_roots: workspaceRoots(input),
         tool_name: input?.toolName,
         tool_input: input?.toolArgs,
     };
+}
+
+export async function readGateDecision(scriptPath, payload) {
+    // Refuse a byte-identical second whole-file read that is verifiably intact in history.
+    if (!READ_GATED_TOOLS.has(payload?.tool_name)) {
+        return undefined;
+    }
+    try {
+        const result = await runHookScript(scriptPath, payload);
+        if (result?.decision === "block" && typeof result.reason === "string") {
+            return { permissionDecision: "deny", permissionDecisionReason: result.reason };
+        }
+    } catch {
+        // fail open
+    }
+    return undefined;
+}
+
+export async function recordRead(scriptPath, payload) {
+    if (!READ_GATED_TOOLS.has(payload?.tool_name)) {
+        return;
+    }
+    try {
+        await runHookScript(scriptPath, {
+            ...payload,
+            hook_event_name: "PostToolUse",
+            tool_response: payload?.tool_output,
+        });
+    } catch {
+        // fail open
+    }
 }
 
 export function userPromptSubmittedPayload(input, invocation = {}) {
@@ -212,17 +257,18 @@ async function main() {
                 return additionalContext ? { additionalContext } : undefined;
             },
             onPreToolUse: async (input, invocation) => {
-                const modifiedArgs = await bandModifiedArgs(
-                    hookPath(BAND_GATE_HOOK),
-                    preToolUsePayload(input, invocation),
-                );
+                const payload = preToolUsePayload(input, invocation);
+                const denial = await readGateDecision(hookPath(READ_GATE_HOOK), payload);
+                if (denial) {
+                    return denial;
+                }
+                const modifiedArgs = await bandModifiedArgs(hookPath(BAND_GATE_HOOK), payload);
                 return modifiedArgs ? { modifiedArgs } : undefined;
             },
             onPostToolUse: async (input, invocation) => {
-                await recordWorklog(
-                    hookPath(WORKLOG_RECORDER_HOOK),
-                    postToolUsePayload(input, invocation),
-                );
+                const payload = postToolUsePayload(input, invocation);
+                await recordRead(hookPath(READ_GATE_HOOK), payload);
+                await recordWorklog(hookPath(WORKLOG_RECORDER_HOOK), payload);
             },
             onPostToolUseFailure: async (input, invocation) => {
                 await recordWorklog(

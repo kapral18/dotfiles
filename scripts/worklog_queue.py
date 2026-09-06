@@ -38,6 +38,7 @@ STALE_STATE_GLOBS = (
     ".recall-staged-*.json",
     ".recall-pointed-*.json",
     ".recall-warm-*.json",
+    ".reads-*.json",
 )
 MAX_STALE_REMOVALS_PER_PASS = 64
 

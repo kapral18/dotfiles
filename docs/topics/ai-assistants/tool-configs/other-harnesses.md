@@ -139,6 +139,14 @@ Claude's selected Copilot context window becomes `CLAUDE_CODE_AUTO_COMPACT_WINDO
 
 The GitHub bearer is added only on the adapter's upstream request together with Copilot's `copilot-developer-cli` integration ID. A `401` refreshes the value from `gh auth token` and retries once; other failures pass through without retry. Interactive interrupts propagate to the native harness, while adapter shutdown suppresses follow-up `SIGINT` delivery so cleanup does not emit a Python traceback.
 
+### Re-read gate coverage
+
+The hash-gated re-read refusal runs on Claude Code, Codex, and Pi (via `~/.pi/agent/extensions/read-gate.ts`, which feeds `tool_call`/`tool_result` into the shared `read_gate.py`). OMP is excluded on purpose: it supersedes the earlier read result in the session as soon as a re-read is attempted, so a block would strip the bytes from the model; OMP therefore dedups re-reads natively. Cursor is wired through `beforeReadFile` (which fires after the read and gates delivery), `beforeShellExecution`, `afterShellExecution`, and `stop`; its tool results live in the conversation's `~/.config/cursor/chats/*/<conversation_id>/store.db` (verbatim JSON blobs), and a token shrink reported by `stop` counts as a compaction. Copilot is wired through the agent-memory extension's `onPreToolUse`/`onPostToolUse`; its `~/.copilot/session-state/<id>/events.jsonl` holds every tool result and `session.compaction_complete` markers. Antigravity can deny on `PreToolUse`, but its transcript and `PostToolUse` result shapes are unverified, so it is not wired.
+
+### Codex hooks: tool names and trust
+
+Codex reports hook tool names in Claude's vocabulary: shell commands (the plain `exec_command` tool and the code-mode `exec` tool alike) arrive as `Bash`, and spawns as `collaborationspawn_agent`, so `hooks.json` matches `Bash|shell` and `.*spawn_agent` (probed 2026-09-06 with a catch-all dump hook on codex-cli 0.153.4). Codex also runs only hooks it has trusted: `~/.codex/config.toml` keeps a `[hooks.state.<file>:<event>:<index>]` `trusted_hash` per entry, written by the TUI's hooks review, and `chezmoi apply` only preserves those rows. After the repo adds or changes a hook entry, open interactive Codex once and accept the hooks review, or the new entry stays silently inert. `codex exec --dangerously-bypass-hook-trust` runs them without that step and is only for vetted automation such as probes.
+
 ### Codex hosted MCP token bridges
 
 `inject_mcp_into_codex_toml.py` emits `slack` and `scsi-main` as `,mcp-token <source> --bridge --url <url>` command servers, not inline secrets or env-var contracts.

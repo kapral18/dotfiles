@@ -230,6 +230,10 @@ def main() -> int:
     schema_harness = os.environ.get(SCHEMA_HARNESS_ENV, "") or harness
     adapter = ADAPTERS.get(harness)
     tool = payload.get("tool_name") or payload.get("tool") or ""
+    # Codex 0.153 reports its spawn tool namespaced ("collaborationspawn_agent", probed
+    # 2026-09-06); the suffix is the tool.
+    if isinstance(tool, str) and tool.endswith("spawn_agent"):
+        tool = "spawn_agent"
     tool_input = payload.get("tool_input") or payload.get("arguments") or {}
 
     # Copilot hands the tool arguments over as a JSON string rather than an object (verified

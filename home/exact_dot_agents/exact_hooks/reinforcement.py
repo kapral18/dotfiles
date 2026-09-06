@@ -87,6 +87,8 @@ def mark_compaction(spec_dir: Path, key: str) -> None:
         return
     state = load_state(spec_dir, key)
     state["force"] = True
+    # Epoch consumers (read_gate.py) treat everything recorded before a compaction as gone.
+    state["compactions"] = int(state.get("compactions", 0) or 0) + 1
     save_state(spec_dir, key, state)
 
 
@@ -195,6 +197,7 @@ def decide(state: dict[str, Any], tokens: int | None) -> tuple[bool, str]:
             reason = "baseline"
         elif tokens < last * COMPACTION_SHRINK_RATIO:
             inject, reason = True, "compaction"
+            state["compactions"] = int(state.get("compactions", 0) or 0) + 1
         elif tokens - last >= _delta_tokens():
             inject, reason = True, "growth"
     else:

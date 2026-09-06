@@ -7,7 +7,11 @@
   "effortLevel": "xhigh",
   "agentPushNotifEnabled": true,
   "tui": "fullscreen",
-  "modelSettings": { "claude-fable-5-1": { "effortLevel": "high" } },
+  "modelSettings": {
+    "claude-fable-5-1": {
+      "effortLevel": "high"
+    }
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -40,6 +44,15 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Read|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.agents/hooks/read_gate.py"
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -60,6 +73,15 @@
             "type": "command",
             "command": "$HOME/.agents/hooks/premise_nudge.py",
             "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.agents/hooks/read_gate.py"
           }
         ]
       }

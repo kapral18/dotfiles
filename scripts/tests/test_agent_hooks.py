@@ -996,6 +996,404 @@ class TestAgentHooks(unittest.TestCase):
             self.assertEqual((spec_dir / ".session-topic-bind-test.txt").read_text().strip(), "alpha")
             self.assertIn("candidates staged", context)
 
+    def _gate(self, payload: dict, env: dict | None = None) -> dict:
+        return run_hook("executable_read_gate.py", payload, env=env)
+
+    @staticmethod
+    def _record_result(
+        transcript: Path,
+        tool_use_id: str,
+        *,
+        stdout: str | None = None,
+        file_content: str | None = None,
+        persisted: bool = False,
+        codex_output: str | None = None,
+    ) -> None:
+        """Append a transcript row in the shape Claude Code (or Codex) writes for a tool result."""
+        if codex_output is not None:
+            row = {
+                "type": "response_item",
+                "payload": {"type": "function_call_output", "call_id": tool_use_id, "output": codex_output},
+            }
+        else:
+            result: dict = (
+                {"stdout": stdout or "", "stderr": ""}
+                if file_content is None
+                else {"type": "text", "file": {"filePath": "x", "content": file_content}}
+            )
+            if persisted:
+                result["persistedOutputPath"] = "/tmp/preview.txt"
+            text = "<persisted-output>\npreview" if persisted else (stdout if file_content is None else file_content)
+            row = {
+                "type": "user",
+                "toolUseResult": result,
+                "message": {
+                    "role": "user",
+                    "content": [{"type": "tool_result", "tool_use_id": tool_use_id, "content": text}],
+                },
+            }
+        with transcript.open("a") as handle:
+            handle.write(json.dumps(row) + "\n")
+
+    def _read_cycle(self, base: dict, target: Path, tool_use_id: str, *, numbered: bool = True) -> dict:
+        """First read: pre (allow), post (record), transcript row (Read shape). Returns the pre payload."""
+        read = {**base, "tool_name": "Read", "tool_input": {"file_path": str(target)}, "tool_use_id": tool_use_id}
+        # A first read (or a read after the file changed) is always allowed; it may carry a staleness note.
+        self.assertNotIn("reason", self._gate({**read, "hook_event_name": "PreToolUse"}))
+        content = target.read_text()
+        numbered_text = "\n".join(f"{i + 1}\t{line}" for i, line in enumerate(content.splitlines()))
+        self._gate(
+            {
+                **read,
+                "hook_event_name": "PostToolUse",
+                "tool_response": {
+                    "type": "text",
+                    "file": {"filePath": str(target), "content": numbered_text if numbered else content},
+                },
+            }
+        )
+        self._record_result(
+            Path(base["transcript_path"]), tool_use_id, file_content=numbered_text if numbered else content
+        )
+        return {**read, "hook_event_name": "PreToolUse"}
+
+    def test_read_gate_blocks_only_a_byte_identical_second_whole_read_that_is_intact_in_history(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "module.py"
+            target.write_text("print('v1')\nprint('more')\n")
+            base = {"session_id": "gate-session", "workspace_roots": [tmp], "transcript_path": f"{tmp}/t.jsonl"}
+            pre = self._read_cycle(base, target, "toolu_read_1")
+            second = self._gate(pre)
+            self.assertEqual(second["hookSpecificOutput"]["permissionDecision"], "deny")
+            self.assertIn("byte-identical to your read at", second["reason"])
+            self.assertIn("offset/limit", second["reason"])
+            # Targeted reads are never gated.
+            self.assertEqual(self._gate({**pre, "tool_input": {"file_path": str(target), "offset": 1}}), {})
+            # A changed file is allowed, with a staleness note; a fresh intact read blocks again.
+            target.write_text("print('v2')\n")
+            changed = self._gate(pre)
+            self.assertNotIn("reason", changed)
+            self.assertIn("changed since your read", changed["additional_context"])
+            pre2 = self._read_cycle(base, target, "toolu_read_2")
+            self.assertEqual(self._gate(pre2)["hookSpecificOutput"]["permissionDecision"], "deny")
+
+    def test_read_gate_allows_when_history_is_truncated_missing_or_garbled(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "big.txt"
+            target.write_text("line\n" * 50)
+            transcript = Path(tmp) / "t.jsonl"
+            base = {"session_id": "gate-history", "workspace_roots": [tmp], "transcript_path": str(transcript)}
+            cat = {**base, "tool_name": "Bash", "tool_input": {"command": f"cat {target}"}}
+            # 1. Truncated at record time (persisted preview): nothing is recorded, no block.
+            self._gate(
+                {
+                    **cat,
+                    "hook_event_name": "PostToolUse",
+                    "tool_use_id": "t1",
+                    "tool_response": {"stdout": "line\n", "persistedOutputPath": "/tmp/x"},
+                }
+            )
+            self.assertEqual(self._gate({**cat, "hook_event_name": "PreToolUse"}), {})
+            # 2. Recorded complete, but history later holds only a preview: allow with a note.
+            self._gate(
+                {
+                    **cat,
+                    "hook_event_name": "PostToolUse",
+                    "tool_use_id": "t2",
+                    "tool_response": {"stdout": target.read_text()},
+                }
+            )
+            self._record_result(transcript, "t2", stdout="line\n", persisted=True)
+            self.assertEqual(self._gate({**cat, "hook_event_name": "PreToolUse"}), {})
+            ledger_file = next((SPEC_ROOT / str(Path(tmp).resolve()).lstrip("/")).glob(".reads-*gate-history*.json"))
+            self.assertIn("truncated preview", json.loads(ledger_file.read_text())[str(target)]["dropped"])
+            # 3. Recorded but the row never reached the transcript: allow silently, and the stale entry is dropped.
+            self._gate(
+                {
+                    **cat,
+                    "hook_event_name": "PostToolUse",
+                    "tool_use_id": "t3",
+                    "tool_response": {"stdout": target.read_text()},
+                }
+            )
+            self.assertEqual(self._gate({**cat, "hook_event_name": "PreToolUse"}), {})
+            self.assertIn("no longer found", json.loads(ledger_file.read_text())[str(target)]["dropped"])
+            self.assertEqual(self._gate({**cat, "hook_event_name": "PreToolUse"}), {})
+            # 4. Garbled copy in history: allow.
+            self._gate(
+                {
+                    **cat,
+                    "hook_event_name": "PostToolUse",
+                    "tool_use_id": "t4",
+                    "tool_response": {"stdout": target.read_text()},
+                }
+            )
+            self._record_result(transcript, "t4", stdout="line\n" * 49 + "garbled\n")
+            self.assertEqual(self._gate({**cat, "hook_event_name": "PreToolUse"}), {})
+            self.assertIn("does not match", json.loads(ledger_file.read_text())[str(target)]["dropped"])
+            # 5. Intact Bash stdout in history: block.
+            self._gate(
+                {
+                    **cat,
+                    "hook_event_name": "PostToolUse",
+                    "tool_use_id": "t5",
+                    "tool_response": {"stdout": target.read_text()},
+                }
+            )
+            self._record_result(transcript, "t5", stdout=target.read_text())
+            self.assertEqual(self._gate({**cat, "hook_event_name": "PreToolUse"})["decision"], "block")
+            # 6a. OMP read tool decorates output with a [path#hash] header and N: line numbers.
+            omp = {
+                **base,
+                "session_id": "gate-omp",
+                "transcript_path": f"{tmp}/omp.jsonl",
+                "tool_name": "read",
+                "tool_input": {"path": str(target)},
+            }
+            decorated = (
+                f"[{target}#00ab]\n"
+                + "\n".join(f"{i + 1}:{line}" for i, line in enumerate(target.read_text().splitlines()))
+                + "\n"
+            )
+            self._gate({**omp, "hook_event_name": "PostToolUse", "tool_use_id": "omp-1", "tool_response": decorated})
+            with Path(omp["transcript_path"]).open("a") as handle:
+                handle.write(
+                    json.dumps(
+                        {
+                            "type": "message",
+                            "timestamp": "2099-01-01T00:00:00.000Z",
+                            "message": {
+                                "role": "toolResult",
+                                "toolCallId": "omp-1",
+                                "toolName": "read",
+                                "isError": False,
+                                "content": [{"type": "text", "text": decorated}],
+                            },
+                        }
+                    )
+                    + "\n"
+                )
+            self.assertEqual(
+                self._gate({**omp, "hook_event_name": "PreToolUse"})["hookSpecificOutput"]["permissionDecision"], "deny"
+            )
+            # 6b. Codex code mode: the hook id is an inner exec id, the rollout stores the outer
+            #     call id with a JSON-wrapped output; the content fallback still finds the read.
+            cm = {
+                **base,
+                "session_id": "gate-codemode",
+                "transcript_path": f"{tmp}/codemode.jsonl",
+                "tool_name": "Bash",
+                "tool_input": {"command": f"cat {target}"},
+            }
+            self._gate(
+                {
+                    **cm,
+                    "hook_event_name": "PostToolUse",
+                    "tool_use_id": "exec-inner-1",
+                    "tool_response": target.read_text(),
+                }
+            )
+            wrapped = [
+                {"type": "input_text", "text": "Script completed\nWall time 0.2 seconds\nOutput:\n"},
+                {
+                    "type": "input_text",
+                    "text": json.dumps({"chunk_id": "x", "exit_code": 0, "output": target.read_text()}),
+                },
+            ]
+            with Path(cm["transcript_path"]).open("a") as handle:
+                handle.write(
+                    json.dumps(
+                        {
+                            "timestamp": "2099-01-01T00:00:00.000Z",
+                            "type": "response_item",
+                            "payload": {"type": "custom_tool_call_output", "call_id": "call_outer", "output": wrapped},
+                        }
+                    )
+                    + "\n"
+                )
+            self.assertEqual(
+                self._gate({**cm, "hook_event_name": "PreToolUse"})["hookSpecificOutput"]["permissionDecision"], "deny"
+            )
+            # 6. Codex rollout shape: the exec output wraps the file text.
+            codex = {
+                **base,
+                "session_id": "gate-codex",
+                "transcript_path": f"{tmp}/rollout.jsonl",
+                "tool_name": "shell",
+                "tool_input": {"command": f"cat {target}"},
+            }
+            self._gate(
+                {
+                    **codex,
+                    "hook_event_name": "PostToolUse",
+                    "tool_use_id": "call_9",
+                    "tool_response": "Process exited with code 0\nOutput:\n" + target.read_text(),
+                }
+            )
+            self._record_result(
+                Path(codex["transcript_path"]),
+                "call_9",
+                codex_output="Chunk ID: 1\nProcess exited with code 0\nOutput:\n" + target.read_text(),
+            )
+            self.assertEqual(
+                self._gate({**codex, "hook_event_name": "PreToolUse"})["hookSpecificOutput"]["permissionDecision"],
+                "deny",
+            )
+
+    def test_read_gate_never_touches_pipes_slices_children_or_when_disabled(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "notes.md"
+            target.write_text("hello\n")
+            transcript = Path(tmp) / "t.jsonl"
+            base = {"session_id": "gate-shell", "workspace_roots": [tmp], "transcript_path": str(transcript)}
+            cat = {**base, "tool_name": "Bash", "tool_input": {"command": f"cat {target}"}}
+            self._gate(
+                {**cat, "hook_event_name": "PostToolUse", "tool_use_id": "c1", "tool_response": {"stdout": "hello\n"}}
+            )
+            self._record_result(transcript, "c1", stdout="hello\n")
+            self.assertEqual(self._gate({**cat, "hook_event_name": "PreToolUse"})["decision"], "block")
+            for command in (
+                f"cat {target} | head -2",
+                f"sed -n '1,3p' {target}",
+                f"cat {target} > /dev/null",
+                f"cat {target}; ls",
+            ):
+                with self.subTest(command=command):
+                    self.assertEqual(
+                        self._gate({**cat, "hook_event_name": "PreToolUse", "tool_input": {"command": command}}), {}
+                    )
+            # A child agent shares the session id but not the context: its own ledger, first read allowed.
+            self.assertEqual(
+                self._gate({**cat, "hook_event_name": "PreToolUse", "agent_id": "abc123", "agent_type": "Explore"}), {}
+            )
+            self.assertEqual(
+                self._gate({**cat, "hook_event_name": "PreToolUse"}, env={**hook_env(), "AGENT_READ_GATE": "off"}), {}
+            )
+
+    def test_read_gate_cursor_events_use_store_db_history_and_stop_shrink(self):
+        import sqlite3
+
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "c.txt"
+            target.write_text("line one\nline two\n")
+            config = Path(tmp) / "config"
+            store = config / "cursor" / "chats" / "ws-hash" / "conv-1" / "store.db"
+            store.parent.mkdir(parents=True)
+            env = {**hook_env(), "XDG_CONFIG_HOME": str(config), "AGENT_HOOK_HARNESS": "cursor"}
+            base = {"conversation_id": "conv-1", "workspace_roots": [tmp], "transcript_path": f"{tmp}/agent.jsonl"}
+            read = {
+                **base,
+                "hook_event_name": "beforeReadFile",
+                "file_path": str(target),
+                "content": target.read_text(),
+            }
+            # First delivery: allowed and recorded (beforeReadFile fires after the read succeeded).
+            self.assertEqual(self._gate(read, env=env), {"permission": "allow"})
+            # Second delivery with no store row yet: not verifiable, allowed.
+            self.assertEqual(self._gate(read, env=env), {"permission": "allow"})
+            conn = sqlite3.connect(store)
+            conn.execute("create table blobs (id text, data blob)")
+            row = {
+                "role": "tool",
+                "content": [
+                    {"type": "tool-result", "toolCallId": "x", "toolName": "Read", "result": target.read_text()}
+                ],
+                "id": "m1",
+            }
+            conn.execute("insert into blobs values (?, ?)", ("b1", json.dumps(row).encode()))
+            conn.execute("insert into blobs values (?, ?)", ("b2", b"\x12\x03protobuf-ish"))
+            conn.commit()
+            conn.close()
+            self._gate(read, env=env)  # re-record after the unverifiable pass dropped the entry
+            denied = self._gate(read, env=env)
+            self.assertEqual(denied["permission"], "deny")
+            self.assertIn("byte-identical", denied["user_message"])
+            # Shell path: cat is gated the same way; pipes are not.
+            shell = {**base, "hook_event_name": "beforeShellExecution", "command": f"cat {target}"}
+            self.assertEqual(self._gate(shell, env=env)["permission"], "deny")
+            self.assertEqual(
+                self._gate({**shell, "command": f"cat {target} | wc -l"}, env=env), {"permission": "allow"}
+            )
+            # A token shrink reported by the stop hook reads as a compaction: the old read no longer blocks.
+            stop = {
+                **base,
+                "hook_event_name": "stop",
+                "status": "completed",
+                "input_tokens": 1000,
+                "cache_read_tokens": 90000,
+                "cache_write_tokens": 0,
+            }
+            self._gate(stop, env=env)
+            self._gate({**stop, "cache_read_tokens": 20000}, env=env)
+            self.assertEqual(self._gate(read, env=env), {"permission": "allow"})
+
+    def test_read_gate_copilot_events_verify_history_and_respect_compaction(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "c.txt"
+            target.write_text("line one\nline two\n")
+            events = Path(tmp) / "events.jsonl"
+            base = {
+                "session_id": "cop-1",
+                "workspace_roots": [tmp],
+                "transcript_path": str(events),
+                "tool_name": "view",
+                "tool_input": {"path": str(target)},
+            }
+            self._gate({**base, "hook_event_name": "PostToolUse", "tool_response": target.read_text()})
+            with events.open("a") as handle:
+                handle.write(
+                    json.dumps(
+                        {
+                            "type": "tool.execution_complete",
+                            "timestamp": "2099-01-01T00:00:00.000Z",
+                            "data": {
+                                "toolCallId": "call_1",
+                                "success": True,
+                                "result": {"content": target.read_text()},
+                            },
+                        }
+                    )
+                    + "\n"
+                )
+            self.assertEqual(
+                self._gate({**base, "hook_event_name": "PreToolUse"})["hookSpecificOutput"]["permissionDecision"],
+                "deny",
+            )
+            # Copilot's ranged read (view_range) is the escape hatch and must pass.
+            self.assertEqual(
+                self._gate(
+                    {**base, "hook_event_name": "PreToolUse", "tool_input": {"path": str(target), "view_range": [1, 2]}}
+                ),
+                {},
+            )
+            with events.open("a") as handle:
+                handle.write(
+                    json.dumps(
+                        {"type": "session.compaction_complete", "timestamp": "2099-01-02T00:00:00.000Z", "data": {}}
+                    )
+                    + "\n"
+                )
+            self.assertEqual(self._gate({**base, "hook_event_name": "PreToolUse"}), {})
+
+    def test_read_gate_forgets_reads_from_before_a_compaction(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "big.txt"
+            target.write_text("x" * 100 + "\n")
+            transcript = Path(tmp) / "t.jsonl"
+            base = {"session_id": "gate-compact", "workspace_roots": [tmp], "transcript_path": str(transcript)}
+            pre = self._read_cycle(base, target, "toolu_c1")
+            self.assertEqual(self._gate(pre)["decision"], "block")
+            run_hook(
+                "executable_session_context.py",
+                {
+                    "hook_event_name": "SessionStart",
+                    "source": "compact",
+                    "session_id": "gate-compact",
+                    "workspace_roots": [tmp],
+                },
+            )
+            self.assertEqual(self._gate(pre), {})
+
     def test_perturn_reinforcement_fires_only_after_material_context_growth(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
@@ -1463,6 +1861,30 @@ class TestAgentHooks(unittest.TestCase):
 
             assert "### Relevant Learnings (,ai-kb)" not in context
             assert "Should never surface" not in context
+
+    def test_codex_hook_matchers_cover_the_tool_names_codex_actually_reports(self):
+        # Probed 2026-09-06 (codex-cli 0.153.4, `codex exec --dangerously-bypass-hook-trust` with a
+        # catch-all dump hook): shell calls reach hooks as tool_name "Bash" (both the plain
+        # exec_command tool and the code-mode exec tool) and spawns as "collaborationspawn_agent".
+        # A matcher of "shell" never fired, so every Codex tool hook was silently inert.
+        import re
+
+        codex = json.loads(
+            (REPO / "home" / "dot_codex" / "hooks.json.tmpl").read_text().replace("{{ .chezmoi.homeDir }}", "/h")
+        )
+        seen = {}
+        for event, groups in codex["hooks"].items():
+            for group in groups:
+                for hook in group["hooks"]:
+                    seen.setdefault(hook["command"].rsplit("/", 1)[-1].rstrip("'"), []).append(
+                        (event, group.get("matcher"))
+                    )
+        for script in ("premise_nudge.py", "read_gate.py"):
+            for _event, matcher in seen[script]:
+                self.assertTrue(re.fullmatch(matcher, "Bash") and re.search(matcher, "Bash"), (script, matcher))
+        for _event, matcher in seen["band_gate.py"]:
+            for name in ("collaborationspawn_agent", "spawn_agent"):
+                self.assertTrue(re.fullmatch(matcher, name) and re.search(matcher, name), (matcher, name))
 
     def test_cursor_and_codex_perturn_recall_wiring(self):
         # Cursor 2026.07.16+ supports additionalContext on beforeSubmitPrompt
@@ -2720,6 +3142,57 @@ console.log(JSON.stringify({ content: result?.message?.content ?? null }));
                 else:
                     assert content is None
 
+    def test_pi_read_gate_extension_blocks_a_verified_identical_read(self):
+        script = r"""
+import assert from 'node:assert/strict';
+import { mkdir, writeFile, copyFile, chmod, appendFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { mkdtempSync } from 'node:fs';
+const [extension, root] = process.argv.slice(1);
+const tmp = mkdtempSync(join(tmpdir(), 'pi-read-gate-'));
+const hooks = join(tmp, '.agents/hooks'); await mkdir(hooks, { recursive: true });
+for (const [src, dst] of [['executable_read_gate.py', 'read_gate.py'], ['hook_common.py', 'hook_common.py'], ['reinforcement.py', 'reinforcement.py']]) {
+  await copyFile(join(root, 'home/exact_dot_agents/exact_hooks', src), join(hooks, dst)); await chmod(join(hooks, dst), 0o755);
+}
+process.env.HOME = tmp; process.env.AGENT_MEMORY_SPEC_ROOT = join(tmp, 'specs');
+const target = join(tmp, 'notes.txt'); await writeFile(target, 'alpha\nbeta\n');
+const session = join(tmp, 'session.jsonl'); await writeFile(session, '');
+const handlers = {};
+const api = { on(k, v) { handlers[k] = v } };
+const mod = await import(extension); await mod.default(api);
+assert.equal(typeof handlers.tool_call, 'function'); assert.equal(typeof handlers.tool_result, 'function');
+const ctx = { cwd: tmp, sessionManager: { getSessionId() { return 'pi-gate' }, getSessionFile() { return session } } };
+const call = (id) => handlers.tool_call({ type: 'tool_call', toolCallId: id, toolName: 'read', input: { path: target } }, ctx);
+assert.equal(await call('c1'), undefined, 'first read passes');
+await handlers.tool_result({ type: 'tool_result', toolCallId: 'c1', toolName: 'read', input: { path: target }, content: [{ type: 'text', text: 'alpha\nbeta\n' }], isError: false }, ctx);
+// Recorded, but not yet in the session file: history is not intact, so it still passes.
+assert.equal(await call('c2'), undefined, 'unverifiable history passes');
+await appendFile(session, JSON.stringify({ type: 'message', timestamp: '2099-01-01T00:00:00.000Z', message: { role: 'toolResult', toolCallId: 'c2', toolName: 'read', isError: false, content: [{ type: 'text', text: 'alpha\nbeta\n' }] } }) + '\n');
+await handlers.tool_result({ type: 'tool_result', toolCallId: 'c2', toolName: 'read', input: { path: target }, content: [{ type: 'text', text: 'alpha\nbeta\n' }], isError: false }, ctx);
+const blocked = await call('c3');
+assert(blocked && blocked.block === true && /byte-identical/.test(blocked.reason), JSON.stringify(blocked));
+// A slice and a changed file pass.
+assert.equal(await handlers.tool_call({ type: 'tool_call', toolCallId: 'c4', toolName: 'read', input: { path: target, offset: 1 } }, ctx), undefined);
+await writeFile(target, 'alpha\nbeta\ngamma\n');
+assert.equal(await call('c5'), undefined, 'changed file passes');
+console.log(JSON.stringify({ ok: true }));
+"""
+        # OMP is deliberately absent: it supersedes the earlier read result in the session the
+        # moment a re-read is attempted (observed live 2026-09-06), so a block there would leave
+        # the model with neither copy. OMP dedups re-reads natively.
+        for extension in (REPO / "home/dot_pi/agent/exact_extensions/read-gate.ts",):
+            with self.subTest(extension=str(extension.relative_to(REPO))):
+                result = subprocess.run(
+                    ["node", "--input-type=module", "-e", script, str(extension), str(REPO)],
+                    cwd=str(REPO),
+                    capture_output=True,
+                    text=True,
+                    env=hook_env(),
+                )
+                self.assertEqual(result.returncode, 0, result.stderr[-2000:])
+                self.assertIn('{"ok":true}', result.stdout)
+
     def test_pi_recall_staging_contract_matches_perturn_recall(self):
         import re
 
@@ -3085,6 +3558,15 @@ class BandGateTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             return json.loads(result.stdout or "{}")
+
+    def test_codex_namespaced_spawn_tool_name_is_still_gated(self):
+        # Live Codex payloads name the tool "collaborationspawn_agent" (probed 2026-09-06).
+        answer = self.gate(
+            "codex",
+            {"tool_name": "collaborationspawn_agent", "tool_input": {"agent_type": "explorer", "message": "go"}},
+        )
+        self.assertEqual(answer["hookSpecificOutput"]["permissionDecision"], "allow")
+        self.assertIn("model", answer["hookSpecificOutput"]["updatedInput"])
 
     def test_codex_rewrites_spawn_agent_model_and_effort_with_an_allow_decision(self):
         # codex 0.146.0 drops updatedInput unless permissionDecision is allow.
