@@ -229,13 +229,15 @@ category_models:
   codex:
     # Codex 0.153.2 retires gpt-5.4 and names gpt-5.6-terra as its replacement.
     # Mechanical and memory keep high effort on Terra; the session default is gpt-6-astra/high.
-    # Lookup, research, implement, review and refute retain gpt-5.5/xhigh.
+    # Research, implement, review and refute retain gpt-5.5/xhigh.
+    # Lookup runs gpt-5.5/medium (user call 2026-09-06): exact caller-scoped retrieval needs no
+    # reasoning, and reasoning output is billed at full price while the rest of the call is cache reads.
     # Explicit categories close native subagent defaults. OpenAI-only refute remains degraded.
     # Bundled catalog (codex-cli 0.149.0): gpt-5.5 supports xhigh; native default is low, so the
     # pin is load-bearing.
     lookup:
       model: "gpt-5.5"
-      effort: "xhigh"
+      effort: "medium"
       thinking: ""
       context: "short"
     mechanical:

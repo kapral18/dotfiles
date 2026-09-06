@@ -337,6 +337,14 @@ TEST_RULES: tuple[TestRule, ...] = (
         prefixes=("home/exact_lib/exact_,git/", "home/exact_bin/executable_,git"), tests=("tests/test_git_gate.py",)
     ),
     TestRule(prefixes=("home/exact_lib/exact_,proof/",), tests=("tests/test_proof_cli.py",)),
+    TestRule(
+        prefixes=(
+            "home/exact_lib/exact_,ai-usage/",
+            "home/exact_bin/executable_,ai-usage",
+            "home/dot_config/fish/completions/readonly_,ai-usage.fish",
+        ),
+        tests=("tests/test_ai_usage.py",),
+    ),
     TestRule(prefixes=("home/exact_lib/exact_,wh/",), tests=("tests/test_wh.py",)),
     TestRule(prefixes=("home/exact_lib/exact_,codex-adapter/",), tests=("tests/test_codex_adapter.py",)),
     TestRule(prefixes=("home/exact_lib/exact_,copilot-adapter/",), tests=("tests/test_copilot_adapter.py",)),

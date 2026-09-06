@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import urllib.error
 import urllib.request
+import uuid
 from http.client import HTTPResponse
 from typing import Any, Callable
 
@@ -56,11 +57,19 @@ class CodexClient:
         base_url: str = DEFAULT_BASE_URL,
         opener: Callable[..., HTTPResponse] = urllib.request.urlopen,
         timeout: int = 300,
+        session_id: str | None = None,
     ) -> None:
         self.credentials = credentials
         self.base_url = base_url.rstrip("/")
         self.opener = opener
         self.timeout = timeout
+        # The ChatGPT Codex backend only serves prompt-cache hits when the request carries a
+        # `session_id` header and a matching `prompt_cache_key`; the Codex CLI sends its
+        # conversation id in both. Live-verified 2026-09-06: a repeated 2.8k-token prompt read
+        # 0 cached tokens without them and 2,688 of 2,823 with them (an `originator` header is
+        # not required, so the adapter keeps identifying itself honestly). One adapter process
+        # serves one harness launch, so one id per process keys that conversation.
+        self.session_id = session_id or str(uuid.uuid4())
 
     def _request(self, payload: dict[str, Any], credentials: Credentials) -> urllib.request.Request:
         headers = {
@@ -68,9 +77,13 @@ class CodexClient:
             "Authorization": f"Bearer {credentials.access_token}",
             "Content-Type": "application/json",
             "User-Agent": "codex-subscription-adapter/1.0",
+            "session_id": self.session_id,
         }
         if credentials.account_id:
             headers["ChatGPT-Account-ID"] = credentials.account_id
+        if "prompt_cache_key" not in payload:
+            # Translated Anthropic/Chat requests carry no key; native Responses pass-through keeps its own.
+            payload = {**payload, "prompt_cache_key": self.session_id}
         return urllib.request.Request(
             f"{self.base_url}/responses",
             data=json.dumps(payload, separators=(",", ":")).encode(),

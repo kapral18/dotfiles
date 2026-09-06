@@ -31,8 +31,23 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from hook_common import agent_depth, emit, read_payload, session_key, topic_paths
-from session_context import context_disabled, load_seen, seen_file_for, stage_candidates
+from hook_common import (
+    agent_depth,
+    emit,
+    is_default_branch_workspace,
+    is_session_topic,
+    read_payload,
+    session_key,
+    topic_paths,
+)
+from session_context import (
+    auto_bind,
+    bucket_named_in_prompt,
+    context_disabled,
+    load_seen,
+    seen_file_for,
+    stage_candidates,
+)
 
 try:
     import correction_detector
@@ -244,11 +259,22 @@ def main() -> None:
         return
 
     key = session_key(payload)
+    bound_block = ""
+    binding_pending = bool(key) and is_session_topic(topic) and is_default_branch_workspace(workspace)
+    if binding_pending:
+        # Default branches keep the picker, but a prompt that names a bucket is an explicit
+        # choice: bind now instead of spending a model turn on `,agent-memory select`.
+        named = bucket_named_in_prompt(spec_path.parent, prompt)
+        if named and auto_bind(spec_path.parent, workspace, key, named):
+            workspace, topic, spec_path, _ = topic_paths(payload)
+            binding_pending = False
+            bound_block = f"### Session bound\nBound this session to `{topic}` because the prompt named it; its spec is {spec_path}."
     reinforce = reinforcement_block(payload, spec_path.parent, key)
     # Short prompts skip recall (nothing to search on) but still count toward
     # reinforcement, which is keyed on context growth rather than prompt text.
     if len(prompt.strip()) < MIN_PROMPT_CHARS:
-        emit(_output(payload, reinforce) if reinforce else {})
+        short_blocks = [block for block in (bound_block, reinforce) if block]
+        emit(_output(payload, "\n\n".join(short_blocks)) if short_blocks else {})
         return
 
     seen = load_seen(seen_file_for(spec_path, key) if key else None)
@@ -258,6 +284,10 @@ def main() -> None:
     # Staging is session-scoped state; without a session key there is nothing
     # to stage against, and per-turn recall degrades to the pull path.
     pointer = stage_candidates(rows, seen, spec_path, key) if key else ""
+    if binding_pending:
+        # The bucket picker is still open: rows are staged for the pull path, but the judge
+        # pointer waits for the binding so it fires once, not once before and once after.
+        pointer = ""
 
     # Probe-budget signal: emit when the prior turn's probes had too many failures.
     # Computed here (not inside `detect()`) because the spec dir is in scope and the
@@ -268,7 +298,7 @@ def main() -> None:
         budget = correction_detector.probe_budget_signal(spec_path.parent, key)
 
     directive = correction_directive(prompt, probe_budget_signal_value=budget)
-    context_blocks = [block for block in (reinforce, pointer, directive) if block]
+    context_blocks = [block for block in (bound_block, reinforce, pointer, directive) if block]
     if not context_blocks:
         emit({})
         return

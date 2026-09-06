@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Description: Cost-weighted token usage (fresh / cache read / cache write / output) from local AI harness records.
+
+set -euo pipefail
+
+lib="$HOME/lib/,ai-usage/main.py"
+if [[ ! -f "$lib" ]]; then
+  echo "Error: ,ai-usage library not found at $lib. Run chezmoi apply --no-tty ~/lib/,ai-usage/main.py." >&2
+  exit 127
+fi
+
+exec python3 "$lib" "$@"

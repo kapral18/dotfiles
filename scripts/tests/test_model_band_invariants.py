@@ -298,7 +298,14 @@ class TestModelBandInvariants(unittest.TestCase):
                 continue
             with self.subTest(surface="category", name=category):
                 self.assertEqual(row["model"], expected_root_model if category == "orchestrate" else expected_model)
-                self.assertEqual(row["effort"], expected_root_effort if category == "orchestrate" else expected_effort)
+                self.assertEqual(
+                    row["effort"],
+                    expected_root_effort
+                    if category == "orchestrate"
+                    else "medium"  # lookup: exact retrieval needs no reasoning (user call 2026-09-06)
+                    if category == "lookup"
+                    else expected_effort,
+                )
 
         for role in (
             "k-agent-review-worker",
@@ -715,7 +722,9 @@ class TestModelBandInvariants(unittest.TestCase):
         self.assertNotEqual("claude-4.6-sonnet", row["model"])
 
     def test_gpt55_is_always_pinned_at_xhigh_effort(self):
-        # Standing policy: gpt-5.5 is only ever run at xhigh effort, in every harness and category.
+        # Standing policy: gpt-5.5 is only ever run at xhigh effort, in every harness and category,
+        # with one exception: Codex `lookup` runs medium (user call 2026-09-06), because exact
+        # caller-scoped retrieval needs no reasoning and reasoning output is billed at full price.
         # Cursor spells the same tier as `extra-high` in the model id.
         # The effort lives in a different place per harness (a yaml `effort`, a model-id suffix,
         # a `:thinking` suffix, model_reasoning_effort, effortLevel), so drift is easy and silent.
@@ -736,6 +745,9 @@ class TestModelBandInvariants(unittest.TestCase):
         category_models = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")
         for harness, harness_categories in category_models.items():
             for category, row in harness_categories.items():
+                if harness == "codex" and category == "lookup":
+                    self.assertEqual("medium", row.get("effort"), "codex lookup is the one medium-effort gpt-5.5 row")
+                    continue
                 check(f"category_models.{harness}.{category}", row.get("model", ""), row.get("effort"))
 
         registry = REPO / "home/.chezmoidata/ai_models"
@@ -1019,7 +1031,7 @@ class TestModelBandInvariants(unittest.TestCase):
                 "claude-fable-5-1",
                 "low",
             ),  # Anthropic-only; all bands fable (5: user call 2026-08-05; 5.1: 2026-09-01)
-            "codex": ("gpt-5.5", "xhigh"),  # user-selected all-band Codex policy
+            "codex": ("gpt-5.5", "medium"),  # lookup at medium (user call 2026-09-06): exact retrieval, no reasoning
             "copilot": ("gpt-5.5", "xhigh"),
             "cursor": ("gpt-5.6-sol-high", "high"),  # captured Cursor Task-enum primary selector
             "gemini": ("gemini-3.1-pro-preview", "high"),  # agy's Gemini 3.1 Pro selector

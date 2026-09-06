@@ -32,6 +32,7 @@ from protocols import (  # noqa: E402
     iter_sse_json,
     prepare_responses_request,
     responses_to_anthropic_events,
+    responses_to_chat_events,
 )
 from server import AdapterContext, start_server  # noqa: E402
 from state import OpaqueReasoningStore  # noqa: E402
@@ -897,6 +898,121 @@ class TestLoopbackServer(unittest.TestCase):
                     "/v1/responses",
                     {"model": "gpt-test", "input": "hello", "stream": True},
                 )
+
+
+class CacheUsageTranslationTests(unittest.TestCase):
+    """Cache accounting survives every usage translation the adapter performs."""
+
+    @staticmethod
+    def cached_events() -> list[dict[str, object]]:
+        usage = {
+            "input_tokens": 100,
+            "input_tokens_details": {"cached_tokens": 90},
+            "output_tokens": 5,
+            "total_tokens": 105,
+        }
+        events = completed_text_events("cached")
+        events[0]["response"]["usage"] = {
+            "input_tokens": 100,
+            "input_tokens_details": {"cached_tokens": 90, "cache_write_tokens": 0},
+        }
+        events[-1]["response"]["usage"] = usage
+        return events
+
+    def test_SHOULD_split_cached_tokens_out_of_anthropic_input_tokens(self) -> None:
+        rendered = list(responses_to_anthropic_events(self.cached_events(), "wrapper-model", OpaqueReasoningStore()))
+
+        start = rendered[0]["message"]["usage"]
+        self.assertEqual(
+            start,
+            {"input_tokens": 10, "cache_read_input_tokens": 90, "cache_creation_input_tokens": 0, "output_tokens": 0},
+        )
+        delta = rendered[-2]["usage"]
+        self.assertEqual(
+            delta,
+            {"input_tokens": 10, "cache_read_input_tokens": 90, "cache_creation_input_tokens": 0, "output_tokens": 5},
+        )
+        message = collect_anthropic_message(
+            responses_to_anthropic_events(self.cached_events(), "wrapper-model", OpaqueReasoningStore())
+        )
+        self.assertEqual(message["usage"]["input_tokens"], 10)
+        self.assertEqual(message["usage"]["cache_read_input_tokens"], 90)
+        self.assertEqual(message["usage"]["output_tokens"], 5)
+
+    def test_SHOULD_report_cached_tokens_inside_chat_prompt_tokens(self) -> None:
+        chunks = [
+            json.loads(line[len("data: ") :])
+            for raw in responses_to_chat_events(self.cached_events(), "wrapper-model", OpaqueReasoningStore())
+            for line in raw.decode().splitlines()
+            if line.startswith("data: ") and line != "data: [DONE]"
+        ]
+        usage = [chunk["usage"] for chunk in chunks if "usage" in chunk][-1]
+        self.assertEqual(usage["prompt_tokens"], 100)
+        self.assertEqual(usage["completion_tokens"], 5)
+        self.assertEqual(usage["total_tokens"], 105)
+        self.assertEqual(usage["prompt_tokens_details"], {"cached_tokens": 90, "cache_creation_tokens": 0})
+
+    def test_SHOULD_read_the_responses_cache_write_spelling(self) -> None:
+        # Live ChatGPT Codex backend shape (2026-09-06): cache_write_tokens, not cache_creation_tokens.
+        events = completed_text_events("written")
+        events[-1]["response"]["usage"] = {
+            "input_tokens": 2815,
+            "input_tokens_details": {"cache_write_tokens": 2800, "cached_tokens": 0},
+            "output_tokens": 5,
+            "output_tokens_details": {"reasoning_tokens": 0},
+            "total_tokens": 2820,
+        }
+        rendered = list(responses_to_anthropic_events(events, "wrapper-model", OpaqueReasoningStore()))
+        self.assertEqual(
+            rendered[-2]["usage"],
+            {"input_tokens": 15, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 2800, "output_tokens": 5},
+        )
+
+    def test_SHOULD_keep_usage_shape_when_upstream_reports_no_cache_details(self) -> None:
+        rendered = list(
+            responses_to_anthropic_events(completed_text_events("plain"), "wrapper-model", OpaqueReasoningStore())
+        )
+        self.assertEqual(rendered[-2]["usage"]["input_tokens"], 9)
+        self.assertEqual(rendered[-2]["usage"]["cache_read_input_tokens"], 0)
+        chunks = [
+            json.loads(line[len("data: ") :])
+            for raw in responses_to_chat_events(completed_text_events("plain"), "wrapper-model", OpaqueReasoningStore())
+            for line in raw.decode().splitlines()
+            if line.startswith("data: ") and line != "data: [DONE]"
+        ]
+        usage = [chunk["usage"] for chunk in chunks if "usage" in chunk][-1]
+        self.assertEqual(usage, {"prompt_tokens": 9, "completion_tokens": 2, "total_tokens": 11})
+
+
+class PromptCacheKeyingTests(unittest.TestCase):
+    """The upstream serves cache hits only when session_id and prompt_cache_key travel together."""
+
+    def test_SHOULD_send_session_id_header_and_default_prompt_cache_key(self) -> None:
+        from types import SimpleNamespace
+
+        upstream = client.CodexClient(SimpleNamespace(), session_id="conv-123")
+        credentials = SimpleNamespace(access_token="tok", account_id="acc")
+        request = upstream._request({"model": "gpt-5.5", "input": []}, credentials)
+        self.assertEqual(request.get_header("Session_id"), "conv-123")
+        self.assertEqual(json.loads(request.data)["prompt_cache_key"], "conv-123")
+        self.assertEqual(request.get_header("User-agent"), "codex-subscription-adapter/1.0")
+        self.assertIsNone(request.get_header("Originator"))
+
+    def test_SHOULD_keep_an_explicit_prompt_cache_key_from_pass_through_clients(self) -> None:
+        from types import SimpleNamespace
+
+        upstream = client.CodexClient(SimpleNamespace(), session_id="conv-123")
+        credentials = SimpleNamespace(access_token="tok", account_id=None)
+        request = upstream._request({"model": "gpt-5.5", "input": [], "prompt_cache_key": "theirs"}, credentials)
+        self.assertEqual(json.loads(request.data)["prompt_cache_key"], "theirs")
+        self.assertIsNone(request.get_header("Chatgpt-account-id"))
+
+    def test_SHOULD_generate_one_session_id_per_client(self) -> None:
+        from types import SimpleNamespace
+
+        first, second = client.CodexClient(SimpleNamespace()), client.CodexClient(SimpleNamespace())
+        self.assertNotEqual(first.session_id, second.session_id)
+        self.assertEqual(len(first.session_id), 36)
 
 
 if __name__ == "__main__":

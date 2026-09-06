@@ -111,6 +111,33 @@ def make_aikb_stub(directory: Path, rows: list[dict]) -> dict:
     return env
 
 
+def make_agent_memory_stub(directory: Path) -> Path:
+    """A fake `,agent-memory` whose `select` writes the binding file the way the real CLI does."""
+    bindir = directory / "agent-memory-stub-bin"
+    bindir.mkdir(exist_ok=True)
+    stub = bindir / ",agent-memory"
+    stub.write_text(
+        "#!/usr/bin/env python3\n"
+        "import os, sys\n"
+        "from pathlib import Path\n"
+        "args = sys.argv[1:]\n"
+        "if args[:1] != ['select']:\n"
+        "    sys.exit(2)\n"
+        "topic = args[1]\n"
+        "key = args[args.index('--session-id') + 1]\n"
+        "workspace = args[args.index('--workspace') + 1]\n"
+        "if topic == 'current':\n"
+        "    print('Refusing to select the generic topic', file=sys.stderr); sys.exit(1)\n"
+        "spec_dir = Path(os.environ['AGENT_MEMORY_SPEC_ROOT']) / workspace.lstrip('/')\n"
+        "spec_dir.mkdir(parents=True, exist_ok=True)\n"
+        "(spec_dir / f'.session-topic-{key}.txt').write_text(topic + '\\n')\n"
+        "(spec_dir / 'stub-select.log').write_text(' '.join(args) + '\\n')\n"
+        "print('session topic:', topic)\n"
+    )
+    stub.chmod(0o755)
+    return bindir
+
+
 def bind_session_topic(spec_dir: Path, session_id: str, topic: str) -> None:
     (spec_dir / f".session-topic-{session_id}.txt").write_text(topic + "\n")
 
@@ -890,6 +917,84 @@ class TestAgentHooks(unittest.TestCase):
         env["XDG_CONFIG_HOME"] = str(config_home)
         env.update(extra)
         return env
+
+    def _bucket_workspace(self, branch: str):
+        tmp = self.make_git_workspace(branch)
+        workspace = str(Path(tmp.name).resolve())
+        spec_dir = SPEC_ROOT / workspace.lstrip("/")
+        spec_dir.mkdir(parents=True, exist_ok=True)
+        for name in (".session-topic-bind-test.txt", "stub-select.log"):
+            (spec_dir / name).unlink(missing_ok=True)
+        (spec_dir / "alpha.txt").write_text("topic: alpha\nsummary: older thread\n")
+        (spec_dir / "beta.txt").write_text("topic: beta\nsummary: newest thread\n")
+        old = time.time() - 3600
+        os.utime(spec_dir / "alpha.txt", (old, old))
+        env = dict(hook_env())
+        env["PATH"] = f"{make_agent_memory_stub(Path(tmp.name))}{os.pathsep}{env['PATH']}"
+        return tmp, workspace, spec_dir, env
+
+    def test_feature_branch_session_auto_binds_to_the_newest_bucket(self):
+        tmp, workspace, spec_dir, env = self._bucket_workspace("feature/reinforce")
+        with tmp:
+            payload = {"hook_event_name": "SessionStart", "session_id": "bind-test", "workspace_roots": [workspace]}
+            result = run_hook("executable_session_context.py", payload, env=env)
+            context = result["additional_context"]
+            self.assertIn("Auto-bound to `beta`", context)
+            self.assertIn("newest thread", context)
+            self.assertNotIn("### Topic Buckets", context)
+            self.assertEqual((spec_dir / ".session-topic-bind-test.txt").read_text().strip(), "beta")
+            self.assertIn("select beta --session-id bind-test", (spec_dir / "stub-select.log").read_text())
+
+    def test_feature_branch_with_only_current_keeps_the_default_topic(self):
+        tmp = self.make_git_workspace("feature/plain")
+        with tmp:
+            workspace = str(Path(tmp.name).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            (spec_dir / "current.txt").write_text("target: the working thread\n")
+            env = dict(hook_env())
+            env["PATH"] = f"{make_agent_memory_stub(Path(tmp.name))}{os.pathsep}{env['PATH']}"
+            payload = {"hook_event_name": "SessionStart", "session_id": "plain-test", "workspace_roots": [workspace]}
+            context = run_hook("executable_session_context.py", payload, env=env)["additional_context"]
+            self.assertIn("the working thread", context)
+            self.assertNotIn("Auto-bound", context)
+            self.assertFalse((spec_dir / "stub-select.log").exists())
+
+    def test_default_branch_keeps_the_picker_and_explains_the_bind(self):
+        tmp, workspace, spec_dir, env = self._bucket_workspace("main")
+        with tmp:
+            payload = {"hook_event_name": "SessionStart", "session_id": "bind-test", "workspace_roots": [workspace]}
+            context = run_hook("executable_session_context.py", payload, env=env)["additional_context"]
+            self.assertIn("### Topic Buckets", context)
+            self.assertIn("`current` is refused here", context)
+            self.assertIn("same tool batch as your first investigation command", context)
+            self.assertIn("binds automatically", context)
+            self.assertNotIn("Auto-bound", context)
+            self.assertFalse((spec_dir / ".session-topic-bind-test.txt").exists())
+
+    def test_default_branch_prompt_naming_a_bucket_binds_and_defers_the_pointer(self):
+        tmp, workspace, spec_dir, env = self._bucket_workspace("main")
+        with tmp:
+            env.update(
+                make_aikb_stub(
+                    Path(tmp.name),
+                    [{"id": "cap-1", "title": "T", "body": "B", "scope": "universal", "cosine_score": 0.9}],
+                )
+            )
+            env["PATH"] = f"{make_agent_memory_stub(Path(tmp.name))}{os.pathsep}{env['PATH']}"
+            base = {"hook_event_name": "UserPromptSubmit", "session_id": "bind-test", "workspace_roots": [workspace]}
+            # Unbound on main: candidates are staged for the pull path, but no judge pointer yet.
+            first = run_perturn_recall(
+                tmp.name, {**base, "prompt": "look into the retry storm in the queue worker"}, env
+            )
+            self.assertNotIn("candidates staged", json.dumps(first))
+            self.assertTrue((spec_dir / ".recall-candidates-bind-test.json").exists())
+            # Naming the bucket binds without a model turn and the pointer fires with the binding.
+            second = run_perturn_recall(tmp.name, {**base, "prompt": f"continue please {spec_dir / 'alpha.txt'}"}, env)
+            context = second["hookSpecificOutput"]["additionalContext"]
+            self.assertIn("Bound this session to `alpha`", context)
+            self.assertEqual((spec_dir / ".session-topic-bind-test.txt").read_text().strip(), "alpha")
+            self.assertIn("candidates staged", context)
 
     def test_perturn_reinforcement_fires_only_after_material_context_growth(self):
         with tempfile.TemporaryDirectory() as tmp:

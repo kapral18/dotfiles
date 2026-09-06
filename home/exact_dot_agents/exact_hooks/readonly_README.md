@@ -41,6 +41,10 @@ They select which shared topic bucket this one agent session loads, without chan
 Default-branch workspaces are treated as shared scratch space.
 If the current git branch is `main`, `master`, `dev`, `develop`, or `trunk` and no session binding exists, hook state uses a session-scoped fallback topic (`session-<id>`).
 Instead of loading another session's active topic, `session_context.py` injects a bounded `### Topic Buckets` index.
+On a feature branch, a session with no binding joins the newest bucket automatically through `,agent-memory select` (or stays on `current` when no named bucket exists), so no model turn is spent on the picker.
+On a default branch the picker stays, because parallel sessions work on different threads there;
+the index says `current` is refused, asks for the bind in the same tool batch as the first investigation command, and a prompt that names a bucket (slug or spec path) binds automatically from `perturn_recall.py`.
+While the picker is open, per-turn recall stages candidates but withholds the `k-agent-smol` judge pointer until the binding exists, so the pointer fires once per session instead of once before and once after the bind.
 The list is sorted newest-first by the most recent spec/worklog update and shows a short summary derived from `summary:` (preferred) or `target:`/`action:` lines in the topic spec.
 Add `summary: <one-line label>` to persist a concise description alongside the topic name.
 The agent should bind automatically when exactly one bucket clearly matches the user's request, create a new bucket when none matches, and ask one question only when multiple buckets plausibly match.

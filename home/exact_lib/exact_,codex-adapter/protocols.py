@@ -591,11 +591,7 @@ def responses_to_chat_events(
                     "object": "chat.completion.chunk",
                     "model": model,
                     "choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls" if saw_tool else "stop"}],
-                    "usage": {
-                        "prompt_tokens": usage.get("input_tokens", 0),
-                        "completion_tokens": usage.get("output_tokens", 0),
-                        "total_tokens": usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
-                    },
+                    "usage": _chat_usage(usage),
                 }
             )
         elif kind == "message_stop":
@@ -649,6 +645,54 @@ def collect_chat_completion(
     }
 
 
+def _anthropic_usage(usage: object, *, output: bool = False) -> dict[str, int]:
+    """Translate Responses usage into Anthropic Messages usage without losing cache accounting.
+
+    Responses `input_tokens` counts every prompt token including the cached ones, with the
+    cached share reported under `input_tokens_details.cached_tokens` and writes under
+    `cache_write_tokens` (observed live from the ChatGPT Codex backend on 2026-09-06:
+    `{"input_tokens": 2815, "input_tokens_details": {"cache_write_tokens": 0, "cached_tokens": 0}}`;
+    Copilot's chat shape spells the write field `cache_creation_tokens`). Anthropic `input_tokens` is the fresh share
+    only, with cache reads and writes as separate fields, so the frontend can add the three
+    without double counting. Missing detail fields translate to zero fresh-cache split, never
+    to an invented number.
+    """
+    if not isinstance(usage, dict):
+        usage = {}
+    details = usage.get("input_tokens_details")
+    if not isinstance(details, dict):
+        details = {}
+    total = int(usage.get("input_tokens") or 0)
+    cached = int(details.get("cached_tokens") or 0)
+    written = int(details.get("cache_write_tokens") or details.get("cache_creation_tokens") or 0)
+    translated = {
+        "input_tokens": max(0, total - cached - written),
+        "cache_read_input_tokens": cached,
+        "cache_creation_input_tokens": written,
+        "output_tokens": int(usage.get("output_tokens") or 0) if output else 0,
+    }
+    return translated
+
+
+def _chat_usage(usage: object) -> dict[str, Any]:
+    """Chat Completions usage from Anthropic-shaped usage: prompt_tokens includes cache."""
+    if not isinstance(usage, dict):
+        usage = {}
+    fresh = int(usage.get("input_tokens") or 0)
+    cached = int(usage.get("cache_read_input_tokens") or 0)
+    written = int(usage.get("cache_creation_input_tokens") or 0)
+    output = int(usage.get("output_tokens") or 0)
+    prompt = fresh + cached + written
+    rendered: dict[str, Any] = {
+        "prompt_tokens": prompt,
+        "completion_tokens": output,
+        "total_tokens": prompt + output,
+    }
+    if cached or written:
+        rendered["prompt_tokens_details"] = {"cached_tokens": cached, "cache_creation_tokens": written}
+    return rendered
+
+
 def _message_start(response: dict[str, Any], model: str) -> dict[str, Any]:
     response_id = response.get("id")
     usage = response.get("usage")
@@ -664,7 +708,7 @@ def _message_start(response: dict[str, Any], model: str) -> dict[str, Any]:
             "content": [],
             "stop_reason": None,
             "stop_sequence": None,
-            "usage": {"input_tokens": int(usage.get("input_tokens") or 0), "output_tokens": 0},
+            "usage": _anthropic_usage(usage),
         },
     }
 
@@ -830,7 +874,7 @@ def responses_to_anthropic_events(
                     "stop_reason": "tool_use" if saw_tool else "end_turn",
                     "stop_sequence": None,
                 },
-                "usage": {"output_tokens": int(usage.get("output_tokens") or 0)},
+                "usage": _anthropic_usage(usage, output=True),
             }
             yield {"type": "message_stop"}
             completed = True

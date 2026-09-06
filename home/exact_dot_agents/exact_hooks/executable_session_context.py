@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 from hook_common import (
+    DEFAULT_TOPIC,
     agent_depth,
     emit,
     is_default_branch_workspace,
@@ -388,6 +389,57 @@ def format_topic_age(timestamp: float, now: float) -> str:
     return f"{days}d ago"
 
 
+AGENT_MEMORY_TIMEOUT_SECONDS = 10
+
+
+def agent_memory_command() -> str:
+    return shutil.which(",agent-memory") or str(Path.home() / "bin" / ",agent-memory")
+
+
+def auto_bind(spec_dir: Path, workspace: Path, key: str, topic: str) -> bool:
+    """Bind this session to `topic` through `,agent-memory select` without a model turn.
+
+    The hook never writes the binding file itself: select owns the mirror sync and the
+    pre-bind worklog fold. Fail-open: any failure leaves the session unbound and the
+    picker text in place, so the agent can still bind by hand.
+    """
+    if not key or not is_named_topic(topic):
+        return False
+    try:
+        result = subprocess.run(
+            [agent_memory_command(), "select", topic, "--session-id", key, "--workspace", str(workspace)],
+            capture_output=True,
+            text=True,
+            timeout=AGENT_MEMORY_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0 and session_topic_path(spec_dir, key).exists()
+
+
+def newest_bucket(spec_dir: Path) -> Path | None:
+    """The bucket a feature-branch session should join: newest named topic, or `current`."""
+    candidates = topic_bucket_files(spec_dir)
+    current = spec_dir / f"{DEFAULT_TOPIC}.txt"
+    if current.exists():
+        candidates = [*candidates, current]
+    if not candidates:
+        return None
+    return max(candidates, key=topic_bucket_mtime)
+
+
+def bucket_named_in_prompt(spec_dir: Path, prompt: str) -> str | None:
+    """A bucket the user named verbatim (its slug as a word, or its spec path)."""
+    if not prompt.strip():
+        return None
+    for path in topic_bucket_files(spec_dir):
+        slug = path.stem
+        if str(path) in prompt or re.search(rf"(?<![\w-]){re.escape(slug)}(?![\w-])", prompt):
+            return slug
+    return None
+
+
 def topic_bucket_files(spec_dir: Path) -> list[Path]:
     files = []
     for path in spec_dir.glob("*.txt"):
@@ -450,6 +502,9 @@ def topic_buckets_context(spec_dir: Path, payload: dict) -> str:
         [
             f"Bind this session with: `,agent-memory select <topic> --session-id {session_arg}`.",
             f"If none match, create one with: `,agent-memory select <new-topic> --create --session-id {session_arg}`.",
+            f"`{DEFAULT_TOPIC}` is refused here; pick or create a named bucket.",
+            "Run the bind in the same tool batch as your first investigation command; it needs no separate turn.",
+            "A prompt that names an existing bucket (its slug or spec path) binds automatically.",
         ]
     )
     return "\n".join(lines)
@@ -624,6 +679,22 @@ def main() -> None:
         else:
             reinforcement.mark_compaction(spec_path.parent, key)
     has_session_binding = bool(key and session_topic_path(spec_dir, key).exists())
+    if (
+        key
+        and not has_session_binding
+        and not is_default_branch_workspace(workspace)
+        and not (spec_dir / "_active_topic.txt").exists()
+    ):
+        # Feature branches carry one thread of work: join the newest bucket without spending
+        # a model turn on the picker. Default branches host parallel sessions, so they keep it.
+        newest = newest_bucket(spec_dir)
+        if newest is not None and is_named_topic(newest.stem) and auto_bind(spec_dir, workspace, key, newest.stem):
+            workspace, topic, spec_path, worklog_path = topic_paths(payload)
+            has_session_binding = True
+            parts.append(
+                f"- Auto-bound to `{topic}` (newest bucket on a feature branch); "
+                f"switch with `,agent-memory select <topic> --session-id {key}`."
+            )
     no_session_key_default_branch = not key and is_default_branch_workspace(workspace)
     if not has_session_binding and should_offer_topic_buckets(spec_path, topic, no_session_key_default_branch):
         parts.extend(["", topic_buckets_context(spec_dir, payload)])

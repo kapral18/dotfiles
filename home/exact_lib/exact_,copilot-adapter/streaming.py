@@ -43,6 +43,19 @@ def _sse_events(response: BinaryIO) -> Iterator[tuple[str, dict[str, Any]]]:
 
 
 def _usage(value: object) -> dict[str, int]:
+    """Normalize any upstream usage object to the canonical Anthropic-shaped split.
+
+    Canonical keys: input_tokens (fresh only), cache_read_input_tokens,
+    cache_creation_input_tokens, output_tokens. Upstream shapes:
+    - Anthropic: already split; cache fields copied as-is.
+    - Chat Completions / Responses: prompt_tokens (or input_tokens) INCLUDES cached and
+      cache-written tokens, reported under prompt_tokens_details / input_tokens_details as
+      cached_tokens plus cache_creation_tokens (Copilot chat backend, observed) or
+      cache_write_tokens (ChatGPT Codex Responses backend, observed live 2026-09-06), so the
+      fresh share is the total minus both.
+    Missing cache fields stay absent, never zero-filled, so a consumer can tell "not reported"
+    from "no cache hit".
+    """
     if not isinstance(value, dict):
         return {}
     aliases = {
@@ -55,7 +68,76 @@ def _usage(value: object) -> dict[str, int]:
             if isinstance(value.get(key), int):
                 result[target] = int(value[key])
                 break
+    details = value.get("prompt_tokens_details")
+    if not isinstance(details, dict):
+        details = value.get("input_tokens_details")
+    if not isinstance(details, dict):
+        details = {}
+    anthropic_shape = isinstance(value.get("cache_read_input_tokens"), int) or isinstance(
+        value.get("cache_creation_input_tokens"), int
+    )
+    cached = value.get("cache_read_input_tokens") if anthropic_shape else details.get("cached_tokens")
+    written = (
+        value.get("cache_creation_input_tokens")
+        if anthropic_shape
+        else (
+            details.get("cache_creation_tokens")
+            if isinstance(details.get("cache_creation_tokens"), int)
+            else details.get("cache_write_tokens")
+        )
+    )
+    if isinstance(cached, int):
+        result["cache_read_input_tokens"] = cached
+    if isinstance(written, int):
+        result["cache_creation_input_tokens"] = written
+    if not anthropic_shape and "input_tokens" in result:
+        result["input_tokens"] = max(
+            0,
+            result["input_tokens"]
+            - result.get("cache_read_input_tokens", 0)
+            - result.get("cache_creation_input_tokens", 0),
+        )
     return result
+
+
+def _cache_split(usage: dict[str, Any]) -> tuple[int, int, int, int]:
+    fresh = int(usage.get("input_tokens", 0) or 0)
+    cached = int(usage.get("cache_read_input_tokens", 0) or 0)
+    written = int(usage.get("cache_creation_input_tokens", 0) or 0)
+    output = int(usage.get("output_tokens", 0) or 0)
+    return fresh, cached, written, output
+
+
+def _chat_usage(usage: dict[str, Any]) -> dict[str, Any]:
+    fresh, cached, written, output = _cache_split(usage)
+    prompt = fresh + cached + written
+    rendered: dict[str, Any] = {"prompt_tokens": prompt, "completion_tokens": output, "total_tokens": prompt + output}
+    if cached or written:
+        rendered["prompt_tokens_details"] = {"cached_tokens": cached, "cache_creation_tokens": written}
+    return rendered
+
+
+def _responses_usage(usage: dict[str, Any]) -> dict[str, Any]:
+    fresh, cached, written, output = _cache_split(usage)
+    total_input = fresh + cached + written
+    rendered: dict[str, Any] = {
+        "input_tokens": total_input,
+        "output_tokens": output,
+        "total_tokens": total_input + output,
+    }
+    if cached or written:
+        rendered["input_tokens_details"] = {"cached_tokens": cached, "cache_creation_tokens": written}
+    return rendered
+
+
+def _anthropic_usage(usage: dict[str, Any]) -> dict[str, int]:
+    fresh, cached, written, output = _cache_split(usage)
+    return {
+        "input_tokens": fresh,
+        "output_tokens": output,
+        "cache_creation_input_tokens": written,
+        "cache_read_input_tokens": cached,
+    }
 
 
 def _gemini_stream(
@@ -400,12 +482,7 @@ def render_chat(events: Iterable[Event], model: ModelSpec) -> Iterator[bytes]:
             ]
         elif kind == "finish":
             finish_reason = _chat_finish_reason(event["reason"])
-            raw_usage = event.get("usage", {})
-            usage = {
-                "prompt_tokens": raw_usage.get("input_tokens", 0),
-                "completion_tokens": raw_usage.get("output_tokens", 0),
-                "total_tokens": raw_usage.get("input_tokens", 0) + raw_usage.get("output_tokens", 0),
-            }
+            usage = _chat_usage(event.get("usage", {}))
         elif kind == "error":
             yield _sse({"error": event["error"]}, "error")
             return
@@ -554,11 +631,7 @@ def render_responses(
                         "status": "completed",
                         "model": model.model_id,
                         "output": [],
-                        "usage": {
-                            "input_tokens": raw_usage.get("input_tokens", 0),
-                            "output_tokens": raw_usage.get("output_tokens", 0),
-                            "total_tokens": raw_usage.get("input_tokens", 0) + raw_usage.get("output_tokens", 0),
-                        },
+                        "usage": _responses_usage(raw_usage),
                     },
                 }
             )
@@ -711,7 +784,7 @@ def render_anthropic(events: Iterable[Event], model: ModelSpec) -> Iterator[byte
                 {
                     "type": "message_delta",
                     "delta": {"stop_reason": reason, "stop_sequence": None},
-                    "usage": {"output_tokens": usage.get("output_tokens", 0)},
+                    "usage": _anthropic_usage(usage),
                 },
                 "message_delta",
             )
@@ -790,11 +863,7 @@ def render_json(
                     "finish_reason": "tool_calls" if tool_calls else _chat_finish_reason(result["reason"]),
                 }
             ],
-            "usage": {
-                "prompt_tokens": usage.get("input_tokens", 0),
-                "completion_tokens": usage.get("output_tokens", 0),
-                "total_tokens": usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
-            },
+            "usage": _chat_usage(usage),
         }
     if frontend == "anthropic":
         content = [*result["thinking"]]
@@ -817,12 +886,7 @@ def render_json(
             "content": content,
             "stop_reason": "tool_use" if result["tools"] else _anthropic_stop_reason(result["reason"]),
             "stop_sequence": None,
-            "usage": {
-                "input_tokens": usage.get("input_tokens", 0),
-                "output_tokens": usage.get("output_tokens", 0),
-                "cache_creation_input_tokens": 0,
-                "cache_read_input_tokens": 0,
-            },
+            "usage": _anthropic_usage(usage),
         }
     output = []
     if result["text"]:
@@ -856,11 +920,7 @@ def render_json(
         "status": "completed",
         "model": model.model_id,
         "output": output,
-        "usage": {
-            "input_tokens": usage.get("input_tokens", 0),
-            "output_tokens": usage.get("output_tokens", 0),
-            "total_tokens": usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
-        },
+        "usage": _responses_usage(usage),
     }
 
 

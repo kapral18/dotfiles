@@ -282,7 +282,7 @@
         "cli_help": {
           "model": "gpt-5.5",
           "category": "lookup",
-          "effort": "xhigh"
+          "effort": "medium"
         },
         "code-review": {
           "model": "gpt-5.5",

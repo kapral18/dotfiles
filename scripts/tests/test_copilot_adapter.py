@@ -870,5 +870,118 @@ class TestLoopbackProxy(unittest.TestCase):
         )
 
 
+class CacheUsageTranslationTests(unittest.TestCase):
+    """Cache accounting survives normalization and every rendered usage shape."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        import models as models_module
+        import streaming as streaming_module
+
+        cls.streaming = streaming_module
+        cls.model = models_module.ModelSpec(
+            model_id="claude-fable-5",
+            backend="claude",
+            wire_model="claude-fable-5",
+            efforts=("high",),
+            default_effort="high",
+            thinking_default="off",
+            supports_no_thinking=True,
+            adapter_default=False,
+            context_window=200_000,
+            max_output_tokens=8_192,
+        )
+
+    def test_SHOULD_normalize_chat_details_by_subtracting_cache_from_prompt_tokens(self) -> None:
+        # Shape observed from the Copilot backend: prompt_tokens includes cached and written tokens.
+        usage = self.streaming._usage(
+            {
+                "prompt_tokens": 26377,
+                "completion_tokens": 20,
+                "total_tokens": 26397,
+                "prompt_tokens_details": {"cached_tokens": 0, "cache_creation_tokens": 26375, "cache_ttl_seconds": 300},
+            }
+        )
+        self.assertEqual(
+            usage,
+            {
+                "input_tokens": 2,
+                "output_tokens": 20,
+                "cache_read_input_tokens": 0,
+                "cache_creation_input_tokens": 26375,
+            },
+        )
+
+    def test_SHOULD_keep_anthropic_split_and_responses_details(self) -> None:
+        anthropic = self.streaming._usage(
+            {"input_tokens": 3, "output_tokens": 2, "cache_read_input_tokens": 500, "cache_creation_input_tokens": 7}
+        )
+        self.assertEqual(
+            anthropic,
+            {"input_tokens": 3, "output_tokens": 2, "cache_read_input_tokens": 500, "cache_creation_input_tokens": 7},
+        )
+        responses = self.streaming._usage(
+            {
+                "input_tokens": 100,
+                "output_tokens": 5,
+                "input_tokens_details": {"cached_tokens": 90, "cache_write_tokens": 4},
+            }
+        )
+        self.assertEqual(
+            responses,
+            {"input_tokens": 6, "output_tokens": 5, "cache_read_input_tokens": 90, "cache_creation_input_tokens": 4},
+        )
+        # No cache details at all: nothing is zero-filled, "not reported" stays distinguishable.
+        self.assertEqual(
+            self.streaming._usage({"prompt_tokens": 3, "completion_tokens": 2}), {"input_tokens": 3, "output_tokens": 2}
+        )
+
+    def test_SHOULD_render_cache_fields_in_every_json_shape(self) -> None:
+        result = {
+            "text": "ok",
+            "tools": [],
+            "thinking": [],
+            "reason": "stop",
+            "usage": {
+                "input_tokens": 10,
+                "output_tokens": 5,
+                "cache_read_input_tokens": 90,
+                "cache_creation_input_tokens": 4,
+            },
+        }
+        anthropic = self.streaming.render_json("anthropic", result, self.model, {})["usage"]
+        self.assertEqual(
+            anthropic,
+            {"input_tokens": 10, "output_tokens": 5, "cache_creation_input_tokens": 4, "cache_read_input_tokens": 90},
+        )
+        chat = self.streaming.render_json("chat", result, self.model, {})["usage"]
+        self.assertEqual(chat["prompt_tokens"], 104)
+        self.assertEqual(chat["total_tokens"], 109)
+        self.assertEqual(chat["prompt_tokens_details"], {"cached_tokens": 90, "cache_creation_tokens": 4})
+        responses = self.streaming.render_json("responses", result, self.model, {})["usage"]
+        self.assertEqual(responses["input_tokens"], 104)
+        self.assertEqual(responses["input_tokens_details"], {"cached_tokens": 90, "cache_creation_tokens": 4})
+
+    def test_SHOULD_carry_cache_fields_through_the_streaming_anthropic_message_delta(self) -> None:
+        events = [
+            {"type": "text_delta", "index": 0, "text": "ok"},
+            {
+                "type": "finish",
+                "reason": "stop",
+                "usage": {"input_tokens": 10, "output_tokens": 5, "cache_read_input_tokens": 90},
+            },
+        ]
+        frames = b"".join(self.streaming.render_anthropic(iter(events), self.model)).decode()
+        deltas = [
+            json.loads(line[len("data: ") :])
+            for line in frames.splitlines()
+            if line.startswith("data: ") and '"message_delta"' in line
+        ]
+        self.assertEqual(
+            deltas[-1]["usage"],
+            {"input_tokens": 10, "output_tokens": 5, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 90},
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
