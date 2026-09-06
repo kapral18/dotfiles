@@ -87,32 +87,25 @@ class TestOmpMigration(unittest.TestCase):
 
     def test_config_renders_profile_specific_model_roles(self):
         provider_order = (
-            "modelProviderOrder:\n  - openrouter\n  - cursor\n  - openai-codex\n  - anthropic\n  - openai\n"
+            "modelProviderOrder:\n  - anthropic\n  - openai-codex\n  - openrouter\n  - cursor\n  - openai\n"
         )
-        # Work rides the Cursor backend (user call 2026-08-30); smol is cursor/default, the
-        # discovered cursor catalog's "Auto" router id (reasoning off, so no :level suffix).
+        # Both profiles ride the native anthropic/openai-codex providers (user call 2026-09-07):
+        # primaries on Fable 5.1 at :high effort (Fable 5+ exposes the five-tier
+        # low/medium/high/xhigh/max adaptive scale on the Messages API), advisor on
+        # gpt-6-astra:high (the codex harness orchestrate-lane model/effort), smol stays
+        # cursor/default (the discovered cursor catalog's "Auto" router id; reasoning off,
+        # so no :level suffix).
         work_role_values = (
-            "default: cursor/gpt-5.5:xhigh",
+            "default: anthropic/claude-fable-5.1:high",
             "smol: cursor/default",
-            "vision: cursor/gpt-5.5:xhigh",
-            "slow: cursor/gpt-5.5:xhigh",
-            "plan: cursor/gpt-5.5:xhigh",
-            "task: cursor/gpt-5.5:xhigh",
-            "advisor: cursor/claude-opus-5-high:high",
+            "vision: anthropic/claude-fable-5.1:high",
+            "slow: anthropic/claude-fable-5.1:high",
+            "plan: anthropic/claude-fable-5.1:high",
+            "task: anthropic/claude-fable-5.1:high",
+            "advisor: openai-codex/gpt-6-astra:high",
             provider_order,
         )
-        # Personal rides the Codex backend (user call 2026-08-30); the openai-codex catalog is
-        # OpenAI-only, so the advisor role shares gpt-5.5 with the primaries.
-        personal_role_values = (
-            "default: openai-codex/gpt-5.5:xhigh",
-            "smol: cursor/default",
-            "vision: openai-codex/gpt-5.5:xhigh",
-            "slow: openai-codex/gpt-5.5:xhigh",
-            "plan: openai-codex/gpt-5.5:xhigh",
-            "task: openai-codex/gpt-5.5:xhigh",
-            "advisor: openai-codex/gpt-5.5:xhigh",
-            provider_order,
-        )
+        personal_role_values = work_role_values
         expected_values = {
             True: work_role_values,
             False: personal_role_values,
@@ -132,16 +125,11 @@ class TestOmpMigration(unittest.TestCase):
             "setupVersion: 2\n",
         )
 
-        absent_values = {
-            True: "default: openai-codex/gpt-5.5:xhigh",
-            False: "default: cursor/gpt-5.5:xhigh",
-        }
         for is_work, values in expected_values.items():
             with self.subTest(is_work=is_work):
                 config = self.render_omp_config(is_work)
 
                 self.assertNotIn("{{", config)
-                self.assertNotIn(absent_values[is_work], config)
                 for value in (*values, *shared_values):
                     self.assertIn(value, config)
 

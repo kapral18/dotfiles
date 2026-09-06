@@ -1,43 +1,47 @@
 # Managed by chezmoi (source: home/dot_omp/private_agent/readonly_config.yml.tmpl).
 # Keep OMP native guidance/features as the base; this file only pins user policy.
 # {{ if eq .isWork true }}
-# Work rides the Cursor backend (user call 2026-08-30): primaries on GPT-5.5 xhigh
-# (the cursor harness category rows stay on gpt-5.6-sol-high only because the Task enum lacks gpt-5.5),
-# smol on cursor/default (Cursor's "Auto" router id; reasoning off, so no :level suffix),
-# advisor on Opus 5 High — the same refute lane the cursor harness rows use.
+# Work rides the Cursor backend (user call 2026-09-07): primaries on Fable 5.1
+# at :high effort (Anthropic native provider; Fable 5+ exposes the five-tier
+# low/medium/high/xhigh/max adaptive scale on the Messages API), smol on
+# cursor/default (Cursor's "Auto" router id; reasoning off, so no :level
+# suffix), advisor on gpt-6-astra via the openai-codex provider (same
+# orchestrate-lane model/effort the codex harness rows use).
 modelRoles:
-  default: cursor/gpt-5.5:xhigh
+  default: anthropic/claude-fable-5.1:high
   smol: cursor/default
-  vision: cursor/gpt-5.5:xhigh
-  slow: cursor/gpt-5.5:xhigh
-  plan: cursor/gpt-5.5:xhigh
-  task: cursor/gpt-5.5:xhigh
-  advisor: cursor/claude-opus-5-high:high
+  vision: anthropic/claude-fable-5.1:high
+  slow: anthropic/claude-fable-5.1:high
+  plan: anthropic/claude-fable-5.1:high
+  task: anthropic/claude-fable-5.1:high
+  advisor: openai-codex/gpt-6-astra:high
 
 modelProviderOrder:
+  - anthropic
+  - openai-codex
   - openrouter
   - cursor
-  - openai-codex
-  - anthropic
   - openai
 # {{ else }}
-# Personal rides the Codex backend (user call 2026-08-30): primaries and advisor on GPT-5.5 xhigh
-# (the openai-codex catalog is OpenAI-only, matching the codex harness rows; review/refute stay
-# reduced_independence either way), smol on cursor/default (Cursor's "Auto" router id).
+# Personal rides the Codex backend (user call 2026-09-07): primaries on Fable 5.1
+# at :high effort (Anthropic native provider; Fable 5+ exposes the five-tier
+# low/medium/high/xhigh/max adaptive scale on the Messages API), smol on
+# cursor/default (Cursor's "Auto" router id), advisor on gpt-6-astra via the
+# openai-codex provider (same orchestrate-lane model/effort the codex harness rows use).
 modelRoles:
-  default: openai-codex/gpt-5.5:xhigh
+  default: anthropic/claude-fable-5.1:high
   smol: cursor/default
-  vision: openai-codex/gpt-5.5:xhigh
-  slow: openai-codex/gpt-5.5:xhigh
-  plan: openai-codex/gpt-5.5:xhigh
-  task: openai-codex/gpt-5.5:xhigh
-  advisor: openai-codex/gpt-5.5:xhigh
+  vision: anthropic/claude-fable-5.1:high
+  slow: anthropic/claude-fable-5.1:high
+  plan: anthropic/claude-fable-5.1:high
+  task: anthropic/claude-fable-5.1:high
+  advisor: openai-codex/gpt-6-astra:high
 
 modelProviderOrder:
+  - anthropic
+  - openai-codex
   - openrouter
   - cursor
-  - openai-codex
-  - anthropic
   - openai
 # {{ end }}
 # Advisor reviews primary turns and spawned agents using the profile's advisor role.

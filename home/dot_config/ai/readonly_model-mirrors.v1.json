@@ -41,16 +41,16 @@
       },
       "pi": {
         "personal": {
-          "model": "openai/gpt-5.5",
-          "provider": "openrouter",
-          "selector": "openrouter/openai/gpt-5.5",
-          "thinking": "xhigh"
+          "model": "claude-fable-5.1",
+          "provider": "anthropic",
+          "selector": "anthropic/claude-fable-5.1",
+          "thinking": "high"
         },
         "work": {
-          "model": "openai/gpt-5.5",
-          "provider": "openrouter",
-          "selector": "openrouter/openai/gpt-5.5",
-          "thinking": "xhigh"
+          "model": "claude-fable-5.1",
+          "provider": "anthropic",
+          "selector": "anthropic/claude-fable-5.1",
+          "thinking": "high"
         }
       }
     }

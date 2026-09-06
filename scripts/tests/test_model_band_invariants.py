@@ -604,29 +604,23 @@ class TestModelBandInvariants(unittest.TestCase):
         roles = self._omp_model_roles()
 
         assert set(roles) == {"work", "personal"}, f"unexpected OMP profiles {sorted(roles)}"
-        # User call 2026-08-30: work rides the Cursor backend, personal rides the Codex backend,
-        # and both profiles pin smol to cursor/default — the discovered cursor catalog's "Auto"
-        # router id (reasoning off, so no :level suffix). The openai-codex catalog is OpenAI-only,
-        # so the personal advisor shares gpt-5.5 with the primaries.
+        # User call 2026-09-07: both profiles route primaries through the native anthropic
+        # provider on Fable 5.1 and advisor through the native openai-codex provider on
+        # gpt-6-astra:high (the codex harness orchestrate-lane model/effort). Both profiles
+        # pin smol to cursor/default — the discovered cursor catalog's "Auto" router id
+        # (reasoning off, so no :level suffix).
+        _work_or_personal_roles = {
+            "default": "anthropic/claude-fable-5.1:high",
+            "smol": "cursor/default",
+            "vision": "anthropic/claude-fable-5.1:high",
+            "slow": "anthropic/claude-fable-5.1:high",
+            "plan": "anthropic/claude-fable-5.1:high",
+            "task": "anthropic/claude-fable-5.1:high",
+            "advisor": "openai-codex/gpt-6-astra:high",
+        }
         expected_roles = {
-            "work": {
-                "default": "cursor/gpt-5.5:xhigh",
-                "smol": "cursor/default",
-                "vision": "cursor/gpt-5.5:xhigh",
-                "slow": "cursor/gpt-5.5:xhigh",
-                "plan": "cursor/gpt-5.5:xhigh",
-                "task": "cursor/gpt-5.5:xhigh",
-                "advisor": "cursor/claude-opus-5-high:high",
-            },
-            "personal": {
-                "default": "openai-codex/gpt-5.5:xhigh",
-                "smol": "cursor/default",
-                "vision": "openai-codex/gpt-5.5:xhigh",
-                "slow": "openai-codex/gpt-5.5:xhigh",
-                "plan": "openai-codex/gpt-5.5:xhigh",
-                "task": "openai-codex/gpt-5.5:xhigh",
-                "advisor": "openai-codex/gpt-5.5:xhigh",
-            },
+            "work": _work_or_personal_roles,
+            "personal": _work_or_personal_roles,
         }
         for profile, mapping in roles.items():
             assert {"default", "smol", "plan", "task", "advisor"} <= set(mapping), (
@@ -891,9 +885,14 @@ class TestModelBandInvariants(unittest.TestCase):
 
         for profile in ("work", "personal"):
             settings = json.loads((REPO / f"home/dot_pi/agent/readonly_settings.{profile}.json").read_text())
-            self.assertEqual("openrouter", settings["defaultProvider"])
-            self.assertEqual(pi_default, settings["defaultModel"])
-            self.assertEqual("xhigh", settings["defaultThinkingLevel"])
+            # User call 2026-09-07: Pi's interactive default now routes through the native
+            # anthropic provider on Fable 5.1 at high effort, not OpenRouter. The
+            # `openai/gpt-5.5` OpenRouter selector above (pi_default/pi_default_selector)
+            # still backs the harness-native "recommended" extra-models entry in
+            # `load_pi_extra_models`, unrelated to this default.
+            self.assertEqual("anthropic", settings["defaultProvider"])
+            self.assertEqual("claude-fable-5.1", settings["defaultModel"])
+            self.assertEqual("high", settings["defaultThinkingLevel"])
 
             pi_models = json.loads(
                 (
