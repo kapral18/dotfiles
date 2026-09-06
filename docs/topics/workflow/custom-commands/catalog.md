@@ -113,7 +113,7 @@ Planning reads `~/.config/ai/model-mirrors.v1.json` through the same shared cons
 ,ai-usage --harness codex --by model --json
 ```
 
-Raw input-token counts overstate cost: providers re-read most of a long conversation from cache at a discounted rate, and only new material is written at full price. The report splits every session into fresh input, cache read, cache write, output and reasoning so routes can be compared on what is actually billed. It applies no prices. Harnesses without a local record (Cursor) are listed as unmeasured, never as zero.
+Raw input-token counts overstate cost: providers re-read most of a long conversation from cache at a discounted rate, and only new material is written at full price. The report splits every session into fresh input, cache read, cache write, output and reasoning so routes can be compared on what is actually billed. It applies no prices. Harnesses without a local record (Cursor) are listed as unmeasured, never as zero. `--signals` adds prompts, user-correction signals, SOP re-injections, and cache misses per session; a miss is a call that re-read under half of the previous call's context, the moment the prompt cache was lost and rebuilt at full price.
 
 ### One-shot pi agent: `,q`
 

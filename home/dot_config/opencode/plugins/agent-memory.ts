@@ -20,12 +20,20 @@ import { join } from "node:path"
 //   - tool.execute.after: synthesizes a PostToolUse payload for the worklog
 //     dispatcher. `duration`/`status` are not exposed by the plugin API and
 //     are simply omitted (the recorder drops empty fields).
+//   - tool.execute.before / tool.execute.after on `read` and `bash`: the shared
+//     read gate (~/.agents/hooks/read_gate.py). A byte-identical whole-file
+//     re-read whose earlier result is still intact in the OpenCode store
+//     (~/.local/share/opencode/opencode.db, `part` rows) is refused by throwing;
+//     OpenCode records the thrown message as the tool error the model reads.
 
 export const AgentMemoryPlugin: Plugin = async ({ $, directory }) => {
   const hooksDir = join(homedir(), ".agents", "hooks")
   const sessionCtx = join(hooksDir, "session_context.py")
   const recorder = join(hooksDir, "worklog_dispatcher.sh")
   const perturn = join(hooksDir, "perturn_recall.py")
+  const readGate = join(hooksDir, "read_gate.py")
+  const store = join(homedir(), ".local", "share", "opencode", "opencode.db")
+  const gatedTools = new Set(["read", "bash"])
   if (!existsSync(sessionCtx) || !existsSync(recorder)) {
     console.warn("[agent-memory] ~/.agents/hooks scripts not found — plugin disabled")
     return {}
@@ -42,6 +50,29 @@ export const AgentMemoryPlugin: Plugin = async ({ $, directory }) => {
     } catch {
       // hook failure must never break the chat
       return ""
+    }
+  }
+
+  async function runJsonHook(script: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    try {
+      const json = JSON.stringify(payload)
+      const result = await $`echo ${json} | python3 ${script}`.quiet().nothrow()
+      const parsed = JSON.parse(String(result.stdout).trim() || "{}")
+      return parsed && typeof parsed === "object" ? parsed : {}
+    } catch {
+      return {}
+    }
+  }
+
+  function gatePayload(event: string, input: { tool: string; sessionID: string; callID: string }, args: unknown) {
+    return {
+      hook_event_name: event,
+      cwd: directory,
+      session_id: input.sessionID,
+      tool_name: input.tool,
+      tool_input: args ?? {},
+      tool_use_id: input.callID,
+      transcript_path: store,
     }
   }
 
@@ -93,7 +124,21 @@ export const AgentMemoryPlugin: Plugin = async ({ $, directory }) => {
       })
     },
 
+    "tool.execute.before": async (input, output) => {
+      if (!gatedTools.has(input.tool) || !existsSync(readGate)) return
+      const verdict = await runJsonHook(readGate, gatePayload("PreToolUse", input, output?.args))
+      if (verdict.decision === "block" && typeof verdict.reason === "string" && verdict.reason) {
+        throw new Error(verdict.reason)
+      }
+    },
+
     "tool.execute.after": async (input, output) => {
+      if (gatedTools.has(input.tool) && existsSync(readGate)) {
+        await runJsonHook(readGate, {
+          ...gatePayload("PostToolUse", input, input.args),
+          tool_response: typeof output?.output === "string" ? output.output : "",
+        })
+      }
       try {
         const payload = JSON.stringify({
           hook_event_name: "PostToolUse",

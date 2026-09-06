@@ -1375,6 +1375,78 @@ class TestAgentHooks(unittest.TestCase):
                 )
             self.assertEqual(self._gate({**base, "hook_event_name": "PreToolUse"}), {})
 
+    def test_read_gate_opencode_payloads_verify_the_part_store_and_unwrap_the_read_envelope(self):
+        import sqlite3
+
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "o.txt"
+            target.write_text("alpha\nbeta 10:30\n\ngamma\n")
+            db = Path(tmp) / "opencode.db"
+            conn = sqlite3.connect(db)
+            conn.execute(
+                "create table part (id text primary key, message_id text, session_id text, "
+                "time_created integer, time_updated integer, data text)"
+            )
+            conn.commit()
+            conn.close()
+            envelope = (
+                f"<path>{target}</path>\n<type>file</type>\n<content>\n1: alpha\n2: beta 10:30\n3: \n4: gamma\n\n"
+                "(End of file - total 4 lines)\n</content>"
+            )
+            base = {"cwd": tmp, "session_id": "oc-1", "transcript_path": str(db), "tool_use_id": "call-1"}
+            pre = {
+                **base,
+                "hook_event_name": "PreToolUse",
+                "tool_name": "read",
+                "tool_input": {"filePath": str(target)},
+            }
+            post = {**pre, "hook_event_name": "PostToolUse", "tool_response": envelope}
+            self.assertEqual(self._gate(pre), {})
+            self.assertEqual(self._gate(post), {})
+            # No part row yet: the earlier read is unverifiable, so the re-read goes ahead silently.
+            self.assertEqual(self._gate(pre), {})
+            self.assertEqual(self._gate(post), {})
+            now_ms = int(time.time() * 1000)
+
+            def store_part(part_id: str, state: dict) -> None:
+                conn = sqlite3.connect(db)
+                data = json.dumps({"type": "tool", "tool": "read", "callID": "call-1", "state": state})
+                conn.execute("insert into part values (?,?,?,?,?,?)", (part_id, "m1", "oc-1", now_ms, now_ms, data))
+                conn.commit()
+                conn.close()
+
+            store_part(
+                "p1", {"status": "completed", "input": {"filePath": str(target)}, "output": envelope, "time": {}}
+            )
+            denied = self._gate(pre)
+            self.assertEqual(denied.get("decision"), "block")
+            self.assertIn("byte-identical", denied["reason"])
+            # A ranged read (offset/limit) is never gated.
+            self.assertEqual(self._gate({**pre, "tool_input": {"filePath": str(target), "offset": 2, "limit": 1}}), {})
+            # OpenCode's prune cleared the output: the copy left the live context, so the read goes ahead.
+            conn = sqlite3.connect(db)
+            conn.execute(
+                "update part set data = ? where id = 'p1'",
+                (
+                    json.dumps(
+                        {
+                            "type": "tool",
+                            "tool": "read",
+                            "callID": "call-1",
+                            "state": {
+                                "status": "completed",
+                                "input": {"filePath": str(target)},
+                                "output": envelope,
+                                "time": {"compacted": now_ms},
+                            },
+                        }
+                    ),
+                ),
+            )
+            conn.commit()
+            conn.close()
+            self.assertEqual(self._gate(pre), {})
+
     def test_read_gate_forgets_reads_from_before_a_compaction(self):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "big.txt"
@@ -2539,6 +2611,82 @@ console.log(calls[0][0]);
 
             assert payload["session_id"] == "opencode-session"
 
+    def test_opencode_plugin_gates_reads_and_supersedes_older_read_parts(self):
+        plugin = REPO / "home/dot_config/opencode/plugins/agent-memory.ts"
+        supersede = REPO / "home/dot_config/opencode/plugins/read-supersede.ts"
+        with tempfile.TemporaryDirectory() as tmp:
+            hooks_dir = Path(tmp) / ".agents" / "hooks"
+            hooks_dir.mkdir(parents=True)
+            for name in ("session_context.py", "worklog_dispatcher.sh", "perturn_recall.py", "read_gate.py"):
+                (hooks_dir / name).write_text("")
+            script = r"""
+import assert from 'node:assert/strict';
+const mod = await import(process.argv[1]);
+const calls = [];
+function shell(strings, ...values) {
+  const argv = values.map(String);
+  calls.push(argv);
+  const gate = argv.some((v) => v.endsWith('read_gate.py'));
+  const payload = gate ? JSON.parse(argv[0]) : {};
+  const stdout = gate && payload.hook_event_name === 'PreToolUse' && payload.tool_name === 'read'
+    ? JSON.stringify({ decision: 'block', reason: 'already in context' })
+    : '{}';
+  return { quiet() { return this; }, nothrow() { return Promise.resolve({ stdout, code: 0 }); } };
+}
+const hooks = await mod.AgentMemoryPlugin({ $: shell, directory: process.argv[2] });
+await assert.rejects(
+  hooks['tool.execute.before']({ tool: 'read', sessionID: 's', callID: 'c1' }, { args: { filePath: '/f' } }),
+  /already in context/);
+const pre = JSON.parse(calls[0][0]);
+assert.deepEqual([pre.hook_event_name, pre.tool_name, pre.tool_use_id, pre.tool_input.filePath], ['PreToolUse', 'read', 'c1', '/f']);
+assert.ok(pre.transcript_path.endsWith('/.local/share/opencode/opencode.db'));
+// Ungated tools never reach the gate; bash does, and an allow resolves.
+await hooks['tool.execute.before']({ tool: 'edit', sessionID: 's', callID: 'c2' }, { args: {} });
+await hooks['tool.execute.before']({ tool: 'bash', sessionID: 's', callID: 'c3' }, { args: { command: 'cat /f' } });
+assert.equal(calls.length, 2);
+// After: the gate sees the tool output, then the worklog recorder runs as before.
+await hooks['tool.execute.after']({ tool: 'read', sessionID: 's', callID: 'c1', args: { filePath: '/f' } }, { title: '/f', output: 'body', metadata: {} });
+const post = JSON.parse(calls[2][0]);
+assert.deepEqual([post.hook_event_name, post.tool_response, post.tool_use_id], ['PostToolUse', 'body', 'c1']);
+assert.equal(calls.length, 4);
+
+const sup = await import(process.argv[3]);
+const notice = '[Superseded by a newer read of this file]';
+const read = (path, output, extra = {}) => ({ type: 'tool', tool: 'read', state: { status: 'completed', input: { filePath: path, ...extra }, output, time: {} } });
+const msg = (...parts) => ({ info: { role: 'assistant' }, parts });
+let msgs = [msg(read('/f', 'v1')), { info: { role: 'user' }, parts: [{ type: 'text', text: 'edit' }] }, msg(read('/f', 'v2'), read('/g', 'w'))];
+assert.equal(sup.supersedeReadParts(msgs, 1000, 900), 1);
+assert.deepEqual([msgs[0].parts[0].state.output, msgs[2].parts[0].state.output, msgs[2].parts[1].state.output], [notice, 'v2', 'w']);
+assert.equal(sup.supersedeReadParts(msgs, 1000, 900), 0, 'idempotent');
+// Ranged reads and pruned parts are left alone.
+msgs = [msg(read('/f', 'v1', { offset: 2 })), msg(read('/f', 'v2'))];
+assert.equal(sup.supersedeReadParts(msgs, 1000, 900), 0);
+msgs = [msg({ ...read('/f', 'v1'), state: { status: 'completed', input: { filePath: '/f' }, output: 'v1', time: { compacted: 5 } } }), msg(read('/f', 'v2'))];
+assert.equal(sup.supersedeReadParts(msgs, 1000, 900), 0);
+// Cache guard: a large suffix keeps the old copy unless the session idled 90 minutes.
+msgs = [msg(read('/f', 'v1')), msg({ type: 'text', text: 'x'.repeat(40000) }), msg(read('/f', 'v2'))];
+assert.equal(sup.supersedeReadParts(msgs, 1000, 900), 0);
+assert.equal(sup.supersedeReadParts(msgs, 100 * 60_000, 0), 1);
+// The plugin hook mutates output.messages in place.
+const hooks2 = await sup.ReadSupersedePlugin({});
+const out = { messages: [msg(read('/f', 'v1')), msg(read('/f', 'v2'))] };
+await hooks2['experimental.chat.messages.transform']({}, out);
+assert.equal(out.messages[0].parts[0].state.output, notice);
+console.log(JSON.stringify({ ok: true }));
+"""
+            env = dict(os.environ)
+            env["HOME"] = tmp
+            env["NODE_NO_WARNINGS"] = "1"
+            result = subprocess.run(
+                ["node", "--input-type=module", "-e", script, str(plugin), tmp, str(supersede)],
+                cwd=str(REPO),
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr[-1500:])
+            self.assertIn('{"ok":true}', result.stdout)
+
     def test_pi_recall_injects_shared_session_context_once_per_session_start(self):
         extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"
         with tempfile.TemporaryDirectory() as tmp:
@@ -3192,6 +3340,46 @@ console.log(JSON.stringify({ ok: true }));
                 )
                 self.assertEqual(result.returncode, 0, result.stderr[-2000:])
                 self.assertIn('{"ok":true}', result.stdout)
+
+    def test_pi_read_supersede_extension_replaces_older_reads_with_a_cache_guard(self):
+        script = r"""
+import assert from 'node:assert/strict';
+const mod = await import(process.argv[1]);
+const { supersedeReads } = mod;
+const read = (id, path) => ({ role: 'assistant', content: [{ type: 'toolCall', id, name: 'read', arguments: { path } }] });
+const result = (id, text) => ({ role: 'toolResult', toolCallId: id, toolName: 'read', content: [{ type: 'text', text }] });
+const notice = '[Superseded by a newer read of this file]';
+// Two reads of the same file, small suffix: the older one is superseded, the newest kept.
+let msgs = [read('a', '/f'), result('a', 'v1'), { role: 'user', content: 'edit it' }, read('b', '/f'), result('b', 'v2')];
+let out = supersedeReads(msgs, 1000, 900);
+assert.equal(out[1].content[0].text, notice); assert.equal(out[4].content[0].text, 'v2');
+assert.equal(msgs[1].content[0].text, 'v1', 'input untouched');
+// Different files are independent; skill:// style URIs are exempt.
+assert.equal(supersedeReads([read('a', '/f'), result('a', 'v1'), read('b', '/g'), result('b', 'w')], 1000, 900), undefined);
+assert.equal(supersedeReads([read('a', 'skill://x'), result('a', 'v1'), read('b', 'skill://x'), result('b', 'v2')], 1000, 900), undefined);
+// Large suffix after the older read: cache guard keeps it unless the session idled 90 minutes.
+const big = { role: 'user', content: 'x'.repeat(40000) };
+msgs = [read('a', '/f'), result('a', 'v1'), big, read('b', '/f'), result('b', 'v2')];
+assert.equal(supersedeReads(msgs, 1000, 900), undefined);
+assert.equal(supersedeReads(msgs, 100 * 60_000, 0)[1].content[0].text, notice);
+// Idempotent on an already superseded message.
+assert.equal(supersedeReads(supersedeReads([read('a', '/f'), result('a', 'v1'), read('b', '/f'), result('b', 'v2')], 1000, 900), 1000, 900), undefined);
+// The extension registers a context handler that returns the rewritten list.
+const handlers = {}; await mod.default({ on(k, v) { handlers[k] = v } });
+const res = await handlers.context({ type: 'context', messages: [read('a', '/f'), result('a', 'v1'), read('b', '/f'), result('b', 'v2')] });
+assert.equal(res.messages[1].content[0].text, notice);
+console.log(JSON.stringify({ ok: true }));
+"""
+        extension = REPO / "home/dot_pi/agent/exact_extensions/read-supersede.ts"
+        result = subprocess.run(
+            ["node", "--input-type=module", "-e", script, str(extension)],
+            cwd=str(REPO),
+            capture_output=True,
+            text=True,
+            env=hook_env(),
+        )
+        self.assertEqual(result.returncode, 0, result.stderr[-1500:])
+        self.assertIn('{"ok":true}', result.stdout)
 
     def test_pi_recall_staging_contract_matches_perturn_recall(self):
         import re

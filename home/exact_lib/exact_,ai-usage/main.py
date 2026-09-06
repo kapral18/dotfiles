@@ -76,12 +76,22 @@ class Session:
     prompts: int = 0
     corrections: int = 0
     reinforcements: int = 0
+    # Calls whose cache read fell below half of the previous call's context: the prompt cache
+    # was lost (idle past its lifetime, a compaction, or a rewritten prefix) and rebuilt.
+    cache_misses: int = 0
+    _prev_context: int = 0
     fresh_input: int = 0
     cache_read: int = 0
     cache_write: int = 0
     output: int = 0
     reasoning: int = 0
     notes: list[str] = field(default_factory=list)
+
+    def observe_call(self, fresh: int, cache_read: int, cache_write: int) -> None:
+        """Count a cache miss when this call re-read far less than the previous call held."""
+        if self._prev_context > 0 and cache_read < self._prev_context * 0.5:
+            self.cache_misses += 1
+        self._prev_context = fresh + cache_read + cache_write
 
     @property
     def context_tokens(self) -> int:
@@ -97,6 +107,7 @@ class Session:
         self.prompts += other.prompts
         self.corrections += other.corrections
         self.reinforcements += other.reinforcements
+        self.cache_misses += other.cache_misses
         for name in FIELDS:
             setattr(self, name, getattr(self, name) + getattr(other, name))
 
@@ -188,6 +199,11 @@ def read_claude(since: float) -> list[Session]:
                 continue
             seen.add(request_id)
             session.calls += 1
+            session.observe_call(
+                _int(usage.get("input_tokens")),
+                _int(usage.get("cache_read_input_tokens")),
+                _int(usage.get("cache_creation_input_tokens")),
+            )
             session.fresh_input += _int(usage.get("input_tokens"))
             session.cache_read += _int(usage.get("cache_read_input_tokens"))
             session.cache_write += _int(usage.get("cache_creation_input_tokens"))
@@ -236,8 +252,16 @@ def read_codex(since: float) -> list[Session]:
                 info = payload.get("info") or {}
                 usage = info.get("last_token_usage")
                 if isinstance(usage, dict) and usage != last_usage:
-                    calls += 1
                     last_usage = usage
+                    if not _int(usage.get("input_tokens")) and not _int(usage.get("output_tokens")):
+                        continue  # all-zero row at a turn boundary, not a provider call
+                    calls += 1
+                    cached = _int(usage.get("cached_input_tokens"))
+                    session.observe_call(
+                        max(0, _int(usage.get("input_tokens")) - cached),
+                        cached,
+                        _int(usage.get("cache_write_input_tokens")),
+                    )
                 if isinstance(info.get("total_token_usage"), dict):
                     total = info["total_token_usage"]
         if not total:
@@ -268,6 +292,7 @@ def read_pi(since: float) -> list[Session]:
             if row.get("type") != "message" or not isinstance(usage, dict):
                 continue
             session.calls += 1
+            session.observe_call(_int(usage.get("input")), _int(usage.get("cacheRead")), _int(usage.get("cacheWrite")))
             session.fresh_input += _int(usage.get("input"))
             session.cache_read += _int(usage.get("cacheRead"))
             session.cache_write += _int(usage.get("cacheWrite"))
@@ -296,6 +321,7 @@ def read_omp(since: float) -> list[Session]:
             if row.get("type") != "message" or message.get("role") != "assistant" or not isinstance(usage, dict):
                 continue
             session.calls += 1
+            session.observe_call(_int(usage.get("input")), _int(usage.get("cacheRead")), _int(usage.get("cacheWrite")))
             session.fresh_input += _int(usage.get("input"))
             session.cache_read += _int(usage.get("cacheRead"))
             session.cache_write += _int(usage.get("cacheWrite"))
@@ -325,12 +351,26 @@ def read_opencode(since: float) -> list[Session]:
                 "tokens_cache_read, tokens_cache_write from session where time_updated >= ?",
                 (int(since * 1000),),
             ).fetchall()
-            calls = dict(
-                conn.execute(
-                    "select session_id, count(*) from message where json_extract(data, '$.role') = 'assistant' "
-                    "group by session_id"
-                ).fetchall()
+            calls: dict = {}
+            misses: dict = {}
+            prev_context: dict = {}
+            per_call = conn.execute(
+                "select session_id, data from message where json_extract(data, '$.role') = 'assistant' "
+                "order by session_id, time_created, id"
             )
+            for sid, data in per_call:
+                calls[sid] = calls.get(sid, 0) + 1
+                try:
+                    tokens = json.loads(data).get("tokens") or {}
+                except (ValueError, AttributeError):
+                    continue
+                cache = tokens.get("cache") or {}
+                fresh, read, write = _int(tokens.get("input")), _int(cache.get("read")), _int(cache.get("write"))
+                if not fresh and not read and not write:
+                    continue  # not reported by this provider; a zero row is not a miss
+                if prev_context.get(sid, 0) > 0 and read < prev_context[sid] * 0.5:
+                    misses[sid] = misses.get(sid, 0) + 1
+                prev_context[sid] = fresh + read + write
         finally:
             conn.close()
     except sqlite3.Error:
@@ -345,6 +385,7 @@ def read_opencode(since: float) -> list[Session]:
             pass
         session = Session("opencode", str(sid), str(db), (created or updated or 0) / 1000.0, model, provider)
         session.calls = int(calls.get(sid, 0))
+        session.cache_misses = int(misses.get(sid, 0))
         session.fresh_input = _int(inp)
         session.output = _int(out)
         session.reasoning = _int(reasoning)
@@ -471,8 +512,8 @@ def render(
             "prompts",
             "corrections",
             "reinforce",
+            "misses",
             "cache read",
-            "output",
             "hit",
         )
     table = []
@@ -490,8 +531,8 @@ def render(
                     str(row.prompts),
                     str(row.corrections),
                     str(row.reinforcements),
+                    str(row.cache_misses),
                     _fmt(row.cache_read),
-                    _fmt(row.output),
                     _pct(row.hit_rate),
                 )
             )
@@ -529,8 +570,9 @@ def render(
     if signals:
         lines.append(
             f"signals: prompts {_fmt(total.prompts)} · user corrections {_fmt(total.corrections)} · "
-            f"SOP re-injections {_fmt(total.reinforcements)} (Claude transcripts and Codex rollouts only; "
-            "compare sessions run with AGENT_REINFORCE=off against the rest)"
+            f"SOP re-injections {_fmt(total.reinforcements)} · cache misses {_fmt(total.cache_misses)} "
+            "(a miss = a call that re-read under half of the previous call's context; prompt/correction/re-injection "
+            "signals come from Claude transcripts and Codex rollouts only, misses from every recorded route)"
         )
     lines.append(
         "raw provider counts; no prices applied (cache discounts differ per provider and are not verified here)"
@@ -546,6 +588,7 @@ def to_json(rows: list[Session]) -> str:
     payload = []
     for row in rows:
         data = asdict(row)
+        data.pop("_prev_context", None)
         data["context_tokens"] = row.context_tokens
         data["hit_rate"] = row.hit_rate
         payload.append(data)
@@ -573,7 +616,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--signals",
         action="store_true",
-        help="show prompts, user-correction signals and SOP re-injections per row (dilution experiment view)",
+        help="show prompts, user-correction signals, SOP re-injections and cache misses per row",
     )
     return parser
 

@@ -92,7 +92,7 @@ def whole_read_target(payload: dict[str, Any]) -> str | None:
         # StartLine/EndLine, generic start/end line keys.
         if any(tool_input.get(key) for key in TARGETED_READ_KEYS):
             return None
-        path = tool_input.get("file_path") or tool_input.get("path")
+        path = tool_input.get("file_path") or tool_input.get("path") or tool_input.get("filePath")
         return str(path) if isinstance(path, str) and path else None
     if tool in SHELL_TOOLS or not tool:
         command = tool_input.get("command") or tool_input.get("cmd") or tool_input.get("CommandLine") or ""
@@ -185,15 +185,22 @@ def _same_text(recorded: object, disk: str) -> bool:
     return recorded.rstrip("\n") == disk.rstrip("\n")
 
 
-_NUMBERED_LINE = re.compile(r"^\s*\d+(?:\t|→|:)")
+_NUMBERED_LINE = re.compile(r"^\s*\d+(?:\t|→|: ?)")
 _OMP_HEADER = re.compile(r"^\[[^\]\n]*#[0-9a-f]+\]\n")
+# OpenCode read tool (packages/opencode/src/tool/read.ts, v1.18.20): <path>…</path>\n<type>file</type>\n
+# <content>\nN: line…\n\n(End of file - total N lines)\n</content>[\n\n<system-reminder>…]
+_OPENCODE_CONTENT = re.compile(r"\A<path>[^\n]*</path>\n<type>[^\n]*</type>\n<content>\n(.*?)\n</content>", re.S)
+_OPENCODE_TRAILER = re.compile(r"\n\n\((?:End of file|Showing lines|Output capped)[^\n]*\)\Z")
 
 
 def _strip_line_numbers(text: str) -> str:
-    """Undo read-tool decoration: Claude/Cursor `N\t`, `N→`, OMP `N:` line numbers (only when
-    every non-empty line carries one, so real `10:30` content survives) and OMP's `[path#hash]`
-    header line."""
+    """Undo read-tool decoration: Claude/Cursor `N\t`, `N→`, OMP/OpenCode `N:` line numbers (only
+    when every non-empty line carries one, so real `10:30` content survives), OMP's `[path#hash]`
+    header line, and OpenCode's <path>/<content> envelope with its trailer note."""
     text = _OMP_HEADER.sub("", text, count=1)
+    envelope = _OPENCODE_CONTENT.match(text)
+    if envelope:
+        text = _OPENCODE_TRAILER.sub("", envelope.group(1), count=1)
     lines = text.split("\n")
     body = [line for line in lines if line.strip()]
     if body and all(_NUMBERED_LINE.match(line) for line in body):
@@ -380,7 +387,10 @@ def history_contains(payload: dict[str, Any], path: str, since: float) -> bool:
         return False
     for transcript in transcript_candidates(payload):
         if transcript.suffix == ".db":
-            if _store_db_contains(transcript, needle):
+            if transcript.name == "opencode.db":
+                if _opencode_db_contains(transcript, needle, since):
+                    return True
+            elif _store_db_contains(transcript, needle):
                 return True
             continue
         found = False
@@ -452,6 +462,60 @@ def _store_db_contains(path: Path, needle: str) -> bool:
     return False
 
 
+def _opencode_part(db: Path, tool_use_id: str) -> tuple[bool, str | None, bool]:
+    """OpenCode `part` rows: (found, state.output, cleared-by-prune) for the tool call id."""
+    import sqlite3
+
+    try:
+        conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        try:
+            rows = conn.execute(
+                "select data from part where json_extract(data, '$.callID') = ?", (tool_use_id,)
+            ).fetchall()
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        return False, None, False
+    for (data,) in rows:
+        try:
+            part = json.loads(data)
+        except (ValueError, TypeError):
+            continue
+        state = part.get("state") if isinstance(part, dict) else None
+        if not isinstance(state, dict) or state.get("status") != "completed":
+            continue
+        cleared = bool((state.get("time") or {}).get("compacted"))
+        output = state.get("output")
+        return True, output if isinstance(output, str) else None, cleared
+    return False, None, False
+
+
+def _opencode_db_contains(db: Path, needle: str, since: float) -> bool:
+    import sqlite3
+
+    try:
+        conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        try:
+            rows = conn.execute(
+                "select data from part where json_extract(data, '$.type') = 'tool' and time_created >= ?",
+                (int((since - 5) * 1000),),
+            ).fetchall()
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        return False
+    for (data,) in rows:
+        try:
+            state = json.loads(data).get("state") or {}
+        except (ValueError, TypeError, AttributeError):
+            continue
+        if state.get("status") != "completed" or (state.get("time") or {}).get("compacted"):
+            continue
+        if isinstance(state.get("output"), str) and needle in _strip_line_numbers(state["output"]):
+            return True
+    return False
+
+
 def history_intact(payload: dict[str, Any], tool_use_id: str, path: str) -> tuple[bool, str]:
     """Is the earlier read's recorded result present in history and equal to the file on disk?"""
     if not tool_use_id:
@@ -460,6 +524,20 @@ def history_intact(payload: dict[str, Any], tool_use_id: str, path: str) -> tupl
     if disk is None:
         return False, "the file is unreadable"
     for transcript in transcript_candidates(payload):
+        if transcript.name == "opencode.db":
+            found, text, cleared = _opencode_part(transcript, tool_use_id)
+            if not found:
+                continue
+            if cleared:
+                return False, "OpenCode pruned that read out of the live context"
+            if text is None:
+                return False, "history holds only a truncated preview of that read"
+            stripped = _strip_line_numbers(text)
+            if _same_text(stripped, disk) or disk.rstrip("\n") in stripped:
+                return True, ""
+            return False, "the copy in history does not match the file"
+        if transcript.suffix == ".db":
+            continue
         try:
             with transcript.open(encoding="utf-8", errors="replace") as handle:
                 for line in handle:

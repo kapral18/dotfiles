@@ -140,7 +140,7 @@ A changed file is always allowed with a "changed since your read" note. First re
 Ledger `.reads-<context>.json` is keyed by child `agent_id` (Claude Code passes the parent's `transcript_path` for children) or by session;
 entries from before a compaction epoch never block.
 Coverage: Claude Code and Codex (hooks.json), Pi (`read-gate.ts`), Cursor (`beforeReadFile`/shell events, history in `~/.config/cursor/chats/*/<conversation_id>/store.db`, `stop` token shrink = compaction), Copilot (extension `onPreToolUse`/`onPostToolUse`, history in `session-state/<id>/events.jsonl`, `session.compaction_complete` resets).
-OMP supersedes earlier reads itself and is left alone; Antigravity is unwired (transcript shape unverified).
+OMP supersedes earlier reads itself and is left alone; Pi and OpenCode get the same via their `read-supersede.ts` (older results of a re-read file become a notice on the outgoing list, with OMP's cache guard); OpenCode is gated by `plugins/agent-memory.ts` (`tool.execute.before` throws the reason; history is the `part` table of `opencode.db`); Antigravity is unwired.
 
 Tool adapters invoke `worklog_dispatcher.sh`, which captures the JSON payload and launches `worklog_recorder.py` without waiting for filesystem bookkeeping.
 The recorder durably enqueues a session-sequenced event, and a transient worker flushes it under a per-target lock.

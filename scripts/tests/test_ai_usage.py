@@ -156,7 +156,7 @@ class AiUsageReaderTests(unittest.TestCase):
             "create table session (id text, model text, time_created integer, time_updated integer, tokens_input integer, "
             "tokens_output integer, tokens_reasoning integer, tokens_cache_read integer, tokens_cache_write integer)"
         )
-        conn.execute("create table message (id text, session_id text, data text)")
+        conn.execute("create table message (id text, session_id text, time_created integer, data text)")
         now_ms = int(time.time() * 1000)
         conn.execute(
             "insert into session values (?,?,?,?,?,?,?,?,?)",
@@ -172,14 +172,22 @@ class AiUsageReaderTests(unittest.TestCase):
                 0,
             ),
         )
-        for i in range(3):
-            conn.execute("insert into message values (?,?,?)", (f"m{i}", "ses_1", json.dumps({"role": "assistant"})))
-        conn.execute("insert into message values (?,?,?)", ("u1", "ses_1", json.dumps({"role": "user"})))
+        per_call = [
+            {"input": 5000, "output": 10, "cache": {"read": 0, "write": 0}},
+            {"input": 100, "output": 2, "cache": {"read": 5000, "write": 0}},
+            # Cache lost: the whole prompt is fresh again.
+            {"input": 5200, "output": 2, "cache": {"read": 0, "write": 0}},
+        ]
+        for i, tokens in enumerate(per_call):
+            data = json.dumps({"role": "assistant", "tokens": tokens})
+            conn.execute("insert into message values (?,?,?,?)", (f"m{i}", "ses_1", now_ms + i, data))
+        conn.execute("insert into message values (?,?,?,?)", ("u1", "ses_1", now_ms, json.dumps({"role": "user"})))
         conn.commit()
         conn.close()
 
         (session,) = self.core.read_opencode(0)
         self.assertEqual((session.calls, session.fresh_input, session.cache_read, session.output), (3, 5827, 23104, 14))
+        self.assertEqual(session.cache_misses, 1)
         self.assertEqual((session.model, session.provider), ("deepseek/deepseek-v4-flash", "openrouter"))
 
     def test_copilot_reader_prefers_shutdown_rollup_and_flags_open_sessions(self) -> None:
@@ -266,6 +274,31 @@ class AiUsageReaderTests(unittest.TestCase):
         text = self.core.render([session], "session", 7, 40, ["claude"], signals=True)
         self.assertIn("corrections", text)
         self.assertIn("SOP re-injections 1", text)
+
+    def test_cache_misses_count_calls_that_lost_the_prompt_cache(self) -> None:
+        def usage(fresh: int, read: int, write: int = 0) -> dict:
+            return {
+                "input_tokens": fresh,
+                "cache_read_input_tokens": read,
+                "cache_creation_input_tokens": write,
+                "output_tokens": 1,
+            }
+
+        rows = [
+            {"type": "assistant", "requestId": "r1", "message": {"model": "m", "usage": usage(50_000, 0, 0)}},
+            {"type": "assistant", "requestId": "r2", "message": {"model": "m", "usage": usage(100, 50_000)}},
+            {"type": "assistant", "requestId": "r3", "message": {"model": "m", "usage": usage(2, 50_100)}},
+            # Cache lost (idle past its lifetime): everything is written again.
+            {"type": "assistant", "requestId": "r4", "message": {"model": "m", "usage": usage(0, 0, 50_102)}},
+            {"type": "assistant", "requestId": "r5", "message": {"model": "m", "usage": usage(3, 50_102)}},
+        ]
+        write_jsonl(self.home / ".claude" / "projects" / "-ws" / "miss.jsonl", rows)
+        (session,) = self.core.read_claude(0)
+        self.assertEqual(session.cache_misses, 1)
+        text = self.core.render([session], "session", 7, 40, ["claude"], signals=True)
+        self.assertIn("misses", text)
+        self.assertIn("cache misses 1", text)
+        self.assertNotIn("_prev_context", self.core.to_json([session]))
 
     def test_collect_groups_and_renders_without_prices(self) -> None:
         usage = {
