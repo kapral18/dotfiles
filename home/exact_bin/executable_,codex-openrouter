@@ -98,6 +98,9 @@ fi
 if [[ "$OPENROUTER_EFFORT" != "high" ]]; then
   "$OPENROUTER_PRESET_HELPER" high
 fi
+if [[ "$OPENROUTER_EFFORT" != "low" ]]; then
+  "$OPENROUTER_PRESET_HELPER" low
+fi
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
 
 # OpenRouter answers /api/v1/responses, and Codex 0.146.0 attaches its full built-in tool set

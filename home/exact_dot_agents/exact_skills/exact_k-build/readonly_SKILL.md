@@ -61,17 +61,22 @@ Do not start a later phase until the current one completes.
    For stateful/parser-like/branch-heavy targets, plan the SOP State-Machine Verification harness during planning.
 
 3. **Execute.**
-   Work waves in order; serial steps execute inline in the controller, while parallel steps dispatch subagent workers in category `implement` (resolved via `tiering.yaml`).
+   Work waves in order; every step's implementation — serial or parallel, first pass or iteration after a red check or a review finding —
+   dispatches to a subagent worker in category `implement` (resolved via `tiering.yaml`) per the SOP §3.7 implement dispatch gate;
+   the controller only decomposes, judges returned status lines, runs checks, and updates the ledger.
+   The controller MUST NOT write implementation itself; inline edits are limited to trivial single-site fixes (one config line, one symbol in one file) where the dispatch packet would be longer than the change.
+   Worker target is the harness's `implement`-bound edit-capable type: Claude `general-purpose`, Codex `worker`, Copilot `task`, OMP `task`, Antigravity `generalist`, Cursor `generalPurpose` (registry `implement` model passed explicitly), Pi `k-agent-implementer` (Pi disables built-in subagents, so the named profile is the only reachable target).
+   Every worker loads `~/.agents/skills/k-build/references/implement-worker.md`. Never a cheap-lane or review agent.
    Enforce scratch-isolated worker returns: each delegated worker writes detailed implementation logs, traces, and file diffs to `/tmp/scratch/<pwd>/<topic>/step-<N>.log` and returns a single compact status line to the controller (`step <N>: green|red|blocked (<check> exit <N>, touched: <paths>)`).
    Update the ledger after each step or wave. Run checks bare — a piped check (`cmd | tail`) reports the pipe's exit code, not the check's.
-   Never proceed past a red step verification — fix or replan.
+   Never proceed past a red step verification — dispatch a new implement-worker fix packet naming the failing check and its output, or replan; the controller never patches inline.
    Two consecutive failed attempts on the same criterion trigger the SOP §3.4 reset:
    stop implementing and end the flow as `blocked` with the captured failure, instead of thrashing.
    If evidence found mid-build contradicts the packet (wrong premise, wrong scope, missing intended difference, or missing preserved difference), stop, state the correction, and return to gate 1 with the revised packet — implementing a silently different spec is a flow violation.
 
 4. **Mechanical gates.**
    Discover the repo's lint / type-check / test commands from repo sources (do not guess), prefer scoped commands for the affected package, and run them.
-   An unprepared environment is a setup step to perform, not a blocker; loop fix → verify until green.
+   An unprepared environment is a setup step to perform, not a blocker; loop fix → verify until green, where each fix is a new implement-worker packet naming the failing command and its output — the controller never patches inline.
    Only undiscoverable or failing setup itself is a blocker — report the exact command and error.
 
 5. **Live-UI proof.**
@@ -88,14 +93,16 @@ Do not start a later phase until the current one completes.
    Then delegate one isolated **read-only** refutation lane with the packet, the full implementation diff, and the ledger.
    Launch it via the harness's named `k-agent-criteria-verifier` profile (rendered per harness with the review-model resolver's **verifier** slot — the same cross-family pick `/k-deep-review` uses).
    In Antigravity, define a dynamic `k-agent-criteria-verifier` from `~/.agents/skills/k-build/references/criteria-verifier.md` and invoke it with the registry's `pro` tier.
-   On a harness without a named profile (Claude), run the lane as a generic read-only subagent on the session model that loads the same contract, with refutation framing, and report `families=same (degraded)` — never skip the phase silently.
+   On Cursor the profile is undiscoverable at user level: launch `subagent_type: generalPurpose` with `model:` set to `category_models.cursor.refute.model` (the band gate passes a registry counter model through on the generic type) and the contract loaded in the prompt; this stays cross-family, not degraded.
+   On a harness without a named profile and no counter model (Claude), run the lane as a generic read-only subagent on the session model that loads the same contract, with refutation framing, and report `families=same (degraded)` — never skip the phase silently.
    The verifier must try to refute the semantic delta, not only the positive criteria:
    look for behavior that changed outside intended differences and for intended differences not covered by checks.
-   Judge the returned verdicts; a `refuted` row goes back to phase 3 (or `blocked` with the reason).
+   Judge the returned verdicts; a `refuted` row goes back to phase 3 as a new implement-worker fix packet naming the verdict (or `blocked` with the reason).
 
 7. **Post-review stage.**
    Run the Post-Review Stage from `~/.agents/skills/k-review/references/judging_pipeline.md` over the full implementation diff, applying the four canonical dimensions by name — redundancy, verbosity, semantic + logical duplication, gaps.
-   Resolve each finding in the working tree; re-run mechanical gates for changed artifacts when applicable.
+   Resolve each finding by dispatching a new implement-worker fix packet naming the finding (SOP §3.7 implement dispatch gate —
+   the controller never patches inline); re-run mechanical gates for changed artifacts when applicable.
    Repeat the Post-Review Stage until it returns clean, or until a verified blocker/requirements reset stops the loop.
    If cleanup changed any in-scope artifact, rerun packet checks and adversarial verification before reporting.
 

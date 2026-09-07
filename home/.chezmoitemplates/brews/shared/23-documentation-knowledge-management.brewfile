@@ -8,6 +8,7 @@ brew "circumflex"
 
 # Hacker News in the terminal
 # https://github.com/ggerganov/hnterm
+tap "ggerganov/ggerganov", trusted: true
 brew "ggerganov/ggerganov/hnterm"
 
 # Reddit, refined for the terminal

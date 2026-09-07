@@ -395,7 +395,7 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         )
         # Native wrappers must not prohibit the shared contract's bounded sweep.
         profiles = sorted((REPO / "home").glob("**/*adversarial-verifier*.tmpl"))
-        self.assertEqual(len(profiles), 5)
+        self.assertEqual(len(profiles), 6)  # cursor, copilot, codex, pi, omp, claude
         for profile in profiles:
             with self.subTest(profile=profile):
                 source = profile.read_text(encoding="utf-8")
@@ -514,15 +514,15 @@ class TestReviewPolicyInvariants(unittest.TestCase):
 
     def test_research_separates_finding_verification_and_deepening(self):
         self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-research/readonly_SKILL.md",
+            "home/exact_dot_agents/exact_skills/exact_k-public-sources/readonly_SKILL.md",
             "## Multi-source claim branch",
         )
         self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-research/readonly_SKILL.md",
-            "Before collecting, verifying, deepening, or synthesizing those claims, read and follow `~/.agents/skills/k-research/references/multi-source-claims.md` in full.",
+            "home/exact_dot_agents/exact_skills/exact_k-public-sources/readonly_SKILL.md",
+            "Before collecting, verifying, deepening, or synthesizing those claims, read and follow `~/.agents/skills/k-public-sources/references/multi-source-claims.md` in full.",
         )
         self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-research/exact_references/readonly_multi-source-claims.md",
+            "home/exact_dot_agents/exact_skills/exact_k-public-sources/exact_references/readonly_multi-source-claims.md",
             "A finder never verifies its own claim.",
             "primary-source URL",
             "exact supporting quote",

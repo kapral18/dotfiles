@@ -63,7 +63,7 @@ Never review diff hunks in isolation: read full enclosing files, check sibling f
 
 When the context pack already carries base context for those paths, reuse it and say so.
 Otherwise, if MCP/SCSI tools are available in this context and the repo is indexed, run `list_indices` first, then use semantic code search per `~/.agents/skills/k-semantic-code-search/SKILL.md` to establish base invariants.
-Controller-run lanes (for example under `k-deep-review`) have MCP/SCSI structurally disabled and receive base context from the controller instead; do not attempt `list_indices` there.
+Controller-run lanes (for example under `k-deep-review`) have MCP/SCSI structurally disabled and receive distilled base context from the controller, which owns the dispatched `k-agent-code-searcher` research lane (SOP §3.7 research gate); do not attempt `list_indices` there and never launch a research lane of your own.
 SCSI reflects base, not the branch; where SCSI and the diff disagree, the diff wins.
 If the repo is not indexed or SCSI is unavailable, use `git show <base>:<path>` plus scoped `rg` and full file reads to audit blast radius and surrounding behavior.
 

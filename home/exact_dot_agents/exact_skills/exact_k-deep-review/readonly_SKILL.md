@@ -85,7 +85,8 @@ Reviewer workers own the full investigation methodology.
   Those carry routing, drafting, posting, verdict, and pending-review reconciliation rules only the controller may act on, and they roughly double a lane's context for instructions it is forbidden to use.
   Anything a lane genuinely needs from them belongs in its scope packet, which the controller owns.
 - Return only evidence, candidate findings, and any `verification_needed` entries that were unsafe or required shared-state mutation/contention inside a parallel lane.
-- Workers investigate only; the controller alone edits, posts, resolves, commits, pushes, and decides what should be fixed/commented on.
+- Workers investigate only; the controller alone posts, resolves, commits, pushes, and decides what should be fixed/commented on.
+  Applying a decided fix is itself a dispatch: each surviving finding goes to the T2 implement worker as a packet naming the finding (SOP §3.7 implement dispatch gate), and the controller edits inline only trivial single-site fixes.
 - The blind fresh-eyes lane is a further exception: it loads only `~/.agents/skills/k-review/references/fresh-eyes.md`, staying blind to the `k-review` skill and all PR context.
 
 The active harness owns subagent discovery and invocation.
@@ -191,7 +192,7 @@ Required reference: `~/.agents/skills/k-deep-review/references/judgment.md`.
      do the load even when no fix is applied and even when the only output is a single review comment.
      If a verified domain overlay applies to the target repo/org (e.g. `~/.agents/skills/k-elastic-domain/SKILL.md` for `elastic/kibana`), load it too for repo-specific wording/footer rules before drafting.
    - `fix_authorized: yes` (own / assigned / adopted PR, or local-changes self flow):
-     - apply the selected fixes in the working tree; no separate "fix" keyword is required
+     - dispatch each selected fix to the T2 implement worker as a packet naming the finding, its anchor, the intended change, the differences to preserve, and the check (SOP §3.7 implement dispatch gate); no separate "fix" keyword is required, and only trivial single-site fixes are edited inline
      - then run the post-act verification phase (an adopted/assigned PR is a change-producing flow;
        do not skip the fix-diff Post-Review Stage just because the PR was originally other-authored)
      - for PR-fix/thread modes, still draft thread replies/suggestions per `pr_fix.md` for anything not fixed in code;
@@ -210,14 +211,14 @@ Required reference: `~/.agents/skills/k-deep-review/references/judgment.md`.
      - If the gates cannot run yet because the environment is not prepared (e.g. repo not bootstrapped, deps not installed):
        prepare it (run `yarn kbn bootstrap` / the repo's install/setup) and then run the gates.
        Not-yet-bootstrapped is a setup step to perform, not a reason to stop, because the flow is fix-authorized.
-     - If a gate fails or types get worse: fix it in the working tree and re-run (the fix -> verify loop), do not stop at the first red gate.
+     - If a gate fails or types get worse: dispatch the repair to the implement worker (an iteration after a red check goes through the same gate) and re-run, do not stop at the first red gate.
      - Only treat it as a blocking stop-and-ask when setup itself fails or is impossible (bootstrap errors out, toolchain genuinely unavailable in this environment, or commands are undiscoverable after inspecting repo sources): then state exactly what failed, the evidence, and the exact command(s) for the user.
        Never fold an un-run gate into a closing summary as if verification were complete.
    - **Fix-diff Post-Review Stage (the four dimensions).**
      Run the Post-Review Stage in `~/.agents/skills/k-review/references/judging_pipeline.md` with the **fix diff** as the subject (this flow's `git diff` / staged set / commit range), never the original PR diff.
      This is the controller's own work; the pre-action controller findings audit phase audits candidate findings and does NOT replace it.
      Apply the four canonical dimensions by name — redundancy, verbosity, semantic + logical duplication, gaps —
-     anchor each finding in an exact location, resolve each in the working tree, and re-run the quality gates if the cleanup touched code.
+     anchor each finding in an exact location, resolve each through an implement-worker packet (trivial single-site cleanups inline), and re-run the quality gates if the cleanup touched code.
    - **Resolve carried `verification_needed`.**
      For every `verification_needed` kept through judgment, make and report a per-item decision:
      either run the serial non-mutating/heavy check now, or explicitly carry it as a stated blocker with the reason it was not run.

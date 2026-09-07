@@ -9,7 +9,7 @@ Skills are the intent router below the SOP. The SOP says "load the matching skil
 | Slice                                                                         | Covers                                                               |
 | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | [Review and delivery](review-and-delivery.md)                                 | reviews, GitHub, PR/issue text, communication                        |
-| [Memory and orchestration](memory-and-orchestration.md)                       | durable memory, proof receipts, specs, builds, delegation            |
+| [Memory and orchestration](memory-and-orchestration.md)                       | durable memory, proof receipts, specs, builds                        |
 | [Repo workflow and code intelligence](repo-workflow-and-code-intelligence.md) | git/worktrees, semantic tools, clone research, cleanup scanners      |
 | [Elastic and Kibana](elastic-and-kibana.md)                                   | domain overlay, Buildkite, labels, ownership, backports, kbn-standup |
 | [External tools and media](external-tools-and-media.md)                       | Google Workspace, flights, browser control, images                   |
@@ -63,7 +63,7 @@ Entrypoints retain routing, shared boundaries, and mandatory load triggers. Comp
 | `k-kibana-console-monaco` | Typed demo Enter handling                                                                               |
 | `k-letsfg`                | Rendered-UI browser fallback                                                                            |
 | `k-playwriter`            | Video recording and frame verification                                                                  |
-| `k-research`              | Source inspection or multi-source claims                                                                |
+| `k-public-sources`        | Source inspection or multi-source claims                                                                |
 | `k-ui-capture`            | Diff inventory or upload/embedding                                                                      |
 | `k-walkthrough`           | Diagram node metadata and example                                                                       |
 

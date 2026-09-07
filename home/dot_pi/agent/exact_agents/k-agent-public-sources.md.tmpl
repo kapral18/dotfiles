@@ -1,10 +1,13 @@
 {{- /* model frontmatter is rendered from the model registries in home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
-name: k-agent-researcher
+name: k-agent-public-sources
 description: Delegate source-first investigation of an EXTERNAL/public GitHub repo, library, or tool to an isolated context. Use when the question is "how does <third-party project> work" or the user gives a repo/file/directory URL to inspect. Not for the current repo/worktree and not for product/account/runtime state.
-model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "omp" "agent" "k-agent-researcher") }}"
-tools: read, grep, glob, bash
-autoloadSkills: k-research
+model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-public-sources") }}"
+tools: read, grep, find, ls, bash
+systemPromptMode: replace
+inheritProjectContext: false
+inheritSkills: true
+skills: k-public-sources
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
@@ -13,4 +16,4 @@ Apply the boundary above before following the role-specific instructions below.
 
 # Researcher
 
-Load and follow `~/.agents/skills/k-review/references/researcher.md`.
+Load and follow `~/.agents/skills/k-review/references/public-sources.md`.

@@ -41,7 +41,8 @@ Select the repo-matching index or prove none exists, and only then emit the `Bas
 The line must use the real `<reason>`: `SCSI used` / `not indexed` / `tools unavailable` / `user-selected none`.
 Never assert a `Base context: SCSI=none` line that you did not earn by running `list_indices`.
 If your own runtime also blocks `list_indices`, say so explicitly as `tools unavailable` rather than implying the gate ran.
-Keep the base-context preflight to base context only: run `semantic_code_search`, symbol analysis, code-chunk reads, broad code investigation, and finding construction only after reviewer workers launch.
+Keep the controller's own preflight to index selection: `semantic_code_search`, symbol analysis, code-chunk reads, and broad code investigation belong to a dispatched `k-agent-code-searcher` (or the harness's `research`-bound native explorer) per the SOP §3.7 research gate, never to this turn.
+Launch that lane with the selected index and the angles from `~/.agents/skills/k-review/references/shared_rules.md`, forward only its distilled base context into the context pack, and keep finding construction until after reviewer workers launch.
 
 Before fan-out, delegate task-shaped recall through `~/.agents/skills/k-ai-kb/SKILL.md` with both queries:
 

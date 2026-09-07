@@ -69,7 +69,7 @@ Across sessions, agents carry context through two memory layers: short-lived per
 ## Review
 
 - Use `alt-b` in the GitHub picker to check out a PR and open an Octo review in a new window.
-- To review the changes an agent produced before committing, use the `tuicr` diff loop, which feeds structured feedback back to the agent. See [Reviewing agent diffs](../topics/ai-assistants/reviewing-diffs.md).
+- To review the changes an agent produced before committing, use the `tuicr` diff loop, or keep `lgtm` open in a pane beside the agent, which feeds structured feedback back to the agent. See [Reviewing agent diffs](../topics/ai-assistants/reviewing-diffs.md).
 
 ## Code: Keep Your Editor
 

@@ -85,7 +85,7 @@ class TestOmpMigration(unittest.TestCase):
             )
         return result.stdout
 
-    def test_config_renders_profile_specific_model_roles(self):
+    def test_config_renders_one_profile_independent_model_roles_block(self):
         provider_order = (
             "modelProviderOrder:\n  - anthropic\n  - openai-codex\n  - openrouter\n  - cursor\n  - openai\n"
         )
@@ -102,7 +102,7 @@ class TestOmpMigration(unittest.TestCase):
             "plan: anthropic/claude-fable-5.1:high",
             "commit: anthropic/claude-sonnet-5:medium",
             "tiny: anthropic/claude-sonnet-5:medium",
-            "task: anthropic/claude-fable-5.1:high",
+            "task: anthropic/claude-opus-5:high",
             "advisor: openai-codex/gpt-6-astra:high",
             provider_order,
         )
@@ -177,7 +177,7 @@ class TestOmpMigration(unittest.TestCase):
     def test_selected_agents_use_omp_frontmatter_schema(self):
         agents = REPO / "home/dot_omp/private_agent/exact_agents"
         required = {
-            "k-agent-researcher",
+            "k-agent-public-sources",
             "k-agent-reviewer",
             "k-agent-review-controller",
             "k-agent-code-searcher",
@@ -189,6 +189,12 @@ class TestOmpMigration(unittest.TestCase):
             "k-agent-adversarial-verifier",
             "k-agent-fresh-eyes",
             "k-agent-criteria-verifier",
+            # Retier additions (user call 2026-09-07): the T3 mechanical lane the §3.7 gate names,
+            # the public-claim refuter, and the ,ai-kb operator. OMP reaches named profiles, so a
+            # missing file here silently sends the lane to the generic `task` type on T2.
+            "k-agent-mechanical",
+            "k-agent-claim-verifier",
+            "k-agent-smol",
         }
         seen = {p.name.removesuffix(".md.tmpl") for p in agents.glob("*.md.tmpl")}
 

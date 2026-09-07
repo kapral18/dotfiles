@@ -1,0 +1,24 @@
+# lgtm — terminal diff reviewer that runs in a tmux pane beside the agent
+# https://github.com/kunkka19xx/lgtm
+#
+# Source-of-truth: home/dot_config/lgtm/readonly_config.toml in the chezmoi
+# repo. Do not edit ~/.config/lgtm/config.toml directly.
+
+[ui]
+icons = "nerd"        # terminal font is JetBrainsMono Nerd Font Mono
+comments = "inline"   # show comment text under its line, not just the gutter dot
+
+[theme]
+name = "catppuccin"   # matches tuicr (catppuccin-mocha)
+
+[review]
+# tracked generated files .gitignore cannot hide (git pathspec globs)
+ignore = ["yarn.lock", "package-lock.json", "pnpm-lock.yaml", "Cargo.lock", "uv.lock"]
+
+# Presets are compose-box (`<Space>a`, `<C-i>`) question snippets sent to the
+# agent. Comment types/severity live in tuicr, not here.
+[presets]
+why      = "why this approach?"
+test     = "add a test that fails without this change"
+simplify = "simplify: this is more code than the change needs"
+revert   = "revert this, keep the rest"

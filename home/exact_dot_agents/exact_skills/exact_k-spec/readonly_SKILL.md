@@ -68,6 +68,7 @@ Consumers: `/k-build` (in-session hands-free implementation), `~/.agents/skills/
    Never store secrets in it; `/tmp` is best-effort.
 
 5. **Hand off.** The packet is text only — this skill implements nothing and publishes nothing. Name the consumer moves.
+   SOP §3.7 implement dispatch gate governs every edit that follows.
    Stop for the user's pick only when the consumer is not already determined; if the user named it (e.g. "spec then build"), proceed with that consumer:
    - `/k-build` — hands-free implementation in this session, gated on this packet
    - `k-compose-issue` / `k-compose-pr` — publishable text from the packet (that skill owns sanitization and handoff packet)

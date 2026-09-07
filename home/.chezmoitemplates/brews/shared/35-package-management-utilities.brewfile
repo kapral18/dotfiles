@@ -1,8 +1,9 @@
 # An interactive TUI for Homebrew
 # https://github.com/hzqtc/taproom
-tap "gromgit/brewtils"
+tap "gromgit/brewtils", trusted: true
 brew "gromgit/brewtils/taproom"
 
 # Make Homebrew output bold with a TUI interface
 # https://github.com/Valkyrie00/bold-brew
+tap "valkyrie00/bbrew", trusted: true
 brew "Valkyrie00/homebrew-bbrew/bbrew"

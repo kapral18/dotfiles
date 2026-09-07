@@ -98,8 +98,7 @@ Iteration contract:
 
 6. Run the Findings-Set Audit from `judging_pipeline.md` over this thread's candidate set before choosing reply/fix/ask.
    - If the audited set is empty, skip adversarial work and report `Adversarial verification: skipped (no candidates after findings audit)`.
-   - Otherwise, run `k-agent-adversarial-verifier` over the audited candidate set before applying a fix or drafting a reply;
-     if no verifier lane is available, run the Candidate Refutation Ladder inline and report `adversarial=inline-degraded`.
+   - Otherwise, run `k-agent-adversarial-verifier` over the audited candidate set before applying a fix or drafting a reply, launched through the Verifier launch ladder in `runtime-harnesses.md`; report the rung it reached alongside `adversarial=`.
 
 7. Choose a response type (one per thread):
 

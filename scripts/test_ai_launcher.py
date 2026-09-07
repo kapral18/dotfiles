@@ -325,7 +325,7 @@ class TestAiLauncher(unittest.TestCase):
                 plan = self.dry_plan("pi", "--model", model)
 
                 self.assertEqual(model, plan["selection"]["model"]["value"])
-                self.assertNotIn("openai/gpt-5.5", plan["leaf"]["argv"])
+                self.assertNotIn("openai/gpt-5.6-sol", plan["leaf"]["argv"])
 
     def test_when_provider_is_explicit_only_verified_harness_support_is_used(self) -> None:
         pi = self.dry_plan("pi", "--provider", "openrouter")
@@ -334,7 +334,7 @@ class TestAiLauncher(unittest.TestCase):
         unsupported = self.run_ai("claude", "--provider", "openrouter", "--dry-run")
 
         self.assertEqual(
-            [",ai-selection", "--provider", "openrouter", "--model", "openai/gpt-5.5"],
+            [",ai-selection", "--provider", "openrouter", "--model", "openai/gpt-5.6-sol"],
             pi["selection"]["transport_trace"],
         )
         self.assertIn("--provider", pi["leaf"]["argv"])
@@ -368,10 +368,10 @@ class TestAiLauncher(unittest.TestCase):
 
         self.assertEqual(("pi", None, "openrouter"), adapter.request)
         self.assertEqual(
-            ("--provider", "openrouter", "--model", "openai/gpt-5.5"),
+            ("--provider", "openrouter", "--model", "openai/gpt-5.6-sol"),
             plan.selection.transport_args,
         )
-        self.assertEqual("OpenRouter openai/gpt-5.5 pin", plan.selection.model_provenance.source)
+        self.assertEqual("OpenRouter openai/gpt-5.6-sol pin", plan.selection.model_provenance.source)
         self.assertFalse(plan.selection.model_is_explicit)
         self.assertIn("--thinking", plan.actual_argv)
         self.assertIn("xhigh", plan.actual_argv)
@@ -383,7 +383,7 @@ class TestAiLauncher(unittest.TestCase):
         other_opencode_model = self.run_ai(
             "opencode",
             "--model",
-            "openrouter/openai/gpt-5.5",
+            "openrouter/openai/gpt-5.6-sol",
             "--dry-run",
         )
 
@@ -394,11 +394,12 @@ class TestAiLauncher(unittest.TestCase):
         self.assertIn("openrouter/moonshotai/kimi-k3@preset/kimi-lanes", other_opencode_model.stderr)
 
     def test_when_openrouter_route_models_are_explicit_each_harness_gets_its_sanctioned_set(self) -> None:
-        # The registry declares a Pi-specific OpenRouter set (GPT-5.5 default, DeepSeek mechanical,
-        # Sonnet refute, selectable Kimi/GLM);
+        # The registry declares a Pi-specific OpenRouter set (GPT-5.6 SOL route default plus T2
+        # implement and refute, DeepSeek mechanical, Gemini 3.8 Flash memory, selectable
+        # Sonnet/Kimi/GLM);
         # the launcher must accept the per-harness selectors the generated mirror sanctions and reject
         # anything else.
-        pi_gpt = self.dry_plan("pi", "--model", "openrouter/openai/gpt-5.5")
+        pi_gpt = self.dry_plan("pi", "--model", "openrouter/openai/gpt-5.6-sol")
         pi_deepseek = self.dry_plan("pi", "--model", "openrouter/deepseek/deepseek-v4-flash")
         pi_sonnet = self.dry_plan("pi", "--model", "openrouter/anthropic/claude-sonnet-4.6")
         pi_glm = self.dry_plan("pi", "--model", "openrouter/z-ai/glm-5.2")
@@ -419,7 +420,7 @@ class TestAiLauncher(unittest.TestCase):
             "--dry-run",
         )
 
-        self.assertIn("openai/gpt-5.5", pi_gpt["leaf"]["argv"])
+        self.assertIn("openai/gpt-5.6-sol", pi_gpt["leaf"]["argv"])
         self.assertIn("openrouter/deepseek/deepseek-v4-flash", pi_deepseek["leaf"]["argv"])
         self.assertIn("openrouter/anthropic/claude-sonnet-4.6", pi_sonnet["leaf"]["argv"])
         self.assertIn("openrouter/z-ai/glm-5.2", pi_glm["leaf"]["argv"])

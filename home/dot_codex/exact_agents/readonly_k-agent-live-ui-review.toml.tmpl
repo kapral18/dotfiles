@@ -1,7 +1,7 @@
 name = "k-agent-live-ui-review"
 description = "Verification-mode live UI verifier for /k-deep-review. Use after reviewer workers to validate UI/runtime-relevant candidate findings; returns comparison evidence, screenshot handoff, non-applicability, or target/branch/runtime/data blocker status."
 model = "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "codex" "agent" "k-agent-live-ui-review") }}"
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "high"
 service_tier = "default"
 developer_instructions = """
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}

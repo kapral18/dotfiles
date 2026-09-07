@@ -12,22 +12,22 @@ brew "wget"
 
 # View HTTP traffic
 # https://github.com/ilijamt/vht
-tap "ilijamt/tap"
+tap "ilijamt/tap", trusted: true
 brew "vht"
 
 # Check domain availability via RDAP/WHOIS
 # https://github.com/saidutt46/domain-check
-tap "saidutt46/domain-check"
+tap "saidutt46/domain-check", trusted: true
 brew "saidutt46/domain-check/domain-check"
 
 # Cross-platform network monitoring terminal UI tool
 # https://github.com/domcyrus/rustnet
-tap "domcyrus/rustnet"
+tap "domcyrus/rustnet", trusted: true
 brew "domcyrus/rustnet/rustnet"
 
 # Real-time network diagnostics in your terminal
 # https://github.com/matthart1983/netwatch
-tap "matthart1983/tap"
+tap "matthart1983/tap", trusted: true
 brew "matthart1983/tap/netwatch"
 
 # LAN discovery tool with a modern TUI
@@ -36,5 +36,5 @@ brew "whosthere"
 
 # Local port management tool
 # https://github.com/diegoholiveira/localports
-tap "diegoholiveira/localports"
+tap "diegoholiveira/localports", trusted: true
 brew "diegoholiveira/localports/localports"

@@ -25,7 +25,7 @@ review_model_overrides:
     lanes: "pro"
     verifier: "pro"
   copilot:
-    # Cross-family primary-finder lane (`lanes_cross` slot): Copilot review runs GPT-5.5, so the
+    # Cross-family primary-finder lane (`lanes_cross` slot): Copilot review runs GPT-5.6 SOL, so the
     # cross lane takes the Anthropic pick — same id as the refute row. Recall evidence: most
     # confirmed defects are caught by exactly one reviewer perspective, so the always-on correctness
     # lane gets family diversity before any angle fan-out.
@@ -47,19 +47,18 @@ review_model_overrides:
 # Categories are chosen before the model: the SOP delegation section and the k-* skills name a
 # category, then category_models resolves that category to a harness-native model id.
 #
-# Category rows are explicit because work type and model cost are not interchangeable. `lookup`
-# is exact retrieval only; semantic discovery and any conclusion-forming investigation uses `research`.
+# Category rows are explicit because work type and model cost are not interchangeable. Exact
+# caller-scoped retrieval is `mechanical` (cheap lane, no judgment; user call 2026-09-07 folded the
+# former `lookup` category into it); semantic discovery and any conclusion-forming investigation
+# uses `research` on the strong model.
 #
 # `family` is primary or counter. Only `refute` is counter: a refutation lane preferably
 # does not share a family with the work it audits — at equal capability — since same-family reviewers
 # inherit the same blind spots and the same context contamination; capability still outranks diversity (SOP §3.7).
 agent_categories:
-  lookup:
-    family: "primary"
-    contract: "exact-retrieval"
   mechanical:
     family: "primary"
-    contract: "deterministic-edit"
+    contract: "deterministic-edit-or-exact-retrieval"
   research:
     family: "primary"
     contract: "evidence-synthesis"
@@ -87,18 +86,22 @@ agent_categories:
 # Cursor's `generalPurpose`) sit here next to the repo-authored profiles: a built-in that spawns on
 # its own default model is exactly the leak this table exists to close.
 #
-# `general-purpose` is deliberately `implement`, not `lookup`, despite being the cheapest thing to
-# reach for: it carries `tools: "*"` and is the only delegated agent that can edit anything.
+# `general-purpose` is deliberately `implement`, not `mechanical`, despite being the cheapest thing to
+# reach for: it carries `tools: "*"`, so it can edit anything. The catch-all `claude` type carries the
+# same `tools: "*"`, so both edit-capable generics sit on `implement` rather than the cheap lane.
 #
-# Investigation is `research`, not `lookup`. `lookup` is exact retrieval by a smarter caller:
-# read the CLI help text, list the requested filenames, or return caller-scoped raw pointers.
+# Investigation is `research`, not `mechanical`. Exact retrieval by a smarter caller — read the CLI
+# help text, list the requested filenames, return caller-scoped raw pointers — is `mechanical`.
 # Anything that discovers relevant code, chooses symbols, or forms and reports a conclusion —
 # code-searcher, Explore, explore, explorer, codebase_investigator — is doing `research`.
-# `cli_help` is the one genuine `lookup` member: it reads `--help` and reports what it says.
+# `cli_help` reads `--help` and reports what it says, so it is `mechanical` retrieval.
 agent_bindings:
   # Repo-authored review roles.
   k-agent-adversarial-verifier: "refute"
   k-agent-criteria-verifier: "refute"
+  # Public-claim verification phase of k-public-sources (claim + source in, verdict out); same
+  # counter band as the other refuters so the verdict comes from a different family where one exists.
+  k-agent-claim-verifier: "refute"
   # `review`, not `refute`: fresh-eyes reads the diff blind for clarity, it does not audit a
   # conclusion, and its contract (k-review/references/fresh-eyes.md) pins it to the registry
   # LANES value. Binding it to `refute` pointed the band gate at the counter model while every
@@ -118,11 +121,15 @@ agent_bindings:
   k-agent-review-controller: "orchestrate"
   # Repo-authored general roles.
   k-agent-code-searcher: "research"
-  k-agent-researcher: "research"
+  k-agent-public-sources: "research"
   # Deterministic-edit lane: the parent states the rule, targets and acceptance; the worker applies
   # and returns the diff (k-review/references/mechanical-worker.md). The only `mechanical` binding
-  # besides OMP's native `sonic`; every other writable generic agent stays `implement`.
+  # besides OMP's `sonic`/`scout` and Gemini's `cli_help`; every other writable generic agent stays
+  # `implement`.
   k-agent-mechanical: "mechanical"
+  # /k-build implement worker. Only Pi renders it: Pi disables built-in subagents and has no generic
+  # edit-capable type, so a named profile is the only reachable implement target there.
+  k-agent-implementer: "implement"
   # k-agent-smol ,ai-kb operator: judges staged per-turn recall candidates against session state and owns
   # capsule write mechanics (k-ai-kb/references/smol-operator.md).
   k-agent-smol: "memory"
@@ -146,7 +153,7 @@ agent_bindings:
   default: "orchestrate"
   # Gemini built-ins.
   codebase_investigator: "research"
-  cli_help: "lookup"
+  cli_help: "mechanical"
   generalist: "implement"
   browser_agent: "implement"
   # Cursor built-ins (the Task tool's subagent_type enum).
@@ -154,9 +161,15 @@ agent_bindings:
   cursor-guide: "research"
   bugbot: "review"
   best-of-n-runner: "implement"
-  # OMP built-in (omp task tool roster): `sonic` runs on modelRoles.smol, which is what the omp
-  # mechanical row resolves to, so the SOP can name it as the concrete mechanical spawn target.
+  # OMP built-ins (omp task tool roster). `sonic`/`scout` run on modelRoles.smol, which is what the omp
+  # mechanical row resolves to: `sonic` applies settled edits, `scout` does read-only exact
+  # retrieval. Neither is a research lane — research stays on @default (user call 2026-09-07).
+  # `task` (implement) is bound above via the Copilot name; `reviewer` pins @slow and
+  # `security-reviewer` spawned on claude-fable-5-1 (probe 2026-09-07), both T1 review.
   sonic: "mechanical"
+  scout: "mechanical"
+  reviewer: "review"
+  security-reviewer: "review"
 
 # The per-harness half. `effort` is the literal value that harness takes (a model-id suffix on
 # Cursor, --effort on Claude Code/Copilot, model_reasoning_effort on Codex, a `:level` suffix on
@@ -179,25 +192,22 @@ category_models:
     # so no cross-vendor counter is expressible here. alwaysThinkingEnabled:false keeps the
     # top-category model non-thinking; that is what `thinking: "off"` means on this harness.
     #
-    # Fable carries lookup and conclusion-forming categories (Fable 5 user call 2026-08-05, following
-    # the Cursor GPT-5.6 exit; bumped to 5.1 on 2026-09-01); mechanical work uses Claude Sonnet 4.6 high.
-    # Claude Code hyphenates the version selector as `claude-sonnet-4-6` (not Copilot's dotted
-    # `claude-sonnet-4.6`), hence `claude-fable-5-1`. The installed 2.1.241 bundle names only
-    # `claude-fable-5`; `claude-fable-5-1` is unverified because the API-key route short-circuits on
-    # billing before model validation, so a live `-p` probe cannot prove id validity on this machine. The cost-driven opus-5 ban exemption (closed 2026-08-03) is superseded
-    # — opus is off this harness too. Claude Code is Anthropic-only, so the glm/terra/kimi
-    # substitution chain does not apply here and the verifier stays families=same (degraded).
+    # Three tiers (user call 2026-09-07): T1 orchestrate/research/review = the session model Fable 5.1
+    # (Fable 5 user call 2026-08-05; bumped to 5.1 on 2026-09-01), T2 implement = Opus 5 (this
+    # supersedes the 2026-08-03 cost-driven opus ban: the orchestrator now delegates ~80% of the
+    # work, so the implementer runs one tier below the thinker), T3 mechanical/memory = Sonnet 5.
+    # Claude Code hyphenates the version selector (`claude-sonnet-4-6`, `claude-fable-5-1`). The
+    # installed 2.1.241 bundle names only `claude-fable-5`; `claude-fable-5-1`, `claude-opus-5` and
+    # `claude-sonnet-5` are unverified because the API-key route short-circuits on billing before
+    # model validation, so a live `-p` probe cannot prove id validity on this machine. Claude Code is
+    # Anthropic-only, so the glm/terra/kimi substitution chain does not apply here and the verifier
+    # stays families=same (degraded).
     #
     # All categories share the `fable` alias, so the Claude gate's alias projection cannot
     # separate all of them; the profile frontmatter's exact id is what holds each category. That is the
     # same collision the two sonnet bands used to have, documented in band_gate.py `_claude`.
-    lookup:
-      model: "claude-fable-5-1"
-      effort: "low"
-      thinking: "off"
-      context: "short"
     mechanical:
-      model: "claude-sonnet-4-6"
+      model: "claude-sonnet-5"
       effort: "high"
       thinking: "off"
       context: "short"
@@ -207,8 +217,8 @@ category_models:
       thinking: "off"
       context: "short"
     implement:
-      model: "claude-fable-5-1"
-      effort: "medium"
+      model: "claude-opus-5"
+      effort: "high"
       thinking: "off"
       context: "short"
     orchestrate:
@@ -227,54 +237,49 @@ category_models:
       thinking: "off"
       context: "short"
       verifier_status: "degraded"
-    # memory: smallest verified id in this catalog; low effort is verified claude syntax (lookup row).
+    # memory: the T3 pick; low effort is verified claude syntax.
     memory:
-      model: "claude-sonnet-4-6"
+      model: "claude-sonnet-5"
       effort: "low"
       thinking: "off"
       context: "short"
   codex:
     # Codex 0.153.2 retires gpt-5.4 and names gpt-5.6-terra as its replacement.
-    # Mechanical and memory keep high effort on Terra; the session default is gpt-6-astra/high.
-    # Research, implement, review and refute retain gpt-5.5/xhigh.
-    # Lookup runs gpt-5.5/medium (user call 2026-09-06): exact caller-scoped retrieval needs no
-    # reasoning, and reasoning output is billed at full price while the rest of the call is cache reads.
+    # Tiers (user call 2026-09-07, revised the same day once gpt-6-astra proved absurdly expensive):
+    # T1 orchestrate/research = the session default gpt-5.6-sol/high (the workhorse; bundled catalog:
+    # sol supports high/xhigh), T2 implement = gpt-5.6-terra/high (deliberately collapsed onto T3 —
+    # user call: cheapest implementer), T3 mechanical/memory = gpt-5.6-terra/high. Astra is reserved
+    # for review and refute only.
     # Explicit categories close native subagent defaults. OpenAI-only refute remains degraded.
-    # Bundled catalog (codex-cli 0.149.0): gpt-5.5 supports xhigh; native default is low, so the
-    # pin is load-bearing.
-    lookup:
-      model: "gpt-5.5"
-      effort: "medium"
-      thinking: ""
-      context: "short"
+    # Native default effort is low, so the explicit `high` pins are load-bearing.
     mechanical:
       model: "gpt-5.6-terra"
       effort: "high"
       thinking: ""
       context: "short"
     research:
-      model: "gpt-5.5"
-      effort: "xhigh"
+      model: "gpt-5.6-sol"
+      effort: "high"
       thinking: ""
       context: "short"
     implement:
-      model: "gpt-5.5"
-      effort: "xhigh"
+      model: "gpt-5.6-terra"
+      effort: "high"
       thinking: ""
       context: "short"
     orchestrate:
-      model: "gpt-6-astra"
+      model: "gpt-5.6-sol"
       effort: "high"
       thinking: ""
       context: "short"
     review:
-      model: "gpt-5.5"
-      effort: "xhigh"
+      model: "gpt-6-astra"
+      effort: "high"
       thinking: ""
       context: "short"
     refute:
-      model: "gpt-5.5"
-      effort: "xhigh"
+      model: "gpt-6-astra"
+      effort: "high"
       thinking: ""
       context: "short"
       verifier_status: "degraded"
@@ -286,40 +291,40 @@ category_models:
       context: "short"
   copilot:
     # `context: short` is settings.json `contextTier: "default"`; long would be `"long_context"`.
-    # User call 2026-08-24: Copilot defaults to gpt-5.5 at xhigh effort for every category except
-    # mechanical and refute. Mechanical uses Sonnet 4.6 high; refute uses Fable 5 high.
-    # Fable 5.1 is not in the Copilot catalog: `copilot -p --model claude-fable-5.1` (and `-5-1`)
-    # returned "is not available" on Copilot CLI 1.0.82 (probed 2026-09-01), so refute stays on 5.
+    # Three tiers (user call 2026-09-07): T1 orchestrate/research/review = gpt-5.6-sol/xhigh (the
+    # session model; it superseded gpt-5.5 at the same xhigh effort, user call 2026-09-07 — gpt-5.5
+    # stays in the captured catalog as an available id, not a pick), T2 implement =
+    # claude-opus-5/high, T3 mechanical/memory = claude-sonnet-5/high; refute
+    # uses Fable 5.1 high (cross-family). claude-opus-5 and claude-sonnet-5 are in the captured
+    # catalog; claude-fable-5.1 is pinned ahead of org enablement — `copilot -p --model
+    # claude-fable-5.1` (and `-5-1`) returned "is not available" on Copilot CLI 1.0.82 (probed
+    # 2026-09-01), so the refute row and the `lanes_cross` override fail at spawn until the org
+    # enables it.
     # Non-thinking Anthropic models still need COPILOT_DISABLE_ANTHROPIC_THINKING=1, which the
     # `,copilot` launcher exports; it zeroes the thinking budget while effortLevel still ships as
     # reasoning_effort.
-    lookup:
-      model: "gpt-5.5"
-      effort: "xhigh"
-      thinking: ""
-      context: "short"
     mechanical:
-      model: "claude-sonnet-4.6"
+      model: "claude-sonnet-5"
       effort: "high"
       thinking: "off"
       context: "short"
     research:
-      model: "gpt-5.5"
+      model: "gpt-5.6-sol"
       effort: "xhigh"
       thinking: ""
       context: "short"
     implement:
-      model: "gpt-5.5"
-      effort: "xhigh"
-      thinking: ""
+      model: "claude-opus-5"
+      effort: "high"
+      thinking: "off"
       context: "short"
     orchestrate:
-      model: "gpt-5.5"
+      model: "gpt-5.6-sol"
       effort: "xhigh"
       thinking: ""
       context: "short"
     review:
-      model: "gpt-5.5"
+      model: "gpt-5.6-sol"
       effort: "xhigh"
       thinking: ""
       context: "short"
@@ -329,9 +334,9 @@ category_models:
       thinking: "off"
       context: "short"
       verifier_status: "cross_family"
-    # memory: reuses the verified mechanical pair (claude-sonnet-4.6/high, catalog-checked by invariants).
+    # memory: the T3 pick (claude-sonnet-5/high, catalog-checked by invariants).
     memory:
-      model: "claude-sonnet-4.6"
+      model: "claude-sonnet-5"
       effort: "high"
       thinking: "off"
       context: "short"
@@ -368,11 +373,6 @@ category_models:
     # `-fast` is a speed tier, not a cheaper model: cursor.com/docs/models prices Composer 2.5 at
     # $0.5/$2.5 and calls the fast variant "A faster variant with the same intelligence ... at $3/M
     # input and $15/M output tokens". No category may reach for a `-fast` id.
-    lookup:
-      model: "gpt-5.6-sol-high"
-      effort: "high"
-      thinking: ""
-      context: "long"
     mechanical:
       model: "auto"
       effort: ""
@@ -383,8 +383,10 @@ category_models:
       effort: "high"
       thinking: ""
       context: "long"
+    # T2 implement (user call 2026-09-07): Opus 5 High is in the live Task enum (2026-08-29 rejection
+    # listing); it exists only as a 1M id here, hence long context.
     implement:
-      model: "gpt-5.6-sol-high"
+      model: "claude-opus-5-high"
       effort: "high"
       thinking: ""
       context: "long"
@@ -415,11 +417,6 @@ category_models:
     # everywhere except mechanical, which stays on Gemini 3.8 Flash. Antigravity 1.1.25 spells
     # Gemini 3.1 Pro as `gemini-3.1-pro-preview` in `agy models`. All Gemini categories request
     # long context.
-    lookup:
-      model: "gemini-3.1-pro-preview"
-      effort: "high"
-      thinking: ""
-      context: "long"
     mechanical:
       model: "gemini-3.8-flash"
       effort: "high"
@@ -451,60 +448,68 @@ category_models:
       thinking: ""
       context: "long"
       verifier_status: "degraded"
-    # memory: flash is the small Google pick, same verified pair as mechanical.
+    # memory: flash is the small Google pick, same verified pair as mechanical. Effort is `low`
+    # (flash is slow, user call 2026-09-07); Antigravity's dynamic `flash`-tier subagents take no
+    # effort dial, so the value is informational here — the row records the intent.
     memory:
       model: "gemini-3.8-flash"
-      effort: "high"
+      effort: "low"
       thinking: ""
       context: "long"
   pi:
-    # Pi only ever reaches OpenRouter here. User call 2026-08-24: primary categories use GPT-5.5
-    # at xhigh thinking, mechanical uses DeepSeek V4 Flash at xhigh, and refute uses Claude Sonnet
-    # 4.6 at xhigh so lanes vs counter stay genuinely cross-family.
+    # Pi's session model is the native anthropic route: `defaultProvider: anthropic`,
+    # `defaultModel: claude-fable-5.1`, `defaultThinkingLevel: high`
+    # (home/dot_pi/agent/readonly_settings.{personal,work}.json:2-4). T1 therefore rides the session
+    # model and OpenRouter carries everything else. Three tiers (user call 2026-09-07): T1
+    # orchestrate/research/review = anthropic/claude-fable-5.1:high, T2 implement =
+    # openrouter/openai/gpt-5.6-sol:high (listed in pi_extra_models, not yet live-spawned on this
+    # machine), T3 mechanical = openrouter/deepseek/deepseek-v4-flash:xhigh and memory =
+    # openrouter/google/gemini-3.8-flash:low. Refute rides openrouter/openai/gpt-5.6-sol:xhigh: with
+    # the lanes on Anthropic, an OpenAI counter is the cross-family pick (it was Claude Sonnet 4.6
+    # while the lanes still rode GPT-5.5, user call 2026-08-24). Refute names the same model as the
+    # T2 implement row at a different effort — that is deliberate: the counter only has to differ in
+    # family from the Anthropic T1 lanes it audits, and it does.
     # The `:<level>` suffix is Pi's single dial (thinking level and reasoning effort at once).
     # Pi exposes no context tier at all, so every category is short by construction.
-    lookup:
-      model: "openrouter/openai/gpt-5.5:xhigh"
-      effort: "xhigh"
-      thinking: ""
-      context: "short"
     mechanical:
       model: "openrouter/deepseek/deepseek-v4-flash:xhigh"
       effort: "xhigh"
       thinking: ""
       context: "short"
     research:
-      model: "openrouter/openai/gpt-5.5:xhigh"
-      effort: "xhigh"
+      model: "anthropic/claude-fable-5.1:high"
+      effort: "high"
       thinking: ""
       context: "short"
     implement:
-      model: "openrouter/openai/gpt-5.5:xhigh"
-      effort: "xhigh"
+      model: "openrouter/openai/gpt-5.6-sol:high"
+      effort: "high"
       thinking: ""
       context: "short"
     orchestrate:
-      model: "openrouter/openai/gpt-5.5:xhigh"
-      effort: "xhigh"
+      model: "anthropic/claude-fable-5.1:high"
+      effort: "high"
       thinking: ""
       context: "short"
     review:
-      model: "openrouter/openai/gpt-5.5:xhigh"
-      effort: "xhigh"
+      model: "anthropic/claude-fable-5.1:high"
+      effort: "high"
       thinking: ""
       context: "short"
     refute:
-      model: "openrouter/anthropic/claude-sonnet-4.6:xhigh"
+      model: "openrouter/openai/gpt-5.6-sol:xhigh"
       effort: "xhigh"
       thinking: ""
       context: "short"
       verifier_status: "cross_family"
-    # memory: gemini-3.7-flash replaces deepseek-v4-flash after live scribe probes 2026-08-29 —
+    # memory: gemini-3.7-flash replaced deepseek-v4-flash after live scribe probes 2026-08-29 —
     # deepseek stored a known duplicate; gemini returned `duplicate of <id>` on the same fixture.
-    # The model exposes `high` as its top thinking level (no xhigh).
+    # Superseded by gemini-3.8-flash 2026-09-07 (same Google flash lane, no re-probe).
+    # The model exposes `high` as its top thinking level (no xhigh), but the lane runs `low`:
+    # flash is slow, so the memory pick trades depth for latency (user call 2026-09-07).
     memory:
-      model: "openrouter/google/gemini-3.7-flash:high"
-      effort: "high"
+      model: "openrouter/google/gemini-3.8-flash:low"
+      effort: "low"
       thinking: ""
       context: "short"
   omp:
@@ -516,66 +521,61 @@ category_models:
     # User call 2026-09-07: one profile-independent modelRoles block routes default/vision/slow/plan/task through the
     # native anthropic provider on claude-fable-5.1:high (Fable 5+ exposes the five-tier
     # low/medium/high/xhigh/max adaptive scale on the Messages API), and advisor through the
-    # native openai-codex provider on gpt-6-astra:high (the same orchestrate-lane model/effort
-    # the codex harness rows use). smol rides anthropic/claude-sonnet-5:high on both profiles
+    # native openai-codex provider on gpt-6-astra:high (the codex review/refute pick; codex T1 runs
+    # sol). smol rides anthropic/claude-sonnet-5:high on both profiles
     # (user call 2026-09-07: cursor/default ran @smol lanes — bundled scout/sonic — over the
     # cursor-agent transport, and they died on Cursor's free-request limit). tiny rides
     # anthropic/claude-sonnet-5:medium and commit anthropic/claude-sonnet-5:medium; every built-in
     # role is pinned so nothing falls through to the harness default or the @smol fallback.
     # modelProviderOrder was reordered to put anthropic and openai-codex ahead of openrouter/cursor/openai.
-    # Review/refute stay on @advisor (same-family), so refute reports reduced_independence.
     # Verified 17.2.4: a profile carrying `model: "@smol"` runs on modelRoles.smol, and an
     # unknown token fails loudly with `Error: No model selected.` rather than falling back.
     # Same single-dial constraint as Pi: omp maps thinkingLevel straight onto reasoning, and
     # provider/model are separated by `/`, never `:` — `cursor:` parses as a bogus provider.
-    lookup:
-      model: "@smol"
-      effort: "xhigh"
-      thinking: ""
-      context: "short"
     # mechanical rides @smol (Sonnet 5), not @task: the row used to name @task, which resolved to the
     # same Fable model as the session default, so a mechanical delegation cost exactly what inlining
     # cost (probe 2026-09-07: bundled `sonic` already spawned on anthropic/claude-sonnet-5).
     mechanical:
       model: "@smol"
-      effort: "xhigh"
+      effort: "high"
       thinking: ""
       context: "short"
+    # Three tiers (user call 2026-09-07): T1 research/review/orchestrate ride the session model via
+    # @default/@plan (Fable 5.1), T2 implement rides @task (modelRoles.task = claude-opus-5:high; the
+    # native `task` agent and every implement worker land there), T3 mechanical/memory ride @smol
+    # (Sonnet 5). Refute stays @advisor (gpt-6-astra): with review on Anthropic the counter is now
+    # genuinely cross-family (it reported reduced_independence while review also rode @advisor).
     research:
-      model: "@task"
-      effort: "xhigh"
+      model: "@default"
+      effort: "high"
       thinking: ""
       context: "short"
     implement:
       model: "@task"
-      effort: "xhigh"
+      effort: "high"
       thinking: ""
       context: "short"
     orchestrate:
       model: "@plan"
-      effort: "xhigh"
+      effort: "high"
       thinking: ""
       context: "short"
     review:
-      model: "@advisor"
-      effort: "xhigh"
+      model: "@default"
+      effort: "high"
       thinking: ""
       context: "short"
     refute:
       model: "@advisor"
-      effort: "xhigh"
+      effort: "high"
       thinking: ""
       context: "short"
-      verifier_status: "reduced_independence"
-    # memory: direct OpenRouter id, not @smol — modelRoles.smol resolved to deepseek-v4-flash when
-    # this row was pinned; deepseek hung as omp scribe (killed at 9 min, 2026-08-28) and stored a duplicate on pi;
-    # gemini-3.7-flash passed the same scribe fixture. The `:high` suffix is load-bearing:
-    # agent-model.partial renders only `model` into the agent frontmatter (effort below is
-    # informational), and omp's spawn precedence honors an explicit `:level` suffix
-    # (task/executor.ts: effort > `:level` suffix > agent default > pattern-derived).
-    # The model exposes `high` as its top thinking level (no xhigh).
+      verifier_status: "cross_family"
+    # memory: the T3 role. The row used to pin openrouter/google/gemini-3.7-flash:high directly
+    # because modelRoles.smol was deepseek-v4-flash at the time (it hung as OMP scribe, killed at
+    # 9 min, 2026-08-28); smol is Sonnet 5 now, so the role token is the pick again (user call 2026-09-07).
     memory:
-      model: "openrouter/google/gemini-3.7-flash:high"
+      model: "@smol"
       effort: "high"
       thinking: ""
       context: "short"

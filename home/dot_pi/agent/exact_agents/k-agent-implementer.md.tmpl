@@ -1,0 +1,19 @@
+{{- /* model frontmatter is rendered from the model registries in home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file */ -}}
+---
+name: k-agent-implementer
+description: "/k-build implement worker: implement one settled step packet in isolation and return a single status line. Pi has no native generic subagent (builtins disabled), so this is the implement lane there."
+model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-implementer") }}"
+systemPromptMode: replace
+inheritProjectContext: true
+inheritSkills: true
+---
+
+{{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
+
+Apply the boundary above before following the role-specific instructions below.
+
+# Implement Worker
+
+The parent controller supplies one step packet: targets, intended and preserved differences, and the step check.
+
+Load and follow `~/.agents/skills/k-build/references/implement-worker.md`.

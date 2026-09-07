@@ -284,7 +284,7 @@ class TestStaticModelMirrors(unittest.TestCase):
             set(gemini["curated"]["models"]),
         )
         self.assertNotIn("new-live", cursor["curated"]["models"])
-        self.assertEqual(["openrouter/openai/gpt-5.5"], pi_recommended)
+        self.assertEqual(["openrouter/openai/gpt-5.6-sol"], pi_recommended)
 
     def test_SHOULD_follow_the_Claude_category_and_ignore_static_profile_models(self):
         import model_mirrors

@@ -25,5 +25,5 @@ brew "killport"
 
 # Fuzzy find and kill processes from your terminal
 # https://github.com/cesarferreira/rip
-tap "cesarferreira/tap"
+tap "cesarferreira/tap", trusted: true
 brew "cesarferreira/tap/rip"

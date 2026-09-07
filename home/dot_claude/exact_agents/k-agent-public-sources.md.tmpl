@@ -1,11 +1,11 @@
 ---
-name: k-agent-researcher
+name: k-agent-public-sources
 description: Delegate source-first investigation of external public GitHub repos, libraries, or tools.
-model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claude_code" "agent" "k-agent-researcher") }}"
+model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claude_code" "agent" "k-agent-public-sources") }}"
 readonly: false
 tools: Read, Grep, Glob, Bash
 skills:
-  - k-research
+  - k-public-sources
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
@@ -14,4 +14,4 @@ Apply the boundary above before following the role-specific instructions below.
 
 # Researcher
 
-Load and follow `~/.agents/skills/k-review/references/researcher.md`.
+Load and follow `~/.agents/skills/k-review/references/public-sources.md`.

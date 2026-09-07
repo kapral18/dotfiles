@@ -13,7 +13,7 @@ provider_models:
   # then price-weights remaining endpoints. moonshotai/kimi-k3 remains selectable and only
   # allows Fireworks, Together, and BaseTen under a $16/M completion cap (`only` blocks other
   # providers). z-ai/glm-5.2 is selectable alongside with the same FP8-or-higher, 24 t/s floor
-  # policy as deepseek; gpt-5.6-terra carries counters.
+  # policy as deepseek; openai/gpt-5.6-terra remains selectable.
   # Pi injects the DeepSeek-0731/Kimi/GLM policies through modelOverrides openRouterRouting and OMP through
   # modelOverrides extraBody.provider. Harnesses without an extra-body channel carry them in the
   # `kimi-lanes*`, `deepseek-lanes-*`, and `glm-lanes-*` workspace preset slugs. Keeping other

@@ -49,23 +49,22 @@ If a trigger surfaces mid-pass, stop and switch to `k-review` rather than half-d
    Establish base context when a finding's correctness genuinely depends on how base behaves today;
    use the most direct sufficient source (`git show <base>:<path>` + `rg`, or local file reads).
    Do not omit needed base context because SCSI would be heavier; escalate to `k-review` when direct local reads are not enough.
-3. **Candidate audit.**
-   Launch one read-only `k-agent-change-auditor` worker when the harness supports subagents;
-   otherwise run the same read/judge pass inline and report `agent_lane=inline-degraded`.
+3. **Candidate audit.** Launch one read-only `k-agent-change-auditor` worker via the harness profile (Claude, OMP, Pi).
+   Where that profile is unreachable (Codex, Copilot, Cursor), launch the harness's generic subagent type with the registry `review` model passed explicitly (Cursor: `generalPurpose` + `category_models.cursor.review.model`) and a prompt that loads `~/.agents/skills/k-review/references/change-auditor.md`; in Antigravity, `define_subagent` `k-agent-change-auditor` from that contract and `invoke_subagent` it at `pro`.
+   Only when no isolated spawn exists at all, run the same read/judge pass inline and report `agent_lane=inline-degraded`.
    Enforce anti-tunnel-vision: audit enclosing files, sibling consumers, and call sites alongside the diff.
-   The worker returns candidate findings and proposed fixes only; the parent owns edits.
+   The auditor returns candidate findings and proposed fixes only; edits are dispatched in step 6.
 4. **Controller findings audit.**
    Inline the Findings-Set Audit from `judging_pipeline.md` over the candidate set:
    remove duplicates, unsupported claims, gaps, overengineering, and unactionable fixes before adversarial work.
    Report `findings_audit=inline`.
 5. **Final adversarial refutation.**
    If the audited candidate set is empty, skip adversarial work and report `Adversarial verification: skipped (no candidates after findings audit)`.
-   Otherwise, run `k-agent-adversarial-verifier` over the audited candidate set when the harness supports it;
-   if not, run the Candidate Refutation Ladder inline and report `adversarial=inline-degraded`.
+   Otherwise, run `k-agent-adversarial-verifier` over the audited candidate set, launched through the Verifier launch ladder in `~/.agents/skills/k-review/references/runtime-harnesses.md`, and report the rung it reached.
    No finding may be fixed or reported until it survives this final pass.
    If a fix here reopens findings and a further round is warranted, hand off to `~/.agents/skills/k-converge/SKILL.md` under its workflow-handoff contract; recheck light eligibility first.
-6. **Fix survivors.**
-   Apply the Verify-and-Fix Loop's fix, targeted-check, Post-Review Stage, and bound steps from `judging_pipeline.md` over the surviving findings.
+6. **Dispatch fixes for survivors.**
+   Apply the Verify-and-Fix Loop's fix, targeted-check, Post-Review Stage, and bound steps from `judging_pipeline.md` over the surviving findings: each surviving fix goes to the T2 implement worker as a packet naming the finding, its anchor, the intended change, and the check (SOP §3.7 implement dispatch gate); the controller edits inline only trivial single-site fixes.
    The **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage** are foregrounded for this skill.
    Do not commit or push unless explicitly asked.
 

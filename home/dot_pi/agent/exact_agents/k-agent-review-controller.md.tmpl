@@ -8,6 +8,9 @@ systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: true
 skills: k-deep-review, k-review
+# maxSubagentDepth: 2 is for root invocation only — it budgets the controller's own fan-out. A
+# child-spawned instance follows the Session boundary below and spawns nothing, so the depth
+# allowance never applies to it.
 maxSubagentDepth: 2
 ---
 

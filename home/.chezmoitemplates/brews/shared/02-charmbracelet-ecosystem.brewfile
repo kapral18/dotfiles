@@ -1,4 +1,4 @@
-tap "charmbracelet/tap"
+tap "charmbracelet/tap", trusted: true
 
 # A powerful terminal-based AI assistant for developers
 # https://charm.sh/crush

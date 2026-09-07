@@ -63,28 +63,34 @@ class TestOpenRouterWrappers(unittest.TestCase):
     def _assert_openrouter_roles(self, harness, observed, band_gate, shim, projection):
         # Independent category contract, also checked against the generated registry.
         wires = {
-            "memory": "google/gemini-3.7-flash@preset/effort-high",
+            "research": "anthropic/claude-fable-5.1@preset/effort-high",
+            "review": "anthropic/claude-fable-5.1@preset/effort-high",
+            "orchestrate": "anthropic/claude-fable-5.1@preset/effort-high",
+            "implement": "openai/gpt-5.6-sol@preset/effort-high",
             "mechanical": "deepseek/deepseek-v4-flash@preset/effort-xhigh",
-            "refute": "anthropic/claude-sonnet-4.6@preset/effort-xhigh",
+            "memory": "google/gemini-3.8-flash@preset/effort-low",
+            "refute": "openai/gpt-5.6-sol@preset/effort-xhigh",
         }
-        default_wire = "openai/gpt-5.5@preset/effort-xhigh"
+        # Claude Code fixes the alias set at four, so the five Pi lanes fill four slots along the
+        # tier ladder haiku < sonnet < opus < fable. The refute pick claims no slot: the gate maps
+        # every gpt/openai backend id to `opus`, so a refute launch runs the T2 sol wire model.
+        slots = {
+            "fable": wires["research"],
+            "opus": wires["implement"],
+            "sonnet": wires["mechanical"],
+            "haiku": wires["memory"],
+        }
+        substitutes = {"refute": wires["implement"]}
         gate_env = {**observed["env"], "AGENT_BAND_HARNESS": "claude_code" if harness == "claude" else harness}
         with mock.patch.dict(os.environ, gate_env, clear=True):
-            # Mechanical has no current named binding; its alias remains a preserved input.
-            aliases = {
-                "opus": wires["memory"],
-                "haiku": wires["mechanical"],
-                "sonnet": wires["refute"],
-                "fable": default_wire,
-            }
-            for alias, wire in aliases.items():
+            for alias, wire in slots.items():
                 base, effort = wire.split("@preset/effort-")
                 pick = band_gate._format_pick({"model": f"openrouter/{base}:{effort}"}, "claude_code", "pi")
                 self.assertEqual(pick.get("alias"), alias)
                 if harness == "claude":
                     self.assertEqual(observed["env"][f"ANTHROPIC_DEFAULT_{alias.upper()}_MODEL"], wire)
             for role, pick in projection["harnesses"]["pi"]["agents"].items():
-                expected = wires.get(pick["category"], default_wire)
+                expected = wires[pick["category"]]
                 base, thinking = pick["model"].removeprefix("openrouter/").rsplit(":", 1)
                 self.assertEqual(f"{base}@preset/effort-{thinking}", expected)
                 gate_input = json.dumps(
@@ -106,8 +112,9 @@ class TestOpenRouterWrappers(unittest.TestCase):
                 )
                 model = updated.get("model")
                 if harness == "claude":
-                    self.assertIn(model, aliases, (role, output))
+                    self.assertIn(model, slots, (role, output))
                     model = observed["env"][f"ANTHROPIC_DEFAULT_{model.upper()}_MODEL"]
+                    expected = substitutes.get(pick["category"], expected)
                 self.assertEqual(model, expected, (harness, role))
                 if harness == "cursor":
                     allowed = observed["env"]["CURSOR_AGENT_ALLOWED_MODEL"]
@@ -153,7 +160,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
                     )
                     self.assertEqual(result.returncode, 0, result.stderr)
                     observed = json.loads(result.stdout)
-                    self.assertCountEqual(calls.read_text().splitlines(), set((effort, "high", "xhigh")))
+                    self.assertCountEqual(calls.read_text().splitlines(), set((effort, "low", "high", "xhigh")))
                     wire = f"moonshotai/kimi-k3@preset/effort-{effort}"
                     self.assertTrue(wire in observed["argv"] or wire in observed["env"].values())
                     self._assert_openrouter_roles(harness, observed, band_gate, shim, projection)
@@ -433,13 +440,61 @@ class TestOpenRouterWrappers(unittest.TestCase):
 
     def test_SHOULD_map_claude_tiers_to_the_pi_openrouter_backend_schema(self):
         source = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()
-        assert 'export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_PI_MEMORY_WIRE_MODEL"' in source
-        assert 'export ANTHROPIC_DEFAULT_SONNET_MODEL="$OPENROUTER_PI_SONNET_WIRE_MODEL"' in source
-        assert 'export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OPENROUTER_PI_DEEPSEEK_WIRE_MODEL"' in source
-        assert 'export ANTHROPIC_DEFAULT_FABLE_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"' in source
-        assert 'export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"' in source
+        assert 'export ANTHROPIC_DEFAULT_FABLE_MODEL="$OPENROUTER_PI_T1_WIRE_MODEL"' in source
+        assert 'export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_PI_T2_WIRE_MODEL"' in source
+        assert 'export ANTHROPIC_DEFAULT_SONNET_MODEL="$OPENROUTER_PI_MECHANICAL_WIRE_MODEL"' in source
+        assert 'export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OPENROUTER_PI_MEMORY_WIRE_MODEL"' in source
+        assert 'export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_PI_T2_WIRE_MODEL"' in source
         assert 'export AGENT_BAND_SCHEMA_HARNESS="pi"' in source
         assert 'export AGENT_BAND_MODEL_FORMAT="openrouter-preset"' in source
+        for lane, wire in (
+            ("T1", "anthropic/claude-fable-5.1@preset/effort-high"),
+            ("T2", "openai/gpt-5.6-sol@preset/effort-high"),
+            ("MECHANICAL", "deepseek/deepseek-v4-flash@preset/effort-xhigh"),
+            ("MEMORY", "google/gemini-3.8-flash@preset/effort-low"),
+            ("REFUTE", "openai/gpt-5.6-sol@preset/effort-xhigh"),
+        ):
+            assert f'readonly OPENROUTER_PI_{lane}_WIRE_MODEL="{wire}"' in source, lane
+
+    def test_SHOULD_resolve_each_claude_alias_slot_from_its_pi_category_pick(self):
+        """WHEN the wrapper exports its alias slots, each one carries the gate's formatted lane pick."""
+        spec = importlib.util.spec_from_file_location(
+            "band_gate_slots", REPO / "home/exact_dot_agents/exact_hooks/executable_band_gate.py"
+        )
+        band_gate = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(band_gate)
+        rows = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["pi"]
+        _, env = self._openrouter_route_fixture()
+        result = subprocess.run(
+            [modern_bash(), str(REPO / "home/exact_bin/executable_,claude-openrouter"), "-p", "fixture"],
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        exported = json.loads(result.stdout)["env"]
+
+        formatted = {}
+        with mock.patch.dict(os.environ, {**exported, "AGENT_BAND_HARNESS": "claude_code"}, clear=True):
+            for category, row in rows.items():
+                formatted[category] = band_gate._format_pick(dict(row), "claude_code", "pi")
+        # One slot per lane along the ladder haiku < sonnet < opus < fable.
+        for category, alias in (
+            ("research", "fable"),
+            ("implement", "opus"),
+            ("mechanical", "sonnet"),
+            ("memory", "haiku"),
+        ):
+            with self.subTest(category=category):
+                pick = formatted[category]
+                self.assertEqual(pick["alias"], alias)
+                self.assertEqual(exported[f"ANTHROPIC_DEFAULT_{alias.upper()}_MODEL"], pick["model"])
+        # `refute` claims no slot of its own: the gate's gpt/openai rule sends it to `opus`, so a
+        # refute launch here runs the T2 sol wire model at high rather than the xhigh refute pick.
+        self.assertEqual(formatted["refute"]["alias"], "opus")
+        self.assertEqual(exported["ANTHROPIC_DEFAULT_OPUS_MODEL"], formatted["implement"]["model"])
+        # Unbound spawns fall back to CLAUDE_CODE_SUBAGENT_MODEL, which is the T2 implement lane.
+        self.assertEqual(exported["CLAUDE_CODE_SUBAGENT_MODEL"], formatted["implement"]["model"])
 
     def test_SHOULD_mark_suffix_wrappers_with_their_backend_lane_schema(self):
         expectations = {
@@ -603,7 +658,7 @@ printf 'model=%s\\neffort=%s\\nsubagent=%s\\nargs=%s\\n' \
         assert result.stdout.splitlines() == [
             f"model={OPENROUTER_WIRE_PIN}",
             "effort=max",
-            "subagent=openai/gpt-5.5@preset/effort-xhigh",
+            "subagent=openai/gpt-5.6-sol@preset/effort-high",
             f"args=--model {OPENROUTER_WIRE_PIN} --effort max -p review",
         ]
 
@@ -773,7 +828,7 @@ printf 'base=%s\nkey=%s\nallowed=%s\nschema=%s\nformat=%s\nband-model=%s\nargs=%
         assert result.stdout.splitlines() == [
             "base=http://127.0.0.1:9876/api/v1",
             "key=fixture-key",
-            "allowed=deepseek/deepseek-v4-flash-0731@preset/effort-max,openai/gpt-5.5@preset/effort-xhigh,deepseek/deepseek-v4-flash@preset/effort-xhigh,anthropic/claude-sonnet-4.6@preset/effort-xhigh,google/gemini-3.7-flash@preset/effort-high",
+            "allowed=deepseek/deepseek-v4-flash-0731@preset/effort-max,anthropic/claude-fable-5.1@preset/effort-high,openai/gpt-5.6-sol@preset/effort-high,deepseek/deepseek-v4-flash@preset/effort-xhigh,google/gemini-3.8-flash@preset/effort-low,openai/gpt-5.6-sol@preset/effort-xhigh",
             "schema=pi",
             "format=openrouter-preset",
             "band-model=",
@@ -846,7 +901,7 @@ touch "%s"
                 "openai/gpt-5.6-terra@preset/effort-none",
             ),
             (["--model", "qwen/qwen3.8-max", "--effort", "high"], "qwen/qwen3.8-max@preset/effort-high"),
-            (["--model", "google/gemini-3.7-flash", "--effort", "high"], "google/gemini-3.7-flash@preset/effort-high"),
+            (["--model", "google/gemini-3.8-flash", "--effort", "low"], "google/gemini-3.8-flash@preset/effort-low"),
             (["--model", "qwen/qwen3.8-max", "--effort", "none"], "qwen/qwen3.8-max@preset/effort-none"),
         ]
         with tempfile.TemporaryDirectory() as tmp:
@@ -1161,11 +1216,49 @@ touch "%s"
         assert 'CURSOR_LOCAL_AGENT_BASE_URL="http://127.0.0.1:$shim_port/api/v1"' in source
         assert "--no-shim" in source
         assert "trap shim_cleanup EXIT" in source
-        # The guardrail env is exported before the shim branch and includes the Pi backend lanes.
+        # The guardrail env is exported before the shim branch and includes every Pi backend lane.
         assert 'export CURSOR_AGENT_ALLOWED_MODEL="$OPENROUTER_WIRE_MODEL,' in source
-        assert "$OPENROUTER_PI_GPT55_WIRE_MODEL" in source
-        assert "$OPENROUTER_PI_DEEPSEEK_WIRE_MODEL" in source
-        assert "$OPENROUTER_PI_SONNET_WIRE_MODEL" in source
+        for lane in ("T1", "T2", "MECHANICAL", "MEMORY", "REFUTE"):
+            assert f"$OPENROUTER_PI_{lane}_WIRE_MODEL" in source, lane
+
+    def test_SHOULD_admit_every_pi_lane_wire_model_through_the_cursor_guardrail(self):
+        """WHEN the shim checks a delegated lane, every formatted Pi pick is inside the allowlist."""
+        modules = []
+        for name, path in (
+            ("shim_allowlist", "home/exact_lib/exact_,cursor-agent-shim/shim.py"),
+            ("band_gate_allowlist", "home/exact_dot_agents/exact_hooks/executable_band_gate.py"),
+        ):
+            spec = importlib.util.spec_from_file_location(name, REPO / path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            modules.append(module)
+        shim, band_gate = modules
+        rows = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["pi"]
+        _, env = self._openrouter_route_fixture()
+        result = subprocess.run(
+            [
+                modern_bash(),
+                str(REPO / "home/exact_bin/executable_,cursor-openrouter"),
+                "--no-shim",
+                "-p",
+                "fixture",
+            ],
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        exported = json.loads(result.stdout)["env"]
+        allowed = exported["CURSOR_AGENT_ALLOWED_MODEL"]
+        with mock.patch.dict(os.environ, {**exported, "AGENT_BAND_HARNESS": "cursor"}, clear=True):
+            wires = {
+                category: band_gate._format_pick(dict(row), "cursor", "pi")["model"] for category, row in rows.items()
+            }
+        for category, wire in wires.items():
+            with self.subTest(category=category):
+                self.assertIn(wire, allowed.split(","))
+                self.assertIsNone(shim.enforce_allowed_model({"model": wire}, allowed))
+        self.assertIsNotNone(shim.enforce_allowed_model({"model": "unregistered-model"}, allowed))
 
     def test_SHOULD_strip_tool_strict_from_chat_completions(self):
         # The shell schema shipped in cursor-agent-local/2026.08.04 declares
@@ -1237,10 +1330,10 @@ touch "%s"
 
         allowed = "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max"
         assert module.enforce_allowed_model({"model": allowed, "messages": []}, allowed) is None
-        allowlist = f"{allowed},openai/gpt-5.5@preset/effort-xhigh"
+        allowlist = f"{allowed},openai/gpt-5.6-sol@preset/effort-xhigh"
         assert (
             module.enforce_allowed_model(
-                {"model": "openai/gpt-5.5@preset/effort-xhigh", "messages": []},
+                {"model": "openai/gpt-5.6-sol@preset/effort-xhigh", "messages": []},
                 allowlist,
             )
             is None

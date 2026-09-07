@@ -23,7 +23,7 @@ Only the active root/main session orchestrates multiple agents or lanes. Delegat
 
 Repo-owned custom subagent identifiers use the `k-agent-<role>` namespace. Harness-native identifiers retain their original names; the repo must not prefix or alias them.
 
-The role body itself is single-sourced. Each per-tool profile is a thin shim: supported harness-native model and tool metadata + the `leaf-boundary.txt` preamble + `Load and follow ~/.agents/skills/k-review/references/<role>.md`.
+The role body itself is single-sourced. Each per-tool profile is a thin shim: supported harness-native model and tool metadata + the `leaf-boundary.txt` preamble + `Load and follow ~/.agents/skills/<owning skill>/references/<role>.md` — `k-review` for most roles, with the exceptions listed under [Agent suite](#agent-suite).
 
 ## Using it
 
@@ -60,29 +60,33 @@ Cursor source supports custom subagent types, but the model-facing Task schema c
 
 ## Agent suite
 
-The delegated-subagent contract for every role lives once under `k-review/references/`, except where noted below. That contract loads the owning skill (`k-review`, `k-light-review`, `k-research`, `k-semantic-code-search`) in turn.
+The delegated-subagent contract for every role lives once under `k-review/references/`, except where noted below. That contract loads the owning skill (`k-review`, `k-light-review`, `k-public-sources`, `k-semantic-code-search`, `k-ai-kb`, `k-build`) in turn.
 
-`k-agent-fresh-eyes` is the blind clarity lane: it deliberately loads no skill. Pi and OMP carry thin `k-agent-fresh-eyes` profiles resolved by `review-agent-model.partial`; other harnesses launch it through a generic task carrying the same contract and resolved model value.
+`k-agent-fresh-eyes` is the blind clarity lane: it deliberately loads no skill. Claude, Pi, and OMP carry thin `k-agent-fresh-eyes` profiles resolved by `review-agent-model.partial`; other harnesses launch it through a generic task carrying the same contract and resolved model value.
 
-The "Loads contract" column is the `k-review/references/<role>.md` file the profile delegates to:
+The "Loads contract" column is the role contract the profile delegates to: a bare name lives under `k-review/references/`, and a prefixed path names its own owning skill.
 
-| Agent                                                    | Loads contract                              | Work it owns                                                                              |
-| -------------------------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `k-agent-deep-review`                                    | `k-deep-review/SKILL`                       | Controller: route, PR-necessity gate, bounded reviewer roster, live UI, audit, act        |
-| `k-agent-review-controller` (Pi/OMP)                     | Guarded dispatch to canonical review skills | Root-only review routing; delegated children execute only their assigned leaf packet      |
-| `k-agent-review-worker`                                  | `reviewer-worker`                           | Registry-model selected angle lane (Cursor/Copilot/Codex/Antigravity)                     |
-| `k-agent-reviewer`                                       | `reviewer-worker`                           | Pi/OMP concrete registry lane; Claude inherited read-only angle lane                      |
-| `k-agent-fresh-eyes` (Pi/OMP profile; generic elsewhere) | `fresh-eyes`                                | Conditional blind zero-context clarity lane                                               |
-| `k-agent-adversarial-verifier`                           | `adversarial-verifier`                      | Cross-family refutation plus the canonical bounded miss sweep                             |
-| `k-agent-pr-necessity-auditor`                           | `pr-necessity-auditor`                      | Blocking PR necessity / intent gate                                                       |
-| `k-agent-findings-auditor`                               | `findings-auditor`                          | Non-trivial findings or named fix-diff audit                                              |
-| `k-agent-live-ui-review`                                 | `live-ui-review`                            | Verification-only live UI reviewer; screenshot handoff required for feedback candidates   |
-| `k-agent-post-review`                                    | `post-review`                               | Four-dimension hygiene audit of a review's fix diff                                       |
-| `k-agent-criteria-verifier`                              | `k-build/references/criteria-verifier`      | `/k-build` refutation lane over the criteria ledger + scope audit                         |
-| `k-agent-change-auditor`                                 | `change-auditor`                            | Proportional-depth audit of a self-authored changeset                                     |
-| `k-agent-researcher`                                     | `researcher`                                | Clone and inspect external GitHub source                                                  |
-| `k-agent-code-searcher`                                  | `code-searcher`                             | SCSI semantic investigation / base-branch context                                         |
-| `k-agent-mechanical`                                     | `mechanical-worker`                         | Cheap deterministic-edit lane: parent-settled rename/replace/migration over named targets |
+| Agent                                                           | Loads contract                               | Work it owns                                                                                                      |
+| --------------------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `k-agent-deep-review`                                           | `k-deep-review/SKILL`                        | Controller: route, PR-necessity gate, bounded reviewer roster, live UI, audit, act                                |
+| `k-agent-review-controller` (Pi/OMP)                            | Guarded dispatch to canonical review skills  | Root-only review routing; delegated children execute only their assigned leaf packet                              |
+| `k-agent-review-worker`                                         | `reviewer-worker`                            | Registry-model selected angle lane (Cursor/Copilot/Codex/Antigravity)                                             |
+| `k-agent-review-worker-cross` (Cursor/Copilot)                  | `reviewer-worker`                            | Cross-family primary finder on the `lanes_cross` review override, paired against the harness's own review family  |
+| `k-agent-reviewer`                                              | `reviewer-worker`                            | Pi/OMP concrete registry lane; Claude inherited read-only angle lane                                              |
+| `k-agent-fresh-eyes` (Claude/Pi/OMP profile; generic elsewhere) | `fresh-eyes`                                 | Conditional blind zero-context clarity lane                                                                       |
+| `k-agent-adversarial-verifier`                                  | `adversarial-verifier`                       | Cross-family refutation plus the canonical bounded miss sweep                                                     |
+| `k-agent-pr-necessity-auditor`                                  | `pr-necessity-auditor`                       | Blocking PR necessity / intent gate                                                                               |
+| `k-agent-findings-auditor`                                      | `findings-auditor`                           | Non-trivial findings or named fix-diff audit                                                                      |
+| `k-agent-live-ui-review`                                        | `live-ui-review`                             | Verification-only live UI reviewer; screenshot handoff required for feedback candidates                           |
+| `k-agent-post-review`                                           | `post-review`                                | Four-dimension hygiene audit of a review's fix diff                                                               |
+| `k-agent-criteria-verifier`                                     | `k-build/references/criteria-verifier`       | `/k-build` refutation lane over the criteria ledger + scope audit                                                 |
+| `k-agent-change-auditor`                                        | `change-auditor`                             | Proportional-depth audit of a self-authored changeset                                                             |
+| `k-agent-public-sources`                                        | `public-sources`                             | Clone and inspect external GitHub source                                                                          |
+| `k-agent-code-searcher`                                         | `code-searcher`                              | SCSI semantic investigation / base-branch context                                                                 |
+| `k-agent-mechanical`                                            | `mechanical-worker`                          | Cheap deterministic-edit lane: parent-settled rename/replace/migration over named targets                         |
+| `k-agent-implementer` (Pi only)                                 | `k-build/references/implement-worker`        | `/k-build` implement worker; Pi disables built-in subagents, so this is its only implement target                 |
+| `k-agent-claim-verifier` (OMP/Pi/Claude)                        | `k-public-sources/references/claim-verifier` | Independent public-claim verification on the `refute` band: claim + source in, `verified/refuted/undecidable` out |
+| `k-agent-smol` (every harness)                                  | `k-ai-kb/references/smol-operator`           | Memory category: judge staged `,ai-kb` recall candidates or a recall query, and persist parent-verified insights  |
 
 ## Reference and wiring
 
@@ -104,9 +108,9 @@ Not every harness ships every profile:
 
 The `/k-build` flow's `k-agent-criteria-verifier` uses the contract under `k-build/references/criteria-verifier.md` and the same review-model resolver as `k-agent-adversarial-verifier`. Profile-based harnesses render it normally; Antigravity defines it dynamically and invokes its `pro` tier.
 
-Claude carries no profile for `k-agent-criteria-verifier`. This follows the same convention as `k-agent-adversarial-verifier`: the lane runs degraded on the session model there.
+Claude now carries its own `k-agent-fresh-eyes`, `k-agent-adversarial-verifier`, and `k-agent-criteria-verifier` profiles, so those lanes no longer ride a generic task there. The profile only removes the generic-launch indirection: the resolved model is still `claude-fable-5-1` with `verifier_status: degraded`, because Claude Code accepts only Claude-family selectors and the refutation stays same-family.
 
-`k-agent-mechanical` is the one edit-capable cheap lane and is reachable on Copilot, Claude, Codex, Pi, and OMP. SOP §3.7 makes it the mandatory target once a rule is settled; on OMP the bundled `sonic` agent is bound to the same `mechanical` category, so either name lands on `modelRoles.smol`. Cursor deploys the profile but cannot discover it (see above), so there the root launches `generalPurpose` with `model: auto` — the registry mechanical pick — and the band gate passes that pick through instead of rewriting it to the `implement` model.
+`k-agent-mechanical` is the one edit-capable cheap lane and is reachable on Copilot, Claude, Codex, Pi, OMP, and Cursor (deployed, undiscoverable). SOP §3.7 makes it the mandatory target once a rule is settled; on OMP the bundled `sonic` (edits and command output) and `scout` (shell-less file/pattern retrieval) agents are bound to the same `mechanical` category, so any of the three names lands on `modelRoles.smol`. Cursor deploys the profile but cannot discover it (see above), so there the root launches `generalPurpose` with `model: auto` — the registry mechanical pick — and the band gate passes that pick through instead of rewriting it to the `implement` model. Antigravity has no profile files at all: the controller `define_subagent`s `k-agent-mechanical` with a system prompt that loads `k-review/references/mechanical-worker.md`, then invokes it at the `flash` tier, never `inherit` or `pro`.
 
 ## Review hierarchy
 

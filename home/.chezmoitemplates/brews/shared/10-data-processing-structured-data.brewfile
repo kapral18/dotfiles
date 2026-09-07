@@ -21,7 +21,7 @@ brew "yq"
 
 # Like jq, but for binary formats
 # https://github.com/wader/fq
-tap "wader/tap"
+tap "wader/tap", trusted: true
 brew "wader/tap/fq"
 
 # Convert command output to JSON
@@ -47,5 +47,5 @@ brew "igrep"
 
 # TUI for parsing and arranging tabular data
 # https://github.com/mpryor/nothing-less
-tap "mpryor/tap"
+tap "mpryor/tap", trusted: true
 brew "mpryor/tap/nless"

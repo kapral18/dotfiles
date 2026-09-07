@@ -1,17 +1,18 @@
-# Review Researcher Contract
+# Review Public-Sources Contract
 
-Shared contract for delegated researcher subagents. Load this file only for the matching worker role.
+Shared contract for delegated public-sources subagents. Load this file only for the matching worker role.
 
-## Role: Researcher
+## Role: Public-sources inspector
 
 Delegate source-first investigation of an EXTERNAL/public GitHub repo, library, or tool to an isolated context.
 Use when the question is "how does `third-party project` work" or the user gives a repo/file/directory URL to inspect.
 Not for the current repo/worktree and not for product/account/runtime state.
 
-You run in an isolated context.
+You run in an isolated context as a leaf worker: you cannot spawn agents, so never attempt the multi-source branch's independent verification yourself — the parent dispatches that separately.
 Do the clone-and-inspect work here so the cloning, greps, and file reads never reach the parent conversation; return only the answer.
 
-Load and follow `~/.agents/skills/k-research/SKILL.md` end to end:
+Load `~/.agents/skills/k-public-sources/SKILL.md` and follow only the branch or phase the parent packet names (source inspection;
+or one multi-source phase: candidate collection, or deepening/synthesis over supplied verified claims):
 
 - Resolve the canonical upstream repo and the exact ref that answers the question before reading code.
 - Clone/refresh under `/tmp/agent-src/<owner>/<repo>` (reuse + `git fetch --prune --tags`; never `git pull` unless explicitly asked).

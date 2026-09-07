@@ -279,10 +279,13 @@ Return a concrete blocker only when no in-scope work remains.
 This leaf-worker boundary is baked into every subagent definition from `~/.config/tmux/agent_prompts/leaf-boundary.txt` (`[DELEGATION BOUNDARY]`).
 `~/.config/tmux/agent_prompts/prefix.txt` is a verified excerpt of this SOP, re-injected by the per-prompt hook only after material context growth or compaction.
 
-- `lookup`: exact caller-scoped retrieval—specified help, requested file lists, caller-selected raw pointers.
-  No edits, no importance ranking, no conclusions.
-- `mechanical`: stated-rule deterministic edits—renames, import fixes, mechanical migrations, formatting the tool cannot do.
+- `mechanical`: stated-rule deterministic edits—renames, import fixes, mechanical migrations, formatting the tool cannot do—
+  and exact caller-scoped retrieval—specified help, requested file lists, caller-selected raw pointers.
 - `research`: discover/synthesize evidence—find important code paths, enumerate relevant call sites, inspect upstream repos, reconcile docs, or form conclusions from sources.
+  Strong model only.
+  Dispatch targets: the harness `k-agent-code-searcher` profile (OMP, Pi, Claude) or its `research`-bound native explorer (Claude `Explore`, Codex `explorer`, Copilot `explore`, Antigravity `codebase_investigator`; Cursor: `generalPurpose` with the registry `research` model passed explicitly).
+  NEVER route this lane through `scout`, `sonic`, `k-agent-mechanical`, or any cheap-lane model.
+  External public-source inspection dispatches to `k-agent-public-sources` (same `research` lane, `k-public-sources` skill).
 - `implement`: write/change code with settled approach but unsettled details.
 - `orchestrate`: hold multi-step plans, sequence delegations, judge results; main-session default.
 - `review`: judge changes against intent, risk, repository rules.
@@ -292,16 +295,33 @@ This leaf-worker boundary is baked into every subagent definition from `~/.confi
 Rules:
 
 - Run in exactly the needed category—neither higher for safety nor lower to save tokens; either misclassification is a defect.
-- Classify by work, not caller: caller-scoped exact file lookup stays `lookup`;
-  choosing relevant files/symbols is `research`, even from `orchestrate`.
+- Classify by work, not caller: caller-scoped exact file retrieval stays `mechanical`;
+  choosing relevant files/symbols or forming a conclusion is `research` on the strong model, even from `orchestrate`.
 - In the active root/main session, delegate rather than inline bounded work with clear input/output that skips accumulated caller context.
   Delegation keeps the conclusion in the caller's context, not the file dumps; recon and mechanical edits are the usual wins.
 - `mechanical` dispatch gate.
-  Required: spawn the `mechanical`-bound agent (`k-agent-mechanical`; OMP native `sonic`) with a packet naming rule, targets, and acceptance, then verify the returned diff.
+  Required: spawn the `mechanical`-bound agent (`k-agent-mechanical`; OMP native `sonic` for edits and command output, `scout` for shell-less file/pattern retrieval) with a packet naming rule, targets, and acceptance, then verify the returned diff or listing.
   When the harness cannot reach that profile (Cursor never scans user-level agents), launch its generic edit-capable type with the registry `mechanical` model passed explicitly; the band gate passes that pick through.
+  When the harness defines roles at runtime (Antigravity), `define_subagent` `k-agent-mechanical` with a system prompt that loads `~/.agents/skills/k-review/references/mechanical-worker.md`, then `invoke_subagent` it at the `flash` tier; NEVER `inherit` or `pro` for this lane.
   Forbidden: the root session MUST NOT apply a rename, search-and-replace, import fix, or pattern migration itself once the rule is settled, even when one native edit tool could do it; the harness's own "do small edits inline" guidance does not override this gate.
+  NEVER route investigation, symbol selection, or conclusion-forming work through this lane; that is `research`.
   Verify: the delegation transcript shows the `mechanical` band model, never the session model.
   Only an unsettled rule (the transformation still needs judgment per site) keeps the work in `implement`.
+- `research` dispatch gate.
+  Required: when an investigation needs more than a handful of targeted reads —
+  a multi-angle semantic/SCSI query net, call-site enumeration across the repo, discovering which files or symbols matter, or any external public-repo inspection — spawn the `research` lane (targets above; `k-agent-public-sources` for external sources, one leaf packet per multi-source phase with verification on the `refute` lane) with the question, scope, and the return shape, then fold in only the distilled findings.
+  Forbidden: the root session MUST NOT read file after file, run query nets, or clone external repos itself for that investigation;
+  the harness's own "explore first" guidance does not license inlining it.
+  Inline reads stay allowed only for a small set of already-named paths the root must edit or verify directly.
+  Verify: the delegation transcript shows the `research` band model and the root received findings tied to paths/symbols, not raw file dumps.
+- `implement` dispatch gate (three tiers: T1 = the session model that thinks — `orchestrate`, `research`, `review`;
+  T2 = `implement`, one tier below; T3 = `mechanical`/`memory`, cheapest; `category_models` prices each tier per harness).
+  Required: every implementation edit — first pass, iteration after a red check, fix after a review finding —
+  runs on the T2 implement worker (Claude `general-purpose`, Codex `worker`, Copilot `task`, OMP `task`, Antigravity `generalist`, Cursor `generalPurpose` with the registry `implement` model passed explicitly, Pi `k-agent-implementer`) with a packet naming targets, intended and preserved differences, and the check; the root decomposes, judges the returned status, runs the checks, and keeps the ledger.
+  This holds whether or not `/k-spec` or `/k-build` was invoked; an explicitly invoked `/k-build` does not license the controller to implement.
+  Forbidden: the root session MUST NOT write implementation itself.
+  Inline edits by the root are limited to trivial single-site fixes (one config line, one symbol in one file) where the dispatch packet would be longer than the change; a plausible defect in the edit means it is not trivial.
+  Verify: the delegation transcript shows the T2 `implement` model, and the root's own edit calls in the turn are trivial single-site fixes only.
 - `refute` prefers a different model family at equal capability; a strong same-family refuter beats a weaker cross-family one.
   Same-family refutation must retain framing, run in full, and openly report reduced independence.
 - A skill that names a category owns that choice; honor it even when a cheaper or faster run is available.
@@ -378,7 +398,7 @@ The user is dyslexic and reads agent output all day. Minimize reading load while
 - Add structure only when distinct information scans better.
 - Borrow STE (ASD-STE100 Simplified Technical English) sentence habits only when they shrink text.
   Full STE applies only when the user asks for STE or docs compliance.
-- `~/.config/tmux/agent_prompts/prefix.txt` re-injects a verified excerpt of §2–§5 only after material context growth or compaction;
+- `~/.config/tmux/agent_prompts/prefix.txt` re-injects a verified excerpt of §1–§5 only after material context growth or compaction;
   this section owns why and floor.
 
 ### 5.2 Debloat

@@ -17,8 +17,8 @@
         "work": "claude-fable-5-1"
       },
       "codex": {
-        "personal": "gpt-6-astra",
-        "work": "gpt-6-astra"
+        "personal": "gpt-5.6-sol",
+        "work": "gpt-5.6-sol"
       },
       "copilot": {
         "default": "auto"
@@ -159,7 +159,7 @@
       "curated": {
         "complete": true,
         "models": [
-          "gpt-6-astra"
+          "gpt-5.6-sol"
         ],
         "provenance": [
           {
@@ -186,7 +186,7 @@
       "recommended": {
         "complete": true,
         "models": [
-          "gpt-6-astra"
+          "gpt-5.6-sol"
         ],
         "provenance": [
           {
@@ -243,7 +243,7 @@
         "complete": true,
         "models": [
           "auto",
-          "gpt-5.5",
+          "gpt-5.6-sol",
           "claude-fable-5.1"
         ],
         "provenance": [
@@ -284,7 +284,7 @@
         "complete": true,
         "models": [
           "auto",
-          "gpt-5.5",
+          "gpt-5.6-sol",
           "claude-fable-5.1"
         ],
         "provenance": [
@@ -755,9 +755,10 @@
       "available": {
         "complete": false,
         "models": [
-          "openrouter/openai/gpt-5.5",
+          "anthropic/claude-fable-5.1",
+          "openrouter/openai/gpt-5.6-sol",
           "openrouter/deepseek/deepseek-v4-flash",
-          "openrouter/google/gemini-3.7-flash",
+          "openrouter/google/gemini-3.8-flash",
           "openrouter/anthropic/claude-sonnet-4.6",
           "openrouter/moonshotai/kimi-k3",
           "openrouter/z-ai/glm-5.2"
@@ -782,9 +783,10 @@
       "curated": {
         "complete": true,
         "models": [
-          "openrouter/openai/gpt-5.5",
+          "anthropic/claude-fable-5.1",
+          "openrouter/openai/gpt-5.6-sol",
           "openrouter/deepseek/deepseek-v4-flash",
-          "openrouter/google/gemini-3.7-flash",
+          "openrouter/google/gemini-3.8-flash",
           "openrouter/anthropic/claude-sonnet-4.6",
           "openrouter/moonshotai/kimi-k3",
           "openrouter/z-ai/glm-5.2"
@@ -819,7 +821,7 @@
       "recommended": {
         "complete": true,
         "models": [
-          "openrouter/openai/gpt-5.5"
+          "openrouter/openai/gpt-5.6-sol"
         ],
         "provenance": [
           {
@@ -921,9 +923,9 @@
           "moonshotai/kimi-k3",
           "z-ai/glm-5.2",
           "openai/gpt-5.6-terra",
-          "openai/gpt-5.5",
+          "openai/gpt-5.6-sol",
           "deepseek/deepseek-v4-flash",
-          "google/gemini-3.7-flash",
+          "google/gemini-3.8-flash",
           "anthropic/claude-sonnet-4.6"
         ],
         "provenance": [

@@ -34,5 +34,10 @@ brew "hf"
 # Terminal UI for code review — review AI-generated diffs like a GitHub PR,
 # annotate with structured comments, export as LLM-ready markdown
 # https://github.com/agavra/tuicr
-tap "agavra/tap"
-brew "agavra/tap/tuicr"
+brew "tuicr"
+
+# Terminal diff reviewer for agentic coding — live-updating diff in a tmux pane
+# beside the agent, sends `path:line` references straight into the agent's input
+# https://github.com/kunkka19xx/lgtm
+tap "kunkka19xx/tap", trusted: true
+brew "kunkka19xx/tap/lgtm"

@@ -12,7 +12,7 @@ Per-assistant config is generated from a small set of source registries and prof
 | [Profile-based merging](profile-merging.md)         | `.work` / `.personal` sources and `run_onchange` merge scripts                       |
 | [Claude and Antigravity](claude-gemini.md)          | Claude settings plus Antigravity rules, hooks, skills, and MCP                       |
 | [Pi coding agent](pi.md)                            | Pi packages, settings/models, APPEND_SYSTEM parity layer                             |
-| [Other harnesses](other-harnesses.md)               | Codex, OpenCode, Copilot, tuicr, secrets                                             |
+| [Other harnesses](other-harnesses.md)               | Codex, OpenCode, Copilot, tuicr, lgtm, secrets                                       |
 
 ## Source model
 

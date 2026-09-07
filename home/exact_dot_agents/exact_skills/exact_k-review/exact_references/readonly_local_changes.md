@@ -100,9 +100,8 @@ Run live UI only when UI/runtime evidence is needed for a candidate and a starta
 use `k-deep-review` for the full live-UI target-packet/controller graph.
 Run the Findings-Set Audit from `judging_pipeline.md` in the controller over the candidate set before adversarial verification.
 If the audited candidate set is empty, skip adversarial work and report `Adversarial verification: skipped (no candidates after findings audit)`.
-Otherwise, run `k-agent-adversarial-verifier` over the audited candidate set before fixing;
-if no verifier lane is available, run the Candidate Refutation Ladder inline and report `adversarial=inline-degraded`.
-Then apply the Verify-and-Fix Loop's fix, targeted-check, Post-Review Stage, and bound steps from `judging_pipeline.md` over surviving findings.
+Otherwise, run `k-agent-adversarial-verifier` over the audited candidate set before fixing, launched through the Verifier launch ladder in `runtime-harnesses.md`; report the rung it reached alongside `adversarial=`.
+Then apply the Verify-and-Fix Loop's fix, targeted-check, Post-Review Stage, and bound steps from `judging_pipeline.md` over surviving findings: each surviving fix is dispatched as an implement-worker packet naming the finding (SOP §3.7 implement dispatch gate), and the controller edits inline only trivial single-site fixes.
 Then output a concise **summary**:
 
 - `Base context:` line (see shared_rules.md)

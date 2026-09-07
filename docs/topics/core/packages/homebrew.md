@@ -36,6 +36,8 @@ brew info <formula-or-cask>
 
 2. Add the entry (`brew "<formula>"` or `cask "<cask>"`, with its comment/URL) to that file.
 
+   Non-official taps are declared as `tap "<owner>/<tap>", trusted: true` next to the entry that needs them. `brew bundle` writes that into Homebrew's trust store (`~/.config/homebrew/trust.json`) before loading any formula, so no `brew trust` run and no `HOMEBREW_NO_REQUIRE_TAP_TRUST` override is needed.
+
    If the category file does not exist yet:
 
    | Step           | Detail                                                                                                                                                              |

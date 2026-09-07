@@ -417,6 +417,15 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Harness-native subagent identifiers MUST remain unchanged; do not prefix or alias them.",
             "Centrally mapped per-harness model rows make the category the whole cost decision;\nthe harness resolves",
             "profile, role, tier, or band-gate mechanism",
+            # The three dispatch gates are the operative half of 3.7: without them the category
+            # table is advice. Each anchor is pinned with the Forbidden clause that gives it teeth,
+            # so deleting a gate block (or quietly softening it into a preference) fails here.
+            "- `mechanical` dispatch gate.",
+            "Forbidden: the root session MUST NOT apply a rename, search-and-replace, import fix, or pattern migration itself once the rule is settled",
+            "- `research` dispatch gate.",
+            "Forbidden: the root session MUST NOT read file after file, run query nets, or clone external repos itself for that investigation;",
+            "- `implement` dispatch gate",
+            "Forbidden: the root session MUST NOT write implementation itself.",
         )
         self.assert_file_contains(
             "home/readonly_AGENTS.md",

@@ -109,20 +109,35 @@ fi
 if [[ "$OPENROUTER_EFFORT" != "high" ]]; then
   "$OPENROUTER_PRESET_HELPER" high
 fi
+if [[ "$OPENROUTER_EFFORT" != "low" ]]; then
+  "$OPENROUTER_PRESET_HELPER" low
+fi
 OPENROUTER_CONTEXT_WINDOW="$("$OPENROUTER_PRESET_HELPER" --context-window "$OPENROUTER_MODEL" "$OPENROUTER_CONTEXT")"
 readonly OPENROUTER_CONTEXT_WINDOW
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
 readonly OPENROUTER_CLAUDE_MODEL="$OPENROUTER_WIRE_MODEL"
-readonly OPENROUTER_PI_GPT55_WIRE_MODEL="openai/gpt-5.5@preset/effort-xhigh"
-readonly OPENROUTER_PI_DEEPSEEK_WIRE_MODEL="deepseek/deepseek-v4-flash@preset/effort-xhigh"
-readonly OPENROUTER_PI_SONNET_WIRE_MODEL="anthropic/claude-sonnet-4.6@preset/effort-xhigh"
-readonly OPENROUTER_PI_MEMORY_WIRE_MODEL="google/gemini-3.7-flash@preset/effort-high"
+readonly OPENROUTER_PI_T1_WIRE_MODEL="anthropic/claude-fable-5.1@preset/effort-high"
+readonly OPENROUTER_PI_T2_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-high"
+readonly OPENROUTER_PI_MECHANICAL_WIRE_MODEL="deepseek/deepseek-v4-flash@preset/effort-xhigh"
+readonly OPENROUTER_PI_MEMORY_WIRE_MODEL="google/gemini-3.8-flash@preset/effort-low"
+readonly OPENROUTER_PI_REFUTE_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-xhigh"
 
 # Claude Code appends /v1/messages, so the base URL stops at /api. OpenRouter answers
 # that path with the Anthropic Messages schema, usage block included.
-# Claude Code's Agent tool accepts family aliases, not arbitrary OpenRouter model ids. The gate
-# maps Pi's OpenRouter-compatible categories to aliases; these defaults make the aliases resolve to
-# the backend lane models. The OpenRouter preset carries the real effort; the Claude client effort
+# Claude Code's Agent tool accepts family aliases, not arbitrary OpenRouter model ids, so each
+# alias slot carries one Pi lane wire model and the gate
+# (band_gate.py:_claude_alias_for_backend_model) projects every Pi backend pick onto the slot its
+# model family matches. The alias ladder haiku < sonnet < opus < fable is the tier order here:
+#   fable  -> T1 research/review/orchestrate   anthropic/claude-fable-5.1   high
+#   opus   -> T2 implement                     openai/gpt-5.6-sol           high
+#   sonnet -> T3 mechanical                    deepseek/deepseek-v4-flash   xhigh
+#   haiku  -> memory                           google/gemini-3.8-flash      low
+# Pi's refute pick (openai/gpt-5.6-sol xhigh) claims no slot: the gate maps every gpt/openai backend
+# id to `opus`, so a refute launch here runs the T2 sol wire model — the same model at high instead
+# of xhigh. That is still a different family than the Anthropic T1 lanes, so report it as
+# `cross_family (T2 substitute)`, not degraded.
+# CLAUDE_CODE_SUBAGENT_MODEL is the fallback for spawns the gate leaves unbound, hence T2.
+# The OpenRouter preset carries the real effort; the Claude client effort
 # mirrors it when Claude supports the level, with low as the safe client gate for non-thinking presets.
 case "$OPENROUTER_EFFORT" in
 low | medium | high | xhigh | max)
@@ -138,11 +153,11 @@ none | minimal)
 esac
 readonly CLAUDE_EFFORT
 export ANTHROPIC_MODEL="$OPENROUTER_CLAUDE_MODEL"
-export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_PI_MEMORY_WIRE_MODEL"
-export ANTHROPIC_DEFAULT_SONNET_MODEL="$OPENROUTER_PI_SONNET_WIRE_MODEL"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OPENROUTER_PI_DEEPSEEK_WIRE_MODEL"
-export ANTHROPIC_DEFAULT_FABLE_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"
-export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"
+export ANTHROPIC_DEFAULT_FABLE_MODEL="$OPENROUTER_PI_T1_WIRE_MODEL"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_PI_T2_WIRE_MODEL"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="$OPENROUTER_PI_MECHANICAL_WIRE_MODEL"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OPENROUTER_PI_MEMORY_WIRE_MODEL"
+export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_PI_T2_WIRE_MODEL"
 export CLAUDE_CODE_DISABLE_THINKING=1
 export CLAUDE_CODE_EFFORT_LEVEL="$CLAUDE_EFFORT"
 export CLAUDE_CODE_AUTO_COMPACT_WINDOW="$OPENROUTER_CONTEXT_WINDOW"

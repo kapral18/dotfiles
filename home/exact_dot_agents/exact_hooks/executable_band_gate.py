@@ -29,10 +29,11 @@ EFFORT_OVERRIDE_ENV = "AGENT_BAND_EFFORT_OVERRIDE"
 MODEL_FORMAT_ENV = "AGENT_BAND_MODEL_FORMAT"
 THINKING_SUFFIXES = {"off", "minimal", "none", "low", "medium", "high", "xhigh", "max"}
 
-# Claude family aliases ordered by capability, so the gate can tell an upward escape from a
-# sideways or downward one. `fable` is a small fast model, not a frontier one, so it sits with
-# haiku. An unknown alias is treated as above the ceiling: clamp rather than let it through.
-_CLAUDE_RANK = {"haiku": 0, "fable": 0, "sonnet": 1, "opus": 2}
+# Claude family aliases ranked by the tier ladder the bands are built on, so the gate can tell an
+# upward escape from a sideways or downward one: `fable` is the T1 thinker (research / review /
+# orchestrate), `opus` the T2 implementer, `sonnet` the T3 cheap lane (mechanical / memory). An
+# unknown alias is treated as above the ceiling: clamp rather than let it through.
+_CLAUDE_RANK = {"haiku": 0, "sonnet": 1, "opus": 2, "fable": 3}
 _CLAUDE_CEILING = max(_CLAUDE_RANK.values()) + 1
 
 
@@ -51,11 +52,17 @@ def _pick(harness: str, agent: str) -> dict[str, Any] | None:
 
 
 def _passthrough_models(harness: str) -> set[str]:
-    """Registry picks an `implement`-bound generic type may carry explicitly: the refute /
-    cross-family slots and the mechanical lane (both may be empty)."""
+    """Every registry pick an `implement`-bound generic type may carry explicitly: the refute /
+    cross-family slots, the cheap lanes (mechanical, memory), and — from schema 1.4.0 —
+    `lane_models`, the resolved pick of every bound agent. The first two lists are kept in the
+    union so an older projection still passes those; any list may be missing or empty."""
     projection = _load()
     entry = projection.get("harnesses", {}).get(harness, {})
-    models = list(entry.get("counter_models", [])) + list(entry.get("mechanical_models", []))
+    models = (
+        list(entry.get("counter_models", []))
+        + list(entry.get("cheap_lane_models", []))
+        + list(entry.get("lane_models", []))
+    )
     return {m for m in models if isinstance(m, str) and m}
 
 
@@ -88,15 +95,31 @@ def _split_thinking_suffix(model: str) -> tuple[str, str | None]:
 
 
 def _claude_alias_for_backend_model(model: str) -> str | None:
+    """The Claude family alias a backend wire model projects onto, or None when none fits.
+
+    The rules mirror the four `ANTHROPIC_DEFAULT_*_MODEL` slots `,claude-openrouter` exports
+    (home/exact_bin/executable_,claude-openrouter), so on that route the alias ladder
+    (haiku < sonnet < opus < fable) is the tier ladder:
+
+        anthropic / claude  -> fable   T1 research/review/orchestrate (claude-fable-5.1 high)
+        gpt / openai        -> opus    T2 implement (gpt-5.6-sol high)
+        deepseek            -> sonnet  T3 mechanical (deepseek-v4-flash xhigh)
+        google / gemini     -> haiku   memory (gemini-3.8-flash low)
+
+    Pi's `refute` pick is `openrouter/openai/gpt-5.6-sol`, which the `gpt`/`openai` rule sends to
+    `opus`, so a refute launch on this route runs the T2 sol wire model at high instead of xhigh — a
+    different family than the Anthropic T1 lanes, hence `cross_family (T2 substitute)` rather than
+    degraded.
+    """
     lowered = model.lower()
-    if lowered == "google/gemini-3.7-flash":
-        return "opus"
-    if "claude" in lowered or "anthropic" in lowered or "sonnet" in lowered:
-        return "sonnet"
-    if "deepseek" in lowered:
-        return "haiku"
-    if "gpt" in lowered or "openai" in lowered:
+    if "anthropic" in lowered or "claude" in lowered:
         return "fable"
+    if "gpt" in lowered or "openai" in lowered:
+        return "opus"
+    if "deepseek" in lowered:
+        return "sonnet"
+    if "google" in lowered or "gemini" in lowered:
+        return "haiku"
     return None
 
 
@@ -129,13 +152,13 @@ def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str,
     # Claude's Agent tool constrains `model` to the family aliases sonnet|opus|haiku|fable
     # (claude-code 2.1.222; anything else fails updatedInput schema validation), and each alias
     # resolves through one ANTHROPIC_DEFAULT_*_MODEL. The alias is a lossy projection of the band:
-    # all three bands (claude-fable-5-1) spell `fable`, so the alias cannot separate them and the
-    # hook cannot hold a cheap-band agent below medium-effort Fable — the profile frontmatter's
-    # exact id is what does that, and it wins whenever no `model` is passed.
+    # the tiers map onto three aliases (T1 research/review/orchestrate `fable`, T2 implement `opus`,
+    # T3 mechanical/memory `sonnet`), so effort inside a tier is invisible to the hook — the profile
+    # frontmatter's exact id and effort are what hold that, and they win whenever no `model` is passed.
     #
     # What the hook can still enforce is the ceiling: clamp whenever the asked alias is MORE
     # capable than the band's. Comparing rank rather than equality is what stops
-    # `model: "sonnet"` on a cheap-band agent, which an `asked == alias` early return let through.
+    # `model: "opus"` on a T3 (`sonnet`) agent, which an `asked == alias` early return let through.
     alias = pick.get("alias")
     asked = tool_input.get("model")
     if pick.get("force_alias") and alias and asked != alias:
@@ -194,6 +217,13 @@ def _copilot(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str
 # Antigravity deliberately has no adapter here. Its dynamic `invoke_subagent`
 # schema accepts abstract model tiers (`inherit`, `flash_lite`, `flash`, `pro`),
 # so the controller passes the registry's tier directly when launching a lane.
+# OMP has none either: its `task` tool takes no model argument at all, and the categories are
+# spelled as `@role` tokens that readonly_config.yml.tmpl's `modelRoles` resolves, so there is
+# nothing on the wire to rewrite.
+# Pi has none because there is nothing to rewrite it with: a per-call model override is reachable
+# (including from a workflowScript), so the binding is runtime rather than static, but Pi exposes no
+# mutating pre-tool-use hook — its extension API can block a call, not modify its arguments. The
+# named child profile's own frontmatter is what holds the band there.
 ADAPTERS = {
     "claude_code": _claude,
     "cursor": _cursor,
@@ -259,15 +289,16 @@ def main() -> int:
         print("{}")
         return 0
 
-    # A generic subagent type binds to `implement` (Cursor `generalPurpose`, Copilot `task`), but
-    # two lanes are launched through that same generic type on harnesses with no reachable
-    # profile, carrying their registry pick as an explicit `model`: the adversarial verifier /
-    # cross-family finder (counter pick) and the mechanical edit lane (mechanical pick; Cursor
-    # never scans ~/.cursor/agents, so `k-agent-mechanical` is unreachable there). Rewriting
-    # either launch to the generic type's band would silently collapse the lane back onto the
-    # implement model, so on an `implement`-bound type those registry picks pass untouched.
-    # Every other bound agent (memory, research, review, ...) asking for one is still a matrix
-    # bypass and gets rewritten, and so is any non-registry model on the generic type. Claude
+    # A generic subagent type binds to `implement` (Cursor `generalPurpose`, Codex `worker`,
+    # Copilot `task`), and lanes whose profile is unreachable on a harness are launched through
+    # that same generic type carrying their registry pick as an explicit `model` — Cursor never
+    # scans ~/.cursor/agents, so the adversarial verifier, the cheap mechanical / k-agent-smol
+    # lanes, and the research and review lanes all arrive that way. Rewriting such a launch to
+    # the generic type's band would silently collapse the lane onto the implement model, so the
+    # rule is category-aware: on an `implement`-bound type ANY explicit registry lane pick
+    # survives untouched, while a model no lane asked for (or an omitted one) is rewritten to the
+    # implement band. A bound non-generic agent (research, review, memory, ...) asking for
+    # another lane's pick is still a matrix bypass and gets rewritten to its own band. Claude
     # keeps its own alias-rank logic in the adapter.
     if harness != "claude_code" and not override and pick.get("category") == "implement":
         asked = tool_input.get("model")

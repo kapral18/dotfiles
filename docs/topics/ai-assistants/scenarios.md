@@ -46,13 +46,13 @@ Two invocation kinds matter throughout:
 
 ## Understand something
 
-| You want to…                         | Flow                                                               | Start it                                 | Deeper                                                          |
-| ------------------------------------ | ------------------------------------------------------------------ | ---------------------------------------- | --------------------------------------------------------------- |
-| Learn how this codebase works        | `k-walkthrough` — evidence-anchored tour or ASCII architecture map | `/k-walkthrough` (manual)                | [Playbook](flows/understand-code.md)                            |
-| Investigate an external repo/library | `k-research` — clone to `/tmp`, read source, answer from code      | "figure out how X works" (model-invoked) | [Playbook](flows/understand-code.md)                            |
-| Find code by concept, not keyword    | `k-semantic-code-search` (SCSI)                                    | fires on conceptual search               | [MCP servers](mcp.md)                                           |
-| Drive an interactive terminal safely | `k-tmux` — isolated sockets, pane capture, explicit targets        | fires on tmux/pane/session work          | row in [skills](skills/repo-workflow-and-code-intelligence.md)  |
-| Find duplication / dead exports      | `k-jscpd` / `k-knip`                                               | fires during cleanup work                | rows in [skills](skills/repo-workflow-and-code-intelligence.md) |
+| You want to…                         | Flow                                                                | Start it                                 | Deeper                                                          |
+| ------------------------------------ | ------------------------------------------------------------------- | ---------------------------------------- | --------------------------------------------------------------- |
+| Learn how this codebase works        | `k-walkthrough` — evidence-anchored tour or ASCII architecture map  | `/k-walkthrough` (manual)                | [Playbook](flows/understand-code.md)                            |
+| Investigate an external repo/library | `k-public-sources` — clone to `/tmp`, read source, answer from code | "figure out how X works" (model-invoked) | [Playbook](flows/understand-code.md)                            |
+| Find code by concept, not keyword    | `k-semantic-code-search` (SCSI)                                     | fires on conceptual search               | [MCP servers](mcp.md)                                           |
+| Drive an interactive terminal safely | `k-tmux` — isolated sockets, pane capture, explicit targets         | fires on tmux/pane/session work          | row in [skills](skills/repo-workflow-and-code-intelligence.md)  |
+| Find duplication / dead exports      | `k-jscpd` / `k-knip`                                                | fires during cleanup work                | rows in [skills](skills/repo-workflow-and-code-intelligence.md) |
 
 ## Communicate something
 

@@ -12,7 +12,7 @@ brew "yt-dlp"
 
 # Beautiful keyboard-driven terminal dashboard for ffmpeg
 # https://github.com/dgr8akki/nano-ffmpeg
-tap "dgr8akki/tap"
+tap "dgr8akki/tap", trusted: true
 brew "dgr8akki/tap/nano-ffmpeg"
 
 # Terminal-based video trimming TUI
@@ -33,7 +33,7 @@ brew "chafa"
 
 # Display images in terminal
 # https://github.com/eddieantonio/imgcat
-tap "eddieantonio/eddieantonio"
+tap "eddieantonio/eddieantonio", trusted: true
 brew "eddieantonio/eddieantonio/imgcat"
 
 # Media player based on MPlayer and mplayer2

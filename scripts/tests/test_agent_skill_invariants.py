@@ -103,8 +103,12 @@ class TestAgentSkillInvariants(unittest.TestCase):
             "generalist",
             "rem-agent",
             "research",
+            "reviewer",
             "rubber-duck",
+            "scout",
             "security-review",
+            "security-reviewer",
+            "sonic",
             "task",
             "worker",
         }
@@ -140,8 +144,85 @@ class TestAgentSkillInvariants(unittest.TestCase):
 
         bindings = ai_models.load_agent_bindings(REPO / "home/.chezmoidata/ai_models")
         assert native_names <= set(bindings), "native subagent bindings must keep their harness identifiers"
-        native_aliases = {f"k-agent-{name}" for name in native_names}
-        assert native_aliases.isdisjoint(bindings), "native subagent identifiers must not gain k-agent aliases"
+        # A native identifier must not gain a `k-agent-` twin: two bindings for one harness profile
+        # is exactly the drift this guards. `reviewer` is declared — OMP's built-in name happens to
+        # be the suffix of the long-standing repo-authored `k-agent-reviewer` review lane, which is
+        # a different agent, not an alias of it.
+        declared_suffix_collisions = {"k-agent-reviewer"}
+        native_aliases = {f"k-agent-{name}" for name in native_names} - declared_suffix_collisions
+        offenders = sorted(native_aliases & set(bindings))
+        assert not offenders, f"native subagent identifiers must not gain k-agent aliases: {offenders}"
+
+    def test_category_bindings_and_profile_presence_match_the_dispatch_targets(self):
+        # SOP §3.7 names a concrete dispatch target per category, and two things must line up for a
+        # launch to land on the right band: the registry binding, which prices the lane, and a
+        # profile the harness can actually reach by name. A binding with no profile means the
+        # controller falls back to a generic type on the implement band; a profile with no binding
+        # resolves to whatever the caller asked for. Both failures are silent.
+        expected_bindings = {
+            # Repo-authored lanes the §3.7 gates name by hand.
+            "k-agent-public-sources": "research",
+            "k-agent-mechanical": "mechanical",
+            "k-agent-implementer": "implement",
+            "k-agent-claim-verifier": "refute",
+            # OMP built-ins (the omp task-tool roster): `sonic` applies settled edits and `scout`
+            # does read-only exact retrieval, both T3 mechanical; `reviewer`/`security-reviewer`
+            # are T1 review; `task` is the T2 implement worker the implement gate names.
+            "sonic": "mechanical",
+            "scout": "mechanical",
+            "reviewer": "review",
+            "security-reviewer": "review",
+            "task": "implement",
+        }
+        bindings = ai_models.load_agent_bindings(REPO / "home/.chezmoidata/ai_models")
+        for agent, category in expected_bindings.items():
+            with self.subTest(agent=agent):
+                self.assertEqual(category, bindings.get(agent))
+
+        agents_dirs = {
+            "claude": REPO / "home/dot_claude/exact_agents",
+            "codex": REPO / "home/dot_codex/exact_agents",
+            "copilot": REPO / "home/private_dot_copilot/exact_agents",
+            "cursor": REPO / "home/dot_cursor/exact_agents",
+            "omp": REPO / "home/dot_omp/private_agent/exact_agents",
+            "pi": REPO / "home/dot_pi/agent/exact_agents",
+        }
+        profiles: dict[str, set[str]] = {}
+        for harness, root in agents_dirs.items():
+            names = set()
+            for entry in root.glob("*.tmpl"):
+                name = entry.name.removeprefix("readonly_")
+                for suffix in (".agent.md.tmpl", ".toml.tmpl", ".md.tmpl"):
+                    name = name.removesuffix(suffix)
+                names.add(name)
+            assert names, f"{root} has no agent profiles"
+            profiles[harness] = names
+
+        everywhere = set(agents_dirs)
+        # The three harnesses that run the full review controller: OMP and Pi carry the whole lane
+        # set, and Claude gained the verifier profiles with the same retier.
+        controller_harnesses = {"claude", "omp", "pi"}
+        # (required, forbidden) per agent; `forbidden` is only used where the profile is deliberately
+        # exclusive, so a harness gaining an unlisted verifier profile is not a failure.
+        expected_presence = {
+            # The one lane every harness must reach by name: the mechanical gate has no generic
+            # fallback that keeps the band on the cheap tier.
+            "k-agent-mechanical": (everywhere, set()),
+            # Pi-only: Pi disables built-in subagents and exposes no generic edit-capable type, so a
+            # named profile is the only reachable T2 target there (tiering.yaml k-agent-implementer).
+            "k-agent-implementer": ({"pi"}, everywhere - {"pi"}),
+            "k-agent-claim-verifier": (controller_harnesses, set()),
+            "k-agent-fresh-eyes": (controller_harnesses, set()),
+            "k-agent-adversarial-verifier": (controller_harnesses, set()),
+            "k-agent-criteria-verifier": (controller_harnesses, set()),
+        }
+        for agent, (required, forbidden) in expected_presence.items():
+            for harness in sorted(required):
+                with self.subTest(agent=agent, harness=harness, presence="required"):
+                    self.assertIn(agent, profiles[harness])
+            for harness in sorted(forbidden):
+                with self.subTest(agent=agent, harness=harness, presence="forbidden"):
+                    self.assertNotIn(agent, profiles[harness])
 
     def test_skill_description_with_colon_is_quoted(self):
         skills_root = REPO / "home/exact_dot_agents/exact_skills"
@@ -156,11 +237,14 @@ class TestAgentSkillInvariants(unittest.TestCase):
             match = description_re.search(entry.read_text(encoding="utf-8"))
             assert not match, f"{entry} has an unquoted description containing ':': {match.group('value')}"
 
-    def test_pi_review_controller_named_roles_have_profiles(self):
+    def test_pi_named_dispatch_targets_have_profiles(self):
+        # Pi disables built-in subagents and exposes no generic edit-capable type, so every lane the
+        # SOP dispatches has to exist here as a named profile — there is no fallback that keeps the
+        # band. The review controller's own roster must additionally be referenced by its prompt.
         agents_dir = REPO / "home/dot_pi/agent/exact_agents"
         profiles = {path.name.removesuffix(".md.tmpl") for path in agents_dir.glob("*.md.tmpl")}
         controller = (agents_dir / "k-agent-review-controller.md.tmpl").read_text(encoding="utf-8")
-        required = {
+        named_by_controller = {
             "k-agent-reviewer",
             "k-agent-fresh-eyes",
             "k-agent-adversarial-verifier",
@@ -168,9 +252,13 @@ class TestAgentSkillInvariants(unittest.TestCase):
             "k-agent-live-ui-review",
             "k-agent-findings-auditor",
         }
+        # k-agent-implementer is the Pi-only T2 implement target and k-agent-claim-verifier the
+        # public-claim refuter; neither is a review-controller lane, so they are pinned for
+        # existence only.
+        required = named_by_controller | {"k-agent-implementer", "k-agent-claim-verifier"}
 
-        assert required <= profiles, f"Pi review controller references missing profiles: {sorted(required - profiles)}"
-        for role in required:
+        assert required <= profiles, f"Pi is missing dispatch-target profiles: {sorted(required - profiles)}"
+        for role in named_by_controller:
             assert role in controller
 
     def test_pi_settings_use_native_shared_skills_and_real_extension_packages(self):

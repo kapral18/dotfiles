@@ -92,8 +92,7 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
   use `k-deep-review` for the full live-UI target-packet/controller graph.
 - Before adversarial verification, run the candidate queue through the Findings-Set Audit, Deduplication + Truth Filter, and Existing Pending Review Reconciliation; only implementation-verified findings that are not covered, not duplicated, and not dropped by the Replacement/Migration Parity Gate remain, and any current-account pending review is merged into one final payload.
 - If the audited candidate set is empty, skip adversarial work and report `Adversarial verification: skipped (no candidates after findings audit)`.
-- Otherwise, run `k-agent-adversarial-verifier` over the audited candidate set before drafting;
-  if no verifier lane is available, run the Candidate Refutation Ladder inline and report `adversarial=inline-degraded`.
+- Otherwise, run `k-agent-adversarial-verifier` over the audited candidate set before drafting, launched through the Verifier launch ladder in `runtime-harnesses.md`; report the rung it reached alongside `adversarial=`.
 - Draft highest-risk items first.
 
 ## Output Mode

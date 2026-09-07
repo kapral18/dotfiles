@@ -40,8 +40,8 @@ Done when every statement in the synthesis maps to a verified claim.
 ### 4. Persist selectively
 
 Only verified claims may enter `,ai-kb`.
-Store the primary URL in `--source`, include the exact quote in the body, identify the verifier with `--verified-by`, and set confidence honestly.
-Refuted and undecidable claims remain task context, not durable knowledge.
+Hand each verified claim to the root as primary URL, exact quote, and verifier identity; the root dispatches the `k-agent-smol` scribe path.
+Leaves never write capsules. Refuted and undecidable claims remain task context, not durable knowledge.
 
 Output:
 

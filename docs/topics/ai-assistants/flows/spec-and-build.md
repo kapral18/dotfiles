@@ -46,7 +46,7 @@ Type:
 /k-build
 ```
 
-Then do something else. The agent plans, implements, runs each check as it goes, runs the repo's lint/tests, sends an adversarial verifier subagent to try to _disprove_ every criterion, and cleans up its own diff. It will **not** ask you anything unless it hits a genuine blocker or discovers the packet's premise was wrong (then it stops and returns to gate 1 — by design).
+Then do something else. The agent plans, dispatches each implementation step to an implement worker (the controller itself never edits, per the SOP §3.7 implement dispatch gate), runs each check as it goes, runs the repo's lint/tests, sends an adversarial verifier subagent to try to _disprove_ every criterion, and cleans up its own diff. It will **not** ask you anything unless it hits a genuine blocker or discovers the packet's premise was wrong (then it stops and returns to gate 1 — by design).
 
 ## Step 4 — gate 2: read the report
 

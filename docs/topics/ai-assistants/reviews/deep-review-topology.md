@@ -109,7 +109,7 @@ Verdicts (`confirmed`/`refuted`/`undecidable`) feed the verification ledger. A r
 
 The verifier then runs a **bounded miss sweep**. It is usually the only model from a different family that reads the diff, and the finder lanes share a family and a prompt, so what they all missed is what it is best positioned to catch. Refutation alone discards that. The sweep is scoped to the highest-risk changed surface, holds the same evidence bar as a verdict, and returns at most three `new-candidate` items or `none above the bar`. Because they have not passed the findings audit, the controller re-audits them inline before judgment and reports produced-versus-survived counts.
 
-On harnesses where the resolver returns the same family for both roles, the phase runs on the lane model with refutation framing and reports `families=same (degraded)` when no second family is reachable, or `families=same (reduced independence)` when `verifier_status: reduced_independence` marks a deliberate capability-first pairing (OMP) — capability outranks family diversity (SOP §3.7). Either state is reported, never silent. Cursor, Copilot, and Pi still carry counters: Cursor uses `claude-fable-5-1-thinking-high` against GPT-5.6 SOL lanes, Copilot uses `claude-fable-5.1` against OpenAI lanes, and Pi uses `openrouter/anthropic/claude-sonnet-4.6:xhigh` against OpenAI GPT-5.5 lanes.
+On harnesses where the resolver returns the same family for both roles, the phase runs on the lane model with refutation framing and reports `families=same (degraded)` when no second family is reachable — capability outranks family diversity (SOP §3.7) — or `families=same (reduced independence)` if a harness ever declares `verifier_status: reduced_independence` for a deliberate capability-first same-family pin, a status the registry supports but no harness currently carries. Either state is reported, never silent. Claude Code, Codex, and Antigravity are the single-vendor `degraded` harnesses; Cursor, Copilot, Pi, and OMP all carry real counters: Cursor uses `claude-fable-5-1-thinking-high` against GPT-5.6 SOL lanes, Copilot uses `claude-fable-5.1` against OpenAI lanes, Pi uses `openrouter/openai/gpt-5.6-sol:xhigh` against Anthropic Fable 5.1 lanes, and OMP resolves `@advisor` (`openai-codex/gpt-6-astra:high`) against its Fable 5.1 lanes.
 
 The controller aggregates the investigation outputs, then judges what to fix or draft through mode-correct review rules. For each ledger item, it either resolves it with evidence, runs the check serially when needed for judgment, marks it not needed with evidence, or reports the exact blocker/uncertainty.
 
@@ -131,6 +131,7 @@ It merges still-valid pending feedback with net-new findings into one payload, d
 | Claude         | `k-agent-reviewer` once per selected sighted angle through `Task` with `model: inherit`         |
 | Codex          | `spawn_agent` `k-agent-review-worker` agents, one per selected sighted angle                    |
 | Antigravity    | `k-agent-review-worker` once per selected sighted angle                                         |
+| Pi/OMP         | `k-agent-reviewer` once per selected sighted angle on the registry `review` pick                |
 | any (blind)    | conditional fresh-eyes via a generic read-only task (Pi/OMP: thin `k-agent-fresh-eyes` profile) |
 | verify (cross) | `k-agent-adversarial-verifier` on the resolved verifier model (different family when available) |
 
@@ -138,11 +139,11 @@ It merges still-valid pending feedback with net-new findings into one payload, d
 
 Model selection is registry-driven and deterministic.
 
-| Lane                                       | Model                                                                                                                                                                      |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| angle lanes, fresh-eyes, auditors, live UI | `review-agent-model.partial` / `resolve_review_agent_model` resolves `category_models.<harness>.review`, or a sparse override such as Claude `inherit` / Antigravity `pro` |
-| adversarial verifier                       | same resolver, using `category_models.<harness>.refute` plus its `verifier_status`                                                                                         |
-| verifier on same-family harnesses          | `verifier_status: reduced_independence` reports deliberate same-family policy; default fallback reports `families=same (degraded)`                                         |
+| Lane                                       | Model                                                                                                                                                                                                      |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| angle lanes, fresh-eyes, auditors, live UI | `review-agent-model.partial` / `resolve_review_agent_model` resolves `category_models.<harness>.review`, or a sparse override such as Claude `inherit` / Antigravity `pro`                                 |
+| adversarial verifier                       | same resolver, using `category_models.<harness>.refute` plus its `verifier_status`                                                                                                                         |
+| verifier on same-family harnesses          | `verifier_status: reduced_independence` reports a deliberate same-family policy; the registry supports it, but no harness currently carries it, so the default fallback reports `families=same (degraded)` |
 
 Every repo-owned review profile's `model` frontmatter is a chezmoi template over `review-agent-model.partial`, which derives from `agent_bindings`, `agent_categories`, `category_models`, and sparse `review_model_overrides`. Updating a derivable model is a one-line category row edit, and neither skills nor controllers steer models at runtime; generic fresh-eyes is the only runtime pass-through, used only where no named fresh-eyes profile exists.
 

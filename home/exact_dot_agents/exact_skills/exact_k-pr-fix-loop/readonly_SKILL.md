@@ -38,8 +38,10 @@ It does not authorize merging, rebasing, pulling/merging base, unrelated metadat
 4. Prove before fixing. Prefer a red regression test or minimal local probe that fails for the reviewer’s scenario.
    If the comment is invalid, reply with concise evidence and resolve only when appropriate.
 
-5. Fix narrowly and verify. State compatibility impact before edits. Change only the behavior needed for the validated comment.
-   Add or update regression coverage. Run focused checks, then relevant broader checks.
+5. Dispatch the fix narrowly, then verify. State compatibility impact before edits.
+   Hand the change to the T2 implement worker as a packet naming the thread's finding, the target file/range, the behavior to change, the differences to preserve, and the checks (SOP §3.7 implement dispatch gate); the controller edits inline only trivial single-site fixes.
+   Change only the behavior needed for the validated comment. Add or update regression coverage.
+   Run focused checks, then relevant broader checks.
 
 6. Commit and push without another approval prompt. Commit only the scoped files. Match local commit style and required attribution.
    Push the current PR branch with force-with-lease.

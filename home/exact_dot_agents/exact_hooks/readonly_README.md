@@ -73,7 +73,7 @@ A bounded `.recall-warm-<session-key>.json` cache preserves up to three startup 
 it never mixes topics or accumulates historical prompts.
 The parent delegates judgment to `k-agent-smol` (`~/.agents/skills/k-ai-kb/references/smol-operator.md`), which admits at most 3 lines or `NONE` against accumulated session state.
 Only the judge's admissions update `.recall-seen-<session-key>.json`.
-If the named profile is unreachable, spawn a generic isolated subagent with the memory-category selection and the complete operator contract (Cursor: `Task`, `subagent_type: shell`, `model: auto`).
+If the named profile is unreachable, spawn a generic isolated subagent with the memory-category selection and the complete operator contract (Cursor: `Task`, `subagent_type: generalPurpose`, `model: auto`).
 NEVER use a harness-CLI one-shot for judge/scribe work; inline fallback applies only when no isolated spawn exists.
 The canonical session key follows `conversation_id`, then `session_id`, then `generation_id`;
 Pi persists the same state across extension reloads and session resumes.

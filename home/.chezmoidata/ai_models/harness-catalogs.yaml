@@ -169,9 +169,12 @@ cursor_models:
   # Refreshed 2026-07-27 against live `cursor-agent models` (CLI 2026.07.23-e383d2b, 194
   # entries) — this list was missing every Sonnet 5, Opus 5, Grok 4.5, and plain (non-suffixed)
   # GLM-5.2 entry the installed CLI actually exposes. gpt-5.6-terra-* and kimi-k3-* / kimi-k2.7-code
-  # were added 2026-08-03 (same CLI) after the cost-driven move off opus-5/gpt-5.5 made them
-  # load-bearing for Cursor category routes and OMP cursor-provider roles. See `category_models.cursor`
-  # in tiering.yaml for the taxonomy's actual picks (marked recommended below where they match).
+  # were added 2026-08-03 (same CLI) when the cost-driven move off opus-5/gpt-5.5 made them
+  # load-bearing for Cursor category routes and OMP cursor-provider roles; the 2026-09-07 retier put
+  # those routes back on claude-opus-5-high and gpt-5.6-sol-high, so those two additions are catalog
+  # history, not current picks. `category_models.cursor` in tiering.yaml is the only place that names
+  # the taxonomy's picks; `recommended` here is the mirror's narrower curated set, chosen
+  # independently of it.
   # claude-fable-5-high was verified in cursor-agent 2026.08.21-4bf0f61 for main-session catalog
   # completeness; claude-fable-5-1-high (Cursor hyphenates the point version) was verified in live
   # `cursor-agent models` 2026.08.31-4057e58. The thinking-high variant was verified in both the
@@ -230,16 +233,23 @@ cursor_models:
   - id: "kimi-k3-low"
   - id: "kimi-k3-max"
 
-# Pi's OpenRouter picker is a strict route. GPT-5.5 carries primary categories, DeepSeek V4 Flash
-# carries mechanical, Gemini 3.7 Flash carries memory (live-probed 2026-08-29; tops out at :high),
-# and Sonnet 4.6 carries refute; Kimi and GLM-5.2 remain selectable.
+# Pi's OpenRouter picker is a strict route. T1 (orchestrate/research/review) rides Pi's native
+# anthropic session model `anthropic/claude-fable-5.1:high`, which is not an OpenRouter id and so is
+# absent here. GPT-5.6 Sol carries both the T2 implement lane (:high) and refute (:xhigh) — one id,
+# two efforts — after it superseded GPT-5.5 on 2026-09-07; DeepSeek V4 Flash carries mechanical, and
+# Gemini 3.8 Flash memory (the lane was live-probed on 3.7 Flash 2026-08-29 and moved to 3.8 Flash
+# 2026-09-07; tops out at :high). Sonnet 4.6 (refute until the 2026-09-07 retier), Kimi and GLM-5.2
+# remain selectable without backing a category.
 # Pi resolves the `openrouter/` prefix through its own built-in provider, so no generated provider
 # block backs these entries.
 pi_extra_models:
-  - id: "openrouter/openai/gpt-5.5"
+  # Native Anthropic session model (readonly_settings.*.json defaultProvider/defaultModel); the T1
+  # research/review/orchestrate rows ride it, so the Pi curated picker must list it (2026-09-07).
+  - id: "anthropic/claude-fable-5.1"
+  - id: "openrouter/openai/gpt-5.6-sol"
     recommended: true
   - id: "openrouter/deepseek/deepseek-v4-flash"
-  - id: "openrouter/google/gemini-3.7-flash"
+  - id: "openrouter/google/gemini-3.8-flash"
   - id: "openrouter/anthropic/claude-sonnet-4.6"
   - id: "openrouter/moonshotai/kimi-k3"
   - id: "openrouter/z-ai/glm-5.2"

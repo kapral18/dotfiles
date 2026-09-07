@@ -75,9 +75,11 @@ Goal: compare the diff against how base (usually `main`) works today.
 
 ### If the repo is indexed
 
-- Semantic code search is required for base-branch context.
-  - Load and follow: `~/.agents/skills/k-semantic-code-search/SKILL.md`
-  - You MUST invoke at least one SCSI tool to establish base invariants.
+- Semantic code search is required for base-branch context, and the query net is a `research` lane, not controller work.
+  - The dispatched lane loads and follows `~/.agents/skills/k-semantic-code-search/SKILL.md`;
+    where the harness cannot reach the profile, its prompt loads `code-searcher.md` instead.
+  - The controller owns the `list_indices` preflight and index selection above;
+    at least one SCSI tool MUST establish base invariants, invoked by the dispatched lane (SOP §3.7 research gate).
   - Example SCSI tools:
     - `discover_directories`
     - `semantic_code_search`
@@ -91,20 +93,23 @@ Goal: compare the diff against how base (usually `main`) works today.
   - The PR/local diff is the ground truth for what is actually changing.
   - When SCSI results conflict with the diff, the diff wins.
   - That conflict is expected; it simply means the PR modifies that code.
-- Query strategy — cast a multi-angle semantic net from the diff:
-  1. Read the diff to map modified domain concepts, entities, functions, and state transitions.
-  2. Generate a diverse cluster of semantic queries exploring how changed functionality affects preexisting surrounding behavior and discovering impact blast radius:
+- Query strategy — dispatch the multi-angle semantic net; never run it in the controller.
+  Spawn `k-agent-code-searcher`, or the harness's `research`-bound native explorer (Claude `Explore`, Codex `explorer`, Copilot `explore`, Antigravity `codebase_investigator`; Cursor `generalPurpose` with the registry `research` model passed explicitly), per the SOP §3.7 research gate with a packet naming:
+  1. the modified domain concepts, entities, functions, and state transitions the controller mapped from the diff;
+  2. the angles the lane must cover, each as its own query cluster exploring how changed functionality affects preexisting surrounding behavior and discovering impact blast radius:
      - **Sibling & Co-located Consumers:** how do other callers/consumers in the codebase consume, sort, filter, format, or serialize the same domain concept?
      - **Downstream Call Chains & Workflows:** what upstream entry points, background tasks, or downstream consumers depend on modified contracts?
      - **Invariants & Conventions:** what validation rules, error handling, or fallback patterns are enforced elsewhere in the repository for similar constructs?
      - **Cross-Subsystem Interactions:** what other plugins, packages, or modules share or reference these data structures?
-  3. Query each angle via SCSI tools against the repo index, expanding to surrounding files when initial results reveal interconnected components.
-  4. Carry the gathered answers as base-branch context into the review to evaluate whether the diff breaks invariants or introduces behavioral drift against surrounding code.
+  3. the selected index and the return shape — base invariants plus `path:line`/symbol anchors, expanding to surrounding files when initial results reveal interconnected components, never raw file dumps or search output.
+     The controller forwards only the distilled base context into the context pack and the reviewer scope packets, then evaluates whether the diff breaks invariants or introduces behavioral drift against surrounding code.
+     Its own inline reads stay limited to the already-named paths it must edit or verify directly.
+     Only where the harness exposes no isolated spawn at all, run the net inline and report `research_lane=inline-degraded`.
 - Use SCSI to learn base-branch implementation and invariants, then compare against the PR/local diff (ground truth).
 
 ### If the repo is not indexed / tools unavailable
 
-- Cast the same multi-angle impact net using local tools to discover blast radius and surrounding impact:
+- Dispatch the same multi-angle impact net to the `research` lane with local tools instead of SCSI, and fold in only its distilled findings:
   - read full enclosing files and modules beyond immediate diff hunks
   - trace callers, sibling consumers, and imports via scoped `rg` and symbol lookups
   - compare base-branch implementation via `git show <base>:<path>` against `git diff <base>...HEAD`

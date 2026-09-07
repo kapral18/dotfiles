@@ -26,9 +26,12 @@ import ai_models
 REPO = Path(__file__).resolve().parent.parent
 REGISTRY = REPO / "home/.chezmoidata/ai_models"
 PROJECTION = REPO / "home/dot_config/ai/readonly_agent-bands.v1.json"
-SCHEMA_VERSION = "1.3.0"  # 1.1.0: counter_models; 1.2.0: agents.<name>.category; 1.3.0: mechanical_models
+SCHEMA_VERSION = (
+    "1.4.0"  # 1.1.0: counter_models; 1.2.0: agents.<name>.category; 1.3.0: cheap_lane_models; 1.4.0: lane_models
+)
 KIND = "ai.agent-bands"
 CLAUDE_ALIASES = ("opus", "sonnet", "haiku", "fable")
+CHEAP_LANES = ("mechanical", "memory")
 
 
 def _claude_alias(model: str) -> str | None:
@@ -45,18 +48,25 @@ def build() -> dict:
     harnesses = {}
     for harness in sorted(category_models):
         agents = {}
+        cross_applied = set()
         for agent in sorted(bindings):
             if agent in ai_models.REVIEW_AUX_SLOTS:
                 # Aux-slot lanes must project their override pick (e.g. cursor lanes_cross), or
                 # the hook would rewrite cross-family spawns back onto the standard lane model.
                 pick = ai_models.resolve_review_agent_model(REGISTRY, harness, agent)
+                # The resolver reports the slot it landed on: an aux slot this harness does not
+                # override degrades to the `lanes` override, or -- with no override table at all --
+                # to the plain category pick. Either way the resolved model is the primary lane's,
+                # so only an applied aux slot counts as a cross-family pick.
+                if pick["source"] == "override" and pick["slot"] == ai_models.REVIEW_AUX_SLOTS[agent]:
+                    cross_applied.add(agent)
             else:
                 pick = ai_models.resolve_agent_model(REGISTRY, harness, agent)
             entry = {
                 "model": pick["model"],
-                # The gate's counter-model pass-through applies only to `implement`-bound generic
-                # types (Cursor `generalPurpose`, Copilot `task`, ...), never to a cheap-band or
-                # research-band profile asking for the refute model.
+                # The gate's lane-pick pass-through applies only to `implement`-bound generic
+                # types (Cursor `generalPurpose`, Codex `worker`, Copilot `task`, ...), never to a
+                # bound profile asking for another lane's pick.
                 "category": bindings[agent],
             }
             if pick["effort"]:
@@ -66,24 +76,36 @@ def build() -> dict:
                 if alias:
                     entry["alias"] = alias
             agents[agent] = entry
-        # Counter models: the refute and cross-family-slot picks. The gate lets an explicit
-        # `model` equal to one of these pass on generic subagent types, so a verifier launched as
-        # Cursor `generalPurpose` keeps its family instead of being rewritten to `implement`.
-        # Mechanical models get the same pass-through: a harness whose `k-agent-mechanical`
-        # profile is unreachable (Cursor never scans ~/.cursor/agents) dispatches the cheap edit
-        # lane as the generic type carrying the registry mechanical pick explicitly.
+        # Counter models: the refute picks, plus a cross-family-slot pick only on harnesses where
+        # that slot actually applied (`cross_applied`) — a degraded aux slot resolves to the primary
+        # lane model, and projecting that as a counter would hand the gate's counter pass-through a
+        # primary model. Cheap-lane models: mechanical and memory. Both lists stay in the projection
+        # because the docs and invariants read them by name, but the gate's pass-through is the wider
+        # `lane_models`: every bound agent's resolved pick. A lane whose profile is unreachable on a
+        # harness (Cursor never scans ~/.cursor/agents) is dispatched as the generic `implement` type
+        # carrying its registry pick, and that holds for the research and review lanes too, not just
+        # the counter and cheap ones — so the gate needs the whole set of lane picks to tell an
+        # explicit registry choice from a model nobody in the matrix asked for.
         counter = []
-        mechanical = []
+        cheap = []
+        lanes = []
         for agent in sorted(bindings):
             model = agents[agent]["model"]
             if not model or model == "inherit":
                 continue
-            if bindings[agent] == "refute" or agent in ai_models.REVIEW_AUX_SLOTS:
+            if model not in lanes:
+                lanes.append(model)
+            if bindings[agent] == "refute" or agent in cross_applied:
                 if model not in counter:
                     counter.append(model)
-            elif bindings[agent] == "mechanical" and model not in mechanical:
-                mechanical.append(model)
-        harnesses[harness] = {"agents": agents, "counter_models": counter, "mechanical_models": mechanical}
+            elif bindings[agent] in CHEAP_LANES and model not in cheap:
+                cheap.append(model)
+        harnesses[harness] = {
+            "agents": agents,
+            "counter_models": counter,
+            "cheap_lane_models": cheap,
+            "lane_models": sorted(lanes),
+        }
 
     return {
         "schema_version": SCHEMA_VERSION,

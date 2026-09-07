@@ -26,6 +26,19 @@ Do not use:
 - purely mechanical pattern matching to drive a replace/edit: use local `rg`
 - current repo is not indexed (not present in `list_indices`): do not use semantic code search
 
+Delegation (SOP §3.7 `research` dispatch gate, strong model):
+
+Root session only:
+
+- A multi-angle query net, base-branch context gathering, or symbol mapping MUST run in the isolated `k-agent-code-searcher` profile (OMP, Pi, Claude); the root folds in only the distilled findings.
+  The child loads `~/.agents/skills/k-review/references/code-searcher.md`.
+  Inline SCSI calls from the root are allowed only for a single targeted query whose answer the root consumes directly.
+- Harnesses without that profile use their `research`-bound native explorer (Codex `explorer`, Copilot `explore`, Antigravity `codebase_investigator`; Cursor: `generalPurpose` with the registry `research` model passed explicitly) and the same contract in the prompt.
+- NEVER run this on a cheap-lane agent (`scout`, `sonic`, `k-agent-mechanical`);
+  symbol selection and coverage judgment need the strong model.
+
+A delegated leaf that loads this skill runs the queries itself and never spawns a child.
+
 First actions:
 
 1. Run `list_indices` before any semantic query.

@@ -36,7 +36,8 @@ inline runs exist only inside the no-spawn fallback below.
 - Generic-spawn fallback: when the harness's native subagent surface cannot reach the `k-agent-smol` profile (fixed subagent set), spawn a generic isolated subagent type that can run shell commands, with the memory-category model set explicitly and a prompt that loads the operator contract; the isolation guarantee holds.
   Prefer a background spawn when the subagent surface supports one (e.g. Cursor Task `run_in_background: true`):
   launch the judge at pointer time, keep working, and fold in its returned lines when it completes.
-  On Cursor that is `Task` with `subagent_type: shell` and `model: auto` (`shell` stays unbound in the band projection, so the explicit model survives the gate).
+  On Cursor that is `Task` with `subagent_type: generalPurpose` and `model: auto` (the band gate passes registry cheap-lane picks through, so the explicit model survives).
+  On Antigravity there is no profile-file surface: `define_subagent` `k-agent-smol` with a system prompt that loads the operator contract, then `invoke_subagent` it at the `flash` tier (the registry memory row maps onto that tier); never `inherit` or `pro`.
   Never spawn judge/scribe work on the subagent type's own default or banded model.
   Harness-CLI print/exec one-shots (`--print`, `exec`, `-p`) are an external mechanism, not part of this flow;
   do not use them for judge/scribe work.

@@ -203,7 +203,7 @@ class TestAiModels(unittest.TestCase):
     def test_claude_openrouter_subagents_use_pi_backend_schema(self):
         wrapper = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()
 
-        assert 'export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_PI_GPT55_WIRE_MODEL"' in wrapper
+        assert 'export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_PI_T2_WIRE_MODEL"' in wrapper
         assert 'export AGENT_BAND_SCHEMA_HARNESS="pi"' in wrapper
         assert 'export AGENT_BAND_MODEL_FORMAT="openrouter-preset"' in wrapper
 

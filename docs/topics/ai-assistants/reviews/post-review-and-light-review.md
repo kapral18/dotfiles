@@ -89,7 +89,7 @@ The change is light-eligible only when none of these escalate:
 
 Any trigger escalates to full `k-review`. The router applies the same predicate in reverse, offering `k-light-review` for a self-authored, no-PR, trigger-free diff.
 
-`k-agent-change-auditor` (Claude + Pi) is the read-only delegated form.
+`k-agent-change-auditor` (Claude, Pi, OMP) is the read-only delegated form.
 
 Both `k-light-review` and `k-review`'s local-changes mode run the shared **Verify-and-Fix Loop** in `judging_pipeline.md`: build queue → findings-set audit → final refutation → fix → quality gates → post-review stage.
 

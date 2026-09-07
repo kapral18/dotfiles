@@ -9,15 +9,17 @@
 # Every built-in omp role is pinned explicitly (default/smol/slow/vision/plan/commit/
 # tiny/task/advisor per `omp config get modelRoles`); nothing falls through to the
 # harness default or the @smol fallback.
-# - primaries (default/vision/slow/plan/task): Fable 5.1 at :high (Fable 5+ exposes the
-#   five-tier low/medium/high/xhigh/max adaptive scale on the Messages API).
+# - T1 primaries (default/vision/slow/plan): Fable 5.1 at :high (Fable 5+ exposes the five-tier
+#   low/medium/high/xhigh/max adaptive scale on the Messages API). research/review profiles ride @default.
+# - task (T2 implement: the native `task` agent and every implement worker): Opus 5 at :high
+#   (user call 2026-09-07; the orchestrator thinks, the implementer runs one tier below).
 # - smol: Sonnet 5 at :high. cursor/default rode the cursor-agent transport and every
 #   @smol lane (bundled scout/sonic) died on Cursor's free-request limit.
 # - tiny (titles, memory, auto-thinking classification, unexpected-stop detection):
 #   Sonnet 5 at :medium — background chores.
 # - commit (commit-message generation): Sonnet 5 at :medium.
-# - advisor: gpt-6-astra via openai-codex (the same orchestrate-lane model/effort the
-#   codex harness rows use).
+# - advisor: gpt-6-astra via openai-codex. Astra is absurdly expensive (user call 2026-09-07)
+#   and is permitted only for advisor/review/refute; the codex harness itself now runs sol as T1.
 modelRoles:
   default: anthropic/claude-fable-5.1:high
   smol: anthropic/claude-sonnet-5:high
@@ -26,7 +28,7 @@ modelRoles:
   plan: anthropic/claude-fable-5.1:high
   commit: anthropic/claude-sonnet-5:medium
   tiny: anthropic/claude-sonnet-5:medium
-  task: anthropic/claude-fable-5.1:high
+  task: anthropic/claude-opus-5:high
   advisor: openai-codex/gpt-6-astra:high
 
 modelProviderOrder:

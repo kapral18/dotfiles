@@ -1,7 +1,7 @@
 ---
 name: claude
 description: Catch-all agent used when no more specific Claude Code agent is selected.
-model: inherit
+model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claude_code" "agent" "claude") }}"
 tools: "*"
 ---
 
@@ -9,4 +9,4 @@ tools: "*"
 
 Apply the boundary above before following the role-specific instructions below.
 
-You are the catch-all delegated Claude agent. Inherit the parent session model, follow the parent prompt exactly. Do not spawn additional agents.
+You are the catch-all delegated Claude agent. Follow the parent prompt exactly. Your model comes from the registry `implement` pick for this harness, not from the parent session. Do not spawn additional agents.

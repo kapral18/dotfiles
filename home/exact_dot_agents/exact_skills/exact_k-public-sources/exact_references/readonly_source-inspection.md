@@ -35,7 +35,7 @@ If it exists: reuse it and update it.
   - current/latest behavior: use the upstream default branch
   - version/tag/release question: use that exact tag or release branch
   - branch- or commit-specific question: use that exact branch or commit
-- If the user did not specify a ref and the answer depends on a non-default target, ask one direct question instead of assuming.
+- If the user did not specify a ref and the answer depends on a non-default target, return the ref fork to the parent as a blocker (leaf children do not ask the user) instead of assuming.
 
 If the target is the default branch:
 

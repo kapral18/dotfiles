@@ -2,7 +2,7 @@
 # https://github.com/Ataraxy-Labs/weave
 brew "weave"
 
-tap "ataraxy-labs/tap"
+tap "ataraxy-labs/tap", trusted: true
 # Entity-level diff, blame, impact analysis, and LLM context for Git
 # https://github.com/Ataraxy-Labs/sem
 # link: false — exposed through ~/bin/,sem so it does not compete with GNU

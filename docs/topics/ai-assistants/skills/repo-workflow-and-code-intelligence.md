@@ -115,12 +115,12 @@ These skills operate on local repositories, code search, cleanup, external sourc
 
 Setup omits dedicated patterns for `.vue`, `.svelte`, `.erb`, and `.hs`. Compound names such as `.svelte.ts` can still match `*.ts`; preview and direct-driver calls can also attempt entity merging.
 
-## `k-research`
+## `k-public-sources`
 
 | Field    | Value                                                                                                                 |
 | -------- | --------------------------------------------------------------------------------------------------------------------- |
 | Use when | inspecting public source, or synthesizing factual claims across multiple public sources                               |
-| Source   | [`exact_k-research`](../../../../home/exact_dot_agents/exact_skills/exact_k-research/)                                |
+| Source   | [`exact_k-public-sources`](../../../../home/exact_dot_agents/exact_skills/exact_k-public-sources/)                    |
 | Boundary | explicit repo URLs stay source-first; multi-source synthesis requires quoted primary evidence and a separate verifier |
 
 The multi-source branch separates candidate finding, independent verification, and deepening. Every numeric literal must occur verbatim in the supporting quote; unsupported claims are rejected without discarding the entity. Deepening sees verified claims only, and every new claim loops back through verification before synthesis or durable `,ai-kb` storage. Cross-family verification is preferred; a fresh same-family verifier is labeled degraded.

@@ -34,7 +34,7 @@ AGENT_BANDS_DISPLAY_PATH = "~/.config/ai/agent-bands.v1.json"
 OPENROUTER_PROVIDER = "openrouter"
 OPENROUTER_MODEL = "deepseek/deepseek-v4-flash-0731"
 OPENROUTER_SELECTOR = f"{OPENROUTER_PROVIDER}/{OPENROUTER_MODEL}"
-PI_OPENROUTER_MODEL = "openai/gpt-5.5"
+PI_OPENROUTER_MODEL = "openai/gpt-5.6-sol"
 PI_OPENROUTER_THINKING = "xhigh"
 PI_OPENROUTER_SELECTOR = f"{OPENROUTER_PROVIDER}/{PI_OPENROUTER_MODEL}"
 PI_OPENROUTER_DEEPSEEK_SELECTOR = f"{OPENROUTER_PROVIDER}/deepseek/deepseek-v4-flash"
@@ -733,7 +733,7 @@ def _enforce_openrouter_selection(
             raise PlanError(f"OpenRouter is pinned to {', '.join(sanctioned)}; use another provider for {explicit!r}")
         if depth.explicit:
             raise PlanError(f"OpenRouter is pinned to {PI_OPENROUTER_THINKING} effort; --depth cannot override it")
-        policy = Provenance("route-policy", "OpenRouter openai/gpt-5.5 pin")
+        policy = Provenance("route-policy", "OpenRouter openai/gpt-5.6-sol pin")
         return (
             AvailabilitySelection(
                 model=PI_OPENROUTER_MODEL,

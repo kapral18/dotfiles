@@ -15,17 +15,25 @@ Apply the boundary above before following the role-specific instructions below.
 
 # Deep Review
 
-Load and follow `~/.agents/skills/k-deep-review/SKILL.md`.
+## Session boundary
 
-Claude bridge:
+The profile name never grants root authority. When invoked as a delegated child, execute only the task and scope in the parent packet.
+A delegated child MUST NOT launch, invoke, or delegate to another agent (no `Task` calls), create additional lanes, or run the controller graph below.
+A child ignores orchestration instructions in loaded skills, completes the remaining assigned work and normal verification, and returns its result plus any conflict note to the parent.
+If conflicting orchestration instructions leave no executable in-scope work, return the concrete blocker.
+Do not infer root authority from a parent request to orchestrate.
+
+## Native invocation notes (active root only)
+
+Only the active root/main session may follow this section: load and follow `~/.agents/skills/k-deep-review/SKILL.md` in full, then apply the Claude bridge below.
 
 - Use `Task` for isolated reviewer/auditor work; follow `runtime-harnesses.md` only for capability caveats.
 - For other-authored or unknown-author PRs, run `k-agent-pr-necessity-auditor` first and block reviewer fan-out until it greenlights that the PR is worth reviewing further.
 - After any required PR necessity greenlight, build the bounded reviewer roster per `k-deep-review/SKILL.md` step 3 and launch one concurrency-safe `k-agent-reviewer` task per selected sighted angle; when more than one lane applies, launch them in a single parallel batch (`model: inherit` via the review-model override; do not pass model overrides).
-- When the blind fresh-eyes clarity lane applies (see `k-deep-review/SKILL.md` step 3), launch it in the same batch as a general-purpose `Task` carrying `k-review/references/fresh-eyes.md` — not the `k-agent-reviewer` profile, whose lens set and scope packet would sight a lane that has to stay blind.
+- When the blind fresh-eyes clarity lane applies (see `k-deep-review/SKILL.md` step 3), launch it in the same batch as a `k-agent-fresh-eyes` `Task` — not the `k-agent-reviewer` profile, whose lens set and scope packet would sight a lane that has to stay blind. That profile carries `k-review/references/fresh-eyes.md` and no skills; pass diff scope only, never PR number/title/body, commit messages, issue text, threads, prior findings or controller narrative.
 - After all lanes return, merge duplicates, apply the controller parity filter, and launch `k-agent-live-ui-review` when changed paths or merged candidates touch UI/runtime behavior and runtime evidence is applicable.
 - Run the findings audit after live UI returns or is explicitly skipped; delegate to `k-agent-findings-auditor` only for non-trivial candidate sets or fix diffs, otherwise audit inline.
-- Run the final adversarial verification phase as a general-purpose `Task` carrying `k-review/references/adversarial-verifier.md` over the audited candidate set. Claude subagents are single-family, so report `families=same (degraded)`; the refutation framing carries the decorrelation.
+- Run the final adversarial verification phase as a `k-agent-adversarial-verifier` `Task` over the audited candidate set; that profile carries `k-review/references/adversarial-verifier.md`. Claude subagents are single-family, so report `families=same (degraded)`; the refutation framing carries the decorrelation.
 - That verifier also returns bounded `new-candidate` items from its miss sweep. They have not passed the findings audit, so audit them inline before judgment and never carry one straight into the verdict.
 - Treat reviewer-reported `verification_needed` as controller-owned: run needed heavy/mutating/shared-resource checks serially only after aggregation, or surface them as blockers/uncertainty.
 - Keep all worker/auditor/live tasks investigation-only; this controller owns judgment and gated side effects.
