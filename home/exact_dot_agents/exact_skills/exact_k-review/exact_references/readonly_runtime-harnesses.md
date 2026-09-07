@@ -98,7 +98,6 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
 - Resolved `lanes` and `verifier` are concrete.
   Pi review workers and fresh-eyes run `openrouter/openai/gpt-5.5:xhigh`; adversarial/criteria verifiers run `openrouter/anthropic/claude-sonnet-4.6:xhigh`, keeping refutation cross-family.
   OMP resolves review roles through its own `modelRoles`.
-  The work profile prices default/vision/slow/plan/task to `cursor/gpt-5.5:xhigh`, `smol` to `cursor/default` (Cursor's Auto router), and `advisor` to `cursor/claude-opus-5-high:high`.
-  The personal profile prices default/vision/slow/plan/task and `advisor` to `openai-codex/gpt-5.5:xhigh` (OpenAI-only catalog), and `smol` to `cursor/default`.
+  One profile-independent `modelRoles` block prices default/vision/slow/plan/task to `anthropic/claude-fable-5.1:high`, `smol` to `anthropic/claude-sonnet-5:high`, `tiny` to `anthropic/claude-sonnet-5:medium`, `commit` to `anthropic/claude-sonnet-5:medium`, and `advisor` to `openai-codex/gpt-6-astra:high` on both work and personal.
   Adversarial and criteria verifiers follow `@advisor`; `category_models.omp.refute` marks `verifier_status: reduced_independence`.
   Other repo-owned Pi/OMP profiles resolve their model from the review resolver or category registry (`agent_bindings` → `agent_categories` → `category_models`) so they do not fall through to `defaultProvider`/`defaultModel` unless a future profile deliberately omits `model` and documents why.

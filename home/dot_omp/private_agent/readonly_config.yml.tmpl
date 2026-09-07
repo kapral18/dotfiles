@@ -1,18 +1,31 @@
 # Managed by chezmoi (source: home/dot_omp/private_agent/readonly_config.yml.tmpl).
 # Keep OMP native guidance/features as the base; this file only pins user policy.
-# {{ if eq .isWork true }}
-# Work rides the Cursor backend (user call 2026-09-07): primaries on Fable 5.1
-# at :high effort (Anthropic native provider; Fable 5+ exposes the five-tier
-# low/medium/high/xhigh/max adaptive scale on the Messages API), smol on
-# cursor/default (Cursor's "Auto" router id; reasoning off, so no :level
-# suffix), advisor on gpt-6-astra via the openai-codex provider (same
-# orchestrate-lane model/effort the codex harness rows use).
+#
+# modelRoles is profile-independent (user call 2026-09-07): both machines ride the
+# native anthropic provider for primaries and the native openai-codex provider for
+# the advisor, so the block lives outside the isWork branch. Only the web-search
+# chains below still fork on isWork.
+#
+# Every built-in omp role is pinned explicitly (default/smol/slow/vision/plan/commit/
+# tiny/task/advisor per `omp config get modelRoles`); nothing falls through to the
+# harness default or the @smol fallback.
+# - primaries (default/vision/slow/plan/task): Fable 5.1 at :high (Fable 5+ exposes the
+#   five-tier low/medium/high/xhigh/max adaptive scale on the Messages API).
+# - smol: Sonnet 5 at :high. cursor/default rode the cursor-agent transport and every
+#   @smol lane (bundled scout/sonic) died on Cursor's free-request limit.
+# - tiny (titles, memory, auto-thinking classification, unexpected-stop detection):
+#   Sonnet 5 at :medium — background chores.
+# - commit (commit-message generation): Sonnet 5 at :medium.
+# - advisor: gpt-6-astra via openai-codex (the same orchestrate-lane model/effort the
+#   codex harness rows use).
 modelRoles:
   default: anthropic/claude-fable-5.1:high
-  smol: cursor/default
-  vision: anthropic/claude-fable-5.1:high
+  smol: anthropic/claude-sonnet-5:high
   slow: anthropic/claude-fable-5.1:high
+  vision: anthropic/claude-fable-5.1:high
   plan: anthropic/claude-fable-5.1:high
+  commit: anthropic/claude-sonnet-5:medium
+  tiny: anthropic/claude-sonnet-5:medium
   task: anthropic/claude-fable-5.1:high
   advisor: openai-codex/gpt-6-astra:high
 
@@ -22,32 +35,14 @@ modelProviderOrder:
   - openrouter
   - cursor
   - openai
-# {{ else }}
-# Personal rides the Codex backend (user call 2026-09-07): primaries on Fable 5.1
-# at :high effort (Anthropic native provider; Fable 5+ exposes the five-tier
-# low/medium/high/xhigh/max adaptive scale on the Messages API), smol on
-# cursor/default (Cursor's "Auto" router id), advisor on gpt-6-astra via the
-# openai-codex provider (same orchestrate-lane model/effort the codex harness rows use).
-modelRoles:
-  default: anthropic/claude-fable-5.1:high
-  smol: cursor/default
-  vision: anthropic/claude-fable-5.1:high
-  slow: anthropic/claude-fable-5.1:high
-  plan: anthropic/claude-fable-5.1:high
-  task: anthropic/claude-fable-5.1:high
-  advisor: openai-codex/gpt-6-astra:high
 
-modelProviderOrder:
-  - anthropic
-  - openai-codex
-  - openrouter
-  - cursor
-  - openai
-# {{ end }}
-# Advisor reviews primary turns and spawned agents using the profile's advisor role.
+# Advisor reviews primary turns only (user call 2026-09-07): no advisor on spawned
+# agents, so a fan-out never multiplies into advisor-per-child sprawl. omp migrates
+# `advisor.subagents` into `task.agentAdvisor.task` (settings.ts) and an explicit
+# agentAdvisor entry wins, so both knobs are pinned off below.
 advisor:
   enabled: true
-  subagents: true
+  subagents: false
   syncBacklog: 1
   immuneTurns: 0
 
@@ -75,14 +70,16 @@ skills:
   enabled: true
   enableSkillCommands: true
 
+# maxRecursionDepth 1: root may spawn; children get no `task` tool (user call
+# 2026-09-07), making the SOP §3.7 leaf-worker boundary mechanical, not instruction-only.
 task:
   isolation:
     mode: auto
   enableEffort: true
   enableLsp: true
-  maxRecursionDepth: 2
+  maxRecursionDepth: 1
   agentAdvisor:
-    task: "on"
+    task: "off"
 
 retry:
   enabled: true

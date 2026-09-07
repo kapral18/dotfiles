@@ -603,30 +603,25 @@ class TestModelBandInvariants(unittest.TestCase):
         category_models = ai_models.load_category_models(path)["omp"]
         roles = self._omp_model_roles()
 
-        assert set(roles) == {"work", "personal"}, f"unexpected OMP profiles {sorted(roles)}"
-        # User call 2026-09-07: both profiles route primaries through the native anthropic
-        # provider on Fable 5.1 and advisor through the native openai-codex provider on
-        # gpt-6-astra:high (the codex harness orchestrate-lane model/effort). Both profiles
-        # pin smol to cursor/default — the discovered cursor catalog's "Auto" router id
-        # (reasoning off, so no :level suffix).
-        _work_or_personal_roles = {
+        # User call 2026-09-07: one profile-independent modelRoles block (both machines ride the
+        # native anthropic provider for primaries on Fable 5.1 and the native openai-codex
+        # provider for the advisor on gpt-6-astra:high). Every built-in omp role is pinned so
+        # nothing falls through to the harness default: smol on Sonnet 5 :high (cursor/default
+        # ran the @smol lanes over the cursor-agent transport and died on Cursor's free-request
+        # limit), tiny (titles/memory/auto-thinking/unexpected-stop) on Sonnet 5 :low, commit on
+        # Sonnet 5 :medium.
+        expected_roles = {
             "default": "anthropic/claude-fable-5.1:high",
-            "smol": "cursor/default",
-            "vision": "anthropic/claude-fable-5.1:high",
+            "smol": "anthropic/claude-sonnet-5:high",
             "slow": "anthropic/claude-fable-5.1:high",
+            "vision": "anthropic/claude-fable-5.1:high",
             "plan": "anthropic/claude-fable-5.1:high",
+            "commit": "anthropic/claude-sonnet-5:medium",
+            "tiny": "anthropic/claude-sonnet-5:medium",
             "task": "anthropic/claude-fable-5.1:high",
             "advisor": "openai-codex/gpt-6-astra:high",
         }
-        expected_roles = {
-            "work": _work_or_personal_roles,
-            "personal": _work_or_personal_roles,
-        }
-        for profile, mapping in roles.items():
-            assert {"default", "smol", "plan", "task", "advisor"} <= set(mapping), (
-                f"omp {profile} modelRoles lacks category routing roles: {mapping!r}"
-            )
-            assert mapping == expected_roles[profile], f"omp {profile} modelRoles drifted: {mapping!r}"
+        assert roles == expected_roles, f"omp modelRoles drifted: {roles!r}"
         assert category_models["lookup"]["model"] == "@smol"
         assert category_models["mechanical"]["model"] == "@task"
         assert category_models["research"]["model"] == "@task"
@@ -644,32 +639,23 @@ class TestModelBandInvariants(unittest.TestCase):
         assert category_models["memory"]["effort"] == "high"
 
     @staticmethod
-    def _omp_model_roles() -> dict[str, dict[str, str]]:
-        """Parse the per-profile `modelRoles` blocks out of OMP's config template."""
+    def _omp_model_roles() -> dict[str, str]:
+        """Parse the single profile-independent `modelRoles` block out of OMP's config template."""
         source = (REPO / "home/dot_omp/private_agent/readonly_config.yml.tmpl").read_text(encoding="utf-8")
-        profiles: dict[str, dict[str, str]] = {}
-        current: dict[str, str] | None = None
-        profile = "work"  # the template opens on `{{ if eq .isWork true }}`
-        for line in source.splitlines():
-            if ".isWork" in line:
-                profile = "work"
-                continue
-            if line.strip() in ("# {{ else }}", "{{ else }}"):
-                profile = "personal"
-                continue
-            if line.startswith("modelRoles:"):
-                current = {}
-                profiles[profile] = current
-                continue
-            if current is None:
-                continue
+        lines = source.splitlines()
+        headers = [index for index, line in enumerate(lines) if line.startswith("modelRoles:")]
+        assert len(headers) == 1, f"OMP config template must declare modelRoles exactly once, found {len(headers)}"
+        first_branch = next((index for index, line in enumerate(lines) if ".isWork" in line), len(lines))
+        assert headers[0] < first_branch, "OMP modelRoles must precede every isWork branch (profile-independent)"
+        roles: dict[str, str] = {}
+        for line in lines[headers[0] + 1 :]:
+            if line.strip() and not line.startswith("  "):
+                break
             match = re.match(r"^  ([\w-]+):\s*(\S+)\s*$", line)
             if match:
-                current[match.group(1)] = match.group(2)
-            elif line.strip() and not line.startswith("  "):
-                current = None
-        assert profiles, "no modelRoles block found in OMP's config template"
-        return profiles
+                roles[match.group(1)] = match.group(2)
+        assert roles, "no modelRoles block found in OMP's config template"
+        return roles
 
     def test_claude_code_models_are_claude_family_selectors(self):
         # Claude Code does not remap unknown model ids: they reach the API and come back as
@@ -1059,11 +1045,10 @@ class TestModelBandInvariants(unittest.TestCase):
                 f"category_models.cursor.{category} is composer-2.5-fast; composer-2.5 is the same model for a sixth"
             )
 
-        # OMP resolves lookup through modelRoles; @smol is Cursor's Auto router on both profiles
-        # (user call 2026-08-30).
-        roles = self._omp_model_roles()
-        assert roles["work"]["smol"] == "cursor/default"
-        assert roles["personal"]["smol"] == "cursor/default"
+        # OMP resolves lookup through the profile-independent modelRoles block; @smol is
+        # anthropic/claude-sonnet-5:high (user call 2026-09-07: cursor/default died on Cursor's
+        # free-request limit).
+        assert self._omp_model_roles()["smol"] == "anthropic/claude-sonnet-5:high"
 
         # Copilot is the one harness where the lookup category reaches a deployed file rather than a
         # rendered profile, so check the model actually landed on every lookup-bound built-in.

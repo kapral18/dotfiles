@@ -506,12 +506,15 @@ category_models:
     # Installed omp/18.0.3 exposes default/smol/vision/slow/plan/task/advisor via
     # `omp config get modelRoles`; use those role names as local inspiration, not as the
     # portable taxonomy.
-    # User call 2026-09-07: both profiles now route default/vision/slow/plan/task through the
+    # User call 2026-09-07: one profile-independent modelRoles block routes default/vision/slow/plan/task through the
     # native anthropic provider on claude-fable-5.1:high (Fable 5+ exposes the five-tier
     # low/medium/high/xhigh/max adaptive scale on the Messages API), and advisor through the
     # native openai-codex provider on gpt-6-astra:high (the same orchestrate-lane model/effort
-    # the codex harness rows use). smol stays on cursor/default (Cursor's "Auto" router id;
-    # reasoning off) on both profiles.
+    # the codex harness rows use). smol rides anthropic/claude-sonnet-5:high on both profiles
+    # (user call 2026-09-07: cursor/default ran @smol lanes — bundled scout/sonic — over the
+    # cursor-agent transport, and they died on Cursor's free-request limit). tiny rides
+    # anthropic/claude-sonnet-5:medium and commit anthropic/claude-sonnet-5:medium; every built-in
+    # role is pinned so nothing falls through to the harness default or the @smol fallback.
     # modelProviderOrder was reordered to put anthropic and openai-codex ahead of openrouter/cursor/openai.
     # Review/refute stay on @advisor (same-family), so refute reports reduced_independence.
     # Verified 17.2.4: a profile carrying `model: "@smol"` runs on modelRoles.smol, and an

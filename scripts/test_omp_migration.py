@@ -89,18 +89,19 @@ class TestOmpMigration(unittest.TestCase):
         provider_order = (
             "modelProviderOrder:\n  - anthropic\n  - openai-codex\n  - openrouter\n  - cursor\n  - openai\n"
         )
-        # Both profiles ride the native anthropic/openai-codex providers (user call 2026-09-07):
-        # primaries on Fable 5.1 at :high effort (Fable 5+ exposes the five-tier
-        # low/medium/high/xhigh/max adaptive scale on the Messages API), advisor on
-        # gpt-6-astra:high (the codex harness orchestrate-lane model/effort), smol stays
-        # cursor/default (the discovered cursor catalog's "Auto" router id; reasoning off,
-        # so no :level suffix).
+        # One profile-independent modelRoles block (user call 2026-09-07): primaries on Fable 5.1
+        # at :high effort via the native anthropic provider, advisor on gpt-6-astra:high via the
+        # native openai-codex provider, smol on Sonnet 5 :high (cursor/default ran @smol lanes over
+        # the cursor-agent transport and died on Cursor's free-request limit), and the remaining
+        # built-in roles pinned explicitly: tiny on Sonnet 5 :medium, commit on Sonnet 5 :medium.
         work_role_values = (
             "default: anthropic/claude-fable-5.1:high",
-            "smol: cursor/default",
-            "vision: anthropic/claude-fable-5.1:high",
+            "smol: anthropic/claude-sonnet-5:high",
             "slow: anthropic/claude-fable-5.1:high",
+            "vision: anthropic/claude-fable-5.1:high",
             "plan: anthropic/claude-fable-5.1:high",
+            "commit: anthropic/claude-sonnet-5:medium",
+            "tiny: anthropic/claude-sonnet-5:medium",
             "task: anthropic/claude-fable-5.1:high",
             "advisor: openai-codex/gpt-6-astra:high",
             provider_order,
@@ -112,13 +113,13 @@ class TestOmpMigration(unittest.TestCase):
         }
         shared_values = (
             "modelRoles:\n",
-            "advisor:\n  enabled: true\n  subagents: true\n  syncBacklog: 1\n  immuneTurns: 0\n",
+            "advisor:\n  enabled: true\n  subagents: false\n  syncBacklog: 1\n  immuneTurns: 0\n",
             "defaultThinkingLevel: high\n",
             "memory:\n  backend: off\n",
             "autolearn:\n  enabled: false\n  autoContinue: false\n",
             "dev:\n  autoqaConsent: granted\n",
             "skills:\n  enabled: true\n  enableSkillCommands: true\n",
-            "task:\n  isolation:\n    mode: auto\n  enableEffort: true\n  enableLsp: true\n  maxRecursionDepth: 2\n",
+            'task:\n  isolation:\n    mode: auto\n  enableEffort: true\n  enableLsp: true\n  maxRecursionDepth: 1\n  agentAdvisor:\n    task: "off"\n',
             "retry:\n  enabled: true\n  maxRetries: 3\n",
             "symbolPreset: nerd\n",
             "theme:\n  dark: dark-catppuccin\n",

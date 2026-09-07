@@ -36,7 +36,7 @@ flowchart TB
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (OpenRouter selectors)"]:::exec
         CODEX["Codex: dot_codex/private_config.{work,personal}.toml<br/>+ ,codex bearer-token env wrapper for hosted MCP"]:::exec
         PI["Pi: dot_pi/agent/* (OpenRouter GPT-5.5 xhigh default/review lanes; Sonnet refute)<br/>runtime-parity before_agent_start appends canonical SOP iff absent;<br/>native tool_call blocks Git effects; model-band adapter unconfigured"]:::exec
-        OMP["OMP: dot_omp/private_agent/readonly_config.yml.tmpl<br/>work: Cursor GPT-5.5 xhigh roles; smol cursor/default (Auto); advisor Opus 5 High<br/>personal: Codex GPT-5.5 xhigh roles incl. advisor; smol cursor/default (Auto)<br/>+ generated ~/.omp/agent/mcp.json token bridges"]:::exec
+        OMP["OMP: dot_omp/private_agent/readonly_config.yml.tmpl<br/>one profile-independent modelRoles block: Fable 5.1:high primaries; smol Sonnet 5:high; tiny Sonnet 5:medium; commit Sonnet 5:medium; advisor openai-codex gpt-6-astra:high<br/>+ generated ~/.omp/agent/mcp.json token bridges"]:::exec
         COPILOT["Copilot CLI: private_dot_copilot/* (settings + gates + review agents;<br/>MCP stdio-only, OAuth http unusable)"]:::exec
         TUICR["tuicr: dot_config/tuicr/readonly_config.toml"]:::exec
         LOCAL["llama.cpp (local, opt-in)"]:::exec
