@@ -26,7 +26,7 @@ import ai_models
 REPO = Path(__file__).resolve().parent.parent
 REGISTRY = REPO / "home/.chezmoidata/ai_models"
 PROJECTION = REPO / "home/dot_config/ai/readonly_agent-bands.v1.json"
-SCHEMA_VERSION = "1.2.0"  # 1.1.0: harnesses.<h>.counter_models; 1.2.0: agents.<name>.category
+SCHEMA_VERSION = "1.3.0"  # 1.1.0: counter_models; 1.2.0: agents.<name>.category; 1.3.0: mechanical_models
 KIND = "ai.agent-bands"
 CLAUDE_ALIASES = ("opus", "sonnet", "haiku", "fable")
 
@@ -69,13 +69,21 @@ def build() -> dict:
         # Counter models: the refute and cross-family-slot picks. The gate lets an explicit
         # `model` equal to one of these pass on generic subagent types, so a verifier launched as
         # Cursor `generalPurpose` keeps its family instead of being rewritten to `implement`.
+        # Mechanical models get the same pass-through: a harness whose `k-agent-mechanical`
+        # profile is unreachable (Cursor never scans ~/.cursor/agents) dispatches the cheap edit
+        # lane as the generic type carrying the registry mechanical pick explicitly.
         counter = []
+        mechanical = []
         for agent in sorted(bindings):
+            model = agents[agent]["model"]
+            if not model or model == "inherit":
+                continue
             if bindings[agent] == "refute" or agent in ai_models.REVIEW_AUX_SLOTS:
-                model = agents[agent]["model"]
-                if model and model != "inherit" and model not in counter:
+                if model not in counter:
                     counter.append(model)
-        harnesses[harness] = {"agents": agents, "counter_models": counter}
+            elif bindings[agent] == "mechanical" and model not in mechanical:
+                mechanical.append(model)
+        harnesses[harness] = {"agents": agents, "counter_models": counter, "mechanical_models": mechanical}
 
     return {
         "schema_version": SCHEMA_VERSION,

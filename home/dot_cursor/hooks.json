@@ -54,11 +54,6 @@
     ],
     "beforeShellExecution": [
       {
-        "command": "$HOME/.agents/hooks/gemini-git-gate.py",
-        "matcher": "\\bgit\\b",
-        "failClosed": true
-      },
-      {
         "command": "$HOME/.agents/hooks/premise_nudge.py",
         "timeout": 10
       },

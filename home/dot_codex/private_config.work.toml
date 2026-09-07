@@ -43,3 +43,6 @@ config_file = "~/.codex/agents/k-agent-review-worker.toml"
 
 [agents.k-agent-smol]
 config_file = "~/.codex/agents/k-agent-smol.toml"
+
+[agents.k-agent-mechanical]
+config_file = "~/.codex/agents/k-agent-mechanical.toml"

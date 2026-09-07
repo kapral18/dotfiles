@@ -55,7 +55,7 @@ Claude resolves `@AGENTS.md` imports natively and deduplicates canonical paths. 
 
 Cursor’s contained `k-sop` user-local plugin renders the complete canonical SOP into an always-applied native rule. Hosted and authenticated-local profiles load it outside `$HOME`; explicit authless/Bedrock-local profiles disable user-local plugins and retain only their existing ancestor route. With the plugin enabled, Cursor loads 2 SOP bodies inside `$HOME` (ancestor plus plugin, matching the original 2-body baseline) and 1 outside. Native merging deduplicates paths, not equal bodies. No `.cursorignore` hides the readable home SOP, and `~/.cursor/AGENTS.md` alone is not a verified global scanner entrypoint.
 
-Pi’s `runtime-parity.ts` appends the full canonical SOP through `before_agent_start` only when neither a realpath-equivalent native context file nor the complete SOP body is already present. It preserves the base prompt; explicit no-extension workflows bypass this extension. OMP already deduplicates canonical context aliases. Pi also has verified native `tool_call` blocking support; its model-band adapter remains unconfigured, so that blocking evidence does not establish per-call model clamping.
+Pi’s `runtime-parity.ts` appends the full canonical SOP through `before_agent_start` only when neither a realpath-equivalent native context file nor the complete SOP body is already present. It preserves the base prompt; explicit no-extension workflows bypass this extension. OMP already deduplicates canonical context aliases. Pi’s model-band adapter remains unconfigured, so per-call model clamping is not established there.
 
 The deployed SOP carries a short managed-home reminder: dotfiles are chezmoi-managed on this machine.
 
@@ -88,6 +88,6 @@ Pi/OMP context-disable flags and workspace/topic sentinels suppress startup, cor
 
 Pi/OMP review-controller profiles retain native model/task notes and dispatch through canonical `k-review` or explicitly invoked `k-deep-review` owners. Every delegated invocation remains a bounded leaf; profile names grant no root authority. Plan review returns feedback only, standard review does not auto-promote to deep, and deep intake does not preload the full standard router. Narrow Claude/OMP workers load their required role contracts and conditional lenses instead of eager unrelated controller bodies.
 
-The shared Git gate classifies `exec` utilities and executable substitutions in expandable heredocs. Quoted-delimiter data remains inert; shell-consuming heredocs still receive command classification. This is a bounded shell parser, not an exhaustive interpreter. The standalone `,agent-memory` launcher uses its deployed `~/lib/,agent-memory/` modules, rendered from canonical repository Python sources; it needs no checkout or `chezmoi` binary at runtime.
+The standalone `,agent-memory` launcher uses its deployed `~/lib/,agent-memory/` modules, rendered from canonical repository Python sources; it needs no checkout or `chezmoi` binary at runtime.
 
 Topic selection emits bounded complete worklog rows and retains the full backing file. A live topic’s removed `.no_context` sentinel is removed from its mirror too; complete temporary-state loss still restores the saved topic. `wipe-current --reset-active` clears both live and mirrored active pointers so restoration cannot resurrect that explicit reset.

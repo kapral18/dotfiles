@@ -21,6 +21,9 @@ memories = false
 
 # Role registry. Without an entry here the files under ~/.codex/agents/ are never read;
 # `spawn_agent` only sees roles named in this table. Review lanes stay work-only; k-agent-smol
-# (the ,ai-kb operator) is needed on every profile.
+# (the ,ai-kb operator) and k-agent-mechanical (the cheap edit lane) are needed on every profile.
 [agents.k-agent-smol]
 config_file = "~/.codex/agents/k-agent-smol.toml"
+
+[agents.k-agent-mechanical]
+config_file = "~/.codex/agents/k-agent-mechanical.toml"

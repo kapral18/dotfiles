@@ -50,10 +50,12 @@ def _pick(harness: str, agent: str) -> dict[str, Any] | None:
     return projection.get("harnesses", {}).get(harness, {}).get("agents", {}).get(agent)
 
 
-def _counter_models(harness: str) -> set[str]:
-    """Registry picks for the refute/cross-family slots on this harness (may be empty)."""
+def _passthrough_models(harness: str) -> set[str]:
+    """Registry picks an `implement`-bound generic type may carry explicitly: the refute /
+    cross-family slots and the mechanical lane (both may be empty)."""
     projection = _load()
-    models = projection.get("harnesses", {}).get(harness, {}).get("counter_models", [])
+    entry = projection.get("harnesses", {}).get(harness, {})
+    models = list(entry.get("counter_models", [])) + list(entry.get("mechanical_models", []))
     return {m for m in models if isinstance(m, str) and m}
 
 
@@ -258,16 +260,18 @@ def main() -> int:
         return 0
 
     # A generic subagent type binds to `implement` (Cursor `generalPurpose`, Copilot `task`), but
-    # the adversarial verifier and the cross-family finder are launched through that same generic
-    # type on harnesses with no reachable profile, carrying the registry's counter pick as an
-    # explicit `model`. Rewriting that launch to the generic type's band would silently collapse
-    # the refute lane back onto the finder family, so on an `implement`-bound type a registry
-    # counter model passes untouched. Every other bound agent (memory, research, review, ...)
-    # asking for a counter model is still a matrix bypass and gets rewritten, and so is any
-    # non-registry model on the generic type. Claude keeps its own alias-rank logic in the adapter.
+    # two lanes are launched through that same generic type on harnesses with no reachable
+    # profile, carrying their registry pick as an explicit `model`: the adversarial verifier /
+    # cross-family finder (counter pick) and the mechanical edit lane (mechanical pick; Cursor
+    # never scans ~/.cursor/agents, so `k-agent-mechanical` is unreachable there). Rewriting
+    # either launch to the generic type's band would silently collapse the lane back onto the
+    # implement model, so on an `implement`-bound type those registry picks pass untouched.
+    # Every other bound agent (memory, research, review, ...) asking for one is still a matrix
+    # bypass and gets rewritten, and so is any non-registry model on the generic type. Claude
+    # keeps its own alias-rank logic in the adapter.
     if harness != "claude_code" and not override and pick.get("category") == "implement":
         asked = tool_input.get("model")
-        if isinstance(asked, str) and asked in _counter_models(schema_harness):
+        if isinstance(asked, str) and asked in _passthrough_models(schema_harness):
             print("{}")
             return 0
 

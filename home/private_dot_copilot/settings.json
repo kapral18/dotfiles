@@ -53,6 +53,11 @@
         "contextTier": "default",
         "model": "claude-sonnet-4.6"
       },
+      "k-agent-mechanical": {
+        "effortLevel": "high",
+        "contextTier": "default",
+        "model": "claude-sonnet-4.6"
+      },
       "explore": {
         "effortLevel": "xhigh",
         "contextTier": "default",

@@ -119,6 +119,10 @@ agent_bindings:
   # Repo-authored general roles.
   k-agent-code-searcher: "research"
   k-agent-researcher: "research"
+  # Deterministic-edit lane: the parent states the rule, targets and acceptance; the worker applies
+  # and returns the diff (k-review/references/mechanical-worker.md). The only `mechanical` binding
+  # besides OMP's native `sonic`; every other writable generic agent stays `implement`.
+  k-agent-mechanical: "mechanical"
   # k-agent-smol ,ai-kb operator: judges staged per-turn recall candidates against session state and owns
   # capsule write mechanics (k-ai-kb/references/smol-operator.md).
   k-agent-smol: "memory"
@@ -150,6 +154,9 @@ agent_bindings:
   cursor-guide: "research"
   bugbot: "review"
   best-of-n-runner: "implement"
+  # OMP built-in (omp task tool roster): `sonic` runs on modelRoles.smol, which is what the omp
+  # mechanical row resolves to, so the SOP can name it as the concrete mechanical spawn target.
+  sonic: "mechanical"
 
 # The per-harness half. `effort` is the literal value that harness takes (a model-id suffix on
 # Cursor, --effort on Claude Code/Copilot, model_reasoning_effort on Codex, a `:level` suffix on
@@ -526,8 +533,11 @@ category_models:
       effort: "xhigh"
       thinking: ""
       context: "short"
+    # mechanical rides @smol (Sonnet 5), not @task: the row used to name @task, which resolved to the
+    # same Fable model as the session default, so a mechanical delegation cost exactly what inlining
+    # cost (probe 2026-09-07: bundled `sonic` already spawned on anthropic/claude-sonnet-5).
     mechanical:
-      model: "@task"
+      model: "@smol"
       effort: "xhigh"
       thinking: ""
       context: "short"

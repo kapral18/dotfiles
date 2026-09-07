@@ -333,9 +333,6 @@ TEST_RULES: tuple[TestRule, ...] = (
         prefixes=("home/exact_lib/exact_,w/", "home/exact_bin/executable_,w"),
         tests=("tests/test_w_remove_detached.py", "tests/test_worktree_delete_boundaries.py"),
     ),
-    TestRule(
-        prefixes=("home/exact_lib/exact_,git/", "home/exact_bin/executable_,git"), tests=("tests/test_git_gate.py",)
-    ),
     TestRule(prefixes=("home/exact_lib/exact_,proof/",), tests=("tests/test_proof_cli.py",)),
     TestRule(
         prefixes=(

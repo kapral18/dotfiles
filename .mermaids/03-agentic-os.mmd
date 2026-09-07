@@ -35,7 +35,7 @@ flowchart TB
         GEMINI["Antigravity: config/symlink_AGENTS.md + symlink_skills + generated mcp_config.json"]:::exec
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (OpenRouter selectors)"]:::exec
         CODEX["Codex: dot_codex/private_config.{work,personal}.toml<br/>+ ,codex bearer-token env wrapper for hosted MCP"]:::exec
-        PI["Pi: dot_pi/agent/* (OpenRouter GPT-5.5 xhigh default/review lanes; Sonnet refute)<br/>runtime-parity before_agent_start appends canonical SOP iff absent;<br/>native tool_call blocks Git effects; model-band adapter unconfigured"]:::exec
+        PI["Pi: dot_pi/agent/* (OpenRouter GPT-5.5 xhigh default/review lanes; Sonnet refute)<br/>runtime-parity before_agent_start appends canonical SOP iff absent;<br/>model-band adapter unconfigured"]:::exec
         OMP["OMP: dot_omp/private_agent/readonly_config.yml.tmpl<br/>one profile-independent modelRoles block: Fable 5.1:high primaries; smol Sonnet 5:high; tiny Sonnet 5:medium; commit Sonnet 5:medium; advisor openai-codex gpt-6-astra:high<br/>+ generated ~/.omp/agent/mcp.json token bridges"]:::exec
         COPILOT["Copilot CLI: private_dot_copilot/* (settings + gates + review agents;<br/>MCP stdio-only, OAuth http unusable)"]:::exec
         TUICR["tuicr: dot_config/tuicr/readonly_config.toml"]:::exec
@@ -47,7 +47,7 @@ flowchart TB
     SK -. symlinked or natively discovered by .-> CURSOR & CLAUDE & OPENCODE & CODEX & PI & OMP & COPILOT & GEMINI
 
     subgraph HOOKS["Shared lifecycle hooks — detail in 03b"]
-        H["Cursor + Antigravity session context and worklog adapters<br/>pre-shell/pre-tool git gate (fail closed: exec + expandable heredoc substitutions)<br/>startup/per-turn recall stages complete candidates; only smol judgments enter parent context"]:::ctx
+        H["Cursor + Antigravity session context and worklog adapters<br/>startup/per-turn recall stages complete candidates; only smol judgments enter parent context"]:::ctx
     end
     GOV -.enforced at runtime by.-> HOOKS
     MEM[("/tmp/specs/<pwd>/<topic>.* (ephemeral memory)<br/>,agent-memory → ~/lib/,agent-memory/ rendered from canonical Python sources;<br/>no runtime checkout/chezmoi dependency; persistent named-topic mirror")]:::data

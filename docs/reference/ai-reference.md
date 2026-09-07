@@ -18,10 +18,6 @@ See [The Agentic Operating System](../topics/ai-assistants/index.md) and [SOP so
 
 `~/CLAUDE.md` imports `@AGENTS.md`; `~/.claude/CLAUDE.md` links to `~/AGENTS.md` for Claude's global loader. `~/.gemini/config/AGENTS.md`, `~/.cursor/AGENTS.md`, `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`, and `~/.copilot/copilot-instructions.md` are symlinks to `~/AGENTS.md`.
 
-### Git commit/push safety gate
-
-[`executable_gemini-git-gate.py`](../../home/exact_dot_agents/exact_hooks/executable_gemini-git-gate.py) is a shared pre-shell hook (Cursor `beforeShellExecution`, Antigravity `PreToolUse`, and the Pi/OMP runtime extensions) that asks for approval before a `git commit` or `git push`. Antigravity uses `force_ask`, so a cached “Always Allow” permission cannot bypass this prompt. It classifies the real subcommand behind chains, `env`/`-C`/`-c`, and recognized wrappers (`sudo`, `command`, `time`, `bash -c`, ...), and fails closed on anything ambiguous. Shell comments are ignored, completed here-doc bodies are inspected when they feed shell wrappers and otherwise treated as inert stdin, and unterminated here-docs fail closed. Runtime extension UI confirmations are bounded and fail closed if the prompt does not resolve. Non-git commands are allowed even when they mention git, so `.git` path probes such as `stat .git/index.lock` run without prompting.
-
 ## Harness configs
 
 Per-tool config sources and the `run_onchange_after_07-*` hooks that render them. See [Tool configs](../topics/ai-assistants/tool-configs/index.md).

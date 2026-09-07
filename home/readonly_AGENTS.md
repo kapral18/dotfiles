@@ -296,6 +296,12 @@ Rules:
   choosing relevant files/symbols is `research`, even from `orchestrate`.
 - In the active root/main session, delegate rather than inline bounded work with clear input/output that skips accumulated caller context.
   Delegation keeps the conclusion in the caller's context, not the file dumps; recon and mechanical edits are the usual wins.
+- `mechanical` dispatch gate.
+  Required: spawn the `mechanical`-bound agent (`k-agent-mechanical`; OMP native `sonic`) with a packet naming rule, targets, and acceptance, then verify the returned diff.
+  When the harness cannot reach that profile (Cursor never scans user-level agents), launch its generic edit-capable type with the registry `mechanical` model passed explicitly; the band gate passes that pick through.
+  Forbidden: the root session MUST NOT apply a rename, search-and-replace, import fix, or pattern migration itself once the rule is settled, even when one native edit tool could do it; the harness's own "do small edits inline" guidance does not override this gate.
+  Verify: the delegation transcript shows the `mechanical` band model, never the session model.
+  Only an unsettled rule (the transformation still needs judgment per site) keeps the work in `implement`.
 - `refute` prefers a different model family at equal capability; a strong same-family refuter beats a weaker cross-family one.
   Same-family refutation must retain framing, run in full, and openly report reduced independence.
 - A skill that names a category owns that choice; honor it even when a cheaper or faster run is available.

@@ -1979,8 +1979,7 @@ class TestAgentHooks(unittest.TestCase):
         assert "session_context.py" in json.dumps(antigravity["agent-context"]["PreInvocation"])
         assert "premise_nudge.py" in json.dumps(antigravity["agent-context"]["PreInvocation"])
         assert "worklog_dispatcher.sh" in json.dumps(antigravity["agent-worklog"]["PostToolUse"])
-        assert "gemini-git-gate.py" in json.dumps(antigravity["git-safety"]["PreToolUse"])
-        assert "premise_nudge.py" in json.dumps(antigravity["git-safety"]["PreToolUse"])
+        assert "premise_nudge.py" in json.dumps(antigravity["agent-premise"]["PreToolUse"])
         assert "AGENT_HOOK_OUTPUT=antigravity" in json.dumps(antigravity)
 
     def test_antigravity_worklog_dispatcher_returns_empty_json(self):
@@ -2838,17 +2837,16 @@ console.log(JSON.stringify({
                 },
             ]
 
-    def test_runtime_extensions_enable_search_tools_and_gate_git_mutation(self):
-        extension_cases = [REPO / "home/dot_pi/agent/exact_extensions/runtime-parity.ts"]
+    def test_runtime_extensions_enable_search_tools(self):
+        extension_cases = [
+            REPO / "home/dot_pi/agent/exact_extensions/runtime-parity.ts",
+            REPO / "home/dot_omp/private_agent/extensions/runtime-parity.ts",
+        ]
         for extension in extension_cases:
             with self.subTest(extension=str(extension.relative_to(REPO))):
                 with tempfile.TemporaryDirectory() as tmp:
                     home = Path(tmp) / "home"
-                    hooks_dir = home / ".agents" / "hooks"
-                    hooks_dir.mkdir(parents=True)
-                    gate = hooks_dir / "gemini-git-gate.py"
-                    gate.write_text((HOOKS / "executable_gemini-git-gate.py").read_text())
-                    gate.chmod(0o755)
+                    home.mkdir(parents=True)
                     script = """
 const mod = await import(process.argv[1]);
 function makePi() {
@@ -2864,91 +2862,19 @@ function makePi() {
 const pi = makePi();
 await mod.default(pi);
 await pi.handlers.session_start({ type: "session_start", reason: "startup" }, {});
-const ctxWithoutUi = { hasUI: false };
-const ctxAllowing = { hasUI: true, ui: { async confirm() { return true; } } };
-const ctxHanging = { hasUI: true, ui: { async confirm() { return new Promise(() => {}); } } };
-const heredocCommand = [
-  "node - <<'NODE'",
-  "const root = `${process.env.HOME}/tmp/demo`;",
-  "const lockPath = `${root}/.git/index.lock`;",
-  "const body = JSON.stringify({ path: lockPath, message: 'not a git command' });",
-  "await fetch(`${root}/api/items`, { method: 'PUT', body });",
-  "NODE",
-].join("\\n");
-const safe = await pi.handlers.tool_call(
-  { type: "tool_call", toolCallId: "safe", toolName: "bash", input: { command: "git config push.default" } },
-  ctxWithoutUi
-);
-const blocked = await pi.handlers.tool_call(
-  { type: "tool_call", toolCallId: "blocked", toolName: "bash", input: { command: "git push" } },
-  ctxWithoutUi
-);
-const caseVariantBlocked = await pi.handlers.tool_call(
-  { type: "tool_call", toolCallId: "case-variant", toolName: "bash", input: { command: "GIT push" } },
-  ctxWithoutUi
-);
-const aliasBlocked = await pi.handlers.tool_call(
-  { type: "tool_call", toolCallId: "alias", toolName: "bash", input: { command: "git -c alias.p=push p" } },
-  ctxWithoutUi
-);
-const concatenatedBlocked = await pi.handlers.tool_call(
-  { type: "tool_call", toolCallId: "concatenated", toolName: "bash", input: { command: 'g""it push' } },
-  ctxWithoutUi
-);
-const escapedBlocked = await pi.handlers.tool_call(
-  { type: "tool_call", toolCallId: "escaped", toolName: "bash", input: { command: String.raw`g\\it commit` } },
-  ctxWithoutUi
-);
-const expandedBlocked = await pi.handlers.tool_call(
-  { type: "tool_call", toolCallId: "expanded", toolName: "bash", input: { command: String.raw`g$'it' push` } },
-  ctxWithoutUi
-);
-const inertGitText = await pi.handlers.tool_call(
-  { type: "tool_call", toolCallId: "inert", toolName: "bash", input: { command: "rg 'git push' home" } },
-  ctxWithoutUi
-);
-const gitLockProbe = await pi.handlers.tool_call(
-  { type: "tool_call", toolCallId: "lock-probe", toolName: "bash", input: { command: "stat .git/FETCH_HEAD.lock .git/index.lock" } },
-  ctxWithoutUi
-);
-const heredocAllowed = await pi.handlers.tool_call(
-  { type: "tool_call", toolCallId: "heredoc", toolName: "bash", input: { command: heredocCommand } },
-  ctxWithoutUi
-);
-
-const approved = await pi.handlers.tool_call(
-  { type: "tool_call", toolCallId: "approved", toolName: "bash", input: { command: "git commit -m ok" } },
-  ctxAllowing
-);
-const hangingConfirmBlocked = await pi.handlers.tool_call(
-  { type: "tool_call", toolCallId: "hanging-confirm", toolName: "bash", input: { command: "git commit -m timeout" } },
-  ctxHanging
-);
 process.argv.push("--tools", "read,bash");
 const explicit = makePi();
 await mod.default(explicit);
 await explicit.handlers.session_start({ type: "session_start", reason: "startup" }, {});
 console.log(JSON.stringify({
   active: pi.getActiveTools(),
-  safe: safe ?? null,
-  blocked,
-  caseVariantBlocked,
-  aliasBlocked,
-  concatenatedBlocked,
-  escapedBlocked,
-  expandedBlocked,
-  inertGitText: inertGitText ?? null,
-  gitLockProbe: gitLockProbe ?? null,
-  heredocAllowed: heredocAllowed ?? null,
-  approved: approved ?? null,
-  hangingConfirmBlocked,
+  toolCallHooked: "tool_call" in pi.handlers,
   explicit: explicit.getActiveTools()
 }));
 """
                     env = dict(os.environ)
                     env["HOME"] = str(home)
                     env["NODE_NO_WARNINGS"] = "1"
-                    env["AGENT_RUNTIME_CONFIRM_TIMEOUT_MS"] = "20"
                     result = subprocess.run(
                         ["node", "--input-type=module", "-e", script, str(extension)],
                         cwd=str(REPO),
@@ -2960,35 +2886,8 @@ console.log(JSON.stringify({
                     payload = json.loads(result.stdout)
 
                     assert payload["active"] == ["read", "bash", "edit", "write", "grep", "find", "ls"]
-                    assert payload["safe"] is None
-                    assert payload["blocked"]["block"] is True
-                    assert "explicit approval" in payload["blocked"]["reason"]
-                    assert payload["caseVariantBlocked"]["block"] is True
-                    assert payload["aliasBlocked"]["block"] is True
-                    assert payload["concatenatedBlocked"]["block"] is True
-                    assert payload["escapedBlocked"]["block"] is True
-                    assert payload["expandedBlocked"]["block"] is True
-                    assert payload["inertGitText"] is None
-                    assert payload["gitLockProbe"] is None
-                    assert payload["heredocAllowed"] is None
-                    assert payload["approved"] is None
-                    assert payload["hangingConfirmBlocked"]["block"] is True
+                    assert payload["toolCallHooked"] is False
                     assert payload["explicit"] == ["read", "bash", "edit", "write"]
-
-        omp_extension = REPO / "home/dot_omp/private_agent/extensions/runtime-parity.ts"
-        omp_text = omp_extension.read_text()
-        for snippet in (
-            'const SEARCH_TOOLS = ["grep", "find", "ls"]',
-            'const TOOL_SELECTION_FLAGS = ["--tools", "-t", "--exclude-tools", "-xt", "--no-tools", "-nt", "--no-builtin-tools", "-nbt"]',
-            "function hasExplicitToolSelection(argv: string[]): boolean",
-            "function enableSearchTools(pi: ExtensionAPI): void",
-            "function runGitGate(command: string): Promise<GateProcessResult>",
-            "async function confirmWithTimeout(request: Promise<boolean>): Promise<boolean>",
-            'pi.on("session_start", () => {',
-            'pi.on("tool_call", async (event, ctx) => {',
-        ):
-            assert snippet in omp_text
-        assert "the OMP safety gate refused this command" in omp_text
 
     def test_pi_recall_uses_session_binding_and_stages_unadmitted_capsules(self):
         extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"

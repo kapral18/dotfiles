@@ -327,18 +327,21 @@ class TestModelBandInvariants(unittest.TestCase):
 
         agents = sorted((REPO / "home/dot_codex/exact_agents").glob("*.toml.tmpl"))
         self.assertTrue(agents, "Codex agent profile set is empty")
+        bindings = ai_models.load_agent_bindings(registry)
         for profile in agents:
             config = profile.read_text(encoding="utf-8")
+            agent = profile.name.removeprefix("readonly_").removesuffix(".toml.tmpl")
+            category = bindings[agent]
             with self.subTest(surface="agent_profile", name=profile.name):
                 self.assertIn('"harness" "codex"', config)
                 self.assertRegex(config, re.compile(rf'^service_tier\s*=\s*"{expected_service_tier}"$', re.MULTILINE))
-                if profile.name == "readonly_k-agent-smol.toml.tmpl":
-                    # k-agent-smol is a bindings-resolved memory agent, not a review lane: it goes
-                    # through agent-model.partial and carries the memory row's effort.
+                if category in ("memory", "mechanical"):
+                    # Bindings-resolved cheap lanes, not review lanes: they go through
+                    # agent-model.partial and carry their own category row's effort.
                     self.assertIn('includeTemplate "agent-model.partial"', config)
-                    memory_effort = category_models["memory"]["effort"]
+                    lane_effort = category_models[category]["effort"]
                     self.assertRegex(
-                        config, re.compile(rf'^model_reasoning_effort\s*=\s*"{memory_effort}"$', re.MULTILINE)
+                        config, re.compile(rf'^model_reasoning_effort\s*=\s*"{lane_effort}"$', re.MULTILINE)
                     )
                     continue
                 self.assertIn("review-agent-model.partial", config)
@@ -519,6 +522,12 @@ class TestModelBandInvariants(unittest.TestCase):
         assert bypass["updated_input"]["prompt"] == "x", "Cursor updated_input must echo untouched keys"
         assert gate("Task", "claude-opus-5-high")["updated_input"]["model"] == implement_model
         assert gate("Subagent", refute_model) == {}, "registry counter model must pass through untouched"
+        # Cursor never scans ~/.cursor/agents, so the mechanical lane is dispatched as the generic
+        # type carrying the registry mechanical pick; that pick must pass like a counter model.
+        mechanical_model = cursor["agents"]["k-agent-mechanical"]["model"]
+        assert cursor["mechanical_models"] == [mechanical_model]
+        assert mechanical_model != implement_model
+        assert gate("Subagent", mechanical_model) == {}, "registry mechanical model must pass through untouched"
         # Only the generic `implement` type may carry the counter model; a bound cheap-band or
         # research-band profile asking for it is still an escape and gets its own band back.
         smol_model = cursor["agents"]["k-agent-smol"]["model"]
@@ -623,7 +632,10 @@ class TestModelBandInvariants(unittest.TestCase):
         }
         assert roles == expected_roles, f"omp modelRoles drifted: {roles!r}"
         assert category_models["lookup"]["model"] == "@smol"
-        assert category_models["mechanical"]["model"] == "@task"
+        # mechanical rides @smol: on @task it resolved to the session's own Fable model, so a
+        # delegated mechanical edit cost the same as inlining it (user call 2026-09-07).
+        assert category_models["mechanical"]["model"] == "@smol"
+        assert roles[category_models["mechanical"]["model"].lstrip("@")] != roles["default"]
         assert category_models["research"]["model"] == "@task"
         assert category_models["implement"]["model"] == "@task"
         assert category_models["orchestrate"]["model"] == "@plan"
