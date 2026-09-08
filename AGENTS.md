@@ -55,9 +55,9 @@ Examples include shell configs, scripts in `~/bin/`, app configs in `~/.config/`
 
 ## Project Validation
 
-- During Produce, run `make fmt`; run `make check` once on the integrated candidate in final Verify.
-- Do not run checks after every edit or automatically repair/recheck final failures.
-  Report final failures for a new user-authorized attempt.
+- During Produce, run `make fmt`; run `make check` on the integrated candidate in Verify, deduplicated per snapshot under SOP §3.5.
+- Do not run checks after every edit.
+  Apply SOP §3.5 for evidence-backed recovery within existing authority; rerun only failed or affected checks after a relevant change.
 - `make check` is affected-only (`bin/check` vs dirty paths).
 - Agents must not run `make check-full`, `bin/check --full`, or `make test`; those are human-only.
   Pre-commit runs `bin/check --staged` and must not run the full suite.
@@ -65,7 +65,8 @@ Examples include shell configs, scripts in `~/bin/`, app configs in `~/.config/`
   Name tests so `scripts/check.py` convention hits, or add a `TEST_RULES` row.
   Convention: `scripts/foo.py` / `foo.sh` → `test_foo.py` or `tests/test_foo.py`; `home/exact_lib/exact_,name/` → `tests/test_name.py`.
   Do not leave a new shard reachable only by `make check-full`.
-- If either command fails, fix the issue when it is in scope; otherwise report the failure and the relevant output.
+- If either command fails, apply SOP §3.5 for scoped recovery and §3.4 for repeated attempts without progress;
+  report blocked work with the relevant output.
 
 ---
 

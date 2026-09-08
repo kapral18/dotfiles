@@ -132,6 +132,13 @@ class TestKbnStackCommand(unittest.TestCase):
         assert registry == {}
         assert state["saved"][-1] == {}
 
+    def test_when_serverless_logs_security_index_ready_should_finish_waiting(self):
+        kbn_stack = _load_kbn_stack_command()
+        with tempfile.TemporaryDirectory() as tmp:
+            logfile = Path(tmp) / "es.log"
+            logfile.write_text(" info [runServerlessCluster] Security index ready (21.5s)\n")
+            self.assertTrue(kbn_stack.wait_for_trigger(logfile, timeout=1, trigger=kbn_stack.SERVERLESS_TRIGGER_STRING))
+
     def test_when_trigger_precedes_detached_reader_should_detect_it(self):
         kbn_stack = _load_kbn_stack_command()
 
@@ -177,6 +184,7 @@ class TestKbnStackCommand(unittest.TestCase):
                                 "%2",
                                 "/worktree",
                                 "http://localhost:5601",
+                                "snapshot",
                             )
 
         ensure_trial.assert_called_once_with("http://localhost:9200")
@@ -578,6 +586,53 @@ class TestKbnStackCommand(unittest.TestCase):
                 assert live == [], live
             finally:
                 _reap_group(pgid, leader=pgid)
+
+    def test_when_serverless_should_translate_es_project_type_and_preserve_kibana_type(self):
+        kbn_stack = _load_kbn_stack_command()
+        # Consumer contract: Kibana kbn-es/src/utils/docker.ts esProjectTypeFromKbn,
+        # introduced for the CLI in elastic/kibana commit 5385f96a1321 (#245113).
+        cases = (
+            ([], "es", "elasticsearch_general_purpose"),
+            (["--project-type", "es"], "es", "elasticsearch_general_purpose"),
+            (["--project-type", "oblt"], "oblt", "observability"),
+            (["--project-type", "security"], "security", "security"),
+        )
+        for flags, kibana_type, es_type in cases:
+            with self.subTest(flags=flags):
+                args = kbn_stack.parse_args(["--es", "serverless", *flags])
+                cfg = kbn_stack.derive(0)
+                self.assertEqual(
+                    kbn_stack.es_command(args, cfg, Path("/tmp/es-data")),
+                    [
+                        "yarn",
+                        "es",
+                        "serverless",
+                        "--projectType",
+                        es_type,
+                        "--port",
+                        "9200",
+                        "--basePath",
+                        "/tmp",
+                        "--dataPath",
+                        "es-data",
+                        "--waitForReady",
+                        "--kill",
+                    ],
+                )
+                kibana_flags = shlex.split(kbn_stack.kibana_command(args, cfg))
+                self.assertEqual(
+                    [flag for flag in kibana_flags if flag.startswith("--serverless=")],
+                    [f"--serverless={kibana_type}"],
+                )
+
+    def test_when_serverless_stops_should_remove_es_and_uiam_containers(self):
+        kbn_stack = _load_kbn_stack_command()
+        with mock.patch.object(kbn_stack.subprocess, "run") as run:
+            kbn_stack.docker_kill_serverless()
+        self.assertEqual(
+            [call.args[0] for call in run.call_args_list],
+            [["docker", "rm", "-f", name] for name in ("es01", "es02", "uiam", "uiam-cosmosdb")],
+        )
 
     def test_snapshot_es_command_pins_merge_disk_watermark_before_user_flags(self):
         kbn_stack = _load_kbn_stack_command()
@@ -1396,6 +1451,28 @@ class TestKbnStackSharedEs(unittest.TestCase):
         assert state["killed_groups"] == []
         assert state["killed"] == []
         assert "/wt/A" in err.getvalue()
+
+    def test_when_serverless_boot_is_interrupted_should_keep_es_pid_for_cleanup(self):
+        kbn_stack = _load_kbn_stack_command()
+        args = kbn_stack.parse_args(["--detach", "--es", "serverless"])
+        cfg = {**kbn_stack.derive(0), "slot": 0, "es_url": "https://localhost:9200"}
+        on_disk = {"/wt/A": {"slot": 0, "backend": "serverless", "ready": False}}
+        with self._detached_boot(kbn_stack, on_disk) as saved:
+            with mock.patch.object(kbn_stack, "wait_for_trigger", side_effect=KeyboardInterrupt):
+                with self.assertRaises(KeyboardInterrupt):
+                    kbn_stack.run_detached(args, cfg, "/wt/A", Path("/tmp/es-data"), Path("/tmp/es.log"), "yarn start")
+        self.assertEqual(saved[-1]["/wt/A"]["es_pid"], 111)
+        self.assertFalse(saved[-1]["/wt/A"]["ready"])
+
+    def test_when_serverless_starts_should_skip_snapshot_trial_license_setup(self):
+        kbn_stack = _load_kbn_stack_command()
+        args = kbn_stack.parse_args(["--detach", "--es", "serverless"])
+        cfg = {**kbn_stack.derive(0), "slot": 0, "es_url": "https://localhost:9200"}
+        on_disk = {"/wt/A": {"slot": 0, "backend": "serverless", "ready": False}}
+        with self._detached_boot(kbn_stack, on_disk):
+            with mock.patch.object(kbn_stack, "ensure_trial_license") as trial:
+                kbn_stack.run_detached(args, cfg, "/wt/A", Path("/tmp/es-data"), Path("/tmp/es.log"), "yarn start")
+        trial.assert_not_called()
 
     @contextlib.contextmanager
     def _detached_boot(self, kbn_stack, on_disk: dict, es_pid: int = 111, kbn_pid: int = 222):

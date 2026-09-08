@@ -44,6 +44,7 @@ Contract:
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
 Review runs once in the session's final Verify stage.
+Read `~/.agents/skills/k-review/references/lanes.md` to select applicable criteria and pass their named mechanics to any final packet.
 Preserve requested review and adversarial lenses; for deep or high-risk work, assign them distinct questions against the same frozen candidate.
 Low-risk work needs only its applicable judgment. Specialists consume shared evidence, not one another's verdicts.
 Do not chain finder, audit, adversarial, fresh-eyes, or post-review passes. Do not invoke convergence automatically.

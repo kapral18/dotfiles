@@ -29,18 +29,20 @@ If a source discovery invalidates the approved approach, return the concrete dec
 ## Verify
 
 Freeze the integrated candidate and run the planned checks once, using direct deterministic commands and retained full logs.
+Read `~/.agents/skills/k-build/references/criteria-verifier.md` for final criterion judgment over the candidate and those receipts.
 Run visual/runtime evidence only for applicable criteria with a verified target; load `k-ui-capture` and the applicable domain overlay then.
 Windows coverage remains explicit-only through `k-live-ui-windows`.
 Use strong final judgment where needed; retain both artifact review and adversarial challenge for requested deep or high-risk work.
 Assign distinct questions against the same candidate and existing evidence, never a chain certifying another review.
-Report each criterion as passed, failed, or blocked with evidence.
-Final failure ends the attempt; do not repair or start post-review/convergence automatically.
+Report each criterion as passed, failed, or blocked with evidence. On failure, the root applies SOP §3.5.
+This skill MUST NOT create a separate repair, post-review, or convergence loop.
 
 ## Root moves
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
 Use the registry's implementation band for substantive edits, with `~/.agents/skills/k-build/references/implement-worker.md`.
 Use strong research for substantial unsettled questions and strong review/refute for final judgment; never cheapen judgment work.
+Assign criterion judgment to the root or an existing strong final packet using the criteria-verifier contract, not a second verifier of that packet.
 Dispatch ready stage-sized packets, not an agent for each command or test. Honor an explicit no-delegation request inline.
 
 ## Output

@@ -17,8 +17,8 @@
         "work": "claude-fable-5-1"
       },
       "codex": {
-        "personal": "gpt-5.6-sol",
-        "work": "gpt-5.6-sol"
+        "personal": "gpt-6-astra",
+        "work": "gpt-6-astra"
       },
       "copilot": {
         "default": "auto"
@@ -159,7 +159,7 @@
       "curated": {
         "complete": true,
         "models": [
-          "gpt-5.6-sol"
+          "gpt-6-astra"
         ],
         "provenance": [
           {
@@ -186,7 +186,7 @@
       "recommended": {
         "complete": true,
         "models": [
-          "gpt-5.6-sol"
+          "gpt-6-astra"
         ],
         "provenance": [
           {

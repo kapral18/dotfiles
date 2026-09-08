@@ -1,6 +1,6 @@
 # Final Reviewer Selection
 
-The lane catalog `~/.agents/skills/k-review/references/lanes.md` is a menu of lenses, not a launch roster.
+Read `~/.agents/skills/k-review/references/lanes.md` for the lens triggers and packet criteria; it is a menu, not a launch roster.
 Deep review retains strong artifact review and adversarial challenge, each with distinct questions against the same frozen candidate.
 Neither consumes the other's verdict as an input to certify. Add specialists only for independent risks that need distinct context or tools.
 Assign disjoint questions, frozen scope, relevant source pointers, and existing complete check receipts.

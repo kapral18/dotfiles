@@ -17,6 +17,7 @@ Read `~/.agents/skills/k-review/references/authorship.md`; local checkout does n
 For PRs, load `pr_common.md` and `pr_snapshot.md` from the same reference directory for complete intent/context, drift, and pending-review reconciliation.
 For other/unknown authorship, gather whether the PR is still needed and correctly open in Understand;
 do not create a separate approval/audit ladder. Resolve material intent dependencies from full source artifacts or report uncertainty.
+Read `~/.agents/skills/k-deep-review/references/pr-necessity.md` for that conditional intent input and its stopping boundary.
 Collect context once; keep raw diffs/discussions in a context pack and concise decisions/pointers in root context.
 Read `~/.agents/skills/k-review/references/context-pack.md` when producing/consuming that pack.
 
@@ -30,7 +31,8 @@ Read `~/.agents/skills/k-deep-review/references/live-ui-validation.md` only when
 Final reviewers return anchored findings or evidence gaps once.
 They do not edit, post, run shared-state mutations, or repeat completed checks.
 Merge duplicate causes as output synthesis; do not dispatch an auditor of those findings or another model to verify the verifier.
-Final failure is reported, not automatically repaired. A requested finite final convergence mode must be explicitly authorized before entry.
+Final judgment grants no repair authority.
+When existing authority covers recovery, the root applies SOP §3.5; this skill MUST NOT create a convergence loop.
 
 ## Root moves
 

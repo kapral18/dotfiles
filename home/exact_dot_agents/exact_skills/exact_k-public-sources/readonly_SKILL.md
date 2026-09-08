@@ -16,5 +16,7 @@ For multi-source synthesis, read `~/.agents/skills/k-public-sources/references/m
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
 Use one substantial strong research packet per independent question, combining collection and synthesis.
 Keep raw source outside root context; return evidence pointers, supported conclusions, and unresolved gaps.
-Audit material claims together in final Verify where necessary; do not spawn a verifier per claim or send new claims into recursive deepening.
+For multi-source synthesis, read `~/.agents/skills/k-public-sources/references/claim-verifier.md` and judge the material claim set together in final Verify.
+Assign that contract to the root or a strong refute packet as appropriate; do not spawn a verifier per claim or send new claims into recursive deepening.
+Resolve capability/model/effort through the registry; report reduced independence for same-family or inline judgment.
 Honor no-delegation requests inline.

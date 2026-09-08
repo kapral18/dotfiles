@@ -17,4 +17,7 @@ Windows/VirtualBox coverage remains explicit-only through `k-live-ui-windows`, n
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
 Assign live UI as a distinct final evidence question only when needed, with ready inputs and serialized shared-runtime ownership.
+View each returned screenshot used for judgment or publication once and check its claimed target/state against the handoff.
+Reuse an already-viewed unchanged image.
+A screenshot description alone is not visual evidence; missing or contradictory media stays blocked.
 Do not turn the result into findings-audit, adversarial, and repair stages.

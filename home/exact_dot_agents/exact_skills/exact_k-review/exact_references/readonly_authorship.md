@@ -46,4 +46,5 @@ This affects mode behavior:
   - editing requires the user to explicitly say to fix it (e.g. "fix these" or "take over this branch")
 
 For every authorship value, known user-authorized fixes belong to Produce before final Verify.
-Do not repair findings discovered in final Verify automatically or infer commit, push, or publication authority.
+Final findings do not extend review authority; when existing authority covers recovery, the root applies SOP §3.5.
+NEVER infer commit, push, or publication authority.

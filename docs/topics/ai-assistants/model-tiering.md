@@ -19,7 +19,7 @@ Whether a findings audit needs review-grade reasoning is a fact about the job, n
 
 **Categories are the routing unit.** Cost labels such as `cheap`/`standard`/`max` collapsed distinct risks: exact lookup, deterministic edits, semantic investigation, implementation, orchestration, review, and refutation are different jobs. The matrix prices each category explicitly per harness.
 
-**Two standing policies keep the option space small.** Every category runs short context unless the harness publishes no short variant of the wanted model, and exact caller-scoped retrieval is `mechanical` (cheap lane) rather than a category of its own; semantic discovery is `research`. Within each harness the categories collapse onto the three [tiers](#tiers): Copilot runs T1 on `gpt-5.6-sol`/xhigh, T2 on `claude-opus-5`/high, T3 on `claude-sonnet-5`/high and refute on `claude-fable-5.1`/high. Cursor mirrors that shape only where its Task enum can spawn the id: T1 on `gpt-5.6-sol-high`, T2 on `claude-opus-5-high`, the cheap lanes on the `auto` router selector, refute on `claude-fable-5-1-thinking-high`. Codex runs `gpt-5.6-sol` at high for the T1 session lanes and `gpt-5.6-terra` at high for both T2 and T3, reserving `gpt-6-astra`/high for review and refute. Antigravity has no T2 — `gemini-3.1-pro-preview` long-context everywhere except the cheap lanes on `gemini-3.8-flash` — and, like Claude Code, keeps single-vendor picks, so its refute reports `degraded`.
+**Two standing policies keep the option space small.** Every category runs short context unless the harness publishes no short variant of the wanted model, and exact caller-scoped retrieval is `mechanical` (cheap lane) rather than a category of its own; semantic discovery is `research`. Within each harness the categories collapse onto the three [tiers](#tiers): Copilot runs T1 on `gpt-5.6-sol`/xhigh, T2 on `claude-opus-5`/high, T3 on `claude-sonnet-5`/high and refute on `claude-fable-5.1`/high. Cursor mirrors that shape only where its Task enum can spawn the id: T1 on `gpt-5.6-sol-high`, T2 on `claude-opus-5-high`, the cheap lanes on the `auto` router selector, refute on `claude-fable-5-1-thinking-high`. Codex runs `gpt-6-astra`/high for the root, review, and refute; research stays `gpt-5.6-sol`/high and both T2 and T3 stay `gpt-5.6-terra`/high. Antigravity has no T2 — `gemini-3.1-pro-preview` long-context everywhere except the cheap lanes on `gemini-3.8-flash` — and, like Claude Code, keeps single-vendor picks, so its refute reports `degraded`.
 
 ## Categories
 
@@ -99,15 +99,16 @@ Context stays short: bare `claude-fable-5-1` is the short-window selector, and t
 
 ### Codex
 
-| Category                  | Model           | Effort | Tier | Verifier status |
-| ------------------------- | --------------- | ------ | ---- | --------------- |
-| `orchestrate`, `research` | `gpt-5.6-sol`   | high   | T1   | —               |
-| `review`                  | `gpt-6-astra`   | high   | T1   | —               |
-| `implement`               | `gpt-5.6-terra` | high   | T2   | —               |
-| `mechanical`, `memory`    | `gpt-5.6-terra` | high   | T3   | —               |
-| `refute`                  | `gpt-6-astra`   | high   | —    | degraded        |
+| Category               | Model           | Effort | Tier | Verifier status |
+| ---------------------- | --------------- | ------ | ---- | --------------- |
+| `orchestrate`          | `gpt-6-astra`   | high   | T1   | —               |
+| `research`             | `gpt-5.6-sol`   | high   | T1   | —               |
+| `review`               | `gpt-6-astra`   | high   | T1   | —               |
+| `implement`            | `gpt-5.6-terra` | high   | T2   | —               |
+| `mechanical`, `memory` | `gpt-5.6-terra` | high   | T3   | —               |
+| `refute`               | `gpt-6-astra`   | high   | —    | degraded        |
 
-Codex is single-vendor (OpenAI only); there is no cross-family split to make here, so `refute` reports `degraded` — it runs `gpt-6-astra` at high, which is also the `review` pick, so the counter is neither a different family nor a different model. Three tiers (user call 2026-09-07): `orchestrate` and `research` run `gpt-5.6-sol` at high (T1, and the root session model in `private_config.*.toml`), `implement` runs `gpt-5.6-terra` at high (T2, deliberately collapsed onto the T3 pick), and mechanical/memory run the same `gpt-5.6-terra` at high (T3). `gpt-6-astra` proved absurdly expensive in practice (user call 2026-09-07), so it no longer carries the root session or the T1 thinking lanes it took on 2026-09-05 and is reserved for `review` and `refute`. Native Codex 0.153.2 marks `gpt-5.4` retired and explicitly names `gpt-5.6-terra` as its replacement (`codex debug models --bundled`); the deployed native memory role completed a recall task after that migration, which establishes route availability, not model-quality equivalence. Every profile pins `service_tier = "default"`. Codex carries effort per profile as `model_reasoning_effort`, and the gate rewrites both model fields on `spawn_agent`. Codex exposes no context-tier dial, so every category is short by construction.
+Codex is single-vendor (OpenAI only); there is no cross-family split to make here, so `refute` reports `degraded` — it runs `gpt-6-astra` at high, which is also the `review` pick, so the counter is neither a different family nor a different model. The root default approved on 2026-09-08 puts `orchestrate` on `gpt-6-astra`/high in the registry and both `private_config.*.toml` profiles. Research stays `gpt-5.6-sol`/high; `implement` stays `gpt-5.6-terra`/high (T2, deliberately collapsed onto T3), and mechanical/memory keep that same Terra/high pick. Review and refute remain Astra/high. Native Codex 0.153.2 marks `gpt-5.4` retired and explicitly names `gpt-5.6-terra` as its replacement (`codex debug models --bundled`); the deployed native memory role completed a recall task after that migration, which establishes route availability, not model-quality equivalence. Every profile pins `service_tier = "default"`. Codex carries effort per profile as `model_reasoning_effort`, and the gate rewrites both model fields on `spawn_agent`. Codex exposes no context-tier dial, so every category is short by construction.
 
 ### Copilot CLI
 

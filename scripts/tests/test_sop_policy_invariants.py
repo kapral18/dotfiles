@@ -54,7 +54,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "deviate only when the user explicitly overrides or approves the deviation",
             "This global SOP overrides weaker project-local SOP files",
             "project-local instructions may add constraints but must not weaken this SOP",
-            "Continue until the user's goal is complete, final Verify reports failure, or a verified blocker/user decision fork remains",
+            "Continue until the user's goal is complete, the recovery rule in §3.5 requires a stop, or a verified blocker/user decision fork remains",
             "Premature stopping (including checkpoint commentary) and instruction/gate violations are operational failures",
         )
 
@@ -85,7 +85,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "source config or declaration -> rendered/applied config -> runtime consumer -> minimal safe live probe",
             "Complete the authorized investigation, implementation, and final verification while required work remains doable",
             "A summary not verified against full output is a hypothesis, not a fact",
-            "Do not automatically repair, restart Produce, launch convergence, or reset an attempt counter.",
+            "Do not rerun unchanged checks without new evidence, weaken acceptance criteria, expand scope, or start speculative polishing.",
             "Base scope on correctness, evidence, risk, and explicit user constraints",
             "every numeric literal in the claim must occur verbatim in that quote",
             "qualify unsupported claims instead of launching per-claim verifier workflows",
@@ -97,7 +97,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "do not load specs broadly",
             "Keep topics broad/stable; avoid topic explosion",
             "Ask the single most branch-eliminating question while forks remain",
-            "Do not make further speculative changes until alignment is restored",
+            "When repeated attempts reproduce the same failure without new evidence or progress, stop speculative edits and repeated checks.",
             "Scope → Understand → Produce → Verify → Deliver",
             "Do not relabel post-change verification as a diagnostic or production operation.",
             "Use deterministic tools directly for check execution",
@@ -105,7 +105,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Compare against an independent model/table",
             "Do not introduce a production state-machine framework",
             "Collect independent planned checks after a failure when useful; skip checks whose prerequisites failed.",
-            "If the candidate changes during Verify, report stale evidence",
+            "If the candidate changes during Verify, invalidate affected evidence and certify only the revalidated snapshot.",
         )
         self.assert_file_not_contains(
             "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
@@ -138,7 +138,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "may not restate an item already in an earlier table/list",
             "Brevity outranks structure; structure must earn its space",
             "Borrow STE (ASD-STE100 Simplified Technical English) sentence habits only when they shrink text",
-            "Do not automatically repair, restart Produce, launch convergence, or reset an attempt counter.",
+            "Do not rerun unchanged checks without new evidence, weaken acceptance criteria, expand scope, or start speculative polishing.",
         )
         # The reinforcement excerpt keeps only the hard budgets and the deliverable rule.
         self.assert_file_contains(
@@ -146,7 +146,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "[SOP REINFORCEMENT",
             "Direct answer or one-shot question: ≤80 words",
             "The final message of the turn holds every deliverable",
-            "Do not automatically repair, restart Produce, launch convergence, or reset an attempt counter.",
+            "Do not rerun unchanged checks without new evidence, weaken acceptance criteria, expand scope, or start speculative polishing.",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-compose-pr/exact_references/readonly_publication-packet.md",
@@ -254,7 +254,9 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "content approval is not commit authorization",
             "Load `k-git` for the full approvals/push policy before any git side effect",
             "If a human will see the result, draft it, show the exact payload and target, and wait for explicit approval before sending",
-            "Human-authored replies/resolves are supervised; no auto-send. Never publish spontaneously, even to bots.",
+            "Human-authored replies/resolves are supervised: an explicitly directed reply/resolve follows the exact authorization above;",
+            "NEVER send one spontaneously.",
+            "Never publish spontaneously, even to bots.",
             "User-invoked `k-pr-fix-loop` explicitly approves scoped PR-fix replies/resolves, PR body edits, and needed PR media uploads in that loop only",
             "Classify authors from platform API evidence, not display-name heuristics",
             "Classify authors from platform API evidence, not display-name heuristics; verify, do not guess",
@@ -300,7 +302,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Questions after a change: explain reasoning and leave it in place unless revision is requested.",
             'keep "this is correct as-is" available as the honest conclusion',
             "unnecessary churn is a defect, not diligence",
-            "When uncertain whether to answer or act, answer first, then ask if action is needed.",
+            "When uncertain whether to answer or act, inspect the current request and existing authorization, resolve locally verifiable uncertainty, and continue authorized work.",
             "Handle secrets by reference: keep plaintext credentials out of commits, files, and visible output.",
             "Use a neutral factual tone; skip pandering, apologies, and unnecessary emotional commentary.",
             "Minimize reading load while preserving material facts",
@@ -315,7 +317,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Multi-part investigation: ≤200 words",
             "Minimize total context and model work across the session",
             "Base scope on correctness, evidence, risk, and explicit user constraints",
-            "A failed final verification is a terminal result",
+            "Use §3.5 for scoped recovery and §3.4 for repeated attempts without progress",
             "Line 1 answers, decides, or names the next action",
             "The final message of the turn holds every deliverable",
             "cap at 5",
@@ -396,7 +398,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "home/exact_dot_agents/exact_skills/exact_k-build/readonly_SKILL.md",
             "Carry old/new rules, intended and preserved differences",
             "Freeze the integrated candidate",
-            "Final failure ends the attempt",
+            "SOP §3.5",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_core.md",
@@ -584,3 +586,66 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "[VERIFICATION DISCIPLINE]",
             "[OUTPUT DISCIPLINE]",
         )
+
+    def test_authorization_and_terminal_rules_have_one_canonical_owner(self):
+        self.assert_file_contains(
+            "home/readonly_AGENTS.md",
+            "For reported problems or thinking aloud without an active authorized action, assess and stop unless asked to change.",
+            "A correction to an active task updates its constraints and continues the authorized action",
+            "A failed required check blocks dependent actions, not authorized diagnosis and repair.",
+            "Complete independent authorized actions whose preconditions hold; NEVER execute an authorized action that depends on the failed criterion.",
+            "Authorization persists within its target, scope, and allowed effects until revoked or completed.",
+            "Conditional authorization executes when its condition is satisfied or the user explicitly removes that condition.",
+            "Prior authorization survives follow-ups, corrections, compaction, and continuation of the same task.",
+            "Do not request the same approval again; re-check current preconditions without resetting permission.",
+            "Preserve the authorization, exact scope, and evidence in the active topic handoff;",
+            "NEVER repeat a completed one-shot action under its prior approval.",
+            "NEVER broaden it to a new target or effect, publish unapproved substantive text, or bypass CI.",
+            "NEVER infer commit/push/merge authority from it; those effects require their corresponding explicit authorization.",
+            "unless existing authorization, including a bounded approval packet, covers that exact target, payload, and effect.",
+            "an explicitly directed reply/resolve follows the exact authorization above;",
+            "NEVER send one spontaneously.",
+            "A reviewer reply/resolve requires supervision and may use the packet only when its allowed effect types expressly include that exact reply/resolve.",
+        )
+        for policy in (
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_shared_rules.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_review_delivery.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_fix.md",
+            "home/exact_dot_agents/exact_skills/exact_k-github/readonly_SKILL.md",
+            "home/exact_dot_agents/exact_skills/exact_k-github/exact_references/readonly_pr-reviews.md",
+            "home/exact_dot_agents/exact_skills/exact_k-google-workspace/readonly_SKILL.md",
+            "home/exact_dot_agents/exact_skills/exact_k-google-workspace/exact_references/readonly_docs-inline-comments.md",
+        ):
+            self.assert_file_contains(policy, "SOP §3.8")
+            self.assert_file_not_contains(
+                policy,
+                "Authorization persists within its target, scope, and allowed effects until revoked or completed.",
+            )
+        self.assert_file_contains(
+            "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
+            "Prior authorization survives follow-ups, corrections, compaction, and continuation of the same task.",
+            "Complete independent authorized actions whose preconditions hold; NEVER execute an authorized action that depends on the failed criterion.",
+        )
+
+    def test_when_recovery_is_in_scope_should_preserve_evidence_and_stop_boundaries(self):
+        # These source contracts guard policy omissions, not future model obedience.
+        sop = " ".join(_sop_rule_text().split())
+        for required in (
+            "a failed check is not a new permission checkpoint.",
+            "record the observed failure, evidence for its cause, intended correction, and affected acceptance checks",
+            "After repair, freeze the new candidate and rerun failed and affected checks;",
+            "retain successful evidence only for unchanged relevant code, environment, and inputs.",
+            "Stop affected work only for missing authority, a material user-only decision, a verified external blocker, exhausted progress under §3.4, or an explicit user limit.",
+            "Review alone does not authorize edits; report findings when repair is outside the requested scope.",
+            "When repeated attempts reproduce the same failure without new evidence or progress, stop speculative edits and repeated checks.",
+            "Resume scoped production only when new evidence supports a concrete correction; retain the failure history.",
+            "only the root owns recovery, and no worker may start a repair or verification loop.",
+        ):
+            with self.subTest(boundary=required):
+                self.assertIn(required, sop)
+        for obsolete in (
+            "A new attempt requires user authorization.",
+            "Do not automatically repair, restart Produce",
+            "When uncertain whether to answer or act, answer first, then ask if action is needed.",
+        ):
+            self.assertNotIn(obsolete, sop)

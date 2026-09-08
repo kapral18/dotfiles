@@ -22,8 +22,9 @@ Draft reply intents without claiming unverified outcomes or nonexistent commits.
 ## Verify and deliver
 
 Run the combined final check plan once for the frozen batch and use strong final judgment where needed.
-Do not run per-thread test suites, final-repair loops, or a Post-Review Stage.
-Failures are reported; they are not authority to restart production.
+Do not run per-thread test suites, independent repair loops, or a Post-Review Stage.
+Failed criteria block dependent publication; the root applies SOP §3.5 when existing authority covers recovery.
+This batch does not create a per-thread repair loop.
 Apply Existing Pending Review Reconciliation before public-ready drafts: merge duplicate pending feedback and correct stale content without publishing competing versions.
 Load `k-communication` for external wording. Cite actual commit links only after an authorized commit exists.
 Return thread decisions, final evidence, unresolved failures, draft replies, and resolve/keep-open recommendations.
@@ -31,7 +32,8 @@ For UI feedback retain screenshot handoff paths/descriptions outside GitHub bodi
 
 ## Publication authority
 
-Ordinary PR-fix work does not authorize commit/push, replies, or thread resolution. Show exact targets/payloads and wait for approval.
+Ordinary PR-fix work does not authorize commit/push, replies, or thread resolution.
+Apply SOP §3.8: show exact targets/payloads and wait only when existing authorization does not cover the target, payload, and effect.
 The explicitly invoked `k-pr-fix-loop` supplies a bounded packet for its scoped sequence; do not ask again within that authority.
 Classify authors from platform evidence or a verified domain allowlist, never display names. Ambiguous/mixed authorship is human-supervised.
 Verified bot replies/resolves may proceed only inside an explicitly authorized flow;

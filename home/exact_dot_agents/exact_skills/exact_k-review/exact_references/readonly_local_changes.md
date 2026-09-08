@@ -35,7 +35,8 @@ When this mode is loaded inside any read-only review worker, that worker's role 
 ## Core Principle: Read-Only Final Judgment
 
 Review is a read-only final judgment unless the user requested specific fixes.
-Known authorized fixes are produced before the final Verify stage; new final findings are reported, not automatically repaired.
+Known authorized fixes are produced before the final Verify stage; new final findings are reported.
+Review alone grants no repair authority; the root applies SOP §3.5 when existing authority covers recovery.
 Local ownership alone is not a request to edit, commit, or push.
 
 ## Investigation (Read-Only, Start Immediately)
@@ -91,7 +92,8 @@ If earlier authorized production changed files, report those changes and compati
 ## Iterative mode (when the user asks for one-at-a-time)
 
 Present one finding per user turn when requested; retain the completed review evidence and queue.
-Do not rerun review/checks merely to present the next finding. A requested repair is a new authorized attempt.
+Do not rerun review/checks merely to present the next finding.
+A requested repair follows existing task authority when it covers the finding; otherwise it is a new authorized attempt.
 
 ## Extra Constraints
 

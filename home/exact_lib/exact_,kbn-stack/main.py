@@ -93,6 +93,7 @@ import time
 from pathlib import Path
 
 TRIGGER_STRING = "succ kbn/es setup complete"
+SERVERLESS_TRIGGER_STRING = "[runServerlessCluster] Security index ready"
 # After the setup trigger appears, how long an attacher waits for the shared ES
 # port to be identity-verified before treating the trigger as stale evidence.
 SHARED_ES_CONFIRM_TIMEOUT = 30.0
@@ -133,6 +134,11 @@ ES_HTTP_BASE = 9200
 ES_TRANSPORT_BASE = 9300
 
 PROJECT_TYPES = ("es", "security", "oblt")
+ES_PROJECT_TYPE_FROM_KBN = {
+    "es": "elasticsearch_general_purpose",
+    "security": "security",
+    "oblt": "observability",
+}
 BACKENDS = ("snapshot", "serverless")
 STARTED_BY_AGENT = "agent"
 STARTED_BY_USER = "user"
@@ -203,7 +209,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--project-type",
         choices=PROJECT_TYPES,
         default="es",
-        help="Serverless project type (serverless backend only). Default: es.",
+        help="Kibana serverless project type (translated to the Elasticsearch project type). Default: es.",
     )
     parser.add_argument(
         "--data",
@@ -1263,11 +1269,14 @@ def es_command(args: argparse.Namespace, cfg: dict, data_path: Path) -> list[str
             "es",
             "serverless",
             "--projectType",
-            args.project_type,
+            ES_PROJECT_TYPE_FROM_KBN[args.project_type],
             "--port",
             str(cfg["es_http"]),
+            "--basePath",
+            str(data_path.parent),
             "--dataPath",
-            str(data_path),
+            data_path.name,
+            "--waitForReady",
             "--kill",
         ]
     cmd = [
@@ -1335,6 +1344,7 @@ def start_kibana_on_trigger(
     target_pane: str | None,
     worktree: str,
     kbn_url: str,
+    backend: str,
 ) -> None:
     """Wait for the ES setup trigger, ensure trial license, then launch Kibana.
 
@@ -1343,6 +1353,7 @@ def start_kibana_on_trigger(
     same worktree can discover the interactively-started stack. The poll runs in
     this background thread, so it never blocks the foreground ES log stream.
     """
+    trigger = SERVERLESS_TRIGGER_STRING if backend == "serverless" else TRIGGER_STRING
     # The caller clears the log before ES starts. Read from byte zero so the
     # trigger remains visible if ES writes it before this thread is scheduled.
     with logfile.open("r", encoding="utf-8", errors="replace") as handle:
@@ -1351,8 +1362,9 @@ def start_kibana_on_trigger(
             if not line:
                 time.sleep(0.5)
                 continue
-            if TRIGGER_STRING in line:
-                ensure_trial_license(es_url)
+            if trigger in line:
+                if backend == "snapshot":
+                    ensure_trial_license(es_url)
                 kbn_cmd = wrapped_kibana_command(kbn_cmd)
                 if target_pane:
                     subprocess.run(
@@ -1369,7 +1381,7 @@ def start_kibana_on_trigger(
                 return
 
 
-def wait_for_trigger(logfile: Path, timeout: float) -> bool:
+def wait_for_trigger(logfile: Path, timeout: float, trigger: str = TRIGGER_STRING) -> bool:
     """Block until the ES setup trigger appears in the log, or timeout elapses."""
     deadline = time.monotonic() + timeout
     # spawn_background truncates the log before launching ES. Reading from byte
@@ -1380,7 +1392,7 @@ def wait_for_trigger(logfile: Path, timeout: float) -> bool:
             if not line:
                 time.sleep(0.5)
                 continue
-            if TRIGGER_STRING in line:
+            if trigger in line:
                 return True
     return False
 
@@ -1580,15 +1592,18 @@ def run_detached(
             # Record the pid immediately so parallel launchers classify this
             # instance as starting rather than stale while setup runs.
             update_es_instance(shared["key"], es_pid=es_pid)
+        else:
+            update_worktree_entry(worktree, es_pid=es_pid)
 
-        if not wait_for_trigger(es_logfile, timeout=600):
-            if shared is None:
-                update_worktree_entry(worktree, es_pid=es_pid)
+        trigger = SERVERLESS_TRIGGER_STRING if args.es == "serverless" else TRIGGER_STRING
+        if not wait_for_trigger(es_logfile, timeout=600, trigger=trigger):
             fail(f"Elasticsearch did not finish setup within 600s (see {es_logfile})")
 
-    ensure_trial_license(cfg["es_url"])
+    if args.es == "snapshot":
+        ensure_trial_license(cfg["es_url"])
 
     kbn_pid = spawn_background(shlex.split(kbn_cmd), kbn_logfile, worktree)
+    update_worktree_entry(worktree, kbn_pid=kbn_pid, kbn_log=str(kbn_logfile))
     print(f",kbn-stack: Kibana starting (pid {kbn_pid}) -> {kbn_logfile}", flush=True)
 
     ready = kibana_ready(cfg["kbn_url"], timeout=600)
@@ -1693,14 +1708,8 @@ def kill_pid_group(pid: int) -> None:
 
 
 def docker_kill_serverless() -> None:
-    """Remove the serverless ES containers (es01/es02).
-
-    kbn-es runs serverless Elasticsearch in Docker containers named es01/es02 on
-    the shared `elastic` network, with no per-instance name (verified: `yarn es
-    serverless` exposes no --name flag). Because ,kbn-stack treats serverless as
-    single-instance (exclusive), these fixed names are unambiguous here.
-    """
-    for name in ("es01", "es02"):
+    """Remove the fixed ES and UIAM containers owned by the exclusive serverless stack."""
+    for name in ("es01", "es02", "uiam", "uiam-cosmosdb"):
         subprocess.run(
             ["docker", "rm", "-f", name],
             capture_output=True,
@@ -1976,6 +1985,8 @@ def main(argv: list[str]) -> int:
         slot = allocate_slot(registry, worktree, args.slot)
     cfg = derive(slot)
     cfg["slot"] = slot
+    if args.es == "serverless":
+        cfg["es_url"] = f"https://localhost:{cfg['es_http']}"
 
     shared = None
     if share_version is not None:
@@ -2049,7 +2060,7 @@ def main(argv: list[str]) -> int:
     # The log already exists so the watcher never races a missing path.
     watcher = threading.Thread(
         target=start_kibana_on_trigger,
-        args=(logfile, cfg["es_url"], kbn_cmd, target_pane, worktree, cfg["kbn_url"]),
+        args=(logfile, cfg["es_url"], kbn_cmd, target_pane, worktree, cfg["kbn_url"], args.es),
         daemon=True,
     )
     watcher.start()

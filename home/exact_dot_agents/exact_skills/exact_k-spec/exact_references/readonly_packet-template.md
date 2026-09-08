@@ -1,6 +1,6 @@
 # Spec Packet Template
 
-The template filled in workflow step 4 of `~/.agents/skills/k-spec/SKILL.md` and written to `/tmp/specs/<pwd>/<topic>.spec.md`.
+The template used by `~/.agents/skills/k-spec/SKILL.md` and written to `/tmp/specs/<pwd>/<topic>.spec.md`.
 Keep every section and every criterion's `check:`/`judgment:` tag; omit `External dependencies` only when there are none.
 
 ```markdown

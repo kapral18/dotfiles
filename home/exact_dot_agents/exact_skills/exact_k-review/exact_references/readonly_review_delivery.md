@@ -17,7 +17,7 @@ The intake publication and authorship constraints remain in `shared_rules.md`; t
 - Keep anchoring/tooling limitations out of the comment body ("can't anchor inline", "not in diff hunks").
 - For UI-related comments, replies, or PR-level feedback drafted after `/k-deep-review` or `k-agent-live-ui-review`, keep the screenshot handoff outside the body as UI evidence attachments.
   If required screenshot evidence is missing, report that criterion as blocked instead of drafting unsupported UI feedback.
-  Do not rerun a worker or restart verification automatically.
+  Final reviewers MUST NOT rerun a worker or restart verification. The root handles any authorized evidence recovery under SOP §3.5.
   Never put local screenshot paths in GitHub comment, reply, review, or PR-level bodies.
 - In review comment bodies, whenever you reference code, use a clickable source link to the exact location on the PR head SHA.
 - Code references include:
@@ -62,7 +62,7 @@ Content boundary:
 After all findings are drafted, recommend an overall verdict from `authorship`, severity, and `author_relation`:
 
 - **Self-review** (`authorship: self`):
-  - Review alone does not authorize edits. Report remaining findings; repairs after final Verify require a new user-authorized attempt.
+  - Review alone does not authorize edits. Report remaining findings; if existing authority covers repair, the root applies SOP §3.5.
   - **Comment only** if the user explicitly asks to post self-review notes with remaining non-blocking findings.
   - **Approve** when no findings remain.
   - Do not request changes on the user's own PR from this flow.
@@ -82,15 +82,15 @@ Example:
 
 - `Verdict: request changes — the unchecked error on line 42 can cause silent data loss`
 
-The user decides whether to actually submit the verdict.
+Apply the SOP §3.8 authorization and conditions to submit the verdict; do not treat a recommendation as authority by itself.
 
 ## Posting Boundary
 
-- Draft in chat first.
+- Draft unapproved authored content in chat first. Apply SOP §§3.8 and 3.5 for authorization persistence and scoped failure termination.
 - If the user asks to post/submit/apply anything to GitHub:
   - keep the draft content from the review mode
   - then invoke the `k-github` skill via the Skill tool
-  - confirm explicit approval or an approval packet defined by the relevant skill/reference for the GitHub side effect
+  - confirm explicit approval only when existing SOP §3.8 authorization does not already cover the exact target, payload, and effect
 - Human-Visible Publication Gate (SOP, `~/AGENTS.md`):
   - explicit approval or an approval packet defined by the relevant skill/reference is required for any human-visible target
   - automation carve-outs are the SOP-defined packets only; do not infer new ones here

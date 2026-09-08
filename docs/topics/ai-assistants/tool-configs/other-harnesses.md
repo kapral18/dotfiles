@@ -41,11 +41,15 @@ The interactive `codex` command routes through the managed `~/bin/,codex` shim i
 
 Codex policy settings are profile-specific.
 
-| Profile              | Policy                                                                                                                                          |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| work interactive     | managed-device requirements with `approval_policy = "on-request"`, `approvals_reviewer = "auto_review"`, and `sandbox_mode = "workspace-write"` |
-| personal interactive | `approval_policy = "never"` with `sandbox_mode = "danger-full-access"`                                                                          |
-| child role profiles  | inherit parent permissions; disable `features.multi_agent`                                                                                      |
+Both profiles set `tui.auto_recap = false` to disable automatic conversation recaps. Manual `/recap` remains available: the [official schema](https://learn.chatgpt.com/docs/config-schema.json) states, “Disabling this leaves `/recap` available on demand.”
+
+Both profiles show the model with reasoning effort, current directory, and remaining context in `tui.status_line`. The removed `features.js_repl` option is no longer configured.
+
+| Profile              | Policy                                                                                                                                                                                  |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| work interactive     | managed-device requirements with `approval_policy = "on-request"`, `approvals_reviewer = "auto_review"`, and `sandbox_mode = "workspace-write"`; approval requests use automatic review |
+| personal interactive | `approval_policy = "never"` with `sandbox_mode = "danger-full-access"`                                                                                                                  |
+| child role profiles  | inherit parent permissions; disable `features.multi_agent`                                                                                                                              |
 
 Repeated exact-command approvals can be captured by Codex execpolicy `*.rules` files under `~/.codex/rules/`. Those rules should stay narrow because explicit allow rules also bypass sandboxing for the matched command prefix.
 
@@ -53,7 +57,7 @@ Repeated MCP tool approvals live as `mcp_servers.<server>.tools.<tool>.approval_
 
 `scsi-main` and `scsi-local` are generated with `default_tools_approval_mode = "approve"` so their read-analysis tools do not depend on the flaky MCP approval persistence path. Slack is only auto-approved for read/search tools (`slack_read_*` and `slack_search_*`), while send/create/update/schedule tools stay prompted/auto-reviewed.
 
-Both interactive profiles default to `gpt-5.6-sol` with `model_reasoning_effort = "high"` (the T1 workhorse; `gpt-6-astra` proved absurdly expensive and is reserved for review and refute, user call 2026-09-07). Named review and verifier agents run `gpt-6-astra`/high; `k-agent-smol` and `k-agent-mechanical` use `gpt-5.6-terra`/high, and implement workers ride the same terra pick. Every profile pins `service_tier = "default"`.
+Both interactive profiles default to `gpt-6-astra` with `model_reasoning_effort = "high"`, matching the approved live root model and registry orchestration category. Orchestration-bound roles, including native `default`, follow that selection. Other categories are unchanged: research stays `gpt-5.6-sol`/high; named review and verifier agents run `gpt-6-astra`/high; `k-agent-smol` and `k-agent-mechanical` use `gpt-5.6-terra`/high, and implement workers ride the same terra pick. Every profile pins `service_tier = "default"`.
 
 ### Codex reconciliation
 

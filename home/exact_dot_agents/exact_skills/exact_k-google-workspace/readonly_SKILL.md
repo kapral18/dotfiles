@@ -50,7 +50,8 @@ Targeting & safety:
 - If the user asks to remove a set of items, operate only on the enumerated IDs you just verified.
 - Use `gws` whenever it supports the task; manual HTTP requests are the fallback only for unsupported operations.
 - Human-visible sends (Gmail messages/replies, Chat messages, Doc comments) follow the Human-Visible Publication Gate (`~/AGENTS.md`):
-  draft, show the exact payload + recipient/target, wait for approval.
+  apply SOP §3.8 to the exact payload and recipient/target, reusing existing authorization within its scope;
+  draft and obtain approval for unapproved content or effects.
   For the _wording_ of any such message/reply/comment, follow the centralized `~/.agents/skills/k-communication/SKILL.md`.
 
 Output guidance:

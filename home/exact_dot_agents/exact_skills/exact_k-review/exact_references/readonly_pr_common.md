@@ -56,10 +56,14 @@ Avoid redundant findings:
      For Elastic repos, route through `k-elastic-domain` first when available, but do not skip Buildkite solely because the overlay cannot be loaded.
      If Buildkite access is unavailable, keep the coverage class in scope instead of crediting the check.
 3. Exempt a finding-class from review only when a present check genuinely covers it —
-   CI will flag those, so do not build findings or draft comments for them.
+   CI will flag those, so do not build findings, draft comments, or withhold an approval for that exactly covered class.
 4. Keep every other class in scope, including ones whose check is absent or loosened on this branch.
    Do not assume a class is covered just because CI usually covers it elsewhere.
 5. State one line before drafting: `CI coverage: covered=[...] -> exempt; in-scope=[...]`.
+
+An observed CI failure in an exactly excluded class is not a failed required acceptance criterion in this review attempt (§3.5).
+It does not create a finding or block an approval; approval is a review verdict, NEVER CI certification.
+The exclusion covers only the verified class, source, scope, and evidence above. It NEVER exempts all bugs or all CI failures.
 
 ## Verdict Gate (PR Mode Only)
 

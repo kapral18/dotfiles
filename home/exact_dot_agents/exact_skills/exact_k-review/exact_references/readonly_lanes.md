@@ -4,7 +4,7 @@ The single source for which review lenses exist, when each one is implicated, an
 Every review tier selects lanes from this file; angle lists live here only, never inline in a tier.
 
 This is a selection menu, not a launch list. Availability is free; only launched lanes cost tokens.
-The lane budget lives in the calling tier, not here.
+Do not infer a numeric lane budget from this catalog; honor actual user/runtime limits and combine overlapping questions.
 
 ## Root moves
 
@@ -16,8 +16,12 @@ Only the active root/main session follows this section; a delegated leaf skips i
 3. Add another lane only when its Trigger matches on that scope-level evidence **and** its lens would be under-covered inside an already-selected lane.
 4. Paste the selected lane's **Lens skill** line and **Checks** list verbatim into that worker's scope packet.
    Workers do not load this file; pasting the entry costs a few lines instead of the whole registry.
-5. Fold implicated lanes that exceed the budget into the closest launched lane as named secondary emphases, and say which were folded.
+5. Assign every changed path and applicable criterion to a root or final-packet coverage owner, respecting explicit scope/triage depth.
+   Fold overlapping lenses into that owner as named secondary emphases; do not start a worker per heading.
 6. Record each selection with the concrete evidence that triggered it, so an unproductive lane can be pruned from later runs.
+
+Before a final verdict, account for every assigned path and criterion as judged, covered by named evidence, excluded with scope reason, or blocked.
+A first severe finding does not end the remaining independent assigned coverage. No clean verdict is allowed for unaccounted scope.
 
 A lens skill is loaded by the worker only when the lane entry names one.
 When no skill exists for a lens, the Checks list is the whole contract.

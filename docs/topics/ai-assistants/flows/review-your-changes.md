@@ -45,7 +45,7 @@ Use it when the change needs independent review plus adversarial challenge (SOP 
 
 - Findings are ordered by severity; each carries evidence (file:line, command output) — no evidence, no finding.
 - `Compatibility impact:` line tells you if behavior was removed/kept — it must say `none` unless you asked otherwise.
-- A failed final check terminates the attempt; it does not trigger another repair cycle.
+- Review alone does not authorize repairs. In an authorized build/fix task, the root follows SOP §3.5 for scoped recovery and revalidation; a failed check does not require the same permission again.
 
 ## Pivots from here
 

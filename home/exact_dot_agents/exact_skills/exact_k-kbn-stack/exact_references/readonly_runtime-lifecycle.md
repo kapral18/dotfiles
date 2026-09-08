@@ -56,6 +56,13 @@ An explicit `-K plugins.allowlistPluginGroups…` wins and `--groups` is not inj
 Snapshot ES sets `ES_JAVA_OPTS -Xms1g -Xmx1g` via `--es-heap` (default `1g`). `--es-heap 1536m` restores the kbn-es snapshot default.
 `--es-heap` is snapshot-only; serverless docker already pins 1g.
 
+Serverless ES uses `https://localhost:<port>`; the browser-facing Kibana URL remains HTTP.
+Its host data parent is `--basePath`, mounted at `/objectstore`, and `--dataPath` is the relative directory name.
+Serverless passes `--waitForReady` and waits for `[runServerlessCluster] Security index ready` before launching Kibana.
+Trial-license setup applies only to snapshot ES.
+Detached starts record each process ID immediately so interrupted readiness waits remain cleanable with `--stop`.
+Serverless teardown removes `es01`, `es02`, `uiam`, and `uiam-cosmosdb`.
+
 Snapshot ES always includes `-E indices.merge.disk.watermark.high=2gb` before user `-E` flags.
 That is an absolute free-space floor so overnight Kibana does not trip the parent circuit breaker when the Mac disk is above the default 95% merge watermark.
 Override with a later `-E` of the same key.

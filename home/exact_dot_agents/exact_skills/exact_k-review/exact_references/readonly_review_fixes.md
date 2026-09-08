@@ -5,5 +5,6 @@ Gather the known finding/thread batch in Understand, retaining source evidence a
 Use implementation-band workers for substantial settled edits during Produce; each returns artifacts without private checks.
 Do not broaden into missing features, unrelated hygiene, or another finder pass.
 Integrate tests, docs, generated outputs, and formatting before one final Verify stage over the complete fix batch.
-Run the planned checks once and use one strong final judgment where needed. Report failures without automatic repair/recheck.
+Run the planned checks once and use one strong final judgment where needed.
+The root applies SOP §3.5 to authorized recovery; this reference grants no repair authority or separate recheck loop.
 Commit, push, reply, resolve, and publish only under their existing explicit or bounded authority.

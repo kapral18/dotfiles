@@ -300,7 +300,7 @@
           "effort": "high"
         },
         "Plan": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-6-astra",
           "category": "orchestrate",
           "effort": "high"
         },
@@ -350,7 +350,7 @@
           "effort": "high"
         },
         "default": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-6-astra",
           "category": "orchestrate",
           "effort": "high"
         },
@@ -405,7 +405,7 @@
           "effort": "high"
         },
         "k-agent-deep-review": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-6-astra",
           "category": "orchestrate",
           "effort": "high"
         },
@@ -450,7 +450,7 @@
           "effort": "high"
         },
         "k-agent-review-controller": {
-          "model": "gpt-5.6-sol",
+          "model": "gpt-6-astra",
           "category": "orchestrate",
           "effort": "high"
         },

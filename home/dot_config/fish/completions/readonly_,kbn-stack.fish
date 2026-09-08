@@ -10,8 +10,8 @@ function __complete_es_data_folders
     end
 end
 
-complete -c ,kbn-stack -l es -d "Elasticsearch backend" -x -a "snapshot serverless"
-complete -c ,kbn-stack -l project-type -d "Serverless project type" -x -a "es security oblt"
+complete -c ,kbn-stack -l es -d "Elasticsearch backend (snapshot HTTP, serverless HTTPS)" -x -a "snapshot serverless"
+complete -c ,kbn-stack -l project-type -d "Kibana serverless project type (translated for Elasticsearch)" -x -a "es security oblt"
 complete -c ,kbn-stack -l data -d "ES data folder name under ~/work/kibana/es_data" -x -a "(__complete_es_data_folders)"
 complete -c ,kbn-stack -l slot -d "Force a specific slot number" -x
 complete -c ,kbn-stack -l detach -d "Agent mode: background ES+Kibana, wait until ready, record started_by=agent"

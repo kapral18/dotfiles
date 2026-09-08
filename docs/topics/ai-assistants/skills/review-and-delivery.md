@@ -17,6 +17,8 @@ These skills govern review methodology, GitHub side effects, and human-readable 
 
 `k-review` keeps applicability triggers in `judging_core.md` and loads `judging_state.md`, `judging_change.md`, or `judging_product.md` for matching criteria in final judgment. `review_fixes.md` covers authorized production before final Verify; `review_delivery.md` owns delivery. `review_post_stage.md` explicitly forbids a separate post-review stage: hygiene criteria belong to the integrated final review. Direct reviewer/refuter contracts retain the same applicable criteria and read-only role boundaries.
 
+PR findings and approval use the CI exclusion in `k-review/references/pr_common.md`: exclude a concern only when evidence establishes that CI inevitably catches that exact defect. This does not certify CI success or permit merging. Delivery and GitHub mechanics consume the existing authorization under SOP §3.8 instead of adding another permission checkpoint.
+
 ## `k-deep-review`
 
 | Field    | Value                                                                                        |

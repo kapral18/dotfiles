@@ -35,5 +35,5 @@ Prepare focused cases with the change; execute each planned check once in final 
 Use an independent oracle and intended/preserved cases. Do not claim mutation coverage from a green run alone.
 Risk-selected final mutation experiments must establish the control, actual mutation, and restoration, without modifying unrelated work.
 Async tests should await the real completion signal rather than arbitrary tick counts. Name the actual worktree/snapshot under test.
-Report failed/skipped checks honestly; do not automatically repair/recheck.
+Report failed/skipped checks honestly; the root handles any authorized recovery under SOP §3.5.
 Do not add golden files that merely pin wording or generated data against itself.

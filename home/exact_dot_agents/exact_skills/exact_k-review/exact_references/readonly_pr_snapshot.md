@@ -70,15 +70,16 @@ In final Verify, the root checks head and discussion once against the frozen pac
    Include new, edited, deleted, and minimized comments and replies.
 
 Report `Drift: head=<same|old..new> discussion=<none|changed ids>`. If either changed, report stale evidence and the affected criteria.
-Do not certify the new snapshot. Do not rebuild the pack, repeat intake, re-anchor findings, or restart review automatically.
-A new attempt requires user authorization; retain unchanged evidence with its original snapshot identity.
+Do not certify the new snapshot before revalidation.
+The root may refresh evidence only under SOP §3.5 and existing authority; retain the prior snapshot evidence and revalidate affected criteria before mutation or certification.
 
 Immediately before an authorized anchored publication, check the exact target head and anchor preconditions required by `k-github`.
 This is a transaction safety check, not another semantic review. If they changed, withhold the write and report stale anchors.
-Do not use publication checks to reopen final Verify.
+A failed publication precondition blocks the write; any necessary evidence recovery returns to the root under SOP §3.5 before another publication attempt.
 
 ### Lifetime
 
 The pack is a best-effort `/tmp` cache, not a durable record; task decisions and receipts stay in the topic spec.
 On continuation, resume the recorded stage and snapshot. Do not repeat completed freshness checks merely because a turn or session changed.
-A missing pack is a concrete blocker. A new user-authorized attempt may build a new snapshot without overwriting the prior evidence.
+A missing pack invokes root-owned recovery under SOP §3.5 when the authorized target is unchanged; otherwise it is a concrete blocker.
+Preserve prior evidence when a new snapshot is built.

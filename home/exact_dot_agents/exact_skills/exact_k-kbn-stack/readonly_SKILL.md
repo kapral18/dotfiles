@@ -1,7 +1,7 @@
 ---
 name: k-kbn-stack
 description: "Use for elastic/kibana UI/browser tests needing ES+Kibana URLs, -K flags, stack registry, start/stop/reuse."
-tool_version: ",kbn-stack shared ES per package.json version + refcounted --stop verified 2026-09-01"
+tool_version: ",kbn-stack shared ES + serverless paths/TLS/cleanup 2026-09-08"
 ---
 
 # Kbn Stack
@@ -40,6 +40,27 @@ Each worktree always gets its own Kibana; default snapshot starts share one back
 
 `--detach` is the agent mode: it starts ES and Kibana in the background (attaching to a compatible live shared ES starts only Kibana), waits until Kibana answers `/api/status` and the port listener belongs to the spawned Kibana's process tree (a port-squatting orphan answering the probe is named and the stack is not marked ready), records `ready: true`, marks `started_by: "agent"`, and returns.
 Starts also fail fast when a foreign process already holds the ports the start would bind, naming the owning pid to kill or stop first.
+
+## Serverless
+
+Use Kibana names with `--project-type`: `es` (default), `oblt`, or `security`.
+The tool translates these for Elasticsearch while keeping Kibana's `--serverless` value unchanged:
+
+| `--project-type` | Elasticsearch `--projectType`   | Kibana                  |
+| ---------------- | ------------------------------- | ----------------------- |
+| `es`             | `elasticsearch_general_purpose` | `--serverless=es`       |
+| `oblt`           | `observability`                 | `--serverless=oblt`     |
+| `security`       | `security`                      | `--serverless=security` |
+
+Do not pass Elasticsearch's full project names to `,kbn-stack --project-type`.
+Kibana's ES launcher accepts `--projectType` as an alias for `--esProjectType`, but rejects the short `es` and `oblt` values.
+
+Serverless ES uses HTTPS; Kibana remains on HTTP.
+The tool passes the host data directory's parent as `--basePath` and its name as `--dataPath`.
+The latter must stay relative because ES resolves it inside the `/objectstore` Docker mount.
+Serverless uses `--waitForReady` and waits for its security-index readiness message before launching Kibana.
+The snapshot `kbn/es setup complete` message does not occur in serverless. Serverless skips snapshot trial-license setup.
+Detached launches record process IDs before readiness waits, and `--stop` removes both ES and UIAM containers.
 
 ## Shared ES
 

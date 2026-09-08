@@ -56,12 +56,14 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
 
 - Any GitHub side effect needs explicit approval unless the user instructed otherwise:
   create/edit PRs/issues, comments/reviews, metadata, merge, release, uploads.
+- SOP §3.8 owns authorization persistence, conditional authorization, and its hard boundaries.
+  Reuse existing authorization only within its target, scope, and allowed effects; NEVER broaden it to a new target or effect.
 - A user-invoked `k-pr-fix-loop` approval packet is explicit approval for scoped PR body edits, needed PR media uploads, review-thread replies, and resolving addressed threads in that loop only.
 - Existing PR body/title edits follow `references/pr-create.md`; that packet decides whether the user's approval for the current PR workflow covers the edit or whether a draft must be surfaced first.
 - Approval to "create a PR" authorizes the GitHub side effect, but not invented human-visible content.
   If title/body/labels were not provided, draft the full payload, show target repo/base/head, and get approval before `gh pr create`.
 - Before using a known-bot allowlist, verify/load the domain overlay; otherwise classify bots only from GitHub `user.type == "Bot"` or login ending `[bot]`.
-- Human-visible replies/resolves/comments are supervised: draft, show exact payload + target, wait for approval.
+- Human-visible replies/resolves/comments are supervised: draft unapproved authored content, show exact payload + target, and wait only when SOP §3.8 authorization does not already cover it.
   Only verified bot-authored threads may be auto-replied/auto-resolved inside an explicitly invoked flow;
   ambiguous/mixed threads fail safe to human.
   Verify author type via API, e.g. `gh api repos/OWNER/REPO/pulls/comments/COMMENT_ID --jq '{login:.user.login, type:.user.type}'`.
@@ -70,7 +72,7 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
 ## PR review side effects
 
 - Never include `event` in create-review payloads; `POST /reviews` without `event` creates a pending draft.
-  Publish only via a separate submit call after explicit approval.
+  Publish only via a separate submit call after the applicable SOP §3.8 authorization.
 - Before create/append/delete-recreate/submit, reconcile current-account pending reviews with the new payload; do not fragment feedback.
   Append net-new comments to an existing pending review; delete/recreate only to change or drop existing ones.
 - UI-related review feedback needs screenshot handoff evidence outside the body, or a valid blocker/non-applicability reason.

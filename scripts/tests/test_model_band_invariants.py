@@ -323,13 +323,11 @@ class TestModelBandInvariants(unittest.TestCase):
         import ai_models
 
         registry = REPO / "home/.chezmoidata/ai_models"
-        # Tiers (user call 2026-09-07, revised the same day once gpt-6-astra proved absurdly
-        # expensive): T1 orchestrate/research on the session default gpt-5.6-sol/high, T2 implement
-        # deliberately collapsed onto T3 gpt-5.6-terra/high (Codex 0.153.2 names Terra as the retired
-        # GPT-5.4 replacement), astra reserved for review and refute.
+        # The approved Astra root default changes orchestration only; research and cheaper
+        # implementation/mechanical/memory lanes retain their previous models and high effort.
         expected = {
             "research": ("gpt-5.6-sol", "high"),
-            "orchestrate": ("gpt-5.6-sol", "high"),
+            "orchestrate": ("gpt-6-astra", "high"),
             "review": ("gpt-6-astra", "high"),
             "implement": ("gpt-5.6-terra", "high"),
             "refute": ("gpt-6-astra", "high"),

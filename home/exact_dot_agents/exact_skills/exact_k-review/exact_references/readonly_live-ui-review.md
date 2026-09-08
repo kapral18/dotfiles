@@ -13,9 +13,10 @@ When the scope packet names a context pack, load `~/.agents/skills/k-review/refe
 
 Review-mode fix boundary (adds to the shared mode boundary):
 
-- Fix-capable Playwriter tasks are separate post-judgment tasks.
-- Fix mode requires `fix_authorized: yes` (own / assigned / adopted PR per the controller's step 1).
-- Known fixes must be produced before this final packet; do not edit source or enter fix mode during verification.
+- Known fixes belong to root-authorized Produce before this final packet; do not edit source or enter fix mode during verification.
+- New findings return evidence to the root, not an instruction to start a post-judgment fix task.
+- The shared runtime contract still permits the selected local/dev setup and data operations;
+  those permissions do not authorize source fixes.
 
 The parent supplies:
 

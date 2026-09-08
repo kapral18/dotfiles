@@ -245,11 +245,9 @@ category_models:
       context: "short"
   codex:
     # Codex 0.153.2 retires gpt-5.4 and names gpt-5.6-terra as its replacement.
-    # Tiers (user call 2026-09-07, revised the same day once gpt-6-astra proved absurdly expensive):
-    # T1 orchestrate/research = the session default gpt-5.6-sol/high (the workhorse; bundled catalog:
-    # sol supports high/xhigh), T2 implement = gpt-5.6-terra/high (deliberately collapsed onto T3 —
-    # user call: cheapest implementer), T3 mechanical/memory = gpt-5.6-terra/high. Astra is reserved
-    # for review and refute only.
+    # Root default approved 2026-09-08: gpt-6-astra/high. Research stays gpt-5.6-sol/high.
+    # T2 implement remains collapsed onto T3 mechanical/memory: gpt-5.6-terra/high.
+    # Review and refute remain gpt-6-astra/high; orchestration-bound default roles follow the root.
     # Explicit categories close native subagent defaults. OpenAI-only refute remains degraded.
     # Native default effort is low, so the explicit `high` pins are load-bearing.
     mechanical:
@@ -268,7 +266,7 @@ category_models:
       thinking: ""
       context: "short"
     orchestrate:
-      model: "gpt-5.6-sol"
+      model: "gpt-6-astra"
       effort: "high"
       thinking: ""
       context: "short"

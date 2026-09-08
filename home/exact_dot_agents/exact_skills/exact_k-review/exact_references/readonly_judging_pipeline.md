@@ -18,6 +18,11 @@ Do not launch a lane per checklist heading or invent unrelated cleanup findings.
 4. Gaps — missing affected consumers, docs, generated outputs, tests, or referenced artifacts.
 
 Merge duplicate findings by cause and retain their evidence. Drop unsupported conclusions or mark the missing evidence explicitly.
+Resolve conflicting conclusions from their underlying source/receipts, not model votes or a second review of the reports.
+A material `verification_needed` remains explicit until existing evidence settles it or the missing observation is reported as blocked.
+Do not drop uncertainty merely because another finding was removed or the other assigned checks passed.
+For blind-clarity findings, explanatory PR narrative is not a refutation; only evidence available to the blind reader can settle the reported confusion.
 Actionable findings name the trigger, consequence, anchor, and smallest in-scope correction.
 This is output synthesis within final judgment, not a separate Findings-Set Audit or Post-Review Stage.
-Final failure goes to Deliver; no automatic repair, second pass, or reviewer-of-reviewer.
+Report failed criteria faithfully; the root applies SOP §3.5 to determine authorized recovery or delivery of findings and blockers.
+No separate repair pass or reviewer-of-reviewer follows.

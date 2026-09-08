@@ -4,7 +4,7 @@ Anchored (highlighted) Google Docs comments cannot be created via API: the Docs 
 True highlight + comment requires driving the Docs editor UI with `k-playwriter` (`~/.agents/skills/k-playwriter/SKILL.md`).
 
 Comments post as the logged-in Chrome user.
-This is human-visible publication: the SOP publication gate (draft → show payload → approval) applies before posting anything.
+This is human-visible publication: apply SOP §3.8 before posting, reusing existing authorization only for the approved target, payload, and effect.
 
 ## Procedure (per comment)
 

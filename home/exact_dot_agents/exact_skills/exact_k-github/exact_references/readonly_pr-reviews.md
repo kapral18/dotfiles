@@ -19,9 +19,9 @@ Reference for the `k-github` skill. Load when creating, reconciling, or submitti
 > 1. Read back the JSON payload you are about to send.
 > 2. Confirm the `event` key is **absent** from the create-review payload.
 > 3. If `event` is present in the create-review payload, **remove it** before sending.
-> 4. Only add `event` in a **separate** submit call after the user explicitly
->    asks to publish.
-> 5. Before that submit call, show the exact submit `event` and PR-level review
+> 4. Only add `event` in a **separate** submit call after the applicable SOP §3.8
+>    authorization.
+> 5. Before a submit not already covered by SOP §3.8 authorization, show the exact submit `event` and PR-level review
 >    `body` alongside the inline-comment payload; submit only the exact approved
 >    summary body, never an invented or revised one.
 >    The body is a short acknowledgement, not a second review; do not repeat,
@@ -54,6 +54,12 @@ Reference for the `k-github` skill. Load when creating, reconciling, or submitti
   - `GET /repos/{o}/{r}/pulls/{n}/comments` should remain unchanged until you submit (draft comments are attached to the review, not publicly posted)
 - Arrays: prefer `gh api ... --input /path/to.json` for payloads containing arrays (avoids accidentally sending arrays as strings via `-f/-F`).
 
+## Approval boundary
+
+SOP §3.8 owns whether approval persists. Reuse authorization only for the exact PR target, effect, and approved payload; NEVER broaden it.
+Approval to “approve PR” authorizes the standard short acknowledgement `Looks good.` when no different body is specified.
+It NEVER authorizes new substantive feedback. Unapproved authored content still needs its exact draft and approval under SOP §3.8.
+
 ## Existing pending-review merge guard
 
 - Before any create, delete/recreate, or submit action for a PR review:
@@ -67,10 +73,11 @@ Reference for the `k-github` skill. Load when creating, reconciling, or submitti
 - If a pending review exists and the new payload is purely **additive** (net-new findings, no edits to existing draft comments):
   - do not create a second pending review, and do not delete/recreate
   - append the net-new threads via GraphQL `addPullRequestReviewThread` against the existing `pullRequestReviewId`
-  - show the exact pending review ID, the net-new comment bodies/anchors, and wait for explicit approval before posting
+  - show the exact pending review ID and the net-new comment bodies/anchors; wait for approval only when SOP §3.8 does not already cover this exact post
 - If the new payload must **change or drop** existing draft comments:
   - prepare one consolidated payload that keeps still-valid pending findings and adds net-new findings exactly once
-  - show the exact old pending review ID, comments to keep/drop, new payload, and delete/recreate action; wait for explicit approval
+  - show the exact old pending review ID, comments to keep/drop, new payload, and delete/recreate action;
+    wait for approval only when SOP §3.8 does not already cover this exact action
 - If submitting an existing pending review:
   - fetch the pending review and comments immediately before the submit call
   - verify they match the approved reconciled payload and current head anchors
@@ -80,7 +87,7 @@ Reference for the `k-github` skill. Load when creating, reconciling, or submitti
 
 ## Posting a batch as a draft (PENDING) review
 
-If explicitly asked to POST a batch as a draft (PENDING) review:
+If explicitly asked to POST a batch as a draft (PENDING) review, or when SOP §3.8 already authorizes that exact draft:
 
 - Create a single PR review in `PENDING` state by omitting `event` when calling: `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews`
 - Include all inline comments in the `comments` array in that same request.

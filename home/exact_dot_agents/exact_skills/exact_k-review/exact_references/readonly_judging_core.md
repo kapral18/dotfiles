@@ -35,7 +35,8 @@ Use in every non-trivial review.
   caller/callee contract asymmetry, test oracle/mock fidelity gaps, compositional fault cascades in batch/collection processing, temporal/async hazards, projection/mapping divergence, and silent error degradation.
   Select boundary and predicate counterexamples for the material risks; do not enumerate mutations for every changed condition.
 - When evaluating a proposed change: prefer smallest repro in `/tmp` or smallest safe experiment in worktree.
-- Consume the planned final quality-gate receipts; do not rerun checks or start a repair cycle.
+- Consume the planned final quality-gate receipts.
+  Final review/refute workers MUST NOT rerun checks or start a repair cycle; the root applies SOP §3.5 when existing authority covers recovery.
 - Keep an evidence log per comment/thread: base behavior, semantic delta, tests run, observations.
 
 ## Candidate Refutation Ladder (Run Before Reporting Or Acting)

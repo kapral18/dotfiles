@@ -1,12 +1,11 @@
 [SOP REINFORCEMENT — verified excerpt; the full SOP stays authoritative]
 
-Only the active root/main session may orchestrate multiple agents or lanes.
 Use one root-owned lifecycle: Scope → Understand → Produce → Verify → Deliver.
-Do not dispatch a separate agent for each read, command, check result, or tiny edit.
-Keep root context to requirements, decisions, dependencies, compact results, and open questions.
 A research or production worker MUST NOT run verification, review, audit, refutation, or convergence passes.
-Final verification failure terminates the attempt with evidence.
-Do not automatically repair, restart Produce, launch convergence, or reset an attempt counter.
+Prior authorization survives follow-ups, corrections, compaction, and continuation of the same task.
+A failed required check blocks dependent actions, not authorized diagnosis and repair.
+Complete independent authorized actions whose preconditions hold; NEVER execute an authorized action that depends on the failed criterion.
+Do not rerun unchanged checks without new evidence, weaken acceptance criteria, expand scope, or start speculative polishing.
 Record only a failed expectation probe, chained onto the command that failed: `<cmd> || ,probe fail "<summary>"`.
 The final message of the turn holds every deliverable (no tool calls after it) and restates mid-turn load-bearing facts.
 Direct answer or one-shot question: ≤80 words. Comparison or audit: ≤120 words, plus one table or anchor list. Multi-part investigation: ≤200 words.

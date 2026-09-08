@@ -28,11 +28,12 @@ Do not load delivery mechanics for a local/plan report that contains no public-r
 ## Hard Constraints
 
 - Review alone is read-only regardless of authorship.
-  Fix requests authorize scoped production before final Verify, not automatic final repair.
+  A scoped fix request carries its authority into root-owned recovery under SOP §3.5; review alone never supplies it.
 - Final workers use existing evidence and return once; they do not repeat successful checks, mutate shared state, or invoke other models.
 - Execute known final commands directly with complete retained logs and actual exit status; no mechanical runner agent is required.
 - Keep git/worktree changes and human-visible effects within explicit user authority. Never create/switch worktrees proactively.
-- Publication remains draft → show exact payload/target → explicit approval unless an applicable bounded packet authorizes it.
+- Apply SOP §3.8 to publication: reuse existing authorization only for its approved target, payload, and effect;
+  obtain approval for anything outside it.
 - Verified bot threads may use their explicitly invoked flow's authority; ambiguous/mixed or human threads remain supervised unless the user approved the bounded sequence.
 - Never infer commit/push, reply/resolve, or label authority from review ownership.
 
@@ -119,7 +120,7 @@ Do not invent a parallel store:
   - `media: <file> — <caption> — viewed` for every image viewed; view each image once
   - `stage: <Scope|Understand|Produce|Verify|Deliver>` with artifact and final receipt pointers
 - After a context summary, a `fact:` or `media:` line this session wrote with an anchor is trusted.
-  If Drift reports its artifact changed, mark the evidence stale; do not automatically restart verification.
+  If Drift reports its artifact changed, mark the evidence stale; the root handles any authorized refresh under SOP §3.5.
   Re-reading the pack, re-viewing media, or re-running a gate to confirm a ledgered fact is a defect, not diligence.
   Worker reports remain provisional; the final stage consumes underlying evidence without a second certification loop.
 - On subsequent turns, check for the spec file first and resume from it if present.
