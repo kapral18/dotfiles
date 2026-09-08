@@ -73,9 +73,17 @@ skills:
 
 # maxRecursionDepth 1: root may spawn; children get no `task` tool (user call
 # 2026-09-07), making the SOP §3.7 leaf-worker boundary mechanical, not instruction-only.
-# Keep async commands available; managed agent profiles use blocking terminal returns.
+# Explicit root async remains available. Implicit backgrounding also affects
+# blocking children, so Bash/Eval must finish in the foreground by default.
 async:
   enabled: true
+
+bash:
+  autoBackground:
+    enabled: false
+eval:
+  autoBackground:
+    enabled: false
 
 task:
   isolation:

@@ -4,6 +4,7 @@ description = "Read-only /k-deep-review investigation worker. Use for each Codex
 model = "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "codex" "agent" "k-agent-review-worker") }}"
 model_reasoning_effort = "high"
 service_tier = "default"
+features = { multi_agent = false }
 developer_instructions = """
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
 

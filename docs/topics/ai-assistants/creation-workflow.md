@@ -3,72 +3,64 @@ sidebar_position: 6
 title: Creation workflow
 ---
 
-The creation-side counterpart to the [review workflow](reviews/index.md) applies the same rigor primitives to building things instead of judging them: evidence-gated phases, fixed return shapes, adversarial verification, and a completion gate.
+Creation and [review](reviews/index.md) share the root-owned `Scope → Understand → Produce → Verify → Deliver` lifecycle. Skills provide task mechanics and criteria, not nested phase graphs.
 
-The steering model is **two human gates**: approve the contract before execution, then read the report after it. Everything between runs hands-free.
+Resolve material intent and authorization before implementation. An already-approved request needs no second approval ceremony; reading the final report is delivery, not another gate. Commits, pushes and publication retain their separate authority requirements.
 
 Ordinary freeform implementation does not have to enter this formal flow. Verification stays inline by default; `k-proof` and `,proof` add a smaller repo-external receipt only for an explicit receipt request, an auditable risky effect, or a named handoff/resume consumer.
 
-## The two artifacts (memory vs contract)
+## Task state and implementation packet
 
-| Artifact                       | Role                                                                                           | Mutation rule                                                       |
-| ------------------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `/tmp/specs/<pwd>/<topic>.txt` | Conversation memory: what we currently believe the user wants. Hook-injected at session start. | Rewritten freely as the intent loop converges. Allowed to be wrong. |
+| Artifact                           | Role                                                                                                | Mutation rule                                                                                      |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `/tmp/specs/<pwd>/<topic>.txt`     | Compact task handoff: requirements, decisions, stage, active/terminal packets and evidence pointers | Update as evidence or user decisions change; never treat a summary as proof                        |
+| `/tmp/specs/<pwd>/<topic>.spec.md` | The `k-spec` implementation packet: scope, intended/preserved behavior and planned final checks     | Revise only for a material changed premise or decision; preserve the user's authorization boundary |
 
-The intent spec remembers the discussion; the packet is a signed order.
+The topic records current work; durable cross-session learning remains in `,ai-kb`. Neither artifact grants commit or publication authority.
 
-The packet is never a mechanical transform of the intent spec. Nothing enters it on the `.txt`'s word alone: every criterion is re-derived from evidence and its check is run once, observed red, before it may appear.
+The packet traces requirements to the user's request and source evidence. Acceptance checks are planned, not run merely to approve the packet. Existing baseline failure evidence may inform Understand; it is not a mandatory red-check ceremony for every criterion.
 
-The `k-spec` skill writes a `packet:` pointer line into `<topic>.txt` so session-start injection tells a fresh session the contract exists.
+The `k-spec` skill records the packet path in the active topic so a continuation can find it without rebuilding the contract.
 
-On default branches, `k-spec` requires a named topic first because the `session-<id>` fallback would strand the packet.
-
-Two pivots keep the contract honest in both directions: empirical forks route out to `k-prototype`, where the verdict returns to the packet; mid-build premise contradictions route back to gate 1. Both — and all flow-to-flow movement — are mapped in [Choose your flow](scenarios.md).
+An empirical fork may need a targeted prototype; do not create one automatically. A material mid-build contradiction returns the concrete decision to the root instead of silently changing scope. See [Choose your flow](scenarios.md).
 
 ## Using it
 
 Lifecycle:
 
 ```text
-idea/issue
-  └─ spec skill: necessity check → fork-closing interview (interview-me discipline,
-     empirical forks → prototype) → acceptance criteria with run-once RED checks
-     → packet written + shown
-        └─ [HUMAN GATE 1: approve packet]
-            ├─ /k-build ............ in-session hands-free implementation
-            ├─ k-compose-issue ... publishable issue text + publication packet
-            └─ review (plan mode)  adversarial review of the packet itself
-                └─ [HUMAN GATE 2: read the report]
+Scope       intent, owned targets, authorization, material user decisions
+Understand  missing facts, necessary baseline evidence, approach and final check plan
+Produce     approved implementation, tests/docs, integration and formatting
+Verify      frozen candidate; deduplicated checks and selected strong judgment
+Deliver     results, evidence and authorized publication only
 ```
 
-## `/k-build` phase topology
+## `/k-build` responsibilities
 
-| Phase                 | Owner                            | Gate                                                                                                                                                |
-| --------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Spec gate          | controller + human               | packet exists, checks red-proven; explicit approval                                                                                                 |
-| 2. Plan               | controller                       | per-step verification defined; wave topology grouped; Ownership Gate over touched paths                                                             |
-| 3. Execute            | controller + workers             | waves worked in order; parallel workers report scratch logs + 1-line status; criteria ledger updated; §3.4 reset on 2×                              |
-| 4. Mechanical gates   | controller                       | repo lint/type/tests discovered, run, looped to green                                                                                               |
-| 5. Live-UI proof      | proof-mode (inline)              | visual criteria verified head-only against the built runtime; each proof set captured to its own distinct `/tmp/<folder-name>/` and opened/provided |
-| 6. Adversarial verify | `k-agent-criteria-verifier` lane | checks re-run from clean tree; refutation verdicts + scope audit                                                                                    |
-| 7. Post-review stage  | controller                       | four dimensions over the implementation diff                                                                                                        |
-| 8. Report             | controller + human               | mandated output block; completion gate                                                                                                              |
+| Stage      | Responsibility                                                                                     | Completion condition                                                                                                    |
+| ---------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Scope      | Strong root and any necessary user decision                                                        | Approved target, scope, compatibility intent and authority are clear                                                    |
+| Understand | Strong research where needed; root settles decisions                                               | Missing material facts resolved and final acceptance plan defined                                                       |
+| Produce    | Implementation-band workers for substantial settled edits; deterministic tools for mechanical work | Owned artifacts integrated and formatted; workers return produced/blocked, not green                                    |
+| Verify     | Root-owned checks plus selected strong review/refute questions                                     | Actual frozen artifact and shared evidence support passed/failed/blocked criteria; applicable UI proof is included here |
+| Deliver    | Root                                                                                               | Truthful outcome, evidence and remaining blockers; no automatic repair, post-review or convergence                      |
 
-The **criteria ledger** is the run's spine. It has one row per acceptance criterion (`red` / `green` / `judgment-met` / `judgment-unmet` / `blocked`), each with command-level evidence, plus a verification verdict (`confirmed` / `refuted` / `undecidable`).
+Keep criterion status and evidence pointers in the task's existing state. Production uses pending/produced/blocked; only final Verify certifies passed/failed/blocked. Large work does not automatically require a separate proof ledger.
 
-Verdicts are evidence, not decisions. The controller flips a row only after checking the refutation addresses the row's actual claim.
+Reviewers consume complete shared check receipts and actual relevant artifacts. They do not rerun successful checks for independence or certify another reviewer's verdict. Deep/high-risk work preserves strong artifact review and adversarial challenge as distinct questions within this one stage. A no-delegation request keeps the work inline and does not weaken the criteria.
 
 ## The criteria-verifier lane
 
 Worker contract: [`k-build/references/criteria-verifier.md`](../../../home/exact_dot_agents/exact_skills/exact_k-build/exact_references/readonly_criteria-verifier.md).
 
-The lane owns refutation order (claim truth → criterion truth → reachability → durability), a scope audit against the packet's binding out-of-scope list, and missing-criteria candidates.
+This optional final framing judges each acceptance criterion, intended differences and preserved behavior against the frozen artifact and existing receipts. It returns one consolidated supported/unsupported/unknown result with exact evidence; it does not edit, repeat checks, broaden into unrelated audits or start a repair loop.
 
 Per-harness profiles are rendered through the same review-model resolver the review verifier uses. Cursor, Copilot, Codex, Pi, and OMP ship a `k-agent-criteria-verifier` profile; Antigravity defines the role dynamically and invokes its `pro` tier.
 
 Claude runs the lane degraded on the session model with refutation framing, reported as `families=same (degraded)`. This mirrors the adversarial-verifier convention in [Cross-harness subagents](subagents.md).
 
-## Live-UI proof (phase 5)
+## Live-UI proof within final Verify
 
 When any acceptance criterion's evidence is visual — a `judgment:` criterion naming a screenshot/visual comparison, or an in-scope UI-facing change with a stated visual goal — `/k-build` runs the proof-mode contract, [`k-ui-capture/references/proof-mode.md`](../../../home/exact_dot_agents/exact_skills/exact_k-ui-capture/exact_references/readonly_proof-mode.md), owned by the [`k-ui-capture`](../../../home/exact_dot_agents/exact_skills/exact_k-ui-capture/readonly_SKILL.md) skill.
 
@@ -80,10 +72,10 @@ Each mode file adds only its oracle, comparison model, and return shape.
 
 The proof-mode contract runs **inline** in `/k-build`, which already holds Playwriter and local/dev mutation permissions, so it needs no isolated subagent profile.
 
-It returns a per-criterion `met` / `unmet` / `blocked` verdict. The controller sets the ledger's `judgment-met`/`judgment-unmet` row from it; an `unmet` returns to phase 3 like a red step.
+It returns a per-criterion `met` / `unmet` / `blocked` verdict with the captured evidence. An `unmet` or `blocked` result is reported in the root's final outcome; it does not send the worker back into implementation.
 
 The controller reports the proof manifest. Each proof set lives in its own distinct `/tmp/<folder-name>/` folder, so `k-compose-pr` can upload and embed the media.
 
 Windows/VirtualBox coverage is a separate manual skill, [`k-live-ui-windows`](../../../home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/), connecting Playwriter to a guest browser over CDP through a host NAT port-forward. It is never auto-triggered by either mode; load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn.
 
-A verify failure sends bounded evidence back to implementation, retries up to the configured budget, and then reports a blocker for human decision.
+A final verification failure ends the attempt with evidence. Further repair needs a new user-authorized attempt; explicitly requested convergence requires its finite allowance before entry. There is no implicit retry budget or post-review cleanup stage.

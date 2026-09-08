@@ -23,7 +23,15 @@ from copilot_auth import (
     codex_model_info,
     upstream_headers,
 )
-from copilot_wire import ANTHROPIC, CHAT, RESPONSES, PreparedRequest, WireTranslator, backend_endpoint
+from copilot_wire import (
+    ANTHROPIC,
+    CHAT,
+    RESPONSES,
+    PreparedRequest,
+    WireTranslator,
+    backend_endpoint,
+    subscription_lane,
+)
 from protocols import apply_claude_thinking
 
 MAX_REQUEST_BYTES = 32 * 1024 * 1024
@@ -66,6 +74,7 @@ class AdapterContext:
     effort: str | None = None
     thinking: str | None = None
     translator: WireTranslator = field(default_factory=WireTranslator)
+    lane_routes: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 class AdapterServer(ThreadingHTTPServer):
@@ -226,8 +235,8 @@ class AdapterHandler(BaseHTTPRequestHandler):
                 return error
         raise CopilotError("Copilot authentication retry failed")
 
-    def _body_with_launch_controls(self, body: bytes, frontend: str) -> bytes:
-        if self.context.effort is None and self.context.thinking is None:
+    def _body_with_launch_controls(self, body: bytes, frontend: str, effort: str | None, thinking: str | None) -> bytes:
+        if effort is None and thinking is None:
             return body
         payload = json.loads(body)
         if not isinstance(payload, dict):
@@ -236,22 +245,22 @@ class AdapterHandler(BaseHTTPRequestHandler):
             output_config = payload.get("output_config")
             if not isinstance(output_config, dict):
                 output_config = {}
-            effort = self.context.effort if self.context.effort is not None else output_config.get("effort")
+            effort = effort if effort is not None else output_config.get("effort")
             apply_claude_thinking(
                 payload,
                 effort if isinstance(effort, str) else None,
-                self.context.thinking,
+                thinking,
                 payload.get("thinking") if isinstance(payload.get("thinking"), dict) else None,
                 output_config,
             )
-        elif frontend == RESPONSES and self.context.effort is not None:
+        elif frontend == RESPONSES and effort is not None:
             reasoning = payload.get("reasoning")
             if not isinstance(reasoning, dict):
                 reasoning = {}
                 payload["reasoning"] = reasoning
-            reasoning["effort"] = self.context.effort
-        elif frontend == CHAT and self.context.effort is not None:
-            payload["reasoning_effort"] = self.context.effort
+            reasoning["effort"] = effort
+        elif frontend == CHAT and effort is not None:
+            payload["reasoning_effort"] = effort
         return json.dumps(payload, separators=(",", ":")).encode()
 
     def _pipe_upstream(self, upstream: Iterable[bytes]) -> None:
@@ -324,6 +333,23 @@ class AdapterHandler(BaseHTTPRequestHandler):
         )
         self._write_json(HTTPStatus.OK, {"input_tokens": max(1, (len(serialized.encode()) + 3) // 4)})
 
+    def _route_request(self, body: bytes, frontend: str) -> tuple[bytes, ModelSpec, str | None, str | None]:
+        payload = json.loads(body)
+        if not isinstance(payload, dict):
+            raise ValueError("request body must be a JSON object")
+        lane = subscription_lane(payload.get("model"), self.context.lane_routes)
+        if lane:
+            payload["model"] = lane["model"]
+            body = json.dumps(payload, separators=(",", ":")).encode()
+        if frontend == ANTHROPIC:
+            body = _strip_claude_context_suffix(body, self.context.models)
+        model = _request_model(body, self.context.models)
+        if lane:
+            if lane["effort"] not in model.efforts:
+                raise ValueError(f"subscription lane effort unavailable: {model.model_id}/{lane['effort']}")
+            return body, model, lane["effort"], None
+        return body, model, self.context.effort, self.context.thinking
+
     def _forward(self) -> None:
         if not self._authorized():
             self._write_error(HTTPStatus.UNAUTHORIZED, "invalid adapter token")
@@ -338,9 +364,7 @@ class AdapterHandler(BaseHTTPRequestHandler):
             body = self._body()
             if body is None:
                 raise ValueError("request body is empty")
-            if frontend == ANTHROPIC:
-                body = _strip_claude_context_suffix(body, self.context.models)
-            model = _request_model(body, self.context.models)
+            body, model, effort, thinking = self._route_request(body, frontend)
             if is_count_tokens:
                 if ANTHROPIC not in model.endpoints:
                     self._count_tokens(body)
@@ -350,10 +374,10 @@ class AdapterHandler(BaseHTTPRequestHandler):
                 self._pipe_upstream(upstream)
                 return
             backend = backend_endpoint(frontend, model)
-            if self.context.thinking is not None and backend != ANTHROPIC:
+            if thinking is not None and backend != ANTHROPIC:
                 raise ValueError("--thinking is supported only for Copilot Claude backend models")
             if frontend == backend:
-                body = self._body_with_launch_controls(body, frontend)
+                body = self._body_with_launch_controls(body, frontend, effort, thinking)
                 query = route.query if frontend == ANTHROPIC else ""
                 upstream = self._open(_upstream_path(backend, query), body, backend)
                 self._pipe_upstream(upstream)
@@ -363,8 +387,8 @@ class AdapterHandler(BaseHTTPRequestHandler):
                 backend,
                 body,
                 model,
-                self.context.effort,
-                self.context.thinking,
+                effort,
+                thinking,
             )
             upstream = self._open(_upstream_path(backend), prepared.body, backend)
             self._write_translation(upstream, frontend, backend, model, prepared)

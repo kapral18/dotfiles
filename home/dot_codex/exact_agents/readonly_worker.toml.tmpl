@@ -1,0 +1,16 @@
+name = "worker"
+description = "Managed native worker leaf; one parent-scoped packet, no child orchestration."
+# Native generic model selection stays with band_gate.py, including explicit
+# registry-backed lane picks. A role model would override those selections.
+model_reasoning_effort = "high"
+service_tier = "default"
+features = { multi_agent = false }
+developer_instructions = """
+{{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
+
+Implement only the settled packet in the owned paths. Return produced or blocked; do not run acceptance checks.
+
+Read and follow ~/.agents/skills/k-build/references/implement-worker.md.
+
+Never edit files outside the packet's authority, commit, push, publish, or resume another agent.
+"""

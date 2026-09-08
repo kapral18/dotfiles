@@ -53,7 +53,7 @@ function __cursor_codex_efforts
 end
 
 complete -c ',cursor-codex' -w ',cursor'
-complete -c ',cursor-codex' -s m -l model -x -a '(__cursor_codex_models)' -d 'Override Codex backend model'
-complete -c ',cursor-codex' -l effort -x -a '(__cursor_codex_efforts)' -d 'Override selected-model reasoning effort'
-complete -c ',cursor-codex' -l reasoning-effort -x -a '(__cursor_codex_efforts)' -d 'Override selected-model reasoning effort'
+complete -c ',cursor-codex' -s m -l model -x -a '(__cursor_codex_models)' -d 'Select root Codex backend model'
+complete -c ',cursor-codex' -l effort -x -a '(__cursor_codex_efforts)' -d 'Set root effort; this subscription route is root-only'
+complete -c ',cursor-codex' -l reasoning-effort -x -a '(__cursor_codex_efforts)' -d 'Set root effort; this subscription route is root-only'
 complete -c ',cursor-codex' -s h -l help -d 'Show Codex subscription wrapper help'

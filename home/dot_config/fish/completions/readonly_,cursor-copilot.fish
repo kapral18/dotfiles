@@ -61,8 +61,8 @@ function __cursor_copilot_values
 end
 
 complete -c ',cursor-copilot' -w ',cursor'
-complete -c ',cursor-copilot' -s m -l model -d 'Select a live Copilot model' -x -a '(__cursor_copilot_models)'
-complete -c ',cursor-copilot' -l effort -d 'Set selected model reasoning effort' -x -a '(__cursor_copilot_values 2)'
+complete -c ',cursor-copilot' -s m -l model -d 'Select a root Copilot model' -x -a '(__cursor_copilot_models)'
+complete -c ',cursor-copilot' -l effort -d 'Set root effort; this subscription route is root-only' -x -a '(__cursor_copilot_values 2)'
 complete -c ',cursor-copilot' -l reasoning-effort -d 'Alias for --effort' -x -a '(__cursor_copilot_values 2)'
 complete -c ',cursor-copilot' -l thinking -d 'Set Claude backend thinking' -x -a 'auto on off'
 complete -c ',cursor-copilot' -l no-thinking -d 'Disable Claude backend thinking'

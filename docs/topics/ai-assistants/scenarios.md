@@ -7,7 +7,7 @@ title: Choose your flow
 
 Every AI-development scenario this setup supports is routed by what you want to do, not by which subsystem implements it. Each row names the flow, how you start it, and where to go deeper.
 
-The [pivot map](#pivot-map) shows how to move between flows mid-work. That mobility is the point of having many flows.
+The [pivot map](#pivot-map) places those mechanics in one root-owned lifecycle. Selecting another skill does not create another agent, verification pass or approval gate.
 
 The major flows have hands-on playbooks — what to type, what you'll see, what to answer at each gate — under Flow playbooks in the sidebar. Table rows link to a playbook where one exists.
 
@@ -22,27 +22,27 @@ Two invocation kinds matter throughout:
 
 ## Build something
 
-| You want to…                                     | Flow                                                                             | Start it                               | Deeper                                                                     |
-| ------------------------------------------------ | -------------------------------------------------------------------------------- | -------------------------------------- | -------------------------------------------------------------------------- |
-| Turn an idea/bug into a testable contract        | `k-spec` → packet with red-proven acceptance checks                              | "develop a spec for …" (model-invoked) | [Playbook](flows/spec-and-build.md) · [architecture](creation-workflow.md) |
-| Implement a contract hands-free, in this session | `/k-build` — criteria ledger, adversarial verify, 2 human gates                  | `/k-build` after approving a packet    | [Playbook](flows/spec-and-build.md) · [architecture](creation-workflow.md) |
-| Fix a reported defect                            | `k-diagnosing-bugs` — tight red loop before any theory, 6 phases                 | "debug/diagnose this" (model-invoked)  | [Playbook](flows/debug-a-bug.md)                                           |
-| Answer a design question cheaply                 | `k-prototype` — throwaway logic probe or 3 UI variants                           | "prototype this" (model-invoked)       | [Playbook](flows/prototype-and-design.md)                                  |
-| Shape a module boundary or seam                  | `k-codebase-design` — deep-module vocabulary, design-it-twice                    | fires when designing interfaces        | row in [skills](skills/repo-workflow-and-code-intelligence.md)             |
-| Get requirements out of your head                | `k-interview-me` — one fork-closing question at a time                           | `/k-interview-me` (manual)             | row in [skills](skills/memory-and-orchestration.md)                        |
-| Be told what's worth building next               | `k-improve-local` / `-branch` / `-targeted` / `-codebase` — exactly one proposal | `/k-improve-…` (manual)                | rows in [skills](skills/memory-and-orchestration.md)                       |
+| You want to…                                   | Flow                                                                                | Start it                                            | Deeper                                                                     |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------- |
+| Turn an idea/bug into a testable contract      | `k-spec` → compact packet with planned final acceptance checks                      | "develop a spec for …" (model-invoked)              | [Playbook](flows/spec-and-build.md) · [architecture](creation-workflow.md) |
+| Implement an approved contract in this session | `/k-build` — production followed by one integrated final verification               | `/k-build` after approving a packet                 | [Playbook](flows/spec-and-build.md) · [architecture](creation-workflow.md) |
+| Diagnose or fix a reported defect              | `k-diagnosing-bugs` — evidence-driven diagnosis; implementation only when requested | "debug/diagnose this" or "fix this" (model-invoked) | [Playbook](flows/debug-a-bug.md)                                           |
+| Answer a design question cheaply               | `k-prototype` — throwaway logic probe or 3 UI variants                              | "prototype this" (model-invoked)                    | [Playbook](flows/prototype-and-design.md)                                  |
+| Shape a module boundary or seam                | `k-codebase-design` — deep-module vocabulary, design-it-twice                       | fires when designing interfaces                     | row in [skills](skills/repo-workflow-and-code-intelligence.md)             |
+| Get requirements out of your head              | `k-interview-me` — one fork-closing question at a time                              | `/k-interview-me` (manual)                          | row in [skills](skills/memory-and-orchestration.md)                        |
+| Be told what's worth building next             | `k-improve-local` / `-branch` / `-targeted` / `-codebase` — exactly one proposal    | `/k-improve-…` (manual)                             | rows in [skills](skills/memory-and-orchestration.md)                       |
 
 ## Check something
 
-| You want to…                                      | Flow                                                                                                                           | Start it                                                                   | Deeper                                                                                 |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Quick audit of your own uncommitted work          | `k-light-review` — proportional depth, fixes in place                                                                          | `/k-light-review` (also model-invoked)                                     | [Playbook](flows/review-your-changes.md)                                               |
-| Full review of a PR or risky change               | `k-review` — modes: pr_review, pr_fix, local_changes, plan_review                                                              | "review PR #N" (model-invoked)                                             | [Playbook](flows/review-your-changes.md) · [architecture](reviews/index.md)            |
-| Deep review of a PR or risky change               | `/k-deep-review` — scoped reviewer roster, adversarial verify (cross-family preferred), live UI                                | `/k-deep-review` (manual)                                                  | [Playbook](flows/review-your-changes.md) · [topology](reviews/deep-review-topology.md) |
-| Adversarial review of a plan/spec before building | `k-review` plan mode — judges the contract, not code                                                                           | "review this plan/packet"                                                  | [Review workflow](reviews/index.md)                                                    |
-| Produce a durable receipt for freeform work       | `k-proof` — repo-external criteria/evidence/assessment ledger with a finalized seal                                            | explicit receipt, auditable risky effect, or named handoff/resume consumer | row in [skills](skills/memory-and-orchestration.md)                                    |
-| Verify a change actually works end-to-end         | `verify`-style live drive; UI via `k-playwriter`, or `k-ui-capture` for media proof (screenshots/videos) of an intended visual | "verify this works" / "screenshot the UI for the PR"                       | rows in [skills](skills/external-tools-and-media.md)                                   |
-| Review what an agent produced (you as reviewer)   | staged-diff reading discipline                                                                                                 | —                                                                          | [Reviewing agent diffs](reviewing-diffs.md)                                            |
+| You want to…                                    | Flow                                                                                                                           | Start it                                                                   | Deeper                                                                                 |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Focused review of low-risk local changes        | `k-light-review` — one read-only final judgment using shared evidence                                                          | `/k-light-review` (also model-invoked)                                     | [Playbook](flows/review-your-changes.md)                                               |
+| Full review of a PR or risky change             | `k-review` — modes: pr_review, pr_fix, local_changes, plan_review                                                              | "review PR #N" (model-invoked)                                             | [Playbook](flows/review-your-changes.md) · [architecture](reviews/index.md)            |
+| Deep review of a PR or risky change             | `/k-deep-review` — scoped reviewer roster, adversarial verify (cross-family preferred), live UI                                | `/k-deep-review` (manual)                                                  | [Playbook](flows/review-your-changes.md) · [topology](reviews/deep-review-topology.md) |
+| Review a plan/spec as the requested deliverable | `k-review` plan mode — judges the contract, not code; not a mandatory build gate                                               | "review this plan/packet"                                                  | [Review workflow](reviews/index.md)                                                    |
+| Produce a durable receipt for freeform work     | `k-proof` — repo-external criteria/evidence/assessment ledger with a finalized seal                                            | explicit receipt, auditable risky effect, or named handoff/resume consumer | row in [skills](skills/memory-and-orchestration.md)                                    |
+| Verify a change actually works end-to-end       | `verify`-style live drive; UI via `k-playwriter`, or `k-ui-capture` for media proof (screenshots/videos) of an intended visual | "verify this works" / "screenshot the UI for the PR"                       | rows in [skills](skills/external-tools-and-media.md)                                   |
+| Review what an agent produced (you as reviewer) | staged-diff reading discipline                                                                                                 | —                                                                          | [Reviewing agent diffs](reviewing-diffs.md)                                            |
 
 ## Understand something
 
@@ -66,49 +66,36 @@ Two invocation kinds matter throughout:
 
 ## Cross-cutting rules
 
-- Durable memory (`,ai-kb`) recalls before non-trivial work and persists verified lessons; see [Agent memory](knowledge-base/index.md).
+- Durable memory (`,ai-kb`) retains automatic staged recall and one final learning batch; no per-turn scribe or leaf memory orchestration. See [Agent memory](knowledge-base/index.md).
 - `k-proof` records sealed receipts for narrowly gated freeform work; ordinary verification stays inline.
 - The code-quality family loads itself on implementation edits.
 - Kibana/Elastic work gets the domain overlay; see [Elastic and Kibana](skills/elastic-and-kibana.md).
 
 ## Pivot map
 
-Flows hand off to each other at defined points; pivoting is expected, not an exception.
-
-The heavier arrows are contracts: the target consumes an artifact. The lighter arrows are escalations: you stop one flow and enter another.
+Only the active root owns transitions. A skill supplies mechanics for the current stage; it does not restart the lifecycle. Empty stages need no ceremony.
 
 ```text
-                    k-interview-me
-                         │ intent clear, needs a contract
-                         ▼
-   k-prototype ◄────── k-spec ──────► k-review (plan mode)
-   empirical fork        │  ▲            adversarial packet review
-   verdict returns ──────┘  │ premise correction / uncheckable criterion
-   to the packet            │ (build returns you here)
-                ┌────────┴─────────┐
-                ▼                  ▼
-             /k-build       k-compose-issue / k-compose-pr
-             in-session     publishable text + packet
-                │
-                ▼
-             k-light-review over the result … escalates to → k-review → /k-deep-review
+Scope → Understand → Produce → Verify → Deliver
+          │             │         │         └─ results; approved publication only
+          │             │         └─ selected review depth + shared final checks
+          │             └─ authorized implementation, tests, docs and formatting
+          └─ source/diagnosis/design mechanics; prototype only for a material empirical fork
 
-   k-diagnosing-bugs ──"no correct seam / architectural cause"──► k-codebase-design
-        │ writing the regression test                              │ design settled
-        ▼                                                          ▼
-   k-code-quality-tests ◄──────────────────────────────────────────┘
+Review depth: k-light-review OR k-review OR explicitly requested /k-deep-review
+Not a sequence of reviews over one another.
 ```
 
 When to pivot, concretely:
 
 - **spec → prototype and back.** A fork you cannot close by asking, such as "which ordering feels right?", is empirical. Build the throwaway, observe, and let the verdict — not an opinion — close the fork in the packet. The prototype is deleted; the decision survives in the packet's Context line.
 - **/k-build → spec (re-gate).** Mid-build evidence contradicting the packet, such as a wrong premise or wrong scope, stops the build. Revise the packet and re-approve. Never let a build quietly implement a different spec than the one you signed.
-- **k-light-review → k-review → /k-deep-review.** Escalate when the target turns out to be a PR/others' code, needs base-branch context, or is risky/stateful. That is light→full review. Escalate to `/k-deep-review` when you want a bounded independent reviewer roster plus adversarial verification (cross-family preferred) instead of one reviewer's judgment. Escalation is mid-pass: stop, switch, don't half-do the heavy machinery in the light flow.
-- **k-diagnosing-bugs → k-codebase-design.** Two triggers: no correct seam exists for the regression test, meaning the architecture is preventing the bug from being locked down; or the post-mortem answer to "what would have prevented this?" is architectural. Hand off after the fix, with specifics.
+- **Select review depth before Verify.** Low-risk local work uses light review; PR/base-context or risky/stateful work uses standard review with appropriate lenses. Explicit deep review retains strong artifact review and adversarial challenge on distinct questions. Reuse shared evidence; do not escalate a completed review into a reviewer-of-reviewer chain. A final failure is reported, not an automatic workflow restart.
+- **Diagnosis and design.** Use design mechanics in Understand when an in-scope seam/design question must be settled for the requested fix. An architectural observation does not authorize a post-fix redesign or broader audit.
 - **anything → k-compose-issue.** Work that should be recorded rather than done now — a bug found mid-review, a packet worth filing upstream — becomes issue text; publication stays human-gated.
 
 ## Efficiency defaults
 
-- Smallest flow that fits: direct SOP work → `k-light-review` to check it.
-- Reach for `/k-deep-review` when the change is big enough to warrant independent readers.
-- Which model/effort a task runs on, and whether it belongs inline or in a subagent, follows [Model tiering](model-tiering.md) — the two are the same decision, keyed off task complexity rather than scenario alone.
+- Choose sufficient scope from evidence and risk, then complete one final Verify stage. Direct work does not automatically append a review skill.
+- Preserve strong judgment for substantial research and final review/refutation; use the implementation band for settled edits and deterministic tools for mechanical work.
+- Category model/effort and isolation follow [Model tiering](model-tiering.md) and [the worker contract](subagents.md). Independent ready packets may run concurrently; no leaf owns orchestration, private QA or another worker's certification.

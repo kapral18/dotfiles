@@ -18,13 +18,13 @@ Only the active root/main session follows this section; a delegated leaf skips i
   model ids never live hand-written in profile files.
 - Resolver slots per harness: `lanes` (angle lanes, auditors, controller, named fresh-eyes profiles, and generic fresh-eyes launches) and `verifier` (the adversarial verifier — prefer a **different model family than `lanes`** at equal capability per SOP §3.7; never trade capability for family diversity — a strong same-family verifier beats a weaker cross-family one.
   Same-family runs keep refutation framing and report the reduced independence, never hidden).
-  Generic fresh-eyes launches must pass the resolved lane model as the profile-equivalent model;
-  named fresh-eyes profiles carry the same resolver-rendered frontmatter.
-  Any harness-served generic/default subagent must also receive that model; always pass the resolved concrete lane value rather than letting the runtime pick an implicit default.
+  Named profiles carry their resolved model/effort controls; do not override those fields merely to repeat the profile.
+  A supported generic fallback receives the resolved category controls through that harness's actual fields.
+  Codex/Copilot use model plus reasoning effort; Cursor uses its model selector. Do not invent fields on another harness.
 - Empty resolved value = the profile omits the field and the harness config default applies; `inherit` = harness-native parent inheritance.
   Empty is allowed only for a deliberately documented default path.
   Current review-lane resolved values are concrete for Cursor, Copilot, Codex, Antigravity, Pi, and OMP;
-  launches that omit a model in those harnesses are a bug because they bypass the matrix.
+  Named profile pins satisfy that requirement without per-call overrides. Generic fallbacks must preserve the same category.
   Claude uses `inherit` intentionally because Claude sessions are launched on a deliberate model and the installed Task resolver has been verified to inherit from the parent.
 - A model unavailable in the active runtime is a fail-visible launch error to surface; fix the registry, never substitute at launch.
 
@@ -44,8 +44,8 @@ Claude subagent model overrides are limited to the installed SDK schema (`sonnet
 - Review override: `lanes: inherit` — Claude sessions run a deliberately chosen model, and review profiles use `model: inherit`.
 - Built-in shadows: repo-owned same-name profiles override high-risk embedded builtins (`Explore`, `Plan`, `general-purpose`, `claude-code-guide`, `claude`) so normal Task launches use our profile frontmatter instead of embedded defaults.
 - Wrapper guard: `,claude-openrouter` keeps the root session on the selected OpenRouter wire model and, because Claude Code's Agent schema accepts aliases only, routes delegated lanes through a 4-alias map along the tier ladder: `fable` → `anthropic/claude-fable-5.1@preset/effort-high` (T1 orchestrate/research/review), `opus` → `openai/gpt-5.6-sol@preset/effort-high` (T2 implement, also the `CLAUDE_CODE_SUBAGENT_MODEL` default), `sonnet` → `deepseek/deepseek-v4-flash@preset/effort-xhigh` (mechanical), `haiku` → `google/gemini-3.8-flash@preset/effort-low` (memory).
-  Four aliases cannot carry five tiers: Pi's refute pick (`openrouter/openai/gpt-5.6-sol:xhigh`) has no alias of its own, and the gate maps every `gpt`/`openai` backend id to `opus`, so a refute launch on this route runs the T2 SOL wire model at high instead of xhigh.
-  Do not silently accept that substitute for a required refute effort. Report the unsupported mapping rather than claiming category parity.
+  Four aliases cannot carry five model/effort pairs: Pi's refute pick (`openrouter/openai/gpt-5.6-sol:xhigh`) has no exact slot.
+  The band hook denies that pair, including absent or mismatched alias wires. Do not substitute implementation effort for refutation.
 - Adversarial verifier, criteria verifier, and fresh-eyes are repo-owned named profiles (`k-agent-adversarial-verifier`, `k-agent-criteria-verifier`, `k-agent-fresh-eyes`) whose resolver-rendered frontmatter emits `inherit` today; launch them by name — a named final packet when that framing is selected.
   The model surface is still one family, so keep reporting `families=same (degraded)`.
 
@@ -55,9 +55,9 @@ Codex's model surface is OpenAI-only, so the adversarial verifier is `families=s
 Launch angle lanes as `k-agent-review-worker` agents; the verifier as the `k-agent-adversarial-verifier` agent.
 Registry: both values are concrete (`gpt-6-astra` at `high` effort via profile `model` + `model_reasoning_effort`) —
 review and refute are the only Codex roles Astra is priced for; orchestrate/research ride `gpt-5.6-sol` and implement/mechanical/memory ride `gpt-5.6-terra`.
-Every Codex role also pins `service_tier = "default"`.
-Always pass an explicit model when launching a native Codex `spawn_agent`/generic subagent (the generic type is `worker`):
-the installed catalog does not make omitted defaults auditable, and uncataloged slugs can pass through with fallback metadata.
+Every Codex role also pins `service_tier = "default"`. Named Codex profiles retain their declared model/effort.
+A native generic `worker` carrying another category must pass both resolved `model` and `reasoning_effort`.
+Do not select a lane from model membership alone when one model serves multiple category efforts.
 
 ### Antigravity CLI
 
@@ -76,10 +76,11 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
   The band gate therefore matches both `Task` and `Subagent`; a launch that passes a non-registry `model` is rewritten to the subagent type's band either way.
 - Generic adversarial-verifier launch: `subagent_type: generalPurpose` with `model:` set to the registry refute value.
   The gate leaves a registry counter model untouched on a generic type, so the cross-family verifier survives the rewrite;
-  any other explicit model does not.
+  Other exact registry lane selectors also survive; unregistered selectors are clamped to the type's band.
 - Generic cheap-lane launch (`k-agent-mechanical`, `k-agent-smol` are undiscoverable at user level):
   `subagent_type: generalPurpose` with `model:` set to the registry mechanical/memory value (`auto`).
   The gate passes a registry cheap-lane model through on the generic type exactly like a counter model.
+  These `auto` rows intentionally omit effort; do not add a separate reasoning-effort field.
 - Cursor source supports custom subagent types (`SubagentType.custom.name`) and loads **project-level** `.cursor/agents` profile files only;
   user-level `~/.cursor/agents` is never scanned (probed 2026-08-30, cursor-agent 2026.08.28-a7f9513), so home-deployed profiles are unreachable.
   Where a workspace carries `k-agent-review-worker`/`k-agent-adversarial-verifier` profiles, launch lanes through them;
@@ -101,8 +102,8 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
   do not automatically relaunch a completed worker. Choose required permissions before launch.
 - If Cursor cannot await background subagent ids, do not loop blind sleeps.
   Cursor source has a subagent await protocol, but the shell Await/AwaitShell path is for shell tasks and may reject subagent ids.
-  Keep reviewer, PR-necessity, live-UI, and findings-audit workers as real Cursor background subagents;
-  use Cursor Task `run_in_background=true` when the active Task schema exposes it. Wait through a Cursor-native subagent completion signal.
+  Background dispatch is optional, not a role requirement.
+  Use it only for independent ready root packets when the active Task schema exposes `run_in_background` and a native completion signal.
   If no native completion signal is available, end the controller turn and wait for the completion notification, or do one transcript completion check; never loop fixed-interval sleeps.
 
 ### Copilot CLI
@@ -111,21 +112,59 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
   The managed `~/.copilot/settings.json` subagent entries also include resolver-aligned `model`/`effortLevel`/`contextTier` so stale target-only model overrides cannot survive Copilot's settings merge.
   Per-task model overrides are runtime-verified but reserved for fail-visible recovery, not steering, except generic fresh-eyes where the explicit model is the profile-equivalent resolved lane value.
 - Launch angle lanes as the `k-agent-review-worker` agent type (model-invocable, not user-invocable).
-  Do not use the generic `task` type unless a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason; a fallback launch passes the registry model explicitly (native generic fallback with the same category).
+  Do not use the generic `task` type unless a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason.
+  A supported fallback passes the registry model and reasoning effort explicitly; it is not permission to change category.
+
+### Subscription wrapper boundary
+
+Resolve the backend matrix, not the frontend catalog, on subscription wrappers.
+Claude aliases carry explicit adapter-local lane tags; the hook denies model/effort pairs without an exact alias slot.
+The other subscription frontends currently lack verified child-tag transport:
+delegation is disabled on `,copilot-codex`, `,cursor-codex`, `,codex-copilot`, and `,cursor-copilot`.
+Do not bypass a denial by dropping effort, using a raw backend model, invoking another harness, or substituting the root model.
+Report the limitation. Root sessions and native harness routes remain separate capabilities.
 
 ### Pi and OMP
 
-- OMP managed profiles, including native-name `task`/`sonic`/`scout` shims, require `blocking: true`, no `task` tool, and no `spawns` allowlist; async commands stay enabled.
+- OMP managed profiles, including native-name `task`/`sonic`/`scout` shims, require `blocking: true`, no `task` tool, and no `spawns` allowlist.
+  Leaf async/task/advisor/hub calls are blocked; explicit async remains a root capability, not a worker default.
   Native reviewer shortcuts are disabled in favor of managed review profiles.
-  Inspect effective project/plugin overrides before use; do not launch an unguarded override unattended.
+  Task packets must name the profile explicitly, including every batch item.
+  The runtime gate checks native discovery against the enabled user-profile path and foreground leaf controls.
+  Project/plugin/bundled replacements, settings-level model overrides, worker advisors and prewalk handoffs are blocked.
+  Eval admission checks every enabled profile because its agent selection is dynamic;
+  ordinary root tools remain available when this blocks non-agent Eval code.
+  Passing that outer guard does not admit Eval's `agent()`, `workpool()`, or `completion()` helpers.
+  MUST NOT use those helpers or their synthetic bridges for managed model/worker lanes.
+  Native `eval/js/tool-bridge.ts` dispatches them before ordinary tool lookup/wrapping.
+  `agent()` registers background work and keep-alive execution despite `blocking: true`; `workpool()` creates persistent worker pools.
+  `completion()` uses its own tier/effort resolver and starts a model request outside the profile lane.
+  Use managed native task packets when delegation is allowed; ordinary Eval code remains available.
+  The extension does not intercept those inner helper calls. This instruction restriction is not native enforcement.
 - Pi workers use `defaultContext: fresh`, `inheritProjectContext: false`, `inheritGlobalContext: false`, `inheritSkills: false`, and `maxSubagentDepth: 0`.
   The root packet supplies applicable project/safety constraints.
   Explicit named role skills still load separately; the ambient catalog does not.
-  These flags do not prevent an explicit runtime override; inspect the actual launch inputs and do not use forked root history for leaf packets.
+  Root dispatch requires `agentScope:"user"` and `acceptance:false`; the guard rejects project replacements, per-call model/skill overrides, composite workflows, and revival.
+  Do not use forked root history for leaf packets. Select the named profile and omit per-call model/skill fields.
 - OMP 18.1.14 forwards context files and skills into native child session construction and adds native Coop/Completion guidance.
-  Its agent parser exposes no Pi-style inheritance flags. Do not invent those fields or claim the full native prompt is isolated.
-  Supply only task context, follow the leaf boundary, and retain this native-context limitation in the handoff.
-- Pi and OMP launch subagents through named profiles; per-task/per-profile `model` is honored over the worker default, and Pi thinking is encoded as a `:<thinking>` suffix on the model string.
+  Its parser exposes no Pi-style inheritance flags. Do not invent those fields.
+  The managed prompt hook keeps the role, explicit packet/plan, worktree restriction, and yield schema;
+  it removes inherited SOP/catalog and private-QA/peer-wakeup guidance. Named skill autoloads remain.
+  Unknown or unmanaged frames abort instead of falling back to controller instructions. Supply only task context.
+  Do not claim the hook prevents physical SDK discovery, native lifecycle revival, or later third-party prompt rewrites.
+  Native plan-mode and restricted SDK children omit extensions entirely, including these guards.
+  Do not dispatch unattended workers on those paths.
+  The public extension context has no mode getter, and ACP/plan-yolo do not consistently emit the TUI mode entries;
+  transcript-only checks do not enforce this restriction. Root planning and the strong `@plan` model role remain available.
+  Profile admission does not certify extension loading or prevent edits to user-profile files.
+- OMP roots record finalized native task lifecycle events beside the worker transcript as `.k-leaf-terminal` markers.
+  Managed leaves reject later prompts, provider requests and tools, including cold reopens of that same session file.
+  Provisional yields are not terminal events. The native transcript/result and model lanes remain unchanged.
+  Do not resume a completed workpool batch, remove markers to bypass the guard, or claim coverage for pre-existing unmarked workers.
+  Missing session persistence or failed marker writes block the guarded operation; do not retry or use another harness to bypass it.
+  Native registry retention/session construction still occurs. No-worker pipeline fixtures are not full worker lifecycle evidence.
+- Pi and OMP launch subagents through named profiles; profile model controls determine the lane.
+  Pi thinking is encoded as a `:<thinking>` suffix in the profile model string; OMP resolves profile role tokens through `modelRoles`.
 - Resolved `lanes` and `verifier` are concrete.
   Pi review workers and fresh-eyes run `anthropic/claude-fable-5.1:high` (the Pi session's own T1 model);
   adversarial and criteria verifiers run `openrouter/openai/gpt-5.6-sol:xhigh` —

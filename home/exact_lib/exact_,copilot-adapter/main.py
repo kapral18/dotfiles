@@ -15,7 +15,7 @@ from pathlib import Path
 
 from copilot_auth import CLAUDE_EXTENDED_CONTEXT_SUFFIX, CopilotError, ModelSpec, TokenProvider, fetch_models
 from copilot_server import AdapterContext, start_server
-from copilot_wire import SUPPORTED_ENDPOINTS
+from copilot_wire import SUPPORTED_ENDPOINTS, claude_lane_environment, load_lane_routes
 
 DEFAULT_MODELS = {
     "claude": "claude-sonnet-5",
@@ -51,8 +51,8 @@ Launch {harness} through an authenticated loopback backed by the current
 GitHub Copilot subscription.
 
 Adapter options:
-  -m, --model ID             Select a model from the live Copilot catalog
-      --effort LEVEL         Set provider reasoning effort
+  -m, --model ID             Select a root model from the live Copilot catalog
+      --effort LEVEL         Set root reasoning effort; explicit lane tags keep theirs
       --reasoning-effort L   Alias for --effort
       --thinking MODE        Set Claude backend thinking: auto, on, off
       --no-thinking          Alias for --thinking off
@@ -61,6 +61,8 @@ Adapter options:
 
 The default is {default}. Use -- before an underlying harness
 flag that has the same name as an adapter option.
+Delegation requires verified child-lane transport: supported through Claude aliases;
+disabled on the Cursor and Codex frontends. Native harness routes are unaffected.
 """
 
 
@@ -317,6 +319,8 @@ def launch(harness: str, argv: list[str]) -> int:
             if default_effort is not None and model is not None and default_effort in model.efforts:
                 options = replace(options, effort=default_effort)
         model = resolve_model(harness, options, models)
+        lane_routes = load_lane_routes("copilot")
+        lane_env = claude_lane_environment("copilot", lane_routes) if harness == "claude" else {}
         binary = harness_binary(harness)
     except (CopilotError, OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as error:
         print(f"Error: {error}", file=sys.stderr)
@@ -325,7 +329,14 @@ def launch(harness: str, argv: list[str]) -> int:
     effective_models = dict(models)
     effective_models[model.model_id] = model
     server, thread = start_server(
-        AdapterContext(loopback_token, tokens, effective_models, effort=options.effort, thinking=options.thinking)
+        AdapterContext(
+            loopback_token,
+            tokens,
+            effective_models,
+            effort=options.effort,
+            thinking=options.thinking,
+            lane_routes=lane_routes,
+        )
     )
     base_url = f"http://127.0.0.1:{server.server_port}"
     try:
@@ -339,6 +350,16 @@ def launch(harness: str, argv: list[str]) -> int:
             options.thinking,
             options.forwarded,
         )
+        env.update(lane_env)
+        env["AGENT_BAND_SCHEMA_HARNESS"] = "copilot"
+        env["AGENT_BAND_SUBSCRIPTION"] = "copilot"
+        env.pop("AGENT_BAND_MODEL_FORMAT", None)
+        env.pop("AGENT_BAND_MODEL_OVERRIDE", None)
+        env.pop("AGENT_BAND_EFFORT_OVERRIDE", None)
+        if not lane_env:
+            env.pop("AGENT_BAND_CLAUDE_ROUTES", None)
+        if lane_env:
+            env.pop("CLAUDE_CODE_SUBAGENT_MODEL", None)
         return run_child(command, env)
     finally:
         previous_sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)

@@ -27,3 +27,13 @@ config_file = "~/.codex/agents/k-agent-smol.toml"
 
 [agents.k-agent-mechanical]
 config_file = "~/.codex/agents/k-agent-mechanical.toml"
+
+# Native fallbacks must be leaves too; otherwise a generic worker can recurse.
+[agents.default]
+config_file = "~/.codex/agents/default.toml"
+
+[agents.worker]
+config_file = "~/.codex/agents/worker.toml"
+
+[agents.explorer]
+config_file = "~/.codex/agents/explorer.toml"

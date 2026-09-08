@@ -26,7 +26,7 @@ import { join } from "node:path"
 //     (~/.local/share/opencode/opencode.db, `part` rows) is refused by throwing;
 //     OpenCode records the thrown message as the tool error the model reads.
 
-export const AgentMemoryPlugin: Plugin = async ({ $, directory }) => {
+export const AgentMemoryPlugin: Plugin = async ({ $, directory, client }) => {
   const hooksDir = join(homedir(), ".agents", "hooks")
   const sessionCtx = join(hooksDir, "session_context.py")
   const recorder = join(hooksDir, "worklog_dispatcher.sh")
@@ -35,11 +35,28 @@ export const AgentMemoryPlugin: Plugin = async ({ $, directory }) => {
   const store = join(homedir(), ".local", "share", "opencode", "opencode.db")
   const gatedTools = new Set(["read", "bash"])
   if (!existsSync(sessionCtx) || !existsSync(recorder)) {
-    console.warn("[agent-memory] ~/.agents/hooks scripts not found — plugin disabled")
-    return {}
+    console.warn("[agent-memory] Optional memory helpers missing; task guards and available hooks remain active")
   }
 
   const contextBySession = new Map<string, string>()
+  const rootBySession = new Map<string, boolean>()
+
+  async function isRoot(sessionID: string): Promise<boolean> {
+    const cached = rootBySession.get(sessionID)
+    if (cached !== undefined) return cached
+    try {
+      const result = await client.session.get({ path: { id: sessionID }, query: { directory } })
+      if (!result.data || result.error) throw new Error("Session identity unavailable")
+      const root = !result.data.parentID
+      rootBySession.set(sessionID, root)
+      return root
+    } catch {
+      // Unknown identity must not import root memory into a possible child.
+      // Do not poison the cache: a later event can resolve a transient API gap.
+      console.warn("[agent-memory] Session identity unavailable; root recall skipped for this event")
+      return false
+    }
+  }
 
   async function runHook(script: string, payload: Record<string, unknown>): Promise<string> {
     try {
@@ -77,6 +94,7 @@ export const AgentMemoryPlugin: Plugin = async ({ $, directory }) => {
   }
 
   async function warmStart(sessionID: string): Promise<string> {
+    if (!existsSync(sessionCtx)) return ""
     const cached = contextBySession.get(sessionID)
     if (cached !== undefined) return cached
     const context = await runHook(sessionCtx, {
@@ -91,7 +109,7 @@ export const AgentMemoryPlugin: Plugin = async ({ $, directory }) => {
 
   return {
     "experimental.chat.system.transform": async (input, output) => {
-      if (!input.sessionID) return
+      if (!input.sessionID || !await isRoot(input.sessionID)) return
       const context = await warmStart(input.sessionID)
       if (context) output.system.push(context)
     },
@@ -101,7 +119,7 @@ export const AgentMemoryPlugin: Plugin = async ({ $, directory }) => {
     // relevance gates and the per-session seen-file dedup (keyed by session_id,
     // shared with the warm-start above).
     "chat.message": async (input, output) => {
-      if (!existsSync(perturn) || !input.sessionID || !output.message?.id) return
+      if (!existsSync(perturn) || !input.sessionID || !output.message?.id || !await isRoot(input.sessionID)) return
       const prompt = output.parts
         .filter((p) => p.type === "text" && typeof p.text === "string")
         .map((p) => (p as { text: string }).text)
@@ -125,6 +143,12 @@ export const AgentMemoryPlugin: Plugin = async ({ $, directory }) => {
     },
 
     "tool.execute.before": async (input, output) => {
+      if (input.tool === "task" && !await isRoot(input.sessionID)) {
+        throw new Error("Leaf or unidentified sessions cannot delegate. Return the packet result to the root.")
+      }
+      if (input.tool === "task" && output?.args?.task_id) {
+        throw new Error("Do not resume a completed worker. Dispatch a new authorized packet from the root.")
+      }
       if (!gatedTools.has(input.tool) || !existsSync(readGate)) return
       const verdict = await runJsonHook(readGate, gatePayload("PreToolUse", input, output?.args))
       if (verdict.decision === "block" && typeof verdict.reason === "string" && verdict.reason) {
@@ -139,6 +163,7 @@ export const AgentMemoryPlugin: Plugin = async ({ $, directory }) => {
           tool_response: typeof output?.output === "string" ? output.output : "",
         })
       }
+      if (!existsSync(recorder)) return
       try {
         const payload = JSON.stringify({
           hook_event_name: "PostToolUse",

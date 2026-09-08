@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 from copy import deepcopy
 from itertools import chain
+from pathlib import Path
 from typing import Any, Iterable, Iterator
 
 from client import UpstreamError
@@ -27,6 +29,63 @@ CODEX_REQUEST_FIELDS = {
     "text",
     "client_metadata",
 }
+
+
+def load_lane_routes(harness: str) -> dict[str, dict[str, str]]:
+    """Read exact model/effort pairs once per adapter launch, without provider calls."""
+    path = Path(os.environ.get("AGENT_BANDS_FILE", Path.home() / ".config/ai/agent-bands.v1.json"))
+    try:
+        agents = json.loads(path.read_text(encoding="utf-8"))["harnesses"][harness]["agents"]
+        if not isinstance(agents, dict) or not agents:
+            raise ValueError("empty agent map")
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(f"invalid subscription lane projection for {harness}: {path}") from error
+    routes = {}
+    for name, pick in agents.items():
+        if not isinstance(pick, dict):
+            raise ValueError(f"invalid subscription lane {harness}/{name}")
+        model, effort = pick.get("model"), pick.get("effort")
+        if not isinstance(model, str) or not model or not isinstance(effort, str) or not effort:
+            raise ValueError(f"invalid subscription lane {harness}/{name}")
+        routes[f"{model}@lane-{effort}"] = {"model": model, "effort": effort}
+    return routes
+
+
+def claude_lane_environment(harness: str, routes: dict[str, dict[str, str]]) -> dict[str, str]:
+    """Project the four required lane pairs onto Claude's four native alias slots.
+
+    Other exact pairs remain unrepresentable and are denied by the band hook.
+    Wire tags distinguish a child from a root using the same underlying model.
+    """
+    path = Path(os.environ.get("AGENT_BANDS_FILE", Path.home() / ".config/ai/agent-bands.v1.json"))
+    agents = json.loads(path.read_text(encoding="utf-8"))["harnesses"][harness]["agents"]
+    names = ("k-agent-code-searcher", "general-purpose", "k-agent-smol", "k-agent-adversarial-verifier")
+    aliases = ("fable", "opus", "sonnet", "haiku")
+    env = {}
+    mapped = {}
+    for alias, name in zip(aliases, names):
+        pick = agents.get(name)
+        if not isinstance(pick, dict):
+            raise ValueError(f"missing subscription lane {harness}/{name}")
+        wire = f"{pick['model']}@lane-{pick['effort']}"
+        if wire not in routes:
+            raise ValueError(f"missing subscription lane {harness}/{name}")
+        env[f"ANTHROPIC_DEFAULT_{alias.upper()}_MODEL"] = wire
+        mapped[wire] = alias
+    env["AGENT_BAND_CLAUDE_ROUTES"] = json.dumps(mapped)
+    return env
+
+
+def subscription_lane(requested: object, routes: dict[str, dict[str, str]]) -> dict[str, str] | None:
+    """Only an explicit wire selector chooses lane controls; raw model IDs never imply a role."""
+    if not isinstance(requested, str):
+        return None
+    requested = requested.removesuffix("[1m]")
+    if "@lane-" not in requested:
+        return None
+    if requested not in routes:
+        raise ValueError(f"unregistered subscription lane: {requested}")
+    return routes.get(requested)
 
 
 def iter_sse_json(source: Iterable[bytes]) -> Iterator[dict[str, Any]]:

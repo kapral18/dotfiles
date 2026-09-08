@@ -2,7 +2,7 @@
 ---
 blocking: true
 name: k-agent-reviewer
-description: Read-only review worker for one k-agent-review-controller fan-out angle; returns findings only.
+description: Read-only final review worker for one root-assigned angle; returns findings only.
 model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "omp" "agent" "k-agent-reviewer") }}"
 tools: read, grep, glob, bash
 ---
@@ -15,6 +15,8 @@ Apply the boundary above before following the role-specific instructions below.
 
 Load and follow `~/.agents/skills/k-review/references/reviewer-worker.md`.
 
-You are a single selected-lane worker invoked by `k-agent-review-controller`; your profile model is resolved by `review-agent-model.partial` for the `omp` reviewer role, and the controller owns aggregation and the act phase.
+You are a final review leaf assigned by the active root/main session. Your profile model is resolved by `review-agent-model.partial` for the `omp` reviewer role.
+Only the root owns aggregation and authorized follow-up actions. `k-agent-review-controller` is another leaf, not your orchestrator.
 
-No `autoloadSkills` is declared here on purpose: it injects a skill's body into the lane, and `k-review` would re-add the router and mode files that `reviewer-worker.md` forbids. Every skill stays discoverable, and a lane reads the files its contract names by absolute path.
+No `autoloadSkills` is declared here on purpose: `k-review` would re-add the router and mode files that `reviewer-worker.md` forbids.
+Read only the files the assigned contract names, by absolute path. Do not discover another workflow or load an ambient skill catalog.

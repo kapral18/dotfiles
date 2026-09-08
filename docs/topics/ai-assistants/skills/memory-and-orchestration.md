@@ -5,7 +5,7 @@ title: Memory and orchestration
 
 # Memory and orchestration
 
-These skills coordinate long-running agent work, durable learning, and user-intent discovery.
+These skills supply mechanics within the root-owned lifecycle, durable learning, and user-intent discovery. They do not own nested orchestration stages.
 
 ## `k-ai-kb`
 
@@ -14,6 +14,8 @@ These skills coordinate long-running agent work, durable learning, and user-inte
 | Use when | recalling or persisting durable cross-session knowledge via `,ai-kb`             |
 | Source   | [`exact_k-ai-kb`](../../../../home/exact_dot_agents/exact_skills/exact_k-ai-kb/) |
 | Related  | [Agent memory](../knowledge-base/index.md)                                       |
+
+Automatic hooks retrieve and stage relevant capsules; the root owns admission and one final verified learning batch. Preserve relevance/workspace filters and admitted-ID deduplication. Do not add a recall or scribe invocation per skill, correction or worker. When delegation is forbidden, the same search-first, evidence-backed write/readback mechanics run inline without another model.
 
 ## `k-proof`
 
@@ -40,41 +42,45 @@ These skills coordinate long-running agent work, durable learning, and user-inte
 
 ## `k-spec`
 
-| Field    | Value                                                                                             |
-| -------- | ------------------------------------------------------------------------------------------------- |
-| Use when | developing an idea, feature request, or bug into a spec packet with red-capable acceptance checks |
-| Source   | [`exact_k-spec`](../../../../home/exact_dot_agents/exact_skills/exact_k-spec/)                    |
+| Field    | Value                                                                                                  |
+| -------- | ------------------------------------------------------------------------------------------------------ |
+| Use when | developing an idea, feature request, or bug into a compact packet with planned final acceptance checks |
+| Source   | [`exact_k-spec`](../../../../home/exact_dot_agents/exact_skills/exact_k-spec/)                         |
 
-Fork-closing consults a domain overlay's planning fork checklist when the verified target repo has one (currently `k-elastic-domain` for `elastic/kibana`). Forks that cannot close locally (external sign-off, another team's decision) go in the packet's `External dependencies` section — owner, blocked criteria, recommended default — instead of blocking assembly; consumers must not start blocked criteria.
+Fork-closing consults a domain overlay's planning fork checklist when the verified target repo has one. Forks that cannot close locally (external sign-off, another team's decision) go in the packet's `External dependencies` section — owner, blocked criteria, recommended default — instead of blocking assembly; consumers must not start blocked criteria. Plan checks without running a red-check ceremony merely to approve the packet.
 
 ## `k-build`
 
-| Field    | Value                                                                                                            |
-| -------- | ---------------------------------------------------------------------------------------------------------------- |
-| Use when | hands-free in-session implementation of an approved spec packet (two human gates: packet approval, final report) |
-| Source   | [`exact_k-build`](../../../../home/exact_dot_agents/exact_skills/exact_k-build/)                                 |
-| Routing  | manual                                                                                                           |
+| Field    | Value                                                                                         |
+| -------- | --------------------------------------------------------------------------------------------- |
+| Use when | implementing an approved spec packet through production and one integrated final verification |
+| Source   | [`exact_k-build`](../../../../home/exact_dot_agents/exact_skills/exact_k-build/)              |
+| Routing  | manual                                                                                        |
+
+An already-authorized target needs no duplicate approval gate. Strong research settles material questions; implementation-band workers produce substantial settled edits; deterministic tools execute known mechanical operations. The root integrates artifacts and owns final checks and strong review/refutation. Workers do not run private QA. Commits, pushes and publication retain their separate authority requirements.
 
 ## `k-converge`
 
-| Field    | Value                                                                                                                                   |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Use when | re-attacking a claim or changeset until a round yields no correctness findings                                                          |
-| Source   | [`exact_k-converge`](../../../../home/exact_dot_agents/exact_skills/exact_k-converge/)                                                  |
-| Routing  | manual (`disable-model-invocation: true`); loaded by path as the bounded-loop procedure for `k-build`, `k-review`, and `k-light-review` |
+| Field    | Value                                                                                               |
+| -------- | --------------------------------------------------------------------------------------------------- |
+| Use when | explicitly requested final convergence with a user-approved finite repair/check allowance           |
+| Source   | [`exact_k-converge`](../../../../home/exact_dot_agents/exact_skills/exact_k-converge/)              |
+| Routing  | manual (`disable-model-invocation: true`); build/review/light-review do not invoke it automatically |
 
-Each round pins its own snapshot while retaining the original review scope, prior findings, and mutation inventory. Existing staging and working changes are preserved. A dry verdict requires zero changes, completed regression checks and fresh refutation, and no unresolved findings or mutation verdicts. Equivalent mutations require behavioral evidence; mutation counts measure selected coverage, not confidence. Reusing verified raw artifacts never replaces fresh judgments or required checks.
+Freeze scope and retain existing final evidence. Within the approved allowance, batch correctness repairs and recheck only acceptance evidence invalidated by those repairs. Preserve user changes, strong final judgment and any planned mutation control/restoration evidence. Do not require a dry round, repeat unaffected checks, relaunch research, or reset the allowance. Stop when criteria pass, the allowance is exhausted, or a user-only decision/external blocker remains; exhaustion alone is not completion.
 
-The shared `workflow-handoff.md` reference governs entry from explicitly invoked `k-build`, `k-review`, and `k-light-review` flows. Each caller supplies its existing scope, findings, evidence, checks, gates, and authorization; builds retain the approved packet/criteria ledger and light reviews recheck eligibility. Convergence replaces only the bounded-pass repetition/check schedule. Fix-scope, read-only, ownership, reset, decision, and publication limits remain binding. Results return to the caller’s ledger and remaining completion gates; the handoff grants no new side-effect permissions.
+The shared `workflow-handoff.md` reference preserves the caller's frozen scope, criteria, receipts, approval and unresolved decisions. Existing read-only, ownership, compatibility, commit and publication gates remain binding. No worker owns convergence or another model invocation. The result goes directly to Deliver, not to resumed verification gates.
 
 ## `k-text-tournament`
 
-| Field    | Value                                                                                                                                              |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Use when | automatically comparing three plausible edits before a material human-maintained prose rewrite                                                     |
-| Source   | [`exact_k-text-tournament`](../../../../home/exact_dot_agents/exact_skills/exact_k-text-tournament/)                                               |
-| Routing  | model-invoked                                                                                                                                      |
-| Boundary | interactive turns use only a cross-family two-order winner; detached orchestration relies on its scheduled review stages instead of a nested judge |
+| Field    | Value                                                                                                      |
+| -------- | ---------------------------------------------------------------------------------------------------------- |
+| Use when | the user explicitly requests comparison of materially different prose alternatives against a stated rubric |
+| Source   | [`exact_k-text-tournament`](../../../../home/exact_dot_agents/exact_skills/exact_k-text-tournament/)       |
+| Routing  | manual (`disable-model-invocation: true`); ordinary prose edits do not trigger it                          |
+| Boundary | no evaluator spawn, two-order judging, worker SELF_CHECK block, or repeated tournament per edit            |
+
+Produce useful alternatives and explain their tradeoffs while preserving instruction safety and factual fidelity. In a larger task, alternatives belong to Understand/Produce and final assessment belongs to the existing Verify stage. Comparison stays inline unless a substantial independent production assignment warrants isolation; it never creates another verification workflow.
 
 ## `k-improve-local`
 

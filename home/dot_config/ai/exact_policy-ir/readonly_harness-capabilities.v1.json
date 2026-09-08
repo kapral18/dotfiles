@@ -4,7 +4,10 @@
     {
       "harness": "claude",
       "version_evidence": "claude-code 2.1.220: settings.json hooks.PreToolUse matcher 'Agent|Task' runs band_gate.py; transcript attachment hook_success + toolUseResult.resolvedModel=claude-sonnet-4-6 after the hook clamped a caller-supplied opus — probed 2026-08-02",
-      "instruction_entrypoints": ["home/symlink_CLAUDE.md -> AGENTS.md"],
+      "instruction_entrypoints": [
+        "home/readonly_CLAUDE.md imports @AGENTS.md",
+        "home/dot_claude/symlink_CLAUDE.md -> ../AGENTS.md"
+      ],
       "hook_support": "mutation",
       "model_mutable": true,
       "subagent_model_binding": "static",
@@ -37,15 +40,15 @@
     },
     {
       "harness": "opencode",
-      "version_evidence": "home/dot_config/opencode/symlink_AGENTS.md -> ../../AGENTS.md; no hook config file found during exploration",
+      "version_evidence": "OpenCode 1.18.20: plugins/agent-memory.ts blocks task calls from child/unknown sessions and task_id resumes through tool.execute.before; native worker permission.task deny was probed with the installed CLI. Native work root permits worker_*; personal task is disabled. No category-backed strong-lane adapter is configured.",
       "instruction_entrypoints": [
         "home/dot_config/opencode/symlink_AGENTS.md -> ../../AGENTS.md"
       ],
-      "hook_support": "none",
+      "hook_support": "blocking",
       "model_mutable": true,
       "subagent_model_binding": "runtime",
       "mutation_scope": "",
-      "evidence_freshness": "2026-07-26"
+      "evidence_freshness": "2026-09-08"
     },
     {
       "harness": "gemini",
@@ -73,25 +76,37 @@
     },
     {
       "harness": "pi",
-      "version_evidence": "Pi 0.85.0 (@earendil-works/pi-coding-agent): home/dot_pi/agent/exact_extensions/read-gate.ts registers the blocking pi.on('tool_call') handler and returns {block:true}; installed ExtensionRunner.emitToolCall and AgentSession beforeToolCall forward it to pi-agent-core prepareToolCall. Offline native loop probe used the exact extracted root callback: blocked push never executed the stub tool, allowed status executed it once; no model request — probed 2026-09-05. runtime-parity.ts carries no tool_call handler. Note: a per-call model override (including from a workflowScript) is reachable, so the named child profile's frontmatter binding is unenforced — the extension API can block a tool call but not rewrite its arguments, and the band gate has no Pi adapter (probed: AGENT_BAND_HARNESS=pi returns {}).",
+      "version_evidence": "Pi 0.85.1 / pi-subagents 0.66.0: runtime-parity.ts tool_call blocks child delegation, composite controllers, per-call model overrides and dispatch without acceptance:false. Native defaults/resolvers and adapter transitions were probed without model calls. Fresh foreground profiles retain named role skills, not ambient context/catalog. The band hook still has no Pi mutation adapter; these are blocking controls, not argument rewriting.",
       "instruction_entrypoints": ["home/dot_pi/agent/exact_agents/*.md.tmpl"],
       "hook_support": "blocking",
       "model_mutable": true,
       "subagent_model_binding": "runtime",
       "mutation_scope": "",
-      "evidence_freshness": "2026-09-05"
+      "evidence_freshness": "2026-09-08"
     },
     {
       "harness": "omp",
-      "version_evidence": "home/dot_omp/private_agent/extensions/ai-kb-recall.ts registers session_start, session_compact, tool_result and before_agent_start — context injection and worklog capture only, no tool_call handler anywhere in the extension set (runtime-parity.ts registers session_start alone), so hooks advise and cannot block or rewrite a delegation. Tiering needs no hook: readonly_config.yml.tmpl modelRoles resolves the @role tokens the bands are spelled in, and the task tool takes no model argument.",
+      "version_evidence": "OMP 18.1.14: runtime-parity.ts tool_call uses native yield presence to block leaf async/task/advisor/hub and normalized root hub peer sends. Config disables implicit Bash/Eval backgrounding while retaining explicit root async. Native BashTool control/repaired and driver probes passed with simulated transport; arbitrary external pending jobs and native inherited child context remain limitations. ModelRoles still resolves profile role tokens; the task tool has no model argument.",
       "instruction_entrypoints": [
         "home/dot_omp/private_agent/exact_agents/*.md.tmpl"
       ],
-      "hook_support": "advisory",
+      "hook_support": "blocking",
       "model_mutable": true,
       "subagent_model_binding": "static",
       "mutation_scope": "",
-      "evidence_freshness": "2026-08-02"
+      "evidence_freshness": "2026-09-08"
+    },
+    {
+      "harness": "crush",
+      "version_evidence": "Installed Crush v0.92.0 README and matching upstream tag 559ec80922fe: crushrc global-context-path loads the home SOP. internal/config/config.go SetupAgents binds coder/task to the large model and gives task resolveReadOnlyTools; docs/hooks/README.md states PreToolUse hooks apply only to the top-level agent. No repo-managed category-lane or automatic memory hook adapter is configured. Hook mutation capability is source-backed, not a live workflow certification.",
+      "instruction_entrypoints": [
+        "home/dot_config/crush/readonly_crushrc -> ~/.config/crush/crushrc -> ~/AGENTS.md"
+      ],
+      "hook_support": "mutation",
+      "model_mutable": true,
+      "subagent_model_binding": "runtime",
+      "mutation_scope": "top-level PreToolUse updated_input patches; subagent inner tools are not hooked",
+      "evidence_freshness": "2026-09-08"
     },
     {
       "harness": "generic",

@@ -31,10 +31,22 @@ Use `read` before shell readers when its source kind applies:
 Use `lsp` for definitions, references, cross-file renames, diagnostics, and code actions when available.
 Use anchored `edit` for narrow changes. Use `ast_edit` only for repeated structural rewrites and explicitly apply or reject each proposal.
 
-## Handoffs and GitHub context
-
-Use `task` and `hub` for typed agent work and process lifecycle.
-Pass large packets with `local://`; inspect worker results through `agent://`, `history://`, and `artifact://`.
+## GitHub context
 
 `issue://` and `pr://` are fast cached read paths only.
 Before a GitHub mutation, reconciliation, or readback gate, obtain live `gh`/API evidence required by the owning generic skill.
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+When delegation is permitted, use `task` with explicit managed profile names and ready stage-sized packets.
+Before dispatch, load `~/.agents/skills/k-review/references/runtime-harnesses.md` for the native capability boundaries.
+Do not dispatch unattended workers in native plan mode or restricted SDK sessions; those children omit the managed extensions.
+Keep the registry's category model/effort and the SOP's single final Verify stage. Honor no-delegation requests inline.
+Pass large packets with `local://`; inspect returned artifacts through `agent://`, `history://`, and `artifact://`.
+Use `hub` only for authorized named-process lifecycle operations. Do not use peer messages to wake or resume workers.
+
+MUST NOT use Eval's `agent()`, `workpool()`, or `completion()` helpers, or their synthetic bridge calls, as managed model/worker lanes.
+They bypass ordinary tool dispatch; `agent()` starts background work despite a blocking profile, and `completion()` selects its own model tier.
+Ordinary Eval code remains available, but passing the outer profile/settings guard does not certify these hidden helpers.
+This is a routing prohibition, not native enforcement. Do not claim that an instruction marker closes the bridge or plan-mode gaps.

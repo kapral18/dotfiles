@@ -5,96 +5,76 @@ description: "Use for hard bugs, regressions, flaky failures, crashes, thrown er
 
 # Diagnosing Bugs
 
-A discipline for hard bugs. Skip phases only when explicitly justified.
-
-The SOP owns the surrounding gates: verification loops (§3.5), runtime truth (§2.5), and state-machine verification (`### 3.6 State-Machine Verification`).
-This skill is the debugging front-end that forces a **tight** feedback loop before any theorising, then routes into those gates.
-When you write the regression test, load `~/.agents/skills/k-code-quality-tests/SKILL.md`.
+Supply diagnostic evidence during the root-owned Understand stage; do not create another lifecycle.
+The SOP owns runtime truth, state-machine coverage, authorization, and the single final Verify stage.
+A delegated diagnosis worker owns only its assigned question and returns evidence or a concrete blocker once.
+It MUST NOT implement a fix, run private verification, invoke another agent, or start a follow-up workflow.
 
 ## Do not use
 
-- trivial one-line fixes where the cause is already obvious from a stack trace — just fix it
+- obvious local errors that need only a direct explanation or an already-authorized small fix
 - as a substitute for the SOP's runtime-truth chain when the question is "is X set up correctly" rather than "why is X broken"
 
-## Phase 1 — Build a feedback loop
+## Capture the failure
 
-Bisection, hypotheses, and instrumentation use a **tight** pass/fail signal that goes red on _this_ bug.
-Spend disproportionate effort establishing it.
+Resolve the affected version, caller/callee, configuration and exact expected-versus-observed behavior.
+Read relevant source and existing complete logs, traces or failing-test results first when they can answer the question.
+Source inspection is allowed before a runnable reproduction exists; do not block locally available investigation on an unavailable runtime.
+Do not treat a plausible explanation, a nearby symptom, or an unrelated green suite as causal evidence.
 
-Ways to construct one — try roughly in this order:
+When existing evidence cannot distinguish the reported failure, choose the smallest safe reproduction that can:
 
-1. **Failing test** at whatever seam reaches the bug — unit, integration, e2e.
-2. **Curl / HTTP script** against a running dev server.
-3. **CLI invocation** with a fixture input, diffing stdout against a known-good snapshot.
-4. **Headless browser script** (use the `k-playwriter` skill) — drives the UI, asserts on DOM/console/network.
-5. **Replay a captured trace** — save a real request/payload/event log, replay it through the code path in isolation.
-6. **Throwaway harness** — a minimal subset (one service, mocked deps) exercising the bug path with a single call.
-7. **Property / fuzz loop** — for "sometimes wrong output", run many random inputs and look for the failure.
-8. **Bisection harness** — if the bug appeared between two known states, automate "boot at state X, check, repeat" for `git bisect run`.
-9. **Differential loop** — run the same input through old-vs-new (or two configs) and diff outputs.
-10. **Human-in-the-loop last resort** — if a human must click, drive them with a structured bash script so the loop stays structured;
-    captured output feeds back to you. Minimal shape:
+- A focused existing test, CLI/API fixture, or captured-trace replay.
+- A browser probe through k-playwriter when the symptom requires the real UI.
+- A disposable harness when no existing seam expresses the failure.
+- Bisection, differential comparison, or a seeded stress/fuzz experiment for a history-dependent or intermittent failure.
 
-    ```bash
-    set -euo pipefail
-    step() { printf '\n>>> %s\n' "$1"; read -r -p "  [Enter when done] " _; }
-    capture() { local v="$1"; printf '\n>>> %s\n' "$2"; read -r -p "  > " a; printf -v "$v" '%s' "$a"; }
-    step "Open the app and reproduce the action."
-    capture ERR "Did it throw? Paste the message (or 'none'):"
-    printf 'ERR=%s\n' "$ERR"
-    ```
+These are alternatives, not a checklist of mandatory techniques.
+For a runnable reproduction, retain the command, inputs, environment, complete output and actual exit status.
+Its assertion must discriminate the user's symptom, not merely prove that something failed.
+Keep it deterministic where possible; intermittent evidence must record its sampling conditions and uncertainty.
 
-### Tighten the loop
+Reuse an unchanged baseline instead of rerunning it at each handoff, skill load or continuation.
+Minimize only when removing irrelevant inputs will distinguish causes or make the necessary experiment practical.
+Do not require every fixture element to be proved indispensable before diagnosis can proceed.
 
-Once you have one, **tighten** it: faster (cache setup, skip unrelated init, narrow scope), sharper signal (assert the specific symptom, not "didn't crash"), more deterministic (pin time, seed RNG, isolate filesystem, freeze network).
-For non-deterministic bugs, chase a **higher reproduction rate**: loop the trigger, parallelise, add stress, inject sleeps, until debuggable.
+Done when the failure and affected path are evidenced, or the exact missing evidence and its consequence are named.
 
-### When you genuinely cannot build a loop
+## Discriminate causes
 
-Stop and say so. List what you tried.
-Ask the user for: access to the environment that reproduces it, a captured artifact (HAR, log dump, core dump, timestamped recording), or permission to add temporary instrumentation.
-Proceed to hypothesising **only** with a loop in hand.
+Keep competing explanations when the evidence permits them.
+Do not manufacture a fixed quota of hypotheses or keep testing causes already ruled out.
+Each material hypothesis needs a prediction that available source, a trace, or a targeted probe can distinguish.
+When causal attribution remains ambiguous, use a relevant negative control: changing an irrelevant input must not produce the claimed effect.
+Do not demand a separate control or model judgment for every assertion.
 
-### Completion criterion — a tight loop that goes red
+Choose probes for the uncertainty they remove.
+Do not repeat a probe without a changed input, environment, hypothesis, or planned sampling requirement.
+For sampling, stress or bisection, define the inputs and stopping condition before execution; use deterministic tools for the experiment.
+Do not expand an experiment indefinitely because the result remains uncertain.
 
-Phase 1 is done when you can name **one command** you have **already run at least once** (paste the invocation and its output) that is:
+Prefer a debugger/REPL or narrowly tagged instrumentation over broad log dumps.
+Change the variable needed for the prediction; keep other conditions stable unless the experiment explicitly tests their interaction.
+Tag temporary logs with a unique prefix so the requested fix can remove them during Produce.
+For slowness, gather a relevant baseline measurement or profile; compare the repaired behavior in final Verify, not in a private worker loop.
 
-- **Red-capable** — drives the actual bug path and asserts the user's exact symptom, so it goes red on this bug and green once fixed.
-  Not "runs without erroring".
-- **Deterministic** — same verdict every run (flaky bugs: a pinned, high reproduction rate).
-- **Fast** — seconds, not minutes.
-- **Agent-runnable** — you can run it unattended.
+Done when evidence settles the material cause and affected interfaces, or a specific unresolved dependency prevents that conclusion.
+Do not exhaust hypothetical causes, minimize every input, or rerun the baseline merely to complete a phase.
 
-If you catch yourself reading code to build a theory before this command exists, **stop**. No red-capable command, no Phase 2.
+## Return diagnostic evidence
 
-## Phase 2 — Reproduce + minimise
+Return the cause with source/tool anchors, the original expected-versus-observed behavior, relevant ruled-out alternatives and remaining uncertainty.
+Distinguish a source-established defect from runtime behavior that could not be reproduced.
+Do not report an unrun runtime criterion as passed.
 
-Run the loop, watch it go red.
-Confirm it produces the failure mode the **user** described (not a nearby one —
-wrong bug, wrong fix), that it reproduces across runs, and that you have captured the exact symptom.
-Then shrink to the **smallest scenario that still goes red**: cut inputs, callers, config, data, and steps one at a time, re-running after each cut.
-Done when every remaining element is load-bearing — removing any one makes it go green. Do not proceed until reproduced **and** minimised.
+Ask for a missing artifact, access or user-owned decision only when it blocks the requested conclusion and safe local evidence cannot resolve it.
+A diagnosis-only request ends with the evidence and proposed fix; it does not authorize edits.
+A leaf returns its packet result to the root; it does not ask the user or continue into production.
 
-## Phase 3 — Hypothesise
+## Root moves
 
-Generate **3–5 ranked hypotheses** before testing any; single-hypothesis generation anchors on the first plausible idea.
-Each must be **falsifiable** — state the prediction: "If X is the cause, changing Y makes the bug disappear / changing Z makes it worse."
-If you cannot state the prediction, it is a vibe — discard or sharpen it.
-Include a **negative control**: name an input your explanation calls irrelevant and predict the verdict is unchanged when you perturb it;
-if perturbing that "irrelevant" input flips the verdict, the explanation is not the real cause.
-A fluent, confident rationale is still a hypothesis — the loop and the negative control are the proof, not the narrative.
-Include the ranked list in the next user-visible message (or final report); they often re-rank it with domain knowledge.
-Mid-turn text may never reach the user, so never wait on it — proceed with testing on your own ranking.
-
-## Phase 4 — Instrument
-
-Each probe maps to a specific prediction. **Change one variable at a time.**
-Prefer a debugger/REPL (one breakpoint beats ten logs), then targeted logs at the boundaries that distinguish hypotheses, instead of "log everything and grep".
-**Tag every debug log** with a unique prefix (e.g. `[DEBUG-a4f2]`) so cleanup is a single grep.
-For performance regressions, logs are usually wrong: establish a baseline measurement (timing harness, profiler, query plan), then bisect.
-Done when each ranked hypothesis is confirmed or refuted by a recorded probe result, and performance regressions have a before/after measurement.
-
-## Produce and final Verify
-
-This phase is fix work (SOP §1): on an assessment request, stop after Phase 4 with the verified cause and proposed fix.
-Before regression-test or fix work, read and follow `~/.agents/skills/k-diagnosing-bugs/references/fix-and-cleanup.md` in full for scoped production and the single final Verify stage.
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+For an authorized fix, carry the settled cause, intended/preserved behavior and necessary final checks into Produce.
+Before regression-test or fix work, read `~/.agents/skills/k-diagnosing-bugs/references/fix-and-cleanup.md`.
+Use k-codebase-design only when resolving an in-scope seam or design question is necessary;
+do not start an automatic post-fix architecture pass.

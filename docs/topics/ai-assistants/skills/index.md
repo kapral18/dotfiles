@@ -46,26 +46,26 @@ Record equivalent rewrites separately from corrections to contradictory instruct
 
 ## Loading procedures by branch and phase
 
-Entrypoints retain routing, shared boundaries, and mandatory load triggers. Complete branch procedures live in references; a reference is required before its matching action, not optional background reading. Review controllers record phase, evidence, and unresolved gates in the existing review spec. After compaction they reopen instructions needed by the current phase and revisit gates invalidated by new evidence.
+Entrypoints retain routing, shared boundaries, and mandatory load triggers. Complete branch procedures live in references; a reference is required before its matching action, not optional background reading. The root records stage, snapshot, evidence, active/terminal packets and unresolved decisions in the existing topic. After compaction, resume that state and load only applicable instructions; do not relaunch terminal work or restart completed verification. A changed candidate makes its affected evidence stale.
 
-| Skill                     | Conditionally loaded procedure                                                                          |
-| ------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `k-review`                | State, change, and product gates; drafting/delivery; fix loop; post-review stage                        |
-| `k-deep-review`           | Scope, necessity, roster, findings audit, adversarial verification, judgment, live-UI result validation |
-| `k-artifact`              | Generated HTML or live overlay                                                                          |
-| `k-cli-skills`            | New skill authoring or installed-version upgrade                                                        |
-| `k-communication`         | Existing-thread reply procedure; shared external-register rules are inline in the entrypoint            |
-| `k-diagnosing-bugs`       | Fix and cleanup after assessment                                                                        |
-| `k-elastic-domain`        | GitHub composition or commit attribution                                                                |
-| `k-git`                   | Commit/push details before the corresponding operation                                                  |
-| `k-kbn-stack`             | Runtime lifecycle and isolation before start, reuse, stop, or runtime interpretation                    |
-| `k-kbn-backport`          | Staging and continuing a conflicted run, in the existing conflict reference                             |
-| `k-kibana-console-monaco` | Typed demo Enter handling                                                                               |
-| `k-letsfg`                | Rendered-UI browser fallback                                                                            |
-| `k-playwriter`            | Video recording and frame verification                                                                  |
-| `k-public-sources`        | Source inspection or multi-source claims                                                                |
-| `k-ui-capture`            | Diff inventory or upload/embedding                                                                      |
-| `k-walkthrough`           | Diagram node metadata and example                                                                       |
+| Skill                     | Conditionally loaded procedure                                                                                          |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `k-review`                | State/change/product criteria within final judgment; authorized fixes before Verify; scoped drafting/delivery           |
+| `k-deep-review`           | Scope/intent intake; risk-selected strong artifact and adversarial questions plus applicable live UI in one final stage |
+| `k-artifact`              | Generated HTML or live overlay                                                                                          |
+| `k-cli-skills`            | New skill authoring or installed-version upgrade                                                                        |
+| `k-communication`         | Existing-thread reply procedure; shared external-register rules are inline in the entrypoint                            |
+| `k-diagnosing-bugs`       | Evidence-driven Understand; authorized fix and cleanup in Produce, with one root-owned final Verify                     |
+| `k-elastic-domain`        | GitHub composition or commit attribution                                                                                |
+| `k-git`                   | Commit/push details before the corresponding operation                                                                  |
+| `k-kbn-stack`             | Runtime lifecycle and isolation before start, reuse, stop, or runtime interpretation                                    |
+| `k-kbn-backport`          | Staging and continuing a conflicted run, in the existing conflict reference                                             |
+| `k-kibana-console-monaco` | Typed demo Enter handling                                                                                               |
+| `k-letsfg`                | Rendered-UI browser fallback                                                                                            |
+| `k-playwriter`            | Video recording and frame verification                                                                                  |
+| `k-public-sources`        | Source inspection or multi-source claims                                                                                |
+| `k-ui-capture`            | Diff inventory or upload/embedding                                                                                      |
+| `k-walkthrough`           | Diagram node metadata and example                                                                                       |
 
 `k-present-pr` instead uses a bundled template helper: the model reads the complete editable HTML while the helper preserves fixed CSS/JS. Authoring and browser verification remain required.
 

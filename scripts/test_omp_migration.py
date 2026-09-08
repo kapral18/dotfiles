@@ -115,6 +115,8 @@ class TestOmpMigration(unittest.TestCase):
             "modelRoles:\n",
             "advisor:\n  enabled: false\n  subagents: false\n  syncBacklog: 1\n  immuneTurns: 0\n",
             "async:\n  enabled: true\n",
+            "bash:\n  autoBackground:\n    enabled: false\n",
+            "eval:\n  autoBackground:\n    enabled: false\n",
             "defaultThinkingLevel: high\n",
             "memory:\n  backend: off\n",
             "autolearn:\n  enabled: false\n  autoContinue: false\n",

@@ -15,7 +15,7 @@ These skills govern review methodology, GitHub side effects, and human-readable 
 | Source   | [`exact_k-review`](../../../../home/exact_dot_agents/exact_skills/exact_k-review/)               |
 | Related  | [Review workflow](../reviews/index.md)                                                           |
 
-`k-review` keeps all applicability triggers in `judging_core.md` and loads `judging_state.md`, `judging_change.md`, or `judging_product.md` before the matching check. Delivery, fixes, and the fix-diff stage use `review_delivery.md`, `review_fixes.md`, and `review_post_stage.md`. Direct reviewer/refuter contracts permit the same required gate references while retaining their read-only role boundaries.
+`k-review` keeps applicability triggers in `judging_core.md` and loads `judging_state.md`, `judging_change.md`, or `judging_product.md` for matching criteria in final judgment. `review_fixes.md` covers authorized production before final Verify; `review_delivery.md` owns delivery. `review_post_stage.md` explicitly forbids a separate post-review stage: hygiene criteria belong to the integrated final review. Direct reviewer/refuter contracts retain the same applicable criteria and read-only role boundaries.
 
 ## `k-deep-review`
 
@@ -28,19 +28,19 @@ These skills govern review methodology, GitHub side effects, and human-readable 
 
 The controller now materializes a read-only context pack before fan-out and puts its path plus `head_sha` in every worker scope packet. Workers load `context-pack.md`, verify the manifest freshness gate, and report `pack_used`, `pack_stale`, or `pack_missing` instead of re-fetching PR artifacts already present in the pack.
 
-The deep controller loads complete procedures at their owning phases through seven references: `route-scope`, `pr-necessity`, `reviewer-roster`, `findings-audit`, `adversarial-verification`, `judgment`, and `live-ui-validation`. Phase order, worker boundaries, action permissions, and completion gates remain in the entrypoint. Resume uses the existing ledger and current instructions; new evidence reopens affected phases.
+The root resolves scope and PR intent during Understand, produces known authorized fixes before review, and selects final risk questions through `reviewer-roster.md`. Applicable live UI uses `live-ui-validation.md`. References supply mechanics and criteria, not a mandatory phase chain. Resume uses the existing stage, snapshot, packet state and evidence pointers. Changed evidence is reported stale; it does not automatically restart intake or review.
 
-After lane merge/dedup, applicable `k-agent-live-ui-review` runs first, then findings audit cleans the candidate set, then final adversarial verification tries to refute the audited findings and sweeps for what every lane missed. The sighted reviewer roster is bounded: one baseline lane for simple single-surface diffs, extra lanes only for scope-evidenced independent risk. Lenses, triggers, and checks come from `k-review/references/lanes.md`, and the controller pastes the selected entry into the packet so a lane never loads the catalog, the router, or the mode files.
+Strong artifact review and adversarial challenge answer distinct questions against the same frozen candidate and shared check receipts. Additional specialists, blind fresh-eyes and live UI are selected only for applicable independent risks; shared runtime work stays serialized. Lenses, triggers and checks come from `k-review/references/lanes.md`; the root pastes the selected lens into the packet so leaves never load the catalog, router or mode files. Findings deduplication is output synthesis, not a findings-auditor/refuter/post-review chain.
 
-Controller preflight includes task-shaped `,ai-kb search` recall; relevant capsule lessons are folded into scope packets. Closeout records durable lessons with `,ai-kb remember` or task anti-patterns with `,agent-memory note anti_pattern`. Worker lifecycle is supervised: delivery acknowledgements are not progress, request-too-large or empty turns mark a worker dead, follow-ups are budgeted, and worker prose numbers are treated as self-reports until independently verified. Any worker image used in a human-visible packet must be opened/viewed by the controller first.
+Custom memory retains automatic staged recall, root admission and one final verified learning batch through `k-ai-kb`; no per-controller search ceremony or per-worker scribe. Corrections retain evidence-backed `,agent-memory note` capture. Each ready packet returns evidence or a concrete blocker once. Do not relaunch active/completed packets, send sibling messages, revive terminal workers, or treat delivery acknowledgements as progress. Worker conclusions stay provisional until the single final Verify stage consumes raw evidence; no per-return re-verification. Relevant image evidence is viewed in that stage and reused for publication under its separate approval and upload preconditions.
 
 ## `k-light-review`
 
-| Field    | Value                                                                                          |
-| -------- | ---------------------------------------------------------------------------------------------- |
-| Use when | proportional-depth in-place audit of low-risk self-authored changes                            |
-| Source   | [`exact_k-light-review`](../../../../home/exact_dot_agents/exact_skills/exact_k-light-review/) |
-| Boundary | escalate to `k-review` for PRs, others' code, risky/stateful changes, or required base context |
+| Field    | Value                                                                                                                               |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | one focused read-only final judgment of low-risk local changes                                                                      |
+| Source   | [`exact_k-light-review`](../../../../home/exact_dot_agents/exact_skills/exact_k-light-review/)                                      |
+| Boundary | select standard review before judging PRs, others' code, risky/stateful changes or required base context; no review-of-review chain |
 
 ## `k-github`
 

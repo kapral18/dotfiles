@@ -151,10 +151,9 @@ export async function recallContext(scriptPath, payload) {
     }
 }
 
-// The band gate pins a delegated agent to its category's model. It must fail open for the same
-// reason it does inside band_gate.py itself: a stale or missing projection should cost the right
-// model, never the delegation. Returns the modifiedArgs object, or undefined to leave args alone.
-export async function bandModifiedArgs(scriptPath, payload) {
+// Optional recall may fail open. Delegation must retain either the complete lane
+// rewrite or its denial; a broken gate must not spend on an unchecked worker.
+export async function bandDecision(scriptPath, payload) {
     // band_gate.py no-ops on anything that is not a delegation, but only after Node has spawned a
     // Python interpreter that reads and parses the whole band projection. The Copilot SDK exposes
     // no matcher on onPreToolUse, so the same filter band_gate.py applies internally has to be
@@ -166,11 +165,18 @@ export async function bandModifiedArgs(scriptPath, payload) {
         const result = await runHookScript(scriptPath, payload, HOOK_TIMEOUT_MS, {
             AGENT_BAND_HARNESS: "copilot",
         });
+        if (result?.permissionDecision === "deny") {
+            return result;
+        }
         const modifiedArgs = result?.modifiedArgs;
-        return modifiedArgs && typeof modifiedArgs === "object" ? modifiedArgs : undefined;
+        if (modifiedArgs && typeof modifiedArgs === "object" && !Array.isArray(modifiedArgs)
+            && typeof modifiedArgs.model === "string" && modifiedArgs.model) {
+            return { modifiedArgs };
+        }
     } catch {
-        return undefined;
+        // Preserve the denial below on a missing executable, timeout or invalid reply.
     }
+    return { permissionDecision: "deny", permissionDecisionReason: "The model-band gate is unavailable or returned no lane decision. Do not delegate without a registered category." };
 }
 
 export async function recordWorklog(scriptPath, payload) {
@@ -262,8 +268,7 @@ async function main() {
                 if (denial) {
                     return denial;
                 }
-                const modifiedArgs = await bandModifiedArgs(hookPath(BAND_GATE_HOOK), payload);
-                return modifiedArgs ? { modifiedArgs } : undefined;
+                return await bandDecision(hookPath(BAND_GATE_HOOK), payload);
             },
             onPostToolUse: async (input, invocation) => {
                 const payload = postToolUsePayload(input, invocation);

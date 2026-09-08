@@ -374,6 +374,13 @@ class TestModelBandInvariants(unittest.TestCase):
             agent = profile.name.removeprefix("readonly_").removesuffix(".toml.tmpl")
             category = bindings[agent]
             with self.subTest(surface="agent_profile", name=profile.name):
+                if agent in {"default", "worker", "explorer"}:
+                    self.assertNotRegex(config, re.compile(r"^model\s*=", re.MULTILINE))
+                    self.assertIn("band_gate.py", config)
+                    self.assertIn("features = { multi_agent = false }", config)
+                    self.assertIn('service_tier = "default"', config)
+                    self.assertIn('model_reasoning_effort = "high"', config)
+                    continue
                 self.assertIn('"harness" "codex"', config)
                 self.assertRegex(config, re.compile(rf'^service_tier\s*=\s*"{expected_service_tier}"$', re.MULTILINE))
                 if category in ("memory", "mechanical"):
@@ -443,6 +450,7 @@ class TestModelBandInvariants(unittest.TestCase):
         for path in sorted((REPO / "home/dot_codex/exact_agents").glob("*.toml.tmpl")):
             with self.subTest(profile=path.name):
                 source = path.read_text(encoding="utf-8")
+                self.assertIn("features = { multi_agent = false }", source)
                 header, instructions = source.split('developer_instructions = """', 1)
                 keys = set(re.findall(r"^(\w+)\s*=", header, re.MULTILINE)) - {"name", "description"}
                 self.assertLessEqual(keys, supported)
@@ -725,8 +733,7 @@ class TestModelBandInvariants(unittest.TestCase):
         # The alias rank is the tier ladder, not model size: under the 2026-09-07 tiers `fable`
         # (T1) is the research / review thinker, `opus` (T2) implements and `sonnet` (T3) is the
         # cheap lane. So asking for `fable` from a T2 or T3 band is an upward escape, while a T1
-        # agent asking for `opus` is a legal downgrade. A rank table that still files `fable` next
-        # to `haiku` inverts both, which is what these deployed-hook probes catch. The aliases are
+        # agent asking for `opus` is a forbidden downgrade. The aliases are
         # asserted first so the probes fail loudly if the alias projection drifts instead of
         # silently testing a different ladder rung.
         agents = claude["agents"]
@@ -753,12 +760,11 @@ class TestModelBandInvariants(unittest.TestCase):
         # Upward: the T3 mechanical and T2 implement bands may not reach the T1 thinker.
         assert claude_alias("cli_help", "fable") == "sonnet", "a mechanical lane must not reach T1 Fable"
         assert claude_alias("general-purpose", "fable") == "opus", "an implement lane must not reach T1 Fable"
-        # Sideways / downward: a T1 research lane dropping to the T2 implementer is allowed.
-        assert claude_alias("k-agent-code-searcher", "opus") is None, "a T1 lane may ask for a cheaper alias"
+        # A capability floor is as binding as a spend ceiling.
+        assert claude_alias("k-agent-code-searcher", "opus") == "fable", "research must keep its strong model"
         # Upward again: the memory lane sits on T3 and must not climb to T2.
         assert claude_alias("k-agent-smol", "opus") == "sonnet", "a memory lane must not reach T2 Opus"
-        # Cheaper than its own band is never an escape.
-        assert claude_alias("general-purpose", "sonnet") is None, "an implement lane may ask for T3 Sonnet"
+        assert claude_alias("general-purpose", "sonnet") == "opus", "implementation must keep its assigned model"
 
     def test_the_band_gate_passes_any_explicit_lane_pick_on_a_generic_subagent_type(self) -> None:
         # Most harnesses cannot reach the per-lane profiles at all (Cursor never scans
@@ -848,7 +854,16 @@ class TestModelBandInvariants(unittest.TestCase):
         copilot_research = copilot["agents"]["cursor-guide"]["model"]
         assert copilot_research != copilot_implement
         copilot_model = gate_model(
-            {"tool_name": "task", "tool_input": json.dumps({"agent": "task", "model": copilot_research})},
+            {
+                "tool_name": "task",
+                "tool_input": json.dumps(
+                    {
+                        "agent": "task",
+                        "model": copilot_research,
+                        "reasoning_effort": copilot["agents"]["cursor-guide"]["effort"],
+                    }
+                ),
+            },
             "copilot",
         )
         assert copilot_model in (None, copilot_research), (

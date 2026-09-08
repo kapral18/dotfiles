@@ -344,7 +344,10 @@ TEST_RULES: tuple[TestRule, ...] = (
         tests=("tests/test_ai_usage.py",),
     ),
     TestRule(prefixes=("home/exact_lib/exact_,wh/",), tests=("tests/test_wh.py",)),
-    TestRule(prefixes=("home/exact_lib/exact_,codex-adapter/",), tests=("tests/test_codex_adapter.py",)),
+    TestRule(
+        prefixes=("home/exact_lib/exact_,codex-adapter/",),
+        tests=("tests/test_codex_adapter.py", "tests/test_copilot_adapter.py"),
+    ),
     TestRule(prefixes=("home/exact_lib/exact_,copilot-adapter/",), tests=("tests/test_copilot_adapter.py",)),
     TestRule(prefixes=("home/exact_lib/exact_,cursor-agent-shim/",), tests=("tests/test_cursor_agent_shim.py",)),
     TestRule(prefixes=("home/exact_lib/exact_,ai/", "home/exact_bin/executable_,ai"), tests=("test_ai_launcher.py",)),
@@ -365,6 +368,14 @@ TEST_RULES: tuple[TestRule, ...] = (
 )
 
 EXTRA_TESTS: tuple[ExtraTest, ...] = (
+    ExtraTest(
+        name="omp-runtime-parity",
+        argv=("bun", "test", "scripts/tests/omp_runtime_parity.test.ts"),
+        prefixes=(
+            "scripts/tests/omp_runtime_parity.test.ts",
+            "home/dot_omp/private_agent/extensions/runtime-parity.ts",
+        ),
+    ),
     ExtraTest(
         name="fish-history-merge",
         argv=("python3", "home/exact_lib/exact_,history-sync/fish-history-merge.test.py", "-v"),

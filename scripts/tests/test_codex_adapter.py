@@ -28,8 +28,10 @@ import main  # noqa: E402
 from protocols import (  # noqa: E402
     aggregate_responses,
     anthropic_to_responses,
+    claude_lane_environment,
     collect_anthropic_message,
     iter_sse_json,
+    load_lane_routes,
     prepare_responses_request,
     responses_to_anthropic_events,
     responses_to_chat_events,
@@ -264,9 +266,15 @@ class TestLauncherOptions(unittest.TestCase):
         thread = mock.Mock()
         credentials = mock.Mock()
         auth_provider = mock.Mock(return_value=credentials)
-        child = mock.Mock(return_value=(["/usr/bin/copilot"], {"PATH": "/usr/bin"}))
+        child = mock.Mock(
+            return_value=(
+                ["/usr/bin/copilot"],
+                {"PATH": "/usr/bin", "AGENT_BAND_MODEL_OVERRIDE": "stale", "AGENT_BAND_MODEL_FORMAT": "stale"},
+            )
+        )
 
         with (
+            mock.patch("main.load_lane_routes", return_value={}),
             mock.patch("main.resolve_model_context_window", return_value=272_000) as resolve_context,
             mock.patch("main.harness_binary", return_value="/usr/bin/copilot"),
             mock.patch("main.codex_binary", return_value="/usr/bin/codex"),
@@ -275,7 +283,7 @@ class TestLauncherOptions(unittest.TestCase):
             mock.patch("main.start_server", return_value=(server, thread)),
             mock.patch("main.secrets.token_urlsafe", return_value="local-token"),
             mock.patch("main.child_command", child),
-            mock.patch("main.run_child", return_value=0),
+            mock.patch("main.run_child", return_value=0) as run_child,
         ):
             result = main.launch(
                 "copilot",
@@ -283,6 +291,11 @@ class TestLauncherOptions(unittest.TestCase):
             )
 
         self.assertEqual(result, 0)
+        launched_env = run_child.call_args.args[1]
+        self.assertEqual(launched_env["AGENT_BAND_SUBSCRIPTION"], "codex")
+        self.assertEqual(launched_env["AGENT_BAND_SCHEMA_HARNESS"], "codex")
+        self.assertNotIn("AGENT_BAND_MODEL_OVERRIDE", launched_env)
+        self.assertNotIn("AGENT_BAND_MODEL_FORMAT", launched_env)
         resolve_context.assert_called_once_with("gpt-selected")
         child.assert_called_once_with(
             "copilot",
@@ -788,6 +801,49 @@ class TestAnthropicResponseTranslation(unittest.TestCase):
             )
 
 
+class TestSubscriptionLaneProjection(unittest.TestCase):
+    """WHEN a Claude frontend has fewer aliases than backend model/effort pairs."""
+
+    def test_SHOULD_reject_missing_or_malformed_lane_maps(self) -> None:
+        cases = (
+            [],
+            {},
+            {"harnesses": []},
+            {"harnesses": {"fixture": {"agents": []}}},
+            {"harnesses": {"fixture": {"agents": {}}}},
+            {"harnesses": {"fixture": {"agents": {"worker": None}}}},
+            {"harnesses": {"fixture": {"agents": {"worker": {"model": "m", "effort": None}}}}},
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "bands.json"
+            with mock.patch.dict(os.environ, {"AGENT_BANDS_FILE": str(path)}):
+                for value in cases:
+                    with self.subTest(value=value):
+                        path.write_text(json.dumps(value))
+                        with self.assertRaises(ValueError):
+                            load_lane_routes("fixture")
+
+    def test_SHOULD_expose_exact_pairs_without_collapsing_an_extra_effort(self) -> None:
+        names = ("k-agent-code-searcher", "general-purpose", "k-agent-smol", "k-agent-adversarial-verifier")
+        picks = (("strong", "xhigh"), ("implement", "high"), ("cheap", "low"), ("counter", "high"))
+        agents = {name: {"model": model, "effort": effort} for name, (model, effort) in zip(names, picks)}
+        agents["cross-review"] = {"model": "counter", "effort": "xhigh"}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "bands.json"
+            path.write_text(json.dumps({"harnesses": {"fixture": {"agents": agents}}}))
+            with mock.patch.dict(os.environ, {"AGENT_BANDS_FILE": str(path)}):
+                routes = load_lane_routes("fixture")
+                env = claude_lane_environment("fixture", routes)
+        self.assertEqual(routes["counter@lane-xhigh"], {"model": "counter", "effort": "xhigh"})
+        self.assertNotIn("counter", routes)
+        self.assertNotIn("cheap", routes)
+        self.assertNotIn("strong", routes)
+        mapped = json.loads(env["AGENT_BAND_CLAUDE_ROUTES"])
+        self.assertEqual(mapped["counter@lane-high"], "haiku")
+        self.assertNotIn("counter@lane-xhigh", mapped)
+        self.assertEqual(env["ANTHROPIC_DEFAULT_OPUS_MODEL"], "implement@lane-high")
+
+
 class TestLoopbackServer(unittest.TestCase):
     """The gateway requires its random local token and exposes Claude token counting."""
 
@@ -874,6 +930,45 @@ class TestLoopbackServer(unittest.TestCase):
         self.assertEqual(sent["model"], "gpt-test")
         self.assertEqual(sent["reasoning"]["effort"], "high")
         self.assertTrue(sent["stream"])
+
+    def test_SHOULD_keep_registered_lanes_and_root_controls_separate_in_every_protocol(self) -> None:
+        self.context.lane_routes.update(
+            {
+                "gpt-cheap@lane-low": {"model": "gpt-cheap", "effort": "low"},
+                "gpt-review@lane-xhigh": {"model": "gpt-review", "effort": "xhigh"},
+                "gpt-test@lane-low": {"model": "gpt-test", "effort": "low"},
+            }
+        )
+        for path in ("/v1/responses", "/v1/messages", "/v1/chat/completions"):
+            for requested, expected, effort in (
+                ("gpt-cheap@lane-low", "gpt-cheap", "low"),
+                ("gpt-review@lane-xhigh", "gpt-review", "xhigh"),
+                ("gpt-test@lane-low", "gpt-test", "low"),
+                ("gpt-test", "gpt-test", "high"),
+                ("gpt-cheap", "gpt-test", "high"),
+                ("gpt-review", "gpt-test", "high"),
+            ):
+                with self.subTest(path=path, requested=requested):
+                    self.fake_client.reset_mock()
+                    self.fake_client.open.return_value = sse_response(*completed_text_events())
+                    body = {
+                        "model": requested,
+                        "input": "hello",
+                        "stream": False,
+                        "max_tokens": 200,
+                        "messages": [{"role": "user", "content": "hello"}],
+                    }
+                    with self.request(path, body) as response:
+                        response.read()
+                    self.fake_client.open.assert_called_once()
+                    sent = self.fake_client.open.call_args.args[0]
+                    self.assertEqual((sent["model"], sent["reasoning"]["effort"]), (expected, effort))
+
+    def test_SHOULD_reject_an_unregistered_lane_without_an_upstream_request(self) -> None:
+        with self.assertRaises(urllib.error.HTTPError) as raised:
+            self.request("/v1/responses", {"model": "gpt-test@lane-ultra", "input": "hello"})
+        self.assertEqual(raised.exception.code, 400)
+        self.fake_client.open.assert_not_called()
 
     def test_SHOULD_aggregate_non_streaming_cursor_chat_request(self) -> None:
         self.fake_client.open.return_value = sse_response(*completed_text_events("cursor"))

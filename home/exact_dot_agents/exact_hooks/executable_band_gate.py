@@ -8,9 +8,8 @@ subagents with no profile at all. This is the backstop that makes the band non-n
 It reads the flattened projection at ``~/.config/ai/agent-bands.v1.json`` (written by
 scripts/generate_agent_bands.py) and rewrites the delegation payload in place. Harnesses disagree
 on both the request and the response shape, so each gets an adapter selected by
-``AGENT_BAND_HARNESS``; an unknown harness, an unbound agent, or a missing projection is a no-op,
-never a block. Refusing a spawn because tiering data is stale would be worse than running it on
-the caller's model.
+``AGENT_BAND_HARNESS``. Known harnesses deny delegations with missing or ambiguous lane data;
+ordinary tools and harnesses with their own runtime adapters are left alone.
 """
 
 from __future__ import annotations
@@ -29,17 +28,14 @@ EFFORT_OVERRIDE_ENV = "AGENT_BAND_EFFORT_OVERRIDE"
 MODEL_FORMAT_ENV = "AGENT_BAND_MODEL_FORMAT"
 THINKING_SUFFIXES = {"off", "minimal", "none", "low", "medium", "high", "xhigh", "max"}
 
-# Claude family aliases ranked by the tier ladder the bands are built on, so the gate can tell an
-# upward escape from a sideways or downward one: `fable` is the T1 thinker (research / review /
-# orchestrate), `opus` the T2 implementer, `sonnet` the T3 cheap lane (mechanical / memory). An
-# unknown alias is treated as above the ceiling: clamp rather than let it through.
-_CLAUDE_RANK = {"haiku": 0, "sonnet": 1, "opus": 2, "fable": 3}
-_CLAUDE_CEILING = max(_CLAUDE_RANK.values()) + 1
+# Native aliases are finite transport slots, not permission to change category capability.
+_CLAUDE_ALIASES = {"haiku", "sonnet", "opus", "fable"}
 
 
 def _load() -> dict[str, Any]:
     try:
-        return json.loads(PROJECTION.read_text(encoding="utf-8"))
+        value = json.loads(PROJECTION.read_text(encoding="utf-8"))
+        return value if isinstance(value, dict) else {}
     except (OSError, ValueError):
         return {}
 
@@ -48,22 +44,49 @@ def _pick(harness: str, agent: str) -> dict[str, Any] | None:
     projection = _load()
     if not projection:
         return None
-    return projection.get("harnesses", {}).get(harness, {}).get("agents", {}).get(agent)
+    try:
+        pick = projection["harnesses"][harness]["agents"].get(agent)
+        return pick if _valid_pick(pick, harness) else None
+    except (KeyError, TypeError, AttributeError):
+        return None
 
 
-def _passthrough_models(harness: str) -> set[str]:
-    """Every registry pick an `implement`-bound generic type may carry explicitly: the refute /
-    cross-family slots, the cheap lanes (mechanical, memory), and — from schema 1.4.0 —
-    `lane_models`, the resolved pick of every bound agent. The first two lists are kept in the
-    union so an older projection still passes those; any list may be missing or empty."""
-    projection = _load()
-    entry = projection.get("harnesses", {}).get(harness, {})
-    models = (
-        list(entry.get("counter_models", []))
-        + list(entry.get("cheap_lane_models", []))
-        + list(entry.get("lane_models", []))
+def _valid_pick(pick: Any, harness: str) -> bool:
+    # Cursor's selector is the complete wire control; its auto lanes have no effort field.
+    # Backend-schema routes must follow the backend contract, not the frontend's exception.
+    keys = ("model",) if harness == "cursor" else ("model", "effort")
+    return isinstance(pick, dict) and all(isinstance(pick.get(key), str) and pick[key] for key in keys)
+
+
+def _generic_pick(harness: str, pick: dict[str, Any], tool_input: dict[str, Any]) -> dict[str, Any]:
+    """Generic workers may carry another lane, but a model alone does not select its effort."""
+    asked = tool_input.get("model")
+    rows = _load().get("harnesses", {}).get(harness, {}).get("agents", {}).values()
+    matches = [row for row in rows if isinstance(row, dict) and row.get("model") == asked]
+    if not matches:
+        return pick
+    if not all(_valid_pick(row, harness) for row in matches):
+        raise ValueError("The requested model has incomplete lane data. Do not guess its effort.")
+    if harness == "cursor":
+        return matches[0]
+    efforts = {row.get("effort") for row in matches}
+    requested = tool_input.get("reasoning_effort")
+    if len(efforts) == 1:
+        return matches[0]
+    if requested in efforts:
+        return next(row for row in matches if row.get("effort") == requested)
+    raise ValueError(
+        "This model serves multiple lane efforts. Supply the assigned category's exact reasoning_effort; do not guess or substitute another lane."
     )
-    return {m for m in models if isinstance(m, str) and m}
+
+
+def _deny(harness: str, reason: str) -> dict[str, Any]:
+    if harness == "cursor":
+        return {"permission": "deny", "user_message": reason}
+    decision = {"permissionDecision": "deny", "permissionDecisionReason": reason}
+    if harness == "copilot":
+        return decision
+    return {"hookSpecificOutput": {"hookEventName": "PreToolUse", **decision}}
 
 
 def _override(harness: str) -> dict[str, Any] | None:
@@ -107,9 +130,8 @@ def _claude_alias_for_backend_model(model: str) -> str | None:
         google / gemini     -> haiku   memory (gemini-3.8-flash low)
 
     Pi's `refute` pick is `openrouter/openai/gpt-5.6-sol`, which the `gpt`/`openai` rule sends to
-    `opus`, so a refute launch on this route runs the T2 sol wire model at high instead of xhigh — a
-    different family than the Anthropic T1 lanes, hence `cross_family (T2 substitute)` rather than
-    degraded.
+    `opus`. That slot carries high instead of xhigh; `_claude` denies the mismatched wire pair
+    rather than substituting the implementation lane for refutation.
     """
     lowered = model.lower()
     if "anthropic" in lowered or "claude" in lowered:
@@ -149,6 +171,27 @@ def _format_pick(pick: dict[str, Any], harness: str, schema_harness: str) -> dic
 
 
 def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]) -> dict[str, Any]:
+    routes_json = os.environ.get("AGENT_BAND_CLAUDE_ROUTES")
+    if routes_json is not None:
+        try:
+            routes = json.loads(routes_json)
+            alias = routes.get(f"{pick.get('model')}@lane-{pick.get('effort')}")
+        except (ValueError, AttributeError):
+            alias = None
+        if not isinstance(alias, str) or alias not in _CLAUDE_ALIASES:
+            return {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": "This subscription route has no exact Claude alias for the assigned model/effort lane. Do not substitute another lane.",
+                }
+            }
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "updatedInput": dict(tool_input, model=alias),
+            }
+        }
     # Claude's Agent tool constrains `model` to the family aliases sonnet|opus|haiku|fable
     # (claude-code 2.1.222; anything else fails updatedInput schema validation), and each alias
     # resolves through one ANTHROPIC_DEFAULT_*_MODEL. The alias is a lossy projection of the band:
@@ -156,11 +199,19 @@ def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str,
     # T3 mechanical/memory `sonnet`), so effort inside a tier is invisible to the hook — the profile
     # frontmatter's exact id and effort are what hold that, and they win whenever no `model` is passed.
     #
-    # What the hook can still enforce is the ceiling: clamp whenever the asked alias is MORE
-    # capable than the band's. Comparing rank rather than equality is what stops
-    # `model: "opus"` on a T3 (`sonnet`) agent, which an `asked == alias` early return let through.
+    # Enforce the assigned alias in both directions. A cheaper model is not a valid
+    # replacement for a strong role. Omitted overrides retain the profile's exact id/effort.
     alias = pick.get("alias")
     asked = tool_input.get("model")
+    wire = os.environ.get(f"ANTHROPIC_DEFAULT_{str(alias).upper()}_MODEL")
+    if os.environ.get(MODEL_FORMAT_ENV) == "openrouter-preset" and wire != pick.get("model"):
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": "The OpenRouter Claude alias does not carry the assigned model/effort pair. Do not substitute its other lane.",
+            }
+        }
     if pick.get("force_alias") and alias and asked != alias:
         return {
             "hookSpecificOutput": {
@@ -169,9 +220,6 @@ def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str,
             }
         }
     if not alias or not isinstance(asked, str) or asked == alias:
-        return {}
-    if _CLAUDE_RANK.get(asked, _CLAUDE_CEILING) <= _CLAUDE_RANK.get(alias, 0):
-        # An in-band or cheaper alias: the caller is not escaping upward, so leave it alone.
         return {}
     return {
         "hookSpecificOutput": {
@@ -280,13 +328,34 @@ def main() -> int:
         print("{}")
         return 0
 
+    if os.environ.get("AGENT_BAND_SUBSCRIPTION") and harness != "claude_code":
+        print(
+            json.dumps(
+                _deny(
+                    harness,
+                    "This subscription frontend has no verified explicit child-lane transport. Delegation is disabled on this route; do not substitute the root model for a worker.",
+                )
+            )
+        )
+        return 0
+
     agent = _agent_name(payload, tool_input)
     pick = _pick(schema_harness, agent) if agent else None
     override = _override(harness)
     if override:
         pick = {**(pick or {}), **override}
     if pick is None:
-        print("{}")
+        if harness == "claude_code" and "AGENT_BAND_CLAUDE_ROUTES" in os.environ:
+            print(json.dumps(_claude(payload, {}, tool_input)))
+            return 0
+        print(
+            json.dumps(
+                _deny(
+                    harness,
+                    "No registered category is available for this agent. Do not delegate on an unbound or missing model projection.",
+                )
+            )
+        )
         return 0
 
     # A generic subagent type binds to `implement` (Cursor `generalPurpose`, Codex `worker`,
@@ -295,18 +364,23 @@ def main() -> int:
     # scans ~/.cursor/agents, so the adversarial verifier, the cheap mechanical / k-agent-smol
     # lanes, and the research and review lanes all arrive that way. Rewriting such a launch to
     # the generic type's band would silently collapse the lane onto the implement model, so the
-    # rule is category-aware: on an `implement`-bound type ANY explicit registry lane pick
-    # survives untouched, while a model no lane asked for (or an omitted one) is rewritten to the
+    # rule is category-aware: on an `implement`-bound type an exact registry model/effort pair
+    # survives, while a model no lane asked for (or an omitted one) is rewritten to the
     # implement band. A bound non-generic agent (research, review, memory, ...) asking for
     # another lane's pick is still a matrix bypass and gets rewritten to its own band. Claude
-    # keeps its own alias-rank logic in the adapter.
+    # keeps its own alias projection in the adapter.
     if harness != "claude_code" and not override and pick.get("category") == "implement":
-        asked = tool_input.get("model")
-        if isinstance(asked, str) and asked in _passthrough_models(schema_harness):
-            print("{}")
+        try:
+            pick = _generic_pick(schema_harness, pick, tool_input)
+        except ValueError as error:
+            print(json.dumps(_deny(harness, str(error))))
             return 0
 
     pick = _format_pick(pick, harness, schema_harness)
+    if harness == "cursor" and tool_input.get("model") == pick.get("model"):
+        # Cursor encodes effort in the model selector, not a separate argument.
+        print("{}")
+        return 0
     print(json.dumps(adapter(payload, pick, tool_input) or {}, sort_keys=True))
     return 0
 

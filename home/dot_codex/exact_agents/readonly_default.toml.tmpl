@@ -1,0 +1,16 @@
+name = "default"
+description = "Managed native default leaf; one parent-scoped packet, no child orchestration."
+# Native generic model selection stays with band_gate.py, including explicit
+# registry-backed lane picks. A role model would override those selections.
+model_reasoning_effort = "high"
+service_tier = "default"
+features = { multi_agent = false }
+developer_instructions = """
+{{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
+
+Resolve only the bounded question assigned by the root. This native fallback is a leaf, never another orchestrator.
+
+Read and follow ~/.agents/skills/k-review/references/code-searcher.md.
+
+Never edit files outside the packet's authority, commit, push, publish, or resume another agent.
+"""

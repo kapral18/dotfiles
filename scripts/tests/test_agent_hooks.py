@@ -2086,6 +2086,82 @@ console.log(calls[0][0]);
 
             assert payload["session_id"] == "opencode-session"
 
+    def test_opencode_root_memory_and_leaf_delegation_are_separate(self):
+        extension = REPO / "home/dot_config/opencode/plugins/agent-memory.ts"
+        script = r"""
+import assert from 'node:assert/strict';
+import {mkdtempSync,mkdirSync,writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+const tmp=mkdtempSync('/tmp/opencode-leaf-memory-');process.env.HOME=tmp;
+const dir=join(tmp,'.agents/hooks');mkdirSync(dir,{recursive:true});
+for(const name of ['session_context.py','worklog_dispatcher.sh','perturn_recall.py']) writeFileSync(join(dir,name),'');
+const calls=[];const lookups=[];
+const shell=(strings,...values)=>({quiet(){return this},nothrow(){calls.push(values);return Promise.resolve({stdout:JSON.stringify({hookSpecificOutput:{additionalContext:'ROOT_RECALL'}})})}});
+const client={session:{async get({path}){lookups.push(path.id);if(path.id==='unknown')return {error:{}};return {data:{id:path.id,...(path.id==='child'?{parentID:'root'}:{})}}}}};
+const mod=await import(process.argv[1]);const hooks=await mod.AgentMemoryPlugin({$:shell,directory:tmp,client});
+for(const sessionID of ['root','child','unknown','root','child']) {
+  const output={system:[]};await hooks['experimental.chat.system.transform']({sessionID},output);
+  assert.deepEqual(output.system,sessionID==='root'?['ROOT_RECALL']:[]);
+}
+assert.equal(calls.length,1);assert.deepEqual(lookups,['root','child','unknown']);
+for(const sessionID of ['root','child']) {
+  const output={message:{id:'m'},parts:[{type:'text',text:'meaningful prompt'}]};
+  await hooks['chat.message']({sessionID},output);
+  assert.equal(output.parts.length,sessionID==='root'?2:1);
+}
+assert.equal(calls.length,2);
+await hooks['tool.execute.before']({tool:'task',sessionID:'root'}, {args:{prompt:'ready packet'}});
+for(const sessionID of ['child','unknown']) await assert.rejects(hooks['tool.execute.before']({tool:'task',sessionID},{args:{}}),/cannot delegate/);
+await assert.rejects(hooks['tool.execute.before']({tool:'task',sessionID:'root'},{args:{task_id:'completed'}}),/resume/);
+await hooks['tool.execute.after']({tool:'edit',sessionID:'child',callID:'c',args:{}},{output:'produced'});
+assert.equal(calls.length,3); // Child worklog survives; root recall is not child context.
+console.log('OpenCode root recall, child exclusion, identity failure, task and worklog cases passed');
+"""
+        result = subprocess.run(
+            ["node", "--no-warnings", "--input-type=module", "-e", script, str(extension)],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_opencode_SHOULD_keep_task_guards_when_optional_memory_helpers_are_missing(self):
+        extension = REPO / "home/dot_config/opencode/plugins/agent-memory.ts"
+        script = r"""
+import assert from 'node:assert/strict';
+import {mkdtempSync,mkdirSync,writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+const tmp=mkdtempSync('/tmp/opencode-optional-memory-');
+const mod=await import(process.argv[1]);
+for(let mask=0;mask<8;mask++) {
+  const home=join(tmp,String(mask));process.env.HOME=home;
+  const dir=join(home,'.agents/hooks');mkdirSync(dir,{recursive:true});
+  ['session_context.py','perturn_recall.py','worklog_dispatcher.sh'].forEach((name,index)=>{
+    if(mask & (1<<index))writeFileSync(join(dir,name),'');
+  });
+  const calls=[];
+  const shell=(strings,...values)=>({quiet(){return this},nothrow(){calls.push(values);return Promise.resolve({stdout:JSON.stringify({hookSpecificOutput:{additionalContext:'recall'}})})}});
+  const client={session:{async get({path}){return path.id==='unknown'?{error:{}}:{data:{id:path.id,...(path.id==='child'?{parentID:'root'}:{})}}}}};
+  const hooks=await mod.AgentMemoryPlugin({$:shell,directory:home,client});
+  await hooks['tool.execute.before']({tool:'task',sessionID:'root'},{args:{}});
+  for(const sessionID of ['child','unknown'])await assert.rejects(hooks['tool.execute.before']({tool:'task',sessionID},{args:{}}),/cannot delegate/);
+  await assert.rejects(hooks['tool.execute.before']({tool:'task',sessionID:'root'},{args:{task_id:'done'}}),/resume/);
+  const system={system:[]};await hooks['experimental.chat.system.transform']({sessionID:'root'},system);
+  assert.deepEqual(system.system,mask&1?['recall']:[]);
+  const prompt={message:{id:'m'},parts:[{type:'text',text:'relevant prompt'}]};
+  await hooks['chat.message']({sessionID:'root'},prompt);
+  assert.equal(prompt.parts.length,mask&2?2:1);
+  await hooks['tool.execute.after']({tool:'edit',sessionID:'child',args:{}},{output:'produced'});
+  assert.equal(calls.length,Boolean(mask&1)+Boolean(mask&2)+Boolean(mask&4));
+}
+console.log('all optional-helper combinations retain task guards and available memory');
+"""
+        result = subprocess.run(
+            ["node", "--no-warnings", "--input-type=module", "-e", script, str(extension)],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_opencode_plugin_gates_reads_and_supersedes_older_read_parts(self):
         plugin = REPO / "home/dot_config/opencode/plugins/agent-memory.ts"
         supersede = REPO / "home/dot_config/opencode/plugins/read-supersede.ts"
@@ -2330,7 +2406,9 @@ function makePi() {
   let active = ["read", "bash", "edit", "write"];
   return {
     handlers,
+    events: { on() {} },
     getActiveTools() { return [...active]; },
+    getAllTools() { return active.map(name => ({name})); },
     setActiveTools(tools) { active = [...tools]; },
     on(event, handler) { handlers[event] = handler; }
   };
@@ -2362,7 +2440,7 @@ console.log(JSON.stringify({
                     payload = json.loads(result.stdout)
 
                     assert payload["active"] == ["read", "bash", "edit", "write", "grep", "find", "ls"]
-                    assert payload["toolCallHooked"] is ("dot_omp" in str(extension))
+                    assert payload["toolCallHooked"] is True
                     assert payload["explicit"] == ["read", "bash", "edit", "write"]
 
     def test_runtime_leaf_context_and_peer_send_boundaries(self):
@@ -2372,8 +2450,10 @@ import {mkdtempSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 const tmp=mkdtempSync('/tmp/staged-leaf-runtime-');process.env.HOME=tmp;
 writeFileSync(join(tmp,'AGENTS.md'),'ROOT_SOP_SENTINEL');
+writeFileSync(join(tmp,'leaf.jsonl'),'native-session-fixture');
+const ctx={sessionManager:{getSessionFile:()=>join(tmp,'leaf.jsonl')}};
 const piModule=await import(process.argv[1]);const ompModule=await import(process.argv[2]);
-function register(mod){const handlers={};mod.default({on(name,callback){handlers[name]=callback}});return handlers}
+function register(mod,tools=[]){const handlers={};mod.default({events:{on(){}},getAllTools(){return tools.map(name=>({name}))},on(name,callback){handlers[name]=(event)=>callback(event,ctx)}});return handlers}
 const pi=register(piModule);
 assert((await pi.before_agent_start({systemPrompt:'ordinary root'})).systemPrompt.includes('ROOT_SOP_SENTINEL'));
 assert.equal(await pi.before_agent_start({systemPrompt:'[DELEGATION BOUNDARY]'}),undefined);
@@ -2386,6 +2466,36 @@ assert.equal(omp.tool_call({toolName:'hub',input:{op:'send',name:'server',messag
 assert.equal(omp.tool_call({toolName:'hub',input:{op:'send',name:' server ',message:'input'}}),undefined);
 assert.equal(omp.tool_call({toolName:'hub',input:{op:'list'}}),undefined);
 assert.equal(omp.tool_call({toolName:'bash',input:{command:'true'}}),undefined);
+assert.equal(omp.tool_call({toolName:'bash',input:{command:'true',async:true}}),undefined);
+assert.equal(omp.tool_call({toolName:'hub',input:{op:'start',name:'server'}}),undefined);
+const tools=['yield'];const leaf=register(ompModule,tools);
+for(const toolName of ['bash','eval','python','mcp']) {
+  assert.equal(leaf.tool_call({toolName,input:{async:true}}).block,true);
+  assert.equal(leaf.tool_call({toolName,input:{}}),undefined);
+}
+tools.length=0;
+for(const toolName of ['task','advisor','hub']) assert.equal(leaf.tool_call({toolName,input:{}}).block,true);
+assert.equal(leaf.tool_call({toolName:'yield',input:{data:{produced:'artifact'}}}),undefined);
+const dispatch={agent:'k-agent-implementer',task:'settled packet',acceptance:false,agentScope:'user'};
+for(const extra of [{},{context:'fresh'},{async:true}]) {
+  assert.equal(pi.tool_call({toolName:'subagent',input:{...dispatch,...extra}}),undefined);
+}
+for(const extra of [{acceptance:undefined},{acceptance:'auto'},{acceptance:true},{context:'fork'},
+  {context:'profile'},{model:'expensive:high'},{skills:true},{skill:true},{skill:['k-deep-review']},
+  {skills:['k-code-quality']},{agentScope:undefined},{agentScope:'both'},{agentScope:'project'},{steeringRecovery:true},
+  {workflow:[]},{workflowScript:'while(true){}'},{workflowScriptPath:'/tmp/loop.ts'},
+  {chain:[]},{parallel:[]},{gate:'make check'},{agentContract:{}},
+  {action:'resume'},{action:'steer'},{action:'schedule.create'},{action:'watchdog.configure'}]) {
+  assert.equal(pi.tool_call({toolName:'subagent',input:{...dispatch,...extra}}).block,true,JSON.stringify(extra));
+}
+for(const action of ['list','status','debug.run','stop','interrupt']) {
+  assert.equal(pi.tool_call({toolName:'subagent',input:{action}}),undefined);
+}
+process.env.PI_SUBAGENT_CHILD='1';
+assert.equal(pi.tool_call({toolName:'subagent',input:dispatch}).block,true);
+assert.equal(pi.tool_call({toolName:'subagent',input:{action:'status'}}).block,true);
+assert.equal(pi.tool_call({toolName:'bash',input:{command:'true'}}),undefined);
+delete process.env.PI_SUBAGENT_CHILD;
 console.log('leaf-context and peer/process-send cases passed');
 """
         result = subprocess.run(
@@ -3788,19 +3898,45 @@ class BandGateTests(unittest.TestCase):
         "harnesses": {
             "claude_code": {
                 "agents": {
-                    "Explore": {"category": "research", "model": "claude-fable-5-1", "alias": "fable"},
-                    "searcher": {"category": "mechanical", "model": "claude-haiku-4-5", "alias": "haiku"},
-                    "k-agent-reviewer": {"category": "review", "model": "claude-fable-5-1", "alias": "fable"},
+                    "Explore": {
+                        "category": "research",
+                        "model": "claude-fable-5-1",
+                        "alias": "fable",
+                        "effort": "high",
+                    },
+                    "searcher": {
+                        "category": "mechanical",
+                        "model": "claude-haiku-4-5",
+                        "alias": "haiku",
+                        "effort": "low",
+                    },
+                    "k-agent-reviewer": {
+                        "category": "review",
+                        "model": "claude-fable-5-1",
+                        "alias": "fable",
+                        "effort": "high",
+                    },
                     "k-agent-adversarial-verifier": {
                         "category": "refute",
                         "model": "claude-fable-5-1",
                         "alias": "fable",
+                        "effort": "high",
                     },
-                    "k-agent-smol": {"category": "memory", "model": "claude-sonnet-5", "alias": "sonnet"},
-                    "general-purpose": {"category": "implement", "model": "claude-opus-5", "alias": "opus"},
+                    "k-agent-smol": {
+                        "category": "memory",
+                        "model": "claude-sonnet-5",
+                        "alias": "sonnet",
+                        "effort": "low",
+                    },
+                    "general-purpose": {
+                        "category": "implement",
+                        "model": "claude-opus-5",
+                        "alias": "opus",
+                        "effort": "high",
+                    },
                 }
             },
-            "cursor": {"agents": {"bugbot": {"category": "review", "model": "claude-opus-5-high"}}},
+            "cursor": {"agents": {"bugbot": {"category": "review", "model": "claude-opus-5-high", "effort": "high"}}},
             "codex": {"agents": {"explorer": {"category": "research", "model": "gpt-5.4", "effort": "high"}}},
             "copilot": {
                 "agents": {
@@ -3849,6 +3985,8 @@ class BandGateTests(unittest.TestCase):
                 "AGENT_BAND_EFFORT_OVERRIDE",
                 "AGENT_BAND_SCHEMA_HARNESS",
                 "AGENT_BAND_MODEL_FORMAT",
+                "AGENT_BAND_CLAUDE_ROUTES",
+                "AGENT_BAND_SUBSCRIPTION",
             }
             env = {key: value for key, value in os.environ.items() if key not in excluded_env}
             env.update(override or {})
@@ -3873,6 +4011,53 @@ class BandGateTests(unittest.TestCase):
         )
         self.assertEqual(answer["hookSpecificOutput"]["permissionDecision"], "allow")
         self.assertIn("model", answer["hookSpecificOutput"]["updatedInput"])
+
+    def test_subscription_claude_alias_requires_the_exact_model_and_effort(self):
+        projection = {
+            "harnesses": {
+                "codex": {
+                    "agents": {
+                        "worker": {"category": "implement", "model": "gpt-cheap", "effort": "high"},
+                    }
+                }
+            }
+        }
+        payload = {"tool_name": "Agent", "tool_input": {"subagent_type": "worker", "prompt": "edit", "model": "fable"}}
+        for mapped, expected in (
+            ({"gpt-cheap@lane-high": "sonnet"}, "sonnet"),
+            ({"gpt-cheap@lane-low": "sonnet"}, None),
+        ):
+            with self.subTest(mapped=mapped):
+                result = self.gate(
+                    "claude_code",
+                    payload,
+                    projection=projection,
+                    override={
+                        "AGENT_BAND_SCHEMA_HARNESS": "codex",
+                        "AGENT_BAND_CLAUDE_ROUTES": json.dumps(mapped),
+                    },
+                )["hookSpecificOutput"]
+                if expected:
+                    self.assertEqual(result["updatedInput"], dict(payload["tool_input"], model=expected))
+                else:
+                    self.assertEqual(result["permissionDecision"], "deny")
+                    self.assertNotIn("updatedInput", result)
+
+    def test_openrouter_claude_rejects_the_refute_effort_substitution(self):
+        result = self.gate(
+            "claude_code",
+            {
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": "k-agent-adversarial-verifier", "prompt": "challenge"},
+            },
+            override={
+                "AGENT_BAND_SCHEMA_HARNESS": "pi",
+                "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
+                "ANTHROPIC_DEFAULT_OPUS_MODEL": "openai/gpt-5.6-sol@preset/effort-high",
+            },
+        )["hookSpecificOutput"]
+        self.assertEqual(result["permissionDecision"], "deny")
+        self.assertNotIn("updatedInput", result)
 
     def test_codex_rewrites_spawn_agent_model_and_effort_with_an_allow_decision(self):
         # codex 0.146.0 drops updatedInput unless permissionDecision is allow.
@@ -3904,14 +4089,13 @@ class BandGateTests(unittest.TestCase):
             {"tool_name": "Agent", "tool_input": {"subagent_type": "general-purpose", "model": "fable"}},
         )
         self.assertEqual(escape["hookSpecificOutput"]["updatedInput"]["model"], "opus")
-        # The other direction is a downgrade: a T1 agent asking for the T2 implement alias is
-        # cheaper than its band, which is not the leak this gate closes.
+        # A strong category cannot be downgraded merely to save on its assigned judgment.
         self.assertEqual(
             self.gate(
                 "claude_code",
                 {"tool_name": "Agent", "tool_input": {"subagent_type": "Explore", "model": "opus"}},
-            ),
-            {},
+            )["hookSpecificOutput"]["updatedInput"]["model"],
+            "fable",
         )
 
     def test_deployed_claude_projection_clamps_upward_alias_escapes(self):
@@ -3924,14 +4108,14 @@ class BandGateTests(unittest.TestCase):
                     projection=projection,
                 )
                 self.assertEqual(answer["hookSpecificOutput"]["updatedInput"]["model"], clamped)
-        # `Explore` is a T1 `fable` agent, so asking for T2 `opus` is a downgrade and passes.
+        # The capability floor matters as well as the spending ceiling.
         self.assertEqual(
             self.gate(
                 "claude_code",
                 {"tool_name": "Agent", "tool_input": {"subagent_type": "Explore", "model": "opus"}},
                 projection=projection,
-            ),
-            {},
+            )["hookSpecificOutput"]["updatedInput"]["model"],
+            "fable",
         )
 
     def test_claude_leaves_an_unqualified_call_alone_so_the_profile_keeps_the_exact_id(self):
@@ -3956,15 +4140,13 @@ class BandGateTests(unittest.TestCase):
                 )
                 self.assertEqual(answer["hookSpecificOutput"]["updatedInput"]["model"], "haiku")
 
-    def test_claude_leaves_a_downward_alias_choice_alone(self):
-        # Bands are cost ceilings, not floors: a caller asking for something cheaper than the band
-        # is not the leak this gate exists to close.
+    def test_claude_SHOULD_preserve_strong_review_capability_against_a_cheaper_override(self):
         self.assertEqual(
             self.gate(
                 "claude_code",
                 {"tool_name": "Agent", "tool_input": {"subagent_type": "k-agent-reviewer", "model": "haiku"}},
-            ),
-            {},
+            )["hookSpecificOutput"]["updatedInput"]["model"],
+            "fable",
         )
 
     def test_claude_cannot_separate_bands_sharing_an_alias_and_says_so(self):
@@ -4076,16 +4258,24 @@ class BandGateTests(unittest.TestCase):
         answer = self.gate(
             "claude_code",
             {"tool_name": "Agent", "tool_input": {"subagent_type": "explorer", "prompt": "p"}},
-            override={"AGENT_BAND_SCHEMA_HARNESS": "pi", "AGENT_BAND_MODEL_FORMAT": "openrouter-preset"},
+            override={
+                "AGENT_BAND_SCHEMA_HARNESS": "pi",
+                "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
+                "ANTHROPIC_DEFAULT_FABLE_MODEL": "anthropic/claude-fable-5.1@preset/effort-high",
+            },
         )
         self.assertEqual(answer["hookSpecificOutput"]["updatedInput"]["model"], "fable")
 
         verifier = self.gate(
             "claude_code",
             {"tool_name": "Agent", "tool_input": {"subagent_type": "k-agent-adversarial-verifier", "prompt": "p"}},
-            override={"AGENT_BAND_SCHEMA_HARNESS": "pi", "AGENT_BAND_MODEL_FORMAT": "openrouter-preset"},
+            override={
+                "AGENT_BAND_SCHEMA_HARNESS": "pi",
+                "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
+                "ANTHROPIC_DEFAULT_OPUS_MODEL": "openai/gpt-5.6-sol@preset/effort-high",
+            },
         )
-        self.assertEqual(verifier["hookSpecificOutput"]["updatedInput"]["model"], "opus")
+        self.assertEqual(verifier["hookSpecificOutput"]["permissionDecision"], "deny")
 
     def test_deployed_claude_openrouter_projection_maps_the_t2_pick_onto_opus(self):
         # `,claude-openrouter` is a four-alias route by construction (executable_,claude-openrouter
@@ -4093,9 +4283,8 @@ class BandGateTests(unittest.TestCase):
         # `opus` -> gpt-5.6-sol (T2), `sonnet` -> deepseek-v4-flash (T3 mechanical),
         # `haiku` -> gemini-3.8-flash low (memory). This probe pins the projection of the DEPLOYED
         # bands onto those slots, so a slot drift is visible rather than silent. Pi's five picks
-        # share four slots: the refute pick (gpt-5.6-sol xhigh) has none of its own, and the gate's
-        # `gpt`/`openai` rule substitutes the T2 sol wire model for it — still a different family
-        # than the Anthropic T1 lanes, so a refute launch reports `cross_family (T2 substitute)`.
+        # share four slots: the refute pick (gpt-5.6-sol xhigh) has none of its own and must fail
+        # closed, never substitute the implementation slot's high effort.
         projection = json.loads((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_text(encoding="utf-8"))
         agents = projection["harnesses"]["pi"]["agents"]
         for agent, category, alias in (
@@ -4111,9 +4300,31 @@ class BandGateTests(unittest.TestCase):
                     "claude_code",
                     {"tool_name": "Agent", "tool_input": {"subagent_type": agent, "prompt": "p"}},
                     projection=projection,
-                    override={"AGENT_BAND_SCHEMA_HARNESS": "pi", "AGENT_BAND_MODEL_FORMAT": "openrouter-preset"},
+                    override={
+                        "AGENT_BAND_SCHEMA_HARNESS": "pi",
+                        "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
+                        "ANTHROPIC_DEFAULT_FABLE_MODEL": "anthropic/claude-fable-5.1@preset/effort-high",
+                        "ANTHROPIC_DEFAULT_OPUS_MODEL": "openai/gpt-5.6-sol@preset/effort-high",
+                        "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek/deepseek-v4-flash@preset/effort-xhigh",
+                        "ANTHROPIC_DEFAULT_HAIKU_MODEL": "google/gemini-3.8-flash@preset/effort-low",
+                    },
                 )
-                self.assertEqual(alias, answer["hookSpecificOutput"]["updatedInput"]["model"])
+                if category == "refute":
+                    self.assertEqual("deny", answer["hookSpecificOutput"]["permissionDecision"])
+                else:
+                    self.assertEqual(alias, answer["hookSpecificOutput"]["updatedInput"]["model"])
+
+    def test_claude_openrouter_missing_wire_alias_is_denied(self):
+        answer = self.gate(
+            "claude_code",
+            {"tool_name": "Agent", "tool_input": {"subagent_type": "explorer"}},
+            override={
+                "AGENT_BAND_SCHEMA_HARNESS": "pi",
+                "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
+                "ANTHROPIC_DEFAULT_FABLE_MODEL": "",
+            },
+        )
+        self.assertEqual(answer["hookSpecificOutput"]["permissionDecision"], "deny")
 
     def test_a_single_model_route_overrides_every_band_including_unbound_agents(self):
         # A BYOK launcher sells one provider model; a band id that is not that model reaches the
@@ -4159,11 +4370,9 @@ class BandGateTests(unittest.TestCase):
             {},
         )
 
-    def test_the_gate_fails_open_rather_than_blocking_a_delegation(self):
+    def test_the_gate_leaves_ordinary_tools_and_external_adapters_alone(self):
         cases = [
             ("codex", {"tool_name": "Read", "tool_input": {"path": "x"}}, None),
-            ("codex", {"tool_name": "spawn_agent", "tool_input": {"agent_type": "not-bound"}}, None),
-            ("codex", {"tool_name": "spawn_agent", "tool_input": {"message": "no agent named"}}, None),
             ("nosuchharness", {"tool_name": "spawn_agent", "tool_input": {"agent_type": "explorer"}}, None),
             # No adapter exists for Pi (no mutating pre-tool-use hook: its extension API blocks a
             # call, it cannot rewrite the arguments) or for OMP (the `task` tool takes no model
@@ -4171,11 +4380,126 @@ class BandGateTests(unittest.TestCase):
             # than emit a shape the harness would reject.
             ("pi", {"tool_name": "spawn_agent", "tool_input": {"agent_type": "explorer", "message": "go"}}, None),
             ("omp", {"tool_name": "task", "tool_input": {"agent": "task", "prompt": "p"}}, None),
-            ("codex", {"tool_name": "spawn_agent", "tool_input": {"agent_type": "explorer"}}, {}),
         ]
         for harness, payload, projection in cases:
             with self.subTest(harness=harness, payload=payload, projection=projection):
                 self.assertEqual(self.gate(harness, payload, projection), {})
+
+    def test_SHOULD_deny_delegation_without_a_registered_projection_or_role(self):
+        for projection, args in (
+            ({}, {"agent_type": "explorer"}),
+            (None, {"agent_type": "not-bound"}),
+            (None, {}),
+            ({"harnesses": []}, {"agent_type": "explorer"}),
+            (
+                {"harnesses": {"codex": {"agents": {"explorer": {"model": "gpt", "effort": None}}}}},
+                {"agent_type": "explorer"},
+            ),
+        ):
+            with self.subTest(projection=projection, args=args):
+                result = self.gate("codex", {"tool_name": "spawn_agent", "tool_input": args}, projection)
+                self.assertEqual(result["hookSpecificOutput"]["permissionDecision"], "deny")
+
+    def test_SHOULD_enforce_generic_model_effort_pairs_without_collapsing_other_lanes(self):
+        for harness, tool, key in (("codex", "spawn_agent", "agent_type"), ("copilot", "task", "agent_type")):
+            projection = {
+                "harnesses": {
+                    harness: {
+                        "agents": {
+                            "worker": {"category": "implement", "model": "cheap", "effort": "high"},
+                            "research": {"category": "research", "model": "strong", "effort": "high"},
+                            "refute": {"category": "refute", "model": "strong", "effort": "xhigh"},
+                        }
+                    }
+                }
+            }
+            for model, requested, expected in (
+                ("cheap", "low", "high"),
+                ("cheap", None, "high"),
+                ("strong", "high", "high"),
+                ("strong", "xhigh", "xhigh"),
+            ):
+                with self.subTest(harness=harness, model=model, effort=requested):
+                    args = {key: "worker", "model": model, "reasoning_effort": requested, "message": "packet"}
+                    result = self.gate(harness, {"tool_name": tool, "tool_input": args}, projection)
+                    updated = result.get("modifiedArgs") or result["hookSpecificOutput"]["updatedInput"]
+                    self.assertEqual(
+                        (updated["model"], updated["reasoning_effort"], updated["message"]), (model, expected, "packet")
+                    )
+            for effort in (None, "low"):
+                result = self.gate(
+                    harness,
+                    {"tool_name": tool, "tool_input": {key: "worker", "model": "strong", "reasoning_effort": effort}},
+                    projection,
+                )
+                self.assertEqual((result.get("hookSpecificOutput") or result)["permissionDecision"], "deny")
+            projection["harnesses"][harness]["agents"]["research"].pop("effort")
+            result = self.gate(
+                harness, {"tool_name": tool, "tool_input": {key: "worker", "model": "strong"}}, projection
+            )
+            self.assertEqual((result.get("hookSpecificOutput") or result)["permissionDecision"], "deny")
+
+    def test_SHOULD_preserve_cursor_selector_only_lanes_without_weakening_backend_effort(self):
+        projection = {
+            "harnesses": {
+                "cursor": {
+                    "agents": {
+                        "generalPurpose": {"category": "implement", "model": "implement-high", "effort": "high"},
+                        "k-agent-mechanical": {"category": "mechanical", "model": "auto"},
+                        "k-agent-smol": {"category": "memory", "model": "auto"},
+                    }
+                },
+                "codex": {"agents": {"generalPurpose": {"category": "implement", "model": "backend"}}},
+                "copilot": {"agents": {"generalPurpose": {"category": "implement", "model": "backend"}}},
+                "pi": {"agents": {"generalPurpose": {"category": "implement", "model": "openrouter/backend"}}},
+            }
+        }
+        self.assertEqual(
+            self.gate(
+                "cursor",
+                {
+                    "tool_name": "Subagent",
+                    "tool_input": {"subagent_type": "generalPurpose", "model": "auto", "prompt": "packet"},
+                },
+                projection,
+            ),
+            {},
+        )
+        for role in ("k-agent-mechanical", "k-agent-smol"):
+            with self.subTest(role=role):
+                result = self.gate(
+                    "cursor",
+                    {
+                        "tool_name": "Task",
+                        "tool_input": {"subagent_type": role, "model": "expensive", "prompt": "packet"},
+                    },
+                    projection,
+                )
+                self.assertEqual(result["updated_input"], {"subagent_type": role, "model": "auto", "prompt": "packet"})
+        for backend in ("codex", "copilot", "pi"):
+            with self.subTest(backend=backend):
+                result = self.gate(
+                    "cursor",
+                    {"tool_name": "Task", "tool_input": {"subagent_type": "generalPurpose", "model": "auto"}},
+                    projection,
+                    override={"AGENT_BAND_SCHEMA_HARNESS": backend},
+                )
+                self.assertEqual(result["permission"], "deny")
+
+    def test_SHOULD_deny_unverified_subscription_delegation_transports(self):
+        cases = (
+            ("codex", "spawn_agent", "permissionDecision"),
+            ("copilot", "task", "permissionDecision"),
+            ("cursor", "Task", "permission"),
+        )
+        for harness, tool, key in cases:
+            with self.subTest(harness=harness):
+                result = self.gate(
+                    harness,
+                    {"tool_name": tool, "tool_input": {"agent_type": "explore"}},
+                    override={"AGENT_BAND_SUBSCRIPTION": "copilot"},
+                )
+                self.assertEqual((result.get("hookSpecificOutput") or result)[key], "deny")
 
     def test_a_task_name_is_not_mistaken_for_the_role(self):
         # Codex's spawn_agent carries both; task_name is a free-text label.

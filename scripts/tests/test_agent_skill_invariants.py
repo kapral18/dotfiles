@@ -54,13 +54,14 @@ _LAUNCH_OBJECT = re.compile(
 # `start`/`use`/`hand`/`run`/`invoke` are ordinary English ("run the focused tests", "Controller-run
 # lanes are told not to repeat them"), so they only order a launch when a named agent mechanism is
 # their own object: "Run k-agent-code-searcher", "Hand the diff to k-agent-reviewer",
-# "Use the Task tool to start three subagents". A hyphen-attached form is a compound adjective
+# "Use the Task tool to start three subagents" or "Use `task` with this packet".
+# A hyphen-attached form is a compound adjective
 # ("user-invoked hand-off", "model-invoked call"), never an order.
 _NAMED_AGENT_LAUNCH = re.compile(
     r"(?i)(?<![-\w])(start(s|ed|ing)?|use(s|d)?|using|hand(s|ed|ing)?|run(s|ning)?|ran"
     r"|invoke(s|d)?|invoking)\b"
     r"(?:\s+[\w`'\u2019./-]+){0,3}?\s+['\"`]?"
-    r"(task tool|subagents?|k-agent-[a-z-]+)\b"
+    r"(task tool|task(?=[`'\"])|subagents?|k-agent-[a-z-]+)\b"
 )
 # Verbs a prohibition can ban, enumerated or not: "never launch, invoke, or delegate", "does not run".
 _BANNED_VERBS = (
@@ -915,6 +916,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
             "exact_k-ai-kb",
             "exact_k-codebase-design",
             "exact_k-light-review",
+            "exact_k-omp",
             "exact_k-review",
             "exact_k-spec",
             "exact_k-text-tournament",
@@ -951,6 +953,11 @@ class TestAgentSkillInvariants(unittest.TestCase):
             (True, "A staged pointer is not an instruction to launch an agent; spawn k-agent-reviewer now."),
             # Weak verbs and a wrapped object — the five orders the first vocabulary missed.
             (True, "Use the Task tool to start three subagents."),
+            (True, "Use `task` and `hub` for typed agent work and process lifecycle."),
+            (True, "Run the native `task` with a ready packet."),
+            (False, "Use the task state to resume."),
+            (False, "Run the task tests."),
+            (False, "Do not use `task` from a leaf."),
             (True, "Hand the diff to k-agent-reviewer."),
             (True, "Run k-agent-code-searcher over the tree."),
             (True, "Invoke k-agent-reviewer to inspect the diff."),

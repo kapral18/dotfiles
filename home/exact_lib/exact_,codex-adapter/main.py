@@ -16,6 +16,7 @@ from pathlib import Path
 
 from auth import CodexAuth
 from client import CodexClient
+from protocols import claude_lane_environment, load_lane_routes
 from server import AdapterContext, start_server
 from state import OpaqueReasoningStore
 
@@ -42,8 +43,8 @@ Launch {harness} through an owner-authenticated loopback adapter backed by the
 current Codex ChatGPT subscription.
 
 Adapter options:
-  -m, --model ID             Override the model sent to the Codex backend
-      --effort LEVEL         Override reasoning effort
+  -m, --model ID             Select the root Codex backend model
+      --effort LEVEL         Set root reasoning effort; explicit lane tags keep theirs
       --reasoning-effort L   Alias for --effort
   -h, --help                 Show this wrapper help
 
@@ -51,6 +52,8 @@ Effort levels: none, minimal, low, medium, high, xhigh, max, ultra.
 Without --model, the wrapper reads model from the active Codex config.
 Without --effort, the harness-generated effort is preserved. Use -- before an
 underlying harness flag that has the same name as an adapter option.
+Delegation requires verified child-lane transport: supported through Claude aliases;
+disabled on the Cursor and Copilot frontends. Native harness routes are unaffected.
 """
 
 
@@ -297,6 +300,8 @@ def launch(harness: str, argv: list[str]) -> int:
             validate_cursor_forwarded(options.forwarded)
         model = options.model_id or resolve_default_model()
         context_window = resolve_model_context_window(model)
+        lane_routes = load_lane_routes("codex")
+        lane_env = claude_lane_environment("codex", lane_routes) if harness == "claude" else {}
         binary = cursor_binary() if harness == "cursor" else harness_binary(harness)
         refresh_binary = codex_binary()
         credentials = CodexAuth(codex_binary=refresh_binary)
@@ -312,6 +317,7 @@ def launch(harness: str, argv: list[str]) -> int:
         token=token,
         codex=CodexClient(credentials),
         store=OpaqueReasoningStore(),
+        lane_routes=lane_routes,
     )
     server, thread = start_server(context)
     base_url = f"http://127.0.0.1:{server.server_port}"
@@ -328,6 +334,16 @@ def launch(harness: str, argv: list[str]) -> int:
             forwarded,
             context_window,
         )
+        env.update(lane_env)
+        env["AGENT_BAND_SCHEMA_HARNESS"] = "codex"
+        env["AGENT_BAND_SUBSCRIPTION"] = "codex"
+        env.pop("AGENT_BAND_MODEL_FORMAT", None)
+        env.pop("AGENT_BAND_MODEL_OVERRIDE", None)
+        env.pop("AGENT_BAND_EFFORT_OVERRIDE", None)
+        if not lane_env:
+            env.pop("AGENT_BAND_CLAUDE_ROUTES", None)
+        if lane_env:
+            env.pop("CLAUDE_CODE_SUBAGENT_MODEL", None)
         return run_child(command, env)
     finally:
         server.shutdown()

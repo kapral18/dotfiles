@@ -18,6 +18,8 @@
     "~/.local/share/yarn/global/node_modules/pi-subagents"
   ],
   "subagents": {
-    "disableBuiltins": true
+    "disableBuiltins": true,
+    "asyncByDefault": false,
+    "defaultSubagentContext": "fresh"
   }
 }

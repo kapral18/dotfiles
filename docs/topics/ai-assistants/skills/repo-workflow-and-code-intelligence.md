@@ -40,21 +40,23 @@ These skills operate on local repositories, code search, cleanup, external sourc
 
 ## `k-codebase-design`
 
-| Field    | Value                                                                                                |
-| -------- | ---------------------------------------------------------------------------------------------------- |
-| Use when | designing a module interface, deciding a seam, deepening a module, or making code testable           |
-| Source   | [`exact_k-codebase-design`](../../../../home/exact_dot_agents/exact_skills/exact_k-codebase-design/) |
-| Boundary | design vocabulary only; SOP owns compatibility/scope; `k-code-quality` owns implementation style     |
-| Pivots   | receives `k-diagnosing-bugs` architectural handoffs; hands to `k-code-quality-tests` once settled    |
+| Field    | Value                                                                                                                 |
+| -------- | --------------------------------------------------------------------------------------------------------------------- |
+| Use when | designing a module interface, deciding a seam, deepening a module, or making code testable                            |
+| Source   | [`exact_k-codebase-design`](../../../../home/exact_dot_agents/exact_skills/exact_k-codebase-design/)                  |
+| Boundary | design vocabulary only; SOP owns compatibility/scope; `k-code-quality` owns implementation style                      |
+| Pivots   | resolves necessary in-scope diagnostic seam/design questions; `k-code-quality-tests` owns test mechanics once settled |
 
 ## `k-diagnosing-bugs`
 
-| Field    | Value                                                                                                         |
-| -------- | ------------------------------------------------------------------------------------------------------------- |
-| Use when | diagnosing a hard bug, failure, flake, or performance regression — build a tight red loop first               |
-| Source   | [`exact_k-diagnosing-bugs`](../../../../home/exact_dot_agents/exact_skills/exact_k-diagnosing-bugs/)          |
-| Boundary | routes into SOP §3.5 plus SOP State-Machine Verification; not the runtime-truth chain for "is X set up right" |
-| Pivots   | no-correct-seam / architectural post-mortem → `k-codebase-design`; regression test → `k-code-quality-tests`   |
+| Field    | Value                                                                                                                                                        |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Use when | diagnosing a hard bug, failure, flake, or performance regression from source and observed failure evidence                                                   |
+| Source   | [`exact_k-diagnosing-bugs`](../../../../home/exact_dot_agents/exact_skills/exact_k-diagnosing-bugs/)                                                         |
+| Boundary | routes into SOP §3.5 plus SOP State-Machine Verification; not the runtime-truth chain for "is X set up right"                                                |
+| Pivots   | necessary in-scope seam/design question → `k-codebase-design`; authorized regression cases → `k-code-quality-tests`; no automatic post-fix architecture pass |
+
+Reuse existing failure evidence. Source investigation does not require a runnable reproduction first. New probes must resolve a material uncertainty; minimization and competing hypotheses are evidence-driven, not mandatory quotas. Production workers return artifacts without private QA; the root owns one integrated final verification.
 
 ## `k-prototype`
 
@@ -117,13 +119,13 @@ Setup omits dedicated patterns for `.vue`, `.svelte`, `.erb`, and `.hs`. Compoun
 
 ## `k-public-sources`
 
-| Field    | Value                                                                                                                 |
-| -------- | --------------------------------------------------------------------------------------------------------------------- |
-| Use when | inspecting public source, or synthesizing factual claims across multiple public sources                               |
-| Source   | [`exact_k-public-sources`](../../../../home/exact_dot_agents/exact_skills/exact_k-public-sources/)                    |
-| Boundary | explicit repo URLs stay source-first; multi-source synthesis requires quoted primary evidence and a separate verifier |
+| Field    | Value                                                                                                                |
+| -------- | -------------------------------------------------------------------------------------------------------------------- |
+| Use when | inspecting public source, or synthesizing factual claims across multiple public sources                              |
+| Source   | [`exact_k-public-sources`](../../../../home/exact_dot_agents/exact_skills/exact_k-public-sources/)                   |
+| Boundary | explicit repo URLs stay source-first; multi-source synthesis carries primary evidence for one batched final judgment |
 
-The multi-source branch separates candidate finding, independent verification, and deepening. Every numeric literal must occur verbatim in the supporting quote; unsupported claims are rejected without discarding the entity. Deepening sees verified claims only, and every new claim loops back through verification before synthesis or durable `,ai-kb` storage. Cross-family verification is preferred; a fresh same-family verifier is labeled degraded.
+The multi-source branch collects and drafts the requested synthesis in one research assignment, retaining exact source identity, supporting passages and uncertainty. The final Verify stage judges material claims together using those artifacts. Unsupported claims are omitted or qualified; there are no per-claim verifiers, post-verification deepening loops or duplicate source fetches for independence. Final judgment preserves the required capability and reports reduced independence when applicable. Verified reusable insights enter the root's final `,ai-kb` learning batch, not leaf memory workflows.
 
 ## `k-jscpd`
 

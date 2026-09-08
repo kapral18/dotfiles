@@ -161,7 +161,7 @@ test("preToolUsePayload carries the tool name and args the band gate keys on", (
     assert.equal(payload.tool_input.model, "claude-opus-5");
 });
 
-test("bandModifiedArgs returns the gate's modifiedArgs and passes the band env through", async () => {
+test("WHEN the band gate rewrites a lane, bandDecision SHOULD retain modifiedArgs and route environment", async () => {
     const scratch = mkdtempSync(join(tmpdir(), "copilot-agent-memory-band-ok-"));
     const previousSchemaHarness = process.env.AGENT_BAND_SCHEMA_HARNESS;
     const previousModelFormat = process.env.AGENT_BAND_MODEL_FORMAT;
@@ -171,11 +171,11 @@ test("bandModifiedArgs returns the gate's modifiedArgs and passes the band env t
         const stub = join(scratch, "hook.sh");
         writeFileSync(
             stub,
-            "#!/bin/sh\ncat >/dev/null\nprintf '{\"modifiedArgs\":{\"harness\":\"%s\",\"schema\":\"%s\",\"format\":\"%s\"}}' \"$AGENT_BAND_HARNESS\" \"$AGENT_BAND_SCHEMA_HARNESS\" \"$AGENT_BAND_MODEL_FORMAT\"\n",
+            "#!/bin/sh\ncat >/dev/null\nprintf '{\"modifiedArgs\":{\"model\":\"pinned\",\"harness\":\"%s\",\"schema\":\"%s\",\"format\":\"%s\"}}' \"$AGENT_BAND_HARNESS\" \"$AGENT_BAND_SCHEMA_HARNESS\" \"$AGENT_BAND_MODEL_FORMAT\"\n",
         );
         chmodSync(stub, 0o755);
-        const modifiedArgs = await mod.bandModifiedArgs(stub, { tool_name: "task" });
-        assert.deepEqual(modifiedArgs, { harness: "copilot", schema: "pi", format: "openrouter-preset" });
+        const decision = await mod.bandDecision(stub, { tool_name: "task" });
+        assert.deepEqual(decision, { modifiedArgs: { model: "pinned", harness: "copilot", schema: "pi", format: "openrouter-preset" } });
     } finally {
         if (previousSchemaHarness == null) {
             delete process.env.AGENT_BAND_SCHEMA_HARNESS;
@@ -191,26 +191,33 @@ test("bandModifiedArgs returns the gate's modifiedArgs and passes the band env t
     }
 });
 
-test("bandModifiedArgs fails open on a missing gate, a nonzero exit, and an empty answer", async () => {
+test("WHEN the band gate fails, bandDecision SHOULD deny instead of delegating unchecked", async () => {
     const payload = { tool_name: "task" };
-    assert.equal(await mod.bandModifiedArgs(join(here, "no-such-band-gate.py"), payload), undefined);
+    assert.equal((await mod.bandDecision(join(here, "no-such-band-gate.py"), payload)).permissionDecision, "deny");
     const scratch = mkdtempSync(join(tmpdir(), "copilot-agent-memory-band-fail-"));
     try {
         const failing = join(scratch, "fail.sh");
         writeFileSync(failing, "#!/bin/sh\ncat >/dev/null\nexit 7\n");
         chmodSync(failing, 0o755);
-        assert.equal(await mod.bandModifiedArgs(failing, payload), undefined);
+        assert.equal((await mod.bandDecision(failing, payload)).permissionDecision, "deny");
 
         const silent = join(scratch, "silent.sh");
         writeFileSync(silent, "#!/bin/sh\ncat >/dev/null\nprintf '%s' '{}'\n");
         chmodSync(silent, 0o755);
-        assert.equal(await mod.bandModifiedArgs(silent, payload), undefined);
+        assert.equal((await mod.bandDecision(silent, payload)).permissionDecision, "deny");
+        for (const reply of ['{"permissionDecision":"deny","permissionDecisionReason":"exact lane unavailable"}',
+                             '{"modifiedArgs":[]}', '{"modifiedArgs":{}}', 'invalid']) {
+            writeFileSync(silent, `#!/bin/sh\ncat >/dev/null\nprintf '%s' '${reply}'\n`);
+            const decision = await mod.bandDecision(silent, payload);
+            assert.equal(decision.permissionDecision, "deny");
+            if (reply.includes("exact lane unavailable")) assert.equal(decision.permissionDecisionReason, "exact lane unavailable");
+        }
     } finally {
         rmSync(scratch, { recursive: true, force: true });
     }
 });
 
-test("bandModifiedArgs never spawns the gate for a non-delegation tool", async () => {
+test("WHEN using an ordinary tool, bandDecision SHOULD not spawn the gate", async () => {
     // The Copilot SDK exposes no matcher on onPreToolUse, so without this filter every Read/Grep/
     // Edit in a session pays for a Python spawn that band_gate.py then no-ops on anyway. The stub
     // writes a marker file, so its absence proves nothing ran.
@@ -222,11 +229,11 @@ test("bandModifiedArgs never spawns the gate for a non-delegation tool", async (
         chmodSync(stub, 0o755);
 
         for (const toolName of [ "Read", "Grep", "Edit", "bash", undefined ]) {
-            assert.equal(await mod.bandModifiedArgs(stub, { tool_name: toolName }), undefined);
+            assert.equal(await mod.bandDecision(stub, { tool_name: toolName }), undefined);
             assert.equal(existsSync(marker), false, `${toolName} spawned the gate`);
         }
 
-        assert.deepEqual(await mod.bandModifiedArgs(stub, { tool_name: "task" }), { model: "x" });
+        assert.deepEqual(await mod.bandDecision(stub, { tool_name: "task" }), { modifiedArgs: { model: "x" } });
         assert.equal(existsSync(marker), true);
     } finally {
         rmSync(scratch, { recursive: true, force: true });

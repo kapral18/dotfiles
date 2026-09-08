@@ -3,6 +3,7 @@ description = "Strong final adversarial judgment of the frozen artifact and assi
 model = "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "codex" "agent" "k-agent-adversarial-verifier") }}"
 model_reasoning_effort = "high"
 service_tier = "default"
+features = { multi_agent = false }
 developer_instructions = """
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
 

@@ -80,11 +80,11 @@ def build() -> dict:
         # that slot actually applied (`cross_applied`) — a degraded aux slot resolves to the primary
         # lane model, and projecting that as a counter would hand the gate's counter pass-through a
         # primary model. Cheap-lane models: mechanical and memory. Both lists stay in the projection
-        # because the docs and invariants read them by name, but the gate's pass-through is the wider
-        # `lane_models`: every bound agent's resolved pick. A lane whose profile is unreachable on a
+        # because docs and invariants read them by name. The gate matches complete `agents` rows,
+        # not these model-only inventories. A lane whose profile is unreachable on a
         # harness (Cursor never scans ~/.cursor/agents) is dispatched as the generic `implement` type
         # carrying its registry pick, and that holds for the research and review lanes too, not just
-        # the counter and cheap ones — so the gate needs the whole set of lane picks to tell an
+        # the counter and cheap ones — so the gate needs the whole set of lane rows to tell an
         # explicit registry choice from a model nobody in the matrix asked for.
         counter = []
         cheap = []

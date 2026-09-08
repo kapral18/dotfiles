@@ -173,6 +173,14 @@ class PolicyIRTest(unittest.TestCase):
 
 
 class CapabilitySnapshotTest(unittest.TestCase):
+    def test_SHOULD_cover_managed_native_harnesses_beyond_the_unified_launcher(self):
+        snapshot = capabilities.load_snapshot(REPO)
+        self.assertTrue(
+            {"claude", "codex", "cursor", "copilot", "opencode", "pi", "omp", "gemini", "crush"} <= snapshot.keys()
+        )
+        for harness in ("pi", "omp", "opencode"):
+            self.assertTrue(capabilities.hook_support_at_least(snapshot[harness].hook_support, "blocking"), harness)
+
     """WHEN a rule claims a harness capability the snapshot must prove or reject."""
 
     def test_pi_blocking_snapshot_admits_hook_rules_without_claiming_mutation(self):
@@ -1359,6 +1367,16 @@ class EvalScaffoldTest(unittest.TestCase):
         rules = ir.load_legacy_sop(REPO)
         return compiler._build_manifest(rules, ir.render(rules))
 
+    def _matrix_expectations(self) -> tuple[int, int, int, tuple[str, ...]]:
+        matrix = evals._load_matrix(REPO / "scripts/tests/fixtures/ai_policy_eval/matrix.yaml")
+        static = {"claude", "codex", "copilot", "omp"}
+        runtime = ("crush", "cursor", "gemini", "generic", "opencode", "pi")
+        snapshot = json.loads((REPO / capabilities.SNAPSHOT_PATH).read_text())
+        assert set(matrix["harnesses"]) == static | set(runtime) == {row["harness"] for row in snapshot["harnesses"]}
+        assert matrix["agent_roles"] == ["main-session", "subagent-static-pinned"]
+        per_role = len(matrix["frontier_models"]) * len(matrix["scenarios"]) * sum(matrix["repetitions"])
+        return per_role * (2 * len(static) + len(runtime)), per_role * len(runtime), per_role, runtime
+
     def test_plan_reports_cross_product_without_authorized_spend(self):
         matrix = REPO / "scripts/tests/fixtures/ai_policy_eval/matrix.yaml"
         with tempfile.TemporaryDirectory() as tmp:
@@ -1377,34 +1395,38 @@ class EvalScaffoldTest(unittest.TestCase):
                 ],
             )
         assert code == 0
-        assert report["cell_count"] == 4752
-        assert report["estimated_requests"] == 4752
-        assert report["estimated_input_tokens"] == 19_008_000
-        assert report["estimated_output_tokens"] == 4_752_000
-        assert report["estimated_total_tokens"] == 23_760_000
-        assert report["unsupported_cell_count"] == 1584
+        supported, unsupported, per_role, runtime = self._matrix_expectations()
+        assert report["cell_count"] == supported
+        assert report["estimated_requests"] == supported
+        assert report["estimated_input_tokens"] == supported * 4000
+        assert report["estimated_output_tokens"] == supported * 1000
+        assert report["estimated_total_tokens"] == supported * 5000
+        assert report["unsupported_cell_count"] == unsupported
         assert "unsupported_cells" not in report
-        # Codex and Copilot leave this list because their subagents have statically pinned models.
-        # Antigravity exposes only runtime dynamic-subagent model tiers.
+        # Runtime-only bindings cannot satisfy a statically pinned child scenario.
         expected_unsupported = [
             {
                 "reason": "subagent_model_binding is 'runtime', not 'static'",
                 "harness": harness,
                 "agent_role": "subagent-static-pinned",
-                "count": 396,
+                "count": per_role,
             }
-            for harness in ("cursor", "gemini", "generic", "opencode")
+            for harness in runtime
         ]
         assert report["unsupported_summary"] == expected_unsupported
         assert sum(item["count"] for item in report["unsupported_summary"]) == report["unsupported_cell_count"]
-        assert report["risk_tiers"]["scenario_counts"]["standard"] == 72
-        assert report["risk_tiers"]["cell_counts"]["safety"] == 288
+        tiers = [record["risk_tier"] for record in self._computed_manifest()["rules"]]
+        assert report["risk_tiers"]["scenario_counts"]["standard"] == tiers.count("standard") * 3
+        assert report["risk_tiers"]["cell_counts"]["safety"] == tiers.count("safety") * 3 * supported // (
+            len(tiers) * 3
+        )
         assert report["risk_tiers"]["unknown_rule_ids"] == []
         assert report["max_authorized_spend"] is None
         assert report["authorization_status"].startswith("not authorized")
 
     def test_verify_modes_report_blocked_without_live_requests(self):
         matrix = REPO / "scripts/tests/fixtures/ai_policy_eval/matrix.yaml"
+        supported, unsupported, _, _ = self._matrix_expectations()
         for command in (
             [
                 "verify-routing",
@@ -1432,9 +1454,9 @@ class EvalScaffoldTest(unittest.TestCase):
             code, report = self._capture_json(evals.main, command)
             assert code == 2
             assert report["unblocked_count"] == 0
-            assert report["blocked_count"] == 4752
-            assert report["unsupported_cell_count"] == 1584
-            assert sum(item["count"] for item in report["unsupported_summary"]) == 1584
+            assert report["blocked_count"] == supported
+            assert report["unsupported_cell_count"] == unsupported
+            assert sum(item["count"] for item in report["unsupported_summary"]) == unsupported
             assert {cell["status"] for cell in report["cells"]} == {"blocked"}
             assert {cell["repetition"] for cell in report["cells"]} == {1}
 

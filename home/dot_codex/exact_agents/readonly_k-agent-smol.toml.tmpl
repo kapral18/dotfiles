@@ -3,6 +3,7 @@ description = "Operate ,ai-kb in an isolated context. Judge staged per-turn reca
 model = "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "codex" "agent" "k-agent-smol") }}"
 model_reasoning_effort = "high"
 service_tier = "default"
+features = { multi_agent = false }
 developer_instructions = """
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
 

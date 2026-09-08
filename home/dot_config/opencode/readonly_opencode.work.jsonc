@@ -3,6 +3,7 @@
   "small_model": "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max",
   "share": "disabled",
   "autoupdate": false,
+  "subagent_depth": 1,
   "permission": {
     "edit": "allow",
     "bash": "allow",
@@ -10,6 +11,7 @@
     "skill": "allow",
     "external_directory": "allow",
     "doom_loop": "ask",
+    "task": "deny",
   },
   "agent": {
     "plan": {
@@ -24,33 +26,45 @@
     "general": {
       "disable": true,
     },
+    "scout": {
+      "disable": true,
+    },
     "main": {
-      "description": "Main workflow agent. Can invoke sub-agents as needed to accomplish independent tasks.",
+      "description": "Root workflow agent. Dispatch only ready implementation packets; own all stages and final verification.",
       "mode": "primary",
+      "permission": { "task": { "*": "deny", "worker_*": "allow" } },
       "model": "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max",
       "reasoning_effort": "max",
     },
     "worker_a": {
       "description": "Implements tasks and reports concise results back to main agent",
       "mode": "subagent",
+      "prompt": "{file:~/.config/tmux/agent_prompts/leaf-boundary.txt}",
+      "permission": { "task": "deny" },
       "model": "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max",
       "reasoning_effort": "max",
     },
     "worker_b": {
       "description": "Second implementer for parallel work, reports concise results back to main agent",
       "mode": "subagent",
+      "prompt": "{file:~/.config/tmux/agent_prompts/leaf-boundary.txt}",
+      "permission": { "task": "deny" },
       "model": "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max",
       "reasoning_effort": "max",
     },
     "worker_c": {
       "description": "Third implementer for parallel work, reports concise results back to main agent",
       "mode": "subagent",
+      "prompt": "{file:~/.config/tmux/agent_prompts/leaf-boundary.txt}",
+      "permission": { "task": "deny" },
       "model": "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max",
       "reasoning_effort": "max",
     },
     "worker_d": {
       "description": "Fourth implementer for parallel work, reports concise results back to main agent",
       "mode": "subagent",
+      "prompt": "{file:~/.config/tmux/agent_prompts/leaf-boundary.txt}",
+      "permission": { "task": "deny" },
       "model": "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max",
       "reasoning_effort": "max",
     },

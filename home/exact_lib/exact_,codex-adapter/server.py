@@ -6,7 +6,7 @@ import hmac
 import json
 import sys
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Iterable
@@ -24,6 +24,7 @@ from protocols import (
     prepare_responses_request,
     responses_to_anthropic_events,
     responses_to_chat_events,
+    subscription_lane,
 )
 from state import OpaqueReasoningStore
 
@@ -37,6 +38,7 @@ class AdapterContext:
     token: str
     codex: CodexClient
     store: OpaqueReasoningStore
+    lane_routes: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 class AdapterServer(ThreadingHTTPServer):
@@ -187,11 +189,12 @@ class AdapterHandler(BaseHTTPRequestHandler):
         )
 
     def _responses(self, body: dict[str, Any]) -> None:
+        lane = subscription_lane(body.get("model"), self.context.lane_routes)
         wants_stream = body.get("stream") is True
         payload = prepare_responses_request(
             body,
-            model_override=self.context.model,
-            effort_override=self.context.effort,
+            model_override=lane["model"] if lane else self.context.model,
+            effort_override=lane["effort"] if lane else self.context.effort,
         )
         upstream = self.context.codex.open(payload)
         try:
@@ -204,18 +207,19 @@ class AdapterHandler(BaseHTTPRequestHandler):
             upstream.close()
 
     def _anthropic(self, body: dict[str, Any]) -> None:
+        lane = subscription_lane(body.get("model"), self.context.lane_routes)
         wants_stream = body.get("stream") is True
         payload = anthropic_to_responses(
             body,
-            model_override=self.context.model,
-            effort_override=self.context.effort,
+            model_override=lane["model"] if lane else self.context.model,
+            effort_override=lane["effort"] if lane else self.context.effort,
             store=self.context.store,
         )
         upstream = self.context.codex.open(payload)
         try:
             events = responses_to_anthropic_events(
                 iter_sse_json(upstream),
-                self.context.model,
+                payload["model"],
                 self.context.store,
             )
             if wants_stream:
@@ -226,20 +230,21 @@ class AdapterHandler(BaseHTTPRequestHandler):
             upstream.close()
 
     def _chat(self, body: dict[str, Any]) -> None:
+        lane = subscription_lane(body.get("model"), self.context.lane_routes)
         wants_stream = body.get("stream") is True
         payload = chat_to_responses(
             body,
-            model_override=self.context.model,
-            effort_override=self.context.effort,
+            model_override=lane["model"] if lane else self.context.model,
+            effort_override=lane["effort"] if lane else self.context.effort,
             store=self.context.store,
         )
         upstream = self.context.codex.open(payload)
         try:
             events = iter_sse_json(upstream)
             if wants_stream:
-                self._write_stream(responses_to_chat_events(events, self.context.model, self.context.store))
+                self._write_stream(responses_to_chat_events(events, payload["model"], self.context.store))
             else:
-                self._json(HTTPStatus.OK, collect_chat_completion(events, self.context.model, self.context.store))
+                self._json(HTTPStatus.OK, collect_chat_completion(events, payload["model"], self.context.store))
         finally:
             upstream.close()
 

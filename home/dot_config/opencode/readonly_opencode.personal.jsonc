@@ -4,6 +4,7 @@
   "theme": "catppuccin",
   "share": "disabled",
   "autoupdate": false,
+  "subagent_depth": 1,
   "permission": {
     "edit": "allow",
     "bash": "allow",
@@ -11,6 +12,7 @@
     "skill": "allow",
     "external_directory": "allow",
     "doom_loop": "ask",
+    "task": "deny",
   },
   "agent": {
     "plan": {
@@ -23,6 +25,9 @@
       "disable": true,
     },
     "general": {
+      "disable": true,
+    },
+    "scout": {
       "disable": true,
     },
     "main": {

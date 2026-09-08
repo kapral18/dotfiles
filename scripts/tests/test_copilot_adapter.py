@@ -317,6 +317,11 @@ class TestChildIsolation(unittest.TestCase):
 class TestLifecycle(unittest.TestCase):
     """WHEN the child exits after an interactive interrupt."""
 
+    def setUp(self) -> None:
+        patcher = mock.patch("main.load_lane_routes", return_value={})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_SHOULD_default_codex_effort_to_medium_when_unspecified(self) -> None:
         selected = model("gpt-5.3-codex", ("/responses",), ("low", "medium", "high"))
         adapter = mock.Mock(server_port=3210)
@@ -324,6 +329,10 @@ class TestLifecycle(unittest.TestCase):
         captured: dict[str, list[str]] = {}
 
         def fake_run_child(command: list[str], _env: dict[str, str]) -> int:
+            self.assertEqual(_env["AGENT_BAND_SUBSCRIPTION"], "copilot")
+            self.assertEqual(_env["AGENT_BAND_SCHEMA_HARNESS"], "copilot")
+            self.assertNotIn("AGENT_BAND_MODEL_OVERRIDE", _env)
+            self.assertNotIn("AGENT_BAND_MODEL_FORMAT", _env)
             captured["command"] = command
             return 0
 
@@ -546,6 +555,77 @@ class TestLoopbackProxy(unittest.TestCase):
         self.assertEqual(self.upstream.request_body, body)
         self.assertEqual(self.upstream.request_headers["Authorization"], "Bearer github-token")
         self.assertEqual(self.upstream.request_headers["Copilot-Integration-Id"], "copilot-developer-cli")
+
+    def test_SHOULD_preserve_registered_child_effort_without_root_thinking(self) -> None:
+        object.__setattr__(self.adapter.context, "effort", "low")
+        object.__setattr__(self.adapter.context, "thinking", "off")
+        self.adapter.context.lane_routes.update(
+            {
+                "gpt-5.3-codex@lane-high": {"model": "gpt-5.3-codex", "effort": "high"},
+                "claude-sonnet-5@lane-high": {"model": "claude-sonnet-5", "effort": "high"},
+            }
+        )
+        cases = (
+            ("/v1/responses", "gpt-5.3-codex@lane-high", "reasoning"),
+            ("/v1/messages", "claude-sonnet-5@lane-high", "output_config"),
+        )
+        for path, requested, effort_key in cases:
+            with self.subTest(path=path):
+                request = urllib.request.Request(
+                    f"http://127.0.0.1:{self.adapter.server_port}{path}",
+                    data=json.dumps({"model": requested, "stream": True}).encode(),
+                    headers={"Authorization": "Bearer local-token", "Content-Type": "application/json"},
+                )
+                with (
+                    mock.patch("copilot_server.api_url", return_value=f"http://127.0.0.1:{self.upstream.server_port}"),
+                    urllib.request.urlopen(request, timeout=5) as response,
+                ):
+                    response.read()
+                sent = json.loads(self.upstream.request_body)
+                self.assertEqual(sent["model"], requested.split("@lane-")[0])
+                self.assertEqual(sent[effort_key]["effort"], "high")
+                self.assertNotEqual(sent.get("thinking", {}).get("type"), "disabled")
+
+    def test_SHOULD_reject_unknown_lane_tags_without_upstream_requests(self) -> None:
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{self.adapter.server_port}/v1/responses",
+            data=b'{"model":"gpt-5.3-codex@lane-invented","stream":true}',
+            headers={"Authorization": "Bearer local-token", "Content-Type": "application/json"},
+        )
+        with mock.patch("copilot_server.api_url") as upstream, self.assertRaises(urllib.error.HTTPError) as caught:
+            urllib.request.urlopen(request, timeout=5)
+        self.assertEqual(caught.exception.code, 502)
+        upstream.assert_not_called()
+
+    def test_SHOULD_preserve_root_effort_when_raw_model_matches_a_different_lane(self) -> None:
+        object.__setattr__(self.adapter.context, "effort", "low")
+        self.adapter.context.lane_routes.update(
+            {
+                "gpt-5.3-codex@lane-high": {"model": "gpt-5.3-codex", "effort": "high"},
+                "claude-sonnet-5@lane-high": {"model": "claude-sonnet-5", "effort": "high"},
+            }
+        )
+        for path, selected, effort_key in (
+            ("/v1/responses", "gpt-5.3-codex", "reasoning"),
+            ("/v1/messages", "claude-sonnet-5", "output_config"),
+        ):
+            with self.subTest(path=path):
+                object.__setattr__(self.adapter.context, "thinking", "off" if path == "/v1/messages" else None)
+                request = urllib.request.Request(
+                    f"http://127.0.0.1:{self.adapter.server_port}{path}",
+                    data=json.dumps({"model": selected, "stream": True}).encode(),
+                    headers={"Authorization": "Bearer local-token", "Content-Type": "application/json"},
+                )
+                with (
+                    mock.patch("copilot_server.api_url", return_value=f"http://127.0.0.1:{self.upstream.server_port}"),
+                    urllib.request.urlopen(request, timeout=5) as response,
+                ):
+                    response.read()
+                sent = json.loads(self.upstream.request_body)
+                self.assertEqual(sent["model"], selected)
+                self.assertEqual(sent[effort_key]["effort"], "low")
+                if path == "/v1/messages":
+                    self.assertEqual(sent["thinking"]["type"], "disabled")
 
     def test_SHOULD_map_messages_and_strip_only_the_unsupported_claude_beta(self) -> None:
         object.__setattr__(self.adapter.context, "effort", "high")

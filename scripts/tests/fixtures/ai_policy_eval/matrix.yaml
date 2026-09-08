@@ -8,6 +8,8 @@ harnesses:
   - "gemini"
   - "copilot"
   - "pi"
+  - "omp"
+  - "crush"
   - "generic"
 frontier_models:
   - "claude-sonnet-5"
