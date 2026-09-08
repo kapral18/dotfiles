@@ -39,23 +39,22 @@ class TestSopPolicyInvariants(unittest.TestCase):
     def test_global_sop_forbids_sliced_context_artifacts(self):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
-            "Composition, review, classification, or human-visible mutation requires complete raw context artifacts",
-            "They must not be slices",
+            "requires complete raw artifacts, never `body[0:N]`",
+            "never `body[0:N]`, `head`, previews, or partial comment lists",
             "body[0:N]",
-            "re-fetch raw/paginated/JSON output",
+            "A summary not verified against full output is a hypothesis.",
         )
 
     def test_global_sop_keeps_binding_contract_and_skill_routing(self):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
-            "This SOP is binding; do not silently weaken it",
-            "Platform/system/developer instructions remain authoritative",
-            "When a `Use when` clause matches, load the referenced skill fresh and follow it as written",
-            "deviate only when the user explicitly overrides or approves the deviation",
-            "This global SOP overrides weaker project-local SOP files",
-            "project-local instructions may add constraints but must not weaken this SOP",
-            "Continue until the user's goal is complete, the recovery rule in §3.5 requires a stop, or a verified blocker/user decision fork remains",
-            "Premature stopping (including checkpoint commentary) and instruction/gate violations are operational failures",
+            "This SOP is binding. Do not weaken it silently.",
+            "Platform/system/developer instructions stay authoritative.",
+            "load that skill file fresh and follow it as written. Memory is not the source.",
+            "Deviate only on explicit user override or approval.",
+            "project-local instructions may add constraints but must not weaken it.",
+            "Continue until the user's goal is complete, §3.5 requires a stop, or a verified blocker/user decision fork remains.",
+            "Premature stopping (including checkpoint commentary) and instruction/gate violations are operational failures.",
         )
 
     def test_delegated_agents_are_leaf_workers(self):
@@ -63,7 +62,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             self.assert_file_contains(
                 policy,
                 "MUST NOT launch, invoke, or delegate to another agent",
-                "A research or production worker MUST NOT run verification, review, audit, refutation, or convergence passes.",
+                "Research/production workers MUST NOT run verification, review, audit, refutation, or convergence.",
                 "A final Verify worker MUST NOT create another lane or repeat a completed check.",
                 "Late events MUST NOT overwrite a terminal result or reopen a completed worker.",
             )
@@ -71,40 +70,34 @@ class TestSopPolicyInvariants(unittest.TestCase):
     def test_global_sop_keeps_truth_runtime_and_completion_gates(self):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
-            "Every implementation summary must include: `Compatibility impact: none | removed (requested) | kept existing (requested)`",
-            "with no shim, alias, wrapper, or deprecation path",
-            "Do not build further reasoning on unverified external behavior",
-            "label hypotheses explicitly and do not let them gate downstream steps",
-            "Probe locally verifiable assumptions/guesses at the dependent step, not when stated",
+            "`Compatibility impact: none | removed (requested) | kept existing (requested)`",
+            "Simplify/remove/replace requested",
+            "Do not build reasoning on unverified external behavior",
+            "5. Probe locally verifiable assumptions/guesses at the dependent step, not when stated.",
             "Resolve material unknowns before proceeding",
-            "Keep `/tmp` clones for reuse",
-            "Use local code search (`rg`), file reads, and `git log`",
-            "Resolve identity before semantics",
-            "CLIs: resolve binary path/provenance, then read `--version` and `--help`",
-            "Libraries: resolve exact package/version from lockfile, import path, and local docs/source",
+            "3. Public source",
+            "1. Identity before semantics",
             "source config or declaration -> rendered/applied config -> runtime consumer -> minimal safe live probe",
-            "Complete the authorized investigation, implementation, and final verification while required work remains doable",
-            "A summary not verified against full output is a hypothesis, not a fact",
-            "Do not rerun unchanged checks without new evidence, weaken acceptance criteria, expand scope, or start speculative polishing.",
+            "never offer verification as an optional next step.",
+            "A summary not verified against full output is a hypothesis.",
+            "Do not rerun unchanged checks without new evidence, weaken criteria, expand scope, or polish speculatively.",
             "Base scope on correctness, evidence, risk, and explicit user constraints",
-            "every numeric literal in the claim must occur verbatim in that quote",
-            "qualify unsupported claims instead of launching per-claim verifier workflows",
+            "7. Anchor synthesis in primary evidence; qualify unsupported claims; do not launch per-claim verifier workflows.",
         )
 
     def test_global_sop_keeps_workflow_and_state_machine_gates(self):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
             "do not load specs broadly",
-            "Keep topics broad/stable; avoid topic explosion",
-            "Ask the single most branch-eliminating question while forks remain",
-            "When repeated attempts reproduce the same failure without new evidence or progress, stop speculative edits and repeated checks.",
+            "Keep topics broad and stable",
+            "Order: investigate read-only",
+            "stop speculative edits and repeated checks.",
             "Scope → Understand → Produce → Verify → Deliver",
-            "Do not relabel post-change verification as a diagnostic or production operation.",
-            "Use deterministic tools directly for check execution",
-            "Prepare the harness during Produce; execute it only in the final Verify stage.",
+            "Research/production workers MUST NOT run acceptance tests",
+            "Run known commands with deterministic tools, not a model turn.",
+            "Do not add a production state-machine framework for this.",
             "Compare against an independent model/table",
-            "Do not introduce a production state-machine framework",
-            "Collect independent planned checks after a failure when useful; skip checks whose prerequisites failed.",
+            "skip checks whose prerequisites failed.",
             "If the candidate changes during Verify, invalidate affected evidence and certify only the revalidated snapshot.",
         )
         self.assert_file_not_contains(
@@ -124,29 +117,24 @@ class TestSopPolicyInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
-            "A separate `,proof` ledger is required only for an explicit receipt request",
-            "Do not create a proof ledger because work is large, runtime-facing, or one check failed.",
-            "Use existing topic state for the stage, scope/snapshot",
-            "final check receipts, and open decisions",
+            '`<cmd> || ,probe fail "<summary>"`',
             "Use the shortest complete shape",
-            "Length is a hard budget per task class, not a vibe",
+            "cut words, never facts.",
             "Direct answer or one-shot question: ≤80 words",
             "Comparison or audit: ≤120 words",
-            "Reach for a density primitive before prose",
+            "Prefer a density primitive to prose",
             "verdict line, delta table, anchor list",
             "emit a 1-line skeleton",
-            "may not restate an item already in an earlier table/list",
-            "Brevity outranks structure; structure must earn its space",
-            "Borrow STE (ASD-STE100 Simplified Technical English) sentence habits only when they shrink text",
-            "Do not rerun unchanged checks without new evidence, weaken acceptance criteria, expand scope, or start speculative polishing.",
+            "full STE only when the user asks for STE or docs compliance.",
+            "Do not rerun unchanged checks without new evidence, weaken criteria, expand scope, or polish speculatively.",
         )
         # The reinforcement excerpt keeps only the hard budgets and the deliverable rule.
         self.assert_file_contains(
             "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
             "[SOP REINFORCEMENT",
             "Direct answer or one-shot question: ≤80 words",
-            "The final message of the turn holds every deliverable",
-            "Do not rerun unchanged checks without new evidence, weaken acceptance criteria, expand scope, or start speculative polishing.",
+            "The final message holds every deliverable",
+            "Do not rerun unchanged checks without new evidence, weaken criteria, expand scope, or polish speculatively.",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-compose-pr/exact_references/readonly_publication-packet.md",
@@ -171,7 +159,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
             ',probe fail "<summary>"',
-            "Passing probes need no record and no separate turn",
+            '`<cmd> || ,probe fail "<summary>"`',
         )
         # The reinforcement excerpt re-injects the producer line after context growth.
         self.assert_file_contains(
@@ -250,22 +238,16 @@ class TestSopPolicyInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
-            "Never `git commit` or `git push` without an explicit request for that action in the current conversation",
+            "NEVER `git commit` or `git push`",
             "content approval is not commit authorization",
-            "Load `k-git` for the full approvals/push policy before any git side effect",
-            "If a human will see the result, draft it, show the exact payload and target, and wait for explicit approval before sending",
-            "Human-authored replies/resolves are supervised: an explicitly directed reply/resolve follows the exact authorization above;",
-            "NEVER send one spontaneously.",
-            "Never publish spontaneously, even to bots.",
-            "User-invoked `k-pr-fix-loop` explicitly approves scoped PR-fix replies/resolves, PR body edits, and needed PR media uploads in that loop only",
-            "Classify authors from platform API evidence, not display-name heuristics",
-            "Classify authors from platform API evidence, not display-name heuristics; verify, do not guess",
-            "Without a verified domain overlay, classify bots only from platform evidence",
-            "does not restrict read-only inspection, local working-tree edits, or `/tmp` work",
-            "Before any action/side effect touching paths in a CODEOWNERS repo, verify affected paths belong to the user's team",
-            "not guessed from wording",
-            "Wording for anyone except the in-session user is centrally owned, not re-derived per surface",
-            "a loaded mechanics skill does not own tone",
+            "wait for explicit approval before sending, unless existing authorization",
+            "NEVER publish spontaneously, even to bots.",
+            "Never stretch a packet to a new target",
+            "User-invoked `k-pr-fix-loop` explicitly approves",
+            "Classify authors from platform API evidence, never display names",
+            "`,codeowners --owner-of <path>`",
+            "repo/org evidence, not wording",
+            "a mechanics skill does not own tone.",
         )
 
     def test_global_sop_keeps_quality_communication_and_memory_gates(self):
@@ -285,49 +267,40 @@ class TestSopPolicyInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
             "Skills bind by intent: generic skills own portable mechanics; verified domain overlays own repo/org/product policy.",
-            'Answer questions before acting; treat "can you check/fix/change" as action.',
+            '"can you check/fix/change" is an action request.',
             "Think from first principles; unverified ideas are hypotheses until probed or sourced.",
             "Choose the narrowest complete path:",
-            "include impacted places needed for correctness, push back on unnecessary scope",
+            "Choose the narrowest complete path",
             "Default to deeper coverage for non-trivial work",
-            "Use the light path only after proving the work is local, reversible, observable, and semantically simple.",
-            "Treat any Unknown as a deeper-coverage trigger.",
-            "Low-risk proof requires all four conditions:",
-            "local = only the requested surface changes;",
-            "reversible = no durable or external side effect;",
-            "observable = a focused local check can catch the failure;",
-            "simple = no ambiguous semantics, branching workflow, hidden consumer, or shared contract.",
-            "more source reads, counterexamples, preserved-behavior checks, and relevant skills.",
+            "Any Unknown triggers deeper coverage.",
+            "Use the light path only after proving all four",
             "### 1.2 Decision Fallbacks",
-            "Questions after a change: explain reasoning and leave it in place unless revision is requested.",
-            'keep "this is correct as-is" available as the honest conclusion',
-            "unnecessary churn is a defect, not diligence",
-            "When uncertain whether to answer or act, inspect the current request and existing authorization, resolve locally verifiable uncertainty, and continue authorized work.",
-            "Handle secrets by reference: keep plaintext credentials out of commits, files, and visible output.",
-            "Use a neutral factual tone; skip pandering, apologies, and unnecessary emotional commentary.",
-            "Minimize reading load while preserving material facts",
+            "Questions after a change",
+            "unnecessary churn is a defect, not diligence.",
+            "A question without an active action request needs an answer, not unsolicited changes.",
+            "Handle secrets by reference",
+            "Use a neutral factual tone.",
+            "The user is dyslexic and reads agent output all day.",
             "Use the shortest complete shape",
             "Add structure only when distinct information scans better",
-            "Full STE applies only when the user asks for STE or docs compliance",
+            "full STE only when the user asks for STE or docs compliance.",
             "### 1.1 Time Neutrality",
             "## 5. User Response Shape",
-            "Over budget: cut restatement, then adjectives, then examples. Cut words, never facts.",
+            "cut words, never facts.",
             "Direct answer or one-shot question: ≤80 words",
             "Comparison or audit: ≤120 words",
             "Multi-part investigation: ≤200 words",
-            "Minimize total context and model work across the session",
+            "Minimize total context and model work across the session, including children and advisors.",
             "Base scope on correctness, evidence, risk, and explicit user constraints",
-            "Use §3.5 for scoped recovery and §3.4 for repeated attempts without progress",
+            "No invented permission checkpoints or unbounded retries",
             "Line 1 answers, decides, or names the next action",
-            "The final message of the turn holds every deliverable",
-            "cap at 5",
-            "Ask one clarifying question when a remaining fork blocks progress",
-            "Code citation format: `startLine:endLine:filepath`",
-            "Dotfiles are chezmoi-managed on this machine",
-            "consider root causes and indirect effects laterally",
-            "Do not stop at the first plausible explanation; verify thoroughly",
-            "surface the conflict and ask one direct question",
-            '"Concise" means unpadded, not shallow.',
+            "The final message holds every deliverable (no tool calls after it)",
+            "max 5",
+            "Code citations: `startLine:endLine:filepath`.",
+            "type the comma verbatim",
+            "do not stop at the first plausible explanation; verify thoroughly.",
+            "surface it and ask one direct question.",
+            "Concise means unpadded, not shallow.",
         )
         self.assert_file_not_contains(
             "home/readonly_AGENTS.md",
@@ -354,31 +327,31 @@ class TestSopPolicyInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
             "### 2.1 Compatibility Gate",
-            "Every implementation summary must include: `Compatibility impact: none | removed (requested) | kept existing (requested)`",
+            "`Compatibility impact: none | removed (requested) | kept existing (requested)`",
         )
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
             "Centralize control, not raw context or execution.",
             "Resolve model AND effort from `category_models`",
-            "Preserve strong research/orchestration/review/refutation",
-            "never spend the expensive root/review model on routine implementation by default",
-            "Do not dispatch a separate agent for each read, command, check result, or tiny edit.",
-            "At compaction or continuation, resume from that handoff",
-            "An explicit user no-delegation instruction keeps the session inline.",
-            "Repo-owned custom agent identifiers use `k-agent-<role>`; harness-native identifiers remain unchanged.",
+            "Keep research/orchestration/review/refutation strong",
+            "- `mechanical`:",
+            "No agent per read, command, check result, or tiny edit.",
+            "On compaction or continuation resume from it",
+            "Resolve model AND effort from `category_models` in the shared registry.",
+            "Repo-owned agent IDs use `k-agent-<role>`",
         )
 
     def test_ai_instructions_keep_semantic_delta_contract_wired(self):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
-            "Before editing, state: old rule -> new rule -> intended differences -> preserved differences -> evidence",
-            "Exempt only proven mechanical edits:",
-            "formatting, generated metadata from checked source, pure rename with all references updated, or prose/comment text with no behavioral claim",
+            "Before editing, state the semantic delta",
+            "Exempt only proven mechanical edits from stating the delta:",
+            "Exempt only proven mechanical edits",
             "old rule -> new rule -> intended differences -> preserved differences -> evidence",
-            "investigate an unknown set, marking `Unknown` only when evidence is genuinely unavailable",
+            "mark `Unknown` only when evidence is genuinely unavailable.",
             "preserve behavior outside the semantic delta",
-            "Keep intended and preserved differences in the final acceptance plan",
-            "cover intended differences, preserved behavior, malformed input, and terminal actions",
+            "Risk-selected mutation experiments must establish control, mutation, and restoration",
+            "Do not add a production state-machine framework for this.",
             "plan explicit transition cases",
         )
         self.assert_file_contains(
@@ -590,22 +563,16 @@ class TestSopPolicyInvariants(unittest.TestCase):
     def test_authorization_and_terminal_rules_have_one_canonical_owner(self):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
-            "For reported problems or thinking aloud without an active authorized action, assess and stop unless asked to change.",
-            "A correction to an active task updates its constraints and continues the authorized action",
+            "assess and stop unless asked to change.",
+            "do not require the user to restate it.",
             "A failed required check blocks dependent actions, not authorized diagnosis and repair.",
-            "Complete independent authorized actions whose preconditions hold; NEVER execute an authorized action that depends on the failed criterion.",
-            "Authorization persists within its target, scope, and allowed effects until revoked or completed.",
-            "Conditional authorization executes when its condition is satisfied or the user explicitly removes that condition.",
-            "Prior authorization survives follow-ups, corrections, compaction, and continuation of the same task.",
-            "Do not request the same approval again; re-check current preconditions without resetting permission.",
-            "Preserve the authorization, exact scope, and evidence in the active topic handoff;",
-            "NEVER repeat a completed one-shot action under its prior approval.",
+            "NEVER run an action that depends on the failed criterion.",
+            "it survives follow-ups, corrections, compaction, and continuation of the same task.",
+            "NEVER infer commit/push/merge authority from it; those effects need their own explicit authorization.",
             "NEVER broaden it to a new target or effect, publish unapproved substantive text, or bypass CI.",
-            "NEVER infer commit/push/merge authority from it; those effects require their corresponding explicit authorization.",
-            "unless existing authorization, including a bounded approval packet, covers that exact target, payload, and effect.",
-            "an explicitly directed reply/resolve follows the exact authorization above;",
-            "NEVER send one spontaneously.",
-            "A reviewer reply/resolve requires supervision and may use the packet only when its allowed effect types expressly include that exact reply/resolve.",
+            "wait for explicit approval before sending, unless existing authorization",
+            "NEVER publish spontaneously, even to bots.",
+            "Never stretch a packet to a new target",
         )
         for policy in (
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_shared_rules.md",
@@ -623,8 +590,8 @@ class TestSopPolicyInvariants(unittest.TestCase):
             )
         self.assert_file_contains(
             "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
-            "Prior authorization survives follow-ups, corrections, compaction, and continuation of the same task.",
-            "Complete independent authorized actions whose preconditions hold; NEVER execute an authorized action that depends on the failed criterion.",
+            "it survives follow-ups, corrections, compaction, and continuation of the same task.",
+            "Complete independent authorized actions whose preconditions hold; NEVER run an action that depends on the failed criterion.",
         )
 
     def test_when_recovery_is_in_scope_should_preserve_evidence_and_stop_boundaries(self):
@@ -632,14 +599,14 @@ class TestSopPolicyInvariants(unittest.TestCase):
         sop = " ".join(_sop_rule_text().split())
         for required in (
             "a failed check is not a new permission checkpoint.",
-            "record the observed failure, evidence for its cause, intended correction, and affected acceptance checks",
+            "record in the topic: observed failure, cause evidence, intended correction, affected checks",
             "After repair, freeze the new candidate and rerun failed and affected checks;",
-            "retain successful evidence only for unchanged relevant code, environment, and inputs.",
-            "Stop affected work only for missing authority, a material user-only decision, a verified external blocker, exhausted progress under §3.4, or an explicit user limit.",
-            "Review alone does not authorize edits; report findings when repair is outside the requested scope.",
-            "When repeated attempts reproduce the same failure without new evidence or progress, stop speculative edits and repeated checks.",
-            "Resume scoped production only when new evidence supports a concrete correction; retain the failure history.",
-            "only the root owns recovery, and no worker may start a repair or verification loop.",
+            "keep prior evidence only for unchanged code, environment, and inputs.",
+            "Stop affected work only for missing authority, a material user-only decision, a verified external blocker, exhausted §3.4 progress, or an explicit user limit.",
+            "Review alone does not authorize edits; report out-of-scope repairs as findings.",
+            "When repeated attempts reproduce the same failure with no new evidence or progress, stop speculative edits and repeated checks.",
+            "Resume scoped production only when new evidence supports a concrete correction; keep the failure history.",
+            "Workers return once; only the root owns recovery, and no worker may start a repair or verification loop.",
         ):
             with self.subTest(boundary=required):
                 self.assertIn(required, sop)

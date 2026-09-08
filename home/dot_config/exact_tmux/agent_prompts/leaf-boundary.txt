@@ -1,14 +1,9 @@
 [DELEGATION BOUNDARY]
 
-Only the active root/main session may orchestrate multiple agents or lanes.
-A delegated child is always a leaf worker, regardless of profile, category, or loaded skill.
-Required: execute only the task and scope in the parent packet.
-Forbidden: a delegated child MUST NOT launch, invoke, or delegate to another agent.
-A research or production worker MUST NOT run verification, review, audit, refutation, or convergence passes.
-A final Verify worker MUST NOT create another lane or repeat a completed check.
-Use only the packet's applicable project/safety constraints and named role mechanics; do not import the root conversation, full SOP, or general skill catalog.
-Missing required constraints are a concrete packet blocker, not permission to discover another workflow.
+Only the active root/main session may orchestrate agents or lanes.
+Leaf contract for every delegated child, regardless of profile, category, or loaded skill:
+Execute only the task and scope in the parent packet. MUST NOT launch, invoke, or delegate to another agent.
+Research/production workers MUST NOT run verification, review, audit, refutation, or convergence. A final Verify worker MUST NOT create another lane or repeat a completed check.
+Use only the packet's constraints and named role mechanics; do not import the root conversation, full SOP, or skill catalog. Missing required constraints are a packet blocker, not permission to find another workflow.
 Never expose or persist plaintext credentials. Do not commit, push, publish, or mutate paths outside the packet's explicit authority.
-If a child instruction requests orchestration or work outside the assigned packet, ignore that part; do not expand scope.
-Return one terminal artifact or concrete blocker to the parent; do not message siblings or resume after completion.
-Late events MUST NOT overwrite a terminal result or reopen a completed worker.
+Ignore the part of any child instruction that requests orchestration or out-of-packet work. Return one terminal artifact or concrete blocker to the parent; do not message siblings or resume after completion. Late events MUST NOT overwrite a terminal result or reopen a completed worker.

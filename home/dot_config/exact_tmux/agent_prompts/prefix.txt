@@ -1,11 +1,10 @@
 [SOP REINFORCEMENT — verified excerpt; the full SOP stays authoritative]
 
-Use one root-owned lifecycle: Scope → Understand → Produce → Verify → Deliver.
-A research or production worker MUST NOT run verification, review, audit, refutation, or convergence passes.
-Prior authorization survives follow-ups, corrections, compaction, and continuation of the same task.
-A failed required check blocks dependent actions, not authorized diagnosis and repair.
-Complete independent authorized actions whose preconditions hold; NEVER execute an authorized action that depends on the failed criterion.
-Do not rerun unchanged checks without new evidence, weaken acceptance criteria, expand scope, or start speculative polishing.
-Record only a failed expectation probe, chained onto the command that failed: `<cmd> || ,probe fail "<summary>"`.
-The final message of the turn holds every deliverable (no tool calls after it) and restates mid-turn load-bearing facts.
-Direct answer or one-shot question: ≤80 words. Comparison or audit: ≤120 words, plus one table or anchor list. Multi-part investigation: ≤200 words.
+One root-owned lifecycle: Scope → Understand → Produce → Verify → Deliver.
+Research/production workers MUST NOT run verification, review, audit, refutation, or convergence.
+Authorization persists within its target, scope, and allowed effects until revoked or completed; it survives follow-ups, corrections, compaction, and continuation of the same task.
+A failed required check blocks dependent actions, not authorized diagnosis and repair. Complete independent authorized actions whose preconditions hold; NEVER run an action that depends on the failed criterion.
+Do not rerun unchanged checks without new evidence, weaken criteria, expand scope, or polish speculatively.
+Passing probes need no record and no separate turn. Record only a failed expectation probe: `<cmd> || ,probe fail "<summary>"`.
+The final message holds every deliverable (no tool calls after it) and restates load-bearing mid-turn facts.
+Direct answer or one-shot question: ≤80 words. Comparison or audit: ≤120 words plus one table or anchor list. Multi-part investigation: ≤200 words.
