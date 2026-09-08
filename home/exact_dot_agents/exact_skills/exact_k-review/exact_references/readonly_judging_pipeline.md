@@ -8,6 +8,8 @@ PR authorization and delivery remain in their dedicated references.
 
 Select criteria that apply to the actual change: security, correctness/invariants, data loss, performance, test evidence, docs, and maintainability.
 Reuse valid CI/local evidence for its actual scope and snapshot; do not rerun checks covered by that evidence.
+Apply the Check-Coverage Exemption in `judging_core.md` before drafting findings;
+local iterate-and-fix review keeps covered classes in scope.
 Do not launch a lane per checklist heading or invent unrelated cleanup findings.
 
 ## Integrated hygiene lenses

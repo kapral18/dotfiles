@@ -3,7 +3,7 @@
 Read `~/.agents/skills/k-review/references/lanes.md` for the lens triggers and packet criteria; it is a menu, not a launch roster.
 Deep review retains strong artifact review and adversarial challenge, each with distinct questions against the same frozen candidate.
 Neither consumes the other's verdict as an input to certify. Add specialists only for independent risks that need distinct context or tools.
-Assign disjoint questions, frozen scope, relevant source pointers, and existing complete check receipts.
+Assign disjoint questions, frozen scope, relevant source pointers, existing complete check receipts, and the `CI coverage:` line from the Check-Coverage Exemption.
 Use blind fresh-eyes only for concrete comprehension risk; it must not receive narrative, previous findings, or other reviewers' evidence summaries.
 Do not launch findings-audit or post-review workers over completed reviews.
 Do not run suites before final Verify merely to prepare a reviewer packet.

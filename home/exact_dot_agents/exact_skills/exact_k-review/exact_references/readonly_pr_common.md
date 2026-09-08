@@ -38,6 +38,8 @@ For smaller PRs, review everything.
 ## CI Coverage Gate (scoping — complete before drafting findings)
 
 PR review otherwise re-checks everything, including classes PR CI already catches.
+This gate is the PR check-source instance of the Check-Coverage Exemption in `judging_core.md`;
+the exemption rules there apply here unchanged.
 
 Avoid redundant findings:
 

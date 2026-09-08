@@ -62,6 +62,23 @@ Attempt refutation in this order and stop at the first decisive result:
 Self-refutation catches unreachable paths, inflated severity, and weak fixes, but lacks cross-family independence.
 A separate family can improve final judgment independence, but does not justify another pass over the same risk.
 
+## Check-Coverage Exemption (Run Before Drafting Findings On A Final Verdict Surface)
+
+Trigger: the output is a final verdict or finding set that checks also gate: PR review, deep review, plan review, and every final review, adversarial, or audit-lens packet.
+Not triggered: local iterate-and-fix review (`local_changes.md`, `k-light-review`);
+there a covered-class finding is fixed in the same pass, so every class stays in scope.
+
+Evidence is the frozen snapshot's present checks: PR CI checks (`pr_common.md` CI Coverage Gate owns `checks.json` and Buildkite mechanics) or complete local check receipts the root supplied (`make check`, pre-commit, lint, typecheck, test runs).
+
+- Map each present check to the finding classes it actually runs; do not credit a check from its name alone.
+- Exempt a class only when a present check genuinely covers it: do not report, draft, or block on findings in that class.
+- Keep every other class in scope, including classes whose check is absent, loosened, failed to run, or unverifiable for this snapshot.
+- NEVER exempt a class from an assumed check, a check outside the frozen snapshot, or a packet without check evidence;
+  that packet reports `covered=[]`.
+- Plans: exempt only classes the repo's existing checks catch mechanically at implementation (formatting, lint, type errors);
+  premise, design, feasibility, and gap findings stay in scope.
+- State one line before findings: `CI coverage: covered=[...] -> exempt; in-scope=[...]`.
+
 ## State-Machine Verification Gate
 
 Apply SOP `### 3.6 State-Machine Verification` to reviewed behavior that is stateful, parser-like, branch-heavy, or dependent on ordered conditions.

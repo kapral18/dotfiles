@@ -7,6 +7,7 @@ Complete every assigned path and criterion at the packet's stated depth; do not 
 Report compact coverage and explicit exclusions/blockers with the findings, not a file-reading transcript.
 Return an incidental evidence-backed defect outside the assigned lens if encountered; do not expand the search to hunt unrelated risks.
 Load `~/.agents/skills/k-review/references/judging_core.md` and only the conditional lens references needed for the assigned question.
+Apply its Check-Coverage Exemption with the packet's check receipts; without receipts report `CI coverage: covered=[]` and keep every class in scope.
 If a context pack is supplied, consume it through `context-pack.md`; do not independently fetch the same PR/history again.
 Do not load full routers, rosters, mode files, memory workflows, or other controller contracts.
 Stay read-only; no shared-state mutations, installs, servers, git/GitHub writes, or code fixes.

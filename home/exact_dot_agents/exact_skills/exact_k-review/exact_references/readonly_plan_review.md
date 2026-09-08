@@ -40,6 +40,7 @@ Walk the plan end-to-end, ordered by risk:
 3. **Feasibility:** each step is implementable as written — named APIs/symbols exist, boundaries are respected, and no step depends on something only a later step creates.
 4. **Coverage-checklist classes, reframed for plans:** security, data-loss, and performance implications of the planned approach;
    verification/test steps present for risky behavior; documentation impact acknowledged.
+   Apply the Check-Coverage Exemption in `judging_core.md` (plan clause): do not report formatting, lint, or type-error classes the repo's existing checks catch at implementation.
 5. **Gates by content:** planned removals get the Deletion-Safety Audit and Historical-Rationale Gate;
    planned replacements the Replacement/Migration Parity Gate; stateful/parser-like planned behavior must include a State-Machine Verification step in the plan; cross-module/deploy plans the Systemic-Risk Checks; user-facing flows the Product-Flow Lens; alerting/monitoring work the Signal-Quality Gate.
 6. **Gaps:** missing steps, unowned risks, absent rollback/verification, and co-edit-set members the plan does not mention (docs, diagrams, configs).

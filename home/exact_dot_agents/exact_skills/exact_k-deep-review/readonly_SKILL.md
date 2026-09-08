@@ -26,6 +26,7 @@ Read `~/.agents/skills/k-review/references/context-pack.md` when producing/consu
 Freeze the integrated candidate and acceptance plan. Known user-authorized fixes must already be produced and formatted.
 Read `~/.agents/skills/k-review/references/judging_core.md` and `judging_pipeline.md` for applicable correctness, severity, and integrated hygiene lenses.
 Use existing complete check receipts.
+Apply the Check-Coverage Exemption in `judging_core.md` with those receipts and pass the resulting `CI coverage:` line in every final packet.
 Execute missing planned checks once through direct tools; shared or mutating checks stay root-owned and serialized as needed.
 Read `~/.agents/skills/k-deep-review/references/live-ui-validation.md` only when final UI/runtime evidence is needed.
 Final reviewers return anchored findings or evidence gaps once.
