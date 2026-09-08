@@ -6,7 +6,10 @@ model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "pi" "
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: false
-inheritSkills: true
+inheritGlobalContext: false
+inheritSkills: false
+maxSubagentDepth: 0
+defaultContext: fresh
 skills: k-public-sources
 ---
 

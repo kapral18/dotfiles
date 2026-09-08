@@ -53,20 +53,5 @@ Return findings ordered by severity. Clarity findings cap at MEDIUM; most are LO
 Return structured findings only; raw diffs and logs stay in the lane.
 If the changed content is only generated/vendored/lockfile material, return `Not applicable`.
 
-## Launch (controller-facing)
-
-- Launch the blind `k-agent-fresh-eyes` profile where the harness fields one;
-  elsewhere use the harness's generic read-only task mechanism, following the Verifier launch ladder in `runtime-harnesses.md`.
-  Never use the named reviewer profiles or any profile that preloads the `k-review` skill; those ingest PR context and unblind the lane.
-- Use the review model resolver (`review-agent-model.partial` / `resolve_review_agent_model`) as the model source.
-  If the resolved value is concrete, pass it explicitly so the runtime cannot fall back to an implicit default or older built-in model.
-  If the resolved value is `inherit` or empty/default by design, record that expected inheritance/default in `model_required`.
-- Claude Code: the `k-agent-fresh-eyes` profile (a skill-less shim of this file, so it stays blind); `model_required=inherit`.
-- Codex: the `worker` generic type with the resolved review model passed explicitly (`gpt-6-astra` at `high` effort);
-  record `fallback_reason=blind-by-design`.
-- Cursor: a generic subagent type with `readonly: false`, passing the resolved lane model (the same value the deployed `k-agent-review-worker` profile carries).
-- Copilot CLI: the generic `task` agent type is correct here by design; pass the resolved lane model explicitly and record `fallback_reason=blind-by-design`.
-- Antigravity: `define_subagent` `k-agent-fresh-eyes` with a system prompt that loads this contract, then `invoke_subagent` it at `pro`.
-- Pi/OMP: launch the `k-agent-fresh-eyes` agent profile (a thin shim of this file that carries no skills and resolves its model through `review-agent-model.partial`).
-- Worker selection line: `phase=fresh-eyes`, `profile=k-agent-fresh-eyes` (or `n/a (generic <type>)` when the harness has no fresh-eyes profile), `model_required=<resolved lanes value|inherit|default>`, `model_used=<launch-confirmed model>`, `model_status=exact`.
-- Never include prior findings, PR intent, or controller narrative in the prompt — including on re-runs after new context or applied fixes.
+Only the root may assign this lane, within the single final Verify stage for a concrete comprehension risk.
+Do not run checks, re-verify another lane, or resume after returning. Report the terminal findings or blocker once.

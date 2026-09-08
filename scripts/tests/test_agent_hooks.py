@@ -193,6 +193,7 @@ def run_perturn_recall(tmp: str, payload: dict, env: dict) -> dict:
             ("executable_session_context.py", "session_context.py"),
             ("executable_perturn_recall.py", "perturn_recall.py"),
             ("reinforcement.py", "reinforcement.py"),
+            ("correction_detector.py", "correction_detector.py"),
         ):
             (deployed_hooks / target).write_text((HOOKS / source).read_text())
     result = subprocess.run(
@@ -376,75 +377,6 @@ class TestAgentHooks(unittest.TestCase):
             context = json.loads(result.stdout or "{}").get("additional_context", "")
 
             assert "### GitHub identity" not in context
-
-    def test_session_context_warms_resident_embedder_only_when_adapter_opts_in(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            client = root / "lib/,ai-kb/embed_client.py"
-            client.parent.mkdir(parents=True)
-            marker = root / "warm-count"
-            client.write_text(
-                "#!/usr/bin/env python3\n"
-                "import os, pathlib\n"
-                "path = pathlib.Path(os.environ['WARM_MARKER'])\n"
-                "count = int(path.read_text()) if path.exists() else 0\n"
-                "path.write_text(str(count + 1))\n"
-            )
-            payload = {
-                "hook_event_name": "SessionStart",
-                "workspace_roots": [tmp],
-                "session_id": "warm-test",
-            }
-            base_env = {**os.environ, "HOME": tmp, "WARM_MARKER": str(marker)}
-
-            run_hook("executable_session_context.py", payload, env=base_env)
-            self.assertFalse(marker.exists())
-            run_hook(
-                "executable_session_context.py",
-                payload,
-                env={**base_env, "AI_EMBED_WARM": "1"},
-            )
-            self.assertEqual(marker.read_text(), "1")
-            run_hook(
-                "executable_session_context.py",
-                {**payload, "warm_embedder": True},
-                env=base_env,
-            )
-            self.assertEqual(marker.read_text(), "2")
-
-    def test_perturn_recall_marks_ai_kb_embedding_connect_only(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            bindir = root / "bin"
-            bindir.mkdir()
-            marker = root / "connect-only"
-            stub = bindir / ",ai-kb"
-            stub.write_text(
-                "#!/usr/bin/env python3\n"
-                "import os, pathlib\n"
-                "pathlib.Path(os.environ['CONNECT_ONLY_MARKER']).write_text("
-                "os.environ.get('AI_EMBED_CONNECT_ONLY', ''))\n"
-                "print('[]')\n"
-            )
-            stub.chmod(0o755)
-            env = {
-                **os.environ,
-                "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
-                "CONNECT_ONLY_MARKER": str(marker),
-            }
-            result = run_perturn_recall(
-                tmp,
-                {
-                    "hook_event_name": "UserPromptSubmit",
-                    "workspace_roots": [tmp],
-                    "session_id": "connect-only-test",
-                    "prompt": "substantive prompt must not spawn an embed worker",
-                },
-                env,
-            )
-
-            self.assertEqual(result, {})
-            self.assertEqual(marker.read_text(), "1")
 
     def test_session_context_offers_bucket_creation_on_default_branch_without_topics(self):
         with self.make_git_workspace("main") as tmp:
@@ -988,13 +920,16 @@ class TestAgentHooks(unittest.TestCase):
                 tmp.name, {**base, "prompt": "look into the retry storm in the queue worker"}, env
             )
             self.assertNotIn("candidates staged", json.dumps(first))
-            self.assertTrue((spec_dir / ".recall-candidates-bind-test.json").exists())
+            candidates = spec_dir / ".recall-candidates-bind-test.json"
+            self.assertEqual([row["id"] for row in json.loads(candidates.read_text())], ["cap-1"])
             # Naming the bucket binds without a model turn and the pointer fires with the binding.
             second = run_perturn_recall(tmp.name, {**base, "prompt": f"continue please {spec_dir / 'alpha.txt'}"}, env)
             context = second["hookSpecificOutput"]["additionalContext"]
             self.assertIn("Bound this session to `alpha`", context)
             self.assertEqual((spec_dir / ".session-topic-bind-test.txt").read_text().strip(), "alpha")
             self.assertIn("candidates staged", context)
+            third = run_perturn_recall(tmp.name, {**base, "prompt": "continue the queue investigation"}, env)
+            self.assertNotIn("candidates staged", json.dumps(third))
 
     def _gate(self, payload: dict, env: dict | None = None) -> dict:
         return run_hook("executable_read_gate.py", payload, env=env)
@@ -1614,60 +1549,127 @@ class TestAgentHooks(unittest.TestCase):
             self._write_claude_transcript(transcript, 500_000)
             assert run_perturn_recall(tmp, payload, {**env, "AGENT_REINFORCE": "off"}) == {}
 
-    def test_session_context_appends_aikb_reminder_with_named_topic(self):
+    def test_session_context_leaf_suppresses_delegation_blocks(self):
+        """Delegation text is root-only: a leaf gets none of it, the root gets it marked."""
+        marker = "[ROOT ONLY] A delegated leaf ignores this block and returns findings to its parent instead."
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
             spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
-            bind_session_topic(spec_dir, "memory-session", "memory-systems")
+            bind_session_topic(spec_dir, "leaf-session", "memory-systems")
             (spec_dir / "memory-systems.txt").write_text("target: wire memory systems\n")
 
             payload = {
                 "hook_event_name": "sessionStart",
                 "workspace_roots": [tmp],
-                "session_id": "memory-session",
+                "session_id": "leaf-session",
             }
-            context = run_hook("executable_session_context.py", payload)["additional_context"]
+            leaf_env = {**keep_parent_env("copilot-parent-session"), "AI_AGENT_DEPTH": "fast"}
+            root_env = {**os.environ, "AI_AGENT_DEPTH": "fast"}
+            leaf = run_hook("executable_session_context.py", payload, env=leaf_env)["additional_context"]
+            root = run_hook("executable_session_context.py", payload, env=root_env)["additional_context"]
 
-            assert "target: wire memory systems" in context
-            assert "Durable Memory (,ai-kb)" in context
-            # The reminder routes both KB directions through the smol operator and
-            # forbids parent-inline CLI use outside the no-spawn fallback.
-            assert "k-agent-smol" in context
-            assert "scribe mode" in context
-            assert "Do not run `,ai-kb search`/`get`/`remember` inline" in context
-            assert "No Named Topic Active" not in context
+            # The leaf still gets its topic context; only the blocks that tell it to
+            # delegate are withheld.
+            assert "target: wire memory systems" in leaf
+            assert "k-agent-smol" not in leaf
+            assert "Durable Memory (,ai-kb)" not in leaf
+            assert marker not in leaf
 
-    def test_session_context_warmstart_stages_complete_candidates_for_named_topic(self):
+            # Harnesses with no child signal fall back to the marker, so the root copy
+            # must carry the sentence verbatim.
+            assert marker in root
+            assert "k-agent-smol" in root
+
+    def test_balanced_depth_leaf_suppresses_state_writes_and_the_correction_directive(self):
+        """The fast-depth leaf contract holds where retrieval actually runs.
+
+        At `balanced` the startup warm start and per-turn recall both retrieve and stage, so
+        this is the depth where a missing child guard would leak delegation text into a child
+        and write session state on its behalf. The root at the same depth is the control: it
+        keeps the marked blocks, and its non-marker text is byte-identical to the leaf's.
+        """
+        marker = "[ROOT ONLY] A delegated leaf ignores this block and returns findings to its parent instead."
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = SPEC_ROOT / workspace.lstrip("/")
-            spec_dir.mkdir(parents=True, exist_ok=True)
-            bind_session_topic(spec_dir, "warm-session", "memory-systems")
-            (spec_dir / "memory-systems.txt").write_text("target: wire memory systems\n")
-
-            env = make_aikb_stub(
+            stub = make_aikb_stub(
                 Path(tmp),
                 [
                     {
-                        "id": "local-capsule",
-                        "title": "Local capsule that should surface",
+                        "id": "balanced-capsule",
+                        "title": "Capsule the root must be pointed at",
                         "body": "B" * 400,
                         "kind": "gotcha",
                         "scope": "project",
                         "workspace_path": workspace,
+                        "cosine_score": 0.8,
                     }
                 ],
             )
-            payload = {"hook_event_name": "sessionStart", "workspace_roots": [tmp], "session_id": "warm-session"}
-            context = run_hook("executable_session_context.py", payload, env=env)["additional_context"]
 
-            assert "### ,ai-kb candidates staged" in context
-            assert "Local capsule that should surface" not in context
-            assert "B" * 100 not in context
-            rows = json.loads((spec_dir / ".recall-candidates-warm-session.json").read_text())
-            assert rows[0]["body"] == "B" * 400
-            assert not (spec_dir / ".recall-seen-warm-session.json").exists()
+            def fixture(name: str, env: dict) -> tuple[str, Path, dict]:
+                """A private spec root per run, so the leaf's state dir starts and stays empty."""
+                key = f"balanced-{name}"
+                spec_root = Path(tmp) / f"{name}-spec-root"
+                spec_dir = spec_root / workspace.lstrip("/")
+                spec_dir.mkdir(parents=True)
+                bind_session_topic(spec_dir, key, "memory-systems")
+                (spec_dir / "memory-systems.txt").write_text("target: wire memory systems\n")
+                effective = {
+                    **env,
+                    "PATH": stub["PATH"],
+                    "AI_AGENT_DEPTH": "balanced",
+                    # Reinforcement is not delegation text and both sides keep it: switching it
+                    # off only keeps its own session-state file out of the no-write assertion.
+                    "AGENT_REINFORCE": "off",
+                    "AGENT_MEMORY_SPEC_ROOT": str(spec_root),
+                }
+                return key, spec_root, effective
+
+            def runs(key: str, env: dict) -> tuple[str, dict]:
+                startup = run_hook(
+                    "executable_session_context.py",
+                    {"hook_event_name": "sessionStart", "workspace_roots": [tmp], "session_id": key},
+                    env=env,
+                )["additional_context"]
+                perturn = run_perturn_recall(
+                    tmp,
+                    {
+                        "hook_event_name": "UserPromptSubmit",
+                        "workspace_roots": [tmp],
+                        "conversation_id": key,
+                        "prompt": "Did you actually verify this claim, or did you just guess again?",
+                    },
+                    env,
+                )
+                return startup, perturn
+
+            leaf_key, leaf_root, leaf_env = fixture("leaf", keep_parent_env("copilot-parent-balanced"))
+            root_key, root_spec_root, root_env = fixture("root", dict(os.environ))
+            before = sorted(str(path.relative_to(leaf_root)) for path in leaf_root.rglob("*"))
+            leaf_startup, leaf_perturn = runs(leaf_key, leaf_env)
+            root_startup, root_perturn = runs(root_key, root_env)
+
+            # Leaf: topic context survives, every delegation-instructing block is withheld.
+            assert "target: wire memory systems" in leaf_startup
+            assert marker not in leaf_startup
+            assert "Durable Memory (,ai-kb)" not in leaf_startup
+            assert "candidates staged" not in leaf_startup
+            assert "k-agent-smol" not in leaf_startup
+            # Nothing is left for the per-turn hook to emit: no pointer, no correction block.
+            assert leaf_perturn == {}
+            # And the child wrote no candidate/pointer/seen state on its parent's behalf.
+            assert sorted(str(path.relative_to(leaf_root)) for path in leaf_root.rglob("*")) == before
+
+            # The root retains retrieval, bounded memory admission, and correction capture.
+            root_perturn_context = root_perturn["hookSpecificOutput"]["additionalContext"]
+            assert (root_spec_root / workspace.lstrip("/") / f".recall-candidates-{root_key}.json").exists()
+            assert marker in root_startup
+            assert "### User correction signal:" in root_perturn_context
+            assert "Do not launch re-verification" in root_perturn_context
+            assert "k-agent-smol" not in root_perturn_context
+            assert "candidates staged" in root_startup
+            assert ",agent-memory note anti_pattern" in root_perturn_context
 
     def test_cursor_startup_budget_omits_whole_artifacts_in_utf16_units(self):
         for fill in ("x", "😀"):
@@ -1788,64 +1790,6 @@ class TestAgentHooks(unittest.TestCase):
             assert "additional_context" not in result, sorted(result)
             assert result["hookSpecificOutput"]["hookEventName"] == "SessionStart"
             assert result["hookSpecificOutput"]["additionalContext"]
-
-    def test_session_context_notices_harnesses_without_per_turn_recall(self):
-        """Adapters that never request embedder warm-up (Cursor) get the recall notice; warm adapters do not."""
-        with tempfile.TemporaryDirectory() as tmp:
-            payload = {"hook_event_name": "sessionStart", "workspace_roots": [tmp], "session_id": "notice-probe"}
-            env = hook_env()
-            env.pop("AI_EMBED_WARM", None)
-            cold = run_hook("executable_session_context.py", payload, env=env)["additional_context"]
-            assert "Recall Notice" in cold
-            assert ",agent-memory note" in cold
-
-            warm = run_hook(
-                "executable_session_context.py",
-                {**payload, "session_id": "notice-probe-warm", "warm_embedder": True},
-                env={**env, "AI_AGENT_DEPTH": "fast"},
-            )["additional_context"]
-            assert "Recall Notice" not in warm
-
-    def test_session_context_warmstart_gates_out_unrelated_workspace_project_capsule(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            workspace = str(Path(tmp).resolve())
-            spec_dir = SPEC_ROOT / workspace.lstrip("/")
-            spec_dir.mkdir(parents=True, exist_ok=True)
-            bind_session_topic(spec_dir, "warm-gate-session", "memory-systems")
-            (spec_dir / "memory-systems.txt").write_text("target: wire memory systems\n")
-
-            env = make_aikb_stub(
-                Path(tmp),
-                [
-                    {
-                        "id": "foreign",
-                        "title": "Foreign project capsule",
-                        "body": "from another repo",
-                        "kind": "gotcha",
-                        "scope": "project",
-                        "workspace_path": "/some/other/repo",
-                    },
-                    {
-                        "id": "universal",
-                        "title": "Universal principle capsule",
-                        "body": "applies everywhere",
-                        "kind": "principle",
-                        "scope": "universal",
-                        "workspace_path": "/some/other/repo",
-                    },
-                ],
-            )
-            payload = {
-                "hook_event_name": "sessionStart",
-                "workspace_roots": [tmp],
-                "session_id": "warm-gate-session",
-            }
-            context = run_hook("executable_session_context.py", payload, env=env)["additional_context"]
-
-            assert "Foreign project capsule" not in context  # other-workspace project scope: gated out
-            assert "Universal principle capsule" not in context
-            rows = json.loads((spec_dir / ".recall-candidates-warm-gate-session.json").read_text())
-            assert [row["id"] for row in rows] == ["universal"]
 
     def test_agent_memory_select_binds_only_one_session_to_topic_bucket(self):
         with self.make_git_workspace("main") as tmp:
@@ -2065,6 +2009,1018 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
         assert payload["failedTool"]["hook_event_name"] == "postToolUseFailure"
         assert payload["failedTool"]["error_message"] == "exit 1"
 
+    def test_perturn_recall_without_session_key_stages_nothing_and_injects_nothing(self):
+        # Staging is session-scoped state: without a session key there is nothing to
+        # stage against, so keyless payloads get no pointer and no capsule bodies —
+        # recall degrades to the pull path instead of reintroducing unjudged injection.
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            env = make_aikb_stub(
+                Path(tmp),
+                [
+                    {
+                        "id": "capsule-a",
+                        "title": "Keyless capsule title sentinel",
+                        "body": "keyless capsule body sentinel",
+                        "kind": "gotcha",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                        "cosine_score": 0.8,
+                    }
+                ],
+            )
+
+            result = run_perturn_recall(
+                tmp,
+                {
+                    "hook_event_name": "UserPromptSubmit",
+                    "workspace_roots": [tmp],
+                    "prompt": "recall guidance for this staging test",
+                },
+                env,
+            )
+
+            assert result == {}
+            if spec_dir.exists():
+                assert not list(spec_dir.glob(".recall-candidates-*"))
+                assert not list(spec_dir.glob(".recall-staged-*"))
+
+    def test_opencode_worklog_adapter_passes_session_id(self):
+        extension = REPO / "home/dot_config/opencode/plugins/agent-memory.ts"
+        with tempfile.TemporaryDirectory() as tmp:
+            hooks_dir = Path(tmp) / ".agents" / "hooks"
+            hooks_dir.mkdir(parents=True)
+            for name in ("session_context.py", "worklog_dispatcher.sh", "perturn_recall.py"):
+                (hooks_dir / name).write_text("")
+
+            script = """
+const mod = await import(process.argv[1]);
+const calls = [];
+function shell(strings, ...values) {
+  calls.push(values.map(String));
+  return {
+    quiet() { return this; },
+    nothrow() { return Promise.resolve({ stdout: "{}", code: 0 }); }
+  };
+}
+const hooks = await mod.AgentMemoryPlugin({ $: shell, directory: process.argv[2] });
+await hooks["tool.execute.after"](
+  { tool: "bash", sessionID: "opencode-session", callID: "call-a", args: {} },
+  { title: "printf ok", output: "ok", metadata: {} }
+);
+console.log(calls[0][0]);
+"""
+            env = dict(os.environ)
+            env["HOME"] = tmp
+            env["NODE_NO_WARNINGS"] = "1"
+            result = subprocess.run(
+                ["node", "--input-type=module", "-e", script, str(extension), tmp],
+                cwd=str(REPO),
+                capture_output=True,
+                text=True,
+                env=env,
+                check=True,
+            )
+            payload = json.loads(result.stdout)
+
+            assert payload["session_id"] == "opencode-session"
+
+    def test_opencode_plugin_gates_reads_and_supersedes_older_read_parts(self):
+        plugin = REPO / "home/dot_config/opencode/plugins/agent-memory.ts"
+        supersede = REPO / "home/dot_config/opencode/plugins/read-supersede.ts"
+        with tempfile.TemporaryDirectory() as tmp:
+            hooks_dir = Path(tmp) / ".agents" / "hooks"
+            hooks_dir.mkdir(parents=True)
+            for name in ("session_context.py", "worklog_dispatcher.sh", "perturn_recall.py", "read_gate.py"):
+                (hooks_dir / name).write_text("")
+            script = r"""
+import assert from 'node:assert/strict';
+const mod = await import(process.argv[1]);
+const calls = [];
+function shell(strings, ...values) {
+  const argv = values.map(String);
+  calls.push(argv);
+  const gate = argv.some((v) => v.endsWith('read_gate.py'));
+  const payload = gate ? JSON.parse(argv[0]) : {};
+  const stdout = gate && payload.hook_event_name === 'PreToolUse' && payload.tool_name === 'read'
+    ? JSON.stringify({ decision: 'block', reason: 'already in context' })
+    : '{}';
+  return { quiet() { return this; }, nothrow() { return Promise.resolve({ stdout, code: 0 }); } };
+}
+const hooks = await mod.AgentMemoryPlugin({ $: shell, directory: process.argv[2] });
+await assert.rejects(
+  hooks['tool.execute.before']({ tool: 'read', sessionID: 's', callID: 'c1' }, { args: { filePath: '/f' } }),
+  /already in context/);
+const pre = JSON.parse(calls[0][0]);
+assert.deepEqual([pre.hook_event_name, pre.tool_name, pre.tool_use_id, pre.tool_input.filePath], ['PreToolUse', 'read', 'c1', '/f']);
+assert.ok(pre.transcript_path.endsWith('/.local/share/opencode/opencode.db'));
+// Ungated tools never reach the gate; bash does, and an allow resolves.
+await hooks['tool.execute.before']({ tool: 'edit', sessionID: 's', callID: 'c2' }, { args: {} });
+await hooks['tool.execute.before']({ tool: 'bash', sessionID: 's', callID: 'c3' }, { args: { command: 'cat /f' } });
+assert.equal(calls.length, 2);
+// After: the gate sees the tool output, then the worklog recorder runs as before.
+await hooks['tool.execute.after']({ tool: 'read', sessionID: 's', callID: 'c1', args: { filePath: '/f' } }, { title: '/f', output: 'body', metadata: {} });
+const post = JSON.parse(calls[2][0]);
+assert.deepEqual([post.hook_event_name, post.tool_response, post.tool_use_id], ['PostToolUse', 'body', 'c1']);
+assert.equal(calls.length, 4);
+
+const sup = await import(process.argv[3]);
+const notice = '[Superseded by a newer read of this file]';
+const read = (path, output, extra = {}) => ({ type: 'tool', tool: 'read', state: { status: 'completed', input: { filePath: path, ...extra }, output, time: {} } });
+const msg = (...parts) => ({ info: { role: 'assistant' }, parts });
+let msgs = [msg(read('/f', 'v1')), { info: { role: 'user' }, parts: [{ type: 'text', text: 'edit' }] }, msg(read('/f', 'v2'), read('/g', 'w'))];
+assert.equal(sup.supersedeReadParts(msgs, 1000, 900), 1);
+assert.deepEqual([msgs[0].parts[0].state.output, msgs[2].parts[0].state.output, msgs[2].parts[1].state.output], [notice, 'v2', 'w']);
+assert.equal(sup.supersedeReadParts(msgs, 1000, 900), 0, 'idempotent');
+// Ranged reads and pruned parts are left alone.
+msgs = [msg(read('/f', 'v1', { offset: 2 })), msg(read('/f', 'v2'))];
+assert.equal(sup.supersedeReadParts(msgs, 1000, 900), 0);
+msgs = [msg({ ...read('/f', 'v1'), state: { status: 'completed', input: { filePath: '/f' }, output: 'v1', time: { compacted: 5 } } }), msg(read('/f', 'v2'))];
+assert.equal(sup.supersedeReadParts(msgs, 1000, 900), 0);
+// Cache guard: a large suffix keeps the old copy unless the session idled 90 minutes.
+msgs = [msg(read('/f', 'v1')), msg({ type: 'text', text: 'x'.repeat(40000) }), msg(read('/f', 'v2'))];
+assert.equal(sup.supersedeReadParts(msgs, 1000, 900), 0);
+assert.equal(sup.supersedeReadParts(msgs, 100 * 60_000, 0), 1);
+// The plugin hook mutates output.messages in place.
+const hooks2 = await sup.ReadSupersedePlugin({});
+const out = { messages: [msg(read('/f', 'v1')), msg(read('/f', 'v2'))] };
+await hooks2['experimental.chat.messages.transform']({}, out);
+assert.equal(out.messages[0].parts[0].state.output, notice);
+console.log(JSON.stringify({ ok: true }));
+"""
+            env = dict(os.environ)
+            env["HOME"] = tmp
+            env["NODE_NO_WARNINGS"] = "1"
+            result = subprocess.run(
+                ["node", "--input-type=module", "-e", script, str(plugin), tmp, str(supersede)],
+                cwd=str(REPO),
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr[-1500:])
+            self.assertIn('{"ok":true}', result.stdout)
+
+    def test_pi_recall_injects_shared_session_context_once_per_session_start(self):
+        extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            hooks_dir = home / ".agents" / "hooks"
+            hooks_dir.mkdir(parents=True)
+            payload_log = Path(tmp) / "session-context-payloads.jsonl"
+            session_context = hooks_dir / "session_context.py"
+            session_context.write_text(
+                f"""#!/usr/bin/env python3
+import json
+import sys
+
+payload = json.load(sys.stdin)
+with open({str(payload_log)!r}, "a", encoding="utf-8") as handle:
+    handle.write(json.dumps(payload, sort_keys=True) + "\\n")
+context = "SHARED_SESSION_CONTEXT::" + payload["session_id"] + "::" + payload["initial_prompt"]
+print(json.dumps({{"additional_context": context}}))
+"""
+            )
+            session_context.chmod(0o755)
+            spec_file = Path(tmp) / "current.txt"
+            script = """
+const mod = await import(process.argv[1]);
+const workspace = process.argv[2];
+let specFile = process.argv[3];
+let selectedTopic = "current";
+const verificationPrefix = "P".repeat(3500) + "PREFIX_TAIL";
+const handlers = {};
+const pi = {
+  async exec(command, args) {
+    if (command === ",ai-kb" && args[0] === "--help") return { code: 0, killed: false, stdout: "" };
+    if (command === ",agent-memory") {
+      return {
+        code: 0,
+        killed: false,
+        stdout: JSON.stringify({
+          workspace,
+          selected_topic: selectedTopic,
+          session_key: "pi-session-context",
+          is_named_topic: false,
+          spec_file: specFile,
+          spec_exists: false
+        })
+      };
+    }
+    if (command === "python3" && args[0].endsWith("/lib/,ai-kb/embed_client.py")) {
+      return { code: 0, killed: false, stdout: "{}" };
+    }
+    if (command === "cat" && args[0].endsWith("/tmux/agent_prompts/prefix.txt")) {
+      return { code: 0, killed: false, stdout: verificationPrefix };
+    }
+    if (command === "cat") return { code: 1, killed: false, stdout: "" };
+    throw new Error(`unexpected exec: ${command} ${args.join(" ")}`);
+  },
+  on(event, handler) { handlers[event] = handler; }
+};
+let contextPercent = 5;
+const ctx = {
+  cwd: workspace,
+  getContextUsage() { return { percent: contextPercent }; },
+  sessionManager: { getSessionId() { return "pi-session-context"; } }
+};
+await mod.default(pi);
+await handlers.session_start({ type: "session_start", reason: "startup" }, ctx);
+const first = await handlers.before_agent_start({ prompt: "first" }, ctx);
+const second = await handlers.before_agent_start({ prompt: "next" }, ctx);
+contextPercent = 26;
+const grown = await handlers.before_agent_start({ prompt: "growth" }, ctx);
+selectedTopic = "next-topic";
+specFile = specFile.replace("current.txt", "next-topic.txt");
+const topicChanged = await handlers.before_agent_start({ prompt: "topic shift" }, ctx);
+await handlers.session_compact({ type: "session_compact" }, ctx);
+contextPercent = null;
+const compacted = await handlers.before_agent_start({ prompt: "compacted" }, ctx);
+contextPercent = 7;
+const afterCompactionBaseline = await handlers.before_agent_start({ prompt: "baseline" }, ctx);
+contextPercent = 28;
+const grownAfterCompaction = await handlers.before_agent_start({ prompt: "regrowth" }, ctx);
+await handlers.session_start({ type: "session_start", reason: "resume" }, ctx);
+const resumed = await handlers.before_agent_start({ prompt: "resume" }, ctx);
+console.log(JSON.stringify({
+  first,
+  second: second ?? null,
+  grown,
+  topicChanged,
+  compacted,
+  afterCompactionBaseline: afterCompactionBaseline ?? null,
+  grownAfterCompaction,
+  resumed
+}));
+"""
+            env = dict(os.environ)
+            env["HOME"] = str(home)
+            env["AI_AGENT_DEPTH"] = "balanced"
+            env["NODE_NO_WARNINGS"] = "1"
+            result = subprocess.run(
+                ["node", "--input-type=module", "-e", script, str(extension), str(Path(tmp).resolve()), str(spec_file)],
+                cwd=str(REPO),
+                capture_output=True,
+                text=True,
+                env=env,
+                check=True,
+            )
+            payload = json.loads(result.stdout)
+
+            assert "SHARED_SESSION_CONTEXT::pi-session-context" in payload["first"]["message"]["content"]
+            assert payload["second"] is None
+            assert "PREFIX_TAIL" in payload["grown"]["message"]["content"]
+            assert (
+                "SHARED_SESSION_CONTEXT::pi-session-context::topic shift"
+                in payload["topicChanged"]["message"]["content"]
+            )
+            assert "PREFIX_TAIL" in payload["compacted"]["message"]["content"]
+            assert payload["afterCompactionBaseline"] is None
+            assert "PREFIX_TAIL" in payload["grownAfterCompaction"]["message"]["content"]
+            assert "SHARED_SESSION_CONTEXT::pi-session-context" in payload["resumed"]["message"]["content"]
+            hook_payloads = [json.loads(line) for line in payload_log.read_text().splitlines()]
+            assert hook_payloads == [
+                {
+                    "cwd": str(Path(tmp).resolve()),
+                    "hook_event_name": "sessionStart",
+                    "initial_prompt": "first",
+                    "session_id": "pi-session-context",
+                    "source": "pi",
+                    "warm_embedder": True,
+                    "context_status": True,
+                    "workspace_roots": [str(Path(tmp).resolve())],
+                },
+                {
+                    "cwd": str(Path(tmp).resolve()),
+                    "hook_event_name": "sessionStart",
+                    "initial_prompt": "topic shift",
+                    "session_id": "pi-session-context",
+                    "source": "pi",
+                    "warm_embedder": True,
+                    "context_status": True,
+                    "workspace_roots": [str(Path(tmp).resolve())],
+                },
+                {
+                    "cwd": str(Path(tmp).resolve()),
+                    "hook_event_name": "sessionStart",
+                    "initial_prompt": "resume",
+                    "session_id": "pi-session-context",
+                    "source": "pi",
+                    "warm_embedder": True,
+                    "context_status": True,
+                    "workspace_roots": [str(Path(tmp).resolve())],
+                },
+            ]
+
+    def test_runtime_extensions_enable_search_tools(self):
+        extension_cases = [
+            REPO / "home/dot_pi/agent/exact_extensions/runtime-parity.ts",
+            REPO / "home/dot_omp/private_agent/extensions/runtime-parity.ts",
+        ]
+        for extension in extension_cases:
+            with self.subTest(extension=str(extension.relative_to(REPO))):
+                with tempfile.TemporaryDirectory() as tmp:
+                    home = Path(tmp) / "home"
+                    home.mkdir(parents=True)
+                    script = """
+const mod = await import(process.argv[1]);
+function makePi() {
+  const handlers = {};
+  let active = ["read", "bash", "edit", "write"];
+  return {
+    handlers,
+    getActiveTools() { return [...active]; },
+    setActiveTools(tools) { active = [...tools]; },
+    on(event, handler) { handlers[event] = handler; }
+  };
+}
+const pi = makePi();
+await mod.default(pi);
+await pi.handlers.session_start({ type: "session_start", reason: "startup" }, {});
+process.argv.push("--tools", "read,bash");
+const explicit = makePi();
+await mod.default(explicit);
+await explicit.handlers.session_start({ type: "session_start", reason: "startup" }, {});
+console.log(JSON.stringify({
+  active: pi.getActiveTools(),
+  toolCallHooked: "tool_call" in pi.handlers,
+  explicit: explicit.getActiveTools()
+}));
+"""
+                    env = dict(os.environ)
+                    env["HOME"] = str(home)
+                    env["NODE_NO_WARNINGS"] = "1"
+                    result = subprocess.run(
+                        ["node", "--input-type=module", "-e", script, str(extension)],
+                        cwd=str(REPO),
+                        capture_output=True,
+                        text=True,
+                        env=env,
+                        check=True,
+                    )
+                    payload = json.loads(result.stdout)
+
+                    assert payload["active"] == ["read", "bash", "edit", "write", "grep", "find", "ls"]
+                    assert payload["toolCallHooked"] is ("dot_omp" in str(extension))
+                    assert payload["explicit"] == ["read", "bash", "edit", "write"]
+
+    def test_runtime_leaf_context_and_peer_send_boundaries(self):
+        script = r"""
+import assert from 'node:assert/strict';
+import {mkdtempSync,writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+const tmp=mkdtempSync('/tmp/staged-leaf-runtime-');process.env.HOME=tmp;
+writeFileSync(join(tmp,'AGENTS.md'),'ROOT_SOP_SENTINEL');
+const piModule=await import(process.argv[1]);const ompModule=await import(process.argv[2]);
+function register(mod){const handlers={};mod.default({on(name,callback){handlers[name]=callback}});return handlers}
+const pi=register(piModule);
+assert((await pi.before_agent_start({systemPrompt:'ordinary root'})).systemPrompt.includes('ROOT_SOP_SENTINEL'));
+assert.equal(await pi.before_agent_start({systemPrompt:'[DELEGATION BOUNDARY]'}),undefined);
+process.env.PI_SUBAGENT_CHILD='1';assert.equal(await pi.before_agent_start({systemPrompt:'ordinary child'}),undefined);delete process.env.PI_SUBAGENT_CHILD;
+const omp=register(ompModule);
+for(const name of [undefined, '', ' ', '\t\n']) {
+  assert.equal(omp.tool_call({toolName:'hub',input:{op:'send',to:'done-worker',message:'wake',name}}).block,true);
+}
+assert.equal(omp.tool_call({toolName:'hub',input:{op:'send',name:'server',message:'input'}}),undefined);
+assert.equal(omp.tool_call({toolName:'hub',input:{op:'send',name:' server ',message:'input'}}),undefined);
+assert.equal(omp.tool_call({toolName:'hub',input:{op:'list'}}),undefined);
+assert.equal(omp.tool_call({toolName:'bash',input:{command:'true'}}),undefined);
+console.log('leaf-context and peer/process-send cases passed');
+"""
+        result = subprocess.run(
+            [
+                "node",
+                "--no-warnings",
+                "--input-type=module",
+                "-e",
+                script,
+                str(REPO / "home/dot_pi/agent/exact_extensions/runtime-parity.ts"),
+                str(REPO / "home/dot_omp/private_agent/extensions/runtime-parity.ts"),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("cases passed", result.stdout)
+
+    def test_pi_recall_keyless_session_stages_nothing_at_runtime(self):
+        extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"
+        with tempfile.TemporaryDirectory() as tmp:
+            spec_file = Path(tmp) / "pi-memory.txt"
+            spec_file.write_text("target: persist pi recall dedupe\n")
+            rows = [
+                {
+                    "id": "capsule-a",
+                    "title": "Pi resume capsule",
+                    "body": "must never stage without a session key",
+                    "kind": "gotcha",
+                    "scope": "project",
+                    "workspace_path": "/tmp/workspace",
+                    "cosine_score": 0.99,
+                }
+            ]
+            search_log = Path(tmp) / "search.jsonl"
+            script = """
+const mod = await import(process.argv[1]);
+const specFile = process.argv[2];
+const workspace = "/tmp/workspace";
+const sessionId = "pi/session";
+function makePi() {
+  const handlers = {};
+  return {
+    handlers,
+    async exec(command, args) {
+      if (command === ",ai-kb" && args[0] === "--help") return { code: 0, killed: false, stdout: "" };
+      if (command === ",agent-memory") {
+        return {
+          code: 0,
+          killed: false,
+          stdout: JSON.stringify({
+            workspace,
+            selected_topic: "",
+            session_key: "",
+            is_named_topic: false,
+            spec_file: specFile,
+            spec_exists: true
+          })
+        };
+      }
+      if (command === "cat") return { code: 1, killed: false, stdout: "" };
+      if (command === "python3" && args[0].endsWith("/lib/,ai-kb/embed_client.py") && args[1] === "ensure") {
+        return { code: 0, killed: false, stdout: "{}" };
+      }
+      throw new Error(`unexpected exec: ${command} ${args.join(" ")}`);
+    },
+    on(event, handler) { handlers[event] = handler; }
+  };
+}
+const pi = makePi();
+await mod.default(pi);
+await pi.handlers.session_start(
+  { type: "session_start", reason: "startup" },
+  { sessionManager: { getSessionId() { return sessionId; } } }
+);
+const result = await pi.handlers.before_agent_start(
+  { prompt: "cursor task band gate rewrites the subagent model param, how do I launch a pinned verifier lane?" },
+  {
+    cwd: workspace,
+    getContextUsage() { return null; },
+    sessionManager: { getSessionId() { return sessionId; } }
+  }
+);
+console.log(JSON.stringify({ result: result ?? null }));
+"""
+            env = make_aikb_stub(Path(tmp), rows)
+            env["NODE_NO_WARNINGS"] = "1"
+            env["AI_KB_STUB_LOG"] = str(search_log)
+            env["HOME"] = str(Path(tmp) / "home")
+            result = subprocess.run(
+                ["node", "--input-type=module", "-e", script, str(extension), str(spec_file)],
+                cwd=str(REPO),
+                capture_output=True,
+                text=True,
+                env=env,
+                check=True,
+            )
+            payload = json.loads(result.stdout)
+
+            # A keyless session must inject nothing, stage nothing, and never search.
+            assert payload["result"] is None
+            assert sorted(Path(tmp).glob(".recall-*")) == []
+            assert not search_log.exists()
+
+    def test_pi_recall_injects_probe_budget_directive_from_fresh_ad_hoc_ledger(self):
+        # The probe-budget consumer must fire through the real extension, not just
+        # exist as source text: seed a fresh ad-hoc ledger next to the spec file and
+        # assert the before_agent_start message carries the note; a stale ledger must
+        # inject nothing (freshness cap keeps other sessions' failures out).
+        from datetime import datetime, timezone
+
+        extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"
+        script = """
+const mod = await import(process.argv[1]);
+const specFile = process.argv[2];
+const workspace = "/tmp/workspace";
+const sessionId = "pi/session-budget";
+const handlers = {};
+const pi = {
+  async exec(command, args) {
+    if (command === ",ai-kb" && args[0] === "--help") return { code: 0, killed: false, stdout: "" };
+    if (command === ",agent-memory") {
+      return {
+        code: 0,
+        killed: false,
+        stdout: JSON.stringify({
+          workspace,
+          selected_topic: "budget-topic",
+          session_key: "pi-session-budget",
+          is_named_topic: false,
+          spec_file: specFile,
+          spec_exists: false
+        })
+      };
+    }
+    if (command === "cat") return { code: 1, killed: false, stdout: "" };
+    if (command === "python3" && args[0].endsWith("/lib/,ai-kb/embed_client.py") && args[1] === "ensure") {
+      return { code: 0, killed: false, stdout: "{}" };
+    }
+    throw new Error(`unexpected exec: ${command} ${args.join(" ")}`);
+  },
+  on(event, handler) { handlers[event] = handler; }
+};
+await mod.default(pi);
+await handlers.session_start(
+  { type: "session_start", reason: "startup" },
+  { sessionManager: { getSessionId() { return sessionId; } } }
+);
+const result = await handlers.before_agent_start(
+  { prompt: "why did you choose sqlite here?" },
+  {
+    cwd: workspace,
+    getContextUsage() { return null; },
+    sessionManager: { getSessionId() { return sessionId; } }
+  }
+);
+console.log(JSON.stringify({ content: result?.message?.content ?? null }));
+"""
+        for label, ts, expect_fire in (
+            ("fresh", datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), True),
+            ("stale", "2026-01-01T00:00:00Z", False),
+        ):
+            with self.subTest(ledger=label), tempfile.TemporaryDirectory() as tmp:
+                spec_file = Path(tmp) / "budget-topic.txt"
+                ledger = Path(tmp) / "ad-hoc.probe-ledger.jsonl"
+                ledger.write_text(
+                    "\n".join(json.dumps({"ts": ts, "result": "fail", "summary": "s"}) for _ in range(3)) + "\n",
+                    encoding="utf-8",
+                )
+                env = make_aikb_stub(Path(tmp), [])
+                env["NODE_NO_WARNINGS"] = "1"
+                env["HOME"] = str(Path(tmp) / "home")
+                result = subprocess.run(
+                    ["node", "--input-type=module", "-e", script, str(extension), str(spec_file)],
+                    cwd=str(REPO),
+                    capture_output=True,
+                    text=True,
+                    env=env,
+                    check=True,
+                )
+                content = json.loads(result.stdout)["content"]
+                if expect_fire:
+                    assert content is not None and "probe-budget-exhausted" in content
+                    assert "Probe-budget hint" in content
+                else:
+                    assert content is None
+
+    def test_pi_read_gate_extension_blocks_a_verified_identical_read(self):
+        script = r"""
+import assert from 'node:assert/strict';
+import { mkdir, writeFile, copyFile, chmod, appendFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { mkdtempSync } from 'node:fs';
+const [extension, root] = process.argv.slice(1);
+const tmp = mkdtempSync(join(tmpdir(), 'pi-read-gate-'));
+const hooks = join(tmp, '.agents/hooks'); await mkdir(hooks, { recursive: true });
+for (const [src, dst] of [['executable_read_gate.py', 'read_gate.py'], ['hook_common.py', 'hook_common.py'], ['reinforcement.py', 'reinforcement.py']]) {
+  await copyFile(join(root, 'home/exact_dot_agents/exact_hooks', src), join(hooks, dst)); await chmod(join(hooks, dst), 0o755);
+}
+process.env.HOME = tmp; process.env.AGENT_MEMORY_SPEC_ROOT = join(tmp, 'specs');
+const target = join(tmp, 'notes.txt'); await writeFile(target, 'alpha\nbeta\n');
+const session = join(tmp, 'session.jsonl'); await writeFile(session, '');
+const handlers = {};
+const api = { on(k, v) { handlers[k] = v } };
+const mod = await import(extension); await mod.default(api);
+assert.equal(typeof handlers.tool_call, 'function'); assert.equal(typeof handlers.tool_result, 'function');
+const ctx = { cwd: tmp, sessionManager: { getSessionId() { return 'pi-gate' }, getSessionFile() { return session } } };
+const call = (id) => handlers.tool_call({ type: 'tool_call', toolCallId: id, toolName: 'read', input: { path: target } }, ctx);
+assert.equal(await call('c1'), undefined, 'first read passes');
+await handlers.tool_result({ type: 'tool_result', toolCallId: 'c1', toolName: 'read', input: { path: target }, content: [{ type: 'text', text: 'alpha\nbeta\n' }], isError: false }, ctx);
+// Recorded, but not yet in the session file: history is not intact, so it still passes.
+assert.equal(await call('c2'), undefined, 'unverifiable history passes');
+await appendFile(session, JSON.stringify({ type: 'message', timestamp: '2099-01-01T00:00:00.000Z', message: { role: 'toolResult', toolCallId: 'c2', toolName: 'read', isError: false, content: [{ type: 'text', text: 'alpha\nbeta\n' }] } }) + '\n');
+await handlers.tool_result({ type: 'tool_result', toolCallId: 'c2', toolName: 'read', input: { path: target }, content: [{ type: 'text', text: 'alpha\nbeta\n' }], isError: false }, ctx);
+const blocked = await call('c3');
+assert(blocked && blocked.block === true && /byte-identical/.test(blocked.reason), JSON.stringify(blocked));
+// A slice and a changed file pass.
+assert.equal(await handlers.tool_call({ type: 'tool_call', toolCallId: 'c4', toolName: 'read', input: { path: target, offset: 1 } }, ctx), undefined);
+await writeFile(target, 'alpha\nbeta\ngamma\n');
+assert.equal(await call('c5'), undefined, 'changed file passes');
+console.log(JSON.stringify({ ok: true }));
+"""
+        # OMP is deliberately absent: it supersedes the earlier read result in the session the
+        # moment a re-read is attempted (observed live 2026-09-06), so a block there would leave
+        # the model with neither copy. OMP dedups re-reads natively.
+        for extension in (REPO / "home/dot_pi/agent/exact_extensions/read-gate.ts",):
+            with self.subTest(extension=str(extension.relative_to(REPO))):
+                result = subprocess.run(
+                    ["node", "--input-type=module", "-e", script, str(extension), str(REPO)],
+                    cwd=str(REPO),
+                    capture_output=True,
+                    text=True,
+                    env=hook_env(),
+                )
+                self.assertEqual(result.returncode, 0, result.stderr[-2000:])
+                self.assertIn('{"ok":true}', result.stdout)
+
+    def test_pi_read_supersede_extension_replaces_older_reads_with_a_cache_guard(self):
+        script = r"""
+import assert from 'node:assert/strict';
+const mod = await import(process.argv[1]);
+const { supersedeReads } = mod;
+const read = (id, path) => ({ role: 'assistant', content: [{ type: 'toolCall', id, name: 'read', arguments: { path } }] });
+const result = (id, text) => ({ role: 'toolResult', toolCallId: id, toolName: 'read', content: [{ type: 'text', text }] });
+const notice = '[Superseded by a newer read of this file]';
+// Two reads of the same file, small suffix: the older one is superseded, the newest kept.
+let msgs = [read('a', '/f'), result('a', 'v1'), { role: 'user', content: 'edit it' }, read('b', '/f'), result('b', 'v2')];
+let out = supersedeReads(msgs, 1000, 900);
+assert.equal(out[1].content[0].text, notice); assert.equal(out[4].content[0].text, 'v2');
+assert.equal(msgs[1].content[0].text, 'v1', 'input untouched');
+// Different files are independent; skill:// style URIs are exempt.
+assert.equal(supersedeReads([read('a', '/f'), result('a', 'v1'), read('b', '/g'), result('b', 'w')], 1000, 900), undefined);
+assert.equal(supersedeReads([read('a', 'skill://x'), result('a', 'v1'), read('b', 'skill://x'), result('b', 'v2')], 1000, 900), undefined);
+// Large suffix after the older read: cache guard keeps it unless the session idled 90 minutes.
+const big = { role: 'user', content: 'x'.repeat(40000) };
+msgs = [read('a', '/f'), result('a', 'v1'), big, read('b', '/f'), result('b', 'v2')];
+assert.equal(supersedeReads(msgs, 1000, 900), undefined);
+assert.equal(supersedeReads(msgs, 100 * 60_000, 0)[1].content[0].text, notice);
+// Idempotent on an already superseded message.
+assert.equal(supersedeReads(supersedeReads([read('a', '/f'), result('a', 'v1'), read('b', '/f'), result('b', 'v2')], 1000, 900), 1000, 900), undefined);
+// The extension registers a context handler that returns the rewritten list.
+const handlers = {}; await mod.default({ on(k, v) { handlers[k] = v } });
+const res = await handlers.context({ type: 'context', messages: [read('a', '/f'), result('a', 'v1'), read('b', '/f'), result('b', 'v2')] });
+assert.equal(res.messages[1].content[0].text, notice);
+console.log(JSON.stringify({ ok: true }));
+"""
+        extension = REPO / "home/dot_pi/agent/exact_extensions/read-supersede.ts"
+        result = subprocess.run(
+            ["node", "--input-type=module", "-e", script, str(extension)],
+            cwd=str(REPO),
+            capture_output=True,
+            text=True,
+            env=hook_env(),
+        )
+        self.assertEqual(result.returncode, 0, result.stderr[-1500:])
+        self.assertIn('{"ok":true}', result.stdout)
+
+    def test_review_cleanroom_and_utf16_context_state_table(self):
+        script = r"""
+import json,sys,tempfile
+from pathlib import Path
+sys.path.insert(0,sys.argv[1])
+from executable_session_context import neutral_review_spec,context_for_harness
+import os
+with tempfile.TemporaryDirectory() as tmp:
+    d=Path(tmp); a=d/'alpha.txt'; b=d/'beta.txt'
+    # All supported ATX equivalents strip conclusions; ordinary mentions stay intact.
+    for heading in ['findings:', 'VERDICT', '# Findings', '###### Verified facts: ###', '  ## Inline comments ##']:
+        out=neutral_review_spec('target: PR 1\n'+heading+'\nOLD_CONCLUSION',a)
+        assert 'OLD_CONCLUSION' not in out,heading
+        assert 'target: PR 1' in out
+    for heading in ['findings are expected', '####### Findings', '#Findings', 'verify findings before publishing']:
+        assert 'PRESERVED' in neutral_review_spec(heading+'\nPRESERVED',a),heading
+os.environ['AGENT_HOOK_HARNESS']='cursor'
+assert context_for_harness(['😀'*5000],[])=='😀'*5000
+assert context_for_harness(['😀'*5000+'x'],[(0,'Read complete artifact at /tmp/example')])=='Read complete artifact at /tmp/example'
+try:
+    context_for_harness(['😀'*5000+'x'],[])
+except ValueError:
+    pass
+else:
+    raise AssertionError('oversized mandatory instructions were silently accepted')
+os.environ['AGENT_HOOK_HARNESS']='other'
+assert context_for_harness(['😀'*5000+'x'],[(0,'pointer')])=='😀'*5000+'x'
+print('clean-room/context table passed')
+"""
+        result = subprocess.run([sys.executable, "-c", script, str(HOOKS)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("table passed", result.stdout)
+
+    def test_pi_and_omp_context_permission_and_recall_transitions(self):
+        script = r"""
+    import assert from 'node:assert/strict';
+    import {realpath,mkdtemp,mkdir,copyFile,chmod,writeFile,readFile,unlink,rename} from 'node:fs/promises';
+    import {join} from 'node:path';
+    const root=process.argv[1];
+    const extension=process.argv[2];
+    const tmp=await realpath(await mkdtemp('/tmp/setup-hooks-runtime-'));
+    const hooks=join(tmp,'.agents/hooks');await mkdir(hooks,{recursive:true});
+    for(const [src,dst] of [['executable_session_context.py','session_context.py'],['executable_perturn_recall.py','perturn_recall.py'],['hook_common.py','hook_common.py']]){
+     await copyFile(join(root,'home/exact_dot_agents/exact_hooks',src),join(hooks,dst));await chmod(join(hooks,dst),0o755);
+    }
+    process.env.HOME=tmp;process.env.AI_AGENT_DEPTH='fast';process.env.AGENT_MEMORY_SPEC_ROOT=join(tmp,'specs');process.env.AGENT_MEMORY_MIRROR_ROOT=join(tmp,'mirror');process.env.XDG_CONFIG_HOME=join(tmp,'.config');
+    const bin=join(tmp,'bin');await mkdir(bin);process.env.PATH=`${bin}:${process.env.PATH}`;
+    await writeFile(join(bin,'gh'),'#!/bin/sh\nexit 1\n');await chmod(join(bin,'gh'),0o755);
+    const searchLog=join(tmp,'search.jsonl');const rowsPath=join(tmp,'rows.json');
+    await writeFile(rowsPath,JSON.stringify([{id:'A',title:'UNJUDGED_TITLE',body:'UNJUDGED_BODY'.repeat(50),scope:'universal',bm25_score:-10,cosine_score:0.8}]));
+    await writeFile(join(bin,',ai-kb'),`#!/usr/bin/env python3\nimport json,sys\nif sys.argv[1:2]==['search']:\n query=sys.stdin.read()\n with open(${JSON.stringify(searchLog)},'a') as f: f.write(json.dumps({'args':sys.argv[1:],'query':query})+'\\n')\n print(open(${JSON.stringify(rowsPath)}).read())\n`);await chmod(join(bin,',ai-kb'),0o755);
+    const worklog=join(tmp,'captured.jsonl');await writeFile(join(hooks,'worklog_dispatcher.sh'),`#!/usr/bin/env python3\nimport sys\nwith open(${JSON.stringify(worklog)},'a') as f:f.write(sys.stdin.read()+'\\n')\n`);await chmod(join(hooks,'worklog_dispatcher.sh'),0o755);
+    await mkdir(join(tmp,'.config/tmux/agent_prompts'),{recursive:true});await writeFile(join(tmp,'.config/tmux/agent_prompts/prefix.txt'),'PREFIX_SENTINEL');
+    const specDir=join(process.env.AGENT_MEMORY_SPEC_ROOT,tmp.slice(1));await mkdir(specDir,{recursive:true});
+    let topic='alpha';const key='callback-session';let statusAvailable=true;let percent=5;
+    async function bind(value,text='target: current task'){topic=value;await writeFile(join(specDir,`.session-topic-${key}.txt`),value);await writeFile(join(specDir,`${value}.txt`),text)}
+    await bind('alpha');
+    const mod=await import(extension);let handlers={};
+    const api={on(k,v){handlers[k]=v},async exec(cmd,args){if(cmd===',ai-kb')return {code:0,stdout:'',killed:false};
+     if(cmd===',agent-memory')return statusAvailable?{code:0,killed:false,stdout:JSON.stringify({workspace:tmp,selected_topic:topic,session_key:key,is_named_topic:true,spec_file:join(specDir,`${topic}.txt`),spec_exists:true})}:{code:1,stdout:'',killed:false};
+     if(cmd==='cat'){try{return {code:0,stdout:await readFile(args[0],'utf8'),killed:false}}catch{return {code:1,stdout:'',killed:false}}}throw new Error(cmd)}};
+    const ctx={cwd:tmp,getContextUsage(){return {percent}},sessionManager:{getSessionId(){return key}}};
+    await mod.default(api);
+    const content=async(prompt='Did you actually verify this claim?')=>(await handlers.before_agent_start({prompt},ctx))?.message?.content??'';
+    process.env.AGENT_HOOK_CONTEXT='0';assert.equal(await content(),'');await handlers.session_compact({},ctx);percent=80;assert.equal(await content(),'');
+    await handlers.tool_result({toolName:'bash',input:{command:'echo captured'},content:[{text:'captured'}]},ctx);
+    delete process.env.AGENT_HOOK_CONTEXT;let enabled=await content();assert(enabled.includes('PREFIX_SENTINEL'));assert(enabled.includes('User correction signal'));assert(enabled.includes(',agent-memory note anti_pattern'));assert(enabled.includes('Do not launch re-verification'));assert(!enabled.includes('UNJUDGED')); 
+    for(const sentinel of ['_no_session_context','alpha.no_context']){await writeFile(join(specDir,sentinel),'');assert.equal(await content(),'');await handlers.session_compact({},ctx);assert.equal(await content(),'');await unlink(join(specDir,sentinel));assert((await content()).includes('PREFIX_SENTINEL'))}
+    await rename(join(hooks,'session_context.py'),join(hooks,'saved_context.py'));
+    await handlers.session_start({},ctx);await writeFile(join(specDir,'alpha.no_context'),'');assert.equal(await content(),'');await unlink(join(specDir,'alpha.no_context'));assert((await content()).includes('User correction signal'));assert(!await readFile(searchLog,'utf8').catch(()=>''),'fast fallback searched');
+    // Balanced fallback preserves retrieval while staging full rows and never admitting them.
+    process.env.AI_AGENT_DEPTH='balanced';handlers={};await mod.default(api);let first=await content('short');assert(first.includes('candidates staged'));assert(!first.includes('UNJUDGED'));assert.equal(JSON.parse(await readFile(join(specDir,`.recall-candidates-${key}.json`),'utf8'))[0].body,'UNJUDGED_BODY'.repeat(50));assert.equal(await readFile(join(specDir,`.recall-seen-${key}.json`),'utf8').catch(()=>''),'');
+    assert(!(await content('short')).includes('candidates staged'));
+    await writeFile(rowsPath,JSON.stringify([{id:'B',title:'prompt-specific',body:'B',cosine_score:0.8}]));
+    assert(!(await content('A substantive prompt for memory')).includes('candidates staged'));
+    assert.deepEqual(JSON.parse(await readFile(join(specDir,`.recall-candidates-${key}.json`),'utf8')).map(r=>r.id),['A','B']);
+    await writeFile(rowsPath,JSON.stringify([{id:'A',title:'UNJUDGED_TITLE',body:'body',bm25_score:-10,cosine_score:0.8}]));
+    await bind('beta');assert((await content('short')).includes('candidates staged'));assert(!(await content('short')).includes('candidates staged'));await bind('alpha');assert((await content('short')).includes('candidates staged'));
+    await writeFile(rowsPath,'[]');await bind('beta');assert(!(await content('short')).includes('candidates staged'));await writeFile(rowsPath,JSON.stringify([{id:'A',title:'UNJUDGED_TITLE',body:'body',bm25_score:-10,cosine_score:0.8}]));await bind('alpha');assert((await content('short')).includes('candidates staged'));
+    await writeFile(rowsPath,'[]');await bind('beta');await content('short');await writeFile(rowsPath,JSON.stringify([{id:'A',title:'UNJUDGED_TITLE',body:'body',bm25_score:-10,cosine_score:0.8}]));assert((await content('A substantive prompt for memory')).includes('candidates staged'));assert(!(await content('A substantive prompt for memory')).includes('candidates staged'));
+    // Clean-room fallback must not send prior conclusions as a BM25 query.
+    const before=(await readFile(searchLog,'utf8')).split('\n').filter(Boolean).length;
+    await bind('review-case','target: ordinary\n## Findings\nOLD_CONCLUSION');assert(!(await content('short')).includes('UNJUDGED'));
+    await bind('other-case','target: PR 123\n## Findings\nOLD_CONCLUSION');await content('short');
+    assert.equal((await readFile(searchLog,'utf8')).split('\n').filter(Boolean).length,before);
+    // Children must neither retrieve nor receive root workflow hints.
+    const searchesBeforeLeaf=await readFile(searchLog,'utf8');
+    process.env.PI_SUBAGENT_CHILD='1';assert.equal(await content(),'');delete process.env.PI_SUBAGENT_CHILD;
+    process.env.COPILOT_AGENT_SESSION_ID='parent';assert.equal(await content(),'');delete process.env.COPILOT_AGENT_SESSION_ID;
+    assert.equal(await handlers.before_agent_start({prompt:'Did you verify?',systemPrompt:'[DELEGATION BOUNDARY]'},ctx),undefined);
+    assert.equal(await readFile(searchLog,'utf8'),searchesBeforeLeaf);
+    // A successful empty hook is not a disabled hook.
+    await writeFile(join(hooks,'session_context.py'),'#!/usr/bin/env python3\nprint("{}")\n');await chmod(join(hooks,'session_context.py'),0o755);await handlers.session_start({},ctx);assert((await content()).includes('User correction signal'));
+    // Explicit disable remains effective if the status CLI is unavailable.
+    statusAvailable=false;process.env.AGENT_HOOK_CONTEXT='off';assert.equal(await content(),'');delete process.env.AGENT_HOOK_CONTEXT;
+    for(let i=0;i<1000;i++){if((await readFile(worklog,'utf8').catch(()=>'')))break;await new Promise(r=>setTimeout(r,10))}assert((await readFile(worklog,'utf8')).includes('captured'));
+    console.log(JSON.stringify({extension,cases:27,worklogCaptured:true,temporaryHome:tmp}));
+    """
+        for extension in (
+            REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts",
+            REPO / "home/dot_omp/private_agent/extensions/ai-kb-recall.ts",
+        ):
+            with self.subTest(extension=str(extension)):
+                result = subprocess.run(
+                    ["node", "--no-warnings", "--input-type=module", "-e", script, str(REPO), str(extension)],
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertTrue(json.loads(result.stdout)["worklogCaptured"])
+
+    def test_pi_and_omp_partial_install_keeps_independent_callbacks(self):
+        script = r"""
+import assert from 'node:assert/strict';
+import {realpath,mkdtemp,mkdir,copyFile,chmod,writeFile,readFile,rename} from 'node:fs/promises';
+import {join} from 'node:path';
+const root=process.argv[1], extension=process.argv[2];
+const mod=await import(extension);
+let cases=0;
+for(const failure of ['absent','failed','killed','throws']){
+ for(const helper of ['available','missing']){
+ for(const review of [false,true]){
+  const tmp=await realpath(await mkdtemp('/tmp/hooks-partial-install-'));
+  const hooks=join(tmp,'.agents/hooks');await mkdir(hooks,{recursive:true});
+  for(const [src,dst] of [['executable_session_context.py','session_context.py'],['hook_common.py','hook_common.py']]){await copyFile(join(root,'home/exact_dot_agents/exact_hooks',src),join(hooks,dst));await chmod(join(hooks,dst),0o755)}
+  if(helper==='missing')await rename(join(hooks,'session_context.py'),join(hooks,'disabled.py'));
+  process.env.HOME=tmp;process.env.AI_AGENT_DEPTH='deep';process.env.AI_EMBED_WARM='1';process.env.AGENT_MEMORY_SPEC_ROOT=join(tmp,'specs');process.env.AGENT_MEMORY_MIRROR_ROOT=join(tmp,'mirror');process.env.XDG_CONFIG_HOME=join(tmp,'.config');delete process.env.AGENT_HOOK_CONTEXT;
+  const specDir=join(process.env.AGENT_MEMORY_SPEC_ROOT,tmp.slice(1));await mkdir(specDir,{recursive:true});
+  const key='partial';const topic=review?'review-partial':'ordinary';const specFile=join(specDir,`${topic}.txt`);await writeFile(specFile,review?'target: PR 123\n## Findings\nPRIOR_CONCLUSION':'target: current named task');await writeFile(join(specDir,`.session-topic-${key}.txt`),topic);
+  const prefixPath=join(tmp,'.config/tmux/agent_prompts/prefix.txt');await mkdir(join(tmp,'.config/tmux/agent_prompts'),{recursive:true});await writeFile(prefixPath,'PREFIX_PARTIAL');
+  const bin=join(tmp,'bin');await mkdir(bin);const log=join(tmp,'search.jsonl'), worklog=join(tmp,'worklog.jsonl');process.env.PATH=`${bin}:${process.env.PATH}`;
+  for(const [file,text] of [['gh','#!/bin/sh\nexit 1\n'],[',ai-kb',`#!/usr/bin/env python3\nimport sys\nwith open(${JSON.stringify(log)},'a') as f:f.write('SEARCH_ATTEMPT\\n')\nprint('[]')\n`]]){await writeFile(join(bin,file),text);await chmod(join(bin,file),0o755)}
+  await writeFile(join(hooks,'worklog_dispatcher.sh'),`#!/usr/bin/env python3\nimport sys\nwith open(${JSON.stringify(worklog)},'a') as f:f.write(sys.stdin.read()+'\\n')\n`);await chmod(join(hooks,'worklog_dispatcher.sh'),0o755);
+  let probeCount=0, available=false;const handlers={};
+  const api={on(k,v){handlers[k]=v},async exec(cmd,args){
+   if(cmd===',ai-kb'){probeCount++;if(available)return {code:0,killed:false,stdout:''};if(failure==='throws')throw new Error('ENOENT');return {code:failure==='absent'?127:failure==='failed'?1:0,killed:failure==='killed',stdout:''}}
+   if(cmd===',agent-memory')return {code:0,killed:false,stdout:JSON.stringify({workspace:tmp,selected_topic:topic,session_key:key,is_named_topic:true,spec_file:specFile,spec_exists:true})};
+   if(cmd==='cat')return {code:0,killed:false,stdout:await readFile(args[0],'utf8')};throw new Error(cmd)
+  }};
+  await mod.default(api);
+  assert.equal(typeof handlers.before_agent_start,'function',`${failure}/${helper}: context callback missing`);
+  assert.equal(typeof handlers.tool_result,'function',`${failure}/${helper}: worklog callback missing`);
+  const ctx={cwd:tmp,getContextUsage(){return {percent:5}},sessionManager:{getSessionId(){return key}}};
+  await handlers.session_start({},ctx);
+  const run=async()=> (await handlers.before_agent_start({prompt:'Did you actually verify this claim?'},ctx))?.message?.content??'';
+  let first=await run();assert(!first.includes('PREFIX_PARTIAL'));assert(first.includes('User correction signal'));assert(!first.includes('PRIOR_CONCLUSION'));
+  if(helper==='available')assert(first.includes(review?'target: PR 123':'target: current named task'));
+  await handlers.session_compact({},ctx);assert((await run()).includes('PREFIX_PARTIAL'));
+  process.env.AGENT_HOOK_CONTEXT='off';assert.equal(await run(),'');
+  await handlers.tool_result({toolName:'bash',input:{command:'safe'},content:[{text:'WORKLOG_CAPTURED'}]},ctx);
+  delete process.env.AGENT_HOOK_CONTEXT;assert((await run()).includes('User correction signal'));
+  // Availability is sampled once; later installation must not silently reopen recall.
+  available=true;await run();assert.equal(probeCount,1);
+  assert.equal(await readFile(log,'utf8').catch(()=>''),'');
+  for(let i=0;i<1000;i++){if(await readFile(worklog,'utf8').catch(()=>''))break;await new Promise(r=>setTimeout(r,10))}
+  assert((await readFile(worklog,'utf8')).includes('WORKLOG_CAPTURED'));
+  cases++;
+ }
+ }
+}
+console.log(JSON.stringify({extension,cases}));
+"""
+        for extension in (
+            REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts",
+            REPO / "home/dot_omp/private_agent/extensions/ai-kb-recall.ts",
+        ):
+            with self.subTest(extension=str(extension)):
+                result = subprocess.run(
+                    ["node", "--no-warnings", "--input-type=module", "-e", script, str(REPO), str(extension)],
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(result.stdout)["cases"], 16)
+
+    def test_session_context_warms_resident_embedder_only_when_adapter_opts_in(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            client = root / "lib/,ai-kb/embed_client.py"
+            client.parent.mkdir(parents=True)
+            marker = root / "warm-count"
+            client.write_text(
+                "#!/usr/bin/env python3\n"
+                "import os, pathlib\n"
+                "path = pathlib.Path(os.environ['WARM_MARKER'])\n"
+                "count = int(path.read_text()) if path.exists() else 0\n"
+                "path.write_text(str(count + 1))\n"
+            )
+            payload = {
+                "hook_event_name": "SessionStart",
+                "workspace_roots": [tmp],
+                "session_id": "warm-test",
+            }
+            base_env = {**os.environ, "HOME": tmp, "WARM_MARKER": str(marker)}
+
+            run_hook("executable_session_context.py", payload, env=base_env)
+            self.assertFalse(marker.exists())
+            run_hook(
+                "executable_session_context.py",
+                payload,
+                env={**base_env, "AI_EMBED_WARM": "1"},
+            )
+            self.assertEqual(marker.read_text(), "1")
+            run_hook(
+                "executable_session_context.py",
+                {**payload, "warm_embedder": True},
+                env=base_env,
+            )
+            self.assertEqual(marker.read_text(), "2")
+
+    def test_perturn_recall_marks_ai_kb_embedding_connect_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bindir = root / "bin"
+            bindir.mkdir()
+            marker = root / "connect-only"
+            stub = bindir / ",ai-kb"
+            stub.write_text(
+                "#!/usr/bin/env python3\n"
+                "import os, pathlib\n"
+                "pathlib.Path(os.environ['CONNECT_ONLY_MARKER']).write_text("
+                "os.environ.get('AI_EMBED_CONNECT_ONLY', ''))\n"
+                "print('[]')\n"
+            )
+            stub.chmod(0o755)
+            env = {
+                **os.environ,
+                "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+                "CONNECT_ONLY_MARKER": str(marker),
+            }
+            result = run_perturn_recall(
+                tmp,
+                {
+                    "hook_event_name": "UserPromptSubmit",
+                    "workspace_roots": [tmp],
+                    "session_id": "connect-only-test",
+                    "prompt": "substantive prompt must not spawn an embed worker",
+                },
+                env,
+            )
+
+            self.assertEqual(result, {})
+            self.assertEqual(marker.read_text(), "1")
+
+    def test_session_context_appends_aikb_reminder_with_named_topic(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            bind_session_topic(spec_dir, "memory-session", "memory-systems")
+            (spec_dir / "memory-systems.txt").write_text("target: wire memory systems\n")
+
+            payload = {
+                "hook_event_name": "sessionStart",
+                "workspace_roots": [tmp],
+                "session_id": "memory-session",
+            }
+            context = run_hook("executable_session_context.py", payload)["additional_context"]
+
+            assert "target: wire memory systems" in context
+            assert "Durable Memory (,ai-kb)" in context
+            # The reminder routes both KB directions through the smol operator and
+            # forbids parent-inline CLI use outside the no-spawn fallback.
+            assert "k-agent-smol" in context
+            assert "final learning batch" in context
+            assert "When delegation is forbidden, use the skill's inline fallback" in context
+            assert "No Named Topic Active" not in context
+
+    def test_session_context_warmstart_stages_complete_candidates_for_named_topic(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            bind_session_topic(spec_dir, "warm-session", "memory-systems")
+            (spec_dir / "memory-systems.txt").write_text("target: wire memory systems\n")
+
+            env = make_aikb_stub(
+                Path(tmp),
+                [
+                    {
+                        "id": "local-capsule",
+                        "title": "Local capsule that should surface",
+                        "body": "B" * 400,
+                        "kind": "gotcha",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                    }
+                ],
+            )
+            payload = {"hook_event_name": "sessionStart", "workspace_roots": [tmp], "session_id": "warm-session"}
+            context = run_hook("executable_session_context.py", payload, env=env)["additional_context"]
+
+            assert "### ,ai-kb candidates staged" in context
+            assert "Local capsule that should surface" not in context
+            assert "B" * 100 not in context
+            rows = json.loads((spec_dir / ".recall-candidates-warm-session.json").read_text())
+            assert rows[0]["body"] == "B" * 400
+            assert not (spec_dir / ".recall-seen-warm-session.json").exists()
+
+    def test_session_context_notices_harnesses_without_per_turn_recall(self):
+        """Adapters that never request embedder warm-up (Cursor) get the recall notice; warm adapters do not."""
+        with tempfile.TemporaryDirectory() as tmp:
+            payload = {"hook_event_name": "sessionStart", "workspace_roots": [tmp], "session_id": "notice-probe"}
+            env = hook_env()
+            env.pop("AI_EMBED_WARM", None)
+            cold = run_hook("executable_session_context.py", payload, env=env)["additional_context"]
+            assert "Recall Notice" in cold
+            assert ",agent-memory note" in cold
+
+            warm = run_hook(
+                "executable_session_context.py",
+                {**payload, "session_id": "notice-probe-warm", "warm_embedder": True},
+                env={**env, "AI_AGENT_DEPTH": "fast"},
+            )["additional_context"]
+            assert "Recall Notice" not in warm
+
+    def test_session_context_warmstart_gates_out_unrelated_workspace_project_capsule(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            bind_session_topic(spec_dir, "warm-gate-session", "memory-systems")
+            (spec_dir / "memory-systems.txt").write_text("target: wire memory systems\n")
+
+            env = make_aikb_stub(
+                Path(tmp),
+                [
+                    {
+                        "id": "foreign",
+                        "title": "Foreign project capsule",
+                        "body": "from another repo",
+                        "kind": "gotcha",
+                        "scope": "project",
+                        "workspace_path": "/some/other/repo",
+                    },
+                    {
+                        "id": "universal",
+                        "title": "Universal principle capsule",
+                        "body": "applies everywhere",
+                        "kind": "principle",
+                        "scope": "universal",
+                        "workspace_path": "/some/other/repo",
+                    },
+                ],
+            )
+            payload = {
+                "hook_event_name": "sessionStart",
+                "workspace_roots": [tmp],
+                "session_id": "warm-gate-session",
+            }
+            context = run_hook("executable_session_context.py", payload, env=env)["additional_context"]
+
+            assert "Foreign project capsule" not in context  # other-workspace project scope: gated out
+            assert "Universal principle capsule" not in context
+            rows = json.loads((spec_dir / ".recall-candidates-warm-gate-session.json").read_text())
+            assert [row["id"] for row in rows] == ["universal"]
+
     def test_warmstart_and_perturn_share_conversation_seen_state(self):
         with self.make_git_workspace("feature/conversation-seen") as tmp:
             workspace = str(Path(tmp).resolve())
@@ -2182,11 +3138,11 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
             assert "### ,ai-kb candidates staged" in context
             assert str(candidates_path) in context
             assert "k-ai-kb/references/smol-operator.md" in context
-            # Harnesses with a fixed Task subagent set (cursor) route to a generic isolated
-            # spawn on the memory-band model; harness-CLI one-shots are an external mechanism
-            # and stay out of the flow.
-            assert "spawn a generic isolated subagent" in context
-            assert "never a harness-CLI one-shot" in context
+            # Admission remains available inline without ordering a generic spawn or
+            # falling back to a harness CLI.
+            assert "inline fallback" in context
+            assert "No descendant agents or harness-CLI fallback" in context
+            assert "spawn a generic isolated subagent" not in context
             # The judge contract needs the session-state paths; the pointer must carry them.
             assert "Session state: " in context
             assert ".worklog.jsonl" in context
@@ -2197,43 +3153,6 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
             assert staged_rows[0]["body"] == "staged capsule body sentinel"
             assert json.loads((spec_dir / ".recall-staged-stage-once.json").read_text()) == ["capsule-a"]
             assert not (spec_dir / ".recall-seen-stage-once.json").exists()
-
-    def test_perturn_recall_without_session_key_stages_nothing_and_injects_nothing(self):
-        # Staging is session-scoped state: without a session key there is nothing to
-        # stage against, so keyless payloads get no pointer and no capsule bodies —
-        # recall degrades to the pull path instead of reintroducing unjudged injection.
-        with tempfile.TemporaryDirectory() as tmp:
-            workspace = str(Path(tmp).resolve())
-            spec_dir = SPEC_ROOT / workspace.lstrip("/")
-            env = make_aikb_stub(
-                Path(tmp),
-                [
-                    {
-                        "id": "capsule-a",
-                        "title": "Keyless capsule title sentinel",
-                        "body": "keyless capsule body sentinel",
-                        "kind": "gotcha",
-                        "scope": "project",
-                        "workspace_path": workspace,
-                        "cosine_score": 0.8,
-                    }
-                ],
-            )
-
-            result = run_perturn_recall(
-                tmp,
-                {
-                    "hook_event_name": "UserPromptSubmit",
-                    "workspace_roots": [tmp],
-                    "prompt": "recall guidance for this staging test",
-                },
-                env,
-            )
-
-            assert result == {}
-            if spec_dir.exists():
-                assert not list(spec_dir.glob(".recall-candidates-*"))
-                assert not list(spec_dir.glob(".recall-staged-*"))
 
     def test_perturn_recall_rewarm_fires_when_hybrid_rows_lack_cosine(self):
         # Search runs connect-only, so a cold resident embedder returns rows
@@ -2570,325 +3489,6 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
             assert json.loads(seen_path.read_text()) == ["capsule-prior"]
             assert json.loads((spec_dir / ".recall-candidates-warm-union.json").read_text())[0]["id"] == "capsule-a"
 
-    def test_opencode_worklog_adapter_passes_session_id(self):
-        extension = REPO / "home/dot_config/opencode/plugins/agent-memory.ts"
-        with tempfile.TemporaryDirectory() as tmp:
-            hooks_dir = Path(tmp) / ".agents" / "hooks"
-            hooks_dir.mkdir(parents=True)
-            for name in ("session_context.py", "worklog_dispatcher.sh", "perturn_recall.py"):
-                (hooks_dir / name).write_text("")
-
-            script = """
-const mod = await import(process.argv[1]);
-const calls = [];
-function shell(strings, ...values) {
-  calls.push(values.map(String));
-  return {
-    quiet() { return this; },
-    nothrow() { return Promise.resolve({ stdout: "{}", code: 0 }); }
-  };
-}
-const hooks = await mod.AgentMemoryPlugin({ $: shell, directory: process.argv[2] });
-await hooks["tool.execute.after"](
-  { tool: "bash", sessionID: "opencode-session", callID: "call-a", args: {} },
-  { title: "printf ok", output: "ok", metadata: {} }
-);
-console.log(calls[0][0]);
-"""
-            env = dict(os.environ)
-            env["HOME"] = tmp
-            env["NODE_NO_WARNINGS"] = "1"
-            result = subprocess.run(
-                ["node", "--input-type=module", "-e", script, str(extension), tmp],
-                cwd=str(REPO),
-                capture_output=True,
-                text=True,
-                env=env,
-                check=True,
-            )
-            payload = json.loads(result.stdout)
-
-            assert payload["session_id"] == "opencode-session"
-
-    def test_opencode_plugin_gates_reads_and_supersedes_older_read_parts(self):
-        plugin = REPO / "home/dot_config/opencode/plugins/agent-memory.ts"
-        supersede = REPO / "home/dot_config/opencode/plugins/read-supersede.ts"
-        with tempfile.TemporaryDirectory() as tmp:
-            hooks_dir = Path(tmp) / ".agents" / "hooks"
-            hooks_dir.mkdir(parents=True)
-            for name in ("session_context.py", "worklog_dispatcher.sh", "perturn_recall.py", "read_gate.py"):
-                (hooks_dir / name).write_text("")
-            script = r"""
-import assert from 'node:assert/strict';
-const mod = await import(process.argv[1]);
-const calls = [];
-function shell(strings, ...values) {
-  const argv = values.map(String);
-  calls.push(argv);
-  const gate = argv.some((v) => v.endsWith('read_gate.py'));
-  const payload = gate ? JSON.parse(argv[0]) : {};
-  const stdout = gate && payload.hook_event_name === 'PreToolUse' && payload.tool_name === 'read'
-    ? JSON.stringify({ decision: 'block', reason: 'already in context' })
-    : '{}';
-  return { quiet() { return this; }, nothrow() { return Promise.resolve({ stdout, code: 0 }); } };
-}
-const hooks = await mod.AgentMemoryPlugin({ $: shell, directory: process.argv[2] });
-await assert.rejects(
-  hooks['tool.execute.before']({ tool: 'read', sessionID: 's', callID: 'c1' }, { args: { filePath: '/f' } }),
-  /already in context/);
-const pre = JSON.parse(calls[0][0]);
-assert.deepEqual([pre.hook_event_name, pre.tool_name, pre.tool_use_id, pre.tool_input.filePath], ['PreToolUse', 'read', 'c1', '/f']);
-assert.ok(pre.transcript_path.endsWith('/.local/share/opencode/opencode.db'));
-// Ungated tools never reach the gate; bash does, and an allow resolves.
-await hooks['tool.execute.before']({ tool: 'edit', sessionID: 's', callID: 'c2' }, { args: {} });
-await hooks['tool.execute.before']({ tool: 'bash', sessionID: 's', callID: 'c3' }, { args: { command: 'cat /f' } });
-assert.equal(calls.length, 2);
-// After: the gate sees the tool output, then the worklog recorder runs as before.
-await hooks['tool.execute.after']({ tool: 'read', sessionID: 's', callID: 'c1', args: { filePath: '/f' } }, { title: '/f', output: 'body', metadata: {} });
-const post = JSON.parse(calls[2][0]);
-assert.deepEqual([post.hook_event_name, post.tool_response, post.tool_use_id], ['PostToolUse', 'body', 'c1']);
-assert.equal(calls.length, 4);
-
-const sup = await import(process.argv[3]);
-const notice = '[Superseded by a newer read of this file]';
-const read = (path, output, extra = {}) => ({ type: 'tool', tool: 'read', state: { status: 'completed', input: { filePath: path, ...extra }, output, time: {} } });
-const msg = (...parts) => ({ info: { role: 'assistant' }, parts });
-let msgs = [msg(read('/f', 'v1')), { info: { role: 'user' }, parts: [{ type: 'text', text: 'edit' }] }, msg(read('/f', 'v2'), read('/g', 'w'))];
-assert.equal(sup.supersedeReadParts(msgs, 1000, 900), 1);
-assert.deepEqual([msgs[0].parts[0].state.output, msgs[2].parts[0].state.output, msgs[2].parts[1].state.output], [notice, 'v2', 'w']);
-assert.equal(sup.supersedeReadParts(msgs, 1000, 900), 0, 'idempotent');
-// Ranged reads and pruned parts are left alone.
-msgs = [msg(read('/f', 'v1', { offset: 2 })), msg(read('/f', 'v2'))];
-assert.equal(sup.supersedeReadParts(msgs, 1000, 900), 0);
-msgs = [msg({ ...read('/f', 'v1'), state: { status: 'completed', input: { filePath: '/f' }, output: 'v1', time: { compacted: 5 } } }), msg(read('/f', 'v2'))];
-assert.equal(sup.supersedeReadParts(msgs, 1000, 900), 0);
-// Cache guard: a large suffix keeps the old copy unless the session idled 90 minutes.
-msgs = [msg(read('/f', 'v1')), msg({ type: 'text', text: 'x'.repeat(40000) }), msg(read('/f', 'v2'))];
-assert.equal(sup.supersedeReadParts(msgs, 1000, 900), 0);
-assert.equal(sup.supersedeReadParts(msgs, 100 * 60_000, 0), 1);
-// The plugin hook mutates output.messages in place.
-const hooks2 = await sup.ReadSupersedePlugin({});
-const out = { messages: [msg(read('/f', 'v1')), msg(read('/f', 'v2'))] };
-await hooks2['experimental.chat.messages.transform']({}, out);
-assert.equal(out.messages[0].parts[0].state.output, notice);
-console.log(JSON.stringify({ ok: true }));
-"""
-            env = dict(os.environ)
-            env["HOME"] = tmp
-            env["NODE_NO_WARNINGS"] = "1"
-            result = subprocess.run(
-                ["node", "--input-type=module", "-e", script, str(plugin), tmp, str(supersede)],
-                cwd=str(REPO),
-                capture_output=True,
-                text=True,
-                env=env,
-            )
-            self.assertEqual(result.returncode, 0, result.stderr[-1500:])
-            self.assertIn('{"ok":true}', result.stdout)
-
-    def test_pi_recall_injects_shared_session_context_once_per_session_start(self):
-        extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"
-        with tempfile.TemporaryDirectory() as tmp:
-            home = Path(tmp) / "home"
-            hooks_dir = home / ".agents" / "hooks"
-            hooks_dir.mkdir(parents=True)
-            payload_log = Path(tmp) / "session-context-payloads.jsonl"
-            session_context = hooks_dir / "session_context.py"
-            session_context.write_text(
-                f"""#!/usr/bin/env python3
-import json
-import sys
-
-payload = json.load(sys.stdin)
-with open({str(payload_log)!r}, "a", encoding="utf-8") as handle:
-    handle.write(json.dumps(payload, sort_keys=True) + "\\n")
-context = "SHARED_SESSION_CONTEXT::" + payload["session_id"] + "::" + payload["initial_prompt"]
-print(json.dumps({{"additional_context": context}}))
-"""
-            )
-            session_context.chmod(0o755)
-            spec_file = Path(tmp) / "current.txt"
-            script = """
-const mod = await import(process.argv[1]);
-const workspace = process.argv[2];
-let specFile = process.argv[3];
-let selectedTopic = "current";
-const verificationPrefix = "P".repeat(3500) + "PREFIX_TAIL";
-const handlers = {};
-const pi = {
-  async exec(command, args) {
-    if (command === ",ai-kb" && args[0] === "--help") return { code: 0, killed: false, stdout: "" };
-    if (command === ",agent-memory") {
-      return {
-        code: 0,
-        killed: false,
-        stdout: JSON.stringify({
-          workspace,
-          selected_topic: selectedTopic,
-          session_key: "pi-session-context",
-          is_named_topic: false,
-          spec_file: specFile,
-          spec_exists: false
-        })
-      };
-    }
-    if (command === "python3" && args[0].endsWith("/lib/,ai-kb/embed_client.py")) {
-      return { code: 0, killed: false, stdout: "{}" };
-    }
-    if (command === "cat" && args[0].endsWith("/tmux/agent_prompts/prefix.txt")) {
-      return { code: 0, killed: false, stdout: verificationPrefix };
-    }
-    if (command === "cat") return { code: 1, killed: false, stdout: "" };
-    throw new Error(`unexpected exec: ${command} ${args.join(" ")}`);
-  },
-  on(event, handler) { handlers[event] = handler; }
-};
-let contextPercent = 5;
-const ctx = {
-  cwd: workspace,
-  getContextUsage() { return { percent: contextPercent }; },
-  sessionManager: { getSessionId() { return "pi-session-context"; } }
-};
-await mod.default(pi);
-await handlers.session_start({ type: "session_start", reason: "startup" }, ctx);
-const first = await handlers.before_agent_start({ prompt: "first" }, ctx);
-const second = await handlers.before_agent_start({ prompt: "next" }, ctx);
-contextPercent = 26;
-const grown = await handlers.before_agent_start({ prompt: "growth" }, ctx);
-selectedTopic = "next-topic";
-specFile = specFile.replace("current.txt", "next-topic.txt");
-const topicChanged = await handlers.before_agent_start({ prompt: "topic shift" }, ctx);
-await handlers.session_compact({ type: "session_compact" }, ctx);
-contextPercent = null;
-const compacted = await handlers.before_agent_start({ prompt: "compacted" }, ctx);
-contextPercent = 7;
-const afterCompactionBaseline = await handlers.before_agent_start({ prompt: "baseline" }, ctx);
-contextPercent = 28;
-const grownAfterCompaction = await handlers.before_agent_start({ prompt: "regrowth" }, ctx);
-await handlers.session_start({ type: "session_start", reason: "resume" }, ctx);
-const resumed = await handlers.before_agent_start({ prompt: "resume" }, ctx);
-console.log(JSON.stringify({
-  first,
-  second: second ?? null,
-  grown,
-  topicChanged,
-  compacted,
-  afterCompactionBaseline: afterCompactionBaseline ?? null,
-  grownAfterCompaction,
-  resumed
-}));
-"""
-            env = dict(os.environ)
-            env["HOME"] = str(home)
-            env["AI_AGENT_DEPTH"] = "balanced"
-            env["NODE_NO_WARNINGS"] = "1"
-            result = subprocess.run(
-                ["node", "--input-type=module", "-e", script, str(extension), str(Path(tmp).resolve()), str(spec_file)],
-                cwd=str(REPO),
-                capture_output=True,
-                text=True,
-                env=env,
-                check=True,
-            )
-            payload = json.loads(result.stdout)
-
-            assert "SHARED_SESSION_CONTEXT::pi-session-context" in payload["first"]["message"]["content"]
-            assert payload["second"] is None
-            assert "PREFIX_TAIL" in payload["grown"]["message"]["content"]
-            assert (
-                "SHARED_SESSION_CONTEXT::pi-session-context::topic shift"
-                in payload["topicChanged"]["message"]["content"]
-            )
-            assert "PREFIX_TAIL" in payload["compacted"]["message"]["content"]
-            assert payload["afterCompactionBaseline"] is None
-            assert "PREFIX_TAIL" in payload["grownAfterCompaction"]["message"]["content"]
-            assert "SHARED_SESSION_CONTEXT::pi-session-context" in payload["resumed"]["message"]["content"]
-            hook_payloads = [json.loads(line) for line in payload_log.read_text().splitlines()]
-            assert hook_payloads == [
-                {
-                    "cwd": str(Path(tmp).resolve()),
-                    "hook_event_name": "sessionStart",
-                    "initial_prompt": "first",
-                    "session_id": "pi-session-context",
-                    "source": "pi",
-                    "warm_embedder": True,
-                    "context_status": True,
-                    "workspace_roots": [str(Path(tmp).resolve())],
-                },
-                {
-                    "cwd": str(Path(tmp).resolve()),
-                    "hook_event_name": "sessionStart",
-                    "initial_prompt": "topic shift",
-                    "session_id": "pi-session-context",
-                    "source": "pi",
-                    "warm_embedder": True,
-                    "context_status": True,
-                    "workspace_roots": [str(Path(tmp).resolve())],
-                },
-                {
-                    "cwd": str(Path(tmp).resolve()),
-                    "hook_event_name": "sessionStart",
-                    "initial_prompt": "resume",
-                    "session_id": "pi-session-context",
-                    "source": "pi",
-                    "warm_embedder": True,
-                    "context_status": True,
-                    "workspace_roots": [str(Path(tmp).resolve())],
-                },
-            ]
-
-    def test_runtime_extensions_enable_search_tools(self):
-        extension_cases = [
-            REPO / "home/dot_pi/agent/exact_extensions/runtime-parity.ts",
-            REPO / "home/dot_omp/private_agent/extensions/runtime-parity.ts",
-        ]
-        for extension in extension_cases:
-            with self.subTest(extension=str(extension.relative_to(REPO))):
-                with tempfile.TemporaryDirectory() as tmp:
-                    home = Path(tmp) / "home"
-                    home.mkdir(parents=True)
-                    script = """
-const mod = await import(process.argv[1]);
-function makePi() {
-  const handlers = {};
-  let active = ["read", "bash", "edit", "write"];
-  return {
-    handlers,
-    getActiveTools() { return [...active]; },
-    setActiveTools(tools) { active = [...tools]; },
-    on(event, handler) { handlers[event] = handler; }
-  };
-}
-const pi = makePi();
-await mod.default(pi);
-await pi.handlers.session_start({ type: "session_start", reason: "startup" }, {});
-process.argv.push("--tools", "read,bash");
-const explicit = makePi();
-await mod.default(explicit);
-await explicit.handlers.session_start({ type: "session_start", reason: "startup" }, {});
-console.log(JSON.stringify({
-  active: pi.getActiveTools(),
-  toolCallHooked: "tool_call" in pi.handlers,
-  explicit: explicit.getActiveTools()
-}));
-"""
-                    env = dict(os.environ)
-                    env["HOME"] = str(home)
-                    env["NODE_NO_WARNINGS"] = "1"
-                    result = subprocess.run(
-                        ["node", "--input-type=module", "-e", script, str(extension)],
-                        cwd=str(REPO),
-                        capture_output=True,
-                        text=True,
-                        env=env,
-                        check=True,
-                    )
-                    payload = json.loads(result.stdout)
-
-                    assert payload["active"] == ["read", "bash", "edit", "write", "grep", "find", "ls"]
-                    assert payload["toolCallHooked"] is False
-                    assert payload["explicit"] == ["read", "bash", "edit", "write"]
-
     def test_pi_recall_uses_session_binding_and_stages_unadmitted_capsules(self):
         extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"
         with tempfile.TemporaryDirectory() as tmp:
@@ -3019,266 +3619,6 @@ console.log(JSON.stringify({ first, second, seen, statusCalls }));
                 ["status", "--json", "--workspace", "/tmp/workspace", "--session-id", "pi/session"],
                 ["status", "--json", "--workspace", "/tmp/workspace", "--session-id", "pi/session"],
             ]
-
-    def test_pi_recall_keyless_session_stages_nothing_at_runtime(self):
-        extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"
-        with tempfile.TemporaryDirectory() as tmp:
-            spec_file = Path(tmp) / "pi-memory.txt"
-            spec_file.write_text("target: persist pi recall dedupe\n")
-            rows = [
-                {
-                    "id": "capsule-a",
-                    "title": "Pi resume capsule",
-                    "body": "must never stage without a session key",
-                    "kind": "gotcha",
-                    "scope": "project",
-                    "workspace_path": "/tmp/workspace",
-                    "cosine_score": 0.99,
-                }
-            ]
-            search_log = Path(tmp) / "search.jsonl"
-            script = """
-const mod = await import(process.argv[1]);
-const specFile = process.argv[2];
-const workspace = "/tmp/workspace";
-const sessionId = "pi/session";
-function makePi() {
-  const handlers = {};
-  return {
-    handlers,
-    async exec(command, args) {
-      if (command === ",ai-kb" && args[0] === "--help") return { code: 0, killed: false, stdout: "" };
-      if (command === ",agent-memory") {
-        return {
-          code: 0,
-          killed: false,
-          stdout: JSON.stringify({
-            workspace,
-            selected_topic: "",
-            session_key: "",
-            is_named_topic: false,
-            spec_file: specFile,
-            spec_exists: true
-          })
-        };
-      }
-      if (command === "cat") return { code: 1, killed: false, stdout: "" };
-      if (command === "python3" && args[0].endsWith("/lib/,ai-kb/embed_client.py") && args[1] === "ensure") {
-        return { code: 0, killed: false, stdout: "{}" };
-      }
-      throw new Error(`unexpected exec: ${command} ${args.join(" ")}`);
-    },
-    on(event, handler) { handlers[event] = handler; }
-  };
-}
-const pi = makePi();
-await mod.default(pi);
-await pi.handlers.session_start(
-  { type: "session_start", reason: "startup" },
-  { sessionManager: { getSessionId() { return sessionId; } } }
-);
-const result = await pi.handlers.before_agent_start(
-  { prompt: "cursor task band gate rewrites the subagent model param, how do I launch a pinned verifier lane?" },
-  {
-    cwd: workspace,
-    getContextUsage() { return null; },
-    sessionManager: { getSessionId() { return sessionId; } }
-  }
-);
-console.log(JSON.stringify({ result: result ?? null }));
-"""
-            env = make_aikb_stub(Path(tmp), rows)
-            env["NODE_NO_WARNINGS"] = "1"
-            env["AI_KB_STUB_LOG"] = str(search_log)
-            env["HOME"] = str(Path(tmp) / "home")
-            result = subprocess.run(
-                ["node", "--input-type=module", "-e", script, str(extension), str(spec_file)],
-                cwd=str(REPO),
-                capture_output=True,
-                text=True,
-                env=env,
-                check=True,
-            )
-            payload = json.loads(result.stdout)
-
-            # A keyless session must inject nothing, stage nothing, and never search.
-            assert payload["result"] is None
-            assert sorted(Path(tmp).glob(".recall-*")) == []
-            assert not search_log.exists()
-
-    def test_pi_recall_injects_probe_budget_directive_from_fresh_ad_hoc_ledger(self):
-        # The probe-budget consumer must fire through the real extension, not just
-        # exist as source text: seed a fresh ad-hoc ledger next to the spec file and
-        # assert the before_agent_start message carries the note; a stale ledger must
-        # inject nothing (freshness cap keeps other sessions' failures out).
-        from datetime import datetime, timezone
-
-        extension = REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts"
-        script = """
-const mod = await import(process.argv[1]);
-const specFile = process.argv[2];
-const workspace = "/tmp/workspace";
-const sessionId = "pi/session-budget";
-const handlers = {};
-const pi = {
-  async exec(command, args) {
-    if (command === ",ai-kb" && args[0] === "--help") return { code: 0, killed: false, stdout: "" };
-    if (command === ",agent-memory") {
-      return {
-        code: 0,
-        killed: false,
-        stdout: JSON.stringify({
-          workspace,
-          selected_topic: "budget-topic",
-          session_key: "pi-session-budget",
-          is_named_topic: false,
-          spec_file: specFile,
-          spec_exists: false
-        })
-      };
-    }
-    if (command === "cat") return { code: 1, killed: false, stdout: "" };
-    if (command === "python3" && args[0].endsWith("/lib/,ai-kb/embed_client.py") && args[1] === "ensure") {
-      return { code: 0, killed: false, stdout: "{}" };
-    }
-    throw new Error(`unexpected exec: ${command} ${args.join(" ")}`);
-  },
-  on(event, handler) { handlers[event] = handler; }
-};
-await mod.default(pi);
-await handlers.session_start(
-  { type: "session_start", reason: "startup" },
-  { sessionManager: { getSessionId() { return sessionId; } } }
-);
-const result = await handlers.before_agent_start(
-  { prompt: "why did you choose sqlite here?" },
-  {
-    cwd: workspace,
-    getContextUsage() { return null; },
-    sessionManager: { getSessionId() { return sessionId; } }
-  }
-);
-console.log(JSON.stringify({ content: result?.message?.content ?? null }));
-"""
-        for label, ts, expect_fire in (
-            ("fresh", datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), True),
-            ("stale", "2026-01-01T00:00:00Z", False),
-        ):
-            with self.subTest(ledger=label), tempfile.TemporaryDirectory() as tmp:
-                spec_file = Path(tmp) / "budget-topic.txt"
-                ledger = Path(tmp) / "ad-hoc.probe-ledger.jsonl"
-                ledger.write_text(
-                    "\n".join(json.dumps({"ts": ts, "result": "fail", "summary": "s"}) for _ in range(3)) + "\n",
-                    encoding="utf-8",
-                )
-                env = make_aikb_stub(Path(tmp), [])
-                env["NODE_NO_WARNINGS"] = "1"
-                env["HOME"] = str(Path(tmp) / "home")
-                result = subprocess.run(
-                    ["node", "--input-type=module", "-e", script, str(extension), str(spec_file)],
-                    cwd=str(REPO),
-                    capture_output=True,
-                    text=True,
-                    env=env,
-                    check=True,
-                )
-                content = json.loads(result.stdout)["content"]
-                if expect_fire:
-                    assert content is not None and "probe-budget-exhausted" in content
-                    assert "Probe-budget hint" in content
-                else:
-                    assert content is None
-
-    def test_pi_read_gate_extension_blocks_a_verified_identical_read(self):
-        script = r"""
-import assert from 'node:assert/strict';
-import { mkdir, writeFile, copyFile, chmod, appendFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
-import { mkdtempSync } from 'node:fs';
-const [extension, root] = process.argv.slice(1);
-const tmp = mkdtempSync(join(tmpdir(), 'pi-read-gate-'));
-const hooks = join(tmp, '.agents/hooks'); await mkdir(hooks, { recursive: true });
-for (const [src, dst] of [['executable_read_gate.py', 'read_gate.py'], ['hook_common.py', 'hook_common.py'], ['reinforcement.py', 'reinforcement.py']]) {
-  await copyFile(join(root, 'home/exact_dot_agents/exact_hooks', src), join(hooks, dst)); await chmod(join(hooks, dst), 0o755);
-}
-process.env.HOME = tmp; process.env.AGENT_MEMORY_SPEC_ROOT = join(tmp, 'specs');
-const target = join(tmp, 'notes.txt'); await writeFile(target, 'alpha\nbeta\n');
-const session = join(tmp, 'session.jsonl'); await writeFile(session, '');
-const handlers = {};
-const api = { on(k, v) { handlers[k] = v } };
-const mod = await import(extension); await mod.default(api);
-assert.equal(typeof handlers.tool_call, 'function'); assert.equal(typeof handlers.tool_result, 'function');
-const ctx = { cwd: tmp, sessionManager: { getSessionId() { return 'pi-gate' }, getSessionFile() { return session } } };
-const call = (id) => handlers.tool_call({ type: 'tool_call', toolCallId: id, toolName: 'read', input: { path: target } }, ctx);
-assert.equal(await call('c1'), undefined, 'first read passes');
-await handlers.tool_result({ type: 'tool_result', toolCallId: 'c1', toolName: 'read', input: { path: target }, content: [{ type: 'text', text: 'alpha\nbeta\n' }], isError: false }, ctx);
-// Recorded, but not yet in the session file: history is not intact, so it still passes.
-assert.equal(await call('c2'), undefined, 'unverifiable history passes');
-await appendFile(session, JSON.stringify({ type: 'message', timestamp: '2099-01-01T00:00:00.000Z', message: { role: 'toolResult', toolCallId: 'c2', toolName: 'read', isError: false, content: [{ type: 'text', text: 'alpha\nbeta\n' }] } }) + '\n');
-await handlers.tool_result({ type: 'tool_result', toolCallId: 'c2', toolName: 'read', input: { path: target }, content: [{ type: 'text', text: 'alpha\nbeta\n' }], isError: false }, ctx);
-const blocked = await call('c3');
-assert(blocked && blocked.block === true && /byte-identical/.test(blocked.reason), JSON.stringify(blocked));
-// A slice and a changed file pass.
-assert.equal(await handlers.tool_call({ type: 'tool_call', toolCallId: 'c4', toolName: 'read', input: { path: target, offset: 1 } }, ctx), undefined);
-await writeFile(target, 'alpha\nbeta\ngamma\n');
-assert.equal(await call('c5'), undefined, 'changed file passes');
-console.log(JSON.stringify({ ok: true }));
-"""
-        # OMP is deliberately absent: it supersedes the earlier read result in the session the
-        # moment a re-read is attempted (observed live 2026-09-06), so a block there would leave
-        # the model with neither copy. OMP dedups re-reads natively.
-        for extension in (REPO / "home/dot_pi/agent/exact_extensions/read-gate.ts",):
-            with self.subTest(extension=str(extension.relative_to(REPO))):
-                result = subprocess.run(
-                    ["node", "--input-type=module", "-e", script, str(extension), str(REPO)],
-                    cwd=str(REPO),
-                    capture_output=True,
-                    text=True,
-                    env=hook_env(),
-                )
-                self.assertEqual(result.returncode, 0, result.stderr[-2000:])
-                self.assertIn('{"ok":true}', result.stdout)
-
-    def test_pi_read_supersede_extension_replaces_older_reads_with_a_cache_guard(self):
-        script = r"""
-import assert from 'node:assert/strict';
-const mod = await import(process.argv[1]);
-const { supersedeReads } = mod;
-const read = (id, path) => ({ role: 'assistant', content: [{ type: 'toolCall', id, name: 'read', arguments: { path } }] });
-const result = (id, text) => ({ role: 'toolResult', toolCallId: id, toolName: 'read', content: [{ type: 'text', text }] });
-const notice = '[Superseded by a newer read of this file]';
-// Two reads of the same file, small suffix: the older one is superseded, the newest kept.
-let msgs = [read('a', '/f'), result('a', 'v1'), { role: 'user', content: 'edit it' }, read('b', '/f'), result('b', 'v2')];
-let out = supersedeReads(msgs, 1000, 900);
-assert.equal(out[1].content[0].text, notice); assert.equal(out[4].content[0].text, 'v2');
-assert.equal(msgs[1].content[0].text, 'v1', 'input untouched');
-// Different files are independent; skill:// style URIs are exempt.
-assert.equal(supersedeReads([read('a', '/f'), result('a', 'v1'), read('b', '/g'), result('b', 'w')], 1000, 900), undefined);
-assert.equal(supersedeReads([read('a', 'skill://x'), result('a', 'v1'), read('b', 'skill://x'), result('b', 'v2')], 1000, 900), undefined);
-// Large suffix after the older read: cache guard keeps it unless the session idled 90 minutes.
-const big = { role: 'user', content: 'x'.repeat(40000) };
-msgs = [read('a', '/f'), result('a', 'v1'), big, read('b', '/f'), result('b', 'v2')];
-assert.equal(supersedeReads(msgs, 1000, 900), undefined);
-assert.equal(supersedeReads(msgs, 100 * 60_000, 0)[1].content[0].text, notice);
-// Idempotent on an already superseded message.
-assert.equal(supersedeReads(supersedeReads([read('a', '/f'), result('a', 'v1'), read('b', '/f'), result('b', 'v2')], 1000, 900), 1000, 900), undefined);
-// The extension registers a context handler that returns the rewritten list.
-const handlers = {}; await mod.default({ on(k, v) { handlers[k] = v } });
-const res = await handlers.context({ type: 'context', messages: [read('a', '/f'), result('a', 'v1'), read('b', '/f'), result('b', 'v2')] });
-assert.equal(res.messages[1].content[0].text, notice);
-console.log(JSON.stringify({ ok: true }));
-"""
-        extension = REPO / "home/dot_pi/agent/exact_extensions/read-supersede.ts"
-        result = subprocess.run(
-            ["node", "--input-type=module", "-e", script, str(extension)],
-            cwd=str(REPO),
-            capture_output=True,
-            text=True,
-            env=hook_env(),
-        )
-        self.assertEqual(result.returncode, 0, result.stderr[-1500:])
-        self.assertIn('{"ok":true}', result.stdout)
 
     def test_pi_recall_staging_contract_matches_perturn_recall(self):
         import re
@@ -3430,142 +3770,6 @@ print('binding/warm-cache/clean-room table passed')
         result = subprocess.run([sys.executable, "-c", script, str(HOOKS)], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("table passed", result.stdout)
-
-    def test_pi_and_omp_context_permission_and_recall_transitions(self):
-        script = r"""
-import assert from 'node:assert/strict';
-import {realpath,mkdtemp,mkdir,copyFile,chmod,writeFile,readFile,unlink,rename} from 'node:fs/promises';
-import {join} from 'node:path';
-const root=process.argv[1];
-const extension=process.argv[2];
-const tmp=await realpath(await mkdtemp('/tmp/setup-hooks-runtime-'));
-const hooks=join(tmp,'.agents/hooks');await mkdir(hooks,{recursive:true});
-for(const [src,dst] of [['executable_session_context.py','session_context.py'],['executable_perturn_recall.py','perturn_recall.py'],['hook_common.py','hook_common.py']]){
- await copyFile(join(root,'home/exact_dot_agents/exact_hooks',src),join(hooks,dst));await chmod(join(hooks,dst),0o755);
-}
-process.env.HOME=tmp;process.env.AI_AGENT_DEPTH='fast';process.env.AGENT_MEMORY_SPEC_ROOT=join(tmp,'specs');process.env.AGENT_MEMORY_MIRROR_ROOT=join(tmp,'mirror');process.env.XDG_CONFIG_HOME=join(tmp,'.config');
-const bin=join(tmp,'bin');await mkdir(bin);process.env.PATH=`${bin}:${process.env.PATH}`;
-await writeFile(join(bin,'gh'),'#!/bin/sh\nexit 1\n');await chmod(join(bin,'gh'),0o755);
-const searchLog=join(tmp,'search.jsonl');const rowsPath=join(tmp,'rows.json');
-await writeFile(rowsPath,JSON.stringify([{id:'A',title:'UNJUDGED_TITLE',body:'UNJUDGED_BODY'.repeat(50),scope:'universal',bm25_score:-10,cosine_score:0.8}]));
-await writeFile(join(bin,',ai-kb'),`#!/usr/bin/env python3\nimport json,sys\nif sys.argv[1:2]==['search']:\n query=sys.stdin.read()\n with open(${JSON.stringify(searchLog)},'a') as f: f.write(json.dumps({'args':sys.argv[1:],'query':query})+'\\n')\n print(open(${JSON.stringify(rowsPath)}).read())\n`);await chmod(join(bin,',ai-kb'),0o755);
-const worklog=join(tmp,'captured.jsonl');await writeFile(join(hooks,'worklog_dispatcher.sh'),`#!/usr/bin/env python3\nimport sys\nwith open(${JSON.stringify(worklog)},'a') as f:f.write(sys.stdin.read()+'\\n')\n`);await chmod(join(hooks,'worklog_dispatcher.sh'),0o755);
-await mkdir(join(tmp,'.config/tmux/agent_prompts'),{recursive:true});await writeFile(join(tmp,'.config/tmux/agent_prompts/prefix.txt'),'PREFIX_SENTINEL');
-const specDir=join(process.env.AGENT_MEMORY_SPEC_ROOT,tmp.slice(1));await mkdir(specDir,{recursive:true});
-let topic='alpha';const key='callback-session';let statusAvailable=true;let percent=5;
-async function bind(value,text='target: current task'){topic=value;await writeFile(join(specDir,`.session-topic-${key}.txt`),value);await writeFile(join(specDir,`${value}.txt`),text)}
-await bind('alpha');
-const mod=await import(extension);let handlers={};
-const api={on(k,v){handlers[k]=v},async exec(cmd,args){if(cmd===',ai-kb')return {code:0,stdout:'',killed:false};
- if(cmd===',agent-memory')return statusAvailable?{code:0,killed:false,stdout:JSON.stringify({workspace:tmp,selected_topic:topic,session_key:key,is_named_topic:true,spec_file:join(specDir,`${topic}.txt`),spec_exists:true})}:{code:1,stdout:'',killed:false};
- if(cmd==='cat'){try{return {code:0,stdout:await readFile(args[0],'utf8'),killed:false}}catch{return {code:1,stdout:'',killed:false}}}throw new Error(cmd)}};
-const ctx={cwd:tmp,getContextUsage(){return {percent}},sessionManager:{getSessionId(){return key}}};
-await mod.default(api);
-const content=async(prompt='Did you actually verify this claim?')=>(await handlers.before_agent_start({prompt},ctx))?.message?.content??'';
-process.env.AGENT_HOOK_CONTEXT='0';assert.equal(await content(),'');await handlers.session_compact({},ctx);percent=80;assert.equal(await content(),'');
-await handlers.tool_result({toolName:'bash',input:{command:'echo captured'},content:[{text:'captured'}]},ctx);
-delete process.env.AGENT_HOOK_CONTEXT;let enabled=await content();assert(enabled.includes('PREFIX_SENTINEL'));assert(enabled.includes('User correction signal'));assert(enabled.includes('delegate persistence to `k-agent-smol` (scribe mode)'));assert(!enabled.includes('UNJUDGED')); 
-for(const sentinel of ['_no_session_context','alpha.no_context']){await writeFile(join(specDir,sentinel),'');assert.equal(await content(),'');await handlers.session_compact({},ctx);assert.equal(await content(),'');await unlink(join(specDir,sentinel));assert((await content()).includes('PREFIX_SENTINEL'))}
-await rename(join(hooks,'session_context.py'),join(hooks,'saved_context.py'));
-await handlers.session_start({},ctx);await writeFile(join(specDir,'alpha.no_context'),'');assert.equal(await content(),'');await unlink(join(specDir,'alpha.no_context'));assert((await content()).includes('User correction signal'));assert(!await readFile(searchLog,'utf8').catch(()=>''),'fast fallback searched');
-// Balanced fallback preserves retrieval while staging full rows and never admitting them.
-process.env.AI_AGENT_DEPTH='balanced';handlers={};await mod.default(api);let first=await content('short');assert(first.includes('candidates staged'));assert(!first.includes('UNJUDGED'));assert.equal(JSON.parse(await readFile(join(specDir,`.recall-candidates-${key}.json`),'utf8'))[0].body,'UNJUDGED_BODY'.repeat(50));assert.equal(await readFile(join(specDir,`.recall-seen-${key}.json`),'utf8').catch(()=>''),'');
-assert(!(await content('short')).includes('candidates staged'));
-await writeFile(rowsPath,JSON.stringify([{id:'B',title:'prompt-specific',body:'B',cosine_score:0.8}]));
-assert(!(await content('A substantive prompt for memory')).includes('candidates staged'));
-assert.deepEqual(JSON.parse(await readFile(join(specDir,`.recall-candidates-${key}.json`),'utf8')).map(r=>r.id),['A','B']);
-await writeFile(rowsPath,JSON.stringify([{id:'A',title:'UNJUDGED_TITLE',body:'body',bm25_score:-10,cosine_score:0.8}]));
-await bind('beta');assert((await content('short')).includes('candidates staged'));assert(!(await content('short')).includes('candidates staged'));await bind('alpha');assert((await content('short')).includes('candidates staged'));
-await writeFile(rowsPath,'[]');await bind('beta');assert(!(await content('short')).includes('candidates staged'));await writeFile(rowsPath,JSON.stringify([{id:'A',title:'UNJUDGED_TITLE',body:'body',bm25_score:-10,cosine_score:0.8}]));await bind('alpha');assert((await content('short')).includes('candidates staged'));
-await writeFile(rowsPath,'[]');await bind('beta');await content('short');await writeFile(rowsPath,JSON.stringify([{id:'A',title:'UNJUDGED_TITLE',body:'body',bm25_score:-10,cosine_score:0.8}]));assert((await content('A substantive prompt for memory')).includes('candidates staged'));assert(!(await content('A substantive prompt for memory')).includes('candidates staged'));
-// Clean-room fallback must not send prior conclusions as a BM25 query.
-const before=(await readFile(searchLog,'utf8')).split('\n').filter(Boolean).length;
-await bind('review-case','target: ordinary\n## Findings\nOLD_CONCLUSION');assert(!(await content('short')).includes('UNJUDGED'));
-await bind('other-case','target: PR 123\n## Findings\nOLD_CONCLUSION');await content('short');
-assert.equal((await readFile(searchLog,'utf8')).split('\n').filter(Boolean).length,before);
-// A successful empty hook is not a disabled hook.
-await writeFile(join(hooks,'session_context.py'),'#!/usr/bin/env python3\nprint("{}")\n');await chmod(join(hooks,'session_context.py'),0o755);await handlers.session_start({},ctx);assert((await content()).includes('User correction signal'));
-// Explicit disable remains effective if the status CLI is unavailable.
-statusAvailable=false;process.env.AGENT_HOOK_CONTEXT='off';assert.equal(await content(),'');delete process.env.AGENT_HOOK_CONTEXT;
-for(let i=0;i<1000;i++){if((await readFile(worklog,'utf8').catch(()=>'')))break;await new Promise(r=>setTimeout(r,10))}assert((await readFile(worklog,'utf8')).includes('captured'));
-console.log(JSON.stringify({extension,cases:27,worklogCaptured:true,temporaryHome:tmp}));
-"""
-        for extension in (
-            REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts",
-            REPO / "home/dot_omp/private_agent/extensions/ai-kb-recall.ts",
-        ):
-            with self.subTest(extension=str(extension)):
-                result = subprocess.run(
-                    ["node", "--no-warnings", "--input-type=module", "-e", script, str(REPO), str(extension)],
-                    capture_output=True,
-                    text=True,
-                )
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertTrue(json.loads(result.stdout)["worklogCaptured"])
-
-    def test_pi_and_omp_partial_install_keeps_independent_callbacks(self):
-        script = r"""
-import assert from 'node:assert/strict';
-import {realpath,mkdtemp,mkdir,copyFile,chmod,writeFile,readFile,rename} from 'node:fs/promises';
-import {join} from 'node:path';
-const root=process.argv[1], extension=process.argv[2];
-const mod=await import(extension);
-let cases=0;
-for(const failure of ['absent','failed','killed','throws']){
- for(const helper of ['available','missing']){
- for(const review of [false,true]){
-  const tmp=await realpath(await mkdtemp('/tmp/hooks-partial-install-'));
-  const hooks=join(tmp,'.agents/hooks');await mkdir(hooks,{recursive:true});
-  for(const [src,dst] of [['executable_session_context.py','session_context.py'],['hook_common.py','hook_common.py']]){await copyFile(join(root,'home/exact_dot_agents/exact_hooks',src),join(hooks,dst));await chmod(join(hooks,dst),0o755)}
-  if(helper==='missing')await rename(join(hooks,'session_context.py'),join(hooks,'disabled.py'));
-  process.env.HOME=tmp;process.env.AI_AGENT_DEPTH='deep';process.env.AI_EMBED_WARM='1';process.env.AGENT_MEMORY_SPEC_ROOT=join(tmp,'specs');process.env.AGENT_MEMORY_MIRROR_ROOT=join(tmp,'mirror');process.env.XDG_CONFIG_HOME=join(tmp,'.config');delete process.env.AGENT_HOOK_CONTEXT;
-  const specDir=join(process.env.AGENT_MEMORY_SPEC_ROOT,tmp.slice(1));await mkdir(specDir,{recursive:true});
-  const key='partial';const topic=review?'review-partial':'ordinary';const specFile=join(specDir,`${topic}.txt`);await writeFile(specFile,review?'target: PR 123\n## Findings\nPRIOR_CONCLUSION':'target: current named task');await writeFile(join(specDir,`.session-topic-${key}.txt`),topic);
-  const prefixPath=join(tmp,'.config/tmux/agent_prompts/prefix.txt');await mkdir(join(tmp,'.config/tmux/agent_prompts'),{recursive:true});await writeFile(prefixPath,'PREFIX_PARTIAL');
-  const bin=join(tmp,'bin');await mkdir(bin);const log=join(tmp,'search.jsonl'), worklog=join(tmp,'worklog.jsonl');process.env.PATH=`${bin}:${process.env.PATH}`;
-  for(const [file,text] of [['gh','#!/bin/sh\nexit 1\n'],[',ai-kb',`#!/usr/bin/env python3\nimport sys\nwith open(${JSON.stringify(log)},'a') as f:f.write('SEARCH_ATTEMPT\\n')\nprint('[]')\n`]]){await writeFile(join(bin,file),text);await chmod(join(bin,file),0o755)}
-  await writeFile(join(hooks,'worklog_dispatcher.sh'),`#!/usr/bin/env python3\nimport sys\nwith open(${JSON.stringify(worklog)},'a') as f:f.write(sys.stdin.read()+'\\n')\n`);await chmod(join(hooks,'worklog_dispatcher.sh'),0o755);
-  let probeCount=0, available=false;const handlers={};
-  const api={on(k,v){handlers[k]=v},async exec(cmd,args){
-   if(cmd===',ai-kb'){probeCount++;if(available)return {code:0,killed:false,stdout:''};if(failure==='throws')throw new Error('ENOENT');return {code:failure==='absent'?127:failure==='failed'?1:0,killed:failure==='killed',stdout:''}}
-   if(cmd===',agent-memory')return {code:0,killed:false,stdout:JSON.stringify({workspace:tmp,selected_topic:topic,session_key:key,is_named_topic:true,spec_file:specFile,spec_exists:true})};
-   if(cmd==='cat')return {code:0,killed:false,stdout:await readFile(args[0],'utf8')};throw new Error(cmd)
-  }};
-  await mod.default(api);
-  assert.equal(typeof handlers.before_agent_start,'function',`${failure}/${helper}: context callback missing`);
-  assert.equal(typeof handlers.tool_result,'function',`${failure}/${helper}: worklog callback missing`);
-  const ctx={cwd:tmp,getContextUsage(){return {percent:5}},sessionManager:{getSessionId(){return key}}};
-  await handlers.session_start({},ctx);
-  const run=async()=> (await handlers.before_agent_start({prompt:'Did you actually verify this claim?'},ctx))?.message?.content??'';
-  let first=await run();assert(!first.includes('PREFIX_PARTIAL'));assert(first.includes('User correction signal'));assert(!first.includes('PRIOR_CONCLUSION'));
-  if(helper==='available')assert(first.includes(review?'target: PR 123':'target: current named task'));
-  await handlers.session_compact({},ctx);assert((await run()).includes('PREFIX_PARTIAL'));
-  process.env.AGENT_HOOK_CONTEXT='off';assert.equal(await run(),'');
-  await handlers.tool_result({toolName:'bash',input:{command:'safe'},content:[{text:'WORKLOG_CAPTURED'}]},ctx);
-  delete process.env.AGENT_HOOK_CONTEXT;assert((await run()).includes('User correction signal'));
-  // A command installed later stays optional-disabled until extension reload; no periodic probe.
-  available=true;await run();assert.equal(probeCount,1);
-  assert.equal(await readFile(log,'utf8').catch(()=>''),'');
-  for(let i=0;i<1000;i++){if(await readFile(worklog,'utf8').catch(()=>''))break;await new Promise(r=>setTimeout(r,10))}
-  assert((await readFile(worklog,'utf8')).includes('WORKLOG_CAPTURED'));
-  cases++;
- }
- }
-}
-console.log(JSON.stringify({extension,cases}));
-"""
-        for extension in (
-            REPO / "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts",
-            REPO / "home/dot_omp/private_agent/extensions/ai-kb-recall.ts",
-        ):
-            with self.subTest(extension=str(extension)):
-                result = subprocess.run(
-                    ["node", "--no-warnings", "--input-type=module", "-e", script, str(REPO), str(extension)],
-                    capture_output=True,
-                    text=True,
-                )
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(json.loads(result.stdout)["cases"], 16)
 
 
 class BandGateTests(unittest.TestCase):

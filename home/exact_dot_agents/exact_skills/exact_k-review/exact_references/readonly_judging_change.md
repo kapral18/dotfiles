@@ -48,7 +48,9 @@ Before a candidate can become review feedback:
    - Drop `preserved_limitation` from review feedback. Do not ask the author to fix it in this PR.
    - Drop `prose_drift` from code-review feedback.
      If it matters to reviewers, handle it as PR-level prose feedback, not as an implementation finding.
-4. **Verification rule:** run live UI, heavy runtime probes, or delegated findings audit only for a kept candidate when source-level evidence cannot decide keep/drop; skip them for `preserved_limitation` or `prose_drift`.
+4. **Verification rule:** consume planned final live-UI/runtime evidence when source-level evidence cannot decide keep/drop;
+   report a missing check to the root. Do not start a separate findings-audit pass or rerun an existing check.
+   Skip extra runtime work for established `preserved_limitation` or `prose_drift`.
    - The live-UI skip only applies once step 1's evidence bar is met.
      Never drop a UI-visual candidate (spacing, alignment, layout, visual styling) on an unproven classification and then cite that drop as why live UI was unnecessary — that inverts cause/effect.
      If classification rests on a UI-visual property you have neither traced to the replacement's contract nor verified live, the candidate is unproven: settle with static proof or live UI before classifying; do not skip because it was dropped.

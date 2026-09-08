@@ -14,7 +14,7 @@ Use when:
 
 ## Authorship Precondition
 
-This mode's verify-and-fix behavior assumes `authorship: self`.
+Authorship establishes review context, never edit authority.
 
 Resolve authorship via the router's Role Detection / Authorship section.
 
@@ -28,27 +28,15 @@ If authorship is `other` or `unknown`:
 - follow `shared_rules.md` Hard Constraints
 - surface findings with proposed fixes and stop
 
-## Delegated Worker Override
+## Read-Only Role Override
 
-When this mode is loaded inside any read-only review worker, that worker's role contract takes precedence over this file's fix directives.
+When this mode is loaded inside any read-only review worker, that worker's role contract and packet scope take precedence.
 
-## Core Principle: Verify and Fix (when `authorship: self`)
+## Core Principle: Read-Only Final Judgment
 
-In a direct local-changes review, local changes you own are the user's own work.
-
-Goal:
-
-- verify everything
-- find issues
-- fix them in the working tree immediately
-
-Treat every finding as something to resolve right now, not something to note for later.
-
-- If a changed line is wrong: fix it inside the behavior the diff already changes.
-- If a test or doc for the changed behavior is missing: add it.
-- Missing error handling, states, or flows are proposals under the Fix scope rule in `judging_pipeline.md`, not in-review additions.
-- Report what you found and what you did — proceed with each fix directly, asking permission only when the change is large or ambiguous.
-- All fixes are edits to working-tree files only. Commit or push only when explicitly asked.
+Review is a read-only final judgment unless the user requested specific fixes.
+Known authorized fixes are produced before the final Verify stage; new final findings are reported, not automatically repaired.
+Local ownership alone is not a request to edit, commit, or push.
 
 ## Investigation (Read-Only, Start Immediately)
 
@@ -87,40 +75,27 @@ If there are no diffs at all:
 
 Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 
-## Agent-Assisted Verify-and-Fix Workflow
+## Root moves
 
-Before any launch, apply the review identity and lane ledger in `shared_rules.md` (Review Persistence):
-record every launch there, never relaunch an angle the ledger shows as `launched`, and never present findings while a lane is outstanding.
-Launch one `k-agent-reviewer`/`k-agent-review-worker` `correctness-regressions` lane for the scoped diff when the harness supports subagents; add one extra lane only for an independently evidenced risk class.
-Select both from `lanes.md` and paste the chosen lane's `Lens skill` line and `Checks` list into the worker's scope packet;
-workers never load `lanes.md`.
-Run any repo-wide suite or full build once here and pass the result into every scope packet — lanes are told not to repeat shared work.
-If the harness cannot delegate, run the finder pass inline and report `agent_lane=inline-degraded`.
-Run live UI only when UI/runtime evidence is needed for a candidate and a startable runtime is available;
-use `k-deep-review` for the full live-UI target-packet/controller graph.
-Run the Findings-Set Audit from `judging_pipeline.md` in the controller over the candidate set before adversarial verification.
-If the audited candidate set is empty, skip adversarial work and report `Adversarial verification: skipped (no candidates after findings audit)`.
-Otherwise, run `k-agent-adversarial-verifier` over the audited candidate set before fixing, launched through the Verifier launch ladder in `runtime-harnesses.md`; report the rung it reached alongside `adversarial=`.
-Then apply the Verify-and-Fix Loop's fix, targeted-check, Post-Review Stage, and bound steps from `judging_pipeline.md` over surviving findings: each surviving fix is dispatched as an implement-worker packet naming the finding (SOP §3.7 implement dispatch gate), and the controller edits inline only trivial single-site fixes.
-Then output a concise **summary**:
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Use a substantial strong final review/refute packet when isolation is useful, with the frozen diff, selected risk questions, and existing evidence.
+Do not launch findings auditors, a verifier of the review, post-review cleanup, or automatic convergence.
+Keep discovery context and raw outputs outside the root; retain compact conclusions and pointers.
+Honor explicit no-delegation instructions inline.
 
-- `Base context:` line (see shared_rules.md)
-- Findings: what was found, what was fixed, what was verified
-- Remaining: anything that could not be fixed (and why)
-- Quality gates: what was run, pass/fail
-- Post-review: hygiene findings on the fix diff and how they were resolved
+## Output
 
-### Iterative mode (when the user asks for one-at-a-time)
+Return scope/base identity, anchored findings, final check results, and unresolved evidence gaps.
+If earlier authorized production changed files, report those changes and compatibility impact separately from the review verdict.
 
-If the user says "one at a time" or "step by step":
+## Iterative mode (when the user asks for one-at-a-time)
 
-- Process exactly one finding per turn through the loop: state it, verify and refute it, fix it, run quality gates.
-- Stop and wait for the user before the next finding.
-- Run the Post-Review Stage after the last finding is resolved, with its one second pass; survivors are reported, not edited again.
+Present one finding per user turn when requested; retain the completed review evidence and queue.
+Do not rerun review/checks merely to present the next finding. A requested repair is a new authorized attempt.
 
 ## Extra Constraints
 
 - Do not commit/push unless explicitly asked.
-- Code changes are expected and encouraged when `authorship: self`.
+- Authorship alone does not authorize code changes; an explicit fix request does.
 - Under `other`/`unknown` authorship, this mode is draft-only (see Authorship Precondition).
 - Keep the internal findings queue in the review persistence spec (see shared_rules.md) so progress survives conversation pruning.

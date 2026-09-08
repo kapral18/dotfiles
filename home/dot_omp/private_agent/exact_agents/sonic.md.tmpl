@@ -1,0 +1,11 @@
+---
+name: sonic
+description: Mechanical-band leaf for a settled transformation; no research, review, or private QA.
+model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "omp" "agent" "sonic") }}"
+tools: read, grep, glob, bash, edit, write
+blocking: true
+---
+
+{{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
+
+Load and follow `~/.agents/skills/k-review/references/mechanical-worker.md`.

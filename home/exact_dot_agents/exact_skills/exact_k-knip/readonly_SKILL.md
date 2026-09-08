@@ -32,12 +32,14 @@ For find/check/report requests, inspect configuration hints and report findings 
 do not edit configuration or code. Run the cleanup steps below only when the user asked for cleanup/removal.
 
 1. Run `npx knip`.
-2. Address configuration hints (adjust `knip.json`) until a re-run of `npx knip` reports no new configuration hints and no previously-seen false positive reappears.
+2. For authorized cleanup, resolve configuration hints from source and include configuration changes in the production batch;
+   do not iterate the scanner to green.
 3. Fix reported issues in priority order:
    - unused files (removes the most noise)
    - unused dependencies / devDependencies
    - unused exports
-4. Re-run after each batch — removing files often exposes new unused exports.
+4. Run the integrated cleanup scan once in final Verify.
+   Report remaining/newly exposed issues without automatically opening another cleanup batch.
 
 ## Confidence rules
 

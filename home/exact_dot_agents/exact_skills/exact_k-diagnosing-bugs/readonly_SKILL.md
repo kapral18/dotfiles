@@ -94,7 +94,7 @@ Prefer a debugger/REPL (one breakpoint beats ten logs), then targeted logs at th
 For performance regressions, logs are usually wrong: establish a baseline measurement (timing harness, profiler, query plan), then bisect.
 Done when each ranked hypothesis is confirmed or refuted by a recorded probe result, and performance regressions have a before/after measurement.
 
-## Phase 5 — Fix + regression test; Phase 6 — Cleanup + post-mortem
+## Produce and final Verify
 
 This phase is fix work (SOP §1): on an assessment request, stop after Phase 4 with the verified cause and proposed fix.
-Before regression-test or fix work, read and follow `~/.agents/skills/k-diagnosing-bugs/references/fix-and-cleanup.md` in full through cleanup and post-mortem.
+Before regression-test or fix work, read and follow `~/.agents/skills/k-diagnosing-bugs/references/fix-and-cleanup.md` in full for scoped production and the single final Verify stage.

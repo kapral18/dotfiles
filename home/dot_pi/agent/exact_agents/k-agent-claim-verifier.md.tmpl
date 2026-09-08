@@ -5,8 +5,11 @@ description: Independent public-claim verification lane for k-public-sources; ta
 model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-claim-verifier") }}"
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
-inheritProjectContext: true
-inheritSkills: true
+inheritProjectContext: false
+inheritGlobalContext: false
+inheritSkills: false
+maxSubagentDepth: 0
+defaultContext: fresh
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}

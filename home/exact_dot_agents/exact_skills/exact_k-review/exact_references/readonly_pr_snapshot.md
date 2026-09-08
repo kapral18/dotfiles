@@ -26,7 +26,7 @@ Pack root: `/tmp/deep-review/<owner>-<repo>-pr<number>/` (the layout, `manifest.
 
 - Download every image, GIF, video, or file attachment referenced by the PR body, a comment, or a linked reference into `media/<sha256-prefix>.<ext>` and add a row to `media/manifest.json`: `url`, `path`, `source` (comment `databaseId`, `body`, or `refs/<file>`), `sha256`, `bytes`, `content_type`, `fetched_at`.
 - Public-repo `user-attachments` URLs serve the file to a plain unauthenticated GET; use that, with no `Authorization` header.
-  A token is not a session: on a SAML-SSO org (elastic, probed 2026-09-04) both `gh api <asset-url>` and a bearer request return the org sign-in HTML with status 200 instead of the file, for public and private assets alike; on a non-SSO public repo `gh api` does return the file (cli/cli asset, same day).
+  A token is not a browser session. Inspect the payload; do not treat an org sign-in page as the requested attachment.
 - Private-repo assets return 404 to an unauthenticated GET and need a logged-in browser session:
   fetch them through `~/.agents/skills/k-playwriter/SKILL.md` (open the asset URL in the authenticated browser and save the response), or ask the user to attach the file.
 - After every download, check the payload before trusting it: `file <path>` must report an image, video, or the expected document type, and `content_type` must not be `text/html`.
@@ -38,7 +38,7 @@ Pack root: `/tmp/deep-review/<owner>-<repo>-pr<number>/` (the layout, `manifest.
 ### References
 
 - Every linked or closing issue and PR the intake gate reads is fetched once into `refs/<pr|issue>-<owner>-<repo>-<number>.json` with its full body, comments, state, and `updatedAt`.
-- Refresh a reference only when the comment that cites it changed (see Drift), the user asks, or a finding turns on its current state;
+- Fetch a newer reference only when the user asks or the final check plan names its current state as material;
   otherwise read the stored file.
 
 ### Diff scope and file truth
@@ -59,28 +59,26 @@ Pack root: `/tmp/deep-review/<owner>-<repo>-pr<number>/` (the layout, `manifest.
 ':(exclude)<glob>'`), list those files from `git diff --stat` only, and open one only when a finding depends on it.
   A verified domain overlay may add repo-specific generated globs.
 
-### Drift (re-check at every boundary)
+### Drift (one final freshness check)
 
-The pack is truth only at `snapshot_at`. A head-only check misses replies and edits that arrive without a push, so the check has two parts.
-Run both:
+The pack records truth at `snapshot_at`, not a continuously refreshed view.
+In final Verify, the root checks head and discussion once against the frozen pack:
 
-- before launching lanes
-- before the verdict or the final draft
-- before any anchored post (`k-github` requires this too)
-- at the start of every later turn
+1. Head: compare `gh pr view <n> --json headRefOid` with `manifest.head_sha`.
+2. Discussion: fetch the complete paginated discussion into a separate final evidence artifact.
+   Compare comment IDs, `updatedAt`, content, review state, and thread resolution/outdated state with `threads.json`.
+   Include new, edited, deleted, and minimized comments and replies.
 
-1. Head: `gh pr view <n> --json headRefOid` against `manifest.head_sha`.
-   If it changed: record the new `head_sha`, rebuild `diff.patch`, `files/`, and `base/`, diff `<old_head>...<new_head>` to see what moved, re-run the intake gate for changed artifacts only, and re-anchor or drop findings on files that changed.
-   A force-push (`git merge-base --is-ancestor <old_head> <new_head>` fails) invalidates every prior anchor; re-anchor all of them.
-2. Discussion: re-run the `threads.json` query and diff it against the stored file by comment `databaseId` and `updatedAt`.
-   New, edited, deleted, or minimized comments and replies, and any thread whose `isResolved`/`isOutdated` flipped, go through the intake gate again; nothing else is re-read.
-   A changed comment re-runs Media and References for the URLs it carries.
-   Replace `threads.json` and set `discussion_at`; record both in the spec.
+Report `Drift: head=<same|old..new> discussion=<none|changed ids>`. If either changed, report stale evidence and the affected criteria.
+Do not certify the new snapshot. Do not rebuild the pack, repeat intake, re-anchor findings, or restart review automatically.
+A new attempt requires user authorization; retain unchanged evidence with its original snapshot identity.
 
-Report the result as one line: `Drift: head=<same|old..new> discussion=<none|N changed (ids)>`.
+Immediately before an authorized anchored publication, check the exact target head and anchor preconditions required by `k-github`.
+This is a transaction safety check, not another semantic review. If they changed, withhold the write and report stale anchors.
+Do not use publication checks to reopen final Verify.
 
 ### Lifetime
 
-The pack lives under `/tmp` beside no other state: it is not mirrored, it is not swept, and it is rebuilt whenever Drift finds a change.
-It survives across sessions until the machine reboots; a later session must run Drift before trusting it.
-It is a cache of refetchable data, never a record: durable review state stays in the spec.
+The pack is a best-effort `/tmp` cache, not a durable record; task decisions and receipts stay in the topic spec.
+On continuation, resume the recorded stage and snapshot. Do not repeat completed freshness checks merely because a turn or session changed.
+A missing pack is a concrete blocker. A new user-authorized attempt may build a new snapshot without overwriting the prior evidence.

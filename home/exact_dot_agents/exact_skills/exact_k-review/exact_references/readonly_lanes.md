@@ -6,11 +6,13 @@ Every review tier selects lanes from this file; angle lists live here only, neve
 This is a selection menu, not a launch list. Availability is free; only launched lanes cost tokens.
 The lane budget lives in the calling tier, not here.
 
-## How the controller uses it
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
 
 1. Build the roster from scope-level evidence only: mode, changed paths, `git diff --stat`, `git diff --diff-filter=D --stat`, and the context pack manifest.
    Roster selection is not implementation analysis — do not read code bodies to pick lanes.
-2. Always launch `correctness-regressions`.
+2. Include `correctness-regressions` in the selected final judgment; it does not require another worker.
 3. Add another lane only when its Trigger matches on that scope-level evidence **and** its lens would be under-covered inside an already-selected lane.
 4. Paste the selected lane's **Lens skill** line and **Checks** list verbatim into that worker's scope packet.
    Workers do not load this file; pasting the entry costs a few lines instead of the whole registry.

@@ -23,6 +23,15 @@ function enableSearchTools(pi: ExtensionAPI): void {
 }
 
 export default function (pi: ExtensionAPI) {
+  // Peer messages wake parked/finished agents in native OMP. Managed workflows
+  // use terminal returns instead; named process stdin remains available.
+  pi.on("tool_call", (event) => {
+    if (event.toolName !== "hub") return
+    const input = event.input as { op?: string; name?: string }
+    if (input.op === "send" && !input.name?.trim()) {
+      return { block: true, reason: "Peer messaging can reopen completed workers. Use the packet's terminal result; do not message or revive agents." }
+    }
+  })
   pi.on("session_start", () => {
     enableSearchTools(pi)
   })

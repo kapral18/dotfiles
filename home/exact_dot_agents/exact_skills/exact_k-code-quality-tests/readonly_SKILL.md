@@ -5,13 +5,12 @@ description: "Use when adding, editing, reviewing, or debugging tests or test pl
 
 # Test Code Quality
 
-Use this for test and verification code.
-The SOP still owns required verification loops and the rule that test-first framing does not expand scope.
+Use this for test and verification code. The SOP owns the single final Verify stage; writing tests does not expand implementation scope.
 
 ## Test Shape
 
 - Write BDD-style tests when adding tests: `describe('WHEN ...')`, `it('SHOULD ...')`.
-- Bug fix reframe: write a test that reproduces the bug, then make it pass.
+- Write regression cases for the reported bug and preserved behavior; execute them in the integrated final Verify stage.
 - Keep tests focused on observable behavior, not implementation trivia.
 - Cover the boundary or regression that would fail without the change.
 - Prefer small fixtures that make the behavior obvious.
@@ -32,13 +31,9 @@ The SOP still owns required verification loops and the rule that test-first fram
 
 ## Validation
 
-- Run the smallest relevant test first, then broader checks when the blast radius warrants it.
-- A passing test proves nothing until it has failed for the right reason.
-  Before claiming a test covers a changed observable relation, mutate the code so at least one intended difference fails and, when locally observable, at least one preserved difference fails.
-  Confirm both mutations are caught and that unrelated tests do not fail.
-- Revert/mutate **in place** from a copy.
-  `git stash` on a file whose change is already committed stashes nothing, so the suite passes vacuously and "verified by reverting" is false.
-- Waiting for async work: prefer a wait that settles the whole chain (yield a macrotask, or await the real signal) over a fixed number of ticks; a fixed count silently stops reaching the assertion when a step is added, turning every test in the block green-but-vacuous.
-- With multiple worktrees/checkouts in play, name the worktree and branch in the run description and confirm the run targets the intended one before interpreting results.
-- If a test cannot be run, state why and what evidence was verified instead.
-- Do not add snapshots or golden files unless they protect a meaningful contract.
+Prepare focused cases with the change; execute each planned check once in final Verify, not inside production workers.
+Use an independent oracle and intended/preserved cases. Do not claim mutation coverage from a green run alone.
+Risk-selected final mutation experiments must establish the control, actual mutation, and restoration, without modifying unrelated work.
+Async tests should await the real completion signal rather than arbitrary tick counts. Name the actual worktree/snapshot under test.
+Report failed/skipped checks honestly; do not automatically repair/recheck.
+Do not add golden files that merely pin wording or generated data against itself.

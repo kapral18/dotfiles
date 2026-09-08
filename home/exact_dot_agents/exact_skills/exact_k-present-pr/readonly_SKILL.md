@@ -145,7 +145,7 @@ Before opening for the user, verify with the `k-playwriter` skill:
   Print terse JSON for: page errors, console errors, failed local responses, image load status, placeholder presence, reveal counts, concept/sidebar geometry, rail fallback visibility, and concept-note state.
   Use snapshots only on failure or with a tight `search` filter.
 - Assert **zero** `pageerror`/`console.error`, all `nb-*.png` resolve (no 404s), the left concept sidebar and right notes sidebar do not overlap the main column on wide desktop widths, the act-rail fallback remains usable when sidebars collapse, concept-note interactions work, and reveal animations fire.
-  Fix and re-verify until clean.
+  Report rendering failures with evidence; do not enter a fix/re-verify loop after final verification.
 - Stop the exact server PID or exact listening port after verification; do not use broad process-kill commands or large session listings to find it.
 
 ### 7. Open for the user

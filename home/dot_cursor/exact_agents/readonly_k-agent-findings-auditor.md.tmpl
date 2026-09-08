@@ -1,6 +1,6 @@
 ---
 name: k-agent-findings-auditor
-description: Read-only /k-deep-review findings auditor for non-trivial post-live-UI audits.
+description: Optional final findings-quality lens over the frozen artifact and shared evidence; no separate post-review audit.
 model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "cursor" "agent" "k-agent-findings-auditor") }}"
 readonly: false
 ---

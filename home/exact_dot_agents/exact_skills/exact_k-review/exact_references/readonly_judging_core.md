@@ -3,7 +3,7 @@
 - Mode files and `shared_rules.md` reference this file; do not duplicate these sections elsewhere.
 - Delivery-agnostic: no GitHub, SCSI, or delivery rules.
 - Surfaces needing PR/SCSI/GitHub-delivery rules layer them via `shared_rules.md`.
-- The findings pipeline (Coverage Checklist, Post-Review Lens, Findings-Set Audit, Post-Review Stage, Verify-and-Fix Loop) lives in `judging_pipeline.md`.
+- Integrated coverage and hygiene criteria for the final Verify stage live in `judging_pipeline.md`.
 
 ## Conditional Gate Loading
 
@@ -23,7 +23,8 @@ Use in every non-trivial review.
 
 - Treat every claim as a hypothesis until verified.
 - A rationale is also a claim: verify actual runtime/code behavior, not explanations.
-- Self-consistency check: when a rationale claims an input/file/condition is irrelevant, perturb it and confirm outcome stability.
+- When irrelevance is a material acceptance claim, use existing evidence or a risk-selected perturbation in the root's final check plan.
+  Do not generate a mutation experiment for every rationale or repeat an experiment already represented in shared evidence.
 - A static read proves what source says, not what the system does; verify runtime behavior whenever candidate keep/drop depends on observed state.
 - **Diff-boundary tunnel vision is forbidden:** reviewing diff hunks in isolation without inspecting surrounding context, caller trees, and sibling consumers is never justified across any review tier (light, standard, or deep).
   The diff is the source for what changed (delta) and commentability; full files and caller trees (via local `rg`, symbol lookup, or SCSI) give the ground truth for system behavior.
@@ -31,16 +32,16 @@ Use in every non-trivial review.
   Missing/extra/unproven rows are candidates until refuted.
 - Establish base invariants first (SCSI when indexed; otherwise `git show <base>:<path>` + local `rg`), then validate PR/branch reality (diff + full file reads).
 - Evaluate the diff as a state and contract boundary; simulate behavior across universal failure primitives:
-  caller/callee contract asymmetry, test oracle/mock fidelity gaps, compositional fault cascades in batch/collection processing, temporal/async hazards, projection/mapping divergence, silent error degradation, and predicate negation/boundary-swap mutations — for each changed condition, enumerate its inverted and off-by-one forms and name one observable consequence each.
+  caller/callee contract asymmetry, test oracle/mock fidelity gaps, compositional fault cascades in batch/collection processing, temporal/async hazards, projection/mapping divergence, and silent error degradation.
+  Select boundary and predicate counterexamples for the material risks; do not enumerate mutations for every changed condition.
 - When evaluating a proposed change: prefer smallest repro in `/tmp` or smallest safe experiment in worktree.
-- If you changed code in an iteration cycle, re-run repo quality gates (lint + type_check + tests).
+- Consume the planned final quality-gate receipts; do not rerun checks or start a repair cycle.
 - Keep an evidence log per comment/thread: base behavior, semantic delta, tests run, observations.
 
 ## Candidate Refutation Ladder (Run Before Reporting Or Acting)
 
-Owned by the agent that decides keep/drop and acts (k-light-review, direct review modes, or a controller).
-Fan-out: the dedicated adversarial lane (cross-family preferred at equal capability, SOP §3.7) owns this pass;
-read-only finder lanes only return candidates plus a reachability statement and do not self-refute.
+Apply these lenses within the assigned final review/refutation packet, not as a second pass over another reviewer's work.
+The root assigns distinct review/adversarial questions within the same final stage and shares existing check evidence.
 
 A candidate survives only when a genuine refutation attempt fails with evidence.
 Default to `undecidable`, not `keep`, when the deciding evidence is genuinely out of reach.
@@ -58,7 +59,7 @@ Attempt refutation in this order and stop at the first decisive result:
 5. **Already covered:** is the concern already handled elsewhere in the diff or base? Cite where.
 
 Self-refutation catches unreachable paths, inflated severity, and weak fixes, but lacks cross-family independence.
-Use fan-out when available; self-refutation stands in only when fan-out is unavailable.
+A separate family can improve final judgment independence, but does not justify another pass over the same risk.
 
 ## State-Machine Verification Gate
 

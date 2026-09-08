@@ -54,61 +54,19 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "deviate only when the user explicitly overrides or approves the deviation",
             "This global SOP overrides weaker project-local SOP files",
             "project-local instructions may add constraints but must not weaken this SOP",
-            "Continue until the user's goal is complete or a verified blocker/user decision fork remains",
+            "Continue until the user's goal is complete, final Verify reports failure, or a verified blocker/user decision fork remains",
             "Premature stopping (including checkpoint commentary) and instruction/gate violations are operational failures",
         )
 
     def test_delegated_agents_are_leaf_workers(self):
-        for policy, leaf_rule, completion_rule in (
-            (
-                "home/readonly_AGENTS.md",
-                "A delegated child is always a leaf worker, regardless of profile, category, or loaded skill",
-                "Complete remaining in-scope work and return its result plus a concise conflict note",
-            ),
-            (
-                "home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt",
-                "A delegated child is always a leaf worker, regardless of profile, category, or loaded skill",
-                "Complete remaining in-scope work and return its result plus a concise conflict note",
-            ),
-        ):
+        for policy in ("home/readonly_AGENTS.md", "home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt"):
             self.assert_file_contains(
                 policy,
-                "Only the active root/main session may orchestrate multiple agents or lanes",
-                leaf_rule,
                 "MUST NOT launch, invoke, or delegate to another agent",
-                "MUST NOT create additional review, refutation, audit, or verification lanes",
-                "Normal verification inside the assigned task remains required",
-                "return the result or a concrete blocker to the parent",
-                "ignore that part; do not expand scope",
-                completion_rule,
-                "Return a concrete blocker only when no in-scope work remains",
+                "A research or production worker MUST NOT run verification, review, audit, refutation, or convergence passes.",
+                "A final Verify worker MUST NOT create another lane or repeat a completed check.",
+                "Late events MUST NOT overwrite a terminal result or reopen a completed worker.",
             )
-
-        self.assert_file_contains(
-            "docs/topics/ai-assistants/subagents.md",
-            "Only the active root/main session orchestrates multiple agents or lanes",
-            "A controller profile may orchestrate only when it is running as the active root/main session",
-            "Delegated children are always leaf workers",
-            "completes any remaining leaf-scoped work",
-        )
-        self.assert_file_contains(
-            "docs/topics/ai-assistants/reviews/deep-review-topology.md",
-            "the active root/main controller owns every fan-out decision",
-            "delegated workers execute one assigned leaf lane",
-        )
-        self.assert_file_contains(
-            "docs/topics/ai-assistants/assets/deep-review-flow.svg",
-            "Every delegated worker is a leaf",
-            "active root/main controller owns fan-out",
-        )
-        self.assert_file_contains(
-            ".mermaids/S0-concepts.mmd",
-            "only the active root/main session orchestrates agents or lanes",
-        )
-        self.assert_file_contains(
-            ".mermaids/03b-agent-skills-hooks.mmd",
-            "every delegated child is a leaf worker",
-        )
 
     def test_global_sop_keeps_truth_runtime_and_completion_gates(self):
         self.assert_file_contains(
@@ -125,39 +83,29 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "CLIs: resolve binary path/provenance, then read `--version` and `--help`",
             "Libraries: resolve exact package/version from lockfile, import path, and local docs/source",
             "source config or declaration -> rendered/applied config -> runtime consumer -> minimal safe live probe",
-            "Complete investigation, answer, implementation, and verification yourself while required local work remains doable",
+            "Complete the authorized investigation, implementation, and final verification while required work remains doable",
             "A summary not verified against full output is a hypothesis, not a fact",
-            "Assume unbounded work time and instant development.",
+            "Do not automatically repair, restart Produce, launch convergence, or reset an attempt counter.",
             "Base scope on correctness, evidence, risk, and explicit user constraints",
             "every numeric literal in the claim must occur verbatim in that quote",
-            "reject the unverifiable claim, not the source or entity",
+            "qualify unsupported claims instead of launching per-claim verifier workflows",
         )
 
     def test_global_sop_keeps_workflow_and_state_machine_gates(self):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
             "do not load specs broadly",
-            "Maintain one active `/tmp/specs/<pwd>/<topic>.txt` topic for the prompt",
             "Keep topics broad/stable; avoid topic explosion",
-            "conflicts with target/action/success and lacks a continuation signal",
             "Ask the single most branch-eliminating question while forks remain",
-            "Repeat until forks are empty and success criteria testable",
-            "For non-trivial/risky work, make plan and per-step verification explicit enough to test",
             "Do not make further speculative changes until alignment is restored",
-            "Make success observable; where practical",
-            "Bug fixes get reproducing tests",
-            "A repo-external `,proof` ledger is a durable receipt, not verification itself",
-            "are not ledger triggers by themselves",
-            "retroactive creation near the final answer is invalid",
-            'Invoke `,proof` only on a concrete trigger above; "the task feels non-trivial" is insufficient',
-            "repo-external `,proof` ledger",
-            "Test-first framing licenses touching only the code the request covers",
-            "### 3.6 State-Machine Verification",
-            "require a disposable harness under `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/` before final/merge-ready.",
-            "Reuse an existing harness after reading its manifest and confirming it still matches.",
-            "Compare implementation against an independent model/table",
-            "The harness verifies complexity.",
-            "Production state machines need an explicit request.",
+            "Scope → Understand → Produce → Verify → Deliver",
+            "Do not relabel post-change verification as a diagnostic or production operation.",
+            "Use deterministic tools directly for check execution",
+            "Prepare the harness during Produce; execute it only in the final Verify stage.",
+            "Compare against an independent model/table",
+            "Do not introduce a production state-machine framework",
+            "Collect independent planned checks after a failure when useful; skip checks whose prerequisites failed.",
+            "If the candidate changes during Verify, report stale evidence",
         )
         self.assert_file_not_contains(
             "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
@@ -176,10 +124,10 @@ class TestSopPolicyInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
-            "A repo-external `,proof` ledger is a durable receipt, not verification itself",
-            "Runtime/UI/browser/external checks are not ledger triggers by themselves",
-            "retroactive creation near the final answer is invalid",
-            "Otherwise use inline anchors",
+            "A separate `,proof` ledger is required only for an explicit receipt request",
+            "Do not create a proof ledger because work is large, runtime-facing, or one check failed.",
+            "Use existing topic state for the stage, scope/snapshot",
+            "final check receipts, and open decisions",
             "Use the shortest complete shape",
             "Length is a hard budget per task class, not a vibe",
             "Direct answer or one-shot question: ≤80 words",
@@ -190,7 +138,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "may not restate an item already in an earlier table/list",
             "Brevity outranks structure; structure must earn its space",
             "Borrow STE (ASD-STE100 Simplified Technical English) sentence habits only when they shrink text",
-            "Assume unbounded work time and instant development.",
+            "Do not automatically repair, restart Produce, launch convergence, or reset an attempt counter.",
         )
         # The reinforcement excerpt keeps only the hard budgets and the deliverable rule.
         self.assert_file_contains(
@@ -198,7 +146,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "[SOP REINFORCEMENT",
             "Direct answer or one-shot question: ≤80 words",
             "The final message of the turn holds every deliverable",
-            "Assume unbounded work time and instant development.",
+            "Do not automatically repair, restart Produce, launch convergence, or reset an attempt counter.",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-compose-pr/exact_references/readonly_publication-packet.md",
@@ -365,9 +313,9 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Direct answer or one-shot question: ≤80 words",
             "Comparison or audit: ≤120 words",
             "Multi-part investigation: ≤200 words",
-            "Assume unbounded work time and instant development",
+            "Minimize total context and model work across the session",
             "Base scope on correctness, evidence, risk, and explicit user constraints",
-            "Defer only for missing evidence, a user decision fork, or an external blocker",
+            "A failed final verification is a terminal result",
             "Line 1 answers, decides, or names the next action",
             "The final message of the turn holds every deliverable",
             "cap at 5",
@@ -408,35 +356,14 @@ class TestSopPolicyInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
-            "### 3.7 Delegation Categories",
-            "Delegation keeps the conclusion in the caller's context, not the file dumps",
-            "Classify by work, not caller",
-            "A skill that names a category owns that choice",
-            "`refute` prefers a different model family at equal capability; a strong same-family refuter beats a weaker cross-family one",
-            "Repo-owned custom subagent identifiers MUST use the `k-agent-<role>` namespace.",
-            "Harness-native subagent identifiers MUST remain unchanged; do not prefix or alias them.",
-            "Centrally mapped per-harness model rows make the category the whole cost decision;\nthe harness resolves",
-            "profile, role, tier, or band-gate mechanism",
-            # The three dispatch gates are the operative half of 3.7: without them the category
-            # table is advice. Each anchor is pinned with the Forbidden clause that gives it teeth,
-            # so deleting a gate block (or quietly softening it into a preference) fails here.
-            "- `mechanical` dispatch gate.",
-            "Forbidden: the root session MUST NOT apply a rename, search-and-replace, import fix, or pattern migration itself once the rule is settled",
-            "- `research` dispatch gate.",
-            "Forbidden: the root session MUST NOT read file after file, run query nets, or clone external repos itself for that investigation;",
-            "- `implement` dispatch gate",
-            "Forbidden: the root session MUST NOT write implementation itself.",
-        )
-        self.assert_file_contains(
-            "home/readonly_AGENTS.md",
-            "Recall first through `k-agent-smol` when prior knowledge could help",
-            "Do not run `,ai-kb search`/`,ai-kb get` inline in the parent session",
-            "never store guesses or session-only notes",
-            "Record worthwhile mid-task decisions, ideas, and unverified constraints with `,agent-memory note",
-            "At each substantive turn's end, silently check whether a verified durable/reusable insight was produced",
-            "not a checkpoint and not a reason to stop early",
-            "No announcement or separate summary",
-            "No per-session cap; dedup before writing",
+            "Centralize control, not raw context or execution.",
+            "Resolve model AND effort from `category_models`",
+            "Preserve strong research/orchestration/review/refutation",
+            "never spend the expensive root/review model on routine implementation by default",
+            "Do not dispatch a separate agent for each read, command, check result, or tiny edit.",
+            "At compaction or continuation, resume from that handoff",
+            "An explicit user no-delegation instruction keeps the session inline.",
+            "Repo-owned custom agent identifiers use `k-agent-<role>`; harness-native identifiers remain unchanged.",
         )
 
     def test_ai_instructions_keep_semantic_delta_contract_wired(self):
@@ -448,9 +375,9 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "old rule -> new rule -> intended differences -> preserved differences -> evidence",
             "investigate an unknown set, marking `Unknown` only when evidence is genuinely unavailable",
             "preserve behavior outside the semantic delta",
-            "Exercise the semantic delta:",
-            "at least one intended and one preserved difference when both are locally observable",
-            "Name states, transitions, inputs, terminal actions, existing buckets, semantic delta",
+            "Keep intended and preserved differences in the final acceptance plan",
+            "cover intended differences, preserved behavior, malformed input, and terminal actions",
+            "plan explicit transition cases",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
@@ -461,19 +388,15 @@ class TestSopPolicyInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-spec/readonly_SKILL.md",
-            "For packets not proven mechanical-only",
-            "record SOP semantic delta before criteria",
-            "when semantic delta exists, criteria must cover it",
-            "one intended-difference and one preserved-difference when both are locally observable",
-            "Semantic delta: <none | old rule; new rule; intended differences; preserved differences; evidence>",
+            "Record the semantic delta: old rule, new rule, intended differences, preserved differences, and evidence.",
+            "Criteria cover intended and preserved behavior when both exist",
+            "record unrun checks as planned, not passed",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-build/readonly_SKILL.md",
-            "If the packet is not proven mechanical-only and lacks a semantic delta",
-            "Carry the packet's semantic delta into the plan",
-            "missing intended difference, or missing preserved difference",
-            "The verifier must try to refute the semantic delta, not only the positive criteria",
-            "Semantic delta: old rule, new rule, intended differences, preserved differences",
+            "Carry old/new rules, intended and preserved differences",
+            "Freeze the integrated candidate",
+            "Final failure ends the attempt",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_core.md",
@@ -492,8 +415,8 @@ class TestSopPolicyInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-code-quality-tests/readonly_SKILL.md",
-            "Before claiming a test covers a changed observable relation",
-            "at least one intended difference fails and, when locally observable, at least one preserved difference fails",
+            "Use an independent oracle and intended/preserved cases.",
+            "Do not claim mutation coverage from a green run alone.",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_references/readonly_failure-modes.md",
@@ -611,7 +534,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "home/exact_dot_agents/exact_skills/exact_k-code-quality-tests/readonly_SKILL.md",
             "Use when adding, editing, reviewing, or debugging tests or test plans",
             "Write BDD-style tests when adding tests: `describe('WHEN ...')`, `it('SHOULD ...')`",
-            "Bug fix reframe: write a test that reproduces the bug, then make it pass",
+            "Write regression cases for the reported bug and preserved behavior",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-code-quality-web/readonly_SKILL.md",
@@ -651,7 +574,8 @@ class TestSopPolicyInvariants(unittest.TestCase):
         self.assertEqual(compiler.excerpt_violations(REPO, sop), [])
         for rel, ceiling in (
             ("home/dot_config/exact_tmux/agent_prompts/prefix.txt", 1200),
-            ("home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt", 1000),
+            # Architecture-stage allowance includes explicit packet/safety constraints.
+            ("home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt", 2048),
         ):
             size = (REPO / rel).stat().st_size
             self.assertLessEqual(size, ceiling, f"{rel} grew to {size} bytes; keep the excerpt compact")

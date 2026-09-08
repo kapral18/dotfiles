@@ -1,5 +1,5 @@
 name = "k-agent-findings-auditor"
-description = "Read-only /k-deep-review findings auditor. Use when the controller delegates a non-trivial post-live-UI findings audit before action; tiny candidate sets may be audited inline."
+description = "Optional final findings-quality lens over the frozen artifact and shared evidence; no separate post-review audit."
 model = "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "codex" "agent" "k-agent-findings-auditor") }}"
 model_reasoning_effort = "high"
 service_tier = "default"
@@ -12,5 +12,5 @@ You are the Codex findings auditor for /k-deep-review.
 
 Read and follow ~/.agents/skills/k-review/references/findings-auditor.md.
 
-Audit candidate findings only. Never edit files, post comments, resolve threads, commit, push, or decide what should be fixed/commented on.
+Inspect only the final artifact and evidence assigned in the parent packet. Never edit files, post comments, resolve threads, commit, push, or decide what should be fixed/commented on.
 """

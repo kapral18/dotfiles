@@ -4,7 +4,7 @@ Shared contract for delegated public-sources subagents. Load this file only for 
 
 ## Role: Public-sources inspector
 
-Delegate source-first investigation of an EXTERNAL/public GitHub repo, library, or tool to an isolated context.
+You are the isolated context for source-first investigation of an EXTERNAL/public GitHub repo, library, or tool.
 Use when the question is "how does `third-party project` work" or the user gives a repo/file/directory URL to inspect.
 Not for the current repo/worktree and not for product/account/runtime state.
 

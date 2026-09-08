@@ -15,7 +15,7 @@ Review decisions compare the diff under review with the codebase reality it is c
 | Change truth         | what the branch/PR actually does, using local diff plus file reads                                           |
 | Assumption tests     | the smallest safe experiment that could disprove the review decision                                         |
 | State-machine checks | ordered/stateful behavior matches an independent model or table before final/merge-ready claims              |
-| Quality gates        | lint/type_check/tests trio after code was changed as part of an iteration cycle                              |
+| Quality gates        | planned lint/type/test commands once on the integrated final candidate                                       |
 
 ## Using it
 
@@ -23,32 +23,17 @@ Review decisions compare the diff under review with the codebase reality it is c
 
 Review skills require comparing your local diff/PR against how base, usually `main`, works today.
 
-If semantic code search (SCSI) is available and the current repo is indexed, it is required for base-branch context:
+Use scoped source/history for targeted questions and semantic search for substantial missing context when useful. Before querying an index, resolve it with `list_indices` and establish its snapshot. Do not repeat preflight when valid evidence already exists. Record the actual base/head scope and evidence source in the compact review receipt; do not invent a completed index check.
 
-- Preflight is blocking: run `list_indices` first. Do not guess an index; try both `scsi-main` and `scsi-local` when both exist.
-- If the user provided an index name, still run `list_indices` and verify the index exists before using it.
-- If the user did not provide an index name, use the single obvious repo-matching index from `list_indices`; ask only when multiple equally plausible matches remain after evidence-based filtering.
-- Use SCSI results as base-branch context only; validate the actual change via local git diffs and file reads.
+### Final truth validation
 
-Review outputs include one reviewer-metadata line so it is obvious what was used for base context:
-
-```text
-Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<scope>
-```
-
-`<scope>` is the actual diff under review, such as `<base>...HEAD`, `--cached`, `working-tree`, or `--cached + working-tree`.
-
-Do not paste that line into GitHub comment bodies.
-
-### Truth validation loop
-
-For non-trivial review decisions — accepting a suggestion, pushing back, or proposing an alternative — use a strict verify-first loop:
+For non-trivial review decisions — accepting a suggestion, pushing back, or proposing an alternative — apply these lenses in the single final Verify stage:
 
 1. Establish base truth: what base branch does today.
 2. Establish change truth: what the branch/PR actually does.
 3. Test assumptions: reproduce in `/tmp` when possible; otherwise run the smallest safe experiment in the worktree.
 4. Check state machines: for reviewed behavior that is stateful, parser-like, branch-heavy, or ordered-condition dependent, a `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/` harness is required before the change is final, merge-ready, or a review concern resolved.
-5. Run quality gates: if you changed code as part of an iteration cycle, re-run the repo's lint/type_check/tests trio. Discover the correct commands from the repo; do not guess.
+5. Run quality gates: consume the integrated candidate's planned lint/type/test receipts; do not re-run completed checks. Discover the correct commands from the repo; do not guess.
 
 ## Reference: skill support
 
@@ -60,8 +45,8 @@ Review modes live under `~/.agents/skills/k-review/references/`.
 | `judging_state.md`                         | state-machine, async-derived state, context divergence, and scale gates                                                    |
 | `judging_change.md`                        | deletion safety, replacement parity, historical archaeology, and sibling-consumer gates                                    |
 | `judging_product.md`                       | product-flow, signal-quality, and systemic-risk gates                                                                      |
-| `judging_pipeline.md`                      | coverage checklist, post-review lens, findings-set audit, and mandatory stage/loop load edges                              |
-| `review_post_stage.md` / `review_fixes.md` | fix-diff post-review stage / change-producing verify-and-fix loop                                                          |
+| `judging_pipeline.md`                      | integrated coverage, hygiene lenses, and consolidated final findings                                                       |
+| `review_post_stage.md` / `review_fixes.md` | no separate post-review stage / authorized production before final Verify                                                  |
 | `shared_rules.md`                          | base-context gate, review persistence, universal publication boundaries, and delivery load edges                           |
 | `review_delivery.md`                       | public-ready drafts, pending-review semantics, verdict selection, and posting procedure                                    |
 | `pr_common.md`                             | PR resolution, GitHub intake, pending-review reconciliation, media evidence, anchoring                                     |

@@ -1,6 +1,6 @@
 ---
 name: k-agent-deep-review
-description: Orchestrates the investigation-only deep-review flow. Use when the user invokes /k-deep-review or asks for the deep-review orchestration.
+description: Final deep-review leaf over the parent-scoped candidate; no orchestration.
 model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "cursor" "agent" "k-agent-deep-review") }}"
 readonly: false
 ---
@@ -9,19 +9,9 @@ readonly: false
 
 Apply the boundary above before following the role-specific instructions below.
 
-# Deep Review
+# Final Deep Review Leaf
 
-## Session boundary
-
-The profile name never grants root authority. When invoked as a delegated child, execute only the task and scope in the parent packet.
-A delegated child MUST NOT launch, invoke, or delegate to another agent (no Task/Subagent calls), create additional lanes, or run the deep-review controller graph.
-A child ignores orchestration instructions in loaded skills, completes the remaining assigned work and normal verification, and returns its result plus any conflict note to the parent.
-If conflicting orchestration instructions leave no executable in-scope work, return the concrete blocker.
-Do not infer root authority from a parent request to orchestrate.
-
-## Native invocation notes (active root only)
-
-Only the active root/main session may follow this section: load and follow `~/.agents/skills/k-deep-review/SKILL.md` in full.
-Cursor never scans `~/.cursor/agents`, so these repo profiles are unreachable at user level: fan out through the Task/Subagent tool with `subagent_type: generalPurpose` and an explicit registry `model` — the refute value for adversarial verification, the lane value for reviewers and auditors — per `k-review/references/runtime-harnesses.md`. The roster and phase contracts decide which lanes run; this is not an unconditional fan-out.
-Pass explicit scope (diff range, PR number, thread set) into each sighted task; workers do not see this conversation.
-Keep fresh-eyes tasks blind: diff scope only, never PR number/title/body, commit messages, issue text, threads, prior findings or controller narrative, including re-runs.
+Execute only the parent's final Verify packet. The name grants no root/controller authority.
+Load `~/.agents/skills/k-review/references/reviewer-worker.md` and the packet's selected risk criteria.
+Do not load the deep-review controller router, spawn agents, run another review pass, message peers, or edit source.
+Return one substantive terminal result with evidence pointers and unresolved conditions.

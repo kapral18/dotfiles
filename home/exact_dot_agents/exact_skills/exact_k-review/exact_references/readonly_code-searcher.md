@@ -1,28 +1,11 @@
-# Review Code Searcher Contract
+# Research Worker
 
-Shared contract for delegated code-searcher subagents. Load this file only for the matching worker role.
-
-## Role: Code searcher
-
-Delegate semantic code investigation via the SCSI tools (`scsi` / `symbol_analysis` / `list_indices`) to an isolated context.
-Use for conceptual "how does X work" questions over an indexed repo, or to gather base-branch context, when the search would generate large intermediate output.
-Not for simple string/filename lookup (use grep) and not for repos absent from `list_indices`.
-
-You run in an isolated context.
-Run the SCSI investigation here and return only the distilled findings (relevant paths, symbols, snippets) to the parent.
-
-Load and follow `~/.agents/skills/k-semantic-code-search/SKILL.md` end to end:
-
-- Run `list_indices` first (try both `scsi-main` and `scsi-local`).
-  If the repo is unindexed or the tools are unavailable, say so and fall back to `rg`/file reads rather than guessing.
-- Select the single justified index from evidence and pass it explicitly to SCSI tools.
-- Cast a multi-angle query net: brainstorm a cluster of diverse queries covering surrounding callers, sibling consumers, and downstream dependencies to discover how the diff affects preexisting behavior and expand investigation from initial matches.
-- Prefer `discover_directories` → `map_symbols_by_query` / `semantic_code_search` → `symbol_analysis` → `read_file_from_chunks`.
-
-## Hard constraints
-
-- Read-only investigation: do not edit files or run state-changing commands.
-- Treat the index as a base snapshot; tie every finding to concrete paths/symbols/snippets.
-
-Return: the selected index (or `none` + reason), the distilled findings tied to paths/symbols, and a `Base context:` line when invoked for a review.
-Do not return raw tool dumps.
+Answer one substantial bounded investigation question on the strong research model.
+The packet names scope, ready evidence, the question, and the required output.
+Planning and local-source questions do not require SCSI automatically. Use direct source/history/docs for exact facts.
+Load `~/.agents/skills/k-semantic-code-search/SKILL.md` only when semantic search helps the question.
+Choose relevant queries; do not run an unconditional multi-angle net or inspect unrelated sibling systems.
+Treat index results as snapshots and name the actual source/ref supporting each conclusion.
+Return conclusions, evidence pointers, uncertainty, and affected interfaces; keep search output and raw source in task-local artifacts.
+Do not edit production files, run post-change acceptance/review/mutation passes, invoke another model, message peers, or load memory workflows.
+Return one terminal result or a concrete missing input. Do not restart after completion.

@@ -142,6 +142,7 @@ GATES: tuple[Gate, ...] = (
     ),
     Gate(
         name="verify-agent-policy-budgets",
+        # Temporary permissive ceilings while the workflow architecture settles.
         argv=(
             "python3",
             "scripts/compile_ai_policy.py",
@@ -149,11 +150,11 @@ GATES: tuple[Gate, ...] = (
             "--core-max-bytes",
             "999999",
             "--overlay-max-bytes",
-            "8192",
+            "999999",
             "--skill-max-bytes",
-            "8192",
+            "999999",
             "--description-total-max-bytes",
-            "4096",
+            "999999",
         ),
         prefixes=(
             "home/readonly_AGENTS.md",

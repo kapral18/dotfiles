@@ -16,7 +16,8 @@ The intake publication and authorship constraints remain in `shared_rules.md`; t
 - Skip redundant "Ref:" links when the comment is already attached to the exact line.
 - Keep anchoring/tooling limitations out of the comment body ("can't anchor inline", "not in diff hunks").
 - For UI-related comments, replies, or PR-level feedback drafted after `/k-deep-review` or `k-agent-live-ui-review`, keep the screenshot handoff outside the body as UI evidence attachments.
-  If screenshot evidence is missing without a valid blocker or non-applicability result, block/rerun instead of drafting text-only UI feedback.
+  If required screenshot evidence is missing, report that criterion as blocked instead of drafting unsupported UI feedback.
+  Do not rerun a worker or restart verification automatically.
   Never put local screenshot paths in GitHub comment, reply, review, or PR-level bodies.
 - In review comment bodies, whenever you reference code, use a clickable source link to the exact location on the PR head SHA.
 - Code references include:
@@ -61,7 +62,7 @@ Content boundary:
 After all findings are drafted, recommend an overall verdict from `authorship`, severity, and `author_relation`:
 
 - **Self-review** (`authorship: self`):
-  - Fix issues in the working tree before recommending a GitHub review verdict.
+  - Review alone does not authorize edits. Report remaining findings; repairs after final Verify require a new user-authorized attempt.
   - **Comment only** if the user explicitly asks to post self-review notes with remaining non-blocking findings.
   - **Approve** when no findings remain.
   - Do not request changes on the user's own PR from this flow.
@@ -93,5 +94,5 @@ The user decides whether to actually submit the verdict.
 - Human-Visible Publication Gate (SOP, `~/AGENTS.md`):
   - explicit approval or an approval packet defined by the relevant skill/reference is required for any human-visible target
   - automation carve-outs are the SOP-defined packets only; do not infer new ones here
-  - see `pr_fix.md` Drain Mode
+  - see the scoped batch in `pr_fix.md`
   - bot-authored threads may be auto-replied/auto-resolved only inside a flow the user already invoked

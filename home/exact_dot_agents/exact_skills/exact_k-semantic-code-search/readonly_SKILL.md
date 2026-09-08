@@ -26,24 +26,13 @@ Do not use:
 - purely mechanical pattern matching to drive a replace/edit: use local `rg`
 - current repo is not indexed (not present in `list_indices`): do not use semantic code search
 
-Delegation (SOP §3.7 `research` dispatch gate, strong model):
-
-Root session only:
-
-- A multi-angle query net, base-branch context gathering, or symbol mapping MUST run in the isolated `k-agent-code-searcher` profile (OMP, Pi, Claude); the root folds in only the distilled findings.
-  The child loads `~/.agents/skills/k-review/references/code-searcher.md`.
-  Inline SCSI calls from the root are allowed only for a single targeted query whose answer the root consumes directly.
-- Harnesses without that profile use their `research`-bound native explorer (Codex `explorer`, Copilot `explore`, Antigravity `codebase_investigator`; Cursor: `generalPurpose` with the registry `research` model passed explicitly) and the same contract in the prompt.
-- NEVER run this on a cheap-lane agent (`scout`, `sonic`, `k-agent-mechanical`);
-  symbol selection and coverage judgment need the strong model.
-
 A delegated leaf that loads this skill runs the queries itself and never spawns a child.
 
 First actions:
 
 1. Run `list_indices` before any semantic query.
 2. Verify whether the current repo is indexed and pick the single justified index, or record why none can be used.
-3. Cast a multi-angle query net: brainstorm a cluster of diverse queries exploring how changed functionality affects preexisting surrounding behavior, sibling consumers, callers, and downstream pipelines.
+3. Choose queries that resolve the assigned uncertainty; explore callers/consumers only where relevant to that question.
 4. Drill down using symbol analysis and chunk reads on relevant matching paths to map full impact.
 
 Important limitation: the semantic index is a snapshot (typically of `main`);
@@ -114,3 +103,11 @@ Tool selection guidelines:
 | `discover_directories`  | Locate relevant directories  | Top directories ranked by relevance; use first       |
 | `symbol_analysis`       | Deep dive on one symbol      | Definitions, usages, types, related symbols          |
 | `read_file_from_chunks` | Read complete files          | Full stitched view for examining implementations     |
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Use the strong research category for substantial context-heavy investigations;
+never route symbol selection or synthesis to a cheap mechanical model. Targeted queries may remain inline.
+Dispatch the whole bounded question, not each query/result.
+Workers return conclusions, evidence pointers, uncertainty, and affected interfaces without a private review/verification workflow.

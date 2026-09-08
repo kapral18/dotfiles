@@ -42,9 +42,9 @@ graph TB
     I6 --> R6["realized by: scripts/*.py + tests/fixtures/golden_*<br/>home/exact_lib/exact_,*/main.{py,sh,mjs}<br/>thin .chezmoiscripts and ~/bin launchers · yaml_parser/jsonc_dump"]:::realize
 
     %% ---- C7 Intent-routed governance ---------------------------------------
-    C7{{"C7 · GOVERNED AGENTS<br/>LLMs are deterministic systems, not chatbots"}}:::concept
-    C7 --> I7["INVARIANT: agents load SOP entrypoints + intent-matched skills,<br/>keep generic workflows domain-neutral, only the active root/main session orchestrates agents or lanes,<br/>use detached orchestration only on an explicit user request, and pass fail-closed gates before human-visible side effects."]:::inv
-    I7 --> R7["realized by: home/readonly_AGENTS.md + symlinked harness entrypoints<br/>exact_skills Use when routing · domain overlays · exact_hooks fail-closed gates"]:::realize
+    C7{{"C7 · GOVERNED AGENTS<br/>one root lifecycle; bounded leaf work"}}:::concept
+    C7 --> I7["INVARIANT: agents load SOP entrypoints + intent-matched skills,<br/>keep generic workflows domain-neutral, only the active root/main session orchestrates agents or lanes,<br/>keep launch/sizing text in a skill's root-moves section that only the root follows, so a leaf contract carries none and a child profile preloads leaf contracts only,<br/>use detached orchestration only on an explicit user request, and pass fail-closed gates before human-visible side effects."]:::inv
+    I7 --> R7["realized by: home/readonly_AGENTS.md §§3.5–3.7 stages + categories + symlinked harness entrypoints<br/>exact_skills Use when routing + root-moves sections · domain overlays · exact_hooks fail-closed gates + [ROOT ONLY] delegation markers"]:::realize
 
     %% ---- C8 Evidence anchoring (SOP discipline) ----------------------------
     C8{{"C8 · EVIDENCE ANCHORING<br/>claims must be anchored or demoted"}}:::concept
@@ -73,7 +73,7 @@ graph TB
 
     %% ---- C13 Persistent intent memory --------------------------------------
     C13{{"C13 · INTENT MEMORY<br/>sessions rehydrate, don't restart cold"}}:::concept
-    C13 --> I13["INVARIANT: per-(workspace,topic) spec/worklog persists in<br/>/tmp/specs with named topics mirrored/restored via persistent state;<br/>sessionStart injects it bounded; review topics run clean-room;<br/>depth-bounded per-turn recall only connects to a session-warmed generation<br/>and stages candidates for the k-agent-smol judge instead of injecting capsule bodies;<br/>tool events enter a bounded crash-safe session queue off the critical path."]:::inv
+    C13 --> I13["INVARIANT: per-(workspace,topic) spec/worklog persists in<br/>/tmp/specs with named topics mirrored/restored via persistent state;<br/>sessionStart injects it bounded; review topics run clean-room;<br/>compact stage/decision/packet handoffs survive compaction;<br/>automatic filtered durable recall remains; root admission + final learning batch; never per-turn scribe or leaf orchestration;<br/>tool events enter a bounded crash-safe session queue off the critical path."]:::inv
     I13 --> R13["realized by: session_context.py · perturn_recall.py<br/>spec_mirror.py · worklog_queue.py · ,agent-memory · ,ai-kb"]:::realize
 
     %% ---- how concepts compose ----------------------------------------------

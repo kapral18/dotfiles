@@ -48,7 +48,8 @@ The JSON snapshots are complete/paginated snapshots produced by the controller. 
 
 ## Lifetime
 
-The pack is a cache of refetchable data under `/tmp`: not mirrored, not swept, rebuilt or refreshed by the controller's drift checks (head and discussion) and discarded rather than trusted when they find a change.
+The pack is an immutable snapshot under `/tmp`: not mirrored or swept. The root checks head and discussion freshness once in final Verify.
+Drift makes the result stale; it does not authorize rebuilding the pack or restarting review.
 Durable review state lives in the review spec, never in the pack.
 
 ## Freshness gate
@@ -57,11 +58,11 @@ Before trusting any pack content:
 
 1. Read `manifest.json`.
 2. Verify `manifest.head_sha` equals the expected head in the parent scope packet.
-3. If the head does not match, ignore the pack, fall back to live `gh`/`git` reads, and report `pack_stale` in your return block with both shas.
-4. If the pack root or `manifest.json` is missing, fall back to live `gh`/`git` reads and report `pack_missing` in your return block.
+3. If the head does not match, return `blocked: pack_stale` with both SHAs.
+4. If the pack root or `manifest.json` is missing, return `blocked: pack_missing`.
 
 Do not mix stale pack content with live content for the same PR snapshot.
-After a stale or missing result, use live reads consistently for the affected artifact class.
+Do not rebuild a missing pack, substitute a different snapshot, or restart intake inside a worker.
 
 ## Consumption rules
 
@@ -72,4 +73,4 @@ After a stale or missing result, use live reads consistently for the affected ar
 - Keep worker-local notes and disposable probes outside the pack.
 
 Return `pack_used: <root>` when the pack passed the freshness gate and supplied any evidence.
-Return `pack_missing` or `pack_stale` when you had to fall back.
+Return `pack_missing` or `pack_stale` as a concrete blocker, not a request to retry automatically.

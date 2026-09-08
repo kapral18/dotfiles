@@ -5,8 +5,11 @@ description: Blind zero-context clarity lane for one review-controller fan-out; 
 model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-fresh-eyes") }}"
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
-inheritProjectContext: true
+inheritProjectContext: false
+inheritGlobalContext: false
 inheritSkills: false
+maxSubagentDepth: 0
+defaultContext: fresh
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}

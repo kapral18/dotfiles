@@ -29,7 +29,7 @@ Contract:
 - Reference and open skill files under `~/.agents/skills/` only.
   `~/.cursor/skills` is a symlink to the same tree; opening a file under both paths is a duplicate read of the same bytes.
 - After a context summary, re-open only the files the active mode needs; the summary is not a substitute for them.
-  Resume from Review Persistence; apply PR Drift. Reopen invalidated gates; never replay completed phases or relaunch outstanding lanes.
+  Resume from Review Persistence; apply PR Drift. Report invalidated evidence; never replay completed phases or relaunch outstanding lanes.
 - Do not load `k-github`, `k-git`, `k-compose-pr`, `k-communication`, `k-kibana-labels-propose`, or a CI skill at intake;
   label, release-note, and version checks run only when the user asks for labels or a PR body.
   Load `k-buildkite` only when the CI Coverage Gate needs a job's contents, and `k-github` only at the posting step.
@@ -40,19 +40,22 @@ Contract:
   - draft/verify through review mode first
   - invoke the `k-github` skill via the Skill tool only for the posting step
 
-Standard review uses a bounded reviewer roster as an execution mechanism, not as a separate skill tier:
+## Root moves
 
-- finder work is delegated when the active harness can launch workers
-- every mode runs adversarial/refutation before acting or drafting
-- when refutation keeps yielding findings round after round, switch to `~/.agents/skills/k-converge/SKILL.md` and follow its workflow-handoff contract
-- live UI runs only when UI/runtime evidence is needed; use `k-deep-review` when the user asks for maximum rigor, mandatory deep orchestration, fresh-eyes/context-pack treatment, or the full PR necessity/controller graph
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Review runs once in the session's final Verify stage.
+Preserve requested review and adversarial lenses; for deep or high-risk work, assign them distinct questions against the same frozen candidate.
+Low-risk work needs only its applicable judgment. Specialists consume shared evidence, not one another's verdicts.
+Do not chain finder, audit, adversarial, fresh-eyes, or post-review passes. Do not invoke convergence automatically.
+Gather context in Understand; produce explicitly requested known fixes before entering Verify.
+Research packets return compact evidence, not transcripts. Direct deterministic checks require no mechanical agent.
+When delegation is forbidden, stay inline; otherwise isolate substantial context-heavy judgment where it reduces total work.
 
 ## Secondary Skill Escalation
 
 Do not load secondary skills until read/diff evidence proves the surface is in scope.
 
 - Load semantic code search only for base context after the selected mode requires base-branch context.
-- Load GitHub workflow only when the user explicitly asks to post/submit anything to GitHub.
 
 ## Draft-PR Policy
 
@@ -125,7 +128,7 @@ If the user's intent is still unclear, resolve via local context (do not guess):
   - Independently check both:
     - whether staged/unstaged changes exist
     - whether `,gh-prw --number` resolves a PR for the current branch
-  - If both are true: default to local changes mode (verify and fix working tree).
+  - If both are true: default to local changes mode (review the working tree; do not infer fix authority).
     Note the PR exists in output so the user can switch if needed.
   - If only local changes exist: local changes mode.
   - If only a PR exists: PR review mode.

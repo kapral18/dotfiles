@@ -7,7 +7,11 @@ This file is not a subagent registry.
 
 Read this file only for capability caveats that affect orchestration.
 
-## Model policy
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+
+### Model policy
 
 - Model selection is **registry-driven and deterministic**: every repo-owned review profile's `model` frontmatter is rendered through `review-agent-model.partial`, which derives from `agent_bindings`, `agent_categories`, `category_models`, and sparse `review_model_overrides` in `home/.chezmoidata/ai_models/tiering.yaml`.
   Updating a derivable review model is a one-line category row edit plus `chezmoi apply`;
@@ -24,27 +28,16 @@ Read this file only for capability caveats that affect orchestration.
   Claude uses `inherit` intentionally because Claude sessions are launched on a deliberate model and the installed Task resolver has been verified to inherit from the parent.
 - A model unavailable in the active runtime is a fail-visible launch error to surface; fix the registry, never substitute at launch.
 
-## Verifier launch ladder
+### Final judgment selection
 
-One ladder for every refutation/verification lane (`k-agent-adversarial-verifier`, `k-agent-criteria-verifier`, and the blind `k-agent-fresh-eyes`).
-Take the first rung the active harness can actually serve, name the rung taken, and never skip the phase:
+Choose the applicable strong review/refute category and its resolved model/effort before launching a substantial final packet.
+Use a reachable named profile, or a native generic type with the same explicit registry category model where supported.
+Do not silently fall back to a weaker or more expensive model.
+A missing capability is a reported limitation, not authority to bypass the category.
+Fresh-eyes, criteria, hygiene, and adversarial profiles are optional task framings, not mandatory extra stages.
+No child owns orchestration, verification of another reviewer, or a convergence loop.
 
-1. **Named profile.**
-   Launch the deployed `k-agent-<role>` profile; its resolver-rendered `model` frontmatter already carries the `refute` value (`lanes`, for fresh-eyes).
-   Verifier profiles are fielded on Claude Code, Codex, Copilot, Cursor (project-level `.cursor/agents` only), Pi, and OMP;
-   the blind fresh-eyes profile exists on Claude Code, Pi, and OMP (`fresh-eyes.md` owns its per-harness rows).
-2. **Generic type + explicit registry refute model.**
-   Where the named profile is unreachable, launch the harness's generic subagent type and pass `category_models.<harness>.refute` explicitly: Cursor `generalPurpose`, Codex `worker`, Copilot `task`.
-   An omitted model is a matrix bypass, not a default.
-3. **Antigravity.**
-   `define_subagent` the `k-agent-<role>` identifier from its shared role contract, then `invoke_subagent` it at `pro` (`flash` is for the cheap lanes only).
-4. **Inline-degraded.**
-   Only when the harness exposes no isolated spawn at all: run the Candidate Refutation Ladder (`judging_core.md`) in the controller and report `adversarial=inline-degraded`.
-
-Report the resolver's family status (`families=cross` / `families=same (degraded)`) with the rung, never silently.
-A delegated leaf never spawns a verifier and never verifies its own claims (SOP §3.7); it returns the fork to its controller as a blocker.
-
-## Claude Code
+### Claude Code
 
 Claude subagent model overrides are limited to the installed SDK schema (`sonnet`, `opus`, `haiku`, `fable`) — one family.
 
@@ -52,12 +45,11 @@ Claude subagent model overrides are limited to the installed SDK schema (`sonnet
 - Built-in shadows: repo-owned same-name profiles override high-risk embedded builtins (`Explore`, `Plan`, `general-purpose`, `claude-code-guide`, `claude`) so normal Task launches use our profile frontmatter instead of embedded defaults.
 - Wrapper guard: `,claude-openrouter` keeps the root session on the selected OpenRouter wire model and, because Claude Code's Agent schema accepts aliases only, routes delegated lanes through a 4-alias map along the tier ladder: `fable` → `anthropic/claude-fable-5.1@preset/effort-high` (T1 orchestrate/research/review), `opus` → `openai/gpt-5.6-sol@preset/effort-high` (T2 implement, also the `CLAUDE_CODE_SUBAGENT_MODEL` default), `sonnet` → `deepseek/deepseek-v4-flash@preset/effort-xhigh` (mechanical), `haiku` → `google/gemini-3.8-flash@preset/effort-low` (memory).
   Four aliases cannot carry five tiers: Pi's refute pick (`openrouter/openai/gpt-5.6-sol:xhigh`) has no alias of its own, and the gate maps every `gpt`/`openai` backend id to `opus`, so a refute launch on this route runs the T2 SOL wire model at high instead of xhigh.
-  That substitute is still a different family than the Anthropic T1 lanes: report `cross_family (T2 substitute)` in the launch line;
-  do not redesign the wrapper to add a tier.
-- Adversarial verifier, criteria verifier, and fresh-eyes are repo-owned named profiles (`k-agent-adversarial-verifier`, `k-agent-criteria-verifier`, `k-agent-fresh-eyes`) whose resolver-rendered frontmatter emits `inherit` today; launch them by name — rung 1 of the Verifier launch ladder, not a generic task.
+  Do not silently accept that substitute for a required refute effort. Report the unsupported mapping rather than claiming category parity.
+- Adversarial verifier, criteria verifier, and fresh-eyes are repo-owned named profiles (`k-agent-adversarial-verifier`, `k-agent-criteria-verifier`, `k-agent-fresh-eyes`) whose resolver-rendered frontmatter emits `inherit` today; launch them by name — a named final packet when that framing is selected.
   The model surface is still one family, so keep reporting `families=same (degraded)`.
 
-## Codex
+### Codex
 
 Codex's model surface is OpenAI-only, so the adversarial verifier is `families=same (degraded)` here.
 Launch angle lanes as `k-agent-review-worker` agents; the verifier as the `k-agent-adversarial-verifier` agent.
@@ -67,7 +59,7 @@ Every Codex role also pins `service_tier = "default"`.
 Always pass an explicit model when launching a native Codex `spawn_agent`/generic subagent (the generic type is `worker`):
 the installed catalog does not make omitted defaults auditable, and uncataloged slugs can pass through with fallback metadata.
 
-## Antigravity CLI
+### Antigravity CLI
 
 Run `/k-deep-review` in the main Antigravity session. Dynamic subagents cannot invoke further subagents.
 Antigravity has no repo-owned profile-file surface; define each needed role with `define_subagent`, point its system prompt at the matching shared role contract, then launch it through `invoke_subagent`.
@@ -78,7 +70,7 @@ Use `flash` for the cheap lanes: `k-agent-mechanical` (edit or exact-retrieval p
 it is the tier the registry's `gemini-3.8-flash` mechanical/memory rows map onto. Do NOT launch either on `inherit` or `pro`.
 The model surface is Gemini-only, so report `families=same (degraded)` for adversarial verification.
 
-## Cursor
+### Cursor
 
 - Transcript exports label the delegation tool `Subagent` (2026-09-04 export), while the cursor-agent 2026.09.02 bundle still names the call type `taskToolCall`; the `tool_name` the preToolUse hook receives is unverified.
   The band gate therefore matches both `Task` and `Subagent`; a launch that passes a non-registry `model` is rewritten to the subagent type's band either way.
@@ -105,23 +97,34 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
 - Cursor's `readonly` flag is a hard tool restriction, not the `/k-deep-review` behavior-level read-only boundary.
   Cursor source shows `readonly: true` blocks shell, write, delete, and MCP operations.
   Keep Cursor profile frontmatter and Task launches at `readonly: false`; the worker contracts enforce no-mutation behavior.
-- If a Cursor worker reports Ask/read-only mode blocked shell/git/`gh`/Playwriter, discard that launch result and rerun with `readonly: false` before accepting `verification_needed`.
+- If a Cursor worker reports Ask/read-only mode blocked shell/git/`gh`/Playwriter, report the blocked capability;
+  do not automatically relaunch a completed worker. Choose required permissions before launch.
 - If Cursor cannot await background subagent ids, do not loop blind sleeps.
   Cursor source has a subagent await protocol, but the shell Await/AwaitShell path is for shell tasks and may reject subagent ids.
   Keep reviewer, PR-necessity, live-UI, and findings-audit workers as real Cursor background subagents;
   use Cursor Task `run_in_background=true` when the active Task schema exposes it. Wait through a Cursor-native subagent completion signal.
   If no native completion signal is available, end the controller turn and wait for the completion notification, or do one transcript completion check; never loop fixed-interval sleeps.
 
-## Copilot CLI
+### Copilot CLI
 
 - Copilot profiles carry resolver-rendered `model` frontmatter (`lanes` on workers/auditors/controller, `verifier` on `k-agent-adversarial-verifier`).
   The managed `~/.copilot/settings.json` subagent entries also include resolver-aligned `model`/`effortLevel`/`contextTier` so stale target-only model overrides cannot survive Copilot's settings merge.
   Per-task model overrides are runtime-verified but reserved for fail-visible recovery, not steering, except generic fresh-eyes where the explicit model is the profile-equivalent resolved lane value.
 - Launch angle lanes as the `k-agent-review-worker` agent type (model-invocable, not user-invocable).
-  Do not use the generic `task` type unless a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason; a fallback launch passes the registry model explicitly (rung 2 of the Verifier launch ladder).
+  Do not use the generic `task` type unless a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason; a fallback launch passes the registry model explicitly (native generic fallback with the same category).
 
-## Pi and OMP
+### Pi and OMP
 
+- OMP managed profiles, including native-name `task`/`sonic`/`scout` shims, require `blocking: true`, no `task` tool, and no `spawns` allowlist; async commands stay enabled.
+  Native reviewer shortcuts are disabled in favor of managed review profiles.
+  Inspect effective project/plugin overrides before use; do not launch an unguarded override unattended.
+- Pi workers use `defaultContext: fresh`, `inheritProjectContext: false`, `inheritGlobalContext: false`, `inheritSkills: false`, and `maxSubagentDepth: 0`.
+  The root packet supplies applicable project/safety constraints.
+  Explicit named role skills still load separately; the ambient catalog does not.
+  These flags do not prevent an explicit runtime override; inspect the actual launch inputs and do not use forked root history for leaf packets.
+- OMP 18.1.14 forwards context files and skills into native child session construction and adds native Coop/Completion guidance.
+  Its agent parser exposes no Pi-style inheritance flags. Do not invent those fields or claim the full native prompt is isolated.
+  Supply only task context, follow the leaf boundary, and retain this native-context limitation in the handoff.
 - Pi and OMP launch subagents through named profiles; per-task/per-profile `model` is honored over the worker default, and Pi thinking is encoded as a `:<thinking>` suffix on the model string.
 - Resolved `lanes` and `verifier` are concrete.
   Pi review workers and fresh-eyes run `anthropic/claude-fable-5.1:high` (the Pi session's own T1 model);

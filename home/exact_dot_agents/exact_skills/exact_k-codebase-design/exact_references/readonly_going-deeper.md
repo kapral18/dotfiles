@@ -38,11 +38,26 @@ Based on Ousterhout's "design it twice" — your first idea is unlikely to be th
 ### 1. Frame the problem space
 
 Write a short user-facing explanation for the candidate: the constraints any new interface must satisfy, the dependencies and their category (Branch A), and a rough illustrative sketch to ground the constraints (not a proposal).
-Include it in the next user-visible message (mid-turn text may never reach the user), and proceed with the subagents immediately rather than waiting on a reply.
+Include it in the next user-visible message (mid-turn text may never reach the user), and do not wait on a reply before the parallel designs start.
 
-### 2. Spawn subagents in parallel
+### 2. Collect radically different interfaces
 
-Use the Task tool to spawn 3+ subagents in one batch, each producing a **radically different** interface for the deepened module.
+Each design arrives as: the interface (types, methods, params, plus invariants/ordering/error modes), a caller usage example, what the implementation hides behind the seam, its dependency/adapter strategy, and trade-offs (where leverage is high, where thin).
+A design missing any of those parts is incomplete; report the missing input without automatically reopening its worker.
+The Root moves section owns how the parallel designs are produced; a delegated leaf produces one design for the brief its parent named and returns that design only.
+
+### 3. Present and compare
+
+Present designs sequentially so the user absorbs each, then contrast them by **depth** (leverage at the interface), **locality** (where change concentrates), and **seam placement**.
+Give your own recommendation — which is strongest and why; propose a hybrid if elements combine well.
+Be opinionated: the user wants a strong read, not a menu.
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+
+**Branch B step 2 — spawn the parallel designs.**
+Use the Task tool to spawn one subagent per brief, each producing a **radically different** interface for the deepened module.
 Give each a separate technical brief (target files, coupling, dependency category, what sits behind the seam) and a distinct constraint:
 
 - Agent 1: "Minimise the interface — 1–3 entry points max. Maximise leverage per entry point."
@@ -50,10 +65,6 @@ Give each a separate technical brief (target files, coupling, dependency categor
 - Agent 3: "Optimise for the most common caller — make the default case trivial."
 - Agent 4 (if cross-seam deps exist): "Design around ports & adapters."
 
-Each subagent outputs: the interface (types, methods, params, plus invariants/ordering/error modes), a caller usage example, what the implementation hides behind the seam, its dependency/adapter strategy, and trade-offs (where leverage is high, where thin).
-
-### 3. Present and compare
-
-Present designs sequentially so the user absorbs each, then contrast them by **depth** (leverage at the interface), **locality** (where change concentrates), and **seam placement**.
-Give your own recommendation — which is strongest and why; propose a hybrid if elements combine well.
-Be opinionated: the user wants a strong read, not a menu.
+Every brief demands the return shape named in Branch B step 2 and forbids further spawning.
+How many designs to ask for is a root decision taken from the framed problem space: typically three contrasting briefs;
+the root decides the count. The roster above names candidate briefs, not a fixed batch.

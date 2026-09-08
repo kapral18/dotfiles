@@ -49,10 +49,15 @@ Walk the plan end-to-end, ordered by risk:
 
 ## Findings Audit And Adversarial Pass
 
-Run the Findings-Set Audit from `judging_pipeline.md` in the controller over the candidate plan findings before adversarial verification.
-If the audited candidate plan set is empty, skip adversarial work and report `Adversarial verification: skipped (no candidates after findings audit)`.
-Otherwise, run a `k-agent-adversarial-verifier` lane over the audited candidate plan findings before output, launched through the Verifier launch ladder in `runtime-harnesses.md`; report the rung it reached alongside `adversarial=`.
-The verifier attacks the plan finding's actual claim, not the plan author's wording.
+Judge the complete plan and source evidence once in the final Verify stage.
+Use strong review or adversarial framing, not a sequence of finder/audit/refutation passes.
+Return unsupported assumptions and concrete gaps without rewriting the plan or restarting research automatically.
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Isolate substantial plan judgment on the strong review/refute category when useful;
+keep the packet scoped to the actual plan and relevant evidence. Do not launch another model to verify the returned review.
 
 ## Output
 

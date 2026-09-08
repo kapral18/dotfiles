@@ -1,119 +1,33 @@
 ---
 name: k-spec
-description: "Use for ideas, feature requests, bugs, or another skill needing a spec packet with red acceptance checks."
+description: "Use when a request needs a compact implementation packet with explicit final acceptance criteria."
 ---
 
 # Spec
 
-Develop the SOP §3.1 intent spec into a **spec packet**: the smallest handoff for hands-free implementation, with machine-checkable acceptance criteria and explicitly tagged judgment criteria.
+Develop the active intent topic into the smallest actionable packet. The SOP owns the session lifecycle and safety gates.
 
-The SOP owns the surrounding gates: the Intent Loop mechanics (§3.1), compatibility intent (§2.1), and external/runtime truth (§2.2/§2.5).
-This skill owns the packet contract and the acceptance-criteria discipline.
-Consumers: `/k-build` (in-session hands-free implementation), `~/.agents/skills/k-compose-issue/SKILL.md` (GitHub issue text + publication packet), and the `k-review` skill's plan mode (adversarial review of the packet itself).
+1. Establish the actual problem and source evidence. Reuse existing research; do not create a separate necessity-review ceremony.
+2. Resolve material forks from evidence; ask one direct question only for a user-owned decision.
+   Do not prototype or call advisors automatically.
+3. Record the semantic delta: old rule, new rule, intended differences, preserved differences, and evidence.
+4. Define final acceptance conditions using `check:` commands or `judgment:` evidence.
+   Read `~/.agents/skills/k-spec/references/check-strength.md` for check design.
+   Do not execute red/green or mutation probes merely to approve the packet; record unrun checks as planned, not passed.
+5. Use `~/.agents/skills/k-spec/references/packet-template.md`, persist the packet under the active `/tmp/specs/<pwd>/<topic>.spec.md`, and add its pointer to the compact topic handoff.
 
-## Do not use
+Keep target, action, constraints, in/out scope, side effects, compatibility intent, and externally owned decisions explicit.
+Criteria cover intended and preserved behavior when both exist; a test command alone is not proof of coverage.
+The packet is an artifact, not authority to commit, publish, or begin another workflow.
+If implementation is already approved, continue to Produce without asking again.
+Otherwise present the decision/packet requested by the user.
 
-- trivial single-edit changes where intent is already unambiguous — just do the work under the SOP
-- drafting issue/PR text from an already-clear problem: `~/.agents/skills/k-compose-issue/SKILL.md` / `k-compose-pr`
-- reviewing an existing plan/design document: the `k-review` skill (plan mode)
+## Root moves
 
-## Workflow
-
-1. **Necessity check.**
-   Before developing the idea, verify the work is needed: inspect `git log`, search `gh` issues/PRs when a repo target exists, and delegate concrete-goal recall through `~/.agents/skills/k-ai-kb/SKILL.md`.
-   Done when you can state one of: `new work`, `duplicates <ref>`, `superseded by <ref>`, or `already exists at <path>` — with the evidence.
-   On anything but `new work`, stop and surface it instead of drafting.
-
-2. **Close the forks.**
-   Run the SOP §3.1 Intent Loop with the interview discipline from `~/.agents/skills/k-interview-me/SKILL.md`:
-   answer from evidence before asking, one fork-closing question at a time with a recommended answer.
-   Route **empirical** forks — "which state model feels right", "what should this look like" —
-   to the `k-prototype` skill instead of asking the user to imagine the answer; the prototype verdict closes the fork.
-   In a delegated/hands-free flow the agent records the verdict itself, with the deciding observation, in the packet's Context line.
-   When the verified target repo has a domain overlay exposing a planning fork checklist, consult it to seed the fork inventory (current concrete overlay: `~/.agents/skills/k-elastic-domain/SKILL.md` for `elastic/kibana`); evidence-first still applies.
-   For packets not proven mechanical-only, record SOP semantic delta before criteria:
-   old rule -> new rule -> intended differences -> preserved differences -> evidence; classify differences or externalize them.
-   A fork that cannot close locally — another team's sign-off, a compliance confirmation, an external owner's choice between observably different behaviors — does not block packet assembly: record it under `External dependencies` with an owner, the criteria it blocks, and a recommended default, and keep drafting.
-   Done when every remaining interpretation produces the same packet.
-
-3. **Draft acceptance criteria — make them red.** Each criterion is one observable statement plus exactly one of:
-   - `check:` — a shell command run from the repo root, non-interactive, idempotent, passing iff exit 0 (`test -f`, `grep -q`, a targeted test command)
-   - `judgment:` — for qualities no command can decide, naming the evidence that settles it (a diff property, a screenshot comparison, a named reviewer question)
-
-   **Run every `check` now and paste the invocation + result.**
-   The expected state is **red** — the feature is absent, the bug is present —
-   which proves the command is runnable and tests the right thing.
-   A check that is already green tests nothing: rewrite it, or keep it only as a labelled regression guard.
-   A check that has never been run is a hypothesis, not a criterion.
-   Check strength (every observed contract failure has been a check under-testing its criterion):
-   - a check must fail under a plausible wrong implementation, not just before any implementation —
-     a no-op that prints the right words is the counterexample to beat
-   - when semantic delta exists, criteria must cover it: one intended-difference and one preserved-difference when both are locally observable
-   - a check verifies the outcome, not the rationale: it must assert what observably changes, never restate why the change is correct (the model's own explanation is not evidence the change works)
-   - coverage checks target invocation sites (`grep 'run_x(\["cmd"'`), never bare keywords a data field can satisfy
-   - ordering/content criteria assert exact output ("store truth": `test "$(cmd)" = "expected"`), not first-line or substring greps
-   - exit codes must be the checked command's: `OUT=$(cmd) && test "$OUT" = ...`, never `cmd | grep` (the pipe reports grep);
-     run checks bare, unpiped
-
-   Banned wording in criteria: "works", "correctly", "properly", "as expected" —
-   if you cannot say what observable changes, the fork behind it is still open; go back to step 2.
-   Done when every criterion carries a run-once check (red, or green and explicitly labelled as a regression guard) or an explicit `judgment:` tag, and at least one criterion is checked for any workspace-mutating goal.
-
-4. **Assemble and persist the packet.**
-   If the active topic is a session fallback (`session-<id>` — the hook default on main/master/dev with no named topic), bind this session to a named topic first: `,agent-memory select <stable-kebab-topic> --create --session-id <session-id>`.
-   Use the session id from the current Topic Buckets prompt when it is shown; do not write `_active_topic.txt`.
-   Fill the template below, write it to `/tmp/specs/<pwd>/<topic>.spec.md` (same `<topic>` key as the active SOP intent spec), and show the full packet in the response — the packet is the deliverable.
-   Then add or update a single `packet: /tmp/specs/<pwd>/<topic>.spec.md — <one-line status>` line in the intent spec `<topic>.txt`, so session-start injection carries the pointer and a fresh session knows the contract exists.
-   One packet in flight per topic: consumers (build lanes and plan review) read this file mid-flow, so do not author the next packet until the current one's outcome is recorded in the `.txt` chain; parallel work belongs on separate topics.
-   Never store secrets in it; `/tmp` is best-effort.
-
-5. **Hand off.** The packet is text only — this skill implements nothing and publishes nothing. Name the consumer moves.
-   SOP §3.7 implement dispatch gate governs every edit that follows.
-   Stop for the user's pick only when the consumer is not already determined; if the user named it (e.g. "spec then build"), proceed with that consumer:
-   - `/k-build` — hands-free implementation in this session, gated on this packet
-   - `k-compose-issue` / `k-compose-pr` — publishable text from the packet (that skill owns sanitization and handoff packet)
-   - `k-review` skill plan mode — adversarial review of the packet before any implementation, for high-stakes changes
-
-## Packet template
-
-```markdown
-# Spec packet: <topic>
-
-Goal: <one sentence — what exists after, that does not exist now>
-Context: <why now; links: issue/PR/thread/prototype verdict>
-
-Semantic delta: <none | old rule; new rule; intended differences; preserved differences; evidence>
-
-In scope:
-
-- <...>
-
-Out of scope (binding for /k-build):
-
-- <...>
-
-Acceptance criteria:
-
-1. <observable statement>
-   check: `<command>`            # run from repo root; pass = exit 0
-   now: red (exit <N>, <date>)   # paste of the run proving it
-2. <observable statement>
-   judgment: <what evidence settles it>
-
-Risks / unknowns:
-
-- <risk + probe> | Unknown because <reason>
-
-External dependencies (omit section when none; consumers must not start blocked criteria):
-
-- <decision/sign-off needed> — owner: <who>; blocks: criterion <N>; recommended default: <what to assume if forced>
-
-Compatibility intent: none | removes existing behavior (requested) | preserves existing behavior (requested)
-```
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Use a strong research packet for substantial context-heavy questions; keep decisions and packet assembly in the root.
+Do not delegate each criterion, run a mechanical check agent, or invoke memory merely to satisfy a step.
 
 ## Output
 
-- The full packet.
-- The path it was written to.
-- Each check's pasted red run.
-- Remaining `Unknown`s and the named consumer moves.
+The packet or concise decision plus packet pointer, planned final checks, and unresolved user-owned decisions.

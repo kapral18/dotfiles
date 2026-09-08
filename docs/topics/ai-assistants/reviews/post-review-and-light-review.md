@@ -3,94 +3,12 @@ sidebar_position: 3
 title: Post-review and light review
 ---
 
-# Post-review and light review
+# Integrated hygiene and light review
 
-The review system audits both findings and fixes. Before acting, it tries to refute candidate findings and dedupe the finding set; after acting, it reviews the fix diff itself.
+There is no post-review stage. Apply material hygiene criteria within the one final review of the integrated candidate.
 
-`k-light-review` uses the same core review engine with a smaller routing envelope for low-risk self-authored changes.
+The lenses are redundancy, verbosity, semantic + logical duplication, and gaps. These are criteria, not four workers or another audit round. Findings need an exact anchor, consequence, and actionable correction; wording-only churn is not a reason to reopen work.
 
-## Mental model
+`k-light-review` is a focused final review for local, reversible, observable, semantically simple work. Riskier scope uses `k-review` with appropriate lenses. Neither launches a findings-auditor/refuter chain or automatically fixes its final findings. Known authorized fixes belong to Produce before the final review. New final failures are reported.
 
-| Pass                        | Runs when                                                   | Looks at                              | Purpose                                                               |
-| --------------------------- | ----------------------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------- |
-| Findings-set audit          | before final refutation or acting                           | candidate findings and proposed fixes | collapse duplicate, verbose, unactionable, or overengineered feedback |
-| Candidate refutation ladder | final pass over the audited candidate set                   | each audited candidate                | try to kill the claim before acting                                   |
-| Post-review stage           | after a change-producing flow edits the working tree        | the fix diff, not the original diff   | catch hygiene problems introduced by the fix                          |
-| Light review                | before choosing full review for low-risk self-authored work | local diff / branch-delta scope       | run proportional depth without PR machinery                           |
-
-## Using it
-
-### Post-review stage (verifying the review's own fixes)
-
-Every change-producing flow ends with a **post-review stage** over the fix diff, not the original diff.
-
-Applies to:
-
-- local-changes verify-and-fix.
-- PR-fix self-fixes.
-- self-review.
-- k-light-review.
-
-The stage applies the canonical **four dimensions** defined verbatim in `judging_pipeline.md`, never renamed:
-
-| Dimension                          | Meaning                                                                                                                                                                                            |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Redundancy**                     | the fix repeats something already present: re-implements a helper, re-states a rule, or adds an already-present path                                                                               |
-| **Verbosity**                      | the fix is bloated beyond what the change needs: narration comments, ceremony, or over-explanation                                                                                                 |
-| **Semantic + logical duplication** | two places now express the same meaning/behavior via different text: parallel branches that should be one, or divergent-but-equivalent logic; this is the subtle axis literal-clone detectors miss |
-| **Gaps**                           | the fix is incomplete: own stranded dead code, an unupdated co-edit-set member like a doc/diagram/census, a half-applied rename, or a referenced-but-missing file                                  |
-
-Post-review behavior:
-
-| Context                   | Behavior                                                         |
-| ------------------------- | ---------------------------------------------------------------- |
-| own work / self-review    | fix hygiene findings in the working tree and re-gate             |
-| reviewing others          | surface hygiene findings                                         |
-| read-only subagent        | surface hygiene findings                                         |
-| trivial candidate set     | controller audits inline                                         |
-| non-trivial candidate set | `k-agent-post-review` / `k-agent-findings-auditor` runs the lens |
-
-### Refuting and auditing findings (before acting)
-
-Two engine passes run _before_ fixing or drafting, distinct from the post-review stage that runs _after_.
-
-**Findings-set audit** runs before final refutation or acting. The same four dimensions apply to the _finding list and its proposed fixes_, not the fix diff: collapse same-root-cause duplicates, trim verbose findings, and drop unanchored, unactionable, or overengineered items.
-
-In `/k-deep-review`, this is the `k-agent-findings-auditor`'s job when the candidate set is non-trivial.
-
-**Candidate refutation ladder** runs as the final pass over the audited candidate set. The deciding agent tries to kill each remaining finding in order: claim truth, reachability, severity, proposed fix, already-covered.
-
-A candidate survives only when refutation fails with evidence. Every kept finding states reachability, and an unreachable path loses its severity.
-
-Direct `k-review`/`k-light-review` run `k-agent-adversarial-verifier` when the harness supports it; otherwise they run the ladder inline and report the degraded path. In `/k-deep-review`, the adversarial lane (cross-family preferred at equal capability, SOP §3.7) owns it after findings audit, and read-only finder lanes only return candidates plus reachability.
-
-## Reference: light review
-
-[`k-light-review`](../../../../home/exact_dot_agents/exact_skills/exact_k-light-review) is a separate skill for proportional-depth, in-place audits of low-risk self-authored changes.
-
-| Keeps                                                                            | Drops                                 |
-| -------------------------------------------------------------------------------- | ------------------------------------- |
-| `judging_pipeline.md` coverage checklist + `judging_core.md` trigger-based gates | mandatory SCSI/base-context preflight |
-| four-dimension post-review lens                                                  | GitHub machinery                      |
-| candidate refutation ladder + findings-set audit                                 | multi-lane reviewer roster            |
-| opt-in base context                                                              | PR-thread/CI-specific rules           |
-
-A **light-eligibility predicate** is evaluated first. It is the single source both the `k-review` router and `k-agent-change-auditor` reference, replacing any subjective "is this low-risk?" call.
-
-The change is light-eligible only when none of these escalate:
-
-- a PR exists for the branch.
-- authorship is not `self`, verified rather than assumed from a local checkout.
-- the diff touches security/auth/crypto/secret/migration/persisted-data/public-API paths.
-- the diff deletes or replaces/migrates code.
-- the diff is state-machine-like.
-- correctness needs base context beyond direct local reads.
-- live UI/runtime evidence is needed because local static reads cannot prove the finding or fix.
-
-Any trigger escalates to full `k-review`. The router applies the same predicate in reverse, offering `k-light-review` for a self-authored, no-PR, trigger-free diff.
-
-`k-agent-change-auditor` (Claude, Pi, OMP) is the read-only delegated form.
-
-Both `k-light-review` and `k-review`'s local-changes mode run the shared **Verify-and-Fix Loop** in `judging_pipeline.md`: build queue → findings-set audit → final refutation → fix → quality gates → post-review stage.
-
-Each mode only adds its own base-context stance and scaffolding on top.
+Sources: `k-light-review/SKILL.md`, `k-review/references/judging_pipeline.md`, and `review_post_stage.md` under the shared skill tree.

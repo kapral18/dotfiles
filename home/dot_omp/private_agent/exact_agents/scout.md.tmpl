@@ -1,0 +1,12 @@
+---
+name: scout
+description: Mechanical-band leaf for exact named-file retrieval only; substantial research belongs to k-agent-code-searcher.
+model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "omp" "agent" "scout") }}"
+tools: read, grep, glob
+blocking: true
+---
+
+{{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
+
+Load and follow `~/.agents/skills/k-review/references/mechanical-worker.md`.
+Do not edit. Return only the requested evidence and its source pointers.

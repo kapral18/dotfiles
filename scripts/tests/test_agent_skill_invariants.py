@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 import ai_models
@@ -31,6 +32,165 @@ def render_chezmoi_template(path, *, is_work):
             cwd=str(REPO),
         )
     return result.stdout
+
+
+SKILLS_ROOT = "home/exact_dot_agents/exact_skills"
+ROOT_MOVES_HEADING = "## Root moves"
+ROOT_MOVES_LEAD = (
+    "Only the active root/main session follows this section; "
+    "a delegated leaf skips it and returns findings to its parent."
+)
+
+# A launch instruction is a launch verb applied to an agent-shaped object.
+# `spawn`/`launch`/`dispatch`/`delegate`/`fan out` name a launch by themselves, so an agent-shaped
+# object anywhere in the same line makes the line an order.
+_LAUNCH_VERB = re.compile(
+    r"(?i)\b(spawn(s|ed|ing)?|launch(es|ed|ing)?|dispatch(es|ed|ing)?"
+    r"|delegate(s|d)?|delegating|fan[- ]?out|fans out)\b"
+)
+_LAUNCH_OBJECT = re.compile(
+    r"(?i)(agent|lane|worker|subagent|verifier|auditor|evaluator|refuter|task tool|workpool|k-agent-)"
+)
+# `start`/`use`/`hand`/`run`/`invoke` are ordinary English ("run the focused tests", "Controller-run
+# lanes are told not to repeat them"), so they only order a launch when a named agent mechanism is
+# their own object: "Run k-agent-code-searcher", "Hand the diff to k-agent-reviewer",
+# "Use the Task tool to start three subagents". A hyphen-attached form is a compound adjective
+# ("user-invoked hand-off", "model-invoked call"), never an order.
+_NAMED_AGENT_LAUNCH = re.compile(
+    r"(?i)(?<![-\w])(start(s|ed|ing)?|use(s|d)?|using|hand(s|ed|ing)?|run(s|ning)?|ran"
+    r"|invoke(s|d)?|invoking)\b"
+    r"(?:\s+[\w`'\u2019./-]+){0,3}?\s+['\"`]?"
+    r"(task tool|subagents?|k-agent-[a-z-]+)\b"
+)
+# Verbs a prohibition can ban, enumerated or not: "never launch, invoke, or delegate", "does not run".
+_BANNED_VERBS = (
+    r"launch|launches|launching|spawn|spawns|spawning|invoke|invokes|invoking"
+    r"|delegate|delegates|delegating|dispatch|dispatches|dispatching|create|creates"
+    r"|run|runs|running|use|uses|using|start|starts|starting|hand|hands|handing"
+)
+# Clauses that carry a launch verb without ordering a launch. Each one is deleted from the line
+# before the verb/object test runs, so a line that both describes and orders a launch still fails.
+_DESCRIPTIVE_CLAUSES = (
+    # A factual negation of authority, not an imperative. Match only the named action
+    # so a following positive launch in the same line remains visible to the scanner.
+    re.compile(r"(?i)\bnot an instruction to\s+(launch|spawn|dispatch|delegate)\b"),
+    # A ban, enumerated or not: "never launch, invoke, or delegate to another agent",
+    # "cannot spawn", "with zero further subagent launches".
+    re.compile(
+        r"(?i)\b(never|not|cannot|can(?:'|\u2019)t|do not|must not|no|zero|without)[-\s]\s*"
+        r"(further\s+)?((?!to\b)[\w-]+\s+){0,2}"
+        rf"({_BANNED_VERBS})"
+        rf"(\s*,?\s*(or\s+)?({_BANNED_VERBS}))*\b"
+    ),
+    # A role applicability header, not an order: "Use for `k-agent-review-worker` profiles".
+    re.compile(r"(?i)\buse(d)?\s+for\b"),
+    # The launch belongs to somebody else: "launching more subagents is out of scope".
+    re.compile(
+        r"(?i)\b(launch(es|ing)?|spawn(s|ing)?|dispatch(es|ing)?|delegation)\b[^.;]*?"
+        r"\b(is|are|stay|stays|remain|remains)\s+"
+        r"(out of|forbidden|prohibited|root-only|the parent|its parent|the controller|the root)\b"
+    ),
+    # Past participle used as an adjective: "delegated review lane", "only launched lanes cost tokens".
+    re.compile(
+        r"(?i)\b(delegated|launched|spawned|dispatched)\s+((?!to\b)[\w`'\u2019-]+\s+){0,3}"
+        r"(child|children|worker|workers|leaf|leaves|subagent|subagents|agent|agents"
+        r"|task|tasks|lane|lanes|flow|role|context|execution)\b"
+    ),
+    # The parent is the actor, so the sentence hands work up rather than out:
+    # "the root dispatches the `k-agent-smol` scribe path".
+    re.compile(
+        r"(?i)\b(the|its)\s+(root|parent|controller)(?:'s|\u2019s)?(\s+[\w-]+)?\s+"
+        r"(launch(es)?|spawn(s)?|dispatch(es)?|delegate(s)?|fans out)\b"
+    ),
+    # A launch named as a point in time, not ordered: "before launching lanes".
+    re.compile(
+        r"(?i)\b(before|after|until|once|while|when|during)\s+((?!to\b)[\w`'\u2019./-]+\s+){0,3}"
+        r"(launch|launches|launching|launched|spawn|spawns|spawning|spawned"
+        r"|dispatch|dispatches|dispatching|dispatched)\b"
+    ),
+    # The SOP's own rule name, not an order to dispatch: "SOP §3.7 `research` dispatch gate".
+    re.compile(r"(?i)\b(dispatch|launch)\s+gate\b"),
+    # An OS process, not an agent: "the port listener belongs to the spawned Kibana's process tree".
+    re.compile(
+        r"(?i)\bspawn(s|ed|ing)?\s+((?!to\b)[\w'\u2019-]+\s+){0,2}"
+        r"(process|processes|kibana|elasticsearch|node|server|shell|container|listener)\b"
+    ),
+)
+
+
+def skill_entry(skill_dir: Path):
+    return next(
+        (skill_dir / name for name in ("readonly_SKILL.md", "SKILL.md") if (skill_dir / name).is_file()),
+        None,
+    )
+
+
+def is_manual_only(skill_dir: Path) -> bool:
+    """True when the tree is user-invoked only, so no model ever autoloads its launch text."""
+    entry = skill_entry(skill_dir)
+    if entry is None:
+        return False
+    text = entry.read_text(encoding="utf-8")
+    if not text.startswith("---"):
+        return False
+    return "disable-model-invocation: true" in text.split("---", 2)[1]
+
+
+def _orders_a_launch(text: str) -> bool:
+    """True when `text` orders a launch, after deleting the clauses that only describe or ban one."""
+    for clause in _DESCRIPTIVE_CLAUSES:
+        text = clause.sub(" ", text)
+    if _LAUNCH_VERB.search(text) and _LAUNCH_OBJECT.search(text):
+        return True
+    return bool(_NAMED_AGENT_LAUNCH.search(text))
+
+
+def launch_instruction_rows(lines) -> list[tuple[int, str]]:
+    """`(line number, matched text)` rows for launch instructions outside a `## Root moves` section.
+
+    Every candidate line is tested alone and then joined with the next candidate line, so an
+    instruction that wraps across two physical lines (`Launch` / `` `k-agent-reviewer` over this
+    diff.``) is caught at the line the verb sits on.
+    """
+    candidates: list[tuple[int, str]] = []
+    in_root_moves = False
+    for number, line in enumerate(lines, 1):
+        if line.startswith("## "):
+            # `###` headings stay inside the section their `##` opened.
+            in_root_moves = line.strip() == ROOT_MOVES_HEADING
+            continue
+        if in_root_moves or line.strip() == ROOT_MOVES_LEAD:
+            continue
+        candidates.append((number, line))
+    rows: list[tuple[int, str]] = []
+    for index, (number, line) in enumerate(candidates):
+        if _orders_a_launch(line):
+            rows.append((number, line.strip()))
+            continue
+        following = candidates[index + 1] if index + 1 < len(candidates) else None
+        if following is None or following[0] != number + 1 or _orders_a_launch(following[1]):
+            continue
+        window = f"{line.strip()} {following[1].strip()}"
+        if _orders_a_launch(window):
+            rows.append((number, window))
+    return rows
+
+
+def root_moves_violations(root: Path) -> list[str]:
+    """Launch instructions in model-invocable skill text that sit outside a `## Root moves` section.
+
+    Returns `path:line - text` rows; empty means every launch instruction is root-gated.
+    """
+    skills_root = root / SKILLS_ROOT
+    if not skills_root.is_dir():
+        raise FileNotFoundError(f"no skills tree at {skills_root}")
+    violations = []
+    for path in sorted(skills_root.rglob("*.md")):
+        if is_manual_only(skills_root / path.relative_to(skills_root).parts[0]):
+            continue
+        for number, text in launch_instruction_rows(path.read_text(encoding="utf-8").splitlines()):
+            violations.append(f"{path.relative_to(root)}:{number} - {text}")
+    return violations
 
 
 class TestAgentSkillInvariants(unittest.TestCase):
@@ -240,11 +400,11 @@ class TestAgentSkillInvariants(unittest.TestCase):
     def test_pi_named_dispatch_targets_have_profiles(self):
         # Pi disables built-in subagents and exposes no generic edit-capable type, so every lane the
         # SOP dispatches has to exist here as a named profile — there is no fallback that keeps the
-        # band. The review controller's own roster must additionally be referenced by its prompt.
+        # band. Former controller profiles are leaves and MUST NOT carry a launch roster.
         agents_dir = REPO / "home/dot_pi/agent/exact_agents"
         profiles = {path.name.removesuffix(".md.tmpl") for path in agents_dir.glob("*.md.tmpl")}
         controller = (agents_dir / "k-agent-review-controller.md.tmpl").read_text(encoding="utf-8")
-        named_by_controller = {
+        optional_final_roles = {
             "k-agent-reviewer",
             "k-agent-fresh-eyes",
             "k-agent-adversarial-verifier",
@@ -255,11 +415,13 @@ class TestAgentSkillInvariants(unittest.TestCase):
         # k-agent-implementer is the Pi-only T2 implement target and k-agent-claim-verifier the
         # public-claim refuter; neither is a review-controller lane, so they are pinned for
         # existence only.
-        required = named_by_controller | {"k-agent-implementer", "k-agent-claim-verifier"}
+        required = optional_final_roles | {"k-agent-implementer", "k-agent-claim-verifier"}
 
         assert required <= profiles, f"Pi is missing dispatch-target profiles: {sorted(required - profiles)}"
-        for role in named_by_controller:
-            assert role in controller
+        assert "leaf-boundary.txt" in controller
+        assert "reviewer-worker.md" in controller
+        assert "  - k-deep-review" not in controller
+        assert "  - k-review" not in controller
 
     def test_pi_settings_use_native_shared_skills_and_real_extension_packages(self):
         for profile in ("work", "personal"):
@@ -284,74 +446,21 @@ class TestAgentSkillInvariants(unittest.TestCase):
             "a non-exact home/dot_pi/agent/extensions directory would stop pruning again"
         )
 
-    def test_converge_loop_is_manual_only_and_wired_into_sdlc_flows(self):
-        # k-converge owns the bounded re-attack loop: a fixed exit condition (a round that
-        # changes nothing) plus a correctness-only filter so rounds terminate instead of
-        # degenerating into prose churn. It stays manual-only because the model-visible
-        # description budget is effectively full; the per-turn hook carries the autonomous nudge.
+    def test_convergence_is_explicit_finite_and_never_hook_started(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-converge/readonly_SKILL.md",
             "disable-model-invocation: true",
-            "zero changes to code, tests, or published text",
-            "Mutate before you argue",
-            "refused, not deferred",
-            "no-op revert",
+            "finite",
         )
-        # The autonomous half: a challenged claim gets a re-verify + converge nudge.
-        # Every harness that reimplements the correction directive must carry it, or the
-        # nudge silently fires on one harness and not the others.
         for impl in (
             "home/exact_dot_agents/exact_hooks/executable_perturn_recall.py",
             "home/dot_pi/agent/exact_extensions/ai-kb-recall.ts",
             "home/dot_omp/private_agent/extensions/ai-kb-recall.ts",
         ):
-            self.assert_file_contains(
-                impl,
-                "CONVERGE_SIGNALS",
-                "unverified-claim",
-                "guessed-not-tested",
-                "repeat-failure",
-                "re-verify it against the artifact",
-                "/k-converge",
+            self.assert_file_contains(impl, "Do not launch re-verification, convergence, or a memory agent")
+            self.assert_file_not_contains(
+                impl, "delegate persistence to", "re-verify it against the artifact", "/k-converge"
             )
-        # The core SOP carries the mechanism for every harness; the reinforcement excerpt
-        # re-injects the challenge rule after context growth.
-        self.assert_file_contains(
-            "home/readonly_AGENTS.md",
-            "prefer mutation over argument",
-            "/k-converge",
-        )
-        self.assert_file_contains(
-            "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
-            "prefer mutation over argument",
-        )
-        # Every SDLC surface that already runs adversarial work points at the bounded loop.
-        # Assert the load-bearing handoff phrase, not the bare token: a passing mention in a
-        # comment or changelog line would otherwise satisfy this while the wiring was gone.
-        for skill, pointer in (
-            ("k-review", "switch to `~/.agents/skills/k-converge/SKILL.md`"),
-            ("k-light-review", "hand off to `~/.agents/skills/k-converge/SKILL.md`"),
-            ("k-build", "run `~/.agents/skills/k-converge/SKILL.md`"),
-        ):
-            self.assert_file_contains(
-                f"home/exact_dot_agents/exact_skills/exact_{skill}/readonly_SKILL.md",
-                pointer,
-            )
-        # Test-quality and debugging own the mutation/no-op-revert mechanics.
-        self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-code-quality-tests/readonly_SKILL.md",
-            "has failed for the right reason",
-            "stashes nothing",
-        )
-        # k-code-quality-tests owns the no-op-revert mechanic; debugging only points at it.
-        self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-diagnosing-bugs/readonly_SKILL.md",
-            "Before regression-test or fix work, read and follow `~/.agents/skills/k-diagnosing-bugs/references/fix-and-cleanup.md` in full through cleanup and post-mortem.",
-        )
-        self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-diagnosing-bugs/exact_references/readonly_fix-and-cleanup.md",
-            "revert the fix in place",
-        )
 
     def test_every_wired_hook_command_has_a_chezmoi_source_file(self):
         # A harness config can name `$HOME/.agents/hooks/<x>.py` for a file that was never
@@ -473,42 +582,16 @@ class TestAgentSkillInvariants(unittest.TestCase):
             "keep 3 entrypoints in sync",
         )
 
-    def test_review_flows_iterate_to_fixed_point(self):
-        self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_pipeline.md",
-            "Controller: before proposing/applying review fixes, load `~/.agents/skills/k-review/references/review_fixes.md` for fix scope and the verify-and-fix spine.",
-        )
-        self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_review_fixes.md",
-            "**Bound.** One fix round, then one refutation round over the fix diff",
-            "it is not redesigned in-review",
-        )
-        self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_pipeline.md",
-            "Before the Post-Review Stage, load `~/.agents/skills/k-review/references/review_post_stage.md`.",
-        )
-        self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_review_post_stage.md",
-            "**Second pass.** Re-run the four dimensions once after cleanup",
-            "only a verified blocker or a Requirements Reset ends the stage earlier",
-        )
-        self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-build/readonly_SKILL.md",
-            "Repeat the Post-Review Stage until it returns clean",
-            "rerun packet checks and adversarial verification before reporting",
-        )
-        self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_local_changes.md",
-            "with its one second pass; survivors are reported, not edited again",
-        )
-        self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_fix.md",
-            "rerun current-head outcome verification for affected threads before completion",
-        )
-        self.assert_file_not_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_local_changes.md",
-            "Post-Review Stage once",
-        )
+    def test_workflow_recipes_share_the_terminal_verify_stage(self):
+        for name in ("k-build", "k-deep-review", "k-light-review"):
+            path = f"home/exact_dot_agents/exact_skills/exact_{name}/readonly_SKILL.md"
+            self.assert_file_contains(path, "Verify")
+            self.assert_file_not_contains(
+                path,
+                "Repeat until no findings remain",
+                "repeat until no findings remain",
+                "switch to `~/.agents/skills/k-converge/SKILL.md`",
+            )
 
     def test_github_pr_publication_requires_preflight_and_readback_comparison(self):
         self.assert_file_contains(
@@ -654,7 +737,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_review_delivery.md",
             """**Self-review** (`authorship: self`):
-  - Fix issues in the working tree before recommending a GitHub review verdict.
+  - Review alone does not authorize edits. Report remaining findings; repairs after final Verify require a new user-authorized attempt.
   - **Comment only** if the user explicitly asks to post self-review notes with remaining non-blocking findings.
   - **Approve** when no findings remain.
   - Do not request changes on the user's own PR from this flow.""",
@@ -741,7 +824,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
     def test_review_router_dirty_pr_docs_match_source(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md",
-            "If both are true: default to local changes mode (verify and fix working tree).",
+            "If both are true: default to local changes mode (review the working tree; do not infer fix authority).",
             "Note the PR exists in output so the user can switch if needed.",
         )
         self.assert_file_contains(
@@ -823,3 +906,96 @@ class TestAgentSkillInvariants(unittest.TestCase):
             "from concurrent.futures import ThreadPoolExecutor",
             "ThreadPoolExecutor(max_workers=min(2, len(dates)))",
         )
+
+    def test_root_moves_sections_present(self):
+        # SOP §3.7 makes launch/fan-out text root-only, and a leaf cannot honor that per sentence:
+        # it needs one skippable section. Every model-invocable skill that still carries launch text
+        # declares it, so the child profiles that preload these files have a boundary to skip.
+        for skill in (
+            "exact_k-ai-kb",
+            "exact_k-codebase-design",
+            "exact_k-light-review",
+            "exact_k-review",
+            "exact_k-spec",
+            "exact_k-text-tournament",
+        ):
+            path = REPO / SKILLS_ROOT / skill / "readonly_SKILL.md"
+            lines = path.read_text(encoding="utf-8").splitlines()
+            assert ROOT_MOVES_HEADING in lines, f"{path} has no `{ROOT_MOVES_HEADING}` section"
+
+    def test_root_moves_guard_dispatch_text(self):
+        # The boundary is only real if it is both announced and complete: a leaf must be able to
+        # recognize the section from its first line, and no launch instruction may sit outside one.
+        unannounced = []
+        for path in sorted((REPO / SKILLS_ROOT).rglob("*.md")):
+            lines = path.read_text(encoding="utf-8").splitlines()
+            for index, line in enumerate(lines):
+                if line.strip() != ROOT_MOVES_HEADING:
+                    continue
+                body = [text.strip() for text in lines[index + 1 :] if text.strip()]
+                if not body or body[0] != ROOT_MOVES_LEAD:
+                    unannounced.append(f"{path.relative_to(REPO)}:{index + 1}")
+        assert not unannounced, (
+            "every `## Root moves` section must open with the leaf-skip sentence, missing in: " + ", ".join(unannounced)
+        )
+
+        violations = root_moves_violations(REPO)
+        assert not violations, "launch instructions outside a `## Root moves` section:\n" + "\n".join(violations)
+
+    def test_root_moves_scanner_catches_counterexamples(self):
+        # Adversarial grammar from `agent://CriteriaVerifier`: moving words around must not make the
+        # invariant green while the launch order survives. Each row is a scanned body plus whether
+        # it orders a launch; `False` rows are the exemptions the real contracts depend on.
+        probes = (
+            (False, "A staged pointer is not an instruction to launch an agent."),
+            (True, "A staged pointer is not an instruction to launch an agent; spawn k-agent-reviewer now."),
+            # Weak verbs and a wrapped object — the five orders the first vocabulary missed.
+            (True, "Use the Task tool to start three subagents."),
+            (True, "Hand the diff to k-agent-reviewer."),
+            (True, "Run k-agent-code-searcher over the tree."),
+            (True, "Invoke k-agent-reviewer to inspect the diff."),
+            (True, "Launch\n`k-agent-reviewer` over this diff."),
+            # A prohibition or a parent-as-actor description next to a real order stays caught.
+            (True, "Do not launch other agents; spawn k-agent-reviewer for this diff."),
+            (True, "The parent dispatches a research lane; launch k-agent-reviewer now."),
+            (True, "Spawn k-agent-reviewer to audit the diff."),
+            # Real contract sentences: a leaf's no-spawn sentence, a ban, the parent as actor,
+            # a launch named as a point in time, and ordinary English uses of the weak verbs.
+            (
+                False,
+                "- You run as a delegated leaf worker: never launch, invoke, or delegate to another"
+                " agent; return findings to the parent.",
+            ),
+            (
+                False,
+                "A delegated leaf other than the `k-agent-smol` operator does not run recall or"
+                " persistence; it returns candidate insights to its parent.",
+            ),
+            (
+                False,
+                "You run in an isolated context as a leaf worker: you cannot spawn agents, so never"
+                " attempt the independent verification yourself — the parent dispatches that separately.",
+            ),
+            (False, "Those are shared work: the controller runs them once and passes the result to every lane."),
+            (False, "Before launching any lane, re-read `<topic>.txt`."),
+            (
+                False,
+                "Controller-run lanes receive distilled base context from the controller, which owns"
+                " the dispatched `k-agent-code-searcher` research lane.",
+            ),
+            # Joining two lines must catch a wrapped order without inventing one.
+            (
+                False,
+                "Run the focused tests and lint for the touched files.\n"
+                "The `k-agent-implementer` packet names the check to run.",
+            ),
+        )
+        for expected, body in probes:
+            rows = launch_instruction_rows(body.splitlines())
+            label = "missed launch instruction" if expected else "false positive"
+            assert bool(rows) == expected, f"{label}: {body!r} -> {rows}"
+
+        # The section is what makes a caught row actionable: the same order inside `## Root moves`
+        # is root-only text the leaf skips, not a violation.
+        gated = [ROOT_MOVES_HEADING, "", ROOT_MOVES_LEAD, "", "- Spawn k-agent-reviewer to audit the diff."]
+        assert not launch_instruction_rows(gated), "a `## Root moves` order must stay exempt"

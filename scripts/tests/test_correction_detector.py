@@ -280,6 +280,7 @@ class TestPerturnRecallCorrectionInjection(unittest.TestCase):
         context = result["hookSpecificOutput"]["additionalContext"]
         self.assertIn("User correction signal: unverified-claim", context)
         self.assertIn(",agent-memory note anti_pattern", context)
+        self.assertNotIn("k-agent-smol", context)
         self.assertNotIn("Relevant Learnings", context)
         # Cursor reads only the top-level snake key from beforeSubmitPrompt output.
         self.assertEqual(result["additional_context"], context)
@@ -289,12 +290,13 @@ class TestPerturnRecallCorrectionInjection(unittest.TestCase):
 
         self.assertEqual(result, {})
 
-    def test_when_claim_is_challenged_should_add_convergence_nudge(self):
+    def test_when_claim_is_challenged_should_use_existing_evidence_without_convergence(self):
         result = _run_perturn_recall(self.root, "did you really measure that?")
 
         context = result["hookSpecificOutput"]["additionalContext"]
-        self.assertIn("re-verify it against the artifact", context)
-        self.assertIn("/k-converge", context)
+        self.assertIn("Consult the relevant source or existing evidence", context)
+        self.assertNotIn("/k-converge", context)
+        self.assertIn("Do not launch re-verification", context)
 
     def test_when_correction_is_not_claim_shaped_should_omit_convergence_nudge(self):
         # An unrequested-action correction is about conduct, not about a claim being wrong,
@@ -303,9 +305,10 @@ class TestPerturnRecallCorrectionInjection(unittest.TestCase):
 
         context = result["hookSpecificOutput"]["additionalContext"]
         self.assertIn(",agent-memory note anti_pattern", context)
+        self.assertNotIn("k-agent-smol", context)
         self.assertNotIn("/k-converge", context)
 
-    def test_when_probe_budget_exhausted_should_inject_note_and_convergence(self):
+    def test_when_probe_budget_exhausted_should_inject_hint_without_convergence(self):
         root = self.root
         workspace = root / "workspace"
         workspace.mkdir()
@@ -350,7 +353,8 @@ class TestPerturnRecallCorrectionInjection(unittest.TestCase):
         context = json.loads(stdout.getvalue())["hookSpecificOutput"]["additionalContext"]
         self.assertIn("User correction signal: probe-budget-exhausted", context)
         self.assertIn(module.correction_detector.PROBE_BUDGET_NOTE, context)
-        self.assertIn("/k-converge", context)
+        self.assertNotIn("/k-converge", context)
+        self.assertIn("Do not launch re-verification", context)
 
     def test_when_detector_raises_should_fail_open_with_valid_hook_output(self):
         root = self.root

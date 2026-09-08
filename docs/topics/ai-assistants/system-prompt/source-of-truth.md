@@ -80,6 +80,10 @@ The deployed SOP carries a short managed-home reminder: dotfiles are chezmoi-man
 
 ## Runtime context ownership
 
+During the workflow rearchitecture, `Makefile` and `scripts/check.py` use permissive 999999-byte policy ceilings for core, overlays, skill bodies, and description totals. These temporary ceilings must not drive semantic cuts. They do not relax runtime carrier limits, reference-file readability, authorization gates, or no-recursion boundaries.
+
+The shared leaf excerpt has a temporary 2048-byte allowance so packet-only context still carries explicit safety constraints. Its verbatim-SOP check remains enforced; the root reinforcement ceiling is unchanged.
+
 `prefix.txt` (per-prompt reinforcement) and `leaf-boundary.txt` (subagent preamble) are excerpts of the core SOP, not second sources: `compile_ai_policy.py verify` fails when any sentence in them is not verbatim SOP text, and `measure` reports their bytes. Reinforcement is injected by `perturn_recall.py` only after 200k tokens of context growth or a compaction, never at session start.
 
 Startup named-topic BM25 recall and per-turn retrieval stage complete candidates for `k-agent-smol` judgment. Only admitted judge results enter parent context or the seen-ID file. A pointer fires once per observed session-topic binding; later same-binding rows stage silently. The binding marker distinguishes a pending pointer from one already emitted, including transitions through an empty topic result. A topic-matched warm cache holds at most 3 startup rows so the next retrieval cannot overwrite that evidence before judgment; it does not accumulate previous prompt results.

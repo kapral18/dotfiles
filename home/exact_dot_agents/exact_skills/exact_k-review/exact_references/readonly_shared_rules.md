@@ -4,8 +4,8 @@ All review modes load this file. Do not duplicate these rules in mode files.
 
 The surface-agnostic judging engine lives in two files under `~/.agents/skills/k-review/references/`:
 
-- `judging_core.md` covers Truth Validation, the Candidate Refutation Ladder, the gates (State-Machine, Async-Derived State, Context-Divergence, Scale-Behavior, Deletion-Safety, Replacement/Migration Parity, Historical-Rationale, Semantic-Projection, Product-Flow, Signal-Quality, Systemic-Risk), and Severity.
-- `judging_pipeline.md` covers the Coverage Checklist, Post-Review Lens + Stage, Findings-Set Audit, and Verify-and-Fix Loop.
+- `judging_core.md` covers Truth Validation, selected counterexamples, the gates (State-Machine, Async-Derived State, Context-Divergence, Scale-Behavior, Deletion-Safety, Replacement/Migration Parity, Historical-Rationale, Semantic-Projection, Product-Flow, Signal-Quality, Systemic-Risk), and Severity.
+- `judging_pipeline.md` covers integrated coverage, hygiene, and findings presentation within the single final Verify stage.
 
 Load both alongside this file.
 
@@ -27,99 +27,33 @@ Do not load delivery mechanics for a local/plan report that contains no public-r
 
 ## Hard Constraints
 
-- External truth applies: verify behavior under review (tests, repros, `/tmp` simulations) before asserting when practical.
-- Code changes:
-  - **Read-only delegated workers**: their full contract is `~/.agents/skills/k-review/references/reviewer-worker.md`;
-    do not restate it here. Controller-side obligations it creates:
-    - run repo-wide suites, full builds, and whole-suite test runs **once** in the controller and pass the result into every lane's scope packet; lanes are told not to repeat them
-    - resolve each returned `verification_needed` serially, or record why it stayed open
-    - lanes return proposed fixes only; the controller owns every edit and side effect
-  - **Local changes mode with `authorship: self`** and **PR fix mode when edits are permitted**:
-    - find issues and fix them in the working tree immediately
-    - code changes are expected as part of the workflow
-    - no extra permission needed
-    - do not commit or push unless explicitly asked
-  - **Local changes mode with `authorship: other` or `unknown`**: draft-only unless the user explicitly asks to fix/take over.
-  - **PR review mode (self-review)**: same — find and fix in the working tree.
-  - **PR review mode (reviewing others or unknown authorship):** stay draft-only;
-    change code only when the user explicitly asks to fix/take over and the flow switches to PR fix mode.
-- Post to GitHub, submit reviews, apply labels, or resolve threads only when explicitly asked.
-- Exception per the Human-Visible Publication Gate (SOP, `~/AGENTS.md`):
-  - a **verified bot-authored** thread may be auto-replied/auto-resolved inside an explicitly-invoked flow
-  - a bounded SOP approval packet may apply only through its owning skill or reference
-  - every other human-visible target stays supervised: draft -> show payload -> wait
-  - ambiguous/mixed threads fail safe to human
-- Assume the user started the agent inside the intended repo/worktree/session:
-  - do not create/switch worktrees proactively
-  - if the user explicitly asks to create/switch a worktree:
-    - use `~/.agents/skills/k-worktrees/SKILL.md`
-    - for GitHub issue worktrees in agent contexts, prefer `,gh-worktree issue ... --branch ...`
+- Review alone is read-only regardless of authorship.
+  Fix requests authorize scoped production before final Verify, not automatic final repair.
+- Final workers use existing evidence and return once; they do not repeat successful checks, mutate shared state, or invoke other models.
+- Execute known final commands directly with complete retained logs and actual exit status; no mechanical runner agent is required.
+- Keep git/worktree changes and human-visible effects within explicit user authority. Never create/switch worktrees proactively.
+- Publication remains draft → show exact payload/target → explicit approval unless an applicable bounded packet authorizes it.
+- Verified bot threads may use their explicitly invoked flow's authority; ambiguous/mixed or human threads remain supervised unless the user approved the bounded sequence.
+- Never infer commit/push, reply/resolve, or label authority from review ownership.
 
 ## Base-Branch Context Gate (Mandatory)
 
 Goal: compare the diff against how base (usually `main`) works today.
 
-### Preflight (blocking, do first)
+### Evidence selection
 
-- You MUST run `list_indices` before selecting/using an index:
-  - try both `scsi-main` and `scsi-local`
-  - if both fail or neither exists, treat semantic search as unavailable
-- If the user provided an index name:
-  - verify it exists in the `list_indices` output
-  - if it does not exist, stop and ask which index to use (default: the best evidence-based match for the current repo)
-- If the user did not provide an index name:
-  - use the single obvious repo-matching index from `list_indices`
-  - if multiple equally plausible repo-matching indices remain, ask the user which one represents the base branch
-  - if no repo-matching index exists, treat semantic search as unavailable and fall back to local sources
-- Do not move on to base-context reasoning or comment drafting until this preflight is complete.
-
-### If the repo is indexed
-
-- Semantic code search is required for base-branch context, and the query net is a `research` lane, not controller work.
-  - The dispatched lane loads and follows `~/.agents/skills/k-semantic-code-search/SKILL.md`;
-    where the harness cannot reach the profile, its prompt loads `code-searcher.md` instead.
-  - The controller owns the `list_indices` preflight and index selection above;
-    at least one SCSI tool MUST establish base invariants, invoked by the dispatched lane (SOP §3.7 research gate).
-  - Example SCSI tools:
-    - `discover_directories`
-    - `semantic_code_search`
-    - `map_symbols_by_query`
-    - `symbol_analysis`
-    - `read_file_from_chunks`
-- **SCSI reflects the latest main branch, not the current branch or PR.**
-  - All code returned by SCSI represents the base (pre-change) state.
-  - Use SCSI strictly as comparison/background context.
-  - Use it to understand the codebase the changes are targeting.
-  - The PR/local diff is the ground truth for what is actually changing.
-  - When SCSI results conflict with the diff, the diff wins.
-  - That conflict is expected; it simply means the PR modifies that code.
-- Query strategy — dispatch the multi-angle semantic net; never run it in the controller.
-  Spawn `k-agent-code-searcher`, or the harness's `research`-bound native explorer (Claude `Explore`, Codex `explorer`, Copilot `explore`, Antigravity `codebase_investigator`; Cursor `generalPurpose` with the registry `research` model passed explicitly), per the SOP §3.7 research gate with a packet naming:
-  1. the modified domain concepts, entities, functions, and state transitions the controller mapped from the diff;
-  2. the angles the lane must cover, each as its own query cluster exploring how changed functionality affects preexisting surrounding behavior and discovering impact blast radius:
-     - **Sibling & Co-located Consumers:** how do other callers/consumers in the codebase consume, sort, filter, format, or serialize the same domain concept?
-     - **Downstream Call Chains & Workflows:** what upstream entry points, background tasks, or downstream consumers depend on modified contracts?
-     - **Invariants & Conventions:** what validation rules, error handling, or fallback patterns are enforced elsewhere in the repository for similar constructs?
-     - **Cross-Subsystem Interactions:** what other plugins, packages, or modules share or reference these data structures?
-  3. the selected index and the return shape — base invariants plus `path:line`/symbol anchors, expanding to surrounding files when initial results reveal interconnected components, never raw file dumps or search output.
-     The controller forwards only the distilled base context into the context pack and the reviewer scope packets, then evaluates whether the diff breaks invariants or introduces behavioral drift against surrounding code.
-     Its own inline reads stay limited to the already-named paths it must edit or verify directly.
-     Only where the harness exposes no isolated spawn at all, run the net inline and report `research_lane=inline-degraded`.
-- Use SCSI to learn base-branch implementation and invariants, then compare against the PR/local diff (ground truth).
-
-### If the repo is not indexed / tools unavailable
-
-- Dispatch the same multi-angle impact net to the `research` lane with local tools instead of SCSI, and fold in only its distilled findings:
-  - read full enclosing files and modules beyond immediate diff hunks
-  - trace callers, sibling consumers, and imports via scoped `rg` and symbol lookups
-  - compare base-branch implementation via `git show <base>:<path>` against `git diff <base>...HEAD`
-  - audit sibling consumers, downstream workflows, and error fallbacks for behavioral drift or broken invariants
+Reuse the packet's relevant base evidence.
+Use scoped source/history for targeted questions and semantic search for substantial missing context when useful.
+If using semantic search, resolve the index through `list_indices` before querying and verify which snapshot it represents.
+Do not claim an index was checked when no tool ran. A missing index does not block usable local-source evidence.
+Do not run an unconditional multi-index preflight or query net when the relevant evidence is already available.
+Current branch/PR files and diff establish the changed behavior; index results are background evidence, not the reviewed candidate.
 
 ### Historical Archaeology & Provenance (History Dimension)
 
 History encodes invariants, past bug fixes, edge cases, and architectural context invisible to static code search:
 
-- In massive repositories (e.g. multi-gigabyte git histories like Kibana), archaeology must be **targeted and line-bounded**, never run as whole-file blame or unconstrained recursive log traversals:
+- In massive repositories, archaeology must be **targeted and line-bounded**, never run as whole-file blame or unconstrained recursive log traversals:
   - Probe only high-uncertainty or non-obvious modified guards, conditionals, fallback branches, or legacy helpers where origin intent is ambiguous.
   - Always bound line ranges and commit depth: `git blame -L <start>,<end> <base> -- <path>` or `git log -n 5 -L <start>,<end>:<path>`.
   - Use `git log -n 5 -p -- <path>` only when scoped to the immediate modified file.
@@ -127,23 +61,11 @@ History encodes invariants, past bug fixes, edge cases, and architectural contex
 - Check whether the diff inadvertently removes or weakens a guard previously added to fix a past defect or CVE.
 - Classify changes that unknowingly resurrect historical bugs as HIGH regression findings.
 
-### Base context reporting (required in every review output)
+### Base context reporting
 
-- Include exactly one line near the top of the output:
-  - `Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<scope>`
-  - `<reason>` MUST be one of:
-    - `SCSI used`
-    - `not indexed`
-    - `tools unavailable`
-    - `user-selected none`
-  - `<scope>` MUST name the actual diff under review, for example:
-    - `<base>...HEAD`
-    - `<ref>...HEAD`
-    - `--cached`
-    - `working-tree`
-    - `--cached + working-tree`
-    - the explicit diff command from the scope packet
-- This line is reviewer metadata for the assistant's output. Do not include it in GitHub comment bodies.
+Identify the actual base/head scope and evidence source in the compact review receipt.
+State source/index unavailability precisely without inventing a completed preflight.
+This is assistant metadata, not GitHub comment-body content.
 
 ## Draft Style (Public-Ready)
 
@@ -189,25 +111,28 @@ Do not invent a parallel store:
   - PR body obligations still open (sections to update, deletions to disclose)
   - open audit questions (e.g. unresolved `,kbn-pr-audit` findings)
   - current position in the queue (for iterative/Drain Mode) and base-context metadata
-- Review identity and lane ledger (write before the first lane launch, update on every launch and return):
+- Review identity (write on the first turn; update when drift changes it):
   - `pr: <owner/repo>#<n>` (or `local: <base>..<head>`), `pack: <root>`, `base_sha`, `head_sha`, `snapshot_at`, `discussion_at`
-  - `lane: <id or description> angle=<lane> model=<value> launch_wait=<blocking|background> state=launched|returned|discarded`
-  - the adversarial verifier and any memory judge/scribe spawn are lanes too; record them the same way
+- Lane rows and the discipline governing them are root bookkeeping: see `## Root moves`.
 - Verified-fact and media ledger:
   - `fact: <claim> — <anchor> — <verified_at>` for every fact this session verified
   - `media: <file> — <caption> — viewed` for every image viewed; view each image once
-  - `round: <n> fixed=<files> gates=<result>` after every fix round
+  - `stage: <Scope|Understand|Produce|Verify|Deliver>` with artifact and final receipt pointers
 - After a context summary, a `fact:` or `media:` line this session wrote with an anchor is trusted.
-  Re-verify it only when a new finding depends on it or Drift reports its artifact changed.
+  If Drift reports its artifact changed, mark the evidence stale; do not automatically restart verification.
   Re-reading the pack, re-viewing media, or re-running a gate to confirm a ledgered fact is a defect, not diligence.
-  SOP §2.8 skepticism applies to other agents' reports, not to this session's anchored ledger.
-- Before launching any lane, re-read `<topic>.txt`.
-  A lane in `state=launched` is awaited or collected, never relaunched: a second launch of the same angle is a bug, not diversity.
-  After a context summary, the ledger is the only record of what is already running; trust it over recall.
-- Do not present a verdict, a findings summary, or a draft while any lane is `state=launched`;
-  collect it first, or mark it `discarded` with a reason and say so in the output.
+  Worker reports remain provisional; the final stage consumes underlying evidence without a second certification loop.
 - On subsequent turns, check for the spec file first and resume from it if present.
 
 ## Posting Boundary
 
 Before any GitHub posting step: load `review_delivery.md` → "Posting Boundary".
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Substantial base-context questions use a strong research packet; simple targeted reads remain inline.
+Select queries from the actual uncertainty, not an unconditional multi-angle roster.
+Keep raw evidence in the context pack and compact decisions/pointers in root context.
+Record each packet ID, stage/category, owned question, model/effort, and active/terminal result in the existing topic.
+Never relaunch an active/terminal packet, wake completed workers, or present a final verdict while required results are missing.

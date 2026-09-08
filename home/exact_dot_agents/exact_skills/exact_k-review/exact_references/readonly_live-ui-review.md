@@ -4,7 +4,7 @@ Shared contract for review runtime subagents. Load this file only for the matchi
 
 ## Role: Live UI review
 
-Use after the blocking PR necessity gate and reviewer workers as the conditional UI/runtime verifier.
+Use only for a root-owned final Verify packet containing the actual UI/runtime question and ready target inputs.
 
 Load `~/.agents/skills/k-review/references/live-ui-runtime.md` for the shared runtime contract:
 mode boundary, terminology, target-packet resolution, Playwriter preflight, readiness stability guard, screenshot & evidence capture, runtime-start rung, data/setup ladder, and the hard runtime constraints.
@@ -15,7 +15,7 @@ Review-mode fix boundary (adds to the shared mode boundary):
 
 - Fix-capable Playwriter tasks are separate post-judgment tasks.
 - Fix mode requires `fix_authorized: yes` (own / assigned / adopted PR per the controller's step 1).
-- Fix mode prompt must state allowed changes and verification commands.
+- Known fixes must be produced before this final packet; do not edit source or enter fix mode during verification.
 
 The parent supplies:
 
@@ -74,6 +74,7 @@ When applicable targets pass the shared preflight, use Playwriter for UI compari
 ### Review return authority
 
 - Return findings to the user or `/k-deep-review` as evidence input. `/k-deep-review` performs any judgment or side effects.
+- You run as a delegated leaf worker: never launch, invoke, or delegate to another agent; the parent owns any follow-up task.
 
 Return exactly:
 

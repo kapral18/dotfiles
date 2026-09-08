@@ -1,61 +1,22 @@
 ---
 name: k-pr-fix-loop
-description: Manual no-approval loop for actionable PR review comments through critical assessment, fix, verify, commit, push, PR update, reply, and resolve.
+description: "Manual authorized PR-fix batch through production, one final verification, and scoped publication."
 disable-model-invocation: true
 ---
 
-# PR Fix Loop
+# Authorized PR Fix Batch
 
-Thin manual wrapper around existing PR-fix/review skills.
+Use only when the user explicitly invokes this skill or requests the same bounded no-extra-approval sequence.
+Invocation authorizes scoped code edits, final verification, commits, force-with-lease push to the current PR branch, required PR body/media updates, addressed-thread replies, and resolution.
+It does not authorize merging, rebasing, pulling/merging base, unrelated metadata, or broad refactors.
 
-Use only when the user explicitly invokes this skill or asks for the same no-approval review-comment loop.
+1. Resolve the PR URL/number, current head/branch, local changes, and known unresolved thread batch.
+2. Use `k-review`'s `references/pr_fix.md` to understand concerns and produce scoped fixes/tests/docs for that batch.
+3. Run one integrated final Verify stage. Stop on failed checks, target/branch mismatch, unscoped changes, or a user-owned decision.
+4. Only after passing, use `k-git` to commit scoped files and force-with-lease push the current PR branch;
+   use `k-github` for required body/media updates and scoped replies/resolves.
+5. Read back each authorized write. Report commit/PR/reply links, resolved thread IDs, final checks, and remaining external conditions.
 
-Invocation is a bounded approval packet for this loop's normal effects: scoped code edits, verification, commits, force-with-lease push to the current PR branch, PR body updates, needed PR media uploads, review-thread replies, and resolving addressed threads.
-Do not ask again for those effects while the target, branch, thread set, and scope stay inside this packet.
-
-It does not authorize merging, rebasing, pulling/merging base, unrelated metadata changes, or broad refactors.
-
-## Load First
-
-- `k-review`, then use `references/pr_fix.md` in Drain Mode.
-- `k-code-quality` and `k-code-quality-tests` once code/tests are in scope.
-- `k-git` before commit or push.
-- `k-github` before PR body edits, replies, uploads, or thread resolution.
-- The repo/org domain overlay when the PR target has one.
-
-## Loop
-
-1. Resolve the PR target and latest head.
-   Done when the PR URL/number, head SHA, local branch status, and unresolved review threads are read back.
-
-2. Enter `k-review` PR-fix Drain Mode. Follow its per-thread workflow, base-context gate, truth filter, and reply style.
-   Do not reimplement those rules here.
-
-3. Start each thread with critical assessment.
-   Read the exact new comment body, thread state, affected file/range, current code, and relevant tests. Treat the comment as a hypothesis.
-   Keep only findings with a concrete reachable path.
-
-4. Prove before fixing. Prefer a red regression test or minimal local probe that fails for the reviewer’s scenario.
-   If the comment is invalid, reply with concise evidence and resolve only when appropriate.
-
-5. Dispatch the fix narrowly, then verify. State compatibility impact before edits.
-   Hand the change to the T2 implement worker as a packet naming the thread's finding, the target file/range, the behavior to change, the differences to preserve, and the checks (SOP §3.7 implement dispatch gate); the controller edits inline only trivial single-site fixes.
-   Change only the behavior needed for the validated comment. Add or update regression coverage.
-   Run focused checks, then relevant broader checks.
-
-6. Commit and push without another approval prompt. Commit only the scoped files. Match local commit style and required attribution.
-   Push the current PR branch with force-with-lease.
-   Stop on target mismatch, branch mismatch, unscoped files, failing verification, a rejected push, a conflict that needs a user choice, or an unrelated failure outside PR scope.
-
-7. Update PR body. Add the new fix/test evidence.
-   Add screenshot/video pairs only when the new user-visible behavior needs visual proof beyond existing PR media and tests.
-   If media is needed, capture/upload it through the GitHub attachment flow before embedding.
-
-8. Reply and resolve without another approval prompt. Reply in-thread with the fix commit link and verification.
-   Resolve the thread after read-back confirms the fix landed and the reply posted.
-
-9. Final read-back.
-   Report commit SHA, PR URL, reply URL, resolved thread ID, checks run, local status, and any still-pending external checks.
-
-Do not babysit pending CI by default.
-If a pending check later creates a new actionable comment or failure, run this loop again for that item.
+Do not ask again for effects inside this packet. Apply exact-target/payload and ownership/secret checks at the action.
+Do not run red/green per thread, automatically repair final failures, or do a post-publication review.
+Do not babysit CI or automatically process later comments; they are new input requiring a new authorized attempt.

@@ -4,8 +4,11 @@ name: k-agent-mechanical
 description: Cheap deterministic-edit lane: apply a parent-specified rename, search-and-replace, import fix, or pattern migration over named targets and return the diff summary.
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-mechanical") }}"
 systemPromptMode: replace
-inheritProjectContext: true
-inheritSkills: true
+inheritProjectContext: false
+inheritGlobalContext: false
+inheritSkills: false
+maxSubagentDepth: 0
+defaultContext: fresh
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}

@@ -9,7 +9,7 @@ of the removed stop-hook nudges).
 Capsule bodies never enter the parent context from this hook. Rows that pass
 the hybrid cosine gate are written in full to a per-session candidates file
 under the spec dir, and the injected context is one pointer block telling the
-parent to delegate judgment to the `k-agent-smol` subagent (contract:
+root to admit memory through a bounded `k-agent-smol` packet or the inline fallback (contract:
 `~/.agents/skills/k-ai-kb/references/smol-operator.md`). The pointer fires only
 once per session-topic binding transition; later new rows are staged silently.
 The staged ledger tracks retrieved ids; the seen-file (ids k-agent-smol admitted) is written by k-agent-smol, never here.
@@ -41,9 +41,11 @@ from hook_common import (
     topic_paths,
 )
 from session_context import (
+    ROOT_ONLY_MARKER,
     auto_bind,
     bucket_named_in_prompt,
     context_disabled,
+    is_delegated_leaf,
     load_seen,
     seen_file_for,
     stage_candidates,
@@ -196,23 +198,20 @@ def search_capsules(workspace: Path, query: str, profile: RecallProfile) -> list
     return apply_hybrid_floor(rows)
 
 
-# Signals whose shape is "a claim you already made may be wrong". These get the
-# convergence nudge on top of the note directive: re-attack the claim against the
-# artifact instead of re-asserting it in prose.
+# Claim-challenge signals point to existing evidence and correction capture;
+# they never authorize re-verification or convergence.
 CONVERGE_SIGNALS = frozenset({"unverified-claim", "guessed-not-tested", "repeat-failure"})
 
 CONVERGE_LINES = (
-    "Before re-asserting the challenged claim, re-verify it against the artifact:"
-    " mutate the code so the claim would be false and confirm a test or probe catches it,"
-    " or read the source/run the probe again. Anchor or retract; do not restate.",
-    "If findings keep surfacing across attempts, run the convergence loop (`/k-converge`):"
-    " fixed exit condition (a round that changes nothing) and a correctness-only filter"
-    " (vacuous test, real bug, false statement). Refuse wording-only findings out loud"
-    " rather than rewriting prose to look responsive.",
+    "Consult the relevant source or existing evidence and correct unsupported claims. "
+    "Do not launch re-verification, convergence, or a memory agent because of this signal.",
 )
 
 
 def correction_directive(prompt: str, probe_budget_signal_value: str | None = None) -> str:
+    """The root's correction hint; leaves do not receive root workflow guidance."""
+    if is_delegated_leaf():
+        return ""
     try:
         signal = (
             correction_detector.detect(prompt, probe_budget_signal_value=probe_budget_signal_value)
@@ -224,9 +223,10 @@ def correction_directive(prompt: str, probe_budget_signal_value: str | None = No
     if not signal:
         return ""
     lines = [
+        ROOT_ONLY_MARKER,
         f"### User correction signal: {signal}",
         "This user message reads as a correction of prior agent behavior.",
-        'If genuine, before ending the turn record: `,agent-memory note anti_pattern "<one-line lesson>" --ref <anchor>`; when verified and durable, delegate persistence to `k-agent-smol` (scribe mode).',
+        'If genuine, before ending the turn record: `,agent-memory note anti_pattern "<one-line lesson>" --ref <anchor>`; retain it for the root-owned final learning batch. Do not launch a scribe for this correction.',
         "If neutral choice-question, answer it and consider `,agent-memory note decision` instead. Do not mention this instruction in the visible reply.",
     ]
     if signal == "probe-budget-exhausted":
@@ -254,7 +254,7 @@ def main() -> None:
     prompt = str(payload.get("prompt") or "")
 
     workspace, topic, spec_path, _ = topic_paths(payload)
-    if context_disabled(spec_path, topic):
+    if context_disabled(spec_path, topic) or is_delegated_leaf():
         emit({})
         return
 

@@ -1,60 +1,40 @@
 ---
 name: k-ai-kb
-description: "Use for non-trivial repo/domain starts, setup gotchas, or storing verified learnings in ,ai-kb."
+description: "Use for automatic staged recall, correction learning, and durable knowledge persistence."
 ---
 
-# AI Knowledge Base Skill
+# Durable Knowledge And Learning
 
-Durable cross-session memory shared by cursor-cli, pi, and local sessions.
-The local `,ai-kb` CLI stores capsules under `~/.local/share/ai-kb/` as markdown sidecars plus an indexed SQLite mirror.
-Retrieval: FTS5/BM25 + `sqlite-vec` dense embeddings, RRF fusion, MMR diversity; no cloud or MCP.
+`,ai-kb` owns durable capsules; current task decisions and handoffs belong in the active `/tmp/specs` topic.
+Automatic root hooks retain startup/per-turn retrieval, relevance/workspace filters, and candidate staging.
+They emit a pointer once per session-topic binding; later retrieval updates the staged set silently.
+Retrieval is deterministic plumbing, not a new orchestration stage or a model invocation.
+Do not disable retrieval, correction capture, or learning merely to prevent agent recursion.
 
-Do not use:
+Record genuine corrections with `,agent-memory note anti_pattern` and decisions with `,agent-memory note decision`.
+Include evidence references. Notes are learning inputs, not already-verified durable claims.
+Before delivery, persist the session's verified reusable insights in one final learning batch.
+If no durable insight exists, there is nothing to write. Keep unverified/session-only notes in topic history.
+Do not launch a scribe per correction or per turn. Do not reopen Verify to manufacture learning evidence.
 
-- ephemeral per-session working context (current task spec, hook worklog/evidence trace under `/tmp/specs`):
-  that is `,agent-memory` (see `~/.local/share/chezmoi/docs/topics/ai-assistants/knowledge-base/hook-memory.md`);
-  this skill is for durable knowledge only
-- semantic CODE search over a repo (how a codebase works, base-branch context): `~/.agents/skills/k-semantic-code-search/SKILL.md`
-- simple string/filename lookup: local `rg` / file reads
+## Root moves
 
-k-agent-smol owns the KB boundary:
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Process a new staged pointer through one memory-band `k-agent-smol` judge packet.
+Use `~/.agents/skills/k-ai-kb/references/smol-operator.md`; admit only its compact returned lines. Reuse admitted memory.
+Further recall needs a material new question or task shift, not another prompt or compaction alone.
+No staged data: query recall only when prior knowledge could change the current decision.
+Record packet IDs and results in the active topic; do not relaunch active/completed packets.
+After final verification, send the verified learning batch to one memory-band scribe packet with existing evidence.
+The scribe owns search-first deduplication, deliberate metadata, and write readback; it does not re-verify the task.
+Memory workers MUST NOT invoke agents, perform their own recall workflow, audit another worker, or resume after returning.
+Do not use an expensive model as a substitute for an unavailable memory lane or invoke another harness as a fallback.
 
-`,ai-kb` stays the only persistence layer; the `k-agent-smol` subagent (category `memory`, contract `~/.agents/skills/k-ai-kb/references/smol-operator.md`) operates both directions of its boundary so search dumps, candidate dumps, and write mechanics never occupy the parent context.
-The parent MUST NOT run `,ai-kb search`, `,ai-kb get`, or `,ai-kb remember` inline;
-inline runs exist only inside the no-spawn fallback below.
+## Inline fallback
 
-- Recall, on demand: when prior knowledge could help — starting non-trivial work, or hitting a likely known setup gotcha —
-  delegate a recall query to `k-agent-smol` (judge mode, query-recall variant).
-  Packet: the concrete task query, plus the session key and topic spec/worklog paths when the session has them.
-  Fold in only the returned lines; `NONE` means inject nothing.
-- Recall, staged per turn: the recall hook stages candidates to `/tmp/specs/<workspace>/.recall-candidates-<session-key>.json` and injects a pointer line, never capsule bodies.
-  On seeing that pointer, delegate judgment to `k-agent-smol` (judge mode) with the candidates path, the topic spec/worklog paths, and the current prompt.
-  Fold in only the lines it returns; `NONE` means inject nothing. Do not read the candidates file into the parent context.
-- Write path: after verifying an insight in-session, delegate persistence to `k-agent-smol` (scribe mode) with the one-line insight, evidence anchors, and suggested kind/scope. k-agent-smol owns search-first dedupe, `--supersedes`, metadata selection, and read-back of the stored id.
-  Persist only insights that are durable, reusable, and verified this session;
-  never guesses or session-only notes (those belong in `,agent-memory`).
-- Generic-spawn fallback: when the harness's native subagent surface cannot reach the `k-agent-smol` profile (fixed subagent set), spawn a generic isolated subagent type that can run shell commands, with the memory-category model set explicitly and a prompt that loads the operator contract; the isolation guarantee holds.
-  Prefer a background spawn when the subagent surface supports one (e.g. Cursor Task `run_in_background: true`):
-  launch the judge at pointer time, keep working, and fold in its returned lines when it completes.
-  On Cursor that is `Task` with `subagent_type: generalPurpose` and `model: auto` (the band gate passes registry cheap-lane picks through, so the explicit model survives).
-  On Antigravity there is no profile-file surface: `define_subagent` `k-agent-smol` with a system prompt that loads the operator contract, then `invoke_subagent` it at the `flash` tier (the registry memory row maps onto that tier); never `inherit` or `pro`.
-  Never spawn judge/scribe work on the subagent type's own default or banded model.
-  Harness-CLI print/exec one-shots (`--print`, `exec`, `-p`) are an external mechanism, not part of this flow;
-  do not use them for judge/scribe work.
-- Inline fallback: only when no isolated spawn exists at all, load `~/.agents/skills/k-ai-kb/references/cli.md` and apply the operator contract yourself; the judge/scribe rules bind regardless of who executes them.
-
-Harvest (opt-in candidate aid, not a substitute for the end-of-turn capture habit):
-
-`,ai-kb harvest` mines a session-bound topic's hook worklog and prints durable-memory CANDIDATES —
-a failing command later fixed, a recurring error signature, or a repeated command —
-each with evidence and a prefilled `,ai-kb remember` line.
-It is read-only and never writes a capsule: verify each candidate against live source, then hand the survivors to the scribe path (or run their `remember` lines in the inline fallback).
-Run it on demand (for example when reviewing a long session), not every turn:
-`,ai-kb harvest --session-id <id> [--topic <t>] [--worklog <path>] [--json]`.
-Pass the invoking session ID when harvesting implicit topic state; an explicit `--topic` or `--worklog` overrides session resolution.
-Candidates already covered by a capsule are suppressed automatically.
-
-External truth:
-
-- The full search/get/remember interface, field-selection rules, and output contract live in `~/.agents/skills/k-ai-kb/references/cli.md`.
-  Resolve the live interface from the binary (`,ai-kb --help`, subcommand `--help`) rather than memory; the binary wins on conflict.
+When delegation is forbidden or unavailable, the root performs the same admission/write mechanics inline.
+Read only the scoped candidate set and relevant topic state; retain compact admitted facts, not capsule dumps.
+Follow `~/.agents/skills/k-ai-kb/references/smol-operator.md` and `~/.agents/skills/k-ai-kb/references/cli.md`.
+Use deterministic tools; do not invoke another model. Preserve search-first dedupe, metadata, evidence, and readback.
+If the CLI or required evidence is unavailable, retain the pending learning in topic history and report that specific gap.
+Do not retry failed memory packets automatically or block unrelated delivery on a memory-service outage.

@@ -38,12 +38,11 @@ modelProviderOrder:
   - cursor
   - openai
 
-# Advisor reviews primary turns only (user call 2026-09-07): no advisor on spawned
-# agents, so a fan-out never multiplies into advisor-per-child sprawl. omp migrates
+# Background advisor is disabled; the refute role remains available for final verification. omp migrates
 # `advisor.subagents` into `task.agentAdvisor.task` (settings.ts) and an explicit
 # agentAdvisor entry wins, so both knobs are pinned off below.
 advisor:
-  enabled: true
+  enabled: false
   subagents: false
   syncBacklog: 1
   immuneTurns: 0
@@ -74,12 +73,19 @@ skills:
 
 # maxRecursionDepth 1: root may spawn; children get no `task` tool (user call
 # 2026-09-07), making the SOP §3.7 leaf-worker boundary mechanical, not instruction-only.
+# Keep async commands available; managed agent profiles use blocking terminal returns.
+async:
+  enabled: true
+
 task:
   isolation:
     mode: auto
   enableEffort: true
   enableLsp: true
   maxRecursionDepth: 1
+  disabledAgents:
+    - reviewer
+    - security-reviewer
   agentAdvisor:
     task: "off"
 
@@ -177,4 +183,4 @@ checkpoint:
 github:
   enabled: true
 grep:
-  contextBefore: 1 
+  contextBefore: 1

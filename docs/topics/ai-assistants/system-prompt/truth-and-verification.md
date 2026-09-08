@@ -3,58 +3,12 @@ sidebar_position: 2
 title: Truth and verification
 ---
 
-# Truth and verification
+# Truth and final verification
 
-The SOP turns "don't guess" into a workflow. A claim is either verified, labeled unknown, or not used.
+Factual claims require source/tool evidence or explicit uncertainty. Model self-reports are not proof. This does not require independently re-running every returned check or researching every conclusion twice.
 
-This page is the verification contract behind implementation summaries, setup claims, reviews, and handoffs.
+Understand gathers missing facts and baseline reproductions. Produce creates provisional artifacts and regression cases. Only final Verify certifies the integrated candidate. Its strong judgment reads relevant actual artifacts and complete existing receipts. Tests, lint, acceptance builds, post-change UI/runtime checks, citation audits, and selected mutation experiments share that final stage. Each check executes once for its snapshot, command/options, environment/config, and input fixtures. A changed candidate invalidates evidence; it is not silently certified.
 
-## Mental model
+A green test alone does not establish defect detection. Use independent oracles and intended/preserved cases; risk-selected mutation experiments establish control, mutation, and restoration together. Missing/failing checks remain blocked/failed. No automatic repairs, extra dry rounds, or post-review certification follow. Explicit finite final convergence is a separate user choice, never a leaf responsibility.
 
-| SOP section                  | Contract                                                                                                                                           |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `2.1 Compatibility Gate`     | classify and state compatibility before edits; no unrequested shims, aliases, wrappers, or deprecation paths                                       |
-| `2.2 External Truth`         | inspect local source, binaries, versions, docs, and locally-verifiable guesses before relying on behavior; hypotheses cannot gate downstream steps |
-| `2.3 Mechanism Claims`       | verify the exact mechanism, call pattern, and local source before asserting feasibility; unverified mechanisms cannot drive decisions              |
-| `2.4 Self-Claims`            | falsify own-work claims before asserting them; negative claims need counterexample probes and passing tests need discriminating mutations          |
-| `2.5 Runtime Truth`          | setup questions require source config → rendered config → consumer → safe live probe                                                               |
-| `2.6 Completion`             | stop only after locally-verifiable unknowns are resolved                                                                                           |
-| `2.7 Complete Artifacts`     | compacted/sliced/capped output is an index; recover raw context before relying on content or composing human-visible output                        |
-| `2.8 Self-Report Skepticism` | a model's own rationale, chain-of-thought, `done`, status, and plan are hypotheses about the process, not evidence                                 |
-
-Self-report skepticism also applies to any sub-agent, reviewer, or verifier report. Verify the outcome against an independent signal.
-
-## Using it
-
-Unknowns are resolved in this order:
-
-1. local probes.
-2. local source/tests.
-3. official docs fetched live.
-4. user questions.
-
-When a public cloneable codebase can answer a web/source question, inspect it locally with `rg`, file reads, and `git log`.
-
-Compacted output without full recovery is a hypothesis, not a fact.
-
-### Evidence ladder
-
-| Question type             | Required evidence                                                                                                                                                                            |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CLI behavior              | binary path and provenance, then `--version`, `--help`, or source                                                                                                                            |
-| Library behavior          | exact package/version from lockfile, import path, and local implementation when available                                                                                                    |
-| External claim (web/docs) | primary-source URL and exact supporting quote; numeric literals verbatim in the quote; per-claim verification before multi-source synthesis                                                  |
-| Runtime setup             | source declaration, applied config, consumer implementation, safe live probe                                                                                                                 |
-| Build/test failure        | full output when compacted markers or capped lists appear                                                                                                                                    |
-| Review judgment           | base truth, change truth, and smallest safe repro/probe when needed                                                                                                                          |
-| Freeform completion       | inline evidence by default; `,proof` only for a requested receipt, auditable security/auth, data-migration, or destructive effect, or named handoff/resume consumer; never as a late wrapper |
-
-## Reference: compatibility line
-
-Every implementation summary includes one of:
-
-| Value                       | Meaning                                        |
-| --------------------------- | ---------------------------------------------- |
-| `none`                      | no compatibility path added/removed            |
-| `removed (requested)`       | user asked to remove/replace old behavior      |
-| `kept existing (requested)` | user explicitly asked to preserve old behavior |
+Point-of-action safety checks and authorized transaction readbacks remain mandatory. Source: `home/readonly_AGENTS.md` §§2.2–2.8 and §§3.5–3.6.

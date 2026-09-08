@@ -5,8 +5,11 @@ description: Read-only review worker for one k-agent-review-controller fan-out a
 model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-reviewer") }}"
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
-inheritProjectContext: true
-inheritSkills: true
+inheritProjectContext: false
+inheritGlobalContext: false
+inheritSkills: false
+maxSubagentDepth: 0
+defaultContext: fresh
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}

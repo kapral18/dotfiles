@@ -4,8 +4,11 @@ name: k-agent-code-searcher
 description: Delegate SCSI semantic code investigation or base-context gathering to an isolated context.
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-code-searcher") }}"
 systemPromptMode: replace
-inheritProjectContext: true
-inheritSkills: true
+inheritProjectContext: false
+inheritGlobalContext: false
+inheritSkills: false
+maxSubagentDepth: 0
+defaultContext: fresh
 skills: k-semantic-code-search
 ---
 

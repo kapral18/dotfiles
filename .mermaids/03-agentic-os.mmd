@@ -30,7 +30,7 @@ flowchart TB
     end
 
     subgraph EXECL["3 · Execution (per-tool, .work/.personal merged at apply)"]
-        CURSOR["Cursor (primary): dot_cursor/hooks.json + filtered MCP<br/>exact_agents/ review controller+PR gate+workers → ~/.cursor/agents/"]:::exec
+        CURSOR["Cursor (primary): dot_cursor/hooks.json + filtered MCP<br/>exact_agents/ final judgment leaves + scoped workers → ~/.cursor/agents/"]:::exec
         CLAUDE["Claude Code: dot_claude/settings.{work,personal}.json + settings.llama-cpp*.json.tmpl"]:::exec
         GEMINI["Antigravity: config/symlink_AGENTS.md + symlink_skills + generated mcp_config.json"]:::exec
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (OpenRouter selectors)"]:::exec
@@ -48,10 +48,12 @@ flowchart TB
     SK -. symlinked or natively discovered by .-> CURSOR & CLAUDE & OPENCODE & CODEX & PI & OMP & COPILOT & GEMINI
 
     subgraph HOOKS["Shared lifecycle hooks — detail in 03b"]
-        H["Cursor + Antigravity session context and worklog adapters<br/>startup/per-turn recall stages complete candidates; only smol judgments enter parent context"]:::ctx
+        H["Cursor + Antigravity session context and worklog adapters<br/>compact topic/worklog context + reinforcement; root-only automatic KB retrieval/staging; admission and final learning stay in the root"]:::ctx
     end
-    GOV -.enforced at runtime by.-> HOOKS
+    GOV -.supported by capability-specific.-> HOOKS
     MEM[("/tmp/specs/<pwd>/<topic>.* (ephemeral memory)<br/>,agent-memory → ~/lib/,agent-memory/ rendered from canonical Python sources;<br/>no runtime checkout/chezmoi dependency; persistent named-topic mirror")]:::data
     KBDB[(",ai-kb durable knowledge store")]:::data
     HOOKS <--> MEM
     SK <--> KBDB
+
+    AG --> SCOPE["Scope"] --> UNDERSTAND["Understand · strong research"] --> PRODUCE["Produce · implementation/mechanical"] --> VERIFY["Verify once · strong judgment + shared checks"] --> DELIVER["Deliver · pass/fail/blocked"]

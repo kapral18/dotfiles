@@ -1,0 +1,11 @@
+---
+name: task
+description: Implementation-band leaf for a settled production packet; returns produced artifacts without private QA.
+model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "omp" "agent" "task") }}"
+tools: read, grep, glob, bash, edit, write
+blocking: true
+---
+
+{{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
+
+Load and follow `~/.agents/skills/k-build/references/implement-worker.md`.

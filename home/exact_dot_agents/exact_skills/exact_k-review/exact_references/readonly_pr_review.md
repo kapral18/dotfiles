@@ -25,19 +25,10 @@ Out of scope:
 
 ## Role-Dependent Behavior
 
-Check Role Detection from the router (`SKILL.md`):
-
-- **Reviewing others (`authorship: other` or `unknown`):**
-  - draft comments/suggestions
-  - do not change code
-  - run the PR Necessity + Correctly-Open Audit in `pr_context_audits.md`
-  - apply the Findings-Set Audit (`judging_pipeline.md`) to surviving PR-diff candidate findings before drafting
-  - surface redundancy / verbosity / semantic + logical duplication / gaps as read-only finding-set findings
-- **Self-review (user is the author):**
-  - find issues and fix them in the working tree immediately
-  - follow local changes mode behavior
-  - after quality gates pass, run the Post-Review Stage over the fix diff
-  - draft review comments only if the user explicitly wants self-review notes to post
+Resolve authorship through the router.
+Review remains read-only for self, other, and unknown authorship unless the user explicitly requested fixes.
+For other/unknown authorship, establish PR intent/necessity in Understand using applicable `pr_context_audits.md` questions.
+Known authorized fixes belong to Produce before one final review; new final findings are reported without automatic edits.
 
 ## Complete Pass Before Drafting (Mandatory)
 
@@ -51,7 +42,7 @@ On the first turn (or when starting a fresh review):
   - replies
   - threads
   - media
-  - recursive references
+  - references needed to settle the named material questions
 - run Ambient Topic Exploration in pr_context_audits.md when disagreement, unclear shared understanding, or missing topic history matters
 - run the PR Necessity + Correctly-Open Audit in pr_context_audits.md when reviewing someone else's PR or when authorship is unknown
 - run Existing Pending Review Reconciliation in pr_common.md before producing the final review draft
@@ -72,28 +63,14 @@ On later turns (iterative/continued):
 
 Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 
-## Agent-Assisted Review Contract
+## Root moves
 
-- Before any launch, apply the review identity and lane ledger in `shared_rules.md` (Review Persistence):
-  record identity and every launch there, never relaunch an angle the ledger shows as `launched`, and never draft while a lane is outstanding.
-- Launch one `k-agent-reviewer`/`k-agent-review-worker` `correctness-regressions` lane for the PR diff when the harness supports subagents;
-  add one extra lane only for an independently evidenced risk class.
-  Select both from `lanes.md` and paste the chosen lane's `Lens skill` line and `Checks` list into the worker's scope packet;
-  workers never load `lanes.md`.
-  Run any repo-wide suite or full build once here and pass the result into every scope packet — lanes are told not to repeat shared work.
-  If the harness cannot delegate, run the finder pass inline and report `agent_lane=inline-degraded`.
-  Finder lanes own full candidate generation; the final verifier may add only the bounded miss-sweep items its contract permits.
-  When the model resolver supports per-lane selection at equal capability (SOP §3.7), prefer two finder lanes from different model families;
-  otherwise one cross-family finder over same-family; never leave controller, finder, and refuter all same-family.
-  Report `finder_family=same|cross|two-cross` alongside `adversarial=`.
-  Launch the cross-family lane through the harness's `k-agent-review-worker-cross` profile where one is fielded;
-  on single-vendor harnesses it resolves back to the standard lane model — report that honestly.
-- Run live UI only when UI/runtime evidence is needed for a candidate and a startable runtime is available;
-  use `k-deep-review` for the full live-UI target-packet/controller graph.
-- Before adversarial verification, run the candidate queue through the Findings-Set Audit, Deduplication + Truth Filter, and Existing Pending Review Reconciliation; only implementation-verified findings that are not covered, not duplicated, and not dropped by the Replacement/Migration Parity Gate remain, and any current-account pending review is merged into one final payload.
-- If the audited candidate set is empty, skip adversarial work and report `Adversarial verification: skipped (no candidates after findings audit)`.
-- Otherwise, run `k-agent-adversarial-verifier` over the audited candidate set before drafting, launched through the Verifier launch ladder in `runtime-harnesses.md`; report the rung it reached alongside `adversarial=`.
-- Draft highest-risk items first.
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Preserve requested review and adversarial lenses; deep or high-risk work needs distinct artifact-review and challenge questions in the same final stage.
+Pass the actual frozen diff, context pointers, selected criteria, and complete existing check receipts.
+Do not add a findings-audit, post-review, or reviewer-of-reviewer lane. Use blind fresh-eyes only for concrete comprehension risk.
+Run required UI evidence in the same final stage with a verified target. Reconcile pending review content before delivery.
+Record active/terminal packet IDs and never relaunch or wake completed workers.
 
 ## Output Mode
 

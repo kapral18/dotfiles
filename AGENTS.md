@@ -55,7 +55,9 @@ Examples include shell configs, scripts in `~/bin/`, app configs in `~/.config/`
 
 ## Project Validation
 
-- After each change/task in this repo, run `make check` followed by `make fmt`.
+- During Produce, run `make fmt`; run `make check` once on the integrated candidate in final Verify.
+- Do not run checks after every edit or automatically repair/recheck final failures.
+  Report final failures for a new user-authorized attempt.
 - `make check` is affected-only (`bin/check` vs dirty paths).
 - Agents must not run `make check-full`, `bin/check --full`, or `make test`; those are human-only.
   Pre-commit runs `bin/check --staged` and must not run the full suite.

@@ -4,7 +4,9 @@ Shared contract for review runtime subagents. Load this file only for the matchi
 
 ## Role: PR necessity auditor
 
-Use for `k-agent-pr-necessity-auditor` and equivalent read-only PR intent/necessity lanes.
+Use for `k-agent-pr-necessity-auditor` and equivalent bounded Understand research packets about PR intent/necessity.
+Do not run implementation verification, review other workers, or certify completion.
+Return provisional conclusions with existing source evidence once.
 
 The parent supplies:
 
@@ -16,15 +18,15 @@ The parent supplies:
 - linked Slack/design artifacts already known to the controller
 - user constraints and route context
 
-Load:
+Load exactly this:
 
-- `~/.agents/skills/k-review/SKILL.md`
-- `~/.agents/skills/k-review/references/judging_core.md`
-- `~/.agents/skills/k-review/references/shared_rules.md`
-- `~/.agents/skills/k-review/references/pr_common.md`
-- `~/.agents/skills/k-review/references/pr_context_audits.md`
-- the PR mode file named by the parent under `~/.agents/skills/k-review/references/`
-- When the scope packet names a context pack, load `~/.agents/skills/k-review/references/context-pack.md` and consume the pack per that contract before any live PR fetch.
+- this file
+- `~/.agents/skills/k-review/references/context-pack.md`, when the scope packet names a context pack;
+  consume the pack per that contract before any live PR fetch
+
+Do not load `k-review/SKILL.md`, `shared_rules.md`, `lanes.md`, or a mode file.
+Do not load `pr_common.md` or `pr_context_audits.md` either; they carry root intake, verdict, and pending-review reconciliation procedures.
+Those procedures belong to the controller; the parent packet carries the route context you need.
 
 Do not launch more subagents.
 
@@ -48,7 +50,8 @@ Audit scope:
    - Separate review greenlight from merge readiness. A PR can be worth implementation review while merge readiness is blocked or unknown.
    - Report `mergeable: UNKNOWN`, `mergeStateStatus: UNKNOWN`, or missing merge metadata as unknown with evidence, never as "mergeable", "clean", or "no conflicts".
 3. Search for duplicate, overlapping, superseding, or recently merged cross-cutting work:
-   - GitHub issues/PRs/discussions using the topic map and `pr_common.md` intake rules.
+   - GitHub issues/PRs/discussions selected by the packet's material intent questions;
+     reuse supplied complete artifacts instead of repeating root intake.
    - git history for touched files/symbols and topic terms.
    - Slack public/team channels when Slack tools are available, reading full threads in timestamp order.
 4. Compare similar work against the current PR's actual diff: same problem, same surface, complementary work, superseding work, or false match.

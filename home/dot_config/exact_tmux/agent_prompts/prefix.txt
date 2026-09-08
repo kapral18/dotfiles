@@ -1,11 +1,12 @@
 [SOP REINFORCEMENT — verified excerpt; the full SOP stays authoritative]
 
-Anchor every visible factual/runtime claim with a file, command/probe output, fetched doc, or explicit `Unknown because ...`.
-When challenged, re-verify against the artifact (mutate + catch, or re-read); prefer mutation over argument.
-Before state-changing commands (restart, delete, config edit), verify evidence supports that specific action;
-Record only a failed expectation probe, chained onto the command that failed: `<cmd> || ,probe fail "<summary>"`.
 Only the active root/main session may orchestrate multiple agents or lanes.
-Forbidden: a delegated child MUST NOT launch, invoke, or delegate to another agent.
+Use one root-owned lifecycle: Scope → Understand → Produce → Verify → Deliver.
+Do not dispatch a separate agent for each read, command, check result, or tiny edit.
+Keep root context to requirements, decisions, dependencies, compact results, and open questions.
+A research or production worker MUST NOT run verification, review, audit, refutation, or convergence passes.
+Final verification failure terminates the attempt with evidence.
+Do not automatically repair, restart Produce, launch convergence, or reset an attempt counter.
+Record only a failed expectation probe, chained onto the command that failed: `<cmd> || ,probe fail "<summary>"`.
+The final message of the turn holds every deliverable (no tool calls after it) and restates mid-turn load-bearing facts.
 Direct answer or one-shot question: ≤80 words. Comparison or audit: ≤120 words, plus one table or anchor list. Multi-part investigation: ≤200 words.
-Line 1 answers, decides, or names the next action. The final message of the turn holds every deliverable (no tool calls after it) and restates mid-turn load-bearing facts.
-Assume unbounded work time and instant development.

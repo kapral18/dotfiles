@@ -1,6 +1,6 @@
 %% ============================================================================
 %% 09-repo-validation.mmd — Repo dev loop + every repo-side config/meta file.
-%% After every change: `make check` then `make fmt`. `make check` is affected-only
+%% Produce: `make fmt`; integrated final Verify: `make check` once. `make check` is affected-only
 %% (`bin/check` vs dirty paths). `make check-full` is human-only (`CHECK_FULL=1 bin/check --full`);
 %% agents must never invoke it. Pre-commit: staged-only bin/fmt, then `bin/check --staged`.
 %% ============================================================================
@@ -10,7 +10,8 @@ flowchart TD
     classDef gate fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
     classDef cfg fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
 
-    EDIT["edit home/** · scripts/** · tools/** · docs/** · website/**"]:::mk --> CHECK["make check → bin/check (affected lint/gates/tests vs HEAD + untracked;<br/>make check-full is human-only CHECK_FULL=1 bin/check --full; agents never invoke it)"]:::mk
+    EDIT["edit home/** · scripts/** · tools/** · docs/** · website/**"]:::mk --> FMTW["Produce: make fmt (bin/fmt writes)"]:::mk
+    FMTW --> CHECK["final Verify: make check → bin/check once (affected lint/gates/tests vs HEAD + untracked;<br/>make check-full is human-only CHECK_FULL=1 bin/check --full; agents never invoke it)"]:::mk
 
     subgraph LINT["lint"]
         FMT["bin/fmt --check (affected paths, or all cached + untracked non-ignored if --full; ignores Alfred/)<br/>md: ,unwrap-md (AI instruction sentence / strong-clause wrap) + markdownlint(~/.markdownlint.jsonc) + prettier<br/>json/yaml: prettier · sh: shfmt · lua: stylua<br/>fish: fish_indent · py: ruff"]:::tool
@@ -21,13 +22,12 @@ flowchart TD
     VB["verify-bin-surface → scripts/verify_bin_surface.py<br/>(~/bin commands have Fish completions + docs/catalog tokens;<br/>home/exact_lib command libraries are not orphaned)"]:::tool
     VDN["verify-docs-navigation → scripts/verify_docs_navigation.py<br/>(docs/reference links and implementation coverage catalog rows stay live)"]:::tool
     VAF["verify-agent-file-sizes → scripts/verify_agent_file_sizes.py<br/>(exact_dot_agents reference .md stay under the 20480B harness view limit;<br/>SKILL.md exempt — skill loaders deliver it)"]:::tool
-    VAP["verify-agent-policy → compile_ai_policy.py audit-coverage + verify-budgets"]:::tool
+    VAP["verify-agent-policy → compile_ai_policy.py audit-coverage + verify-budgets<br/>temporary permissive 999999-byte policy ceilings during rearchitecture; runtime/leaf boundaries retained"]:::tool
     TST["test → convention + one-hop scripts/*.py imports + TEST_RULES;<br/>slow picker shards only on tmux (or editing the shard); agents never --full"]:::tool
     CHECK --> LINT & VT & VM & VB & VDN & VAF & VAP & TST
 
-    CHECK -->|fail| FIX["fix in scope, else report output"]:::gate --> CHECK
-    CHECK -->|pass| FMTW["make fmt (bin/fmt writes)"]:::mk
-    FMTW --> APPLY["chezmoi diff → chezmoi apply --no-tty <target> → verify $HOME"]:::mk
+    CHECK -->|fail| STOP["report failure; no automatic repair/recheck"]:::gate
+    CHECK -->|pass| APPLY["chezmoi diff → scoped chezmoi apply --no-tty <target> → rendered/runtime receipt"]:::mk
 
     subgraph CONFIG["Repo-side config / meta files"]
         C1["Makefile (help/fmt/lint/test/check/check-full/verify-templates/verify-mermaids/verify-bin-surface/verify-docs-navigation/verify-agent-file-sizes/verify-agent-policy/docs*)<br/>package.json + .yarnrc (npm docs* shims; no root yarn.lock)<br/>bin/fmt (formatter orchestrator) · bin/check (affected-first; make check-full is human-only CHECK_FULL=1)"]:::cfg

@@ -2,7 +2,7 @@
 name: general-purpose
 description: General-purpose agent for multi-step searches and delegated implementation support.
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claude_code" "agent" "general-purpose") }}"
-tools: "*"
+tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
@@ -10,3 +10,5 @@ tools: "*"
 Apply the boundary above before following the role-specific instructions below.
 
 You are a general-purpose delegated agent. Follow the parent prompt exactly, use tools proportionally, and report concise evidence-backed results. Do not exceed the requested scope.
+
+Load `~/.agents/skills/k-build/references/implement-worker.md` for a production packet; return artifacts without private verification.

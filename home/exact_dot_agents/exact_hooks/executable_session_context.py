@@ -15,6 +15,7 @@ from pathlib import Path
 
 from hook_common import (
     DEFAULT_TOPIC,
+    PARENT_SESSION_ENV,
     agent_depth,
     emit,
     is_default_branch_workspace,
@@ -55,29 +56,36 @@ TOPIC_BUCKET_TIME_FORMAT = "%Y-%m-%d %H:%M"
 # log score (smaller = better), so we negate to "larger = better" before comparing.
 WARMSTART_RELEVANCE_FLOOR_FRACTION = 0.6
 
+# Memory workflow hints are consumed by the root only, never a delegated child.
+ROOT_ONLY_MARKER = "[ROOT ONLY] A delegated leaf ignores this block and returns findings to its parent instead."
 AIKB_REMINDER = (
-    "### Durable Memory (,ai-kb)\n"
-    "The `k-agent-smol` operator (~/.agents/skills/k-ai-kb/references/smol-operator.md) owns the KB boundary in both directions. "
-    "Recall before non-trivial work by delegating the ACTUAL task as a recall query to `k-agent-smol` (judge mode, query-recall variant); "
-    "fold in only its returned lines (`NONE` = inject nothing). "
-    "Persist verified, reusable insights before finishing by handing `k-agent-smol` (scribe mode) the one-line insight, "
-    "evidence anchors, and suggested kind/scope; scribe owns search-first dedupe, metadata selection, and read-back. "
-    "Do not run `,ai-kb search`/`get`/`remember` inline in the parent session; "
-    "only when no isolated spawn exists, apply the inline fallback per the k-ai-kb skill "
-    "(~/.agents/skills/k-ai-kb/references/cli.md) with every metadata field deliberate."
+    ROOT_ONLY_MARKER + "\n### Durable Memory (,ai-kb)\n"
+    "Automatic hooks retrieve and stage relevant capsules; the root owns admission and learning. "
+    "Use ~/.agents/skills/k-ai-kb/SKILL.md for staged recall and the final learning batch; k-agent-smol is the memory-band operator. "
+    "Record corrections/decisions with `,agent-memory note`; persist verified reusable insights before delivery. "
+    "No per-turn scribe, nested memory agent, automatic re-verification, or repeated completed memory packet. "
+    "When delegation is forbidden, use the skill's inline fallback; never invoke another model."
 )
 NO_PERTURN_RECALL_NOTICE = (
-    "### Recall Notice\n"
-    "This harness has no automatic per-turn `,ai-kb` recall: only session-start context is injected. "
-    "Delegate a recall query to the `k-agent-smol` operator (judge mode) whenever the task shifts — "
-    "inline `,ai-kb search` only where no isolated spawn exists — "
-    "and record mid-task decisions/ideas with `,agent-memory note` so they survive the session."
+    ROOT_ONLY_MARKER + "\n### Recall Notice\n"
+    "This harness has no automatic per-turn `,ai-kb` recall. On a material task shift, "
+    "use the k-ai-kb root recall path (`,ai-kb search` inline only under its no-delegation fallback). "
+    "Keep mid-task corrections and decisions with `,agent-memory note`."
 )
+
+
+def is_delegated_leaf() -> bool:
+    """True when the harness names a parent session for this run.
+
+    Copilot supplies a parent session ID; pi-subagents supplies PI_SUBAGENT_CHILD.
+    This does not change worklog parent-bucket routing.
+    """
+    return bool(os.environ.get(PARENT_SESSION_ENV, "").strip()) or os.environ.get("PI_SUBAGENT_CHILD") == "1"
 
 
 def warm_resident_embedder(payload: dict) -> None:
     """Bounded, fail-open warmup for adapters that also invoke per-turn recall."""
-    if agent_depth() == "fast":
+    if is_delegated_leaf() or agent_depth() == "fast":
         return
     if not per_turn_recall_requested(payload):
         return
@@ -172,7 +180,7 @@ def stage_candidates(rows: list, seen: set[str], spec_path: Path, key: str, *, w
     session was already pointed at this topic, or any state write fails
     (fail-open: no partial pointer without a file).
     """
-    if not key:
+    if is_delegated_leaf() or not key:
         return ""
     pointed_path = pointed_file_for(spec_path, key)
     topic = spec_path.stem
@@ -231,12 +239,11 @@ def stage_candidates(rows: list, seen: set[str], spec_path: Path, key: str, *, w
             f"{len(candidates)} candidate(s): {candidates_path}",
             f"Session state: {spec_path} + {worklog_path}",
             "This pointer fires once per session-topic binding; later turns stage new rows into the same file for pull-path recall.",
-            f"Delegate to the `k-agent-smol` subagent (judge mode) per {SMOL_CONTRACT_PATH}, passing those paths and the current prompt;"
-            " inject only its returned lines (`NONE` = inject nothing).",
-            "When the `k-agent-smol` profile is unreachable (e.g. a fixed Task subagent set), spawn a generic isolated subagent"
-            " on the memory-band model with the k-agent-smol operator contract per the k-ai-kb skill;"
-            " never a harness-CLI one-shot and never the subagent type's own default model.",
-            "Do not read the candidates file into this context.",
+            ROOT_ONLY_MARKER,
+            f"The root processes this staged set via ~/.agents/skills/k-ai-kb/SKILL.md and {SMOL_CONTRACT_PATH}.",
+            "When delegation is forbidden or unavailable, use the skill's inline fallback; do not invoke another model.",
+            "Admit only the compact returned lines (`NONE` = inject nothing). Do not repeat a completed memory packet.",
+            "A delegated child MUST NOT act on this pointer. No descendant agents or harness-CLI fallback.",
         ]
     )
 
@@ -704,9 +711,10 @@ def main() -> None:
                 f"### Topic Buckets\nBucket details omitted for Cursor’s context limit. Inspect `{spec_dir}` and bind with `,agent-memory select <topic> --session-id {key or '<session-id>'}` before relying on prior state.",
             )
         )
-        if not per_turn_recall_requested(payload):
-            parts.extend(["", NO_PERTURN_RECALL_NOTICE])
-        parts.extend(["", AIKB_REMINDER])
+        if not is_delegated_leaf():
+            if not per_turn_recall_requested(payload):
+                parts.extend(["", NO_PERTURN_RECALL_NOTICE])
+            parts.extend(["", AIKB_REMINDER])
         context = context_for_harness(parts, optional_parts)
         emit(
             {
@@ -745,15 +753,23 @@ def main() -> None:
             ),
         )
 
-    if key and is_named_topic(topic) and not is_review and spec_text_source.strip() and agent_depth() != "fast":
+    if (
+        not is_delegated_leaf()
+        and key
+        and is_named_topic(topic)
+        and not is_review
+        and spec_text_source.strip()
+        and agent_depth() != "fast"
+    ):
         rows = aikb_warmstart(workspace, spec_text_source)
         pointer = stage_candidates(rows, load_seen(seen_file_for(spec_path, key)), spec_path, key, warm_start=True)
         if pointer:
             parts.extend(["", pointer])
 
-    if not per_turn_recall_requested(payload):
-        parts.extend(["", NO_PERTURN_RECALL_NOTICE])
-    parts.extend(["", AIKB_REMINDER])
+    if not is_delegated_leaf():
+        if not per_turn_recall_requested(payload):
+            parts.extend(["", NO_PERTURN_RECALL_NOTICE])
+        parts.extend(["", AIKB_REMINDER])
 
     if spec_mirror is not None:
         spec_mirror.sync_topic(spec_dir, workspace, topic)

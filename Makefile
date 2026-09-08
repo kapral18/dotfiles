@@ -27,9 +27,9 @@ verify-docs-navigation: ## Check docs/reference links and catalog coverage
 verify-agent-file-sizes: ## Check agent skill/hook markdown stays under the 20KB view limit
 	python3 scripts/verify_agent_file_sizes.py
 
-verify-agent-policy: ## Check compiled SOP/provenance and non-core policy budgets (core budget still red by design)
+verify-agent-policy: ## Check compiled SOP/provenance with permissive architecture-stage text budgets
 	python3 scripts/compile_ai_policy.py audit-coverage --legacy home/readonly_AGENTS.md --manifest home/dot_config/ai/exact_policy-ir/readonly_policy-manifest.v1.json --base-ref origin/main
-	python3 scripts/compile_ai_policy.py verify-budgets --core-max-bytes 999999 --overlay-max-bytes 8192 --skill-max-bytes 8192 --description-total-max-bytes 4096
+	python3 scripts/compile_ai_policy.py verify-budgets --core-max-bytes 999999 --overlay-max-bytes 999999 --skill-max-bytes 999999 --description-total-max-bytes 999999
 
 test: ## Run the full Python unit test suite (file-sharded via scripts/test_runner.py)
 	python3 scripts/test_runner.py

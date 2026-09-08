@@ -14,11 +14,11 @@ All PR review modes load this file; do not duplicate these rules in mode files.
 ## PR Snapshot (blocking before diff analysis)
 
 Load and follow `~/.agents/skills/k-review/references/pr_snapshot.md`: it owns the one-fetch context pack production, media and reference capture, diff scope and file truth, the head + discussion Drift check, and the pack lifetime.
-Every PR mode runs it before diff analysis and its Drift check at every boundary it names.
+The root produces the pack during Understand and checks freshness once in final Verify. Workers do not refresh it.
 
 ## Merge-Conflict Check (Do After PR Resolution)
 
-- Run: `gh pr view <number> --json mergeable,mergeStateStatus --jq '{mergeable, mergeStateStatus}'`
+- Read `mergeable` and `mergeStateStatus` from the complete `pr.json` snapshot.
 - If `mergeable` is `CONFLICTING` or `mergeStateStatus` is `DIRTY`:
   - Flag at the top: "This PR has merge conflicts with base. Findings may be invalidated once conflicts are resolved."
   - Continue the review (conflicts do not block), but note findings in conflict-affected files as potentially stale.
@@ -44,7 +44,7 @@ Avoid redundant findings:
 - Drop findings CI will inevitably flag, but first verify the relevant check exists and covers that finding class.
 - Do not assume usual CI exists on every branch; backports may loosen or narrow CI.
 
-1. Enumerate PR checks (read-only). Set `GH_PAGER=cat`, then `gh pr checks <number> --json name,state,bucket,workflow,link`.
+1. Read the complete `checks.json` snapshot. Fetch checks only if that artifact is missing during Understand.
 2. Map each present check to the Coverage-Checklist classes it actually catches.
    - lint -> style/format nits
    - typecheck -> type errors
@@ -63,17 +63,9 @@ Avoid redundant findings:
 
 ## Verdict Gate (PR Mode Only)
 
-A `Verdict: ...` line on the first response of a PR review is a **premature** verdict when any of the following has not yet run on the current head SHA:
-
-- `gh api graphql … pullRequest.reviews(first:50)` + `pullRequest.reviewThreads(first:50)` —
-  every review-thread must be triaged before approve/request-changes/comment-only is honest.
-- `gh pr checks <n> --json name,state,bucket` — the CI Coverage Gate above needs the actual check names;
-  "all green" without enumeration is also a premature verdict.
-- `gh api repos/OWNER/REPO/pulls/comments/COMMENT_ID --jq '{login:.user.login, type:.user.type}'` —
-  reviewed comments must be classified by platform evidence, not by display-name.
-
-The pattern "merge-ready, no surviving findings" is the reportable form **only** after those three have completed and any reviewer-claimed fact has been either anchored or retracted.
-Until then the right shape is a status ledger (what was read / what is still open) with no verdict word at all.
+Recommend a verdict only in final Verify after reading the complete primary discussion, enumerated CI coverage, and platform-backed author classifications from the shared pack.
+Use GraphQL author `__typename` or API `user.type`; do not issue a second per-comment request when the pack already contains that evidence.
+Unresolved material claims are blocked or retracted, not assumed true.
 
 ## Pending Review Intake (blocking before diff analysis)
 
@@ -82,51 +74,26 @@ resolve login, list reviews, select `PENDING` reviews by that login, read their 
 
 ## GitHub Context Intake + Reference Resolution (blocking — complete before diff analysis)
 
-Use this gate for the primary PR and every recursively discovered item that could inform the review:
+During Understand, read the complete primary PR body, discussion/review threads and replies, current-account pending drafts, and diff metadata from the pack.
+Do not rely on summaries, previews, truncated/compacted output, or sliced fields such as `body[0:N]`.
+Retrieve complete raw artifacts with pagination before relying on them; do not re-fetch artifacts already in the pack.
 
-- PR
-- issue
-- comment
-- thread
-- asset
-- URL
-- reference
+Follow a reference only when it can settle a named material question about intent, changed behavior, a claimed precedent, or an acceptance condition.
+Record that question before following further links. The presence of a URL is not an instruction to fetch it.
+Do not recursively crawl every reachable or potentially relevant reference.
 
-Do not rely on summaries, previews, truncated/compacted output, or sliced fields such as `body[0:N]`, `head`, preview scripts, or partial comment/reply lists.
+- Keep a visited set by canonical URL/object ID and reuse each complete artifact.
+- For a selected issue/PR, read its full body and discussion before relying on it;
+  inspect its diff/files only when the claim depends on code.
+- For a selected comment/thread, read the complete thread with author, order, resolution, and outdated state.
+- For selected media, use `pr_snapshot.md` → Media, inspect the actual file, and retain the manifest evidence.
+  For video/GIF claims, inspect the relevant transition plus surrounding states and audio/captions when material.
+- For selected Buildkite evidence, use `k-buildkite`; verified overlays own repo-specific routing.
+- Stop reference expansion when the named question is answered or the required source is inaccessible.
+  Do not create new questions solely from incidental links. Report material unresolved questions as blocked.
 
-Recover the full raw content before marking an item read. Limited output is allowed only for discovery/status.
-Once an item can inform composition, review, labels, routing, or mutation, re-fetch the full raw artifact with pagination before using it.
-For GitHub, prefer complete `--json` fields or API pagination over `jq` slices or preview commands.
-Keep a short intake ledger for composition/review work: object read, full-body/comments status, linked objects followed, and reproduction/expected/actual sections found/absent.
-
-1. Maintain a visited set by canonical URL/object ID so recursion is exhaustive without looping.
-2. Seed the queue from the primary PR, reading from the context pack (one fetch per object;
-   the pack is the complete artifact, and linked items land in `refs/`):
-   - PR description/body, reading every line including template text, checkboxes, code blocks, quotes, collapsible sections, and footnotes
-   - PR conversation/timeline comments, review bodies/comments/threads, and every reply, including resolved/outdated state when available
-   - any `PENDING` review and draft comments authored by the current account, using Pending Review Intake above
-   - linked/closing issues, linked PRs, commits, check/build links, URLs, and image/media/attachment links found anywhere above
-3. For each queued item, read the complete artifact before extracting references from it:
-   - PRs:
-     - read raw description/body line-by-line; state, author/base/head, labels/milestone when relevant; all conversation/timeline comments
-     - read all review bodies, review comments/threads/replies, linked/closing issues and PRs, check/build links, and diff summary
-     - inspect the full diff or exact files when the referenced PR is cited as precedent, fix, regression, or evidence for a claim
-   - Issues: read raw body line-by-line, state, labels/milestone when relevant, all comments/replies/timeline text, linked PRs/issues, and every attachment/media/reference.
-   - Comments/threads: read the parent comment plus every reply end-to-end; include author, timestamp/order, resolved/outdated/minimized state, and any referenced code or links.
-   - Images/screenshots: download into the pack per pr_snapshot.md → Media (plain GET for public assets, browser session for private ones, `file`-verified, manifest row), then inspect the file, including visible text, UI state, annotations, and error messages.
-   - GIFs/videos: download into the pack per pr_snapshot.md → Media; inspect first/last frames and every significant frame or scene/state transition; cover UI changes, overlays, terminal output changes, and before/after states; use local tooling (`ffmpeg`/`ffprobe`, browser/player, image extraction, OCR/vision when available); inspect audio/captions/transcripts when present
-   - Buildkite URLs (`buildkite.com/...`): **do not fetch directly** (authenticated pages commonly 403).
-     Load and follow `~/.agents/skills/k-buildkite/SKILL.md` — use `bk` CLI to retrieve build/job info.
-     For Elastic repos, route through `k-elastic-domain` first when available, but do not skip Buildkite solely because the overlay cannot load.
-   - Other URLs: fetch when they could inform the review, then read the full relevant content and extract references.
-4. From every artifact just read, extract new URLs, PR/issue refs, comments, assets, media, commits, builds, and code references;
-   enqueue any unvisited potentially relevant item.
-5. Repeat until the queue is empty.
-   - Do not proceed while a reachable, potentially relevant reference remains unread.
-   - If an item is inaccessible, record the exact reason before excluding it.
-   - If an item is unsupported by local tooling, record the exact reason before excluding it.
-   - If an item is irrelevant, record the exact reason before excluding it.
-6. State the full list of references visited, skipped-with-reason, and what you learned from each before proceeding to diff analysis.
+Keep the intake ledger in the topic artifact: question, source, complete-content status, conclusion or access blocker.
+User output contains only decision-relevant conclusions and evidence pointers, not a crawl transcript.
 
 If a claim depends on visuals and visuals are missing, inaccessible, or unclear, stop and ask for visuals or better access before making that claim.
 
@@ -233,8 +200,9 @@ Where to comment:
 
 ## Local Verification
 
-- Run the smallest sufficient tests.
-- If the concern is behavioral, reproduce/simulate it in `/tmp` or the worktree.
+- In the root-owned final Verify stage, consume existing check receipts and run only pending planned checks for the frozen candidate.
+- Research and production workers must not run tests or reproduce claims as a completion check.
+- Plan a minimal behavioral reproduction in `/tmp` or the worktree when existing evidence cannot settle the acceptance condition.
 - UI repro hygiene (when verifying UI/editor behavior):
   - do one claim per repro run; reset state between runs (reload/new tab)
   - clear inputs deterministically before typing

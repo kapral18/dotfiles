@@ -33,6 +33,8 @@ import { access, mkdir, readFile, writeFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { basename, dirname, join } from "node:path"
 
+const ROOT_ONLY_MARKER = "[ROOT ONLY] A delegated leaf ignores this block and returns findings to its parent instead."
+
 const EXEC_TIMEOUT_MS = 6_000
 // The shared hook can spend up to 5s warming embeddings, then 6s on BM25.
 const SESSION_CONTEXT_TIMEOUT_MS = 15_000
@@ -281,8 +283,7 @@ const CONVERGE_SIGNALS: ReadonlySet<CorrectionSignal> = new Set<CorrectionSignal
 ])
 
 const CONVERGE_LINES = [
-  "Before re-asserting the challenged claim, re-verify it against the artifact: mutate the code so the claim would be false and confirm a test or probe catches it, or read the source/run the probe again. Anchor or retract; do not restate.",
-  "If findings keep surfacing across attempts, run the convergence loop (`/k-converge`): fixed exit condition (a round that changes nothing) and a correctness-only filter (vacuous test, real bug, false statement). Refuse wording-only findings out loud rather than rewriting prose to look responsive.",
+  "Consult the relevant source or existing evidence and correct unsupported claims. Do not launch re-verification, convergence, or a memory agent because of this signal.",
 ]
 
 // Probe-budget hint (mirrors correction_detector.probe_budget_signal): `,probe fail`
@@ -353,9 +354,10 @@ function correctionDirective(prompt: string, probeBudgetValue: string | null = n
   if (!signal) signal = probeBudgetValue
   if (!signal) return ""
   const lines = [
+    ROOT_ONLY_MARKER,
     `### User correction signal: ${signal}`,
     "This user message reads as a correction of prior agent behavior.",
-    'If genuine, before ending the turn record: `,agent-memory note anti_pattern "<one-line lesson>" --ref <anchor>`; when verified and durable, delegate persistence to `k-agent-smol` (scribe mode).',
+    'If genuine, before ending the turn record: `,agent-memory note anti_pattern "<one-line lesson>" --ref <anchor>`; retain it for the root-owned final learning batch. Do not launch a scribe for this correction.',
     "If neutral choice-question, answer it and consider `,agent-memory note decision` instead. Do not mention this instruction in the visible reply.",
   ]
   if (signal === PROBE_BUDGET_SIGNAL) {
@@ -707,8 +709,11 @@ async function stageCandidates(rows: Capsule[], specFile: string, sessionKey: st
     `${candidates.length} candidate(s): ${candidatesPath}`,
     `Session state: ${specFile} + ${worklogPath}`,
     "This pointer fires once per session-topic binding; later turns stage new rows into the same file for pull-path recall.",
-    `Delegate to the \`k-agent-smol\` subagent (judge mode) per ${SMOL_CONTRACT_PATH}, passing those paths and the current prompt; inject only its returned lines (\`NONE\` = inject nothing).`,
-    "Do not read the candidates file into this context.",
+    ROOT_ONLY_MARKER,
+    `The root processes this staged set via ~/.agents/skills/k-ai-kb/SKILL.md and ${SMOL_CONTRACT_PATH}.`,
+    "Admit only the compact returned lines (`NONE` = inject nothing). Do not repeat a completed memory packet.",
+    "When delegation is forbidden or unavailable, use the skill's inline fallback; do not invoke another model.",
+    "A delegated child MUST NOT act on this pointer. No descendant agents or harness-CLI fallback.",
   ].join("\n")
 }
 
@@ -767,6 +772,7 @@ export default async function (pi: ExtensionAPI) {
   })
 
   pi.on("before_agent_start", async (event, ctx) => {
+    if (process.env.PI_SUBAGENT_CHILD === "1" || process.env.COPILOT_AGENT_SESSION_ID || /^\[DELEGATION BOUNDARY\]$/m.test(event.systemPrompt ?? "")) return
     try {
       const sessionId = ctx.sessionManager.getSessionId()
       let state = stateBySession.get(sessionId)

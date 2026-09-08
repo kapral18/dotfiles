@@ -5,54 +5,12 @@ title: Execution workflow
 
 # Execution workflow
 
-The SOP makes work resumable and testable before implementation starts. The agent removes ambiguity with read-only investigation first, stores task intent in a session-scoped spec, and validates each material step before calling work complete.
+The core SOP owns one sequence: Scope → Understand → Produce → Verify → Deliver. Skills supply mechanics and criteria without introducing nested phase graphs.
 
-The workflow is proportional. Simple answer-only work can stay direct; edits, runtime/setup claims, publication, reviews, stateful logic, or material uncertainty trigger deeper verification gates.
+The strong root keeps requirements, decisions, dependencies, compact results, and open questions. Substantial research stays strong and isolated; substantive settled implementation uses its cheaper category. Deterministic operations run directly without an LLM. Explicit no-delegation sessions stay inline.
 
-## Mental model: intent loop
+Produce includes tests/docs, generation, integration, and formatting. Workers do not run private QA or claim green. Final Verify freezes the candidate, deduplicates checks by snapshot/environment/input, and retains strong review and adversarial lenses for deep/high-risk work, assigning distinct questions within that same stage. A failed final result terminates the attempt; finite convergence requires explicit user-approved allowance before entry.
 
-| Stage              | Output                                                                                       |
-| ------------------ | -------------------------------------------------------------------------------------------- |
-| Investigate        | evidence that removes ambiguity without asking                                               |
-| Intent spec        | target, action, success, constraints, scope bounds, side effects, example                    |
-| Fork inventory     | 2+ plausible interpretation or implementation forks that change the output                   |
-| Interview          | the most branch-eliminating fork-closing question, repeated until forks are empty            |
-| Plan               | explicit enough to test for non-trivial or risky work                                        |
-| Readiness gate     | before executing non-trivial work, confirm forks are empty and success criteria are testable |
-| Execute + validate | implementation plus acceptance checks                                                        |
-| Present results    | outcome, evidence, and remaining blockers                                                    |
+Authorization, destructive-target/ownership/secret checks, and publication approval stay at the action. Readback confirms an authorized transaction; it does not reopen general review. Existing topic storage holds the compact handoff and terminal packet IDs. Never relaunch an active/completed packet after compaction or let late events overwrite its result.
 
-When advising or reviewing a plan, prefer probing questions that surface assumptions and forks over prescribing a solution. Withhold readiness until the plan's success criteria are testable.
-
-## Using it
-
-### Persistent spec
-
-| Artifact             | Path                                           |
-| -------------------- | ---------------------------------------------- |
-| Active topic pointer | `/tmp/specs/<workspace>/_active_topic.txt`     |
-| Topic spec           | `/tmp/specs/<workspace>/<topic>.txt`           |
-| Worklog              | `/tmp/specs/<workspace>/<topic>.worklog.jsonl` |
-
-Do not load specs broadly. Topic keys are broad, stable, kebab-case, and exactly one is active per prompt.
-
-`/tmp/specs` is ephemeral working memory used to rehydrate intent after pruning, not durable knowledge. Durable reusable learnings belong in [Agent memory](../knowledge-base/index.md).
-
-### Verification loops
-
-| Situation                         | SOP response                                                                                                                                                  |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| bug fix                           | reframe as a verifiable goal: write a test that reproduces the bug, then make it pass                                                                         |
-| refactor                          | keep the existing behavior surface green                                                                                                                      |
-| durable freeform receipt          | use `,proof` only for an explicit receipt, auditable security/auth, data-migration, or destructive effect, or named handoff/resume consumer; otherwise inline |
-| parser/stateful logic             | SOP State-Machine Verification: a `/tmp/state-machine-verification/...` harness with an independent model/table is required before final/merge-ready          |
-| rationale claims input irrelevant | perturb exactly that input and confirm the decision is stable; a flip means the stated rationale is not the real driver                                       |
-| repeated misses                   | stop speculative edits and reset requirements                                                                                                                 |
-
-Test-first framing never expands scope beyond the request.
-
-## Reference: harness search interop
-
-Harness-native search/listing tools are the interop layer for broad code search. Prefer native Grep/Glob/search tools for first-pass broad searches; use shell `rg` only after narrowing by path, glob, or exact symbol.
-
-Never run bare repo-root `rg <pattern>` in a large repository.
+Source: `home/readonly_AGENTS.md` §§3.1–3.8; see [staged workflows](../subagents.md).

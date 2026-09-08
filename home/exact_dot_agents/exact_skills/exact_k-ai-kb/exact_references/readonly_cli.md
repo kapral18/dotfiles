@@ -1,6 +1,6 @@
 # `,ai-kb` CLI contract (runner-facing)
 
-This is the interface for whoever actually runs the CLI: the `k-agent-smol` operator by default, the parent session only inside the k-ai-kb no-spawn inline fallback.
+This is the interface for whoever actually runs the CLI: the `k-agent-smol` operator by default, the parent session only inside the k-ai-kb inline fallback that applies when delegation is forbidden or unavailable.
 Running these commands in a parent session outside that fallback breaks the isolation boundary the operator exists to hold.
 
 ## Read: search and get

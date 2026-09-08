@@ -1,11 +1,9 @@
 ---
 name: k-agent-pr-necessity-auditor
-description: Blocking read-only PR necessity and intent auditor before /k-deep-review fan-out.
+description: Read-only Understand research about PR intent, whether it is still needed, and whether it is correctly open; no implementation certification.
 model: {{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "claude" "agent" "k-agent-pr-necessity-auditor") }}
 readonly: false
 tools: Read, Grep, Glob, Bash
-skills:
-  - k-review
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}

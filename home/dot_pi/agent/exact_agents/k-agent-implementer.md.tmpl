@@ -4,8 +4,11 @@ name: k-agent-implementer
 description: "/k-build implement worker: implement one settled step packet in isolation and return a single status line. Pi has no native generic subagent (builtins disabled), so this is the implement lane there."
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-implementer") }}"
 systemPromptMode: replace
-inheritProjectContext: true
-inheritSkills: true
+inheritProjectContext: false
+inheritGlobalContext: false
+inheritSkills: false
+maxSubagentDepth: 0
+defaultContext: fresh
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}

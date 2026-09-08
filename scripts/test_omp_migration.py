@@ -113,13 +113,14 @@ class TestOmpMigration(unittest.TestCase):
         }
         shared_values = (
             "modelRoles:\n",
-            "advisor:\n  enabled: true\n  subagents: false\n  syncBacklog: 1\n  immuneTurns: 0\n",
+            "advisor:\n  enabled: false\n  subagents: false\n  syncBacklog: 1\n  immuneTurns: 0\n",
+            "async:\n  enabled: true\n",
             "defaultThinkingLevel: high\n",
             "memory:\n  backend: off\n",
             "autolearn:\n  enabled: false\n  autoContinue: false\n",
             "dev:\n  autoqaConsent: granted\n",
             "skills:\n  enabled: true\n  enableSkillCommands: true\n",
-            'task:\n  isolation:\n    mode: auto\n  enableEffort: true\n  enableLsp: true\n  maxRecursionDepth: 1\n  agentAdvisor:\n    task: "off"\n',
+            'task:\n  isolation:\n    mode: auto\n  enableEffort: true\n  enableLsp: true\n  maxRecursionDepth: 1\n  disabledAgents:\n    - reviewer\n    - security-reviewer\n  agentAdvisor:\n    task: "off"\n',
             "retry:\n  enabled: true\n  maxRetries: 3\n",
             "symbolPreset: nerd\n",
             "theme:\n  dark: dark-catppuccin\n",
@@ -177,6 +178,9 @@ class TestOmpMigration(unittest.TestCase):
     def test_selected_agents_use_omp_frontmatter_schema(self):
         agents = REPO / "home/dot_omp/private_agent/exact_agents"
         required = {
+            "task",
+            "sonic",
+            "scout",
             "k-agent-public-sources",
             "k-agent-reviewer",
             "k-agent-review-controller",

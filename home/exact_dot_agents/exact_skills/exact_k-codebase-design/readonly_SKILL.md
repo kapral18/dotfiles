@@ -80,3 +80,10 @@ When designing an interface, ask:
 ## Going deeper
 
 When the task is to deepen a real cluster given its dependencies, or to explore several radically different interfaces for one module, load `~/.agents/skills/k-codebase-design/references/going-deeper.md`: dependency categories, seam discipline, replace-don't-layer testing, and the parallel design-it-twice pattern.
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+
+Branch B of `~/.agents/skills/k-codebase-design/references/going-deeper.md` compares several interfaces produced in parallel;
+its own Root moves section holds that fan-out, the per-design briefs, and the return shape.

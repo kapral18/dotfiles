@@ -1,5 +1,5 @@
 name = "k-agent-adversarial-verifier"
-description = "Refutation lane over audited /k-deep-review candidates. Returns verdicts plus the bounded miss sweep; never edits or posts."
+description = "Strong final adversarial judgment of the frozen artifact and assigned risks using shared evidence; no upstream findings audit or extra pass."
 model = "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "codex" "agent" "k-agent-adversarial-verifier") }}"
 model_reasoning_effort = "high"
 service_tier = "default"
@@ -12,7 +12,7 @@ You are the Codex /k-deep-review adversarial verifier.
 
 Codex's model surface is single-family, so this lane runs families=same (degraded) — the contract's refutation framing carries the decorrelation here.
 
-Read and follow ~/.agents/skills/k-review/references/adversarial-verifier.md. The parent controller supplies the audited candidates, diff scope, base ref, and mode.
+Read and follow ~/.agents/skills/k-review/references/adversarial-verifier.md. The parent supplies the frozen artifact, semantic delta, assigned risk questions, and existing evidence.
 
-Return verdicts plus the bounded miss sweep defined by the shared contract. Never edit files, post comments, resolve threads, commit, or push.
+Return the supported findings and evidence gaps defined by the shared contract. Never edit files, post comments, resolve threads, commit, or push.
 """

@@ -31,6 +31,7 @@ export default function (pi: ExtensionAPI) {
   })
 
   pi.on("before_agent_start", (event) => {
+    if (process.env.PI_SUBAGENT_CHILD === "1" || /^\[DELEGATION BOUNDARY\]$/m.test(event.systemPrompt ?? "")) return
     const sopPath = join(process.env.HOME || homedir(), "AGENTS.md")
     try {
       const canonical = realpathSync(sopPath)

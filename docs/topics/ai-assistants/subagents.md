@@ -2,148 +2,53 @@
 sidebar_position: 4
 ---
 
-# Cross-harness subagents
+# Staged agent workflows
 
-Subagents run a self-contained task in an isolated child context window and return only a digest. That keeps heavy reads, searches, and review fan-out from bloating the parent conversation.
+Centralize control, not raw context or execution.
 
-![Cross-harness subagent topology: shared skills feed runtime profiles, controller delegates to angle lanes/fresh-eyes/adversarial verifier/live UI/auditor, and only controller acts](./assets/subagent-topology.svg)
+## Session lifecycle
 
-## Mental model
+`Scope → Understand → Produce → Verify → Deliver`
 
-There are two portable layers:
+The active root owns this sequence. Skills contribute task mechanics and acceptance criteria; they do not add nested workflows. Empty stages need no ceremony. Verification occurs once on the integrated, formatted candidate. By default a failed final check ends the attempt with evidence. Convergence is explicit-only and requires a finite user-approved repair/check allowance before entry.
 
-| Layer                        | Portable? | Role                                                                     |
-| ---------------------------- | --------- | ------------------------------------------------------------------------ |
-| Skills (`~/.agents/skills/`) | Yes       | Cross-harness source of truth for methodology and routing                |
-| Subagents                    | No        | Runtime-specific wrappers that load a skill in an isolated child context |
+## Context and model responsibilities
 
-Every custom subagent profile is a chezmoi template that renders the shared `leaf-boundary.txt` preamble (the SOP §3.7 leaf-worker boundary, verbatim) before role instructions. Children already load the full SOP through their harness context files, so the preamble restates only the boundary that a child must never cross.
+| Category        | Responsibility                                                               | Context                                                                                       |
+| --------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| orchestrate     | Strong root: intent, decisions, dependencies, integration, stage transitions | Compact task handoff, not all source/logs                                                     |
+| research        | Strong bounded investigation                                                 | Task-specific source; return conclusions, evidence pointers, uncertainty, affected interfaces |
+| implement       | Cheaper implementation band: substantial settled edits                       | Owned targets and ready design inputs; return unverified artifacts                            |
+| mechanical      | Deterministic tools directly; cheap model only when needed                   | Exact rule and targets                                                                        |
+| review / refute | Strong final judgment, selected framing and independent risk lenses          | Actual candidate source plus shared check receipts                                            |
+| memory          | Automatic staged recall admission and final batched learning                 | Compact admitted lines; no per-turn memory agents                                             |
 
-Only the active root/main session orchestrates multiple agents or lanes. Delegated children are always leaf workers: they complete the assigned packet, perform its normal verification, and return evidence or a blocker to the parent without launching descendants or inventing extra lanes inline.
+`home/.chezmoidata/ai_models/tiering.yaml` remains the model/effort authority. This change preserves model selections. Substantial routine implementation must not default to the expensive root/review model. A user-requested inline session is the explicit exception.
 
-Repo-owned custom subagent identifiers use the `k-agent-<role>` namespace. Harness-native identifiers retain their original names; the repo must not prefix or alias them.
+## Worker interface
 
-The role body itself is single-sourced. Each per-tool profile is a thin shim: supported harness-native model and tool metadata + the `leaf-boundary.txt` preamble + `Load and follow ~/.agents/skills/<owning skill>/references/<role>.md` — `k-review` for most roles, with the exceptions listed under [Agent suite](#agent-suite).
+A packet names stage/category, question/change, owned targets, ready evidence, applicable project/safety constraints, named role mechanics, intended/preserved differences, output, forbidden effects, and terminal condition. Pass the needed constraints explicitly, not the whole SOP, instruction tree, catalog, or parent transcript. Missing required constraints block the packet. Independent work may run concurrently; dependent work starts only when inputs exist. Workers never spawn models, message siblings, broaden scope, run private QA, or reopen after completion. Return `produced` or `blocked` with artifact pointers; production does not return green/approved verdicts. Final specialists return findings/evidence once and never verify one another. Keep the substantive terminal result immutable. Late events cannot replace it with status chatter.
 
-## Using it
+## Long sessions
 
-Runtime discovery is harness-specific:
+Keep raw source, diffs, search output, and logs outside root context. Persist a compact handoff in the existing active topic: stage, scope/snapshot, settled decisions, dependencies, active/completed packet IDs, open questions, and evidence pointers. After compaction, continue from it without rediscovery or relaunch. Final reviewers still inspect actual relevant source, not summaries alone. Known deterministic commands use tools directly; a separate agent per read/check wastes context without adding judgment.
 
-| Harness            | Subagent/profile source                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Cursor CLI         | project `.cursor/agents/` only — a workspace profile extends the Task `subagent_type` enum, but user `~/.cursor/agents/` is never scanned (probed 2026-08-30, cursor-agent 2026.08.28-a7f9513: fresh session rejected the deployed user-level `k-agent-smol` while a project-level `k-agent-smol` spawned). Upstream docs promise user-level discovery ([cursor.com/docs/subagents](https://cursor.com/docs/subagents): "User subagents \| `~/.cursor/agents/` \| All projects for current user"), so this is a cursor-agent bug; the profiles stay deployed for when it lands |
-| GitHub Copilot CLI | `~/.copilot/agents/*.agent.md` and project `.github/agents/*.agent.md`; configured with `subagents.agents.*`                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| Claude Code        | `~/.claude/agents/*.md`; launched via `Task` with `subagent_type`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Codex CLI          | `$CODEX_HOME/agents/*.toml`; launched through `multi_agent` `spawn_agent`/`wait`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| Antigravity        | Runtime-defined subagents via `define_subagent` / `invoke_subagent`; skills dynamically loaded                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Pi                 | `~/.pi/agent/agents/*.md`; built-in subagents disabled to avoid name collisions                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+## Runtime controls and limits
 
-Verified discovery anchors:
+- All profile templates include the shared leaf contract. Former controller profiles are final judgment leaves, not nested controllers.
+- Pi profiles set `defaultContext: fresh`, `inheritProjectContext: false`, `inheritGlobalContext: false`, `inheritSkills: false`, and child depth zero. This removes ambient instructions/catalog, not explicitly named role skills: pi-subagents 0.66.0 loads those separately in `runs/foreground/execution.ts`. The root supplies applicable project and safety constraints in the packet. Explicit native call overrides can change the context mode; inspect effective inputs, not just defaults. Native child identity suppresses root memory/reinforcement injection.
+- Claude generic implementation profiles omit agent tools. Unrestricted shell remains a limitation, not a sandbox guarantee.
+- OMP retains native depth pruning and disables background advisors. Async shell commands and explicit effort controls remain available. Managed profiles (including native-name `task`, `sonic`, and `scout` shims) use `blocking: true`, no `task` tool, and no `spawns` allowlist; independent task batches still run concurrently before returning. Native reviewer shortcuts are disabled in favor of managed review profiles.
+- OMP's managed runtime extension blocks peer `hub send` while retaining named-process input. The guard trims `name` like the native router, so whitespace cannot bypass the peer boundary. Native parked-agent lifecycle is not rewritten.
+- OMP 18.1.14 passes context files, skills, and native child/Coop instructions through `src/task/executor.ts`; its profile parser does not expose Pi's inheritance flags. Packet-only context is not established there. Do not use an adapter unattended when it cannot enforce the required no-orchestration/terminal boundary.
+- Former controller leaves omit declared edit/write/agent/task tools where supported. Cursor retains `readonly: false` for its existing shell/MCP access caveat; prompt-level read-only instructions are not runtime write isolation.
+- Shared startup/per-turn hooks retain filtered KB retrieval and staging; only the root owns admission and final learning. No per-turn scribe or automatic convergence. Topic binding, worklogs, context-disable sentinels, and reinforcement remain.
+- Codex/Cursor/Copilot retain their existing model-band adapters. Antigravity uses native dynamic tiers. OpenCode/generic remain single-context where no category-backed adapter exists.
 
-| Harness     | Verified surface                                                                                        |
-| ----------- | ------------------------------------------------------------------------------------------------------- |
-| Cursor CLI  | bundled `~/.cursor/skills-cursor/create-subagent/SKILL.md`; `cursor-agent 2026.06.15-18-00-12-6f5a2cf`  |
-| Copilot CLI | `copilot --agent <name>`, `/agent`, and `copilot help config`; version `copilot 1.0.63`                 |
-| Claude Code | `claude --agent`, `--agents`, `claude agents`, and `Task.subagent_type`; version `claude 2.1.260`       |
-| Codex CLI   | `$CODEX_HOME/agents/*.toml` plus `multi_agent.spawn_agent` / `wait`; source `openai/codex@45f603302c45` |
-| Antigravity | `~/.gemini/config/skills` symlink + progressive skill disclosure; dynamic subagent protocol             |
+OMP 18.1.14 dispatches blocking profiles through its synchronous fan-out path (`src/task/index.ts`); `src/discovery/helpers.ts` parses the flags. Project/plugin agent overrides can replace user profiles: inspect the effective profile before use, and do not use an unguarded override unattended.
 
-Profile `model` frontmatter for review roles renders through `review-agent-model.partial`, which resolves the agent category to the per-harness max/counter band and uses `review_model_overrides` only for true harness exceptions. Non-review profiles render through `agent-model.partial`, and a shared pre-tool-use gate re-applies that band to delegation calls no profile can reach — see [Model tiering](model-tiering.md).
+Prompt contracts do not prove native enforcement. Unsupported autonomous lifecycle controls require a visible capability limitation rather than a claimed guarantee. No universal spend cap is asserted; usage accounting must include children/advisors when the harness exposes it.
 
-Antigravity is the runtime-defined exception: it has no repo-owned profile files. The main session defines each review role from the shared role contract and invokes it with the `pro` tier recorded in `review_model_overrides.gemini`.
+## Sources
 
-Pi encodes reasoning effort in model slug suffixes such as `:xhigh` on its per-task registry value.
-
-Runtime probes confirmed project custom-agent invocation in Cursor and Copilot, Copilot task subagents with explicit model overrides, and Codex `spawn_agent` / `wait`.
-
-Cursor source supports custom subagent types, but the model-facing Task schema can expose only generic types in some runs. Generic or fallback launches pass the registry value as a profile-equivalent model when the role has no usable profile frontmatter, and the adversarial verifier passes the explicitly resolved verifier id.
-
-## Agent suite
-
-The delegated-subagent contract for every role lives once under `k-review/references/`, except where noted below. That contract loads the owning skill (`k-review`, `k-light-review`, `k-public-sources`, `k-semantic-code-search`, `k-ai-kb`, `k-build`) in turn.
-
-`k-agent-fresh-eyes` is the blind clarity lane: it deliberately loads no skill. Claude, Pi, and OMP carry thin `k-agent-fresh-eyes` profiles resolved by `review-agent-model.partial`; other harnesses launch it through a generic task carrying the same contract and resolved model value.
-
-The "Loads contract" column is the role contract the profile delegates to: a bare name lives under `k-review/references/`, and a prefixed path names its own owning skill.
-
-| Agent                                                           | Loads contract                               | Work it owns                                                                                                      |
-| --------------------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `k-agent-deep-review`                                           | `k-deep-review/SKILL`                        | Controller: route, PR-necessity gate, bounded reviewer roster, live UI, audit, act                                |
-| `k-agent-review-controller` (Pi/OMP)                            | Guarded dispatch to canonical review skills  | Root-only review routing; delegated children execute only their assigned leaf packet                              |
-| `k-agent-review-worker`                                         | `reviewer-worker`                            | Registry-model selected angle lane (Cursor/Copilot/Codex/Antigravity)                                             |
-| `k-agent-review-worker-cross` (Cursor/Copilot)                  | `reviewer-worker`                            | Cross-family primary finder on the `lanes_cross` review override, paired against the harness's own review family  |
-| `k-agent-reviewer`                                              | `reviewer-worker`                            | Pi/OMP concrete registry lane; Claude inherited read-only angle lane                                              |
-| `k-agent-fresh-eyes` (Claude/Pi/OMP profile; generic elsewhere) | `fresh-eyes`                                 | Conditional blind zero-context clarity lane                                                                       |
-| `k-agent-adversarial-verifier`                                  | `adversarial-verifier`                       | Cross-family refutation plus the canonical bounded miss sweep                                                     |
-| `k-agent-pr-necessity-auditor`                                  | `pr-necessity-auditor`                       | Blocking PR necessity / intent gate                                                                               |
-| `k-agent-findings-auditor`                                      | `findings-auditor`                           | Non-trivial findings or named fix-diff audit                                                                      |
-| `k-agent-live-ui-review`                                        | `live-ui-review`                             | Verification-only live UI reviewer; screenshot handoff required for feedback candidates                           |
-| `k-agent-post-review`                                           | `post-review`                                | Four-dimension hygiene audit of a review's fix diff                                                               |
-| `k-agent-criteria-verifier`                                     | `k-build/references/criteria-verifier`       | `/k-build` refutation lane over the criteria ledger + scope audit                                                 |
-| `k-agent-change-auditor`                                        | `change-auditor`                             | Proportional-depth audit of a self-authored changeset                                                             |
-| `k-agent-public-sources`                                        | `public-sources`                             | Clone and inspect external GitHub source                                                                          |
-| `k-agent-code-searcher`                                         | `code-searcher`                              | SCSI semantic investigation / base-branch context                                                                 |
-| `k-agent-mechanical`                                            | `mechanical-worker`                          | Cheap deterministic-edit lane: parent-settled rename/replace/migration over named targets                         |
-| `k-agent-implementer` (Pi only)                                 | `k-build/references/implement-worker`        | `/k-build` implement worker; Pi disables built-in subagents, so this is its only implement target                 |
-| `k-agent-claim-verifier` (OMP/Pi/Claude)                        | `k-public-sources/references/claim-verifier` | Independent public-claim verification on the `refute` band: claim + source in, `verified/refuted/undecidable` out |
-| `k-agent-smol` (every harness)                                  | `k-ai-kb/references/smol-operator`           | Memory category: judge staged `,ai-kb` recall candidates or a recall query, and persist parent-verified insights  |
-
-## Reference and wiring
-
-Source paths:
-
-| Target                         | Source                                                                                          | Consumed by |
-| ------------------------------ | ----------------------------------------------------------------------------------------------- | ----------- |
-| `~/.cursor/agents/*.md`        | [`home/dot_cursor/exact_agents/`](../../../home/dot_cursor/exact_agents/)                       | Cursor      |
-| `~/.copilot/agents/*.agent.md` | [`home/private_dot_copilot/exact_agents/`](../../../home/private_dot_copilot/exact_agents/)     | Copilot     |
-| `~/.claude/agents/*.md`        | [`home/dot_claude/exact_agents/`](../../../home/dot_claude/exact_agents/)                       | Claude      |
-| `~/.codex/agents/*.toml`       | [`home/dot_codex/exact_agents/`](../../../home/dot_codex/exact_agents/)                         | Codex       |
-| `~/.pi/agent/agents/*.md`      | [`home/dot_pi/agent/exact_agents/`](../../../home/dot_pi/agent/exact_agents/)                   | Pi          |
-| `~/.omp/agent/agents/*.md`     | [`home/dot_omp/private_agent/exact_agents/`](../../../home/dot_omp/private_agent/exact_agents/) | OMP         |
-
-Not every harness ships every profile:
-
-- Cursor, Copilot, Claude, Pi, and OMP carry a controller profile (`k-agent-deep-review` or `k-agent-review-controller` by harness convention).
-- Codex ships only worker/verifier/auditor lanes, so the controller role stays in the interactive session.
-
-The `/k-build` flow's `k-agent-criteria-verifier` uses the contract under `k-build/references/criteria-verifier.md` and the same review-model resolver as `k-agent-adversarial-verifier`. Profile-based harnesses render it normally; Antigravity defines it dynamically and invokes its `pro` tier.
-
-Claude now carries its own `k-agent-fresh-eyes`, `k-agent-adversarial-verifier`, and `k-agent-criteria-verifier` profiles, so those lanes no longer ride a generic task there. The profile only removes the generic-launch indirection: the resolved model is still `claude-fable-5-1` with `verifier_status: degraded`, because Claude Code accepts only Claude-family selectors and the refutation stays same-family.
-
-`k-agent-mechanical` is the one edit-capable cheap lane and is reachable on Copilot, Claude, Codex, Pi, OMP, and Cursor (deployed, undiscoverable). SOP §3.7 makes it the mandatory target once a rule is settled; on OMP the bundled `sonic` (edits and command output) and `scout` (shell-less file/pattern retrieval) agents are bound to the same `mechanical` category, so any of the three names lands on `modelRoles.smol`. Cursor deploys the profile but cannot discover it (see above), so there the root launches `generalPurpose` with `model: auto` — the registry mechanical pick — and the band gate passes that pick through instead of rewriting it to the `implement` model. Antigravity has no profile files at all: the controller `define_subagent`s `k-agent-mechanical` with a system prompt that loads `k-review/references/mechanical-worker.md`, then invokes it at the `flash` tier, never `inherit` or `pro`.
-
-## Review hierarchy
-
-The phase order these profiles serve — necessity gate → bounded reviewer roster → live UI when applicable → findings audit → final adversarial verification → controller act — is owned by [Deep-review topology](reviews/deep-review-topology.md). This page only maps profiles to harnesses.
-
-A controller profile may orchestrate only when it is running as the active root/main session. If another agent delegates to that profile as a child, the leaf-worker boundary wins: the child ignores the orchestration request, completes any remaining leaf-scoped work, and returns the result plus the conflict instead of spawning or simulating downstream lanes.
-
-Workers never edit files, post comments, resolve threads, or decide final action. They return candidate findings plus evidence and `verification_needed` items for the controller ledger.
-
-## Context loading and authority
-
-Claude 2.1.260 and OMP 18.1.10 eagerly inject explicitly preloaded skill bodies. Narrow auditor, post-review, live-UI, and PR-necessity profiles preload only required skills; the assigned role reference supplies conditional methodology. Claude reviewers select their assigned lenses through `reviewer-worker.md`. Omitting Claude’s `skills` field preloads no skill bodies. Pi’s skill list contributes metadata, so it is not treated as the same body-loading mechanism.
-
-Codex 0.153.2 projects model/instruction overrides from role files and inherits the parent’s permissions. Role `approval_policy` and `sandbox_mode` fields are ignored and are omitted from these templates. Read-only review behavior remains an instruction boundary, not a role-specific sandbox guarantee.
-
-Pi/OMP controller files retain native profile notes and dispatch to the canonical workflow only in an active root session. Their installed CLIs have no `--agent` root-selection flag; normal profile invocation creates a leaf child. Duplicated phase implementations and eager controller-body preloads are omitted.
-
-## Design notes
-
-- Profile bodies start with `leaf-boundary.txt`, then instruct the child to load the wrapped skill or runtime contract.
-- Cursor/Copilot `k-deep-review` profiles load only the `/k-deep-review` skill.
-- Reviewer/auditor/live profiles load the runtime contracts, and reviewer workers load shared `k-review` methodology inside child contexts.
-- Cursor loads project-level `.cursor/agents` (the Task protocol has a custom subagent-name field), but never user-level `~/.cursor/agents` — the deployed user-level profiles are unreachable at runtime. They stay deployed deliberately (user call 2026-08-30): upstream documents user-level discovery, so the gap is a cursor-agent bug, and the profiles activate the moment it is fixed. Until then, Cursor `k-agent-smol`/review delegation rides the generic-spawn fallback and the band gate.
-- Whether the controller can address those profiles depends on the active model-facing Task schema.
-- Profiles stay generic. Domain-specific targets or rules are selected by the controller from a verified domain overlay and passed to workers as concrete packets.
-- Hard runtime read-only flags are not the review safety boundary. Review/audit profile shims keep shell-capable permissions so workers can run safe verification commands; the shared role contracts enforce behavior-level read-only/no-mutation.
-- Copilot internal worker profiles are hidden from `/agent` but remain model-invocable so the controller can launch named task agents.
-- Pi disables its built-in subagents because stock names overlap with custom roles.
-- Pi also recursively exposes skills as subagents; that leakage is cosmetic and accepted because our agent names are distinct.
-- Only genuinely harness-specific notes, such as "Claude subagents cannot spawn subagents", stay inline.
-- Cursor and Copilot are the canonical shim shape; the other harnesses follow it.
-
-## Related
-
-- [Review workflow](reviews/index.md)
-- [Tool configs](tool-configs/index.md)
+Core: `home/readonly_AGENTS.md` §§3.5–3.7. Leaf: `home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt`. Recipes: `home/exact_dot_agents/exact_skills/`. Runtime: shared hooks plus Pi/OMP extensions and profile templates. See [model tiering](model-tiering.md), [spec/build](flows/spec-and-build.md), and [cross-agent memory](knowledge-base/cross-agent-memory.md).

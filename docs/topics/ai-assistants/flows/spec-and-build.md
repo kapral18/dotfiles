@@ -3,74 +3,12 @@ sidebar_position: 1
 title: "Spec a feature, build it hands-free"
 ---
 
-# Spec a feature, then build it hands-free
+# Spec and build
 
-**Prerequisites:** a Claude Code (or Cursor/Copilot) session in your repo. Nothing else.
+Use `k-spec` to resolve intent and write a compact packet; `k-build` produces an approved packet's artifacts. An existing implementation approval is not another approval gate.
 
-## Step 1 — ask for a spec
+The packet records old/new rules, intended and preserved differences, owned scope, side effects, final check commands or judgment criteria, and external decisions. Unrun criteria are planned, not red/green evidence. Prepare tests with the change; no pre-approval mutation or check-runner ceremony.
 
-Type, in your own words:
+Substantial research uses the strong research band; settled implementation uses the implementation band. The root integrates compact returns and retains decisions, not source transcripts. Workers return produced/blocked artifacts without private checks. Finish docs, generation, and formatting before one final Verify stage. Execute known commands directly, once per snapshot/input identity, and use strong final judgment where needed. Report failed/blocked criteria without automatic repair, criteria re-verification, post-review cleanup, or convergence. Commits, pushes, publication, and destructive actions retain their own explicit authority and point-of-action checks.
 
-```text
-develop a spec for: a `done <id>` command that marks a todo completed and hides it from list
-```
-
-The `k-spec` skill fires on "develop a spec". The agent will now:
-
-1. Check the work isn't already done (git log, issues, memory).
-2. Ask you fork-closing questions — **one at a time, always with a recommended answer**, like:
-
-   > Should `done` renumber the remaining ids, or keep them stable? Recommended: stable — renumbering would break `done <id>` against a printed list.
-
-   Answering `yes` or `stable` is enough. If a question is empirical ("which layout feels right?"), expect the agent to build a tiny throwaway prototype and show you instead of asking you to imagine.
-
-3. Write acceptance checks and **run each one now, expecting failure** (the feature doesn't exist yet — a check that already passes proves nothing). You'll see pasted runs like:
-
-   ```text
-   check: DB=$(mktemp); TODO_DB="$DB" python3 todo.py done 1 ...
-   now: red (exit 2, 2026-07-02 — argparse rejects 'done')
-   ```
-
-## Step 2 — gate 1: approve the packet
-
-The agent shows the full spec packet: goal, in/out of scope, criteria with red-proven checks, compatibility intent. This is your steering wheel — **read it like a contract**, because everything after runs unattended against it.
-
-- Wrong scope or missing criterion? Say so in plain words ("also cover the empty-list case") — the packet is revised and re-shown.
-- Good? Say `approved, /k-build it`.
-
-## Step 3 — hands-free build
-
-Type:
-
-```text
-/k-build
-```
-
-Then do something else. The agent plans, dispatches each implementation step to an implement worker (the controller itself never edits, per the SOP §3.7 implement dispatch gate), runs each check as it goes, runs the repo's lint/tests, sends an adversarial verifier subagent to try to _disprove_ every criterion, and cleans up its own diff. It will **not** ask you anything unless it hits a genuine blocker or discovers the packet's premise was wrong (then it stops and returns to gate 1 — by design).
-
-## Step 4 — gate 2: read the report
-
-The final message is a ledger, one row per criterion:
-
-```text
-1. done hides the completed item — green (check exit 0) — verdict: confirmed
-2. tests cover done            — green — verdict: confirmed
-...
-Completion gate: clear
-Compatibility impact: none
-```
-
-`confirmed` means the adversarial verifier failed to break it. A `refuted` row never reaches you silently — it goes back to implementation first. If a criterion was visual, the build ran `k-ui-capture`'s proof-mode contract against the running app and its row is backed by proof media (screenshot or video, per the behavior's classification) saved in its own distinct `/tmp/<folder-name>/` folder — proof the intended visual was actually built. Nothing is committed yet: say `commit it` / `draft the PR` (which uploads that media itself and embeds it as `user-attachments` URLs) when satisfied.
-
-## When things go sideways
-
-| You see                         | It means                                   | Do                                                                             |
-| ------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------ |
-| Agent asks a question mid-build | genuine blocker or premise correction      | answer it; the packet may be re-gated                                          |
-| A ledger row says `blocked`     | check couldn't run; exact command included | run the shown command yourself or fix the env                                  |
-| You changed your mind mid-build | —                                          | just say it; the flow stops and re-gates rather than finishing the wrong thing |
-
-## Pivots from here
-
-- High-stakes change → say `plan-review the packet first` before approving; a reviewer tries to break the _contract_ before any code exists.
-- Just want the idea filed, not built → `draft an issue from this packet`.
+See [staged workflows](../subagents.md) for context/lifecycle policy and [truth and verification](../system-prompt/truth-and-verification.md) for evidence semantics.
