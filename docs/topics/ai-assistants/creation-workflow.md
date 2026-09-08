@@ -78,4 +78,4 @@ The controller reports the proof manifest. Each proof set lives in its own disti
 
 Windows/VirtualBox coverage is a separate manual skill, [`k-live-ui-windows`](../../../home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/), connecting Playwriter to a guest browser over CDP through a host NAT port-forward. It is never auto-triggered by either mode; load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn.
 
-A final verification failure ends the attempt with evidence. Further repair needs a new user-authorized attempt; explicitly requested convergence requires its finite allowance before entry. There is no implicit retry budget or post-review cleanup stage.
+A final verification failure is reported with evidence. Repair within existing scope and authority follows SOP §3.5 (a failed check is not a new permission checkpoint); explicitly requested `k-converge` runs its declared-exit loop (mutation probes and fresh refuters until a dry round) instead. There is no implicit retry budget or post-review cleanup stage.

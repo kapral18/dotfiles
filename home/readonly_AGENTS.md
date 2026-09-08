@@ -250,8 +250,7 @@ Use §3.4 when repeated attempts add no evidence or progress; never reset that h
 Stop affected work only for missing authority, a material user-only decision, a verified external blocker, exhausted progress under §3.4, or an explicit user limit.
 Review alone does not authorize edits; report findings when repair is outside the requested scope.
 Workers return once; only the root owns recovery, and no worker may start a repair or verification loop.
-Explicit final convergence remains a separate user-invoked workflow with its approved finite allowance;
-do not invoke it for routine scoped recovery or extend its allowance.
+Explicit final convergence (`k-converge`) remains a separate user-invoked workflow with its declared exit condition and correctness-only filter; do not invoke it for routine scoped recovery, and never loop an ordinary fix pass to imitate it.
 Collect independent planned checks after a failure when useful; skip checks whose prerequisites failed.
 If the candidate changes during Verify, invalidate affected evidence and certify only the revalidated snapshot.
 

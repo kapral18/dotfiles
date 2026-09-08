@@ -27,8 +27,11 @@ Do not load delivery mechanics for a local/plan report that contains no public-r
 
 ## Hard Constraints
 
-- Review alone is read-only regardless of authorship.
-  A scoped fix request carries its authority into root-owned recovery under SOP §3.5; review alone never supplies it.
+- Fix authority follows write scope, not review mode: a finding is fixed in the same pass whenever it falls inside the write scope the current packet already holds, and only reported when the current packet is scoped read-only.
+  A packet is scoped read-only exactly when either holds: the artifact is not yours to write (someone else's PR/branch —
+  no packet grants scope you don't have), or the current packet is itself a review/research/audit-category dispatch, where read-only is the category's definition independent of authorship.
+  See `authorship.md` for resolving write scope.
+- A final-Verify-stage packet (deep review, adversarial, criteria, findings-audit, and similar) is read-only by its own category regardless of authorship: a scoped fix request carries its authority into root-owned recovery under SOP §3.5; the final packet's own findings never supply that authority.
 - Final workers use existing evidence and return once; they do not repeat successful checks, mutate shared state, or invoke other models.
 - Execute known final commands directly with complete retained logs and actual exit status; no mechanical runner agent is required.
 - Keep git/worktree changes and human-visible effects within explicit user authority. Never create/switch worktrees proactively.

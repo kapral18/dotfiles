@@ -738,7 +738,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_review_delivery.md",
             "**Self-review** (`authorship: self`):",
-            "Review alone does not authorize edits.",
+            "Fix authority follows write scope per `authorship.md`",
             """  - **Comment only** if the user explicitly asks to post self-review notes with remaining non-blocking findings.
   - **Approve** when no findings remain.
   - Do not request changes on the user's own PR from this flow.""",

@@ -242,13 +242,21 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         )
         self.assertIn("authorship, assignment, or review invocation alone grants no edit permission", scope)
         rules = self.read("home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_shared_rules.md")
-        self.assertIn("Review alone is read-only regardless of authorship", rules)
+        self.assertIn("Fix authority follows write scope, not review mode", rules)
+        self.assertIn(
+            "read-only by its own category regardless of authorship",
+            rules,
+        )
         self.assertIn("Never infer commit/push, reply/resolve, or label authority", rules)
         authorship = self.read(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_authorship.md"
         )
-        self.assertIn("review alone never authorizes working-tree edits", authorship)
-        self.assertNotIn("find issues and fix them", authorship)
+        self.assertIn("Authorship is one input to write scope, not the gate itself", authorship)
+        self.assertIn(
+            "the root's default packet already holds full local write scope",
+            authorship,
+        )
+        self.assertNotIn("review alone never authorizes working-tree edits", authorship)
 
     def test_blind_clarity_preserves_its_independent_contract(self):
         text = self.read("home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_fresh-eyes.md")
@@ -313,7 +321,8 @@ class TestReviewPolicyInvariants(unittest.TestCase):
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_review_delivery.md"
         )
         self.assertIn("SOP §3.5", delivery)
-        self.assertIn("Review alone does not authorize edits.", delivery)
+        self.assertIn("Fix authority follows write scope per `authorship.md`", delivery)
+        self.assertNotIn("Review alone does not authorize edits.", delivery)
         self.assertNotIn("block/rerun", delivery)
 
     def test_ci_exclusion_precedes_verdict_and_is_not_ci_certification(self):

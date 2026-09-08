@@ -5,6 +5,7 @@
   },
   "model": "claude-fable-5-1",
   "effortLevel": "xhigh",
+  "disableClaudeAiConnectors": true,
   "agentPushNotifEnabled": true,
   "tui": "fullscreen",
   "modelSettings": {

@@ -14,7 +14,7 @@ Use when:
 
 ## Authorship Precondition
 
-Authorship establishes review context, never edit authority.
+Authorship is an input to write scope (see `authorship.md`), not edit authority by itself.
 
 Resolve authorship via the router's Role Detection / Authorship section.
 
@@ -32,12 +32,14 @@ If authorship is `other` or `unknown`:
 
 When this mode is loaded inside any read-only review worker, that worker's role contract and packet scope take precedence.
 
-## Core Principle: Read-Only Final Judgment
+## Core Principle: Fix Authority Follows Write Scope
 
-Review is a read-only final judgment unless the user requested specific fixes.
-Known authorized fixes are produced before the final Verify stage; new final findings are reported.
-Review alone grants no repair authority; the root applies SOP §3.5 when existing authority covers recovery.
-Local ownership alone is not a request to edit, commit, or push.
+For `self` authorship, executing inline (not inside a read-only review worker per the override above): find and fix are one pass, not two —
+a finding is fixed as soon as it's found, no separate request needed.
+New final findings past that pass are reported, per the packet's own final-Verify boundary if one applies.
+For `other`/`unknown` authorship, or when loaded inside a read-only review worker: read-only final judgment —
+known authorized fixes are produced before the final Verify stage; review alone grants no repair authority, and the root applies SOP §3.5 when existing authority covers recovery.
+Local ownership alone does not authorize commit or push — those stay separately gated per SOP §3.2 regardless of write scope on the files themselves.
 
 ## Investigation (Read-Only, Start Immediately)
 
@@ -98,6 +100,7 @@ A requested repair follows existing task authority when it covers the finding; o
 ## Extra Constraints
 
 - Do not commit/push unless explicitly asked.
-- Authorship alone does not authorize code changes; an explicit fix request does.
+- For `self` authorship executing inline, write scope on the local working tree is the fix authority — no separate fix request is needed.
+  For `other`/`unknown` authorship, or inside a read-only review worker, an explicit fix request is required regardless of authorship (see Authorship Precondition and the Read-Only Role Override above).
 - Under `other`/`unknown` authorship, this mode is draft-only (see Authorship Precondition).
 - Keep the internal findings queue in the review persistence spec (see shared_rules.md) so progress survives conversation pruning.

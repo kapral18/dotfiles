@@ -48,7 +48,7 @@ Read `~/.agents/skills/k-review/references/lanes.md` to select applicable criter
 Preserve requested review and adversarial lenses; for deep or high-risk work, assign them distinct questions against the same frozen candidate.
 Low-risk work needs only its applicable judgment. Specialists consume shared evidence, not one another's verdicts.
 Do not chain finder, audit, adversarial, fresh-eyes, or post-review passes. Do not invoke convergence automatically.
-Gather context in Understand; produce explicitly requested known fixes before entering Verify.
+Gather context in Understand; produce known fixes within the current packet's write scope before entering Verify (see `references/authorship.md`) — a final-Verify-stage packet stays read-only by category and reports instead.
 Research packets return compact evidence, not transcripts. Direct deterministic checks require no mechanical agent.
 When delegation is forbidden, stay inline; otherwise isolate substantial context-heavy judgment where it reduces total work.
 

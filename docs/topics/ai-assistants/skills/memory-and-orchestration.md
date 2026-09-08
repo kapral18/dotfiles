@@ -61,15 +61,15 @@ An already-authorized target needs no duplicate approval gate. Strong research s
 
 ## `k-converge`
 
-| Field    | Value                                                                                               |
-| -------- | --------------------------------------------------------------------------------------------------- |
-| Use when | explicitly requested final convergence with a user-approved finite repair/check allowance           |
-| Source   | [`exact_k-converge`](../../../../home/exact_dot_agents/exact_skills/exact_k-converge/)              |
-| Routing  | manual (`disable-model-invocation: true`); build/review/light-review do not invoke it automatically |
+| Field    | Value                                                                                                      |
+| -------- | ---------------------------------------------------------------------------------------------------------- |
+| Use when | a claim or changeset should be re-attacked until a round comes back dry (mutation probes + fresh refuters) |
+| Source   | [`exact_k-converge`](../../../../home/exact_dot_agents/exact_skills/exact_k-converge/)                     |
+| Routing  | manual (`disable-model-invocation: true`); build/review/light-review do not invoke it automatically        |
 
-Freeze scope and retain existing final evidence. Within the approved allowance, batch correctness repairs and recheck only acceptance evidence invalidated by those repairs. Preserve user changes, strong final judgment and any planned mutation control/restoration evidence. Do not require a dry round, repeat unaffected checks, relaunch research, or reset the allowance. Stop when criteria pass, the allowance is exhausted, or a user-only decision/external blocker remains; exhaustion alone is not completion.
+Declare the exit (a full round with zero changes to code, tests, or published text and no unresolved findings or mutation verdicts) and the correctness-only filter (vacuous test, production bug, false published claim; everything else refused, not deferred) before round 1. Each round pins a baseline snapshot, mutates every behavioral change before arguing, fans out fresh `k-agent-adversarial-verifier` refuters on distinct dimensions, re-verifies their findings, applies in-scope fixes through the implement lane, and reruns the covering probes plus required regression checks. A changed round repeats; a dry round stops. Authorship never gates entry: on someone else's branch, the mutation and refutation steps still run against a disposable worktree and fixes come back as proposals. Close with the honest residue — what the loop never covered.
 
-The shared `workflow-handoff.md` reference preserves the caller's frozen scope, criteria, receipts, approval and unresolved decisions. Existing read-only, ownership, compatibility, commit and publication gates remain binding. No worker owns convergence or another model invocation. The result goes directly to Deliver, not to resumed verification gates.
+The shared `workflow-handoff.md` reference preserves the caller's frozen scope, criteria, receipts, approval and unresolved decisions. Existing read-only, ownership, compatibility, commit and publication gates remain binding; the handoff grants no extra edit, commit, push, or publication permission. No worker owns convergence or another model invocation. This is the only unbounded loop in the setup — an ordinary review fix pass is one round and must not be looped to imitate it.
 
 ## `k-text-tournament`
 

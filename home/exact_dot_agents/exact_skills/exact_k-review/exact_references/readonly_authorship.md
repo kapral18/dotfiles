@@ -10,7 +10,7 @@ Allowed values:
 
 Exception: plan review mode has no code target. Record `authorship: n/a`, skip the git/`gh` probes below, and produce feedback only.
 
-This input informs review context, not edit authority. Resolve it in the local/branch path too.
+This input feeds write scope (below); it is not edit authority by itself. Resolve it in the local/branch path too.
 Resolve `self` only from verified evidence; a locally checked-out change alone still needs the probes below.
 
 When a PR is involved:
@@ -35,16 +35,21 @@ When there is no PR (local changes / branch-delta / commit-range review):
 - Only uncommitted/staged working-tree changes, or commits/branch owned by the current user, resolve to `self`.
   If it cannot be verified, it is `unknown`.
 
-This affects mode behavior:
+Authorship is one input to write scope, not the gate itself. Resolve write scope from authorship plus packet category:
 
-- **`self` (user owns the change):**
-  - report issues; review alone never authorizes working-tree edits
-  - draft review comments only if the user plans to post self-review notes
+- **`self`, executing inline as root (not inside a review/research/audit-category packet):**
+  - the root's default packet already holds full local write scope; a finding is fixed in the same pass, no separate authorization step —
+    find and fix are one pass, not two
+  - draft review comments only if the user plans to post self-review notes; posting itself stays under SOP §3.8
+- **`self`, executing inside a review/research/audit-category final-Verify packet** (e.g. `k-deep-review`, a final adversarial/criteria/findings-audit packet): read-only by its own category, independent of authorship — report findings; the root applies SOP §3.5 to any repair when existing authority covers it
+- **`self`, executing as a child whose packet already grants write/implement scope over this path** (the flow's point is to make the change, or the packet declares disjoint ownership of this file per SOP §3.7): fix in the same pass and return the diff; the packet already answered the write-scope question when it was assigned, so no separate re-ask is needed
+- **`self`, executing as a child whose packet does not grant write scope over this path** (unscoped exploration, a review/research-category packet, or ownership not provably disjoint from a sibling's): report findings to the orchestrator; the orchestrator holds write scope and sequences the fix
 - **`other` / `unknown`:**
-  - produce draft comments/suggestions only
-  - keep code unchanged
-  - editing requires the user to explicitly say to fix it (e.g. "fix these" or "take over this branch")
+  - produce draft comments/suggestions only; keep code unchanged
+  - the artifact is not yours to write regardless of packet category — no packet can grant scope over someone else's branch;
+    editing requires the user to explicitly say to fix it (e.g. "fix these" or "take over this branch")
 
-For every authorship value, known user-authorized fixes belong to Produce before final Verify.
-Final findings do not extend review authority; when existing authority covers recovery, the root applies SOP §3.5.
-NEVER infer commit, push, or publication authority.
+Known fixes belong to Produce before final Verify whenever write scope covers them;
+a final-Verify-stage packet never gains fix authority from its own findings regardless of authorship —
+that packet's category is read-only by design.
+NEVER infer commit, push, or publication authority from write scope on a file; those stay separately gated per SOP §3.2/§3.8.
