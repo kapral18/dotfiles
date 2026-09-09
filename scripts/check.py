@@ -246,7 +246,7 @@ TEST_RULES: tuple[TestRule, ...] = (
             "tests/test_unwrap_md.py",
             "tests/test_mcp_token.py",
             "tests/test_openrouter_wrappers.py",
-            "tests/test_install_yarn_pkgs.py",
+            "tests/test_install_pnpm_pkgs.py",
             "tests/test_copilot.py",
             "tests/test_codex.py",
             "tests/test_cursor_llama_cpp.py",

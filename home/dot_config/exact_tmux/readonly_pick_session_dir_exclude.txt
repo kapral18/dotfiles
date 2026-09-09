@@ -34,6 +34,8 @@ venv/
 .local/share/opencode/storage/
 .sdkman/candidates/
 .local/share/yarn/
+.local/share/pnpm/
+.local/share/pnpm-global-links/
 .elastic/snapshots/
 .local/share/mise/installs/
 .kube/cache/

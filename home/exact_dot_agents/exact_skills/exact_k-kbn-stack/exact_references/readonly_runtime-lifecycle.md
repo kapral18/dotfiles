@@ -2,7 +2,7 @@
 
 ## Shared ES
 
-Default snapshot starts reuse one background ES per resolved ES version — the worktree's `package.json` `version`, which is exactly what `yarn es snapshot` downloads.
+Default snapshot starts reuse one background ES per resolved ES version — the worktree's `package.json` `version`, which is exactly what `pnpm es snapshot` (or `yarn es snapshot` on a branch without `pnpm-lock.yaml`) downloads.
 The first compatible start creates the instance (registry key `__es__`, data dir `es_data/shared-<version>`);
 later compatible starts attach only their Kibana to it.
 
@@ -43,7 +43,7 @@ the instance keeps running while any other registered worktree references it, an
 `--stop-all` clears every registered stack, including interactive tmux and shared ES instances.
 From an agent workflow, use per-worktree `--stop`; `--stop-all` is user-only cleanup.
 
-`-K key=value` is repeatable and becomes `--key=value` for `yarn start`.
+`-K key=value` is repeatable and becomes `--key=value` for `pnpm start` (`yarn start` on a branch without `pnpm-lock.yaml`).
 Use it for runtime settings that the UI path requires, for example `-K xpack.index_management.dev.enableSemanticField=true`.
 
 `--groups` defaults to `platform` and becomes `-K plugins.allowlistPluginGroups.N=<group>` (server plugin discovery only;

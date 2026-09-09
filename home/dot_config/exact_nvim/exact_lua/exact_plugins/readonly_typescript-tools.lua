@@ -209,6 +209,8 @@ return {
         [".yarnrc.yml"] = { glyph = "", hl = "MiniIconsBlue" },
         ["eslint.config.js"] = { glyph = "󰱺", hl = "MiniIconsYellow" },
         ["package.json"] = { glyph = "", hl = "MiniIconsGreen" },
+        ["pnpm-lock.yaml"] = { glyph = "", hl = "MiniIconsOrange" },
+        ["pnpm-workspace.yaml"] = { glyph = "", hl = "MiniIconsOrange" },
         ["tsconfig.json"] = { glyph = "", hl = "MiniIconsAzure" },
         ["tsconfig.build.json"] = { glyph = "", hl = "MiniIconsAzure" },
         ["yarn.lock"] = { glyph = "", hl = "MiniIconsBlue" },

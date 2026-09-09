@@ -9,9 +9,12 @@ go = "1.25.0"
 java = "openjdk-21"
 neovim = "0.12.4"
 node = "24.6.0"
+# Global pnpm tracks the latest release; a project pins its own via a local mise config.
+pnpm = "12.3.4"
 ruby = "3.2.9"
 rust = "1.95.0"
 vault = "1.20.2"
+# Yarn Classic for projects still on yarn.
 yarn = "1.22.22"
 {{ if ne .isWork true -}}
 lua = ["5.1.5", "5.4.7"]

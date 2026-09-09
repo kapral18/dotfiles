@@ -14,7 +14,7 @@ brew bundle check --global
 mise ls --current
 cargo install --list
 uv tool list
-yarn global list
+pnpm ls -g --depth 0
 gh extension list
 ```
 

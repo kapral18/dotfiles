@@ -10,18 +10,18 @@ sidebar_position: 1
 ,update
 ```
 
-This pulls dotfiles, updates package managers (Homebrew, mise, Cargo, yarn, Gems, Go, uv, manual packages), and reports what changed.
+This pulls dotfiles, updates package managers (Homebrew, mise, Cargo, pnpm, Gems, Go, uv, manual packages), and reports what changed.
 
 ### Useful flags
 
 | Flag                | Effect                                              |
 | ------------------- | --------------------------------------------------- |
 | `--dry-run` / `-n`  | Preview what would happen without changing anything |
-| `--only brew,yarn`  | Update only the listed categories                   |
+| `--only brew,pnpm`  | Update only the listed categories                   |
 | `--skip cargo,gems` | Update everything except the listed categories      |
 | `--verbose` / `-v`  | Show extra detail and per-step timings              |
 
-Categories: `dotfiles`, `brew`, `gh`, `mise`, `cargo`, `yarn`, `gems`, `go`, `uv`, `manual`.
+Categories: `dotfiles`, `brew`, `gh`, `mise`, `cargo`, `pnpm`, `gems`, `go`, `uv`, `manual`.
 
 When multiple package categories run in parallel, `,update` launches [mprocs](https://github.com/pvolok/mprocs) to give each step its own scrollable terminal pane. Press `q` to exit after reviewing the logs. If `mprocs` is not installed, steps run sequentially instead. Manual packages run after the parallel package phase so non-Homebrew apps and release assets converge after Homebrew cleanup.
 

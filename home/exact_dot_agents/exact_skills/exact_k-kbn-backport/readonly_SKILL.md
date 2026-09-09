@@ -38,8 +38,8 @@ This skill orchestrates that tool; it does not restate it.
   so the previous branch's `node_modules` no longer matches.
 - Touch the tool-owned checkout only once the run actually pauses on a conflict.
   A clean cherry-pick needs no agent action — the tool pushes and opens the PR on its own and moves to the next branch.
-  Per-conflict work (investigate, resolve, `yarn kbn bootstrap`, validate, stage) happens only for the branch currently paused, never up front and never for multiple branches at once.
-  Because each branch re-prepares the checkout, `yarn kbn bootstrap` must run again for every conflicting branch —
+  Per-conflict work (investigate, resolve, `<pm> kbn bootstrap` (`<pm>` is `pnpm` when the checkout has `pnpm-lock.yaml`, otherwise `yarn`), validate, stage) happens only for the branch currently paused, never up front and never for multiple branches at once.
+  Because each branch re-prepares the checkout, `<pm> kbn bootstrap` must run again for every conflicting branch —
   it is never "already done" from a prior branch.
 - Compute target branches from Kibana policy and confirm them before launching (see Compute Target Branches).
   Stop and confirm if the source PR carries `backport:skip`.
@@ -114,7 +114,7 @@ Two locations are in play; keep them separate:
   Never root it in `~/.backport/repositories/elastic/kibana`: the tool resets/re-clones/re-prepares that mutable checkout per target and may remove its CWD at any time.
   The tool derives its checkout from `repoOwner`/`repoName` under `~/.backport/repositories/`, independent of launch CWD.
 - **Tool-owned checkout** — paused conflicts live at `~/.backport/repositories/elastic/kibana`.
-  Run git inspection, edits, `yarn kbn bootstrap`, validation, and `git add` there via `git -C ~/.backport/repositories/elastic/kibana …` or a separate shell `cd`'d into it; never in the controlling pane.
+  Run git inspection, edits, `<pm> kbn bootstrap`, validation, and `git add` there via `git -C ~/.backport/repositories/elastic/kibana …` or a separate shell `cd`'d into it; never in the controlling pane.
 
 1. Spawn a dedicated controlling **window** in the current tmux session, detached, with its CWD on the operating checkout (not the tool-owned checkout) — e.g. `tmux new-window -d -n kbn-backport -c <operating-kibana-checkout> -PF '#{pane_id}'`, which creates the window in the current session without stealing focus and prints its pane id.
    Drive the run through that pane id (`capture-pane`/`send-keys -t '<pane>'`).
@@ -124,7 +124,7 @@ Two locations are in play; keep them separate:
    - Do not set an editor (`--editor`/`$EDITOR`) for this pane; the tool only spawns one if configured, and an editor popup cannot be driven blind.
 3. Poll the pane with `tmux capture-pane -p -t '<pane>'` to follow progress. Drive the run as a loop until it exits:
    - Cherry-pick succeeded for a branch → the tool pushes and opens the PR itself; continue watching.
-   - Conflict pause (`Press ENTER when the conflicts are resolved and files are staged (Y/n)`) → work the per-conflict procedure against the tool-owned checkout (not the controlling window) for the current branch (Resolve A Conflict → Apply under Resolution Rules → stage → `yarn kbn bootstrap` + Validation), then Stage And Continue The Run sends ENTER to the controlling window's pane once it is staged, conflict-free, and validated.
+   - Conflict pause (`Press ENTER when the conflicts are resolved and files are staged (Y/n)`) → work the per-conflict procedure against the tool-owned checkout (not the controlling window) for the current branch (Resolve A Conflict → Apply under Resolution Rules → stage → `<pm> kbn bootstrap` + Validation), then Stage And Continue The Run sends ENTER to the controlling window's pane once it is staged, conflict-free, and validated.
      Only then does the run move to the next branch.
    - Run completed → capture the final summary and the opened backport PR URLs.
 4. If the launched `node scripts/backport` wrapper fails to start (e.g. `ERR_PACKAGE_PATH_NOT_EXPORTED`), report it and stop;
@@ -137,7 +137,7 @@ Two locations are in play; keep them separate:
 Triggered only when the run pauses with a conflict on the current target branch.
 The conflict state lives in the tool-owned checkout (`~/.backport/repositories/elastic/kibana`); run every command there —
 addressed explicitly with `git -C <checkout>` or from a shell `cd`'d into it, not from the controlling window.
-Per pause, the order is: inspect → understand → resolve → stage → `yarn kbn bootstrap` → validate → send ENTER (to the controlling window's pane).
+Per pause, the order is: inspect → understand → resolve → stage → `<pm> kbn bootstrap` → validate → send ENTER (to the controlling window's pane).
 Do all of it in this checkout before handing back, then let the run advance to the next branch.
 
 Full procedure — setup-before-editing checklist, understanding the original change, establishing destination-branch context, checking for missing prerequisite backports, applying the resolution, the resolution rules, and validation — lives in `~/.agents/skills/k-kbn-backport/references/conflict-resolution.md`.

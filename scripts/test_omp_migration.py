@@ -58,13 +58,13 @@ def _yaml_string_list(config: str, key: str) -> list[str]:
 class TestOmpMigration(unittest.TestCase):
     """WHEN wiring OMP into the repo-owned AI workflow."""
 
-    def test_omp_installs_via_unpinned_yarn_not_brew(self):
+    def test_omp_installs_via_unpinned_pnpm_not_brew(self):
         brewfile = (REPO / "home/.chezmoitemplates/brews/shared/38-ai-large-language-models.brewfile").read_text()
-        yarn_pkgs = (REPO / "home/readonly_dot_default-yarn-pkgs").read_text()
+        pnpm_pkgs = (REPO / "home/readonly_dot_default-pnpm-pkgs").read_text()
 
         self.assertNotIn("can1357/tap/omp", brewfile)
-        self.assertIn("@oh-my-pi/pi-coding-agent\n", yarn_pkgs)
-        self.assertNotIn("@oh-my-pi/pi-coding-agent@", yarn_pkgs)
+        self.assertIn("@oh-my-pi/pi-coding-agent\n", pnpm_pkgs)
+        self.assertNotIn("@oh-my-pi/pi-coding-agent@", pnpm_pkgs)
 
     def render_omp_config(self, is_work: bool) -> str:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".toml") as config:

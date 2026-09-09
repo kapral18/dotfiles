@@ -8,12 +8,13 @@ any number of worktrees can run in parallel on plain http://localhost:<port>
 without /etc/hosts hostname aliases (Kibana session cookies are host-scoped, not
 port-scoped, so two instances on the same host need distinct cookie names).
 
-Kibana always runs from the worktree source (``yarn start``); there is no
+Kibana always runs from the worktree source (``pnpm start``, or ``yarn start``
+on a branch without ``pnpm-lock.yaml``); there is no
 prebuilt image for an arbitrary branch. Elasticsearch can be the stateful
 snapshot build (default, native JVM) or serverless (Docker).
 
 Default snapshot starts share one Elasticsearch per resolved ES version:
-``yarn es snapshot`` downloads the version pinned by the worktree's
+``<pm> es snapshot`` downloads the version pinned by the worktree's
 ``package.json`` ``version`` field, so worktrees with the same version are
 served by one background ES JVM instead of one JVM each (each extra isolated
 ES costs ~1g heap and chokes the laptop when several stacks run in parallel).
@@ -52,7 +53,7 @@ Usage:
 
 ``-E key=value`` passes an extra Elasticsearch setting through to the snapshot
 backend; ``-K key=value`` passes an extra Kibana CLI setting through to
-``yarn start`` as ``--key=value`` (repeatable). Snapshot starts also pass
+``<pm> start`` as ``--key=value`` (repeatable). Snapshot starts also pass
 ``-E indices.merge.disk.watermark.high=2gb`` (absolute merge-disk floor) before
 user ``-E`` flags, so a later ``-E`` of the same key overrides. Snapshot ES
 also sets ``ES_JAVA_OPTS -Xms1g -Xmx1g`` (override with ``--es-heap 1536m``).
@@ -327,7 +328,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=[],
         metavar="key=value",
         help=(
-            "Extra Kibana setting passed to `yarn start` as --key=value (repeatable). "
+            "Extra Kibana setting passed to `pnpm start`/`yarn start` as --key=value (repeatable). "
             "Use it to start a stack with the runtime config a change under review "
             "needs, e.g. -K xpack.index_management.dev.enableSemanticField=true."
         ),
@@ -343,6 +344,15 @@ def git_output(args: list[str]) -> str:
     if result.returncode != 0:
         return ""
     return result.stdout.strip()
+
+
+def package_manager(worktree: str) -> str:
+    """Kibana's package manager for this checkout: pnpm once the branch carries
+    ``pnpm-lock.yaml`` (elastic/kibana main since the yarn -> pnpm migration,
+    which keeps ``yarn.lock`` around, so only the pnpm lockfile discriminates),
+    yarn on older branches.
+    """
+    return "pnpm" if (Path(worktree) / "pnpm-lock.yaml").is_file() else "yarn"
 
 
 def resolve_worktree() -> str:
@@ -431,7 +441,7 @@ def share_eligible(args: argparse.Namespace) -> bool:
 
 
 def read_worktree_version(worktree: str) -> str | None:
-    """The worktree's package.json version -- the ES version `yarn es snapshot` downloads.
+    """The worktree's package.json version -- the ES version `<pm> es snapshot` downloads.
 
     Kibana's scripts/es.js passes ``version: pkg.version`` to kbn-es, so two
     worktrees resolve to the same ES artifact exactly when this field matches.
@@ -542,7 +552,7 @@ def apply_shared_es(cfg: dict, instance: dict) -> None:
 def reconfirm_shared_claim(version: str, worktree: str, started_by: str, exclude_slot: int) -> tuple[dict, dict]:
     """Re-read the registry after the long bootstrap and settle the create race.
 
-    ``yarn kbn bootstrap`` takes minutes, so a parallel launcher may have
+    ``<pm> kbn bootstrap`` takes minutes, so a parallel launcher may have
     overwritten this launcher's instance claim for the same version. Whoever
     the current registry names (live ``starting_pid``/``es_pid`` or bound port)
     creates; everyone else attaches. Returns ``(registry, shared)``.
@@ -751,7 +761,7 @@ def kill_port_listeners(port: int | None) -> bool:
 
     Interactive stacks are not our children, so recorded pids are missing; the
     port owner is the inner Kibana, a group *member*. Signaling that pid alone
-    lets Kibana close the port, log "All plugins stopped", and hang while yarn
+    lets Kibana close the port, log "All plugins stopped", and hang while pnpm/yarn
     and the rspack worker stay up. Killing the listener's process group reaps
     the whole tree. Returns True if it found a listener.
     """
@@ -907,7 +917,7 @@ def entry_has_live_processes(entry: dict, ignored_pid: int | None = None) -> boo
 
     ``started_by_pid`` is the ,kbn-stack launcher: for interactive stacks it
     streams ES logs for the stack's whole lifetime, and for detached stacks it
-    lives through the entire bootstrap (yarn kbn bootstrap + ES setup + Kibana
+    lives through the entire bootstrap (<pm> kbn bootstrap + ES setup + Kibana
     readiness poll). ``kbn_pid``/``es_pid`` cover detached stacks after the
     launcher has returned. Any of them alive means the stack is active or still
     bootstrapping, so its ports being closed is not evidence of death.
@@ -1051,7 +1061,7 @@ def reclaim_dead_slots(registry: dict, current_worktree: str) -> bool:
     - drop the stale entry, returning its slot to the lowest-slot search.
 
     Port liveness alone cannot distinguish a dead stack from one still
-    bootstrapping (yarn kbn bootstrap + ES snapshot setup take minutes before
+    bootstrapping (<pm> kbn bootstrap + ES snapshot setup take minutes before
     any port binds), so entries whose launcher or recorded stack processes are
     still running are skipped: reclaiming them would hand their slot (ports,
     log file, cookie) to another worktree and couple the two stacks.
@@ -1245,9 +1255,9 @@ def ensure_trial_license(es_url: str) -> None:
         time.sleep(2)
 
 
-def kibana_command(args: argparse.Namespace, cfg: dict) -> str:
+def kibana_command(args: argparse.Namespace, cfg: dict, pm: str) -> str:
     parts = [
-        "yarn",
+        pm,
         "start",
         "--no-base-path",
         f"--port={cfg['kbn_port']}",
@@ -1262,10 +1272,10 @@ def kibana_command(args: argparse.Namespace, cfg: dict) -> str:
     return " ".join(shlex.quote(p) for p in parts)
 
 
-def es_command(args: argparse.Namespace, cfg: dict, data_path: Path) -> list[str]:
+def es_command(args: argparse.Namespace, cfg: dict, data_path: Path, pm: str) -> list[str]:
     if args.es == "serverless":
         return [
-            "yarn",
+            pm,
             "es",
             "serverless",
             "--projectType",
@@ -1280,7 +1290,7 @@ def es_command(args: argparse.Namespace, cfg: dict, data_path: Path) -> list[str
             "--kill",
         ]
     cmd = [
-        "yarn",
+        pm,
         "es",
         "snapshot",
         "-E",
@@ -1333,7 +1343,7 @@ def mark_ready(worktree: str, ready: bool) -> None:
 
 
 def wrapped_kibana_command(kbn_cmd: str) -> str:
-    """Wrap the yarn start command so its exit triggers silent registry pruning."""
+    """Wrap the Kibana start command so its exit triggers silent registry pruning."""
     return shlex.join([sys.executable, str(Path(__file__).resolve()), "--run-with-prune", *shlex.split(kbn_cmd)])
 
 
@@ -1586,7 +1596,9 @@ def run_detached(
         es_pid = None
     else:
         es_env = None if args.es == "serverless" else snapshot_es_env(args.es_heap)
-        es_pid = spawn_background(es_command(args, cfg, data_path), es_logfile, worktree, env=es_env)
+        es_pid = spawn_background(
+            es_command(args, cfg, data_path, package_manager(worktree)), es_logfile, worktree, env=es_env
+        )
         print(f",kbn-stack: Elasticsearch starting (pid {es_pid}) -> {es_logfile}", flush=True)
         if shared is not None:
             # Record the pid immediately so parallel launchers classify this
@@ -1672,7 +1684,7 @@ def kill_pid_group(pid: int) -> None:
 
     Detached stacks start with start_new_session=True, so the recorded pid is the
     group leader. Interactive stacks are stopped via a port listener which is a
-    group member (the inner Kibana); getpgid still names the yarn/python group.
+    group member (the inner Kibana); getpgid still names the pnpm|yarn/python group.
     After SIGTERM, wait for live (non-zombie) members, then SIGKILL the group and
     any survivors. A Kibana that closes its port and hangs still dies.
     """
@@ -1721,7 +1733,7 @@ def stop_entry(worktree: str, entry: dict, *, allow_user_owned: bool = True, rec
     """Tear down one registered stack: kill recorded Kibana then ES processes.
 
     Snapshot stacks run as our own children (pids recorded), so killing their
-    process groups stops the yarn/node and JVM trees. Serverless stacks run their
+    process groups stops the pnpm|yarn/node and JVM trees. Serverless stacks run their
     Elasticsearch in Docker containers (es01/es02); ,kbn-stack treats serverless
     as single-instance, so those fixed names are removed directly.
 
@@ -1957,6 +1969,7 @@ def main(argv: list[str]) -> int:
         return run_stop(resolve_worktree(), load_registry())
 
     worktree = resolve_worktree()
+    pm = package_manager(worktree)
     branch = current_branch()
     started_by = STARTED_BY_AGENT if args.detach else STARTED_BY_USER
 
@@ -2006,7 +2019,7 @@ def main(argv: list[str]) -> int:
         logfile = Path(f"/tmp/es-slot{slot}.log")
 
     data_path = ES_DATA_ROOT / data_name
-    kbn_cmd = kibana_command(args, cfg)
+    kbn_cmd = kibana_command(args, cfg, pm)
     target_pane = None if args.detach else tmux_target_pane(worktree)
     mode = start_mode(args, target_pane)
 
@@ -2029,7 +2042,7 @@ def main(argv: list[str]) -> int:
         flush=True,
     )
 
-    subprocess.run(["yarn", "kbn", "bootstrap"], check=True)
+    subprocess.run([pm, "kbn", "bootstrap"], check=True)
 
     if shared is not None and shared["create"]:
         # Bootstrap takes minutes: a parallel launcher may have won the create
@@ -2039,7 +2052,7 @@ def main(argv: list[str]) -> int:
         data_name = shared["instance"]["data"]
         data_path = ES_DATA_ROOT / data_name
         logfile = Path(shared["instance"]["log"])
-        kbn_cmd = kibana_command(args, cfg)
+        kbn_cmd = kibana_command(args, cfg, pm)
         registry[worktree] = build_worktree_entry(
             args, cfg, branch, data_name, logfile, started_by, mode, share_version
         )
@@ -2069,11 +2082,11 @@ def main(argv: list[str]) -> int:
     if shared is not None:
         # A shared ES must outlive this pane (other worktrees attach to it), so
         # it runs detached even for interactive starts; follow its log instead.
-        es_pid = spawn_background(es_command(args, cfg, data_path), logfile, worktree, env=es_env)
+        es_pid = spawn_background(es_command(args, cfg, data_path, pm), logfile, worktree, env=es_env)
         update_es_instance(shared["key"], es_pid=es_pid)
         print(f",kbn-stack: Elasticsearch starting (pid {es_pid}) -> {logfile}", flush=True)
         return follow_es_log(logfile, es_pid)
-    return run_foreground_es(es_command(args, cfg, data_path), logfile, env=es_env)
+    return run_foreground_es(es_command(args, cfg, data_path, pm), logfile, env=es_env)
 
 
 if __name__ == "__main__":

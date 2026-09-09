@@ -30,7 +30,7 @@ flowchart TD
     CHECK -->|pass| APPLY["chezmoi diff → scoped chezmoi apply --no-tty <target> → rendered/runtime receipt"]:::mk
 
     subgraph CONFIG["Repo-side config / meta files"]
-        C1["Makefile (help/fmt/lint/test/check/check-full/verify-templates/verify-mermaids/verify-bin-surface/verify-docs-navigation/verify-agent-file-sizes/verify-agent-policy/docs*)<br/>package.json + .yarnrc (npm docs* shims; no root yarn.lock)<br/>bin/fmt (formatter orchestrator) · bin/check (affected-first; make check-full is human-only CHECK_FULL=1)"]:::cfg
+        C1["Makefile (help/fmt/lint/test/check/check-full/verify-templates/verify-mermaids/verify-bin-surface/verify-docs-navigation/verify-agent-file-sizes/verify-agent-policy/docs*)<br/>package.json + pnpm-workspace.yaml (npm docs* shims via pnpm --dir website; verifyDepsBeforeRun off so no root lockfile/node_modules)<br/>bin/fmt (formatter orchestrator) · bin/check (affected-first; make check-full is human-only CHECK_FULL=1)"]:::cfg
         C2[".editorconfig · .prettierrc · .prettierignore · .stylua.toml<br/>ruff.toml · pyrightconfig.json · .python-version"]:::cfg
         C3[".chezmoiroot(home) · .gitignore · .githooks/pre-commit(staged-only bin/fmt, then bin/check --staged)<br/>.cursor/.gitignore · LICENSE · README.md · AGENTS.md"]:::cfg
         C4[".github/workflows/deploy-docs.yml (Pages CI)<br/>check-docs.yml (PR: verify-docs-navigation + docs-build)"]:::cfg

@@ -1,0 +1,197 @@
+#!/usr/bin/env python3
+"""Synchronize the desired global pnpm packages and their stable links."""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import uuid
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
+
+
+@dataclass
+class PnpmFailure(Exception):
+    context: str
+    stdout: str = ""
+    stderr: str = ""
+
+
+def emit_failure(failure: PnpmFailure, prefix: str = "Error") -> None:
+    print(f"{prefix}: {failure.context}", file=sys.stderr)
+    if failure.stdout:
+        print(failure.stdout, end="" if failure.stdout.endswith("\n") else "\n", file=sys.stderr)
+    if failure.stderr:
+        print(failure.stderr, end="" if failure.stderr.endswith("\n") else "\n", file=sys.stderr)
+
+
+def run_pnpm(*args: str) -> subprocess.CompletedProcess[str]:
+    try:
+        # pnpm can still prompt with --yes when stdin is a terminal and output is captured.
+        result = subprocess.run(["pnpm", *args], stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False)
+    except OSError as error:
+        raise PnpmFailure(f"could not run pnpm {' '.join(args)}: {error}") from error
+    if result.returncode:
+        raise PnpmFailure(f"pnpm {' '.join(args)} failed (exit {result.returncode})", result.stdout, result.stderr)
+    return result
+
+
+def read_desired(path: Path) -> list[tuple[str, str]]:
+    if not path.is_file():
+        raise PnpmFailure(f"default-pnpm-pkgs file not found at {path}")
+
+    desired: list[tuple[str, str]] = []
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        entry = raw_line.strip()
+        if not entry or entry.startswith("#"):
+            continue
+        name, marker, pin = entry.rpartition("@")
+        if not marker or not name:
+            name, pin = entry, ""
+        desired.append((name, pin))
+    return desired
+
+
+def link_path(links_root: Path, name: str) -> Path:
+    package_path = PurePosixPath(name)
+    if not name or package_path.is_absolute() or any(part in {"", ".", ".."} for part in package_path.parts):
+        raise PnpmFailure(f"pnpm inventory has unsafe package name {name!r}")
+    destination = links_root.joinpath(*package_path.parts)
+    try:
+        destination.relative_to(links_root)
+    except ValueError as error:
+        raise PnpmFailure(f"pnpm inventory package name escapes stable links root: {name!r}") from error
+    return destination
+
+
+def inventory(links_root: Path) -> dict[str, tuple[str, str]]:
+    result = run_pnpm("ls", "-g", "--json", "--depth", "0")
+    try:
+        listing = json.loads(result.stdout)
+        dependencies = listing[0]["dependencies"]
+        if not isinstance(dependencies, dict):
+            raise TypeError("dependencies is not an object")
+    except (IndexError, KeyError, TypeError, json.JSONDecodeError) as error:
+        raise PnpmFailure(
+            f"pnpm ls -g returned malformed JSON inventory: {error}", result.stdout, result.stderr
+        ) from error
+
+    packages: dict[str, tuple[str, str]] = {}
+    for name, metadata in dependencies.items():
+        if not isinstance(name, str) or not isinstance(metadata, dict):
+            raise PnpmFailure("pnpm ls -g returned malformed package metadata", result.stdout, result.stderr)
+        version = metadata.get("version", "")
+        path = metadata.get("path")
+        if not isinstance(version, str) or not isinstance(path, str) or not path or not os.path.isabs(path):
+            raise PnpmFailure(f"pnpm inventory has invalid metadata for {name!r}", result.stdout, result.stderr)
+        link_path(links_root, name)
+        packages[name] = (version, path)
+    return packages
+
+
+def replace_links(links_root: Path, packages: dict[str, tuple[str, str]]) -> None:
+    staging_root: Path | None = None
+    backup: Path | None = None
+    try:
+        links_root.parent.mkdir(parents=True, exist_ok=True)
+        staging_root = Path(tempfile.mkdtemp(prefix=".pnpm-global-links-", dir=links_root.parent))
+        staging_links = staging_root / "node_modules"
+        staging_links.mkdir()
+        for name, (_version, package_path) in packages.items():
+            destination = link_path(staging_links, name)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.symlink_to(package_path)
+
+        if links_root.exists() or links_root.is_symlink():
+            backup = links_root.parent / f".pnpm-global-links-previous-{uuid.uuid4().hex}"
+            links_root.rename(backup)
+        try:
+            staging_links.rename(links_root)
+        except OSError:
+            if backup is not None:
+                backup.rename(links_root)
+            raise
+        if backup is not None:
+            if backup.is_symlink():
+                backup.unlink()
+            else:
+                shutil.rmtree(backup)
+    except OSError as error:
+        raise PnpmFailure(f"could not replace stable pnpm links under {links_root}: {error}") from error
+    finally:
+        if staging_root is not None:
+            shutil.rmtree(staging_root, ignore_errors=True)
+
+
+def refresh_links(links_root: Path) -> None:
+    replace_links(links_root, inventory(links_root))
+
+
+def main() -> int:
+    home = Path(os.environ.get("HOME", "")).expanduser()
+    packages_file = home / ".default-pnpm-pkgs"
+    pnpm_home = os.environ.get("PNPM_HOME") or str(home / ".local/share/pnpm")
+    os.environ["PNPM_HOME"] = pnpm_home
+    os.environ["PATH"] = f"{pnpm_home}/bin:{home}/.local/share/mise/shims:{os.environ.get('PATH', '')}"
+    links_root = home / ".local/share/pnpm-global-links/node_modules"
+
+    if shutil.which("pnpm") is None:
+        emit_failure(PnpmFailure("pnpm not found on PATH (it is installed by mise from ~/.config/mise/config.toml)"))
+        return 1
+
+    try:
+        desired = read_desired(packages_file)
+        installed = inventory(links_root)
+    except PnpmFailure as failure:
+        emit_failure(failure)
+        return 1
+
+    desired_names = {name for name, _pin in desired}
+    failure: PnpmFailure | None = None
+    cleanup_failure: PnpmFailure | None = None
+    try:
+        for name, pin in desired:
+            installed_version = installed.get(name, ("", ""))[0]
+            if name not in installed or (pin and installed_version != pin):
+                print(f"Installing pnpm package: {name}@{pin or 'latest'}", flush=True)
+                run_pnpm("add", "-g", f"{name}@{pin or 'latest'}", "--yes")
+            else:
+                print(f"pnpm package {name} is already installed", flush=True)
+
+        for name in installed:
+            if name not in desired_names:
+                print(f"Uninstalling pnpm package: {name}", flush=True)
+                run_pnpm("remove", "-g", name, "--yes")
+
+        print("Upgrading unpinned global pnpm packages to latest", flush=True)
+        for name, pin in desired:
+            if not pin:
+                run_pnpm("update", "-g", "--latest", name, "--yes")
+    except PnpmFailure as error:
+        failure = error
+    finally:
+        try:
+            refresh_links(links_root)
+        except PnpmFailure as error:
+            cleanup_failure = error
+
+    if failure is not None:
+        emit_failure(failure)
+        if cleanup_failure is not None:
+            emit_failure(cleanup_failure, "Additionally, stable link refresh failed")
+        return 1
+    if cleanup_failure is not None:
+        emit_failure(cleanup_failure)
+        return 1
+
+    print(f"Refreshed stable package links under {links_root}")
+    print("All pnpm packages synced successfully")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

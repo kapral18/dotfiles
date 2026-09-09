@@ -117,7 +117,7 @@ Suggest exactly the active release branches where the commit/reference is absent
 For each selected target branch (`cherrypickAndCreateTargetPullRequest`): validate the branch → create `backport/<targetBranch>/pr-<N>` from it → cherry-pick each commit → (unless `--dryRun`) push the branch and delete the local copy → open the backport PR (title from the source commit, body `# Backport …`) → add target labels (`backport`) / assignees / reviewers → enable auto-merge (squash) when there were no conflicts.
 
 Because the per-branch working branch is cut fresh from each target branch's base, the checkout's tree (and therefore its `node_modules`) is re-prepared for every target.
-A bootstrap done while resolving one branch does not carry over to the next; re-run `yarn kbn bootstrap` on each branch that needs hand-resolution.
+A bootstrap done while resolving one branch does not carry over to the next; re-run `<pm> kbn bootstrap` (`<pm>` is `pnpm` when the checkout has `pnpm-lock.yaml`, otherwise `yarn`) on each branch that needs hand-resolution.
 
 Useful flags for the e2e flow: `--pr <N>`, `-b/--targetBranch <branch>` (repeatable;
 skips the branch prompt), `--ls` (list, do not backport), `--onlyMissing`, `-p/--path` (repeatable), `-n/--maxNumber`, `--json`, `--dryRun`, `--draft`, `--autoMerge`.

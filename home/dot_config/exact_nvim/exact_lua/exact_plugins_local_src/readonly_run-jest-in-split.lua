@@ -68,7 +68,8 @@ local PACKAGE_MANAGER_LOCKS = {
   bun = "bun.lockb",
 }
 
-local PACKAGE_MANAGER_PRIORITY = { "yarn", "npm", "pnpm", "bun" }
+-- pnpm outranks yarn: elastic/kibana main keeps yarn.lock next to pnpm-lock.yaml after its pnpm migration.
+local PACKAGE_MANAGER_PRIORITY = { "pnpm", "yarn", "npm", "bun" }
 
 local function detect_runner_in_dir(dir)
   if not dir or dir == "" then
@@ -726,7 +727,7 @@ M.run_jest_cmd = function(arg, debug_mode)
   local root_dir = fs_util.get_project_root()
 
   if not root_dir then
-    vim.notify("No .git directory or yarn.lock or package-lock.json found", vim.log.levels.WARN)
+    vim.notify("No .git directory or pnpm-lock.yaml/yarn.lock/package-lock.json found", vim.log.levels.WARN)
     return
   end
 

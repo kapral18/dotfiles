@@ -61,5 +61,5 @@ This slice covers source control, review/readiness tooling, build/test utilities
 | [`mise`](https://mise.jdx.dev/)                                 | `brew` | runtime/version manager              |
 | [`uv`](https://docs.astral.sh/uv/)                              | `brew` | Python runtime/tool manager          |
 | [`bundler`](https://bundler.io/)                                | `gem`  | Ruby project dependency manager      |
-| [`neovim`](https://github.com/neovim/node-client)               | `yarn` | Node remote-plugin client for Neovim |
+| [`neovim`](https://github.com/neovim/node-client)               | `pnpm` | Node remote-plugin client for Neovim |
 | [`go-global-update`](https://github.com/Gelio/go-global-update) | `go`   | update Go-installed tools            |

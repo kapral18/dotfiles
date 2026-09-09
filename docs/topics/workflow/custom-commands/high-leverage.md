@@ -116,11 +116,11 @@ cmd | ,wh send -         # send piped stdin
 
 ## Package and icon reconverge helpers
 
-| Command              | Purpose                                                                                                                                                                       |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `,pull-rebase`       | Resolve branch upstream and run `git pull --rebase` behind a confirmation prompt                                                                                              |
-| `,install-yarn-pkgs` | Reconcile global Yarn packages against `~/.default-yarn-pkgs`; `name@x.y.z` entries pin an exact version (upgrades skip pinned packages)                                      |
-| `,apply-app-icons`   | Apply app icon mappings from `home/app_icons/readonly_icon_mapping.yaml`, refreshing Dock/Finder by signaling only the current user's own numeric PIDs (no `killall`/`pkill`) |
+| Command              | Purpose                                                                                                                                                                                                                                  |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `,pull-rebase`       | Resolve branch upstream and run `git pull --rebase` behind a confirmation prompt                                                                                                                                                         |
+| `,install-pnpm-pkgs` | Reconcile global pnpm packages against `~/.default-pnpm-pkgs`; `name@x.y.z` entries pin an exact version (upgrades skip pinned packages); reports pnpm errors and refreshes `~/.local/share/pnpm-global-links` even after a partial sync |
+| `,apply-app-icons`   | Apply app icon mappings from `home/app_icons/readonly_icon_mapping.yaml`, refreshing Dock/Finder by signaling only the current user's own numeric PIDs (no `killall`/`pkill`)                                                            |
 
 ## tmux helpers
 
@@ -131,7 +131,7 @@ cmd | ,wh send -         # send piped stdin
 
 ```bash
 ,tmux-run-all "work-*" "git status"
-,tmux-run-all --all "work-*" "yarn run test -- --watch=false"
+,tmux-run-all --all "work-*" "pnpm run test -- --watch=false"
 ,tmux-lowfi p
 ,tmux-lowfi nt
 ,tmux-lowfi q

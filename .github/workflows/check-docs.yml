@@ -23,11 +23,11 @@ jobs:
         working-directory: website
         run: |
           corepack enable
-          yarn --version
+          pnpm --version
 
       - name: Install dependencies
         working-directory: website
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Test docs navigation verifier
         run: python3 scripts/test_verify_docs_navigation.py

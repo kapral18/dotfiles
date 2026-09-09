@@ -1,0 +1,4 @@
+# The root package.json only shims the docs scripts and declares no dependencies.
+# pnpm 11+ runs an install before every `pnpm run` by default, which drops an
+# empty pnpm-lock.yaml and a stub node_modules/ here; turn that check off.
+verifyDepsBeforeRun: false

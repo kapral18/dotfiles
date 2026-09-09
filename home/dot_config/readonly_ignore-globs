@@ -27,6 +27,7 @@ _build/
 __generated__/
 .yarn/
 .yarn-*/
+.pnpm-store/
 .nyc_output/
 
 # Binary or generated artifacts

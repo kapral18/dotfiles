@@ -61,3 +61,6 @@ lib/,vertex-adapter
 .config/fish/completions/,claude-vertex.fish
 .config/fish/completions/,codex-vertex.fish
 .config/fish/completions/,copilot-vertex.fish
+.default-yarn-pkgs
+bin/,install-yarn-pkgs
+.config/fish/completions/,install-yarn-pkgs.fish

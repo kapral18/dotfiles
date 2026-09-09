@@ -602,7 +602,7 @@ class TestKbnStackCommand(unittest.TestCase):
                 args = kbn_stack.parse_args(["--es", "serverless", *flags])
                 cfg = kbn_stack.derive(0)
                 self.assertEqual(
-                    kbn_stack.es_command(args, cfg, Path("/tmp/es-data")),
+                    kbn_stack.es_command(args, cfg, Path("/tmp/es-data"), "yarn"),
                     [
                         "yarn",
                         "es",
@@ -619,7 +619,7 @@ class TestKbnStackCommand(unittest.TestCase):
                         "--kill",
                     ],
                 )
-                kibana_flags = shlex.split(kbn_stack.kibana_command(args, cfg))
+                kibana_flags = shlex.split(kbn_stack.kibana_command(args, cfg, "yarn"))
                 self.assertEqual(
                     [flag for flag in kibana_flags if flag.startswith("--serverless=")],
                     [f"--serverless={kibana_type}"],
@@ -639,7 +639,7 @@ class TestKbnStackCommand(unittest.TestCase):
         args = kbn_stack.parse_args(["-E", "node.attr.foo=bar"])
         cfg = kbn_stack.derive(0)
         cfg["slot"] = 0
-        cmd = kbn_stack.es_command(args, cfg, Path("/tmp/es-data"))
+        cmd = kbn_stack.es_command(args, cfg, Path("/tmp/es-data"), "yarn")
         settings = _es_dash_e_settings(cmd)
         assert "indices.merge.disk.watermark.high=2gb" in settings
         assert settings.index("indices.merge.disk.watermark.high=2gb") < settings.index("node.attr.foo=bar")
@@ -650,7 +650,7 @@ class TestKbnStackCommand(unittest.TestCase):
         args = kbn_stack.parse_args(["-E", override])
         cfg = kbn_stack.derive(0)
         cfg["slot"] = 0
-        cmd = kbn_stack.es_command(args, cfg, Path("/tmp/es-data"))
+        cmd = kbn_stack.es_command(args, cfg, Path("/tmp/es-data"), "yarn")
         settings = _es_dash_e_settings(cmd)
         assert settings.count("indices.merge.disk.watermark.high=2gb") == 1
         assert settings.index("indices.merge.disk.watermark.high=2gb") < settings.index(override)
@@ -660,15 +660,40 @@ class TestKbnStackCommand(unittest.TestCase):
         args = kbn_stack.parse_args([])
         assert args.plugin_groups == ("platform",)
         assert args.es_heap == "1g"
-        cmd = kbn_stack.kibana_command(args, kbn_stack.derive(0))
+        cmd = kbn_stack.kibana_command(args, kbn_stack.derive(0), "yarn")
         assert "--plugins.allowlistPluginGroups.0=platform" in cmd
         assert "--plugins.allowlistPluginGroups.1=" not in cmd
+
+    def test_package_manager_follows_pnpm_lockfile(self):
+        kbn_stack = _load_kbn_stack_command()
+        with tempfile.TemporaryDirectory() as tmp:
+            # Older Kibana branches: yarn.lock only.
+            (Path(tmp) / "yarn.lock").write_text("", encoding="utf-8")
+            assert kbn_stack.package_manager(tmp) == "yarn"
+            # Kibana main after the pnpm migration keeps yarn.lock next to pnpm-lock.yaml.
+            (Path(tmp) / "pnpm-lock.yaml").write_text("", encoding="utf-8")
+            assert kbn_stack.package_manager(tmp) == "pnpm"
+
+    def test_commands_use_the_resolved_package_manager(self):
+        kbn_stack = _load_kbn_stack_command()
+        cfg = kbn_stack.derive(0)
+        cfg["slot"] = 0
+        for pm in ("pnpm", "yarn"):
+            with self.subTest(pm=pm):
+                kbn = shlex.split(kbn_stack.kibana_command(kbn_stack.parse_args([]), cfg, pm))
+                assert kbn[:2] == [pm, "start"]
+                snapshot = kbn_stack.es_command(kbn_stack.parse_args([]), cfg, Path("/tmp/es-data"), pm)
+                assert snapshot[:3] == [pm, "es", "snapshot"]
+                serverless = kbn_stack.es_command(
+                    kbn_stack.parse_args(["--es", "serverless"]), cfg, Path("/tmp/es-data"), pm
+                )
+                assert serverless[:3] == [pm, "es", "serverless"]
 
     def test_groups_all_omits_allowlist(self):
         kbn_stack = _load_kbn_stack_command()
         args = kbn_stack.parse_args(["--groups", "all"])
         assert args.plugin_groups == ()
-        cmd = kbn_stack.kibana_command(args, kbn_stack.derive(0))
+        cmd = kbn_stack.kibana_command(args, kbn_stack.derive(0), "yarn")
         assert "allowlistPluginGroups" not in cmd
 
     def test_groups_comma_list_indexes_from_zero(self):
@@ -964,7 +989,7 @@ class TestKbnStackSharedEs(unittest.TestCase):
         kbn_stack.apply_shared_es(
             cfg, {"slot": 0, "es_url": "http://localhost:9200", "es_http": 9200, "es_transport": 9300}
         )
-        settings = _es_dash_e_settings(kbn_stack.es_command(args, cfg, Path("/tmp/es-data")))
+        settings = _es_dash_e_settings(kbn_stack.es_command(args, cfg, Path("/tmp/es-data"), "yarn"))
         assert "node.name=slot0" in settings
         assert "http.port=9200" in settings
         assert "transport.port=9300" in settings

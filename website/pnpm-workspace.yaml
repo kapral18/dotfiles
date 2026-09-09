@@ -1,0 +1,4 @@
+# pnpm >= 11 refuses to run dependency build scripts until each is allowed here.
+# core-js's postinstall only prints a funding banner, so it stays off.
+allowBuilds:
+  core-js: false

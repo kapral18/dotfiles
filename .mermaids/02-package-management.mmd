@@ -21,9 +21,9 @@ flowchart TD
     GO -- yes --> GOF["readonly_dot_default-golang-pkgs"]:::reg
     GO -- no --> GEM{Ruby gem?}:::q
     GEM -- yes --> GEMF["readonly_dot_default-gems (+ readonly_dot_gemrc)"]:::reg
-    GEM -- no --> YARN{Node global?}:::q
-    YARN -- yes --> YARNF["readonly_dot_default-yarn-pkgs"]:::reg
-    YARN -- no --> UV{Python tool?}:::q
+    GEM -- no --> PNPM{Node global?}:::q
+    PNPM -- yes --> PNPMF["readonly_dot_default-pnpm-pkgs"]:::reg
+    PNPM -- no --> UV{Python tool?}:::q
     UV -- yes --> UVF["readonly_dot_default-uv-tools.tmpl"]:::reg
     UV -- no --> CUSTOM["readonly_dot_default-custom-packages.tmpl<br/>dmg | file | tar_gz_bin | zip_opt | source"]:::reg
 
@@ -31,7 +31,7 @@ flowchart TD
     CARGOF --> H5c["hook 05-update-cargo-crates"]:::hook
     GOF --> H5g["hook 05-update-golang-pkgs"]:::hook
     GEMF --> H5r["hook 05-update-gems"]:::hook
-    YARNF --> H5y["hook 05-update-yarn-pkgs (also ,install-yarn-pkgs)"]:::hook
+    PNPMF --> H5p["hook 05-update-pnpm-pkgs (hashes list + mise config + installer)<br/>,install-pnpm-pkgs uses --yes and disconnected stdin for noninteractive package operations, reports failures and refreshes ~/.local/share/pnpm-global-links after partial sync;<br/>unreadable inventory preserves existing links"]:::hook
     UVF --> H6["hook 06-update-uv-tools"]:::hook
     CUSTOM --> H5x["hook 05-install-custom-packages<br/>+ scripts/reconcile_custom_packages.py<br/>+ scripts/install_github_zip_bundle.py"]:::hook
 

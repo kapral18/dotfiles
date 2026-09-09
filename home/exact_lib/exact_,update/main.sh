@@ -40,7 +40,7 @@ Usage: ,update [options]
 Unified update orchestrator for the dotfiles ecosystem.
 Pulls dotfiles, updates all package managers, and reports what changed.
 
-Categories: dotfiles, brew, gh, mise, cargo, yarn, gems, go, uv, manual
+Categories: dotfiles, brew, gh, mise, cargo, pnpm, gems, go, uv, manual
 
 Options:
   -n, --dry-run       Show what would be updated without doing it
@@ -52,7 +52,7 @@ Options:
 Examples:
   ,update                     # Update everything
   ,update --dry-run           # Preview what would happen
-  ,update --only brew,yarn    # Update only Homebrew and yarn
+  ,update --only brew,pnpm    # Update only Homebrew and pnpm
   ,update --skip cargo,gems   # Update everything except cargo and gems
 EOF
 }
@@ -360,16 +360,16 @@ update_cargo() {
   fi
 }
 
-update_yarn() {
-  should_run "yarn" || return 0
-  section "yarn global packages"
+update_pnpm() {
+  should_run "pnpm" || return 0
+  section "pnpm global packages"
 
-  if ! has_cmd ,install-yarn-pkgs; then
-    step_skip ",install-yarn-pkgs not installed"
+  if ! has_cmd ,install-pnpm-pkgs; then
+    step_skip ",install-pnpm-pkgs not installed"
     return 0
   fi
 
-  run_timed ",install-yarn-pkgs" ,install-yarn-pkgs || true
+  run_timed ",install-pnpm-pkgs" ,install-pnpm-pkgs || true
 }
 
 update_gems() {
@@ -454,7 +454,7 @@ update_dotfiles
 
 # Phase 2: package managers in parallel
 run_parallel update_brew update_gh update_mise update_uv \
-  update_cargo update_yarn update_gems update_go || true
+  update_cargo update_pnpm update_gems update_go || true
 
 # Phase 3: manual packages run after Homebrew cleanup so non-Homebrew apps and
 # release assets converge after managed cask cleanup.

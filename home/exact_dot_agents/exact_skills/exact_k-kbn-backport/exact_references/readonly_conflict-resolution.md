@@ -4,7 +4,7 @@ Reference for the `k-kbn-backport` skill. Triggered only when the run pauses wit
 
 The conflict state lives in the tool-owned checkout (`~/.backport/repositories/elastic/kibana`); run every command below there —
 addressed explicitly with `git -C <checkout>` or from a shell `cd`'d into it, not from the controlling window.
-Per pause, the order is: inspect → understand → resolve → stage → `yarn kbn bootstrap` → validate → send ENTER (to the controlling window's pane).
+Per pause, the order is: inspect → understand → resolve → stage → `<pm> kbn bootstrap` (`<pm>` is `pnpm` when the checkout has `pnpm-lock.yaml`, otherwise `yarn`) → validate → send ENTER (to the controlling window's pane).
 Do all of it in this checkout before handing back, then let the run advance to the next branch.
 
 ## Set up before editing
@@ -71,7 +71,7 @@ The interactive run prints this hint, but the agent driving the pane may not hav
 ## Apply The Resolution
 
 Carry the gathered context into resolution: the resolved hunks must reproduce the original change's intent, adapted to the destination branch — not just a syntactically clean merge of the two sides.
-Apply under the Resolution Rules below, stage the resolved files, then `yarn kbn bootstrap` and run Validation, and only then hand back via Stage And Continue The Run.
+Apply under the Resolution Rules below, stage the resolved files, then `<pm> kbn bootstrap` and run Validation, and only then hand back via Stage And Continue The Run.
 
 ## Resolution Rules
 
@@ -86,7 +86,7 @@ Apply under the Resolution Rules below, stage the resolved files, then `yarn kbn
 
 ## Validation
 
-Run `yarn kbn bootstrap` in the paused checkout before validation on every conflicting target branch:
+Run `<pm> kbn bootstrap` in the paused checkout before validation on every conflicting target branch:
 each target re-prepares the tree, so prior-branch `node_modules` is insufficient. Do not bootstrap before the run.
 The checklist is a fixed four-item gate, not a menu: enumerate all four before executing them in order.
 Familiarity is not a selection criterion: running "the checks I usually run" is exactly how items get silently skipped while validation still reads as done.
@@ -110,7 +110,7 @@ Once the resolution is applied (Apply The Resolution, in `references/conflict-re
    - `git diff --cached -- <changed-files>`
 2. Stage only the resolved backport files:
    - `git add <resolved-files>`
-3. With the resolution staged, run `yarn kbn bootstrap` and Validation (`references/conflict-resolution.md`) so the verifiers actually run and pass before you continue: all four checks, each ending with an explicit `pass`/`fail`/`unavailable` status.
+3. With the resolution staged, run `<pm> kbn bootstrap` and Validation (`references/conflict-resolution.md`) so the verifiers actually run and pass before you continue: all four checks, each ending with an explicit `pass`/`fail`/`unavailable` status.
    A check with no status is not passed, and validation is not complete until every item has one.
 4. Confirm there is nothing left to resolve:
    - `git diff --check --cached`

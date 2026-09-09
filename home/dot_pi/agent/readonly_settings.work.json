@@ -14,8 +14,8 @@
     "maxRetries": 5
   },
   "packages": [
-    "~/.local/share/yarn/global/node_modules/pi-mcp-adapter",
-    "~/.local/share/yarn/global/node_modules/pi-subagents"
+    "~/.local/share/pnpm-global-links/node_modules/pi-mcp-adapter",
+    "~/.local/share/pnpm-global-links/node_modules/pi-subagents"
   ],
   "subagents": {
     "disableBuiltins": true,

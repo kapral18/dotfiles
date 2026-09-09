@@ -5,7 +5,7 @@ title: AI and agent tooling
 
 # AI and agent tooling
 
-The AI package set spans casks, Homebrew formulae, yarn globals, uv tools, custom wrappers, and local model assets.
+The AI package set spans casks, Homebrew formulae, pnpm globals, uv tools, custom wrappers, and local model assets.
 
 ## Coding agents and harnesses
 
@@ -13,24 +13,24 @@ The AI package set spans casks, Homebrew formulae, yarn globals, uv tools, custo
 | -------------------------------------------------------------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`cursor-cli`](https://cursor.com/)                                                    | official installer | Cursor command-line harness, installed via `cursor.com/install` (unsupported as a Homebrew cask)                                                                  |
 | [`copilot-cli`](https://docs.github.com/en/copilot/concepts/agents/about-copilot-cli)  | `cask`             | GitHub Copilot CLI harness, custom agents, hooks, and MCP config target                                                                                           |
-| [`@openai/codex`](https://github.com/openai/codex)                                     | `yarn`             | Codex CLI; an `@install-priority-exception` keeps it on Yarn because the Homebrew cask lags upstream releases                                                     |
+| [`@openai/codex`](https://github.com/openai/codex)                                     | `pnpm`             | Codex CLI; an `@install-priority-exception` keeps it on pnpm because the Homebrew cask lags upstream releases                                                     |
 | [`codex-app`](https://chatgpt.com/codex?app-landing-page=true)                         | `cask`             | Codex desktop app (`Codex.app`); Homebrew marks the standalone cask deprecated, while `codex app` is the supported CLI installer                                  |
 | [`claude`](https://claude.com/download)                                                | `cask`             | Anthropic Claude desktop app (`Claude.app`)                                                                                                                       |
 | [`opencode`](https://opencode.ai)                                                      | `brew`             | OpenCode CLI/TUI with profile merge and MCP wiring                                                                                                                |
 | [`antigravity-cli`](https://github.com/google-antigravity/antigravity-cli)             | `cask`             | Google Antigravity terminal coding-agent harness, launched as `agy`; the Brew hook clears a prior standalone binary and partial cask receipt before first install |
 | [`antigravity`](https://antigravity.google/product/antigravity-2)                      | `cask`             | Google Antigravity desktop agent orchestration platform (`Antigravity.app`)                                                                                       |
-| [`@anthropic-ai/claude-code`](https://www.npmjs.com/package/@anthropic-ai/claude-code) | `yarn`             | Claude Code CLI outside Homebrew cask management                                                                                                                  |
-| [`@earendil-works/pi-coding-agent`](https://pi.dev/)                                   | `yarn`             | Pi coding agent CLI                                                                                                                                               |
-| [`@earendil-works/pi-tui`](https://pi.dev/)                                            | `yarn`             | Pi terminal UI package                                                                                                                                            |
-| [`playwriter`](https://github.com/remorses/playwriter)                                 | `yarn`             | browser-control/code-generation agent package                                                                                                                     |
-| [`freebuff`](https://freebuff.com/get-started)                                         | `yarn`             | free coding agent CLI                                                                                                                                             |
+| [`@anthropic-ai/claude-code`](https://www.npmjs.com/package/@anthropic-ai/claude-code) | `pnpm`             | Claude Code CLI outside Homebrew cask management                                                                                                                  |
+| [`@earendil-works/pi-coding-agent`](https://pi.dev/)                                   | `pnpm`             | Pi coding agent CLI                                                                                                                                               |
+| [`@earendil-works/pi-tui`](https://pi.dev/)                                            | `pnpm`             | Pi terminal UI package                                                                                                                                            |
+| [`playwriter`](https://github.com/remorses/playwriter)                                 | `pnpm`             | browser-control/code-generation agent package                                                                                                                     |
+| [`freebuff`](https://freebuff.com/get-started)                                         | `pnpm`             | free coding agent CLI                                                                                                                                             |
 
 ## Agent extensions and support packages
 
 | Tool                                                                        | Source                      | Why it is here                                                |
 | --------------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------- |
-| [`pi-mcp-adapter`](https://github.com/nicobailon/pi-mcp-adapter)            | `yarn`                      | MCP adapter extension loaded by Pi settings                   |
-| [`pi-subagents`](https://github.com/nicobailon/pi-subagents)                | `yarn`                      | subagent delegation extension for Pi child contexts           |
+| [`pi-mcp-adapter`](https://github.com/nicobailon/pi-mcp-adapter)            | `pnpm`                      | MCP adapter extension loaded by Pi settings                   |
+| [`pi-subagents`](https://github.com/nicobailon/pi-subagents)                | `pnpm`                      | subagent delegation extension for Pi child contexts           |
 | [`tuicr`](https://github.com/agavra/tuicr)                                  | `brew`                      | terminal review UI used around agent diff review flows        |
 | [`lgtm`](https://github.com/kunkka19xx/lgtm)                                | `brew` tap `kunkka19xx/tap` | live terminal diff reviewer that runs beside an agent in tmux |
 | [`llmfit`](https://github.com/AlexsJones/llmfit)                            | `brew`                      | AI/model utility in the local toolbox                         |
@@ -54,7 +54,7 @@ The AI package set spans casks, Homebrew formulae, yarn globals, uv tools, custo
 
 | Tool                                                                                                    | Source | Why it is here                                            |
 | ------------------------------------------------------------------------------------------------------- | ------ | --------------------------------------------------------- |
-| [`knip`](https://knip.dev/)                                                                             | `yarn` | unused dependency/export/file analysis for JS/TS projects |
+| [`knip`](https://knip.dev/)                                                                             | `pnpm` | unused dependency/export/file analysis for JS/TS projects |
 | [`jscpd`](https://jscpd.dev/)                                                                           | `brew` | duplicate-code detector required during refactors         |
 | [`ast-grep`](https://ast-grep.github.io/)                                                               | `brew` | structural code search/rewrites                           |
 | [`serpl`](https://github.com/yassinebridi/serpl), [`scooter`](https://github.com/thomasschafer/scooter) | `brew` | text search/replacement helpers                           |

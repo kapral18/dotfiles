@@ -38,15 +38,15 @@ jobs:
         working-directory: website
         run: |
           corepack enable
-          yarn --version
+          pnpm --version
 
       - name: Install dependencies
         working-directory: website
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build site
         working-directory: website
-        run: yarn build
+        run: pnpm build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

@@ -42,7 +42,7 @@ chezmoi apply
 There are additional "converge" scripts for:
 
 - mise runtimes and pinned tool versions
-- language tooling (cargo/go/gems/yarn/uv)
+- language tooling (cargo/go/gems/pnpm/uv)
 - GitHub CLI extensions
 - macOS defaults (`.osx.core` / `.osx.extra`)
 

@@ -429,14 +429,14 @@ class TestAgentSkillInvariants(unittest.TestCase):
             path = REPO / f"home/dot_pi/agent/readonly_settings.{profile}.json"
             settings = json.loads(path.read_text(encoding="utf-8"))
             assert settings["packages"] == [
-                "~/.local/share/yarn/global/node_modules/pi-mcp-adapter",
-                "~/.local/share/yarn/global/node_modules/pi-subagents",
+                "~/.local/share/pnpm-global-links/node_modules/pi-mcp-adapter",
+                "~/.local/share/pnpm-global-links/node_modules/pi-subagents",
             ]
 
     def test_pi_extensions_directory_prunes_unmanaged_drops(self):
         # Pi auto-loads every entry under ~/.pi/agent/extensions and aborts the whole session
         # when one fails to import. A hand-dropped pi-subagents clone with no node_modules did
-        # exactly that ("Cannot find module 'yaml'") while the yarn package in `packages` was
+        # exactly that ("Cannot find module 'yaml'") while the pnpm package in `packages` was
         # fine. `exact_` is the guard: chezmoi apply deletes anything not in the source tree.
         managed = REPO / "home/dot_pi/agent/exact_extensions"
         assert managed.is_dir(), (

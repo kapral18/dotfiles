@@ -20,7 +20,7 @@ This setup treats package installation as declarative: edit a source list, run `
 | 3        | Cargo crate                  | [Add a Cargo crate](cargo.md)               |
 | 4        | Go tool                      | [Add a Go tool](go.md)                      |
 | 5        | Ruby gem                     | [Add a Ruby gem](ruby.md)                   |
-| 6        | Global yarn package          | [Add a global yarn package](yarn.md)        |
+| 6        | Global pnpm package          | [Add a global pnpm package](pnpm.md)        |
 | 7        | uv Python tool               | [Add a uv tool](uv.md)                      |
 | 8        | Custom GitHub/source package | [Add a custom package](custom.md)           |
 | 9        | llama.cpp GGUF model         | [Add a llama.cpp model](llama-cpp-model.md) |

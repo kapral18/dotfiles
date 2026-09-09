@@ -16,7 +16,7 @@ Package managers are split by source-of-truth and by whether they can branch on 
 | Cargo                         | [`home/readonly_dot_default-cargo-crates`](../../../../home/readonly_dot_default-cargo-crates)                                                                   | `run_onchange_after_05-update-cargo-crates.sh.tmpl`     | No     |
 | Go                            | [`home/readonly_dot_default-golang-pkgs.tmpl`](../../../../home/readonly_dot_default-golang-pkgs.tmpl)                                                           | `run_onchange_after_05-update-golang-pkgs.sh.tmpl`      | Yes    |
 | Ruby gems                     | [`home/readonly_dot_default-gems`](../../../../home/readonly_dot_default-gems)                                                                                   | `run_onchange_after_05-update-gems.sh.tmpl`             | No     |
-| yarn                          | [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs)                                                                         | `run_onchange_after_05-update-yarn-pkgs.sh.tmpl`        | No     |
+| pnpm                          | [`home/readonly_dot_default-pnpm-pkgs`](../../../../home/readonly_dot_default-pnpm-pkgs)                                                                         | `run_onchange_after_05-update-pnpm-pkgs.sh.tmpl`        | No     |
 | uv Python versions            | [`home/readonly_dot_python-version`](../../../../home/readonly_dot_python-version)                                                                               | `run_onchange_after_05-install-uv-versions.sh.tmpl`     | No     |
 | uv tools                      | [`home/readonly_dot_default-uv-tools.tmpl`](../../../../home/readonly_dot_default-uv-tools.tmpl)                                                                 | `run_onchange_after_06-update-uv-tools.sh.tmpl`         | Yes    |
 | gh extensions                 | managed list in hook                                                                                                                                             | `run_onchange_after_05-install-gh-extensions.fish.tmpl` | n/a    |
@@ -35,7 +35,7 @@ All hooks live under [`home/.chezmoiscripts/`](../../../../home/.chezmoiscripts/
 | uv Python         | shared `.python-version` list                                                                                          |
 | uv tools          | template conditionals in `readonly_dot_default-uv-tools.tmpl`                                                          |
 | Custom packages   | template conditionals in `readonly_dot_default-custom-packages.tmpl`                                                   |
-| Shared everywhere | Cargo crates, yarn globals, Ruby gems                                                                                  |
+| Shared everywhere | Cargo crates, pnpm globals, Ruby gems                                                                                  |
 
 Example personal-only Go entry:
 

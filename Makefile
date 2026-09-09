@@ -42,18 +42,18 @@ check: ## Affected lint/gates/tests (bin/check)
 check-full: ## Human-only full lint/gates/tests (not for agents)
 	CHECK_FULL=1 bin/check --full
 
-website/node_modules: website/package.json website/yarn.lock
-	cd website && yarn install --frozen-lockfile
+website/node_modules: website/package.json website/pnpm-lock.yaml
+	cd website && pnpm install --frozen-lockfile
 	@touch $@
 
 docs: website/node_modules ## Start the docs dev server (hot-reload at http://localhost:3000/dotfiles/)
-	cd website && yarn start
+	cd website && pnpm start
 
 docs-build: website/node_modules ## Build the production docs site into website/build/
-	cd website && yarn build
+	cd website && pnpm build
 
 docs-serve: website/node_modules ## Serve the built docs/ statically (matches GitHub Pages output)
-	cd website && yarn serve
+	cd website && pnpm serve
 
 docs-clean: ## Clear the Docusaurus cache (.docusaurus/)
-	cd website && yarn clear
+	cd website && pnpm clear

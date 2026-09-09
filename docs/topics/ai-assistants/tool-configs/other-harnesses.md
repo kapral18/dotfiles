@@ -166,7 +166,7 @@ The bridge injects a freshly selected bearer per request, rotating through curso
 | MCP servers   | `mcp_servers.yaml` via `generate_mcp_configs.py omp`                                                                     | `~/.omp/agent/mcp.json`    |
 | Shared skills | `symlink_skills` → `~/.agents/skills`                                                                                    | `~/.omp/agent/skills`      |
 | Runtime hooks | `extensions/`                                                                                                            | `~/.omp/agent/extensions/` |
-| Install       | [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs) `@oh-my-pi/pi-coding-agent`     | yarn global, unpinned      |
+| Install       | [`home/readonly_dot_default-pnpm-pkgs`](../../../../home/readonly_dot_default-pnpm-pkgs) `@oh-my-pi/pi-coding-agent`     | pnpm global, unpinned      |
 
 ### Managed configuration
 

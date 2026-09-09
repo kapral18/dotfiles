@@ -55,7 +55,7 @@ const sidebars: SidebarsConfig = {
         'topics/core/packages/cargo',
         'topics/core/packages/go',
         'topics/core/packages/ruby',
-        'topics/core/packages/yarn',
+        'topics/core/packages/pnpm',
         'topics/core/packages/uv',
         'topics/core/packages/custom',
         'topics/core/packages/llama-cpp-model',

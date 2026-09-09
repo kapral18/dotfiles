@@ -5,13 +5,13 @@ title: Pi coding agent
 
 # Pi coding agent settings
 
-Pi is configured from yarn-managed packages plus readonly chezmoi sources under `home/dot_pi/agent/`. The page covers the installed packages, profile-specific settings and models, the shared MCP registry path, and the `APPEND_SYSTEM.md` operating layer that gives Pi the same working rules other harnesses receive.
+Pi is configured from pnpm-managed packages plus readonly chezmoi sources under `home/dot_pi/agent/`. The page covers the installed packages, profile-specific settings and models, the shared MCP registry path, and the `APPEND_SYSTEM.md` operating layer that gives Pi the same working rules other harnesses receive.
 
 ## Mental model
 
 | Piece               | Source                                                                                                                                                                                                                                                                                             | Target / effect                                                 |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Pi packages         | [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs)                                                                                                                                                                                                           | yarn globals used by Pi                                         |
+| Pi packages         | [`home/readonly_dot_default-pnpm-pkgs`](../../../../home/readonly_dot_default-pnpm-pkgs)                                                                                                                                                                                                           | pnpm globals used by Pi                                         |
 | Settings + models   | [`home/dot_pi/agent/readonly_settings.{work,personal}.json`](../../../../home/dot_pi/agent/) + work/shared [`readonly_models.json`](../../../../home/dot_pi/agent/readonly_models.json) or personal [`readonly_models.personal.json`](../../../../home/dot_pi/agent/readonly_models.personal.json) | `~/.pi/agent/`                                                  |
 | MCP servers         | [`home/.chezmoidata/mcp_servers.yaml`](../../../../home/.chezmoidata/mcp_servers.yaml)                                                                                                                                                                                                             | `~/.pi/agent/mcp.json`                                          |
 | System prompt       | [`home/dot_pi/agent/readonly_APPEND_SYSTEM.md`](../../../../home/dot_pi/agent/readonly_APPEND_SYSTEM.md)                                                                                                                                                                                           | `~/.pi/agent/APPEND_SYSTEM.md`, appended to Pi's default prompt |
@@ -21,7 +21,7 @@ Pi is configured from yarn-managed packages plus readonly chezmoi sources under 
 
 ### Installed packages
 
-Pi globals are installed via yarn from [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs) to `~/.default-yarn-pkgs`.
+Pi globals are installed via pnpm from [`home/readonly_dot_default-pnpm-pkgs`](../../../../home/readonly_dot_default-pnpm-pkgs) to `~/.default-pnpm-pkgs`.
 
 | Package                           | Purpose                                                    |
 | --------------------------------- | ---------------------------------------------------------- |
@@ -41,17 +41,17 @@ The local llama.cpp provider for Pi is covered in [Model registry & routing](../
 
 ### Shared settings
 
-| Setting area       | Behavior                                                                                                                                                                                                                                                                    |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Context compaction | Automatic context compaction uses a hybrid sliding window.                                                                                                                                                                                                                  |
-| Cache visibility   | Significant prompt-cache misses appear in the transcript; the footer and `/session` expose Pi's own cache accounting.                                                                                                                                                       |
-| Retries            | Exponential backoff retries.                                                                                                                                                                                                                                                |
-| Extension loading  | Pi loads the chezmoi-managed runtime extensions plus `pi-mcp-adapter` and `pi-subagents` from yarn global `node_modules`.                                                                                                                                                   |
-| Native tools       | `runtime-parity.ts` enables `grep`, `find`, and `ls` alongside Pi's default tools unless explicit CLI tool-selection flags override the defaults.                                                                                                                           |
-| Delegation         | `pi-subagents` adds `subagent` and `subagent_wait` for isolated child contexts; named review profiles cover reviewer, verifier, live-UI, and findings-audit phases.                                                                                                         |
-| Session hooks      | `ai-kb-recall.ts` invokes the shared session-context hook, stages depth-aware per-turn recall candidates for the `k-agent-smol` judge (pointer injection only) plus the correction directive, and forwards tool results to the shared worklog.                              |
-| PATH               | Shell PATH order keeps `~/.yarn/bin` ahead of runtime-manager shims so `pi` resolves to the yarn-managed binary.                                                                                                                                                            |
-| Secrets            | `GEMINI_API_KEY` and `OPENROUTER_API_KEY` are picked up from environment variables exported via `pass` in `config.fish.tmpl`. `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` are not exported; those are subscription logins, and any tool needing a raw key reads `pass` itself. |
+| Setting area       | Behavior                                                                                                                                                                                                                                                                          |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Context compaction | Automatic context compaction uses a hybrid sliding window.                                                                                                                                                                                                                        |
+| Cache visibility   | Significant prompt-cache misses appear in the transcript; the footer and `/session` expose Pi's own cache accounting.                                                                                                                                                             |
+| Retries            | Exponential backoff retries.                                                                                                                                                                                                                                                      |
+| Extension loading  | Pi loads the chezmoi-managed runtime extensions plus `pi-mcp-adapter` and `pi-subagents` from the stable `~/.local/share/pnpm-global-links/node_modules/` tree that `,install-pnpm-pkgs` rebuilds after every sync (pnpm 11+ global install paths are hashed and move on update). |
+| Native tools       | `runtime-parity.ts` enables `grep`, `find`, and `ls` alongside Pi's default tools unless explicit CLI tool-selection flags override the defaults.                                                                                                                                 |
+| Delegation         | `pi-subagents` adds `subagent` and `subagent_wait` for isolated child contexts; named review profiles cover reviewer, verifier, live-UI, and findings-audit phases.                                                                                                               |
+| Session hooks      | `ai-kb-recall.ts` invokes the shared session-context hook, stages depth-aware per-turn recall candidates for the `k-agent-smol` judge (pointer injection only) plus the correction directive, and forwards tool results to the shared worklog.                                    |
+| PATH               | Shell PATH order keeps `~/.local/share/pnpm/bin` ahead of runtime-manager shims so `pi` resolves to the pnpm-managed binary.                                                                                                                                                      |
+| Secrets            | `GEMINI_API_KEY` and `OPENROUTER_API_KEY` are picked up from environment variables exported via `pass` in `config.fish.tmpl`. `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` are not exported; those are subscription logins, and any tool needing a raw key reads `pass` itself.       |
 
 Automatic context compaction triggers when context exceeds `contextWindow − reserveTokens` (16384), keeps the most recent `keepRecentTokens` (80000) verbatim, and LLM-summarizes older turns. It merges iteratively with the prior summary so it never decays into a summary-of-a-summary.
 
@@ -77,9 +77,9 @@ The analyzer accepts only Pi session format v3. It follows the active `parentId`
 
 `cache.hit_rate` is `null` until a positive provider cache counter is observed. `compaction.reread_ratio` is `null` when no post-compaction reads can be measured, and `read_tracking_complete` shows whether every active-branch compaction exposed default read-file details. Exit status `2` means an explicit threshold failed; malformed input or an unsupported format exits `1`.
 
-Pi loads packages from yarn global `node_modules` paths to avoid Pi-managed npm update prompts; `pi install` is not used. Each package's `package.json` `pi` field declares its extension/skills/prompts, which Pi auto-loads.
+Pi loads packages from the pnpm global link tree paths to avoid Pi-managed npm update prompts; `pi install` is not used. Each package's `package.json` `pi` field declares its extension/skills/prompts, which Pi auto-loads.
 
-The installed Pi discovers `~/.agents/skills/` natively, so no skills bridge package is configured. See [Runtime recall wiring](../knowledge-base/cross-agent-memory.md). `@earendil-works/pi-tui` stays yarn-managed but is not loaded as a Pi extension package.
+The installed Pi discovers `~/.agents/skills/` natively, so no skills bridge package is configured. See [Runtime recall wiring](../knowledge-base/cross-agent-memory.md). `@earendil-works/pi-tui` stays pnpm-managed but is not loaded as a Pi extension package.
 
 The `subagent` tool supports review, scout, and parallel audits while keeping the parent session's token use bounded on long tasks. It is fully local: no network/telemetry beyond the model calls the child agents make.
 

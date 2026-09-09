@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Track runtime manager config changes
+# {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
+
+# This script installs pnpm packages from the default-pnpm-pkgs file
+# {{ include "readonly_dot_default-pnpm-pkgs" | sha256sum }}
+# {{ include "exact_bin/executable_,install-pnpm-pkgs" | sha256sum }}
+
+{{ joinPath .chezmoi.homeDir "bin" ",install-pnpm-pkgs" | quote }}

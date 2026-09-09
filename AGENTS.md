@@ -105,7 +105,7 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
 2. **Cargo** (`home/readonly_dot_default-cargo-crates`) — Rust packages
 3. **Go** (`home/readonly_dot_default-golang-pkgs.tmpl`) — Go packages
 4. **Gems** (`home/readonly_dot_default-gems`) — Ruby packages
-5. **yarn** (`home/readonly_dot_default-yarn-pkgs`) — Node.js/JavaScript packages
+5. **pnpm** (`home/readonly_dot_default-pnpm-pkgs`) — Node.js/JavaScript packages
 6. **uv** (`home/readonly_dot_default-uv-tools.tmpl`) — Python tools/packages
 7. **Custom packages** (`home/readonly_dot_default-custom-packages.tmpl`) — DMGs + GitHub release CLI tools + source builds.
    Installed by `home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl`.
@@ -117,7 +117,7 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
   Re-evaluate the directive only when the user explicitly requests it.
 - When no exception directive applies, prefer Homebrew first when a formula/cask is verified to install the requested upstream project.
   This applies even if the Homebrew package name differs from the repo slug.
-- When no exception directive applies, lower-priority package lists (`cargo`, `go`, `gems`, `yarn`, `uv`, manual packages) are fallbacks only.
+- When no exception directive applies, lower-priority package lists (`cargo`, `go`, `gems`, `pnpm`, `uv`, manual packages) are fallbacks only.
   Use them only when Homebrew does not provide a suitable package.
 - Choose the verified Homebrew package when only its name differs from the upstream/repo slug.
 
@@ -133,7 +133,7 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
    - **Cargo**: `cargo search <package> --limit 5` — for Rust packages
    - **Go**: verify the import path on pkg.go.dev or the official repository; for installability, use `go install <import-path>@latest` or a versioned equivalent.
    - **Gems**: `gem search <package>` — Ruby packages
-   - **yarn**: `yarn info <package>` — Node.js/JavaScript packages
+   - **pnpm**: `pnpm view <package>` — Node.js/JavaScript packages
    - **uv**: verify the package on PyPI or the official repository; for tool installability, use `uv tool install <package>`.
      Do not use `uv pip search`; current `uv` does not support that command.
    - **Manual (.dmg / release asset)**: verified GitHub releases
