@@ -60,7 +60,8 @@ This skill orchestrates that tool; it does not restate it.
 ## Compute Target Branches
 
 Before launching the tool, decide which branches to backport to and confirm with the user.
-Use the Target-Branch Policy in `references/backport-tool.md` for the authoritative rules; the steps here are the procedure.
+Use the Target-Branch Policy in `~/.agents/skills/k-kbn-backport/references/backport-tool.md` for the authoritative rules;
+the steps here are the procedure.
 
 1. Read the source PR's labels and backport intent: `gh pr view <N> --repo elastic/kibana --json number,title,labels,url`.
 2. If `backport:skip` is present, **stop and confirm** with the user before doing anything else —

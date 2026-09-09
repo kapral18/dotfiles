@@ -5,7 +5,7 @@ Use when the question is about **business logic, state transitions, or data shap
 the kind that looks reasonable on paper but only feels wrong once pushed through real cases.
 
 Right shape when: "does this state machine handle X then Y", "does this data model let me represent…", "feel out the API before writing it", or anything where the user wants to **press buttons and watch state change**.
-If the question is "what should this look like", wrong branch — use `ui.md`.
+If the question is "what should this look like", wrong branch — use `~/.agents/skills/k-prototype/references/ui.md`.
 
 ## Process
 

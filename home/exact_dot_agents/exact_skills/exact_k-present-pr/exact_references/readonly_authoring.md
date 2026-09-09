@@ -144,7 +144,8 @@ That is the entire trick to keeping a big PR a focused narrative instead of a wa
 - Trim long bodies with `…` and say so in the footer source note.
 - Syntax tokens are CSS classes inside `<span class="s">`: `tok-k` (keyword), `tok-s` (string), `tok-c` (comment), `tok-f` (function), `tok-n` (number/bool).
 - `ln add` / `ln del` / `ln ctx` set the line background and `+`/`-`/` ` gutter.
-- HTML-escape `<`, `>`, `&` inside code (`&lt; &gt; &amp;`). This is the #1 source of a broken render — verify in a browser (see SKILL.md).
+- HTML-escape `<`, `>`, `&` inside code (`&lt; &gt; &amp;`).
+  This is the #1 source of a broken render — verify in a browser (see ~/.agents/skills/k-present-pr/SKILL.md).
 
 ## Raster images (named Nano Banana / Gemini / Google image only)
 

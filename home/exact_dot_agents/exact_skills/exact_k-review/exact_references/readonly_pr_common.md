@@ -38,7 +38,7 @@ For smaller PRs, review everything.
 ## CI Coverage Gate (scoping — complete before drafting findings)
 
 PR review otherwise re-checks everything, including classes PR CI already catches.
-This gate is the PR check-source instance of the Check-Coverage Exemption in `judging_core.md`;
+This gate is the PR check-source instance of the Check-Coverage Exemption in `~/.agents/skills/k-review/references/judging_core.md`;
 the exemption rules there apply here unchanged.
 
 Avoid redundant findings:
@@ -92,7 +92,7 @@ Do not recursively crawl every reachable or potentially relevant reference.
 - For a selected issue/PR, read its full body and discussion before relying on it;
   inspect its diff/files only when the claim depends on code.
 - For a selected comment/thread, read the complete thread with author, order, resolution, and outdated state.
-- For selected media, use `pr_snapshot.md` → Media, inspect the actual file, and retain the manifest evidence.
+- For selected media, use `~/.agents/skills/k-review/references/pr_snapshot.md` → Media, inspect the actual file, and retain the manifest evidence.
   For video/GIF claims, inspect the relevant transition plus surrounding states and audio/captions when material.
 - For selected Buildkite evidence, use `k-buildkite`; verified overlays own repo-specific routing.
 - Stop reference expansion when the named question is answered or the required source is inaccessible.
@@ -134,7 +134,7 @@ When triggered, load and follow `~/.agents/skills/k-review/references/pr_context
     - verify against the current implementation/diff
     - do not draft a new comment
   - `new`: not already covered and verified against the current implementation/diff; eligible for draft feedback.
-    - For replacements and test migrations, apply the Replacement/Migration Parity Gate in `judging_core.md` first.
+    - For replacements and test migrations, apply the Replacement/Migration Parity Gate in `~/.agents/skills/k-review/references/judging_core.md` first.
       Only `parity_gap`, `new_regression`, and `scope_expansion` can be `new`; `preserved_limitation` and `prose_drift` cannot be `new`.
   - `incorrect`: prior clarification/comment conflicts with the current implementation/diff;
     add one correction with evidence (do not echo the incorrect claim).

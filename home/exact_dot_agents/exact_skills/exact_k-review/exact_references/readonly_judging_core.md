@@ -1,14 +1,14 @@
 # Judging Core (Surface-Agnostic)
 
-- Mode files and `shared_rules.md` reference this file; do not duplicate these sections elsewhere.
+- Mode files and `~/.agents/skills/k-review/references/shared_rules.md` reference this file; do not duplicate these sections elsewhere.
 - Delivery-agnostic: no GitHub, SCSI, or delivery rules.
-- Surfaces needing PR/SCSI/GitHub-delivery rules layer them via `shared_rules.md`.
-- Integrated coverage and hygiene criteria for the final Verify stage live in `judging_pipeline.md`.
+- Surfaces needing PR/SCSI/GitHub-delivery rules layer them via `~/.agents/skills/k-review/references/shared_rules.md`.
+- Integrated coverage and hygiene criteria for the final Verify stage live in `~/.agents/skills/k-review/references/judging_pipeline.md`.
 
 ## Conditional Gate Loading
 
 Before judging each changed path or plan claim, evaluate every trigger below against its evidence and the assigned scope.
-Reference paths below are relative to `~/.agents/skills/k-review/references/`.
+Reference paths below are full deployed paths.
 For every matching gate, load its named reference before applying that gate or clearing the affected surface.
 If applicability is uncertain, inspect the relevant source/plan first; unresolved applicability requires loading the gate, not skipping it.
 An assigned check requiring a gate must load its reference before that check, including direct role entry;
@@ -65,10 +65,10 @@ A separate family can improve final judgment independence, but does not justify 
 ## Check-Coverage Exemption (Run Before Drafting Findings On A Final Verdict Surface)
 
 Trigger: the output is a final verdict or finding set that checks also gate: PR review, deep review, plan review, and every final review, adversarial, or audit-lens packet.
-Not triggered: local iterate-and-fix review (`local_changes.md`, `k-light-review`);
+Not triggered: local iterate-and-fix review (`~/.agents/skills/k-review/references/local_changes.md`, `k-light-review`);
 there a covered-class finding is fixed in the same pass, so every class stays in scope.
 
-Evidence is the frozen snapshot's present checks: PR CI checks (`pr_common.md` CI Coverage Gate owns `checks.json` and Buildkite mechanics) or complete local check receipts the root supplied (`make check`, pre-commit, lint, typecheck, test runs).
+Evidence is the frozen snapshot's present checks: PR CI checks (`~/.agents/skills/k-review/references/pr_common.md` CI Coverage Gate owns `checks.json` and Buildkite mechanics) or complete local check receipts the root supplied (`make check`, pre-commit, lint, typecheck, test runs).
 
 - Map each present check to the finding classes it actually runs; do not credit a check from its name alone.
 - Exempt a class only when a present check genuinely covers it: do not report, draft, or block on findings in that class.
@@ -85,20 +85,20 @@ Apply SOP `### 3.6 State-Machine Verification` to reviewed behavior that is stat
 
 Examples include parsers, tokenizers, formatters, routing/matching logic, retry/workflow loops, permission matrices, compatibility-sensitive branching, multi-flag control flow.
 
-Required reference: `judging_state.md` (matching heading).
+Required reference: `~/.agents/skills/k-review/references/judging_state.md` (matching heading).
 
 ## Async-Derived State Gate (Run On Values Resolved Over Time)
 
 Trigger: the diff adds or changes a conditional, default injection, reset, or visibility gate whose predicate derives from an asynchronously-resolved source — promise resolution, readiness callbacks, fetched collections, subscription emissions, lazy initialization.
 
-Required reference: `judging_state.md` (matching heading).
+Required reference: `~/.agents/skills/k-review/references/judging_state.md` (matching heading).
 
 ## Context-Divergence Gate (Run On Shared Paths Serving Multiple Contexts)
 
 Trigger: the diff changes a path exercised by more than one execution context —
 deployment tier, environment, license/subscription level, tenant, feature-flag state, user role, or platform.
 
-Required reference: `judging_state.md` (matching heading).
+Required reference: `~/.agents/skills/k-review/references/judging_state.md` (matching heading).
 
 ## Scale-Behavior Gate (Run On Collection And Volume Operations)
 
@@ -106,49 +106,49 @@ Trigger: any loop, batch, recursion, query construction, or collection transform
 regardless of whether the diff looks performance-sensitive.
 The trigger is structural, not appearance-based: production volume is invisible in a diff hunk.
 
-Required reference: `judging_state.md` (matching heading).
+Required reference: `~/.agents/skills/k-review/references/judging_state.md` (matching heading).
 
 ## Deletion-Safety Audit (Run On Any Removal)
 
 Trigger: the diff deletes files, exports, symbols, or behavior.
 
-Required reference: `judging_change.md` (matching heading).
+Required reference: `~/.agents/skills/k-review/references/judging_change.md` (matching heading).
 
 ## Replacement/Migration Parity Gate (Run On Replacements And Test Migrations)
 
 Trigger: the diff deletes or stops using an implementation/test/helper and adds a replacement for the same behavior.
 
-Required reference: `judging_change.md` (matching heading).
+Required reference: `~/.agents/skills/k-review/references/judging_change.md` (matching heading).
 
 ## Historical Archaeology Gate (Code Provenance & Evolution)
 
 Trigger: modifying, replacing, or deleting existing non-trivial logic, guards, conditionals, fallback branches, or legacy infrastructure.
 
-Required reference: `judging_change.md` (matching heading).
+Required reference: `~/.agents/skills/k-review/references/judging_change.md` (matching heading).
 
 ## Semantic-Projection & Sibling-Consumer Gate
 
 Trigger: semantic delta changes how a domain relationship is interpreted, projected, stored, rendered, compared, filtered, or serialized.
 
-Required reference: `judging_change.md` (matching heading).
+Required reference: `~/.agents/skills/k-review/references/judging_change.md` (matching heading).
 
 ## Product-Flow Lens (Run When The Diff Touches User-Facing Flows)
 
 Trigger: the diff changes UI components, routes, user-state management, or API handlers that serve a UI.
 
-Required reference: `judging_product.md` (matching heading).
+Required reference: `~/.agents/skills/k-review/references/judging_product.md` (matching heading).
 
 ## Signal-Quality Gate (Run On Alerting/Monitoring/Analytics Logic)
 
 Trigger: the diff changes alerting rules, monitoring queries, thresholds, statistical aggregations, telemetry pipelines, or prompts generating such queries.
 
-Required reference: `judging_product.md` (matching heading).
+Required reference: `~/.agents/skills/k-review/references/judging_product.md` (matching heading).
 
 ## Systemic-Risk Checks (Run When The Diff Crosses Module Or Deploy Boundaries)
 
 Trigger: the diff changes public API contracts, persisted data, cross-module/package imports, or behavior that ships through a staged/rolling rollout.
 
-Required reference: `judging_product.md` (matching heading).
+Required reference: `~/.agents/skills/k-review/references/judging_product.md` (matching heading).
 
 ## Severity Definitions (Internal Only; Do Not Prefix Comments With These)
 

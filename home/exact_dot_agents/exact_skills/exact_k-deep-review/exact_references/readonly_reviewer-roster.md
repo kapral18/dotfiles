@@ -12,7 +12,7 @@ Do not run suites before final Verify merely to prepare a reviewer packet.
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
 Use the registry review/refute model and effort, preferring cross-family refutation only at equal capability.
-Reviewers load `reviewer-worker.md` or `adversarial-verifier.md` and the selected risk criteria, never this roster or a controller router.
-For the blind clarity lane, use `fresh-eyes.md` alone with diff scope and source files, not the sighted context pack metadata.
+Reviewers load `~/.agents/skills/k-review/references/reviewer-worker.md` or `~/.agents/skills/k-review/references/adversarial-verifier.md` and the selected risk criteria, never this roster or a controller router.
+For the blind clarity lane, use `~/.agents/skills/k-review/references/fresh-eyes.md` alone with diff scope and source files, not the sighted context pack metadata.
 Keep raw evidence outside root context.
 Collect one terminal result per packet and deliver the consolidated verdict without another audit lane.

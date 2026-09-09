@@ -23,9 +23,9 @@ Contract:
 - Mode files reference those files but do not re-load them while in context.
 - Follow required phase references; ledger phase, references, completed evidence, and open gates. Blocked gates stay blocking.
 - For PR modes, also load `~/.agents/skills/k-review/references/pr_common.md` and `~/.agents/skills/k-review/references/pr_snapshot.md` once.
-- Every reference stays under 20 KB so one read returns it whole (`scripts/verify_agent_file_sizes.py`);
+- Every reference stays under 20 KB so one read returns it whole (`~/.local/share/chezmoi/scripts/verify_agent_file_sizes.py`);
   a concatenated bundle would be truncated by the strictest harness view tool, so there is none.
-- Load `~/.agents/skills/k-review/references/pr_context_audits.md` only when `pr_common.md`'s conditional Ambient Topic Exploration or PR Necessity + Correctly-Open Audit gate triggers.
+- Load `~/.agents/skills/k-review/references/pr_context_audits.md` only when `~/.agents/skills/k-review/references/pr_common.md`'s conditional Ambient Topic Exploration or PR Necessity + Correctly-Open Audit gate triggers.
 - Reference and open skill files under `~/.agents/skills/` only.
   `~/.cursor/skills` is a symlink to the same tree; opening a file under both paths is a duplicate read of the same bytes.
 - After a context summary, re-open only the files the active mode needs; the summary is not a substitute for them.
@@ -48,7 +48,7 @@ Read `~/.agents/skills/k-review/references/lanes.md` to select applicable criter
 Preserve requested review and adversarial lenses; for deep or high-risk work, assign them distinct questions against the same frozen candidate.
 Low-risk work needs only its applicable judgment. Specialists consume shared evidence, not one another's verdicts.
 Do not chain finder, audit, adversarial, fresh-eyes, or post-review passes. Do not invoke convergence automatically.
-Gather context in Understand; produce known fixes within the current packet's write scope before entering Verify (see `references/authorship.md`) — a final-Verify-stage packet stays read-only by category and reports instead.
+Gather context in Understand; produce known fixes within the current packet's write scope before entering Verify (see `~/.agents/skills/k-review/references/authorship.md`) — a final-Verify-stage packet stays read-only by category and reports instead.
 Research packets return compact evidence, not transcripts. Direct deterministic checks require no mechanical agent.
 When delegation is forbidden, stay inline; otherwise isolate substantial context-heavy judgment where it reduces total work.
 
@@ -84,11 +84,11 @@ Continuity rule:
 
 ## Verdict Gate (PR Mode Only)
 
-See `references/pr_common.md` → "Verdict Gate" before claiming `Verdict: merge-ready` on the first response of a PR review.
+See `~/.agents/skills/k-review/references/pr_common.md` → "Verdict Gate" before claiming `Verdict: merge-ready` on the first response of a PR review.
 
 ## Role Detection / Authorship (Mandatory In Every Mode)
 
-See `references/authorship.md` (loaded once by the router).
+See `~/.agents/skills/k-review/references/authorship.md` (loaded once by the router).
 
 ## Mode Selection (Intent + Evidence)
 
@@ -102,13 +102,13 @@ Pick exactly one mode. If ambiguous, ask one fork-closing question and state a d
 ### Mode: PR review (initial or continued)
 
 - Use when the user wants an initial PR review, continued review, or verification that a PR fix resolves a bug.
-- Role modifies behavior: see Role Detection above and `pr_review.md`.
+- Role modifies behavior: see Role Detection above and `~/.agents/skills/k-review/references/pr_review.md`.
 - Then open: `~/.agents/skills/k-review/references/pr_review.md`
 
 ### Mode: Local changes review (working tree, branch delta, or commit range)
 
 - Use when: the user asks to review local changes/diff, a commit range, or a no-PR branch delta.
-- If no PR is involved, check `k-light-review`'s Light-Eligibility Predicate before opening `local_changes.md`.
+- If no PR is involved, check `k-light-review`'s Light-Eligibility Predicate before opening `~/.agents/skills/k-review/references/local_changes.md`.
   When self-authored and trigger-free, route to `k-light-review` unless the user explicitly requested full/deep review;
   it is cheaper, not weaker. Otherwise open `~/.agents/skills/k-review/references/local_changes.md`.
 

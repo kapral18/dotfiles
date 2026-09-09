@@ -46,4 +46,4 @@ GH_PAGER=cat gh api graphql -H "GraphQL-Features:issue_types" -f query='query { 
 ```
 
 Compare each field against the approved preflight ledger; fix or get explicit acceptance for mismatches.
-If parent/sub-issue links were approved, apply them through `k-github/references/sub-issues.md`, then read back the relationship.
+If parent/sub-issue links were approved, apply them through `~/.agents/skills/k-github/references/sub-issues.md`, then read back the relationship.

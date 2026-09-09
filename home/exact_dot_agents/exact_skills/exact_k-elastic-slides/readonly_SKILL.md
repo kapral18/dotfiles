@@ -10,14 +10,14 @@ Manual-only overlay for Elastic-themed Google Slides decks.
 Use it when the user explicitly asks for Elastic slide generation, deck styling, ownership slides, Kibana plugin/package slides, or Elastic visual polish.
 
 This skill owns Elastic domain content and style.
-Generic Google Workspace mechanics stay with `k-google-workspace`; generic Slides geometry and `gws` batchUpdate patterns stay in `k-google-workspace/references/slides-deck-design-and-automation.md`.
+Generic Google Workspace mechanics stay with `k-google-workspace`; generic Slides geometry and `gws` batchUpdate patterns stay in `~/.agents/skills/k-google-workspace/references/slides-deck-design-and-automation.md`.
 
 ## Load Order
 
 1. Load `~/.agents/skills/k-google-workspace/SKILL.md`.
 2. Load `~/.agents/skills/k-google-workspace/references/slides-deck-design-and-automation.md`.
 3. Use this skill for Elastic-specific content, palette, ownership, and deck conventions.
-4. Load `references/templates.md` only when you need executable Elastic batchUpdate snippets.
+4. Load `~/.agents/skills/k-elastic-slides/references/templates.md` only when you need executable Elastic batchUpdate snippets.
 
 Done when the target deck, slide IDs, intended operation, source content, and verification method are all explicit.
 
@@ -86,7 +86,7 @@ Keep each slide to one main claim. Move overflow into speaker notes or a follow-
 6. Re-read the deck and verify expected objects, text, links, and transforms.
 7. Use browser visual QA for rendered spacing, overflow, badge wrapping, and image margins.
 
-For new batch scripts, start from `references/templates.md` and keep one script per target slide or cohesive deck operation.
+For new batch scripts, start from `~/.agents/skills/k-elastic-slides/references/templates.md` and keep one script per target slide or cohesive deck operation.
 
 ## Done Criteria
 

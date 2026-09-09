@@ -139,6 +139,8 @@ def is_manual_only(skill_dir: Path) -> bool:
 
 def _orders_a_launch(text: str) -> bool:
     """True when `text` orders a launch, after deleting the clauses that only describe or ban one."""
+    # A full skill file path names an artifact, not an agent to launch.
+    text = re.sub(r"~/.agents/skills/[^`\s]+", " skill-file ", text)
     for clause in _DESCRIPTIVE_CLAUSES:
         text = clause.sub(" ", text)
     if _LAUNCH_VERB.search(text) and _LAUNCH_OBJECT.search(text):
@@ -738,7 +740,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_review_delivery.md",
             "**Self-review** (`authorship: self`):",
-            "Fix authority follows write scope per `authorship.md`",
+            "Fix authority follows write scope per `~/.agents/skills/k-review/references/authorship.md`",
             """  - **Comment only** if the user explicitly asks to post self-review notes with remaining non-blocking findings.
   - **Approve** when no findings remain.
   - Do not request changes on the user's own PR from this flow.""",
@@ -876,8 +878,8 @@ class TestAgentSkillInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-kbn-backport/exact_references/readonly_conflict-resolution.md",
-            "Apply The Resolution, in `references/conflict-resolution.md`",
-            "Validation (`references/conflict-resolution.md`) so the verifiers actually run and pass",
+            "Apply The Resolution, in `~/.agents/skills/k-kbn-backport/references/conflict-resolution.md`",
+            "Validation (`~/.agents/skills/k-kbn-backport/references/conflict-resolution.md`) so the verifiers actually run and pass",
         )
         self.assert_file_not_contains(
             "home/exact_dot_agents/exact_skills/exact_k-kbn-backport/readonly_SKILL.md",
@@ -949,6 +951,8 @@ class TestAgentSkillInvariants(unittest.TestCase):
         # invariant green while the launch order survives. Each row is a scanned body plus whether
         # it orders a launch; `False` rows are the exemptions the real contracts depend on.
         probes = (
+            (False, "A review-category dispatch. See `~/.agents/skills/k-review/references/authorship.md`."),
+            (True, "Read `~/.agents/skills/k-review/references/authorship.md`; launch k-agent-reviewer."),
             (False, "A staged pointer is not an instruction to launch an agent."),
             (True, "A staged pointer is not an instruction to launch an agent; spawn k-agent-reviewer now."),
             # Weak verbs and a wrapped object — the five orders the first vocabulary missed.

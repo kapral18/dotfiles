@@ -11,6 +11,8 @@ The boundary is intentional: generic skills (`k-review`, `k-deep-review`, `k-git
 
 ## `k-elastic-domain`
 
+Elastic PR Test Plans contain only applicable manual setup, reproduction, and observation steps. Omit the section when no manual scenario applies, including automated-test-only changes. Automated test commands, results, and CI checklists stay in the internal publication packet, outside the PR body. Commands used for manual setup or direct UI/API/CLI reproduction remain valid.
+
 | Field    | Value                                                                                              |
 | -------- | -------------------------------------------------------------------------------------------------- |
 | Use when | Elastic/Kibana overlay for PRs, labels, ownership, bots, Buildkite, live UI                        |

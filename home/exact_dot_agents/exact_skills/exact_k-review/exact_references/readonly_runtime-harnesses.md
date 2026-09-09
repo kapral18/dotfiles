@@ -3,7 +3,7 @@
 This file is not a subagent registry.
 
 - The active harness owns discovery and invocation for its configured agents, tasks, or native isolation tools.
-- `/k-deep-review` uses those native mechanisms plus the role-specific contracts in `references/`.
+- `/k-deep-review` uses those native mechanisms plus the role-specific contracts in `~/.agents/skills/k-review/references/`.
 
 Read this file only for capability caveats that affect orchestration.
 

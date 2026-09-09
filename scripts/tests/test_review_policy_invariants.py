@@ -321,7 +321,9 @@ class TestReviewPolicyInvariants(unittest.TestCase):
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_review_delivery.md"
         )
         self.assertIn("SOP §3.5", delivery)
-        self.assertIn("Fix authority follows write scope per `authorship.md`", delivery)
+        self.assertIn(
+            "Fix authority follows write scope per `~/.agents/skills/k-review/references/authorship.md`", delivery
+        )
         self.assertNotIn("Review alone does not authorize edits.", delivery)
         self.assertNotIn("block/rerun", delivery)
 

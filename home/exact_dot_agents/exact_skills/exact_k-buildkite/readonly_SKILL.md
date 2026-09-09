@@ -31,7 +31,7 @@ bk configure
 
 ## Command reference
 
-Build, job, artifact, pipeline, agent, auth/config, and the `bk api` escape hatch commands live in `references/bk-commands.md`.
+Build, job, artifact, pipeline, agent, auth/config, and the `bk api` escape hatch commands live in `~/.agents/skills/k-buildkite/references/bk-commands.md`.
 Load it whenever you need a command not shown in the Failure Debugging Workflow below.
 
 The pre-authorized `bk` commands do not mutate org state (downloads write local files only).
@@ -54,7 +54,7 @@ When a build fails, follow this sequence:
 
 5. List artifacts if available: `bk artifacts list BUILD_NUMBER -p SLUG`. Done when relevant artifacts are listed or confirmed absent.
 
-For detailed debugging patterns, load `references/build-debugging.md`.
+For detailed debugging patterns, load `~/.agents/skills/k-buildkite/references/build-debugging.md`.
 
 ## Output Conventions
 
@@ -70,8 +70,8 @@ bk api /pipelines/SLUG/builds | jq '.[0]'
 
 ## Reference Files
 
-| Reference                     | When to Load                           |
-| ----------------------------- | -------------------------------------- |
-| references/bk-commands.md     | Full bk CLI command reference needed   |
-| references/build-debugging.md | Debugging build failures in depth      |
-| references/troubleshooting.md | Auth failures, CLI errors, rate limits |
+| Reference                                                  | When to Load                           |
+| ---------------------------------------------------------- | -------------------------------------- |
+| ~/.agents/skills/k-buildkite/references/bk-commands.md     | Full bk CLI command reference needed   |
+| ~/.agents/skills/k-buildkite/references/build-debugging.md | Debugging build failures in depth      |
+| ~/.agents/skills/k-buildkite/references/troubleshooting.md | Auth failures, CLI errors, rate limits |

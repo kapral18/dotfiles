@@ -1,7 +1,7 @@
 # Going Deeper
 
 Two advanced branches for `k-codebase-design`.
-Assumes the vocabulary in `SKILL.md` — **module**, **interface**, **seam**, **adapter**, **leverage**.
+Assumes the vocabulary in `~/.agents/skills/k-codebase-design/SKILL.md` — **module**, **interface**, **seam**, **adapter**, **leverage**.
 
 ## Branch A — Deepening a cluster given its dependencies
 

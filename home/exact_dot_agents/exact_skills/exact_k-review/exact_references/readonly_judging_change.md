@@ -1,6 +1,6 @@
 # Judging Change Gates
 
-Loaded through `judging_core.md` when a listed gate matches the reviewed path, plan claim, or assigned check.
+Loaded through `~/.agents/skills/k-review/references/judging_core.md` when a listed gate matches the reviewed path, plan claim, or assigned check.
 Before using this file directly, load `~/.agents/skills/k-review/references/judging_core.md` for the authoritative triggers.
 Apply matching gates in full; loading this group does not activate an unrelated gate.
 

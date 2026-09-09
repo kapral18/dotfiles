@@ -56,7 +56,7 @@ Especially when the original diff does not apply cleanly, learn how the affected
 A conflict is often caused not by the change itself but by an earlier PR that touched the same files and has not been backported to the destination branch yet.
 The interactive run prints this hint, but the agent driving the pane may not have it; reproduce it directly.
 
-1. Detect prerequisites with the non-interactive `--ls --onlyMissing` command and post-filtering documented in `references/backport-tool.md` (Missing Prerequisite Backports).
+1. Detect prerequisites with the non-interactive `--ls --onlyMissing` command and post-filtering documented in `~/.agents/skills/k-kbn-backport/references/backport-tool.md` (Missing Prerequisite Backports).
    Pass the conflicting files (from `git diff --name-only --diff-filter=U`) as the paths and the current backport branch as the target.
    If the user pasted the tool's hint block from the interactive pane, use that as the authoritative list instead.
 2. Investigate each missing/pending candidate using the same exhaustive PR reading as Understand The Original Change, and classify whether the current conflict actually depends on that PR:
@@ -103,14 +103,14 @@ If `scripts/check_changes.ts` or a branch-local validation script is missing, re
 
 ## Stage And Continue The Run
 
-Once the resolution is applied (Apply The Resolution, in `references/conflict-resolution.md`), stage and gate it, then hand back to the run:
+Once the resolution is applied (Apply The Resolution, in `~/.agents/skills/k-kbn-backport/references/conflict-resolution.md`), stage and gate it, then hand back to the run:
 
 1. Review final diffs:
    - `git diff -- <changed-files>`
    - `git diff --cached -- <changed-files>`
 2. Stage only the resolved backport files:
    - `git add <resolved-files>`
-3. With the resolution staged, run `<pm> kbn bootstrap` and Validation (`references/conflict-resolution.md`) so the verifiers actually run and pass before you continue: all four checks, each ending with an explicit `pass`/`fail`/`unavailable` status.
+3. With the resolution staged, run `<pm> kbn bootstrap` and Validation (`~/.agents/skills/k-kbn-backport/references/conflict-resolution.md`) so the verifiers actually run and pass before you continue: all four checks, each ending with an explicit `pass`/`fail`/`unavailable` status.
    A check with no status is not passed, and validation is not complete until every item has one.
 4. Confirm there is nothing left to resolve:
    - `git diff --check --cached`

@@ -24,8 +24,9 @@ Load exactly this:
 - `~/.agents/skills/k-review/references/context-pack.md`, when the scope packet names a context pack;
   consume the pack per that contract before any live PR fetch
 
-Do not load `k-review/SKILL.md`, `shared_rules.md`, `lanes.md`, or a mode file.
-Do not load `pr_common.md` or `pr_context_audits.md` either; they carry root intake, verdict, and pending-review reconciliation procedures.
+Do not load `~/.agents/skills/k-review/SKILL.md`, `~/.agents/skills/k-review/references/shared_rules.md`, `~/.agents/skills/k-review/references/lanes.md`, or a mode file.
+Do not load `~/.agents/skills/k-review/references/pr_common.md` or `~/.agents/skills/k-review/references/pr_context_audits.md` either;
+they carry root intake, verdict, and pending-review reconciliation procedures.
 Those procedures belong to the controller; the parent packet carries the route context you need.
 
 Do not launch more subagents.

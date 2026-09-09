@@ -15,7 +15,7 @@ Default interface:
 
 Google Slides:
 
-- When designing, creating, or editing Google Slides, load `references/slides-deck-design-and-automation.md` and follow it.
+- When designing, creating, or editing Google Slides, load `~/.agents/skills/k-google-workspace/references/slides-deck-design-and-automation.md` and follow it.
 - Use `gws` for Slides reads and mutations.
   Use browser automation only for visual verification or for UI-only gaps that `gws` cannot observe.
 
@@ -26,7 +26,7 @@ When NOT to use:
 - Browser automation as the primary path for a Google Workspace task that `gws` supports
 - Unsupported Google products or UI-only flows that `gws` cannot perform (in that case, say `gws` does not cover the task and ask before switching tools)
   - Known gap with a verified UI fallback: anchored inline comments on a Google Doc (highlight a passage + comment).
-    When the user wants those, load `references/docs-inline-comments.md` and follow it.
+    When the user wants those, load `~/.agents/skills/k-google-workspace/references/docs-inline-comments.md` and follow it.
 
 External truth rules:
 

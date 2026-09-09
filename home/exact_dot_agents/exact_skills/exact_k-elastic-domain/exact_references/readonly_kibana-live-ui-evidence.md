@@ -1,6 +1,6 @@
 # Kibana Live UI Overlay — Evidence & Conduct
 
-Companion to `kibana-live-ui.md` (the Kibana live UI target packet); load both together.
+Companion to `~/.agents/skills/k-elastic-domain/references/kibana-live-ui.md` (the Kibana live UI target packet); load both together.
 This file carries the worker conduct and evidence contract: safety boundary, screenshot handoff, live feedback overlay, and controller validation.
 
 ## Safety boundary

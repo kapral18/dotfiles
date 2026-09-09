@@ -47,6 +47,8 @@ Progressive disclosure: inline what every branch needs; move branch-only materia
 The pointer wording controls reliability; a must-have behind a weak pointer is a variance bug.
 Too little disclosure bloats the top; too much hides needed material.
 Co-locate each concept's definition, rules, and caveats under one heading.
+Do not use bare filenames or relative paths for concrete bundled file references, even when colocated.
+Use the full deployed `~/.agents/skills/k-<name>/...` path; use the full chezmoi source path for repo-only files.
 
 ## Completion criteria
 

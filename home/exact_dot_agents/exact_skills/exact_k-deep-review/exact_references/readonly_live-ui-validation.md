@@ -3,7 +3,7 @@
 Use only in the root-owned final Verify stage for applicable UI/runtime acceptance questions.
 Resolve the target worktree/branch, runtime configuration/flags, required data, and mutation authority before starting the check.
 Use the user/repo-documented target packet or the verified domain overlay; do not borrow another domain's hosts/data/policy.
-Use `~/.agents/skills/k-review/references/live-ui-review.md`, which loads `live-ui-runtime.md` for runtime setup, data, safety, and screenshot mechanics.
+Use `~/.agents/skills/k-review/references/live-ui-review.md`, which loads `~/.agents/skills/k-review/references/live-ui-runtime.md` for runtime setup, data, safety, and screenshot mechanics.
 Default is verification-only: no source edits, git/GitHub effects, or shared-state mutations outside the explicit local/dev runtime authority.
 Compare base/head when both meaningfully expose the feature; otherwise use the stated head-only oracle.
 Capture the smallest useful screenshot/behavior evidence, with target and branch identity.

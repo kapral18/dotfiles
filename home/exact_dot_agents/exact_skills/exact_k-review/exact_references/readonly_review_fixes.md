@@ -1,7 +1,6 @@
 # Review Fixes
 
-Fix findings within the current packet's write scope and the approved semantic delta (see `authorship.md` for resolving write scope);
-a final-Verify-stage packet stays read-only by category and reports instead.
+Fix findings within the current packet's write scope and the approved semantic delta (see `~/.agents/skills/k-review/references/authorship.md` for resolving write scope); a final-Verify-stage packet stays read-only by category and reports instead.
 For `other`/`unknown` authorship, the artifact is not yours to write regardless of packet category —
 fixing still requires the user to explicitly say to fix it.
 Gather the known finding/thread batch in Understand, retaining source evidence and decisions.

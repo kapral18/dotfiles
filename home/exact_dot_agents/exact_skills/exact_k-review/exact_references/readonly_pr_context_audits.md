@@ -1,7 +1,7 @@
 # PR Context Audits
 
-Conditional context-gathering gates for PR review modes, split out of `pr_common.md`.
-Load this file when either gate below is triggered; `pr_common.md` remains the entry point for PR setup.
+Conditional context-gathering gates for PR review modes, split out of `~/.agents/skills/k-review/references/pr_common.md`.
+Load this file when either gate below is triggered; `~/.agents/skills/k-review/references/pr_common.md` remains the entry point for PR setup.
 
 ## Ambient Topic Exploration (conditional — complete before judging contested context)
 
@@ -40,7 +40,7 @@ Keep it bounded. Before using the results, write:
    - examples in this setup: `slack_search_public`, `slack_search_channels`, `slack_read_user_profile`, `slack_search_public_and_private` with explicit user consent
    - do not search private channels or DMs without explicit consent
 4. For each promising ambient hit, read enough full context to decide whether it informs the disputed topic:
-   - GitHub issues/PRs/discussions: body, comments/replies/threads, linked references, and relevant diffs/files using the GitHub Context Intake + Reference Resolution rules in `pr_common.md`
+   - GitHub issues/PRs/discussions: body, comments/replies/threads, linked references, and relevant diffs/files using the GitHub Context Intake + Reference Resolution rules in `~/.agents/skills/k-review/references/pr_common.md`
    - Slack: the complete thread/conversation around the hit, not just the matching message;
      preserve timestamps/order and distinguish decisions from speculation
 5. Stop when:

@@ -14,7 +14,7 @@ Use when:
 
 ## Authorship Precondition
 
-Authorship is an input to write scope (see `authorship.md`), not edit authority by itself.
+Authorship is an input to write scope (see `~/.agents/skills/k-review/references/authorship.md`), not edit authority by itself.
 
 Resolve authorship via the router's Role Detection / Authorship section.
 
@@ -25,7 +25,7 @@ Do not assume `self` just because the change is checked out locally:
 
 If authorship is `other` or `unknown`:
 
-- follow `shared_rules.md` Hard Constraints
+- follow `~/.agents/skills/k-review/references/shared_rules.md` Hard Constraints
 - surface findings with proposed fixes and stop
 
 ## Read-Only Role Override
@@ -76,7 +76,7 @@ If there are no diffs at all:
 
 ## Base-Branch Context
 
-Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
+Follow the base-branch context gate in `~/.agents/skills/k-review/references/shared_rules.md`. This is mandatory.
 
 ## Root moves
 
@@ -103,4 +103,4 @@ A requested repair follows existing task authority when it covers the finding; o
 - For `self` authorship executing inline, write scope on the local working tree is the fix authority — no separate fix request is needed.
   For `other`/`unknown` authorship, or inside a read-only review worker, an explicit fix request is required regardless of authorship (see Authorship Precondition and the Read-Only Role Override above).
 - Under `other`/`unknown` authorship, this mode is draft-only (see Authorship Precondition).
-- Keep the internal findings queue in the review persistence spec (see shared_rules.md) so progress survives conversation pruning.
+- Keep the internal findings queue in the review persistence spec (see ~/.agents/skills/k-review/references/shared_rules.md) so progress survives conversation pruning.

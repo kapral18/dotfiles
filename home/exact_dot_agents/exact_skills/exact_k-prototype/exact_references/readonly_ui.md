@@ -4,7 +4,7 @@ Generate **several radically different UI variations** on a single route, switch
 The user flips between variants in the browser, picks one (or steals bits from each), then throws the rest away.
 
 Right shape when: "what should this page look like", "show a few options for this dashboard before committing", "try a different layout".
-If the question is about logic/state, wrong branch — use `logic.md`.
+If the question is about logic/state, wrong branch — use `~/.agents/skills/k-prototype/references/logic.md`.
 
 ## Two sub-shapes — strongly prefer sub-shape A
 

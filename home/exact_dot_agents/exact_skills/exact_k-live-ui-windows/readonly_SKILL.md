@@ -1,6 +1,6 @@
 ---
 name: k-live-ui-windows
-description: "Manual-only Windows/VirtualBox environment for live-UI verification: connects Playwriter to a Windows guest's browser over CDP through a host NAT port-forward, then verifies through the shared live-ui-runtime.md machinery."
+description: "Manual-only Windows/VirtualBox environment for live-UI verification: connects Playwriter to a Windows guest's browser over CDP through a host NAT port-forward, then verifies through the shared ~/.agents/skills/k-review/references/live-ui-runtime.md machinery."
 disable-model-invocation: true
 ---
 
@@ -61,8 +61,7 @@ Run this once per verification, before target-packet URL translation and before 
      see Hard constraints below).
      Return `Blocked` with the exact one-time instructions: launch Edge/Chrome inside Windows with `--remote-debugging-port=9222 --user-data-dir=<a dedicated profile path>`.
      Do not retry-loop the connection.
-6. Once connected, every rule from the loaded `live-ui-runtime.md` contract applies unchanged to this session:
-   readiness stability guard, screenshot & evidence capture, the data/setup ladder, and the hard runtime constraints.
+6. Once connected, every rule from the loaded `~/.agents/skills/k-review/references/live-ui-runtime.md` contract applies unchanged to this session: readiness stability guard, screenshot & evidence capture, the data/setup ladder, and the hard runtime constraints.
 
 ## Target URL translation
 

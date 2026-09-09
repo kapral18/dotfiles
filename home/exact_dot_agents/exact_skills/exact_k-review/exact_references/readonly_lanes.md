@@ -35,7 +35,8 @@ When no skill exists for a lens, the Checks list is the whole contract.
 - Checks: does the changed code do what the diff claims; off-by-one, null/undefined, boundary and empty-collection handling;
   inverted or short-circuited conditions; changed defaults; callers not updated alongside a changed signature;
   caller/callee contract and error-handling asymmetry; behavior that silently differs from base for existing inputs;
-  run the Semantic-Projection & Sibling-Consumer Gate in `judging_core.md`; run the Historical Archaeology Gate in `judging_core.md` (targeted `git blame -L` / `git log -n 5 -L`) on modified guards and logic to prevent resurrecting historical defects; run the Context-Divergence Gate, Scale-Behavior Gate, and Async-Derived State Gate in `judging_core.md` when their triggers match.
+  run the Semantic-Projection & Sibling-Consumer Gate in `~/.agents/skills/k-review/references/judging_core.md`;
+  run the Historical Archaeology Gate in `~/.agents/skills/k-review/references/judging_core.md` (targeted `git blame -L` / `git log -n 5 -L`) on modified guards and logic to prevent resurrecting historical defects; run the Context-Divergence Gate, Scale-Behavior Gate, and Async-Derived State Gate in `~/.agents/skills/k-review/references/judging_core.md` when their triggers match.
 
 ### `tests-validation`
 
@@ -75,31 +76,31 @@ When no skill exists for a lens, the Checks list is the whole contract.
 ### `concurrency-state`
 
 - Trigger: parser/tokenizer, routing/matching, retry/backoff, workflow/queue, permission-matrix, scheduler, multi-flag control flow, or conditionals/gates whose predicate derives from an asynchronously-resolved value.
-- Checks: run the State-Machine Verification Gate in `judging_core.md` in full;
-  run the Async-Derived State Gate in `judging_core.md` where its trigger matches; unreachable or newly-shadowed states;
-  retry without idempotency; temporal check-then-act (TOCTOU) races between check and use; state mutated from two owners;
-  unmounted or cancelled callback execution and unmonitored background promises; a flag combination the diff never considers;
-  branching or mapping matrix mismatches across sibling consumers of the same domain state.
+- Checks: run the State-Machine Verification Gate in `~/.agents/skills/k-review/references/judging_core.md` in full;
+  run the Async-Derived State Gate in `~/.agents/skills/k-review/references/judging_core.md` where its trigger matches;
+  unreachable or newly-shadowed states; retry without idempotency; temporal check-then-act (TOCTOU) races between check and use;
+  state mutated from two owners; unmounted or cancelled callback execution and unmonitored background promises;
+  a flag combination the diff never considers; branching or mapping matrix mismatches across sibling consumers of the same domain state.
 
 ### `error-failure-modes`
 
 - Trigger: error handling, retry, timeout, fallback, rollback, transaction-boundary changes, or visibility/behavior gates whose input comes from a network fetch or promise resolution — even when no error-handling code changed.
 - Checks: error swallowed or logged and continued; failure that leaves partial state committed; retry that amplifies an outage;
-  in batch, chunked, or parallel processing, trace fault isolation: verify whether failure on one item unceremoniously aborts, corrupts, or falsely fails remaining independent items; fallback that silently serves wrong data or converts systemic infrastructure/network failures into valid empty states; upstream-fetch failure indistinguishable from a confirmed-empty result (run the failure-vs-empty step of the Async-Derived State Gate in `judging_core.md`); timeout absent on a new remote call; error surfaced to the user with an unactionable message; run the Historical Archaeology Gate on modified error branches/fallbacks (targeted `git blame -L` / `git log -n 5 -L`) to ensure historical failure handling is not weakened.
+  in batch, chunked, or parallel processing, trace fault isolation: verify whether failure on one item unceremoniously aborts, corrupts, or falsely fails remaining independent items; fallback that silently serves wrong data or converts systemic infrastructure/network failures into valid empty states; upstream-fetch failure indistinguishable from a confirmed-empty result (run the failure-vs-empty step of the Async-Derived State Gate in `~/.agents/skills/k-review/references/judging_core.md`); timeout absent on a new remote call; error surfaced to the user with an unactionable message; run the Historical Archaeology Gate on modified error branches/fallbacks (targeted `git blame -L` / `git log -n 5 -L`) to ensure historical failure handling is not weakened.
 
 ### `performance-resource`
 
 - Trigger: any loop, batch, query construction, or collection transformation on a changed path;
   hot paths, N+1 candidates, bundle-size-sensitive frontend paths, or added dependencies in a hot module.
   The volume trigger is structural — production scale is invisible in a diff hunk.
-- Checks: run the Scale-Behavior Gate in `judging_core.md` in full; per-item work moved inside a loop; query added inside an iteration;
-  unbounded memory growth or unbounded result set; synchronous work on a latency-critical path;
+- Checks: run the Scale-Behavior Gate in `~/.agents/skills/k-review/references/judging_core.md` in full; per-item work moved inside a loop;
+  query added inside an iteration; unbounded memory growth or unbounded result set; synchronous work on a latency-critical path;
   new dependency pulled into a bundle-size-sensitive entry point.
 
 ### `deletion-replacement`
 
 - Trigger: `git diff --diff-filter=D --stat` non-empty, removed exports, or an implementation/test/helper replaced by another.
-- Checks: run the Deletion-Safety Audit and Replacement/Migration Parity Gate in `judging_core.md`;
+- Checks: run the Deletion-Safety Audit and Replacement/Migration Parity Gate in `~/.agents/skills/k-review/references/judging_core.md`;
   every behavior, assertion, and side effect of the removed code named in the replacement or proven intentionally dropped;
   remaining callers of the deleted symbol; historical rationale for long-lived code being removed.
 
@@ -107,16 +108,15 @@ When no skill exists for a lens, the Checks list is the whole contract.
 
 - Trigger: UI components, routes, user-state, navigation, or API handlers serving a user-visible flow.
 - Lens skill: `~/.agents/skills/k-code-quality-react/SKILL.md` when the diff is React/JSX/TSX.
-- Checks: run the Semantic-Projection & Sibling-Consumer Gate in `judging_core.md`;
-  run the Context-Divergence Gate in `judging_core.md` when role/flag/tier/platform contexts reach the changed path;
-  walk the user's path end to end, not the diff hunk; a state the user can reach that the change does not handle (empty, loading, error, unauthorized, stale); flow that now dead-ends; bounded collections, sampled views, or sliced preview elements that omit total/truncated count communication; destructive action without confirmation or undo; changed copy that contradicts what the code does; table/list sorting, filtering, or grouping keys diverging from rendered cell labels or status buckets.
+- Checks: run the Semantic-Projection & Sibling-Consumer Gate in `~/.agents/skills/k-review/references/judging_core.md`;
+  run the Context-Divergence Gate in `~/.agents/skills/k-review/references/judging_core.md` when role/flag/tier/platform contexts reach the changed path; walk the user's path end to end, not the diff hunk; a state the user can reach that the change does not handle (empty, loading, error, unauthorized, stale); flow that now dead-ends; bounded collections, sampled views, or sliced preview elements that omit total/truncated count communication; destructive action without confirmation or undo; changed copy that contradicts what the code does; table/list sorting, filtering, or grouping keys diverging from rendered cell labels or status buckets.
 
 ### `frontend-render`
 
 - Trigger: JSX/TSX components, hooks, CSS, or template/markup files.
 - Lens skill: `~/.agents/skills/k-code-quality-react/SKILL.md` plus `~/.agents/skills/k-code-quality-web/SKILL.md`
 - Checks: hook dependency arrays that stale or over-fire; state derived in render that should be computed or memoized;
-  hook/component state deriving from an async source: run the Async-Derived State Gate in `judging_core.md` (value timeline + transition probe); effect that runs on every render; key instability across a list; layout or visual property dropped by a component swap; CSS specificity or cascade change that alters an unrelated surface.
+  hook/component state deriving from an async source: run the Async-Derived State Gate in `~/.agents/skills/k-review/references/judging_core.md` (value timeline + transition probe); effect that runs on every render; key instability across a list; layout or visual property dropped by a component swap; CSS specificity or cascade change that alters an unrelated surface.
 
 ### `accessibility`
 
@@ -128,8 +128,9 @@ When no skill exists for a lens, the Checks list is the whole contract.
 ### `observability-signal`
 
 - Trigger: alerting, monitoring, threshold, metric, telemetry, logging, or query-generation paths.
-- Checks: run the Signal-Quality Gate in `judging_core.md`; alert that cannot fire or fires on every sample; threshold with no stated basis;
-  metric whose cardinality can explode; log line carrying user data; a failure mode the change introduces that emits no signal at all.
+- Checks: run the Signal-Quality Gate in `~/.agents/skills/k-review/references/judging_core.md`;
+  alert that cannot fire or fires on every sample; threshold with no stated basis; metric whose cardinality can explode;
+  log line carrying user data; a failure mode the change introduces that emits no signal at all.
 
 ### `dependency-config`
 

@@ -23,6 +23,13 @@ Elastic org PR bodies:
 - Use the actual tool/model when known; if unknown, use a reasonable label and ask the user to confirm.
 - Known labels: Cursor, Claude Code, Copilot, OpenCode, pi-coding-agent.
 - Gather only verified evidence for summary, root cause/fix, and test plan.
+- Include `## Test Plan` only when applicable manual testing exists; otherwise omit the entire section, including empty headings and `N/A` placeholders.
+- Test Plan MUST NOT contain automated test commands, automated test results, or CI checklists, even when a person runs the commands manually.
+  Keep automated validation evidence in the publication packet's `test_plan` field outside the PR body.
+- Manual steps may include commands needed for setup or direct UI/API/CLI reproduction, with expected observable results and truthful execution status.
+  Do not invent manual work for automated-test-only changes; retain applicable issue reproduction steps under the generic completeness gate.
+- Before handoff, check that every Test Plan item is manual setup, reproduction, or observation;
+  omit the section if no applicable manual scenario remains.
 
 `elastic/kibana` PR bodies:
 

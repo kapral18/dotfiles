@@ -18,12 +18,12 @@ This is not a code-review skill; it does not modify the repo under review.
 Deployed alongside this file:
 
 - `~/.agents/skills/k-present-pr/references/template.html` — the **proven** scaffold.
-  Use the bundled `scripts/template.py` to copy its fixed CSS/JS; never rewrite its CSS/JS.
+  Use the bundled `~/.agents/skills/k-present-pr/scripts/template.py` to copy its fixed CSS/JS; never rewrite its CSS/JS.
 - `~/.agents/skills/k-present-pr/references/authoring.md` — the design laws.
   It covers the review-readiness map, introduced-concepts primer, 5-act spine, fixed concept/notes sidebars, beat-to-beat continuity, one-medium-per-beat dedup, show-the-load-bearing-line, role classification, image prompting, and rail rules.
   Follow it; it is the difference between signal and a wall of text.
 
-Read `authoring.md` fully before writing any HTML.
+Read `~/.agents/skills/k-present-pr/references/authoring.md` fully before writing any HTML.
 Create the output directory, then run `python3 ~/.agents/skills/k-present-pr/scripts/template.py prepare ~/.agents/skills/k-present-pr/references/template.html <output>/<slug>.content.html`.
 Read the entire prepared `.content.html` before editing it; it contains all editable markup and template instructions.
 The helper reads the complete template and replaces only its fixed CSS/JS with reserved markers; do not alter those markers.
@@ -76,7 +76,7 @@ Repo/org-specific overlays:
 
 ### 2. Build the review model and classify every file
 
-Apply `authoring.md`'s Review-readiness map, Introduced concepts, and Role classification sections in full.
+Apply `~/.agents/skills/k-present-pr/references/authoring.md`'s Review-readiness map, Introduced concepts, and Role classification sections in full.
 State the single goal/thesis in one sentence; include the intended review posture in the mental model.
 For each introduced concept, record what the reviewer must understand first and its supporting right-sidebar note.
 For a PR with no new domain concepts, keep one explicit no-new-concepts entry explaining its mechanical/plumbing scope and preserved invariant/workflow.
@@ -85,7 +85,7 @@ Complete the readiness map, introduced-concepts inventory, what/how/why explanat
 ### 3. Plan the beats (one idea, one medium each — as a chain)
 
 - Map the goal + classified changes onto the 5-act spine.
-- Before touching HTML, write the full **authoring preflight** from `authoring.md` in your notes.
+- Before touching HTML, write the full **authoring preflight** from `~/.agents/skills/k-present-pr/references/authoring.md` in your notes.
   Include concept area/layer/name, exact image filenames, invariant cards, scorecard claims, and the command-output budget alongside its required fields.
 - **Order the Act II beats as a causal chain**, then write the one-line **bridge** for each seam (and between acts):
   the clause that says why this beat follows the last.
@@ -109,7 +109,8 @@ Complete the readiness map, introduced-concepts inventory, what/how/why explanat
 ### 5. Fill the template
 
 - Edit the prepared `<output>/<slug>.content.html`.
-- Apply `authoring.md`'s Template shape and Fixed sidebars rules: resize to the preflight and fill the concept primer, readiness map, and both sidebars before Act I/II.
+- Apply `~/.agents/skills/k-present-pr/references/authoring.md`'s Template shape and Fixed sidebars rules:
+  resize to the preflight and fill the concept primer, readiness map, and both sidebars before Act I/II.
   Keep readiness sections as structured artifacts: layered-map, topology, and load-bearing-line rows, risk-attention cards, and an ordered GitHub handoff.
 - Replace every placeholder token; use the beat blocks already present as patterns (add/remove change beats, invariant cards, ledger rows as needed).
 - Reference images by **relative filename** only (same dir). Never base64-inline.

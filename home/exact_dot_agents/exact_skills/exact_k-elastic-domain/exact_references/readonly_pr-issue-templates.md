@@ -15,6 +15,8 @@ Closes #X | Addresses #X
 
 ## Test Plan
 
+<!-- Manual testing only, per ~/.agents/skills/k-elastic-domain/references/github-composition.md; omit this entire section when inapplicable. -->
+
 Assisted with <Tool> using <Model>
 ```
 
@@ -43,6 +45,8 @@ Closes #X | Addresses #X
 
 ## Test Plan
 
+<!-- Manual testing only, per ~/.agents/skills/k-elastic-domain/references/github-composition.md; omit this entire section when inapplicable. -->
+
 -
 
 ## Release Note
@@ -67,6 +71,8 @@ Closes #X | Addresses #X
 
 ## Test Plan
 
+<!-- Manual testing only, per ~/.agents/skills/k-elastic-domain/references/github-composition.md; omit this entire section when inapplicable. -->
+
 Assisted with <Tool> using <Model>
 ```
 
@@ -84,6 +90,8 @@ Closes #X | Addresses #X
 -
 
 ## Test Plan
+
+<!-- Manual testing only, per ~/.agents/skills/k-elastic-domain/references/github-composition.md; omit this entire section when inapplicable. -->
 
 -
 

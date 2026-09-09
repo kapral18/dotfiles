@@ -25,11 +25,11 @@ later staging is silent), or the parent handed you an ad-hoc recall query. Decid
 Inputs (paths supplied by the parent's pointer line):
 
 - Candidates: `/tmp/specs/<workspace>/.recall-candidates-<session-key>.json` — full capsule rows (id, title, body, kind, scope, scores).
-- Session state: the topic spec `<topic>.txt` and the tail of `<topic>.worklog.jsonl` in the same directory.
+- Session state: the topic spec `/tmp/specs/<workspace>/<topic>.txt` and the tail of `/tmp/specs/<workspace>/<topic>.worklog.jsonl`.
 - The parent's current prompt, quoted in the delegation message.
 
 Query-recall variant: the parent may supply a concrete recall query instead of a staged candidates file.
-Run the retrieval yourself in this disposable context — `,ai-kb search "<query>" --limit 5 --json` (filters and output fields per `references/cli.md`), `,ai-kb get <id> --json` when a hit looks decisive — and treat the hits as the candidate set below.
+Run the retrieval yourself in this disposable context — `,ai-kb search "<query>" --limit 5 --json` (filters and output fields per `~/.agents/skills/k-ai-kb/references/cli.md`), `,ai-kb get <id> --json` when a hit looks decisive — and treat the hits as the candidate set below.
 Touch the seen file only when the parent supplied a session key; otherwise skip that step.
 
 Procedure:
@@ -51,7 +51,7 @@ Return shape (exactly one of, no surrounding prose):
 - `NONE`
 - 1–3 lines, each: `- <capsule-id> — <one clause: the insight, tailored to the parent's next action>`
 
-After a non-`NONE` verdict: append the admitted ids to `.recall-seen-<session-key>.json` in the same directory (read the JSON array, union, write sorted).
+After a non-`NONE` verdict: append the admitted ids to `/tmp/specs/<workspace>/.recall-seen-<session-key>.json` (read the JSON array, union, write sorted).
 MUST NOT add rejected ids — they stay eligible for future judgment.
 Reject low-confidence or stale-looking capsules unless the supplied current evidence settles them.
 Do not start new research or a verification workflow to admit memory.

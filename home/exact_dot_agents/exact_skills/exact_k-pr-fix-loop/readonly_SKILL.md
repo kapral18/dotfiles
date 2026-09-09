@@ -11,7 +11,7 @@ Invocation authorizes scoped code edits, final verification, commits, force-with
 It does not authorize merging, rebasing, pulling/merging base, unrelated metadata, or broad refactors.
 
 1. Resolve the PR URL/number, current head/branch, local changes, and known unresolved thread batch.
-2. Use `k-review`'s `references/pr_fix.md` to understand concerns and produce scoped fixes/tests/docs for that batch.
+2. Use `k-review`'s `~/.agents/skills/k-review/references/pr_fix.md` to understand concerns and produce scoped fixes/tests/docs for that batch.
 3. Run one integrated final Verify stage.
    Apply SOP §3.5 on failed checks or target/branch drift; stop on unscoped changes or a user-owned decision.
 4. Only after passing, use `k-git` to commit scoped files and force-with-lease push the current PR branch;

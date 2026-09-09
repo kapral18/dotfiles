@@ -45,14 +45,14 @@ flowchart TB
     end
 
     subgraph KBN["Elastic/Kibana domain overlay + skills"]
-        S8["k-elastic-domain/ (verified overlay; owns Elastic/Kibana policy<br/>+ refs: kibana-live-ui + kibana-live-ui-evidence, pr-issue-templates, kibana-planning-forks, github-composition, commit-attribution)<br/>k-elastic-slides/ (manual Elastic Google Slides overlay; +ref: templates; layers over k-google-workspace Slides mechanics)<br/>k-kbn-stack (+ref: runtime-lifecycle; local ES+Kibana stack lifecycle)<br/>k-kbn-backport (e2e; drives backport tool in tmux; +refs: backport-tool.md, conflict-resolution.md)<br/>k-kibana-console-monaco (+ref: typed-demos) · k-kibana-labels-propose<br/>k-kibana-management-ownership · k-kbn-standup (Elastic-org + private Slack/DM activity → Admin UX standup via pbcopy)"]:::skill
+        S8["k-elastic-domain/ (verified overlay; owns Elastic/Kibana policy; PR Test Plan manual-only, omitted when inapplicable; automated evidence stays in internal packet<br/>+ refs: kibana-live-ui + kibana-live-ui-evidence, pr-issue-templates, kibana-planning-forks, github-composition, commit-attribution)<br/>k-elastic-slides/ (manual Elastic Google Slides overlay; +ref: templates; layers over k-google-workspace Slides mechanics)<br/>k-kbn-stack (+ref: runtime-lifecycle; local ES+Kibana stack lifecycle)<br/>k-kbn-backport (e2e; drives backport tool in tmux; +refs: backport-tool.md, conflict-resolution.md)<br/>k-kibana-console-monaco (+ref: typed-demos) · k-kibana-labels-propose<br/>k-kibana-management-ownership · k-kbn-standup (Elastic-org + private Slack/DM activity → Admin UX standup via pbcopy)"]:::skill
     end
 
     subgraph META["Meta / orchestration skills"]
         CLI["k-cli-skills/ (+refs: authoring, upgrading)"]:::skill
     end
 
-    SOPS["~/AGENTS.md + ~/CLAUDE.md route 'Use when' → load SKILL.md"]:::data
+    SOPS["Guidance references use full deployed paths, including colocated files<br/>~/AGENTS.md + ~/CLAUDE.md route 'Use when' → load SKILL.md"]:::data
     SOPS --> CORE & IMPROVE & TOOLS & KBN & META
     S7 <--> KBDB
 

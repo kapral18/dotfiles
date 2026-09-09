@@ -12,7 +12,7 @@ It has two layers: a **semantic cloud** (how it works together) and a **catalog*
 3. Read [`.mermaids/00-overview.mmd`](.mermaids/00-overview.mmd) (master map: semantic layer + catalog index).
 4. Before editing any file, consult [`.mermaids/SR-index.mmd`](.mermaids/SR-index.mmd) (reverse index).
    Use it to find the concept the file serves, what breaks if changed, and its co-edit set.
-5. Load the deeper flow/catalog diagram(s) for whatever the task touches: `S1-flow-apply-reconcile.mmd`, `S3-flow-pickers-handoff.mmd`, or the catalog file named by `SR-index.mmd`.
+5. Load the deeper flow/catalog diagram(s) for whatever the task touches: `.mermaids/S1-flow-apply-reconcile.mmd`, `.mermaids/S3-flow-pickers-handoff.mmd`, or the catalog file named by `.mermaids/SR-index.mmd`.
 
 These diagrams are documentation.
 When a change under `home/`, `scripts/`, or `tools/` alters a flow, command, or state shown in a `.mmd` file, update that file in the same change (see Documentation Hygiene below).
@@ -179,10 +179,10 @@ Non-trivial logic belongs in colocated scripts written in an appropriate languag
   It may also wire inputs/outputs between those programs.
 - **Move logic out of shell when it involves**: data transformation (JSON, YAML, TOML parsing/generation), string manipulation beyond simple variable expansion, or conditional structures more than a few lines deep.
   Also move anything that would benefit from real data structures, error types, or testability.
-- **Colocate helper scripts in `scripts/`**: name them after the data or task they handle (e.g., `generate_mcp_configs.py`, `merge_claude_mcp.py`).
+- **Colocate helper scripts in `scripts/`**: name them after the data or task they handle (e.g., `scripts/generate_mcp_configs.py`, `scripts/merge_claude_mcp.py`).
   The shell `.tmpl` script calls them, passing file paths or piped data.
 - **No external dependencies in helper scripts**: use only the standard library of the chosen language.
-  The existing `ai_models.py` and `generate_mcp_configs.py` hand-parse YAML without PyYAML — follow that precedent.
+  The existing `scripts/ai_models.py` and `scripts/generate_mcp_configs.py` hand-parse YAML without PyYAML — follow that precedent.
 - **Existing precedent**: `scripts/chezmoi_lib.sh` (shared shell helpers), `scripts/generate_mcp_configs.py`, and `scripts/merge_claude_mcp.py`.
   Also see `scripts/generate_agent_bands.py` and `scripts/ai_models.py`.
 
@@ -214,7 +214,7 @@ Small single-purpose commands may stay directly in `home/exact_bin/`.
 - **Fish (primary, required):** `home/dot_config/fish/completions/readonly_,<name>.fish` → `~/.config/fish/completions/,<name>.fish`.
   Declare every flag (`complete -c ,<name> -s o -l output -d "…" -r`) and positional/argument completion.
   Mirror the script's actual interface (`--help` output is the source of truth).
-  Follow existing files like `readonly_,pdf-diff.fish` (flags + positional) and `readonly_,appid.fish` (dynamic `-a` argument list).
+  Follow existing files like `home/dot_config/fish/completions/readonly_,pdf-diff.fish` (flags + positional) and `home/dot_config/fish/completions/readonly_,appid.fish` (dynamic `-a` argument list).
 - **Zsh (only when warranted):** `home/dot_zsh/completions/readonly__comma_<name>` (`#compdef ,<name>`).
   Only complex commands (e.g. `,w`, `,wh`) carry a zsh completion; do not add one unless the command needs zsh-specific completion.
 - **Keep completions in sync on updates:** when a command's flags or arguments change, update the completion file in the same change.
@@ -244,7 +244,7 @@ When adding formulas or casks:
   Add the `brew`/`cask` line to the matching category file.
   `shared/` = every machine, `personal/` = `.isWork` false, `work/` = `.isWork` true;
   profile membership is the directory, not an inline `{{ if }}`.
-  Create the category file under the right profile dir if it does not exist yet and add a matching `includeTemplate` line in `_assemble.brewfile`.
+  Create the category file under the right profile dir if it does not exist yet and add a matching `includeTemplate` line in `home/.chezmoitemplates/brews/_assemble.brewfile`.
 - **Verify on GitHub first**: read the official repo's README, INSTALL, or releases to confirm Homebrew support and identify the correct formula/tap.
 - **Search GitHub**: look for official Homebrew taps such as `owner/homebrew-tap` when a tap is needed.
 - Verify locally with `brew info <formula>` or `brew info <owner/tap>/<formula>` before editing the Brewfile.
@@ -301,7 +301,7 @@ zip_opt|sd-cli|leejet/stable-diffusion.cpp|master-820-de298c2|sd-*-bin-Darwin-ma
 
 Home SOPs are installed into `$HOME` by chezmoi. `home/readonly_AGENTS.md` is the generated core SOP.
 Native global entrypoints link to it; `~/CLAUDE.md` uses Claude's native `@AGENTS.md` import to avoid a second full body in Cursor's ancestor scan.
-`~/.claude/CLAUDE.md` is Claude's global entrypoint. This repository's `CLAUDE.md` imports its project `AGENTS.md`.
+`~/.claude/CLAUDE.md` is Claude's global entrypoint. `CLAUDE.md` imports `AGENTS.md`.
 The compiled ownership model lives in `docs/topics/ai-assistants/system-prompt/source-of-truth.md`.
 
 | Source                                                     | Target                               |

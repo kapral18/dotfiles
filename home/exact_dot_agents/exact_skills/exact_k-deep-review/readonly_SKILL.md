@@ -14,7 +14,7 @@ Do not start finder→auditor→refuter→post-review chains or automatically in
 
 Resolve the requested diff, authorship, base/head, known fixes, and edit/publication authority.
 Read `~/.agents/skills/k-review/references/authorship.md`; local checkout does not imply authorship or permission to edit.
-For PRs, load `pr_common.md` and `pr_snapshot.md` from the same reference directory for complete intent/context, drift, and pending-review reconciliation.
+For PRs, load `~/.agents/skills/k-review/references/pr_common.md` and `~/.agents/skills/k-review/references/pr_snapshot.md` from the same reference directory for complete intent/context, drift, and pending-review reconciliation.
 For other/unknown authorship, gather whether the PR is still needed and correctly open in Understand;
 do not create a separate approval/audit ladder. Resolve material intent dependencies from full source artifacts or report uncertainty.
 Read `~/.agents/skills/k-deep-review/references/pr-necessity.md` for that conditional intent input and its stopping boundary.
@@ -24,9 +24,9 @@ Read `~/.agents/skills/k-review/references/context-pack.md` when producing/consu
 ## Final review
 
 Freeze the integrated candidate and acceptance plan. Known user-authorized fixes must already be produced and formatted.
-Read `~/.agents/skills/k-review/references/judging_core.md` and `judging_pipeline.md` for applicable correctness, severity, and integrated hygiene lenses.
+Read `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/judging_pipeline.md` for applicable correctness, severity, and integrated hygiene lenses.
 Use existing complete check receipts.
-Apply the Check-Coverage Exemption in `judging_core.md` with those receipts and pass the resulting `CI coverage:` line in every final packet.
+Apply the Check-Coverage Exemption in `~/.agents/skills/k-review/references/judging_core.md` with those receipts and pass the resulting `CI coverage:` line in every final packet.
 Execute missing planned checks once through direct tools; shared or mutating checks stay root-owned and serialized as needed.
 Read `~/.agents/skills/k-deep-review/references/live-ui-validation.md` only when final UI/runtime evidence is needed.
 Final reviewers return anchored findings or evidence gaps once.

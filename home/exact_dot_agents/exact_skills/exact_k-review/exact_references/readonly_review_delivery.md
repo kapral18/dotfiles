@@ -1,7 +1,8 @@
 # Review Drafting And Delivery
 
-Loaded from `shared_rules.md` before drafting public-ready review content, recommending a PR verdict, or posting.
-The intake publication and authorship constraints remain in `shared_rules.md`; this reference grants no additional permission.
+Loaded from `~/.agents/skills/k-review/references/shared_rules.md` before drafting public-ready review content, recommending a PR verdict, or posting.
+The intake publication and authorship constraints remain in `~/.agents/skills/k-review/references/shared_rules.md`;
+this reference grants no additional permission.
 
 ## Draft Style (Public-Ready)
 
@@ -62,7 +63,8 @@ Content boundary:
 After all findings are drafted, recommend an overall verdict from `authorship`, severity, and `author_relation`:
 
 - **Self-review** (`authorship: self`):
-  - Fix authority follows write scope per `authorship.md`: findings are fixed in the same pass when the current packet holds write scope over the affected path (the default for root executing inline); a final-Verify-stage packet stays read-only by category regardless of authorship — report remaining findings there, and the root applies SOP §3.5 when existing authority covers repair.
+  - Fix authority follows write scope per `~/.agents/skills/k-review/references/authorship.md`:
+    findings are fixed in the same pass when the current packet holds write scope over the affected path (the default for root executing inline); a final-Verify-stage packet stays read-only by category regardless of authorship — report remaining findings there, and the root applies SOP §3.5 when existing authority covers repair.
   - **Comment only** if the user explicitly asks to post self-review notes with remaining non-blocking findings.
   - **Approve** when no findings remain.
   - Do not request changes on the user's own PR from this flow.
@@ -94,5 +96,5 @@ Apply the SOP §3.8 authorization and conditions to submit the verdict; do not t
 - Human-Visible Publication Gate (SOP, `~/AGENTS.md`):
   - explicit approval or an approval packet defined by the relevant skill/reference is required for any human-visible target
   - automation carve-outs are the SOP-defined packets only; do not infer new ones here
-  - see the scoped batch in `pr_fix.md`
+  - see the scoped batch in `~/.agents/skills/k-review/references/pr_fix.md`
   - bot-authored threads may be auto-replied/auto-resolved only inside a flow the user already invoked

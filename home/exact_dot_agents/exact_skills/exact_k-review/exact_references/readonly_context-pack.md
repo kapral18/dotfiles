@@ -1,7 +1,7 @@
 # Deep Review Context Pack Contract
 
 Shared intake contract for every review tier.
-The controller produces the pack (`pr_snapshot.md` owns the fetch commands and the drift checks);
+The controller produces the pack (`~/.agents/skills/k-review/references/pr_snapshot.md` owns the fetch commands and the drift checks);
 workers load this file when the parent scope packet names a pack and read it only.
 The blind fresh-eyes lane is the one exception: its own contract restricts it to `diff.patch`, `files/`, and `base/` and forbids pack metadata and live fallbacks.
 

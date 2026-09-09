@@ -3,7 +3,8 @@
 Use for an explicit request to address review feedback. Review alone remains read-only.
 Resolve PR identity, current head, authorship, and the user-authorized thread set before edits.
 Load `~/.agents/skills/k-review/references/pr_common.md` for complete context, pending-review reconciliation, and publication mechanics.
-Load `pr_snapshot.md` for head/discussion drift. Read complete relevant threads and referenced artifacts, not previews.
+Load `~/.agents/skills/k-review/references/pr_snapshot.md` for head/discussion drift.
+Read complete relevant threads and referenced artifacts, not previews.
 
 ## Understand
 

@@ -4,8 +4,8 @@ All review modes load this file. Do not duplicate these rules in mode files.
 
 The surface-agnostic judging engine lives in two files under `~/.agents/skills/k-review/references/`:
 
-- `judging_core.md` covers Truth Validation, selected counterexamples, the gates (State-Machine, Async-Derived State, Context-Divergence, Scale-Behavior, Deletion-Safety, Replacement/Migration Parity, Historical-Rationale, Semantic-Projection, Product-Flow, Signal-Quality, Systemic-Risk), and Severity.
-- `judging_pipeline.md` covers integrated coverage, hygiene, and findings presentation within the single final Verify stage.
+- `~/.agents/skills/k-review/references/judging_core.md` covers Truth Validation, selected counterexamples, the gates (State-Machine, Async-Derived State, Context-Divergence, Scale-Behavior, Deletion-Safety, Replacement/Migration Parity, Historical-Rationale, Semantic-Projection, Product-Flow, Signal-Quality, Systemic-Risk), and Severity.
+- `~/.agents/skills/k-review/references/judging_pipeline.md` covers integrated coverage, hygiene, and findings presentation within the single final Verify stage.
 
 Load both alongside this file.
 
@@ -30,7 +30,7 @@ Do not load delivery mechanics for a local/plan report that contains no public-r
 - Fix authority follows write scope, not review mode: a finding is fixed in the same pass whenever it falls inside the write scope the current packet already holds, and only reported when the current packet is scoped read-only.
   A packet is scoped read-only exactly when either holds: the artifact is not yours to write (someone else's PR/branch —
   no packet grants scope you don't have), or the current packet is itself a review/research/audit-category dispatch, where read-only is the category's definition independent of authorship.
-  See `authorship.md` for resolving write scope.
+  See `~/.agents/skills/k-review/references/authorship.md` for resolving write scope.
 - A final-Verify-stage packet (deep review, adversarial, criteria, findings-audit, and similar) is read-only by its own category regardless of authorship: a scoped fix request carries its authority into root-owned recovery under SOP §3.5; the final packet's own findings never supply that authority.
 - Final workers use existing evidence and return once; they do not repeat successful checks, mutate shared state, or invoke other models.
 - Execute known final commands directly with complete retained logs and actual exit status; no mechanical runner agent is required.
@@ -73,22 +73,22 @@ This is assistant metadata, not GitHub comment-body content.
 
 ## Draft Style (Public-Ready)
 
-Before drafting or a PR verdict: load `review_delivery.md` (matching heading).
+Before drafting or a PR verdict: load `~/.agents/skills/k-review/references/review_delivery.md` (matching heading).
 
 ## Pending Review Semantics (Definition + Content Boundary)
 
-Before drafting or a PR verdict: load `review_delivery.md` (matching heading).
+Before drafting or a PR verdict: load `~/.agents/skills/k-review/references/review_delivery.md` (matching heading).
 
 ## Existing Pending Review Awareness (Before Drafting or Posting)
 
-For PR modes, run Pending Review Intake and Existing Pending Review Reconciliation from `pr_common.md`.
+For PR modes, run Pending Review Intake and Existing Pending Review Reconciliation from `~/.agents/skills/k-review/references/pr_common.md`.
 
 Keep this boundary here: if reconciliation is unknown and locally/API-verifiable, do not draft/post/submit review feedback.
-Every PR-review output that may become GitHub review feedback must include the `Pending review reconciliation:` line from `pr_common.md`.
+Every PR-review output that may become GitHub review feedback must include the `Pending review reconciliation:` line from `~/.agents/skills/k-review/references/pr_common.md`.
 
 ## Review Verdict (PR Review Mode Only)
 
-Before drafting or a PR verdict: load `review_delivery.md` (matching heading).
+Before drafting or a PR verdict: load `~/.agents/skills/k-review/references/review_delivery.md` (matching heading).
 
 ## Review Persistence
 
@@ -130,7 +130,7 @@ Do not invent a parallel store:
 
 ## Posting Boundary
 
-Before any GitHub posting step: load `review_delivery.md` → "Posting Boundary".
+Before any GitHub posting step: load `~/.agents/skills/k-review/references/review_delivery.md` → "Posting Boundary".
 
 ## Root moves
 

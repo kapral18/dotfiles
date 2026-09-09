@@ -12,7 +12,7 @@ Use when:
 
 Out of scope:
 
-- reviewing implemented changes (use `local_changes.md` or the PR modes)
+- reviewing implemented changes (use `~/.agents/skills/k-review/references/local_changes.md` or the PR modes)
 - authoring or rewriting the plan (this mode judges an existing plan)
 
 ## Subject Intake (Blocking)
@@ -25,7 +25,7 @@ Out of scope:
 
 A plan is a set of claims about the codebase plus a set of intended steps. Both must be checked against codebase reality.
 
-- Follow the Base-Branch Context Gate in `shared_rules.md`, adapted for the missing diff:
+- Follow the Base-Branch Context Gate in `~/.agents/skills/k-review/references/shared_rules.md`, adapted for the missing diff:
   generate the SCSI/local-source questions from the plan's claims and named symbols instead of a diff, and report the required line as `Base context: ..., base=<branch the plan targets>, diff=n/a (plan review)`.
 - Resolve identity for every file, symbol, system, or behavior the plan names:
   it exists, and the plan's description of it matches the source.
@@ -40,7 +40,8 @@ Walk the plan end-to-end, ordered by risk:
 3. **Feasibility:** each step is implementable as written — named APIs/symbols exist, boundaries are respected, and no step depends on something only a later step creates.
 4. **Coverage-checklist classes, reframed for plans:** security, data-loss, and performance implications of the planned approach;
    verification/test steps present for risky behavior; documentation impact acknowledged.
-   Apply the Check-Coverage Exemption in `judging_core.md` (plan clause): do not report formatting, lint, or type-error classes the repo's existing checks catch at implementation.
+   Apply the Check-Coverage Exemption in `~/.agents/skills/k-review/references/judging_core.md` (plan clause):
+   do not report formatting, lint, or type-error classes the repo's existing checks catch at implementation.
 5. **Gates by content:** planned removals get the Deletion-Safety Audit and Historical-Rationale Gate;
    planned replacements the Replacement/Migration Parity Gate; stateful/parser-like planned behavior must include a State-Machine Verification step in the plan; cross-module/deploy plans the Systemic-Risk Checks; user-facing flows the Product-Flow Lens; alerting/monitoring work the Signal-Quality Gate.
 6. **Gaps:** missing steps, unowned risks, absent rollback/verification, and co-edit-set members the plan does not mention (docs, diagrams, configs).
@@ -66,7 +67,7 @@ Feedback only. Do not edit the plan document or write code unless the user expli
 
 - Advisor discipline: prefer probing questions that make the author re-examine an assumption or fork over prescribing a specific implementation; reserve concrete fixes for when the user asks.
   A finding that dictates the solution forecloses alternatives the author may have reason to prefer.
-- `Base context:` line (see shared_rules.md).
+- `Base context:` line (see ~/.agents/skills/k-review/references/shared_rules.md).
 - Findings ordered by severity, each anchored to the plan section/step plus the code/probe evidence that supports it.
 - Assumption ledger: which plan claims were confirmed, which were refuted, and which remain `Unknown` because they are not locally verifiable.
 - Missing steps and unowned risks.

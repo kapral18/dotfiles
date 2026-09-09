@@ -1,6 +1,7 @@
 # PR Snapshot, Drift, and File Truth
 
-Loaded by `pr_common.md` for every PR mode. The controller runs this; workers read the resulting pack per `context-pack.md`.
+Loaded by `~/.agents/skills/k-review/references/pr_common.md` for every PR mode.
+The controller runs this; workers read the resulting pack per `~/.agents/skills/k-review/references/context-pack.md`.
 
 ## Snapshot (the context pack; one fetch per object)
 
@@ -8,17 +9,17 @@ The PR snapshot is the review context pack owned by `~/.agents/skills/k-review/r
 one producer, one layout, read by the controller and by every lane.
 Fetch each PR object once into the pack and read from it; a second API shape for the same object is a duplicate fetch, not more evidence.
 
-Pack root: `/tmp/deep-review/<owner>-<repo>-pr<number>/` (the layout, `manifest.json` fields, and file inventory are in `context-pack.md`).
+Pack root: `/tmp/deep-review/<owner>-<repo>-pr<number>/` (the layout, `manifest.json` fields, and file inventory are in `~/.agents/skills/k-review/references/context-pack.md`).
 
 - Metadata and body: `gh pr view <n> --repo <owner/repo> --json number,url,title,body,author,state,isDraft,baseRefName,baseRefOid,headRefName,headRefOid,mergeable,mergeStateStatus,files,labels,closingIssuesReferences` → `pr.json` (body also as `body.md`).
 - Discussion: one GraphQL query → `threads.json`, paginated to completion, holding `reviews` (state, body, `submittedAt`, `updatedAt`, author `login` + `__typename`), `reviewThreads` (`isResolved`, `isOutdated`, `path`, `line`, and every comment with `databaseId`, `body`, `createdAt`, `updatedAt`, `isMinimized`, `minimizedReason`, author `login` + `__typename`), and issue `comments` (same fields).
   This is the only fetch for review and comment content; do not also call REST `pulls/<n>/reviews`, `pulls/<n>/comments`, or `issues/<n>/comments` for the same PR.
   Fetch the timeline only when an event (label, force-push, review request, close/reopen) is itself the question.
 - Checks: `gh pr checks <n> --json name,state,bucket,workflow,link` → `checks.json` (owned by the CI Coverage Gate).
-- Diff and files: `diff.patch`, `files/<path>`, `base/<path>` per `context-pack.md`, scoped as in Diff scope below.
+- Diff and files: `diff.patch`, `files/<path>`, `base/<path>` per `~/.agents/skills/k-review/references/context-pack.md`, scoped as in Diff scope below.
 - Media and references: every attachment and every linked PR/issue the intake gate reads goes into the pack too (`media/`, `refs/`), per the two subsections below.
 - Write `manifest.json` with `head_sha`, `base_sha`, `snapshot_at`, and `discussion_at`;
-  record the same four values plus `pack: <root>` in the review spec (`shared_rules.md`, Review Persistence).
+  record the same four values plus `pack: <root>` in the review spec (`~/.agents/skills/k-review/references/shared_rules.md`, Review Persistence).
 - Read the pack with targeted reads.
   The complete raw artifact is on disk, which satisfies the intake gate below without dumping JSON into context twice.
 

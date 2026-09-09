@@ -59,7 +59,8 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
 - SOP §3.8 owns authorization persistence, conditional authorization, and its hard boundaries.
   Reuse existing authorization only within its target, scope, and allowed effects; NEVER broaden it to a new target or effect.
 - A user-invoked `k-pr-fix-loop` approval packet is explicit approval for scoped PR body edits, needed PR media uploads, review-thread replies, and resolving addressed threads in that loop only.
-- Existing PR body/title edits follow `references/pr-create.md`; that packet decides whether the user's approval for the current PR workflow covers the edit or whether a draft must be surfaced first.
+- Existing PR body/title edits follow `~/.agents/skills/k-github/references/pr-create.md`;
+  that packet decides whether the user's approval for the current PR workflow covers the edit or whether a draft must be surfaced first.
 - Approval to "create a PR" authorizes the GitHub side effect, but not invented human-visible content.
   If title/body/labels were not provided, draft the full payload, show target repo/base/head, and get approval before `gh pr create`.
 - Before using a known-bot allowlist, verify/load the domain overlay; otherwise classify bots only from GitHub `user.type == "Bot"` or login ending `[bot]`.
@@ -83,7 +84,7 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
 - Use bash/zsh `$'...'` so `\n` becomes real line breaks; never send literal `\n`.
 - Commit references must be clickable full GitHub URLs.
 - UI-related comments/replies/PR-level feedback need screenshot handoff evidence outside the body; never include local screenshot paths.
-- Follow `~/.agents/skills/k-review/references/pr_review.md` or `pr_fix.md` for anchoring/placement.
+- Follow `~/.agents/skills/k-review/references/pr_review.md` or `~/.agents/skills/k-review/references/pr_fix.md` for anchoring/placement.
 - Comment examples live in `~/.agents/skills/k-github/references/pr-comments.md`.
 
 ## PR creation/body edits

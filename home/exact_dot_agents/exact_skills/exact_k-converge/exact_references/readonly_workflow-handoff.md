@@ -8,7 +8,7 @@ Merely loading a caller skill does not authorize its flow.
 Authorship and write scope never gate entry; convergence is a verification depth, not a repair grant.
 Write scope (see `~/.agents/skills/k-review/references/authorship.md`) decides only Step 5:
 a finding inside the caller's write scope is fixed; one outside it (someone else's branch, a read-only packet) is returned as a proposal with the smallest change.
-A caller's ordinary one-round fix pass (`k-review/references/review_fixes.md`) is not convergence and must not be looped to imitate it.
+A caller's ordinary one-round fix pass (`~/.agents/skills/k-review/references/review_fixes.md`) is not convergence and must not be looped to imitate it.
 
 Before entry, retain pointers in the existing ledger/spec to the caller and phase, original target/scope, findings, evidence, required checks, open gates/decisions, and existing authorization.
 Include the approved spec packet and criteria ledger for `k-build`; keep the selected mode and review gates for `k-review`.
