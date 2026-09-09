@@ -9,6 +9,16 @@ tool_version: playwriter 0.5.0
 Use Playwriter for real browser work.
 Fire without waiting for the user to name `playwriter` explicitly whenever the task needs a real browser.
 
+## Viewport sizing
+
+Use the existing browser window's available viewport for ordinary browsing and UI checks.
+Do not call `setViewportSize`, set device-metrics overrides, or resize the browser window merely to standardize browsing or reduce screenshot tokens.
+Fixed dimensions require a concrete task reason: a responsive breakpoint, size-dependent reproduction, matched before/after captures, or a required video frame size.
+State that reason before resizing; upstream resize examples are recipes, not startup defaults.
+Keep size-specific work in an owned page or isolated browser; do not resize a shared browser window.
+After the check, close the owned test page or restore its previous sizing mode, including removing an override if the page originally followed the window.
+For smaller image inputs, resize the captured image with `resizeImageForAgent`, not the live viewport.
+
 ## Documentation contract
 
 Before browser work, run the installed-document reader with `core` plus every already-known operation profile and read its complete output.

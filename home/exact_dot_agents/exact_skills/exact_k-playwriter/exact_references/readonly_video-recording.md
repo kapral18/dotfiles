@@ -21,6 +21,10 @@ Rules:
 
 ### Reliable path: plain Playwright `recordVideo`
 
+The fixed viewport below belongs to this isolated headless recording, where it matches the video frame.
+Do not copy it into ordinary attached-browser setup; follow the viewport rule in `~/.agents/skills/k-playwriter/SKILL.md`.
+If using extension recording without a required frame ratio, pass `aspectRatio: null` to `recording.start` to skip its automatic viewport resize.
+
 Works headless, needs no extension or user clicks, fully reproducible.
 Pass `NODE_PATH` on the same `node` invocation (or `export` it in the shell that will run every recorder) so child processes resolve `playwright-core`:
 
