@@ -1,6 +1,6 @@
 ---
 name: k-semantic-code-search
-description: "Use when conceptual code search, SCSI index selection, symbols, or base context needs semantic-code-search."
+description: "Use for nontrivial code-impact assessment, conceptual code search, SCSI index selection, or review base context."
 ---
 
 # Semantic Code Search Skill
@@ -14,15 +14,15 @@ When triggered:
 - treat explicit index-selection language as a trigger, even when the user does not name SCSI tools directly (example:
   "use `<index>` index")
 
-Common trigger in reviews:
+Common trigger for nontrivial impact assessment:
 
-- Base-branch context for reviews (PR or local changes): learn how base works and what invariants exist, then compare against the local diff.
+- Base-branch context for nontrivial diagnosis, implementation, or reviews: learn how base works, which callers/consumers are affected, and what invariants exist, then compare that context against exact local state.
 
 Do not use:
 
 - simple string/filename lookup: use local `rg` or file listing
-- as a replacement for local review of branch changes: use local repo tools for exact state (`git diff`, file reads, tests).
-  SCSI is for base context.
+- as a replacement for local diagnosis, implementation, or review of branch changes:
+  use local repo tools for exact state (`git diff`, file reads, tests). SCSI is for base context and impact exploration.
 - purely mechanical pattern matching to drive a replace/edit: use local `rg`
 - current repo is not indexed (not present in `list_indices`): do not use semantic code search
 
@@ -32,17 +32,22 @@ First actions:
 
 1. Run `list_indices` before any semantic query.
 2. Verify whether the current repo is indexed and pick the single justified index, or record why none can be used.
-3. Choose queries that resolve the assigned uncertainty; explore callers/consumers only where relevant to that question.
-4. Drill down using symbol analysis and chunk reads on relevant matching paths to map full impact.
+3. Choose queries that resolve the assigned uncertainty; for nontrivial diagnosis or implementation impact, explore relevant symbols, callers, consumers, and invariants.
+4. Drill down using symbol analysis and chunk reads on relevant matching paths to map full impact, then compare the result with exact local state.
+
+Reuse valid index-selection and query evidence; do not repeat unchanged queries solely to double-check a completed assessment.
+If the repo is unindexed, tools are unavailable, or the user opts out, establish impact from local sources and record the reason.
 
 Important limitation: the semantic index is a snapshot (typically of `main`);
-use it for base-branch context and patterns, then compare PR/branch findings against the local diff.
+use it for base-branch context and patterns, then compare diagnosis/implementation/review findings against exact local state.
 
 Review output contract (when invoked from a review skill):
 
 - Record the selected index (or "none") and include a `Base context:` line in the review output:
-  - `Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<base>...HEAD`
+  - `Base context: SCSI=<index>|none (discovery=<checked|unavailable|skipped by request>; <reason>), base=<branch>, diff=<base>...HEAD`
   - reviewer metadata only; do not include in GitHub comment bodies
+  - Report `checked` only when `list_indices` returned usable discovery evidence;
+    unavailable tools use `unavailable`, and an explicit opt-out uses `skipped by request`. NEVER claim a discovery check that did not run.
 
 Review preflight (blocking):
 
@@ -57,8 +62,8 @@ How to run `list_indices`:
 - If both fail or neither exists, treat SCSI as unavailable.
 - `list_indices` output can exceed the harness output limit and get saved to a temp file;
   search that file for the candidate repo slug instead of re-running the call.
-- You must run SCSI even when the user didn't provide an index name.
-- If the repo is indexed, you MUST invoke at least one SCSI tool to establish base-branch context.
+- When this skill applies, you must run SCSI even when the user did not provide an index name.
+- When this skill applies and the repo is indexed, you MUST invoke at least one SCSI tool to establish base-branch context and relevant impact.
 - Only skip SCSI if:
   - `list_indices` proves the repo is not indexed, OR
   - the SCSI tools are unavailable (cannot call `list_indices`), OR

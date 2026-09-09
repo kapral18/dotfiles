@@ -10,12 +10,12 @@ flowchart TB
     classDef data fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
 
     subgraph GOV["1 · Governance (entrypoints, chezmoi-managed)"]
-        AG["readonly_AGENTS.md → ~/AGENTS.md (compiled core SOP)<br/>§3.8 continuing authorization · §3.5 evidence-backed recovery; §3.4 no-progress stop"]:::gov
+        AG["readonly_AGENTS.md → ~/AGENTS.md (compiled core SOP)<br/>§3.1 shared assessment: issue context, impact, cause, release applicability<br/>§3.8 continuing authorization · §3.5 evidence-backed recovery; §3.4 no-progress stop"]:::gov
         CL["readonly_CLAUDE.md → ~/CLAUDE.md native @AGENTS.md import<br/>dot_claude/symlink_CLAUDE.md → ~/.claude/CLAUDE.md → ~/AGENTS.md<br/>repo CLAUDE.md → native project AGENTS.md import; canonical paths deduplicated"]:::gov
         GM["dot_gemini/config/symlink_AGENTS.md → ~/.gemini/config/AGENTS.md → ~/AGENTS.md"]:::gov
         SK["home/exact_dot_agents/exact_skills/ → ~/.agents/skills/<br/>57 skill entrypoints, intent-routed (see 03b)"]:::gov
         AG -->|Use when… load; mechanics consume canonical authorization| SK
-        REVIEW["k-review/pr_common.md owns proven CI exclusion from findings and approval<br/>k-github and k-google-workspace consume SOP authorization<br/>publication mechanics own transaction preflight and readback"]:::gov
+        REVIEW["k-github owns complete issue/PR intake and bounded material-question reference resolution<br/>k-review/pr_common.md consumes intake and owns proven CI exclusion from findings and approval<br/>k-github and k-google-workspace consume SOP authorization<br/>publication mechanics own transaction preflight and readback"]:::gov
         SK --> REVIEW
         CL --> SK
         CG["dot_cursor/plugins/local/exact_k-sop/<br/>contained alwaysApply rule includes the canonical full SOP;<br/>hosted/authenticated local: 2 SOP bodies inside HOME (baseline 2), 1 outside;<br/>explicit authless/Bedrock local disables plugins; no .cursorignore"]:::gov

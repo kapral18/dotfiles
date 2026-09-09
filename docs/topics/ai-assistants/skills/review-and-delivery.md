@@ -46,11 +46,11 @@ Custom memory retains automatic staged recall, root admission and one final veri
 
 ## `k-github`
 
-| Field    | Value                                                                                          |
-| -------- | ---------------------------------------------------------------------------------------------- |
-| Use when | GitHub mutations: PRs, issues, comments, reviews, labels, releases, merges, attachment uploads |
-| Source   | [`exact_k-github`](../../../../home/exact_dot_agents/exact_skills/exact_k-github/)             |
-| Boundary | not for read-only review analysis or draft-only writing                                        |
+| Field    | Value                                                                                                               |
+| -------- | ------------------------------------------------------------------------------------------------------------------- |
+| Use when | GitHub issue context/targeting and mutations: PRs, issues, comments, reviews, labels, releases, merges, uploads     |
+| Source   | [`exact_k-github`](../../../../home/exact_dot_agents/exact_skills/exact_k-github/)                                  |
+| Boundary | owns shared read-only context intake; review judgment stays with `k-review`, draft-only writing with compose skills |
 
 PR creation and edits are human-visible publication flows. The skill requires full context intake before composition, an explicit publication preflight ledger for title/body/Test Plan/metadata, user approval for invented human-visible text, and read-back comparison after `gh pr create` or `gh pr edit`. Review-comment posting preserves review-side UI evidence attachments in the approval/preflight handoff, including md5s, dimensions, and controller image-QA status, while keeping local screenshot paths out of GitHub bodies. Keep PR reviewer fields unset; GitHub handles reviewer assignment automatically. Review submit bodies stay short: acknowledge the review outcome, and when inline comments exist, do not repeat their details. For immediate-team PR authors, clean reviews approve, findings below CRITICAL use comment review, and CRITICAL blockers request changes; outside or unknown-team authors use the normal severity ladder. Requested local-file uploads use the destination repository's web editor because the API cannot create `user-attachments` assets. The browser flow preserves existing draft text, treats attachment visibility as repository-scoped, and keeps embedding behind the publication gate. Pre-upload QA views every file, checks pairwise-distinct md5s, and rejects missing, empty, or dimensionally implausible images before upload.
 

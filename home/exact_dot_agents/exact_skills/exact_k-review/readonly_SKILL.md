@@ -30,15 +30,18 @@ Contract:
   `~/.cursor/skills` is a symlink to the same tree; opening a file under both paths is a duplicate read of the same bytes.
 - After a context summary, re-open only the files the active mode needs; the summary is not a substitute for them.
   Resume from Review Persistence; apply PR Drift. Report invalidated evidence; never replay completed phases or relaunch outstanding lanes.
-- Do not load `k-github`, `k-git`, `k-compose-pr`, `k-communication`, `k-kibana-labels-propose`, or a CI skill at intake;
-  label, release-note, and version checks run only when the user asks for labels or a PR body.
-  Load `k-buildkite` only when the CI Coverage Gate needs a job's contents, and `k-github` only at the posting step.
+- Do not load `k-git`, `k-compose-pr`, `k-communication`, or a CI skill at intake.
+  Load `~/.agents/skills/k-github/SKILL.md` only for read-only Targeting and GitHub Context Intake + Reference Resolution required by shared assessment; NEVER route that intake into posting or mutation.
+  When SOP §3.1 makes release/backport relevance applicable, establish targets from verified policy or the domain overlay.
+  Label, release-note, and version metadata classification otherwise runs only when the user asks for labels or a PR body, and MUST NOT mutate metadata automatically.
+  Load `k-buildkite` only when the CI Coverage Gate needs a job's contents.
 - Keep read-only PR inspection/review inside this router.
-  Invoke the `k-github` skill (via the Skill tool) only when the user explicitly asks to post/submit anything to GitHub.
+  Invoke the `k-github` skill via the Skill tool for posting only when the user explicitly asks to post/submit anything to GitHub.
 - If the user wants review analysis and GitHub posting in the same request:
   - keep the review router primary
   - draft/verify through review mode first
-  - invoke the `k-github` skill via the Skill tool only for the posting step
+  - read-only Targeting and GitHub Context Intake + Reference Resolution follow the rule above;
+    invoke the `k-github` skill via the Skill tool for the posting step only after draft/verify
 
 ## Root moves
 

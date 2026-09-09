@@ -382,7 +382,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_core.md",
-            "## Semantic-Projection & Sibling-Consumer Gate\n\nTrigger: semantic delta changes how a domain relationship is interpreted, projected, stored, rendered, compared, filtered, or serialized.\n\nRequired reference: `judging_change.md` (matching heading).",
+            "## Semantic-Projection & Sibling-Consumer Gate\n\nTrigger: semantic delta changes how a domain relationship is interpreted, projected, stored, rendered, compared, filtered, or serialized.\n\nRequired reference: `~/.agents/skills/k-review/references/judging_change.md` (matching heading).",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_change.md",
@@ -441,11 +441,27 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "phrasing instructions affirmatively instead of as prohibitions",
         )
 
+    def test_global_sop_requires_shared_assessment_before_approach(self):
+        self.assert_file_contains(
+            "home/readonly_AGENTS.md",
+            "During Understand, before settling the assessment or approach for repository diagnosis, "
+            "implementation, or review, complete the applicable shared assessment without a second user prompt.",
+            "NEVER assume a branch number is the issue identity.",
+            "For GitHub issue work, load `~/.agents/skills/k-github/SKILL.md` for Targeting and GitHub Context Intake + Reference Resolution",
+            "invariants;\nuse `~/.agents/skills/k-semantic-code-search/SKILL.md` when applicable, "
+            "then compare its base context with exact local state.",
+            "Route failure work through `~/.agents/skills/k-diagnosing-bugs/SKILL.md` to classify the cause "
+            "as product, test, infrastructure, mixed, or unresolved from source/reproduction evidence.",
+            "NEVER infer authorization to publish or backport.",
+            "Do not force mechanical work through unrelated expensive assessment steps.",
+        )
+
     def test_global_sop_does_not_carry_skill_routing_triggers(self):
         # Routing triggers live in each skill's `description` frontmatter (which harnesses
-        # pass to the model); the model decides when to load. The SOP keeps only fail-closed
-        # gates and always-on behavior, never "load skill X when Y" routing. Always-on tool
-        # behavior (e.g. ,ai-kb recall/persist) stays, but the skill-load trigger does not.
+        # pass to the model); the model decides when to load. The SOP keeps fail-closed
+        # gates, always-on behavior, and the §3.1 shared-assessment owner pointers
+        # (k-github intake, k-semantic-code-search, k-diagnosing-bugs); it does not carry
+        # intent-matched "load skill X when Y" routing for the skills asserted below.
         self.assert_file_not_contains(
             "home/readonly_AGENTS.md",
             "load the applicable code-quality skill",

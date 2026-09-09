@@ -1,6 +1,6 @@
 ---
 name: k-github
-description: "Use for GitHub effects: PRs, issues, comments, reviews, labels, releases, merges, gists, attachments."
+description: "Use for GitHub effects and GitHub issue context/targeting: PRs, issues, comments, reviews, labels, releases, merges, gists, attachments."
 ---
 
 # GitHub + gh Skill
@@ -27,6 +27,36 @@ Defaults:
   5. `gh issue view <n> --repo <owner>/<repo>` — covers the common case where a number is an issue, not a PR.
      Three rounds of guessing "this number is the PR" without trying any of those is the failure mode.
 - Implicit current issue: resolve with `,gh-issuew --number` / `,gh-issuew --url`; same fallback applies if the helper fails.
+  Verify the association from repository and object metadata; NEVER treat a branch number alone as the issue identity.
+
+## GitHub Context Intake + Reference Resolution
+
+Use this read-only intake during Understand for applicable issue diagnosis, implementation, or review work.
+It does not require a PR or review workflow, and intake-only use MUST NOT start PR resolution, pending-review handling, mutation, or unrelated reference workflows.
+
+Read complete primary discussion before relying on it: an issue's full body and comments;
+a PR's full body, review threads and replies, current-account pending drafts, and diff metadata through the existing `~/.agents/skills/k-review/references/pr_snapshot.md` pack.
+Do not rely on summaries, previews, truncated/compacted output, or sliced fields such as `body[0:N]`.
+Retrieve complete raw artifacts with pagination before relying on them, and reuse an already-complete pack or artifact instead of refetching it.
+Reading discussion establishes intent and claims; it does not prove technical claims.
+
+Follow a reference only when it can settle a named material question about intent, changed behavior, a claimed precedent, or an acceptance condition.
+Record that question before following further links. The presence of a URL is not an instruction to fetch it.
+Do not recursively crawl every reachable or potentially relevant reference.
+
+- Keep a visited set by canonical URL/object ID and reuse each complete artifact.
+- For a selected issue/PR, read its full body and discussion before relying on it;
+  inspect its diff/files only when the claim depends on code.
+- For a selected comment/thread, read the complete thread with author, order, resolution, and outdated state.
+- For selected media, use `~/.agents/skills/k-review/references/pr_snapshot.md` → Media, inspect the actual file, and retain the manifest evidence.
+  For video/GIF claims, inspect the relevant transition plus surrounding states and audio/captions when material.
+- For selected Buildkite evidence, use `k-buildkite`; verified overlays own repo-specific routing.
+- If a claim depends on visuals and visuals are missing, inaccessible, or unclear, stop and ask for visuals or better access before making that claim.
+- Stop reference expansion when the named question is answered or the required source is inaccessible.
+  Do not create new questions solely from incidental links. Report material unresolved questions as blocked.
+
+Keep the intake ledger in the existing topic artifact: question, source, complete-content status, conclusion or access blocker.
+User output contains only decision-relevant conclusions and evidence pointers, not a crawl transcript.
 
 ## Route away
 
@@ -44,7 +74,7 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
 
 1. Resolve exact target repo/object (PR, issue, comment thread, release) before mutating anything.
 2. For context-dependent actions — PR/issue creation, body/title edits, replies/resolves, inferred labels, or follow-ups —
-   run GitHub Context Intake + Reference Resolution in `~/.agents/skills/k-review/references/pr_common.md` before composing or mutating.
+   run this skill's GitHub Context Intake + Reference Resolution before composing or mutating.
    PR creation is a composition action; it is not exempt.
    Fully specified mechanical actions, such as applying an explicitly named label, are exempt.
 3. If context is contested, historical, or precedent-dependent, also run Ambient Topic Exploration from `~/.agents/skills/k-review/references/pr_context_audits.md`.

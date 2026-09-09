@@ -80,28 +80,12 @@ resolve login, list reviews, select `PENDING` reviews by that login, read their 
 
 ## GitHub Context Intake + Reference Resolution (blocking — complete before diff analysis)
 
-During Understand, read the complete primary PR body, discussion/review threads and replies, current-account pending drafts, and diff metadata from the pack.
-Do not rely on summaries, previews, truncated/compacted output, or sliced fields such as `body[0:N]`.
-Retrieve complete raw artifacts with pagination before relying on them; do not re-fetch artifacts already in the pack.
-
-Follow a reference only when it can settle a named material question about intent, changed behavior, a claimed precedent, or an acceptance condition.
-Record that question before following further links. The presence of a URL is not an instruction to fetch it.
-Do not recursively crawl every reachable or potentially relevant reference.
-
-- Keep a visited set by canonical URL/object ID and reuse each complete artifact.
-- For a selected issue/PR, read its full body and discussion before relying on it;
-  inspect its diff/files only when the claim depends on code.
-- For a selected comment/thread, read the complete thread with author, order, resolution, and outdated state.
-- For selected media, use `~/.agents/skills/k-review/references/pr_snapshot.md` → Media, inspect the actual file, and retain the manifest evidence.
-  For video/GIF claims, inspect the relevant transition plus surrounding states and audio/captions when material.
-- For selected Buildkite evidence, use `k-buildkite`; verified overlays own repo-specific routing.
-- Stop reference expansion when the named question is answered or the required source is inaccessible.
-  Do not create new questions solely from incidental links. Report material unresolved questions as blocked.
-
-Keep the intake ledger in the topic artifact: question, source, complete-content status, conclusion or access blocker.
-User output contains only decision-relevant conclusions and evidence pointers, not a crawl transcript.
-
-If a claim depends on visuals and visuals are missing, inaccessible, or unclear, stop and ask for visuals or better access before making that claim.
+Load `~/.agents/skills/k-github/SKILL.md` and follow its GitHub Context Intake + Reference Resolution section.
+It owns reusable complete-discussion, pagination, reference, media, Buildkite, visual-claim, visited-set, and intake-ledger rules;
+this forwarding entry keeps existing callers valid.
+For a PR, the existing `~/.agents/skills/k-review/references/pr_snapshot.md` pack supplies the complete primary body, discussion/review threads and replies, current-account pending drafts, and diff metadata.
+Do not begin diff analysis until that PR context is complete. Do not refetch an artifact already complete in the pack.
+This pointer does not run Ambient Topic Exploration, PR resolution, pending-review reconciliation, or any mutation.
 
 ## Ambient Topic Exploration (conditional — complete before judging contested context)
 

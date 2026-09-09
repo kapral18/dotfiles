@@ -58,6 +58,8 @@ These skills operate on local repositories, code search, cleanup, external sourc
 
 Reuse existing failure evidence. Source investigation does not require a runnable reproduction first. New probes must resolve a material uncertainty; minimization and competing hypotheses are evidence-driven, not mandatory quotas. Production workers return artifacts without private QA; the root owns one integrated final verification.
 
+Failure assessment identifies product, test, infrastructure, mixed, or unresolved causes. A green retry or a test-only patch does not establish a test-only defect; the original product behavior stays in the acceptance criteria.
+
 ## `k-prototype`
 
 | Field    | Value                                                                                           |
@@ -95,9 +97,11 @@ Reuse existing failure evidence. Source investigation does not require a runnabl
 
 | Field    | Value                                                                                                          |
 | -------- | -------------------------------------------------------------------------------------------------------------- |
-| Use when | SCSI semantic search, base-branch context, verifying/selecting a semantic index                                |
+| Use when | nontrivial diagnosis/implementation impact, review base context, or SCSI index selection                       |
 | Source   | [`exact_k-semantic-code-search`](../../../../home/exact_dot_agents/exact_skills/exact_k-semantic-code-search/) |
 | Boundary | not durable memory; use [Agent memory](../knowledge-base/index.md) for that                                    |
+
+Discover and justify the index before querying it, then trace relevant symbols, callers, and consumers. Confirm snapshot findings against the exact local code. An unavailable or absent index, or an explicit opt-out, uses local evidence with a recorded reason; simple filename lookup and mechanical edits do not require semantic search.
 
 ## `k-sem` skill (`,sem` CLI)
 

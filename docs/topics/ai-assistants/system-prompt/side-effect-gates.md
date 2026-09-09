@@ -34,4 +34,4 @@ SOP §3.8 owns authorization across all publication skills. Authorization persis
 
 Human-visible text has a single wording owner. The [communication skill](../skills/review-and-delivery.md#k-communication) owns tone, and loaded mechanics skills such as `k-github`, `k-google-workspace`, or `k-review` do not re-derive it per surface.
 
-The SOP states this as a boundary, not a routing trigger. Skill discovery is driven by the skill's own `description`, not by a "load this skill" line in the SOP.
+The SOP states this as a boundary, not a routing trigger. Skill discovery is driven by the skill's own `description`; a skill file named in the SOP (a fail-closed gate, a mechanics owner, or a §3.1 shared-assessment owner such as `k-github` intake, `k-semantic-code-search`, or `k-diagnosing-bugs`) is a duty at that step, not a discovery trigger.

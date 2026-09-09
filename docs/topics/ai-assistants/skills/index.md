@@ -76,7 +76,7 @@ Measure the entrypoint plus every reference actually needed for the path. Splitt
 Concrete file references in shared AI guidance use full deployed paths, including colocated references and helpers. Project-local `AGENTS.md` may use project-root-relative paths. Use `~/.agents/skills/k-<name>/...` for skill files and `~/.local/share/chezmoi/...` for repo-only sources. Filename patterns and native include/import syntax retain their own semantics.
 
 - Composition skills sanitize public GitHub text before drafting or posting.
-- `k-compose-pr`, `k-compose-issue`, and `k-github` reuse review's GitHub context intake when output depends on existing PR/issue/comment context.
+- `k-compose-pr`, `k-compose-issue`, and review modes reuse the shared `k-github` GitHub context intake when output depends on existing PR/issue/comment context.
 - Generic skills own portable mechanics only. If a rule names an org, repo, product, team, label, bot login, CI instance, PR template, live-UI target, ownership policy, or release-note/backport rule, put it in a verified domain overlay or dedicated domain skill.
 - Generic skills may dispatch to a domain overlay after verifying the target; they must not inline Elastic/Kibana or other domain defaults.
 - GitHub issue worktrees prefer `,gh-worktree issue <owner/repo> <issue_number> --branch <branch-base-name>`.

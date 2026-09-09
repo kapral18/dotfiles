@@ -22,9 +22,11 @@ First actions:
 
 1. Verify the target repo is `elastic/kibana`.
 2. Read the current repo label set before proposing anything.
-3. Read the label-relevant signals — the changed file paths/ownership plus the PR/issue body, closing/resolved issue, directly linked issues, and their labels, enough to judge release-note and backport intent.
+3. Reuse any applicable shared GitHub Context Intake + Reference Resolution evidence.
+   For standalone label classification, read the label-relevant signals — the changed file paths/ownership plus the PR/issue body, closing/resolved issue, directly linked issues, and their labels, enough to judge release-note and backport intent.
    Labels are a bounded classification; a full recursive crawl of every comment/thread is not required.
-   Skim the discussion only if the body leaves release-note or backport intent genuinely ambiguous.
+   Skim the discussion if the body leaves release-note or backport intent ambiguous.
+   This standalone bounded skim MUST NOT weaken the shared intake's complete-discussion requirements when that intake applies.
 4. Map the change/issue to exact proposed labels, then separate verified labels from heuristics.
 
 Output:
@@ -57,5 +59,9 @@ Common patterns (verify in repo):
   - `backport:all-open` (backport to all open minor versions) (no version tag)
   - `backport:version` + `vX.Y.Z` (backport to a specific version) (version tag required)
   - eligibility follows change substance, not issue-type metadata: a fix for existing wrong behavior (bug/regression) is backportable to the open branches in `versions.json`; a change filling absent behavior (new coverage, enhancement) stays main-only (`backport:skip`) even when the linked issue is typed or labelled `bug`
+  - for each candidate branch in the verified `versions.json` policy, establish whether the wrong behavior or affected code exists there and whether the fix applies with its dependencies.
+    NEVER target a branch merely because it is open or an issue has a matching label.
+  - report justified targets and exclusions, or the evidence blocker.
+    Reuse shared intake context when available; this skill does not authorize a backport or metadata mutation.
   - when the linked issue's type/labels contradict the change's substance, flag the mismatch and propose retyping the issue instead of inheriting its type for the backport decision
 - docs tags: `docs`

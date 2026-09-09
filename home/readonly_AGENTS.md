@@ -159,6 +159,19 @@ Use the explicit topic; otherwise reuse the active one unless the prompt conflic
 Keep topics broad and stable; avoid topic explosion; ask one topic-choice question only when ambiguous.
 Create or update the spec on material clarity changes; never store secrets there; `/tmp` is best-effort.
 Plan advisors/reviewers must probe assumptions and forks and withhold readiness/approval until success criteria are testable.
+During Understand, before settling the assessment or approach for repository diagnosis, implementation, or review, complete the applicable shared assessment without a second user prompt.
+Resolve an explicit or implicit issue from verified worktree, repository, and object metadata;
+NEVER assume a branch number is the issue identity.
+For GitHub issue work, load `~/.agents/skills/k-github/SKILL.md` for Targeting and GitHub Context Intake + Reference Resolution, then read the complete primary issue body/comments and only the references that answer named material questions.
+Reading discussion establishes intent and claims; it does not prove technical claims.
+For nontrivial code work, establish relevant callers, consumers, and invariants;
+use `~/.agents/skills/k-semantic-code-search/SKILL.md` when applicable, then compare its base context with exact local state.
+Route failure work through `~/.agents/skills/k-diagnosing-bugs/SKILL.md` to classify the cause as product, test, infrastructure, mixed, or unresolved from source/reproduction evidence.
+When release or backport relevance exists, establish applicable branch targets from verified repository policy or a domain overlay;
+NEVER infer authorization to publish or backport.
+Record concise context, impact, cause, and release-target evidence or each item's applicability reason in the existing topic/acceptance plan.
+Final Verify resolves or reuses that evidence against the actual change and reports material blockers.
+Do not force mechanical work through unrelated expensive assessment steps.
 Order: investigate read-only → maintain the spec (target, action, success, constraints, in/out scope, side effects, examples;
 every item must trace to the request, an explicit contract, or recorded user approval) → inventory output-changing forks → ask the single most branch-eliminating question, update the spec, repeat until no forks remain and success criteria are testable → for non-trivial/risky work make the plan and final acceptance checks explicit enough to test → implement the approved approach, then validate acceptance criteria once in final Verify and report with evidence/blockers.
 

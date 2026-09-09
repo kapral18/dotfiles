@@ -47,6 +47,9 @@ Do not manufacture a fixed quota of hypotheses or keep testing causes already ru
 Each material hypothesis needs a prediction that available source, a trace, or a targeted probe can distinguish.
 When causal attribution remains ambiguous, use a relevant negative control: changing an irrelevant input must not produce the claimed effect.
 Do not demand a separate control or model judgment for every assertion.
+Classify the failure as product, test, infrastructure, mixed, or unresolved from source/reproduction evidence.
+A flaky test, green retry, timeout extension, assertion weakening, or quarantine does not establish a test-only cause.
+NEVER hide a product defect with a test patch; the original product behavior remains an acceptance criterion.
 
 Choose probes for the uncertainty they remove.
 Do not repeat a probe without a changed input, environment, hypothesis, or planned sampling requirement.
@@ -63,7 +66,7 @@ Do not exhaust hypothetical causes, minimize every input, or rerun the baseline 
 
 ## Return diagnostic evidence
 
-Return the cause with source/tool anchors, the original expected-versus-observed behavior, relevant ruled-out alternatives and remaining uncertainty.
+Return the classification and cause with source/tool anchors, the original expected-versus-observed behavior, relevant ruled-out alternatives and remaining uncertainty.
 Distinguish a source-established defect from runtime behavior that could not be reproduced.
 Do not report an unrun runtime criterion as passed.
 

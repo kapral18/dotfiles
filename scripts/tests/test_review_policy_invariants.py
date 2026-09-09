@@ -174,9 +174,9 @@ class TestReviewPolicyInvariants(unittest.TestCase):
     def test_final_review_uses_evidence_without_reviewing_reviewers(self):
         text = self.read("home/readonly_AGENTS.md")
         for clause in (
-            "Final reviewers consume shared evidence",
-            "MUST NOT re-run successful checks",
-            "do not chain a finder, findings auditor, refuter, and post-review auditor",
+            "Final reviewers use shared evidence and direct artifact access",
+            "MUST NOT re-run passing checks for independence",
+            "do not chain finder → auditor → refuter → post-auditor over the same work",
             "A failed required check blocks dependent actions, not authorized diagnosis and repair.",
             "Workers return once; only the root owns recovery, and no worker may start a repair or verification loop.",
         ):
@@ -306,15 +306,84 @@ class TestReviewPolicyInvariants(unittest.TestCase):
 
     def test_intake_is_material_question_scoped_and_reuses_evidence(self):
         common = self.read("home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_common.md")
+        intake = self.read("home/exact_dot_agents/exact_skills/exact_k-github/readonly_SKILL.md")
+        self.assertIn(
+            "Load `~/.agents/skills/k-github/SKILL.md` and follow its "
+            "GitHub Context Intake + Reference Resolution section.",
+            common,
+        )
         for clause in (
-            "read the complete primary PR body",
             "Do not recursively crawl every reachable or potentially relevant reference.",
             "Stop reference expansion when the named question is answered",
+            "## GitHub Context Intake + Reference Resolution",
+            "Read complete primary discussion before relying on it",
+            "Follow a reference only when it can settle a named material question",
+            "For selected media, use `~/.agents/skills/k-review/references/pr_snapshot.md` → Media, "
+            "inspect the actual file, and retain the manifest evidence.",
+            "stop and ask for visuals or better access before making that claim.",
+            "Retrieve complete raw artifacts with pagination before relying on them",
+            "intake-only use MUST NOT start PR resolution, pending-review handling, mutation, "
+            "or unrelated reference workflows.",
+            "NEVER treat a branch number alone as the issue identity.",
+            "Use for GitHub effects and GitHub issue context/targeting",
+        ):
+            self.assertIn(clause, intake)
+        for clause in (
+            "complete primary body, discussion/review threads and replies",
             "do not issue a second per-comment request",
             "run only pending planned checks for the frozen candidate",
+            "Do not begin diff analysis until that PR context is complete.",
         ):
             self.assertIn(clause, common)
-        self.assertNotIn("Repeat until the queue is empty", common)
+        self.assertNotIn("Repeat until the queue is empty", common + intake)
+
+    def test_review_router_loads_intake_read_only_without_posting(self):
+        router = self.read("home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md")
+        for clause in (
+            "Load `~/.agents/skills/k-github/SKILL.md` only for read-only Targeting and "
+            "GitHub Context Intake + Reference Resolution required by shared assessment; "
+            "NEVER route that intake into posting or mutation.",
+            "Do not load `k-git`, `k-compose-pr`, `k-communication`, or a CI skill at intake.",
+            "MUST NOT mutate metadata automatically",
+            "invoke the `k-github` skill via the Skill tool for the posting step only after draft/verify",
+        ):
+            self.assertIn(clause, router)
+        self.assertNotIn("`k-github` only at the posting step", router)
+        self.assertNotIn("Do not load `k-github`", router)
+
+    def test_assessment_skills_keep_classification_and_fallback_contracts(self):
+        scsi = self.read("home/exact_dot_agents/exact_skills/exact_k-semantic-code-search/readonly_SKILL.md")
+        for clause in (
+            "Use for nontrivial code-impact assessment, conceptual code search, "
+            "SCSI index selection, or review base context.",
+            "discovery=<checked|unavailable|skipped by request>; <reason>",
+            "NEVER claim a discovery check that did not run.",
+            "If the repo is unindexed, tools are unavailable, or the user opts out, "
+            "establish impact from local sources and record the reason.",
+        ):
+            self.assertIn(clause, scsi)
+        self.assertNotIn("list_indices checked; <reason>", scsi)
+        bugs = self.read("home/exact_dot_agents/exact_skills/exact_k-diagnosing-bugs/readonly_SKILL.md")
+        for clause in (
+            "Classify the failure as product, test, infrastructure, mixed, or unresolved "
+            "from source/reproduction evidence.",
+            "does not establish a test-only cause",
+            "Return the classification and cause with source/tool anchors",
+            "NEVER hide a product defect with a test patch; the original product behavior "
+            "remains an acceptance criterion.",
+        ):
+            self.assertIn(clause, bugs)
+        labels = self.read("home/exact_dot_agents/exact_skills/exact_k-kibana-labels-propose/readonly_SKILL.md")
+        for clause in (
+            "NEVER target a branch merely because it is open or an issue has a matching label.",
+            "establish whether the wrong behavior or affected code exists there "
+            "and whether the fix applies with its dependencies.",
+            "report justified targets and exclusions, or the evidence blocker.",
+            "this skill does not authorize a backport or metadata mutation.",
+            "This standalone bounded skim MUST NOT weaken the shared intake's "
+            "complete-discussion requirements when that intake applies.",
+        ):
+            self.assertIn(clause, labels)
 
     def test_delivery_does_not_infer_repairs_or_worker_reruns(self):
         delivery = self.read(

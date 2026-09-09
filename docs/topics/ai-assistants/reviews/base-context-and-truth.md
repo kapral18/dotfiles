@@ -49,7 +49,7 @@ Review modes live under `~/.agents/skills/k-review/references/`.
 | `review_post_stage.md` / `review_fixes.md` | no separate post-review stage / authorized production before final Verify                                                  |
 | `shared_rules.md`                          | base-context gate, review persistence, universal publication boundaries, and delivery load edges                           |
 | `review_delivery.md`                       | public-ready drafts, pending-review semantics, verdict selection, and posting procedure                                    |
-| `pr_common.md`                             | PR resolution, GitHub intake, pending-review reconciliation, media evidence, anchoring                                     |
+| `pr_common.md`                             | PR resolution, shared `k-github` intake entry, pending-review reconciliation, anchoring                                    |
 | `pr_context_audits.md`                     | conditional ambient topic exploration and PR necessity/correctly-open audit, loaded only when `pr_common.md` triggers them |
 | `local_changes.md`                         | local diff / branch-delta review                                                                                           |
 | `pr_review.md`                             | initial or continued PR review                                                                                             |
@@ -60,14 +60,11 @@ Review modes live under `~/.agents/skills/k-review/references/`.
 
 ### PR and issue intake
 
-The PR/issue intake gate is deliberately exhaustive:
+`k-github` owns shared context intake for issue diagnosis, implementation, review, and context-dependent composition. Read the complete primary issue/PR body and discussion, including applicable review threads, replies, and pending drafts. An issue-derived worktree does not need a PR before intake can run.
 
-- PR and issue descriptions/bodies line by line.
-- every conversation comment, review body, review comment, thread, and reply.
-- every image/GIF/video or attachment.
-- recursively discovered PR/issue/comment/media/link references until no reachable relevant reference remains unread.
+Follow references only to settle a named material question about intent, behavior, precedent, or acceptance. Read complete selected discussions and inspect selected media when claims depend on it. Reuse artifacts by canonical identity and stop expansion when the question is answered or access is blocked; incidental links do not require a recursive crawl.
 
-GitHub posting and PR/issue composition skills reuse the same gate when output depends on existing PR/issue/comment context.
+PR review retains its shared snapshot, before-diff intake gate, and pending-review reconciliation. Reading context neither establishes the technical truth of each comment nor authorizes a GitHub mutation.
 
 ### Pending-review awareness
 

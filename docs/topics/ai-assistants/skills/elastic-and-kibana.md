@@ -46,6 +46,8 @@ The overlay also carries a Kibana planning fork checklist (`references/kibana-pl
 | Source   | [`exact_k-kibana-labels-propose`](../../../../home/exact_dot_agents/exact_skills/exact_k-kibana-labels-propose/) |
 | Boundary | propose-only                                                                                                     |
 
+Backport assessment reuses the shared issue intake and checks candidate branches from `versions.json` for the affected behavior, fix applicability, and required dependencies. An open branch or issue label alone does not justify targeting it. Report supported targets, exclusions, and material evidence gaps; standalone label classification remains bounded and propose-only.
+
 ## `k-kibana-management-ownership`
 
 | Field    | Value                                                                                                                        |
