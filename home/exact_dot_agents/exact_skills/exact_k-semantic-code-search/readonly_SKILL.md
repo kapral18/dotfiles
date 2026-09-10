@@ -37,6 +37,8 @@ First actions:
 
 Reuse valid index-selection and query evidence; do not repeat unchanged queries solely to double-check a completed assessment.
 If the repo is unindexed, tools are unavailable, or the user opts out, establish impact from local sources and record the reason.
+Local sources for impact: `rg`/symbol lookup for callers and non-code consumers.
+NEVER run indexed `,sem` queries (`impact`, `context`, `find`, `callers`, `refs`, `grep`, `entities`) as this fallback unless the user explicitly asks; see `~/.agents/skills/k-sem/SKILL.md` Scope.
 
 Important limitation: the semantic index is a snapshot (typically of `main`);
 use it for base-branch context and patterns, then compare diagnosis/implementation/review findings against exact local state.
@@ -98,6 +100,8 @@ Passing `index`:
   - exception: only omit `index` if you can prove (via evidence) that the MCP default points at the same index you selected
 - if a search returns no results or index not found in one MCP, try the other MCP before giving up
 - two MCP servers may exist: `scsi-main` (shared/team indices) and `scsi-local` (user-specific)
+- which repositories each server indexes is domain policy owned by the verified domain overlay;
+  never assume coverage, prove it with `list_indices`
 
 Tool selection guidelines:
 

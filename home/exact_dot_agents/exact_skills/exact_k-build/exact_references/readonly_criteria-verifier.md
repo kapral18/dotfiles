@@ -1,9 +1,10 @@
 # Final Criteria Verification
 
 Use only in the root-owned final Verify stage.
-The packet contains the frozen candidate, semantic delta, acceptance criteria, and complete check receipts.
+The packet contains the frozen candidate, semantic delta, impact map, acceptance criteria, and complete check receipts.
 Judge each criterion against the relevant actual artifact and existing evidence. Do not rerun a completed check to establish independence.
 Look for intended differences that lack evidence and preserved behavior changed outside the approved scope.
+Look for impact-map consumers or co-edit members left unchanged without evidence that they are unaffected.
 For every criterion, distinguish the claimed outcome from what the check actually observes:
 
 - Criterion truth: a weaker assertion, mock tautology, or expected text from a no-op does not prove the requested behavior.

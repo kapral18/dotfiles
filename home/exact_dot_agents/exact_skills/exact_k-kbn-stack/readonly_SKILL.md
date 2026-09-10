@@ -1,7 +1,7 @@
 ---
 name: k-kbn-stack
 description: "Use for elastic/kibana UI/browser tests needing ES+Kibana URLs, -K flags, stack registry, start/stop/reuse."
-tool_version: ",kbn-stack shared ES + serverless paths/TLS/cleanup 2026-09-08"
+tool_version: ",kbn-stack shared-ES reaper watchdog (60s no-client; a live Kibana process counts as a client) + diff-based auto-isolation (--share-es) 2026-09-10"
 ---
 
 # Kbn Stack
@@ -27,6 +27,7 @@ Each worktree always gets its own Kibana; default snapshot starts share one back
 ,kbn-stack --es snapshot
 ,kbn-stack --es serverless --project-type es
 ,kbn-stack --isolated-es
+,kbn-stack --share-es
 ,kbn-stack --data <name>
 ,kbn-stack --slot <n>
 ,kbn-stack -E key=value
@@ -71,7 +72,7 @@ Do not guess localhost ports or bypass per-worktree teardown.
 `--status` works outside a Kibana worktree and lists every registry entry without changing it.
 Its `ready`, `starting`, `degraded`, and `stale` states combine recorded readiness with current launcher/process and Kibana/Elasticsearch port liveness.
 
-`--prune` works outside a Kibana worktree and removes only `stale` entries; it never stops processes.
+`--prune` works outside a Kibana worktree and removes only `stale` entries; it never stops a worktree stack, and the only process it stops is a shared ES with no Kibana client for a minute (the reaper's fallback).
 Interactive ES and Kibana commands also invoke silent pruning when they exit, so the entry is removed after both halves are down while starting, ready, and degraded entries remain registered.
 
 ## Output

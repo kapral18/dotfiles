@@ -16,10 +16,11 @@ complete -c ,kbn-stack -l data -d "ES data folder name under ~/work/kibana/es_da
 complete -c ,kbn-stack -l slot -d "Force a specific slot number" -x
 complete -c ,kbn-stack -l detach -d "Agent mode: background ES+Kibana, wait until ready, record started_by=agent"
 complete -c ,kbn-stack -l isolated-es -d "Own ES for this worktree instead of sharing a version-compatible one (also implied by -E/--data/non-default --es-heap)"
+complete -c ,kbn-stack -l share-es -d "Attach to the shared ES even though the branch diff touches saved-object/ES-setup definitions"
 complete -c ,kbn-stack -l stop -d "Tear down this worktree's stack (recorded pids and interactive port owners' process groups) and drop its registry entry"
 complete -c ,kbn-stack -l stop-all -d "Tear down every registered stack, including interactive tmux, then clear the registry"
 complete -c ,kbn-stack -l status -d "List registered stacks with live process and port state"
-complete -c ,kbn-stack -l prune -d "Remove fully stale registry entries without stopping processes"
+complete -c ,kbn-stack -l prune -d "Remove fully stale registry entries; stops only a shared ES idle for a minute, never a worktree stack"
 complete -c ,kbn-stack -s E -d "Extra ES setting (key=value); snapshot already sets merge watermark 2gb" -x
 complete -c ,kbn-stack -s K -l kbn -d "Extra Kibana setting passed to pnpm/yarn start as --key=value" -x
 complete -c ,kbn-stack -l groups -d "Plugin groups to load (default platform; all = every group)" -x -a "all platform observability security search workplaceai vectordb"

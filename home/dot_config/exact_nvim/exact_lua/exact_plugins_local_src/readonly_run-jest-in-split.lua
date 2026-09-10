@@ -33,11 +33,12 @@ local script_runner_builders = {
     end
     return string.format("npm run %s -- %s", script_name, file_path)
   end,
+  -- pnpm forwards a literal "--" to the script (kibana's scripts/jest then treats every later flag as a path), so no separator here.
   pnpm = function(script_name, file_path, root_dir)
     if root_dir then
-      return string.format("pnpm --dir %s run %s -- %s", escape_shell_arg(root_dir), script_name, file_path)
+      return string.format("pnpm --dir %s run %s %s", escape_shell_arg(root_dir), script_name, file_path)
     end
-    return string.format("pnpm run %s -- %s", script_name, file_path)
+    return string.format("pnpm run %s %s", script_name, file_path)
   end,
   bun = function(script_name, file_path, root_dir)
     if root_dir then

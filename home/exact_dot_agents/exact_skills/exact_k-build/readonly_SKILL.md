@@ -13,7 +13,7 @@ This skill supplies build criteria and artifacts; it MUST NOT create another pha
 
 Read the active packet and its approval. Do not ask again when the user already approved implementation.
 Missing material intent goes through `k-spec`; a clear approved request does not need another approval ceremony.
-Carry old/new rules, intended and preserved differences, owned targets, and final acceptance conditions into the packet.
+Carry old/new rules, intended and preserved differences, the impact map, owned targets, and final acceptance conditions into the packet.
 Approval covers scoped working-tree edits, needed generation/setup, and final checks, not commits, pushes, or publication.
 Keep the packet's Out of scope constraints and the SOP ownership, compatibility, and publication gates.
 
@@ -21,6 +21,7 @@ Keep the packet's Out of scope constraints and the SOP ownership, compatibility,
 
 Sequence dependencies; independent owned modules may be separate substantial implementation packets.
 Create tests and docs with the change, integrate generated outputs, and format before freezing the final candidate.
+Update every co-edit-set member named in the impact map in the same change; a consumer left unchanged needs recorded evidence that it is unaffected.
 Maintain the compact topic handoff: decisions, dependencies, active/completed packet IDs, artifact pointers, and open criteria.
 Use `pending`, `produced`, or `blocked` during production; do not require red/green status from workers.
 Do not run acceptance commands, self-review, per-step check runners, or criteria-verifier passes during production.

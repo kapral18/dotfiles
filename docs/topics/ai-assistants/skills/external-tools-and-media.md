@@ -63,6 +63,16 @@ Playwriter documentation loads common safeguards plus complete operation recipes
 
 Ordinary browsing and UI checks preserve the browser window's available viewport. Fixed dimensions need a task-specific reason: responsive testing, a size-dependent reproduction, matched comparison captures, or video framing. Size-specific checks use an owned page or isolated browser and restore the previous sizing mode or close the test page afterward. Smaller screenshot inputs come from resizing the captured image, not shrinking the live page. The headless video recipe keeps its matching viewport and frame size; extension recording can skip automatic resizing with `aspectRatio: null`.
 
+## `k-slack`
+
+| Field    | Value                                                                                                                              |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | sending, scheduling, or replying to Slack messages, adding reactions, or creating/updating canvases through the Slack MCP tools    |
+| Source   | [`exact_k-slack`](../../../../home/exact_dot_agents/exact_skills/exact_k-slack/)                                                   |
+| Tool     | Slack MCP tools available in the current runtime                                                                                   |
+| Boundary | mechanics only: live-id resolution, SOP §3.8 preflight, single send, read-back; wording via `k-communication`; reads never load it |
+| Related  | `k-kbn-standup` composes but never sends; a delegated leaf returns the draft, and `publish_gate.py` denies leaf sends where wired  |
+
 ## `k-ui-capture`
 
 | Field    | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |

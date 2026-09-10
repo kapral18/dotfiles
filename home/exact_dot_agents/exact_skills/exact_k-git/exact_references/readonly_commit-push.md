@@ -18,6 +18,9 @@ Amend policy (mandatory):
 
 Commit quality:
 
+- commit subjects and bodies are human-visible: load `~/.agents/skills/k-communication/SKILL.md` before composing them
+- keep agentic-session artifacts (SOP references, skill/agent/packet names, spec paths, `Compatibility impact:` lines) out of the message;
+  an attribution trailer required by a verified domain overlay is the only agent-identifying content allowed
 - use Conventional Commits when the repo already uses them; otherwise match the repo's existing commit style
 - commit-message style does not transfer to PR titles.
   PR titles are owned by `k-github` plus any verified domain overlay, not by this commit-quality rule.

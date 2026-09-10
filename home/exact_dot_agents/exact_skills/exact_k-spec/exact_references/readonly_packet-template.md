@@ -11,6 +11,8 @@ Context: <why now; links: issue/PR/thread/prototype verdict>
 
 Semantic delta: <none | old rule; new rule; intended differences; preserved differences; evidence>
 
+Impact map: <none (light-path proven) | affected callers/consumers; invariants; co-edit set (generated outputs, docs, diagrams, completions, tests); evidence>
+
 In scope:
 
 - <...>

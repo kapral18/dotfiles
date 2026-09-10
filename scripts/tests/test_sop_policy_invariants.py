@@ -347,6 +347,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Before editing, state the semantic delta",
             "Exempt only proven mechanical edits from stating the delta:",
             "Exempt only proven mechanical edits",
+            "AI-facing instruction text steers agent behavior; it is never exempt prose.",
             "old rule -> new rule -> intended differences -> preserved differences -> evidence",
             "mark `Unknown` only when evidence is genuinely unavailable.",
             "preserve behavior outside the semantic delta",
@@ -360,22 +361,40 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "old rule, new rule, intended differences, preserved differences, and evidence for each",
             "If an edit changes what inputs, states, events, persisted data, rendered output, errors, permissions, or generated artifacts mean or produce",
             "When the semantic delta changes one projection of a relationship",
+            "Non-code artifacts have consumers too:",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-spec/readonly_SKILL.md",
             "Record the semantic delta: old rule, new rule, intended differences, preserved differences, and evidence.",
+            "Record the impact map from the SOP §3.1 shared assessment",
             "Criteria cover intended and preserved behavior when both exist",
             "record unrun checks as planned, not passed",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-build/readonly_SKILL.md",
             "Carry old/new rules, intended and preserved differences",
+            "the impact map, owned targets",
+            "Update every co-edit-set member named in the impact map in the same change",
             "Freeze the integrated candidate",
             "SOP §3.5",
         )
         self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-spec/exact_references/readonly_packet-template.md",
+            "Impact map: <none (light-path proven) | affected callers/consumers; invariants; co-edit set",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-build/exact_references/readonly_implement-worker.md",
+            "the impact map (affected consumers and co-edit set)",
+            "report one outside them as a blocker and do not edit it",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-build/exact_references/readonly_criteria-verifier.md",
+            "Look for impact-map consumers or co-edit members left unchanged without evidence that they are unaffected.",
+        )
+        self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_core.md",
             "For diffs not proven mechanical-only, reconstruct semantic delta",
+            "Prove mechanical-only with `,sem diff --format json` per `~/.agents/skills/k-sem/SKILL.md`",
             "Missing/extra/unproven rows are candidates",
             "Compare fix delta with requested delta",
             "Trigger: semantic delta changes how a domain relationship is interpreted",
@@ -446,6 +465,11 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "home/readonly_AGENTS.md",
             "During Understand, before settling the assessment or approach for repository diagnosis, "
             "implementation, or review, complete the applicable shared assessment without a second user prompt.",
+            "The shared assessment is the four components below: intent intake, impact, cause classification, and release targets;\n"
+            "apply each only when its trigger holds.",
+            "Impact covers every consumed artifact, not only code:",
+            "Impact mechanics, in order: SCSI when the repo is indexed; otherwise local `rg`/symbol lookup",
+            "Skip the impact map only for a change proven light-path under §1.",
             "NEVER assume a branch number is the issue identity.",
             "For GitHub issue work, load `~/.agents/skills/k-github/SKILL.md` for Targeting and GitHub Context Intake + Reference Resolution",
             "invariants;\nuse `~/.agents/skills/k-semantic-code-search/SKILL.md` when applicable, "

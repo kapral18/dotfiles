@@ -362,7 +362,7 @@ check_bin_wrappers() {
   # Forwarding wrappers in ~/bin that exec a brew-installed binary.
   # If the brew formula is gone, the wrapper breaks silently.
   local -a wrappers=(
-    ",sem:sem"
+    ",sem:sem-cli"
     ",parallel:parallel"
   )
   local entry name formula

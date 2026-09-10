@@ -89,12 +89,14 @@ When a draft feeds a GitHub issue side effect, it carries an issue publication p
 
 ## `k-communication`
 
-| Field    | Value                                                                                                                                                                                                               |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Use when | wording anything another human will read                                                                                                                                                                            |
-| Source   | [`exact_k-communication`](../../../../home/exact_dot_agents/exact_skills/exact_k-communication/)                                                                                                                    |
-| Boundary | governs wording, not whether publishing is allowed                                                                                                                                                                  |
-| Owned    | Shared external-register rules live directly in the [`skill entrypoint`](../../../../home/exact_dot_agents/exact_skills/exact_k-communication/readonly_SKILL.md); the existing-thread procedure remains conditional |
+| Field     | Value                                                                                                                                                                                                                                   |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use when  | wording anything another human will read                                                                                                                                                                                                |
+| Source    | [`exact_k-communication`](../../../../home/exact_dot_agents/exact_skills/exact_k-communication/)                                                                                                                                        |
+| Boundary  | governs wording, not whether publishing is allowed                                                                                                                                                                                      |
+| Loaded by | named in SOP §3.8 as a duty before drafting; `k-compose-pr`, `k-compose-issue`, `k-git` (commit messages), `k-github`, `k-slack`, `k-google-workspace`, and `k-review` load it, including for draft-only output                         |
+| Excludes  | session artifacts: SOP references, skill/agent/lane/packet names and IDs, `Compatibility impact:` lines, `Unknown because` markers, `/tmp/specs` paths, `,proof`/`,agent-memory` ledger references, harness/model names, worker reports |
+| Owned     | Shared external-register rules live directly in the [`skill entrypoint`](../../../../home/exact_dot_agents/exact_skills/exact_k-communication/readonly_SKILL.md); the existing-thread procedure remains conditional                     |
 
 The default message shape is three parts: the point in the first sentence, the doubt when one exists (the assumption you could not verify), and a short collaborative close (`wdyt` / `lmk`). That close is the default nicety and replaces longer warmth rather than stacking with it. Budgets are per artifact class (`≤40` thread reply, `≤80` comment, `≤200` description), tighter than SOP §5.2's task-class budgets; the terse in-session shape does not carry over, because external readers get direct and polite.
 

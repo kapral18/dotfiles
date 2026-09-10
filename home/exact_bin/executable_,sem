@@ -1,2 +1,6 @@
 #!/bin/sh
-exec "$(brew --prefix sem)/bin/sem" "$@"
+# Hardened launcher for Ataraxy sem (homebrew-core `sem-cli`, link: false).
+# No telemetry recording, no background GitHub update check, no cloud/network:
+# Homebrew owns upgrades; ~/.sem/telemetry.json is chezmoi-managed (mode off).
+export DO_NOT_TRACK=1 SEM_NO_TELEMETRY=1 SEM_NO_UPDATE_CHECK=1 SEM_NO_NETWORK=1
+exec "$(brew --prefix sem-cli)/bin/sem" "$@"

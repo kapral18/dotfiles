@@ -14,15 +14,18 @@ later compatible starts attach only their Kibana to it.
   pass `--isolated-es` (see Isolation Judgment).
 - If an attaching Kibana fails readiness with saved-object migration errors in its `kbn_log`, the branch's saved-object model clashes with the shared ES: rerun that worktree with `--isolated-es`.
   Do not stop the shared ES to resolve the clash; other worktrees may be attached.
-- A shared ES with zero attached worktrees stays registered while alive and is reused by the next compatible start;
-  `--prune` removes it only when dead.
+- A shared ES lives only while it has a Kibana client: a Kibana listening on an attached worktree's port, a recorded Kibana process that is still alive (a dev-mode server restart unbinds the port until the reboot finishes), or an attached start still bootstrapping.
+  Each instance runs a detached reaper watchdog (`reaper_pid`, re-armed on every attach) that stops the ES about 60 seconds after its last client disappears; starts, `--prune`, and interactive-exit pruning apply the same rule as a fallback.
+  `--status` shows the countdown as `(N attached, no client Ns)`.
+  Restarting Kibana after that window means a fresh ES boot; a Ctrl-C/restart within it keeps the ES.
 - A share-eligible start first settles the worktree's previous non-shared stack:
   an orphaned isolated ES half (Kibana dead, no recorded process alive) is stopped so it cannot leak untracked, while a previous stack that is still owned — any recorded process alive, Kibana listening, or serverless containers up — fails the start and names `--stop` as the way forward (an isolated rerun would reuse the same slot and hit the same ports).
 
 ## Isolation Judgment
 
-`,kbn-stack` gates sharing only on flags and the resolved ES version; it cannot see what the session will do to the cluster.
-Judge isolation from the task's intent before starting, and pass `--isolated-es` when any signal below matches.
+`,kbn-stack` gates sharing on flags, the resolved ES version, and one mechanical signal:
+when the branch diff (merge base with main plus uncommitted edits) touches server-side saved-object definitions, model versions, migrations, index templates, or ingest pipelines, it starts an isolated ES and names the files; `--share-es` overrides that.
+It cannot see what the session will do to the cluster, so judge the remaining signals from the task's intent before starting, and pass `--isolated-es` when any signal below matches.
 
 Isolate when the verification:
 
@@ -30,7 +33,7 @@ Isolate when the verification:
 - creates, mutates, or deletes cluster-wide state: `_cluster/settings`, license level, security users/roles/realms, ILM/SLM policies, index or component templates, ingest pipelines, snapshots, or wildcard index deletes;
 - exercises alerting rules, task manager, or background tasks — same-version Kibanas on one shared ES share the `.kibana_task_manager*` task pool, so any attached Kibana may claim and run the task under test instead of the one being observed;
 - measures performance, query latency, or render timing, which load from other attached stacks would skew;
-- reviews a diff that changes saved-object model versions/migrations or boot-time ES setup (index templates, ingest pipelines, Fleet package installs) — attaching that branch mutates shared state under the other worktrees.
+- reviews a diff that changes saved-object model versions/migrations or boot-time ES setup (index templates, ingest pipelines, Fleet package installs) — attaching that branch mutates shared state under the other worktrees; the tool auto-isolates the common file patterns, so this bullet covers changes it cannot see (Fleet packages, setup done outside those paths).
 
 Keep the shared default for read-mostly UI review, Dev Tools/Console checks, and flows over data the session itself seeds under uniquely named indices and saved objects.
 When another worktree is attached and mid-verification with data assertions, prefer `--isolated-es` over adding churn to the shared cluster.
@@ -70,7 +73,7 @@ Override with a later `-E` of the same key.
 ## Registry
 
 The registry is `~/.cache/kbn-stack/registry.json`, keyed by the resolved absolute Kibana worktree path.
-The reserved top-level key `__es__` maps ES version -> shared ES instance (`slot`, `es_url`, `es_http`, `data`, `log`, `es_pid`, `started_by`, `created_from`); every other top-level key is a worktree path.
+The reserved top-level key `__es__` maps ES version -> shared ES instance (`slot`, `es_url`, `es_http`, `data`, `log`, `es_pid`, `reaper_pid`, `started_by`, `created_from`); every other top-level key is a worktree path.
 
 Each ready worktree entry may include:
 
@@ -90,6 +93,23 @@ Each ready worktree entry may include:
 
 Use only entries with `ready: true` as live browser targets. Do not guess localhost ports.
 For older entries without `started_by`, infer `agent` only when recorded process ids are present; otherwise treat the entry as user-owned.
+
+## Start Failures
+
+A start's own stdout is the evidence; when it is redirected to a file, read that file before forming any theory.
+`,kbn-stack` prints `,kbn-stack: ...` lines for every state change, so a run with no new output for minutes is in `pnpm kbn bootstrap`, ES boot, or the Kibana `/api/status` wait, in that order.
+
+- Snapshot data dirs (`~/work/kibana/es_data/<branch|--data name|shared-<version>>`) persist across starts and carry the cluster's self-generated 30-day trial license, which a cluster can start only once.
+  An expired trial blocks cluster health, so kbn-es never logs `kbn/es setup complete` and stops ES.
+  The tool handles this itself: it records the trial expiry in `<data dir>/.kbn-stack-license.json` after each start, and before the next start (recorded expiry passed) or when the ES log reports `LICENSE [EXPIRED]` (older dir without a record) it moves the dir to `<name>.expired-<timestamp>` and starts a fresh cluster once.
+  The notice names both paths. The moved dir is kept, not deleted; it cannot be reused with this tool (its trial is spent).
+  Delete `es_data/*.expired-*` to reclaim disk.
+  Do not pick a new `--data` name to dodge an expired dir; rerun the same command and let the rotation run, so the branch keeps its data dir name.
+- A start fails as soon as the spawned ES launcher exits before setup completes and prints the log's last error lines;
+  it no longer waits out the 600s setup timeout.
+  Read the full `log` path from the failure message before retrying, and fix the named cause instead of rerunning the same command.
+- Never start the same worktree twice while `--status` shows it `starting`: the first start still owns the slot's ports, so the second fails with "ports are already in use" naming the first start's own ES pid.
+  Wait for the first start to return (it always returns: ready, failed, or timed out), or `--stop` it first.
 
 ## Workflow
 

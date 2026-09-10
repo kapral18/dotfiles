@@ -15,7 +15,7 @@ These skills operate on local repositories, code search, cleanup, external sourc
 | Source   | [`exact_k-code-quality`](../../../../home/exact_dot_agents/exact_skills/exact_k-code-quality/)               |
 | Boundary | implementation-quality details, including minimal edit-scope detail, artifact necessity, and semantic dedupe |
 
-`k-code-quality` routes to narrower skills when the surface is present: `k-code-quality-react` for React/JSX/TSX/hooks, `k-code-quality-tests` for tests/fixtures/assertions, and `k-code-quality-web` for HTML/CSS/accessibility/browser UI.
+`k-code-quality` routes to narrower skills when the surface is present: `k-code-quality-react` for React/JSX/TSX/hooks, `k-code-quality-tests` for tests/fixtures/assertions, and `k-code-quality-web` for HTML/CSS/accessibility/browser UI. Non-code artifacts (config keys, template variables, generated files, instruction sentences, completions, docs) have readers too; the skill requires identifying them and their generated or rendered outputs before editing and updating them in the same change.
 
 ## `k-code-quality-react`
 
@@ -101,15 +101,17 @@ Failure assessment identifies product, test, infrastructure, mixed, or unresolve
 | Source   | [`exact_k-semantic-code-search`](../../../../home/exact_dot_agents/exact_skills/exact_k-semantic-code-search/) |
 | Boundary | not durable memory; use [Agent memory](../knowledge-base/index.md) for that                                    |
 
-Discover and justify the index before querying it, then trace relevant symbols, callers, and consumers. Confirm snapshot findings against the exact local code. An unavailable or absent index, or an explicit opt-out, uses local evidence with a recorded reason; simple filename lookup and mechanical edits do not require semantic search.
+Discover and justify the index before querying it, then trace relevant symbols, callers, and consumers. Confirm snapshot findings against the exact local code. An unavailable or absent index, or an explicit opt-out, uses local `rg`/symbol evidence with a recorded reason; indexed `,sem` queries are not part of that fallback. Which repositories a SCSI server indexes is domain-overlay policy. Simple filename lookup and mechanical edits do not require semantic search.
 
 ## `k-sem` skill (`,sem` CLI)
 
 | Field    | Value                                                                        |
 | -------- | ---------------------------------------------------------------------------- |
-| Use when | entity-level git diff, blame, impact analysis, dependency graphs             |
+| Use when | entity history across moves, per-entity blame, entity diff classification    |
 | Source   | [`exact_k-sem`](../../../../home/exact_dot_agents/exact_skills/exact_k-sem/) |
 | Tool     | `,sem` CLI                                                                   |
+
+Index-free `diff`, `log`, and `blame` are the default surface: `diff --format json` proves a mechanical-only change (renames, moves, `structuralChange: false`), and `log <entity>` follows an entity across file moves where `git log -L` stops. Indexed queries (`impact`, `context`, `find`, `callers`, `refs`, `grep`, `entities`) build a multi-gigabyte per-worktree index and do not resolve `@kbn/*` package specifiers, so the skill forbids them unless the user explicitly asks.
 
 ## `k-weave`
 

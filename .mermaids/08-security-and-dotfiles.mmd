@@ -34,6 +34,7 @@ flowchart TB
     subgraph RCFILES["Plain dotfiles (home/readonly_dot_* → ~/.*)"]
         SH["shell: dot_bashrc.tmpl · dot_bash_profile · dot_zshrc.tmpl<br/>dot_zprofile · dot_profile.tmpl · dot_shellrc · dot_inputrc<br/>empty_readonly_dot_hushlogin"]:::rc
         TOOLRC["tool rc: dot_curlrc · dot_ripgreprc · dot_editorconfig<br/>dot_gemrc · dot_markdownlint.jsonc"]:::rc
+        SEMRC["dot_sem/readonly_telemetry.json → ~/.sem/telemetry.json (mode off; ~/bin/,sem also exports DO_NOT_TRACK/SEM_NO_NETWORK)"]:::rc
     end
 
     subgraph IGNGLOB["Search ignore globs"]

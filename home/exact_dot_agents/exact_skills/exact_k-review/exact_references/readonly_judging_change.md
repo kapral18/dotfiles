@@ -63,6 +63,7 @@ In large repos, keep probes targeted and line-bounded rather than running whole-
 - **Targeted line archaeology:** probe only high-uncertainty or non-obvious modified logic; always bound line ranges and depth:
   `git blame -L <start>,<end> <base> -- <path>` or `git log -n 5 -L <start>,<end>:<path>` to find introducing commit and PR context (`gh pr view`, `gh issue view`).
   Never run unbounded whole-file blame in massive repos.
+  When the file was moved or renamed, `git log -L` stops at the move; use `,sem log <entity> --file <path>` per `~/.agents/skills/k-sem/SKILL.md` to follow the entity across moves, and `,sem blame <path>` for per-entity attribution (both index-free).
 - **Unwritten invariant check:** discover whether a modified guard/fallback was introduced to fix a subtle bug, race condition, backward-compatibility requirement, or upstream quirk.
 - **Regression reintroduction:** verify whether the diff inadvertently removes or weakens a guard previously added to fix a past defect.
 - **Classify & act:**

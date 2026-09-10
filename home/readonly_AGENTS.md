@@ -53,7 +53,7 @@ A question without an active action request needs an answer, not unsolicited cha
 Before any edit, state the compatibility impact: `none` | `removed (requested)` | `kept existing (requested)`.
 Before editing, state the semantic delta: old rule -> new rule -> intended differences -> preserved differences -> evidence.
 Exempt only proven mechanical edits from stating the delta: formatting, generated metadata from checked source, pure rename with all references updated, prose/comment text with no behavioral claim.
-The reported symptom is an entry point, not the full rule.
+AI-facing instruction text steers agent behavior; it is never exempt prose. The reported symptom is an entry point, not the full rule.
 Explain an empty preserved set; investigate an unknown set; mark `Unknown` only when evidence is genuinely unavailable.
 No explicit compatibility request: direct update, no shim, alias, wrapper, or deprecation path;
 add a compatibility/legacy path only when the user explicitly requests one.
@@ -160,12 +160,18 @@ Keep topics broad and stable; avoid topic explosion; ask one topic-choice questi
 Create or update the spec on material clarity changes; never store secrets there; `/tmp` is best-effort.
 Plan advisors/reviewers must probe assumptions and forks and withhold readiness/approval until success criteria are testable.
 During Understand, before settling the assessment or approach for repository diagnosis, implementation, or review, complete the applicable shared assessment without a second user prompt.
+The shared assessment is the four components below: intent intake, impact, cause classification, and release targets;
+apply each only when its trigger holds.
 Resolve an explicit or implicit issue from verified worktree, repository, and object metadata;
 NEVER assume a branch number is the issue identity.
 For GitHub issue work, load `~/.agents/skills/k-github/SKILL.md` for Targeting and GitHub Context Intake + Reference Resolution, then read the complete primary issue body/comments and only the references that answer named material questions.
 Reading discussion establishes intent and claims; it does not prove technical claims.
 For nontrivial code work, establish relevant callers, consumers, and invariants;
 use `~/.agents/skills/k-semantic-code-search/SKILL.md` when applicable, then compare its base context with exact local state.
+Impact covers every consumed artifact, not only code: config, templates, generated outputs, docs, completions, and instruction text have readers, renderers, and generated targets too.
+Name what breaks if the artifact changes and its co-edit set (consumers, generated outputs, docs, diagrams, completions, tests).
+Impact mechanics, in order: SCSI when the repo is indexed; otherwise local `rg`/symbol lookup for callers and non-code consumers.
+Skip the impact map only for a change proven light-path under ยง1.
 Route failure work through `~/.agents/skills/k-diagnosing-bugs/SKILL.md` to classify the cause as product, test, infrastructure, mixed, or unresolved from source/reproduction evidence.
 When release or backport relevance exists, establish applicable branch targets from verified repository policy or a domain overlay;
 NEVER infer authorization to publish or backport.
@@ -330,7 +336,9 @@ Verify, do not guess. Ambiguous, unknown, mixed human+bot, or unavailable type โ
 Bot allowlists live only in verified overlays; generic SOP/skills must not embed repo/org-specific bot defaults;
 without a verified overlay, use platform evidence only. The gate does not cover read-only inspection, local working-tree edits, or `/tmp`.
 GitHub uploads of local images/videos/files are gated: follow `~/.agents/skills/k-github/references/attachments.md` and upload them yourself; do not ask the user to drag files or open folders.
-Wording for anyone but the in-session user is centrally owned, not re-derived per surface; a mechanics skill does not own tone.
+Wording for anyone but the in-session user is centrally owned by `~/.agents/skills/k-communication/SKILL.md`, not re-derived per surface;
+a mechanics skill does not own tone.
+Load it before drafting any human-visible text, including draft-only PR, issue, message, or commit text that no side effect follows yet.
 
 ## 4. Tooling And Memory
 

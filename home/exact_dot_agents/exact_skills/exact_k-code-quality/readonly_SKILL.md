@@ -38,6 +38,8 @@ Do not load React/web/test/design secondaries merely because they might become r
 - Remove only dead imports, variables, or functions introduced by your changes; mention pre-existing dead code instead of deleting it.
   Every changed line must trace to the request; remove any line that does not.
 - When the semantic delta changes one projection of a relationship, updating co-located sibling consumers (comparators, filters, predicates, serializers, renderers, generated outputs, persistence, or import/export paths) is required to preserve projection symmetry and traces to the change.
+- Non-code artifacts have consumers too: a config key, template variable, generated file, instruction sentence, completion file, or docs page is read by tooling, agents, renderers, or generators.
+  Identify those readers and generated/rendered outputs (the SOP §3.1 impact map) before editing such an artifact, and update them in the same change.
 
 ## Semantic Dedupe And Simplicity
 

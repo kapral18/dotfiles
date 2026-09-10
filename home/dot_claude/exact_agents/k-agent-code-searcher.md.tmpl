@@ -3,6 +3,7 @@ name: k-agent-code-searcher
 description: Delegate SCSI semantic code investigation or base-context gathering to an isolated context.
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claude_code" "agent" "k-agent-code-searcher") }}"
 readonly: false
+disallowedTools: mcp__slack__slack_send_message, mcp__slack__slack_send_message_draft, mcp__slack__slack_schedule_message, mcp__slack__slack_add_reaction, mcp__slack__slack_create_canvas, mcp__slack__slack_update_canvas
 skills:
   - k-semantic-code-search
 ---

@@ -11,6 +11,7 @@ import importlib.util
 import io
 import json
 import os
+import pkgutil
 import queue
 import re
 import shlex
@@ -23,6 +24,7 @@ import sys
 import tempfile
 import threading
 import time
+import types
 import unittest
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
@@ -101,13 +103,23 @@ def _es_dash_e_settings(cmd: list[str]) -> list[str]:
 
 
 def _load_kbn_stack_command():
+    """Load the ,kbn-stack entrypoint together with its ``kbn_stack`` package modules.
+
+    ``main.py`` puts its directory on ``sys.path`` and imports the package, so the
+    returned namespace exposes ``main``/``__file__`` from the entrypoint plus every
+    package module (``procs``, ``store``, ...) as the attribute to patch or call.
+    """
     loader = SourceFileLoader("kbn_stack_command", str(KBN_STACK_COMMAND))
     spec = importlib.util.spec_from_loader("kbn_stack_command", loader)
     if spec is None or spec.loader is None:
         raise AssertionError("could not load ,kbn-stack command module")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module
+    package = importlib.import_module("kbn_stack")
+    modules = {
+        info.name: importlib.import_module(f"kbn_stack.{info.name}") for info in pkgutil.iter_modules(package.__path__)
+    }
+    return types.SimpleNamespace(main=module.main, __file__=module.__file__, **modules)
 
 
 @contextlib.contextmanager
@@ -124,18 +136,18 @@ def _patched_ports(kbn_stack, alive_slots: dict[int, tuple[bool, bool]], squatte
     """
     alive_ports: set[int] = set()
     for slot, (kbn_alive, es_alive) in alive_slots.items():
-        cfg = kbn_stack.derive(slot)
+        cfg = kbn_stack.slots.derive(slot)
         if kbn_alive:
             alive_ports.add(cfg["kbn_port"])
         if es_alive:
             alive_ports.add(cfg["es_http"])
 
     state: dict = {"killed": [], "saved": [], "killed_groups": []}
-    original_listeners = kbn_stack.port_listener_pids
-    original_kill = kbn_stack.kill_port_listeners
-    original_save = kbn_stack.save_registry
-    original_identity = kbn_stack.listener_identity_ok
-    original_kill_group = kbn_stack.kill_pid_group
+    original_listeners = kbn_stack.procs.port_listener_pids
+    original_kill = kbn_stack.procs.kill_port_listeners
+    original_save = kbn_stack.store.save_registry
+    original_identity = kbn_stack.procs.listener_identity_ok
+    original_kill_group = kbn_stack.procs.kill_pid_group
 
     def fake_listeners(port):
         return [10000 + port] if port in alive_ports else []
@@ -151,19 +163,19 @@ def _patched_ports(kbn_stack, alive_slots: dict[int, tuple[bool, bool]], squatte
         listeners = fake_listeners(port)
         return bool(listeners) and port not in squatted_ports, listeners
 
-    kbn_stack.port_listener_pids = fake_listeners
-    kbn_stack.kill_port_listeners = fake_kill
-    kbn_stack.save_registry = lambda reg: state["saved"].append({k: dict(v) for k, v in reg.items()})
-    kbn_stack.listener_identity_ok = fake_identity
-    kbn_stack.kill_pid_group = state["killed_groups"].append
+    kbn_stack.procs.port_listener_pids = fake_listeners
+    kbn_stack.procs.kill_port_listeners = fake_kill
+    kbn_stack.store.save_registry = lambda reg: state["saved"].append({k: dict(v) for k, v in reg.items()})
+    kbn_stack.procs.listener_identity_ok = fake_identity
+    kbn_stack.procs.kill_pid_group = state["killed_groups"].append
     try:
         yield state
     finally:
-        kbn_stack.port_listener_pids = original_listeners
-        kbn_stack.kill_port_listeners = original_kill
-        kbn_stack.save_registry = original_save
-        kbn_stack.listener_identity_ok = original_identity
-        kbn_stack.kill_pid_group = original_kill_group
+        kbn_stack.procs.port_listener_pids = original_listeners
+        kbn_stack.procs.kill_port_listeners = original_kill
+        kbn_stack.store.save_registry = original_save
+        kbn_stack.procs.listener_identity_ok = original_identity
+        kbn_stack.procs.kill_pid_group = original_kill_group
 
 
 _HANG_AFTER_UNBIND_SERVER = """\
@@ -267,26 +279,26 @@ def _reap_group(pgid: int, leader: int | None = None) -> None:
 def _capture_stop_existing_serverless(kbn_stack, registry: dict, new_started_by: str):
     stopped: list[tuple[str, bool]] = []
     saved: list[dict] = []
-    original_stop_entry = kbn_stack.stop_entry
-    original_save_registry = kbn_stack.save_registry
+    original_stop_entry = kbn_stack.lifecycle.stop_entry
+    original_save_registry = kbn_stack.store.save_registry
 
     def fake_stop_entry(worktree, entry, *, allow_user_owned=True):
         stopped.append((worktree, allow_user_owned))
         return True
 
-    kbn_stack.stop_entry = fake_stop_entry
-    kbn_stack.save_registry = lambda updated: saved.append(json.loads(json.dumps(updated)))
+    kbn_stack.lifecycle.stop_entry = fake_stop_entry
+    kbn_stack.store.save_registry = lambda updated: saved.append(json.loads(json.dumps(updated)))
     try:
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             try:
-                kbn_stack.stop_existing_serverless(registry, "/current", new_started_by)
+                kbn_stack.lifecycle.stop_existing_serverless(registry, "/current", new_started_by)
             except SystemExit:
                 blocked = True
             else:
                 blocked = False
     finally:
-        kbn_stack.stop_entry = original_stop_entry
-        kbn_stack.save_registry = original_save_registry
+        kbn_stack.lifecycle.stop_entry = original_stop_entry
+        kbn_stack.store.save_registry = original_save_registry
 
     return blocked, stopped, saved
 

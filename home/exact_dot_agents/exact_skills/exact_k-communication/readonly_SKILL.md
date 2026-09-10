@@ -11,13 +11,15 @@ examples below are non-exhaustive.
 - **Proactive:** PR/issue descriptions, commit/release messages, announcements, status updates, a new comment that starts a thread.
 - **In response:** replies to a comment/message/thread (see "When Responding To An Existing Message/Thread").
 
-Surface-specific skills (`k-github`, `k-google-workspace`, `k-review`, `babysit`, …) handle the _mechanics_ (which API/endpoint, anchoring, threading, formatting) and point here for _wording_.
+Surface-specific skills (`k-github`, `k-slack`, `k-google-workspace`, `k-review`, …) handle the _mechanics_ (which API/endpoint, anchoring, threading, formatting) and point here for _wording_.
 
 Scope boundaries:
 
 - This skill governs **wording of external human-visible content** only.
 - **Whether and how to publish** (approval, bot-vs-human carve-out, draft → show payload → wait) is the Human-Visible Publication Gate in the SOP (`~/AGENTS.md`); do not restate or weaken it here.
 - In-session chat/CLI responses stay SOP §5; this skill is for other humans.
+- Load points: `k-compose-pr`, `k-compose-issue`, `k-git` (commit messages), `k-github`, `k-slack`, `k-google-workspace`, and `k-review` MUST load this skill before drafting.
+  A draft that no side effect follows yet is still publication text; apply every rule to it.
 
 ## External register
 
@@ -39,6 +41,8 @@ Apply every rule before drafting text another human will read. In-session SOP §
   Write as the user would (e.g. not "my agent re-ran the `gh` call after a 422" — just make the point).
   It hides agentic plumbing; it does not withhold legitimate domain content like real API error codes the human needs.
   Exception: a verified domain overlay may mandate AI-attribution trailers; it overrides this rule for the surfaces it names.
+- Session artifacts MUST NOT appear in external text: SOP section numbers or rule names, skill/agent/lane/worker/packet names and IDs, `Compatibility impact:` lines, `Unknown because` markers, `/tmp/specs` topic or spec paths, `,proof`/`,agent-memory` ledger references, harness or model names, hook notes, and worker status reports.
+  Strip them from the draft before showing the payload; the in-session summary keeps them.
 
 ## Concision
 

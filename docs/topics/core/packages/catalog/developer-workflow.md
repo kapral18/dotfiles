@@ -9,17 +9,17 @@ This slice covers source control, review/readiness tooling, build/test utilities
 
 ## Git, GitHub, and branch work
 
-| Tool                                                                                                                                                        | Source                        | Why it is here                                          |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------- |
-| [`git`](https://git-scm.com), [`git-lfs`](https://git-lfs.com/), [`gh`](https://cli.github.com/)                                                            | `brew`                        | core Git/GitHub workflow                                |
-| [`weave`](https://ataraxy-labs.github.io/weave/)                                                                                                            | `brew`                        | entity-level semantic merge preview/conflict resolution |
-| [`sem`](https://github.com/Ataraxy-Labs/sem)                                                                                                                | `brew` tap `ataraxy-labs/tap` | semantic git diff/blame/impact CLI exposed as `,sem`    |
-| [`gitui`](https://github.com/gitui-org/gitui), [`lazygit`](https://github.com/jesseduffield/lazygit/), [`tig`](https://jonas.github.io/tig/)                | `brew`                        | terminal Git UIs                                        |
-| [`git-absorb`](https://github.com/tummychow/git-absorb)                                                                                                     | `brew`                        | automatically amend fixups into earlier commits         |
-| [`git-delta`](https://dandavison.github.io/delta/), [`difftastic`](https://difftastic.wilfred.me.uk/)                                                       | `brew`                        | readable diff renderers                                 |
-| [`git-cal`](https://github.com/k4rthik/git-cal), [`git-extras`](https://github.com/tj/git-extras), [`git-redate`](https://github.com/PotatoLabs/git-redate) | `brew`                        | history/statistics and branch maintenance utilities     |
-| [`git-brws`](https://crates.io/crates/git-brws)                                                                                                             | `cargo`                       | open/browse git remotes from the terminal               |
-| [`bfg`](https://rtyley.github.io/bfg-repo-cleaner/)                                                                                                         | `brew personal`               | destructive repo cleanup tool, personal-only            |
+| Tool                                                                                                                                                        | Source             | Why it is here                                          |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------- |
+| [`git`](https://git-scm.com), [`git-lfs`](https://git-lfs.com/), [`gh`](https://cli.github.com/)                                                            | `brew`             | core Git/GitHub workflow                                |
+| [`weave`](https://ataraxy-labs.github.io/weave/)                                                                                                            | `brew`             | entity-level semantic merge preview/conflict resolution |
+| [`sem`](https://github.com/Ataraxy-Labs/sem)                                                                                                                | `brew` (`sem-cli`) | semantic git diff/blame/impact CLI exposed as `,sem`    |
+| [`gitui`](https://github.com/gitui-org/gitui), [`lazygit`](https://github.com/jesseduffield/lazygit/), [`tig`](https://jonas.github.io/tig/)                | `brew`             | terminal Git UIs                                        |
+| [`git-absorb`](https://github.com/tummychow/git-absorb)                                                                                                     | `brew`             | automatically amend fixups into earlier commits         |
+| [`git-delta`](https://dandavison.github.io/delta/), [`difftastic`](https://difftastic.wilfred.me.uk/)                                                       | `brew`             | readable diff renderers                                 |
+| [`git-cal`](https://github.com/k4rthik/git-cal), [`git-extras`](https://github.com/tj/git-extras), [`git-redate`](https://github.com/PotatoLabs/git-redate) | `brew`             | history/statistics and branch maintenance utilities     |
+| [`git-brws`](https://crates.io/crates/git-brws)                                                                                                             | `cargo`            | open/browse git remotes from the terminal               |
+| [`bfg`](https://rtyley.github.io/bfg-repo-cleaner/)                                                                                                         | `brew personal`    | destructive repo cleanup tool, personal-only            |
 
 ## GitHub CLI extensions
 

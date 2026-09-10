@@ -1895,7 +1895,7 @@ class TestAgentHooks(unittest.TestCase):
                     seen.setdefault(hook["command"].rsplit("/", 1)[-1].rstrip("'"), []).append(
                         (event, group.get("matcher"))
                     )
-        for script in ("premise_nudge.py", "read_gate.py"):
+        for script in ("premise_nudge.py", "read_gate.py", "publish_gate.py"):
             for _event, matcher in seen[script]:
                 self.assertTrue(re.fullmatch(matcher, "Bash") and re.search(matcher, "Bash"), (script, matcher))
         for _event, matcher in seen["band_gate.py"]:
@@ -3880,6 +3880,118 @@ print('binding/warm-cache/clean-room table passed')
         result = subprocess.run([sys.executable, "-c", script, str(HOOKS)], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("table passed", result.stdout)
+
+
+class PublishGateTests(unittest.TestCase):
+    """publish_gate.py: leaf publication is denied, root publication gets the SOP 3.8 checklist."""
+
+    def bash(self, command: str, **extra) -> dict:
+        payload = {"tool_name": "Bash", "tool_input": {"command": command}, "hook_event_name": "PreToolUse"}
+        payload.update(extra)
+        return payload
+
+    def test_root_publication_rides_checklist_without_a_permission_decision(self):
+        for command in (
+            "gh pr create --title x --body-file /tmp/b.md",
+            "gh -R owner/repo issue comment 3 -b $'ok'",
+            "gh api repos/o/r/pulls/1/comments -f body=$'Text.' -F in_reply_to=5",
+            "gh api graphql -f query='mutation { addPullRequestReviewThread(input: {}) { thread { id } } }'",
+            "gh pr review 12 --approve -b 'Looks good.'",
+            "timeout 120 gh pr comment 7 -b 'done'",
+            "cd /tmp/wt && env FOO=1 gh issue comment 2 -b 'ok'",
+            "gh api -X GET repos/o/r/pulls/1 --jq .title; gh api repos/o/r/issues/1/comments -f body='x'",
+            "gws gmail +send --to a@example.com --subject s --body b",
+            "gws chat +send --space spaces/AAA --text hi",
+        ):
+            out = run_hook("executable_publish_gate.py", self.bash(command))
+            specific = out["hookSpecificOutput"]
+            self.assertIn("Publication gate (SOP 3.8)", specific["additionalContext"], command)
+            self.assertIn("k-communication", specific["additionalContext"], command)
+            self.assertNotIn("permissionDecision", specific, command)
+            self.assertNotIn("decision", out, command)
+
+    def test_read_only_and_non_publication_commands_are_silent(self):
+        for command in (
+            "gh pr view 12 --json title,body",
+            "GH_PAGER=cat gh api -X GET repos/o/r/contents/p -F ref=main",
+            "gh api --paginate repos/o/r/pulls/1/comments",
+            'gh api graphql -f query=\'query { repository(owner:"o", name:"r") { issueTypes(first: 5) { nodes { name } } } }\' -X GET',
+            'GH_PAGER=cat gh api graphql -H "GraphQL-Features:issue_types" -f query=\'query { repository(owner:"o", name:"r") { issueTypes(first: 50) { nodes { id name } } } }\'',
+            'gh api graphql -f query=\'{ repository(owner:"org",name:"repo") { issue(number:3) { id } } }\'',
+            "git push --force-with-lease origin feat",
+            "gws gmail +triage",
+            "rg 'gh pr comment' docs/",
+            'grep -rn "gh issue create" home/ | head',
+            "echo gh pr create --fill",
+        ):
+            self.assertEqual(run_hook("executable_publish_gate.py", self.bash(command)), {}, command)
+        self.assertEqual(
+            run_hook(
+                "executable_publish_gate.py",
+                {"tool_name": "mcp__slack__slack_read_thread", "tool_input": {"channel_id": "C1", "thread_ts": "1.2"}},
+            ),
+            {},
+        )
+
+    def test_delegated_leaf_publication_is_denied(self):
+        # Claude Code child: the payload carries `agent_id`.
+        out = run_hook("executable_publish_gate.py", self.bash("gh pr comment 12 -b 'done'", agent_id="a-1"))
+        self.assertEqual(out["decision"], "block")
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertIn("delegated leaf", out["hookSpecificOutput"]["permissionDecisionReason"])
+        # Claude Code child calling the Slack MCP send tool.
+        out = run_hook(
+            "executable_publish_gate.py",
+            {
+                "tool_name": "mcp__slack__slack_send_message",
+                "tool_input": {"channel_id": "C1", "message": "hi"},
+                "agent_id": "a-2",
+            },
+        )
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertIn("slack_send_message", out["hookSpecificOutput"]["permissionDecisionReason"])
+        # Copilot sub-agent: the parent session env marks the leaf.
+        out = run_hook(
+            "executable_publish_gate.py",
+            self.bash("gh issue create --title t --body b"),
+            env=keep_parent_env("parent-session"),
+        )
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+
+    def test_codex_output_mode_keeps_only_hook_specific_output(self):
+        env = dict(os.environ)
+        env["AGENT_HOOK_OUTPUT"] = "hook_specific"
+        out = run_hook("executable_publish_gate.py", self.bash("gh pr edit 3 --body x", agent_id="a-3"), env=env)
+        self.assertEqual(list(out), ["hookSpecificOutput"])
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+
+    def test_root_ask_mode_and_off_switch(self):
+        env = dict(os.environ)
+        env["AGENT_PUBLISH_GATE_ROOT"] = "ask"
+        out = run_hook("executable_publish_gate.py", self.bash("gh pr create --fill"), env=env)
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "ask")
+        self.assertIn("Publication gate (SOP 3.8)", out["hookSpecificOutput"]["additionalContext"])
+        env = dict(os.environ)
+        env["AGENT_PUBLISH_GATE"] = "off"
+        self.assertEqual(
+            run_hook("executable_publish_gate.py", self.bash("gh pr create --fill", agent_id="a-4"), env=env), {}
+        )
+
+    def test_claude_settings_wire_publish_gate_for_bash_and_slack(self):
+        import re
+
+        for name in ("settings.personal.json", "settings.work.json"):
+            settings = json.loads((REPO / "home" / "dot_claude" / name).read_text())
+            groups = [
+                group
+                for group in settings["hooks"]["PreToolUse"]
+                if any(hook["command"].endswith("publish_gate.py") for hook in group["hooks"])
+            ]
+            self.assertEqual(len(groups), 1, name)
+            matcher = groups[0]["matcher"]
+            for tool in ("Bash", "mcp__slack__slack_send_message", "mcp__slack__slack_add_reaction"):
+                self.assertTrue(re.fullmatch(matcher, tool), (name, matcher, tool))
+            self.assertIsNone(re.fullmatch(matcher, "Read"), (name, matcher))
 
 
 class BandGateTests(unittest.TestCase):

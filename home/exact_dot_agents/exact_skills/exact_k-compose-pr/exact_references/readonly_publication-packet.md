@@ -48,6 +48,7 @@ Completion criterion: the packet is complete, or composition is blocked with exa
 - For behavior/UI bugs, include portable local reproduction steps another reviewer can run from a normal checkout;
   do not replace repro with session-only validation notes.
 - Sanitize public PR text: no machine-specific hosts, ports, paths, temp files, workspace names, browser-session URLs, or local usernames.
+  Also no agentic-session artifacts (SOP references, skill/agent/packet names, `Compatibility impact:` lines, `/tmp/specs` paths, ledger references) per `~/.agents/skills/k-communication/SKILL.md`.
   Prefer portable wording such as `local app`, `http://localhost:<port>`, `a user with only <privilege>`, or setup steps.
 - Screenshots: when captured, add `## Screenshots` with bold caption + `user-attachments` URL per shot.
   Upload every image/video through `~/.agents/skills/k-github/references/attachments.md`; that flow is the only source of embed URLs —

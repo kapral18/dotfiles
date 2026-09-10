@@ -47,7 +47,7 @@ Automatic hooks retrieve and stage relevant capsules; the root owns admission an
 | Use when | developing an idea, feature request, or bug into a compact packet with planned final acceptance checks |
 | Source   | [`exact_k-spec`](../../../../home/exact_dot_agents/exact_skills/exact_k-spec/)                         |
 
-Fork-closing consults a domain overlay's planning fork checklist when the verified target repo has one. Forks that cannot close locally (external sign-off, another team's decision) go in the packet's `External dependencies` section — owner, blocked criteria, recommended default — instead of blocking assembly; consumers must not start blocked criteria. Plan checks without running a red-check ceremony merely to approve the packet.
+Fork-closing consults a domain overlay's planning fork checklist when the verified target repo has one. Forks that cannot close locally (external sign-off, another team's decision) go in the packet's `External dependencies` section — owner, blocked criteria, recommended default — instead of blocking assembly; consumers must not start blocked criteria. Plan checks without running a red-check ceremony merely to approve the packet. The packet also carries an impact map (affected callers/consumers, invariants, co-edit set) from the SOP §3.1 shared assessment; `none` requires the light-path proof.
 
 ## `k-build`
 
@@ -57,7 +57,7 @@ Fork-closing consults a domain overlay's planning fork checklist when the verifi
 | Source   | [`exact_k-build`](../../../../home/exact_dot_agents/exact_skills/exact_k-build/)              |
 | Routing  | manual                                                                                        |
 
-An already-authorized target needs no duplicate approval gate. Strong research settles material questions; implementation-band workers produce substantial settled edits; deterministic tools execute known mechanical operations. The root integrates artifacts and owns final checks and strong review/refutation. Workers do not run private QA. Commits, pushes and publication retain their separate authority requirements.
+An already-authorized target needs no duplicate approval gate. Strong research settles material questions; implementation-band workers produce substantial settled edits; deterministic tools execute known mechanical operations. The root integrates artifacts and owns final checks and strong review/refutation. Workers do not run private QA. Every co-edit-set member named in the impact map is updated in the same change or recorded as unaffected with evidence, and the final criteria verification checks that. Commits, pushes and publication retain their separate authority requirements.
 
 ## `k-converge`
 

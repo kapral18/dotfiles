@@ -360,9 +360,15 @@ class TestReviewPolicyInvariants(unittest.TestCase):
             "NEVER claim a discovery check that did not run.",
             "If the repo is unindexed, tools are unavailable, or the user opts out, "
             "establish impact from local sources and record the reason.",
+            "NEVER run indexed `,sem` queries (`impact`, `context`, `find`, `callers`, `refs`, `grep`, `entities`) as this fallback unless the user explicitly asks",
+            "which repositories each server indexes is domain policy owned by the verified domain overlay",
         ):
             self.assertIn(clause, scsi)
         self.assertNotIn("list_indices checked; <reason>", scsi)
+        self.assertNotIn("elastic", scsi.lower())
+        elastic = self.read("home/exact_dot_agents/exact_skills/exact_k-elastic-domain/readonly_SKILL.md")
+        self.assertIn("## Semantic code search scope", elastic)
+        self.assertIn("NEVER assume an Elastic index covers a non-Elastic repository.", elastic)
         bugs = self.read("home/exact_dot_agents/exact_skills/exact_k-diagnosing-bugs/readonly_SKILL.md")
         for clause in (
             "Classify the failure as product, test, infrastructure, mixed, or unresolved "

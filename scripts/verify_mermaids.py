@@ -58,11 +58,11 @@ CENSUS: list[Claim] = [
     Claim(
         name="total effective git files",
         globs=None,
-        claimed=1506,
+        claimed=1523,
         anchors=[
-            ("README.md", "1506 files in the effective git file set"),
-            ("00-overview.mmd", "1506 files in the effective git file set"),
-            ("00-overview.mmd", "file census (1506 total)"),
+            ("README.md", "1523 files in the effective git file set"),
+            ("00-overview.mmd", "1523 files in the effective git file set"),
+            ("00-overview.mmd", "file census (1523 total)"),
         ],
     ),
     Claim(
@@ -133,12 +133,12 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/exact_lib/",
         globs=["home/exact_lib/*"],
-        claimed=100,
+        claimed=113,
         anchors=[
-            ("07c-bin-commands.mmd", "home/exact_lib/ (100 command/shared library files)"),
-            ("README.md", "`home/exact_lib/` (100 command/shared library files)"),
+            ("07c-bin-commands.mmd", "home/exact_lib/ (113 command/shared library files)"),
+            ("README.md", "`home/exact_lib/` (113 command/shared library files)"),
             ("README.md", "40 command libraries plus shared helpers"),
-            ("00-overview.mmd", "command-lib 100 (40 command dirs + shared)"),
+            ("00-overview.mmd", "command-lib 113 (40 command dirs + shared)"),
         ],
     ),
     Claim(
@@ -150,20 +150,20 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/exact_dot_agents/",
         globs=["home/exact_dot_agents/*"],
-        claimed=172,
+        claimed=174,
         anchors=[
-            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (172)"),
-            ("00-overview.mmd", "agents 172"),
+            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (174)"),
+            ("00-overview.mmd", "agents 174"),
         ],
     ),
     Claim(
         name="scripts/",
         globs=["scripts/*"],
-        claimed=139,
+        claimed=140,
         anchors=[
-            ("11-scripts-helpers.mmd", "scripts/ (139)"),
-            ("README.md", "`scripts/` (139)"),
-            ("00-overview.mmd", "scripts 139"),
+            ("11-scripts-helpers.mmd", "scripts/ (140)"),
+            ("README.md", "`scripts/` (140)"),
+            ("00-overview.mmd", "scripts 140"),
         ],
     ),
 ]

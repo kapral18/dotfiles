@@ -58,6 +58,14 @@ Evidence-first: answer from issue/diff/codebase before asking; only genuine gaps
   flag timeout/OOM-prone queries.
 - Known Elastic bot logins: `elasticmachine`, `kibanamachine`, `github-actions[bot]`.
 
+## Semantic code search scope
+
+Apply with `k-semantic-code-search`.
+`scsi-main` (hosted, Elastic SSO) serves Elastic-curated indices: Elastic-org repositories plus a few upstream dependencies;
+`scsi-local` holds the user's own indices.
+Outside that set `list_indices` returns no match; use the generic local fallback (`rg`) and record `not indexed`.
+NEVER assume an Elastic index covers a non-Elastic repository.
+
 ## Git commit attribution
 
 Before preparing or creating an Elastic commit, read and follow `~/.agents/skills/k-elastic-domain/references/commit-attribution.md` in full for required tool attribution and its exceptions.

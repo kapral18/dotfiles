@@ -30,6 +30,8 @@ Use in every non-trivial review.
   The diff is the source for what changed (delta) and commentability; full files and caller trees (via local `rg`, symbol lookup, or SCSI) give the ground truth for system behavior.
 - For diffs not proven mechanical-only, reconstruct semantic delta: old/new rule, intended/preserved differences, evidence.
   Missing/extra/unproven rows are candidates until refuted.
+  Prove mechanical-only with `,sem diff --format json` per `~/.agents/skills/k-sem/SKILL.md`:
+  every change is `renamed`/`moved` or has `structuralChange: false`; a line diff alone does not prove it.
 - Establish base invariants first (SCSI when indexed; otherwise `git show <base>:<path>` + local `rg`), then validate PR/branch reality (diff + full file reads).
 - Evaluate the diff as a state and contract boundary; simulate behavior across universal failure primitives:
   caller/callee contract asymmetry, test oracle/mock fidelity gaps, compositional fault cascades in batch/collection processing, temporal/async hazards, projection/mapping divergence, and silent error degradation.

@@ -54,6 +54,16 @@
             "command": "$HOME/.agents/hooks/read_gate.py"
           }
         ]
+      },
+      {
+        "matcher": "Bash|mcp__slack__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.agents/hooks/publish_gate.py",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUse": [

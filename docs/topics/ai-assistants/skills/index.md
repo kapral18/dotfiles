@@ -36,7 +36,7 @@ The `description` frontmatter is the primary routing signal. For non-manual skil
 | Entrypoint | `SKILL.md` in each skill folder                                                          |
 | References | optional `references/` under the skill folder                                            |
 
-Inventory both `readonly_SKILL.md` and plain `SKILL.md` source files; the shared tree currently contains 57 skills. Audit the complete instruction references and incoming callers as well as each entrypoint. Templates, executable helpers, and invocation metadata have separate consumers and must be accounted for without treating them all as instruction prose.
+Inventory both `readonly_SKILL.md` and plain `SKILL.md` source files; the shared tree currently contains 58 skills. Audit the complete instruction references and incoming callers as well as each entrypoint. Templates, executable helpers, and invocation metadata have separate consumers and must be accounted for without treating them all as instruction prose.
 
 ## Semantic maintenance
 
@@ -75,7 +75,8 @@ Measure the entrypoint plus every reference actually needed for the path. Splitt
 
 Concrete file references in shared AI guidance use full deployed paths, including colocated references and helpers. Project-local `AGENTS.md` may use project-root-relative paths. Use `~/.agents/skills/k-<name>/...` for skill files and `~/.local/share/chezmoi/...` for repo-only sources. Filename patterns and native include/import syntax retain their own semantics.
 
-- Composition skills sanitize public GitHub text before drafting or posting.
+- Composition skills sanitize public GitHub text before drafting or posting, load `k-communication` before drafting (a draft-only request is still publication text), and strip agentic-session artifacts from the draft.
+- Slack side effects go through `k-slack` (mechanics) with wording from `k-communication`; Slack reads need no skill or gate.
 - `k-compose-pr`, `k-compose-issue`, and review modes reuse the shared `k-github` GitHub context intake when output depends on existing PR/issue/comment context.
 - Generic skills own portable mechanics only. If a rule names an org, repo, product, team, label, bot login, CI instance, PR template, live-UI target, ownership policy, or release-note/backport rule, put it in a verified domain overlay or dedicated domain skill.
 - Generic skills may dispatch to a domain overlay after verifying the target; they must not inline Elastic/Kibana or other domain defaults.
@@ -92,4 +93,4 @@ Four skills are adapted from Matt Pocock's [`mattpocock/skills`](https://github.
 | `k-diagnosing-bugs`      | [`k-diagnosing-bugs`](https://github.com/mattpocock/skills/tree/main/skills/engineering/diagnosing-bugs)            |
 | `k-prototype`            | [`k-prototype`](https://github.com/mattpocock/skills/tree/main/skills/engineering/prototype)                        |
 
-The comprehensive audit includes all 57 entrypoints and their owned references, including plain `SKILL.md` files. Changes preserve mandatory loads and distinct contracts while removing repeated explanations and recursive loads within one invocation. Explicit corrections align spec/build regression guards, review miss-sweep auditing, capture/publication timing, scoped runtime lifecycle exceptions, and read-only tool requests. These corrections are intentional semantic differences; bounded decision checks and clause correspondence do not prove universal model equivalence.
+The comprehensive audit includes all 58 entrypoints and their owned references, including plain `SKILL.md` files. Changes preserve mandatory loads and distinct contracts while removing repeated explanations and recursive loads within one invocation. Explicit corrections align spec/build regression guards, review miss-sweep auditing, capture/publication timing, scoped runtime lifecycle exceptions, and read-only tool requests. These corrections are intentional semantic differences; bounded decision checks and clause correspondence do not prove universal model equivalence.

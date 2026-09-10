@@ -13,7 +13,7 @@
       "consumer": "home/exact_dot_agents/exact_skills/exact_k-communication/readonly_SKILL.md",
       "risk_tier": "standard",
       "eval_ref": "sop.6.5.external-human-replies.mechanical-only",
-      "text": "### 6.5 External Human Replies\n\nWording of content other humans read is owned by the `k-communication` skill;\nload it before drafting. \u00a76 shape rules do not override its friendly register.\n\n- Choose no reply when it would only restate the thread or add attribution trivia, or turn a casual exchange into an investigation report.\n- Match the surface's register; avoid lab-report phrasing for simple social replies unless requested.\n- Use natural wording, or say that no message is worth sending.\n\n"
+      "text": "### 6.5 External Human Replies\n\nWording of content other humans read is owned by the `k-communication` skill;\nload it before drafting. §6 shape rules do not override its friendly register.\n\n- Choose no reply when it would only restate the thread or add attribution trivia, or turn a casual exchange into an investigation report.\n- Match the surface's register; avoid lab-report phrasing for simple social replies unless requested.\n- Use natural wording, or say that no message is worth sending.\n\n"
     },
     "sop.6.6.examples": {
       "disposition": "retired-by-passing-ablation",
@@ -37,10 +37,10 @@
       "method": "mechanical clause-presence sweep (no live model eval available this run)",
       "target_disposition": "skill",
       "consumer": "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
-      "evidence": "minimal edit scope, semantic-delta preservation, no unrelated cleanup/removal without approval, targeted edits/full-rewrite diffing, introduced-only dead-code removal, sibling-consumer projection symmetry, semantic dedupe guard preservation, no unrequested abstractions/features/error handling, simplicity/no behavior loss, and artifact necessity without-it probe requirements were confirmed present in k-code-quality before this pass",
+      "evidence": "minimal edit scope, semantic-delta preservation, no unrelated cleanup/removal without approval, targeted edits/full-rewrite diffing, introduced-only dead-code removal, sibling-consumer projection symmetry, semantic dedupe guard preservation, no unrequested abstractions/features/error handling, simplicity/no behavior loss, and artifact necessity without-it probe requirements were confirmed present in k-code-quality before this pass 2026-09-10: consumer extended with a non-code-consumer impact bullet (SOP §3.1 impact map: config, template, generated, instruction, completion, and docs readers); additions only, every relocated clause retained verbatim.",
       "rule_sha256": "4b2d1c447aa70c367f9ab15accc59c566befcf15b2f8002e129c0f0dbd2c4f78",
       "eval_ref": "sop.5.code-quality.mechanical-only",
-      "consumer_sha256": "cb71f74c0d56513ab3d906eb0bac7f751b0ad4a3c905981e95f87a3c1258aefe"
+      "consumer_sha256": "dd5f0c659615aa607147b47c056084da2bb3e4e3ef9172b0c1da2741f6fdf92d"
     },
     "sop.6.5.external-human-replies": {
       "status": "mechanical-only",
@@ -48,10 +48,10 @@
       "method": "Mechanical clause-preserving relocation into the mandatory skill entrypoint; no rule retirement.",
       "target_disposition": "skill",
       "consumer": "home/exact_dot_agents/exact_skills/exact_k-communication/readonly_SKILL.md",
-      "evidence": "All external-register rules and their before-drafting scope are retained verbatim in k-communication External register; the entrypoint replaces its unconditional reference load. Existing-thread rules remain conditionally loaded. The SOP still owns central wording ownership.",
+      "evidence": "All external-register rules and their before-drafting scope are retained verbatim in k-communication External register; the entrypoint replaces its unconditional reference load. Existing-thread rules remain conditionally loaded. The SOP still owns central wording ownership. 2026-09-10: consumer extended with explicit load points (composers, k-git, k-github, k-slack, gws, review) and a session-artifact exclusion list; every relocated clause retained verbatim.",
       "rule_sha256": "eeb95ad036a65cb80b6a8bb983e9c6602fdf0e78bfe6cbd7a4f481b7e58f67d3",
       "eval_ref": "sop.6.5.external-human-replies.mechanical-only",
-      "consumer_sha256": "56ba3b58809bc33ca1214375aa0a14f1bebd275a870ace92a56f69eccc88680b"
+      "consumer_sha256": "3661db30cec325db51ae7e884a21fe28d920d6e37036c8dbd97fcb236d502347"
     },
     "sop.6.6.examples": {
       "status": "passed",

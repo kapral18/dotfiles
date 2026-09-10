@@ -239,6 +239,14 @@ TEST_RULES: tuple[TestRule, ...] = (
     ),
     TestRule(prefixes=("home/dot_config/fish/completions/readonly_,q.fish",), tests=("tests/test_q.py",)),
     TestRule(
+        prefixes=(
+            "home/exact_bin/executable_,sem",
+            "home/dot_sem/",
+            "home/exact_dot_agents/exact_skills/exact_k-sem/",
+        ),
+        tests=("tests/test_sem_launcher.py",),
+    ),
+    TestRule(
         prefixes=("scripts/tests/bin_command_support.py",),
         tests=(
             "tests/test_w_issue.py",

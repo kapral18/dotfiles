@@ -37,6 +37,6 @@ Selection rules:
 
 Output:
 
-- If recommending a change: name the single change, explain why it matters, cite the evidence, and state the expected validation.
+- If recommending a change: name the single change, explain why it matters, cite the evidence, name the affected surfaces (consumers and co-edit set), and state the expected validation.
 - If implementing after approval: keep the edit scoped, update docs when behavior/workflow changes, validate, and report `Compatibility impact: none | removed (requested) | kept existing (requested)`.
 - If declining: state that no compelling codebase-wide addition was found and mention the strongest rejected candidate briefly.
