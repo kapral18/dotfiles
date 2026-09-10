@@ -8,5 +8,7 @@ set -euo pipefail
 # This script installs pnpm packages from the default-pnpm-pkgs file
 # {{ include "readonly_dot_default-pnpm-pkgs" | sha256sum }}
 # {{ include "exact_bin/executable_,install-pnpm-pkgs" | sha256sum }}
+# Global pnpm config exempts the listed packages from minimumReleaseAge; re-sync when it changes
+# {{ include "dot_config/pnpm/readonly_config.yaml.tmpl" | sha256sum }}
 
 {{ joinPath .chezmoi.homeDir "bin" ",install-pnpm-pkgs" | quote }}

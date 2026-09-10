@@ -1067,12 +1067,16 @@ class TestModelBandInvariants(unittest.TestCase):
         import ai_models
         import model_mirrors
 
-        default = "deepseek/deepseek-v4-flash-0731"
+        default = "z-ai/glm-5.3-flash"
         # One OpenRouter id carries the `recommended` picker entry, T2 implement (:high) and
         # refute (:xhigh) since gpt-5.6-sol superseded gpt-5.5 (user call 2026-09-07); Sonnet 4.6
         # stays listed as selectable-only, like kimi-k3 and glm-5.2.
         pi_route = "openai/gpt-5.6-sol"
-        pi_mechanical = "deepseek/deepseek-v4-flash"
+        pi_mechanical = "z-ai/glm-5.3-flash"
+        # DeepSeek V4 Flash carried the default and mechanical lanes until 2026-09-10; it stays
+        # selectable on every route with its own FP8-or-higher policy (user call 2026-09-10).
+        deepseek = "deepseek/deepseek-v4-flash-0731"
+        pi_deepseek = "deepseek/deepseek-v4-flash"
         pi_memory = "google/gemini-3.8-flash"
         pi_selectable_sonnet = "anthropic/claude-sonnet-4.6"
         optional = "moonshotai/kimi-k3"
@@ -1081,6 +1085,7 @@ class TestModelBandInvariants(unittest.TestCase):
         default_selector = f"openrouter/{default}"
         pi_route_selector = f"openrouter/{pi_route}"
         pi_mechanical_selector = f"openrouter/{pi_mechanical}"
+        pi_deepseek_selector = f"openrouter/{pi_deepseek}"
         pi_memory_selector = f"openrouter/{pi_memory}"
         optional_selector = f"openrouter/{optional}"
         glm_selector = f"openrouter/{glm}"
@@ -1101,9 +1106,9 @@ class TestModelBandInvariants(unittest.TestCase):
         provider_models = [
             row["id"] for row in ai_models.load_provider_models(registry) if row["provider"] == "openrouter"
         ]
-        # Shared OpenRouter wrappers keep the DeepSeek/Kimi/GLM/Terra route. Pi has its own
+        # Shared OpenRouter wrappers keep the GLM-flash/Kimi/GLM-5.2/Terra route. Pi has its own
         # harness-native selector set because it can pass OpenRouter ids directly.
-        self.assertEqual([default, optional, glm, counter], provider_models)
+        self.assertEqual([default, deepseek, optional, glm, counter], provider_models)
         self.assertEqual(
             [
                 # Native Anthropic session model: the T1 rows ride it, so the Pi curated picker
@@ -1114,6 +1119,7 @@ class TestModelBandInvariants(unittest.TestCase):
                 # implement (:high) and `refute` (:xhigh). It appears once, not once per effort.
                 {"id": pi_route_selector, "recommended": True},
                 {"id": pi_mechanical_selector},
+                {"id": pi_deepseek_selector},
                 # memory lane (smol): gemini-3.8-flash, superseding the 3.7-flash the lane was
                 # live-probed on 2026-08-29.
                 {"id": pi_memory_selector},
@@ -1147,13 +1153,16 @@ class TestModelBandInvariants(unittest.TestCase):
             default_compat = pi_overrides[default]["compat"]
             optional_compat = pi_overrides[optional]["compat"]
             glm_compat = pi_overrides[glm]["compat"]
+            deepseek_compat = pi_overrides[deepseek]["compat"]
             self.assertEqual(expected_default_provider_routing, default_compat["openRouterRouting"])
+            self.assertEqual(expected_default_provider_routing, deepseek_compat["openRouterRouting"])
             self.assertEqual(expected_optional_provider_routing, optional_compat["openRouterRouting"])
             self.assertEqual(expected_glm_provider_routing, glm_compat["openRouterRouting"])
             for routing in (
                 default_compat["openRouterRouting"],
                 optional_compat["openRouterRouting"],
                 glm_compat["openRouterRouting"],
+                deepseek_compat["openRouterRouting"],
             ):
                 self.assertNotIn("sort", routing)
                 self.assertNotIn("order", routing)
@@ -1161,22 +1170,26 @@ class TestModelBandInvariants(unittest.TestCase):
             self.assertNotIn("extraBody", default_compat)
             self.assertNotIn("extraBody", optional_compat)
             self.assertNotIn("extraBody", glm_compat)
+            self.assertNotIn("extraBody", deepseek_compat)
 
             opencode = model_mirrors._read_jsonc(REPO / f"home/dot_config/opencode/readonly_opencode.{profile}.jsonc")
-            default_preset = f"{default}@preset/deepseek-lanes-max"
+            default_preset = f"{default}@preset/glm-lanes-high"
             optional_preset = f"{optional}@preset/kimi-lanes"
             glm_preset = f"{glm}@preset/glm-lanes-max"
+            deepseek_preset = f"{deepseek}@preset/deepseek-lanes-max"
             self.assertEqual(f"openrouter/{default_preset}", opencode["small_model"])
             # OpenCode cannot inject the `provider` routing body field, so both routes carry
             # their provider policies through workspace presets.
             for name, agent in opencode["agent"].items():
                 if isinstance(agent, dict) and agent.get("model", "").startswith("openrouter/"):
                     self.assertEqual(f"openrouter/{default_preset}", agent["model"], name)
-                    self.assertEqual("max", agent["reasoning_effort"], name)
+                    self.assertEqual("high", agent["reasoning_effort"], name)
             openrouter_models = opencode["provider"]["openrouter"]["models"]
-            self.assertEqual("max", openrouter_models[default_preset]["options"]["reasoningEffort"])
+            self.assertEqual("high", openrouter_models[default_preset]["options"]["reasoningEffort"])
             self.assertEqual("high", openrouter_models[optional_preset]["options"]["reasoningEffort"])
             self.assertEqual("max", openrouter_models[glm_preset]["options"]["reasoningEffort"])
+            self.assertEqual("max", openrouter_models[deepseek_preset]["options"]["reasoningEffort"])
+            self.assertNotIn(deepseek, openrouter_models)
             self.assertNotIn(default, openrouter_models)
             self.assertNotIn(optional, openrouter_models)
             self.assertNotIn(glm, openrouter_models)
@@ -1185,7 +1198,7 @@ class TestModelBandInvariants(unittest.TestCase):
         # User call 2026-09-07 (Pi retier): T1 research/orchestrate/review left OpenRouter for the
         # native anthropic provider on Fable 5.1 at `high` — the same selector the interactive
         # default uses above — so the review lane resolves there too. T2 implement stays
-        # gpt-5.6-sol:high, T3 mechanical deepseek-v4-flash:xhigh and memory gemini-3.8-flash:low.
+        # gpt-5.6-sol:high, T3 mechanical glm-5.3-flash:high and memory gemini-3.8-flash:low.
         # refute rides gpt-5.6-sol:xhigh — the same id as implement at a higher effort, and still the
         # cross-family counter to an Anthropic review lane (it was Sonnet 4.6 while review rode
         # GPT-5.5; both sides swapped, then GPT-5.5 gave way to GPT-5.6 SOL on 2026-09-07).
@@ -1200,8 +1213,8 @@ class TestModelBandInvariants(unittest.TestCase):
             self.assertEqual("high", category_models[category]["effort"], category)
         self.assertEqual(f"{pi_route_selector}:high", category_models["implement"]["model"])
         self.assertEqual("high", category_models["implement"]["effort"])
-        self.assertEqual(f"{pi_mechanical_selector}:xhigh", category_models["mechanical"]["model"])
-        self.assertEqual("xhigh", category_models["mechanical"]["effort"])
+        self.assertEqual(f"{pi_mechanical_selector}:high", category_models["mechanical"]["model"])
+        self.assertEqual("high", category_models["mechanical"]["effort"])
         self.assertEqual(f"{pi_route_selector}:xhigh", category_models["refute"]["model"])
         self.assertEqual("xhigh", category_models["refute"]["effort"])
         self.assertEqual("cross_family", category_models["refute"]["verifier_status"])
@@ -1218,9 +1231,9 @@ class TestModelBandInvariants(unittest.TestCase):
             "home/exact_bin/executable_,cursor-openrouter",
         ):
             source = (REPO / relative).read_text()
-            # Default route is DeepSeek max; model/effort flags still compose other preset slugs.
+            # Default route is GLM 5.3 Flash high; model/effort flags still compose other preset slugs.
             self.assertIn(f'OPENROUTER_MODEL="{default}"', source)
-            self.assertIn('OPENROUTER_EFFORT="max"', source)
+            self.assertIn('OPENROUTER_EFFORT="high"', source)
 
         omp = (REPO / "home/dot_omp/private_agent/readonly_config.yml.tmpl").read_text()
         # Neither profile's modelRoles route through OpenRouter anymore (work → Cursor backend,
@@ -1230,6 +1243,10 @@ class TestModelBandInvariants(unittest.TestCase):
         omp_models = (REPO / "home/dot_omp/private_agent/readonly_models.yml").read_text()
         # OMP 17.2.9 does not put modelOverrides…compat.extraBody.provider on the wire, so the
         # provider policy rides the OpenRouter preset slug instead (same as the wrappers/OpenCode).
+        self.assertIn(
+            '      - id: "z-ai/glm-5.3-flash@preset/glm-lanes-high"\n',
+            omp_models,
+        )
         self.assertIn(
             '      - id: "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max"\n',
             omp_models,
@@ -1245,8 +1262,8 @@ class TestModelBandInvariants(unittest.TestCase):
         self.assertNotIn("openRouterRouting", omp_models)
 
     def test_neovim_openrouter_summarizer_pins_glm_5_3_flash(self):
-        # Personal leader-aisc talks to OpenRouter directly. z-ai/glm-5.3-flash is not on the
-        # DeepSeek wrapper route (user call 2026-09-10). Provider routing omits sort so
+        # Personal leader-aisc talks to OpenRouter directly on z-ai/glm-5.3-flash (user call
+        # 2026-09-10): the wrapper route's model, without its lane preset. Provider routing omits sort so
         # OpenRouter's default load balancer keeps uptime, then price-weights remaining
         # endpoints, with a 300 t/s preferred floor (OpenRouter deprioritizes slower endpoints;
         # it does not hard-exclude them). Output cap is the top-provider max completion

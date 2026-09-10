@@ -44,8 +44,8 @@ from _test_support import (
 )
 
 # Every OpenRouter wrapper defaults to this route; model and effort remain selectable.
-OPENROUTER_PIN = "deepseek/deepseek-v4-flash-0731"
-OPENROUTER_WIRE_PIN = f"{OPENROUTER_PIN}@preset/effort-max"
+OPENROUTER_PIN = "z-ai/glm-5.3-flash"
+OPENROUTER_WIRE_PIN = f"{OPENROUTER_PIN}@preset/effort-high"
 
 
 def _load_artifact_command():

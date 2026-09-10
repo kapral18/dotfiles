@@ -28,7 +28,7 @@ flowchart TD
         GHCFG[["readonly_gh-picker-{work,home}.yml (gh-dash-style sections)"]]:::data
         GHUI["lib/gh_dashboard_ui.py + gh_* Python helpers"]:::py
         GHPREV["gh_preview.sh + lib/gh_preview_warm.sh"]:::sh
-        GHACT["gh_action.sh · gh_comment.sh · gh_create.sh (lib/gh_create.py)<br/>gh_picker_palette.sh · gh_row_loader.sh (token-gated, EXIT-joined spinner frames:<br/>joined spinner posts precede authoritative reloads) · gh_batch_worktree.sh +<br/>gh_batch_branch_prompt.txt (nohup-detached cross-batch lock + serialized creates;<br/>per-item/total timeout + publication/cleanup-safe ledger reap with pid-reuse-safe kills;<br/>issue scratch + DeepSeek max agent sidecar; captured outer-socket tmux sessions)<br/>· gh_popup.sh · keyhelp.sh"]:::sh
+        GHACT["gh_action.sh · gh_comment.sh · gh_create.sh (lib/gh_create.py)<br/>gh_picker_palette.sh · gh_row_loader.sh (token-gated, EXIT-joined spinner frames:<br/>joined spinner posts precede authoritative reloads) · gh_batch_worktree.sh +<br/>gh_batch_branch_prompt.txt (nohup-detached cross-batch lock + serialized creates;<br/>per-item/total timeout + publication/cleanup-safe ledger reap with pid-reuse-safe kills;<br/>issue scratch + GLM 5.3 Flash high agent sidecar; captured outer-socket tmux sessions)<br/>· gh_popup.sh · keyhelp.sh"]:::sh
         GHBIND["lib/ fzf-binding shims (.sh):<br/>collapse · ctrl_t · enter · jump · mark_subtree · palette<br/>scope · sort · toggle (+ collapse.py, mark_subtree.py)"]:::sh
         GHROUTER --> GHP --> GHITEMS --> GHCFG
         GHP --> GHPREV & GHACT & GHUI & GHBIND

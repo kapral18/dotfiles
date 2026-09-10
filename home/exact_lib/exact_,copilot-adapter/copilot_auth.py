@@ -70,6 +70,8 @@ class ModelSpec:
     context_window: int
     max_output_tokens: int
     context_windows: dict[str, int]
+    prompt_limit: int
+    prompt_limits: dict[str, int]
 
 
 def codex_model_info(model: ModelSpec) -> dict[str, object]:
@@ -237,15 +239,21 @@ def parse_models(payload: object) -> dict[str, ModelSpec]:
         billing = item.get("billing")
         token_prices = billing.get("token_prices") if isinstance(billing, dict) else None
         context_windows: dict[str, int] = {}
+        prompt_limits: dict[str, int] = {}
         if isinstance(token_prices, dict):
             for tier in CONTEXT_TIERS:
                 price = token_prices.get(tier)
                 if not isinstance(price, dict) or not isinstance(price.get("max_prompt_tokens"), int):
                     continue
                 prompt_tokens = _positive_int(price["max_prompt_tokens"], f"{tier} prompt limit", model_id)
+                prompt_limits[tier] = prompt_tokens
                 context_windows[tier] = min(max_context_window, prompt_tokens + max_output_tokens)
         if "default" not in context_windows:
             context_windows["default"] = max_context_window
+            if isinstance(limits.get("max_prompt_tokens"), int):
+                prompt_limits["default"] = _positive_int(limits["max_prompt_tokens"], "prompt limit", model_id)
+            else:
+                prompt_limits["default"] = max(max_context_window - max_output_tokens, 0) or max_context_window
         models[model_id] = ModelSpec(
             model_id=model_id,
             endpoints=frozenset(value for value in endpoints or [] if isinstance(value, str)),
@@ -253,6 +261,8 @@ def parse_models(payload: object) -> dict[str, ModelSpec]:
             context_window=context_windows["default"],
             max_output_tokens=max_output_tokens,
             context_windows=context_windows,
+            prompt_limit=prompt_limits["default"],
+            prompt_limits=prompt_limits,
         )
     if not models:
         raise CopilotError("Copilot /models returned no usable models")

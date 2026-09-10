@@ -4068,8 +4068,8 @@ class BandGateTests(unittest.TestCase):
                     },
                     "worker": {
                         "category": "mechanical",
-                        "model": "openrouter/deepseek/deepseek-v4-flash:xhigh",
-                        "effort": "xhigh",
+                        "model": "openrouter/z-ai/glm-5.3-flash:high",
+                        "effort": "high",
                     },
                     "k-agent-adversarial-verifier": {
                         "category": "refute",
@@ -4354,8 +4354,8 @@ class BandGateTests(unittest.TestCase):
             override={"AGENT_BAND_SCHEMA_HARNESS": "pi", "AGENT_BAND_MODEL_FORMAT": "openrouter-preset"},
         )
         updated = mechanical["hookSpecificOutput"]["updatedInput"]
-        self.assertEqual(updated["model"], "deepseek/deepseek-v4-flash@preset/effort-xhigh")
-        self.assertEqual(updated["reasoning_effort"], "xhigh")
+        self.assertEqual(updated["model"], "z-ai/glm-5.3-flash@preset/effort-high")
+        self.assertEqual(updated["reasoning_effort"], "high")
 
         research = self.gate(
             "codex",
@@ -4392,7 +4392,7 @@ class BandGateTests(unittest.TestCase):
     def test_deployed_claude_openrouter_projection_maps_the_t2_pick_onto_opus(self):
         # `,claude-openrouter` is a four-alias route by construction (executable_,claude-openrouter
         # exports one wire model per ANTHROPIC_DEFAULT_*_MODEL): `fable` -> claude-fable-5.1 (T1),
-        # `opus` -> gpt-5.6-sol (T2), `sonnet` -> deepseek-v4-flash (T3 mechanical),
+        # `opus` -> gpt-5.6-sol (T2), `sonnet` -> glm-5.3-flash (T3 mechanical),
         # `haiku` -> gemini-3.8-flash low (memory). This probe pins the projection of the DEPLOYED
         # bands onto those slots, so a slot drift is visible rather than silent. Pi's five picks
         # share four slots: the refute pick (gpt-5.6-sol xhigh) has none of its own and must fail
@@ -4417,7 +4417,7 @@ class BandGateTests(unittest.TestCase):
                         "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
                         "ANTHROPIC_DEFAULT_FABLE_MODEL": "anthropic/claude-fable-5.1@preset/effort-high",
                         "ANTHROPIC_DEFAULT_OPUS_MODEL": "openai/gpt-5.6-sol@preset/effort-high",
-                        "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek/deepseek-v4-flash@preset/effort-xhigh",
+                        "ANTHROPIC_DEFAULT_SONNET_MODEL": "z-ai/glm-5.3-flash@preset/effort-high",
                         "ANTHROPIC_DEFAULT_HAIKU_MODEL": "google/gemini-3.8-flash@preset/effort-low",
                     },
                 )

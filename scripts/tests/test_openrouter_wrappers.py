@@ -67,7 +67,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
             "review": "anthropic/claude-fable-5.1@preset/effort-high",
             "orchestrate": "anthropic/claude-fable-5.1@preset/effort-high",
             "implement": "openai/gpt-5.6-sol@preset/effort-high",
-            "mechanical": "deepseek/deepseek-v4-flash@preset/effort-xhigh",
+            "mechanical": "z-ai/glm-5.3-flash@preset/effort-high",
             "memory": "google/gemini-3.8-flash@preset/effort-low",
             "refute": "openai/gpt-5.6-sol@preset/effort-xhigh",
         }
@@ -450,7 +450,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
         for lane, wire in (
             ("T1", "anthropic/claude-fable-5.1@preset/effort-high"),
             ("T2", "openai/gpt-5.6-sol@preset/effort-high"),
-            ("MECHANICAL", "deepseek/deepseek-v4-flash@preset/effort-xhigh"),
+            ("MECHANICAL", "z-ai/glm-5.3-flash@preset/effort-high"),
             ("MEMORY", "google/gemini-3.8-flash@preset/effort-low"),
             ("REFUTE", "openai/gpt-5.6-sol@preset/effort-xhigh"),
         ):
@@ -549,7 +549,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
         assert 'model_providers.openrouter.wire_api=\\"responses\\"' in source
         assert 'model_provider=\\"openrouter\\"' in source
 
-    def test_SHOULD_default_every_openrouter_launcher_to_deepseek_at_max_effort(self):
+    def test_SHOULD_default_every_openrouter_launcher_to_glm_flash_at_max_effort(self):
         # The route is defaulted rather than strict: model and effort remain selectable via flags.
         for relative in (
             "home/exact_bin/executable_,claude-openrouter",
@@ -560,7 +560,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
             with self.subTest(command=relative):
                 source = (REPO / relative).read_text()
                 assert f'OPENROUTER_MODEL="{OPENROUTER_PIN}"' in source
-                assert 'OPENROUTER_EFFORT="max"' in source
+                assert 'OPENROUTER_EFFORT="high"' in source
                 if relative.endswith((",claude-openrouter", ",copilot-openrouter")):
                     assert 'OPENROUTER_CONTEXT="short"' in source
                 assert "--no-thinking" in source
@@ -583,7 +583,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
                     "reasoning": {"mandatory": False, "default_enabled": True},
                 },
                 {
-                    "id": "deepseek/deepseek-v4-flash-0731",
+                    "id": "z-ai/glm-5.3-flash",
                     "reasoning": {"supported_efforts": ["max", "high", "low"]},
                 },
             ]
@@ -599,10 +599,10 @@ class TestOpenRouterWrappers(unittest.TestCase):
             )
         rows = dict(line.split("\t", 1) for line in result.stdout.splitlines())
         self.assertEqual(rows["inclusionai/ling-3.0-flash"], "")
-        self.assertEqual(rows["deepseek/deepseek-v4-flash-0731"], "max,high,low")
+        self.assertEqual(rows["z-ai/glm-5.3-flash"], "max,high,low")
 
     def test_SHOULD_share_openrouter_catalog_across_chat_wrappers(self):
-        # Live catalog omits none for DeepSeek; completions still force-union none onto catalog efforts.
+        # Live catalog omits none for GLM 5.3 Flash; completions still force-union none onto catalog efforts.
         source = (REPO / "home/dot_config/fish/functions/readonly___openrouter_catalog.fish").read_text()
         assert "not contains -- none $efforts" in source
         assert "set efforts none $efforts" in source
@@ -657,9 +657,9 @@ printf 'model=%s\\neffort=%s\\nsubagent=%s\\nargs=%s\\n' \
         assert result.returncode == 0, result.stderr
         assert result.stdout.splitlines() == [
             f"model={OPENROUTER_WIRE_PIN}",
-            "effort=max",
+            "effort=high",
             "subagent=openai/gpt-5.6-sol@preset/effort-high",
-            f"args=--model {OPENROUTER_WIRE_PIN} --effort max -p review",
+            f"args=--model {OPENROUTER_WIRE_PIN} --effort high -p review",
         ]
 
     def test_SHOULD_pass_supported_openrouter_effort_to_claude_client(self):
@@ -674,9 +674,9 @@ printf 'model=%s\\neffort=%s\\nargs=%s\\n' "$ANTHROPIC_MODEL" "$CLAUDE_CODE_EFFO
             )
             claude.chmod(0o755)
             cases = [
-                (["--effort", "low"], "deepseek/deepseek-v4-flash-0731@preset/effort-low", "low"),
-                (["--effort=xhigh"], "deepseek/deepseek-v4-flash-0731@preset/effort-xhigh", "xhigh"),
-                (["--effort", "none"], "deepseek/deepseek-v4-flash-0731@preset/effort-none", "low"),
+                (["--effort", "low"], "z-ai/glm-5.3-flash@preset/effort-low", "low"),
+                (["--effort=xhigh"], "z-ai/glm-5.3-flash@preset/effort-xhigh", "xhigh"),
+                (["--effort", "none"], "z-ai/glm-5.3-flash@preset/effort-none", "low"),
             ]
             for argv, expected_model, expected_client_effort in cases:
                 with self.subTest(argv=argv):
@@ -828,7 +828,7 @@ printf 'base=%s\nkey=%s\nallowed=%s\nschema=%s\nformat=%s\nband-model=%s\nargs=%
         assert result.stdout.splitlines() == [
             "base=http://127.0.0.1:9876/api/v1",
             "key=fixture-key",
-            "allowed=deepseek/deepseek-v4-flash-0731@preset/effort-max,anthropic/claude-fable-5.1@preset/effort-high,openai/gpt-5.6-sol@preset/effort-high,deepseek/deepseek-v4-flash@preset/effort-xhigh,google/gemini-3.8-flash@preset/effort-low,openai/gpt-5.6-sol@preset/effort-xhigh",
+            "allowed=z-ai/glm-5.3-flash@preset/effort-high,anthropic/claude-fable-5.1@preset/effort-high,openai/gpt-5.6-sol@preset/effort-high,z-ai/glm-5.3-flash@preset/effort-high,google/gemini-3.8-flash@preset/effort-low,openai/gpt-5.6-sol@preset/effort-xhigh",
             "schema=pi",
             "format=openrouter-preset",
             "band-model=",
@@ -882,10 +882,10 @@ touch "%s"
     def test_SHOULD_compose_wire_model_from_model_and_effort_flags(self):
         # Model and effort are selectable; the wire id composes the matching preset slug.
         cases = [
-            (["-p", "x"], "deepseek/deepseek-v4-flash-0731@preset/effort-max"),
+            (["-p", "x"], "z-ai/glm-5.3-flash@preset/effort-high"),
             (
-                ["--model", "deepseek/deepseek-v4-flash-0731", "--effort", "max"],
-                "deepseek/deepseek-v4-flash-0731@preset/effort-max",
+                ["--model", "z-ai/glm-5.3-flash", "--effort", "max"],
+                "z-ai/glm-5.3-flash@preset/effort-max",
             ),
             (["--model", "moonshotai/kimi-k3", "--effort", "max"], "moonshotai/kimi-k3@preset/effort-max"),
             (
@@ -894,7 +894,7 @@ touch "%s"
             ),
             (
                 ["--effort", "none"],
-                "deepseek/deepseek-v4-flash-0731@preset/effort-none",
+                "z-ai/glm-5.3-flash@preset/effort-none",
             ),
             (
                 ["--model", "openai/gpt-5.6-terra", "--effort", "none"],
@@ -928,7 +928,7 @@ touch "%s"
         # The same model/effort -> preset-slug composition runs in every wrapper; only the
         # leaf delivery differs (argv for codex/cursor, provider env for copilot).
         cases = [
-            (["-p", "x"], "deepseek/deepseek-v4-flash-0731@preset/effort-max"),
+            (["-p", "x"], "z-ai/glm-5.3-flash@preset/effort-high"),
         ]
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp) / "bin"
@@ -995,17 +995,17 @@ touch "%s"
                 (
                     "home/exact_bin/executable_,claude-openrouter",
                     ["--context", "short"],
-                    "model=deepseek/deepseek-v4-flash-0731@preset/effort-max",
+                    "model=z-ai/glm-5.3-flash@preset/effort-high",
                 ),
                 (
                     "home/exact_bin/executable_,claude-openrouter",
                     ["--context", "long"],
-                    "model=deepseek/deepseek-v4-flash-0731@preset/effort-max",
+                    "model=z-ai/glm-5.3-flash@preset/effort-high",
                 ),
                 (
                     "home/exact_bin/executable_,copilot-openrouter",
                     ["--context=short"],
-                    "prompt=200000 wire=deepseek/deepseek-v4-flash-0731@preset/effort-max",
+                    "prompt=200000 wire=z-ai/glm-5.3-flash@preset/effort-high",
                 ),
             ]
             for relative, argv, expected in cases:
@@ -1320,7 +1320,7 @@ touch "%s"
         assert "parallel_tool_calls" not in rewritten
         assert "tools" in payload
 
-        ordinary = dict(payload, model="deepseek/deepseek-v4-flash-0731@preset/effort-max")
+        ordinary = dict(payload, model="z-ai/glm-5.3-flash@preset/effort-max")
         ordinary_rewritten = module.rewrite_chat_completions(ordinary)
         assert "tools" in ordinary_rewritten
         assert "strict" not in ordinary_rewritten["tools"][0]["function"]
@@ -1328,7 +1328,7 @@ touch "%s"
     def test_SHOULD_reject_chat_completions_whose_model_is_not_the_pinned_session_model(self):
         module = self._load_shim_module()
 
-        allowed = "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max"
+        allowed = "z-ai/glm-5.3-flash@preset/glm-lanes-high"
         assert module.enforce_allowed_model({"model": allowed, "messages": []}, allowed) is None
         allowlist = f"{allowed},openai/gpt-5.6-sol@preset/effort-xhigh"
         assert (
@@ -1344,7 +1344,7 @@ touch "%s"
             "claude-opus-4-8": "a costly family id must be rejected",
             "openai/gpt-5.6-terra": "a different route id must be rejected",
             # Same provider prefix but no preset suffix: not the pinned session model.
-            "deepseek/deepseek-v4-flash-0731": "a bare provider model must be rejected",
+            "z-ai/glm-5.3-flash": "a bare provider model must be rejected",
         }
         for model, reason in violations.items():
             with self.subTest(model=model):
@@ -1385,7 +1385,7 @@ touch "%s"
         original_allowed = module.ALLOWED_MODEL
         module.UPSTREAM = f"http://127.0.0.1:{upstream_port}"
         module.API_KEY = "fixture-key"
-        module.ALLOWED_MODEL = "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max"
+        module.ALLOWED_MODEL = "z-ai/glm-5.3-flash@preset/glm-lanes-high"
 
         shim_server = module.ShimServer(("127.0.0.1", 0), module.ShimHandler)
         shim_server.daemon_threads = True
@@ -1454,7 +1454,7 @@ touch "%s"
         original_allowed = module.ALLOWED_MODEL
         module.UPSTREAM = f"http://127.0.0.1:{upstream_port}"
         module.API_KEY = "fixture-key"
-        module.ALLOWED_MODEL = "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max"
+        module.ALLOWED_MODEL = "z-ai/glm-5.3-flash@preset/glm-lanes-high"
 
         shim_server = module.ShimServer(("127.0.0.1", 0), module.ShimHandler)
         shim_server.daemon_threads = True

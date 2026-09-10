@@ -47,6 +47,18 @@ Package operations pass `--yes` and disconnect stdin so pnpm does not prompt dur
 
 If a package operation fails, the installer prints pnpm's error and stops with a nonzero exit status. It refreshes links from the installed state even after a partial sync. If that state cannot be read or parsed, it preserves the existing link tree and reports the failure.
 
+## Release-Age Quarantine
+
+pnpm 11+ ships a built-in `minimumReleaseAge` of 1440 minutes: `pnpm update -g --latest` and `pnpm outdated -g` silently skip any version published less than a day ago, so `,update` can report success while `omp update` (which reads the `latest` dist-tag directly) already sees a newer release.
+
+[`home/dot_config/pnpm/readonly_config.yaml.tmpl`](../../../../home/dot_config/pnpm/readonly_config.yaml.tmpl) renders `~/.config/pnpm/config.yaml` with `minimumReleaseAgeExclude` covering every package in `~/.default-pnpm-pkgs` (pins reduce to the bare name), so listed packages update as soon as they publish. Scoped packages are listed as `@scope/*`, not by exact name: pnpm's non-strict default auto-approves same-day transitive versions into the global project's own `pnpm-workspace.yaml`, and that project list replaces the global one, which would re-quarantine the top-level package on the next sync. Same-scope companions (for example the 17 `@oh-my-pi/*` packages behind `omp`) are the case that triggers this on every release, so the scope glob keeps the global list in effect. Unscoped packages keep exact names, so a same-day third-party transitive release can still trigger that write. The 05 hook hashes the config template, so changing exclusions re-runs the sync.
+
+Check the effective list with:
+
+```bash
+pnpm config get --global minimum-release-age-exclude
+```
+
 ## Rollback / Undo
 
 1. Remove the package from [`home/readonly_dot_default-pnpm-pkgs`](../../../../home/readonly_dot_default-pnpm-pkgs).

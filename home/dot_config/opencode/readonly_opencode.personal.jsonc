@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "small_model": "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max",
+  "small_model": "openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high",
   "theme": "catppuccin",
   "share": "disabled",
   "autoupdate": false,
@@ -33,8 +33,8 @@
     "main": {
       "description": "Main workflow agent",
       "mode": "primary",
-      "model": "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max",
-      "reasoning_effort": "max",
+      "model": "openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high",
+      "reasoning_effort": "high",
     },
   },
   "default_agent": "main",
@@ -49,7 +49,14 @@
             "reasoningEffort": "high",
           },
         },
-        // deepseek lanes require FP8-or-higher quantization and a 24 t/s floor via `deepseek-lanes-max` (no sort: uptime-aware default LB).
+        // glm lanes require FP8-or-higher quantization and a 24 t/s floor via `glm-lanes-high` (no sort: uptime-aware default LB);
+        // the request model overrides the preset's pinned GLM-5.2 id (live-probed 2026-09-10), so GLM 5.3 Flash rides the same slug.
+        "z-ai/glm-5.3-flash@preset/glm-lanes-high": {
+          "options": {
+            "reasoningEffort": "high",
+          },
+        },
+        // deepseek lanes keep the same FP8-or-higher, 24 t/s floor, no-sort policy on the still-selectable DeepSeek V4 Flash via `deepseek-lanes-max`.
         "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max": {
           "options": {
             "reasoningEffort": "max",

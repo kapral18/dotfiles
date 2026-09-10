@@ -53,7 +53,7 @@ class TestQ(unittest.TestCase):
             self.fail(f",q {' '.join(args)} failed\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}")
         return result
 
-    def test_when_q_is_dry_run_it_emits_stripped_pi_argv_without_the_deepseek_pin(self) -> None:
+    def test_when_q_is_dry_run_it_emits_stripped_pi_argv_without_the_glm_flash_pin(self) -> None:
         result = self.run_q("--dry-run", "hello", "world", check=True)
         payload = json.loads(result.stdout)
         argv = payload["argv"]
@@ -88,7 +88,7 @@ class TestQ(unittest.TestCase):
             ],
             argv[1:],
         )
-        self.assertNotIn("deepseek", " ".join(argv))
+        self.assertNotIn("glm-5.3-flash", " ".join(argv))
         self.assertNotIn("--no-tools", argv)
         self.assertTrue(core.Q_SYSTEM_PROMPT.strip())
         self.assertEqual("", core.Q_APPEND_SYSTEM_PROMPT)

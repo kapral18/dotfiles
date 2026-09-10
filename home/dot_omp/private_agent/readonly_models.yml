@@ -4,11 +4,13 @@
 # extraBody — so per-request routing filters never reach OpenRouter and providers of ANY
 # quantization were eligible. The provider policy therefore rides the OpenRouter preset slug, the
 # same mechanism the Claude/Codex/Copilot/Cursor wrappers and OpenCode use:
-#   - `deepseek-lanes-max` allows only FP8-or-higher quantization (`fp8, fp16, bf16, fp32`)
-#     under a 24 t/s preferred-minimum-throughput floor, with `sort` omitted so default
-#     load balancing keeps uptime then price-weights remaining endpoints;
-#   - `glm-lanes-max` applies the same FP8-or-higher, 24 t/s floor, no-sort policy to
-#     z-ai/glm-5.2;
+#   - `glm-lanes-high` (z-ai/glm-5.3-flash) and `glm-lanes-max` (z-ai/glm-5.2) allow only
+#     FP8-or-higher quantization (`fp8, fp16, bf16, fp32`) under a 24 t/s
+#     preferred-minimum-throughput floor, with `sort` omitted so default load balancing keeps
+#     uptime then price-weights remaining endpoints; the presets pin z-ai/glm-5.2 but the
+#     request model overrides it (live-probed 2026-09-10), so GLM 5.3 Flash rides `glm-lanes-high`;
+#   - `deepseek-lanes-max` keeps the same FP8-or-higher, 24 t/s floor, no-sort policy on the
+#     still-selectable deepseek/deepseek-v4-flash-0731;
 #   - `kimi-lanes` restricts kimi to Fireworks, Together, and BaseTen under a
 #     $16/M completion cap (`only` blocks other providers; no sort).
 # `auth` is "none" so no key is stored here; the openrouter transport still authorizes with the
@@ -25,6 +27,13 @@ providers:
         baseUrl: "https://openrouter.ai/api/v1"
         contextWindow: 1048576
         maxTokens: 128000
+      - id: "z-ai/glm-5.3-flash"
+        name: "GLM 5.3 Flash"
+        api: "openai-responses"
+        provider: "openrouter"
+        baseUrl: "https://openrouter.ai/api/v1"
+        contextWindow: 1048576
+        maxTokens: 131072
       - id: "deepseek/deepseek-v4-flash"
         name: "DeepSeek V4 Flash"
         api: "openai-responses"
@@ -46,6 +55,13 @@ providers:
         baseUrl: "https://openrouter.ai/api/v1"
         contextWindow: 1048576
         maxTokens: 128000
+      - id: "z-ai/glm-5.3-flash@preset/glm-lanes-high"
+        name: "GLM 5.3 Flash (glm lanes high)"
+        api: "openai-responses"
+        provider: "openrouter"
+        baseUrl: "https://openrouter.ai/api/v1"
+        contextWindow: 1048576
+        maxTokens: 131072
       - id: "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max"
         name: "DeepSeek V4 Flash 0731 (deepseek lanes max)"
         api: "openai-responses"

@@ -31,7 +31,9 @@ flowchart TD
     CARGOF --> H5c["hook 05-update-cargo-crates"]:::hook
     GOF --> H5g["hook 05-update-golang-pkgs"]:::hook
     GEMF --> H5r["hook 05-update-gems"]:::hook
-    PNPMF --> H5p["hook 05-update-pnpm-pkgs (hashes list + mise config + installer)<br/>,install-pnpm-pkgs uses --yes and disconnected stdin for noninteractive package operations, reports failures and refreshes ~/.local/share/pnpm-global-links after partial sync;<br/>unreadable inventory preserves existing links"]:::hook
+    PNPMF --> PNPMCFG["dot_config/pnpm/readonly_config.yaml.tmpl<br/>minimumReleaseAgeExclude = every listed name, scoped ones as @scope/* (pnpm 11+ quarantines releases &lt;1440 min; omp update sees them first; scope glob stops the project-level auto-approval write that replaces the global list)"]:::reg
+    PNPMCFG --> H5p
+    PNPMF --> H5p["hook 05-update-pnpm-pkgs (hashes list + mise config + installer + pnpm config)<br/>,install-pnpm-pkgs uses --yes and disconnected stdin for noninteractive package operations, reports failures and refreshes ~/.local/share/pnpm-global-links after partial sync;<br/>unreadable inventory preserves existing links"]:::hook
     UVF --> H6["hook 06-update-uv-tools"]:::hook
     CUSTOM --> H5x["hook 05-install-custom-packages<br/>+ scripts/reconcile_custom_packages.py<br/>+ scripts/install_github_zip_bundle.py"]:::hook
 

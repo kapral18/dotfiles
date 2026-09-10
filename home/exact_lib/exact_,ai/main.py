@@ -32,16 +32,22 @@ ANTIGRAVITY_EFFORT_SUFFIX_RE = re.compile(r"-(?P<effort>low|medium|high)$")
 MODEL_MIRROR_DISPLAY_PATH = "~/.config/ai/model-mirrors.v1.json"
 AGENT_BANDS_DISPLAY_PATH = "~/.config/ai/agent-bands.v1.json"
 OPENROUTER_PROVIDER = "openrouter"
-OPENROUTER_MODEL = "deepseek/deepseek-v4-flash-0731"
+OPENROUTER_MODEL = "z-ai/glm-5.3-flash"
 OPENROUTER_SELECTOR = f"{OPENROUTER_PROVIDER}/{OPENROUTER_MODEL}"
 PI_OPENROUTER_MODEL = "openai/gpt-5.6-sol"
 PI_OPENROUTER_THINKING = "xhigh"
 PI_OPENROUTER_SELECTOR = f"{OPENROUTER_PROVIDER}/{PI_OPENROUTER_MODEL}"
+PI_OPENROUTER_GLM_FLASH_SELECTOR = f"{OPENROUTER_PROVIDER}/z-ai/glm-5.3-flash"
 PI_OPENROUTER_DEEPSEEK_SELECTOR = f"{OPENROUTER_PROVIDER}/deepseek/deepseek-v4-flash"
 PI_OPENROUTER_SONNET_SELECTOR = f"{OPENROUTER_PROVIDER}/anthropic/claude-sonnet-4.6"
 # OpenCode cannot inject OpenRouter's `provider` routing body field, so its lane route carries
-# DeepSeek's FP8-or-higher, 24 t/s floor, no-sort (uptime-aware default LB) policy and max effort in the `deepseek-lanes-max` preset slug.
-OPENROUTER_OPENCODE_SELECTOR = f"{OPENROUTER_SELECTOR}@preset/deepseek-lanes-max"
+# the FP8-or-higher, 24 t/s floor, no-sort (uptime-aware default LB) policy and high effort in the `glm-lanes-high` preset slug.
+# The request model overrides the preset's pinned GLM-5.2 id (live-probed 2026-09-10), so GLM 5.3 Flash rides the same slug.
+OPENROUTER_OPENCODE_SELECTOR = f"{OPENROUTER_SELECTOR}@preset/glm-lanes-max"
+# DeepSeek V4 Flash stays selectable on OpenCode behind its own policy slug.
+OPENROUTER_OPENCODE_DEEPSEEK_SELECTOR = (
+    f"{OPENROUTER_PROVIDER}/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max"
+)
 OPENROUTER_KIMI_SELECTOR = f"{OPENROUTER_PROVIDER}/moonshotai/kimi-k3"
 OPENROUTER_OPENCODE_KIMI_SELECTOR = f"{OPENROUTER_KIMI_SELECTOR}@preset/kimi-lanes"
 OPENROUTER_GLM_SELECTOR = f"{OPENROUTER_PROVIDER}/z-ai/glm-5.2"
@@ -695,12 +701,13 @@ def _openrouter_sanctioned_selectors(
     if command.harness == "pi":
         return (
             PI_OPENROUTER_SELECTOR,
+            PI_OPENROUTER_GLM_FLASH_SELECTOR,
             PI_OPENROUTER_DEEPSEEK_SELECTOR,
             PI_OPENROUTER_SONNET_SELECTOR,
             OPENROUTER_KIMI_SELECTOR,
             OPENROUTER_GLM_SELECTOR,
         )
-    return (OPENROUTER_OPENCODE_SELECTOR, OPENROUTER_OPENCODE_KIMI_SELECTOR)
+    return (OPENROUTER_OPENCODE_SELECTOR, OPENROUTER_OPENCODE_DEEPSEEK_SELECTOR, OPENROUTER_OPENCODE_KIMI_SELECTOR)
 
 
 def _enforce_openrouter_selection(

@@ -126,7 +126,7 @@ def _claude_alias_for_backend_model(model: str) -> str | None:
 
         anthropic / claude  -> fable   T1 research/review/orchestrate (claude-fable-5.1 high)
         gpt / openai        -> opus    T2 implement (gpt-5.6-sol high)
-        deepseek            -> sonnet  T3 mechanical (deepseek-v4-flash xhigh)
+        glm / z-ai          -> sonnet  T3 mechanical (glm-5.3-flash high)
         google / gemini     -> haiku   memory (gemini-3.8-flash low)
 
     Pi's `refute` pick is `openrouter/openai/gpt-5.6-sol`, which the `gpt`/`openai` rule sends to
@@ -138,7 +138,7 @@ def _claude_alias_for_backend_model(model: str) -> str | None:
         return "fable"
     if "gpt" in lowered or "openai" in lowered:
         return "opus"
-    if "deepseek" in lowered:
+    if "glm" in lowered or "z-ai" in lowered:
         return "sonnet"
     if "google" in lowered or "gemini" in lowered:
         return "haiku"

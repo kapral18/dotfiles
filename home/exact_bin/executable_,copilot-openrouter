@@ -18,8 +18,8 @@ fi
 # Model and effort are selectable. The anthropic client cannot inject an OpenRouter extra body, so
 # effort rides a model-agnostic workspace preset: `<model>@preset/effort-<level>` on /api/v1/messages.
 # Every --model uses the same slug.
-OPENROUTER_MODEL="deepseek/deepseek-v4-flash-0731"
-OPENROUTER_EFFORT="max"
+OPENROUTER_MODEL="z-ai/glm-5.3-flash"
+OPENROUTER_EFFORT="high"
 OPENROUTER_CONTEXT="short"
 
 args=()

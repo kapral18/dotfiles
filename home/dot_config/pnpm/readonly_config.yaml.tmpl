@@ -1,0 +1,25 @@
+{{- /*
+Global pnpm config (~/.config/pnpm/config.yaml).
+pnpm 11+ quarantines versions younger than minimumReleaseAge (built-in default 1440 minutes),
+so `pnpm update -g --latest` and `pnpm outdated -g` silently skip same-day releases.
+Every package listed in readonly_dot_default-pnpm-pkgs is exempted here; bare names and
+`name@x.y.z` pins both reduce to the package name.
+Scoped packages are exempted as `@scope/*`: their same-day companion packages would otherwise be
+auto-approved into the global project's own pnpm-workspace.yaml, whose minimumReleaseAgeExclude
+replaces this global list and re-quarantines the top-level package on the next sync.
+*/ -}}
+minimumReleaseAgeExclude:
+{{- $seen := dict }}
+{{- range (include "readonly_dot_default-pnpm-pkgs" | splitList "\n") }}
+{{- $line := trim . }}
+{{- if and $line (not (hasPrefix "#" $line)) }}
+{{- $name := regexReplaceAll "^(@?[^@]+)@.*$" $line "${1}" }}
+{{- if hasPrefix "@" $name }}
+{{- $name = printf "%s/*" (index (splitList "/" $name) 0) }}
+{{- end }}
+{{- if not (hasKey $seen $name) }}
+{{- $_ := set $seen $name true }}
+  - {{ $name | quote }}
+{{- end }}
+{{- end }}
+{{- end }}

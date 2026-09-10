@@ -39,14 +39,19 @@ def model(
     endpoints: tuple[str, ...],
     efforts: tuple[str, ...] = ("low", "medium", "high"),
     context_windows: dict[str, int] | None = None,
+    prompt_limits: dict[str, int] | None = None,
 ) -> copilot_auth.ModelSpec:
+    context_windows = context_windows or {"default": 264_000}
+    prompt_limits = prompt_limits or {tier: window - 64_000 for tier, window in context_windows.items()}
     return copilot_auth.ModelSpec(
         model_id=model_id,
         endpoints=frozenset(endpoints),
         efforts=frozenset(efforts),
-        context_window=264_000,
+        context_window=context_windows["default"],
         max_output_tokens=64_000,
-        context_windows=context_windows or {"default": 264_000},
+        context_windows=context_windows,
+        prompt_limit=prompt_limits["default"],
+        prompt_limits=prompt_limits,
     )
 
 
@@ -146,6 +151,7 @@ class TestArgumentsAndModels(unittest.TestCase):
             models,
         )
         self.assertEqual(selected.context_window, 1_000_000)
+        self.assertEqual(selected.prompt_limit, 936_000)
 
         with self.assertRaisesRegex(ValueError, "does not support context tier"):
             main.resolve_model(
@@ -155,6 +161,44 @@ class TestArgumentsAndModels(unittest.TestCase):
             )
         with self.assertRaisesRegex(ValueError, "choose: default, long_context"):
             main.parse_args(["--context", "oversized"])
+
+    def test_SHOULD_keep_claude_compaction_inside_the_billed_prompt_limit(self) -> None:
+        # Copilot bills long context by prompt size; Claude compacts on the previous response, so one turn of
+        # headroom stays below the tier limit and the [1m] marker only lifts Claude's 200k cap when needed.
+        astra = model(
+            "gpt-6-astra",
+            ("/responses",),
+            context_windows={"default": 400_000, "long_context": 1_000_000},
+            prompt_limits={"default": 272_000, "long_context": 872_000},
+        )
+        sonnet = model(
+            "claude-sonnet-5",
+            ("/v1/messages",),
+            context_windows={"default": 264_000, "long_context": 1_000_000},
+            prompt_limits={"default": 200_000, "long_context": 936_000},
+        )
+        small = model(
+            "gpt-5-mini", ("/responses",), context_windows={"default": 192_000}, prompt_limits={"default": 128_000}
+        )
+        models = {"gpt-6-astra": astra, "claude-sonnet-5": sonnet, "gpt-5-mini": small}
+
+        selected = main.resolve_model("claude", main.parse_args(["--model", "gpt-6-astra"]), models)
+        self.assertEqual(main.claude_compact_window(selected), 240_000)
+        self.assertEqual(main.claude_frontend_model(selected), "gpt-6-astra[1m]")
+
+        selected = main.resolve_model(
+            "claude", main.parse_args(["--model", "gpt-6-astra", "--context", "long_context"]), models
+        )
+        self.assertEqual(main.claude_compact_window(selected), 840_000)
+        self.assertEqual(main.claude_frontend_model(selected), "gpt-6-astra[1m]")
+
+        selected = main.resolve_model("claude", main.parse_args([]), models)
+        self.assertEqual(main.claude_compact_window(selected), 168_000)
+        self.assertEqual(main.claude_frontend_model(selected), "claude-sonnet-5")
+
+        selected = main.resolve_model("claude", main.parse_args(["--model", "gpt-5-mini"]), models)
+        self.assertEqual(main.claude_compact_window(selected), 100_000)
+        self.assertEqual(main.claude_frontend_model(selected), "gpt-5-mini")
 
     def test_SHOULD_parse_the_copilot_model_contract(self) -> None:
         parsed = copilot_auth.parse_models(
@@ -178,15 +222,36 @@ class TestArgumentsAndModels(unittest.TestCase):
                                 "long_context": {"max_prompt_tokens": 936_000},
                             }
                         },
-                    }
+                    },
+                    {
+                        "id": "untiered",
+                        "supported_endpoints": ["/v1/messages"],
+                        "capabilities": {
+                            "type": "chat",
+                            "limits": {
+                                "max_context_window_tokens": 200_000,
+                                "max_prompt_tokens": 136_000,
+                                "max_output_tokens": 64_000,
+                            },
+                            "supports": {},
+                        },
+                    },
                 ]
             }
         )
+
+        self.assertEqual(parsed["untiered"].context_windows, {"default": 200_000})
+        self.assertEqual(parsed["untiered"].prompt_limits, {"default": 136_000})
 
         self.assertEqual(parsed["gpt-test"].context_window, 400_000)
         self.assertEqual(
             parsed["gpt-test"].context_windows,
             {"default": 400_000, "long_context": 1_000_000},
+        )
+        self.assertEqual(parsed["gpt-test"].prompt_limit, 272_000)
+        self.assertEqual(
+            parsed["gpt-test"].prompt_limits,
+            {"default": 272_000, "long_context": 936_000},
         )
         self.assertEqual(parsed["gpt-test"].endpoints, {"/responses"})
         self.assertEqual(parsed["gpt-test"].efforts, {"low", "high"})
@@ -222,7 +287,12 @@ class TestChildIsolation(unittest.TestCase):
             "CURSOR_API_ENDPOINT": "https://outside.example",
             "CURSOR_API_KEY": "outside-key",
         }
-        claude_model = model("claude-sonnet-5", ("/v1/messages",))
+        claude_model = model(
+            "claude-sonnet-5",
+            ("/v1/messages",),
+            context_windows={"default": 336_000},
+            prompt_limits={"default": 272_000},
+        )
         codex_model = model("gpt-5.3-codex", ("/responses",), ("low", "high"))
         with mock.patch.dict(os.environ, inherited, clear=True):
             claude_command, claude_env = main.child_command(
@@ -262,7 +332,7 @@ class TestChildIsolation(unittest.TestCase):
         )
         self.assertEqual(claude_env["ANTHROPIC_AUTH_TOKEN"], "local-token")
         self.assertEqual(claude_env["ANTHROPIC_MODEL"], "claude-sonnet-5[1m]")
-        self.assertEqual(claude_env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"], "264000")
+        self.assertEqual(claude_env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"], "240000")
         self.assertEqual(claude_env["CLAUDE_CODE_DISABLE_THINKING"], "1")
         self.assertNotIn("GH_TOKEN", claude_env)
         self.assertNotIn("GITHUB_TOKEN", claude_env)

@@ -41,9 +41,9 @@ fi
 # is baseUrl+apiKey only — no extra-body channel — so effort rides a model-agnostic OpenRouter
 # workspace preset: OpenRouter resolves `<model>@preset/effort-<level>` on /v1/chat/completions
 # (live-probed 2026-08-18: Gemini and Qwen on effort-high/effort-max). Every --model uses the same
-# `effort-<level>` slug; the default is `deepseek/deepseek-v4-flash-0731` at `max`.
-OPENROUTER_MODEL="deepseek/deepseek-v4-flash-0731"
-OPENROUTER_EFFORT="max"
+# `effort-<level>` slug; the default is `z-ai/glm-5.3-flash` at `high`.
+OPENROUTER_MODEL="z-ai/glm-5.3-flash"
+OPENROUTER_EFFORT="high"
 # The strict-mode shim is now the session guardrail too, so it is always on for the
 # pinned route: the allowlist admits the primary wire id and the declared Pi lane
 # wire ids, rejecting other /chat/completions model ids before OpenRouter. `strict`
@@ -137,7 +137,7 @@ fi
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
 readonly OPENROUTER_PI_T1_WIRE_MODEL="anthropic/claude-fable-5.1@preset/effort-high"
 readonly OPENROUTER_PI_T2_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-high"
-readonly OPENROUTER_PI_MECHANICAL_WIRE_MODEL="deepseek/deepseek-v4-flash@preset/effort-xhigh"
+readonly OPENROUTER_PI_MECHANICAL_WIRE_MODEL="z-ai/glm-5.3-flash@preset/effort-high"
 readonly OPENROUTER_PI_MEMORY_WIRE_MODEL="google/gemini-3.8-flash@preset/effort-low"
 readonly OPENROUTER_PI_REFUTE_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-xhigh"
 

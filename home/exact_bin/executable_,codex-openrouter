@@ -24,8 +24,8 @@ export OPENROUTER_API_KEY="$api_key"
 # extra-body channel, so effort rides a model-agnostic OpenRouter workspace preset:
 # `<model>@preset/effort-<level>` on /api/v1/responses. Every --model uses the same slug.
 # `model_reasoning_effort` stays unset so the preset is the single source of effort.
-OPENROUTER_MODEL="deepseek/deepseek-v4-flash-0731"
-OPENROUTER_EFFORT="max"
+OPENROUTER_MODEL="z-ai/glm-5.3-flash"
+OPENROUTER_EFFORT="high"
 
 cli_args=()
 while [[ $# -gt 0 ]]; do

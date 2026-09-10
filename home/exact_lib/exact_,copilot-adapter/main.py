@@ -28,6 +28,11 @@ DEFAULT_EFFORTS = {
     "cursor": "medium",
 }
 CLAUDE_DEFAULT_CONTEXT_WINDOW = 200_000
+# Copilot bills the long-context tier by prompt size above the default tier's prompt limit. Claude Code compacts
+# on the previous response's usage, so the request that crosses the limit is billed before compaction runs.
+# Keep one turn of headroom below the billed limit; Claude itself fires 13k below the window it is given.
+CLAUDE_COMPACT_HEADROOM_TOKENS = 32_000
+CLAUDE_MIN_COMPACT_WINDOW = 100_000
 CURSOR_PINNED_OPTIONS = {"--base-url", "--local-agent-api-key", "--authless", "--model", "-m"}
 
 
@@ -143,7 +148,11 @@ def resolve_model(harness: str, options: LaunchOptions, models: dict[str, ModelS
         raise ValueError(
             f"model {model_id!r} does not support context tier {options.context_tier!r}; choose: {choices}"
         )
-    return replace(model, context_window=model.context_windows[options.context_tier])
+    return replace(
+        model,
+        context_window=model.context_windows[options.context_tier],
+        prompt_limit=model.prompt_limits[options.context_tier],
+    )
 
 
 def completion_rows(models: dict[str, ModelSpec]) -> list[str]:
@@ -197,8 +206,15 @@ def validate_cursor_forwarded(argv: list[str]) -> None:
             raise ValueError(f"{argument} cannot override the Cursor loopback adapter")
 
 
+def claude_compact_window(model: ModelSpec) -> int:
+    """Auto-compact window that keeps every Claude request inside the selected Copilot billing tier."""
+    floor = min(model.prompt_limit, CLAUDE_MIN_COMPACT_WINDOW)
+    return max(model.prompt_limit - CLAUDE_COMPACT_HEADROOM_TOKENS, floor)
+
+
 def claude_frontend_model(model: ModelSpec) -> str:
-    if model.context_window > CLAUDE_DEFAULT_CONTEXT_WINDOW:
+    """Claude caps a custom model id at 200k unless the id carries the [1m] frontend marker."""
+    if claude_compact_window(model) > CLAUDE_DEFAULT_CONTEXT_WINDOW:
         return f"{model.model_id}{CLAUDE_EXTENDED_CONTEXT_SUFFIX}"
     return model.model_id
 
@@ -236,7 +252,7 @@ def child_command(
                 "ANTHROPIC_DEFAULT_SONNET_MODEL": frontend_model,
                 "ANTHROPIC_DEFAULT_HAIKU_MODEL": frontend_model,
                 "ANTHROPIC_DEFAULT_FABLE_MODEL": frontend_model,
-                "CLAUDE_CODE_AUTO_COMPACT_WINDOW": str(model.context_window),
+                "CLAUDE_CODE_AUTO_COMPACT_WINDOW": str(claude_compact_window(model)),
             }
         )
         command = [binary, "--model", frontend_model]

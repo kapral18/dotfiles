@@ -20,6 +20,14 @@
             }
           }
         },
+        "z-ai/glm-5.3-flash": {
+          "compat": {
+            "openRouterRouting": {
+              "preferred_min_throughput": 24,
+              "quantizations": ["fp8", "fp16", "bf16", "fp32"]
+            }
+          }
+        },
         "z-ai/glm-5.2": {
           "compat": {
             "openRouterRouting": {

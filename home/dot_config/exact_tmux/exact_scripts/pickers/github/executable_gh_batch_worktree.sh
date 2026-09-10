@@ -183,7 +183,7 @@ if [ "$background" -eq 0 ]; then
       {
         printf '#!/usr/bin/env bash\n'
         printf 'set -euo pipefail\n'
-        printf 'exec ,cursor-openrouter --model deepseek/deepseek-v4-flash-0731 --effort max -- "$(cat "$1")"\n'
+        printf 'exec ,cursor-openrouter --model z-ai/glm-5.3-flash --effort high -- "$(cat "$1")"\n'
       } > "$agent_launcher"
       chmod +x "$agent_launcher"
       agent_cmd="$(printf '%q %q' "$agent_launcher" "$prompt_inst")"

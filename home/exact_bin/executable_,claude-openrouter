@@ -22,8 +22,8 @@ fi
 # model-agnostic OpenRouter workspace preset: `<model>@preset/effort-<level>` on /api/v1/messages.
 # Every --model uses the same slug. Presets are workspace state via
 # POST /api/v1/presets/<slug>/chat/completions.
-OPENROUTER_MODEL="deepseek/deepseek-v4-flash-0731"
-OPENROUTER_EFFORT="max"
+OPENROUTER_MODEL="z-ai/glm-5.3-flash"
+OPENROUTER_EFFORT="high"
 OPENROUTER_CONTEXT="short"
 
 args=()
@@ -118,7 +118,7 @@ readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFO
 readonly OPENROUTER_CLAUDE_MODEL="$OPENROUTER_WIRE_MODEL"
 readonly OPENROUTER_PI_T1_WIRE_MODEL="anthropic/claude-fable-5.1@preset/effort-high"
 readonly OPENROUTER_PI_T2_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-high"
-readonly OPENROUTER_PI_MECHANICAL_WIRE_MODEL="deepseek/deepseek-v4-flash@preset/effort-xhigh"
+readonly OPENROUTER_PI_MECHANICAL_WIRE_MODEL="z-ai/glm-5.3-flash@preset/effort-high"
 readonly OPENROUTER_PI_MEMORY_WIRE_MODEL="google/gemini-3.8-flash@preset/effort-low"
 readonly OPENROUTER_PI_REFUTE_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-xhigh"
 
@@ -130,7 +130,7 @@ readonly OPENROUTER_PI_REFUTE_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-xhigh
 # model family matches. The alias ladder haiku < sonnet < opus < fable is the tier order here:
 #   fable  -> T1 research/review/orchestrate   anthropic/claude-fable-5.1   high
 #   opus   -> T2 implement                     openai/gpt-5.6-sol           high
-#   sonnet -> T3 mechanical                    deepseek/deepseek-v4-flash   xhigh
+#   sonnet -> T3 mechanical                    z-ai/glm-5.3-flash   high
 #   haiku  -> memory                           google/gemini-3.8-flash      low
 # Pi's refute pick (openai/gpt-5.6-sol xhigh) claims no slot: the gate maps every gpt/openai backend
 # id to `opus`, so a refute launch here runs the T2 sol wire model — the same model at high instead
