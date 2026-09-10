@@ -28,8 +28,8 @@ local SYSTEM_MESSAGE =
 local GEMINI_DEFAULT_MODEL = "gemini-flash-latest"
 -- gemini-flash-latest tracks Gemini 3.6 Flash: input 1,048,576 / output 65,536.
 local GEMINI_DEFAULT_MAX_OUTPUT_TOKENS = 65536
-local OPENROUTER_DEFAULT_MODEL = "openai/gpt-oss-120b"
--- openai/gpt-oss-120b OpenRouter endpoint max completion (context_length 131072).
+local OPENROUTER_DEFAULT_MODEL = "z-ai/glm-5.3-flash"
+-- z-ai/glm-5.3-flash OpenRouter top-provider max completion (context_length 1048576).
 local OPENROUTER_MAX_OUTPUT_TOKENS = 131072
 -- Omit sort/order so OpenRouter's default load balancer keeps uptime (recent-outage
 -- providers last) then price-weights remaining endpoints. preferred_min_throughput

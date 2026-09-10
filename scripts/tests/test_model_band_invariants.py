@@ -1244,17 +1244,18 @@ class TestModelBandInvariants(unittest.TestCase):
         self.assertNotIn("modelOverrides:", omp_models)
         self.assertNotIn("openRouterRouting", omp_models)
 
-    def test_neovim_openrouter_summarizer_pins_gpt_oss_120b(self):
-        # Personal leader-aisc talks to OpenRouter directly. gpt-oss-120b is not on the DeepSeek
-        # wrapper route. OpenRouter's catalog lists supported_efforts high/medium/low. Provider
-        # routing omits sort so OpenRouter's default load balancer keeps uptime, then
-        # price-weights remaining endpoints, with a 300 t/s preferred floor (OpenRouter
-        # deprioritizes slower endpoints; it does not hard-exclude them). Output cap is the
-        # endpoint max completion (131072), not a 2048-token ceiling. Not a Cerebras-only whitelist.
+    def test_neovim_openrouter_summarizer_pins_glm_5_3_flash(self):
+        # Personal leader-aisc talks to OpenRouter directly. z-ai/glm-5.3-flash is not on the
+        # DeepSeek wrapper route (user call 2026-09-10). Provider routing omits sort so
+        # OpenRouter's default load balancer keeps uptime, then price-weights remaining
+        # endpoints, with a 300 t/s preferred floor (OpenRouter deprioritizes slower endpoints;
+        # it does not hard-exclude them). Output cap is the top-provider max completion
+        # (131072 of a 1,048,576-token context), not a 2048-token ceiling.
         neovim = (
             REPO / "home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_summarize-commit.lua"
         ).read_text()
-        self.assertIn('local OPENROUTER_DEFAULT_MODEL = "openai/gpt-oss-120b"', neovim)
+        self.assertIn('local OPENROUTER_DEFAULT_MODEL = "z-ai/glm-5.3-flash"', neovim)
+        self.assertNotIn('local OPENROUTER_DEFAULT_MODEL = "openai/gpt-oss-120b"', neovim)
         self.assertNotIn('local OPENROUTER_DEFAULT_MODEL = "deepseek/deepseek-v4-flash-0731"', neovim)
         self.assertIn("local OPENROUTER_MAX_OUTPUT_TOKENS = 131072", neovim)
         self.assertIn("max_tokens = OPENROUTER_MAX_OUTPUT_TOKENS,", neovim)
