@@ -176,3 +176,7 @@ Two disciplines that earlier lived in `stop` hooks now live in the SOP, enforced
 
 On macOS, `/tmp` usually resolves to `/private/tmp`.
 A temporary workspace like `/tmp/example` therefore records state under `/tmp/specs/private/tmp/example/`.
+
+## Codex frontend on the Copilot backend
+
+The launcher projects entitled `@lane-<effort>` models and model-free managed leaf profiles into a temporary session directory. `AGENT_BAND_CODEX_ROUTES` advertises those roles to the band gate. The gate rejects missing projections, unregistered pairs, full-history forks and child-originated delegation; it does not infer transport capability from a backend name alone. Native profile files remain unchanged. Startup and per-turn hooks recognize Codex/Claude `agent_id` and return before loading root topic or recall context.

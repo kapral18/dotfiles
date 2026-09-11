@@ -251,6 +251,9 @@ def reinforcement_block(payload: dict, spec_dir: Path, key: str) -> str:
 
 def main() -> None:
     payload = read_payload()
+    if is_delegated_leaf(payload):
+        emit({})
+        return
     prompt = str(payload.get("prompt") or "")
 
     workspace, topic, spec_path, _ = topic_paths(payload)

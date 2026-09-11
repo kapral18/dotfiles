@@ -29,6 +29,8 @@
           }
         },
         "z-ai/glm-5.2": {
+          "contextWindow": 1024000,
+          "maxTokens": 128000,
           "compat": {
             "openRouterRouting": {
               "preferred_min_throughput": 24,

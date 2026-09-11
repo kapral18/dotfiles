@@ -8,12 +8,20 @@ import os
 import re
 import sys
 import unittest
+from unittest import mock
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import REPO
 
 
 class TestModelBandInvariants(unittest.TestCase):
+    def setUp(self):
+        # These are native-harness invariants, independent of the launching wrapper's route.
+        native_env = {key: value for key, value in os.environ.items() if not key.startswith("AGENT_BAND")}
+        patcher = mock.patch.dict(os.environ, native_env, clear=True)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def assert_file_contains(self, relative_path: str, *snippets: str) -> None:
         text = (REPO / relative_path).read_text(encoding="utf-8")
         for snippet in snippets:

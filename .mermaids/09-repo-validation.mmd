@@ -14,7 +14,7 @@ flowchart TD
     FMTW --> CHECK["final Verify: make check → bin/check once (affected lint/gates/tests vs HEAD + untracked;<br/>make check-full is human-only CHECK_FULL=1 bin/check --full; agents never invoke it)"]:::mk
 
     subgraph LINT["lint"]
-        FMT["bin/fmt --check (affected paths, or all cached + untracked non-ignored if --full; ignores Alfred/)<br/>md: ,unwrap-md (AI instruction sentence / strong-clause wrap) + markdownlint(~/.markdownlint.jsonc) + prettier<br/>json/yaml: prettier · sh: shfmt · lua: stylua<br/>fish: fish_indent · py: ruff"]:::tool
+        FMT["bin/fmt --check (affected paths, or all cached + untracked non-ignored if --full; ignores Alfred/)<br/>md: ,format-md (AI instruction sentence / strong-clause wrap) + markdownlint(~/.markdownlint.jsonc) + prettier<br/>json/yaml: prettier · sh: shfmt · lua: stylua<br/>fish: fish_indent · py: ruff"]:::tool
         RUFFI["ruff check --select I (affected .py under scripts/ + home/exact_lib/, or those trees if --full)"]:::tool
     end
     VT["verify-templates → scripts/verify_templates.py<br/>(chezmoi --source &lt;current repo&gt; execute-template every *.tmpl;<br/>isolated clones never render includes from the real source checkout)"]:::tool

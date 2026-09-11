@@ -39,6 +39,7 @@ class AdapterContext:
     codex: CodexClient
     store: OpaqueReasoningStore
     lane_routes: dict[str, dict[str, str]] = field(default_factory=dict)
+    usable_input_tokens: int = 0
 
 
 class AdapterServer(ThreadingHTTPServer):
@@ -130,6 +131,13 @@ class AdapterHandler(BaseHTTPRequestHandler):
                             "id": self.context.model,
                             "display_name": self.context.model,
                             "created_at": "1970-01-01T00:00:00Z",
+                            "api_types": ["responses", "chat_completions"],
+                            "capabilities": {
+                                "context_length": self.context.usable_input_tokens,
+                                "output_modalities": ["text"],
+                                "supports_tool_use": True,
+                                "supports_streaming": True,
+                            },
                         }
                     ],
                     "has_more": False,

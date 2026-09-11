@@ -39,7 +39,9 @@ pnpm ls -g --depth 0 | rg '<package-name>'
 
 ## What It Does
 
-The installer reads `~/.default-pnpm-pkgs`, compares it with `pnpm ls -g --json`, installs missing packages (`pnpm add -g`), re-pins packages whose installed version differs from an exact pin, uninstalls global packages not on the list (`pnpm remove -g`), then runs `pnpm update -g --latest` for each unpinned package.
+The installer reads `~/.default-pnpm-pkgs`, resolves `pnpm root -g`, and merges every exact desired package name into `<pnpm root -g>/pnpm-workspace.yaml` with `allowBuilds[<name>]` set to `true` before reading inventory or changing packages. Pins reduce to the bare name. Unrelated approval, denial, and placeholder entries remain unchanged, and this only approves listed top-level packages; it does not approve third-party transitive packages. This durable workspace setting means direct `pnpm -g update` commands inherit the same build decisions after a sync.
+
+It then compares the desired list with `pnpm ls -g --json`, installs missing packages (`pnpm add -g`), re-pins packages whose installed version differs from an exact pin, uninstalls global packages not on the list (`pnpm remove -g`), then runs `pnpm update -g --latest` for each unpinned package.
 
 pnpm 11+ installs every global package into its own hashed project directory under `~/.local/share/pnpm/global/v11/`, and that directory moves on every add or update. Consumers that need a stable module path (Pi's `packages` setting loads `pi-mcp-adapter` and `pi-subagents` by path) read `~/.local/share/pnpm-global-links/node_modules/<package>` instead; the installer rebuilds that symlink tree after every sync.
 

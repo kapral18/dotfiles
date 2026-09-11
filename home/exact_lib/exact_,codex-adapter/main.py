@@ -22,8 +22,6 @@ from state import OpaqueReasoningStore
 
 CLAUDE_DEFAULT_CONTEXT_WINDOW = 200_000
 CLAUDE_EXTENDED_CONTEXT_SUFFIX = "[1m]"
-COPILOT_GPT5_MAX_OUTPUT_TOKENS = 128_000
-COPILOT_GPT5_MODEL = re.compile(r"^gpt-5\.[456](?:$|-)")
 EFFORTS = {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
 CURSOR_PINNED_OPTIONS = {"--base-url", "--local-agent-api-key", "--authless", "--model", "-m"}
 
@@ -34,6 +32,15 @@ class LaunchOptions:
     effort: str | None
     forwarded: list[str]
     help: bool
+
+
+@dataclass(frozen=True)
+class ContextBudget:
+    """The selected Codex window and the distinct limits derived from it."""
+
+    active_context_window: int
+    usable_input_tokens: int
+    auto_compact_token_limit: int
 
 
 def usage(harness: str) -> str:
@@ -135,28 +142,102 @@ def resolve_default_model(config_path: Path | None = None) -> str:
     raise RuntimeError(f"Codex config at {path} does not set model")
 
 
-def resolve_model_context_window(model_id: str, cache_path: Path | None = None) -> int | None:
+def _positive_int(value: object) -> int | None:
+    if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+        return value
+    return None
+
+
+def _nonnegative_int(value: object) -> int | None:
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+        return value
+    return None
+
+
+def _context_config(config_path: Path | None = None) -> tuple[int | None, int | None]:
+    path = config_path or default_config_path()
+    try:
+        content = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None, None
+    except OSError as error:
+        raise RuntimeError(f"Codex config at {path} is unreadable") from error
+    payload: dict[str, int] = {}
+    for line in content.splitlines():
+        if line.strip().startswith("["):
+            break
+        match = re.fullmatch(
+            r"\s*(model_context_window|model_auto_compact_token_limit)\s*=\s*([+-]?[0-9][0-9_]*)\s*(?:#.*)?",
+            line,
+        )
+        if match:
+            payload[match[1]] = int(match[2].replace("_", ""))
+    return (
+        _positive_int(payload.get("model_context_window")),
+        _nonnegative_int(payload.get("model_auto_compact_token_limit")),
+    )
+
+
+def resolve_model_budget(
+    model_id: str,
+    cache_path: Path | None = None,
+    config_path: Path | None = None,
+) -> ContextBudget:
+    """Resolve Codex's active window, usable input, and compaction threshold."""
+    configured_window, configured_compaction = _context_config(config_path)
     path = cache_path or default_models_cache_path()
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return None
+        payload = None
     models = payload.get("models") if isinstance(payload, dict) else None
-    if not isinstance(models, list):
-        return None
-    for model in models:
-        if not isinstance(model, dict) or model.get("slug") != model_id:
-            continue
-        for field in ("max_context_window", "context_window"):
-            value = model.get(field)
-            if isinstance(value, int) and not isinstance(value, bool) and value > 0:
-                return value
-        return None
-    return None
+    selected = (
+        next(
+            (model for model in models if isinstance(model, dict) and model.get("slug") == model_id),
+            None,
+        )
+        if isinstance(models, list)
+        else None
+    )
+    if not isinstance(selected, dict):
+        if configured_window is None:
+            raise RuntimeError(
+                f"Codex model metadata for {model_id!r} is unavailable; refresh the native Codex catalog and try again, "
+                "or set model_context_window in the active Codex config"
+            )
+        active_context_window = configured_window
+        effective_percent = 95
+        model_compaction = None
+    else:
+        model_window = _positive_int(selected.get("context_window"))
+        if model_window is None and configured_window is None:
+            raise RuntimeError(
+                f"Codex model metadata for {model_id!r} has no context_window; refresh the native Codex catalog and try again, "
+                "or set model_context_window in the active Codex config"
+            )
+        active_context_window = configured_window if configured_window is not None else model_window
+        assert active_context_window is not None
+        maximum_window = _positive_int(selected.get("max_context_window"))
+        if configured_window is not None and maximum_window is not None:
+            active_context_window = min(active_context_window, maximum_window)
+        effective_percent = _positive_int(selected.get("effective_context_window_percent")) or 95
+        model_compaction = _nonnegative_int(selected.get("auto_compact_token_limit"))
+
+    usable_input_tokens = active_context_window * effective_percent // 100
+    default_compaction = active_context_window * 9 // 10
+    requested_compaction = (
+        configured_compaction
+        if configured_compaction is not None
+        else model_compaction
+        if model_compaction is not None
+        else default_compaction
+    )
+    auto_compact_token_limit = min(requested_compaction, default_compaction)
+    return ContextBudget(active_context_window, usable_input_tokens, auto_compact_token_limit)
 
 
-def claude_frontend_model(model: str, context_window: int | None) -> str:
-    if context_window is not None and context_window > CLAUDE_DEFAULT_CONTEXT_WINDOW:
+def claude_frontend_model(model: str, budget: ContextBudget) -> str:
+    if budget.active_context_window > CLAUDE_DEFAULT_CONTEXT_WINDOW:
         return f"{model}{CLAUDE_EXTENDED_CONTEXT_SUFFIX}"
     return model
 
@@ -202,7 +283,8 @@ def child_command(
     token: str,
     model: str,
     forwarded: list[str],
-    context_window: int | None,
+    budget: ContextBudget,
+    claude_auto_compact_token_limit: int | None = None,
 ) -> tuple[list[str], dict[str, str]]:
     env = dict(os.environ)
     for key in (
@@ -214,6 +296,8 @@ def child_command(
     ):
         env.pop(key, None)
     if harness == "copilot":
+        env.pop("COPILOT_PROVIDER_MAX_PROMPT_TOKENS", None)
+        env.pop("COPILOT_PROVIDER_MAX_OUTPUT_TOKENS", None)
         env.update(
             {
                 "COPILOT_PROVIDER_BASE_URL": f"{base_url}/v1",
@@ -226,12 +310,7 @@ def child_command(
                 "COPILOT_PROVIDER_WIRE_MODEL": model,
             }
         )
-        if context_window is not None:
-            max_prompt_tokens = context_window
-            if COPILOT_GPT5_MODEL.match(model) and context_window > COPILOT_GPT5_MAX_OUTPUT_TOKENS:
-                max_prompt_tokens -= COPILOT_GPT5_MAX_OUTPUT_TOKENS
-                env["COPILOT_PROVIDER_MAX_OUTPUT_TOKENS"] = str(COPILOT_GPT5_MAX_OUTPUT_TOKENS)
-            env["COPILOT_PROVIDER_MAX_PROMPT_TOKENS"] = str(max_prompt_tokens)
+        env["COPILOT_PROVIDER_MAX_PROMPT_TOKENS"] = str(budget.usable_input_tokens)
         return [binary, *forwarded], env
     if harness == "cursor":
         for key in (
@@ -250,9 +329,11 @@ def child_command(
         "CLAUDE_CODE_USE_BEDROCK",
         "CLAUDE_CODE_USE_FOUNDRY",
         "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY",
+        "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
+        "CLAUDE_CODE_MAX_CONTEXT_TOKENS",
     ):
         env.pop(key, None)
-    frontend_model = claude_frontend_model(model, context_window)
+    frontend_model = claude_frontend_model(model, budget)
     env.update(
         {
             "ANTHROPIC_BASE_URL": base_url,
@@ -264,8 +345,9 @@ def child_command(
             "ANTHROPIC_DEFAULT_FABLE_MODEL": frontend_model,
         }
     )
-    if context_window is not None:
-        env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] = str(context_window)
+    if budget.active_context_window <= CLAUDE_DEFAULT_CONTEXT_WINDOW:
+        env["CLAUDE_CODE_MAX_CONTEXT_TOKENS"] = str(budget.active_context_window)
+    env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] = str(claude_auto_compact_token_limit or budget.auto_compact_token_limit)
     return [binary, "--model", frontend_model, *forwarded], env
 
 
@@ -299,9 +381,29 @@ def launch(harness: str, argv: list[str]) -> int:
         if harness == "cursor":
             validate_cursor_forwarded(options.forwarded)
         model = options.model_id or resolve_default_model()
-        context_window = resolve_model_context_window(model)
+        budget = resolve_model_budget(model)
         lane_routes = load_lane_routes("codex")
         lane_env = claude_lane_environment("codex", lane_routes) if harness == "claude" else {}
+        claude_budget = budget
+        claude_auto_compact_token_limit = budget.auto_compact_token_limit
+        if harness == "claude":
+            reachable_selectors = set(json.loads(lane_env["AGENT_BAND_CLAUDE_ROUTES"]))
+            lane_budgets = {
+                lane["model"]: resolve_model_budget(lane["model"])
+                for selector, lane in lane_routes.items()
+                if selector in reachable_selectors
+            }
+            claude_auto_compact_token_limit = min(
+                [
+                    budget.auto_compact_token_limit,
+                    *(lane_budget.auto_compact_token_limit for lane_budget in lane_budgets.values()),
+                ]
+            )
+            claude_budget = ContextBudget(
+                min([budget.active_context_window, *(item.active_context_window for item in lane_budgets.values())]),
+                min([budget.usable_input_tokens, *(item.usable_input_tokens for item in lane_budgets.values())]),
+                claude_auto_compact_token_limit,
+            )
         binary = cursor_binary() if harness == "cursor" else harness_binary(harness)
         refresh_binary = codex_binary()
         credentials = CodexAuth(codex_binary=refresh_binary)
@@ -318,6 +420,7 @@ def launch(harness: str, argv: list[str]) -> int:
         codex=CodexClient(credentials),
         store=OpaqueReasoningStore(),
         lane_routes=lane_routes,
+        usable_input_tokens=budget.usable_input_tokens,
     )
     server, thread = start_server(context)
     base_url = f"http://127.0.0.1:{server.server_port}"
@@ -332,7 +435,8 @@ def launch(harness: str, argv: list[str]) -> int:
             token,
             model,
             forwarded,
-            context_window,
+            claude_budget if harness == "claude" else budget,
+            claude_auto_compact_token_limit if harness == "claude" else None,
         )
         env.update(lane_env)
         env["AGENT_BAND_SCHEMA_HARNESS"] = "codex"

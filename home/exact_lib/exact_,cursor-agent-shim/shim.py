@@ -76,10 +76,64 @@ from typing import Any
 UPSTREAM = "https://openrouter.ai"
 MAX_REQUEST_BYTES = 32 * 1024 * 1024
 ALLOWED_MODEL_ENV = "CURSOR_AGENT_ALLOWED_MODEL"
+MODEL_CATALOG_ENV = "CURSOR_AGENT_SHIM_MODEL_CATALOG"
 INBOUND_TOOL_NAMES = {"Bash": "Shell"}
 NO_TOOL_MODELS = {"stealth/ox-alpha", "stealth/ox-alpha:online"}
 DISCOVERED_NO_TOOL_MODELS: set[str] = set()
 _PIPE_ERRORS = (BrokenPipeError, ConnectionAbortedError, ConnectionResetError)
+
+
+def _positive_int(value: Any) -> int | None:
+    """Return a positive integer, rejecting bools and fractional values."""
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        return None
+    return value
+
+
+def parse_model_catalog(raw: str) -> dict[str, dict[str, int]]:
+    """Validate the explicit Cursor wire-id -> budget catalog."""
+    try:
+        catalog = json.loads(raw)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"{MODEL_CATALOG_ENV} must contain JSON") from error
+    if not isinstance(catalog, dict) or not catalog:
+        raise ValueError(f"{MODEL_CATALOG_ENV} must be a non-empty object")
+    parsed: dict[str, dict[str, int]] = {}
+    for model_id, budget in catalog.items():
+        if not isinstance(model_id, str) or not model_id or not isinstance(budget, dict):
+            raise ValueError(f"{MODEL_CATALOG_ENV} has an invalid model entry")
+        context_length = _positive_int(budget.get("context_length"))
+        max_output_tokens = _positive_int(budget.get("max_output_tokens"))
+        if context_length is None or max_output_tokens is None:
+            raise ValueError(
+                f"{MODEL_CATALOG_ENV} entry {model_id!r} requires positive context_length and max_output_tokens"
+            )
+        parsed[model_id] = {
+            "context_length": context_length,
+            "max_output_tokens": max_output_tokens,
+        }
+    return parsed
+
+
+def cursor_model_rows(catalog: dict[str, dict[str, int]]) -> list[dict[str, Any]]:
+    """Render the extended model schema accepted by Cursor local-agent discovery."""
+    return [
+        {
+            "id": model_id,
+            "api_types": ["openai_chat"],
+            "capabilities": {
+                "context_length": budget["context_length"],
+                "max_output_tokens": budget["max_output_tokens"],
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "supports_tool_use": True,
+                "supports_streaming": True,
+                "supports_reasoning": False,
+                "supports_vision": False,
+            },
+        }
+        for model_id, budget in sorted(catalog.items())
+    ]
 
 
 def strip_tool_strict(tools: Any) -> None:
@@ -305,6 +359,17 @@ class ShimHandler(BaseHTTPRequestHandler):
         return
 
     def do_GET(self) -> None:  # /api/v1/models
+        if self.path.rstrip("/").endswith("/models"):
+            if MODEL_CATALOG is not None:
+                self._write_json_bytes(
+                    200, "application/json", json.dumps({"data": cursor_model_rows(MODEL_CATALOG)}).encode()
+                )
+                return
+            # A guardrailed session must carry its explicit metadata. The old transparent
+            # discovery path survives only for the unpinned direct-route escape hatch.
+            if ALLOWED_MODEL:
+                self.send_error(503, f"{MODEL_CATALOG_ENV} is required for a pinned Cursor session")
+                return
         self._forward(b"")
 
     def do_POST(self) -> None:
@@ -582,12 +647,19 @@ def main(argv: list[str]) -> int:
     except ValueError:
         print(_usage(), file=sys.stderr)
         return 2
-    global API_KEY, ALLOWED_MODEL
+    global API_KEY, ALLOWED_MODEL, MODEL_CATALOG
     API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
     if not API_KEY:
         print("Error: OPENROUTER_API_KEY is not set or empty", file=sys.stderr)
         return 2
     ALLOWED_MODEL = os.environ.get(ALLOWED_MODEL_ENV, "")
+    catalog = os.environ.get(MODEL_CATALOG_ENV)
+    if catalog is not None:
+        try:
+            MODEL_CATALOG = parse_model_catalog(catalog)
+        except ValueError as error:
+            print(f"Error: {error}", file=sys.stderr)
+            return 2
 
     upstream_error = _probe_upstream()
     if upstream_error:
@@ -613,5 +685,6 @@ def main(argv: list[str]) -> int:
 
 API_KEY = ""
 ALLOWED_MODEL = ""
+MODEL_CATALOG: dict[str, dict[str, int]] | None = None
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))

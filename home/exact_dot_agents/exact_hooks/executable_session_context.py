@@ -74,13 +74,19 @@ NO_PERTURN_RECALL_NOTICE = (
 )
 
 
-def is_delegated_leaf() -> bool:
+def is_delegated_leaf(payload: dict | None = None) -> bool:
     """True when the harness names a parent session for this run.
 
-    Copilot supplies a parent session ID; pi-subagents supplies PI_SUBAGENT_CHILD.
+    Codex/Claude hooks supply agent_id; Copilot supplies a parent session ID;
+    pi-subagents supplies PI_SUBAGENT_CHILD.
     This does not change worklog parent-bucket routing.
     """
-    return bool(os.environ.get(PARENT_SESSION_ENV, "").strip()) or os.environ.get("PI_SUBAGENT_CHILD") == "1"
+    agent_id = (payload or {}).get("agent_id")
+    return (
+        (isinstance(agent_id, str) and bool(agent_id.strip()))
+        or bool(os.environ.get(PARENT_SESSION_ENV, "").strip())
+        or os.environ.get("PI_SUBAGENT_CHILD") == "1"
+    )
 
 
 def warm_resident_embedder(payload: dict) -> None:
@@ -624,6 +630,9 @@ def context_for_harness(parts: list[str], optional_parts: list[tuple[int, str]])
 
 def main() -> None:
     payload = read_payload()
+    if payload.get("agent_id") and is_delegated_leaf(payload):
+        emit({})
+        return
     if os.environ.get("AGENT_HOOK_OUTPUT") == "antigravity" and payload.get("invocation_num") != 0:
         emit({})
         return

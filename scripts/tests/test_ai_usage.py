@@ -148,6 +148,71 @@ class AiUsageReaderTests(unittest.TestCase):
         (omp,) = self.core.read_omp(0)
         self.assertEqual((omp.fresh_input, omp.cache_read, omp.reasoning, omp.model), (33486, 10, 516, "gpt-5.5"))
 
+    def test_SHOULD_subtract_codex_writes_from_totals_and_clamp_fresh(self) -> None:
+        """WHEN inclusive Codex totals contain writes, context must not count them twice."""
+        for writes, fresh, context in ((4, 6, 100), (0, 10, 100), (None, 10, 100), (20, 0, 110)):
+            with self.subTest(writes=writes):
+                usage = {
+                    "input_tokens": 100,
+                    "cached_input_tokens": 90,
+                    "output_tokens": 5,
+                    "reasoning_output_tokens": 2,
+                }
+                if writes is not None:
+                    usage["cache_write_input_tokens"] = writes
+                row = {
+                    "type": "event_msg",
+                    "payload": {
+                        "type": "token_count",
+                        "info": {
+                            "last_token_usage": usage,
+                            "total_token_usage": usage,
+                        },
+                    },
+                }
+                write_jsonl(self.home / ".codex/sessions/2026/09/06/rollout-writes.jsonl", [row, row])
+                (session,) = self.core.read_codex(0)
+                self.assertEqual((session.fresh_input, session.context_tokens), (fresh, context))
+                self.assertEqual(
+                    (session.cache_read, session.cache_write, session.output, session.reasoning, session.calls),
+                    (90, writes or 0, 5, 2, 1),
+                )
+                self.assertAlmostEqual(session.hit_rate, 90 / context)
+
+    def test_SHOULD_use_inclusive_codex_context_for_call_miss_thresholds(self) -> None:
+        """WHEN the next read is exactly half the prior context, writes must not invent a miss."""
+        for cached, misses in ((50, 0), (49, 1)):
+            with self.subTest(cached=cached):
+                first = {
+                    "input_tokens": 100,
+                    "cached_input_tokens": 90,
+                    "cache_write_input_tokens": 4,
+                    "output_tokens": 5,
+                }
+                second = {
+                    "input_tokens": 110,
+                    "cached_input_tokens": cached,
+                    "cache_write_input_tokens": 10,
+                    "output_tokens": 6,
+                }
+                rows = [
+                    {
+                        "type": "event_msg",
+                        "payload": {
+                            "type": "token_count",
+                            "info": {
+                                "last_token_usage": usage,
+                                "total_token_usage": second,
+                            },
+                        },
+                    }
+                    for usage in (first, first, second)
+                ]
+                write_jsonl(self.home / ".codex/sessions/2026/09/06/rollout-misses.jsonl", rows)
+                (session,) = self.core.read_codex(0)
+                self.assertEqual((session.calls, session.cache_misses), (2, misses))
+                self.assertEqual(session._prev_context, 110)
+
     def test_opencode_reader_uses_session_rollups_and_counts_assistant_messages(self) -> None:
         db = self.home / ".local" / "share" / "opencode" / "opencode.db"
         db.parent.mkdir(parents=True)

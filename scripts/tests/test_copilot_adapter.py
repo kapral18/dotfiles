@@ -17,6 +17,7 @@ import threading
 import time
 import unittest
 import urllib.request
+from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import ClassVar
@@ -200,6 +201,98 @@ class TestArgumentsAndModels(unittest.TestCase):
         self.assertEqual(main.claude_compact_window(selected), 100_000)
         self.assertEqual(main.claude_frontend_model(selected), "gpt-5-mini")
 
+    def test_SHOULD_cap_claude_global_compaction_and_context_for_reachable_small_lanes(self) -> None:
+        root = model(
+            "gpt-6-astra",
+            ("/responses",),
+            context_windows={"default": 400_000},
+            prompt_limits={"default": 272_000},
+        )
+        small = model(
+            "gpt-5-mini",
+            ("/responses",),
+            context_windows={"default": 192_000},
+            prompt_limits={"default": 128_000},
+        )
+
+        self.assertEqual(main.claude_global_limits(root, [small]), (100_000, 128_000))
+        self.assertEqual(main.claude_global_limits(root, [root]), (240_000, None))
+
+    def test_SHOULD_project_selected_prompt_budgets_to_codex_context_metadata(self) -> None:
+        # Context capacity includes output tokens. Codex's display and auto-compaction need the selected prompt
+        # budget, so its limits remain below the provider's billed prompt ceiling.
+        astra = replace(
+            model(
+                "gpt-6-astra",
+                ("/responses",),
+                context_windows={"default": 400_000, "long_context": 1_000_000},
+                prompt_limits={"default": 272_000, "long_context": 872_000},
+            ),
+            max_output_tokens=128_000,
+        )
+        small = model(
+            "gpt-5-mini", ("/responses",), context_windows={"default": 192_000}, prompt_limits={"default": 128_000}
+        )
+        models = {astra.model_id: astra, small.model_id: small}
+        cases = (
+            ("default Astra", ["--model", "gpt-6-astra"], 272_000, 244_800),
+            ("explicit default", ["--model", "gpt-6-astra", "--context", "default"], 272_000, 244_800),
+            ("long context", ["--model", "gpt-6-astra", "--context", "long_context"], 872_000, 784_800),
+            ("short model", ["--model", "gpt-5-mini"], 128_000, 115_200),
+        )
+
+        for name, argv, expected_prompt_budget, expected_usable_budget in cases:
+            with self.subTest(name=name):
+                selected = main.resolve_model("codex", main.parse_args(argv), models)
+                info = copilot_auth.codex_model_info(selected)
+
+                self.assertEqual(info["context_window"], expected_prompt_budget)
+                self.assertEqual(info["max_context_window"], expected_prompt_budget)
+                self.assertEqual(info["effective_context_window_percent"], 90)
+                self.assertEqual(info["auto_compact_token_limit"], expected_usable_budget)
+                self.assertLess(info["auto_compact_token_limit"], selected.prompt_limit)
+
+    def test_SHOULD_project_selected_default_long_and_small_tiers_to_cursor_metadata(self) -> None:
+        long = replace(
+            model(
+                "gpt-6-astra",
+                ("/responses",),
+                context_windows={"default": 400_000, "long_context": 1_000_000},
+                prompt_limits={"default": 272_000, "long_context": 872_000},
+            ),
+            max_output_tokens=128_000,
+        )
+        small = model(
+            "gpt-5-mini",
+            ("/responses",),
+            context_windows={"default": 192_000},
+            prompt_limits={"default": 128_000},
+        )
+        models = {long.model_id: long, small.model_id: small}
+        cases = (
+            (["--model", long.model_id], 272_000, 128_000),
+            (["--model", long.model_id, "--context", "long_context"], 872_000, 128_000),
+            (["--model", small.model_id], 128_000, 64_000),
+        )
+        for argv, expected_context, expected_output in cases:
+            with self.subTest(argv=argv):
+                selected = main.resolve_model("cursor", main.parse_args(argv), models)
+                row = copilot_server.cursor_model_info(selected)
+                self.assertEqual(row["api_types"], ["openai_chat"])
+                self.assertEqual(
+                    row["capabilities"],
+                    {
+                        "context_length": expected_context,
+                        "max_output_tokens": expected_output,
+                        "input_modalities": ["text"],
+                        "output_modalities": ["text"],
+                        "supports_tool_use": True,
+                        "supports_streaming": True,
+                        "supports_reasoning": True,
+                        "supports_vision": False,
+                    },
+                )
+
     def test_SHOULD_parse_the_copilot_model_contract(self) -> None:
         parsed = copilot_auth.parse_models(
             {
@@ -211,7 +304,7 @@ class TestArgumentsAndModels(unittest.TestCase):
                             "type": "chat",
                             "limits": {
                                 "max_context_window_tokens": 1_000_000,
-                                "max_prompt_tokens": 272_000,
+                                "max_prompt_tokens": 872_000,
                                 "max_output_tokens": 128_000,
                             },
                             "supports": {"reasoning_effort": ["low", "high"]},
@@ -219,7 +312,7 @@ class TestArgumentsAndModels(unittest.TestCase):
                         "billing": {
                             "token_prices": {
                                 "default": {"max_prompt_tokens": 272_000},
-                                "long_context": {"max_prompt_tokens": 936_000},
+                                "long_context": {"max_prompt_tokens": 872_000},
                             }
                         },
                     },
@@ -251,10 +344,38 @@ class TestArgumentsAndModels(unittest.TestCase):
         self.assertEqual(parsed["gpt-test"].prompt_limit, 272_000)
         self.assertEqual(
             parsed["gpt-test"].prompt_limits,
-            {"default": 272_000, "long_context": 936_000},
+            {"default": 272_000, "long_context": 872_000},
         )
         self.assertEqual(parsed["gpt-test"].endpoints, {"/responses"})
         self.assertEqual(parsed["gpt-test"].efforts, {"low", "high"})
+
+    def test_SHOULD_cap_billing_tiers_at_the_model_prompt_capacity(self) -> None:
+        # Live Grok catalog: long-context pricing extends to 500K, but input capacity is 372K.
+        for explicit_prompt_limit in (True, False):
+            with self.subTest(explicit_prompt_limit=explicit_prompt_limit):
+                limits = {"max_context_window_tokens": 500_000, "max_output_tokens": 128_000}
+                if explicit_prompt_limit:
+                    limits["max_prompt_tokens"] = 372_000
+                parsed = copilot_auth.parse_models(
+                    {
+                        "data": [
+                            {
+                                "id": "grok-test",
+                                "supported_endpoints": ["/chat/completions"],
+                                "capabilities": {"type": "chat", "limits": limits},
+                                "billing": {
+                                    "token_prices": {
+                                        "default": {"max_prompt_tokens": 200_000},
+                                        "long_context": {"max_prompt_tokens": 500_000},
+                                    }
+                                },
+                            }
+                        ]
+                    }
+                )["grok-test"]
+                self.assertEqual(parsed.prompt_limits, {"default": 200_000, "long_context": 372_000})
+                self.assertEqual(parsed.context_windows, {"default": 328_000, "long_context": 500_000})
+                self.assertEqual(parsed.max_output_tokens, 128_000)
 
     def test_SHOULD_project_models_without_reasoning_effort_for_codex(self) -> None:
         info = copilot_auth.codex_model_info(model("claude-haiku-4.5", ("/v1/messages",), ()))
@@ -353,6 +474,41 @@ class TestChildIsolation(unittest.TestCase):
         self.assertNotIn("CURSOR_API_ENDPOINT", cursor_env)
         self.assertNotIn("CURSOR_API_KEY", cursor_env)
 
+    def test_SHOULD_apply_global_claude_lane_limits_without_changing_root_only_launches(self) -> None:
+        root = model(
+            "gpt-6-astra",
+            ("/responses",),
+            context_windows={"default": 400_000},
+            prompt_limits={"default": 272_000},
+        )
+        compact, max_context = main.claude_global_limits(
+            root,
+            [
+                model(
+                    "gpt-5-mini",
+                    ("/responses",),
+                    context_windows={"default": 192_000},
+                    prompt_limits={"default": 64_000},
+                )
+            ],
+        )
+        _, env = main.child_command(
+            "claude",
+            "/usr/bin/claude",
+            "http://127.0.0.1:3210",
+            "local-token",
+            root,
+            None,
+            None,
+            [],
+            compact,
+            max_context,
+        )
+
+        self.assertEqual(env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"], "64000")
+        self.assertEqual(env["CLAUDE_CODE_MAX_CONTEXT_TOKENS"], "64000")
+        self.assertEqual(env["ANTHROPIC_MODEL"], "gpt-6-astra")
+
     def test_SHOULD_reject_cursor_flags_that_can_bypass_loopback(self) -> None:
         for option in ("--base-url", "--base-url=https://outside.example", "--model", "-m"):
             with self.subTest(option=option):
@@ -384,6 +540,81 @@ class TestChildIsolation(unittest.TestCase):
         self.assertNotIn("ConnectionResetError", stderr.getvalue())
 
 
+class TestCodexLaneConfiguration(unittest.TestCase):
+    """WHEN a Codex frontend consumes Copilot lane metadata and managed leaf profiles."""
+
+    def test_SHOULD_remove_native_model_overrides_without_losing_leaf_instructions(self) -> None:
+        source = '''name = "worker"
+description = "Settled implementation"
+model = "native-wrong-provider"
+model_reasoning_effort = "low"
+service_tier = "default"
+features = { multi_agent = true }
+developer_instructions = """
+Keep these exact instructions.
+model = "this is prompt text, not TOML"
+"""
+'''
+        result = main.codex_leaf_profile(source)
+        header, body = result.split('developer_instructions = """', 1)
+        self.assertNotIn("model =", header)
+        self.assertNotIn("model_reasoning_effort", header)
+        self.assertIn("features = { multi_agent = false }", header)
+        self.assertIn('service_tier = "default"', header)
+        self.assertEqual(body, source.split('developer_instructions = """', 1)[1])
+        with self.assertRaisesRegex(ValueError, "unsupported"):
+            main.codex_leaf_profile(source.replace('service_tier = "default"', 'model_provider = "outside"'))
+
+    def test_SHOULD_freeze_only_available_lanes_and_preserve_root_metadata(self) -> None:
+        raw = model("shared-model", ("/responses",), ("low", "high", "xhigh"))
+        routes = {
+            "shared-model@lane-xhigh": {"model": "shared-model", "effort": "xhigh"},
+            "shared-model@lane-low": {"model": "shared-model", "effort": "low"},
+            "missing@lane-high": {"model": "missing", "effort": "high"},
+            "shared-model@lane-max": {"model": "shared-model", "effort": "max"},
+        }
+        lanes = main.codex_lane_models({raw.model_id: raw}, routes)
+        self.assertEqual(set(lanes), {"shared-model@lane-xhigh", "shared-model@lane-low"})
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "agents").mkdir()
+            original = '''name = "explorer"
+model = "old-native-model"
+model_reasoning_effort = "high"
+developer_instructions = """
+Only research the packet. Never delegate.
+"""
+'''
+            (root / "agents/explorer.toml").write_text(original)
+            projection = root / "bands.json"
+            projection.write_text(
+                json.dumps(
+                    {
+                        "harnesses": {
+                            "copilot": {
+                                "agents": {
+                                    "explorer": {"model": raw.model_id, "effort": "xhigh"},
+                                    "worker": {"model": raw.model_id, "effort": "low"},
+                                    "unavailable": {"model": "missing", "effort": "high"},
+                                }
+                            }
+                        }
+                    }
+                )
+            )
+            output = root / "output"
+            output.mkdir()
+            with mock.patch.dict(os.environ, {"CODEX_HOME": str(root), "AGENT_BANDS_FILE": str(projection)}):
+                args, env = main.codex_lane_configuration(output, {raw.model_id: raw}, lanes)
+            self.assertEqual(json.loads(env["AGENT_BAND_CODEX_ROUTES"]), {"explorer": "shared-model@lane-xhigh"})
+            self.assertIn(f"agents.explorer.config_file={json.dumps(str(output / 'explorer.toml'))}", args)
+            self.assertEqual((root / "agents/explorer.toml").read_text(), original)
+            self.assertNotIn("old-native-model", (output / "explorer.toml").read_text())
+            catalog = json.loads((output / "models.json").read_text())["models"]
+            self.assertEqual({item["slug"] for item in catalog}, {raw.model_id, *lanes})
+            self.assertTrue(all(item["context_window"] == raw.prompt_limit for item in catalog))
+
+
 class TestLifecycle(unittest.TestCase):
     """WHEN the child exits after an interactive interrupt."""
 
@@ -391,6 +622,31 @@ class TestLifecycle(unittest.TestCase):
         patcher = mock.patch("main.load_lane_routes", return_value={})
         patcher.start()
         self.addCleanup(patcher.stop)
+        patcher = mock.patch("main.codex_lane_configuration", return_value=([], {"AGENT_BAND_CODEX_ROUTES": "{}"}))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_SHOULD_ignore_unreachable_claude_lanes_when_resolving_context(self) -> None:
+        selected = model("claude-sonnet-5", ("/v1/messages",))
+        routes = {
+            "claude-sonnet-5@lane-high": {"model": "claude-sonnet-5", "effort": "high"},
+            "unavailable@lane-high": {"model": "unavailable", "effort": "high"},
+        }
+        with (
+            mock.patch("main.fetch_models", return_value={selected.model_id: selected}),
+            mock.patch("main.load_lane_routes", return_value=routes),
+            mock.patch(
+                "main.claude_lane_environment",
+                return_value={
+                    "AGENT_BAND_CLAUDE_ROUTES": json.dumps({"claude-sonnet-5@lane-high": "sonnet"}),
+                },
+            ),
+            mock.patch("main.harness_binary", return_value="/usr/bin/claude"),
+            mock.patch("main.start_server", return_value=(mock.Mock(server_port=3210), mock.Mock())),
+            mock.patch("main.run_child", return_value=0) as child,
+        ):
+            self.assertEqual(main.launch("claude", []), 0)
+        self.assertEqual(child.call_args.args[1]["CLAUDE_CODE_AUTO_COMPACT_WINDOW"], "168000")
 
     def test_SHOULD_default_codex_effort_to_medium_when_unspecified(self) -> None:
         selected = model("gpt-5.3-codex", ("/responses",), ("low", "medium", "high"))
@@ -496,6 +752,685 @@ class TestWireTranslator(unittest.TestCase):
 
             persisted = [path for path in Path(directory).rglob("*") if path.is_file()]
             self.assertEqual(persisted, [])
+
+
+class TestTranslatedCacheRequests(unittest.TestCase):
+    """WHEN protocols differ, only representable caller controls cross the wire."""
+
+    def setUp(self) -> None:
+        self.translator = copilot_wire.WireTranslator()
+        self.marker = {"prompt_cache_breakpoint": {"mode": "explicit"}}
+        self.controls = {
+            "prompt_cache_key": "fixture-session",
+            "prompt_cache_options": {"mode": "explicit", "ttl": "30m"},
+            "prompt_cache_retention": "in_memory",
+        }
+
+    def prepare(self, frontend, backend, body):
+        return json.loads(
+            self.translator.prepare(
+                frontend,
+                backend,
+                json.dumps(body).encode(),
+                model("fixture", (backend,)),
+            ).body
+        )
+
+    def messages(self):
+        return [
+            {"role": "system", "content": [{"type": "text", "text": "system", **self.marker}]},
+            {"role": "developer", "content": [{"type": "text", "text": "developer", **self.marker}]},
+            {"role": "user", "content": [{"type": "text", "text": "question", **self.marker}]},
+            {
+                "role": "assistant",
+                "content": "working",
+                "tool_calls": [
+                    {"id": "call_old", "type": "function", "function": {"name": "lookup", "arguments": "{}"}},
+                ],
+            },
+            {
+                "role": "tool",
+                "tool_call_id": "call_old",
+                "content": [
+                    {"type": "text", "text": "result", **self.marker},
+                    {"type": "text", "text": "tail"},
+                ],
+            },
+        ]
+
+    def test_SHOULD_preserve_openai_controls_and_exact_text_boundaries_in_both_directions(self):
+        body = {"messages": self.messages(), "stream": True, **self.controls}
+        response = self.prepare(copilot_wire.CHAT, copilot_wire.RESPONSES, body)
+        self.assertNotIn("instructions", response)
+        self.assertNotIn("stream_options", response)
+        self.assertEqual(
+            [item.get("role") for item in response["input"][:4]], ["system", "developer", "user", "assistant"]
+        )
+        self.assertEqual(response["input"][0]["content"], [{"type": "input_text", "text": "system", **self.marker}])
+        self.assertEqual(
+            response["input"][-1]["output"],
+            [
+                {"type": "input_text", "text": "result", **self.marker},
+                {"type": "input_text", "text": "tail"},
+            ],
+        )
+        chat = self.prepare(copilot_wire.RESPONSES, copilot_wire.CHAT, response)
+        for key, value in self.controls.items():
+            self.assertEqual(response[key], value)
+            self.assertEqual(chat[key], value)
+        self.assertEqual(chat["stream_options"], {"include_usage": True})
+        self.assertEqual(chat["messages"], self.messages())
+
+    def test_SHOULD_keep_unmarked_chat_instructions_and_opaque_reasoning(self):
+        unmarked = self.prepare(
+            copilot_wire.CHAT,
+            copilot_wire.RESPONSES,
+            {
+                "messages": [{"role": "system", "content": "system"}, {"role": "user", "content": "hi"}],
+            },
+        )
+        self.assertEqual(unmarked["instructions"], "system")
+        self.assertNotIn("prompt_cache_options", unmarked)
+        reasoning = {"type": "reasoning", "id": "rs", "encrypted_content": "opaque"}
+        self.translator._reasoning.put("call_old", reasoning)
+        marked = self.prepare(copilot_wire.CHAT, copilot_wire.RESPONSES, {"messages": self.messages()})
+        call = next(i for i, item in enumerate(marked["input"]) if item["type"] == "function_call")
+        self.assertEqual(marked["input"][call - 1], reasoning)
+
+    def test_SHOULD_map_openai_text_markers_but_not_keys_or_lifetimes_to_anthropic(self):
+        body = {"messages": self.messages(), "stream": False, **self.controls}
+        for frontend in (copilot_wire.CHAT, copilot_wire.RESPONSES):
+            with self.subTest(frontend=frontend):
+                source = body if frontend == copilot_wire.CHAT else self.prepare(copilot_wire.CHAT, frontend, body)
+                translated = self.prepare(frontend, copilot_wire.ANTHROPIC, source)
+                self.assertNotIn("cache_control", translated)
+                for key in self.controls:
+                    self.assertNotIn(key, translated)
+                self.assertEqual(
+                    translated["system"],
+                    [
+                        {"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}
+                        for text in ("system", "developer")
+                    ],
+                )
+                result = translated["messages"][-1]["content"][0]
+                self.assertEqual(result["type"], "tool_result")
+                self.assertEqual(
+                    result["content"],
+                    [
+                        {"type": "text", "text": "result", "cache_control": {"type": "ephemeral"}},
+                        {"type": "text", "text": "tail"},
+                    ],
+                )
+
+    def test_SHOULD_preserve_explicit_no_cache_and_bound_automatic_marker_placement(self):
+        for frontend in (copilot_wire.CHAT, copilot_wire.RESPONSES):
+            for mode in ("explicit", "implicit", None):
+                for marked in (False, True):
+                    with self.subTest(frontend=frontend, mode=mode, marked=marked):
+                        blocks = [{"type": "text", "text": str(i), **(self.marker if marked else {})} for i in range(6)]
+                        source = {"stream": True, "messages": [{"role": "user", "content": blocks}]}
+                        if mode:
+                            source["prompt_cache_options"] = {"mode": mode}
+                        if frontend == copilot_wire.RESPONSES:
+                            source = self.prepare(copilot_wire.CHAT, frontend, source)
+                        translated = self.prepare(frontend, copilot_wire.ANTHROPIC, source)
+                        self.assertEqual("cache_control" in translated, mode != "explicit")
+                        marked_text = [b["text"] for b in translated["messages"][0]["content"] if "cache_control" in b]
+                        self.assertEqual(
+                            marked_text,
+                            (["2", "3", "4", "5"] if mode == "explicit" else ["3", "4", "5"]) if marked else [],
+                        )
+
+    def test_SHOULD_omit_unsupported_anthropic_cache_synthesis_without_target_capability(self):
+        body = {
+            "model": "fixture",
+            "stream": True,
+            "system": [{"type": "text", "text": "system", "cache_control": {"type": "ephemeral"}}],
+            "cache_control": {"type": "ephemeral", "ttl": "1h"},
+            "tools": [{"name": "lookup", "input_schema": {"type": "object"}, "cache_control": {"type": "ephemeral"}}],
+            "messages": [
+                {"role": "user", "content": "question"},
+                {
+                    "role": "assistant",
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "id": "old",
+                            "name": "lookup",
+                            "input": {},
+                            "cache_control": {"type": "ephemeral"},
+                        }
+                    ],
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": "old",
+                            "content": "answer",
+                            "cache_control": {"type": "ephemeral"},
+                        }
+                    ],
+                },
+            ],
+        }
+        for backend in (copilot_wire.CHAT, copilot_wire.RESPONSES):
+            translated = self.prepare(copilot_wire.ANTHROPIC, backend, body)
+            for key in ("prompt_cache_options", "prompt_cache_breakpoint", "cache_control"):
+                self.assertNotIn(key, json.dumps(translated))
+            self.assertEqual(
+                translated.get("stream_options"), {"include_usage": True} if backend == copilot_wire.CHAT else None
+            )
+
+    def test_SHOULD_reject_malformed_cache_intent_before_synthesizing_controls(self):
+        for options in ("explicit", {"mode": "disabled"}, {"mode": 1}):
+            with self.subTest(options=options), self.assertRaisesRegex(ValueError, "prompt_cache_options"):
+                self.prepare(
+                    copilot_wire.CHAT,
+                    copilot_wire.ANTHROPIC,
+                    {
+                        "messages": [{"role": "user", "content": "question"}],
+                        "prompt_cache_options": options,
+                    },
+                )
+        for marker in ("explicit", {}, {"mode": "implicit"}):
+            with self.subTest(marker=marker), self.assertRaisesRegex(ValueError, "prompt_cache_breakpoint"):
+                self.prepare(
+                    copilot_wire.RESPONSES,
+                    copilot_wire.ANTHROPIC,
+                    {
+                        "input": [
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"type": "input_text", "text": "question", "prompt_cache_breakpoint": marker}
+                                ],
+                            }
+                        ],
+                    },
+                )
+
+    def test_SHOULD_not_invent_a_system_block_when_no_instructions_were_supplied(self):
+        translated = self.prepare(
+            copilot_wire.CHAT,
+            copilot_wire.ANTHROPIC,
+            {
+                "messages": [{"role": "user", "content": "question"}],
+            },
+        )
+        self.assertNotIn("system", translated)
+
+
+class TestTranslatedToolIdentity(unittest.TestCase):
+    """WHEN Responses tools have namespaces, wire aliases must roundtrip without collisions."""
+
+    def prepare(self, body, backend):
+        translator = copilot_wire.WireTranslator()
+        selected = model("fixture", (backend,))
+        prepared = translator.prepare(copilot_wire.RESPONSES, backend, json.dumps(body).encode(), selected)
+        return translator, selected, prepared, json.loads(prepared.body)
+
+    @staticmethod
+    def upstream(backend, stream, name, arguments):
+        if backend == copilot_wire.CHAT:
+            call = {"id": "new_call", "type": "function", "function": {"name": name, "arguments": arguments}}
+            if not stream:
+                return io.BytesIO(
+                    json.dumps(
+                        {"choices": [{"message": {"tool_calls": [call]}, "finish_reason": "tool_calls"}]}
+                    ).encode()
+                )
+            events = [{"choices": [{"delta": {"tool_calls": [{"index": 0, **call}]}, "finish_reason": "tool_calls"}]}]
+            return io.BytesIO(
+                b"".join(b"data: " + json.dumps(e).encode() + b"\n\n" for e in events) + b"data: [DONE]\n\n"
+            )
+        block = {"type": "tool_use", "id": "new_call", "name": name, "input": json.loads(arguments)}
+        if not stream:
+            return io.BytesIO(json.dumps({"content": [block], "stop_reason": "tool_use"}).encode())
+        events = [
+            {"type": "message_start", "message": {"id": "msg"}},
+            {"type": "content_block_start", "index": 0, "content_block": block},
+            {"type": "content_block_stop", "index": 0},
+            {"type": "message_delta", "delta": {"stop_reason": "tool_use"}},
+            {"type": "message_stop"},
+        ]
+        return io.BytesIO(b"".join(b"data: " + json.dumps(e).encode() + b"\n\n" for e in events))
+
+    def test_SHOULD_roundtrip_function_and_custom_namespaces_in_json_and_streams(self):
+        for backend in (copilot_wire.CHAT, copilot_wire.ANTHROPIC):
+            for stream in (False, True):
+                for kind in ("function", "custom"):
+                    with self.subTest(backend=backend, stream=stream, kind=kind):
+                        argument = "{}" if kind == "function" else '{"arbitrary":"raw custom input"}'
+                        body = {
+                            "stream": stream,
+                            "tools": [
+                                {
+                                    "type": "namespace",
+                                    "name": "functions",
+                                    "description": "namespace guidance",
+                                    "tools": [
+                                        {
+                                            "type": kind,
+                                            "name": "execute",
+                                            "description": "tool guidance",
+                                            "parameters": {"type": "object"},
+                                        },
+                                    ],
+                                },
+                                {"type": "function", "name": "execute", "parameters": {"type": "object"}},
+                            ],
+                            "input": [
+                                {
+                                    "type": "custom_tool_call" if kind == "custom" else "function_call",
+                                    "namespace": "functions",
+                                    "name": "execute",
+                                    "call_id": "old_call",
+                                    "input" if kind == "custom" else "arguments": argument,
+                                },
+                                {
+                                    "type": "custom_tool_call_output" if kind == "custom" else "function_call_output",
+                                    "call_id": "old_call",
+                                    "output": "done",
+                                },
+                            ],
+                        }
+                        translator, selected, prepared, wire = self.prepare(body, backend)
+                        (alias,) = prepared.tool_names
+                        definitions = [t["function"] if backend == copilot_wire.CHAT else t for t in wire["tools"]]
+                        self.assertEqual([t["name"] for t in definitions], [alias, "execute"])
+                        self.assertIn("namespace guidance", definitions[0]["description"])
+                        self.assertRegex(alias, r"^[a-zA-Z0-9_-]{1,64}$")
+                        expected_arguments = {"input": argument} if kind == "custom" else {}
+                        historical = wire["messages"][0]
+                        if backend == copilot_wire.CHAT:
+                            self.assertEqual(
+                                historical["tool_calls"][0]["function"],
+                                {"name": alias, "arguments": json.dumps(expected_arguments, separators=(",", ":"))},
+                            )
+                        else:
+                            self.assertEqual(historical["content"][0]["name"], alias)
+                            self.assertEqual(historical["content"][0]["input"], expected_arguments)
+                        rendered = translator.render(
+                            copilot_wire.RESPONSES,
+                            backend,
+                            self.upstream(backend, stream, alias, json.dumps(expected_arguments)),
+                            selected,
+                            prepared,
+                        )
+                        if stream:
+                            events = [
+                                json.loads(line[6:])
+                                for line in b"".join(rendered).splitlines()
+                                if line.startswith(b"data: ")
+                            ]
+                            items = [
+                                e["item"]
+                                for e in events
+                                if e["type"] in ("response.output_item.added", "response.output_item.done")
+                            ]
+                            self.assertEqual(len(items), 2)
+                        else:
+                            items = json.loads(rendered)["output"]
+                        for item in items:
+                            self.assertEqual((item["namespace"], item["name"]), ("functions", "execute"))
+                        self.assertEqual(
+                            items[-1]["input" if kind == "custom" else "arguments"],
+                            argument if kind == "custom" else "{}",
+                        )
+
+    def test_SHOULD_reserve_plain_names_and_include_historical_only_identities(self):
+        body = {
+            "stream": False,
+            "tools": [{"type": "namespace", "name": "a", "tools": [{"type": "function", "name": "b"}]}],
+            "input": [
+                {"type": "function_call", "namespace": "retired", "name": "b", "call_id": "old", "arguments": "{}"}
+            ],
+        }
+        _, _, first, _ = self.prepare(body, copilot_wire.CHAT)
+        collision = next(name for name, identity in first.tool_names.items() if identity["namespace"] == "a")
+        body["tools"].append({"type": "function", "name": collision})
+        _, _, second, wire = self.prepare(body, copilot_wire.CHAT)
+        self.assertNotIn(collision, second.tool_names)
+        self.assertEqual(len({t["function"]["name"] for t in wire["tools"]}), 2)
+        history = wire["messages"][0]["tool_calls"][0]["function"]["name"]
+        self.assertEqual(second.tool_names[history], {"namespace": "retired", "name": "b"})
+        body["tools"].reverse()
+        _, _, reordered, _ = self.prepare(body, copilot_wire.CHAT)
+        self.assertEqual(second.tool_names, reordered.tool_names)
+
+    def test_SHOULD_reject_malformed_namespaces_instead_of_dropping_their_tools(self):
+        for namespace in ("", None, 12):
+            with self.subTest(namespace=namespace), self.assertRaisesRegex(ValueError, "namespace"):
+                self.prepare({"tools": [{"type": "namespace", "name": namespace, "tools": []}]}, copilot_wire.CHAT)
+        with self.assertRaisesRegex(ValueError, "without nesting"):
+            self.prepare(
+                {
+                    "tools": [
+                        {
+                            "type": "namespace",
+                            "name": "a",
+                            "tools": [
+                                {"type": "namespace", "name": "b", "tools": []},
+                            ],
+                        }
+                    ]
+                },
+                copilot_wire.ANTHROPIC,
+            )
+
+
+class TestTranslatedResponseTextLifecycle(unittest.TestCase):
+    """WHEN text and tools alternate, each text delta must target the native active item."""
+
+    def render(self, source, tool_kind="function"):
+        streaming = copilot_wire._GC["streaming"]
+        selected = copilot_wire.WireTranslator._gc_model(model("fixture", (copilot_wire.ANTHROPIC,)), "claude")
+        frames = streaming.render_responses(
+            source, selected, {"execute": tool_kind}, {"execute": {"namespace": "functions", "name": "execute"}}
+        )
+        active = None
+        added = {}
+        done = {}
+        events = []
+        for frame in frames:
+            event = json.loads(frame.decode().split("data: ", 1)[1])
+            if "sequence_number" in event:
+                self.assertEqual(event["sequence_number"], len(events))
+            events.append(event)
+            if event["type"] == "response.output_item.added":
+                # Match Codex's single active_item, rather than accepting any previously seen ID.
+                if active is not None:
+                    self.assertNotEqual(added[active][1], "message", "text remained active across another item")
+                active = event["item"]["id"]
+                self.assertNotIn(active, added)
+                self.assertEqual(event["output_index"], len(added))
+                added[active] = (event["output_index"], event["item"]["type"])
+            elif event["type"] == "response.output_text.delta":
+                self.assertEqual(event["item_id"], active, "text delta has no matching native active item")
+                self.assertEqual(added[active], (event["output_index"], "message"))
+            elif event["type"] == "response.output_item.done":
+                item = event["item"]
+                self.assertNotIn(item["id"], done)
+                self.assertEqual(added[item["id"]], (event["output_index"], item["type"]))
+                done[item["id"]] = item
+                active = None
+        return list(done.values()), events
+
+    @staticmethod
+    def tool(index, tool_kind="function"):
+        return [
+            {"type": "tool_start", "index": index, "id": f"call_{index}", "name": "execute"},
+            {
+                "type": "tool_delta",
+                "index": index,
+                "arguments": '{"input":"raw custom text"}' if tool_kind == "custom" else '{"value":1}',
+            },
+            {"type": "tool_stop", "index": index},
+        ]
+
+    def test_SHOULD_preserve_interleaved_text_and_tool_order_at_each_block_boundary(self):
+        for tool_kind in ("function", "custom"):
+            for count in (0, 1, 10, 100):
+                with self.subTest(tool_kind=tool_kind, count=count):
+                    source = []
+                    for index in range(count):
+                        source.extend(
+                            [
+                                {"type": "text_delta", "text": f"before {index} "},
+                                {"type": "text_delta", "text": "✓"},
+                                {"type": "block_stop", "index": index * 2, "block_kind": "text"},
+                                *self.tool(index * 2 + 1, tool_kind),
+                            ]
+                        )
+                    source.extend([{"type": "text_delta", "text": "final"}, {"type": "finish", "reason": "end_turn"}])
+                    items, events = self.render(source, tool_kind)
+                    self.assertEqual(len(items), 2 * count + 1)
+                    for index in range(count):
+                        self.assertEqual(items[2 * index]["content"][0]["text"], f"before {index} ✓")
+                        call = items[2 * index + 1]
+                        self.assertEqual(call["namespace"], "functions")
+                        self.assertEqual(call["name"], "execute")
+                        self.assertEqual(call["call_id"], f"call_{2 * index + 1}")
+                        if tool_kind == "custom":
+                            self.assertEqual(call["input"], "raw custom text")
+                        else:
+                            self.assertEqual(json.loads(call["arguments"]), {"value": 1})
+                    self.assertEqual(items[-1]["content"][0]["text"], "final")
+                    self.assertEqual(events[-1]["type"], "response.completed")
+
+    def test_SHOULD_close_text_around_chat_tools_without_explicit_text_block_stops(self):
+        source = [
+            {"type": "text_delta", "text": "before"},
+            *self.tool(0),
+            {"type": "text_delta", "text": "after"},
+            # Chat backends can keep a tool open across text chunks until stream completion.
+            {"type": "tool_start", "index": 1, "id": "call_1", "name": "execute"},
+            {"type": "tool_delta", "index": 1, "arguments": "{}"},
+            {"type": "text_delta", "text": "during"},
+            {"type": "tool_stop", "index": 1},
+            {"type": "text_delta", "text": "final"},
+            {"type": "finish", "reason": "tool_calls"},
+        ]
+        items, events = self.render(source)
+        self.assertEqual(
+            [part["text"] for item in items if item["type"] == "message" for part in item["content"]],
+            ["before", "after", "during", "final"],
+        )
+        self.assertEqual([item["call_id"] for item in items if item["type"] == "function_call"], ["call_0", "call_1"])
+        self.assertEqual(events[-1]["type"], "response.completed")
+
+    def test_SHOULD_ignore_empty_and_nontext_stops_without_splitting_text_deltas(self):
+        source = [
+            {"type": "text_start", "index": 0},
+            {"type": "block_stop", "index": 0, "block_kind": "text"},
+            {"type": "text_delta", "text": "a"},
+            {"type": "block_stop", "index": 1, "block_kind": "thinking"},
+            {"type": "tool_stop", "index": 99},
+            {"type": "text_delta", "text": "b"},
+            {"type": "finish", "reason": "end_turn"},
+        ]
+        items, _ = self.render(source)
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["content"][0]["text"], "ab")
+        items, events = self.render(source[:2] + [{"type": "finish", "reason": "end_turn"}])
+        self.assertEqual(items, [])
+        self.assertEqual([event["type"] for event in events], ["response.completed"])
+
+    def test_SHOULD_not_complete_or_continue_after_upstream_error(self):
+        items, events = self.render(
+            [
+                {"type": "text_delta", "text": "partial"},
+                {"type": "error", "error": {"message": "upstream failed"}},
+                {"type": "text_delta", "text": "must not appear"},
+                {"type": "finish", "reason": "end_turn"},
+            ]
+        )
+        self.assertEqual(items, [])
+        self.assertEqual(events[-1]["type"], "response.failed")
+        self.assertEqual([event["delta"] for event in events if "delta" in event], ["partial"])
+
+
+class TestTranslatedRefusals(unittest.TestCase):
+    """WHEN a Messages backend refuses, Responses clients must receive a visible failure."""
+
+    @staticmethod
+    def render(reason, stream, text="", tool=False):
+        translator = copilot_wire.WireTranslator()
+        selected = model("fixture", (copilot_wire.ANTHROPIC,))
+        prepared = translator.prepare(
+            copilot_wire.RESPONSES,
+            copilot_wire.ANTHROPIC,
+            json.dumps({"stream": stream, "input": "fixture"}).encode(),
+            selected,
+        )
+        usage = {
+            "input_tokens": 2,
+            "cache_creation_input_tokens": 521,
+            "cache_read_input_tokens": 0,
+            "output_tokens": 7 if text else 0,
+        }
+        content = [{"type": "text", "text": text}] if text else []
+        if tool:
+            content.append({"type": "tool_use", "id": "call_fixture", "name": "fixture", "input": {"value": 1}})
+        if stream:
+            upstream_events = [{"type": "message_start", "message": {"usage": usage}}]
+            for index, block in enumerate(content):
+                upstream_events.extend(
+                    [
+                        {"type": "content_block_start", "index": index, "content_block": block},
+                        {"type": "content_block_stop", "index": index},
+                    ]
+                )
+            upstream_events.extend(
+                [
+                    {"type": "message_delta", "delta": {"stop_reason": reason}, "usage": usage},
+                    {"type": "message_stop"},
+                ]
+            )
+            upstream = io.BytesIO(
+                b"".join(b"data: " + json.dumps(event).encode() + b"\n\n" for event in upstream_events)
+            )
+        else:
+            upstream = io.BytesIO(json.dumps({"content": content, "stop_reason": reason, "usage": usage}).encode())
+        rendered = translator.render(copilot_wire.RESPONSES, copilot_wire.ANTHROPIC, upstream, selected, prepared)
+        if not stream:
+            response = json.loads(rendered)
+            return response, response["output"], []
+        events = [json.loads(line[6:]) for line in b"".join(rendered).splitlines() if line.startswith(b"data: ")]
+        return (
+            events[-1]["response"],
+            [event["item"] for event in events if event["type"] == "response.output_item.done"],
+            events,
+        )
+
+    def test_SHOULD_fail_refusals_without_losing_partial_text_or_cache_usage(self):
+        for stream in (False, True):
+            for text in ("", "Already emitted text."):
+                with self.subTest(stream=stream, text=text):
+                    response, items, events = self.render("refusal", stream, text)
+                    self.assertEqual(response["status"], "failed")
+                    # Codex 0.154.0's Responses parser treats invalid_prompt as InvalidRequest.
+                    self.assertEqual(response["error"]["code"], "invalid_prompt")
+                    self.assertIn("stop_reason=refusal", response["error"]["message"])
+                    self.assertEqual(response["usage"]["input_tokens"], 523)
+                    self.assertEqual(
+                        response["usage"]["input_tokens_details"], {"cached_tokens": 0, "cache_write_tokens": 521}
+                    )
+                    self.assertEqual(response["usage"]["output_tokens"], 7 if text else 0)
+                    self.assertEqual("".join(part["text"] for item in items for part in item["content"]), text)
+                    if stream:
+                        self.assertEqual(events[-1]["type"], "response.failed")
+                        self.assertNotIn("response.completed", [event["type"] for event in events])
+
+    def test_SHOULD_preserve_tool_output_before_refusal(self):
+        for stream in (False, True):
+            with self.subTest(stream=stream):
+                response, items, _ = self.render("refusal", stream, tool=True)
+                self.assertEqual(response["status"], "failed")
+                self.assertEqual(len(items), 1)
+                self.assertEqual(items[0]["type"], "function_call")
+                self.assertEqual(items[0]["call_id"], "call_fixture")
+                self.assertEqual(items[0]["name"], "fixture")
+                self.assertEqual(json.loads(items[0]["arguments"]), {"value": 1})
+
+    def test_SHOULD_preserve_other_stop_reasons_in_both_response_modes(self):
+        for stream in (False, True):
+            for reason in ("end_turn", "tool_use", "max_tokens", "stop_sequence", "Refusal", "refusal ", None):
+                with self.subTest(stream=stream, reason=reason):
+                    response, items, events = self.render(reason, stream, "Ordinary output.")
+                    self.assertEqual(response["status"], "completed")
+                    self.assertNotIn("error", response)
+                    self.assertEqual(items[0]["content"][0]["text"], "Ordinary output.")
+                    if stream:
+                        self.assertEqual(events[-1]["type"], "response.completed")
+
+    def test_SHOULD_stop_the_refused_stream_before_any_trailing_events(self):
+        streaming = copilot_wire._GC["streaming"]
+        selected = copilot_wire.WireTranslator._gc_model(model("fixture", (copilot_wire.ANTHROPIC,)), "claude")
+        frames = b"".join(
+            streaming.render_responses(
+                [
+                    {"type": "finish", "reason": "refusal", "usage": {}},
+                    {"type": "text_delta", "text": "Must not appear after refusal."},
+                ],
+                selected,
+                {},
+            )
+        )
+        events = [json.loads(line[6:]) for line in frames.splitlines() if line.startswith(b"data: ")]
+        self.assertEqual([event["type"] for event in events], ["response.failed"])
+
+
+class TestTranslatedChatUsage(unittest.TestCase):
+    """WHEN Chat requests streaming usage, the terminal usage-only chunk carries the full split."""
+
+    def test_SHOULD_honor_include_usage_for_both_translated_backends(self):
+        for backend in (copilot_wire.ANTHROPIC, copilot_wire.RESPONSES):
+            for include in (False, True, None):
+                with self.subTest(backend=backend, include=include):
+                    translator = copilot_wire.WireTranslator()
+                    selected = model("fixture", (backend,))
+                    body = {"stream": True, "messages": [{"role": "user", "content": "hello"}]}
+                    if include is not None:
+                        body["stream_options"] = {"include_usage": include}
+                    prepared = translator.prepare(copilot_wire.CHAT, backend, json.dumps(body).encode(), selected)
+                    self.assertNotIn("stream_options", json.loads(prepared.body))
+                    if backend == copilot_wire.ANTHROPIC:
+                        events = [
+                            {
+                                "type": "message_start",
+                                "message": {
+                                    "usage": {
+                                        "input_tokens": 6,
+                                        "cache_read_input_tokens": 90,
+                                        "cache_creation_input_tokens": 4,
+                                    }
+                                },
+                            },
+                            {
+                                "type": "message_delta",
+                                "delta": {"stop_reason": "end_turn"},
+                                "usage": {"output_tokens": 5},
+                            },
+                            {"type": "message_stop"},
+                        ]
+                    else:
+                        events = [
+                            {"type": "response.created", "response": {"id": "resp"}},
+                            {
+                                "type": "response.completed",
+                                "response": {
+                                    "usage": {
+                                        "input_tokens": 100,
+                                        "output_tokens": 5,
+                                        "input_tokens_details": {"cached_tokens": 90, "cache_write_tokens": 4},
+                                    }
+                                },
+                            },
+                        ]
+                    upstream = io.BytesIO(b"".join(b"data: " + json.dumps(e).encode() + b"\n\n" for e in events))
+                    frames = b"".join(translator.render(copilot_wire.CHAT, backend, upstream, selected, prepared))
+                    chunks = [json.loads(line[6:]) for line in frames.splitlines() if line.startswith(b"data: {")]
+                    usage_chunks = [chunk for chunk in chunks if isinstance(chunk.get("usage"), dict)]
+                    self.assertEqual(len(usage_chunks), int(bool(include)))
+                    if include:
+                        self.assertEqual(usage_chunks[0]["choices"], [])
+                        self.assertEqual(
+                            usage_chunks[0]["usage"],
+                            {
+                                "prompt_tokens": 100,
+                                "completion_tokens": 5,
+                                "total_tokens": 105,
+                                "prompt_tokens_details": {"cached_tokens": 90, "cache_creation_tokens": 4},
+                            },
+                        )
+                        self.assertTrue(all(chunk["usage"] is None for chunk in chunks[:-1]))
+                    else:
+                        self.assertTrue(all("usage" not in chunk for chunk in chunks))
+                    self.assertTrue(frames.endswith(b"data: [DONE]\n\n"))
 
 
 class TestFishCompletions(unittest.TestCase):
@@ -625,6 +1560,28 @@ class TestLoopbackProxy(unittest.TestCase):
         self.assertEqual(self.upstream.request_body, body)
         self.assertEqual(self.upstream.request_headers["Authorization"], "Bearer github-token")
         self.assertEqual(self.upstream.request_headers["Copilot-Integration-Id"], "copilot-developer-cli")
+
+    def test_SHOULD_include_cursor_extended_metadata_without_changing_legacy_models_response(self) -> None:
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{self.adapter.server_port}/v1/models",
+            headers={"Authorization": "Bearer local-token"},
+        )
+
+        with urllib.request.urlopen(request, timeout=5) as response:
+            payload = json.loads(response.read())
+
+        self.assertEqual(
+            [model["slug"] for model in payload["models"]],
+            [
+                "claude-sonnet-5",
+                "gpt-5.3-codex",
+                "gemini-3.5-flash",
+            ],
+        )
+        self.assertEqual(
+            payload["data"],
+            [copilot_server.cursor_model_info(model) for model in self.adapter.context.models.values()],
+        )
 
     def test_SHOULD_preserve_registered_child_effort_without_root_thinking(self) -> None:
         object.__setattr__(self.adapter.context, "effort", "low")
@@ -1110,7 +2067,33 @@ class CacheUsageTranslationTests(unittest.TestCase):
         self.assertEqual(chat["prompt_tokens_details"], {"cached_tokens": 90, "cache_creation_tokens": 4})
         responses = self.streaming.render_json("responses", result, self.model, {})["usage"]
         self.assertEqual(responses["input_tokens"], 104)
-        self.assertEqual(responses["input_tokens_details"], {"cached_tokens": 90, "cache_creation_tokens": 4})
+        self.assertEqual(responses["input_tokens_details"], {"cached_tokens": 90, "cache_write_tokens": 4})
+
+    def test_SHOULD_emit_the_native_codex_write_counter_in_responses_streams(self) -> None:
+        """WHEN translating cache writes, Codex's ResponseCompletedInputTokensDetails must see them."""
+        events = [
+            {
+                "type": "finish",
+                "reason": "stop",
+                "usage": {
+                    "input_tokens": 6,
+                    "output_tokens": 5,
+                    "cache_read_input_tokens": 90,
+                    "cache_creation_input_tokens": 4,
+                },
+            }
+        ]
+        frames = b"".join(self.streaming.render_responses(events, self.model, {})).decode()
+        (completed,) = [json.loads(line[6:]) for line in frames.splitlines() if line.startswith("data: ")]
+        self.assertEqual(
+            completed["response"]["usage"],
+            {
+                "input_tokens": 100,
+                "output_tokens": 5,
+                "total_tokens": 105,
+                "input_tokens_details": {"cached_tokens": 90, "cache_write_tokens": 4},
+            },
+        )
 
     def test_SHOULD_carry_cache_fields_through_the_streaming_anthropic_message_delta(self) -> None:
         events = [

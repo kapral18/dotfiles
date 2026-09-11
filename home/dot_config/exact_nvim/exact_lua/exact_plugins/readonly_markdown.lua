@@ -50,8 +50,8 @@ return {
           args = { "--fix", "--config", markdownlint_config, "--", "$FILENAME" },
           stdin = false,
         },
-        unwrap_md = {
-          command = ",unwrap-md",
+        format_md = {
+          command = ",format-md",
           args = { "$FILENAME" },
           stdin = false,
         },
@@ -73,7 +73,7 @@ return {
       end
       local markdown_formatters = function(bufnr)
         local formatters = md_formatters(bufnr)
-        table.insert(formatters, "unwrap_md")
+        table.insert(formatters, "format_md")
         return formatters
       end
       opts.formatters_by_ft = vim.tbl_deep_extend("force", opts.formatters_by_ft or {}, {

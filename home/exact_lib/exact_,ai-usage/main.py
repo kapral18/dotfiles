@@ -14,7 +14,7 @@ Sources (all local, read-only, stdlib only):
                                                    input_tokens is fresh; cache_* are separate.
 - Codex         ~/.codex/sessions/**/rollout-*.jsonl  the last token_count event carries the
                                                    session total; input_tokens INCLUDES cached
-                                                   tokens, so fresh = input - cached.
+                                                   reads and writes, so fresh = input - read - write.
 - Pi            ~/.pi/agent/sessions/*/*.jsonl    message.usage per call; input is fresh and
                                                    totalTokens = input+output+cacheRead+cacheWrite.
 - OMP           ~/.omp/agent/sessions/*/*.jsonl   same row shape as Pi (OMP is a Pi fork), with
@@ -257,20 +257,22 @@ def read_codex(since: float) -> list[Session]:
                         continue  # all-zero row at a turn boundary, not a provider call
                     calls += 1
                     cached = _int(usage.get("cached_input_tokens"))
+                    written = _int(usage.get("cache_write_input_tokens"))
                     session.observe_call(
-                        max(0, _int(usage.get("input_tokens")) - cached),
+                        max(0, _int(usage.get("input_tokens")) - cached - written),
                         cached,
-                        _int(usage.get("cache_write_input_tokens")),
+                        written,
                     )
                 if isinstance(info.get("total_token_usage"), dict):
                     total = info["total_token_usage"]
         if not total:
             continue
         cached = _int(total.get("cached_input_tokens"))
+        written = _int(total.get("cache_write_input_tokens"))
         session.calls = calls
-        session.fresh_input = max(0, _int(total.get("input_tokens")) - cached)
+        session.fresh_input = max(0, _int(total.get("input_tokens")) - cached - written)
         session.cache_read = cached
-        session.cache_write = _int(total.get("cache_write_input_tokens"))
+        session.cache_write = written
         session.output = _int(total.get("output_tokens"))
         session.reasoning = _int(total.get("reasoning_output_tokens"))
         session.provider = "native"

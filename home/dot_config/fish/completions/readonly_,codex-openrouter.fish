@@ -1,3 +1,4 @@
+# Launch clears inherited subscription lane maps; the CLI options stay unchanged.
 set -l _or_catalog "$__fish_config_dir/functions/__openrouter_catalog.fish"
 test -f $_or_catalog; and source $_or_catalog
 
@@ -7,4 +8,5 @@ complete -c ',codex-openrouter' -l effort -x -a '(__openrouter_catalog_efforts)'
 complete -c ',codex-openrouter' -l reasoning-effort -x -a '(__openrouter_catalog_efforts)' -d 'Alias for --effort'
 complete -c ',codex-openrouter' -l thinking -x -a '(__openrouter_catalog_efforts)' -d 'Alias for --effort'
 complete -c ',codex-openrouter' -l no-thinking -d 'Minimal reasoning effort'
+complete -c ',codex-openrouter' -l context -x -a 'short long' -d 'Context tier (default short)'
 complete -c ',codex-openrouter' -l help -s h -d 'Show Codex help'

@@ -64,3 +64,9 @@ lib/,vertex-adapter
 .default-yarn-pkgs
 bin/,install-yarn-pkgs
 .config/fish/completions/,install-yarn-pkgs.fish
+
+# Markdown formatter renamed to ,format-md / FormatMd.
+bin/,unwrap-md
+.config/fish/completions/,unwrap-md.fish
+.config/nvim/lua/plugins_local/unwrap-md.lua
+.config/nvim/lua/plugins_local_src/unwrap-md.lua

@@ -51,7 +51,8 @@ Claude subagent model overrides are limited to the installed SDK schema (`sonnet
 
 ### Codex
 
-Codex's model surface is OpenAI-only, so the adversarial verifier is `families=same (degraded)` here.
+Native Codex's model surface is OpenAI-only, so the adversarial verifier is `families=same (degraded)` here.
+Subscription wrappers use the backend matrix and the subscription boundary below instead of these native model pins.
 Launch angle lanes as `k-agent-review-worker` agents; the verifier as the `k-agent-adversarial-verifier` agent.
 Registry: both values are concrete (`gpt-6-astra` at `high` effort via profile `model` + `model_reasoning_effort`) —
 review and refute are the only Codex roles Astra is priced for; orchestrate/research ride `gpt-5.6-sol` and implement/mechanical/memory ride `gpt-5.6-terra`.
@@ -119,8 +120,16 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
 
 Resolve the backend matrix, not the frontend catalog, on subscription wrappers.
 Claude aliases carry explicit adapter-local lane tags; the hook denies model/effort pairs without an exact alias slot.
-The other subscription frontends currently lack verified child-tag transport:
-delegation is disabled on `,copilot-codex`, `,cursor-codex`, `,codex-copilot`, and `,cursor-copilot`.
+
+`,codex-copilot` supports fresh native leaves only with its launch-projected `AGENT_BAND_CODEX_ROUTES`, entitled model catalog, and managed profile copies.
+Those copies omit native model/effort pins, retain leaf instructions, and disable `multi_agent`.
+The band gate must admit the role and exact `model@lane-<effort>` pair; the adapter strips the tag and applies lane effort instead of root controls.
+Do not delegate with missing, malformed, stale, or unavailable session projections; relaunch the wrapper when its launch projection is missing.
+Do not use full-history `fork_context`, conflicting provider controls, or child-originated delegation.
+Native child-tag transport does not certify live provider acceptance or successful refuter completion.
+A backend route map or adapter-only translation test is not evidence that the frontend transports child selectors.
+
+Child-tag transport remains unverified for `,copilot-codex`, `,cursor-codex`, and `,cursor-copilot`; delegation stays disabled on those routes.
 Do not bypass a denial by dropping effort, using a raw backend model, invoking another harness, or substituting the root model.
 Report the limitation. Root sessions and native harness routes remain separate capabilities.
 

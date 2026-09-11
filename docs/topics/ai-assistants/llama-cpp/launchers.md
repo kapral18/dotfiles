@@ -57,7 +57,7 @@ The wrapper adds its default `--model $CODEX_LLAMA_CPP_MODEL` only when you did 
 
 The launcher uses the same version-matched `agent-cli-local` installation as `,cursor-openrouter`. If that flavor is absent after a Cursor update, the existing `~/lib/,cursor-agent-local/install.sh` installer restores it before launch.
 
-It pins `CURSOR_LOCAL_AGENT_BASE_URL=http://${LLAMA_CPP_HOST}:${LLAMA_CPP_PORT}/v1`, maps `LLAMA_CPP_API_KEY` to `CURSOR_LOCAL_AGENT_API_KEY`, and keeps Cursor's delegated model band on the selected local id. Inherited endpoint and provider credentials cannot redirect the session.
+It routes Cursor through a loopback metadata proxy to `http://${LLAMA_CPP_HOST}:${LLAMA_CPP_PORT}/v1`, maps `LLAMA_CPP_API_KEY` to the local provider key, and keeps Cursor's delegated model band on the selected local id. The proxy supplies profile-specific model context capabilities from the deployed local catalog and forwards inference requests unchanged. Inherited endpoint and provider credentials cannot redirect the session.
 
 ```bash
 ,cursor-llama-cpp                          # default model nemotron-3.5
@@ -76,6 +76,8 @@ The `llama-cpp` provider is declared in both profile sources and flows through t
 | Provider id | `llama-cpp`                |
 | Base URL    | `http://127.0.0.1:8080/v1` |
 | Models      | llama.cpp router ids       |
+
+Each model declares `limit.context` matching the router: `262144` normally, or `131072` for work Qwen3.8 models. `limit.output=32000` preserves OpenCode's native output allowance and enables automatic compaction before the context fills.
 
 The provider id avoids a dot (`llama-cpp`, not `llama.cpp`) because OpenCode's SDK derives an incorrect lookup key from dotted ids.
 
@@ -120,7 +122,7 @@ The wrapper injects its default `--model $CLAUDE_LLAMA_CPP_MODEL` only when you 
 | `CLAUDE_LLAMA_CPP_MODEL`    | `nemotron-3.5`       | Default model; overridden by a caller `--model`/`-m`, empty to skip |
 | `CLAUDE_LLAMA_CPP_SETTINGS` | model-derived        | Point at an alternate llama.cpp settings file                       |
 
-The wrapper derives the settings file from the effective model before `--`. `nemotron-3.5` and `qwen3.5-9b` use `~/.claude/settings.llama-cpp.json` with `autoCompactWindow=200000`; `qwen3.8-27b` and `qwen3.8-27b-instruct` use `~/.claude/settings.llama-cpp.qwen3.8.json`, which renders `100000` on work and `200000` on personal.
+The wrapper clears inherited `CLAUDE_CODE_AUTO_COMPACT_WINDOW` and `CLAUDE_CODE_MAX_CONTEXT_TOKENS` so an outer hosted session cannot override the local budget. It derives the settings file from the effective model before `--`. `nemotron-3.5` and `qwen3.5-9b` use `~/.claude/settings.llama-cpp.json` with `autoCompactWindow=200000`; `qwen3.8-27b` and `qwen3.8-27b-instruct` use `~/.claude/settings.llama-cpp.qwen3.8.json`, which renders `100000` on work and `200000` on personal.
 
 `autoCompactWindow=100000` leaves a ~31k token buffer under the work Qwen3.8 131072-token server context. `200000` leaves a ~62k token buffer under the 262144-token server context.
 
@@ -141,6 +143,7 @@ Cloud Claude sessions are unaffected — plain `claude ...` still reads only `~/
 - [`home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl`](../../../../home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl) → `~/.codex/llama-cpp-model-catalog.json` (defines the local llama.cpp router ids and profile-specific context metadata)
 - [`home/exact_bin/executable_,codex-llama-cpp`](../../../../home/exact_bin/executable_,codex-llama-cpp) → `~/bin/,codex-llama-cpp`
 - [`home/exact_bin/executable_,cursor-llama-cpp`](../../../../home/exact_bin/executable_,cursor-llama-cpp) → `~/bin/,cursor-llama-cpp`
+- [`home/exact_lib/exact_,cursor-agent-shim/llama_cpp_proxy.py`](../../../../home/exact_lib/exact_,cursor-agent-shim/llama_cpp_proxy.py) — local context metadata and transparent inference forwarding
 - [`home/exact_lib/exact_,cursor-agent-local/install.sh`](../../../../home/exact_lib/exact_,cursor-agent-local/install.sh) → version-matched local-provider Cursor binary
 - [`home/dot_config/opencode/readonly_opencode.personal.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.personal.jsonc) / [`readonly_opencode.work.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.work.jsonc) — declare the `llama-cpp` provider
 - [`home/exact_bin/executable_,opencode-llama-cpp`](../../../../home/exact_bin/executable_,opencode-llama-cpp) → `~/bin/,opencode-llama-cpp`

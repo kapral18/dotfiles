@@ -156,6 +156,24 @@ def _translation_error_event(frontend: str, message: str) -> bytes:
     return f"event: {event_type}\ndata: {data}\n\n".encode()
 
 
+def cursor_model_info(model: ModelSpec) -> dict[str, object]:
+    """Expose Cursor's extended local-provider metadata from the selected tier."""
+    return {
+        "id": model.model_id,
+        "api_types": ["openai_chat"],
+        "capabilities": {
+            "context_length": model.prompt_limit,
+            "max_output_tokens": model.max_output_tokens,
+            "input_modalities": ["text"],
+            "output_modalities": ["text"],
+            "supports_tool_use": True,
+            "supports_streaming": True,
+            "supports_reasoning": bool(model.efforts),
+            "supports_vision": False,
+        },
+    }
+
+
 class AdapterHandler(BaseHTTPRequestHandler):
     server: AdapterServer
     protocol_version = "HTTP/1.1"
@@ -401,7 +419,12 @@ class AdapterHandler(BaseHTTPRequestHandler):
             return
         if urlsplit(self.path).path.rstrip("/") == "/v1/models":
             models = [codex_model_info(model) for model in self.context.models.values()]
-            self._write_json(HTTPStatus.OK, {"models": models})
+            # `models` is the Codex adapter's established response. Cursor's local
+            # provider accepts `data` and needs its extended capability metadata.
+            self._write_json(
+                HTTPStatus.OK,
+                {"models": models, "data": [cursor_model_info(model) for model in self.context.models.values()]},
+            )
             return
         self._forward()
 

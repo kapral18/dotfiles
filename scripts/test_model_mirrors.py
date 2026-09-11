@@ -59,6 +59,39 @@ def effective_ini_settings(text, section):
 class TestStaticModelMirrors(unittest.TestCase):
     """WHEN building the static mirror from registries, configs, and capability data."""
 
+    def test_SHOULD_bound_custom_openrouter_models_by_provider_capacity(self):
+        import model_mirrors
+
+        # OpenRouter catalog/top-provider limits observed 2026-09-10. Preset IDs do not
+        # inherit bare OpenCode model metadata; a missing context disables compaction.
+        capacities = {
+            "openai/gpt-5.6-sol": (1050000, 128000),
+            "z-ai/glm-5.3-flash": (1048576, 131072),
+            "deepseek/deepseek-v4-flash": (1024000, 384000),
+            "deepseek/deepseek-v4-flash-0731": (1048576, 943718),
+            "moonshotai/kimi-k3": (1048576, 943718),
+            "z-ai/glm-5.2": (1024000, 128000),
+            "anthropic/claude-sonnet-4.6": (1000000, 128000),
+            "google/gemini-3.8-flash": (1048576, 65536),
+        }
+        for profile in ("work", "personal"):
+            config = model_mirrors._read_jsonc(REPO / f"home/dot_config/opencode/readonly_opencode.{profile}.jsonc")
+            for model_id, model in config["provider"]["openrouter"]["models"].items():
+                context, output = capacities[model_id.split("@", 1)[0]]
+                self.assertGreater(model["limit"]["context"], model["limit"]["output"])
+                self.assertLessEqual(model["limit"]["context"], context)
+                self.assertLessEqual(model["limit"]["output"], output)
+        for filename in ("readonly_models.json", "readonly_models.personal.json"):
+            config = json.loads((REPO / "home/dot_pi/agent" / filename).read_text())
+            model = config["providers"]["openrouter"]["modelOverrides"]["z-ai/glm-5.2"]
+            self.assertEqual((model["contextWindow"], model["maxTokens"]), capacities["z-ai/glm-5.2"])
+        omp = (REPO / "home/dot_omp/private_agent/readonly_models.yml").read_text()
+        for block in omp.split('      - id: "')[1:]:
+            model_id = block.split('"', 1)[0].split("@", 1)[0]
+            context, output = capacities[model_id]
+            self.assertLessEqual(int(re.search(r"contextWindow: (\d+)", block)[1]), context)
+            self.assertLessEqual(int(re.search(r"maxTokens: (\d+)", block)[1]), output)
+
     def test_SHOULD_cover_all_harnesses_and_configured_provider_routes(self):
         import model_mirrors
 
@@ -114,6 +147,11 @@ class TestStaticModelMirrors(unittest.TestCase):
         for profile in ("work", "personal"):
             config = model_mirrors._read_jsonc(REPO / f"home/dot_config/opencode/readonly_opencode.{profile}.jsonc")
             self.assertEqual(set(config["provider"]["llama-cpp"]["models"]), expected)
+            for model_id, model in config["provider"]["llama-cpp"]["models"].items():
+                # OpenCode 1.18.30 disables automatic compaction for a missing context limit.
+                # Its native output allowance is 32000; router profile limits remain authoritative.
+                context = 131072 if profile == "work" and model_id.startswith("qwen3.8-") else 262144
+                self.assertEqual(model["limit"], {"context": context, "output": 32000})
 
         codex_template = REPO / "home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl"
         codex_work = json.loads(render_chezmoi_template(codex_template, is_work=True))

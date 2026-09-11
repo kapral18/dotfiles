@@ -47,6 +47,9 @@ class TestOpenRouterWrappers(unittest.TestCase):
         helper = home / "lib/shared/openrouter_presets.py"
         helper.write_text(
             '#!/bin/sh\nif [ "$1" = "--context-window" ]; then echo 200000; exit; fi\n'
+            'if [ "$1" = "--session-budget-env" ]; then echo "CONTEXT_LIMIT=1048576"; echo "MAX_OUTPUT_TOKENS=131072"; echo "PROMPT_LIMIT=200000"; exit; fi\n'
+            'if [ "$1" = "--codex-model-catalog" ]; then echo "{\\"models\\":[]}"; exit; fi\n'
+            'if [ "$1" = "--cursor-model-catalog" ]; then echo "{}"; exit; fi\n'
             'printf "%s\\n" "$1" >> "$PRESET_CALLS"\n'
         )
         env = {
@@ -57,6 +60,9 @@ class TestOpenRouterWrappers(unittest.TestCase):
             "CURSOR_AGENT_LOCAL_VERSION": "fixture",
             "CODEX_WRAPPER_BIN": str(bindir / "codex"),
             "PRESET_CALLS": str(calls),
+            "AGENT_BAND_SUBSCRIPTION": "copilot",
+            "AGENT_BAND_CLAUDE_ROUTES": '{"stale@lane-high":"opus"}',
+            "AGENT_BAND_CODEX_ROUTES": '{"stale@lane-high":{"model":"stale","effort":"high"}}',
         }
         return calls, env
 
@@ -71,16 +77,13 @@ class TestOpenRouterWrappers(unittest.TestCase):
             "memory": "google/gemini-3.8-flash@preset/effort-low",
             "refute": "openai/gpt-5.6-sol@preset/effort-xhigh",
         }
-        # Claude Code fixes the alias set at four, so the five Pi lanes fill four slots along the
-        # tier ladder haiku < sonnet < opus < fable. The refute pick claims no slot: the gate maps
-        # every gpt/openai backend id to `opus`, so a refute launch runs the T2 sol wire model.
+        # Claude has four alias slots. Refute has no exact slot and must be denied.
         slots = {
             "fable": wires["research"],
             "opus": wires["implement"],
             "sonnet": wires["mechanical"],
             "haiku": wires["memory"],
         }
-        substitutes = {"refute": wires["implement"]}
         gate_env = {**observed["env"], "AGENT_BAND_HARNESS": "claude_code" if harness == "claude" else harness}
         with mock.patch.dict(os.environ, gate_env, clear=True):
             for alias, wire in slots.items():
@@ -106,6 +109,12 @@ class TestOpenRouterWrappers(unittest.TestCase):
                 ):
                     self.assertEqual(band_gate.main(), 0)
                 output = json.loads(gate_output.getvalue())
+                if harness == "claude" and pick["category"] == "refute":
+                    decision = output["hookSpecificOutput"]
+                    self.assertEqual(decision["permissionDecision"], "deny", (role, output))
+                    self.assertIn("assigned model/effort pair", decision["permissionDecisionReason"])
+                    self.assertNotIn("updatedInput", decision)
+                    continue
                 updated = output.get(
                     "updated_input",
                     output.get("modifiedArgs", output.get("hookSpecificOutput", {}).get("updatedInput", {})),
@@ -114,7 +123,6 @@ class TestOpenRouterWrappers(unittest.TestCase):
                 if harness == "claude":
                     self.assertIn(model, slots, (role, output))
                     model = observed["env"][f"ANTHROPIC_DEFAULT_{model.upper()}_MODEL"]
-                    expected = substitutes.get(pick["category"], expected)
                 self.assertEqual(model, expected, (harness, role))
                 if harness == "cursor":
                     allowed = observed["env"]["CURSOR_AGENT_ALLOWED_MODEL"]
@@ -160,6 +168,8 @@ class TestOpenRouterWrappers(unittest.TestCase):
                     )
                     self.assertEqual(result.returncode, 0, result.stderr)
                     observed = json.loads(result.stdout)
+                    for key in ("AGENT_BAND_SUBSCRIPTION", "AGENT_BAND_CLAUDE_ROUTES", "AGENT_BAND_CODEX_ROUTES"):
+                        self.assertNotIn(key, observed["env"])
                     self.assertCountEqual(calls.read_text().splitlines(), set((effort, "low", "high", "xhigh")))
                     wire = f"moonshotai/kimi-k3@preset/effort-{effort}"
                     self.assertTrue(wire in observed["argv"] or wire in observed["env"].values())
@@ -385,11 +395,13 @@ class TestOpenRouterWrappers(unittest.TestCase):
                 {
                     "id": "openai/gpt-5.5",
                     "context_length": 1050000,
+                    "max_completion_tokens": 128000,
                     "pricing": {"overrides": [{"min_prompt_tokens": 272000}]},
                 },
                 {
                     "id": "stealth/ox-alpha",
-                    "context_length": None,
+                    "context_length": 1048576,
+                    "max_completion_tokens": 65536,
                     "pricing": None,
                 },
             ]
@@ -398,7 +410,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
             "data": {
                 "id": "stealth/ox-alpha",
                 "context_length": None,
-                "endpoints": [{"provider_name": "Stealth", "context_length": 1048576}],
+                "endpoints": [{"provider_name": "Stealth", "context_length": 1048576, "max_completion_tokens": 65536}],
             }
         }
 
@@ -407,12 +419,46 @@ class TestOpenRouterWrappers(unittest.TestCase):
             "open",
             side_effect=[response(catalog), response(catalog), response(catalog), response(endpoints)],
         ):
-            self.assertEqual(module.resolve_context_window("openai/gpt-5.5", "short", "active-key"), 272000)
-            self.assertEqual(module.resolve_context_window("openai/gpt-5.5", "long", "active-key"), 1050000)
+            self.assertEqual(module.resolve_context_window("openai/gpt-5.5", "short", "active-key"), 271999)
+            self.assertEqual(module.resolve_context_window("openai/gpt-5.5", "long", "active-key"), 922000)
             self.assertEqual(
                 module.resolve_context_window("stealth/ox-alpha@preset/effort-max", "long", "active-key"),
-                1048576,
+                983040,
             )
+
+    def test_SHOULD_keep_provider_context_and_output_limits_paired(self):
+        module = _load_openrouter_presets_module()
+        catalog_model = {
+            "id": "vendor/model",
+            "context_length": 1050000,
+            "max_completion_tokens": 128000,
+            "top_provider": {"context_length": 900000, "max_completion_tokens": 64000},
+            "pricing": {"overrides": [{"min_prompt_tokens": 272000}]},
+        }
+        with mock.patch.object(module, "_model_catalog_entry", return_value=catalog_model):
+            short = module.resolve_budget("vendor/model", "short", "active-key")
+            long = module.resolve_budget("vendor/model", "long", "active-key")
+        self.assertEqual((short.context_limit, short.max_output_tokens, short.prompt_limit), (900000, 64000, 271999))
+        self.assertEqual((long.context_limit, long.max_output_tokens, long.prompt_limit), (900000, 64000, 836000))
+
+        with (
+            mock.patch.object(
+                module, "_model_catalog_entry", return_value={"id": "vendor/missing", "context_length": 1000}
+            ),
+            mock.patch.object(module, "_endpoint_capacity", return_value=None),
+        ):
+            with self.assertRaisesRegex(module.PresetError, "max_completion_tokens"):
+                module.resolve_budget("vendor/missing", "long", "active-key")
+
+    def test_SHOULD_use_a_safe_minimum_for_session_wide_budgets(self):
+        module = _load_openrouter_presets_module()
+        budgets = {
+            "root": module.ModelBudget(1000000, 128000, 872000),
+            "lane": module.ModelBudget(200000, 64000, 136000),
+        }
+        with mock.patch.object(module, "resolve_budget", side_effect=lambda model, *_: budgets[model]):
+            budget = module.resolve_session_budget(["root", "lane"], "long", "active-key")
+        self.assertEqual((budget.context_limit, budget.max_output_tokens, budget.prompt_limit), (200000, 64000, 136000))
 
     def test_SHOULD_run_account_local_preset_preflight_in_every_wrapper(self):
         for relative in (
@@ -489,8 +535,8 @@ class TestOpenRouterWrappers(unittest.TestCase):
                 pick = formatted[category]
                 self.assertEqual(pick["alias"], alias)
                 self.assertEqual(exported[f"ANTHROPIC_DEFAULT_{alias.upper()}_MODEL"], pick["model"])
-        # `refute` claims no slot of its own: the gate's gpt/openai rule sends it to `opus`, so a
-        # refute launch here runs the T2 sol wire model at high rather than the xhigh refute pick.
+        # Formatting suggests opus, but it carries high, not the required xhigh.
+        # Actual gate denial is checked by _assert_openrouter_roles.
         self.assertEqual(formatted["refute"]["alias"], "opus")
         self.assertEqual(exported["ANTHROPIC_DEFAULT_OPUS_MODEL"], formatted["implement"]["model"])
         # Unbound spawns fall back to CLAUDE_CODE_SUBAGENT_MODEL, which is the T2 implement lane.
@@ -561,8 +607,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
                 source = (REPO / relative).read_text()
                 assert f'OPENROUTER_MODEL="{OPENROUTER_PIN}"' in source
                 assert 'OPENROUTER_EFFORT="high"' in source
-                if relative.endswith((",claude-openrouter", ",copilot-openrouter")):
-                    assert 'OPENROUTER_CONTEXT="short"' in source
+                assert 'OPENROUTER_CONTEXT="short"' in source
                 assert "--no-thinking" in source
                 assert 'OPENROUTER_EFFORT="minimal"' in source
                 assert 'readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"' in source
@@ -1023,13 +1068,34 @@ touch "%s"
                     assert result.returncode == 0, result.stderr
                     assert expected in result.stdout
 
-    def test_SHOULD_reject_context_tier_when_openrouter_consumer_has_no_verified_knob(self):
+    def test_SHOULD_project_small_prompt_and_output_limits_to_claude(self):
+        _, env = self._openrouter_route_fixture()
+        env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"] = "128000"
+        helper = Path(env["HOME"]) / "lib/shared/openrouter_presets.py"
+        for output_limit in (8192, 32768):
+            prompt_limit = 65536 - output_limit
+            with self.subTest(output_limit=output_limit):
+                helper.write_text(
+                    '#!/bin/sh\nif [ "$1" = "--session-budget-env" ]; then\n'
+                    f'echo "CONTEXT_LIMIT=65536"\necho "MAX_OUTPUT_TOKENS={output_limit}"\n'
+                    f'echo "PROMPT_LIMIT={prompt_limit}"\nfi\n'
+                )
+                result = subprocess.run(
+                    [modern_bash(), str(REPO / "home/exact_bin/executable_,claude-openrouter")],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                actual = json.loads(result.stdout)["env"]
+                self.assertEqual(actual["CLAUDE_CODE_MAX_CONTEXT_TOKENS"], str(prompt_limit))
+                self.assertEqual(actual["CLAUDE_CODE_AUTO_COMPACT_WINDOW"], str(prompt_limit))
+                self.assertEqual(actual["CLAUDE_CODE_MAX_OUTPUT_TOKENS"], str(output_limit))
+
+    def test_SHOULD_reject_cursor_long_context_without_the_metadata_shim(self):
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp) / "bin"
             bindir.mkdir()
-            codex = bindir / "codex"
-            codex.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
-            codex.chmod(0o755)
             home = Path(tmp) / "home"
             _install_shim_stub(home)
             version = "2026.08.04-test"
@@ -1042,31 +1108,25 @@ touch "%s"
             cursor_agent.write_text(f'#!/usr/bin/env bash\necho "{version}"\n', encoding="utf-8")
             cursor_agent.chmod(0o755)
 
-            cases = {
-                "home/exact_bin/executable_,codex-openrouter": (
-                    {"CODEX_WRAPPER_BIN": str(codex)},
-                    "Codex 0.149.0 exposes no verified context-window override",
-                ),
-                "home/exact_bin/executable_,cursor-openrouter": (
-                    {"HOME": str(home)},
-                    "cursor-agent-local forwards context suffixes literally",
-                ),
-            }
-            for relative, (extra_env, expected) in cases.items():
-                with self.subTest(command=relative):
-                    result = subprocess.run(
-                        [modern_bash(), str(REPO / relative), "--context", "short"],
-                        capture_output=True,
-                        text=True,
-                        env={
-                            **os.environ,
-                            **extra_env,
-                            "PATH": f"{bindir}:{os.environ['PATH']}",
-                            "OPENROUTER_API_KEY": "fixture-key",
-                        },
-                    )
-                    assert result.returncode == 2
-                    assert expected in result.stderr
+            result = subprocess.run(
+                [
+                    modern_bash(),
+                    str(REPO / "home/exact_bin/executable_,cursor-openrouter"),
+                    "--no-shim",
+                    "--context",
+                    "long",
+                ],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "PATH": f"{bindir}:{os.environ['PATH']}",
+                    "OPENROUTER_API_KEY": "fixture-key",
+                },
+            )
+            assert result.returncode == 2
+            assert "requires the shim to publish the selected model budget" in result.stderr
 
     def test_SHOULD_allow_cursor_openrouter_models_with_shim_tool_adapters(self):
         with tempfile.TemporaryDirectory() as tmp:

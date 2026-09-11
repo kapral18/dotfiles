@@ -12,6 +12,24 @@ service_tier = "default"
 
 # __MCP_SERVERS__
 
+[sandbox_workspace_write]
+writable_roots = [
+  "~/.local/share/ai-kb",
+  "~/.local/share/chezmoi",
+  "~/.local/state/agent-specs",
+  "~/.cache/ai-embed-runtime",
+  "~/.cache/agent-artifacts",
+  "~/.local/state/agent-proof",
+  "~/.local/state/chezmoi",
+  "~/.cache/mcp-token",
+  "~/.local/state/llama-cpp/lifecycle",
+  "~/bin",
+  "~/lib",
+  "~/.agents",
+  "~/.codex",
+  "~/.claude",
+]
+
 [tui]
 auto_recap = false
 status_line = ["model-with-reasoning", "current-dir", "context-remaining"]

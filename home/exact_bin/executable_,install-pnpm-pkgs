@@ -56,6 +56,43 @@ def read_desired(path: Path) -> list[tuple[str, str]]:
     return desired
 
 
+def sync_build_approvals(desired: list[tuple[str, str]]) -> None:
+    global_workspace = run_pnpm("root", "-g").stdout.strip()
+    if not global_workspace or not os.path.isabs(global_workspace):
+        raise PnpmFailure(f"pnpm root -g returned an invalid global workspace path: {global_workspace!r}")
+
+    workspace_path = Path(global_workspace)
+    try:
+        workspace_path.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        raise PnpmFailure(f"could not create pnpm global workspace at {workspace_path}: {error}") from error
+
+    result = run_pnpm("-C", str(workspace_path), "config", "get", "--location=project", "--json", "allowBuilds")
+    try:
+        configured = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise PnpmFailure(
+            f"pnpm allowBuilds configuration is not valid JSON: {error}", result.stdout, result.stderr
+        ) from error
+    if configured is None:
+        configured = {}
+    if not isinstance(configured, dict):
+        raise PnpmFailure("pnpm allowBuilds configuration is not an object", result.stdout, result.stderr)
+
+    merged = {**configured, **{name: True for name, _pin in desired}}
+    if merged != configured:
+        run_pnpm(
+            "-C",
+            str(workspace_path),
+            "config",
+            "set",
+            "--location=project",
+            "--json",
+            "allowBuilds",
+            json.dumps(merged),
+        )
+
+
 def link_path(links_root: Path, name: str) -> Path:
     package_path = PurePosixPath(name)
     if not name or package_path.is_absolute() or any(part in {"", ".", ".."} for part in package_path.parts):
@@ -145,6 +182,7 @@ def main() -> int:
 
     try:
         desired = read_desired(packages_file)
+        sync_build_approvals(desired)
         installed = inventory(links_root)
     except PnpmFailure as failure:
         emit_failure(failure)

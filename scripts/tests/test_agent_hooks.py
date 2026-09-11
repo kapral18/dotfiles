@@ -4099,6 +4099,7 @@ class BandGateTests(unittest.TestCase):
                 "AGENT_BAND_MODEL_FORMAT",
                 "AGENT_BAND_CLAUDE_ROUTES",
                 "AGENT_BAND_SUBSCRIPTION",
+                "AGENT_BAND_CODEX_ROUTES",
             }
             env = {key: value for key, value in os.environ.items() if key not in excluded_env}
             env.update(override or {})
@@ -4612,6 +4613,84 @@ class BandGateTests(unittest.TestCase):
                     override={"AGENT_BAND_SUBSCRIPTION": "copilot"},
                 )
                 self.assertEqual((result.get("hookSpecificOutput") or result)[key], "deny")
+
+    def test_SHOULD_project_codex_subscription_lanes_only_for_fresh_registered_leaves(self):
+        projection = {
+            "harnesses": {
+                "copilot": {
+                    "agents": {
+                        "worker": {"category": "implement", "model": "claude-opus-5", "effort": "high"},
+                        "explorer": {"category": "research", "model": "gpt-5.6-sol", "effort": "xhigh"},
+                        "k-agent-smol": {"category": "memory", "model": "claude-sonnet-5", "effort": "low"},
+                    }
+                }
+            }
+        }
+        routes = {
+            "worker": "claude-opus-5@lane-high",
+            "explorer": "gpt-5.6-sol@lane-xhigh",
+            "k-agent-smol": "claude-sonnet-5@lane-low",
+        }
+        env = {
+            "AGENT_BAND_SUBSCRIPTION": "copilot",
+            "AGENT_BAND_SCHEMA_HARNESS": "copilot",
+            "AGENT_BAND_CODEX_ROUTES": json.dumps(routes),
+        }
+        for role, selector in routes.items():
+            with self.subTest(role=role):
+                payload = {
+                    "tool_name": "multi_agent_v1.spawn_agent",
+                    "tool_input": {"agent_type": role, "message": "packet", "model": "root"},
+                }
+                result = self.gate("codex", payload, projection, env)["hookSpecificOutput"]
+                self.assertEqual(result["permissionDecision"], "allow")
+                self.assertEqual(result["updatedInput"]["model"], selector)
+                self.assertEqual(result["updatedInput"]["reasoning_effort"], selector.split("@lane-")[1])
+                self.assertEqual(result["updatedInput"]["message"], "packet")
+        payload = {
+            "tool_name": "spawn_agent",
+            "tool_input": {"agent_type": "worker", "model": "claude-sonnet-5@lane-low", "reasoning_effort": "low"},
+        }
+        result = self.gate("codex", payload, projection, env)["hookSpecificOutput"]
+        self.assertEqual(result["updatedInput"]["model"], "claude-sonnet-5@lane-low")
+        for patch, changed_env in (
+            ({"fork_context": True}, env),
+            ({"reasoning_effort": "high"}, env),
+            ({}, {**env, "AGENT_BAND_CODEX_ROUTES": "{}"}),
+            ({}, {**env, "AGENT_BAND_CODEX_ROUTES": "invalid"}),
+            ({}, {**env, "AGENT_BAND_MODEL_OVERRIDE": "root"}),
+        ):
+            with self.subTest(patch=patch, env=changed_env):
+                bad = {**payload, "tool_input": {**payload["tool_input"], **patch}}
+                result = self.gate("codex", bad, projection, changed_env)["hookSpecificOutput"]
+                self.assertEqual(result["permissionDecision"], "deny")
+        result = self.gate("codex", {**payload, "agent_id": "child"}, projection, env)["hookSpecificOutput"]
+        self.assertEqual(result["permissionDecision"], "deny")
+        for role in ("worker", "k-agent-smol"):
+            stale = {**routes, role: routes["explorer"]}
+            with self.subTest(stale_role=role):
+                result = self.gate(
+                    "codex",
+                    {"tool_name": "spawn_agent", "tool_input": {"agent_type": role}},
+                    projection,
+                    {**env, "AGENT_BAND_CODEX_ROUTES": json.dumps(stale)},
+                )["hookSpecificOutput"]
+                self.assertEqual(result["permissionDecision"], "deny")
+
+    def test_SHOULD_keep_native_codex_child_startup_and_recall_out_of_root_context(self):
+        with tempfile.TemporaryDirectory() as directory:
+            payload = {
+                "session_id": "child-session",
+                "agent_id": "child-id",
+                "agent_type": "worker",
+                "cwd": directory,
+                "prompt": "you guessed this again",
+                "source": "startup",
+            }
+            env = {**os.environ, "AGENT_MEMORY_SPEC_ROOT": directory, "AGENT_HOOK_OUTPUT": "hook_specific"}
+            self.assertEqual(run_hook("executable_session_context.py", payload, env), {})
+            self.assertEqual(run_perturn_recall(directory, payload, env), {})
+            self.assertEqual({path.name for path in Path(directory).iterdir()}, {"deployed-hooks"})
 
     def test_a_task_name_is_not_mistaken_for_the_role(self):
         # Codex's spawn_agent carries both; task_name is a free-text label.

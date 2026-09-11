@@ -134,7 +134,7 @@ class TestLauncherOptions(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "does not set model"):
                 main.resolve_default_model(config)
 
-    def test_SHOULD_resolve_maximum_context_window_from_codex_model_metadata(self) -> None:
+    def test_SHOULD_resolve_native_active_context_budget_from_model_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             cache = Path(temporary) / "models_cache.json"
             cache.write_text(
@@ -145,10 +145,13 @@ class TestLauncherOptions(unittest.TestCase):
                                 "slug": "gpt-long",
                                 "context_window": 272_000,
                                 "max_context_window": 1_000_000,
+                                "effective_context_window_percent": 95,
+                                "auto_compact_token_limit": 230_000,
                             },
                             {
                                 "slug": "gpt-short",
                                 "context_window": 128_000,
+                                "effective_context_window_percent": 80,
                             },
                         ]
                     }
@@ -156,9 +159,62 @@ class TestLauncherOptions(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            self.assertEqual(main.resolve_model_context_window("gpt-long", cache), 1_000_000)
-            self.assertEqual(main.resolve_model_context_window("gpt-short", cache), 128_000)
-            self.assertIsNone(main.resolve_model_context_window("gpt-unknown", cache))
+            self.assertEqual(
+                main.resolve_model_budget("gpt-long", cache),
+                main.ContextBudget(272_000, 258_400, 230_000),
+            )
+            self.assertEqual(
+                main.resolve_model_budget("gpt-short", cache),
+                main.ContextBudget(128_000, 102_400, 115_200),
+            )
+            with self.assertRaisesRegex(RuntimeError, "refresh the native Codex catalog"):
+                main.resolve_model_budget("gpt-unknown", cache)
+
+    def test_SHOULD_apply_and_clamp_native_codex_context_config_overrides(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            cache = directory / "models_cache.json"
+            config = directory / "config.toml"
+            cache.write_text(
+                json.dumps(
+                    {
+                        "models": [
+                            {
+                                "slug": "gpt-long",
+                                "context_window": 272_000,
+                                "max_context_window": 1_000_000,
+                                "effective_context_window_percent": 95,
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            config.write_text(
+                "model_context_window = 1200000\nmodel_auto_compact_token_limit = 950000\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                main.resolve_model_budget("gpt-long", cache, config),
+                main.ContextBudget(1_000_000, 950_000, 900_000),
+            )
+
+    def test_SHOULD_use_an_explicit_small_context_for_unknown_model_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            cache = directory / "models_cache.json"
+            config = directory / "config.toml"
+            cache.write_text(json.dumps({"models": []}), encoding="utf-8")
+            config.write_text(
+                "model_context_window = 64000\nmodel_auto_compact_token_limit = 100000\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                main.resolve_model_budget("custom-small", cache, config),
+                main.ContextBudget(64_000, 60_800, 57_600),
+            )
 
     def test_SHOULD_isolate_real_credentials_and_configure_each_harness(self) -> None:
         inherited = {
@@ -183,7 +239,7 @@ class TestLauncherOptions(unittest.TestCase):
                 "local-token",
                 "gpt-selected",
                 ["-p", "hello"],
-                1_000_000,
+                main.ContextBudget(272_000, 258_400, 244_800),
             )
             copilot_command, copilot_env = main.child_command(
                 "copilot",
@@ -192,7 +248,7 @@ class TestLauncherOptions(unittest.TestCase):
                 "local-token",
                 "gpt-selected",
                 ["-p", "hello"],
-                1_000_000,
+                main.ContextBudget(272_000, 258_400, 244_800),
             )
             cursor_command, cursor_env = main.child_command(
                 "cursor",
@@ -201,7 +257,7 @@ class TestLauncherOptions(unittest.TestCase):
                 "local-token",
                 "gpt-selected",
                 ["-p", "hello"],
-                1_000_000,
+                main.ContextBudget(272_000, 258_400, 244_800),
             )
 
         self.assertEqual(
@@ -211,7 +267,8 @@ class TestLauncherOptions(unittest.TestCase):
         self.assertEqual(claude_env["ANTHROPIC_AUTH_TOKEN"], "local-token")
         self.assertEqual(claude_env["ANTHROPIC_BASE_URL"], "http://127.0.0.1:3210")
         self.assertEqual(claude_env["ANTHROPIC_MODEL"], "gpt-selected[1m]")
-        self.assertEqual(claude_env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"], "1000000")
+        self.assertEqual(claude_env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"], "244800")
+        self.assertNotIn("CLAUDE_CODE_MAX_CONTEXT_TOKENS", claude_env)
         self.assertNotIn("ANTHROPIC_API_KEY", claude_env)
         self.assertNotIn("CLAUDE_CODE_USE_VERTEX", claude_env)
         self.assertNotIn("OPENAI_API_KEY", claude_env)
@@ -221,7 +278,8 @@ class TestLauncherOptions(unittest.TestCase):
         self.assertEqual(copilot_env["COPILOT_PROVIDER_WIRE_API"], "responses")
         self.assertEqual(copilot_env["COPILOT_PROVIDER_TRANSPORT"], "http")
         self.assertEqual(copilot_env["COPILOT_PROVIDER_MODEL_ID"], "gpt-selected")
-        self.assertEqual(copilot_env["COPILOT_PROVIDER_MAX_PROMPT_TOKENS"], "1000000")
+        self.assertEqual(copilot_env["COPILOT_PROVIDER_MAX_PROMPT_TOKENS"], "258400")
+        self.assertNotIn("COPILOT_PROVIDER_MAX_OUTPUT_TOKENS", copilot_env)
         self.assertNotIn("COPILOT_PROVIDER_API_KEY", copilot_env)
         self.assertNotIn("OPENAI_API_KEY", copilot_env)
 
@@ -239,26 +297,28 @@ class TestLauncherOptions(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     main.validate_cursor_forwarded([option])
 
-    def test_SHOULD_split_gpt5_context_between_copilot_prompt_and_output_limits(self) -> None:
-        with mock.patch.dict(os.environ, {"PATH": "/usr/bin"}, clear=True):
-            for model, context_window, expected_prompt in (
-                ("gpt-5.4", 1_000_000, 872_000),
-                ("gpt-5.5", 272_000, 144_000),
-                ("gpt-5.6-terra", 272_000, 144_000),
-            ):
-                with self.subTest(model=model):
-                    _, env = main.child_command(
-                        "copilot",
-                        "/usr/bin/copilot",
-                        "http://127.0.0.1:3210",
-                        "local-token",
-                        model,
-                        [],
-                        context_window,
-                    )
+    def test_SHOULD_use_usable_input_and_clear_inherited_copilot_output_override(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "PATH": "/usr/bin",
+                "COPILOT_PROVIDER_MAX_PROMPT_TOKENS": "999999",
+                "COPILOT_PROVIDER_MAX_OUTPUT_TOKENS": "128000",
+            },
+            clear=True,
+        ):
+            _, env = main.child_command(
+                "copilot",
+                "/usr/bin/copilot",
+                "http://127.0.0.1:3210",
+                "local-token",
+                "arbitrary-codex-model",
+                [],
+                main.ContextBudget(272_000, 258_400, 244_800),
+            )
 
-                self.assertEqual(env["COPILOT_PROVIDER_MAX_PROMPT_TOKENS"], str(expected_prompt))
-                self.assertEqual(env["COPILOT_PROVIDER_MAX_OUTPUT_TOKENS"], "128000")
+        self.assertEqual(env["COPILOT_PROVIDER_MAX_PROMPT_TOKENS"], "258400")
+        self.assertNotIn("COPILOT_PROVIDER_MAX_OUTPUT_TOKENS", env)
 
     def test_SHOULD_apply_copilot_launch_overrides_and_context_metadata(self) -> None:
         server = mock.Mock()
@@ -275,7 +335,10 @@ class TestLauncherOptions(unittest.TestCase):
 
         with (
             mock.patch("main.load_lane_routes", return_value={}),
-            mock.patch("main.resolve_model_context_window", return_value=272_000) as resolve_context,
+            mock.patch(
+                "main.resolve_model_budget",
+                return_value=main.ContextBudget(272_000, 258_400, 244_800),
+            ) as resolve_budget,
             mock.patch("main.harness_binary", return_value="/usr/bin/copilot"),
             mock.patch("main.codex_binary", return_value="/usr/bin/codex"),
             mock.patch("main.CodexAuth", auth_provider),
@@ -296,7 +359,7 @@ class TestLauncherOptions(unittest.TestCase):
         self.assertEqual(launched_env["AGENT_BAND_SCHEMA_HARNESS"], "codex")
         self.assertNotIn("AGENT_BAND_MODEL_OVERRIDE", launched_env)
         self.assertNotIn("AGENT_BAND_MODEL_FORMAT", launched_env)
-        resolve_context.assert_called_once_with("gpt-selected")
+        resolve_budget.assert_called_once_with("gpt-selected")
         child.assert_called_once_with(
             "copilot",
             "/usr/bin/copilot",
@@ -304,14 +367,23 @@ class TestLauncherOptions(unittest.TestCase):
             "local-token",
             "gpt-selected",
             ["--effort", "low", "--effort", "high"],
-            272_000,
+            main.ContextBudget(272_000, 258_400, 244_800),
+            None,
         )
         server.shutdown.assert_called_once_with()
         server.server_close.assert_called_once_with()
         thread.join.assert_called_once_with(timeout=5)
 
-    def test_SHOULD_cap_claude_compaction_at_each_backend_context_window(self) -> None:
-        with mock.patch.dict(os.environ, {"PATH": "/usr/bin"}, clear=True):
+    def test_SHOULD_set_claude_context_and_safe_global_compaction(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "PATH": "/usr/bin",
+                "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "999999",
+                "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "999999",
+            },
+            clear=True,
+        ):
             medium_command, medium_env = main.child_command(
                 "claude",
                 "/usr/bin/claude",
@@ -319,7 +391,8 @@ class TestLauncherOptions(unittest.TestCase):
                 "local-token",
                 "gpt-medium",
                 [],
-                272_000,
+                main.ContextBudget(272_000, 258_400, 244_800),
+                115_200,
             )
             short_command, short_env = main.child_command(
                 "claude",
@@ -328,13 +401,67 @@ class TestLauncherOptions(unittest.TestCase):
                 "local-token",
                 "gpt-short",
                 [],
-                128_000,
+                main.ContextBudget(128_000, 121_600, 115_200),
+                115_200,
             )
 
         self.assertEqual(medium_command, ["/usr/bin/claude", "--model", "gpt-medium[1m]"])
-        self.assertEqual(medium_env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"], "272000")
+        self.assertEqual(medium_env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"], "115200")
+        self.assertNotIn("CLAUDE_CODE_MAX_CONTEXT_TOKENS", medium_env)
         self.assertEqual(short_command, ["/usr/bin/claude", "--model", "gpt-short"])
-        self.assertEqual(short_env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"], "128000")
+        self.assertEqual(short_env["CLAUDE_CODE_MAX_CONTEXT_TOKENS"], "128000")
+        self.assertEqual(short_env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"], "115200")
+
+    def test_SHOULD_use_the_smallest_reachable_claude_lane_compaction_limit(self) -> None:
+        server = mock.Mock()
+        server.server_port = 3210
+        thread = mock.Mock()
+        credentials = mock.Mock()
+        root_budget = main.ContextBudget(272_000, 258_400, 244_800)
+        small_lane_budget = main.ContextBudget(64_000, 60_800, 57_600)
+        routes = {
+            "gpt-small@lane-low": {"model": "gpt-small", "effort": "low"},
+            "gpt-review@lane-xhigh": {"model": "gpt-review", "effort": "xhigh"},
+        }
+        child = mock.Mock(return_value=(["/usr/bin/claude"], {"PATH": "/usr/bin"}))
+
+        with (
+            mock.patch("main.load_lane_routes", return_value=routes),
+            mock.patch(
+                "main.claude_lane_environment",
+                return_value={
+                    "AGENT_BAND_CLAUDE_ROUTES": json.dumps(
+                        {
+                            "gpt-small@lane-low": "sonnet",
+                            "gpt-review@lane-xhigh": "haiku",
+                        }
+                    )
+                },
+            ),
+            mock.patch(
+                "main.resolve_model_budget",
+                side_effect=lambda model: {
+                    "gpt-root": root_budget,
+                    "gpt-small": small_lane_budget,
+                    "gpt-review": root_budget,
+                }[model],
+            ),
+            mock.patch("main.harness_binary", return_value="/usr/bin/claude"),
+            mock.patch("main.codex_binary", return_value="/usr/bin/codex"),
+            mock.patch("main.CodexAuth", return_value=credentials),
+            mock.patch("main.CodexClient"),
+            mock.patch("main.start_server", return_value=(server, thread)),
+            mock.patch("main.secrets.token_urlsafe", return_value="local-token"),
+            mock.patch("main.child_command", child),
+            mock.patch("main.run_child", return_value=0),
+        ):
+            self.assertEqual(main.launch("claude", ["--model", "gpt-root"]), 0)
+
+        self.assertEqual(child.call_args.args[-1], 57_600)
+        self.assertEqual(child.call_args.args[-2], small_lane_budget)
+        command, env = main.child_command(*child.call_args.args)
+        self.assertEqual(command, ["/usr/bin/claude", "--model", "gpt-root"])
+        self.assertEqual(env["CLAUDE_CODE_MAX_CONTEXT_TOKENS"], "64000")
 
 
 class TestCodexAuthentication(unittest.TestCase):
@@ -855,6 +982,7 @@ class TestLoopbackServer(unittest.TestCase):
             token="local-secret",
             codex=self.fake_client,
             store=OpaqueReasoningStore(),
+            usable_input_tokens=258_400,
         )
         self.server, self.thread = start_server(self.context)
         self.base_url = f"http://127.0.0.1:{self.server.server_port}"
@@ -900,6 +1028,30 @@ class TestLoopbackServer(unittest.TestCase):
         with self.assertRaises(urllib.error.HTTPError) as raised:
             urllib.request.urlopen(request, timeout=5)
         self.assertEqual(raised.exception.code, 401)
+
+    def test_SHOULD_publish_only_the_selected_cursor_model_with_extended_capabilities(self) -> None:
+        request = urllib.request.Request(
+            self.base_url + "/v1/models",
+            headers={"Authorization": "Bearer local-secret"},
+        )
+        with urllib.request.urlopen(request, timeout=5) as response:
+            payload = json.load(response)
+
+        self.assertEqual(payload["first_id"], "gpt-test")
+        self.assertEqual(payload["last_id"], "gpt-test")
+        self.assertEqual(len(payload["data"]), 1)
+        model = payload["data"][0]
+        self.assertEqual(model["id"], "gpt-test")
+        self.assertEqual(model["api_types"], ["responses", "chat_completions"])
+        self.assertEqual(
+            model["capabilities"],
+            {
+                "context_length": 258_400,
+                "output_modalities": ["text"],
+                "supports_tool_use": True,
+                "supports_streaming": True,
+            },
+        )
 
     def test_SHOULD_count_claude_request_tokens_without_upstream_auth(self) -> None:
         with self.request(

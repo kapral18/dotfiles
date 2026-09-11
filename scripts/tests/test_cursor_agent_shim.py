@@ -190,5 +190,69 @@ class TestShimForwardsRewrittenNames(unittest.TestCase):
         self.assertIn(b"data: [DONE]", raw)
 
 
+class TestCursorModelMetadata(unittest.TestCase):
+    """WHEN a pinned Cursor session discovers models through the loopback shim."""
+
+    def setUp(self):
+        self.shim = _load_shim()
+
+    def test_SHOULD_render_only_the_explicit_wire_catalog_in_cursor_extended_shape(self):
+        catalog = self.shim.parse_model_catalog(
+            json.dumps(
+                {
+                    "openai/gpt-5.6-sol@preset/effort-high": {
+                        "context_length": 272_000,
+                        "max_output_tokens": 128_000,
+                    }
+                }
+            )
+        )
+
+        self.assertEqual(
+            self.shim.cursor_model_rows(catalog),
+            [
+                {
+                    "id": "openai/gpt-5.6-sol@preset/effort-high",
+                    "api_types": ["openai_chat"],
+                    "capabilities": {
+                        "context_length": 272_000,
+                        "max_output_tokens": 128_000,
+                        "input_modalities": ["text"],
+                        "output_modalities": ["text"],
+                        "supports_tool_use": True,
+                        "supports_streaming": True,
+                        "supports_reasoning": False,
+                        "supports_vision": False,
+                    },
+                }
+            ],
+        )
+
+    def test_SHOULD_serve_only_catalog_models_without_contacting_the_openrouter_upstream(self):
+        previous_catalog = self.shim.MODEL_CATALOG
+        previous_allowed = self.shim.ALLOWED_MODEL
+        self.shim.MODEL_CATALOG = self.shim.parse_model_catalog(
+            '{"openai/gpt-5.6-sol@preset/effort-high":{"context_length":272000,"max_output_tokens":128000}}'
+        )
+        self.shim.ALLOWED_MODEL = "openai/gpt-5.6-sol@preset/effort-high"
+        server = self.shim.ShimServer(("127.0.0.1", 0), self.shim.ShimHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(lambda: (server.shutdown(), server.server_close(), thread.join(timeout=5)))
+        self.addCleanup(setattr, self.shim, "MODEL_CATALOG", previous_catalog)
+        self.addCleanup(setattr, self.shim, "ALLOWED_MODEL", previous_allowed)
+
+        with urlopen(f"http://127.0.0.1:{server.server_port}/api/v1/models", timeout=5) as response:
+            payload = json.loads(response.read())
+
+        self.assertEqual(payload, {"data": self.shim.cursor_model_rows(self.shim.MODEL_CATALOG)})
+
+    def test_SHOULD_reject_missing_or_non_positive_budget_fields(self):
+        for catalog in ({}, {"model": {"context_length": 0, "max_output_tokens": 1}}, {"model": {}}):
+            with self.subTest(catalog=catalog):
+                with self.assertRaisesRegex(ValueError, "context_length|max_output_tokens|non-empty"):
+                    self.shim.parse_model_catalog(json.dumps(catalog))
+
+
 if __name__ == "__main__":
     unittest.main()

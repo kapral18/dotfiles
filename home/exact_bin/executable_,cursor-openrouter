@@ -44,6 +44,7 @@ fi
 # `effort-<level>` slug; the default is `z-ai/glm-5.3-flash` at `high`.
 OPENROUTER_MODEL="z-ai/glm-5.3-flash"
 OPENROUTER_EFFORT="high"
+OPENROUTER_CONTEXT="short"
 # The strict-mode shim is now the session guardrail too, so it is always on for the
 # pinned route: the allowlist admits the primary wire id and the declared Pi lane
 # wire ids, rejecting other /chat/completions model ids before OpenRouter. `strict`
@@ -55,7 +56,8 @@ cli_args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
   --no-shim)
-    # Direct-OpenRouter opt-out: skips the model guardrail and the strict fix.
+    # Direct-OpenRouter opt-out: skips the model guardrail, strict fix, and
+    # shim-delivered context metadata.
     USE_SHIM=0
     shift
     ;;
@@ -91,9 +93,17 @@ while [[ $# -gt 0 ]]; do
     OPENROUTER_EFFORT="minimal"
     shift
     ;;
-  --context | --context=*)
-    echo "Error: ,cursor-openrouter cannot apply --context to OpenRouter provider slugs; cursor-agent-local forwards context suffixes literally." >&2
-    exit 2
+  --context)
+    [[ $# -ge 2 ]] || {
+      echo "Error: $1 requires a value." >&2
+      exit 2
+    }
+    OPENROUTER_CONTEXT="$2"
+    shift 2
+    ;;
+  --context=*)
+    OPENROUTER_CONTEXT="${1#*=}"
+    shift
     ;;
   --base-url | --base-url=* | --local-agent-api-key | --local-agent-api-key=* | --enable-bedrock | --enable-local-bedrock | --authless)
     echo "Error: ,cursor-openrouter pins OpenRouter on the agent-cli-local route; $1 is not supported." >&2
@@ -114,8 +124,16 @@ done
 
 # Every --model/--effort pair composes the same slug. `none` disables reasoning via
 # the `effort-none` workspace preset. OpenRouter rejects `ultra` on these slugs.
-if [[ -z "$OPENROUTER_MODEL" || -z "$OPENROUTER_EFFORT" ]]; then
-  echo "Error: --model and --effort require non-empty values." >&2
+if [[ -z "$OPENROUTER_MODEL" || -z "$OPENROUTER_EFFORT" || -z "$OPENROUTER_CONTEXT" ]]; then
+  echo "Error: --model, --effort, and --context require non-empty values." >&2
+  exit 2
+fi
+if [[ "$OPENROUTER_CONTEXT" != "short" && "$OPENROUTER_CONTEXT" != "long" ]]; then
+  echo "Error: unsupported context tier '$OPENROUTER_CONTEXT'; choose: short, long." >&2
+  exit 2
+fi
+if [[ "$USE_SHIM" -eq 0 && "$OPENROUTER_CONTEXT" == "long" ]]; then
+  echo "Error: ,cursor-openrouter --context long requires the shim to publish the selected model budget." >&2
   exit 2
 fi
 readonly OPENROUTER_PRESET_HELPER="$HOME/lib/shared/openrouter_presets.py"
@@ -140,6 +158,12 @@ readonly OPENROUTER_PI_T2_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-high"
 readonly OPENROUTER_PI_MECHANICAL_WIRE_MODEL="z-ai/glm-5.3-flash@preset/effort-high"
 readonly OPENROUTER_PI_MEMORY_WIRE_MODEL="google/gemini-3.8-flash@preset/effort-low"
 readonly OPENROUTER_PI_REFUTE_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-xhigh"
+
+# The shim is the verified consumer of this catalog. The direct `--no-shim`
+# short route remains an explicit unverified-capacity escape hatch.
+export CURSOR_AGENT_SHIM_MODEL_CATALOG="$("$OPENROUTER_PRESET_HELPER" --cursor-model-catalog "$OPENROUTER_CONTEXT" \
+  "$OPENROUTER_WIRE_MODEL" "$OPENROUTER_PI_T1_WIRE_MODEL" "$OPENROUTER_PI_T2_WIRE_MODEL" \
+  "$OPENROUTER_PI_MECHANICAL_WIRE_MODEL" "$OPENROUTER_PI_MEMORY_WIRE_MODEL" "$OPENROUTER_PI_REFUTE_WIRE_MODEL")"
 
 # The shim's session guardrail admits the selected primary and declared Pi lanes
 # on /chat/completions in this session. Subagents, profiles, resumes, and
@@ -167,7 +191,7 @@ trap shim_cleanup EXIT
 # The shim runs for every pinned route: allowlist enforcement is model-agnostic
 # (DeepSeek/Kimi/GLM included) and the `strict` rewrite only matters for
 # openai/* ids. The only skip is the direct-OpenRouter route (`--no-shim`),
-# which disables both the guardrail and the strict fix by explicit opt-out.
+# which disables the guardrail, strict fix, and budget metadata by explicit opt-out.
 needs_shim=1
 if [[ "$USE_SHIM" -eq 0 ]]; then
   needs_shim=0
@@ -221,6 +245,7 @@ export CURSOR_LOCAL_AGENT_API_KEY="$api_key"
 # `:<level>` into `@preset/effort-<level>`; the shim allowlist above admits only the session pin
 # and those Pi lane wire models, including Gemini memory at high effort.
 unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE
+unset AGENT_BAND_SUBSCRIPTION AGENT_BAND_CLAUDE_ROUTES AGENT_BAND_CODEX_ROUTES
 export AGENT_BAND_SCHEMA_HARNESS="pi"
 export AGENT_BAND_MODEL_FORMAT="openrouter-preset"
 

@@ -6,7 +6,7 @@ import importlib.util
 import json
 import sys
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
 from typing import BinaryIO
@@ -77,6 +77,26 @@ class PreparedRequest:
     body: bytes
     stream: bool
     tool_kinds: dict[str, str]
+    tool_names: dict[str, dict[str, str]] = field(default_factory=dict)
+    include_usage: bool = False
+
+
+def _chat_usage_events(chunks: Iterable[bytes], include_usage: bool) -> Iterable[bytes]:
+    """Apply the Chat caller's usage preference to translated streams, never native passthrough."""
+    for chunk in chunks:
+        if chunk == b"data: [DONE]\n\n" or not chunk.startswith(b"data: "):
+            yield chunk
+            continue
+        payload = json.loads(chunk.removeprefix(b"data: "))
+        if payload.get("object") != "chat.completion.chunk":
+            yield chunk
+            continue
+        usage = payload.pop("usage", None)
+        if include_usage:
+            payload["usage"] = None
+        yield _CODEX["protocols"]._chat_sse(payload)
+        if include_usage and usage is not None:
+            yield _CODEX["protocols"]._chat_sse({**payload, "choices": [], "usage": usage})
 
 
 def _normalize_copilot_responses(events: Iterable[dict[str, object]]) -> Iterable[dict[str, object]]:
@@ -161,6 +181,8 @@ class WireTranslator:
             raise ValueError("request body is not valid JSON") from error
         if not isinstance(payload, dict):
             raise TypeError("request body must be a JSON object")
+        options = payload.get("stream_options")
+        include_usage = isinstance(options, dict) and options.get("include_usage") is True
 
         if frontend == ANTHROPIC and backend == RESPONSES:
             wants_stream = payload.get("stream") is True
@@ -180,10 +202,21 @@ class WireTranslator:
                 effort_override=effort,
                 store=self._reasoning,
             )
-            return PreparedRequest(json.dumps(translated, separators=(",", ":")).encode(), wants_stream, {})
+            conversation = _GC["protocols"].parse_request("chat", payload)
+            translated.update(conversation.cache_options)
+            if conversation.has_cache_breakpoints:
+                translated.pop("instructions", None)
+                translated["input"] = _GC["protocols"].responses_cache_input(conversation, self._reasoning)
+            return PreparedRequest(
+                json.dumps(translated, separators=(",", ":")).encode(),
+                wants_stream,
+                {},
+                include_usage=include_usage,
+            )
 
         frontend_name = "anthropic" if frontend == ANTHROPIC else "chat" if frontend == CHAT else "responses"
         conversation = _GC["protocols"].parse_request(frontend_name, payload)
+        tool_names = _GC["protocols"].encode_tool_names(conversation) if frontend == RESPONSES else {}
         gc_model = self._gc_model(model, "gemini-chat" if backend == CHAT else "claude")
         if backend == CHAT:
             translated = _GC["protocols"].to_gemini_payload(
@@ -208,6 +241,8 @@ class WireTranslator:
             json.dumps(translated, separators=(",", ":")).encode(),
             conversation.stream,
             conversation.tool_kinds,
+            tool_names,
+            include_usage,
         )
 
     def render(
@@ -233,7 +268,8 @@ class WireTranslator:
         if frontend == CHAT and backend == RESPONSES:
             events = _normalize_copilot_responses(_CODEX["protocols"].iter_sse_json(upstream))
             if prepared.stream:
-                return _CODEX["protocols"].responses_to_chat_events(events, model.model_id, self._reasoning)
+                chunks = _CODEX["protocols"].responses_to_chat_events(events, model.model_id, self._reasoning)
+                return _chat_usage_events(chunks, prepared.include_usage)
             payload = _CODEX["protocols"].collect_chat_completion(events, model.model_id, self._reasoning)
             return json.dumps(payload, separators=(",", ":")).encode()
 
@@ -250,14 +286,15 @@ class WireTranslator:
             if frontend == ANTHROPIC:
                 return _GC["streaming"].render_anthropic(events, gc_model)
             if frontend == CHAT:
-                return _GC["streaming"].render_chat(events, gc_model)
-            return _GC["streaming"].render_responses(events, gc_model, prepared.tool_kinds)
+                return _chat_usage_events(_GC["streaming"].render_chat(events, gc_model), prepared.include_usage)
+            return _GC["streaming"].render_responses(events, gc_model, prepared.tool_kinds, prepared.tool_names)
         result = _GC["streaming"].collect_response(events)
         payload = _GC["streaming"].render_json(
             frontend_name,
             result,
             gc_model,
             prepared.tool_kinds,
+            prepared.tool_names,
         )
         return json.dumps(payload, separators=(",", ":")).encode()
 

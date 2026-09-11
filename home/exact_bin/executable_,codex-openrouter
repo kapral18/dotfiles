@@ -26,6 +26,7 @@ export OPENROUTER_API_KEY="$api_key"
 # `model_reasoning_effort` stays unset so the preset is the single source of effort.
 OPENROUTER_MODEL="z-ai/glm-5.3-flash"
 OPENROUTER_EFFORT="high"
+OPENROUTER_CONTEXT="short"
 
 cli_args=()
 while [[ $# -gt 0 ]]; do
@@ -58,9 +59,17 @@ while [[ $# -gt 0 ]]; do
     OPENROUTER_EFFORT="minimal"
     shift
     ;;
-  --context | --context=*)
-    echo "Error: ,codex-openrouter cannot apply --context because Codex 0.149.0 exposes no verified context-window override for custom providers." >&2
-    exit 2
+  --context)
+    [[ $# -ge 2 ]] || {
+      echo "Error: $1 requires a value." >&2
+      exit 2
+    }
+    OPENROUTER_CONTEXT="$2"
+    shift 2
+    ;;
+  --context=*)
+    OPENROUTER_CONTEXT="${1#*=}"
+    shift
     ;;
   -c | -c=* | --config | --config=* | --profile | --profile=*)
     echo "Error: ,codex-openrouter pins OpenRouter; $1 is not supported." >&2
@@ -81,8 +90,12 @@ done
 
 # Every --model/--effort pair composes the same slug. `none` disables reasoning via
 # the `effort-none` workspace preset. OpenRouter rejects `ultra` on these slugs.
-if [[ -z "$OPENROUTER_MODEL" || -z "$OPENROUTER_EFFORT" ]]; then
-  echo "Error: --model and --effort require non-empty values." >&2
+if [[ -z "$OPENROUTER_MODEL" || -z "$OPENROUTER_EFFORT" || -z "$OPENROUTER_CONTEXT" ]]; then
+  echo "Error: --model, --effort, and --context require non-empty values." >&2
+  exit 2
+fi
+if [[ "$OPENROUTER_CONTEXT" != "short" && "$OPENROUTER_CONTEXT" != "long" ]]; then
+  echo "Error: unsupported context tier '$OPENROUTER_CONTEXT'; choose: short, long." >&2
   exit 2
 fi
 readonly OPENROUTER_PRESET_HELPER="$HOME/lib/shared/openrouter_presets.py"
@@ -102,6 +115,21 @@ if [[ "$OPENROUTER_EFFORT" != "low" ]]; then
   "$OPENROUTER_PRESET_HELPER" low
 fi
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
+readonly OPENROUTER_PI_T1_WIRE_MODEL="anthropic/claude-fable-5.1@preset/effort-high"
+readonly OPENROUTER_PI_T2_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-high"
+readonly OPENROUTER_PI_MECHANICAL_WIRE_MODEL="z-ai/glm-5.3-flash@preset/effort-high"
+readonly OPENROUTER_PI_MEMORY_WIRE_MODEL="google/gemini-3.8-flash@preset/effort-low"
+readonly OPENROUTER_PI_REFUTE_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-xhigh"
+
+codex_catalog="$(mktemp -t ,codex-openrouter-model-catalog.XXXXXX)"
+codex_catalog_cleanup() {
+  rm -f "$codex_catalog"
+}
+trap codex_catalog_cleanup EXIT
+"$OPENROUTER_PRESET_HELPER" --codex-model-catalog "$OPENROUTER_CONTEXT" \
+  "$OPENROUTER_MODEL" "$OPENROUTER_PI_T1_WIRE_MODEL" "$OPENROUTER_PI_T2_WIRE_MODEL" \
+  "$OPENROUTER_PI_MECHANICAL_WIRE_MODEL" "$OPENROUTER_PI_MEMORY_WIRE_MODEL" \
+  "$OPENROUTER_PI_REFUTE_WIRE_MODEL" >"$codex_catalog"
 
 # OpenRouter answers /api/v1/responses, and Codex 0.146.0 attaches its full built-in tool set
 # behind a provider-prefixed slug there, so no wire rewriting is needed on this route.
@@ -111,6 +139,12 @@ args=(
   -c "model_providers.openrouter.env_key=\"OPENROUTER_API_KEY\""
   -c "model_providers.openrouter.wire_api=\"responses\""
   -c "model_provider=\"openrouter\""
+  # The selected catalog owns every route's per-model capacity. These large
+  # overrides neutralize inherited global caps; Codex clamps them per catalog
+  # entry, including the 90% automatic-compaction ceiling.
+  -c "model_context_window=9223372036854775807"
+  -c "model_auto_compact_token_limit=9223372036854775807"
+  -c "model_catalog_json=\"$codex_catalog\""
   --model "$OPENROUTER_WIRE_MODEL"
 )
 
@@ -118,7 +152,9 @@ args=(
 # category matrix. The gate strips the `openrouter/` prefix and turns `:<level>` into
 # `@preset/effort-<level>`, which is the wire format this route serves.
 unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE
+unset AGENT_BAND_SUBSCRIPTION AGENT_BAND_CLAUDE_ROUTES AGENT_BAND_CODEX_ROUTES
 export AGENT_BAND_SCHEMA_HARNESS="pi"
 export AGENT_BAND_MODEL_FORMAT="openrouter-preset"
 
-exec "$codex_bin" "${args[@]}" "${cli_args[@]}"
+"$codex_bin" "${args[@]}" "${cli_args[@]}"
+exit $?

@@ -71,7 +71,7 @@ local local_modules = {
   "plugins_local.switch-src-test",
   "plugins_local.toggle-win-width",
   "plugins_local.ts-move-exports",
-  "plugins_local.unwrap-md",
+  "plugins_local.format-md",
   "plugins_local.winbar",
 }
 

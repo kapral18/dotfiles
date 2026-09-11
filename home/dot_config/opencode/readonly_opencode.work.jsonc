@@ -77,6 +77,7 @@
         // kimi lanes use only Fireworks, Together, and BaseTen under the $16/M cap via the
         // `kimi-lanes` preset (opencode has no request-body channel for this provider object).
         "moonshotai/kimi-k3@preset/kimi-lanes": {
+          "limit": { "context": 1048576, "output": 131072 },
           "options": {
             "reasoningEffort": "high",
           },
@@ -84,18 +85,21 @@
         // glm lanes require FP8-or-higher quantization and a 24 t/s floor via `glm-lanes-high` (no sort: uptime-aware default LB);
         // the request model overrides the preset's pinned GLM-5.2 id (live-probed 2026-09-10), so GLM 5.3 Flash rides the same slug.
         "z-ai/glm-5.3-flash@preset/glm-lanes-high": {
+          "limit": { "context": 1048576, "output": 131072 },
           "options": {
             "reasoningEffort": "high",
           },
         },
         // deepseek lanes keep the same FP8-or-higher, 24 t/s floor, no-sort policy on the still-selectable DeepSeek V4 Flash via `deepseek-lanes-max`.
         "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max": {
+          "limit": { "context": 1048576, "output": 384000 },
           "options": {
             "reasoningEffort": "max",
           },
         },
         // glm lanes apply the same FP8-or-higher, 24 t/s floor, no-sort policy to GLM-5.2 via `glm-lanes-max`.
         "z-ai/glm-5.2@preset/glm-lanes-max": {
+          "limit": { "context": 1024000, "output": 128000 },
           "options": {
             "reasoningEffort": "max",
           },
@@ -111,15 +115,19 @@
       "models": {
         "nemotron-3.5": {
           "name": "NVIDIA Nemotron 3.5 Lightning 30B A3B UD-Q4_K_XL (llama.cpp)",
+          "limit": { "context": 262144, "output": 32000 },
         },
         "qwen3.5-9b": {
           "name": "Qwen3.5 9B UD-Q4_K_XL (llama.cpp)",
+          "limit": { "context": 262144, "output": 32000 },
         },
         "qwen3.8-27b": {
           "name": "Qwen3.8 27B UD-Q4_K_XL (llama.cpp)",
+          "limit": { "context": 131072, "output": 32000 },
         },
         "qwen3.8-27b-instruct": {
           "name": "Qwen3.8 27B UD-Q4_K_XL instruct (llama.cpp)",
+          "limit": { "context": 131072, "output": 32000 },
         },
       },
     },

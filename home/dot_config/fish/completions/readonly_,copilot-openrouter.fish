@@ -1,3 +1,4 @@
+# Launch clears inherited subscription lane maps; the CLI options stay unchanged.
 set -l _or_catalog "$__fish_config_dir/functions/__openrouter_catalog.fish"
 test -f $_or_catalog; and source $_or_catalog
 

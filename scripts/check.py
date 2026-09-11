@@ -251,7 +251,7 @@ TEST_RULES: tuple[TestRule, ...] = (
         tests=(
             "tests/test_w_issue.py",
             "tests/test_artifact.py",
-            "tests/test_unwrap_md.py",
+            "tests/test_format_md.py",
             "tests/test_mcp_token.py",
             "tests/test_openrouter_wrappers.py",
             "tests/test_install_pnpm_pkgs.py",
@@ -357,7 +357,10 @@ TEST_RULES: tuple[TestRule, ...] = (
         tests=("tests/test_codex_adapter.py", "tests/test_copilot_adapter.py"),
     ),
     TestRule(prefixes=("home/exact_lib/exact_,copilot-adapter/",), tests=("tests/test_copilot_adapter.py",)),
-    TestRule(prefixes=("home/exact_lib/exact_,cursor-agent-shim/",), tests=("tests/test_cursor_agent_shim.py",)),
+    TestRule(
+        prefixes=("home/exact_lib/exact_,cursor-agent-shim/",),
+        tests=("tests/test_cursor_agent_shim.py", "tests/test_cursor_llama_cpp.py"),
+    ),
     TestRule(prefixes=("home/exact_lib/exact_,ai/", "home/exact_bin/executable_,ai"), tests=("test_ai_launcher.py",)),
     TestRule(prefixes=("home/dot_omp/",), tests=("test_omp_migration.py", "tests/test_invariants.py")),
     TestRule(prefixes=("scripts/install_github_zip_bundle.py",), tests=("tests/test_install_github_zip_bundle.py",)),

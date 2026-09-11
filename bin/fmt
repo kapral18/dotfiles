@@ -28,7 +28,7 @@ Options:
   (no args)     Format all tracked files plus untracked, non-ignored files
 
 Formatters:
-  md               ,unwrap-md + markdownlint --fix + prettier
+  md               ,format-md + markdownlint --fix + prettier
   json, yaml       prettier
   sh               shfmt (2-space, bash)
   lua              stylua
@@ -149,27 +149,27 @@ should_run() {
 # Each group is a self-contained function that prints its own progress, mutates
 # files (or checks them), and returns non-zero on failure. Groups operate on
 # disjoint file sets, so they are launched concurrently (see runner below). The
-# only ordering constraint lives *inside* the md group: ,unwrap-md -> markdownlint
+# only ordering constraint lives *inside* the md group: ,format-md -> markdownlint
 # -> prettier all touch the same markdown files and must stay sequential.
 
-# md group: ,unwrap-md -> markdownlint --fix -> prettier (md + json + yaml).
+# md group: ,format-md -> markdownlint --fix -> prettier (md + json + yaml).
 # json/yaml have no ordering dependency, but bundling them into prettier keeps it
 # a single bulk invocation (the original behavior) and they ride along harmlessly.
 fmt_md() {
   local rc=0
   if should_run md; then
-    if ! command -v ,unwrap-md >/dev/null 2>&1; then
-      printf 'missing: ,unwrap-md (install via chezmoi: chezmoi apply %s)\n' "$HOME/bin/,unwrap-md" >&2
+    if ! command -v ,format-md >/dev/null 2>&1; then
+      printf 'missing: ,format-md (install via chezmoi: chezmoi apply %s)\n' "$HOME/bin/,format-md" >&2
       return 1
     fi
     mapfile -t md_files < <(collect_by_func is_md_file | sort -u)
     if [[ ${#md_files[@]} -gt 0 ]]; then
       if $check_mode; then
-        printf ',unwrap-md: checking %d files\n' "${#md_files[@]}"
-        ,unwrap-md --check "${md_files[@]}" || rc=1
+        printf ',format-md: checking %d files\n' "${#md_files[@]}"
+        ,format-md --check "${md_files[@]}" || rc=1
       else
-        printf ',unwrap-md: unwrapping %d files\n' "${#md_files[@]}"
-        ,unwrap-md "${md_files[@]}"
+        printf ',format-md: formatting AI prose in %d files\n' "${#md_files[@]}"
+        ,format-md "${md_files[@]}"
       fi
     fi
 

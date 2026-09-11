@@ -17,7 +17,7 @@ The statusline shows client name, spinner, latest title/message, optional server
 
 ## Markdown / MDX prose behavior
 
-Markdown and MDX use Prettier with `--prose-wrap=preserve` so editor formatting does not reflow prose to `printWidth`. For plain Markdown, `,unwrap-md` runs after Prettier to unwrap hard-wrapped prose. In SOP and managed agent/skill Markdown, `,unwrap-md` keeps AI-facing gates, examples, and exceptions as sentence-boundary-wrapped prompt units: mid-sentence wraps are joined, the next sentence moves to a new line only when appending it would cross the soft 140-character boundary, and single over-boundary sentences wrap only at strong clause punctuation. Without a strong punctuation boundary, the sentence stays long rather than being cut mid-thought.
+Markdown and MDX use Prettier with `--prose-wrap=preserve` so editor formatting does not reflow prose to `printWidth`. For plain Markdown, `,format-md` runs after Prettier and leaves ordinary files unchanged. In recognized AI paths, it preserves authored sentence breaks and joins only plain mid-sentence continuations that fit the soft 140-character boundary. Long lines split at sentence or strong clause boundaries when possible; ambiguous markup retains its existing lines. Markdownlint and Prettier still apply their own formatting before this step.
 
 Relevant files:
 

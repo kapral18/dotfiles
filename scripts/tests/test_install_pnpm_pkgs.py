@@ -24,6 +24,37 @@ state_path = Path(os.environ["FAKE_PNPM_STATE"])
 state = json.loads(state_path.read_text(encoding="utf-8"))
 state["pnpm_home"] = os.environ["PNPM_HOME"]
 args = sys.argv[1:]
+state.setdefault("calls", []).append(" ".join(args))
+if args == ["root", "-g"]:
+    state_path.write_text(json.dumps(state), encoding="utf-8")
+    if state.get("root_behavior") == "fail":
+        print("global root unavailable", file=sys.stderr)
+        sys.exit(72)
+    print(state["global_workspace"])
+    sys.exit(0)
+
+if len(args) >= 3 and args[0] == "-C" and args[2:5] == ["config", "get", "--location=project"]:
+    state["config_get_calls"] = state.get("config_get_calls", 0) + 1
+    state_path.write_text(json.dumps(state), encoding="utf-8")
+    if state.get("config_get_behavior") == "fail":
+        print("allowBuilds unavailable", file=sys.stderr)
+        sys.exit(72)
+    if state.get("config_get_behavior") == "malformed":
+        print("not json")
+        sys.exit(0)
+    print(json.dumps(state.get("allow_builds")))
+    sys.exit(0)
+
+if len(args) >= 3 and args[0] == "-C" and args[2:5] == ["config", "set", "--location=project"]:
+    state["config_set_calls"] = state.get("config_set_calls", 0) + 1
+    if state.get("config_set_behavior") == "fail":
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        print("allowBuilds write rejected", file=sys.stderr)
+        sys.exit(72)
+    state["allow_builds"] = json.loads(args[-1])
+    state_path.write_text(json.dumps(state), encoding="utf-8")
+    sys.exit(0)
+
 if args == ["ls", "-g", "--json", "--depth", "0"]:
     state["list_calls"] = state.get("list_calls", 0) + 1
     behavior = state.get("list_behaviors", {}).get(str(state["list_calls"]))
@@ -75,6 +106,9 @@ class TestInstallPnpmPkgs(unittest.TestCase):
         list_behaviors: dict[str, str] | None = None,
         failures: dict[str, str] | None = None,
         effects: dict[str, dict[str, str]] | None = None,
+        allow_builds: dict[str, object] | None = None,
+        root_behavior: str | None = None,
+        config_get_behavior: str | None = None,
     ):
         home = Path(tmp) / "home"
         home.mkdir()
@@ -87,6 +121,10 @@ class TestInstallPnpmPkgs(unittest.TestCase):
             "list_behaviors": list_behaviors or {},
             "failures": failures or {},
             "effects": effects or {},
+            "allow_builds": allow_builds,
+            "global_workspace": str(global_dir),
+            "root_behavior": root_behavior,
+            "config_get_behavior": config_get_behavior,
         }
         for name, version in installed.items():
             package_path = global_dir / f"hash-{name.replace('/', '+')}" / "node_modules" / name
@@ -150,7 +188,8 @@ class TestInstallPnpmPkgs(unittest.TestCase):
             )
             result = self._run(home, bindir, log, state, path=str(bindir))
             actions = self._actions(log)
-            list_calls = json.loads(state.read_text())["list_calls"]
+            recorded = json.loads(state.read_text())
+            list_calls = recorded["list_calls"]
             scoped_link_exists = self._link(home, "@org/scoped").is_symlink()
 
         assert result.returncode == 0, result.stderr
@@ -161,6 +200,71 @@ class TestInstallPnpmPkgs(unittest.TestCase):
         assert not any(action.startswith("update -g --latest @org/scoped") for action in actions)
         assert scoped_link_exists
         assert list_calls == 2
+        assert recorded["allow_builds"] == {"pinned": True, "@org/scoped": True, "unpinned": True}
+
+    def test_SHOULD_approve_all_desired_top_level_packages_before_mutations(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            default_entries = [
+                line.strip()
+                for line in (REPO / "home/readonly_dot_default-pnpm-pkgs").read_text(encoding="utf-8").splitlines()
+                if line.strip() and not line.lstrip().startswith("#")
+            ]
+            desired = "\n".join([*default_entries, "@scope/pinned@1.2.3"]) + "\n"
+            desired_names = []
+            for entry in [*default_entries, "@scope/pinned@1.2.3"]:
+                name, marker, _pin = entry.rpartition("@")
+                desired_names.append(name if marker and name else entry)
+            unrelated = {
+                "@google/genai": True,
+                "esbuild": False,
+                "onnxruntime-node": "placeholder",
+                "protobufjs": True,
+                "sharp": False,
+            }
+            installed = {name: "1.2.3" if name == "@scope/pinned" else "1.0.0" for name in desired_names}
+            home, bindir, log, state = self._fixture(tmp, desired, installed, allow_builds=unrelated)
+            result = self._run(home, bindir, log, state)
+            recorded = json.loads(state.read_text(encoding="utf-8"))
+            actions = self._actions(log)
+
+        assert result.returncode == 0, result.stderr
+        assert recorded["allow_builds"] == {**unrelated, **{name: True for name in desired_names}}
+        assert recorded["config_set_calls"] == 1
+        assert recorded["calls"][:3] == [
+            "root -g",
+            f"-C {recorded['global_workspace']} config get --location=project --json allowBuilds",
+            f"-C {recorded['global_workspace']} config set --location=project --json allowBuilds "
+            f"{json.dumps(recorded['allow_builds'])}",
+        ]
+        assert any(action.startswith("update -g --latest") for action in actions)
+
+    def test_SHOULD_not_rewrite_build_approvals_when_all_desired_packages_are_approved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            desired = "plain\n@scope/pinned@1.2.3\n"
+            approvals = {"plain": True, "@scope/pinned": True, "unrelated": False}
+            home, bindir, log, state = self._fixture(
+                tmp,
+                desired,
+                {"plain": "1.0.0", "@scope/pinned": "1.2.3"},
+                allow_builds=approvals,
+            )
+            result = self._run(home, bindir, log, state)
+            recorded = json.loads(state.read_text(encoding="utf-8"))
+
+        assert result.returncode == 0, result.stderr
+        assert recorded["allow_builds"] == approvals
+        assert recorded.get("config_set_calls", 0) == 0
+
+    def test_SHOULD_stop_before_package_mutation_when_build_approvals_are_unreadable(self):
+        for behavior in ("fail", "malformed"):
+            with self.subTest(behavior=behavior), tempfile.TemporaryDirectory() as tmp:
+                home, bindir, log, state = self._fixture(tmp, "plain\n", {}, config_get_behavior=behavior)
+                result = self._run(home, bindir, log, state)
+                recorded = json.loads(state.read_text(encoding="utf-8"))
+
+                assert result.returncode == 1
+                assert self._actions(log) == []
+                assert "ls -g --json --depth 0" not in recorded["calls"]
 
     def test_SHOULD_install_missing_with_pin_and_remove_undesired(self):
         with tempfile.TemporaryDirectory() as tmp:

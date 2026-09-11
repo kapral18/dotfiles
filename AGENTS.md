@@ -166,7 +166,7 @@ The skill also owns the fidelity boundaries — factual negations, quoted exampl
 - If a single sentence is too long, prefer a meaning-preserving rewrite into two complete sentences.
   If no safe rewrite exists, keep the long sentence rather than cutting it at connector words or whitespace.
 - Never drop modal strength (`MUST`, `MAY`, `do not`, `only when`), scope qualifiers, examples, paths, flags, commands, or exception clauses to make a line shorter.
-- For Markdown, rely on `bin/fmt` / `,unwrap-md` after editing. For plain text files, apply the same policy manually and inspect the diff.
+- For Markdown, rely on `bin/fmt` / `,format-md` after editing. For plain text files, apply the same policy manually and inspect the diff.
 
 ## Script Architecture: Shell vs Dedicated Languages
 

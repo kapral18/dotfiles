@@ -58,12 +58,12 @@ def _load_artifact_command():
     return module
 
 
-def _load_unwrap_md_command():
-    source = REPO / "home/exact_bin/executable_,unwrap-md"
-    loader = SourceFileLoader("unwrap_md_command", str(source))
-    spec = importlib.util.spec_from_loader("unwrap_md_command", loader)
+def _load_format_md_command():
+    source = REPO / "home/exact_bin/executable_,format-md"
+    loader = SourceFileLoader("format_md_command", str(source))
+    spec = importlib.util.spec_from_loader("format_md_command", loader)
     if spec is None or spec.loader is None:
-        raise AssertionError("could not load unwrap-md command module")
+        raise AssertionError("could not load format-md command module")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -76,6 +76,7 @@ def _load_openrouter_presets_module():
     if spec is None or spec.loader is None:
         raise AssertionError("could not load OpenRouter preset helper")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
@@ -436,6 +437,20 @@ if [[ "$1" == "--context-window" ]]; then
   long) echo 1048576 ;;
   *) exit 1 ;;
   esac
+  exit 0
+fi
+if [[ "$1" == "--session-budget-env" ]]; then
+  echo "CONTEXT_LIMIT=1048576"
+  echo "MAX_OUTPUT_TOKENS=131072"
+  echo "PROMPT_LIMIT=200000"
+  exit 0
+fi
+if [[ "$1" == "--codex-model-catalog" ]]; then
+  echo '{"models":[]}'
+  exit 0
+fi
+if [[ "$1" == "--cursor-model-catalog" ]]; then
+  echo '{}'
   exit 0
 fi
 exit 0

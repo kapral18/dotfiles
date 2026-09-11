@@ -39,14 +39,14 @@ providers:
         api: "openai-responses"
         provider: "openrouter"
         baseUrl: "https://openrouter.ai/api/v1"
-        contextWindow: 1048576
+        contextWindow: 1024000
         maxTokens: 384000
       - id: "anthropic/claude-sonnet-4.6"
         name: "Claude Sonnet 4.6"
         api: "openai-responses"
         provider: "openrouter"
         baseUrl: "https://openrouter.ai/api/v1"
-        contextWindow: 1048576
+        contextWindow: 1000000
         maxTokens: 128000
       - id: "google/gemini-3.8-flash"
         name: "Gemini 3.8 Flash"
@@ -54,7 +54,7 @@ providers:
         provider: "openrouter"
         baseUrl: "https://openrouter.ai/api/v1"
         contextWindow: 1048576
-        maxTokens: 128000
+        maxTokens: 65536
       - id: "z-ai/glm-5.3-flash@preset/glm-lanes-high"
         name: "GLM 5.3 Flash (glm lanes high)"
         api: "openai-responses"
@@ -74,7 +74,7 @@ providers:
         api: "openai-responses"
         provider: "openrouter"
         baseUrl: "https://openrouter.ai/api/v1"
-        contextWindow: 1048576
+        contextWindow: 1024000
         maxTokens: 128000
       - id: "moonshotai/kimi-k3@preset/kimi-lanes"
         name: "Kimi K3 (kimi lanes)"

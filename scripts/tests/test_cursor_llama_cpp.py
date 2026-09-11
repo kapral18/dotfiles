@@ -3,7 +3,13 @@
 
 from __future__ import annotations
 
+import http.server
+import json
+import shutil
+import threading
 import unittest
+import urllib.error
+from urllib.request import Request, urlopen
 
 try:
     from . import bin_command_support as _support
@@ -16,6 +22,49 @@ globals().update({name: value for name, value in vars(_support).items() if not n
 class TestCursorLlamaCppWrapper(unittest.TestCase):
     """WHEN Cursor launches against the local llama.cpp router."""
 
+    def test_SHOULD_deliver_a_stream_event_before_upstream_completion(self):
+        import importlib
+
+        proxy_dir = str(REPO / "home/exact_lib/exact_,cursor-agent-shim")
+        with mock.patch.object(sys, "path", [proxy_dir, *sys.path]):
+            proxy = importlib.import_module("llama_cpp_proxy")
+        observed = threading.Event()
+        sent_before_completion = []
+
+        class StreamingHandler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *_args):
+                pass
+
+            def do_POST(self):
+                self.rfile.read(int(self.headers.get("Content-Length", "0")))
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream")
+                self.end_headers()
+                self.wfile.write(b"data: first\n\n")
+                self.wfile.flush()
+                sent_before_completion.append(observed.wait(3))
+                self.wfile.write(b"data: done\n\n")
+
+        upstream = http.server.ThreadingHTTPServer(("127.0.0.1", 0), StreamingHandler)
+        server = proxy.LlamaProxyServer(("127.0.0.1", 0), f"http://127.0.0.1:{upstream.server_port}", {})
+        threads = [threading.Thread(target=item.serve_forever, daemon=True) for item in (upstream, server)]
+        for thread in threads:
+            thread.start()
+        try:
+            request = Request(f"http://127.0.0.1:{server.server_port}/v1/chat/completions", data=b"{}")
+            with urlopen(request, timeout=5) as response:
+                self.assertEqual(response.readline(), b"data: first\n")
+                observed.set()
+                self.assertIn(b"data: done", response.read())
+            self.assertEqual(sent_before_completion, [True])
+        finally:
+            observed.set()
+            for item in (server, upstream):
+                item.shutdown()
+                item.server_close()
+            for thread in threads:
+                thread.join()
+
     def test_SHOULD_pin_the_local_endpoint_key_and_selected_model(self):
         wrapper = REPO / "home/exact_bin/executable_,cursor-llama-cpp"
         with tempfile.TemporaryDirectory() as tmp:
@@ -26,6 +75,26 @@ class TestCursorLlamaCppWrapper(unittest.TestCase):
             version = "2026.08.11-test"
             local_dir = home / ".local/share/cursor-agent-local/versions" / version
             local_dir.mkdir(parents=True)
+            shim_dir = home / "lib" / ",cursor-agent-shim"
+            shim_dir.mkdir(parents=True)
+            for name in ("shim.py", "llama_cpp_proxy.py"):
+                shutil.copy(REPO / "home/exact_lib/exact_,cursor-agent-shim" / name, shim_dir / name)
+            catalog = home / ".codex" / "llama-cpp-model-catalog.json"
+            catalog.parent.mkdir()
+            catalog.write_text(
+                json.dumps(
+                    {
+                        "models": [
+                            {
+                                "slug": "nemotron-3.5",
+                                "context_window": 262_144,
+                                "auto_compact_token_limit": 200_000,
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
 
             cursor_agent = bindir / "cursor-agent"
             cursor_agent.write_text(f'#!/usr/bin/env bash\necho "{version}"\n', encoding="utf-8")
@@ -64,12 +133,144 @@ printf 'base=%s\nkey=%s\nband-model=%s\nargs=%s\n' \\
             )
 
         assert result.returncode == 0, result.stderr
-        assert result.stdout.splitlines() == [
-            "base=http://127.0.0.9:9090/v1",
+        lines = result.stdout.splitlines()
+        assert lines[0].startswith("base=http://127.0.0.1:")
+        assert lines[0].endswith("/v1")
+        assert lines[1:] == [
             "key=fixture-local-key",
             "band-model=nemotron-3.5",
             "args=--model nemotron-3.5 -p review",
         ]
+        with self.assertRaises(urllib.error.URLError):
+            urlopen(lines[0].removeprefix("base=") + "/models", timeout=0.1)
+
+    def test_SHOULD_serve_selected_catalog_budget_and_transparently_forward_through_the_lease(self):
+        wrapper = REPO / "home/exact_bin/executable_,cursor-llama-cpp"
+        seen: dict[str, object] = {}
+
+        class Upstream(http.server.BaseHTTPRequestHandler):
+            def log_message(self, _format, *_args):
+                return
+
+            def do_POST(self):
+                seen["path"] = self.path
+                seen["authorization"] = self.headers.get("Authorization")
+                seen["body"] = self.rfile.read(int(self.headers["Content-Length"]))
+                body = b'{"ok":true}'
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+        upstream = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Upstream)
+        upstream_thread = threading.Thread(target=upstream.serve_forever, daemon=True)
+        upstream_thread.start()
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                home = root / "home"
+                bindir = root / "bin"
+                bindir.mkdir()
+                version = "2026.08.11-test"
+                local_dir = home / ".local/share/cursor-agent-local/versions" / version
+                local_dir.mkdir(parents=True)
+                shim_dir = home / "lib" / ",cursor-agent-shim"
+                shim_dir.mkdir(parents=True)
+                for name in ("shim.py", "llama_cpp_proxy.py"):
+                    shutil.copy(REPO / "home/exact_lib/exact_,cursor-agent-shim" / name, shim_dir / name)
+                catalog = home / ".codex" / "llama-cpp-model-catalog.json"
+                catalog.parent.mkdir()
+                catalog.write_text(
+                    json.dumps(
+                        {
+                            "models": [
+                                {
+                                    "slug": "qwen3.8-27b",
+                                    "context_window": 131_072,
+                                    "auto_compact_token_limit": 100_000,
+                                }
+                            ]
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                cursor_agent = bindir / "cursor-agent"
+                cursor_agent.write_text(f'#!/usr/bin/env bash\necho "{version}"\n', encoding="utf-8")
+                cursor_agent.chmod(0o755)
+                lifecycle = bindir / ",llama-cpp"
+                lifecycle.write_text(
+                    '#!/usr/bin/env bash\n[[ "$1" == run && "$2" == -- ]] || exit 2\nshift 2\nexec "$@"\n',
+                    encoding="utf-8",
+                )
+                lifecycle.chmod(0o755)
+                local = local_dir / "cursor-agent-local"
+                local.write_text(
+                    """#!/usr/bin/env python3
+import json
+import os
+from urllib.request import Request, urlopen
+
+base = os.environ["CURSOR_LOCAL_AGENT_BASE_URL"]
+with urlopen(base + "/models", timeout=5) as response:
+    print(json.dumps(json.load(response), sort_keys=True))
+request = Request(
+    base + "/chat/completions",
+    data=b'{"model":"qwen3.8-27b","messages":[]}',
+    headers={"Authorization": "Bearer fixture-local-key", "Content-Type": "application/json"},
+    method="POST",
+)
+with urlopen(request, timeout=5) as response:
+    print(response.read().decode())
+""",
+                    encoding="utf-8",
+                )
+                local.chmod(0o755)
+
+                result = subprocess.run(
+                    [modern_bash(), str(wrapper), "--model", "qwen3.8-27b"],
+                    capture_output=True,
+                    text=True,
+                    env={
+                        **os.environ,
+                        "HOME": str(home),
+                        "PATH": f"{bindir}:{os.environ['PATH']}",
+                        "LLAMA_CPP_HOST": "127.0.0.1",
+                        "LLAMA_CPP_PORT": str(upstream.server_port),
+                        "LLAMA_CPP_API_KEY": "fixture-local-key",
+                    },
+                )
+        finally:
+            upstream.shutdown()
+            upstream.server_close()
+            upstream_thread.join(timeout=5)
+
+        assert result.returncode == 0, result.stderr
+        metadata, response = result.stdout.splitlines()
+        assert json.loads(metadata) == {
+            "data": [
+                {
+                    "api_types": ["openai_chat"],
+                    "capabilities": {
+                        "context_length": 99_072,
+                        "input_modalities": ["text"],
+                        "max_output_tokens": 32_000,
+                        "output_modalities": ["text"],
+                        "supports_reasoning": False,
+                        "supports_streaming": True,
+                        "supports_tool_use": True,
+                        "supports_vision": False,
+                    },
+                    "id": "qwen3.8-27b",
+                }
+            ]
+        }
+        assert response == '{"ok":true}'
+        assert seen == {
+            "path": "/v1/chat/completions",
+            "authorization": "Bearer fixture-local-key",
+            "body": b'{"model":"qwen3.8-27b","messages":[]}',
+        }
 
     def test_SHOULD_enter_the_shared_router_lifecycle_from_every_harness(self):
         for harness in ("claude", "codex", "cursor", "opencode"):
@@ -148,7 +349,7 @@ class TestClaudeLlamaCppWrapper(unittest.TestCase):
             claude = bindir / "claude"
             claude.write_text(
                 """#!/usr/bin/env bash
-printf 'base=%s\nkey=%s\nargs=%s\n' "$ANTHROPIC_BASE_URL" "$ANTHROPIC_API_KEY" "$*"
+printf 'base=%s\nkey=%s\ncompact=%s\nargs=%s\n' "$ANTHROPIC_BASE_URL" "$ANTHROPIC_API_KEY" "${CLAUDE_CODE_AUTO_COMPACT_WINDOW-}" "$*"
 """,
                 encoding="utf-8",
             )
@@ -208,6 +409,7 @@ printf 'base=%s\nkey=%s\nargs=%s\n' "$ANTHROPIC_BASE_URL" "$ANTHROPIC_API_KEY" "
                 assert result.stdout.splitlines() == [
                     "base=http://127.0.0.9:9090",
                     "key=fixture-local-key",
+                    "compact=",
                     f"args=--settings {home}/.claude/{settings_name} {forwarded}",
                 ]
 
@@ -221,7 +423,22 @@ printf 'base=%s\nkey=%s\nargs=%s\n' "$ANTHROPIC_BASE_URL" "$ANTHROPIC_API_KEY" "
         assert result.stdout.splitlines() == [
             "base=http://127.0.0.9:9090",
             "key=fixture-local-key",
+            "compact=",
             f"args=--settings {home}/.claude/custom-settings.json --model qwen3.8-27b",
+        ]
+
+    def test_SHOULD_clear_an_inherited_global_compaction_window_for_model_scoped_settings(self):
+        result, home = self.run_wrapper(
+            ("--model", "qwen3.8-27b"),
+            extra_env={"CLAUDE_CODE_AUTO_COMPACT_WINDOW": "999999"},
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == [
+            "base=http://127.0.0.9:9090",
+            "key=fixture-local-key",
+            "compact=",
+            f"args=--settings {home}/.claude/settings.llama-cpp.qwen3.8.json --model qwen3.8-27b",
         ]
 
 

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -16,6 +18,7 @@ class Tool:
     description: str
     schema: dict[str, Any]
     kind: str = "function"
+    namespace: str | None = None
 
 
 @dataclass
@@ -28,10 +31,21 @@ class Conversation:
     original_thinking: dict[str, Any] | None = None
     original_output_config: dict[str, Any] | None = None
     requested_effort: str | None = None
+    cache_options: dict[str, Any] = field(default_factory=dict)
+    automatic_cache: bool = False
 
     @property
     def tool_kinds(self) -> dict[str, str]:
         return {tool.name: tool.kind for tool in self.tools}
+
+    @property
+    def has_cache_breakpoints(self) -> bool:
+        return any(
+            "prompt_cache_breakpoint" in part
+            for turn in self.messages
+            for block in turn["blocks"]
+            for part in [block, *block.get("content_blocks", [])]
+        )
 
 
 def _text_blocks(content: object) -> list[dict[str, Any]]:
@@ -45,7 +59,13 @@ def _text_blocks(content: object) -> list[dict[str, Any]]:
             continue
         kind = item.get("type")
         if kind in {"text", "input_text", "output_text"}:
-            blocks.append({"type": "text", "text": str(item.get("text", ""))})
+            block = {"type": "text", "text": str(item.get("text", ""))}
+            marker = item.get("prompt_cache_breakpoint")
+            if marker is not None:
+                if not isinstance(marker, dict) or marker.get("mode") != "explicit":
+                    raise ValueError("prompt_cache_breakpoint must specify explicit mode")
+                block["prompt_cache_breakpoint"] = deepcopy(marker)
+            blocks.append(block)
     return blocks
 
 
@@ -57,12 +77,28 @@ def _tool_output_text(output: object) -> str:
     return json.dumps(output, separators=(",", ":"))
 
 
-def _parse_tools(tools: object, frontend: str) -> list[Tool]:
+def _parse_tools(tools: object, frontend: str, namespace: str | None = None) -> list[Tool]:
     if not isinstance(tools, list):
         return []
     parsed = []
     for item in tools:
         if not isinstance(item, dict):
+            continue
+        if frontend == "responses" and item.get("type") == "namespace":
+            name = item.get("name")
+            if (
+                namespace is not None
+                or not isinstance(name, str)
+                or not name
+                or not isinstance(item.get("tools"), list)
+            ):
+                raise ValueError("Responses tool namespace must have a name and tools, without nesting")
+            children = _parse_tools(item["tools"], frontend, name)
+            for child in children:
+                child.description = "\n\n".join(
+                    text for text in (str(item.get("description", "")), child.description) if text
+                )
+            parsed.extend(children)
             continue
         if frontend == "chat":
             function = item.get("function")
@@ -107,6 +143,7 @@ def _parse_tools(tools: object, frontend: str) -> list[Tool]:
                 description=description,
                 schema=schema,
                 kind=kind,
+                namespace=namespace,
             )
         )
     return parsed
@@ -131,7 +168,7 @@ def _parse_responses(body: dict[str, Any]) -> Conversation:
         if not isinstance(item, dict):
             continue
         kind = item.get("type")
-        if kind == "message":
+        if kind == "message" or (kind is None and "role" in item):
             conversation.messages.append(
                 {"role": str(item.get("role", "user")), "blocks": _text_blocks(item.get("content"))}
             )
@@ -145,6 +182,7 @@ def _parse_responses(body: dict[str, Any]) -> Conversation:
                             "type": "tool_call",
                             "id": str(item.get("call_id", "")),
                             "name": str(item.get("name", "")),
+                            "namespace": item.get("namespace"),
                             "arguments": str(arguments or ""),
                             "kind": "custom" if kind == "custom_tool_call" else "function",
                         }
@@ -160,6 +198,7 @@ def _parse_responses(body: dict[str, Any]) -> Conversation:
                             "type": "tool_result",
                             "id": str(item.get("call_id", "")),
                             "content": _tool_output_text(item.get("output", "")),
+                            "content_blocks": _text_blocks(item.get("output", "")),
                             "is_error": False,
                         }
                     ],
@@ -182,11 +221,6 @@ def _parse_chat(body: dict[str, Any]) -> Conversation:
         if not isinstance(message, dict):
             continue
         role = str(message.get("role", "user"))
-        if role in {"system", "developer"}:
-            conversation.system = "\n\n".join(
-                part for part in (conversation.system, _tool_output_text(message.get("content", ""))) if part
-            )
-            continue
         blocks = _text_blocks(message.get("content"))
         for call in message.get("tool_calls", []) if isinstance(message.get("tool_calls"), list) else []:
             function = call.get("function") if isinstance(call, dict) else None
@@ -206,6 +240,7 @@ def _parse_chat(body: dict[str, Any]) -> Conversation:
                     "type": "tool_result",
                     "id": str(message.get("tool_call_id", "")),
                     "content": _tool_output_text(message.get("content", "")),
+                    "content_blocks": _text_blocks(message.get("content", "")),
                     "is_error": False,
                 }
             ]
@@ -263,12 +298,128 @@ def _parse_anthropic(body: dict[str, Any]) -> Conversation:
 
 def parse_request(frontend: str, body: dict[str, Any]) -> Conversation:
     if frontend == "responses":
-        return _parse_responses(body)
-    if frontend == "chat":
-        return _parse_chat(body)
-    if frontend == "anthropic":
+        conversation = _parse_responses(body)
+    elif frontend == "chat":
+        conversation = _parse_chat(body)
+    elif frontend == "anthropic":
         return _parse_anthropic(body)
-    raise ValueError(f"unsupported frontend: {frontend}")
+    else:
+        raise ValueError(f"unsupported frontend: {frontend}")
+    conversation.cache_options = {
+        key: deepcopy(body[key])
+        for key in ("prompt_cache_key", "prompt_cache_options", "prompt_cache_retention")
+        if key in body
+    }
+    options = body.get("prompt_cache_options")
+    if options is not None and (
+        not isinstance(options, dict) or options.get("mode") not in (None, "implicit", "explicit")
+    ):
+        raise ValueError("prompt_cache_options must specify implicit or explicit mode")
+    conversation.automatic_cache = not isinstance(options, dict) or options.get("mode") != "explicit"
+    return conversation
+
+
+def encode_tool_names(conversation: Conversation) -> dict[str, dict[str, str]]:
+    """Flatten Responses namespaces with request-local, collision-checked wire identities."""
+    calls = [block for turn in conversation.messages for block in turn["blocks"] if block.get("type") == "tool_call"]
+    identities = {(tool.namespace, tool.name) for tool in conversation.tools}
+    identities.update((call.get("namespace"), call["name"]) for call in calls)
+    if any(ns is not None and (not isinstance(ns, str) or not ns) for ns, _ in identities):
+        raise ValueError("Responses tool call namespace must be a nonempty string")
+    reserved = {name for ns, name in identities if ns is None}
+    encoded = {}
+    names = {}
+    for namespace, name in sorted((ns, name) for ns, name in identities if ns is not None):
+        digest = hashlib.sha256(json.dumps([namespace, name], ensure_ascii=True).encode()).hexdigest()
+        wire = f"ns_{digest[:56]}"
+        suffix = 0
+        while wire in reserved:
+            suffix += 1
+            wire = f"ns_{digest[:56]}_{suffix}"
+        if len(wire) > 64:
+            raise ValueError("Cannot allocate an unambiguous tool wire name")
+        reserved.add(wire)
+        encoded[(namespace, name)] = wire
+        names[wire] = {"namespace": namespace, "name": name}
+    for tool in conversation.tools:
+        tool.name = encoded.get((tool.namespace, tool.name), tool.name)
+    for call in calls:
+        call["name"] = encoded.get((call.get("namespace"), call["name"]), call["name"])
+    return names
+
+
+def _chat_content(blocks: list[dict[str, Any]], fallback: str) -> str | list[dict[str, Any]]:
+    return [dict(block) for block in blocks] if any("prompt_cache_breakpoint" in b for b in blocks) else fallback
+
+
+def _claude_text(block: dict[str, Any]) -> dict[str, Any]:
+    result = {"type": "text", "text": block["text"]}
+    if "prompt_cache_breakpoint" in block:
+        result["cache_control"] = {"type": "ephemeral"}
+    return result
+
+
+def _claude_result(result: dict[str, Any]) -> dict[str, Any]:
+    blocks = result.get("content_blocks", [])
+    return {
+        "type": "tool_result",
+        "tool_use_id": result["id"],
+        "content": [_claude_text(block) for block in blocks]
+        if any("prompt_cache_breakpoint" in b for b in blocks)
+        else result["content"],
+        "is_error": result["is_error"],
+    }
+
+
+def _apply_claude_cache(payload: dict[str, Any], conversation: Conversation) -> None:
+    """Only translate representable text boundaries; OpenAI lifetimes and keys have no exact equivalent."""
+    markers = []
+    for block in payload.get("system", []) if isinstance(payload.get("system"), list) else []:
+        if "cache_control" in block:
+            markers.append(block)
+    for message in payload["messages"]:
+        for block in message["content"]:
+            if block["type"] == "tool_result" and isinstance(block["content"], list):
+                markers.extend(child for child in block["content"] if "cache_control" in child)
+            if "cache_control" in block:
+                markers.append(block)
+    limit = 3 if conversation.automatic_cache else 4
+    for block in markers[:-limit]:
+        block.pop("cache_control")
+    if conversation.automatic_cache:
+        payload["cache_control"] = {"type": "ephemeral"}
+
+
+def responses_cache_input(conversation: Conversation, store: OpaqueContextStore) -> list[dict[str, Any]]:
+    """Retain Chat text-part boundaries when the caller supplied explicit OpenAI markers."""
+    items = []
+    for turn in conversation.messages:
+        text = []
+        for block in turn["blocks"]:
+            kind = block["type"]
+            if kind == "text":
+                text.append({**block, "type": "input_text"})
+        if text:
+            items.append({"type": "message", "role": turn["role"], "content": text})
+        for block in turn["blocks"]:
+            if block["type"] == "tool_call":
+                reasoning = store.get(block["id"])
+                if reasoning is not None:
+                    items.append(reasoning)
+                items.append(
+                    {
+                        "type": "function_call",
+                        "call_id": block["id"],
+                        "name": block["name"],
+                        "arguments": block["arguments"],
+                    }
+                )
+            elif block["type"] == "tool_result":
+                content = _chat_content(block.get("content_blocks", []), block["content"])
+                if isinstance(content, list):
+                    content = [{**part, "type": "input_text"} for part in content]
+                items.append({"type": "function_call_output", "call_id": block["id"], "output": content})
+    return items
 
 
 def apply_claude_thinking(
@@ -318,7 +469,12 @@ def _append_chat_message(messages: list[dict[str, Any]], message: dict[str, Any]
         and (message.get("tool_calls") or messages[-1].get("tool_calls"))
     ):
         previous = messages[-1]
-        previous["content"] = None
+        if message.get("content"):
+            if previous.get("content"):
+                left, right = previous["content"], message["content"]
+                previous["content"] = [*_text_blocks(left), *_text_blocks(right)]
+            else:
+                previous["content"] = message["content"]
         previous.setdefault("tool_calls", []).extend(message.get("tool_calls", []))
         return
     messages.append(message)
@@ -335,7 +491,8 @@ def to_gemini_payload(
         messages.append({"role": "system", "content": conversation.system})
     for turn in conversation.messages:
         role = turn["role"]
-        text = "".join(block["text"] for block in turn["blocks"] if block.get("type") == "text")
+        text_blocks = [block for block in turn["blocks"] if block.get("type") == "text"]
+        text = "".join(block["text"] for block in text_blocks)
         calls = []
         for block in turn["blocks"]:
             if block.get("type") != "tool_call":
@@ -355,7 +512,11 @@ def to_gemini_payload(
         if calls or text:
             _append_chat_message(
                 messages,
-                {"role": role, "content": None if calls else text or None, **({"tool_calls": calls} if calls else {})},
+                {
+                    "role": role,
+                    "content": _chat_content(text_blocks, text) or None,
+                    **({"tool_calls": calls} if calls else {}),
+                },
             )
         for block in turn["blocks"]:
             if block.get("type") == "tool_result":
@@ -363,14 +524,17 @@ def to_gemini_payload(
                     {
                         "role": "tool",
                         "tool_call_id": block["id"],
-                        "content": block["content"],
+                        "content": _chat_content(block.get("content_blocks", []), block["content"]),
                     }
                 )
     payload: dict[str, Any] = {
         "model": model.wire_model,
         "messages": messages,
         "stream": conversation.stream,
+        **conversation.cache_options,
     }
+    if conversation.stream:
+        payload["stream_options"] = {"include_usage": True}
     if conversation.tools:
         payload["tools"] = [
             {
@@ -408,10 +572,12 @@ def to_claude_payload(
     store: OpaqueContextStore,
 ) -> dict[str, Any]:
     messages: list[dict[str, Any]] = []
+    system_blocks = _text_blocks(conversation.system) if conversation.system else []
     for turn in conversation.messages:
-        text_blocks = [
-            {"type": "text", "text": block["text"]} for block in turn["blocks"] if block.get("type") == "text"
-        ]
+        text_blocks = [_claude_text(block) for block in turn["blocks"] if block.get("type") == "text"]
+        if turn["role"] in {"system", "developer"}:
+            system_blocks.extend(text_blocks)
+            continue
         calls = [block for block in turn["blocks"] if block.get("type") == "tool_call"]
         results = [block for block in turn["blocks"] if block.get("type") == "tool_result"]
         thinking_blocks = [
@@ -430,7 +596,9 @@ def to_claude_payload(
                 "type": "tool_use",
                 "id": call["id"],
                 "name": call["name"],
-                "input": _decode_arguments(call["arguments"]),
+                "input": {"input": call["arguments"]}
+                if call.get("kind") == "custom"
+                else _decode_arguments(call["arguments"]),
             }
             for call in calls
         )
@@ -442,15 +610,7 @@ def to_claude_payload(
             _append_anthropic_turn(
                 messages,
                 "user",
-                [
-                    {
-                        "type": "tool_result",
-                        "tool_use_id": result["id"],
-                        "content": result["content"],
-                        "is_error": result["is_error"],
-                    }
-                    for result in results
-                ],
+                [_claude_result(result) for result in results],
             )
     payload: dict[str, Any] = {
         "anthropic_version": "vertex-2023-10-16",
@@ -458,8 +618,13 @@ def to_claude_payload(
         "max_tokens": min(conversation.max_tokens or 32768, model.max_output_tokens),
         "stream": conversation.stream,
     }
-    if conversation.system:
-        payload["system"] = conversation.system
+    if system_blocks:
+        payload["system"] = (
+            system_blocks
+            if any("cache_control" in b for b in system_blocks)
+            else "\n\n".join(b["text"] for b in system_blocks)
+        )
+    _apply_claude_cache(payload, conversation)
     if conversation.tools:
         payload["tools"] = [
             {

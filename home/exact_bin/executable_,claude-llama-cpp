@@ -30,6 +30,7 @@ fi
 
 export ANTHROPIC_BASE_URL="http://${LLAMA_CPP_HOST}:${LLAMA_CPP_PORT}"
 export ANTHROPIC_API_KEY="$LLAMA_CPP_API_KEY"
+unset CLAUDE_CODE_AUTO_COMPACT_WINDOW CLAUDE_CODE_MAX_CONTEXT_TOKENS
 
 caller_set_model=false
 next_arg_is_model=false

@@ -79,6 +79,7 @@ def codex_model_info(model: ModelSpec) -> dict[str, object]:
 
     efforts = sorted(model.efforts)
     default_effort = "medium" if "medium" in model.efforts else (efforts[0] if efforts else "none")
+    # Codex context metadata controls its prompt budget; output capacity remains separate upstream metadata.
     return {
         "slug": model.model_id,
         "display_name": model.model_id,
@@ -110,9 +111,9 @@ def codex_model_info(model: ModelSpec) -> dict[str, object]:
         "truncation_policy": {"mode": "tokens", "limit": 10_000},
         "supports_parallel_tool_calls": True,
         "supports_image_detail_original": True,
-        "context_window": model.context_window,
-        "max_context_window": model.context_window,
-        "auto_compact_token_limit": model.context_window * 9 // 10,
+        "context_window": model.prompt_limit,
+        "max_context_window": model.prompt_limit,
+        "auto_compact_token_limit": model.prompt_limit * 9 // 10,
         "effective_context_window_percent": 90,
         "experimental_supported_tools": [],
         "input_modalities": ["text", "image"],
@@ -236,6 +237,11 @@ def parse_models(payload: object) -> dict[str, ModelSpec]:
         effort_values = supports.get("reasoning_effort", []) if isinstance(supports, dict) else []
         max_output_tokens = _positive_int(limits.get("max_output_tokens"), "output limit", model_id)
         max_context_window = _positive_int(limits.get("max_context_window_tokens"), "context limit", model_id)
+        capability_prompt_limit = (
+            _positive_int(limits["max_prompt_tokens"], "prompt limit", model_id)
+            if "max_prompt_tokens" in limits
+            else max(max_context_window - max_output_tokens, 0) or max_context_window
+        )
         billing = item.get("billing")
         token_prices = billing.get("token_prices") if isinstance(billing, dict) else None
         context_windows: dict[str, int] = {}
@@ -246,14 +252,12 @@ def parse_models(payload: object) -> dict[str, ModelSpec]:
                 if not isinstance(price, dict) or not isinstance(price.get("max_prompt_tokens"), int):
                     continue
                 prompt_tokens = _positive_int(price["max_prompt_tokens"], f"{tier} prompt limit", model_id)
+                prompt_tokens = min(prompt_tokens, capability_prompt_limit)
                 prompt_limits[tier] = prompt_tokens
                 context_windows[tier] = min(max_context_window, prompt_tokens + max_output_tokens)
         if "default" not in context_windows:
             context_windows["default"] = max_context_window
-            if isinstance(limits.get("max_prompt_tokens"), int):
-                prompt_limits["default"] = _positive_int(limits["max_prompt_tokens"], "prompt limit", model_id)
-            else:
-                prompt_limits["default"] = max(max_context_window - max_output_tokens, 0) or max_context_window
+            prompt_limits["default"] = capability_prompt_limit
         models[model_id] = ModelSpec(
             model_id=model_id,
             endpoints=frozenset(value for value in endpoints or [] if isinstance(value, str)),

@@ -64,8 +64,11 @@ if [[ -z "$CURSOR_LLAMA_CPP_MODEL" ]]; then
 fi
 
 unset CURSOR_API_ENDPOINT CURSOR_API_KEY ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN
-export CURSOR_LOCAL_AGENT_BASE_URL="http://${LLAMA_CPP_HOST}:${LLAMA_CPP_PORT}/v1"
 export CURSOR_LOCAL_AGENT_API_KEY="$LLAMA_CPP_API_KEY"
 export AGENT_BAND_MODEL_OVERRIDE="$CURSOR_LLAMA_CPP_MODEL"
 
-exec ,llama-cpp run -- "$local_bin" --model "$CURSOR_LLAMA_CPP_MODEL" "${cli_args[@]}"
+exec ,llama-cpp run -- python3 "$HOME/lib/,cursor-agent-shim/llama_cpp_proxy.py" \
+  --upstream "http://${LLAMA_CPP_HOST}:${LLAMA_CPP_PORT}" \
+  --catalog "$HOME/.codex/llama-cpp-model-catalog.json" \
+  --model "$CURSOR_LLAMA_CPP_MODEL" \
+  -- "$local_bin" --model "$CURSOR_LLAMA_CPP_MODEL" "${cli_args[@]}"

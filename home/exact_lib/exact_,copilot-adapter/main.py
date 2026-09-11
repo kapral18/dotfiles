@@ -5,15 +5,24 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import secrets
 import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from copilot_auth import CLAUDE_EXTENDED_CONTEXT_SUFFIX, CopilotError, ModelSpec, TokenProvider, fetch_models
+from copilot_auth import (
+    CLAUDE_EXTENDED_CONTEXT_SUFFIX,
+    CopilotError,
+    ModelSpec,
+    TokenProvider,
+    codex_model_info,
+    fetch_models,
+)
 from copilot_server import AdapterContext, start_server
 from copilot_wire import SUPPORTED_ENDPOINTS, claude_lane_environment, load_lane_routes
 
@@ -66,8 +75,8 @@ Adapter options:
 
 The default is {default}. Use -- before an underlying harness
 flag that has the same name as an adapter option.
-Delegation requires verified child-lane transport: supported through Claude aliases;
-disabled on the Cursor and Codex frontends. Native harness routes are unaffected.
+Delegation uses Claude aliases or session-scoped Codex leaf profiles and lane metadata.
+Cursor child transport remains disabled. Native harness routes are unaffected.
 """
 
 
@@ -207,7 +216,7 @@ def validate_cursor_forwarded(argv: list[str]) -> None:
 
 
 def claude_compact_window(model: ModelSpec) -> int:
-    """Auto-compact window that keeps every Claude request inside the selected Copilot billing tier."""
+    """Reserve compaction headroom below the selected Copilot prompt budget."""
     floor = min(model.prompt_limit, CLAUDE_MIN_COMPACT_WINDOW)
     return max(model.prompt_limit - CLAUDE_COMPACT_HEADROOM_TOKENS, floor)
 
@@ -219,6 +228,14 @@ def claude_frontend_model(model: ModelSpec) -> str:
     return model.model_id
 
 
+def claude_global_limits(root: ModelSpec, lane_models: list[ModelSpec]) -> tuple[int, int | None]:
+    """Return Claude's single safe compaction limit and an optional small-model ceiling."""
+    reachable = [root, *lane_models]
+    compact_window = min(claude_compact_window(model) for model in reachable)
+    context_window = min(model.prompt_limit for model in reachable)
+    return compact_window, context_window if context_window <= CLAUDE_DEFAULT_CONTEXT_WINDOW else None
+
+
 def child_command(
     harness: str,
     binary: str,
@@ -228,6 +245,8 @@ def child_command(
     effort: str | None,
     thinking: str | None,
     forwarded: list[str],
+    claude_auto_compact_window: int | None = None,
+    claude_max_context_tokens: int | None = None,
 ) -> tuple[list[str], dict[str, str]]:
     env = dict(os.environ)
     for key in (
@@ -239,10 +258,14 @@ def child_command(
         "COPILOT_GITHUB_TOKEN",
         "GH_TOKEN",
         "GITHUB_TOKEN",
+        "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
+        "CLAUDE_CODE_MAX_CONTEXT_TOKENS",
     ):
         env.pop(key, None)
     if harness == "claude":
         frontend_model = claude_frontend_model(model)
+        if claude_max_context_tokens is not None:
+            frontend_model = model.model_id
         env.update(
             {
                 "ANTHROPIC_BASE_URL": base_url,
@@ -252,9 +275,11 @@ def child_command(
                 "ANTHROPIC_DEFAULT_SONNET_MODEL": frontend_model,
                 "ANTHROPIC_DEFAULT_HAIKU_MODEL": frontend_model,
                 "ANTHROPIC_DEFAULT_FABLE_MODEL": frontend_model,
-                "CLAUDE_CODE_AUTO_COMPACT_WINDOW": str(claude_compact_window(model)),
+                "CLAUDE_CODE_AUTO_COMPACT_WINDOW": str(claude_auto_compact_window or claude_compact_window(model)),
             }
         )
+        if claude_max_context_tokens is not None:
+            env["CLAUDE_CODE_MAX_CONTEXT_TOKENS"] = str(claude_max_context_tokens)
         command = [binary, "--model", frontend_model]
         if effort is not None:
             command.extend(["--effort", effort])
@@ -318,6 +343,81 @@ def run_child(command: list[str], env: dict[str, str]) -> int:
     return 128 - returncode if returncode < 0 else returncode
 
 
+def codex_lane_models(models: dict[str, ModelSpec], routes: dict[str, dict[str, str]]) -> dict[str, ModelSpec]:
+    """Expose only entitled, exact lane pairs to Codex's spawn-model validator."""
+    return {
+        selector: replace(models[lane["model"]], model_id=selector)
+        for selector, lane in routes.items()
+        if lane["model"] in models
+        and lane["effort"] in models[lane["model"]].efforts
+        and not models[lane["model"]].endpoints.isdisjoint(SUPPORTED_ENDPOINTS)
+    }
+
+
+def codex_leaf_profile(source: str) -> str:
+    """Keep the managed leaf body; let the hook, not native role overrides, pick its lane.
+
+    Codex applies role settings AFTER spawn arguments. These generated profiles therefore
+    omit model/effort settings and explicitly retain the native no-orchestration feature.
+    Restrict projection to the managed scalar-header/multiline-instructions format.
+    """
+    header, separator, instructions = source.partition('developer_instructions = """')
+    if not separator or not instructions.rstrip().endswith('"""'):
+        raise ValueError("unsupported Codex leaf profile format")
+    allowed = {"name", "description", "model", "model_reasoning_effort", "service_tier", "features"}
+    kept = []
+    for line in header.splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        match = re.fullmatch(r"([a-z_]+)\s*=\s*(.+)", line)
+        if not match or match[1] not in allowed:
+            raise ValueError("unsupported Codex leaf profile setting")
+        if match[1] not in {"model", "model_reasoning_effort", "features"}:
+            kept.append(line)
+    return "\n".join([*kept, "features = { multi_agent = false }", separator + instructions])
+
+
+def codex_lane_configuration(
+    directory: Path, models: dict[str, ModelSpec], lane_models: dict[str, ModelSpec]
+) -> tuple[list[str], dict[str, str]]:
+    """Freeze the provider catalog and managed role set for one Codex process."""
+    projection = Path(os.environ.get("AGENT_BANDS_FILE", Path.home() / ".config/ai/agent-bands.v1.json"))
+    agents = json.loads(projection.read_text())["harnesses"]["copilot"]["agents"]
+    codex_home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
+    roles = {}
+    args = []
+    for name, pick in agents.items():
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
+            raise ValueError("invalid Codex lane role name")
+        source = codex_home / "agents" / f"{name}.toml"
+        selector = f"{pick['model']}@lane-{pick.get('effort')}"
+        if not source.is_file() or selector not in lane_models:
+            continue
+        target = directory / f"{name}.toml"
+        target.write_text(codex_leaf_profile(source.read_text()))
+        args.extend(["-c", f"agents.{name}.config_file={json.dumps(str(target))}"])
+        roles[name] = selector
+    catalog = directory / "models.json"
+    catalog.write_text(
+        json.dumps({"models": [codex_model_info(model) for model in [*models.values(), *lane_models.values()]]})
+    )
+    args.extend(["-c", f"model_catalog_json={json.dumps(str(catalog))}"])
+    return args, {"AGENT_BAND_CODEX_ROUTES": json.dumps(roles)}
+
+
+def run_routed_child(
+    harness: str, command: list[str], env: dict[str, str], models: dict[str, ModelSpec], lanes: dict[str, ModelSpec]
+) -> int:
+    env.pop("AGENT_BAND_CODEX_ROUTES", None)
+    if harness != "codex":
+        return run_child(command, env)
+    with tempfile.TemporaryDirectory(prefix="codex-copilot-lanes-") as directory:
+        args, route_env = codex_lane_configuration(Path(directory), models, lanes)
+        env.update(route_env)
+        # Put the route configuration before the native subcommand and after provider defaults.
+        return run_child([command[0], *args, *command[1:]], env)
+
+
 def launch(harness: str, argv: list[str]) -> int:
     try:
         options = parse_args(argv)
@@ -337,6 +437,19 @@ def launch(harness: str, argv: list[str]) -> int:
         model = resolve_model(harness, options, models)
         lane_routes = load_lane_routes("copilot")
         lane_env = claude_lane_environment("copilot", lane_routes) if harness == "claude" else {}
+        claude_auto_compact_window = None
+        claude_max_context_tokens = None
+        if harness == "claude":
+            reachable_selectors = set(json.loads(lane_env["AGENT_BAND_CLAUDE_ROUTES"]))
+            try:
+                lane_models = [
+                    models[lane["model"]] for selector, lane in lane_routes.items() if selector in reachable_selectors
+                ]
+            except KeyError as error:
+                raise ValueError(
+                    f"Copilot Claude lane model {error.args[0]!r} is not available through this subscription"
+                ) from error
+            claude_auto_compact_window, claude_max_context_tokens = claude_global_limits(model, lane_models)
         binary = harness_binary(harness)
     except (CopilotError, OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as error:
         print(f"Error: {error}", file=sys.stderr)
@@ -365,6 +478,8 @@ def launch(harness: str, argv: list[str]) -> int:
             options.effort,
             options.thinking,
             options.forwarded,
+            claude_auto_compact_window,
+            claude_max_context_tokens,
         )
         env.update(lane_env)
         env["AGENT_BAND_SCHEMA_HARNESS"] = "copilot"
@@ -376,7 +491,7 @@ def launch(harness: str, argv: list[str]) -> int:
             env.pop("AGENT_BAND_CLAUDE_ROUTES", None)
         if lane_env:
             env.pop("CLAUDE_CODE_SUBAGENT_MODEL", None)
-        return run_child(command, env)
+        return run_routed_child(harness, command, env, effective_models, codex_lane_models(models, lane_routes))
     finally:
         previous_sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
         try:

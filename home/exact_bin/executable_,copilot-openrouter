@@ -94,6 +94,12 @@ if [[ ! -x "$OPENROUTER_PRESET_HELPER" ]]; then
   exit 1
 fi
 export OPENROUTER_API_KEY="$api_key"
+readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
+readonly OPENROUTER_PI_T1_WIRE_MODEL="anthropic/claude-fable-5.1@preset/effort-high"
+readonly OPENROUTER_PI_T2_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-high"
+readonly OPENROUTER_PI_MECHANICAL_WIRE_MODEL="z-ai/glm-5.3-flash@preset/effort-high"
+readonly OPENROUTER_PI_MEMORY_WIRE_MODEL="google/gemini-3.8-flash@preset/effort-low"
+readonly OPENROUTER_PI_REFUTE_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-xhigh"
 "$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"
 if [[ "$OPENROUTER_EFFORT" != "xhigh" ]]; then
   "$OPENROUTER_PRESET_HELPER" xhigh
@@ -104,9 +110,21 @@ fi
 if [[ "$OPENROUTER_EFFORT" != "low" ]]; then
   "$OPENROUTER_PRESET_HELPER" low
 fi
-OPENROUTER_CONTEXT_WINDOW="$("$OPENROUTER_PRESET_HELPER" --context-window "$OPENROUTER_MODEL" "$OPENROUTER_CONTEXT")"
-readonly OPENROUTER_CONTEXT_WINDOW
-readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
+session_budget="$("$OPENROUTER_PRESET_HELPER" --session-budget-env "$OPENROUTER_CONTEXT" \
+  "$OPENROUTER_MODEL" "$OPENROUTER_PI_T1_WIRE_MODEL" "$OPENROUTER_PI_T2_WIRE_MODEL" \
+  "$OPENROUTER_PI_MECHANICAL_WIRE_MODEL" "$OPENROUTER_PI_MEMORY_WIRE_MODEL" "$OPENROUTER_PI_REFUTE_WIRE_MODEL")"
+while IFS='=' read -r budget_name budget_value; do
+  case "$budget_name" in
+  CONTEXT_LIMIT) OPENROUTER_CONTEXT_LIMIT="$budget_value" ;;
+  MAX_OUTPUT_TOKENS) OPENROUTER_MAX_OUTPUT_TOKENS="$budget_value" ;;
+  PROMPT_LIMIT) OPENROUTER_PROMPT_LIMIT="$budget_value" ;;
+  esac
+done <<<"$session_budget"
+if [[ -z "${OPENROUTER_CONTEXT_LIMIT:-}" || -z "${OPENROUTER_MAX_OUTPUT_TOKENS:-}" || -z "${OPENROUTER_PROMPT_LIMIT:-}" ]]; then
+  echo "Error: OpenRouter context preflight returned an incomplete session budget." >&2
+  exit 1
+fi
+readonly OPENROUTER_CONTEXT_LIMIT OPENROUTER_MAX_OUTPUT_TOKENS OPENROUTER_PROMPT_LIMIT
 
 # Copilot picks the BYOK client kind once per launch, and only the anthropic one
 # emits cache_control breakpoints; its openai client never does. A session started
@@ -118,14 +136,23 @@ export COPILOT_PROVIDER_BASE_URL="https://openrouter.ai/api"
 export COPILOT_PROVIDER_API_KEY="$api_key"
 export COPILOT_MODEL="$OPENROUTER_MODEL"
 export COPILOT_PROVIDER_WIRE_MODEL="$OPENROUTER_WIRE_MODEL"
-export COPILOT_PROVIDER_MAX_PROMPT_TOKENS="${COPILOT_OPENROUTER_MAX_PROMPT_TOKENS:-$OPENROUTER_CONTEXT_WINDOW}"
-export COPILOT_PROVIDER_MAX_OUTPUT_TOKENS="${COPILOT_OPENROUTER_MAX_OUTPUT_TOKENS:-131072}"
+COPILOT_PROVIDER_MAX_PROMPT_TOKENS="${COPILOT_OPENROUTER_MAX_PROMPT_TOKENS:-$OPENROUTER_PROMPT_LIMIT}"
+COPILOT_PROVIDER_MAX_OUTPUT_TOKENS="${COPILOT_OPENROUTER_MAX_OUTPUT_TOKENS:-$OPENROUTER_MAX_OUTPUT_TOKENS}"
+if [[ ! "$COPILOT_PROVIDER_MAX_PROMPT_TOKENS" =~ ^[1-9][0-9]*$ || ! "$COPILOT_PROVIDER_MAX_OUTPUT_TOKENS" =~ ^[1-9][0-9]*$ ]] ||
+  ((COPILOT_PROVIDER_MAX_PROMPT_TOKENS > OPENROUTER_PROMPT_LIMIT || \
+  COPILOT_PROVIDER_MAX_OUTPUT_TOKENS > OPENROUTER_MAX_OUTPUT_TOKENS || \
+  COPILOT_PROVIDER_MAX_PROMPT_TOKENS + COPILOT_PROVIDER_MAX_OUTPUT_TOKENS > OPENROUTER_CONTEXT_LIMIT)); then
+  echo "Error: COPILOT_OPENROUTER_MAX_PROMPT_TOKENS and COPILOT_OPENROUTER_MAX_OUTPUT_TOKENS must be positive and fit the selected OpenRouter context tier." >&2
+  exit 2
+fi
+export COPILOT_PROVIDER_MAX_PROMPT_TOKENS COPILOT_PROVIDER_MAX_OUTPUT_TOKENS
 unset COPILOT_PROVIDER_MODEL_ID COPILOT_PROVIDER_WIRE_API
 
 # Delegated lanes emit in Copilot's task shape, but model choices come from Pi's
 # OpenRouter-compatible category matrix. The gate strips the `openrouter/` prefix and turns
 # `:<level>` into `@preset/effort-<level>`, which is the wire format this route serves.
 unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE
+unset AGENT_BAND_SUBSCRIPTION AGENT_BAND_CLAUDE_ROUTES AGENT_BAND_CODEX_ROUTES
 export AGENT_BAND_SCHEMA_HARNESS="pi"
 export AGENT_BAND_MODEL_FORMAT="openrouter-preset"
 

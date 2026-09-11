@@ -252,6 +252,25 @@ def _codex(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, 
     }
 
 
+def _codex_subscription_pick(
+    agent: str, assigned: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]
+) -> dict[str, Any]:
+    """Admit only fresh leaves whose catalog and model-free profiles were projected at launch."""
+    if tool_input.get("fork_context"):
+        raise ValueError(
+            "Subscription lanes require a fresh managed leaf; full-history forks inherit root configuration."
+        )
+    try:
+        routes = json.loads(os.environ.get("AGENT_BAND_CODEX_ROUTES", ""))
+    except ValueError as error:
+        raise ValueError("Codex subscription lane configuration is missing; relaunch the repaired wrapper.") from error
+    wire = f"{pick['model']}@lane-{pick['effort']}"
+    expected = f"{assigned['model']}@lane-{assigned['effort']}"
+    if not isinstance(routes, dict) or routes.get(agent) != expected or wire not in routes.values():
+        raise ValueError("This Codex role or exact lane is unavailable in the session's projected provider catalog.")
+    return {**pick, "model": wire}
+
+
 def _copilot(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]) -> dict[str, Any]:
     # Reached through the agent-memory extension's onPreToolUse, which returns modifiedArgs
     # (PreToolUseHookOutput, @github/copilot-sdk 1.0.77). The `task` schema exposes both `model`
@@ -328,7 +347,13 @@ def main() -> int:
         print("{}")
         return 0
 
-    if os.environ.get("AGENT_BAND_SUBSCRIPTION") and harness != "claude_code":
+    if isinstance(payload.get("agent_id"), str) and payload["agent_id"].strip():
+        print(json.dumps(_deny(harness, "A delegated leaf must not launch another agent.")))
+        return 0
+
+    subscription = os.environ.get("AGENT_BAND_SUBSCRIPTION", "")
+    codex_subscription = harness == "codex" and subscription == schema_harness == "copilot"
+    if subscription and harness != "claude_code" and not codex_subscription:
         print(
             json.dumps(
                 _deny(
@@ -369,9 +394,25 @@ def main() -> int:
     # implement band. A bound non-generic agent (research, review, memory, ...) asking for
     # another lane's pick is still a matrix bypass and gets rewritten to its own band. Claude
     # keeps its own alias projection in the adapter.
+    assigned = pick
     if harness != "claude_code" and not override and pick.get("category") == "implement":
         try:
-            pick = _generic_pick(schema_harness, pick, tool_input)
+            selection = tool_input
+            if codex_subscription and isinstance(tool_input.get("model"), str) and "@lane-" in tool_input["model"]:
+                base, _, effort = tool_input["model"].rpartition("@lane-")
+                if tool_input.get("reasoning_effort", effort) != effort:
+                    raise ValueError("The explicit subscription selector and reasoning effort disagree.")
+                selection = dict(tool_input, model=base, reasoning_effort=effort)
+            pick = _generic_pick(schema_harness, pick, selection)
+        except ValueError as error:
+            print(json.dumps(_deny(harness, str(error))))
+            return 0
+
+    if codex_subscription:
+        try:
+            if override or os.environ.get(MODEL_FORMAT_ENV):
+                raise ValueError("Conflicting inherited provider controls on the Codex subscription route.")
+            pick = _codex_subscription_pick(agent, assigned, pick, tool_input)
         except ValueError as error:
             print(json.dumps(_deny(harness, str(error))))
             return 0

@@ -126,8 +126,15 @@ def _responses_usage(usage: dict[str, Any]) -> dict[str, Any]:
         "total_tokens": total_input + output,
     }
     if cached or written:
-        rendered["input_tokens_details"] = {"cached_tokens": cached, "cache_creation_tokens": written}
+        rendered["input_tokens_details"] = {"cached_tokens": cached, "cache_write_tokens": written}
     return rendered
+
+
+def _responses_refusal_error(reason: object) -> dict[str, str] | None:
+    if reason != "refusal":
+        return None
+    # Codex recognizes invalid_prompt as an InvalidRequest, not a retryable stream error.
+    return {"code": "invalid_prompt", "message": "Upstream model refused the request (stop_reason=refusal)."}
 
 
 def _anthropic_usage(usage: dict[str, Any]) -> dict[str, int]:
@@ -272,6 +279,7 @@ def _claude_events(
 ) -> Iterator[Event]:
     thinking: dict[int, dict[str, Any]] = {}
     block_types: dict[int, str] = {}
+    tool_arguments: set[int] = set()
     tool_ids: list[str] = []
     usage: dict[str, int] = {}
     finish_reason = "end_turn"
@@ -308,6 +316,7 @@ def _claude_events(
                     "name": str(block.get("name", "")),
                 }
                 if block.get("input"):
+                    tool_arguments.add(index)
                     yield {
                         "type": "tool_delta",
                         "index": index,
@@ -321,6 +330,8 @@ def _claude_events(
             if delta_type == "text_delta":
                 yield {"type": "text_delta", "index": index, "text": str(delta.get("text", ""))}
             elif delta_type == "input_json_delta":
+                if delta.get("partial_json"):
+                    tool_arguments.add(index)
                 yield {
                     "type": "tool_delta",
                     "index": index,
@@ -338,6 +349,8 @@ def _claude_events(
                 yield {"type": "signature_delta", "index": index, "signature": str(delta.get("signature", ""))}
         elif kind == "content_block_stop":
             index = int(event.get("index", 0))
+            if block_types.get(index) == "tool_use" and index not in tool_arguments:
+                yield {"type": "tool_delta", "index": index, "arguments": "{}"}
             yield {
                 "type": "tool_stop" if block_types.get(index) == "tool_use" else "block_stop",
                 "index": index,
@@ -505,9 +518,10 @@ def render_responses(
     events: Iterable[Event],
     model: ModelSpec,
     tool_kinds: dict[str, str],
+    tool_names: dict[str, dict[str, str]] | None = None,
 ) -> Iterator[bytes]:
     response_id = f"resp_{uuid.uuid4().hex}"
-    message_id = f"msg_{uuid.uuid4().hex}"
+    message_id = ""
     text = ""
     message_started = False
     message_output_index: int | None = None
@@ -517,8 +531,34 @@ def render_responses(
     sequence = 0
     for event in events:
         kind = event["type"]
+        # Native Responses consumers track the active text item, not just its ID.
+        # Close text before a tool changes that slot, and at explicit text-block ends.
+        closes_text = (
+            kind in {"tool_start", "finish"}
+            or (kind == "tool_stop" and event["index"] in tools)
+            or (kind == "block_stop" and event.get("block_kind") == "text")
+        )
+        if message_started and closes_text:
+            yield _sse(
+                {
+                    "type": "response.output_item.done",
+                    "sequence_number": sequence,
+                    "output_index": message_output_index,
+                    "item": {
+                        "id": message_id,
+                        "type": "message",
+                        "role": "assistant",
+                        "status": "completed",
+                        "content": [{"type": "output_text", "text": text, "annotations": []}],
+                    },
+                }
+            )
+            sequence += 1
+            message_started = False
+            text = ""
         if kind == "text_delta":
             if not message_started:
+                message_id = f"msg_{uuid.uuid4().hex}"
                 message_output_index = next_output_index
                 next_output_index += 1
                 yield _sse(
@@ -551,7 +591,7 @@ def render_responses(
                 "id": f"fc_{uuid.uuid4().hex}",
                 "type": "custom_tool_call" if tool_kind == "custom" else "function_call",
                 "call_id": event["id"],
-                "name": event["name"],
+                **(tool_names or {}).get(event["name"], {"name": event["name"]}),
                 "status": "in_progress",
                 **({"input": ""} if tool_kind == "custom" else {"arguments": ""}),
             }
@@ -604,37 +644,25 @@ def render_responses(
             )
             sequence += 1
         elif kind == "finish":
-            if message_started:
-                yield _sse(
-                    {
-                        "type": "response.output_item.done",
-                        "sequence_number": sequence,
-                        "output_index": message_output_index,
-                        "item": {
-                            "id": message_id,
-                            "type": "message",
-                            "role": "assistant",
-                            "status": "completed",
-                            "content": [{"type": "output_text", "text": text, "annotations": []}],
-                        },
-                    }
-                )
-                sequence += 1
             raw_usage = event.get("usage", {})
+            refusal_error = _responses_refusal_error(event.get("reason"))
             yield _sse(
                 {
-                    "type": "response.completed",
+                    "type": "response.failed" if refusal_error else "response.completed",
                     "sequence_number": sequence,
                     "response": {
                         "id": response_id,
                         "object": "response",
-                        "status": "completed",
+                        "status": "failed" if refusal_error else "completed",
                         "model": model.model_id,
                         "output": [],
                         "usage": _responses_usage(raw_usage),
+                        **({"error": refusal_error} if refusal_error else {}),
                     },
                 }
             )
+            if refusal_error:
+                return
         elif kind == "error":
             yield _sse({"type": "response.failed", "response": {"error": event["error"]}})
             return
@@ -836,6 +864,7 @@ def render_json(
     result: dict[str, Any],
     model: ModelSpec,
     tool_kinds: dict[str, str],
+    tool_names: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     usage = result["usage"]
     if frontend == "chat":
@@ -906,7 +935,7 @@ def render_json(
                 "id": f"fc_{uuid.uuid4().hex}",
                 "type": "custom_tool_call" if kind == "custom" else "function_call",
                 "call_id": tool["id"],
-                "name": tool["name"],
+                **(tool_names or {}).get(tool["name"], {"name": tool["name"]}),
                 **(
                     {"input": _custom_input(tool["arguments"])}
                     if kind == "custom"
@@ -914,13 +943,15 @@ def render_json(
                 ),
             }
         )
+    refusal_error = _responses_refusal_error(result.get("reason"))
     return {
         "id": f"resp_{uuid.uuid4().hex}",
         "object": "response",
-        "status": "completed",
+        "status": "failed" if refusal_error else "completed",
         "model": model.model_id,
         "output": output,
         "usage": _responses_usage(usage),
+        **({"error": refusal_error} if refusal_error else {}),
     }
 
 

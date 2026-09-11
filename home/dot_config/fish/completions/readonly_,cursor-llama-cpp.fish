@@ -18,7 +18,7 @@ complete -c ',cursor-llama-cpp' -l mode -x -a 'plan ask' -d 'Start in the given 
 complete -c ',cursor-llama-cpp' -l plan -d 'Start in plan mode'
 complete -c ',cursor-llama-cpp' -l resume -x -d 'Select a session to resume'
 complete -c ',cursor-llama-cpp' -l continue -d 'Continue previous session'
-complete -c ',cursor-llama-cpp' -s m -l model -x -a "$__cursor_llama_cpp_models" -d 'Override local model id'
+complete -c ',cursor-llama-cpp' -s m -l model -x -a "$__cursor_llama_cpp_models" -d 'Select local model with its configured context budget'
 complete -c ',cursor-llama-cpp' -l list-models -d 'List available models and exit'
 complete -c ',cursor-llama-cpp' -s f -l force -d 'Force allow commands unless explicitly denied'
 complete -c ',cursor-llama-cpp' -l yolo -d 'Alias for --force'

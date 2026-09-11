@@ -1,21 +1,17 @@
 #!/usr/bin/env python3
-"""Unwrap markdown prose while keeping AI instruction files sentence-boundary wrapped.
+"""Format recognized AI Markdown conservatively; leave other files unchanged.
 
-Usage: ,unwrap-md [--check] FILES...
+Usage: ,format-md [--check] FILES...
 
-A continuation line is one that:
-- is not blank
-- does not start a new structural element (heading, bullet, ordered list,
-  blockquote marker, code fence, horizontal rule, HTML tag, table row)
-- follows a non-blank line
-
-Continuation lines are joined to the previous line with a single space.
-AI-facing instruction files keep line breaks as prompt-ingestion affordances:
-mid-sentence hard wraps are joined, and the next sentence moves to a new line
-only when appending it would cross the 140-character soft boundary.
+AI prose keeps existing sentence boundaries. Only plain mid-sentence
+continuations that fit the soft 140-character boundary are joined.
+Long lines split at sentence or strong clause boundaries when possible.
+Ambiguous markup retains its existing lines; the boundary is not a hard cap.
+AI paths include shared references, GitHub instructions, managed skills,
+agent profiles, and the Cursor SOP plugin rule.
 
 Options:
-  --check   Report files that need unwrapping without modifying them (exit 1).
+  --check   Report AI Markdown needing formatting without modifying files (exit 1).
 """
 
 import re
@@ -24,16 +20,36 @@ import sys
 AI_ENTRYPOINT_NAMES = {
     "AGENTS.md",
     "CLAUDE.md",
+    "SKILL.md",
+    "copilot-instructions.md",
     "readonly_AGENTS.md",
     "readonly_CLAUDE.md",
+    "readonly_SKILL.md",
+    "readonly_copilot-instructions.md",
 }
-AI_SKILL_PATH_MARKERS = (
+AI_INSTRUCTION_PATH_MARKERS = (
+    "/exact_agents/",
     "/exact_skills/",
     "/exact_hooks/",
+    "/exact_references/",
     "/.agents/skills/",
     "/.agents/hooks/",
+    "/.agents/references/",
+    "/.github/instructions/",
     "/.claude/skills/",
+    "/.claude/agents/",
+    "/.codex/skills/",
+    "/.cursor/skills/",
     "/.cursor/skills-cursor/",
+    "/.cursor/agents/",
+    "/.cursor/plugins/local/k-sop/rules/",
+    "/.copilot/skills/",
+    "/.copilot/agents/",
+    "/.gemini/config/skills/",
+    "/.omp/agent/skills/",
+    "/.omp/agent/agents/",
+    "/.pi/agent/agents/",
+    "/.config/opencode/skills/",
 )
 
 # List markers (bullet, numeric, outline-letter) may appear at any indentation
@@ -53,16 +69,13 @@ STRUCTURAL = re.compile(
     r"|\s{0,3}~~~"
     r"|\s{0,3}---"
     r"|\s{0,3}\*\*\*"
+    r"|\s{0,3}___"
+    r"|\s{0,3}=+\s*$"
     r"|\s{0,3}<[a-zA-Z/]"
     r"|\s{0,3}\|"
     r")"
 )
 
-HEADING = re.compile(r"^\s{0,3}#{1,6}\s")
-BLOCKQUOTE = re.compile(r"^\s{0,3}>")
-TABLE_ROW = re.compile(r"^\s{0,3}\|")
-HTML_TAG = re.compile(r"^\s{0,3}<[a-zA-Z/]")
-HR = re.compile(r"^\s{0,3}(-{3,}|\*{3,}|_{3,})\s*$")
 LIST_ITEM = re.compile(r"^(\s*(?:[-*+]\s+|\d+[.)]\s+|[a-zA-Z][.)]\s+))(.*)$")
 SENTENCE_START = re.compile(r"[A-Z0-9`\"'(\[*_]")
 SENTENCE_CLOSERS = set("\"')]}*_")
@@ -83,8 +96,6 @@ ABBREVIATIONS = {
 }
 AI_SOFT_LINE_BOUNDARY = 140
 
-YAML_FOLDED_SCALAR = re.compile(r"^(\s*)([^:#]+):\s*>(?:\d+)?[+-]?\s*$")
-
 
 def is_structural(line):
     return bool(STRUCTURAL.match(line))
@@ -94,17 +105,6 @@ def is_blank(line):
     return line.strip() == ""
 
 
-def can_append_to(prev_line):
-    # Allow joining onto list markers, but avoid corrupting headings/tables/html/quotes/hr.
-    return not (
-        HEADING.match(prev_line)
-        or BLOCKQUOTE.match(prev_line)
-        or TABLE_ROW.match(prev_line)
-        or HTML_TAG.match(prev_line)
-        or HR.match(prev_line)
-    )
-
-
 def preserves_hard_wraps(path):
     normalized = path.replace("\\", "/")
     filename = normalized.rsplit("/", 1)[-1]
@@ -112,7 +112,7 @@ def preserves_hard_wraps(path):
     if logical_filename in AI_ENTRYPOINT_NAMES:
         return True
     normalized = f"/{normalized.lstrip('/')}"
-    return logical_filename.endswith(".md") and any(marker in normalized for marker in AI_SKILL_PATH_MARKERS)
+    return logical_filename.endswith(".md") and any(marker in normalized for marker in AI_INSTRUCTION_PATH_MARKERS)
 
 
 def is_prose_list_item(line):
@@ -213,8 +213,34 @@ def sentence_boundary_lines(text, prefix="", continuation_prefix="", max_width=A
     return out
 
 
-def has_unclosed_inline_code_start(line):
-    return line.count("`") % 2 == 1
+def conservative_prose_lines(raw_lines, prefix, continuation_prefix):
+    # Preserve ambiguous markup instead of guessing where its prose begins.
+    code_indent = len(continuation_prefix) + 4
+    if any(
+        re.search(r"[`\[\]<>|]|\w+://", line)
+        or line.endswith(("  ", "\\"))
+        or "\t" in line
+        or len(line) - len(line.lstrip(" ")) >= code_indent
+        for line in raw_lines
+    ):
+        return raw_lines
+
+    out = []
+    current = raw_lines[0]
+    for line in raw_lines[1:]:
+        candidate = current.rstrip() + " " + line.strip()
+        # Punctuation at an authored line end is a boundary, even when an
+        # abbreviation or a lowercase next line makes sentence detection unsure.
+        boundary = re.search(r"[.!?;:—–][\"')\]}*_]*$", current.rstrip())
+        indent = line[: len(line) - len(line.lstrip(" "))]
+        if not boundary and indent == continuation_prefix and len(candidate) <= AI_SOFT_LINE_BOUNDARY:
+            current = candidate
+        else:
+            out.extend(sentence_boundary_lines(current[len(prefix) :], prefix, continuation_prefix))
+            prefix = indent
+            current = line
+    out.extend(sentence_boundary_lines(current[len(prefix) :], prefix, continuation_prefix))
+    return out
 
 
 def inside_inline_code(text, index):
@@ -270,7 +296,7 @@ def wrap_long_sentence(sentence, first_width, continuation_width):
 def normalize_ai_instruction_wraps(text):
     lines = text.split("\n")
     out = []
-    in_code_fence = False
+    code_fence = None
     in_frontmatter = False
 
     i = 0
@@ -281,190 +307,75 @@ def normalize_ai_instruction_wraps(text):
         # Preserve YAML frontmatter verbatim; routing metadata is data, not prose.
         if i == 0 and stripped == "---":
             in_frontmatter = True
-            out.append(stripped)
+            out.append(line)
             i += 1
             continue
         if in_frontmatter:
-            out.append(stripped)
-            if stripped == "---":
+            out.append(line)
+            if stripped in ("---", "..."):
                 in_frontmatter = False
             i += 1
             continue
 
-        if re.match(r"\s{0,3}(`{3,}|~{3,})", stripped):
-            in_code_fence = not in_code_fence
-            out.append(stripped)
+        fence = re.match(r"\s*(`{3,}|~{3,})(.*)$", line)
+        if code_fence:
+            out.append(line)
+            if fence and fence[1][0] == code_fence[0] and len(fence[1]) >= len(code_fence) and not fence[2].strip():
+                code_fence = None
+            i += 1
+            continue
+        if fence:
+            code_fence = fence[1]
+            out.append(line)
             i += 1
             continue
 
-        if in_code_fence or is_blank(stripped):
-            out.append("" if is_blank(stripped) else stripped)
+        if is_blank(stripped) or line.startswith(("    ", "\t")):
+            out.append(line)
             i += 1
             continue
 
         if is_non_prose_structural(stripped):
-            out.append(stripped)
+            out.append(line)
             i += 1
             continue
 
         list_match = LIST_ITEM.match(stripped)
         if list_match:
-            prefix, first = list_match.groups()
-            raw_lines = [stripped]
-            parts = [first.strip()]
+            prefix, _ = list_match.groups()
+            raw_lines = [line]
             i += 1
             while i < len(lines):
-                candidate = lines[i].rstrip()
+                candidate = lines[i]
                 if is_blank(candidate) or is_structural(candidate):
                     break
                 raw_lines.append(candidate)
-                parts.append(candidate.strip())
                 i += 1
-            if has_unclosed_inline_code_start(stripped):
-                out.extend(raw_lines)
-                continue
-            out.extend(sentence_boundary_lines(" ".join(parts), prefix, " " * len(prefix)))
+            out.extend(conservative_prose_lines(raw_lines, prefix, " " * len(prefix)))
             continue
 
         prose_match = re.match(r"^(\s*)(.*)$", stripped)
         prose_prefix = prose_match.group(1)
-        raw_lines = [stripped]
-        parts = [prose_match.group(2).strip()]
+        raw_lines = [line]
         i += 1
         while i < len(lines):
-            candidate = lines[i].rstrip()
+            candidate = lines[i]
             if is_blank(candidate) or is_structural(candidate):
                 break
             raw_lines.append(candidate)
-            parts.append(candidate.strip())
             i += 1
-        if has_unclosed_inline_code_start(stripped):
+        if i < len(lines) and re.fullmatch(r" {0,3}(?:=+|-+)\s*", lines[i]):
             out.extend(raw_lines)
-            continue
-        out.extend(sentence_boundary_lines(" ".join(parts), prose_prefix, prose_prefix))
-
-    while len(out) > 1 and out[-1] == "":
-        out.pop()
-    if text.endswith("\n"):
-        out.append("")
-    return "\n".join(out)
-
-
-def unwrap_yaml_folded_scalar_lines(lines):
-    out = []
-    buf = []
-    for line in lines:
-        if line.strip() == "":
-            if buf:
-                out.append(" ".join(s.strip() for s in buf).strip())
-                buf = []
-            out.append("")
         else:
-            buf.append(line)
-    if buf:
-        out.append(" ".join(s.strip() for s in buf).strip())
-    return out
+            out.extend(conservative_prose_lines(raw_lines, prose_prefix, prose_prefix))
 
-
-def yaml_double_quote(s):
-    s = s.replace("\\", "\\\\")
-    s = s.replace('"', '\\"')
-    s = s.replace("\t", "\\t")
-    s = s.replace("\r", "\\r")
-    s = s.replace("\n", "\\n")
-    return f'"{s}"'
+    return "\n".join(out)
 
 
 def unwrap(text, path=None):
     if path and preserves_hard_wraps(path):
         return normalize_ai_instruction_wraps(text)
-
-    lines = text.split("\n")
-    out = []
-    in_code_fence = False
-    in_frontmatter = False
-
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        stripped = line.rstrip()
-
-        # YAML frontmatter: starts with --- on line 1, ends at next ---
-        if i == 0 and stripped == "---":
-            in_frontmatter = True
-            out.append(stripped)
-            i += 1
-            continue
-        if in_frontmatter:
-            m = YAML_FOLDED_SCALAR.match(stripped)
-            if m:
-                base_indent = len(m.group(1))
-                key = m.group(2).strip()
-                scalar_lines = []
-                scalar_indent = None
-
-                i += 1
-                while i < len(lines):
-                    raw = lines[i].rstrip()
-                    if raw == "":
-                        scalar_lines.append("")
-                        i += 1
-                        continue
-
-                    indent = len(raw) - len(raw.lstrip(" "))
-                    if indent <= base_indent:
-                        break
-                    if scalar_indent is None:
-                        scalar_indent = indent
-                    if indent < scalar_indent:
-                        break
-
-                    scalar_lines.append(raw[scalar_indent:])
-                    i += 1
-
-                folded_parts = [s for s in unwrap_yaml_folded_scalar_lines(scalar_lines) if s != ""]
-                folded_text = " ".join(folded_parts).strip()
-                out.append(f"{' ' * base_indent}{key}: {yaml_double_quote(folded_text)}")
-                continue
-
-            out.append(stripped)
-            if stripped == "---":
-                in_frontmatter = False
-            i += 1
-            continue
-
-        if re.match(r"\s{0,3}(`{3,}|~{3,})", stripped):
-            in_code_fence = not in_code_fence
-            out.append(stripped)
-            i += 1
-            continue
-
-        if in_code_fence:
-            out.append(stripped)
-            i += 1
-            continue
-
-        if is_blank(stripped):
-            out.append("")
-            i += 1
-            continue
-
-        if is_structural(stripped):
-            out.append(stripped)
-            i += 1
-            continue
-
-        if out and not is_blank(out[-1]) and can_append_to(out[-1]):
-            out[-1] = out[-1] + " " + stripped.strip()
-        else:
-            out.append(stripped)
-        i += 1
-
-    while len(out) > 1 and out[-1] == "":
-        out.pop()
-    if text.endswith("\n"):
-        out.append("")
-    return "\n".join(out)
+    return text
 
 
 def main():
@@ -487,11 +398,11 @@ def main():
         else:
             with open(path, "w") as f:
                 f.write(result)
-            print(f"unwrapped: {path}")
+            print(f"formatted: {path}")
 
     if check_mode and dirty:
         for p in dirty:
-            print(f"  needs unwrapping: {p}")
+            print(f"  needs formatting: {p}")
         sys.exit(1)
 
 

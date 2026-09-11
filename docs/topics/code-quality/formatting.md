@@ -1,6 +1,6 @@
 # Formatting
 
-This repo uses per-language formatters to keep source files consistent. The root `package.json` only shims the docs site scripts and pulls no formatter — formatters are installed via Homebrew, except `,unwrap-md` which is a repo-provided script deployed to `~/bin/,unwrap-md` via chezmoi.
+This repo uses per-language formatters to keep source files consistent. The root `package.json` only shims the docs site scripts and pulls no formatter — formatters are installed via Homebrew, except `,format-md` which is a repo-provided script deployed to `~/bin/,format-md` via chezmoi.
 
 ## Quick start
 
@@ -49,9 +49,11 @@ All formatters are declared in the Brewfile: [`home/readonly_dot_Brewfile.tmpl`]
 
 ## Concurrency
 
-`bin/fmt` runs the per-language formatter groups concurrently, since each group (except the markdown chain) operates on a disjoint set of files. The markdown chain (`,unwrap-md` → `markdownlint --fix` → `prettier`) stays sequential internally because all three steps mutate the same `.md` files in a required order; `prettier` also handles JSON/YAML in that same bulk invocation.
+`bin/fmt` runs the per-language formatter groups concurrently, since each group (except the markdown chain) operates on a disjoint set of files. The markdown chain (`,format-md` → `markdownlint --fix` → `prettier`) stays sequential internally because all three steps mutate the same `.md` files in a required order; `prettier` also handles JSON/YAML in that same bulk invocation.
 
-`,unwrap-md` treats AI-facing instruction files as sentence-boundary-wrapped prompt units: SOP entrypoints (`AGENTS.md`, `CLAUDE.md` and their chezmoi `readonly_*` sources) and Markdown under managed agent/skill directories, including hook and reference files, keep meaningful line breaks, but mid-sentence hard wraps are joined. Lines below the soft 140-character boundary stay intact; when adding the next sentence would cross that boundary, the next sentence moves to a new line. If a single sentence exceeds the boundary, it is wrapped only at strong clause punctuation such as `;`, `:`, or an em dash. If no strong boundary exists, the sentence stays long rather than being cut mid-thought. Ordinary docs still unwrap to one physical line per logical paragraph. The same detection handles Conform's `.conform.<random>.<filename>` temp files, so Neovim `:write` and `bin/fmt` apply the same AI-facing Markdown rule.
+`,format-md` leaves files outside recognized AI paths unchanged, including their existing prose wraps and frontmatter. In AI Markdown, it preserves authored sentence and clause breaks. It joins plain mid-sentence continuation lines only when their indentation matches and the complete joined line fits the soft 140-character boundary. Existing long lines can split at sentence or strong clause boundaries; an unsplittable sentence stays long. Paragraphs containing ambiguous markup such as inline code, links, or URLs retain their existing lines. Explicit Markdown line breaks, frontmatter, fenced and indented code, tables, headings, and blank lines are preserved. These guarantees describe this script; the other tools in the formatting chain still apply their own formatting.
+
+AI detection covers `AGENTS.md`, `CLAUDE.md`, `SKILL.md`, `copilot-instructions.md`, and their chezmoi `readonly_` names. Directory detection covers shared `.agents/{skills,hooks,references}/`, `.github/instructions/`, managed skill and Markdown agent-profile directories for the configured harnesses, and Cursor's local `k-sop` rule. Chezmoi `exact_skills`, `exact_hooks`, `exact_references`, and `exact_agents` source directories use the same rule. The complete path list lives in `AI_INSTRUCTION_PATH_MARKERS` in [`home/exact_bin/executable_,format-md`](../../../home/exact_bin/executable_,format-md). Detection handles Conform's `.conform.<random>.<filename>` temporary names and Windows separators. It does not extend Markdown classification to `.md.tmpl`, TOML, or plain text files.
 
 Each group's output is buffered and flushed in a fixed order after all groups finish, so logs stay readable rather than interleaving. The overall exit code is the OR of every group's status, so a failure (or a missing tool) in any group still fails the run.
 
