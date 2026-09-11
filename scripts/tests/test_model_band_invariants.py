@@ -1081,14 +1081,18 @@ class TestModelBandInvariants(unittest.TestCase):
         # stays listed as selectable-only, like kimi-k3 and glm-5.2.
         pi_route = "openai/gpt-5.6-sol"
         pi_mechanical = "z-ai/glm-5.3-flash"
-        # DeepSeek V4 Flash carried the default and mechanical lanes until 2026-09-10; it stays
-        # selectable on every route with its own FP8-or-higher policy (user call 2026-09-10).
-        deepseek = "deepseek/deepseek-v4-flash-0731"
-        pi_deepseek = "deepseek/deepseek-v4-flash"
+        # DeepSeek V4 Flash carried the default and mechanical lanes until 2026-09-10; DeepSeek stays
+        # selectable on every route with its own policy (FP8-or-higher until 2026-09-11; now a 35 t/s
+        # preferred floor under a $1.20/M completion cap and no quantization filter, user call) and moved
+        # to the V4.1 Flash id on 2026-09-11 (user call): one bare id, no dated snapshot slug.
+        deepseek = "deepseek/deepseek-v4.1-flash"
+        pi_deepseek = deepseek
         pi_memory = "google/gemini-3.8-flash"
         pi_selectable_sonnet = "anthropic/claude-sonnet-4.6"
         optional = "moonshotai/kimi-k3"
         glm = "z-ai/glm-5.2"
+        # Selectable only; Pi pins it to OpenAI's Flex service tier (user call 2026-09-11).
+        pi_astra = "openai/gpt-6-astra"
         counter = "openai/gpt-5.6-terra"
         default_selector = f"openrouter/{default}"
         pi_route_selector = f"openrouter/{pi_route}"
@@ -1097,6 +1101,7 @@ class TestModelBandInvariants(unittest.TestCase):
         pi_memory_selector = f"openrouter/{pi_memory}"
         optional_selector = f"openrouter/{optional}"
         glm_selector = f"openrouter/{glm}"
+        pi_astra_selector = f"openrouter/{pi_astra}"
         pi_selectable_sonnet_selector = f"openrouter/{pi_selectable_sonnet}"
         expected_default_provider_routing = {
             "preferred_min_throughput": 24,
@@ -1105,6 +1110,12 @@ class TestModelBandInvariants(unittest.TestCase):
         expected_glm_provider_routing = {
             "preferred_min_throughput": 24,
             "quantizations": ["fp8", "fp16", "bf16", "fp32"],
+        }
+        # max_price is a hard filter; preferred_min_throughput only deprioritizes. No quantizations:
+        # few DeepSeek endpoints declare one, so the allowlist starved the route (user call 2026-09-11).
+        expected_deepseek_provider_routing = {
+            "preferred_min_throughput": 35,
+            "max_price": {"completion": 1.2},
         }
         expected_optional_provider_routing = {
             "only": ["fireworks", "together", "baseten"],
@@ -1136,6 +1147,7 @@ class TestModelBandInvariants(unittest.TestCase):
                 {"id": pi_selectable_sonnet_selector},
                 {"id": optional_selector},
                 {"id": glm_selector},
+                {"id": pi_astra_selector},
             ],
             ai_models.load_pi_extra_models(registry),
         )
@@ -1161,11 +1173,16 @@ class TestModelBandInvariants(unittest.TestCase):
             default_compat = pi_overrides[default]["compat"]
             optional_compat = pi_overrides[optional]["compat"]
             glm_compat = pi_overrides[glm]["compat"]
+            astra_compat = pi_overrides[pi_astra]["compat"]
             deepseek_compat = pi_overrides[deepseek]["compat"]
             self.assertEqual(expected_default_provider_routing, default_compat["openRouterRouting"])
-            self.assertEqual(expected_default_provider_routing, deepseek_compat["openRouterRouting"])
+            self.assertEqual(expected_deepseek_provider_routing, deepseek_compat["openRouterRouting"])
             self.assertEqual(expected_optional_provider_routing, optional_compat["openRouterRouting"])
             self.assertEqual(expected_glm_provider_routing, glm_compat["openRouterRouting"])
+            # Service-tier endpoints need explicit opt-in: the base "openai" slug never matches openai/flex,
+            # and Flex bills $5/$25 per M against $10/$50 on the standard endpoint (live-probed 2026-09-11).
+            self.assertEqual({"only": ["openai/flex"]}, astra_compat["openRouterRouting"])
+            self.assertNotIn("extraBody", astra_compat)
             for routing in (
                 default_compat["openRouterRouting"],
                 optional_compat["openRouterRouting"],
@@ -1256,7 +1273,7 @@ class TestModelBandInvariants(unittest.TestCase):
             omp_models,
         )
         self.assertIn(
-            '      - id: "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max"\n',
+            '      - id: "deepseek/deepseek-v4.1-flash@preset/deepseek-lanes-max"\n',
             omp_models,
         )
         self.assertIn(
@@ -1273,7 +1290,7 @@ class TestModelBandInvariants(unittest.TestCase):
         # Personal leader-aisc talks to OpenRouter directly on z-ai/glm-5.3-flash (user call
         # 2026-09-10): the wrapper route's model, without its lane preset. Provider routing omits sort so
         # OpenRouter's default load balancer keeps uptime, then price-weights remaining
-        # endpoints, with a 300 t/s preferred floor (OpenRouter deprioritizes slower endpoints;
+        # endpoints, with a 30 t/s preferred floor (OpenRouter deprioritizes slower endpoints;
         # it does not hard-exclude them). Output cap is the top-provider max completion
         # (131072 of a 1,048,576-token context), not a 2048-token ceiling.
         neovim = (
@@ -1291,7 +1308,7 @@ class TestModelBandInvariants(unittest.TestCase):
         self.assertIn('reasoning = { effort = "high" }', neovim)
         self.assertNotIn('reasoning = { effort = "max" }', neovim)
         self.assertIn(
-            "local OPENROUTER_PROVIDER_ROUTING = { preferred_min_throughput = 300 }",
+            "local OPENROUTER_PROVIDER_ROUTING = { preferred_min_throughput = 30 }",
             neovim,
         )
         self.assertIn("provider = OPENROUTER_PROVIDER_ROUTING,", neovim)

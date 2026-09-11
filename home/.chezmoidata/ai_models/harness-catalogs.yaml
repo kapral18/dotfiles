@@ -238,8 +238,10 @@ cursor_models:
 # absent here. GPT-5.6 Sol carries both the T2 implement lane (:high) and refute (:xhigh) — one id,
 # two efforts — after it superseded GPT-5.5 on 2026-09-07; GLM 5.3 Flash carries mechanical, and
 # Gemini 3.8 Flash memory (the lane was live-probed on 3.7 Flash 2026-08-29 and moved to 3.8 Flash
-# 2026-09-07; tops out at :high). DeepSeek V4 Flash (mechanical until 2026-09-10), Sonnet 4.6 (refute
-# until the 2026-09-07 retier), Kimi and GLM-5.2 remain selectable without backing a category.
+# 2026-09-07; tops out at :high). DeepSeek V4.1 Flash (V4 Flash carried mechanical until 2026-09-10; the id moved to V4.1 on
+# 2026-09-11, user call), Sonnet 4.6 (refute
+# until the 2026-09-07 retier), Kimi, GLM-5.2 and GPT-6 Astra (Flex tier only) remain selectable without
+# backing a category.
 # Pi resolves the `openrouter/` prefix through its own built-in provider, so no generated provider
 # block backs these entries.
 pi_extra_models:
@@ -249,11 +251,15 @@ pi_extra_models:
   - id: "openrouter/openai/gpt-5.6-sol"
     recommended: true
   - id: "openrouter/z-ai/glm-5.3-flash"
-  - id: "openrouter/deepseek/deepseek-v4-flash"
+  - id: "openrouter/deepseek/deepseek-v4.1-flash"
   - id: "openrouter/google/gemini-3.8-flash"
   - id: "openrouter/anthropic/claude-sonnet-4.6"
   - id: "openrouter/moonshotai/kimi-k3"
   - id: "openrouter/z-ai/glm-5.2"
+  # GPT-6 Astra on OpenRouter is pinned to OpenAI's Flex service tier through modelOverrides
+  # `only: ["openai/flex"]` ($5/$25 per M, half the standard endpoint; base slugs never match service
+  # tiers, so the explicit tag is required; live-probed 2026-09-11, user call). Selectable only.
+  - id: "openrouter/openai/gpt-6-astra"
 
 # Copilot CLI available-model catalog. Snapshot of the Copilot CLI 1.0.71 model list (extracted via an
 # isolated tmux-socket probe; the CLI exposes no --list-models command). Refresh by re-probing and

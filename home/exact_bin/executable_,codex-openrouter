@@ -127,7 +127,7 @@ codex_catalog_cleanup() {
 }
 trap codex_catalog_cleanup EXIT
 "$OPENROUTER_PRESET_HELPER" --codex-model-catalog "$OPENROUTER_CONTEXT" \
-  "$OPENROUTER_MODEL" "$OPENROUTER_PI_T1_WIRE_MODEL" "$OPENROUTER_PI_T2_WIRE_MODEL" \
+  "$OPENROUTER_WIRE_MODEL" "$OPENROUTER_PI_T1_WIRE_MODEL" "$OPENROUTER_PI_T2_WIRE_MODEL" \
   "$OPENROUTER_PI_MECHANICAL_WIRE_MODEL" "$OPENROUTER_PI_MEMORY_WIRE_MODEL" \
   "$OPENROUTER_PI_REFUTE_WIRE_MODEL" >"$codex_catalog"
 
@@ -156,5 +156,7 @@ unset AGENT_BAND_SUBSCRIPTION AGENT_BAND_CLAUDE_ROUTES AGENT_BAND_CODEX_ROUTES
 export AGENT_BAND_SCHEMA_HARNESS="pi"
 export AGENT_BAND_MODEL_FORMAT="openrouter-preset"
 
-"$codex_bin" "${args[@]}" "${cli_args[@]}"
+# Native role settings apply after spawn arguments. Project model-free managed
+# leaves for this process so the exact OpenRouter lane survives that merge.
+python3 "$HOME/lib/shared/codex_lanes.py" "$codex_catalog" -- "$codex_bin" "${args[@]}" "${cli_args[@]}"
 exit $?

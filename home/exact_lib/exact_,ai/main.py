@@ -38,16 +38,16 @@ PI_OPENROUTER_MODEL = "openai/gpt-5.6-sol"
 PI_OPENROUTER_THINKING = "xhigh"
 PI_OPENROUTER_SELECTOR = f"{OPENROUTER_PROVIDER}/{PI_OPENROUTER_MODEL}"
 PI_OPENROUTER_GLM_FLASH_SELECTOR = f"{OPENROUTER_PROVIDER}/z-ai/glm-5.3-flash"
-PI_OPENROUTER_DEEPSEEK_SELECTOR = f"{OPENROUTER_PROVIDER}/deepseek/deepseek-v4-flash"
+PI_OPENROUTER_DEEPSEEK_SELECTOR = f"{OPENROUTER_PROVIDER}/deepseek/deepseek-v4.1-flash"
 PI_OPENROUTER_SONNET_SELECTOR = f"{OPENROUTER_PROVIDER}/anthropic/claude-sonnet-4.6"
+# Pi pins GPT-6 Astra to OpenAI's Flex service tier through modelOverrides (`only: ["openai/flex"]`).
+PI_OPENROUTER_ASTRA_SELECTOR = f"{OPENROUTER_PROVIDER}/openai/gpt-6-astra"
 # OpenCode cannot inject OpenRouter's `provider` routing body field, so its lane route carries
 # the FP8-or-higher, 24 t/s floor, no-sort (uptime-aware default LB) policy and high effort in the `glm-lanes-high` preset slug.
 # The request model overrides the preset's pinned GLM-5.2 id (live-probed 2026-09-10), so GLM 5.3 Flash rides the same slug.
 OPENROUTER_OPENCODE_SELECTOR = f"{OPENROUTER_SELECTOR}@preset/glm-lanes-max"
-# DeepSeek V4 Flash stays selectable on OpenCode behind its own policy slug.
-OPENROUTER_OPENCODE_DEEPSEEK_SELECTOR = (
-    f"{OPENROUTER_PROVIDER}/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max"
-)
+# DeepSeek V4.1 Flash stays selectable on OpenCode behind its own policy slug.
+OPENROUTER_OPENCODE_DEEPSEEK_SELECTOR = f"{OPENROUTER_PROVIDER}/deepseek/deepseek-v4.1-flash@preset/deepseek-lanes-max"
 OPENROUTER_KIMI_SELECTOR = f"{OPENROUTER_PROVIDER}/moonshotai/kimi-k3"
 OPENROUTER_OPENCODE_KIMI_SELECTOR = f"{OPENROUTER_KIMI_SELECTOR}@preset/kimi-lanes"
 OPENROUTER_GLM_SELECTOR = f"{OPENROUTER_PROVIDER}/z-ai/glm-5.2"
@@ -706,6 +706,7 @@ def _openrouter_sanctioned_selectors(
             PI_OPENROUTER_SONNET_SELECTOR,
             OPENROUTER_KIMI_SELECTOR,
             OPENROUTER_GLM_SELECTOR,
+            PI_OPENROUTER_ASTRA_SELECTOR,
         )
     return (OPENROUTER_OPENCODE_SELECTOR, OPENROUTER_OPENCODE_DEEPSEEK_SELECTOR, OPENROUTER_OPENCODE_KIMI_SELECTOR)
 

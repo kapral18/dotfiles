@@ -79,7 +79,6 @@ ALLOWED_MODEL_ENV = "CURSOR_AGENT_ALLOWED_MODEL"
 MODEL_CATALOG_ENV = "CURSOR_AGENT_SHIM_MODEL_CATALOG"
 INBOUND_TOOL_NAMES = {"Bash": "Shell"}
 NO_TOOL_MODELS = {"stealth/ox-alpha", "stealth/ox-alpha:online"}
-DISCOVERED_NO_TOOL_MODELS: set[str] = set()
 _PIPE_ERRORS = (BrokenPipeError, ConnectionAbortedError, ConnectionResetError)
 
 
@@ -154,11 +153,7 @@ def _base_model_id(model: str) -> str:
 
 def _uses_no_tool_adapter(payload: dict[str, Any]) -> bool:
     model = payload.get("model")
-    return isinstance(model, str) and _base_model_id(model) in NO_TOOL_MODELS | DISCOVERED_NO_TOOL_MODELS
-
-
-def _has_tools(payload: dict[str, Any]) -> bool:
-    return isinstance(payload.get("tools"), list) and bool(payload["tools"])
+    return isinstance(model, str) and _base_model_id(model) in NO_TOOL_MODELS
 
 
 def _without_tools(payload: dict[str, Any]) -> dict[str, Any]:
@@ -288,59 +283,6 @@ def rewrite_json_response(raw: bytes) -> bytes:
     return json.dumps(payload, separators=(",", ":")).encode()
 
 
-def _content_has_text(content: Any) -> bool:
-    if isinstance(content, str):
-        return bool(content)
-    if isinstance(content, list):
-        return bool(content)
-    return content is not None
-
-
-def _message_has_assistant_payload(message: Any) -> bool:
-    if not isinstance(message, dict):
-        return False
-    if _content_has_text(message.get("content")):
-        return True
-    return bool(message.get("tool_calls") or message.get("function_call"))
-
-
-def response_has_assistant_payload(raw: bytes, *, is_sse: bool) -> bool:
-    """Return whether a chat response contains content or tool calls Cursor can consume."""
-    payloads: list[dict[str, Any]] = []
-    if is_sse:
-        for line in raw.splitlines():
-            if not line.startswith(b"data:"):
-                continue
-            data = line[5:].strip()
-            if data in (b"", b"[DONE]"):
-                continue
-            try:
-                payload = json.loads(data)
-            except ValueError:
-                continue
-            if isinstance(payload, dict):
-                payloads.append(payload)
-    else:
-        try:
-            payload = json.loads(raw)
-        except ValueError:
-            return True
-        if isinstance(payload, dict):
-            payloads.append(payload)
-    for payload in payloads:
-        choices = payload.get("choices")
-        if not isinstance(choices, list):
-            continue
-        for choice in choices:
-            if not isinstance(choice, dict):
-                continue
-            if _message_has_assistant_payload(choice.get("message")) or _message_has_assistant_payload(
-                choice.get("delta")
-            ):
-                return True
-    return False
-
-
 class ShimServer(ThreadingHTTPServer):
     daemon_threads = True
 
@@ -378,8 +320,6 @@ class ShimHandler(BaseHTTPRequestHandler):
             self.send_error(413, "request too large")
             return
         raw = self.rfile.read(length)
-        retry_without_tools: bytes | None = None
-        retry_model: str | None = None
         if self.path.endswith("/chat/completions") and raw:
             try:
                 payload = json.loads(raw)
@@ -397,15 +337,11 @@ class ShimHandler(BaseHTTPRequestHandler):
                             "to the model selected at launch)",
                         )
                         return
-                model = payload.get("model")
-                if isinstance(model, str) and _has_tools(payload) and not _uses_no_tool_adapter(payload):
-                    retry_without_tools = json.dumps(_without_tools(payload)).encode()
-                    retry_model = _base_model_id(model)
                 raw = json.dumps(rewrite_chat_completions(payload)).encode()
             except (ValueError, TypeError):
                 self.send_error(400, "invalid JSON request body")
                 return
-        self._forward(raw, retry_without_tools=retry_without_tools, retry_model=retry_model)
+        self._forward(raw)
 
     def _open_upstream(self, body: bytes) -> tuple[int, Any, Any] | None:
         headers = {
@@ -432,9 +368,7 @@ class ShimHandler(BaseHTTPRequestHandler):
             return None
         return status, resp_headers, resp_body
 
-    def _forward(
-        self, body: bytes, *, retry_without_tools: bytes | None = None, retry_model: str | None = None
-    ) -> None:
+    def _forward(self, body: bytes) -> None:
         opened = self._open_upstream(body)
         if opened is None:
             return
@@ -443,46 +377,8 @@ class ShimHandler(BaseHTTPRequestHandler):
         content_type = resp_headers.get("Content-Type") or ""
         try:
             if is_chat and "text/event-stream" in content_type.lower():
-                if retry_without_tools is not None:
-                    self._write_rewritten_sse_with_retry(
-                        status,
-                        content_type,
-                        resp_body,
-                        retry_without_tools=retry_without_tools,
-                        retry_model=retry_model,
-                    )
-                else:
-                    self._write_rewritten_sse(status, content_type, resp_body)
-            elif is_chat:
-                if retry_without_tools is not None:
-                    raw = resp_body.read()
-                    rewritten = rewrite_json_response(raw)
-                    if status == 200 and not response_has_assistant_payload(rewritten, is_sse=False):
-                        if retry_model is not None:
-                            DISCOVERED_NO_TOOL_MODELS.add(retry_model)
-                        self._retry_without_tools(retry_without_tools)
-                        return
-                    self._write_json_bytes(status, content_type, rewritten)
-                else:
-                    self._write_rewritten_json(status, content_type, resp_body)
-            else:
-                self._write_passthrough(status, resp_headers, resp_body)
-        finally:
-            try:
-                resp_body.close()
-            except Exception:
-                pass
-
-    def _retry_without_tools(self, body: bytes) -> None:
-        opened = self._open_upstream(body)
-        if opened is None:
-            return
-        status, resp_headers, resp_body = opened
-        content_type = resp_headers.get("Content-Type") or ""
-        try:
-            if self.path.endswith("/chat/completions") and "text/event-stream" in content_type.lower():
                 self._write_rewritten_sse(status, content_type, resp_body)
-            elif self.path.endswith("/chat/completions"):
+            elif is_chat:
                 self._write_rewritten_json(status, content_type, resp_body)
             else:
                 self._write_passthrough(status, resp_headers, resp_body)
@@ -495,45 +391,6 @@ class ShimHandler(BaseHTTPRequestHandler):
     def _write_rewritten_sse(self, status: int, content_type: str, resp_body: Any) -> None:
         self._send_sse_headers(status, content_type)
         self._stream_rewritten_sse_body(resp_body)
-
-    def _write_rewritten_sse_with_retry(
-        self,
-        status: int,
-        content_type: str,
-        resp_body: Any,
-        *,
-        retry_without_tools: bytes,
-        retry_model: str | None,
-    ) -> None:
-        if status != 200:
-            self._write_rewritten_sse(status, content_type, resp_body)
-            return
-        pending = b""
-        buffered = bytearray()
-        try:
-            while True:
-                chunk = resp_body.read(65536)
-                if not chunk:
-                    if pending:
-                        out, _ = rewrite_sse_chunk(pending + b"\n")
-                        buffered.extend(out)
-                    break
-                out, pending = rewrite_sse_chunk(pending + chunk)
-                buffered.extend(out)
-                if response_has_assistant_payload(bytes(buffered), is_sse=True):
-                    self._send_sse_headers(status, content_type)
-                    if buffered:
-                        self.wfile.write(buffered)
-                    self._stream_rewritten_sse_body(resp_body, pending=pending)
-                    return
-            if response_has_assistant_payload(bytes(buffered), is_sse=True):
-                self._write_sse_bytes(status, content_type, bytes(buffered))
-                return
-            if retry_model is not None:
-                DISCOVERED_NO_TOOL_MODELS.add(retry_model)
-            self._retry_without_tools(retry_without_tools)
-        except _PIPE_ERRORS:
-            pass
 
     def _send_sse_headers(self, status: int, content_type: str) -> None:
         self.send_response(status)

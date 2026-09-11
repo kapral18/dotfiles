@@ -396,14 +396,15 @@ class TestAiLauncher(unittest.TestCase):
     def test_when_openrouter_route_models_are_explicit_each_harness_gets_its_sanctioned_set(self) -> None:
         # The registry declares a Pi-specific OpenRouter set (GPT-5.6 SOL route default plus T2
         # implement and refute, GLM 5.3 Flash mechanical, Gemini 3.8 Flash memory, selectable
-        # DeepSeek/Sonnet/Kimi/GLM);
+        # DeepSeek/Sonnet/Kimi/GLM, and GPT-6 Astra pinned to OpenAI's Flex tier);
         # the launcher must accept the per-harness selectors the generated mirror sanctions and reject
         # anything else.
         pi_gpt = self.dry_plan("pi", "--model", "openrouter/openai/gpt-5.6-sol")
         pi_glm_flash = self.dry_plan("pi", "--model", "openrouter/z-ai/glm-5.3-flash")
-        pi_deepseek = self.dry_plan("pi", "--model", "openrouter/deepseek/deepseek-v4-flash")
+        pi_deepseek = self.dry_plan("pi", "--model", "openrouter/deepseek/deepseek-v4.1-flash")
         pi_sonnet = self.dry_plan("pi", "--model", "openrouter/anthropic/claude-sonnet-4.6")
         pi_glm = self.dry_plan("pi", "--model", "openrouter/z-ai/glm-5.2")
+        pi_astra = self.dry_plan("pi", "--model", "openrouter/openai/gpt-6-astra")
         opencode_kimi = self.dry_plan("opencode", "--model", "openrouter/moonshotai/kimi-k3@preset/kimi-lanes")
         opencode_glm_flash = self.dry_plan(
             "opencode",
@@ -413,7 +414,7 @@ class TestAiLauncher(unittest.TestCase):
         opencode_deepseek = self.dry_plan(
             "opencode",
             "--model",
-            "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max",
+            "openrouter/deepseek/deepseek-v4.1-flash@preset/deepseek-lanes-max",
         )
         pi_unsanctioned = self.run_ai("pi", "--model", "openrouter/openai/gpt-5.6-terra", "--dry-run")
         # Pi's policies ride modelOverrides, so bare policy-bound ids are invalid for OpenCode:
@@ -428,16 +429,17 @@ class TestAiLauncher(unittest.TestCase):
 
         self.assertIn("openai/gpt-5.6-sol", pi_gpt["leaf"]["argv"])
         self.assertIn("openrouter/z-ai/glm-5.3-flash", pi_glm_flash["leaf"]["argv"])
-        self.assertIn("openrouter/deepseek/deepseek-v4-flash", pi_deepseek["leaf"]["argv"])
+        self.assertIn("openrouter/deepseek/deepseek-v4.1-flash", pi_deepseek["leaf"]["argv"])
         self.assertIn("openrouter/anthropic/claude-sonnet-4.6", pi_sonnet["leaf"]["argv"])
         self.assertIn("openrouter/z-ai/glm-5.2", pi_glm["leaf"]["argv"])
+        self.assertIn("openrouter/openai/gpt-6-astra", pi_astra["leaf"]["argv"])
         self.assertIn("openrouter/moonshotai/kimi-k3@preset/kimi-lanes", opencode_kimi["leaf"]["argv"])
         self.assertIn(
             "openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high",
             opencode_glm_flash["leaf"]["argv"],
         )
         self.assertIn(
-            "openrouter/deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max",
+            "openrouter/deepseek/deepseek-v4.1-flash@preset/deepseek-lanes-max",
             opencode_deepseek["leaf"]["argv"],
         )
         self.assertEqual(2, pi_unsanctioned.returncode)

@@ -14,9 +14,13 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+_SHARED = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_SHARED / ("exact_shared" if (_SHARED / "exact_shared").is_dir() else "shared")))
 from auth import CodexAuth
+from claude_lanes import project_roles as claude_profiles  # noqa: E402
+from claude_lanes import validate_forwarded as validate_claude_forwarded
 from client import CodexClient
-from protocols import claude_lane_environment, load_lane_routes
+from protocols import load_lane_routes
 from server import AdapterContext, start_server
 from state import OpaqueReasoningStore
 
@@ -59,8 +63,8 @@ Effort levels: none, minimal, low, medium, high, xhigh, max, ultra.
 Without --model, the wrapper reads model from the active Codex config.
 Without --effort, the harness-generated effort is preserved. Use -- before an
 underlying harness flag that has the same name as an adapter option.
-Delegation requires verified child-lane transport: supported through Claude aliases;
-disabled on the Cursor and Copilot frontends. Native harness routes are unaffected.
+Delegation requires verified child-lane transport: supported through managed Claude profiles;
+disabled on the Cursor frontend and unpinned on the Copilot frontend. Native harness routes are unaffected.
 """
 
 
@@ -380,14 +384,16 @@ def launch(harness: str, argv: list[str]) -> int:
             return 0
         if harness == "cursor":
             validate_cursor_forwarded(options.forwarded)
+        if harness == "claude":
+            validate_claude_forwarded(options.forwarded)
         model = options.model_id or resolve_default_model()
         budget = resolve_model_budget(model)
         lane_routes = load_lane_routes("codex")
-        lane_env = claude_lane_environment("codex", lane_routes) if harness == "claude" else {}
+        lane_args, lane_env = claude_profiles("codex", set(lane_routes)) if harness == "claude" else ([], {})
         claude_budget = budget
         claude_auto_compact_token_limit = budget.auto_compact_token_limit
         if harness == "claude":
-            reachable_selectors = set(json.loads(lane_env["AGENT_BAND_CLAUDE_ROUTES"]))
+            reachable_selectors = set(json.loads(lane_env["AGENT_BAND_CLAUDE_ROUTES"]).values())
             lane_budgets = {
                 lane["model"]: resolve_model_budget(lane["model"])
                 for selector, lane in lane_routes.items()
@@ -425,7 +431,7 @@ def launch(harness: str, argv: list[str]) -> int:
     server, thread = start_server(context)
     base_url = f"http://127.0.0.1:{server.server_port}"
     try:
-        forwarded = options.forwarded
+        forwarded = [*lane_args, *options.forwarded]
         if harness == "copilot" and options.effort is not None:
             forwarded = [*forwarded, "--effort", options.effort]
         command, env = child_command(

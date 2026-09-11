@@ -82,7 +82,7 @@ class CodexClient:
         if credentials.account_id:
             headers["ChatGPT-Account-ID"] = credentials.account_id
         if "prompt_cache_key" not in payload:
-            # Translated Anthropic/Chat requests carry no key; native Responses pass-through keeps its own.
+            # Supply a session key only when the caller/translator did not provide one.
             payload = {**payload, "prompt_cache_key": self.session_id}
         return urllib.request.Request(
             f"{self.base_url}/responses",

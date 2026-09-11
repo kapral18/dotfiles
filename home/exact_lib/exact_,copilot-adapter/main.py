@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import secrets
 import shutil
 import signal
@@ -15,6 +14,11 @@ import tempfile
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+_SHARED = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_SHARED / ("exact_shared" if (_SHARED / "exact_shared").is_dir() else "shared")))
+from claude_lanes import project_roles as claude_profiles  # noqa: E402
+from claude_lanes import validate_forwarded as validate_claude_forwarded
+from codex_lanes import project_roles  # noqa: E402
 from copilot_auth import (
     CLAUDE_EXTENDED_CONTEXT_SUFFIX,
     CopilotError,
@@ -24,7 +28,7 @@ from copilot_auth import (
     fetch_models,
 )
 from copilot_server import AdapterContext, start_server
-from copilot_wire import SUPPORTED_ENDPOINTS, claude_lane_environment, load_lane_routes
+from copilot_wire import SUPPORTED_ENDPOINTS, load_lane_routes
 
 DEFAULT_MODELS = {
     "claude": "claude-sonnet-5",
@@ -75,7 +79,7 @@ Adapter options:
 
 The default is {default}. Use -- before an underlying harness
 flag that has the same name as an adapter option.
-Delegation uses Claude aliases or session-scoped Codex leaf profiles and lane metadata.
+Delegation uses session-scoped managed Claude/Codex leaf profiles and exact lane metadata.
 Cursor child transport remains disabled. Native harness routes are unaffected.
 """
 
@@ -354,55 +358,20 @@ def codex_lane_models(models: dict[str, ModelSpec], routes: dict[str, dict[str, 
     }
 
 
-def codex_leaf_profile(source: str) -> str:
-    """Keep the managed leaf body; let the hook, not native role overrides, pick its lane.
-
-    Codex applies role settings AFTER spawn arguments. These generated profiles therefore
-    omit model/effort settings and explicitly retain the native no-orchestration feature.
-    Restrict projection to the managed scalar-header/multiline-instructions format.
-    """
-    header, separator, instructions = source.partition('developer_instructions = """')
-    if not separator or not instructions.rstrip().endswith('"""'):
-        raise ValueError("unsupported Codex leaf profile format")
-    allowed = {"name", "description", "model", "model_reasoning_effort", "service_tier", "features"}
-    kept = []
-    for line in header.splitlines():
-        if not line.strip() or line.lstrip().startswith("#"):
-            continue
-        match = re.fullmatch(r"([a-z_]+)\s*=\s*(.+)", line)
-        if not match or match[1] not in allowed:
-            raise ValueError("unsupported Codex leaf profile setting")
-        if match[1] not in {"model", "model_reasoning_effort", "features"}:
-            kept.append(line)
-    return "\n".join([*kept, "features = { multi_agent = false }", separator + instructions])
-
-
 def codex_lane_configuration(
     directory: Path, models: dict[str, ModelSpec], lane_models: dict[str, ModelSpec]
 ) -> tuple[list[str], dict[str, str]]:
     """Freeze the provider catalog and managed role set for one Codex process."""
     projection = Path(os.environ.get("AGENT_BANDS_FILE", Path.home() / ".config/ai/agent-bands.v1.json"))
     agents = json.loads(projection.read_text())["harnesses"]["copilot"]["agents"]
-    codex_home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
-    roles = {}
-    args = []
-    for name, pick in agents.items():
-        if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
-            raise ValueError("invalid Codex lane role name")
-        source = codex_home / "agents" / f"{name}.toml"
-        selector = f"{pick['model']}@lane-{pick.get('effort')}"
-        if not source.is_file() or selector not in lane_models:
-            continue
-        target = directory / f"{name}.toml"
-        target.write_text(codex_leaf_profile(source.read_text()))
-        args.extend(["-c", f"agents.{name}.config_file={json.dumps(str(target))}"])
-        roles[name] = selector
+    selectors = {name: f"{pick['model']}@lane-{pick.get('effort')}" for name, pick in agents.items()}
+    args, route_env = project_roles(directory, selectors, set(lane_models))
     catalog = directory / "models.json"
     catalog.write_text(
         json.dumps({"models": [codex_model_info(model) for model in [*models.values(), *lane_models.values()]]})
     )
     args.extend(["-c", f"model_catalog_json={json.dumps(str(catalog))}"])
-    return args, {"AGENT_BAND_CODEX_ROUTES": json.dumps(roles)}
+    return args, route_env
 
 
 def run_routed_child(
@@ -426,6 +395,8 @@ def launch(harness: str, argv: list[str]) -> int:
             return 0
         if harness == "cursor":
             validate_cursor_forwarded(options.forwarded)
+        if harness == "claude":
+            validate_claude_forwarded(options.forwarded)
         tokens = TokenProvider()
         models = fetch_models(tokens)
         if options.effort is None:
@@ -436,11 +407,13 @@ def launch(harness: str, argv: list[str]) -> int:
                 options = replace(options, effort=default_effort)
         model = resolve_model(harness, options, models)
         lane_routes = load_lane_routes("copilot")
-        lane_env = claude_lane_environment("copilot", lane_routes) if harness == "claude" else {}
+        lane_args, lane_env = ([], {})
+        if harness == "claude":
+            lane_args, lane_env = claude_profiles("copilot", set(codex_lane_models(models, lane_routes)))
         claude_auto_compact_window = None
         claude_max_context_tokens = None
         if harness == "claude":
-            reachable_selectors = set(json.loads(lane_env["AGENT_BAND_CLAUDE_ROUTES"]))
+            reachable_selectors = set(json.loads(lane_env["AGENT_BAND_CLAUDE_ROUTES"]).values())
             try:
                 lane_models = [
                     models[lane["model"]] for selector, lane in lane_routes.items() if selector in reachable_selectors
@@ -477,7 +450,7 @@ def launch(harness: str, argv: list[str]) -> int:
             model,
             options.effort,
             options.thinking,
-            options.forwarded,
+            [*lane_args, *options.forwarded],
             claude_auto_compact_window,
             claude_max_context_tokens,
         )

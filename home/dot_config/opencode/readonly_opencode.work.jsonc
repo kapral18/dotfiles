@@ -90,8 +90,9 @@
             "reasoningEffort": "high",
           },
         },
-        // deepseek lanes keep the same FP8-or-higher, 24 t/s floor, no-sort policy on the still-selectable DeepSeek V4 Flash via `deepseek-lanes-max`.
-        "deepseek/deepseek-v4-flash-0731@preset/deepseek-lanes-max": {
+        // deepseek lanes carry a 35 t/s preferred floor under a $1.20/M completion cap (no quantization filter, no sort; presets re-versioned 2026-09-11)
+        // on the still-selectable DeepSeek V4.1 Flash via `deepseek-lanes-max`.
+        "deepseek/deepseek-v4.1-flash@preset/deepseek-lanes-max": {
           "limit": { "context": 1048576, "output": 384000 },
           "options": {
             "reasoningEffort": "max",

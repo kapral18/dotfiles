@@ -137,19 +137,10 @@ readonly OPENROUTER_CONTEXT_LIMIT OPENROUTER_MAX_OUTPUT_TOKENS OPENROUTER_PROMPT
 
 # Claude Code appends /v1/messages, so the base URL stops at /api. OpenRouter answers
 # that path with the Anthropic Messages schema, usage block included.
-# Claude Code's Agent tool accepts family aliases, not arbitrary OpenRouter model ids, so each
-# alias slot carries one Pi lane wire model and the gate
-# (band_gate.py:_claude_alias_for_backend_model) projects every Pi backend pick onto the slot its
-# model family matches. The alias ladder haiku < sonnet < opus < fable is the tier order here:
-#   fable  -> T1 research/review/orchestrate   anthropic/claude-fable-5.1   high
-#   opus   -> T2 implement                     openai/gpt-5.6-sol           high
-#   sonnet -> T3 mechanical                    z-ai/glm-5.3-flash   high
-#   haiku  -> memory                           google/gemini-3.8-flash      low
-# Pi's refute pick (openai/gpt-5.6-sol xhigh) has no exact alias slot.
-# The gate denies that launch instead of substituting the implement lane at high.
-# CLAUDE_CODE_SUBAGENT_MODEL is the fallback for spawns the gate leaves unbound, hence T2.
+# Managed --agents definitions carry exact Pi model/effort selectors, including
+# refute's distinct xhigh route. The gate removes call-level model overrides.
 # The OpenRouter preset carries the real effort; the Claude client effort
-# mirrors it when Claude supports the level, with low as the safe client gate for non-thinking presets.
+# mirrors it when supported, with low as the client gate for non-thinking presets.
 case "$OPENROUTER_EFFORT" in
 low | medium | high | xhigh | max)
   CLAUDE_EFFORT="$OPENROUTER_EFFORT"
@@ -168,10 +159,10 @@ export ANTHROPIC_DEFAULT_FABLE_MODEL="$OPENROUTER_PI_T1_WIRE_MODEL"
 export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_PI_T2_WIRE_MODEL"
 export ANTHROPIC_DEFAULT_SONNET_MODEL="$OPENROUTER_PI_MECHANICAL_WIRE_MODEL"
 export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OPENROUTER_PI_MEMORY_WIRE_MODEL"
-export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_PI_T2_WIRE_MODEL"
+unset CLAUDE_CODE_SUBAGENT_MODEL
 export CLAUDE_CODE_DISABLE_THINKING=1
 export CLAUDE_CODE_EFFORT_LEVEL="$CLAUDE_EFFORT"
-# Claude has one process-wide compaction threshold for the root and alias lanes.
+# Claude has one process-wide compaction threshold for the root and managed profile lanes.
 # Its own consumer clamps AUTO_COMPACT to a small model's MAX_CONTEXT, so preserve
 # a sub-100k provider budget instead of inflating it to Claude's 100k default.
 unset CLAUDE_CODE_MAX_CONTEXT_TOKENS CLAUDE_CODE_AUTO_COMPACT_WINDOW
@@ -192,4 +183,4 @@ export ANTHROPIC_AUTH_TOKEN="$api_key"
 export ANTHROPIC_API_KEY=""
 unset ANTHROPIC_CUSTOM_HEADERS
 
-exec claude --model "$OPENROUTER_CLAUDE_MODEL" --effort "$CLAUDE_EFFORT" "${args[@]}"
+exec python3 "$HOME/lib/shared/claude_lanes.py" pi -- claude --model "$OPENROUTER_CLAUDE_MODEL" --effort "$CLAUDE_EFFORT" "${args[@]}"

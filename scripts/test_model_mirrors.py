@@ -62,13 +62,12 @@ class TestStaticModelMirrors(unittest.TestCase):
     def test_SHOULD_bound_custom_openrouter_models_by_provider_capacity(self):
         import model_mirrors
 
-        # OpenRouter catalog/top-provider limits observed 2026-09-10. Preset IDs do not
+        # OpenRouter catalog/top-provider limits observed 2026-09-10 (DeepSeek V4.1 Flash 2026-09-11). Preset IDs do not
         # inherit bare OpenCode model metadata; a missing context disables compaction.
         capacities = {
             "openai/gpt-5.6-sol": (1050000, 128000),
             "z-ai/glm-5.3-flash": (1048576, 131072),
-            "deepseek/deepseek-v4-flash": (1024000, 384000),
-            "deepseek/deepseek-v4-flash-0731": (1048576, 943718),
+            "deepseek/deepseek-v4.1-flash": (1048576, 384000),
             "moonshotai/kimi-k3": (1048576, 943718),
             "z-ai/glm-5.2": (1024000, 128000),
             "anthropic/claude-sonnet-4.6": (1000000, 128000),

@@ -1,0 +1,24 @@
+// Managed by chezmoi. GPT-only, session-local working-context controls.
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
+import { createContextMode } from "{{ .chezmoi.homeDir }}/lib/shared/context_mode.ts"
+
+export default function (pi: ExtensionAPI) {
+  const context = createContextMode<NonNullable<Parameters<typeof pi.setModel>[0]>>(
+    async (model) => {
+      const effort = pi.getThinkingLevel()
+      if (!await pi.setModel(model)) throw new Error("The selected provider is not authenticated.")
+      pi.setThinkingLevel(effort)
+    },
+    (type, data) => pi.appendEntry(type, data),
+  )
+  pi.registerCommand("context-mode", {
+    description: "GPT context: short, long, or status (this model/session only)",
+    getArgumentCompletions: (prefix) => ["short", "long", "status"]
+      .filter((value) => value.startsWith(prefix)).map((value) => ({ value, label: value })),
+    handler: context.command,
+  })
+  pi.on("session_start", async (_event, ctx) => { await context.apply(ctx) })
+  pi.on("session_tree", async (_event, ctx) => { await context.apply(ctx) })
+  pi.on("model_select", async (_event, ctx) => { await context.apply(ctx) })
+  pi.on("before_agent_start", async (_event, ctx) => { await context.apply(ctx) })
+}

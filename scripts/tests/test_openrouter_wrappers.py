@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import unittest
+import urllib.error
 
 try:
     from . import bin_command_support as _support
@@ -22,7 +23,11 @@ class TestOpenRouterWrappers(unittest.TestCase):
         _install_openrouter_preset_stub(wrapper_home)
         self.wrapper_home_environment = mock.patch.dict(
             os.environ,
-            {"HOME": str(wrapper_home)},
+            {
+                "HOME": str(wrapper_home),
+                "CODEX_HOME": str(wrapper_home / ".codex"),
+                "AGENT_BANDS_FILE": str(wrapper_home / ".config/ai/agent-bands.v1.json"),
+            },
         )
         self.wrapper_home_environment.start()
 
@@ -30,13 +35,29 @@ class TestOpenRouterWrappers(unittest.TestCase):
         self.wrapper_home_environment.stop()
         self.wrapper_home_directory.cleanup()
 
+    def test_SHOULD_keep_distinct_preset_selectors_in_the_native_codex_catalog(self):
+        module = _load_openrouter_presets_module()
+        wires = [
+            "openai/gpt-test@preset/effort-high",
+            "openai/gpt-test@preset/effort-xhigh",
+            "google/gemini-test@preset/effort-low",
+        ]
+        with mock.patch.object(module, "resolve_budget", return_value=module.ModelBudget(200000, 32000, 168000)):
+            catalog = module._codex_catalog("short", [*wires, wires[0]], "fixture-key")
+        self.assertEqual([row["slug"] for row in catalog["models"]], wires)
+        for row in catalog["models"]:
+            self.assertEqual(row["context_window"], 168000)
+            self.assertEqual(row["auto_compact_token_limit"], 151200)
+
     def _openrouter_route_fixture(self):
         home = Path(self.wrapper_home_directory.name)
         bindir = home / "bin"
         bindir.mkdir()
         capture = (
-            f"#!{sys.executable}\nimport json,os,sys\n"
-            "print(json.dumps({'env': dict(os.environ), 'argv': sys.argv[1:]}))\n"
+            f"#!{sys.executable}\nimport json,os,sys,pathlib\n"
+            "profiles = {a.split('=',1)[0]:pathlib.Path(json.loads(a.split('=',1)[1])).read_text() "
+            "for a in sys.argv[1:] if a.startswith('agents.') and '.config_file=' in a}\n"
+            "print(json.dumps({'env': dict(os.environ), 'argv': sys.argv[1:], 'profiles':profiles}))\n"
         )
         local = home / ".local/share/cursor-agent-local/versions/fixture/cursor-agent-local"
         for path in (local, *(bindir / name for name in ("claude", "copilot", ",copilot", "codex"))):
@@ -48,10 +69,20 @@ class TestOpenRouterWrappers(unittest.TestCase):
         helper.write_text(
             '#!/bin/sh\nif [ "$1" = "--context-window" ]; then echo 200000; exit; fi\n'
             'if [ "$1" = "--session-budget-env" ]; then echo "CONTEXT_LIMIT=1048576"; echo "MAX_OUTPUT_TOKENS=131072"; echo "PROMPT_LIMIT=200000"; exit; fi\n'
-            'if [ "$1" = "--codex-model-catalog" ]; then echo "{\\"models\\":[]}"; exit; fi\n'
+            'if [ "$1" = "--codex-model-catalog" ]; then shift 2; '
+            f'''exec "{sys.executable}" -c 'import json,sys;print(json.dumps({{"models":[{{"slug":m}} for m in sys.argv[1:]]}}))' "$@"; fi\n'''
             'if [ "$1" = "--cursor-model-catalog" ]; then echo "{}"; exit; fi\n'
             'printf "%s\\n" "$1" >> "$PRESET_CALLS"\n'
         )
+        agents = json.loads((home / ".config/ai/agent-bands.v1.json").read_text())["harnesses"]["pi"]["agents"]
+        for role in agents:
+            path = home / ".codex/agents" / f"{role}.toml"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                f'name = "{role}"\nmodel = "native-root"\nmodel_reasoning_effort = "high"\n'
+                'service_tier = "default"\nfeatures = { multi_agent = false }\n'
+                'developer_instructions = """\nFixture leaf; do not delegate.\n"""\n'
+            )
         env = {
             **os.environ,
             "HOME": str(home),
@@ -77,21 +108,8 @@ class TestOpenRouterWrappers(unittest.TestCase):
             "memory": "google/gemini-3.8-flash@preset/effort-low",
             "refute": "openai/gpt-5.6-sol@preset/effort-xhigh",
         }
-        # Claude has four alias slots. Refute has no exact slot and must be denied.
-        slots = {
-            "fable": wires["research"],
-            "opus": wires["implement"],
-            "sonnet": wires["mechanical"],
-            "haiku": wires["memory"],
-        }
         gate_env = {**observed["env"], "AGENT_BAND_HARNESS": "claude_code" if harness == "claude" else harness}
         with mock.patch.dict(os.environ, gate_env, clear=True):
-            for alias, wire in slots.items():
-                base, effort = wire.split("@preset/effort-")
-                pick = band_gate._format_pick({"model": f"openrouter/{base}:{effort}"}, "claude_code", "pi")
-                self.assertEqual(pick.get("alias"), alias)
-                if harness == "claude":
-                    self.assertEqual(observed["env"][f"ANTHROPIC_DEFAULT_{alias.upper()}_MODEL"], wire)
             for role, pick in projection["harnesses"]["pi"]["agents"].items():
                 expected = wires[pick["category"]]
                 base, thinking = pick["model"].removeprefix("openrouter/").rsplit(":", 1)
@@ -109,20 +127,23 @@ class TestOpenRouterWrappers(unittest.TestCase):
                 ):
                     self.assertEqual(band_gate.main(), 0)
                 output = json.loads(gate_output.getvalue())
-                if harness == "claude" and pick["category"] == "refute":
-                    decision = output["hookSpecificOutput"]
-                    self.assertEqual(decision["permissionDecision"], "deny", (role, output))
-                    self.assertIn("assigned model/effort pair", decision["permissionDecisionReason"])
-                    self.assertNotIn("updatedInput", decision)
-                    continue
+                if harness == "claude":
+                    definitions = json.loads(observed["argv"][observed["argv"].index("--agents") + 1])
+                    if role not in definitions:
+                        self.assertEqual(output["hookSpecificOutput"]["permissionDecision"], "deny")
+                        continue
                 updated = output.get(
                     "updated_input",
                     output.get("modifiedArgs", output.get("hookSpecificOutput", {}).get("updatedInput", {})),
                 )
                 model = updated.get("model")
                 if harness == "claude":
-                    self.assertIn(model, slots, (role, output))
-                    model = observed["env"][f"ANTHROPIC_DEFAULT_{model.upper()}_MODEL"]
+                    self.assertNotIn("model", updated, (role, output))
+                    self.assertEqual(updated["prompt"], "fixture")
+                    definitions = json.loads(observed["argv"][observed["argv"].index("--agents") + 1])
+                    self.assertEqual(definitions[role]["prompt"], "Keep this body.\n")
+                    self.assertNotIn("Agent", definitions[role]["tools"])
+                    model = definitions[role]["model"]
                 self.assertEqual(model, expected, (harness, role))
                 if harness == "cursor":
                     allowed = observed["env"]["CURSOR_AGENT_ALLOWED_MODEL"]
@@ -168,8 +189,23 @@ class TestOpenRouterWrappers(unittest.TestCase):
                     )
                     self.assertEqual(result.returncode, 0, result.stderr)
                     observed = json.loads(result.stdout)
-                    for key in ("AGENT_BAND_SUBSCRIPTION", "AGENT_BAND_CLAUDE_ROUTES", "AGENT_BAND_CODEX_ROUTES"):
-                        self.assertNotIn(key, observed["env"])
+                    self.assertNotIn("AGENT_BAND_SUBSCRIPTION", observed["env"])
+                    if harness != "claude":
+                        self.assertNotIn("AGENT_BAND_CLAUDE_ROUTES", observed["env"])
+                    else:
+                        self.assertNotEqual(
+                            observed["env"]["AGENT_BAND_CLAUDE_ROUTES"], env["AGENT_BAND_CLAUDE_ROUTES"]
+                        )
+                    if harness == "codex":
+                        self.assertNotEqual(observed["env"]["AGENT_BAND_CODEX_ROUTES"], env["AGENT_BAND_CODEX_ROUTES"])
+                        self.assertTrue(observed["profiles"])
+                        for profile in observed["profiles"].values():
+                            self.assertNotIn("native-root", profile)
+                            self.assertNotIn("model_reasoning_effort", profile)
+                            self.assertIn("multi_agent = false", profile)
+                            self.assertIn("Fixture leaf; do not delegate.", profile)
+                    else:
+                        self.assertNotIn("AGENT_BAND_CODEX_ROUTES", observed["env"])
                     self.assertCountEqual(calls.read_text().splitlines(), set((effort, "low", "high", "xhigh")))
                     wire = f"moonshotai/kimi-k3@preset/effort-{effort}"
                     self.assertTrue(wire in observed["argv"] or wire in observed["env"].values())
@@ -490,7 +526,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
         assert 'export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_PI_T2_WIRE_MODEL"' in source
         assert 'export ANTHROPIC_DEFAULT_SONNET_MODEL="$OPENROUTER_PI_MECHANICAL_WIRE_MODEL"' in source
         assert 'export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OPENROUTER_PI_MEMORY_WIRE_MODEL"' in source
-        assert 'export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_PI_T2_WIRE_MODEL"' in source
+        assert "unset CLAUDE_CODE_SUBAGENT_MODEL" in source
         assert 'export AGENT_BAND_SCHEMA_HARNESS="pi"' in source
         assert 'export AGENT_BAND_MODEL_FORMAT="openrouter-preset"' in source
         for lane, wire in (
@@ -501,46 +537,6 @@ class TestOpenRouterWrappers(unittest.TestCase):
             ("REFUTE", "openai/gpt-5.6-sol@preset/effort-xhigh"),
         ):
             assert f'readonly OPENROUTER_PI_{lane}_WIRE_MODEL="{wire}"' in source, lane
-
-    def test_SHOULD_resolve_each_claude_alias_slot_from_its_pi_category_pick(self):
-        """WHEN the wrapper exports its alias slots, each one carries the gate's formatted lane pick."""
-        spec = importlib.util.spec_from_file_location(
-            "band_gate_slots", REPO / "home/exact_dot_agents/exact_hooks/executable_band_gate.py"
-        )
-        band_gate = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(band_gate)
-        rows = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["pi"]
-        _, env = self._openrouter_route_fixture()
-        result = subprocess.run(
-            [modern_bash(), str(REPO / "home/exact_bin/executable_,claude-openrouter"), "-p", "fixture"],
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-        exported = json.loads(result.stdout)["env"]
-
-        formatted = {}
-        with mock.patch.dict(os.environ, {**exported, "AGENT_BAND_HARNESS": "claude_code"}, clear=True):
-            for category, row in rows.items():
-                formatted[category] = band_gate._format_pick(dict(row), "claude_code", "pi")
-        # One slot per lane along the ladder haiku < sonnet < opus < fable.
-        for category, alias in (
-            ("research", "fable"),
-            ("implement", "opus"),
-            ("mechanical", "sonnet"),
-            ("memory", "haiku"),
-        ):
-            with self.subTest(category=category):
-                pick = formatted[category]
-                self.assertEqual(pick["alias"], alias)
-                self.assertEqual(exported[f"ANTHROPIC_DEFAULT_{alias.upper()}_MODEL"], pick["model"])
-        # Formatting suggests opus, but it carries high, not the required xhigh.
-        # Actual gate denial is checked by _assert_openrouter_roles.
-        self.assertEqual(formatted["refute"]["alias"], "opus")
-        self.assertEqual(exported["ANTHROPIC_DEFAULT_OPUS_MODEL"], formatted["implement"]["model"])
-        # Unbound spawns fall back to CLAUDE_CODE_SUBAGENT_MODEL, which is the T2 implement lane.
-        self.assertEqual(exported["CLAUDE_CODE_SUBAGENT_MODEL"], formatted["implement"]["model"])
 
     def test_SHOULD_mark_suffix_wrappers_with_their_backend_lane_schema(self):
         expectations = {
@@ -678,10 +674,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
             bindir = Path(tmp)
             claude = bindir / "claude"
             claude.write_text(
-                """#!/usr/bin/env bash
-printf 'model=%s\\neffort=%s\\nsubagent=%s\\nargs=%s\\n' \
-  "$ANTHROPIC_MODEL" "$CLAUDE_CODE_EFFORT_LEVEL" "$CLAUDE_CODE_SUBAGENT_MODEL" "$*"
-""",
+                f"#!{sys.executable}\nimport os,json,sys\nprint(json.dumps({{'env':dict(os.environ),'args':sys.argv[1:]}}))\n",
                 encoding="utf-8",
             )
             claude.chmod(0o755)
@@ -700,21 +693,20 @@ printf 'model=%s\\neffort=%s\\nsubagent=%s\\nargs=%s\\n' \
             )
 
         assert result.returncode == 0, result.stderr
-        assert result.stdout.splitlines() == [
-            f"model={OPENROUTER_WIRE_PIN}",
-            "effort=high",
-            "subagent=openai/gpt-5.6-sol@preset/effort-high",
-            f"args=--model {OPENROUTER_WIRE_PIN} --effort high -p review",
-        ]
+        observed = json.loads(result.stdout)
+        self.assertEqual(observed["env"]["ANTHROPIC_MODEL"], OPENROUTER_WIRE_PIN)
+        self.assertEqual(observed["env"]["CLAUDE_CODE_EFFORT_LEVEL"], "high")
+        self.assertNotIn("CLAUDE_CODE_SUBAGENT_MODEL", observed["env"])
+        self.assertEqual(observed["args"][0], "--agents")
+        self.assertTrue(json.loads(observed["args"][1]))
+        self.assertEqual(observed["args"][2:], ["--model", OPENROUTER_WIRE_PIN, "--effort", "high", "-p", "review"])
 
     def test_SHOULD_pass_supported_openrouter_effort_to_claude_client(self):
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp)
             claude = bindir / "claude"
             claude.write_text(
-                """#!/usr/bin/env bash
-printf 'model=%s\\neffort=%s\\nargs=%s\\n' "$ANTHROPIC_MODEL" "$CLAUDE_CODE_EFFORT_LEVEL" "$*"
-""",
+                f"#!{sys.executable}\nimport os,json,sys\nprint(json.dumps({{'env':dict(os.environ),'args':sys.argv[1:]}}))\n",
                 encoding="utf-8",
             )
             claude.chmod(0o755)
@@ -743,11 +735,14 @@ printf 'model=%s\\neffort=%s\\nargs=%s\\n' "$ANTHROPIC_MODEL" "$CLAUDE_CODE_EFFO
                     )
 
                 assert result.returncode == 0, result.stderr
-                assert result.stdout.splitlines() == [
-                    f"model={expected_model}",
-                    f"effort={expected_client_effort}",
-                    f"args=--model {expected_model} --effort {expected_client_effort} -p review",
-                ]
+                observed = json.loads(result.stdout)
+                self.assertEqual(observed["env"]["ANTHROPIC_MODEL"], expected_model)
+                self.assertEqual(observed["env"]["CLAUDE_CODE_EFFORT_LEVEL"], expected_client_effort)
+                self.assertEqual(observed["args"][0], "--agents")
+                self.assertEqual(
+                    observed["args"][2:],
+                    ["--model", expected_model, "--effort", expected_client_effort, "-p", "review"],
+                )
 
     def test_SHOULD_hard_pin_codex_and_copilot_routes_over_environment_values(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1730,10 +1725,34 @@ touch "%s"
             shim_thread.join(timeout=5)
             upstream_thread.join(timeout=5)
 
-    def test_SHOULD_retry_empty_tool_mode_response_without_tools(self):
+    def test_SHOULD_preserve_empty_responses_and_never_infer_tool_incapability(self):
         module = self._load_shim_module()
 
         upstream_payloads: list[dict] = []
+        replies = [
+            (
+                200,
+                "text/event-stream",
+                b'data: {"choices":[{"delta":{"content":""},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+            ),
+            (
+                200,
+                "application/json",
+                b'{"choices":[{"message":{"content":"","refusal":"declined"},"finish_reason":"stop"}]}',
+            ),
+            (200, "application/json", b'{"choices":[{"message":{"content":""},"finish_reason":"stop"}]}'),
+            (400, "application/json", b'{"error":{"message":"fixture failure"}}'),
+            (
+                200,
+                "text/event-stream",
+                b'data: {"choices":[{"delta":{"refusal":"declined"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+            ),
+            (
+                200,
+                "text/event-stream",
+                b'data: {"choices":[{"delta":{"content":"OK"},"finish_reason":null}]}\n\ndata: [DONE]\n\n',
+            ),
+        ]
 
         class _FallbackHandler(http.server.BaseHTTPRequestHandler):
             def log_message(self, _fmt, *_args):
@@ -1742,12 +1761,9 @@ touch "%s"
             def do_POST(self):
                 length = int(self.headers.get("Content-Length", 0) or 0)
                 upstream_payloads.append(json.loads(self.rfile.read(length)))
-                self.send_response(200)
-                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
-                if len(upstream_payloads) == 1:
-                    body = b'data: {"choices":[{"delta":{"content":""},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n'
-                else:
-                    body = b'data: {"choices":[{"delta":{"content":"OK"},"finish_reason":null}]}\n\ndata: [DONE]\n\n'
+                status, content_type, body = replies[len(upstream_payloads) - 1]
+                self.send_response(status)
+                self.send_header("Content-Type", content_type)
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
@@ -1760,11 +1776,9 @@ touch "%s"
 
         original_upstream = module.UPSTREAM
         original_allowed = module.ALLOWED_MODEL
-        original_discovered = set(module.DISCOVERED_NO_TOOL_MODELS)
         module.UPSTREAM = f"http://127.0.0.1:{upstream_port}"
         module.API_KEY = "fixture-key"
         module.ALLOWED_MODEL = "future/model@preset/effort-max"
-        module.DISCOVERED_NO_TOOL_MODELS.clear()
 
         shim_server = module.ShimServer(("127.0.0.1", 0), module.ShimHandler)
         shim_server.daemon_threads = True
@@ -1789,20 +1803,23 @@ touch "%s"
                 headers={"Content-Type": "application/json", "Content-Length": str(len(body))},
                 method="POST",
             )
-            with urlopen(req, timeout=5) as resp:
-                downstream_body = resp.read()
-            assert b'"content":"OK"' in downstream_body
-            assert len(upstream_payloads) == 2
-            assert "tools" in upstream_payloads[0]
-            assert "tools" not in upstream_payloads[1]
-            assert "tool_choice" not in upstream_payloads[1]
-            assert "parallel_tool_calls" not in upstream_payloads[1]
-            assert "future/model" in module.DISCOVERED_NO_TOOL_MODELS
+            for index, (status, _content_type, expected) in enumerate(replies):
+                with self.subTest(index=index):
+                    try:
+                        response = urlopen(req, timeout=5)
+                    except urllib.error.HTTPError as error:
+                        response = error
+                    with response:
+                        self.assertEqual(response.code, status)
+                        self.assertEqual(response.read(), expected)
+                    self.assertEqual(len(upstream_payloads), index + 1)
+            for payload in upstream_payloads:
+                self.assertEqual(payload["tools"], json.loads(body)["tools"])
+                self.assertEqual(payload["tool_choice"], "auto")
+                self.assertIs(payload["parallel_tool_calls"], True)
         finally:
             module.UPSTREAM = original_upstream
             module.ALLOWED_MODEL = original_allowed
-            module.DISCOVERED_NO_TOOL_MODELS.clear()
-            module.DISCOVERED_NO_TOOL_MODELS.update(original_discovered)
             shim_server.shutdown()
             shim_server.server_close()
             fake_upstream.shutdown()

@@ -62,7 +62,6 @@ _CODEX = _load_sibling_modules(
     "_copilot_codex_wire",
 )
 load_lane_routes = _CODEX["protocols"].load_lane_routes
-claude_lane_environment = _CODEX["protocols"].claude_lane_environment
 subscription_lane = _CODEX["protocols"].subscription_lane
 # Local Gemini Chat / Claude Messages translators (formerly vertex-adapter).
 _GC = _load_sibling_modules(

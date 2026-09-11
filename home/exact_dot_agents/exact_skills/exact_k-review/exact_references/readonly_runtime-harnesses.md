@@ -43,9 +43,11 @@ Claude subagent model overrides are limited to the installed SDK schema (`sonnet
 
 - Review override: `lanes: inherit` — Claude sessions run a deliberately chosen model, and review profiles use `model: inherit`.
 - Built-in shadows: repo-owned same-name profiles override high-risk embedded builtins (`Explore`, `Plan`, `general-purpose`, `claude-code-guide`, `claude`) so normal Task launches use our profile frontmatter instead of embedded defaults.
-- Wrapper guard: `,claude-openrouter` keeps the root session on the selected OpenRouter wire model and, because Claude Code's Agent schema accepts aliases only, routes delegated lanes through a 4-alias map along the tier ladder: `fable` → `anthropic/claude-fable-5.1@preset/effort-high` (T1 orchestrate/research/review), `opus` → `openai/gpt-5.6-sol@preset/effort-high` (T2 implement, also the `CLAUDE_CODE_SUBAGENT_MODEL` default), `sonnet` → `z-ai/glm-5.3-flash@preset/effort-high` (mechanical), `haiku` → `google/gemini-3.8-flash@preset/effort-low` (memory).
-  Four aliases cannot carry five model/effort pairs: Pi's refute pick (`openrouter/openai/gpt-5.6-sol:xhigh`) has no exact slot.
-  The band hook denies that pair, including absent or mismatched alias wires. Do not substitute implementation effort for refutation.
+- Wrapper guard: `,claude-openrouter` uses the Pi backend matrix through session-projected native `--agents` definitions.
+  Each managed profile carries its exact preset selector, including refute's distinct effort, while its prompt and skill preloads remain unchanged.
+  The hook requires the fresh `AGENT_BAND_CLAUDE_ROUTES` role/pair map and removes call-level model overrides so the profile wins.
+  Do not delegate with missing or stale profiles, conflicting inherited controls, a resume request, or a full-history fork.
+  Do not substitute implementation effort for refutation. The caller's `--agents` cannot replace the managed projection.
 - Adversarial verifier, criteria verifier, and fresh-eyes are repo-owned named profiles (`k-agent-adversarial-verifier`, `k-agent-criteria-verifier`, `k-agent-fresh-eyes`) whose resolver-rendered frontmatter emits `inherit` today; launch them by name — a named final packet when that framing is selected.
   The model surface is still one family, so keep reporting `families=same (degraded)`.
 
@@ -119,7 +121,10 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
 ### Subscription wrapper boundary
 
 Resolve the backend matrix, not the frontend catalog, on subscription wrappers.
-Claude aliases carry explicit adapter-local lane tags; the hook denies model/effort pairs without an exact alias slot.
+Claude managed `--agents` definitions carry exact adapter-local lane tags and preserve their prompt/skill preloads.
+The hook requires a fresh `AGENT_BAND_CLAUDE_ROUTES` role/pair map and removes the call's model override.
+Do not delegate through a missing/unavailable profile, conflicting inherited controls, resume, or fork.
+The projected tools exclude `Agent`, `Task`, and `SendMessage`; this does not prove terminal-wakeup prevention by the root.
 
 `,codex-copilot` supports fresh native leaves only with its launch-projected `AGENT_BAND_CODEX_ROUTES`, entitled model catalog, and managed profile copies.
 Those copies omit native model/effort pins, retain leaf instructions, and disable `multi_agent`.
@@ -129,9 +134,18 @@ Do not use full-history `fork_context`, conflicting provider controls, or child-
 Native child-tag transport does not certify live provider acceptance or successful refuter completion.
 A backend route map or adapter-only translation test is not evidence that the frontend transports child selectors.
 
-Child-tag transport remains unverified for `,copilot-codex`, `,cursor-codex`, and `,cursor-copilot`; delegation stays disabled on those routes.
+Child-tag transport is verified absent on `,copilot-codex`: the per-subagent `~/.copilot/settings.json` model wins over the band hook's call-level rewrite, so delegation there runs unpinned.
+`,cursor-codex` and `,cursor-copilot` remain unverified.
 Do not bypass a denial by dropping effort, using a raw backend model, invoking another harness, or substituting the root model.
 Report the limitation. Root sessions and native harness routes remain separate capabilities.
+
+### Codex on OpenRouter
+
+`,codex-openrouter` requires its own fresh `AGENT_BAND_CODEX_ROUTES` and model-free managed role copies.
+The catalog retains exact `@preset/effort-<level>` ids; the gate admits only projected roles and exact backend pairs.
+Do not send a separate native reasoning field on this route; the admitted preset selector carries the assigned effort.
+Do not delegate from an old session without that projection or use a full-history fork to bypass it.
+A scripted native transport check does not establish paid-provider acceptance, cache hits, or terminal-wakeup prevention.
 
 ### Pi and OMP
 

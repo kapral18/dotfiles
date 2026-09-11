@@ -309,8 +309,12 @@ def resolve_session_budget(model_ids: list[str], tier: str, api_key: str) -> Mod
 
 def _codex_catalog(tier: str, model_ids: list[str], api_key: str) -> dict:
     models = []
-    for model_id in dict.fromkeys(_base_model_id(model_id) for model_id in model_ids):
-        budget = resolve_budget(model_id, tier, api_key)
+    budgets = {}
+    for model_id in dict.fromkeys(model_ids):
+        base = _base_model_id(model_id)
+        if base not in budgets:
+            budgets[base] = resolve_budget(base, tier, api_key)
+        budget = budgets[base]
         models.append(
             {
                 "slug": model_id,

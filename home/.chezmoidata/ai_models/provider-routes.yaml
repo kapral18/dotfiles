@@ -10,7 +10,9 @@ provider_models:
   # OpenRouter is a strict five-model route. z-ai/glm-5.3-flash carries every default and
   # lane at high effort with FP8-or-higher quantization and a 24 t/s preferred floor (it took the
   # defaults over from deepseek/deepseek-v4-flash-0731 on 2026-09-10, user call; DeepSeek stays
-  # selectable with the same policy); `sort` is omitted so OpenRouter's
+  # selectable as deepseek/deepseek-v4.1-flash, which replaced v4-flash-0731 on 2026-09-11, user call,
+  # behind its own policy: a 35 t/s preferred floor under a $1.20/M completion cap and no quantization
+  # filter, because few DeepSeek endpoints declare one); `sort` is omitted so OpenRouter's
   # default load balancer keeps uptime (recent-outage providers last) then price-weights remaining
   # endpoints. moonshotai/kimi-k3 remains selectable and only allows Fireworks, Together, and
   # BaseTen under a $16/M completion cap (`only` blocks other providers). z-ai/glm-5.2 is
@@ -26,7 +28,7 @@ provider_models:
     id: "z-ai/glm-5.3-flash"
     recommended: true
   - provider: "openrouter"
-    id: "deepseek/deepseek-v4-flash-0731"
+    id: "deepseek/deepseek-v4.1-flash"
   - provider: "openrouter"
     id: "moonshotai/kimi-k3"
   - provider: "openrouter"

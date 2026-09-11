@@ -37,7 +37,7 @@ Pi globals are installed via pnpm from [`home/readonly_dot_default-pnpm-pkgs`](.
 | work     | `anthropic` / `claude-fable-5.1` | configured work models |
 | personal | `anthropic` / `claude-fable-5.1` | `llama-cpp`            |
 
-The local llama.cpp provider for Pi is covered in [Model registry & routing](../model-registry.md) and [llama.cpp local inference](../llama-cpp/index.md). Both `readonly_models*.json` files also carry `providers.openrouter.modelOverrides`: `moonshotai/kimi-k3` allows only Fireworks, Together, and BaseTen under a $16/M completion cap, while `z-ai/glm-5.3-flash`, `deepseek/deepseek-v4-flash-0731`, and `z-ai/glm-5.2` allow only FP8-or-higher quantization with a 24 t/s preferred floor. Neither object sets `sort`, so OpenRouter's default load balancer keeps uptime then price-weights remaining endpoints. Both use `compat.openRouterRouting` (see [OpenRouter routing](../model-registry.md#openrouter-routing)).
+The local llama.cpp provider for Pi is covered in [Model registry & routing](../model-registry.md) and [llama.cpp local inference](../llama-cpp/index.md). Both `readonly_models*.json` files also carry `providers.openrouter.modelOverrides`: `moonshotai/kimi-k3` allows only Fireworks, Together, and BaseTen under a $16/M completion cap, while `z-ai/glm-5.3-flash` and `z-ai/glm-5.2` allow only FP8-or-higher quantization with a 24 t/s preferred floor, and `deepseek/deepseek-v4.1-flash` carries a 35 t/s preferred floor under a $1.20/M completion cap with no quantization filter (user call 2026-09-11: few DeepSeek endpoints declare a quantization, so the allowlist starved the route), and `openai/gpt-6-astra` allows only OpenAI's Flex service tier (`only: ["openai/flex"]`, half the standard endpoint price; base slugs never match service tiers). None of these objects set `sort`, so OpenRouter's default load balancer keeps uptime then price-weights remaining endpoints. Both use `compat.openRouterRouting` (see [OpenRouter routing](../model-registry.md#openrouter-routing)).
 
 ### Shared settings
 
@@ -58,6 +58,28 @@ Automatic context compaction triggers when context exceeds `contextWindow − re
 `keepRecentTokens` is raised from Pi's `20000` default to preserve far more high-fidelity recent context before any lossy summarization. The setting is global, not per-model.
 
 `80000` is sized for the 262144-token local Nemotron window, ~30% recent-verbatim. It also remains below the work-profile Qwen3.8 131072-token context and the configured OpenRouter default's context limit.
+
+### GPT context selection
+
+Pi and OMP share `~/lib/shared/context_mode.ts`, loaded by each harness's managed `context-mode.ts` extension.
+GPT models default to a short working window. Other model families and global settings stay unchanged.
+
+| Command                | Effect                                                                                                                                               |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/context-mode short`  | Use the smaller of the native window and the catalog's long-context input threshold. If tier metadata is absent, use a 272,000-token working budget. |
+| `/context-mode long`   | Opt this provider/model into its known native or advertised maximum.                                                                                 |
+| `/context-mode status` | Show the selected mode and effective working window.                                                                                                 |
+
+For Copilot Astra, short uses 272,000 tokens. The fallback for other GPT models is a working budget, not a guarantee about their pricing.
+Thresholds come from Pi's `cost.tiers[].inputTokensAbove` or OMP's `cost.longContext.inputThreshold`; the earliest valid threshold wins.
+Selections are custom session entries, not prompt text or global preferences. They follow the active branch and survive resume; selecting another provider/model does not inherit the previous model's override.
+Pi reapplies on model selection and before each prompt. OMP reapplies before each prompt or an idle `/context-mode` command because its native model-change event is not exposed to extensions.
+
+Switching to short with history already at or above the short window is refused without running a summarizer.
+Use `/compact` or start a new session, then select short. An active turn/model change also prevents selection.
+Native compaction and output sizing use the selected window; the model route, explicit effort, output-capacity metadata, and cache controls are not replaced.
+Earlier compaction is not a hard pre-send token limit or a credit cap: large pending input and compaction itself can still cost money.
+The selector requires the extension to load; it does not rewrite separately pinned child roles or enable extensions in restricted native workers.
 
 ### Prompt-cache and compaction diagnostics
 

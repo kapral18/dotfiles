@@ -51,31 +51,6 @@ def load_lane_routes(harness: str) -> dict[str, dict[str, str]]:
     return routes
 
 
-def claude_lane_environment(harness: str, routes: dict[str, dict[str, str]]) -> dict[str, str]:
-    """Project the four required lane pairs onto Claude's four native alias slots.
-
-    Other exact pairs remain unrepresentable and are denied by the band hook.
-    Wire tags distinguish a child from a root using the same underlying model.
-    """
-    path = Path(os.environ.get("AGENT_BANDS_FILE", Path.home() / ".config/ai/agent-bands.v1.json"))
-    agents = json.loads(path.read_text(encoding="utf-8"))["harnesses"][harness]["agents"]
-    names = ("k-agent-code-searcher", "general-purpose", "k-agent-smol", "k-agent-adversarial-verifier")
-    aliases = ("fable", "opus", "sonnet", "haiku")
-    env = {}
-    mapped = {}
-    for alias, name in zip(aliases, names):
-        pick = agents.get(name)
-        if not isinstance(pick, dict):
-            raise ValueError(f"missing subscription lane {harness}/{name}")
-        wire = f"{pick['model']}@lane-{pick['effort']}"
-        if wire not in routes:
-            raise ValueError(f"missing subscription lane {harness}/{name}")
-        env[f"ANTHROPIC_DEFAULT_{alias.upper()}_MODEL"] = wire
-        mapped[wire] = alias
-    env["AGENT_BAND_CLAUDE_ROUTES"] = json.dumps(mapped)
-    return env
-
-
 def subscription_lane(requested: object, routes: dict[str, dict[str, str]]) -> dict[str, str] | None:
     """Only an explicit wire selector chooses lane controls; raw model IDs never imply a role."""
     if not isinstance(requested, str):
@@ -544,9 +519,14 @@ def chat_to_responses(
     effort = body.get("reasoning_effort")
     if isinstance(effort, str):
         translated["output_config"] = {"effort": effort}
-    return anthropic_to_responses(
+    payload = anthropic_to_responses(
         translated, model_override=model_override, effort_override=effort_override, store=store
     )
+    # The Codex Responses endpoint accepts this caller-owned cache identity.
+    # Do not invent an identity from prompts or translate unsupported TTL controls.
+    if "prompt_cache_key" in body:
+        payload["prompt_cache_key"] = deepcopy(body["prompt_cache_key"])
+    return payload
 
 
 def _chat_sse(payload: dict[str, Any]) -> bytes:

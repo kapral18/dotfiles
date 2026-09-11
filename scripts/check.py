@@ -358,8 +358,16 @@ TEST_RULES: tuple[TestRule, ...] = (
     ),
     TestRule(prefixes=("home/exact_lib/exact_,copilot-adapter/",), tests=("tests/test_copilot_adapter.py",)),
     TestRule(
+        prefixes=("home/exact_lib/exact_shared/codex_lanes.py", "home/exact_lib/exact_shared/claude_lanes.py"),
+        tests=("tests/test_copilot_adapter.py", "tests/test_codex_adapter.py", "tests/test_openrouter_wrappers.py"),
+    ),
+    TestRule(
         prefixes=("home/exact_lib/exact_,cursor-agent-shim/",),
-        tests=("tests/test_cursor_agent_shim.py", "tests/test_cursor_llama_cpp.py"),
+        tests=(
+            "tests/test_cursor_agent_shim.py",
+            "tests/test_cursor_llama_cpp.py",
+            "tests/test_openrouter_wrappers.py",
+        ),
     ),
     TestRule(prefixes=("home/exact_lib/exact_,ai/", "home/exact_bin/executable_,ai"), tests=("test_ai_launcher.py",)),
     TestRule(prefixes=("home/dot_omp/",), tests=("test_omp_migration.py", "tests/test_invariants.py")),
@@ -379,6 +387,16 @@ TEST_RULES: tuple[TestRule, ...] = (
 )
 
 EXTRA_TESTS: tuple[ExtraTest, ...] = (
+    ExtraTest(
+        name="context-mode",
+        argv=("bun", "test", "scripts/tests/context_mode.test.ts"),
+        prefixes=(
+            "scripts/tests/context_mode.test.ts",
+            "home/exact_lib/exact_shared/context_mode.ts",
+            "home/dot_pi/agent/exact_extensions/context-mode.ts.tmpl",
+            "home/dot_omp/private_agent/extensions/context-mode.ts.tmpl",
+        ),
+    ),
     ExtraTest(
         name="omp-runtime-parity",
         argv=("bun", "test", "scripts/tests/omp_runtime_parity.test.ts"),

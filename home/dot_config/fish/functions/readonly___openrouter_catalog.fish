@@ -48,7 +48,7 @@ function __openrouter_catalog_models
     set -l rows (__openrouter_catalog_load)
     if test (count $rows) -eq 0
         echo 'z-ai/glm-5.3-flash
-deepseek/deepseek-v4-flash-0731
+deepseek/deepseek-v4.1-flash
 moonshotai/kimi-k3
 z-ai/glm-5.2
 openai/gpt-5.6-terra'

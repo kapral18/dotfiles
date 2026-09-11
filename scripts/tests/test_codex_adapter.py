@@ -28,7 +28,7 @@ import main  # noqa: E402
 from protocols import (  # noqa: E402
     aggregate_responses,
     anthropic_to_responses,
-    claude_lane_environment,
+    chat_to_responses,
     collect_anthropic_message,
     iter_sse_json,
     load_lane_routes,
@@ -93,6 +93,20 @@ def completed_text_events(text: str = "hello") -> list[dict[str, object]]:
 
 class TestLauncherOptions(unittest.TestCase):
     """The wrapper owns model/effort flags and preserves harness arguments."""
+
+    def test_SHOULD_preserve_explicit_chat_cache_keys_without_inventing_ttl(self):
+        base = {"model": "gpt-test", "messages": [{"role": "user", "content": "hello"}]}
+        for key in ("session-a", "", None):
+            with self.subTest(key=key):
+                body = {**base, "prompt_cache_key": key, "prompt_cache_retention": "24h"}
+                result = chat_to_responses(
+                    body, model_override=None, effort_override=None, store=OpaqueReasoningStore()
+                )
+                self.assertEqual(result["prompt_cache_key"], key)
+                self.assertNotIn("prompt_cache_retention", result)
+                self.assertEqual(body["messages"], base["messages"])
+        result = chat_to_responses(base, model_override=None, effort_override=None, store=OpaqueReasoningStore())
+        self.assertNotIn("prompt_cache_key", result)
 
     def test_SHOULD_parse_model_effort_aliases_and_passthrough_boundary(self) -> None:
         options = main.parse_args(
@@ -428,15 +442,15 @@ class TestLauncherOptions(unittest.TestCase):
         with (
             mock.patch("main.load_lane_routes", return_value=routes),
             mock.patch(
-                "main.claude_lane_environment",
-                return_value={
-                    "AGENT_BAND_CLAUDE_ROUTES": json.dumps(
-                        {
-                            "gpt-small@lane-low": "sonnet",
-                            "gpt-review@lane-xhigh": "haiku",
-                        }
-                    )
-                },
+                "main.claude_profiles",
+                return_value=(
+                    [],
+                    {
+                        "AGENT_BAND_CLAUDE_ROUTES": json.dumps(
+                            {"k-agent-smol": "gpt-small@lane-low", "k-agent-reviewer": "gpt-review@lane-xhigh"}
+                        )
+                    },
+                ),
             ),
             mock.patch(
                 "main.resolve_model_budget",
@@ -929,7 +943,7 @@ class TestAnthropicResponseTranslation(unittest.TestCase):
 
 
 class TestSubscriptionLaneProjection(unittest.TestCase):
-    """WHEN a Claude frontend has fewer aliases than backend model/effort pairs."""
+    """WHEN exact backend model/effort pairs are loaded for subscription lanes."""
 
     def test_SHOULD_reject_missing_or_malformed_lane_maps(self) -> None:
         cases = (
@@ -960,15 +974,93 @@ class TestSubscriptionLaneProjection(unittest.TestCase):
             path.write_text(json.dumps({"harnesses": {"fixture": {"agents": agents}}}))
             with mock.patch.dict(os.environ, {"AGENT_BANDS_FILE": str(path)}):
                 routes = load_lane_routes("fixture")
-                env = claude_lane_environment("fixture", routes)
         self.assertEqual(routes["counter@lane-xhigh"], {"model": "counter", "effort": "xhigh"})
         self.assertNotIn("counter", routes)
         self.assertNotIn("cheap", routes)
         self.assertNotIn("strong", routes)
-        mapped = json.loads(env["AGENT_BAND_CLAUDE_ROUTES"])
-        self.assertEqual(mapped["counter@lane-high"], "haiku")
-        self.assertNotIn("counter@lane-xhigh", mapped)
-        self.assertEqual(env["ANTHROPIC_DEFAULT_OPUS_MODEL"], "implement@lane-high")
+
+
+class TestClaudeProfileProjection(unittest.TestCase):
+    """WHEN Claude uses a custom backend, native definitions own the exact lane."""
+
+    def test_SHOULD_preserve_managed_leaf_content_tools_and_skills_for_all_pairs(self):
+        import claude_lanes
+
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            agents = home / "agents"
+            agents.mkdir()
+            pairs = {
+                "research": ("strong", "high"),
+                "implement": ("counter", "high"),
+                "refute": ("counter", "xhigh"),
+                "mechanical": ("cheap", "high"),
+                "memory": ("cheap", "low"),
+            }
+            picks = {}
+            for role, (model, effort) in pairs.items():
+                picks[role] = {"model": f"openrouter/{model}:{effort}", "effort": effort}
+                (agents / f"{role}.md").write_text(
+                    f'---\nname: {role}\ndescription: "Preserved description"\nmodel: native\nreadonly: true\n'
+                    "tools: Read, Bash, Agent, SendMessage\ndisallowedTools: Write\nskills:\n  - k-fixture\n---\n"
+                    "\nExact body.\nDo not delegate.\n"
+                )
+            bands = home / "bands.json"
+            bands.write_text(json.dumps({"harnesses": {"pi": {"agents": picks}}}))
+            with mock.patch.dict(os.environ, {"CLAUDE_CONFIG_DIR": str(home), "AGENT_BANDS_FILE": str(bands)}):
+                args, env = claude_lanes.project_roles("pi")
+                self.assertEqual(args[0], "--agents")
+                definitions = json.loads(args[1])
+                routes = json.loads(env["AGENT_BAND_CLAUDE_ROUTES"])
+                for role, (model, effort) in pairs.items():
+                    self.assertEqual(
+                        definitions[role],
+                        {
+                            "description": "Preserved description",
+                            "prompt": "\nExact body.\nDo not delegate.\n",
+                            "model": f"{model}@preset/effort-{effort}",
+                            "tools": ["Read", "Bash"],
+                            "disallowedTools": ["Agent", "SendMessage", "Task", "Write"],
+                            "skills": ["k-fixture"],
+                        },
+                    )
+                    self.assertEqual(routes[role], definitions[role]["model"])
+                limited, _ = claude_lanes.project_roles("pi", {"counter@preset/effort-xhigh"})
+                self.assertEqual(set(json.loads(limited[1])), {"refute"})
+                with self.assertRaises(ValueError):
+                    claude_lanes.project_roles("pi", set())
+
+    def test_SHOULD_discover_only_exact_case_preserved_profile_names(self):
+        import claude_lanes
+
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            (home / "agents").mkdir()
+            (home / "agents/Explore.md").write_text("---\nname: Explore\ndescription: Fixture\n---\nBody")
+            bands = home / "bands.json"
+            pick = {"model": "strong", "effort": "high"}
+            bands.write_text(json.dumps({"harnesses": {"fixture": {"agents": {"Explore": pick, "explore": pick}}}}))
+            with mock.patch.dict(os.environ, {"CLAUDE_CONFIG_DIR": str(home), "AGENT_BANDS_FILE": str(bands)}):
+                args, _ = claude_lanes.project_roles("fixture")
+            self.assertEqual(set(json.loads(args[1])), {"Explore"})
+
+    def test_SHOULD_reject_unknown_profile_controls_and_caller_replacement(self):
+        import claude_lanes
+
+        valid = "---\nname: leaf\ndescription: Fixture\nmodel: inherit\n---\nKeep body."
+        for source in (
+            "no header",
+            valid.replace("name: leaf", "name: other"),
+            valid.replace("model: inherit", "hooks: arbitrary"),
+            valid.replace("model: inherit", "skills: not-a-list"),
+            valid.replace("model: inherit", "description: duplicate"),
+        ):
+            with self.subTest(source=source), self.assertRaises(ValueError):
+                claude_lanes.leaf_definition(source, "leaf", "exact@lane-high")
+        for args in (["--agents", "{}"], ["--agents={}"]):
+            with self.assertRaises(ValueError):
+                claude_lanes.validate_forwarded(args)
+        claude_lanes.validate_forwarded(["--", "--agents is prompt text"])
 
 
 class TestLoopbackServer(unittest.TestCase):
@@ -1135,6 +1227,55 @@ class TestLoopbackServer(unittest.TestCase):
         sent = self.fake_client.open.call_args.args[0]
         self.assertEqual(sent["input"][0]["role"], "user")
         self.assertTrue(sent["stream"])
+
+    def test_SHOULD_restore_output_items_missing_from_a_streamed_terminal_event(self) -> None:
+        arguments = '{"command":"echo hi"}'
+        item = {
+            "id": "fc_1",
+            "type": "function_call",
+            "status": "completed",
+            "call_id": "call_1",
+            "name": "bash",
+            "arguments": arguments,
+        }
+        self.fake_client.open.return_value = sse_response(
+            {
+                "type": "response.created",
+                "response": {"id": "resp_1", "model": "gpt-test", "status": "in_progress", "output": []},
+            },
+            {
+                "type": "response.output_item.added",
+                "output_index": 0,
+                "item": {**item, "status": "in_progress", "arguments": ""},
+            },
+            {
+                "type": "response.function_call_arguments.delta",
+                "item_id": "fc_1",
+                "output_index": 0,
+                "delta": arguments,
+            },
+            {
+                "type": "response.function_call_arguments.done",
+                "item_id": "fc_1",
+                "output_index": 0,
+                "arguments": arguments,
+            },
+            {"type": "response.output_item.done", "output_index": 0, "item": item},
+            {
+                "type": "response.completed",
+                "response": {"id": "resp_1", "model": "gpt-test", "status": "completed", "output": []},
+            },
+        )
+
+        with self.request(
+            "/v1/responses",
+            {"model": "harness-model", "input": "hello", "stream": True},
+        ) as response:
+            streamed = response.read().decode()
+
+        events = [json.loads(line[len("data: ") :]) for line in streamed.splitlines() if line.startswith("data: ")]
+        terminal = [event for event in events if event["type"] == "response.completed"][-1]
+        self.assertEqual(terminal["response"]["output"], [item])
 
     def test_SHOULD_silently_ignore_broken_pipe_during_stream_and_error_handling(self) -> None:
         self.fake_client.open.return_value = sse_response(*completed_text_events("server"))

@@ -4125,36 +4125,35 @@ class BandGateTests(unittest.TestCase):
         self.assertEqual(answer["hookSpecificOutput"]["permissionDecision"], "allow")
         self.assertIn("model", answer["hookSpecificOutput"]["updatedInput"])
 
-    def test_subscription_claude_alias_requires_the_exact_model_and_effort(self):
+    def test_SHOULD_require_fresh_exact_subscription_claude_profiles(self):
         projection = {
             "harnesses": {
-                "codex": {
-                    "agents": {
-                        "worker": {"category": "implement", "model": "gpt-cheap", "effort": "high"},
-                    }
-                }
+                "codex": {"agents": {"worker": {"category": "implement", "model": "gpt-cheap", "effort": "high"}}}
             }
         }
         payload = {"tool_name": "Agent", "tool_input": {"subagent_type": "worker", "prompt": "edit", "model": "fable"}}
-        for mapped, expected in (
-            ({"gpt-cheap@lane-high": "sonnet"}, "sonnet"),
-            ({"gpt-cheap@lane-low": "sonnet"}, None),
+        env = {
+            "AGENT_BAND_SCHEMA_HARNESS": "codex",
+            "AGENT_BAND_SUBSCRIPTION": "codex",
+            "AGENT_BAND_CLAUDE_ROUTES": json.dumps({"worker": "gpt-cheap@lane-high"}),
+        }
+        good = self.gate("claude_code", payload, projection, env)["hookSpecificOutput"]
+        self.assertEqual(good["updatedInput"], {"subagent_type": "worker", "prompt": "edit"})
+        for changed in (
+            {"AGENT_BAND_CLAUDE_ROUTES": ""},
+            {"AGENT_BAND_CLAUDE_ROUTES": "[]"},
+            {"AGENT_BAND_CLAUDE_ROUTES": '{"worker":"gpt-cheap@lane-low"}'},
+            {"AGENT_BAND_MODEL_OVERRIDE": "root"},
+            {"CLAUDE_CODE_SUBAGENT_MODEL": "root"},
         ):
-            with self.subTest(mapped=mapped):
-                result = self.gate(
-                    "claude_code",
-                    payload,
-                    projection=projection,
-                    override={
-                        "AGENT_BAND_SCHEMA_HARNESS": "codex",
-                        "AGENT_BAND_CLAUDE_ROUTES": json.dumps(mapped),
-                    },
-                )["hookSpecificOutput"]
-                if expected:
-                    self.assertEqual(result["updatedInput"], dict(payload["tool_input"], model=expected))
-                else:
-                    self.assertEqual(result["permissionDecision"], "deny")
-                    self.assertNotIn("updatedInput", result)
+            with self.subTest(changed=changed):
+                result = self.gate("claude_code", payload, projection, {**env, **changed})["hookSpecificOutput"]
+                self.assertEqual(result["permissionDecision"], "deny")
+        for patch in ({"resume": "old"}, {"fork_context": True}):
+            result = self.gate(
+                "claude_code", {**payload, "tool_input": {**payload["tool_input"], **patch}}, projection, env
+            )
+            self.assertEqual(result["hookSpecificOutput"]["permissionDecision"], "deny")
 
     def test_openrouter_claude_rejects_the_refute_effort_substitution(self):
         result = self.gate(
@@ -4349,95 +4348,117 @@ class BandGateTests(unittest.TestCase):
         # anthropic route, `<provider>/<model>:<level>`; both have to reach OpenRouter as
         # `<provider>/<model>@preset/effort-<level>`, so the prefix strip and the suffix rewrite
         # are probed on one row each.
+        route_env = {
+            "AGENT_BAND_SCHEMA_HARNESS": "pi",
+            "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
+            "AGENT_BAND_CODEX_ROUTES": json.dumps(
+                {
+                    "worker": "z-ai/glm-5.3-flash@preset/effort-high",
+                    "explorer": "anthropic/claude-fable-5.1@preset/effort-high",
+                }
+            ),
+        }
         mechanical = self.gate(
             "codex",
             {"tool_name": "spawn_agent", "tool_input": {"agent_type": "worker", "message": "go"}},
-            override={"AGENT_BAND_SCHEMA_HARNESS": "pi", "AGENT_BAND_MODEL_FORMAT": "openrouter-preset"},
+            override=route_env,
         )
         updated = mechanical["hookSpecificOutput"]["updatedInput"]
         self.assertEqual(updated["model"], "z-ai/glm-5.3-flash@preset/effort-high")
-        self.assertEqual(updated["reasoning_effort"], "high")
+        self.assertNotIn("reasoning_effort", updated)
 
         research = self.gate(
             "codex",
             {"tool_name": "spawn_agent", "tool_input": {"agent_type": "explorer", "message": "go"}},
-            override={"AGENT_BAND_SCHEMA_HARNESS": "pi", "AGENT_BAND_MODEL_FORMAT": "openrouter-preset"},
+            override=route_env,
         )
         updated = research["hookSpecificOutput"]["updatedInput"]
         self.assertEqual(updated["model"], "anthropic/claude-fable-5.1@preset/effort-high")
-        self.assertEqual(updated["reasoning_effort"], "high")
+        self.assertNotIn("reasoning_effort", updated)
 
-    def test_claude_openrouter_schema_forces_backend_alias_on_unqualified_calls(self):
-        answer = self.gate(
-            "claude_code",
-            {"tool_name": "Agent", "tool_input": {"subagent_type": "explorer", "prompt": "p"}},
-            override={
-                "AGENT_BAND_SCHEMA_HARNESS": "pi",
-                "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
-                "ANTHROPIC_DEFAULT_FABLE_MODEL": "anthropic/claude-fable-5.1@preset/effort-high",
+    def test_SHOULD_admit_only_fresh_projected_codex_openrouter_pairs(self):
+        picks = {
+            "worker": {"category": "implement", "model": "openrouter/openai/gpt-test:high", "effort": "high"},
+            "k-agent-smol": {"category": "memory", "model": "openrouter/google/gemini-test:low", "effort": "low"},
+            "explorer": {"category": "research", "model": "anthropic/strong:high", "effort": "high"},
+            "k-agent-adversarial-verifier": {
+                "category": "refute",
+                "model": "openrouter/openai/gpt-test:xhigh",
+                "effort": "xhigh",
             },
-        )
-        self.assertEqual(answer["hookSpecificOutput"]["updatedInput"]["model"], "fable")
-
-        verifier = self.gate(
-            "claude_code",
-            {"tool_name": "Agent", "tool_input": {"subagent_type": "k-agent-adversarial-verifier", "prompt": "p"}},
-            override={
-                "AGENT_BAND_SCHEMA_HARNESS": "pi",
-                "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
-                "ANTHROPIC_DEFAULT_OPUS_MODEL": "openai/gpt-5.6-sol@preset/effort-high",
+        }
+        projection = {"harnesses": {"pi": {"agents": picks}}}
+        routes = {
+            "worker": "openai/gpt-test@preset/effort-high",
+            "k-agent-smol": "google/gemini-test@preset/effort-low",
+            "explorer": "anthropic/strong@preset/effort-high",
+            "k-agent-adversarial-verifier": "openai/gpt-test@preset/effort-xhigh",
+        }
+        env = {
+            "AGENT_BAND_SCHEMA_HARNESS": "pi",
+            "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
+            "AGENT_BAND_CODEX_ROUTES": json.dumps(routes),
+        }
+        for role, wire in routes.items():
+            payload = {"tool_name": "spawn_agent", "tool_input": {"agent_type": role, "message": "packet"}}
+            result = self.gate("codex", payload, projection, env)["hookSpecificOutput"]
+            self.assertEqual(result["updatedInput"]["model"], wire)
+            self.assertNotIn("reasoning_effort", result["updatedInput"])
+        payload = {
+            "tool_name": "spawn_agent",
+            "tool_input": {
+                "agent_type": "worker",
+                "model": routes["k-agent-adversarial-verifier"],
+                "reasoning_effort": "xhigh",
             },
-        )
-        self.assertEqual(verifier["hookSpecificOutput"]["permissionDecision"], "deny")
-
-    def test_deployed_claude_openrouter_projection_maps_the_t2_pick_onto_opus(self):
-        # `,claude-openrouter` is a four-alias route by construction (executable_,claude-openrouter
-        # exports one wire model per ANTHROPIC_DEFAULT_*_MODEL): `fable` -> claude-fable-5.1 (T1),
-        # `opus` -> gpt-5.6-sol (T2), `sonnet` -> glm-5.3-flash (T3 mechanical),
-        # `haiku` -> gemini-3.8-flash low (memory). This probe pins the projection of the DEPLOYED
-        # bands onto those slots, so a slot drift is visible rather than silent. Pi's five picks
-        # share four slots: the refute pick (gpt-5.6-sol xhigh) has none of its own and must fail
-        # closed, never substitute the implementation slot's high effort.
-        projection = json.loads((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_text(encoding="utf-8"))
-        agents = projection["harnesses"]["pi"]["agents"]
-        for agent, category, alias in (
-            ("general-purpose", "implement", "opus"),
-            ("k-agent-code-searcher", "research", "fable"),
-            ("cli_help", "mechanical", "sonnet"),
-            ("k-agent-smol", "memory", "haiku"),
-            ("k-agent-adversarial-verifier", "refute", "opus"),
+        }
+        result = self.gate("codex", payload, projection, env)["hookSpecificOutput"]
+        self.assertEqual(result["updatedInput"]["model"], routes["k-agent-adversarial-verifier"])
+        research_input = {
+            **payload["tool_input"],
+            "model": "anthropic/strong@preset/effort-high",
+            "reasoning_effort": "high",
+        }
+        research = self.gate("codex", {**payload, "tool_input": research_input}, projection, env)["hookSpecificOutput"]
+        self.assertEqual(research["updatedInput"]["model"], "anthropic/strong@preset/effort-high")
+        for patch, changed in (
+            ({"fork_context": True}, env),
+            ({"reasoning_effort": "high"}, env),
+            ({}, {**env, "AGENT_BAND_CODEX_ROUTES": ""}),
+            ({}, {**env, "AGENT_BAND_CODEX_ROUTES": "{}"}),
+            ({}, {**env, "AGENT_BAND_CODEX_ROUTES": "invalid"}),
+            ({}, {**env, "AGENT_BAND_MODEL_OVERRIDE": "root"}),
+            ({}, {**env, "AGENT_BAND_EFFORT_OVERRIDE": "low"}),
+            ({}, {**env, "AGENT_BAND_CODEX_ROUTES": json.dumps({**routes, "worker": "stale"})}),
         ):
-            with self.subTest(agent=agent):
-                self.assertEqual(category, agents[agent]["category"])
-                answer = self.gate(
-                    "claude_code",
-                    {"tool_name": "Agent", "tool_input": {"subagent_type": agent, "prompt": "p"}},
-                    projection=projection,
-                    override={
-                        "AGENT_BAND_SCHEMA_HARNESS": "pi",
-                        "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
-                        "ANTHROPIC_DEFAULT_FABLE_MODEL": "anthropic/claude-fable-5.1@preset/effort-high",
-                        "ANTHROPIC_DEFAULT_OPUS_MODEL": "openai/gpt-5.6-sol@preset/effort-high",
-                        "ANTHROPIC_DEFAULT_SONNET_MODEL": "z-ai/glm-5.3-flash@preset/effort-high",
-                        "ANTHROPIC_DEFAULT_HAIKU_MODEL": "google/gemini-3.8-flash@preset/effort-low",
-                    },
-                )
-                if category == "refute":
-                    self.assertEqual("deny", answer["hookSpecificOutput"]["permissionDecision"])
-                else:
-                    self.assertEqual(alias, answer["hookSpecificOutput"]["updatedInput"]["model"])
+            with self.subTest(patch=patch, changed=changed):
+                result = self.gate(
+                    "codex", {**payload, "tool_input": {**payload["tool_input"], **patch}}, projection, changed
+                )["hookSpecificOutput"]
+                self.assertEqual(result["permissionDecision"], "deny")
+        result = self.gate("codex", {**payload, "agent_id": "child"}, projection, env)["hookSpecificOutput"]
+        self.assertEqual(result["permissionDecision"], "deny")
 
-    def test_claude_openrouter_missing_wire_alias_is_denied(self):
-        answer = self.gate(
-            "claude_code",
-            {"tool_name": "Agent", "tool_input": {"subagent_type": "explorer"}},
-            override={
-                "AGENT_BAND_SCHEMA_HARNESS": "pi",
-                "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
-                "ANTHROPIC_DEFAULT_FABLE_MODEL": "",
-            },
-        )
-        self.assertEqual(answer["hookSpecificOutput"]["permissionDecision"], "deny")
+    def test_SHOULD_keep_openrouter_refute_distinct_from_implementation(self):
+        projection = json.loads((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_text())
+        routes = {
+            "general-purpose": "openai/gpt-5.6-sol@preset/effort-high",
+            "k-agent-adversarial-verifier": "openai/gpt-5.6-sol@preset/effort-xhigh",
+        }
+        env = {
+            "AGENT_BAND_SCHEMA_HARNESS": "pi",
+            "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
+            "AGENT_BAND_CLAUDE_ROUTES": json.dumps(routes),
+        }
+        for role in routes:
+            payload = {"tool_name": "Agent", "tool_input": {"subagent_type": role, "prompt": "p", "model": "opus"}}
+            result = self.gate("claude_code", payload, projection, env)["hookSpecificOutput"]
+            self.assertEqual(result["updatedInput"], {"subagent_type": role, "prompt": "p"})
+            stale = {**routes, role: "openai/gpt-5.6-sol@preset/effort-low"}
+            result = self.gate(
+                "claude_code", payload, projection, {**env, "AGENT_BAND_CLAUDE_ROUTES": json.dumps(stale)}
+            )
+            self.assertEqual(result["hookSpecificOutput"]["permissionDecision"], "deny")
 
     def test_a_single_model_route_overrides_every_band_including_unbound_agents(self):
         # A BYOK launcher sells one provider model; a band id that is not that model reaches the

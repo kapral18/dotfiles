@@ -28,9 +28,6 @@ EFFORT_OVERRIDE_ENV = "AGENT_BAND_EFFORT_OVERRIDE"
 MODEL_FORMAT_ENV = "AGENT_BAND_MODEL_FORMAT"
 THINKING_SUFFIXES = {"off", "minimal", "none", "low", "medium", "high", "xhigh", "max"}
 
-# Native aliases are finite transport slots, not permission to change category capability.
-_CLAUDE_ALIASES = {"haiku", "sonnet", "opus", "fable"}
-
 
 def _load() -> dict[str, Any]:
     try:
@@ -62,7 +59,13 @@ def _generic_pick(harness: str, pick: dict[str, Any], tool_input: dict[str, Any]
     """Generic workers may carry another lane, but a model alone does not select its effort."""
     asked = tool_input.get("model")
     rows = _load().get("harnesses", {}).get(harness, {}).get("agents", {}).values()
-    matches = [row for row in rows if isinstance(row, dict) and row.get("model") == asked]
+
+    def transport_id(model: object) -> object:
+        if os.environ.get(MODEL_FORMAT_ENV) == "openrouter-preset" and isinstance(model, str):
+            return model.removeprefix("openrouter/")
+        return model
+
+    matches = [row for row in rows if isinstance(row, dict) and transport_id(row.get("model")) == transport_id(asked)]
     if not matches:
         return pick
     if not all(_valid_pick(row, harness) for row in matches):
@@ -117,34 +120,6 @@ def _split_thinking_suffix(model: str) -> tuple[str, str | None]:
     return model, None
 
 
-def _claude_alias_for_backend_model(model: str) -> str | None:
-    """The Claude family alias a backend wire model projects onto, or None when none fits.
-
-    The rules mirror the four `ANTHROPIC_DEFAULT_*_MODEL` slots `,claude-openrouter` exports
-    (home/exact_bin/executable_,claude-openrouter), so on that route the alias ladder
-    (haiku < sonnet < opus < fable) is the tier ladder:
-
-        anthropic / claude  -> fable   T1 research/review/orchestrate (claude-fable-5.1 high)
-        gpt / openai        -> opus    T2 implement (gpt-5.6-sol high)
-        glm / z-ai          -> sonnet  T3 mechanical (glm-5.3-flash high)
-        google / gemini     -> haiku   memory (gemini-3.8-flash low)
-
-    Pi's `refute` pick is `openrouter/openai/gpt-5.6-sol`, which the `gpt`/`openai` rule sends to
-    `opus`. That slot carries high instead of xhigh; `_claude` denies the mismatched wire pair
-    rather than substituting the implementation lane for refutation.
-    """
-    lowered = model.lower()
-    if "anthropic" in lowered or "claude" in lowered:
-        return "fable"
-    if "gpt" in lowered or "openai" in lowered:
-        return "opus"
-    if "glm" in lowered or "z-ai" in lowered:
-        return "sonnet"
-    if "google" in lowered or "gemini" in lowered:
-        return "haiku"
-    return None
-
-
 def _format_pick(pick: dict[str, Any], harness: str, schema_harness: str) -> dict[str, Any]:
     model = pick.get("model")
     if not isinstance(model, str):
@@ -161,9 +136,6 @@ def _format_pick(pick: dict[str, Any], harness: str, schema_harness: str) -> dic
             formatted["effort"] = effort
         else:
             formatted["model"] = base
-        alias = _claude_alias_for_backend_model(base)
-        if alias:
-            formatted["alias"] = alias
 
     if harness == "claude_code" and schema_harness != harness:
         formatted["force_alias"] = True
@@ -171,27 +143,26 @@ def _format_pick(pick: dict[str, Any], harness: str, schema_harness: str) -> dic
 
 
 def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]) -> dict[str, Any]:
-    routes_json = os.environ.get("AGENT_BAND_CLAUDE_ROUTES")
-    if routes_json is not None:
+    if os.environ.get("AGENT_BAND_SUBSCRIPTION") or os.environ.get(MODEL_FORMAT_ENV) == "openrouter-preset":
         try:
-            routes = json.loads(routes_json)
-            alias = routes.get(f"{pick.get('model')}@lane-{pick.get('effort')}")
-        except (ValueError, AttributeError):
-            alias = None
-        if not isinstance(alias, str) or alias not in _CLAUDE_ALIASES:
-            return {
-                "hookSpecificOutput": {
-                    "hookEventName": "PreToolUse",
-                    "permissionDecision": "deny",
-                    "permissionDecisionReason": "This subscription route has no exact Claude alias for the assigned model/effort lane. Do not substitute another lane.",
-                }
-            }
-        return {
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "updatedInput": dict(tool_input, model=alias),
-            }
-        }
+            routes = json.loads(os.environ.get("AGENT_BAND_CLAUDE_ROUTES", ""))
+            expected = pick.get("model")
+            if os.environ.get("AGENT_BAND_SUBSCRIPTION"):
+                expected = f"{expected}@lane-{pick.get('effort')}"
+            if not isinstance(routes, dict) or routes.get(_agent_name(payload, tool_input)) != expected or not pick:
+                raise ValueError("The assigned Claude profile/lane is unavailable or stale; relaunch the wrapper.")
+            if (
+                os.environ.get(MODEL_OVERRIDE_ENV)
+                or os.environ.get(EFFORT_OVERRIDE_ENV)
+                or os.environ.get("CLAUDE_CODE_SUBAGENT_MODEL")
+            ):
+                raise ValueError("Conflicting inherited Claude lane controls.")
+            if tool_input.get("fork_context") or tool_input.get("resume"):
+                raise ValueError("Cross-provider Claude lanes require a fresh managed leaf, not a fork or resume.")
+        except (ValueError, TypeError) as error:
+            return _deny("claude_code", str(error))
+        updated = {key: value for key, value in tool_input.items() if key not in {"model", "reasoning_effort"}}
+        return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "updatedInput": updated}}
     # Claude's Agent tool constrains `model` to the family aliases sonnet|opus|haiku|fable
     # (claude-code 2.1.222; anything else fails updatedInput schema validation), and each alias
     # resolves through one ANTHROPIC_DEFAULT_*_MODEL. The alias is a lossy projection of the band:
@@ -203,15 +174,6 @@ def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str,
     # replacement for a strong role. Omitted overrides retain the profile's exact id/effort.
     alias = pick.get("alias")
     asked = tool_input.get("model")
-    wire = os.environ.get(f"ANTHROPIC_DEFAULT_{str(alias).upper()}_MODEL")
-    if os.environ.get(MODEL_FORMAT_ENV) == "openrouter-preset" and wire != pick.get("model"):
-        return {
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "permissionDecisionReason": "The OpenRouter Claude alias does not carry the assigned model/effort pair. Do not substitute its other lane.",
-            }
-        }
     if pick.get("force_alias") and alias and asked != alias:
         return {
             "hookSpecificOutput": {
@@ -241,7 +203,10 @@ def _codex(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, 
     # updatedInput without permissionDecision:allow", codex 0.146.0). spawn_agent takes model and
     # reasoning_effort directly, so both dials are enforceable here.
     updated = dict(tool_input, model=pick["model"])
-    if pick.get("effort"):
+    if os.environ.get(MODEL_FORMAT_ENV) == "openrouter-preset":
+        # The exact preset selector owns effort; native catalog levels are empty.
+        updated.pop("reasoning_effort", None)
+    elif pick.get("effort"):
         updated["reasoning_effort"] = pick["effort"]
     return {
         "hookSpecificOutput": {
@@ -269,6 +234,25 @@ def _codex_subscription_pick(
     if not isinstance(routes, dict) or routes.get(agent) != expected or wire not in routes.values():
         raise ValueError("This Codex role or exact lane is unavailable in the session's projected provider catalog.")
     return {**pick, "model": wire}
+
+
+def _codex_openrouter_pick(
+    agent: str, assigned: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]
+) -> dict[str, Any]:
+    """Require the role and wire pair frozen by the OpenRouter launcher."""
+    if tool_input.get("fork_context"):
+        raise ValueError("OpenRouter lanes require a fresh managed leaf; full-history forks inherit root settings.")
+    if os.environ.get(MODEL_OVERRIDE_ENV) or os.environ.get(EFFORT_OVERRIDE_ENV):
+        raise ValueError("Conflicting inherited model controls on the Codex OpenRouter route.")
+    try:
+        routes = json.loads(os.environ.get("AGENT_BAND_CODEX_ROUTES", ""))
+    except ValueError as error:
+        raise ValueError("Codex OpenRouter lane configuration is missing; relaunch the wrapper.") from error
+    expected = _format_pick(assigned, "codex", "pi")["model"]
+    formatted = _format_pick(pick, "codex", "pi")
+    if not isinstance(routes, dict) or routes.get(agent) != expected or formatted["model"] not in routes.values():
+        raise ValueError("This Codex role or exact OpenRouter lane is unavailable in the session's projected catalog.")
+    return formatted
 
 
 def _copilot(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]) -> dict[str, Any]:
@@ -353,6 +337,9 @@ def main() -> int:
 
     subscription = os.environ.get("AGENT_BAND_SUBSCRIPTION", "")
     codex_subscription = harness == "codex" and subscription == schema_harness == "copilot"
+    codex_openrouter = (
+        harness == "codex" and schema_harness == "pi" and os.environ.get(MODEL_FORMAT_ENV) == "openrouter-preset"
+    )
     if subscription and harness != "claude_code" and not codex_subscription:
         print(
             json.dumps(
@@ -403,6 +390,15 @@ def main() -> int:
                 if tool_input.get("reasoning_effort", effort) != effort:
                     raise ValueError("The explicit subscription selector and reasoning effort disagree.")
                 selection = dict(tool_input, model=base, reasoning_effort=effort)
+            if (
+                codex_openrouter
+                and isinstance(tool_input.get("model"), str)
+                and "@preset/effort-" in tool_input["model"]
+            ):
+                base, _, effort = tool_input["model"].rpartition("@preset/effort-")
+                if tool_input.get("reasoning_effort", effort) != effort:
+                    raise ValueError("The explicit OpenRouter selector and reasoning effort disagree.")
+                selection = dict(tool_input, model=f"openrouter/{base}:{effort}", reasoning_effort=effort)
             pick = _generic_pick(schema_harness, pick, selection)
         except ValueError as error:
             print(json.dumps(_deny(harness, str(error))))
@@ -417,7 +413,14 @@ def main() -> int:
             print(json.dumps(_deny(harness, str(error))))
             return 0
 
-    pick = _format_pick(pick, harness, schema_harness)
+    if codex_openrouter:
+        try:
+            pick = _codex_openrouter_pick(agent, assigned, pick, tool_input)
+        except ValueError as error:
+            print(json.dumps(_deny(harness, str(error))))
+            return 0
+    else:
+        pick = _format_pick(pick, harness, schema_harness)
     if harness == "cursor" and tool_input.get("model") == pick.get("model"):
         # Cursor encodes effort in the model selector, not a separate argument.
         print("{}")

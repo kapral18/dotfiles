@@ -33,8 +33,8 @@ local OPENROUTER_DEFAULT_MODEL = "z-ai/glm-5.3-flash"
 local OPENROUTER_MAX_OUTPUT_TOKENS = 131072
 -- Omit sort/order so OpenRouter's default load balancer keeps uptime (recent-outage
 -- providers last) then price-weights remaining endpoints. preferred_min_throughput
--- deprioritizes hosts below 300 t/s (p50); it does not hard-exclude them.
-local OPENROUTER_PROVIDER_ROUTING = { preferred_min_throughput = 300 }
+-- deprioritizes hosts below 30 t/s (p50); it does not hard-exclude them.
+local OPENROUTER_PROVIDER_ROUTING = { preferred_min_throughput = 30 }
 local OPENROUTER_CONTEXT_COMPRESSION_PLUGIN = { id = "context-compression" }
 
 -- ───────────────────────────── HELPERS (provider-agnostic) ─────────────────────

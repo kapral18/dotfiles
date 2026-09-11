@@ -458,6 +458,23 @@ exit 0
         encoding="utf-8",
     )
     preset_helper.chmod(0o755)
+    (preset_helper.parent / "codex_lanes.py").write_bytes(
+        (REPO / "home/exact_lib/exact_shared/codex_lanes.py").read_bytes()
+    )
+    bands = home / ".config/ai/agent-bands.v1.json"
+    bands.parent.mkdir(parents=True, exist_ok=True)
+    bands.write_bytes((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_bytes())
+    (preset_helper.parent / "claude_lanes.py").write_bytes(
+        (REPO / "home/exact_lib/exact_shared/claude_lanes.py").read_bytes()
+    )
+    for role in json.loads(bands.read_text())["harnesses"]["pi"]["agents"]:
+        profile = home / ".claude/agents" / f"{role}.md"
+        profile.parent.mkdir(parents=True, exist_ok=True)
+        if profile.exists():
+            continue
+        profile.write_text(
+            f"---\nname: {role}\ndescription: Fixture leaf\nmodel: inherit\ntools: Read, Agent\n---\nKeep this body.\n"
+        )
 
 
 def _install_shim_stub(home: Path) -> None:

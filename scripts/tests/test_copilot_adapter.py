@@ -33,6 +33,7 @@ import copilot_auth
 import copilot_server
 import copilot_wire
 import main
+from codex_lanes import leaf_profile
 
 
 def model(
@@ -555,7 +556,7 @@ Keep these exact instructions.
 model = "this is prompt text, not TOML"
 """
 '''
-        result = main.codex_leaf_profile(source)
+        result = leaf_profile(source)
         header, body = result.split('developer_instructions = """', 1)
         self.assertNotIn("model =", header)
         self.assertNotIn("model_reasoning_effort", header)
@@ -563,7 +564,7 @@ model = "this is prompt text, not TOML"
         self.assertIn('service_tier = "default"', header)
         self.assertEqual(body, source.split('developer_instructions = """', 1)[1])
         with self.assertRaisesRegex(ValueError, "unsupported"):
-            main.codex_leaf_profile(source.replace('service_tier = "default"', 'model_provider = "outside"'))
+            leaf_profile(source.replace('service_tier = "default"', 'model_provider = "outside"'))
 
     def test_SHOULD_freeze_only_available_lanes_and_preserve_root_metadata(self) -> None:
         raw = model("shared-model", ("/responses",), ("low", "high", "xhigh"))
@@ -636,10 +637,13 @@ class TestLifecycle(unittest.TestCase):
             mock.patch("main.fetch_models", return_value={selected.model_id: selected}),
             mock.patch("main.load_lane_routes", return_value=routes),
             mock.patch(
-                "main.claude_lane_environment",
-                return_value={
-                    "AGENT_BAND_CLAUDE_ROUTES": json.dumps({"claude-sonnet-5@lane-high": "sonnet"}),
-                },
+                "main.claude_profiles",
+                return_value=(
+                    [],
+                    {
+                        "AGENT_BAND_CLAUDE_ROUTES": json.dumps({"k-agent-smol": "claude-sonnet-5@lane-high"}),
+                    },
+                ),
             ),
             mock.patch("main.harness_binary", return_value="/usr/bin/claude"),
             mock.patch("main.start_server", return_value=(mock.Mock(server_port=3210), mock.Mock())),

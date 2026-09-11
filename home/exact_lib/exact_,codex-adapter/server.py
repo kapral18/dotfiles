@@ -273,8 +273,22 @@ class AdapterHandler(BaseHTTPRequestHandler):
 
     def _stream_responses(self, events: Iterable[dict[str, Any]]) -> None:
         def chunks() -> Iterable[bytes]:
+            # The Codex backend streams the items but can leave the terminal response's `output`
+            # empty, and a Responses client that builds the turn from `response.completed` (the
+            # Copilot CLI's BYOK path) then sees no tool calls at all. Restore the item list the
+            # non-streaming path already assembles in `aggregate_responses`.
+            output: list[dict[str, Any]] = []
             try:
                 for event in events:
+                    event_type = event.get("type")
+                    if event_type == "response.output_item.done":
+                        item = event.get("item")
+                        if isinstance(item, dict):
+                            output.append(item)
+                    elif event_type == "response.completed":
+                        response = event.get("response")
+                        if isinstance(response, dict) and not response.get("output"):
+                            response["output"] = output
                     yield encode_sse(event)
             except UpstreamError as error:
                 yield encode_sse(
