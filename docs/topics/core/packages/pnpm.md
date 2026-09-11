@@ -47,6 +47,8 @@ pnpm 11+ installs every global package into its own hashed project directory und
 
 Package operations pass `--yes` and disconnect stdin so pnpm does not prompt during a chezmoi run, including when launched from a terminal. Unapproved dependency build scripts remain ignored.
 
+For installs and updates of listed packages, the installer passes `PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS=false` to that pnpm subprocess. This permits URL/git dependencies throughout those packages' dependency trees, including the `pkg.pr.new` dependencies used by `pi-mcp-adapter`. The override is not written to pnpm configuration and does not affect removal, inventory, build approvals, release-age rules, or ordinary pnpm commands outside the installer.
+
 If a package operation fails, the installer prints pnpm's error and stops with a nonzero exit status. It refreshes links from the installed state even after a partial sync. If that state cannot be read or parsed, it preserves the existing link tree and reports the failure.
 
 ## Release-Age Quarantine

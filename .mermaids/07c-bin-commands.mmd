@@ -32,7 +32,7 @@ flowchart TB
     end
 
     subgraph PKGC["Package / brew / update"]
-        P[",update (orchestrator) · ,fuzzy-brew-search · ,search-brew-desc<br/>,install-pnpm-pkgs (Python; pnpm errors + link refresh after partial sync) · ,apply-app-icons.tmpl · ,parallel / ,sem (wrappers)"]:::sys
+        P[",update (orchestrator) · ,fuzzy-brew-search · ,search-brew-desc<br/>,install-pnpm-pkgs (Python; exotic subdeps allowed for desired add/update only; pnpm errors + link refresh after partial sync) · ,apply-app-icons.tmpl · ,parallel / ,sem (wrappers)"]:::sys
     end
 
     subgraph KBNC["Kibana dev"]

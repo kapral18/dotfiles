@@ -1,1 +1,1 @@
-complete -c ',install-pnpm-pkgs' --no-files -d 'Synchronize global pnpm packages, build approvals, and stable links without prompts'
+complete -c ',install-pnpm-pkgs' --no-files -d 'Sync listed pnpm packages with exotic subdependencies allowed, build approvals, and stable links'
