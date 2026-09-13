@@ -3,6 +3,10 @@
 name: k-agent-criteria-verifier
 description: Strong final judgment of acceptance criteria and preserved behavior against the frozen artifact and shared evidence; no per-step verification.
 model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-criteria-verifier") }}"
+{{- $thinking := includeTemplate "agent-thinking.partial" (dict "root" . "harness" "pi" "agent" "k-agent-criteria-verifier") }}
+{{- if $thinking }}
+thinking: "{{ $thinking }}"
+{{- end }}
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: false

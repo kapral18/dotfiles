@@ -20,10 +20,8 @@ This is a final Verify recipe, not a finder/auditor/refuter chain. Judge correct
 Use existing check receipts; do not repeat them.
 Return anchored actionable findings, relevant checks and outcomes, or an explicit evidence gap.
 This review recipe MUST NOT start post-review or invoke convergence.
-A known finding is fixed in the same pass when the caller already holds write scope over the affected path —
-the common case for this recipe's own eligibility predicate (verified self-authorship, local-only diff) —
-and belongs to Produce before the final review.
-When the caller is itself a final-Verify-stage packet, or the path falls outside the caller's granted write scope, this recipe grants no edit authority; the root applies SOP §3.5 when existing authority covers recovery.
+Fix authority follows write scope per `~/.agents/skills/k-review/references/authorship.md`; known fixes belong to Produce before the final review.
+This recipe grants no edit authority of its own; the root applies SOP §3.5 when existing authority covers recovery.
 Do not commit, push, or publish without explicit authority.
 
 ## Root moves

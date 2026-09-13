@@ -26,7 +26,6 @@ SCHEMA_HARNESS_ENV = "AGENT_BAND_SCHEMA_HARNESS"
 MODEL_OVERRIDE_ENV = "AGENT_BAND_MODEL_OVERRIDE"
 EFFORT_OVERRIDE_ENV = "AGENT_BAND_EFFORT_OVERRIDE"
 MODEL_FORMAT_ENV = "AGENT_BAND_MODEL_FORMAT"
-THINKING_SUFFIXES = {"off", "minimal", "none", "low", "medium", "high", "xhigh", "max"}
 
 
 def _load() -> dict[str, Any]:
@@ -49,8 +48,8 @@ def _pick(harness: str, agent: str) -> dict[str, Any] | None:
 
 
 def _valid_pick(pick: Any, harness: str) -> bool:
-    # Cursor's selector is the complete wire control; its auto lanes have no effort field.
-    # Backend-schema routes must follow the backend contract, not the frontend's exception.
+    # Cursor Task ids cannot encode effort; the user's saved Cursor config supplies it.
+    # Backend-schema routes still require an explicit effort field.
     keys = ("model",) if harness == "cursor" else ("model", "effort")
     return isinstance(pick, dict) and all(isinstance(pick.get(key), str) and pick[key] for key in keys)
 
@@ -113,13 +112,6 @@ def _override(harness: str) -> dict[str, Any] | None:
     return override
 
 
-def _split_thinking_suffix(model: str) -> tuple[str, str | None]:
-    base, separator, suffix = model.rpartition(":")
-    if separator and suffix in THINKING_SUFFIXES:
-        return base, suffix
-    return model, None
-
-
 def _format_pick(pick: dict[str, Any], harness: str, schema_harness: str) -> dict[str, Any]:
     model = pick.get("model")
     if not isinstance(model, str):
@@ -127,10 +119,8 @@ def _format_pick(pick: dict[str, Any], harness: str, schema_harness: str) -> dic
 
     formatted = dict(pick)
     if os.environ.get(MODEL_FORMAT_ENV) == "openrouter-preset":
-        base, suffix = _split_thinking_suffix(model)
-        if base.startswith("openrouter/"):
-            base = base.removeprefix("openrouter/")
-        effort = suffix or formatted.get("effort")
+        base = model.removeprefix("openrouter/")
+        effort = formatted.get("effort")
         if isinstance(effort, str) and effort:
             formatted["model"] = f"{base}@preset/effort-{effort}"
             formatted["effort"] = effort
@@ -166,7 +156,7 @@ def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str,
     # Claude's Agent tool constrains `model` to the family aliases sonnet|opus|haiku|fable
     # (claude-code 2.1.222; anything else fails updatedInput schema validation), and each alias
     # resolves through one ANTHROPIC_DEFAULT_*_MODEL. The alias is a lossy projection of the band:
-    # the tiers map onto three aliases (T1 research/review/orchestrate `fable`, T2 implement `opus`,
+    # the tiers map onto three aliases (T1 research/review/session `fable`, T2 implement `opus`,
     # T3 mechanical/memory `sonnet`), so effort inside a tier is invisible to the hook — the profile
     # frontmatter's exact id and effort are what hold that, and they win whenever no `model` is passed.
     #
@@ -192,9 +182,8 @@ def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str,
 
 
 def _cursor(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]) -> dict[str, Any]:
-    # Verified against cursor-agent 2026.07.23: updated_input replaces the whole input object
-    # rather than merging, so the untouched keys have to be echoed back. Transcript exports now
-    # label the tool `Subagent`; the payload shape is assumed unchanged (not re-verified).
+    # Cursor Task accepts base ids only; effort is not encodable in the id and comes from saved user config.
+    # updated_input replaces the whole object, so untouched keys must be echoed back.
     return {"updated_input": dict(tool_input, model=pick["model"])}
 
 
@@ -398,7 +387,7 @@ def main() -> int:
                 base, _, effort = tool_input["model"].rpartition("@preset/effort-")
                 if tool_input.get("reasoning_effort", effort) != effort:
                     raise ValueError("The explicit OpenRouter selector and reasoning effort disagree.")
-                selection = dict(tool_input, model=f"openrouter/{base}:{effort}", reasoning_effort=effort)
+                selection = dict(tool_input, model=f"openrouter/{base}", reasoning_effort=effort)
             pick = _generic_pick(schema_harness, pick, selection)
         except ValueError as error:
             print(json.dumps(_deny(harness, str(error))))
@@ -422,7 +411,7 @@ def main() -> int:
     else:
         pick = _format_pick(pick, harness, schema_harness)
     if harness == "cursor" and tool_input.get("model") == pick.get("model"):
-        # Cursor encodes effort in the model selector, not a separate argument.
+        # Cursor Task ids carry only the base model; effort comes from the user's saved config.
         print("{}")
         return 0
     print(json.dumps(adapter(payload, pick, tool_input) or {}, sort_keys=True))

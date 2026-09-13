@@ -31,14 +31,15 @@ from copilot_server import AdapterContext, start_server
 from copilot_wire import SUPPORTED_ENDPOINTS, load_lane_routes
 
 DEFAULT_MODELS = {
-    "claude": "claude-sonnet-5",
-    "codex": "gpt-5.3-codex",
-    "cursor": "gpt-5.3-codex",
+    "claude": "claude-fable-5.1",
+    "codex": "claude-fable-5.1",
+    "cursor": "claude-fable-5.1",
 }
+DEFAULT_CONTEXT_TIER = "long_context"
 DEFAULT_EFFORTS = {
     "claude": None,
-    "codex": "medium",
-    "cursor": "medium",
+    "codex": "high",
+    "cursor": "high",
 }
 CLAUDE_DEFAULT_CONTEXT_WINDOW = 200_000
 # Copilot bills the long-context tier by prompt size above the default tier's prompt limit. Claude Code compacts
@@ -74,7 +75,7 @@ Adapter options:
       --reasoning-effort L   Alias for --effort
       --thinking MODE        Set Claude backend thinking: auto, on, off
       --no-thinking          Alias for --thinking off
-      --context TIER         Select default or long_context
+      --context TIER         Select default or long_context (default: long_context)
   -h, --help                 Show this wrapper help
 
 The default is {default}. Use -- before an underlying harness
@@ -94,7 +95,7 @@ def parse_args(argv: list[str]) -> LaunchOptions:
     model_id = None
     effort = None
     thinking = None
-    context_tier = "default"
+    context_tier = DEFAULT_CONTEXT_TIER
     forwarded: list[str] = []
     show_help = False
     index = 0

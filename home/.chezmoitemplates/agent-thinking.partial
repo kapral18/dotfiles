@@ -1,0 +1,5 @@
+{{- /* Resolve Pi subagent thinking from the bound category's effort. */ -}}
+{{- $root := .root -}}
+{{- $category := index $root.agent_bindings .agent -}}
+{{- $pick := index (index $root.category_models .harness) $category -}}
+{{- $pick.effort -}}

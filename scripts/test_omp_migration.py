@@ -118,6 +118,7 @@ class TestOmpMigration(unittest.TestCase):
             "bash:\n  autoBackground:\n    enabled: false\n",
             "eval:\n  autoBackground:\n    enabled: false\n",
             "defaultThinkingLevel: high\n",
+            "extendedContext: true\n",
             "memory:\n  backend: off\n",
             "autolearn:\n  enabled: false\n  autoContinue: false\n",
             "dev:\n  autoqaConsent: granted\n",

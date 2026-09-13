@@ -13,8 +13,8 @@
   "defaults": {
     "harnesses": {
       "claude": {
-        "personal": "claude-fable-5-1",
-        "work": "claude-fable-5-1"
+        "personal": "claude-fable-5-1[1m]",
+        "work": "claude-fable-5-1[1m]"
       },
       "codex": {
         "personal": "gpt-6-astra",
@@ -25,7 +25,7 @@
       },
       "cursor": {},
       "gemini": {
-        "default": "gemini-3.1-pro-preview"
+        "default": "gemini-3.8-flash"
       },
       "opencode": {
         "personal": {
@@ -42,14 +42,14 @@
       "pi": {
         "personal": {
           "model": "claude-fable-5.1",
-          "provider": "anthropic",
-          "selector": "anthropic/claude-fable-5.1",
+          "provider": "github-copilot",
+          "selector": "github-copilot/claude-fable-5.1",
           "thinking": "high"
         },
         "work": {
           "model": "claude-fable-5.1",
-          "provider": "anthropic",
-          "selector": "anthropic/claude-fable-5.1",
+          "provider": "github-copilot",
+          "selector": "github-copilot/claude-fable-5.1",
           "thinking": "high"
         }
       }
@@ -85,7 +85,7 @@
           },
           {
             "kind": "registry",
-            "section": "category_models",
+            "section": "session_models",
             "source": "home/.chezmoidata/ai_models/tiering.yaml"
           }
         ],
@@ -95,12 +95,12 @@
       "curated": {
         "complete": true,
         "models": [
-          "claude-fable-5-1"
+          "claude-fable-5-1[1m]"
         ],
         "provenance": [
           {
             "kind": "registry",
-            "section": "category_models",
+            "section": "session_models",
             "source": "home/.chezmoidata/ai_models/tiering.yaml"
           }
         ],
@@ -119,12 +119,12 @@
       "recommended": {
         "complete": true,
         "models": [
-          "claude-fable-5-1"
+          "claude-fable-5-1[1m]"
         ],
         "provenance": [
           {
             "kind": "registry",
-            "section": "category_models",
+            "section": "session_models",
             "source": "home/.chezmoidata/ai_models/tiering.yaml"
           }
         ],
@@ -224,10 +224,14 @@
           "gpt-5.5",
           "gpt-5.4",
           "gpt-5.3-codex",
+          "gpt-6-astra",
           "gpt-5.4-mini",
           "gpt-5-mini",
           "gemini-3.1-pro-preview",
-          "gemini-3.5-flash"
+          "gemini-3.5-flash",
+          "gemini-3.8-flash",
+          "grok-4.6",
+          "kimi-k3"
         ],
         "provenance": [
           {
@@ -243,8 +247,8 @@
         "complete": true,
         "models": [
           "auto",
-          "gpt-5.6-sol",
-          "claude-fable-5.1"
+          "claude-fable-5.1",
+          "kimi-k3"
         ],
         "provenance": [
           {
@@ -260,11 +264,6 @@
           {
             "kind": "registry",
             "section": "category_models",
-            "source": "home/.chezmoidata/ai_models/tiering.yaml"
-          },
-          {
-            "kind": "registry",
-            "section": "review_model_overrides",
             "source": "home/.chezmoidata/ai_models/tiering.yaml"
           }
         ],
@@ -284,8 +283,8 @@
         "complete": true,
         "models": [
           "auto",
-          "gpt-5.6-sol",
-          "claude-fable-5.1"
+          "claude-fable-5.1",
+          "kimi-k3"
         ],
         "provenance": [
           {
@@ -301,11 +300,6 @@
           {
             "kind": "registry",
             "section": "category_models",
-            "source": "home/.chezmoidata/ai_models/tiering.yaml"
-          },
-          {
-            "kind": "registry",
-            "section": "review_model_overrides",
             "source": "home/.chezmoidata/ai_models/tiering.yaml"
           }
         ],
@@ -623,7 +617,7 @@
       "curated": {
         "complete": true,
         "models": [
-          "gemini-3.1-pro-preview"
+          "gemini-3.8-flash"
         ],
         "provenance": [
           {
@@ -647,7 +641,7 @@
       "recommended": {
         "complete": true,
         "models": [
-          "gemini-3.1-pro-preview"
+          "gemini-3.8-flash"
         ],
         "provenance": [
           {
@@ -757,6 +751,10 @@
       "available": {
         "complete": false,
         "models": [
+          "github-copilot/claude-fable-5.1",
+          "github-copilot/grok-4.6",
+          "github-copilot/gemini-3.8-flash",
+          "github-copilot/gpt-6-astra",
           "anthropic/claude-fable-5.1",
           "openrouter/openai/gpt-5.6-sol",
           "openrouter/z-ai/glm-5.3-flash",
@@ -765,7 +763,8 @@
           "openrouter/anthropic/claude-sonnet-4.6",
           "openrouter/moonshotai/kimi-k3",
           "openrouter/z-ai/glm-5.2",
-          "openrouter/openai/gpt-6-astra"
+          "openrouter/openai/gpt-6-astra",
+          "openrouter/meta/muse-spark-1.3"
         ],
         "provenance": [
           {
@@ -787,6 +786,10 @@
       "curated": {
         "complete": true,
         "models": [
+          "github-copilot/claude-fable-5.1",
+          "github-copilot/grok-4.6",
+          "github-copilot/gemini-3.8-flash",
+          "github-copilot/gpt-6-astra",
           "anthropic/claude-fable-5.1",
           "openrouter/openai/gpt-5.6-sol",
           "openrouter/z-ai/glm-5.3-flash",
@@ -795,7 +798,8 @@
           "openrouter/anthropic/claude-sonnet-4.6",
           "openrouter/moonshotai/kimi-k3",
           "openrouter/z-ai/glm-5.2",
-          "openrouter/openai/gpt-6-astra"
+          "openrouter/openai/gpt-6-astra",
+          "openrouter/meta/muse-spark-1.3"
         ],
         "provenance": [
           {
@@ -933,7 +937,8 @@
           "openai/gpt-5.6-sol",
           "google/gemini-3.8-flash",
           "anthropic/claude-sonnet-4.6",
-          "openai/gpt-6-astra"
+          "openai/gpt-6-astra",
+          "meta/muse-spark-1.3"
         ],
         "provenance": [
           {

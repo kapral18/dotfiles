@@ -18,14 +18,12 @@ class TestAiModels(unittest.TestCase):
             load_cursor_models,
             load_pi_extra_models,
             load_provider_models,
-            load_review_model_overrides,
         )
 
         path = FIXTURES / "ai_models"
         cursor = load_cursor_models(path)
         pi = load_pi_extra_models(path)
         providers = load_provider_models(path)
-        review = load_review_model_overrides(path)
 
         assert cursor == [
             {"id": "cursor-model-a", "recommended": True},
@@ -33,8 +31,6 @@ class TestAiModels(unittest.TestCase):
         ]
         assert pi == [{"id": "openrouter/model-a", "recommended": True}]
         assert providers == [{"provider": "openrouter", "id": "provider-model-a", "recommended": True}]
-        assert review["claude"] == {"lanes": "inherit", "verifier": "inherit"}
-        assert review["gemini"] == {"lanes": "pro", "verifier": "pro"}
 
     def test_cursor_policy_fails_closed_when_missing_empty_or_unrecognized(self):
         from ai_models import load_cursor_models
@@ -52,11 +48,23 @@ class TestAiModels(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "cursor_models"):
                     load_cursor_models(directory)
 
+    def test_load_session_models(self):
+        from ai_models import load_session_models
+
+        session_models = load_session_models(str(FIXTURES / "ai_models"))
+        assert session_models["claude_code"] == {
+            "model": "session-claude",
+            "effort": "high",
+            "context": "long",
+        }
+        assert session_models["antigravity"]["model"] == "session-gemini"
+        assert session_models["codex"]["effort"] == "high"
+
     def test_load_category_models(self):
         from ai_models import load_category_models
 
         category_models = load_category_models(str(FIXTURES / "ai_models"))
-        assert set(category_models.keys()) == {"claude_code", "codex"}
+        assert set(category_models.keys()) == {"claude_code", "antigravity", "codex"}
         assert category_models["claude_code"]["lookup"] == {
             "model": "model-b",
             "effort": "high",
@@ -111,26 +119,53 @@ class TestAiModels(unittest.TestCase):
         # An unbound agent has no category, so there is no matrix row to pin it to.
         assert resolve_agent_model(path, "claude_code", "not-an-agent") is None
 
-    def test_resolve_review_agent_model_uses_overrides_and_category_models(self):
-        from ai_models import resolve_review_agent_model
+    def test_resolve_agent_model_rejects_a_binding_to_an_unknown_category(self):
+        from ai_models import resolve_agent_model
+
+        content = (
+            "agent_categories:\n"
+            "  research:\n"
+            '    family: "primary"\n'
+            '    contract: "evidence-synthesis"\n'
+            "agent_bindings:\n"
+            "  Plan: orchestrate\n"
+            "category_models:\n"
+            "  claude_code:\n"
+            "    research:\n"
+            '      model: "x"\n'
+            '      effort: "high"\n'
+            '      context: "long"\n'
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            (Path(directory) / "tiering.yaml").write_text(content)
+            with self.assertRaisesRegex(ValueError, "orchestrate"):
+                resolve_agent_model(directory, "claude_code", "Plan")
+
+    def test_resolve_review_agent_model_uses_category_models(self):
+        from ai_models import load_category_models, resolve_review_agent_model
 
         path = str(FIXTURES / "ai_models")
+        category_models = load_category_models(path)
 
         claude_lane = resolve_review_agent_model(path, "claude", "k-agent-reviewer")
-        assert claude_lane["model"] == "inherit"
+        assert claude_lane["model"] == category_models["claude_code"]["review"]["model"]
         assert claude_lane["slot"] == "lanes"
-        assert claude_lane["source"] == "override"
+        assert claude_lane["source"] == "category_models"
+        assert claude_lane["band_harness"] == "claude_code"
 
         claude_refuter = resolve_review_agent_model(path, "claude_code", "k-agent-adversarial-verifier")
-        assert claude_refuter["model"] == "inherit"
+        assert claude_refuter["model"] == category_models["claude_code"]["refute"]["model"]
         assert claude_refuter["slot"] == "verifier"
-        assert claude_refuter["source"] == "override"
-        assert claude_refuter["degraded"] is True
-        assert claude_refuter["verifier_status"] == "degraded"
+        assert claude_refuter["source"] == "category_models"
+        # The fixture row declares cross_family; the resolver reports the row's status, not a
+        # harness-level assumption.
+        assert claude_refuter["degraded"] is False
+        assert claude_refuter["verifier_status"] == "cross_family"
 
-        gemini = resolve_review_agent_model(path, "gemini", "k-agent-reviewer")
-        assert gemini["model"] == "pro"
-        assert gemini["source"] == "override"
+        antigravity = resolve_review_agent_model(path, "antigravity", "k-agent-reviewer")
+        assert antigravity["model"] == category_models["antigravity"]["review"]["model"]
+        assert antigravity["source"] == "category_models"
+        assert antigravity["band_harness"] == "antigravity"
 
         codex_lane = resolve_review_agent_model(path, "codex", "k-agent-reviewer")
         assert codex_lane["model"] == "codex-max"
@@ -179,7 +214,9 @@ class TestAiModels(unittest.TestCase):
         from ai_models import SECTION_FILES, section_path
 
         assert section_path("/registry", "category_models").name == "tiering.yaml"
+        assert section_path("/registry", "session_models").name == "tiering.yaml"
         assert section_path("/registry", "cursor_models").name == "harness-catalogs.yaml"
+        assert section_path("/registry", "cursor_task_base_models").name == "harness-catalogs.yaml"
         with self.assertRaisesRegex(ValueError, "unknown registry section"):
             section_path("/registry", "not_a_section")
         for name in SECTION_FILES.values():
@@ -203,7 +240,8 @@ class TestAiModels(unittest.TestCase):
     def test_claude_openrouter_subagents_use_pi_backend_schema(self):
         wrapper = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()
 
-        assert 'export CLAUDE_CODE_SUBAGENT_MODEL="$OPENROUTER_PI_T2_WIRE_MODEL"' in wrapper
+        assert "unset CLAUDE_CODE_SUBAGENT_MODEL" in wrapper
+        assert 'exec python3 "$HOME/lib/shared/claude_lanes.py" pi -- claude' in wrapper
         assert 'export AGENT_BAND_SCHEMA_HARNESS="pi"' in wrapper
         assert 'export AGENT_BAND_MODEL_FORMAT="openrouter-preset"' in wrapper
 

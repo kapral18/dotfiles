@@ -17,7 +17,7 @@ OpenCode reads providers from `~/.config/opencode/opencode.jsonc`, so its launch
 
 Cursor's cloud build rejects local provider flags. `,cursor-llama-cpp` therefore runs the version-matched `agent-cli-local` flavor, pins its provider environment to llama.cpp, and rewrites `-m` to Cursor's `--model` flag.
 
-Claude Code has one global `autoCompactWindow`, but cloud `opus[1m]`, 262144-token local models, and work Qwen3.8 need different values. The llama.cpp launcher picks a model-scoped additive settings file: base local models use `200000`, work Qwen3.8 uses `100000`, and plain cloud Claude sessions stay untouched.
+Claude Code has one global `autoCompactWindow`, but cloud `opus[1m]`, 262144-token local models, and work Qwen3.8 need different values. The llama.cpp launcher picks a model-scoped additive settings file: base local models use `200000`, work Qwen3.8 uses `100000`, and plain cloud Claude sessions stay untouched. Those additive files keep thinking off and pin each local model to `high`, matching the native cloud root's effort without changing local context windows.
 
 ## Using it
 

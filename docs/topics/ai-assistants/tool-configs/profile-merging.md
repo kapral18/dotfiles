@@ -62,7 +62,7 @@ Copilot MCP rendering is apply-time only: `run_onchange_after_07-merge-copilot-c
 
 Claude settings provenance includes the selected settings file, model-tier registry, and the owning merge-hook template. Registry changes report `input-drift`; changes to the hook itself report `transform-drift`, even before target bytes change.
 
-Claude MCP merging rejects malformed existing JSON before writing, preserves unrelated live keys, and creates a missing file even for an empty registry. The Cursor OAuth mint artifact names its actual consumer, `,mcp-token`, and probes `--help` because that command has no `--version` option. Claude model-mirror defaults, curated models, recommendations, and provenance follow `category_models.claude_code.orchestrate`, the same owner used by the settings renderer.
+Claude MCP merging rejects malformed existing JSON before writing, preserves unrelated live keys, and creates a missing file even for an empty registry. The Cursor OAuth mint artifact names its actual consumer, `,mcp-token`, and probes `--help` because that command has no `--version` option. Claude model-mirror defaults, curated models, recommendations, and provenance follow `session_models.claude_code`, the same owner used by the settings renderer.
 
 ### `,doctor ai`
 

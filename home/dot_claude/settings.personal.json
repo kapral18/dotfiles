@@ -3,13 +3,13 @@
   "permissions": {
     "defaultMode": "bypassPermissions"
   },
-  "model": "claude-fable-5-1",
-  "effortLevel": "xhigh",
+  "model": "claude-fable-5-1[1m]",
+  "effortLevel": "high",
   "disableClaudeAiConnectors": true,
   "agentPushNotifEnabled": true,
   "tui": "fullscreen",
   "modelSettings": {
-    "claude-fable-5-1": {
+    "claude-fable-5-1[1m]": {
       "effortLevel": "high"
     }
   },

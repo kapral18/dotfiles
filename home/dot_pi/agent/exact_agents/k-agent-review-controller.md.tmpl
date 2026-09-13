@@ -3,6 +3,10 @@
 name: k-agent-review-controller
 description: Final deep-review leaf over the parent-scoped candidate; no orchestration.
 model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-review-controller") }}"
+{{- $thinking := includeTemplate "agent-thinking.partial" (dict "root" . "harness" "pi" "agent" "k-agent-review-controller") }}
+{{- if $thinking }}
+thinking: "{{ $thinking }}"
+{{- end }}
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: false

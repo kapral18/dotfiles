@@ -57,9 +57,11 @@ def openrouter_roles(directory: Path, catalog_path: Path) -> tuple[list[str], di
     agents = json.loads(projection.read_text())["harnesses"]["pi"]["agents"]
     selectors = {}
     for name, pick in agents.items():
-        model, separator, effort = pick["model"].rpartition(":")
-        if not separator or not effort or effort != pick.get("effort"):
-            raise ValueError(f"invalid OpenRouter lane pair for {name}")
+        model, effort = pick["model"], pick.get("effort")
+        if not model.startswith("openrouter/"):
+            continue
+        if not effort:
+            raise ValueError(f"missing OpenRouter lane effort for {name}")
         selectors[name] = f"{model.removeprefix('openrouter/')}@preset/effort-{effort}"
     catalog = json.loads(catalog_path.read_text())
     available = {row["slug"] for row in catalog["models"]}

@@ -453,6 +453,12 @@ if [[ "$1" == "--cursor-model-catalog" ]]; then
   echo '{}'
   exit 0
 fi
+if [[ "$1" == "--pi-openrouter-wire-models" ]]; then
+  echo "z-ai/glm-5.3-flash@preset/effort-high"
+  echo "meta/muse-spark-1.3@preset/effort-high"
+  echo "meta/muse-spark-1.3@preset/effort-max"
+  exit 0
+fi
 exit 0
 """,
         encoding="utf-8",

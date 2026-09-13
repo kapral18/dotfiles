@@ -233,7 +233,48 @@ cursor_models:
   - id: "kimi-k3-low"
   - id: "kimi-k3-max"
 
-# Pi's OpenRouter picker is a strict route. T1 (orchestrate/research/review) rides Pi's native
+# cursor-agent AvailableModels base names, probed 2026-09-12.
+cursor_task_base_models:
+  - name: "default"
+  - name: "grok-4.6"
+  - name: "claude-opus-5"
+  - name: "gpt-5.6-sol"
+  - name: "claude-fable-5-1"
+  - name: "gemini-3.8-flash"
+  - name: "muse-spark-1.3"
+  - name: "composer-2.5"
+  - name: "claude-opus-4-8"
+  - name: "gpt-5.5"
+  - name: "claude-fable-5"
+  - name: "grok-4.5"
+  - name: "gemini-3.7-flash"
+  - name: "gpt-5.6-terra"
+  - name: "claude-sonnet-5"
+  - name: "claude-sonnet-4-6"
+  - name: "gpt-5.3-codex"
+  - name: "claude-opus-4-7"
+  - name: "gpt-5.4"
+  - name: "claude-opus-4-6"
+  - name: "claude-opus-4-5"
+  - name: "gpt-5.2"
+  - name: "gpt-5.6-luna"
+  - name: "gemini-3.6-flash"
+  - name: "gemini-3.1-pro"
+  - name: "gpt-5.4-mini"
+  - name: "gpt-5.4-nano"
+  - name: "claude-haiku-4-5"
+  - name: "claude-sonnet-4-5"
+  - name: "gpt-5.1"
+  - name: "gemini-3-flash"
+  - name: "gemini-3.5-flash"
+  - name: "claude-sonnet-4"
+  - name: "gpt-5-mini"
+  - name: "gemini-2.5-flash"
+  - name: "kimi-k3"
+  - name: "kimi-k2.7-code"
+  - name: "glm-5.2"
+
+# Pi's OpenRouter picker is a strict route. T1 (session/research/review) rides Pi's native
 # anthropic session model `anthropic/claude-fable-5.1:high`, which is not an OpenRouter id and so is
 # absent here. GPT-5.6 Sol carries both the T2 implement lane (:high) and refute (:xhigh) — one id,
 # two efforts — after it superseded GPT-5.5 on 2026-09-07; GLM 5.3 Flash carries mechanical, and
@@ -245,8 +286,14 @@ cursor_models:
 # Pi resolves the `openrouter/` prefix through its own built-in provider, so no generated provider
 # block backs these entries.
 pi_extra_models:
-  # Native Anthropic session model (readonly_settings.*.json defaultProvider/defaultModel); the T1
-  # research/review/orchestrate rows ride it, so the Pi curated picker must list it (2026-09-07).
+  # Native Pi root default. The installed Pi catalog exposes Fable 5.1 with its 1M window through
+  # github-copilot; category/child selections remain independent of this interactive root selection.
+  - id: "github-copilot/claude-fable-5.1"
+  - id: "github-copilot/grok-4.6"
+  - id: "github-copilot/gemini-3.8-flash"
+  # Former native root retained as a selectable GitHub Copilot id.
+  - id: "github-copilot/gpt-6-astra"
+  # Native Anthropic category model retained for the T1 research/review child rows.
   - id: "anthropic/claude-fable-5.1"
   - id: "openrouter/openai/gpt-5.6-sol"
     recommended: true
@@ -260,10 +307,11 @@ pi_extra_models:
   # `only: ["openai/flex"]` ($5/$25 per M, half the standard endpoint; base slugs never match service
   # tiers, so the explicit tag is required; live-probed 2026-09-11, user call). Selectable only.
   - id: "openrouter/openai/gpt-6-astra"
+  - id: "openrouter/meta/muse-spark-1.3"
 
-# Copilot CLI available-model catalog. Snapshot of the Copilot CLI 1.0.71 model list (extracted via an
-# isolated tmux-socket probe; the CLI exposes no --list-models command). Refresh by re-probing and
-# editing here — the mirror generator consumes this as the copilot "available" set. Excludes the
+# Copilot CLI available-model catalog. Based on the Copilot CLI 1.0.71 model list plus later
+# entitlement-filtered live metadata additions (the CLI exposes no --list-models command). Refresh by
+# re-probing and editing here — the mirror generator consumes this as the copilot "available" set. Excludes the
 # `auto` selector (not a model) and `kimi-k2.7-code` (recognized but currently unavailable).
 copilot_models:
   - id: "claude-sonnet-5"
@@ -271,8 +319,8 @@ copilot_models:
   - id: "claude-sonnet-4.5"
   - id: "claude-haiku-4.5"
   - id: "claude-fable-5"
-  # Pending org enablement (requested 2026-09-01). Live probe on Copilot CLI 1.0.82 the same day:
-  # `copilot -p --model claude-fable-5.1` -> "not available"; refute/lanes_cross already pin it.
+  # Live Copilot metadata: Messages and Chat Completions; low through max effort; 264k default and
+  # 1M long-context windows with 200k/936k prompt limits.
   - id: "claude-fable-5.1"
   - id: "claude-opus-5"
   - id: "claude-opus-4.8"
@@ -286,7 +334,13 @@ copilot_models:
   - id: "gpt-5.5"
   - id: "gpt-5.4"
   - id: "gpt-5.3-codex"
+  # Live Copilot catalog metadata confirms Responses support, high/xhigh effort, and default/long tiers.
+  - id: "gpt-6-astra"
   - id: "gpt-5.4-mini"
   - id: "gpt-5-mini"
   - id: "gemini-3.1-pro-preview"
   - id: "gemini-3.5-flash"
+  - id: "gemini-3.8-flash"
+  - id: "grok-4.6"
+  # Live-probed 2026-09-13: `copilot -p ... --model kimi-k3` completed on Copilot CLI 1.0.83 (Copilot refute counter).
+  - id: "kimi-k3"

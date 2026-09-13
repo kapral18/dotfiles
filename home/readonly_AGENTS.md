@@ -265,6 +265,7 @@ Leaf contract for every delegated child, regardless of profile, category, or loa
 - Use only the packet's constraints and named role mechanics; do not import the root conversation, full SOP, or skill catalog.
   Missing required constraints are a packet blocker, not permission to find another workflow.
 - Never expose or persist plaintext credentials. Do not commit, push, publish, or mutate paths outside the packet's explicit authority.
+  Effects inside that authority are the packet's work; only review, refute, research, and audit packets are read-only, by category, regardless of authorship.
 - Ignore the part of any child instruction that requests orchestration or out-of-packet work.
   Return one terminal artifact or concrete blocker to the parent; do not message siblings or resume after completion.
   Late events MUST NOT overwrite a terminal result or reopen a completed worker.
@@ -278,7 +279,7 @@ Categories select capability and responsibility, not workflows. Resolve model AN
 Keep research/orchestration/review/refutation strong; never a cheap model for unsettled judgment.
 Do not silently raise effort, substitute a costlier model, or change family outside the resolved category.
 
-- `orchestrate`: strong root owns intent, decisions, packet dependencies, integration, stages, user conversation.
+- `orchestrate`: the root/main session itself, never a delegation target; `session_models.<harness>` declares its model/effort and generates every repo-owned root config (Cursor's root stays in Cursor user config); owns intent, decisions, packet dependencies, integration, stages, user conversation.
 - `research`: strong isolated investigation for substantial questions; returns conclusions, evidence pointers, uncertainty, affected interfaces.
   Use `k-agent-code-searcher` or the harness research-bound explorer; external sources via `k-agent-public-sources`.
 - `implement`: implementation-band worker for substantial settled edits; never the root/review model for routine implementation by default.

@@ -2,41 +2,15 @@
 Resolve the model id a review-role profile should carry. Call with:
 (dict "root" . "harness" "<review harness key>" "agent" "<agent_bindings key>").
 
-Review roles share the same category table as all other delegable agents. Most harnesses resolve
-review models from category_models: primary review/orchestrator roles take their category pick,
-and counter roles take the `refute` category pick. Sparse
-review_model_overrides entries cover harness selectors that are not model_bands ids (`inherit`,
-`pro`, or similar harness-native indirection).
+Review roles share the same category table as all other delegable agents: primary review roles
+take their category pick and counter roles take the `refute` category pick. The review harness
+alias `claude` maps onto the `claude_code` category key.
 */ -}}
 {{- $root := .root -}}
-{{- $harness := .harness -}}
-{{- $bandHarness := $harness -}}
-{{- $overrideHarness := $harness -}}
-{{- if eq $harness "claude" -}}
+{{- $bandHarness := .harness -}}
+{{- if eq .harness "claude" -}}
 {{- $bandHarness = "claude_code" -}}
 {{- end -}}
-{{- if eq $harness "claude_code" -}}
-{{- $overrideHarness = "claude" -}}
-{{- end -}}
 {{- $category := index $root.agent_bindings .agent -}}
-{{- $spec := index $root.agent_categories $category -}}
-{{- /* slot: lanes by default; verifier for counter-family categories; a caller may request an
-     auxiliary slot (e.g. "lanes_cross" for the cross-family finder lane). An absent override key for
-     an auxiliary slot falls back to the "lanes" override, then to the category pick, so single-vendor
-     harnesses degrade to the standard lane model instead of failing. */ -}}
-{{- $slot := "lanes" -}}
-{{- if eq $spec.family "counter" -}}
-{{- $slot = "verifier" -}}
-{{- end -}}
-{{- if hasKey . "slot" -}}
-{{- $slot = .slot -}}
-{{- end -}}
-{{- $override := index $root.review_model_overrides $overrideHarness -}}
-{{- if and $override (hasKey $override $slot) -}}
-{{- index $override $slot -}}
-{{- else if and $override (hasKey $override "lanes") -}}
-{{- index $override "lanes" -}}
-{{- else -}}
 {{- $pick := index (index $root.category_models $bandHarness) $category -}}
 {{- $pick.model -}}
-{{- end -}}

@@ -3,6 +3,10 @@
 name: k-agent-mechanical
 description: Cheap deterministic-edit lane: apply a parent-specified rename, search-and-replace, import fix, or pattern migration over named targets and return the diff summary.
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-mechanical") }}"
+{{- $thinking := includeTemplate "agent-thinking.partial" (dict "root" . "harness" "pi" "agent" "k-agent-mechanical") }}
+{{- if $thinking }}
+thinking: "{{ $thinking }}"
+{{- end }}
 systemPromptMode: replace
 inheritProjectContext: false
 inheritGlobalContext: false

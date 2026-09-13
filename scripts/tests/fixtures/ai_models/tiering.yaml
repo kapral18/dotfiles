@@ -1,10 +1,16 @@
-review_model_overrides:
-  claude:
-    lanes: "inherit"
-    verifier: "inherit"
-  gemini:
-    lanes: "pro"
-    verifier: "pro"
+session_models:
+  claude_code:
+    model: "session-claude"
+    effort: "high"
+    context: "long"
+  antigravity:
+    model: "session-gemini"
+    effort: "high"
+    context: "long"
+  codex:
+    model: "session-codex"
+    effort: "high"
+    context: "short"
 
 category_models:
   claude_code:
@@ -29,6 +35,28 @@ category_models:
       thinking: "off"
       context: "long"
       verifier_status: "cross_family"
+  antigravity:
+    lookup:
+      model: "gemini-flash"
+      effort: "low"
+      thinking: ""
+      context: "long"
+    research:
+      model: "gemini-pro"
+      effort: "high"
+      thinking: ""
+      context: "long"
+    review:
+      model: "gemini-pro"
+      effort: "high"
+      thinking: ""
+      context: "long"
+    refute:
+      model: "gemini-pro"
+      effort: "high"
+      thinking: ""
+      context: "long"
+      verifier_status: "degraded"
   codex:
     lookup:
       model: "codex-cheap"

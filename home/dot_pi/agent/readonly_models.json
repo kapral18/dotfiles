@@ -30,9 +30,11 @@
           }
         },
         "z-ai/glm-5.3-flash": {
+          "contextWindow": 1024000,
+          "maxTokens": 128000,
           "compat": {
             "openRouterRouting": {
-              "preferred_min_throughput": 24,
+              "preferred_min_throughput": 35,
               "quantizations": ["fp8", "fp16", "bf16", "fp32"]
             }
           }

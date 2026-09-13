@@ -14,23 +14,17 @@ from yaml_parser import parse_scalar
 
 SECTION_FILES = {
     "cursor_models": "harness-catalogs.yaml",
+    "cursor_task_base_models": "harness-catalogs.yaml",
     "pi_extra_models": "harness-catalogs.yaml",
     "copilot_models": "harness-catalogs.yaml",
     "provider_models": "provider-routes.yaml",
-    "review_model_overrides": "tiering.yaml",
+    "session_models": "tiering.yaml",
     "agent_categories": "tiering.yaml",
     "agent_bindings": "tiering.yaml",
     "category_models": "tiering.yaml",
 }
 
 REVIEW_BAND_HARNESSES = {"claude": "claude_code"}
-REVIEW_OVERRIDE_HARNESSES = {"claude_code": "claude"}
-
-# Agents rendered through an auxiliary override slot rather than the family-derived lanes/
-# verifier slot. An absent key for the aux slot falls back to the "lanes" override, then to the
-# category pick, so single-vendor harnesses degrade to the standard lane model (same chain as
-# review-agent-model.partial).
-REVIEW_AUX_SLOTS = {"k-agent-review-worker-cross": "lanes_cross"}
 
 
 def section_path(registry, section_key):
@@ -53,6 +47,10 @@ def load_cursor_models(registry):
     return _load_section(registry, "cursor_models", required=True)
 
 
+def load_cursor_task_base_models(registry):
+    return _load_section(registry, "cursor_task_base_models", required=True)
+
+
 def load_pi_extra_models(registry):
     return _load_section(registry, "pi_extra_models")
 
@@ -65,9 +63,12 @@ def load_copilot_models(registry):
     return _load_section(registry, "copilot_models")
 
 
-def load_review_model_overrides(registry):
-    """Load sparse harness -> lane/verifier overrides from ``review_model_overrides``."""
-    return _load_block_map(registry, "review_model_overrides")
+def load_session_models(registry):
+    """Load the harness -> root session pick mapping from ``session_models``.
+
+    The session row is the model the user talks to. It is never a delegation target.
+    """
+    return _load_block_map(registry, "session_models")
 
 
 def load_category_models(registry):
@@ -145,9 +146,11 @@ def resolve_agent_model(registry, harness, agent):
     category_models = load_category_models(registry)
 
     category = bindings.get(agent)
-    if category is None or category not in categories or harness not in category_models:
+    if category is None:
         return None
-    if category not in category_models[harness]:
+    if category not in categories:
+        raise ValueError(f"agent {agent!r} binds to unknown category {category!r}")
+    if harness not in category_models or category not in category_models[harness]:
         return None
 
     spec = categories[category]
@@ -168,15 +171,10 @@ def resolve_agent_model(registry, harness, agent):
 def resolve_review_agent_model(registry, harness, agent, slot=None):
     """Resolve the review profile model for ``agent`` on ``harness``.
 
-    Sparse ``review_model_overrides`` entries handle harness selectors that cannot be derived
-    from ``category_models`` (for example Claude ``inherit`` and Antigravity ``pro``). All other
-    review roles use ``agent_bindings`` / ``agent_categories`` to choose their direct category pick.
-
-    The slot defaults to the family-derived lanes/verifier choice, then any auxiliary slot the
-    agent declares (REVIEW_AUX_SLOTS). An aux slot missing from the override falls back to the
-    "lanes" override, then to the category pick — the same chain review-agent-model.partial
-    renders, so single-vendor harnesss degrade instead of failing. Override picks merge the
-    category row underneath so effort/context stay available to consumers.
+    Review roles use ``agent_bindings`` / ``agent_categories`` to choose their direct category
+    pick, exactly like every other delegable agent; the ``slot`` (``verifier`` for counter-family
+    categories, ``lanes`` otherwise) is reported so callers can tell a refute pick from a lane pick.
+    ``harness`` accepts the review alias ``claude`` for the ``claude_code`` category key.
     """
     categories = load_agent_categories(registry)
     bindings = load_agent_bindings(registry)
@@ -187,42 +185,16 @@ def resolve_review_agent_model(registry, harness, agent, slot=None):
 
     spec = categories[category]
     if slot is None:
-        slot = REVIEW_AUX_SLOTS.get(agent) or ("verifier" if spec["family"] == "counter" else "lanes")
+        slot = "verifier" if spec["family"] == "counter" else "lanes"
     band_harness = REVIEW_BAND_HARNESSES.get(harness, harness)
-    override_harness = REVIEW_OVERRIDE_HARNESSES.get(harness, harness)
-
-    overrides = load_review_model_overrides(registry)
-    override = overrides.get(override_harness, {})
 
     category_models = load_category_models(registry)
     row = category_models.get(band_harness, {}).get(category)
-    base = dict(row) if row else {}
-    row_verifier_status = base.pop("verifier_status", None)
-
-    model = override.get(slot)
-    if model is None and slot != "lanes" and override:
-        # Aux slots degrade to the standard lane override before the category pick.
-        slot = "lanes"
-        model = override.get("lanes")
-    if model is not None:
-        verifier_status = "degraded" if slot == "verifier" else None
-        return dict(
-            base,
-            model=model,
-            category=category,
-            family=spec["family"],
-            slot=slot,
-            source="override",
-            degraded=spec["family"] == "counter",
-            verifier_status=verifier_status,
-            harness=harness,
-            band_harness=band_harness,
-        )
-
     if row is None:
         return None
+    pick = dict(row)
+    row_verifier_status = pick.pop("verifier_status", None)
 
-    pick = base
     verifier_status = row_verifier_status
     degraded = slot == "verifier" and verifier_status not in ("cross_family", "reduced_independence")
     if slot == "verifier":

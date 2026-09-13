@@ -3,9 +3,14 @@
   "permissions": {
     "defaultMode": "bypassPermissions"
   },
-  "model": "claude-fable-5-1",
-  "effortLevel": "xhigh",
+  "model": "claude-fable-5-1[1m]",
+  "effortLevel": "high",
   "disableClaudeAiConnectors": true,
+  "modelSettings": {
+    "claude-fable-5-1[1m]": {
+      "effortLevel": "high"
+    }
+  },
   "hooks": {
     "SessionStart": [
       {

@@ -278,13 +278,13 @@ def _catalog_policy(
 
 
 def _load_claude_policy(repo_root: Path) -> tuple[list[str], list[str], dict[str, str]]:
-    categories = ai_models.load_category_models(repo_root / AI_MODELS_REGISTRY)
+    session = ai_models.load_session_models(repo_root / AI_MODELS_REGISTRY)
     try:
-        model = categories["claude_code"]["orchestrate"]["model"]
+        model = session["claude_code"]["model"]
     except (KeyError, TypeError) as err:
-        raise ValueError("category_models.claude_code.orchestrate requires a model") from err
+        raise ValueError("session_models.claude_code requires a model") from err
     if not isinstance(model, str) or MODEL_ID_RE.fullmatch(model) is None:
-        raise ValueError("category_models.claude_code.orchestrate model is invalid")
+        raise ValueError("session_models.claude_code model is invalid")
     return [model], [model], {"work": model, "personal": model}
 
 
@@ -303,9 +303,9 @@ def _load_codex_policy(repo_root: Path) -> tuple[list[str], list[str], dict[str,
     return models, models, defaults
 
 
-def _load_gemini_policy(repo_root: Path) -> tuple[list[str], list[str], dict[str, str]]:
+def _load_antigravity_policy(repo_root: Path) -> tuple[list[str], list[str], dict[str, str]]:
     category_models = ai_models.load_category_models(repo_root / AI_MODELS_REGISTRY)
-    model = category_models["gemini"]["research"]["model"]
+    model = category_models["antigravity"]["research"]["model"]
     return [model], [model], {"default": model}
 
 
@@ -527,7 +527,7 @@ def build_static_mirror(repo_root: str | Path) -> dict[str, Any]:
     ]
     claude_curated, claude_recommended, claude_defaults = _load_claude_policy(root)
     codex_curated, codex_recommended, codex_defaults = _load_codex_policy(root)
-    gemini_curated, gemini_recommended, gemini_defaults = _load_gemini_policy(root)
+    gemini_curated, gemini_recommended, gemini_defaults = _load_antigravity_policy(root)
     opencode_curated, opencode_recommended, opencode_defaults = _load_opencode_policy(root)
     pi_curated, pi_recommended, pi_defaults = _load_pi_policy(root, pi_extras)
     copilot_curated, copilot_recommended, copilot_defaults = _load_copilot_policy(registry_path)
@@ -612,7 +612,7 @@ def _registry_provenance(section: str) -> dict[str, Any]:
 
 def _harness_policy_provenance(harness: str, set_name: str) -> list[dict[str, Any]]:
     profile_sources = {
-        "claude": [_registry_provenance("category_models")],
+        "claude": [_registry_provenance("session_models")],
         "codex": [
             _provenance("config", "home/dot_codex/private_config.work.toml"),
             _provenance("config", "home/dot_codex/private_config.personal.toml"),
@@ -636,7 +636,6 @@ def _harness_policy_provenance(harness: str, set_name: str) -> list[dict[str, An
             _registry_provenance("agent_bindings"),
             _registry_provenance("agent_categories"),
             _registry_provenance("category_models"),
-            _registry_provenance("review_model_overrides"),
         ]
     return profile_sources[harness]
 

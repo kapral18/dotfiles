@@ -78,6 +78,20 @@ class TestMergeCopilotSettings(unittest.TestCase):
         self.assertEqual(merged["list"], ["declared"])
         self.assertEqual(merged["subagents"]["agents"], {})
 
+    def test_SHOULD_enable_required_extension_and_preserve_runtime_feature_flags(self):
+        baseline = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text())
+        live = {
+            "enabledFeatureFlags": {
+                "EXTENSIONS": False,
+                "RUNTIME_ONLY": True,
+            }
+        }
+
+        merged = merge_copilot_settings(live, baseline)
+
+        self.assertIs(merged["enabledFeatureFlags"]["EXTENSIONS"], True)
+        self.assertIs(merged["enabledFeatureFlags"]["RUNTIME_ONLY"], True)
+
     def test_SHOULD_fail_closed_on_malformed_or_structurally_invalid_inputs(self):
         cases = {
             "invalid live JSON": ("{", '{"subagents":{"agents":{}}}'),

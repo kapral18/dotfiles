@@ -63,8 +63,7 @@ Content boundary:
 After all findings are drafted, recommend an overall verdict from `authorship`, severity, and `author_relation`:
 
 - **Self-review** (`authorship: self`):
-  - Fix authority follows write scope per `~/.agents/skills/k-review/references/authorship.md`:
-    findings are fixed in the same pass when the current packet holds write scope over the affected path (the default for root executing inline); a final-Verify-stage packet stays read-only by category regardless of authorship — report remaining findings there, and the root applies SOP §3.5 when existing authority covers repair.
+  - Fix authority follows write scope per `~/.agents/skills/k-review/references/authorship.md`; a final-Verify-stage packet reports remaining findings for root-owned SOP §3.5 recovery.
   - **Comment only** if the user explicitly asks to post self-review notes with remaining non-blocking findings.
   - **Approve** when no findings remain.
   - Do not request changes on the user's own PR from this flow.

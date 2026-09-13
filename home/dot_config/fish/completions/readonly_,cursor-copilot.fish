@@ -45,7 +45,7 @@ function __cursor_copilot_model
                 return
         end
     end
-    echo gpt-5.3-codex
+    echo claude-fable-5.1
 end
 
 function __cursor_copilot_values

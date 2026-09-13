@@ -37,17 +37,30 @@ Completion criterion: exit and filter are written down and the filter names the 
 
 ## Step 2 — Pin the baseline
 
-Record the original review scope, HEAD sha, `git status`, index state, and recoverable contents/hashes of scoped working files, including untracked files.
+Record the original review scope, HEAD sha, `git status --porcelain`, and a git-owned snapshot of the whole dirty tree:
+`git stash create` (returns a commit sha and leaves the working tree untouched) plus `git ls-files -s | sha256sum` for the logical index.
+On a clean tree `git stash create` prints nothing; pin `HEAD` instead and use `HEAD` in place of the stash sha when restoring.
+Untracked files a probe may touch MUST be added to that snapshot (`git add -N` or a listed copy); git restores only what it tracks.
 Hash any targeted published text (PR/issue body); record not applicable when there is no publication target.
 Existing staged or unstaged changes are valid input. Never clean, reset, or unstage them to establish a baseline.
+
+Mutate in place by default; the restore set is every tracked path, enforced by git, not a hand-maintained copy list.
+Isolate only when the root must keep editing the same tree during rounds or a probe writes under untracked build outputs:
+
+- small repo: `git worktree add --detach /tmp/converge-<id>/tree HEAD` then `git apply` the pinned dirty diff;
+- large repo (node_modules or build outputs required by oracles): sparse worktree of the mutation scope with `node_modules`/`target`/`data` symlinked from the main checkout;
+  every probe path MUST be checked against those symlinked roots before it runs;
+- APFS full tree: `cp -c` (clonefile) of the checkout.
+
+NEVER run a full `git worktree add` of a large repository for a convergence round.
 
 Pin a new snapshot at each round's start; retain the original scope, prior fixes, findings, and mutation inventory across rounds.
 Compare round changes against that round's snapshot. Never narrow review or regression scope to only the latest fixes.
 Unexpected source, input, dependency, or environment drift invalidates affected evidence;
 resolve it and rerun affected verification before relying on that evidence.
 
-Completion criterion: original scope and current round snapshot captured; pre-existing changes recoverable;
-publication hash or non-applicability recorded.
+Completion criterion: original scope, stash sha, status, and index hash captured; pre-existing changes recoverable from the stash sha;
+isolation mode named with its reason (or "in place"); publication hash or non-applicability recorded.
 
 ## Step 3 — Mutate before you argue
 
@@ -68,7 +81,14 @@ The ratio measures the selected mutations' coverage, not confidence in correctne
 For instruction artifacts, distinguish text/structure preservation from consumer behavior;
 string-presence or deletion checks do not prove agent compliance.
 
-Restore after each mutation from a copy and verify exact restoration of working contents and index state, including pre-existing changes.
+Restore after each mutation from the Step 2 stash sha, without touching the git index by hand:
+`git read-tree <stash-sha>^2` (pinned index; `git read-tree HEAD` when the pin is a clean `HEAD`), then `git archive <stash-sha> | tar -x -C .` (pinned working files, including symlinks and deletions),
+then `git ls-files --others --exclude-standard -z | xargs -0 rm -f` (probe-created files).
+Do not use `git checkout <sha> -- .` for this: it stages the restored files and changes the pinned status.
+Then verify `git status --porcelain` and the `git ls-files -s` hash equal the pinned values.
+A restore whose verification differs marks the probe `INVALID`, stops the round, and MUST be repaired before another probe runs;
+do not count later probes from a tree that never restored.
+Physical `.git/index` bytes may differ by stat cache alone; compare the logical index, not the file.
 
 Completion criterion: every behavioral change has a valid contract-breaking probe, every verdict has evidence, and no mutation residue remains.
 Unresolved probes prevent a dry verdict.
@@ -102,7 +122,7 @@ Every round must also rerun all required regression checks for the full review s
 A fix that quietly weakens a test is the failure this step exists to catch — a test-harness "improvement" can neutralize the very tests it was meant to protect.
 
 Beware the **no-op revert**: `git stash` on a file whose change is already committed stashes nothing, so the tests trivially pass and you conclude "verified by reverting".
-Mutate in place and restore from a copy instead.
+Mutate in place and restore from the Step 2 stash sha instead.
 
 Completion criterion: every finding is fixed or explicitly refused, and post-fix mutation coverage is unchanged or better.
 

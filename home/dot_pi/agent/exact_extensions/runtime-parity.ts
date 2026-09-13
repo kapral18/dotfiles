@@ -8,7 +8,7 @@ import { join } from "node:path"
 
 const SEARCH_TOOLS = ["grep", "find", "ls"]
 const TOOL_SELECTION_FLAGS = ["--tools", "-t", "--exclude-tools", "-xt", "--no-tools", "-nt", "--no-builtin-tools", "-nbt"]
-const DISPATCH_RULE = 'Root Pi dispatch: use a named managed profile with agentScope:"user", acceptance:false and fresh context. Do not use project-discovered replacements or per-call model/skill overrides.'
+const DISPATCH_RULE = 'Root Pi dispatch: use a named managed profile with agentScope:"user", acceptance:false and fresh context. Dispatch one leaf packet per subagent call; independent packets may run concurrently with async:true. The subagent tool description\'s "exactly one top-level subagent workflow call" guidance is superseded by this deployment: workflow, workflowScript, workflowScriptPath, chain, parallel, gate and agentContract inputs are blocked. Do not use project-discovered replacements or per-call model/skill overrides.'
 
 function hasExplicitToolSelection(argv: string[]): boolean {
   return argv.some((arg) =>

@@ -1,102 +1,101 @@
 {
-  "model": "gpt-5.6-sol",
-  "effortLevel": "xhigh",
+  "model": "claude-fable-5.1",
+  "effortLevel": "high",
+  "contextTier": "long_context",
   "keepAlive": "busy",
   "includeCoAuthoredBy": true,
   "autoUpdate": false,
   "banner": "never",
   "showTipsOnStartup": false,
+  "enabledFeatureFlags": {
+    "EXTENSIONS": true
+  },
   "subagents": {
     "agents": {
       "k-agent-deep-review": {
-        "effortLevel": "xhigh",
-        "contextTier": "default",
-        "model": "gpt-5.6-sol"
+        "effortLevel": "high",
+        "contextTier": "long_context",
+        "model": "claude-fable-5.1"
       },
       "k-agent-review-worker": {
-        "effortLevel": "xhigh",
-        "contextTier": "default",
-        "model": "gpt-5.6-sol"
-      },
-      "k-agent-review-worker-cross": {
-        "effortLevel": "xhigh",
-        "contextTier": "default",
+        "effortLevel": "high",
+        "contextTier": "long_context",
         "model": "claude-fable-5.1"
       },
       "k-agent-adversarial-verifier": {
         "effortLevel": "high",
-        "contextTier": "default",
-        "model": "claude-fable-5.1"
+        "contextTier": "long_context",
+        "model": "kimi-k3"
       },
       "k-agent-findings-auditor": {
-        "effortLevel": "xhigh",
-        "contextTier": "default",
-        "model": "gpt-5.6-sol"
+        "effortLevel": "high",
+        "contextTier": "long_context",
+        "model": "claude-fable-5.1"
       },
       "k-agent-pr-necessity-auditor": {
-        "effortLevel": "xhigh",
-        "contextTier": "default",
-        "model": "gpt-5.6-sol"
+        "effortLevel": "high",
+        "contextTier": "long_context",
+        "model": "claude-fable-5.1"
       },
       "k-agent-live-ui-review": {
-        "effortLevel": "xhigh",
-        "contextTier": "default",
-        "model": "gpt-5.6-sol"
+        "effortLevel": "high",
+        "contextTier": "long_context",
+        "model": "claude-fable-5.1"
       },
       "k-agent-criteria-verifier": {
         "effortLevel": "high",
-        "contextTier": "default",
-        "model": "claude-fable-5.1"
+        "contextTier": "long_context",
+        "model": "kimi-k3"
       },
       "k-agent-smol": {
-        "effortLevel": "high",
+        "effortLevel": "medium",
         "contextTier": "default",
-        "model": "claude-sonnet-5"
+        "model": "grok-4.6"
       },
       "k-agent-mechanical": {
-        "effortLevel": "high",
-        "contextTier": "default",
-        "model": "claude-sonnet-5"
+        "effortLevel": "medium",
+        "contextTier": "long_context",
+        "model": "grok-4.6"
       },
       "explore": {
-        "effortLevel": "xhigh",
-        "contextTier": "default",
-        "model": "gpt-5.6-sol"
+        "effortLevel": "high",
+        "contextTier": "long_context",
+        "model": "claude-fable-5.1"
       },
       "task": {
         "effortLevel": "high",
-        "contextTier": "default",
-        "model": "claude-opus-5"
+        "contextTier": "long_context",
+        "model": "grok-4.6"
       },
       "research": {
-        "effortLevel": "xhigh",
-        "contextTier": "default",
-        "model": "gpt-5.6-sol"
+        "effortLevel": "high",
+        "contextTier": "long_context",
+        "model": "claude-fable-5.1"
       },
       "rubber-duck": {
-        "effortLevel": "xhigh",
-        "contextTier": "default",
-        "model": "gpt-5.6-sol"
+        "effortLevel": "high",
+        "contextTier": "long_context",
+        "model": "claude-fable-5.1"
       },
       "general-purpose": {
         "effortLevel": "high",
-        "contextTier": "default",
-        "model": "claude-opus-5"
+        "contextTier": "long_context",
+        "model": "grok-4.6"
       },
       "rem-agent": {
-        "effortLevel": "xhigh",
-        "contextTier": "default",
-        "model": "gpt-5.6-sol"
+        "effortLevel": "high",
+        "contextTier": "long_context",
+        "model": "claude-fable-5.1"
       },
       "code-review": {
-        "effortLevel": "xhigh",
-        "contextTier": "default",
-        "model": "gpt-5.6-sol"
+        "effortLevel": "high",
+        "contextTier": "long_context",
+        "model": "claude-fable-5.1"
       },
       "security-review": {
-        "effortLevel": "xhigh",
-        "contextTier": "default",
-        "model": "gpt-5.6-sol"
+        "effortLevel": "high",
+        "contextTier": "long_context",
+        "model": "claude-fable-5.1"
       }
     }
   }

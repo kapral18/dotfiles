@@ -3,6 +3,10 @@
 name: k-agent-smol
 description: Operate ,ai-kb in an isolated context. Judge staged per-turn recall candidates or an ad-hoc recall query (returns NONE or up to 3 admitted lines), or persist a parent-verified insight.
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-smol") }}"
+{{- $thinking := includeTemplate "agent-thinking.partial" (dict "root" . "harness" "pi" "agent" "k-agent-smol") }}
+{{- if $thinking }}
+thinking: "{{ $thinking }}"
+{{- end }}
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: false

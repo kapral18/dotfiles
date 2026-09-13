@@ -3,6 +3,10 @@
 name: k-agent-pr-necessity-auditor
 description: Read-only Understand research about PR intent, whether it is still needed, and whether it is correctly open; no implementation certification.
 model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-pr-necessity-auditor") }}"
+{{- $thinking := includeTemplate "agent-thinking.partial" (dict "root" . "harness" "pi" "agent" "k-agent-pr-necessity-auditor") }}
+{{- if $thinking }}
+thinking: "{{ $thinking }}"
+{{- end }}
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: false

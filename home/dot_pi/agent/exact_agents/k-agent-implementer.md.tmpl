@@ -3,6 +3,10 @@
 name: k-agent-implementer
 description: "/k-build implement worker: implement one settled step packet in isolation and return a single status line. Pi has no native generic subagent (builtins disabled), so this is the implement lane there."
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-implementer") }}"
+{{- $thinking := includeTemplate "agent-thinking.partial" (dict "root" . "harness" "pi" "agent" "k-agent-implementer") }}
+{{- if $thinking }}
+thinking: "{{ $thinking }}"
+{{- end }}
 systemPromptMode: replace
 inheritProjectContext: false
 inheritGlobalContext: false

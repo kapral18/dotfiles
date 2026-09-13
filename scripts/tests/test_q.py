@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for the `,q` one-shot OpenRouter pi agent."""
+"""Tests for the `,q` one-shot OpenRouter Pi agent."""
 
 from __future__ import annotations
 
@@ -53,28 +53,28 @@ class TestQ(unittest.TestCase):
             self.fail(f",q {' '.join(args)} failed\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}")
         return result
 
-    def test_when_q_is_dry_run_it_emits_stripped_pi_argv_without_the_glm_flash_pin(self) -> None:
+    def test_when_q_is_dry_run_it_emits_deepseek_high_with_stripped_pi_argv(self) -> None:
         result = self.run_q("--dry-run", "hello", "world", check=True)
         payload = json.loads(result.stdout)
         argv = payload["argv"]
         core = load_core()
 
         self.assertTrue(payload["q"])
-        self.assertEqual("inclusionai/ling-3.0-flash", payload["model"])
+        self.assertEqual("deepseek/deepseek-v4.1-flash", payload["model"])
         self.assertEqual("pi", argv[0])
         self.assertEqual(
             [
                 "--provider",
                 "openrouter",
                 "--model",
-                "inclusionai/ling-3.0-flash",
+                "deepseek/deepseek-v4.1-flash",
                 "--system-prompt",
                 core.Q_SYSTEM_PROMPT,
                 "--append-system-prompt",
                 core.Q_APPEND_SYSTEM_PROMPT,
                 "--no-session",
                 "--thinking",
-                "off",
+                "high",
                 "--offline",
                 "--no-skills",
                 "--no-themes",
@@ -89,6 +89,7 @@ class TestQ(unittest.TestCase):
             argv[1:],
         )
         self.assertNotIn("glm-5.3-flash", " ".join(argv))
+        self.assertNotIn("--context-mode", argv)
         self.assertNotIn("--no-tools", argv)
         self.assertTrue(core.Q_SYSTEM_PROMPT.strip())
         self.assertEqual("", core.Q_APPEND_SYSTEM_PROMPT)
@@ -194,13 +195,13 @@ console.log(JSON.stringify(rows));
                     {
                         "diagnostics": [],
                         "fileArgs": [],
-                        "model": "inclusionai/ling-3.0-flash",
+                        "model": "deepseek/deepseek-v4.1-flash",
                         "provider": "openrouter",
                         "print": True,
                         "systemPrompt": "Be brief. Use tools when the question needs them.",
                         "appendSystemPrompt": [""],
                         "noSession": True,
-                        "thinking": "off",
+                        "thinking": "high",
                         "offline": True,
                         "noSkills": True,
                         "noThemes": True,

@@ -11,8 +11,8 @@ set -euo pipefail
 # managed_config_manifest.py hash: {{ include "../scripts/managed_config_manifest.py" | sha256sum }}
 # generated_artifact_ledger.py hash: {{ include "../scripts/generated_artifact_ledger.py" | sha256sum }}
 {{- /* shfmt parses this file as shell, and a parenthesised template call trips its lexer. */}}
-{{- $orchestrate := index .category_models.claude_code "orchestrate" }}
-# category_models.claude_code.orchestrate hash: {{ $orchestrate | toJson | sha256sum }}
+{{- $session := index .session_models "claude_code" }}
+# session_models.claude_code hash: {{ $session | toJson | sha256sum }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh
@@ -22,15 +22,12 @@ is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
 profile="{{ if eq .isWork true }}work{{ else }}personal{{ end }}"
 src="$(chezmoi_pick_src "$is_work" "$source_dir" "dot_claude/settings.work.json" "dot_claude/settings.personal.json")"
 
-# The main session is the `orchestrate` category, so its own default model/effort resolves
-# through .chezmoidata/ai_models/tiering.yaml (see docs/topics/ai-assistants/model-tiering.md)
-# rather than being hand-maintained in each static settings.*.json. Work and personal used to
-# carry separate rows that never differed; both now read the same category. Patch both fields from
-# the rendered registry values before installing. include() does not recursively render .tmpl
-# content, so this substitution happens here, at apply time, not by making settings.*.json
+# the source settings json is regenerated from session_models by scripts/generate_session_models.py; this apply-time patch is the backstop.
+# Patch both fields from the rendered registry values before installing. include() does not recursively
+# render .tmpl content, so this substitution happens here, at apply time, not by making settings.*.json
 # themselves .tmpl files.
-tier_model="{{ $orchestrate.model }}"
-tier_effort="{{ $orchestrate.effort }}"
+tier_model="{{ $session.model }}"
+tier_effort="{{ $session.effort }}"
 patched="$(mktemp)"
 trap 'rm -f "$patched"' EXIT
 jq --arg model "$tier_model" --arg effort "$tier_effort" \

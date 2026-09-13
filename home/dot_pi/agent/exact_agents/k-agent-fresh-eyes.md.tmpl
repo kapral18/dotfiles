@@ -3,6 +3,10 @@
 name: k-agent-fresh-eyes
 description: Blind zero-context final clarity leaf for one root-assigned question; returns clarity findings only.
 model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-fresh-eyes") }}"
+{{- $thinking := includeTemplate "agent-thinking.partial" (dict "root" . "harness" "pi" "agent" "k-agent-fresh-eyes") }}
+{{- if $thinking }}
+thinking: "{{ $thinking }}"
+{{- end }}
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: false

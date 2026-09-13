@@ -68,6 +68,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
         helper = home / "lib/shared/openrouter_presets.py"
         helper.write_text(
             '#!/bin/sh\nif [ "$1" = "--context-window" ]; then echo 200000; exit; fi\n'
+            'if [ "$1" = "--pi-openrouter-wire-models" ]; then echo "z-ai/glm-5.3-flash@preset/effort-high"; echo "meta/muse-spark-1.3@preset/effort-high"; echo "meta/muse-spark-1.3@preset/effort-max"; exit; fi\n'
             'if [ "$1" = "--session-budget-env" ]; then echo "CONTEXT_LIMIT=1048576"; echo "MAX_OUTPUT_TOKENS=131072"; echo "PROMPT_LIMIT=200000"; exit; fi\n'
             'if [ "$1" = "--codex-model-catalog" ]; then shift 2; '
             f'''exec "{sys.executable}" -c 'import json,sys;print(json.dumps({{"models":[{{"slug":m}} for m in sys.argv[1:]]}}))' "$@"; fi\n'''
@@ -98,22 +99,14 @@ class TestOpenRouterWrappers(unittest.TestCase):
         return calls, env
 
     def _assert_openrouter_roles(self, harness, observed, band_gate, shim, projection):
-        # Independent category contract, also checked against the generated registry.
-        wires = {
-            "research": "anthropic/claude-fable-5.1@preset/effort-high",
-            "review": "anthropic/claude-fable-5.1@preset/effort-high",
-            "orchestrate": "anthropic/claude-fable-5.1@preset/effort-high",
-            "implement": "openai/gpt-5.6-sol@preset/effort-high",
-            "mechanical": "z-ai/glm-5.3-flash@preset/effort-high",
-            "memory": "google/gemini-3.8-flash@preset/effort-low",
-            "refute": "openai/gpt-5.6-sol@preset/effort-xhigh",
-        }
+        rows = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["pi"]
         gate_env = {**observed["env"], "AGENT_BAND_HARNESS": "claude_code" if harness == "claude" else harness}
         with mock.patch.dict(os.environ, gate_env, clear=True):
             for role, pick in projection["harnesses"]["pi"]["agents"].items():
-                expected = wires[pick["category"]]
-                base, thinking = pick["model"].removeprefix("openrouter/").rsplit(":", 1)
-                self.assertEqual(f"{base}@preset/effort-{thinking}", expected)
+                row = rows[pick["category"]]
+                if not row["model"].startswith("openrouter/"):
+                    continue
+                expected = f"{row['model'].removeprefix('openrouter/')}@preset/effort-{row['effort']}"
                 gate_input = json.dumps(
                     {
                         "tool_name": "Agent",
@@ -150,8 +143,8 @@ class TestOpenRouterWrappers(unittest.TestCase):
                     self.assertIsNone(shim.enforce_allowed_model({"model": model}, allowed))
                     self.assertIsNotNone(shim.enforce_allowed_model({"model": "unregistered-model"}, allowed))
 
-    def test_SHOULD_route_memory_and_prepare_each_required_effort_once(self):
-        """WHEN a wrapper inherits Pi categories, every bound role reaches its wire model."""
+    def test_SHOULD_route_openrouter_pi_rows_and_prepare_each_required_effort_once(self):
+        """WHEN a wrapper uses Pi routing, only OpenRouter rows become wire models."""
         import importlib.util
 
         modules = []
@@ -175,7 +168,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
                         [
                             modern_bash(),
                             str(REPO / f"home/exact_bin/executable_,{harness}-openrouter"),
-                            *(["--no-shim"] if harness == "cursor" else []),
+                            *(["--no-shim", "--context", "short"] if harness == "cursor" else []),
                             "--model",
                             "moonshotai/kimi-k3",
                             "--effort",
@@ -206,7 +199,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
                             self.assertIn("Fixture leaf; do not delegate.", profile)
                     else:
                         self.assertNotIn("AGENT_BAND_CODEX_ROUTES", observed["env"])
-                    self.assertCountEqual(calls.read_text().splitlines(), set((effort, "low", "high", "xhigh")))
+                    self.assertCountEqual(calls.read_text().splitlines(), set((effort, "high", "max")))
                     wire = f"moonshotai/kimi-k3@preset/effort-{effort}"
                     self.assertTrue(wire in observed["argv"] or wire in observed["env"].values())
                     self._assert_openrouter_roles(harness, observed, band_gate, shim, projection)
@@ -520,23 +513,30 @@ class TestOpenRouterWrappers(unittest.TestCase):
         assert "export CLAUDE_CODE_DISABLE_THINKING=1" in source
         assert 'export CLAUDE_CODE_EFFORT_LEVEL="$CLAUDE_EFFORT"' in source
 
+    def test_SHOULD_derive_openrouter_pi_wires_from_split_model_and_effort_rows(self):
+        module = _load_openrouter_presets_module()
+        with mock.patch.dict(os.environ, {"CHEZMOI_SOURCE_DIR": str(REPO)}):
+            wires = module._pi_openrouter_wire_models()
+        # mechanical and memory share one wire (deduped); implement and refute share a model at
+        # different efforts, so each effort is its own wire. Order follows the category rows.
+        self.assertEqual(
+            [
+                "z-ai/glm-5.3-flash@preset/effort-high",
+                "meta/muse-spark-1.3@preset/effort-high",
+                "meta/muse-spark-1.3@preset/effort-max",
+            ],
+            wires,
+        )
+
     def test_SHOULD_map_claude_tiers_to_the_pi_openrouter_backend_schema(self):
         source = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()
-        assert 'export ANTHROPIC_DEFAULT_FABLE_MODEL="$OPENROUTER_PI_T1_WIRE_MODEL"' in source
-        assert 'export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_PI_T2_WIRE_MODEL"' in source
-        assert 'export ANTHROPIC_DEFAULT_SONNET_MODEL="$OPENROUTER_PI_MECHANICAL_WIRE_MODEL"' in source
-        assert 'export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OPENROUTER_PI_MEMORY_WIRE_MODEL"' in source
+        assert "--pi-openrouter-wire-models" in source
+        assert "readonly -a OPENROUTER_PI_WIRE_MODELS" in source
+        assert 'export ANTHROPIC_DEFAULT_SONNET_MODEL="${OPENROUTER_PI_WIRE_MODELS[0]}"' in source
         assert "unset CLAUDE_CODE_SUBAGENT_MODEL" in source
         assert 'export AGENT_BAND_SCHEMA_HARNESS="pi"' in source
         assert 'export AGENT_BAND_MODEL_FORMAT="openrouter-preset"' in source
-        for lane, wire in (
-            ("T1", "anthropic/claude-fable-5.1@preset/effort-high"),
-            ("T2", "openai/gpt-5.6-sol@preset/effort-high"),
-            ("MECHANICAL", "z-ai/glm-5.3-flash@preset/effort-high"),
-            ("MEMORY", "google/gemini-3.8-flash@preset/effort-low"),
-            ("REFUTE", "openai/gpt-5.6-sol@preset/effort-xhigh"),
-        ):
-            assert f'readonly OPENROUTER_PI_{lane}_WIRE_MODEL="{wire}"' in source, lane
+        assert "OPENROUTER_PI_T1_WIRE_MODEL" not in source
 
     def test_SHOULD_mark_suffix_wrappers_with_their_backend_lane_schema(self):
         expectations = {
@@ -591,8 +591,8 @@ class TestOpenRouterWrappers(unittest.TestCase):
         assert 'model_providers.openrouter.wire_api=\\"responses\\"' in source
         assert 'model_provider=\\"openrouter\\"' in source
 
-    def test_SHOULD_default_every_openrouter_launcher_to_glm_flash_at_max_effort(self):
-        # The route is defaulted rather than strict: model and effort remain selectable via flags.
+    def test_SHOULD_default_every_openrouter_launcher_to_glm_flash_high_long(self):
+        # The route is defaulted rather than strict: model, effort, and context remain selectable via flags.
         for relative in (
             "home/exact_bin/executable_,claude-openrouter",
             "home/exact_bin/executable_,codex-openrouter",
@@ -603,7 +603,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
                 source = (REPO / relative).read_text()
                 assert f'OPENROUTER_MODEL="{OPENROUTER_PIN}"' in source
                 assert 'OPENROUTER_EFFORT="high"' in source
-                assert 'OPENROUTER_CONTEXT="short"' in source
+                assert 'OPENROUTER_CONTEXT="long"' in source
                 assert "--no-thinking" in source
                 assert 'OPENROUTER_EFFORT="minimal"' in source
                 assert 'readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"' in source
@@ -868,7 +868,7 @@ printf 'base=%s\nkey=%s\nallowed=%s\nschema=%s\nformat=%s\nband-model=%s\nargs=%
         assert result.stdout.splitlines() == [
             "base=http://127.0.0.1:9876/api/v1",
             "key=fixture-key",
-            "allowed=z-ai/glm-5.3-flash@preset/effort-high,anthropic/claude-fable-5.1@preset/effort-high,openai/gpt-5.6-sol@preset/effort-high,z-ai/glm-5.3-flash@preset/effort-high,google/gemini-3.8-flash@preset/effort-low,openai/gpt-5.6-sol@preset/effort-xhigh",
+            "allowed=z-ai/glm-5.3-flash@preset/effort-high,z-ai/glm-5.3-flash@preset/effort-high,meta/muse-spark-1.3@preset/effort-high,meta/muse-spark-1.3@preset/effort-max",
             "schema=pi",
             "format=openrouter-preset",
             "band-model=",
@@ -1071,7 +1071,11 @@ touch "%s"
             prompt_limit = 65536 - output_limit
             with self.subTest(output_limit=output_limit):
                 helper.write_text(
-                    '#!/bin/sh\nif [ "$1" = "--session-budget-env" ]; then\n'
+                    '#!/bin/sh\nif [ "$1" = "--pi-openrouter-wire-models" ]; then\n'
+                    'echo "z-ai/glm-5.3-flash@preset/effort-high"\n'
+                    'echo "meta/muse-spark-1.3@preset/effort-high"\n'
+                    'echo "meta/muse-spark-1.3@preset/effort-max"\nexit\nfi\n'
+                    'if [ "$1" = "--session-budget-env" ]; then\n'
                     f'echo "CONTEXT_LIMIT=65536"\necho "MAX_OUTPUT_TOKENS={output_limit}"\n'
                     f'echo "PROMPT_LIMIT={prompt_limit}"\nfi\n'
                 )
@@ -1271,10 +1275,10 @@ touch "%s"
         assert 'CURSOR_LOCAL_AGENT_BASE_URL="http://127.0.0.1:$shim_port/api/v1"' in source
         assert "--no-shim" in source
         assert "trap shim_cleanup EXIT" in source
-        # The guardrail env is exported before the shim branch and includes every Pi backend lane.
-        assert 'export CURSOR_AGENT_ALLOWED_MODEL="$OPENROUTER_WIRE_MODEL,' in source
-        for lane in ("T1", "T2", "MECHANICAL", "MEMORY", "REFUTE"):
-            assert f"$OPENROUTER_PI_{lane}_WIRE_MODEL" in source, lane
+        # The guardrail is assembled only from the selected root and derived OpenRouter Pi rows.
+        assert 'export CURSOR_AGENT_ALLOWED_MODEL="$OPENROUTER_WIRE_MODEL$OPENROUTER_PI_ALLOWED_MODELS"' in source
+        assert "--pi-openrouter-wire-models" in source
+        assert "github-copilot/" not in source
 
     def test_SHOULD_admit_every_pi_lane_wire_model_through_the_cursor_guardrail(self):
         """WHEN the shim checks a delegated lane, every formatted Pi pick is inside the allowlist."""
@@ -1288,13 +1292,19 @@ touch "%s"
             spec.loader.exec_module(module)
             modules.append(module)
         shim, band_gate = modules
-        rows = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["pi"]
+        rows = {
+            category: row
+            for category, row in ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["pi"].items()
+            if row["model"].startswith("openrouter/")
+        }
         _, env = self._openrouter_route_fixture()
         result = subprocess.run(
             [
                 modern_bash(),
                 str(REPO / "home/exact_bin/executable_,cursor-openrouter"),
                 "--no-shim",
+                "--context",
+                "short",
                 "-p",
                 "fixture",
             ],

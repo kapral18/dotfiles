@@ -258,8 +258,8 @@ class TestAiLauncher(unittest.TestCase):
             "codex": ([], "applied", 'model_reasoning_effort="low"'),
             "gemini": ([], "applied", "--effort"),
             "opencode": ([], "advisory", None),
-            # Pi's OpenRouter pin owns the *default* route only, so an explicit --depth still
-            # reaches Pi's --thinking flag; only an explicit OpenRouter provider rejects it.
+            # Native Pi inheritance owns the unconstrained route, so explicit --depth reaches
+            # Pi's --thinking flag; only an explicit OpenRouter provider rejects it.
             "pi": ([], "applied", "--thinking"),
             "copilot": ([], "applied", "--effort"),
         }
@@ -272,11 +272,30 @@ class TestAiLauncher(unittest.TestCase):
                 if marker is not None:
                     self.assertIn(marker, plan["leaf"]["argv"])
 
+    def test_gemini_root_default_reads_the_session_block_not_an_agent_row(self) -> None:
+        # Every agent row is given a different pick than `session`, so falling back to any
+        # delegation lane (the pre-session_models `agents.default` coupling) is distinguishable.
+        core = load_core()
+        document = json.loads(AGENT_BANDS.read_text(encoding="utf-8"))
+        antigravity = document["harnesses"]["antigravity"]
+        for row in antigravity["agents"].values():
+            row["model"] = "gemini-lane-only"
+            row["effort"] = "low"
+        antigravity["session"] = {"model": "gemini-session-only", "effort": "medium", "context": "long"}
+        with tempfile.TemporaryDirectory() as tmp:
+            bands = Path(tmp) / "agent-bands.v1.json"
+            bands.write_text(json.dumps(document), encoding="utf-8")
+            self.assertEqual(("gemini-session-only", "medium"), core._gemini_root_default(bands))
+            del antigravity["session"]
+            bands.write_text(json.dumps(document), encoding="utf-8")
+            with self.assertRaisesRegex(core.PlanError, "session root default"):
+                core._gemini_root_default(bands)
+
     def test_when_gemini_has_no_overrides_it_uses_the_generated_root_default(self) -> None:
         plan = self.dry_plan("gemini")
 
         self.assertEqual(
-            ["agy", "--model", "gemini-3.1-pro-preview", "--effort", "high"],
+            ["agy", "--model", "gemini-3.8-flash", "--effort", "high"],
             plan["leaf"]["argv"],
         )
         self.assertEqual("generated Gemini default", plan["selection"]["model"]["provenance"]["source"])
@@ -285,7 +304,7 @@ class TestAiLauncher(unittest.TestCase):
         plan = self.dry_plan("gemini", "--depth", "fast")
 
         self.assertEqual(
-            ["agy", "--model", "gemini-3.1-pro-preview", "--effort", "low"],
+            ["agy", "--model", "gemini-3.8-flash", "--effort", "low"],
             plan["leaf"]["argv"],
         )
 
@@ -317,9 +336,16 @@ class TestAiLauncher(unittest.TestCase):
         self.assertIn("explicit model", plan["fields"]["depth"]["transport"]["note"])
         self.assertNotIn("--model", plan["leaf"]["argv"])
 
+    def test_when_pi_has_no_selection_it_inherits_the_native_default(self) -> None:
+        plan = self.dry_plan("pi")
+
+        self.assertEqual(["pi"], plan["leaf"]["argv"])
+        self.assertIsNone(plan["selection"]["model"]["value"])
+        self.assertIsNone(plan["selection"]["provider"]["value"])
+        self.assertEqual("inherited", plan["fields"]["depth"]["transport"]["status"])
+
     def test_when_pi_names_a_non_openrouter_model_the_pin_does_not_claim_it(self) -> None:
-        # The pin is the default route, not a claim over every provider-less launch: pi still ships
-        # the llama-cpp local models, so naming one must not be read as OpenRouter.
+        # Pi still ships llama-cpp local models, so naming one must not be read as OpenRouter.
         for model in ("nemotron-3.5", "qwen3.5-9b", "qwen3.8-27b", "qwen3.8-27b-instruct"):
             with self.subTest(model=model):
                 plan = self.dry_plan("pi", "--model", model)

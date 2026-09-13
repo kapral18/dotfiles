@@ -1,1 +1,2 @@
 option global-context-path "$HOME/AGENTS.md"
+model large openrouter/z-ai/glm-5.3-flash --reasoning-effort high

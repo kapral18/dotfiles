@@ -20,7 +20,7 @@ fi
 # Every --model uses the same slug.
 OPENROUTER_MODEL="z-ai/glm-5.3-flash"
 OPENROUTER_EFFORT="high"
-OPENROUTER_CONTEXT="short"
+OPENROUTER_CONTEXT="long"
 
 args=()
 while [[ $# -gt 0 ]]; do
@@ -95,24 +95,23 @@ if [[ ! -x "$OPENROUTER_PRESET_HELPER" ]]; then
 fi
 export OPENROUTER_API_KEY="$api_key"
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
-readonly OPENROUTER_PI_T1_WIRE_MODEL="anthropic/claude-fable-5.1@preset/effort-high"
-readonly OPENROUTER_PI_T2_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-high"
-readonly OPENROUTER_PI_MECHANICAL_WIRE_MODEL="z-ai/glm-5.3-flash@preset/effort-high"
-readonly OPENROUTER_PI_MEMORY_WIRE_MODEL="google/gemini-3.8-flash@preset/effort-low"
-readonly OPENROUTER_PI_REFUTE_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-xhigh"
+mapfile -t OPENROUTER_PI_WIRE_MODELS < <("$OPENROUTER_PRESET_HELPER" --pi-openrouter-wire-models)
+if [[ "${#OPENROUTER_PI_WIRE_MODELS[@]}" -eq 0 ]]; then
+  echo "Error: Pi tiering declares no OpenRouter lane models." >&2
+  exit 1
+fi
+readonly -a OPENROUTER_PI_WIRE_MODELS
 "$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"
-if [[ "$OPENROUTER_EFFORT" != "xhigh" ]]; then
-  "$OPENROUTER_PRESET_HELPER" xhigh
-fi
-if [[ "$OPENROUTER_EFFORT" != "high" ]]; then
-  "$OPENROUTER_PRESET_HELPER" high
-fi
-if [[ "$OPENROUTER_EFFORT" != "low" ]]; then
-  "$OPENROUTER_PRESET_HELPER" low
-fi
+prepared_efforts=" $OPENROUTER_EFFORT "
+for wire_model in "${OPENROUTER_PI_WIRE_MODELS[@]}"; do
+  wire_effort="${wire_model##*@preset/effort-}"
+  if [[ "$prepared_efforts" != *" $wire_effort "* ]]; then
+    "$OPENROUTER_PRESET_HELPER" "$wire_effort"
+    prepared_efforts+="$wire_effort "
+  fi
+done
 session_budget="$("$OPENROUTER_PRESET_HELPER" --session-budget-env "$OPENROUTER_CONTEXT" \
-  "$OPENROUTER_MODEL" "$OPENROUTER_PI_T1_WIRE_MODEL" "$OPENROUTER_PI_T2_WIRE_MODEL" \
-  "$OPENROUTER_PI_MECHANICAL_WIRE_MODEL" "$OPENROUTER_PI_MEMORY_WIRE_MODEL" "$OPENROUTER_PI_REFUTE_WIRE_MODEL")"
+  "$OPENROUTER_MODEL" "${OPENROUTER_PI_WIRE_MODELS[@]}")"
 while IFS='=' read -r budget_name budget_value; do
   case "$budget_name" in
   CONTEXT_LIMIT) OPENROUTER_CONTEXT_LIMIT="$budget_value" ;;

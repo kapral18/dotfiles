@@ -3,6 +3,10 @@
 name: k-agent-change-auditor
 description: Light, in-place audit of a self-authored changeset (working tree, staged set, or commit range) in an isolated read-only context — proportional depth, four-dimension hygiene lens foregrounded, no mandatory SCSI/base-context or GitHub. Use for a fast quality pass on low-risk own work. For PRs, others' code, or risky/stateful changes use the reviewer worker instead.
 model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-change-auditor") }}"
+{{- $thinking := includeTemplate "agent-thinking.partial" (dict "root" . "harness" "pi" "agent" "k-agent-change-auditor") }}
+{{- if $thinking }}
+thinking: "{{ $thinking }}"
+{{- end }}
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: false

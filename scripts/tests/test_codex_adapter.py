@@ -999,7 +999,7 @@ class TestClaudeProfileProjection(unittest.TestCase):
             }
             picks = {}
             for role, (model, effort) in pairs.items():
-                picks[role] = {"model": f"openrouter/{model}:{effort}", "effort": effort}
+                picks[role] = {"model": f"openrouter/{model}", "effort": effort}
                 (agents / f"{role}.md").write_text(
                     f'---\nname: {role}\ndescription: "Preserved description"\nmodel: native\nreadonly: true\n'
                     "tools: Read, Bash, Agent, SendMessage\ndisallowedTools: Write\nskills:\n  - k-fixture\n---\n"

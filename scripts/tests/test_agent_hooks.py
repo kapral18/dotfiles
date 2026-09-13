@@ -2456,6 +2456,10 @@ const piModule=await import(process.argv[1]);const ompModule=await import(proces
 function register(mod,tools=[]){const handlers={};mod.default({events:{on(){}},getAllTools(){return tools.map(name=>({name}))},on(name,callback){handlers[name]=(event)=>callback(event,ctx)}});return handlers}
 const pi=register(piModule);
 assert((await pi.before_agent_start({systemPrompt:'ordinary root'})).systemPrompt.includes('ROOT_SOP_SENTINEL'));
+const rootPrompt=(await pi.before_agent_start({systemPrompt:'ordinary root'})).systemPrompt;
+assert(rootPrompt.includes('Dispatch one leaf packet per subagent call'));
+assert(rootPrompt.includes('"exactly one top-level subagent workflow call" guidance is superseded'));
+assert(rootPrompt.includes('workflowScriptPath, chain, parallel, gate and agentContract inputs are blocked'));
 assert.equal(await pi.before_agent_start({systemPrompt:'[DELEGATION BOUNDARY]'}),undefined);
 process.env.PI_SUBAGENT_CHILD='1';assert.equal(await pi.before_agent_start({systemPrompt:'ordinary child'}),undefined);delete process.env.PI_SUBAGENT_CHILD;
 const omp=register(ompModule);
@@ -2733,6 +2737,54 @@ console.log(JSON.stringify({ ok: true }));
                 )
                 self.assertEqual(result.returncode, 0, result.stderr[-2000:])
                 self.assertIn('{"ok":true}', result.stdout)
+
+    def test_pi_model_pin_extension_repins_only_when_the_echoed_model_diverges(self):
+        script = r"""
+import assert from 'node:assert/strict';
+const mod = await import(process.argv[1]);
+const handlers = {}; await mod.default({ on(k, v) { handlers[k] = v } });
+const appended = [];
+const makeCtx = (leaf) => ({
+  model: { provider: 'github-copilot', id: 'claude-fable-5.1' },
+  sessionManager: { getLeafEntry: () => leaf, appendModelChange: (p, m) => { appended.push(`${p}/${m}`); return 'id'; } },
+});
+const assistant = (model) => ({ role: 'assistant', provider: 'github-copilot', model, content: [] });
+const user = { role: 'user', content: 'hi' };
+// Echo diverges (Copilot returns Anthropic's hyphenated id): re-pin the catalog id once.
+await handlers.agent_end({ type: 'agent_end', messages: [user, assistant('claude-fable-5-1')] }, makeCtx({ type: 'message' }));
+assert.deepEqual(appended, ['github-copilot/claude-fable-5.1']);
+// Echo matches: nothing appended.
+await handlers.agent_end({ type: 'agent_end', messages: [user, assistant('claude-fable-5.1')] }, makeCtx({ type: 'message' }));
+assert.equal(appended.length, 1);
+// Leaf already pins this exact model: nothing appended.
+await handlers.agent_end({ type: 'agent_end', messages: [user, assistant('claude-fable-5-1')] },
+  makeCtx({ type: 'model_change', provider: 'github-copilot', modelId: 'claude-fable-5.1' }));
+assert.equal(appended.length, 1);
+// Leaf pins a different model: re-pin.
+await handlers.agent_end({ type: 'agent_end', messages: [user, assistant('claude-fable-5-1')] },
+  makeCtx({ type: 'model_change', provider: 'github-copilot', modelId: 'gemini-3.8-flash' }));
+assert.equal(appended.length, 2);
+// Last assistant message wins over earlier ones; no assistant message or no model: no-op.
+await handlers.agent_end({ type: 'agent_end', messages: [assistant('claude-fable-5-1'), user, assistant('claude-fable-5.1')] }, makeCtx({ type: 'message' }));
+assert.equal(appended.length, 2);
+await handlers.agent_end({ type: 'agent_end', messages: [user] }, makeCtx({ type: 'message' }));
+await handlers.agent_end({ type: 'agent_end', messages: [user, assistant('x')] }, { model: undefined, sessionManager: makeCtx().sessionManager });
+assert.equal(appended.length, 2);
+// Read-only session manager without appendModelChange: no throw.
+await handlers.agent_end({ type: 'agent_end', messages: [user, assistant('x')] },
+  { model: { provider: 'p', id: 'm' }, sessionManager: { getLeafEntry: () => undefined } });
+console.log(JSON.stringify({ ok: true }));
+"""
+        extension = REPO / "home/dot_pi/agent/exact_extensions/model-pin.ts"
+        result = subprocess.run(
+            ["node", "--input-type=module", "-e", script, str(extension)],
+            cwd=str(REPO),
+            capture_output=True,
+            text=True,
+            env=hook_env(),
+        )
+        self.assertEqual(result.returncode, 0, result.stderr[-1500:])
+        self.assertIn('{"ok":true}', result.stdout)
 
     def test_pi_read_supersede_extension_replaces_older_reads_with_a_cache_guard(self):
         script = r"""
@@ -4063,17 +4115,17 @@ class BandGateTests(unittest.TestCase):
                 "agents": {
                     "explorer": {
                         "category": "research",
-                        "model": "anthropic/claude-fable-5.1:high",
+                        "model": "anthropic/claude-fable-5.1",
                         "effort": "high",
                     },
                     "worker": {
                         "category": "mechanical",
-                        "model": "openrouter/z-ai/glm-5.3-flash:high",
+                        "model": "openrouter/z-ai/glm-5.3-flash",
                         "effort": "high",
                     },
                     "k-agent-adversarial-verifier": {
                         "category": "refute",
-                        "model": "openrouter/openai/gpt-5.6-sol:xhigh",
+                        "model": "openrouter/openai/gpt-5.6-sol",
                         "effort": "xhigh",
                     },
                 }
@@ -4194,7 +4246,7 @@ class BandGateTests(unittest.TestCase):
         )
 
     def test_claude_clamps_an_upward_alias_escape_to_the_band_alias(self):
-        # Tier ladder: `fable` T1 (research / review / orchestrate) is above `opus` T2 (implement),
+        # Tier ladder: `fable` T1 (research / review / session) is above `opus` T2 (implement),
         # which is above `sonnet` T3 (mechanical / memory), which is above `haiku`.
         escape = self.gate(
             "claude_code",
@@ -4344,46 +4396,48 @@ class BandGateTests(unittest.TestCase):
         )
 
     def test_openrouter_schema_rows_normalize_to_preset_wire_models(self):
-        # Pi rows are spelled either `openrouter/<provider>/<model>:<level>` or, for the native
-        # anthropic route, `<provider>/<model>:<level>`; both have to reach OpenRouter as
-        # `<provider>/<model>@preset/effort-<level>`, so the prefix strip and the suffix rewrite
-        # are probed on one row each.
+        # Pi rows are spelled `openrouter/<provider>/<model>` with the level in `effort`; only rows
+        # on the OpenRouter route reach it, as `<provider>/<model>@preset/effort-<level>`, so the
+        # prefix strip and the effort suffix are probed on the mechanical and refute rows.
+        projection = json.loads((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_text())
         route_env = {
             "AGENT_BAND_SCHEMA_HARNESS": "pi",
             "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
             "AGENT_BAND_CODEX_ROUTES": json.dumps(
                 {
-                    "worker": "z-ai/glm-5.3-flash@preset/effort-high",
-                    "explorer": "anthropic/claude-fable-5.1@preset/effort-high",
+                    "k-agent-mechanical": "z-ai/glm-5.3-flash@preset/effort-high",
+                    "k-agent-adversarial-verifier": "meta/muse-spark-1.3@preset/effort-max",
                 }
             ),
         }
         mechanical = self.gate(
             "codex",
-            {"tool_name": "spawn_agent", "tool_input": {"agent_type": "worker", "message": "go"}},
-            override=route_env,
+            {"tool_name": "spawn_agent", "tool_input": {"agent_type": "k-agent-mechanical", "message": "go"}},
+            projection,
+            route_env,
         )
         updated = mechanical["hookSpecificOutput"]["updatedInput"]
         self.assertEqual(updated["model"], "z-ai/glm-5.3-flash@preset/effort-high")
         self.assertNotIn("reasoning_effort", updated)
 
-        research = self.gate(
+        refute = self.gate(
             "codex",
-            {"tool_name": "spawn_agent", "tool_input": {"agent_type": "explorer", "message": "go"}},
-            override=route_env,
+            {"tool_name": "spawn_agent", "tool_input": {"agent_type": "k-agent-adversarial-verifier", "message": "go"}},
+            projection,
+            route_env,
         )
-        updated = research["hookSpecificOutput"]["updatedInput"]
-        self.assertEqual(updated["model"], "anthropic/claude-fable-5.1@preset/effort-high")
+        updated = refute["hookSpecificOutput"]["updatedInput"]
+        self.assertEqual(updated["model"], "meta/muse-spark-1.3@preset/effort-max")
         self.assertNotIn("reasoning_effort", updated)
 
     def test_SHOULD_admit_only_fresh_projected_codex_openrouter_pairs(self):
         picks = {
-            "worker": {"category": "implement", "model": "openrouter/openai/gpt-test:high", "effort": "high"},
-            "k-agent-smol": {"category": "memory", "model": "openrouter/google/gemini-test:low", "effort": "low"},
-            "explorer": {"category": "research", "model": "anthropic/strong:high", "effort": "high"},
+            "worker": {"category": "implement", "model": "openrouter/openai/gpt-test", "effort": "high"},
+            "k-agent-smol": {"category": "memory", "model": "openrouter/google/gemini-test", "effort": "low"},
+            "explorer": {"category": "research", "model": "anthropic/strong", "effort": "high"},
             "k-agent-adversarial-verifier": {
                 "category": "refute",
-                "model": "openrouter/openai/gpt-test:xhigh",
+                "model": "openrouter/openai/gpt-test",
                 "effort": "xhigh",
             },
         }
@@ -4442,8 +4496,7 @@ class BandGateTests(unittest.TestCase):
     def test_SHOULD_keep_openrouter_refute_distinct_from_implementation(self):
         projection = json.loads((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_text())
         routes = {
-            "general-purpose": "openai/gpt-5.6-sol@preset/effort-high",
-            "k-agent-adversarial-verifier": "openai/gpt-5.6-sol@preset/effort-xhigh",
+            "k-agent-adversarial-verifier": "meta/muse-spark-1.3@preset/effort-max",
         }
         env = {
             "AGENT_BAND_SCHEMA_HARNESS": "pi",
@@ -4454,7 +4507,7 @@ class BandGateTests(unittest.TestCase):
             payload = {"tool_name": "Agent", "tool_input": {"subagent_type": role, "prompt": "p", "model": "opus"}}
             result = self.gate("claude_code", payload, projection, env)["hookSpecificOutput"]
             self.assertEqual(result["updatedInput"], {"subagent_type": role, "prompt": "p"})
-            stale = {**routes, role: "openai/gpt-5.6-sol@preset/effort-low"}
+            stale = {**routes, role: "z-ai/glm-5.3-flash@preset/effort-low"}
             result = self.gate(
                 "claude_code", payload, projection, {**env, "AGENT_BAND_CLAUDE_ROUTES": json.dumps(stale)}
             )

@@ -79,9 +79,8 @@ def project_roles(harness: str, available: set[str] | None = None) -> tuple[list
             continue
         model, effort = pick["model"], pick["effort"]
         if harness == "pi":
-            model, separator, suffix = model.rpartition(":")
-            if not separator or suffix != effort:
-                raise ValueError(f"invalid OpenRouter lane pair: {name}")
+            if not model.startswith("openrouter/"):
+                continue
             wire = f"{model.removeprefix('openrouter/')}@preset/effort-{effort}"
         else:
             wire = f"{model}@lane-{effort}"

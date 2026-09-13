@@ -249,11 +249,13 @@ def _gemini_root_default(path: Path | None = None) -> tuple[str, str]:
     source = path or Path.home() / ".config" / "ai" / "agent-bands.v1.json"
     try:
         document = json.loads(source.read_text(encoding="utf-8"))
-        default = document["harnesses"]["gemini"]["agents"]["default"]
-        model = default["model"]
-        effort = default["effort"]
+        session = document["harnesses"]["antigravity"]["session"]
+        model = session["model"]
+        effort = session["effort"]
     except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
-        raise PlanError(f"generated agent bands {AGENT_BANDS_DISPLAY_PATH} lack the Gemini root default") from exc
+        raise PlanError(
+            f"generated agent bands {AGENT_BANDS_DISPLAY_PATH} lack the Antigravity session root default"
+        ) from exc
     if not isinstance(model, str) or not model or effort not in {"low", "medium", "high"}:
         raise PlanError(f"generated agent bands {AGENT_BANDS_DISPLAY_PATH} have an invalid Gemini root default")
     return model, effort
@@ -717,17 +719,14 @@ def _enforce_openrouter_selection(
     depth: ResolvedField,
 ) -> tuple[AvailabilitySelection, bool]:
     """Return a pinned Pi selection and whether the Pi thinking flag must be emitted."""
-    # The pin is Pi's *default* route, not a claim over every provider-less launch: Pi still ships
-    # the llama-cpp `nemotron-3.5`/`qwen3.5-9b`/`qwen3.8-27b{,-instruct}` models, and a bare `,ai pi` must keep its depth dial. Only
-    # an explicit OpenRouter provider, or an unconstrained launch with neither model nor depth,
-    # takes the pin; anything else falls through to normal resolution.
+    # The pin belongs only to an explicitly requested OpenRouter route. An unconstrained `,ai pi`
+    # emits no provider/model/thinking override and inherits Pi's native configured default.
     pi = command.harness == "pi"
     openrouter_asked = selection.provider == OPENROUTER_PROVIDER or selection.model in {
         PI_OPENROUTER_MODEL,
         PI_OPENROUTER_SELECTOR,
     }
-    unconstrained = selection.provider is None and selection.model is None and not depth.explicit
-    if pi and (openrouter_asked or unconstrained):
+    if pi and openrouter_asked:
         sanctioned = _openrouter_sanctioned_selectors(command, selection)
         explicit = selection.model if selection.model_is_explicit else None
         if explicit is not None and explicit not in {PI_OPENROUTER_MODEL, PI_OPENROUTER_SELECTOR}:

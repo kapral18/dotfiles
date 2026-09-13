@@ -60,6 +60,20 @@ def model(
 class TestArgumentsAndModels(unittest.TestCase):
     """WHEN resolving wrapper controls against the live model catalog."""
 
+    def test_SHOULD_default_all_frontends_to_fable_long_with_frontend_specific_effort(self) -> None:
+        self.assertEqual(
+            {
+                "claude": "claude-fable-5.1",
+                "codex": "claude-fable-5.1",
+                "cursor": "claude-fable-5.1",
+            },
+            main.DEFAULT_MODELS,
+        )
+        self.assertEqual("long_context", main.DEFAULT_CONTEXT_TIER)
+        self.assertEqual("long_context", main.parse_args([]).context_tier)
+        self.assertEqual("default", main.parse_args(["--context", "default"]).context_tier)
+        self.assertEqual({"claude": None, "codex": "high", "cursor": "high"}, main.DEFAULT_EFFORTS)
+
     def test_SHOULD_consume_adapter_flags_and_preserve_harness_arguments(self) -> None:
         options = main.parse_args(
             [
@@ -106,7 +120,7 @@ class TestArgumentsAndModels(unittest.TestCase):
             with self.subTest(harness=harness, model=model_id):
                 resolved = main.resolve_model(
                     harness,
-                    main.parse_args(["--model", model_id, "--effort", "high"]),
+                    main.parse_args(["--model", model_id, "--effort", "high", "--context", "default"]),
                     models,
                 )
                 self.assertEqual(resolved.model_id, model_id)
@@ -120,7 +134,7 @@ class TestArgumentsAndModels(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "does not support effort"):
             main.resolve_model(
                 "codex",
-                main.parse_args(["--effort", "medium"]),
+                main.parse_args(["--model", "gpt-5.3-codex", "--effort", "medium"]),
                 models,
             )
 
@@ -149,7 +163,7 @@ class TestArgumentsAndModels(unittest.TestCase):
 
         selected = main.resolve_model(
             "claude",
-            main.parse_args(["--context", "long_context"]),
+            main.parse_args(["--model", "claude-sonnet-5", "--context", "long_context"]),
             models,
         )
         self.assertEqual(selected.context_window, 1_000_000)
@@ -158,7 +172,7 @@ class TestArgumentsAndModels(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "does not support context tier"):
             main.resolve_model(
                 "codex",
-                main.parse_args(["--context", "long_context"]),
+                main.parse_args(["--model", "gpt-5.3-codex", "--context", "long_context"]),
                 models,
             )
         with self.assertRaisesRegex(ValueError, "choose: default, long_context"):
@@ -173,18 +187,21 @@ class TestArgumentsAndModels(unittest.TestCase):
             context_windows={"default": 400_000, "long_context": 1_000_000},
             prompt_limits={"default": 272_000, "long_context": 872_000},
         )
-        sonnet = model(
-            "claude-sonnet-5",
-            ("/v1/messages",),
+        fable = model(
+            "claude-fable-5.1",
+            ("/chat/completions", "/v1/messages"),
+            efforts=("low", "medium", "high", "xhigh", "max"),
             context_windows={"default": 264_000, "long_context": 1_000_000},
             prompt_limits={"default": 200_000, "long_context": 936_000},
         )
         small = model(
             "gpt-5-mini", ("/responses",), context_windows={"default": 192_000}, prompt_limits={"default": 128_000}
         )
-        models = {"gpt-6-astra": astra, "claude-sonnet-5": sonnet, "gpt-5-mini": small}
+        models = {"gpt-6-astra": astra, "claude-fable-5.1": fable, "gpt-5-mini": small}
 
-        selected = main.resolve_model("claude", main.parse_args(["--model", "gpt-6-astra"]), models)
+        selected = main.resolve_model(
+            "claude", main.parse_args(["--model", "gpt-6-astra", "--context", "default"]), models
+        )
         self.assertEqual(main.claude_compact_window(selected), 240_000)
         self.assertEqual(main.claude_frontend_model(selected), "gpt-6-astra[1m]")
 
@@ -195,10 +212,12 @@ class TestArgumentsAndModels(unittest.TestCase):
         self.assertEqual(main.claude_frontend_model(selected), "gpt-6-astra[1m]")
 
         selected = main.resolve_model("claude", main.parse_args([]), models)
-        self.assertEqual(main.claude_compact_window(selected), 168_000)
-        self.assertEqual(main.claude_frontend_model(selected), "claude-sonnet-5")
+        self.assertEqual(main.claude_compact_window(selected), 904_000)
+        self.assertEqual(main.claude_frontend_model(selected), "claude-fable-5.1[1m]")
 
-        selected = main.resolve_model("claude", main.parse_args(["--model", "gpt-5-mini"]), models)
+        selected = main.resolve_model(
+            "claude", main.parse_args(["--model", "gpt-5-mini", "--context", "default"]), models
+        )
         self.assertEqual(main.claude_compact_window(selected), 100_000)
         self.assertEqual(main.claude_frontend_model(selected), "gpt-5-mini")
 
@@ -222,24 +241,24 @@ class TestArgumentsAndModels(unittest.TestCase):
     def test_SHOULD_project_selected_prompt_budgets_to_codex_context_metadata(self) -> None:
         # Context capacity includes output tokens. Codex's display and auto-compaction need the selected prompt
         # budget, so its limits remain below the provider's billed prompt ceiling.
-        astra = replace(
+        fable = replace(
             model(
-                "gpt-6-astra",
-                ("/responses",),
-                context_windows={"default": 400_000, "long_context": 1_000_000},
-                prompt_limits={"default": 272_000, "long_context": 872_000},
+                "claude-fable-5.1",
+                ("/chat/completions", "/v1/messages"),
+                efforts=("low", "medium", "high", "xhigh", "max"),
+                context_windows={"default": 264_000, "long_context": 1_000_000},
+                prompt_limits={"default": 200_000, "long_context": 936_000},
             ),
             max_output_tokens=128_000,
         )
         small = model(
             "gpt-5-mini", ("/responses",), context_windows={"default": 192_000}, prompt_limits={"default": 128_000}
         )
-        models = {astra.model_id: astra, small.model_id: small}
+        models = {fable.model_id: fable, small.model_id: small}
         cases = (
-            ("default Astra", ["--model", "gpt-6-astra"], 272_000, 244_800),
-            ("explicit default", ["--model", "gpt-6-astra", "--context", "default"], 272_000, 244_800),
-            ("long context", ["--model", "gpt-6-astra", "--context", "long_context"], 872_000, 784_800),
-            ("short model", ["--model", "gpt-5-mini"], 128_000, 115_200),
+            ("default Fable long context", [], 936_000, 842_400),
+            ("explicit default tier", ["--context", "default"], 200_000, 180_000),
+            ("short model", ["--model", "gpt-5-mini", "--context", "default"], 128_000, 115_200),
         )
 
         for name, argv, expected_prompt_budget, expected_usable_budget in cases:
@@ -271,9 +290,9 @@ class TestArgumentsAndModels(unittest.TestCase):
         )
         models = {long.model_id: long, small.model_id: small}
         cases = (
-            (["--model", long.model_id], 272_000, 128_000),
-            (["--model", long.model_id, "--context", "long_context"], 872_000, 128_000),
-            (["--model", small.model_id], 128_000, 64_000),
+            (["--model", long.model_id], 872_000, 128_000),
+            (["--model", long.model_id, "--context", "default"], 272_000, 128_000),
+            (["--model", small.model_id, "--context", "default"], 128_000, 64_000),
         )
         for argv, expected_context, expected_output in cases:
             with self.subTest(argv=argv):
@@ -649,11 +668,17 @@ class TestLifecycle(unittest.TestCase):
             mock.patch("main.start_server", return_value=(mock.Mock(server_port=3210), mock.Mock())),
             mock.patch("main.run_child", return_value=0) as child,
         ):
-            self.assertEqual(main.launch("claude", []), 0)
+            self.assertEqual(main.launch("claude", ["--model", "claude-sonnet-5", "--context", "default"]), 0)
         self.assertEqual(child.call_args.args[1]["CLAUDE_CODE_AUTO_COMPACT_WINDOW"], "168000")
 
-    def test_SHOULD_default_codex_effort_to_medium_when_unspecified(self) -> None:
-        selected = model("gpt-5.3-codex", ("/responses",), ("low", "medium", "high"))
+    def test_SHOULD_default_codex_to_fable_long_high_when_supported(self) -> None:
+        selected = model(
+            "claude-fable-5.1",
+            ("/chat/completions", "/v1/messages"),
+            ("low", "medium", "high", "xhigh", "max"),
+            context_windows={"default": 264_000, "long_context": 1_000_000},
+            prompt_limits={"default": 200_000, "long_context": 936_000},
+        )
         adapter = mock.Mock(server_port=3210)
         thread = mock.Mock()
         captured: dict[str, list[str]] = {}
@@ -675,7 +700,8 @@ class TestLifecycle(unittest.TestCase):
             result = main.launch("codex", [])
 
         self.assertEqual(result, 0)
-        self.assertIn('model_reasoning_effort="medium"', captured["command"])
+        self.assertIn("claude-fable-5.1", captured["command"])
+        self.assertIn('model_reasoning_effort="high"', captured["command"])
 
     def test_SHOULD_not_force_default_effort_for_models_that_do_not_support_it(self) -> None:
         selected = model("claude-haiku-4.5", ("/v1/messages",), ())
@@ -693,13 +719,18 @@ class TestLifecycle(unittest.TestCase):
             mock.patch("main.start_server", return_value=(adapter, thread)),
             mock.patch("main.run_child", side_effect=fake_run_child),
         ):
-            result = main.launch("codex", ["--model", "claude-haiku-4.5"])
+            result = main.launch("codex", ["--model", "claude-haiku-4.5", "--context", "default"])
 
         self.assertEqual(result, 0)
         self.assertFalse(any("model_reasoning_effort" in item for item in captured["command"]))
 
     def test_SHOULD_not_raise_when_sigint_arrives_during_loopback_shutdown(self) -> None:
-        selected = model("gpt-5.3-codex", ("/responses",))
+        selected = model(
+            "claude-fable-5.1",
+            ("/v1/messages",),
+            context_windows={"default": 264_000, "long_context": 1_000_000},
+            prompt_limits={"default": 200_000, "long_context": 936_000},
+        )
         for child_status in (0, 130):
             with self.subTest(child_status=child_status):
                 adapter = mock.Mock(server_port=3210)

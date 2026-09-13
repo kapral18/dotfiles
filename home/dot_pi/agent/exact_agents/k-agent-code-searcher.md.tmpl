@@ -3,6 +3,10 @@
 name: k-agent-code-searcher
 description: Delegate SCSI semantic code investigation or base-context gathering to an isolated context.
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-code-searcher") }}"
+{{- $thinking := includeTemplate "agent-thinking.partial" (dict "root" . "harness" "pi" "agent" "k-agent-code-searcher") }}
+{{- if $thinking }}
+thinking: "{{ $thinking }}"
+{{- end }}
 systemPromptMode: replace
 inheritProjectContext: false
 inheritGlobalContext: false

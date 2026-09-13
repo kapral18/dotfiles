@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One-shot OpenRouter pi agent with tools and a short system prompt."""
+"""One-shot OpenRouter Pi agent with tools and a short system prompt."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Sequence, TextIO
 
 OPENROUTER_PROVIDER = "openrouter"
-Q_MODEL = "inclusionai/ling-3.0-flash"
+Q_MODEL = "deepseek/deepseek-v4.1-flash"
 # Non-empty: Pi treats "" as missing and rebuilds the coding-assistant default.
 # Empty append skips ~/.pi/agent/APPEND_SYSTEM.md discovery. Pi still appends cwd.
 Q_SYSTEM_PROMPT = "Be brief. Use tools when the question needs them."
@@ -43,13 +43,13 @@ def _parser() -> argparse.ArgumentParser:
     parser = LauncherArgumentParser(
         prog=",q",
         description=(
-            "One-shot OpenRouter pi agent with tools. Uses a short system prompt "
-            "and skips APPEND_SYSTEM.md, skills, context files, extensions, "
+            "One-shot OpenRouter Pi agent with tools. Uses DeepSeek V4.1 Flash at high effort and its native full context, "
+            "adds a short system prompt, and skips APPEND_SYSTEM.md, skills, context files, extensions, "
             "themes, and discovered prompt templates. Prompt text is passed literally."
         ),
         allow_abbrev=False,
     )
-    parser.add_argument("--dry-run", action="store_true", help="Emit the pi argv JSON; execute nothing")
+    parser.add_argument("--dry-run", action="store_true", help="Emit the DeepSeek/high Pi argv JSON; execute nothing")
     parser.add_argument("prompt", nargs="*", help="User prompt; omit to read stdin")
     return parser
 
@@ -99,7 +99,7 @@ def leaf_argv(prompt: str) -> tuple[str, ...]:
         Q_APPEND_SYSTEM_PROMPT,
         "--no-session",
         "--thinking",
-        "off",
+        "high",
         "--offline",
         "--no-skills",
         "--no-themes",

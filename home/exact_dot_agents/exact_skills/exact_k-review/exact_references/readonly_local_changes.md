@@ -32,13 +32,10 @@ If authorship is `other` or `unknown`:
 
 When this mode is loaded inside any read-only review worker, that worker's role contract and packet scope take precedence.
 
-## Core Principle: Fix Authority Follows Write Scope
+## Fix Authority
 
-For `self` authorship, executing inline (not inside a read-only review worker per the override above): find and fix are one pass, not two —
-a finding is fixed as soon as it's found, no separate request needed.
-New final findings past that pass are reported, per the packet's own final-Verify boundary if one applies.
-For `other`/`unknown` authorship, or when loaded inside a read-only review worker: read-only final judgment —
-known authorized fixes are produced before the final Verify stage; review alone grants no repair authority, and the root applies SOP §3.5 when existing authority covers recovery.
+Fix authority follows write scope per `~/.agents/skills/k-review/references/authorship.md` (SOP §3.7: only review, refute, research, and audit packets are read-only, by category).
+New final findings past the Produce fix pass are reported, per the packet's own final-Verify boundary if one applies.
 Local ownership alone does not authorize commit or push — those stay separately gated per SOP §3.2 regardless of write scope on the files themselves.
 
 ## Investigation (Read-Only, Start Immediately)
@@ -100,7 +97,5 @@ A requested repair follows existing task authority when it covers the finding; o
 ## Extra Constraints
 
 - Do not commit/push unless explicitly asked.
-- For `self` authorship executing inline, write scope on the local working tree is the fix authority — no separate fix request is needed.
-  For `other`/`unknown` authorship, or inside a read-only review worker, an explicit fix request is required regardless of authorship (see Authorship Precondition and the Read-Only Role Override above).
-- Under `other`/`unknown` authorship, this mode is draft-only (see Authorship Precondition).
+- Fix authority: see Fix Authority above; under `other`/`unknown` authorship this mode is draft-only (see Authorship Precondition).
 - Keep the internal findings queue in the review persistence spec (see ~/.agents/skills/k-review/references/shared_rules.md) so progress survives conversation pruning.

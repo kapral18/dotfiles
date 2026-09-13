@@ -63,8 +63,10 @@ Effort levels: none, minimal, low, medium, high, xhigh, max, ultra.
 Without --model, the wrapper reads model from the active Codex config.
 Without --effort, the harness-generated effort is preserved. Use -- before an
 underlying harness flag that has the same name as an adapter option.
-Delegation requires verified child-lane transport: supported through managed Claude profiles;
-disabled on the Cursor frontend and unpinned on the Copilot frontend. Native harness routes are unaffected.
+Managed Claude profiles carry the projected child lanes.
+Copilot requires its SDK extension to enforce the configured child-delegation denial.
+The tested Cursor local frontend bypasses Task hooks; governed delegation is unsupported.
+Exact child routing and full leaf lifecycle remain uncertified. Native routes are separate.
 """
 
 

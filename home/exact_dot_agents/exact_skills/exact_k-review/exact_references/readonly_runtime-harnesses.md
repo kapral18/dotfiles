@@ -13,19 +13,17 @@ Only the active root/main session follows this section; a delegated leaf skips i
 
 ### Model policy
 
-- Model selection is **registry-driven and deterministic**: every repo-owned review profile's `model` frontmatter is rendered through `review-agent-model.partial`, which derives from `agent_bindings`, `agent_categories`, `category_models`, and sparse `review_model_overrides` in `home/.chezmoidata/ai_models/tiering.yaml`.
+- Model selection is **registry-driven and deterministic**: every repo-owned review profile's `model` frontmatter is rendered through `review-agent-model.partial`, which derives from `agent_bindings`, `agent_categories`, and `category_models` in `home/.chezmoidata/ai_models/tiering.yaml`.
   Updating a derivable review model is a one-line category row edit plus `chezmoi apply`;
   model ids never live hand-written in profile files.
-- Resolver slots per harness: `lanes` (angle lanes, auditors, controller, named fresh-eyes profiles, and generic fresh-eyes launches) and `verifier` (the adversarial verifier — prefer a **different model family than `lanes`** at equal capability per SOP §3.7; never trade capability for family diversity — a strong same-family verifier beats a weaker cross-family one.
+- Resolver slots per harness: `lanes` (the review packet, auditors, controller, named fresh-eyes profiles, and generic fresh-eyes launches) and `verifier` (the adversarial verifier — prefer a **different model family than `lanes`** at equal capability per SOP §3.7; never trade capability for family diversity — a strong same-family verifier beats a weaker cross-family one.
   Same-family runs keep refutation framing and report the reduced independence, never hidden).
   Named profiles carry their resolved model/effort controls; do not override those fields merely to repeat the profile.
   A supported generic fallback receives the resolved category controls through that harness's actual fields.
   Codex/Copilot use model plus reasoning effort; Cursor uses its model selector. Do not invent fields on another harness.
-- Empty resolved value = the profile omits the field and the harness config default applies; `inherit` = harness-native parent inheritance.
-  Empty is allowed only for a deliberately documented default path.
-  Current review-lane resolved values are concrete for Cursor, Copilot, Codex, Antigravity, Pi, and OMP;
+- Every resolved review-lane value is a concrete category id (Claude Code included since 2026-09-13; its profiles no longer render `inherit`).
   Named profile pins satisfy that requirement without per-call overrides. Generic fallbacks must preserve the same category.
-  Claude uses `inherit` intentionally because Claude sessions are launched on a deliberate model and the installed Task resolver has been verified to inherit from the parent.
+  Antigravity has no profile surface; its abstract tier is stated in the Antigravity section below.
 - A model unavailable in the active runtime is a fail-visible launch error to surface; fix the registry, never substitute at launch.
 
 ### Final judgment selection
@@ -41,23 +39,24 @@ No child owns orchestration, verification of another reviewer, or a convergence 
 
 Claude subagent model overrides are limited to the installed SDK schema (`sonnet`, `opus`, `haiku`, `fable`) — one family.
 
-- Review override: `lanes: inherit` — Claude sessions run a deliberately chosen model, and review profiles use `model: inherit`.
+- Review profiles pin the `category_models.claude_code` id (`review` / `refute` rows) so profile frontmatter and the bands projection name the same model; a session launched on another model does not silently retarget them.
 - Built-in shadows: repo-owned same-name profiles override high-risk embedded builtins (`Explore`, `Plan`, `general-purpose`, `claude-code-guide`, `claude`) so normal Task launches use our profile frontmatter instead of embedded defaults.
 - Wrapper guard: `,claude-openrouter` uses the Pi backend matrix through session-projected native `--agents` definitions.
   Each managed profile carries its exact preset selector, including refute's distinct effort, while its prompt and skill preloads remain unchanged.
   The hook requires the fresh `AGENT_BAND_CLAUDE_ROUTES` role/pair map and removes call-level model overrides so the profile wins.
   Do not delegate with missing or stale profiles, conflicting inherited controls, a resume request, or a full-history fork.
   Do not substitute implementation effort for refutation. The caller's `--agents` cannot replace the managed projection.
-- Adversarial verifier, criteria verifier, and fresh-eyes are repo-owned named profiles (`k-agent-adversarial-verifier`, `k-agent-criteria-verifier`, `k-agent-fresh-eyes`) whose resolver-rendered frontmatter emits `inherit` today; launch them by name — a named final packet when that framing is selected.
+- Adversarial verifier, criteria verifier, and fresh-eyes are repo-owned named profiles (`k-agent-adversarial-verifier`, `k-agent-criteria-verifier`, `k-agent-fresh-eyes`) whose resolver-rendered frontmatter pins the `claude_code` review/refute category ids; launch them by name — a named final packet when that framing is selected.
   The model surface is still one family, so keep reporting `families=same (degraded)`.
 
 ### Codex
 
 Native Codex's model surface is OpenAI-only, so the adversarial verifier is `families=same (degraded)` here.
 Subscription wrappers use the backend matrix and the subscription boundary below instead of these native model pins.
-Launch angle lanes as `k-agent-review-worker` agents; the verifier as the `k-agent-adversarial-verifier` agent.
-Registry: both values are concrete (`gpt-6-astra` at `high` effort via profile `model` + `model_reasoning_effort`) —
-review and refute are the only Codex roles Astra is priced for; orchestrate/research ride `gpt-5.6-sol` and implement/mechanical/memory ride `gpt-5.6-terra`.
+Launch the review packet as a `k-agent-review-worker` agent; the verifier as the `k-agent-adversarial-verifier` agent.
+Registry: `lanes` and `verifier` are concrete profile `model` + `model_reasoning_effort` pairs rendered from `category_models.codex`;
+read the current ids from `~/.config/ai/agent-bands.v1.json` (`harnesses.codex.agents`), not from this file.
+Review and refute are both OpenAI models but may differ; one model can serve several categories at different efforts.
 Every Codex role also pins `service_tier = "default"`. Named Codex profiles retain their declared model/effort.
 A native generic `worker` carrying another category must pass both resolved `model` and `reasoning_effort`.
 Do not select a lane from model membership alone when one model serves multiple category efforts.
@@ -67,10 +66,9 @@ Do not select a lane from model membership alone when one model serves multiple 
 Run `/k-deep-review` in the main Antigravity session. Dynamic subagents cannot invoke further subagents.
 Antigravity has no repo-owned profile-file surface; define each needed role with `define_subagent`, point its system prompt at the matching shared role contract, then launch it through `invoke_subagent`.
 Every dynamically defined repo-owned role MUST use its `k-agent-<role>` identifier.
-The `invoke_subagent` model field accepts only `inherit`, `flash_lite`, `flash`, or `pro`, so the registry stores `pro` for both lanes and verifier.
-Use `pro` for review, audit, and refutation lanes.
-Use `flash` for the cheap lanes: `k-agent-mechanical` (edit or exact-retrieval packets) and `k-agent-smol` (memory);
-it is the tier the registry's `gemini-3.8-flash` mechanical/memory rows map onto. Do NOT launch either on `inherit` or `pro`.
+The `invoke_subagent` model field accepts only `inherit`, `flash_lite`, `flash`, or `pro`; every `category_models.antigravity` row is Gemini Flash, so the tier to pass is `flash`.
+Use `flash` for review, audit, refutation, and the cheap lanes (`k-agent-mechanical` edit/exact-retrieval packets, `k-agent-smol` memory).
+Do NOT launch any lane on `inherit`; do not use `pro` unless the registry row changes to a Pro model.
 The model surface is Gemini-only, so report `families=same (degraded)` for adversarial verification.
 
 ### Cursor
@@ -81,16 +79,17 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
   The gate leaves a registry counter model untouched on a generic type, so the cross-family verifier survives the rewrite;
   Other exact registry lane selectors also survive; unregistered selectors are clamped to the type's band.
 - Generic cheap-lane launch (`k-agent-mechanical`, `k-agent-smol` are undiscoverable at user level):
-  `subagent_type: generalPurpose` with `model:` set to the registry mechanical/memory value (`auto`).
+  `subagent_type: generalPurpose` with `model:` set to the registry mechanical/memory base id (`harnesses.cursor.agents` in `agent-bands.v1.json`).
   The gate passes a registry cheap-lane model through on the generic type exactly like a counter model.
-  These `auto` rows intentionally omit effort; do not add a separate reasoning-effort field.
+  Cursor Task ids carry no effort; effort comes from the user's saved Cursor config, so do not add a reasoning-effort field.
+  When the cheap lane and `implement` share one base id, the gate cannot distinguish them; the profile/packet category is the only signal.
 - Cursor source supports custom subagent types (`SubagentType.custom.name`) and loads **project-level** `.cursor/agents` profile files only;
   user-level `~/.cursor/agents` is never scanned (probed 2026-08-30, cursor-agent 2026.08.28-a7f9513), so home-deployed profiles are unreachable.
-  Where a workspace carries `k-agent-review-worker`/`k-agent-adversarial-verifier` profiles, launch lanes through them;
+  Where a workspace carries `k-agent-review-worker`/`k-agent-adversarial-verifier` profiles, launch the review and refute packets through them;
   both carry resolver-rendered `model` frontmatter.
-- Resolved `lanes` are `gpt-5.6-sol-high`; resolved `verifier` is `claude-fable-5-1-thinking-high`.
+- Resolved `lanes` and `verifier` are Task base ids from `category_models.cursor` (`review` / `refute`); read them from `harnesses.cursor.agents` in `agent-bands.v1.json`.
   `category_models.cursor.refute` carries `verifier_status: cross_family`, so the adversarial verifier runs as a cross-family lane.
-  Omitted/default Cursor subagents can resolve to `composer-2.5-fast`; the CLI default selector is `auto`.
+  An omitted Cursor subagent model falls to Cursor's own default (`auto` router; observed `composer-2.5-fast` in 2026-08 probes, unverified since).
   Treat any omitted Cursor subagent model as a matrix bypass.
 - Same-name custom profiles do **not** shadow native Cursor enum agents (`explore`, `debug`, `cursor_guide`, `unspecified`):
   custom profiles are carried as a separate `custom` oneof with a `name`, while native cases are distinct empty oneof variants.
@@ -113,8 +112,9 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
 
 - Copilot profiles carry resolver-rendered `model` frontmatter (`lanes` on workers/auditors/controller, `verifier` on `k-agent-adversarial-verifier`).
   The managed `~/.copilot/settings.json` subagent entries also include resolver-aligned `model`/`effortLevel`/`contextTier` so stale target-only model overrides cannot survive Copilot's settings merge.
+  Copilot CLI 1.0.83 requires `enabledFeatureFlags.EXTENSIONS=true` before it discovers the managed SDK extension that supplies context, read, band, and worklog hooks.
   Per-task model overrides are runtime-verified but reserved for fail-visible recovery, not steering, except generic fresh-eyes where the explicit model is the profile-equivalent resolved lane value.
-- Launch angle lanes as the `k-agent-review-worker` agent type (model-invocable, not user-invocable).
+- Launch the review packet as the `k-agent-review-worker` agent type (model-invocable, not user-invocable).
   Do not use the generic `task` type unless a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason.
   A supported fallback passes the registry model and reasoning effort explicitly; it is not permission to change category.
 
@@ -134,9 +134,14 @@ Do not use full-history `fork_context`, conflicting provider controls, or child-
 Native child-tag transport does not certify live provider acceptance or successful refuter completion.
 A backend route map or adapter-only translation test is not evidence that the frontend transports child selectors.
 
-Child-tag transport is verified absent on `,copilot-codex`: the per-subagent `~/.copilot/settings.json` model wins over the band hook's call-level rewrite, so delegation there runs unpinned.
-`,cursor-codex` and `,cursor-copilot` remain unverified.
-Do not bypass a denial by dropping effort, using a raw backend model, invoking another harness, or substituting the root model.
+On `,copilot-codex`, Copilot 1.0.83 skipped its band gate without `enabledFeatureFlags.EXTENSIONS`.
+Enabling only that flag made the managed SDK extension deny subscription tasks before a child request.
+This proves denial, not selector impossibility, successful governed delegation, or full leaf lifecycle.
+Cursor `2026.09.08-6caf4ff` local-provider Task configuration (`nhe()`) hardcodes `enableExecuteHookExec:false`.
+Authenticated scripted-provider probes under both subscription environments returned child results without user/workspace gate calls.
+Both routes bypass configured denial; exact role/model/effort routing and full lifecycle remain uncertified.
+The prior `,cursor-codex` live root shell smoke does not certify the live Copilot backend for `,cursor-copilot`.
+MUST NOT assign unattended child work to `,copilot-codex`, `,cursor-codex`, or `,cursor-copilot` while those route-specific capabilities remain uncertified. Do not bypass a denial by dropping effort, using a raw backend model, invoking another harness, or substituting the root model.
 Report the limitation. Root sessions and native harness routes remain separate capabilities.
 
 ### Codex on OpenRouter
@@ -187,13 +192,13 @@ A scripted native transport check does not establish paid-provider acceptance, c
   Missing session persistence or failed marker writes block the guarded operation; do not retry or use another harness to bypass it.
   Native registry retention/session construction still occurs. No-worker pipeline fixtures are not full worker lifecycle evidence.
 - Pi and OMP launch subagents through named profiles; profile model controls determine the lane.
-  Pi thinking is encoded as a `:<thinking>` suffix in the profile model string; OMP resolves profile role tokens through `modelRoles`.
+  Pi profiles render `model:` from `category_models.pi` and a separate `thinking:` line from the row's `effort` (`agent-thinking.partial`); OMP resolves profile role tokens through `modelRoles`.
 - Resolved `lanes` and `verifier` are concrete.
-  Pi review workers and fresh-eyes run `anthropic/claude-fable-5.1:high` (the Pi session's own T1 model);
-  adversarial and criteria verifiers run `openrouter/openai/gpt-5.6-sol:xhigh` —
-  the same model as the T2 implement row at a higher effort, but a different family than the Anthropic T1 lanes it audits, so `category_models.pi.refute` carries `verifier_status: cross_family`.
+  Pi review workers, fresh-eyes, and the adversarial/criteria verifiers all resolve from `category_models.pi.review` / `category_models.pi.refute` in `home/.chezmoidata/ai_models/tiering.yaml`;
+  read the live ids from `subagent({action:"list", capabilities:true})`, not from this file.
+  Pi review rides the Anthropic session route and refute a Meta counter, so `category_models.pi.refute` declares `verifier_status: cross_family`; report the registry status, do not substitute a model.
   OMP resolves review roles through its own `modelRoles`.
-  One profile-independent `modelRoles` block prices default/vision/slow/plan to `anthropic/claude-fable-5.1:high`, `task` (the T2 implement lane) to `anthropic/claude-opus-5:high`, `smol` to `anthropic/claude-sonnet-5:high` (memory rides `@smol`), `tiny` and `commit` to `anthropic/claude-sonnet-5:medium`, and `advisor` to `openai-codex/gpt-6-astra:high` on both work and personal.
+  One profile-independent `modelRoles` block in `home/dot_omp/private_agent/readonly_config.yml.tmpl` prices every role (`default` is generated from `session_models.omp`); read the pins there, not here.
   Every `category_models.omp.*` row carries effort `high`; the `@role` token itself carries the real tier.
   Adversarial and criteria verifiers follow `@advisor`, a different family than the Anthropic lanes, so `category_models.omp.refute` marks `verifier_status: cross_family`.
   Other repo-owned Pi/OMP profiles resolve their model from the review resolver or category registry (`agent_bindings` → `agent_categories` → `category_models`) so they do not fall through to `defaultProvider`/`defaultModel` unless a future profile deliberately omits `model` and documents why.

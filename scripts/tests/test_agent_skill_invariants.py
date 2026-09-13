@@ -504,11 +504,24 @@ class TestAgentSkillInvariants(unittest.TestCase):
         )
         self.assertEqual(settings["env"]["CLAUDE_CODE_ATTRIBUTION_HEADER"], "0")
         self.assertEqual(settings["autoCompactWindow"], 200000)
+        self.assertFalse(settings["alwaysThinkingEnabled"])
+        self.assertEqual(
+            {"nemotron-3.5": {"effortLevel": "high"}, "qwen3.5-9b": {"effortLevel": "high"}},
+            settings["modelSettings"],
+        )
         qwen38_settings = json.loads(
             render_chezmoi_template(REPO / "home/dot_claude/settings.llama-cpp.qwen3.8.json.tmpl", is_work=True)
         )
         self.assertEqual(qwen38_settings["env"]["CLAUDE_CODE_ATTRIBUTION_HEADER"], "0")
         self.assertEqual(qwen38_settings["autoCompactWindow"], 100000)
+        self.assertFalse(qwen38_settings["alwaysThinkingEnabled"])
+        self.assertEqual(
+            {
+                "qwen3.8-27b": {"effortLevel": "high"},
+                "qwen3.8-27b-instruct": {"effortLevel": "high"},
+            },
+            qwen38_settings["modelSettings"],
+        )
 
         personal_settings = json.loads(
             render_chezmoi_template(REPO / "home/dot_claude/settings.llama-cpp.json.tmpl", is_work=False)
@@ -555,7 +568,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "docs/topics/ai-assistants/tool-configs/claude-gemini.md",
-            "`alwaysThinkingEnabled: false`; `effortLevel: xhigh`",
+            "`alwaysThinkingEnabled: false`; `effortLevel: high`",
         )
         self.assert_file_not_contains(
             "docs/topics/ai-assistants/scenarios.md",

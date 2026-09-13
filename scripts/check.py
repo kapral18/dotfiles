@@ -179,6 +179,10 @@ TEST_RULES: tuple[TestRule, ...] = (
         tests=("test_generate_mcp_configs.py",),
     ),
     TestRule(
+        prefixes=("docs/topics/ai-assistants/model-tiering.md",),
+        tests=("tests/test_model_band_invariants.py",),
+    ),
+    TestRule(
         prefixes=("home/readonly_AGENTS.md", "home/dot_cursor/plugins/local/exact_k-sop/"),
         tests=("tests/test_agent_skill_invariants.py",),
     ),
@@ -306,6 +310,21 @@ TEST_RULES: tuple[TestRule, ...] = (
     ),
     TestRule(
         prefixes=(
+            "scripts/generate_session_models.py",
+            "home/dot_claude/settings.work.json",
+            "home/dot_claude/settings.personal.json",
+            "home/dot_codex/private_config.work.toml",
+            "home/dot_codex/private_config.personal.toml",
+            "home/private_dot_copilot/settings.json",
+            "home/dot_pi/agent/readonly_settings.work.json",
+            "home/dot_pi/agent/readonly_settings.personal.json",
+            "home/dot_omp/private_agent/readonly_config.yml.tmpl",
+            "home/dot_gemini/antigravity-cli/readonly_settings.policy.json",
+        ),
+        tests=("test_generate_session_models.py", "tests/test_model_band_invariants.py"),
+    ),
+    TestRule(
+        prefixes=(
             "home/readonly_AGENTS.md",
             "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
             "home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt",
@@ -334,6 +353,7 @@ TEST_RULES: tuple[TestRule, ...] = (
             "tests/test_invariants.py",
         ),
     ),
+    TestRule(prefixes=("home/private_dot_copilot/settings.json",), tests=("test_merge_copilot_settings.py",)),
     TestRule(prefixes=(".githooks/pre-commit", "bin/fmt", "bin/check"), tests=("test_pre_commit.py",)),
     TestRule(
         prefixes=("scripts/check.py", "scripts/test_runner.py", "Makefile", "AGENTS.md"), tests=("test_check.py",)
@@ -415,6 +435,7 @@ EXTRA_TESTS: tuple[ExtraTest, ...] = (
         argv=("node", "scripts/tests/copilot_agent_memory_extension.test.mjs"),
         prefixes=(
             "scripts/tests/copilot_agent_memory_extension.test.mjs",
+            "home/private_dot_copilot/settings.json",
             "home/private_dot_copilot/exact_extensions/exact_agent-memory/",
         ),
         env=(("COPILOT_AGENT_MEMORY_EXTENSION_TEST", "1"),),

@@ -20,13 +20,15 @@ Claude Code and Antigravity use config surfaces backed by the shared MCP registr
 
 Claude profile behavior:
 
-| Area                  | Behavior                                                                         |
-| --------------------- | -------------------------------------------------------------------------------- |
-| Thinking and effort   | `alwaysThinkingEnabled: false`; `effortLevel: xhigh` persisted in both profiles  |
-| Dangerous-mode prompt | skipped in both profiles                                                         |
-| Work auth             | native Claude enterprise auth; no `apiKeyHelper` / `ANTHROPIC_BASE_URL` override |
-| MCP storage           | `~/.claude.json` top-level `mcpServers`                                          |
-| Merge strategy        | update only `mcpServers`, preserve runtime-managed fields                        |
+| Area                  | Behavior                                                                            |
+| --------------------- | ----------------------------------------------------------------------------------- |
+| Model and context     | `claude-fable-5-1[1m]`; explicit long-context `session_models.claude_code` selector |
+| Thinking and effort   | `alwaysThinkingEnabled: false`; `effortLevel: high` in both profiles                |
+| Local llama.cpp       | model-scoped `high` effort with thinking off; local context windows stay unchanged  |
+| Dangerous-mode prompt | skipped in both profiles                                                            |
+| Work auth             | native Claude enterprise auth; no `apiKeyHelper` / `ANTHROPIC_BASE_URL` override    |
+| MCP storage           | `~/.claude.json` top-level `mcpServers`                                             |
+| Merge strategy        | selected profile plus canonical `session_models.claude_code` model and effort       |
 
 Interactive fish/bash/zsh sessions leave `claude` native. MCP wiring is handled only by the managed registry and apply-time config generation.
 
@@ -50,8 +52,8 @@ Antigravity (`agy`) reads its global MCP servers from `~/.gemini/config/mcp_conf
 
 Instructions and skills live in Antigravity's global customization root: `~/.gemini/config/AGENTS.md` points to `~/AGENTS.md`, while `~/.gemini/config/skills` symlinks to `~/.agents/skills`. `~/.gemini/config/hooks.json` injects shared session context on the first `PreInvocation`, carries premise-check nudges from `PreToolUse` into the next invocation, and records `PostToolUse` events.
 
-Paid Gemini API quota for Antigravity CLI is declared in [`home/dot_gemini/antigravity-cli/readonly_settings.policy.json`](../../../../home/dot_gemini/antigravity-cli/readonly_settings.policy.json) and merged into `~/.gemini/antigravity-cli/settings.json` by `07-merge-antigravity-cli-settings` (declared-over-live, like Copilot settings). Policy owns `modelProvider: "gemini"`, `model: "Gemini 3.8 Flash (High)"`, and `enableTelemetry: false`, and strips any top-level `gcp` pin. That Flash pin is the interactive-TUI default only — deliberately the cheap tier — and is not the registry pick: `category_models.gemini.orchestrate` is `gemini-3.1-pro-preview`, which is what `,ai` passes as `--model` and what dynamic review subagents receive as the abstract `pro` tier. Runtime fields such as `trustedWorkspaces`, `permissions`, and `statusLine` survive. Fish still loads `GEMINI_API_KEY` from `pass google/gemini/api/token`; the key alone does not switch providers.
+Paid Gemini API quota for Antigravity CLI is declared in [`home/dot_gemini/antigravity-cli/readonly_settings.policy.json`](../../../../home/dot_gemini/antigravity-cli/readonly_settings.policy.json) and merged into `~/.gemini/antigravity-cli/settings.json` by `07-merge-antigravity-cli-settings` (declared-over-live, like Copilot settings). Policy owns `modelProvider: "gemini"`, `model: "Gemini 3.8 Flash (High)"`, and `enableTelemetry: false`, and strips any top-level `gcp` pin. That Flash pin is the interactive-TUI default and matches `session_models.antigravity`, so `,ai gemini` passes `gemini-3.8-flash --effort high`. Every Antigravity category uses the Flash base model with its row-specific effort. Dynamic review subagents receive the abstract `flash` tier: `invoke_subagent` accepts only tiers, and every `category_models.antigravity` row is Gemini Flash. Runtime fields such as `trustedWorkspaces`, `permissions`, and `statusLine` survive. Fish still loads `GEMINI_API_KEY` from `pass google/gemini/api/token`; the key alone does not switch providers.
 
 Do not export `GOOGLE_GENAI_USE_VERTEXAI`, `GOOGLE_CLOUD_PROJECT`, or `GOOGLE_CLOUD_LOCATION` into interactive shells. Those force `authMethod=gcp` onto `aiplatform.googleapis.com` and burn shared Vertex quota instead. Corporate Google OAuth without the Gemini API key provider lands on Antigravity Starter product quota.
 
-The personal Claude profile keeps fullscreen mode, push notifications, and its `claude-fable-5-1` high-effort override. Its default model is `claude-fable-5-1`; the global effort setting remains xhigh.
+The personal Claude profile keeps fullscreen mode and push notifications. Both profiles explicitly pin `modelSettings.claude-fable-5-1[1m].effortLevel` to `high`, matching the canonical long-context `session_models.claude_code` row.

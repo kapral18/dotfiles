@@ -3,6 +3,10 @@
 name: k-agent-findings-auditor
 description: Optional final findings-quality lens over the frozen artifact and shared evidence; no separate post-review audit.
 model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-findings-auditor") }}"
+{{- $thinking := includeTemplate "agent-thinking.partial" (dict "root" . "harness" "pi" "agent" "k-agent-findings-auditor") }}
+{{- if $thinking }}
+thinking: "{{ $thinking }}"
+{{- end }}
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: false

@@ -19,7 +19,7 @@
 #   Sonnet 5 at :medium — background chores.
 # - commit (commit-message generation): Sonnet 5 at :medium.
 # - advisor: gpt-6-astra via openai-codex. Astra is absurdly expensive (user call 2026-09-07)
-#   and is permitted only for advisor/review/refute; the codex harness itself now runs sol as T1.
+#   and is permitted only for advisor/review/refute; native Codex now defaults to Astra for its root.
 modelRoles:
   default: anthropic/claude-fable-5.1:high
   smol: anthropic/claude-sonnet-5:high
@@ -48,6 +48,7 @@ advisor:
   immuneTurns: 0
 
 defaultThinkingLevel: high
+extendedContext: true
 
 # omp installs via the unpinned pnpm package in ~/.default-pnpm-pkgs.
 # Apply runs pnpm update -g --latest. Startup update check stays off so

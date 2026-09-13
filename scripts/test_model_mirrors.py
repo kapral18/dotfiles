@@ -323,13 +323,29 @@ class TestStaticModelMirrors(unittest.TestCase):
         self.assertNotIn("new-live", cursor["curated"]["models"])
         self.assertEqual(["openrouter/openai/gpt-5.6-sol"], pi_recommended)
 
-    def test_SHOULD_follow_the_Claude_category_and_ignore_static_profile_models(self):
+    def test_SHOULD_follow_the_antigravity_category_for_the_deployed_gemini_mirror(self):
         import model_mirrors
 
         original = model_mirrors.build_static_mirror(REPO)
         categories = model_mirrors.ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")
-        categories["claude_code"]["orchestrate"]["model"] = "claude-owner-probe"
+        self.assertIn("antigravity", categories)
+        self.assertNotIn("gemini", categories)
+        categories["antigravity"]["research"]["model"] = "gemini-owner-probe"
         with mock.patch.object(model_mirrors.ai_models, "load_category_models", return_value=categories):
+            changed = model_mirrors.build_static_mirror(REPO)
+        self.assertEqual(["gemini-owner-probe"], changed["harnesses"]["gemini"]["curated"]["models"])
+        self.assertEqual({"default": "gemini-owner-probe"}, changed["defaults"]["harnesses"]["gemini"])
+        changed["harnesses"]["gemini"] = original["harnesses"]["gemini"]
+        changed["defaults"]["harnesses"]["gemini"] = original["defaults"]["harnesses"]["gemini"]
+        self.assertEqual(original, changed)
+
+    def test_SHOULD_follow_the_Claude_category_and_ignore_static_profile_models(self):
+        import model_mirrors
+
+        original = model_mirrors.build_static_mirror(REPO)
+        session = model_mirrors.ai_models.load_session_models(REPO / "home/.chezmoidata/ai_models")
+        session["claude_code"]["model"] = "claude-owner-probe"
+        with mock.patch.object(model_mirrors.ai_models, "load_session_models", return_value=session):
             changed = model_mirrors.build_static_mirror(REPO)
         self.assertEqual(
             changed["defaults"]["harnesses"]["claude"], {"work": "claude-owner-probe", "personal": "claude-owner-probe"}
@@ -355,10 +371,10 @@ class TestStaticModelMirrors(unittest.TestCase):
 
         for category in ({}, {"model": ""}, {"model": 42}, {"model": "bad model"}, None):
             with self.subTest(category=category):
-                categories = model_mirrors.ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")
-                categories["claude_code"]["orchestrate"] = category
-                with mock.patch.object(model_mirrors.ai_models, "load_category_models", return_value=categories):
-                    with self.assertRaisesRegex(ValueError, "claude_code.orchestrate"):
+                session = model_mirrors.ai_models.load_session_models(REPO / "home/.chezmoidata/ai_models")
+                session["claude_code"] = category
+                with mock.patch.object(model_mirrors.ai_models, "load_session_models", return_value=session):
+                    with self.assertRaisesRegex(ValueError, "session_models.claude_code"):
                         model_mirrors.build_static_mirror(REPO)
 
     def test_SHOULD_encode_unknown_and_error_without_empty_success(self):
@@ -421,7 +437,6 @@ class TestStaticModelMirrors(unittest.TestCase):
         registry = REPO / "home/.chezmoidata/ai_models"
         mirror = model_mirrors.build_static_mirror(REPO)
         pi_curated = set(mirror["harnesses"]["pi"]["curated"]["models"])
-        openrouter_curated = set(mirror["providers"]["openrouter"]["curated"]["models"])
 
         def catalog_id(model: str) -> str:
             head, separator, suffix = model.rpartition(":")
@@ -439,8 +454,6 @@ class TestStaticModelMirrors(unittest.TestCase):
         for model in {catalog_id(pin) for pin in pins}:
             with self.subTest(model=model):
                 self.assertIn(model, pi_curated)
-                if model.startswith("openrouter/"):
-                    self.assertIn(model.removeprefix("openrouter/"), openrouter_curated)
 
     def test_SHOULD_fail_generation_for_invalid_cursor_policy(self):
         import model_mirrors
@@ -495,7 +508,7 @@ class TestStaticModelMirrors(unittest.TestCase):
                 "agent_bindings": "tiering.yaml",
                 "agent_categories": "tiering.yaml",
                 "category_models": "tiering.yaml",
-                "review_model_overrides": "tiering.yaml",
+                "session_models": "tiering.yaml",
             }[section]
             return (f"home/.chezmoidata/ai_models/{owner}", section)
 
@@ -503,7 +516,6 @@ class TestStaticModelMirrors(unittest.TestCase):
             registry("agent_bindings"),
             registry("agent_categories"),
             registry("category_models"),
-            registry("review_model_overrides"),
         }
         self.assertEqual(sources("copilot", "curated"), copilot_policy_sources)
         self.assertEqual(sources("copilot", "recommended"), copilot_policy_sources)
@@ -513,7 +525,7 @@ class TestStaticModelMirrors(unittest.TestCase):
         )
 
         expected = {
-            "claude": {registry("category_models")},
+            "claude": {registry("session_models")},
             "codex": {
                 ("home/dot_codex/private_config.work.toml", None),
                 ("home/dot_codex/private_config.personal.toml", None),

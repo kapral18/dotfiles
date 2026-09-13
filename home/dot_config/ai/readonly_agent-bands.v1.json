@@ -1,1203 +1,176 @@
 {
-  "schema_version": "1.4.0",
+  "schema_version": "1.5.0",
   "kind": "ai.agent-bands",
   "harnesses": {
-    "claude_code": {
+    "antigravity": {
       "agents": {
         "Explore": {
-          "model": "claude-fable-5-1",
+          "model": "gemini-3.8-flash",
           "category": "research",
-          "effort": "medium",
-          "alias": "fable"
+          "effort": "high"
         },
         "Plan": {
-          "model": "claude-fable-5-1",
-          "category": "orchestrate",
-          "effort": "xhigh",
-          "alias": "fable"
+          "model": "gemini-3.8-flash",
+          "category": "research",
+          "effort": "high"
         },
         "best-of-n-runner": {
-          "model": "claude-opus-5",
+          "model": "gemini-3.8-flash",
           "category": "implement",
-          "effort": "high",
-          "alias": "opus"
-        },
-        "browser_agent": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high",
-          "alias": "opus"
-        },
-        "bugbot": {
-          "model": "claude-fable-5-1",
-          "category": "review",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "claude": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high",
-          "alias": "opus"
-        },
-        "claude-code-guide": {
-          "model": "claude-fable-5-1",
-          "category": "research",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "cli_help": {
-          "model": "claude-sonnet-5",
-          "category": "mechanical",
-          "effort": "high",
-          "alias": "sonnet"
-        },
-        "code-review": {
-          "model": "claude-fable-5-1",
-          "category": "review",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "codebase_investigator": {
-          "model": "claude-fable-5-1",
-          "category": "research",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "cursor-guide": {
-          "model": "claude-fable-5-1",
-          "category": "research",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "default": {
-          "model": "claude-fable-5-1",
-          "category": "orchestrate",
-          "effort": "xhigh",
-          "alias": "fable"
-        },
-        "explore": {
-          "model": "claude-fable-5-1",
-          "category": "research",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "explorer": {
-          "model": "claude-fable-5-1",
-          "category": "research",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "general-purpose": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high",
-          "alias": "opus"
-        },
-        "generalPurpose": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high",
-          "alias": "opus"
-        },
-        "generalist": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high",
-          "alias": "opus"
-        },
-        "k-agent-adversarial-verifier": {
-          "model": "claude-fable-5-1",
-          "category": "refute",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "k-agent-change-auditor": {
-          "model": "claude-fable-5-1",
-          "category": "review",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "k-agent-claim-verifier": {
-          "model": "claude-fable-5-1",
-          "category": "refute",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "k-agent-code-searcher": {
-          "model": "claude-fable-5-1",
-          "category": "research",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "k-agent-criteria-verifier": {
-          "model": "claude-fable-5-1",
-          "category": "refute",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "k-agent-deep-review": {
-          "model": "claude-fable-5-1",
-          "category": "orchestrate",
-          "effort": "xhigh",
-          "alias": "fable"
-        },
-        "k-agent-findings-auditor": {
-          "model": "claude-fable-5-1",
-          "category": "review",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "k-agent-fresh-eyes": {
-          "model": "claude-fable-5-1",
-          "category": "review",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "k-agent-implementer": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high",
-          "alias": "opus"
-        },
-        "k-agent-live-ui-review": {
-          "model": "claude-fable-5-1",
-          "category": "review",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "k-agent-mechanical": {
-          "model": "claude-sonnet-5",
-          "category": "mechanical",
-          "effort": "high",
-          "alias": "sonnet"
-        },
-        "k-agent-post-review": {
-          "model": "claude-fable-5-1",
-          "category": "review",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "k-agent-pr-necessity-auditor": {
-          "model": "claude-fable-5-1",
-          "category": "review",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "k-agent-public-sources": {
-          "model": "claude-fable-5-1",
-          "category": "research",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "k-agent-review-controller": {
-          "model": "claude-fable-5-1",
-          "category": "orchestrate",
-          "effort": "xhigh",
-          "alias": "fable"
-        },
-        "k-agent-review-worker": {
-          "model": "claude-fable-5-1",
-          "category": "review",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "k-agent-review-worker-cross": {
-          "model": "inherit",
-          "category": "review",
           "effort": "medium"
         },
-        "k-agent-reviewer": {
-          "model": "claude-fable-5-1",
-          "category": "review",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "k-agent-smol": {
-          "model": "claude-sonnet-5",
-          "category": "memory",
-          "effort": "low",
-          "alias": "sonnet"
-        },
-        "rem-agent": {
-          "model": "claude-fable-5-1",
-          "category": "research",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "research": {
-          "model": "claude-fable-5-1",
-          "category": "research",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "reviewer": {
-          "model": "claude-fable-5-1",
-          "category": "review",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "rubber-duck": {
-          "model": "claude-fable-5-1",
-          "category": "research",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "scout": {
-          "model": "claude-sonnet-5",
-          "category": "mechanical",
-          "effort": "high",
-          "alias": "sonnet"
-        },
-        "security-review": {
-          "model": "claude-fable-5-1",
-          "category": "review",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "security-reviewer": {
-          "model": "claude-fable-5-1",
-          "category": "review",
-          "effort": "medium",
-          "alias": "fable"
-        },
-        "sonic": {
-          "model": "claude-sonnet-5",
-          "category": "mechanical",
-          "effort": "high",
-          "alias": "sonnet"
-        },
-        "task": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high",
-          "alias": "opus"
-        },
-        "worker": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high",
-          "alias": "opus"
-        }
-      },
-      "counter_models": [
-        "claude-fable-5-1"
-      ],
-      "cheap_lane_models": [
-        "claude-sonnet-5"
-      ],
-      "lane_models": [
-        "claude-fable-5-1",
-        "claude-opus-5",
-        "claude-sonnet-5"
-      ]
-    },
-    "codex": {
-      "agents": {
-        "Explore": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "high"
-        },
-        "Plan": {
-          "model": "gpt-6-astra",
-          "category": "orchestrate",
-          "effort": "high"
-        },
-        "best-of-n-runner": {
-          "model": "gpt-5.6-terra",
-          "category": "implement",
-          "effort": "high"
-        },
         "browser_agent": {
-          "model": "gpt-5.6-terra",
+          "model": "gemini-3.8-flash",
           "category": "implement",
-          "effort": "high"
+          "effort": "medium"
         },
         "bugbot": {
-          "model": "gpt-6-astra",
+          "model": "gemini-3.8-flash",
           "category": "review",
           "effort": "high"
         },
         "claude": {
-          "model": "gpt-5.6-terra",
+          "model": "gemini-3.8-flash",
           "category": "implement",
-          "effort": "high"
+          "effort": "medium"
         },
         "claude-code-guide": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "high"
-        },
-        "cli_help": {
-          "model": "gpt-5.6-terra",
-          "category": "mechanical",
-          "effort": "high"
-        },
-        "code-review": {
-          "model": "gpt-6-astra",
-          "category": "review",
-          "effort": "high"
-        },
-        "codebase_investigator": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "high"
-        },
-        "cursor-guide": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "high"
-        },
-        "default": {
-          "model": "gpt-6-astra",
-          "category": "orchestrate",
-          "effort": "high"
-        },
-        "explore": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "high"
-        },
-        "explorer": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "high"
-        },
-        "general-purpose": {
-          "model": "gpt-5.6-terra",
-          "category": "implement",
-          "effort": "high"
-        },
-        "generalPurpose": {
-          "model": "gpt-5.6-terra",
-          "category": "implement",
-          "effort": "high"
-        },
-        "generalist": {
-          "model": "gpt-5.6-terra",
-          "category": "implement",
-          "effort": "high"
-        },
-        "k-agent-adversarial-verifier": {
-          "model": "gpt-6-astra",
-          "category": "refute",
-          "effort": "high"
-        },
-        "k-agent-change-auditor": {
-          "model": "gpt-6-astra",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-claim-verifier": {
-          "model": "gpt-6-astra",
-          "category": "refute",
-          "effort": "high"
-        },
-        "k-agent-code-searcher": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "high"
-        },
-        "k-agent-criteria-verifier": {
-          "model": "gpt-6-astra",
-          "category": "refute",
-          "effort": "high"
-        },
-        "k-agent-deep-review": {
-          "model": "gpt-6-astra",
-          "category": "orchestrate",
-          "effort": "high"
-        },
-        "k-agent-findings-auditor": {
-          "model": "gpt-6-astra",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-fresh-eyes": {
-          "model": "gpt-6-astra",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-implementer": {
-          "model": "gpt-5.6-terra",
-          "category": "implement",
-          "effort": "high"
-        },
-        "k-agent-live-ui-review": {
-          "model": "gpt-6-astra",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-mechanical": {
-          "model": "gpt-5.6-terra",
-          "category": "mechanical",
-          "effort": "high"
-        },
-        "k-agent-post-review": {
-          "model": "gpt-6-astra",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-pr-necessity-auditor": {
-          "model": "gpt-6-astra",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-public-sources": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "high"
-        },
-        "k-agent-review-controller": {
-          "model": "gpt-6-astra",
-          "category": "orchestrate",
-          "effort": "high"
-        },
-        "k-agent-review-worker": {
-          "model": "gpt-6-astra",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-review-worker-cross": {
-          "model": "gpt-6-astra",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-reviewer": {
-          "model": "gpt-6-astra",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-smol": {
-          "model": "gpt-5.6-terra",
-          "category": "memory",
-          "effort": "high"
-        },
-        "rem-agent": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "high"
-        },
-        "research": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "high"
-        },
-        "reviewer": {
-          "model": "gpt-6-astra",
-          "category": "review",
-          "effort": "high"
-        },
-        "rubber-duck": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "high"
-        },
-        "scout": {
-          "model": "gpt-5.6-terra",
-          "category": "mechanical",
-          "effort": "high"
-        },
-        "security-review": {
-          "model": "gpt-6-astra",
-          "category": "review",
-          "effort": "high"
-        },
-        "security-reviewer": {
-          "model": "gpt-6-astra",
-          "category": "review",
-          "effort": "high"
-        },
-        "sonic": {
-          "model": "gpt-5.6-terra",
-          "category": "mechanical",
-          "effort": "high"
-        },
-        "task": {
-          "model": "gpt-5.6-terra",
-          "category": "implement",
-          "effort": "high"
-        },
-        "worker": {
-          "model": "gpt-5.6-terra",
-          "category": "implement",
-          "effort": "high"
-        }
-      },
-      "counter_models": [
-        "gpt-6-astra"
-      ],
-      "cheap_lane_models": [
-        "gpt-5.6-terra"
-      ],
-      "lane_models": [
-        "gpt-5.6-sol",
-        "gpt-5.6-terra",
-        "gpt-6-astra"
-      ]
-    },
-    "copilot": {
-      "agents": {
-        "Explore": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "xhigh"
-        },
-        "Plan": {
-          "model": "gpt-5.6-sol",
-          "category": "orchestrate",
-          "effort": "xhigh"
-        },
-        "best-of-n-runner": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high"
-        },
-        "browser_agent": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high"
-        },
-        "bugbot": {
-          "model": "gpt-5.6-sol",
-          "category": "review",
-          "effort": "xhigh"
-        },
-        "claude": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high"
-        },
-        "claude-code-guide": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "xhigh"
-        },
-        "cli_help": {
-          "model": "claude-sonnet-5",
-          "category": "mechanical",
-          "effort": "high"
-        },
-        "code-review": {
-          "model": "gpt-5.6-sol",
-          "category": "review",
-          "effort": "xhigh"
-        },
-        "codebase_investigator": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "xhigh"
-        },
-        "cursor-guide": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "xhigh"
-        },
-        "default": {
-          "model": "gpt-5.6-sol",
-          "category": "orchestrate",
-          "effort": "xhigh"
-        },
-        "explore": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "xhigh"
-        },
-        "explorer": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "xhigh"
-        },
-        "general-purpose": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high"
-        },
-        "generalPurpose": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high"
-        },
-        "generalist": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high"
-        },
-        "k-agent-adversarial-verifier": {
-          "model": "claude-fable-5.1",
-          "category": "refute",
-          "effort": "high"
-        },
-        "k-agent-change-auditor": {
-          "model": "gpt-5.6-sol",
-          "category": "review",
-          "effort": "xhigh"
-        },
-        "k-agent-claim-verifier": {
-          "model": "claude-fable-5.1",
-          "category": "refute",
-          "effort": "high"
-        },
-        "k-agent-code-searcher": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "xhigh"
-        },
-        "k-agent-criteria-verifier": {
-          "model": "claude-fable-5.1",
-          "category": "refute",
-          "effort": "high"
-        },
-        "k-agent-deep-review": {
-          "model": "gpt-5.6-sol",
-          "category": "orchestrate",
-          "effort": "xhigh"
-        },
-        "k-agent-findings-auditor": {
-          "model": "gpt-5.6-sol",
-          "category": "review",
-          "effort": "xhigh"
-        },
-        "k-agent-fresh-eyes": {
-          "model": "gpt-5.6-sol",
-          "category": "review",
-          "effort": "xhigh"
-        },
-        "k-agent-implementer": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high"
-        },
-        "k-agent-live-ui-review": {
-          "model": "gpt-5.6-sol",
-          "category": "review",
-          "effort": "xhigh"
-        },
-        "k-agent-mechanical": {
-          "model": "claude-sonnet-5",
-          "category": "mechanical",
-          "effort": "high"
-        },
-        "k-agent-post-review": {
-          "model": "gpt-5.6-sol",
-          "category": "review",
-          "effort": "xhigh"
-        },
-        "k-agent-pr-necessity-auditor": {
-          "model": "gpt-5.6-sol",
-          "category": "review",
-          "effort": "xhigh"
-        },
-        "k-agent-public-sources": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "xhigh"
-        },
-        "k-agent-review-controller": {
-          "model": "gpt-5.6-sol",
-          "category": "orchestrate",
-          "effort": "xhigh"
-        },
-        "k-agent-review-worker": {
-          "model": "gpt-5.6-sol",
-          "category": "review",
-          "effort": "xhigh"
-        },
-        "k-agent-review-worker-cross": {
-          "model": "claude-fable-5.1",
-          "category": "review",
-          "effort": "xhigh"
-        },
-        "k-agent-reviewer": {
-          "model": "gpt-5.6-sol",
-          "category": "review",
-          "effort": "xhigh"
-        },
-        "k-agent-smol": {
-          "model": "claude-sonnet-5",
-          "category": "memory",
-          "effort": "high"
-        },
-        "rem-agent": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "xhigh"
-        },
-        "research": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "xhigh"
-        },
-        "reviewer": {
-          "model": "gpt-5.6-sol",
-          "category": "review",
-          "effort": "xhigh"
-        },
-        "rubber-duck": {
-          "model": "gpt-5.6-sol",
-          "category": "research",
-          "effort": "xhigh"
-        },
-        "scout": {
-          "model": "claude-sonnet-5",
-          "category": "mechanical",
-          "effort": "high"
-        },
-        "security-review": {
-          "model": "gpt-5.6-sol",
-          "category": "review",
-          "effort": "xhigh"
-        },
-        "security-reviewer": {
-          "model": "gpt-5.6-sol",
-          "category": "review",
-          "effort": "xhigh"
-        },
-        "sonic": {
-          "model": "claude-sonnet-5",
-          "category": "mechanical",
-          "effort": "high"
-        },
-        "task": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high"
-        },
-        "worker": {
-          "model": "claude-opus-5",
-          "category": "implement",
-          "effort": "high"
-        }
-      },
-      "counter_models": [
-        "claude-fable-5.1"
-      ],
-      "cheap_lane_models": [
-        "claude-sonnet-5"
-      ],
-      "lane_models": [
-        "claude-fable-5.1",
-        "claude-opus-5",
-        "claude-sonnet-5",
-        "gpt-5.6-sol"
-      ]
-    },
-    "cursor": {
-      "agents": {
-        "Explore": {
-          "model": "gpt-5.6-sol-high",
-          "category": "research",
-          "effort": "high"
-        },
-        "Plan": {
-          "model": "gpt-5.6-sol-high",
-          "category": "orchestrate",
-          "effort": "high"
-        },
-        "best-of-n-runner": {
-          "model": "claude-opus-5-high",
-          "category": "implement",
-          "effort": "high"
-        },
-        "browser_agent": {
-          "model": "claude-opus-5-high",
-          "category": "implement",
-          "effort": "high"
-        },
-        "bugbot": {
-          "model": "gpt-5.6-sol-high",
-          "category": "review",
-          "effort": "high"
-        },
-        "claude": {
-          "model": "claude-opus-5-high",
-          "category": "implement",
-          "effort": "high"
-        },
-        "claude-code-guide": {
-          "model": "gpt-5.6-sol-high",
-          "category": "research",
-          "effort": "high"
-        },
-        "cli_help": {
-          "model": "auto",
-          "category": "mechanical"
-        },
-        "code-review": {
-          "model": "gpt-5.6-sol-high",
-          "category": "review",
-          "effort": "high"
-        },
-        "codebase_investigator": {
-          "model": "gpt-5.6-sol-high",
-          "category": "research",
-          "effort": "high"
-        },
-        "cursor-guide": {
-          "model": "gpt-5.6-sol-high",
-          "category": "research",
-          "effort": "high"
-        },
-        "default": {
-          "model": "gpt-5.6-sol-high",
-          "category": "orchestrate",
-          "effort": "high"
-        },
-        "explore": {
-          "model": "gpt-5.6-sol-high",
-          "category": "research",
-          "effort": "high"
-        },
-        "explorer": {
-          "model": "gpt-5.6-sol-high",
-          "category": "research",
-          "effort": "high"
-        },
-        "general-purpose": {
-          "model": "claude-opus-5-high",
-          "category": "implement",
-          "effort": "high"
-        },
-        "generalPurpose": {
-          "model": "claude-opus-5-high",
-          "category": "implement",
-          "effort": "high"
-        },
-        "generalist": {
-          "model": "claude-opus-5-high",
-          "category": "implement",
-          "effort": "high"
-        },
-        "k-agent-adversarial-verifier": {
-          "model": "claude-fable-5-1-thinking-high",
-          "category": "refute",
-          "effort": "high"
-        },
-        "k-agent-change-auditor": {
-          "model": "gpt-5.6-sol-high",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-claim-verifier": {
-          "model": "claude-fable-5-1-thinking-high",
-          "category": "refute",
-          "effort": "high"
-        },
-        "k-agent-code-searcher": {
-          "model": "gpt-5.6-sol-high",
-          "category": "research",
-          "effort": "high"
-        },
-        "k-agent-criteria-verifier": {
-          "model": "claude-fable-5-1-thinking-high",
-          "category": "refute",
-          "effort": "high"
-        },
-        "k-agent-deep-review": {
-          "model": "gpt-5.6-sol-high",
-          "category": "orchestrate",
-          "effort": "high"
-        },
-        "k-agent-findings-auditor": {
-          "model": "gpt-5.6-sol-high",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-fresh-eyes": {
-          "model": "gpt-5.6-sol-high",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-implementer": {
-          "model": "claude-opus-5-high",
-          "category": "implement",
-          "effort": "high"
-        },
-        "k-agent-live-ui-review": {
-          "model": "gpt-5.6-sol-high",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-mechanical": {
-          "model": "auto",
-          "category": "mechanical"
-        },
-        "k-agent-post-review": {
-          "model": "gpt-5.6-sol-high",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-pr-necessity-auditor": {
-          "model": "gpt-5.6-sol-high",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-public-sources": {
-          "model": "gpt-5.6-sol-high",
-          "category": "research",
-          "effort": "high"
-        },
-        "k-agent-review-controller": {
-          "model": "gpt-5.6-sol-high",
-          "category": "orchestrate",
-          "effort": "high"
-        },
-        "k-agent-review-worker": {
-          "model": "gpt-5.6-sol-high",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-review-worker-cross": {
-          "model": "claude-fable-5-1-thinking-high",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-reviewer": {
-          "model": "gpt-5.6-sol-high",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-smol": {
-          "model": "auto",
-          "category": "memory"
-        },
-        "rem-agent": {
-          "model": "gpt-5.6-sol-high",
-          "category": "research",
-          "effort": "high"
-        },
-        "research": {
-          "model": "gpt-5.6-sol-high",
-          "category": "research",
-          "effort": "high"
-        },
-        "reviewer": {
-          "model": "gpt-5.6-sol-high",
-          "category": "review",
-          "effort": "high"
-        },
-        "rubber-duck": {
-          "model": "gpt-5.6-sol-high",
-          "category": "research",
-          "effort": "high"
-        },
-        "scout": {
-          "model": "auto",
-          "category": "mechanical"
-        },
-        "security-review": {
-          "model": "gpt-5.6-sol-high",
-          "category": "review",
-          "effort": "high"
-        },
-        "security-reviewer": {
-          "model": "gpt-5.6-sol-high",
-          "category": "review",
-          "effort": "high"
-        },
-        "sonic": {
-          "model": "auto",
-          "category": "mechanical"
-        },
-        "task": {
-          "model": "claude-opus-5-high",
-          "category": "implement",
-          "effort": "high"
-        },
-        "worker": {
-          "model": "claude-opus-5-high",
-          "category": "implement",
-          "effort": "high"
-        }
-      },
-      "counter_models": [
-        "claude-fable-5-1-thinking-high"
-      ],
-      "cheap_lane_models": [
-        "auto"
-      ],
-      "lane_models": [
-        "auto",
-        "claude-fable-5-1-thinking-high",
-        "claude-opus-5-high",
-        "gpt-5.6-sol-high"
-      ]
-    },
-    "gemini": {
-      "agents": {
-        "Explore": {
-          "model": "gemini-3.1-pro-preview",
-          "category": "research",
-          "effort": "high"
-        },
-        "Plan": {
-          "model": "gemini-3.1-pro-preview",
-          "category": "orchestrate",
-          "effort": "high"
-        },
-        "best-of-n-runner": {
-          "model": "gemini-3.1-pro-preview",
-          "category": "implement",
-          "effort": "high"
-        },
-        "browser_agent": {
-          "model": "gemini-3.1-pro-preview",
-          "category": "implement",
-          "effort": "high"
-        },
-        "bugbot": {
-          "model": "gemini-3.1-pro-preview",
-          "category": "review",
-          "effort": "high"
-        },
-        "claude": {
-          "model": "gemini-3.1-pro-preview",
-          "category": "implement",
-          "effort": "high"
-        },
-        "claude-code-guide": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "research",
           "effort": "high"
         },
         "cli_help": {
           "model": "gemini-3.8-flash",
           "category": "mechanical",
-          "effort": "high"
+          "effort": "low"
         },
         "code-review": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "review",
           "effort": "high"
         },
         "codebase_investigator": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "research",
           "effort": "high"
         },
         "cursor-guide": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "research",
           "effort": "high"
         },
         "default": {
-          "model": "gemini-3.1-pro-preview",
-          "category": "orchestrate",
+          "model": "gemini-3.8-flash",
+          "category": "research",
           "effort": "high"
         },
         "explore": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "research",
           "effort": "high"
         },
         "explorer": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "research",
           "effort": "high"
         },
         "general-purpose": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "implement",
-          "effort": "high"
+          "effort": "medium"
         },
         "generalPurpose": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "implement",
-          "effort": "high"
+          "effort": "medium"
         },
         "generalist": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "implement",
-          "effort": "high"
+          "effort": "medium"
         },
         "k-agent-adversarial-verifier": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "refute",
           "effort": "high"
         },
         "k-agent-change-auditor": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "review",
           "effort": "high"
         },
         "k-agent-claim-verifier": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "refute",
           "effort": "high"
         },
         "k-agent-code-searcher": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "research",
           "effort": "high"
         },
         "k-agent-criteria-verifier": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "refute",
           "effort": "high"
         },
         "k-agent-deep-review": {
-          "model": "gemini-3.1-pro-preview",
-          "category": "orchestrate",
+          "model": "gemini-3.8-flash",
+          "category": "research",
           "effort": "high"
         },
         "k-agent-findings-auditor": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "review",
           "effort": "high"
         },
         "k-agent-fresh-eyes": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "review",
           "effort": "high"
         },
         "k-agent-implementer": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "implement",
-          "effort": "high"
+          "effort": "medium"
         },
         "k-agent-live-ui-review": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "review",
           "effort": "high"
         },
         "k-agent-mechanical": {
           "model": "gemini-3.8-flash",
           "category": "mechanical",
-          "effort": "high"
+          "effort": "low"
         },
         "k-agent-post-review": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "review",
           "effort": "high"
         },
         "k-agent-pr-necessity-auditor": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "review",
           "effort": "high"
         },
         "k-agent-public-sources": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "research",
           "effort": "high"
         },
         "k-agent-review-controller": {
-          "model": "gemini-3.1-pro-preview",
-          "category": "orchestrate",
+          "model": "gemini-3.8-flash",
+          "category": "research",
           "effort": "high"
         },
         "k-agent-review-worker": {
-          "model": "gemini-3.1-pro-preview",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-review-worker-cross": {
-          "model": "pro",
+          "model": "gemini-3.8-flash",
           "category": "review",
           "effort": "high"
         },
         "k-agent-reviewer": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "review",
           "effort": "high"
         },
@@ -1207,67 +180,1099 @@
           "effort": "low"
         },
         "rem-agent": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "research",
           "effort": "high"
         },
         "research": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "research",
           "effort": "high"
         },
         "reviewer": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "review",
           "effort": "high"
         },
         "rubber-duck": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "research",
           "effort": "high"
         },
         "scout": {
           "model": "gemini-3.8-flash",
           "category": "mechanical",
-          "effort": "high"
+          "effort": "low"
         },
         "security-review": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "review",
           "effort": "high"
         },
         "security-reviewer": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "review",
           "effort": "high"
         },
         "sonic": {
           "model": "gemini-3.8-flash",
           "category": "mechanical",
-          "effort": "high"
+          "effort": "low"
         },
         "task": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "implement",
-          "effort": "high"
+          "effort": "medium"
         },
         "worker": {
-          "model": "gemini-3.1-pro-preview",
+          "model": "gemini-3.8-flash",
           "category": "implement",
-          "effort": "high"
+          "effort": "medium"
         }
       },
       "counter_models": [
-        "gemini-3.1-pro-preview"
+        "gemini-3.8-flash"
       ],
       "cheap_lane_models": [
         "gemini-3.8-flash"
       ],
       "lane_models": [
-        "gemini-3.1-pro-preview",
-        "gemini-3.8-flash",
-        "pro"
-      ]
+        "gemini-3.8-flash"
+      ],
+      "session": {
+        "model": "gemini-3.8-flash",
+        "effort": "high",
+        "context": "long"
+      }
+    },
+    "claude_code": {
+      "agents": {
+        "Explore": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "research",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "Plan": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "research",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "best-of-n-runner": {
+          "model": "claude-opus-5[1m]",
+          "category": "implement",
+          "effort": "high",
+          "alias": "opus"
+        },
+        "browser_agent": {
+          "model": "claude-opus-5[1m]",
+          "category": "implement",
+          "effort": "high",
+          "alias": "opus"
+        },
+        "bugbot": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "review",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "claude": {
+          "model": "claude-opus-5[1m]",
+          "category": "implement",
+          "effort": "high",
+          "alias": "opus"
+        },
+        "claude-code-guide": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "research",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "cli_help": {
+          "model": "claude-sonnet-4-6[1m]",
+          "category": "mechanical",
+          "effort": "high",
+          "alias": "sonnet"
+        },
+        "code-review": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "review",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "codebase_investigator": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "research",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "cursor-guide": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "research",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "default": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "research",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "explore": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "research",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "explorer": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "research",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "general-purpose": {
+          "model": "claude-opus-5[1m]",
+          "category": "implement",
+          "effort": "high",
+          "alias": "opus"
+        },
+        "generalPurpose": {
+          "model": "claude-opus-5[1m]",
+          "category": "implement",
+          "effort": "high",
+          "alias": "opus"
+        },
+        "generalist": {
+          "model": "claude-opus-5[1m]",
+          "category": "implement",
+          "effort": "high",
+          "alias": "opus"
+        },
+        "k-agent-adversarial-verifier": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "refute",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "k-agent-change-auditor": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "review",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "k-agent-claim-verifier": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "refute",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "k-agent-code-searcher": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "research",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "k-agent-criteria-verifier": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "refute",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "k-agent-deep-review": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "research",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "k-agent-findings-auditor": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "review",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "k-agent-fresh-eyes": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "review",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "k-agent-implementer": {
+          "model": "claude-opus-5[1m]",
+          "category": "implement",
+          "effort": "high",
+          "alias": "opus"
+        },
+        "k-agent-live-ui-review": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "review",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "k-agent-mechanical": {
+          "model": "claude-sonnet-4-6[1m]",
+          "category": "mechanical",
+          "effort": "high",
+          "alias": "sonnet"
+        },
+        "k-agent-post-review": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "review",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "k-agent-pr-necessity-auditor": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "review",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "k-agent-public-sources": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "research",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "k-agent-review-controller": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "research",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "k-agent-review-worker": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "review",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "k-agent-reviewer": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "review",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "k-agent-smol": {
+          "model": "claude-sonnet-5",
+          "category": "memory",
+          "effort": "medium",
+          "alias": "sonnet"
+        },
+        "rem-agent": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "research",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "research": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "research",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "reviewer": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "review",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "rubber-duck": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "research",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "scout": {
+          "model": "claude-sonnet-4-6[1m]",
+          "category": "mechanical",
+          "effort": "high",
+          "alias": "sonnet"
+        },
+        "security-review": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "review",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "security-reviewer": {
+          "model": "claude-fable-5-1[1m]",
+          "category": "review",
+          "effort": "high",
+          "alias": "fable"
+        },
+        "sonic": {
+          "model": "claude-sonnet-4-6[1m]",
+          "category": "mechanical",
+          "effort": "high",
+          "alias": "sonnet"
+        },
+        "task": {
+          "model": "claude-opus-5[1m]",
+          "category": "implement",
+          "effort": "high",
+          "alias": "opus"
+        },
+        "worker": {
+          "model": "claude-opus-5[1m]",
+          "category": "implement",
+          "effort": "high",
+          "alias": "opus"
+        }
+      },
+      "counter_models": [
+        "claude-fable-5-1[1m]"
+      ],
+      "cheap_lane_models": [
+        "claude-sonnet-4-6[1m]",
+        "claude-sonnet-5"
+      ],
+      "lane_models": [
+        "claude-fable-5-1[1m]",
+        "claude-opus-5[1m]",
+        "claude-sonnet-4-6[1m]",
+        "claude-sonnet-5"
+      ],
+      "session": {
+        "model": "claude-fable-5-1[1m]",
+        "effort": "high",
+        "context": "long"
+      }
+    },
+    "codex": {
+      "agents": {
+        "Explore": {
+          "model": "gpt-6-astra",
+          "category": "research",
+          "effort": "high"
+        },
+        "Plan": {
+          "model": "gpt-6-astra",
+          "category": "research",
+          "effort": "high"
+        },
+        "best-of-n-runner": {
+          "model": "gpt-5.6-terra",
+          "category": "implement",
+          "effort": "high"
+        },
+        "browser_agent": {
+          "model": "gpt-5.6-terra",
+          "category": "implement",
+          "effort": "high"
+        },
+        "bugbot": {
+          "model": "gpt-6-astra",
+          "category": "review",
+          "effort": "high"
+        },
+        "claude": {
+          "model": "gpt-5.6-terra",
+          "category": "implement",
+          "effort": "high"
+        },
+        "claude-code-guide": {
+          "model": "gpt-6-astra",
+          "category": "research",
+          "effort": "high"
+        },
+        "cli_help": {
+          "model": "gpt-5.6-luna",
+          "category": "mechanical",
+          "effort": "high"
+        },
+        "code-review": {
+          "model": "gpt-6-astra",
+          "category": "review",
+          "effort": "high"
+        },
+        "codebase_investigator": {
+          "model": "gpt-6-astra",
+          "category": "research",
+          "effort": "high"
+        },
+        "cursor-guide": {
+          "model": "gpt-6-astra",
+          "category": "research",
+          "effort": "high"
+        },
+        "default": {
+          "model": "gpt-6-astra",
+          "category": "research",
+          "effort": "high"
+        },
+        "explore": {
+          "model": "gpt-6-astra",
+          "category": "research",
+          "effort": "high"
+        },
+        "explorer": {
+          "model": "gpt-6-astra",
+          "category": "research",
+          "effort": "high"
+        },
+        "general-purpose": {
+          "model": "gpt-5.6-terra",
+          "category": "implement",
+          "effort": "high"
+        },
+        "generalPurpose": {
+          "model": "gpt-5.6-terra",
+          "category": "implement",
+          "effort": "high"
+        },
+        "generalist": {
+          "model": "gpt-5.6-terra",
+          "category": "implement",
+          "effort": "high"
+        },
+        "k-agent-adversarial-verifier": {
+          "model": "gpt-5.6-sol",
+          "category": "refute",
+          "effort": "high"
+        },
+        "k-agent-change-auditor": {
+          "model": "gpt-6-astra",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-claim-verifier": {
+          "model": "gpt-5.6-sol",
+          "category": "refute",
+          "effort": "high"
+        },
+        "k-agent-code-searcher": {
+          "model": "gpt-6-astra",
+          "category": "research",
+          "effort": "high"
+        },
+        "k-agent-criteria-verifier": {
+          "model": "gpt-5.6-sol",
+          "category": "refute",
+          "effort": "high"
+        },
+        "k-agent-deep-review": {
+          "model": "gpt-6-astra",
+          "category": "research",
+          "effort": "high"
+        },
+        "k-agent-findings-auditor": {
+          "model": "gpt-6-astra",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-fresh-eyes": {
+          "model": "gpt-6-astra",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-implementer": {
+          "model": "gpt-5.6-terra",
+          "category": "implement",
+          "effort": "high"
+        },
+        "k-agent-live-ui-review": {
+          "model": "gpt-6-astra",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-mechanical": {
+          "model": "gpt-5.6-luna",
+          "category": "mechanical",
+          "effort": "high"
+        },
+        "k-agent-post-review": {
+          "model": "gpt-6-astra",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-pr-necessity-auditor": {
+          "model": "gpt-6-astra",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-public-sources": {
+          "model": "gpt-6-astra",
+          "category": "research",
+          "effort": "high"
+        },
+        "k-agent-review-controller": {
+          "model": "gpt-6-astra",
+          "category": "research",
+          "effort": "high"
+        },
+        "k-agent-review-worker": {
+          "model": "gpt-6-astra",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-reviewer": {
+          "model": "gpt-6-astra",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-smol": {
+          "model": "gpt-5.6-terra",
+          "category": "memory",
+          "effort": "high"
+        },
+        "rem-agent": {
+          "model": "gpt-6-astra",
+          "category": "research",
+          "effort": "high"
+        },
+        "research": {
+          "model": "gpt-6-astra",
+          "category": "research",
+          "effort": "high"
+        },
+        "reviewer": {
+          "model": "gpt-6-astra",
+          "category": "review",
+          "effort": "high"
+        },
+        "rubber-duck": {
+          "model": "gpt-6-astra",
+          "category": "research",
+          "effort": "high"
+        },
+        "scout": {
+          "model": "gpt-5.6-luna",
+          "category": "mechanical",
+          "effort": "high"
+        },
+        "security-review": {
+          "model": "gpt-6-astra",
+          "category": "review",
+          "effort": "high"
+        },
+        "security-reviewer": {
+          "model": "gpt-6-astra",
+          "category": "review",
+          "effort": "high"
+        },
+        "sonic": {
+          "model": "gpt-5.6-luna",
+          "category": "mechanical",
+          "effort": "high"
+        },
+        "task": {
+          "model": "gpt-5.6-terra",
+          "category": "implement",
+          "effort": "high"
+        },
+        "worker": {
+          "model": "gpt-5.6-terra",
+          "category": "implement",
+          "effort": "high"
+        }
+      },
+      "counter_models": [
+        "gpt-5.6-sol"
+      ],
+      "cheap_lane_models": [
+        "gpt-5.6-luna",
+        "gpt-5.6-terra"
+      ],
+      "lane_models": [
+        "gpt-5.6-luna",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-6-astra"
+      ],
+      "session": {
+        "model": "gpt-6-astra",
+        "effort": "high",
+        "context": "short"
+      }
+    },
+    "copilot": {
+      "agents": {
+        "Explore": {
+          "model": "claude-fable-5.1",
+          "category": "research",
+          "effort": "high"
+        },
+        "Plan": {
+          "model": "claude-fable-5.1",
+          "category": "research",
+          "effort": "high"
+        },
+        "best-of-n-runner": {
+          "model": "grok-4.6",
+          "category": "implement",
+          "effort": "high"
+        },
+        "browser_agent": {
+          "model": "grok-4.6",
+          "category": "implement",
+          "effort": "high"
+        },
+        "bugbot": {
+          "model": "claude-fable-5.1",
+          "category": "review",
+          "effort": "high"
+        },
+        "claude": {
+          "model": "grok-4.6",
+          "category": "implement",
+          "effort": "high"
+        },
+        "claude-code-guide": {
+          "model": "claude-fable-5.1",
+          "category": "research",
+          "effort": "high"
+        },
+        "cli_help": {
+          "model": "grok-4.6",
+          "category": "mechanical",
+          "effort": "medium"
+        },
+        "code-review": {
+          "model": "claude-fable-5.1",
+          "category": "review",
+          "effort": "high"
+        },
+        "codebase_investigator": {
+          "model": "claude-fable-5.1",
+          "category": "research",
+          "effort": "high"
+        },
+        "cursor-guide": {
+          "model": "claude-fable-5.1",
+          "category": "research",
+          "effort": "high"
+        },
+        "default": {
+          "model": "claude-fable-5.1",
+          "category": "research",
+          "effort": "high"
+        },
+        "explore": {
+          "model": "claude-fable-5.1",
+          "category": "research",
+          "effort": "high"
+        },
+        "explorer": {
+          "model": "claude-fable-5.1",
+          "category": "research",
+          "effort": "high"
+        },
+        "general-purpose": {
+          "model": "grok-4.6",
+          "category": "implement",
+          "effort": "high"
+        },
+        "generalPurpose": {
+          "model": "grok-4.6",
+          "category": "implement",
+          "effort": "high"
+        },
+        "generalist": {
+          "model": "grok-4.6",
+          "category": "implement",
+          "effort": "high"
+        },
+        "k-agent-adversarial-verifier": {
+          "model": "kimi-k3",
+          "category": "refute",
+          "effort": "high"
+        },
+        "k-agent-change-auditor": {
+          "model": "claude-fable-5.1",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-claim-verifier": {
+          "model": "kimi-k3",
+          "category": "refute",
+          "effort": "high"
+        },
+        "k-agent-code-searcher": {
+          "model": "claude-fable-5.1",
+          "category": "research",
+          "effort": "high"
+        },
+        "k-agent-criteria-verifier": {
+          "model": "kimi-k3",
+          "category": "refute",
+          "effort": "high"
+        },
+        "k-agent-deep-review": {
+          "model": "claude-fable-5.1",
+          "category": "research",
+          "effort": "high"
+        },
+        "k-agent-findings-auditor": {
+          "model": "claude-fable-5.1",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-fresh-eyes": {
+          "model": "claude-fable-5.1",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-implementer": {
+          "model": "grok-4.6",
+          "category": "implement",
+          "effort": "high"
+        },
+        "k-agent-live-ui-review": {
+          "model": "claude-fable-5.1",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-mechanical": {
+          "model": "grok-4.6",
+          "category": "mechanical",
+          "effort": "medium"
+        },
+        "k-agent-post-review": {
+          "model": "claude-fable-5.1",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-pr-necessity-auditor": {
+          "model": "claude-fable-5.1",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-public-sources": {
+          "model": "claude-fable-5.1",
+          "category": "research",
+          "effort": "high"
+        },
+        "k-agent-review-controller": {
+          "model": "claude-fable-5.1",
+          "category": "research",
+          "effort": "high"
+        },
+        "k-agent-review-worker": {
+          "model": "claude-fable-5.1",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-reviewer": {
+          "model": "claude-fable-5.1",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-smol": {
+          "model": "grok-4.6",
+          "category": "memory",
+          "effort": "medium"
+        },
+        "rem-agent": {
+          "model": "claude-fable-5.1",
+          "category": "research",
+          "effort": "high"
+        },
+        "research": {
+          "model": "claude-fable-5.1",
+          "category": "research",
+          "effort": "high"
+        },
+        "reviewer": {
+          "model": "claude-fable-5.1",
+          "category": "review",
+          "effort": "high"
+        },
+        "rubber-duck": {
+          "model": "claude-fable-5.1",
+          "category": "research",
+          "effort": "high"
+        },
+        "scout": {
+          "model": "grok-4.6",
+          "category": "mechanical",
+          "effort": "medium"
+        },
+        "security-review": {
+          "model": "claude-fable-5.1",
+          "category": "review",
+          "effort": "high"
+        },
+        "security-reviewer": {
+          "model": "claude-fable-5.1",
+          "category": "review",
+          "effort": "high"
+        },
+        "sonic": {
+          "model": "grok-4.6",
+          "category": "mechanical",
+          "effort": "medium"
+        },
+        "task": {
+          "model": "grok-4.6",
+          "category": "implement",
+          "effort": "high"
+        },
+        "worker": {
+          "model": "grok-4.6",
+          "category": "implement",
+          "effort": "high"
+        }
+      },
+      "counter_models": [
+        "kimi-k3"
+      ],
+      "cheap_lane_models": [
+        "grok-4.6"
+      ],
+      "lane_models": [
+        "claude-fable-5.1",
+        "grok-4.6",
+        "kimi-k3"
+      ],
+      "session": {
+        "model": "claude-fable-5.1",
+        "effort": "high",
+        "context": "long"
+      }
+    },
+    "cursor": {
+      "agents": {
+        "Explore": {
+          "model": "claude-fable-5-1",
+          "category": "research",
+          "effort": "high"
+        },
+        "Plan": {
+          "model": "claude-fable-5-1",
+          "category": "research",
+          "effort": "high"
+        },
+        "best-of-n-runner": {
+          "model": "muse-spark-1.3",
+          "category": "implement",
+          "effort": "high"
+        },
+        "browser_agent": {
+          "model": "muse-spark-1.3",
+          "category": "implement",
+          "effort": "high"
+        },
+        "bugbot": {
+          "model": "claude-fable-5-1",
+          "category": "review",
+          "effort": "high"
+        },
+        "claude": {
+          "model": "muse-spark-1.3",
+          "category": "implement",
+          "effort": "high"
+        },
+        "claude-code-guide": {
+          "model": "claude-fable-5-1",
+          "category": "research",
+          "effort": "high"
+        },
+        "cli_help": {
+          "model": "grok-4.6",
+          "category": "mechanical",
+          "effort": "medium"
+        },
+        "code-review": {
+          "model": "claude-fable-5-1",
+          "category": "review",
+          "effort": "high"
+        },
+        "codebase_investigator": {
+          "model": "claude-fable-5-1",
+          "category": "research",
+          "effort": "high"
+        },
+        "cursor-guide": {
+          "model": "claude-fable-5-1",
+          "category": "research",
+          "effort": "high"
+        },
+        "default": {
+          "model": "claude-fable-5-1",
+          "category": "research",
+          "effort": "high"
+        },
+        "explore": {
+          "model": "claude-fable-5-1",
+          "category": "research",
+          "effort": "high"
+        },
+        "explorer": {
+          "model": "claude-fable-5-1",
+          "category": "research",
+          "effort": "high"
+        },
+        "general-purpose": {
+          "model": "muse-spark-1.3",
+          "category": "implement",
+          "effort": "high"
+        },
+        "generalPurpose": {
+          "model": "muse-spark-1.3",
+          "category": "implement",
+          "effort": "high"
+        },
+        "generalist": {
+          "model": "muse-spark-1.3",
+          "category": "implement",
+          "effort": "high"
+        },
+        "k-agent-adversarial-verifier": {
+          "model": "muse-spark-1.3",
+          "category": "refute",
+          "effort": "max"
+        },
+        "k-agent-change-auditor": {
+          "model": "claude-fable-5-1",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-claim-verifier": {
+          "model": "muse-spark-1.3",
+          "category": "refute",
+          "effort": "max"
+        },
+        "k-agent-code-searcher": {
+          "model": "claude-fable-5-1",
+          "category": "research",
+          "effort": "high"
+        },
+        "k-agent-criteria-verifier": {
+          "model": "muse-spark-1.3",
+          "category": "refute",
+          "effort": "max"
+        },
+        "k-agent-deep-review": {
+          "model": "claude-fable-5-1",
+          "category": "research",
+          "effort": "high"
+        },
+        "k-agent-findings-auditor": {
+          "model": "claude-fable-5-1",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-fresh-eyes": {
+          "model": "claude-fable-5-1",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-implementer": {
+          "model": "muse-spark-1.3",
+          "category": "implement",
+          "effort": "high"
+        },
+        "k-agent-live-ui-review": {
+          "model": "claude-fable-5-1",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-mechanical": {
+          "model": "grok-4.6",
+          "category": "mechanical",
+          "effort": "medium"
+        },
+        "k-agent-post-review": {
+          "model": "claude-fable-5-1",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-pr-necessity-auditor": {
+          "model": "claude-fable-5-1",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-public-sources": {
+          "model": "claude-fable-5-1",
+          "category": "research",
+          "effort": "high"
+        },
+        "k-agent-review-controller": {
+          "model": "claude-fable-5-1",
+          "category": "research",
+          "effort": "high"
+        },
+        "k-agent-review-worker": {
+          "model": "claude-fable-5-1",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-reviewer": {
+          "model": "claude-fable-5-1",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-smol": {
+          "model": "grok-4.6",
+          "category": "memory",
+          "effort": "medium"
+        },
+        "rem-agent": {
+          "model": "claude-fable-5-1",
+          "category": "research",
+          "effort": "high"
+        },
+        "research": {
+          "model": "claude-fable-5-1",
+          "category": "research",
+          "effort": "high"
+        },
+        "reviewer": {
+          "model": "claude-fable-5-1",
+          "category": "review",
+          "effort": "high"
+        },
+        "rubber-duck": {
+          "model": "claude-fable-5-1",
+          "category": "research",
+          "effort": "high"
+        },
+        "scout": {
+          "model": "grok-4.6",
+          "category": "mechanical",
+          "effort": "medium"
+        },
+        "security-review": {
+          "model": "claude-fable-5-1",
+          "category": "review",
+          "effort": "high"
+        },
+        "security-reviewer": {
+          "model": "claude-fable-5-1",
+          "category": "review",
+          "effort": "high"
+        },
+        "sonic": {
+          "model": "grok-4.6",
+          "category": "mechanical",
+          "effort": "medium"
+        },
+        "task": {
+          "model": "muse-spark-1.3",
+          "category": "implement",
+          "effort": "high"
+        },
+        "worker": {
+          "model": "muse-spark-1.3",
+          "category": "implement",
+          "effort": "high"
+        }
+      },
+      "counter_models": [
+        "muse-spark-1.3"
+      ],
+      "cheap_lane_models": [
+        "grok-4.6"
+      ],
+      "lane_models": [
+        "claude-fable-5-1",
+        "grok-4.6",
+        "muse-spark-1.3"
+      ],
+      "session": {
+        "model": "claude-fable-5-1",
+        "effort": "high",
+        "context": "long"
+      }
     },
     "omp": {
       "agents": {
@@ -1277,8 +1282,8 @@
           "effort": "high"
         },
         "Plan": {
-          "model": "@plan",
-          "category": "orchestrate",
+          "model": "@default",
+          "category": "research",
           "effort": "high"
         },
         "best-of-n-runner": {
@@ -1327,8 +1332,8 @@
           "effort": "high"
         },
         "default": {
-          "model": "@plan",
-          "category": "orchestrate",
+          "model": "@default",
+          "category": "research",
           "effort": "high"
         },
         "explore": {
@@ -1382,8 +1387,8 @@
           "effort": "high"
         },
         "k-agent-deep-review": {
-          "model": "@plan",
-          "category": "orchestrate",
+          "model": "@default",
+          "category": "research",
           "effort": "high"
         },
         "k-agent-findings-auditor": {
@@ -1427,16 +1432,11 @@
           "effort": "high"
         },
         "k-agent-review-controller": {
-          "model": "@plan",
-          "category": "orchestrate",
+          "model": "@default",
+          "category": "research",
           "effort": "high"
         },
         "k-agent-review-worker": {
-          "model": "@default",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-review-worker-cross": {
           "model": "@default",
           "category": "review",
           "effort": "high"
@@ -1511,258 +1511,259 @@
       "lane_models": [
         "@advisor",
         "@default",
-        "@plan",
         "@smol",
         "@task"
-      ]
+      ],
+      "session": {
+        "model": "anthropic/claude-fable-5.1",
+        "effort": "high",
+        "context": "short"
+      }
     },
     "pi": {
       "agents": {
         "Explore": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "research",
           "effort": "high"
         },
         "Plan": {
-          "model": "anthropic/claude-fable-5.1:high",
-          "category": "orchestrate",
+          "model": "github-copilot/claude-fable-5.1",
+          "category": "research",
           "effort": "high"
         },
         "best-of-n-runner": {
-          "model": "openrouter/openai/gpt-5.6-sol:high",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "implement",
           "effort": "high"
         },
         "browser_agent": {
-          "model": "openrouter/openai/gpt-5.6-sol:high",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "implement",
           "effort": "high"
         },
         "bugbot": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "review",
           "effort": "high"
         },
         "claude": {
-          "model": "openrouter/openai/gpt-5.6-sol:high",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "implement",
           "effort": "high"
         },
         "claude-code-guide": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "research",
           "effort": "high"
         },
         "cli_help": {
-          "model": "openrouter/z-ai/glm-5.3-flash:high",
+          "model": "openrouter/z-ai/glm-5.3-flash",
           "category": "mechanical",
           "effort": "high"
         },
         "code-review": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "review",
           "effort": "high"
         },
         "codebase_investigator": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "research",
           "effort": "high"
         },
         "cursor-guide": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "research",
           "effort": "high"
         },
         "default": {
-          "model": "anthropic/claude-fable-5.1:high",
-          "category": "orchestrate",
+          "model": "github-copilot/claude-fable-5.1",
+          "category": "research",
           "effort": "high"
         },
         "explore": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "research",
           "effort": "high"
         },
         "explorer": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "research",
           "effort": "high"
         },
         "general-purpose": {
-          "model": "openrouter/openai/gpt-5.6-sol:high",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "implement",
           "effort": "high"
         },
         "generalPurpose": {
-          "model": "openrouter/openai/gpt-5.6-sol:high",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "implement",
           "effort": "high"
         },
         "generalist": {
-          "model": "openrouter/openai/gpt-5.6-sol:high",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "implement",
           "effort": "high"
         },
         "k-agent-adversarial-verifier": {
-          "model": "openrouter/openai/gpt-5.6-sol:xhigh",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "refute",
-          "effort": "xhigh"
+          "effort": "max"
         },
         "k-agent-change-auditor": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "review",
           "effort": "high"
         },
         "k-agent-claim-verifier": {
-          "model": "openrouter/openai/gpt-5.6-sol:xhigh",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "refute",
-          "effort": "xhigh"
+          "effort": "max"
         },
         "k-agent-code-searcher": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "research",
           "effort": "high"
         },
         "k-agent-criteria-verifier": {
-          "model": "openrouter/openai/gpt-5.6-sol:xhigh",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "refute",
-          "effort": "xhigh"
+          "effort": "max"
         },
         "k-agent-deep-review": {
-          "model": "anthropic/claude-fable-5.1:high",
-          "category": "orchestrate",
+          "model": "github-copilot/claude-fable-5.1",
+          "category": "research",
           "effort": "high"
         },
         "k-agent-findings-auditor": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "review",
           "effort": "high"
         },
         "k-agent-fresh-eyes": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "review",
           "effort": "high"
         },
         "k-agent-implementer": {
-          "model": "openrouter/openai/gpt-5.6-sol:high",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "implement",
           "effort": "high"
         },
         "k-agent-live-ui-review": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "review",
           "effort": "high"
         },
         "k-agent-mechanical": {
-          "model": "openrouter/z-ai/glm-5.3-flash:high",
+          "model": "openrouter/z-ai/glm-5.3-flash",
           "category": "mechanical",
           "effort": "high"
         },
         "k-agent-post-review": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "review",
           "effort": "high"
         },
         "k-agent-pr-necessity-auditor": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "review",
           "effort": "high"
         },
         "k-agent-public-sources": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "research",
           "effort": "high"
         },
         "k-agent-review-controller": {
-          "model": "anthropic/claude-fable-5.1:high",
-          "category": "orchestrate",
+          "model": "github-copilot/claude-fable-5.1",
+          "category": "research",
           "effort": "high"
         },
         "k-agent-review-worker": {
-          "model": "anthropic/claude-fable-5.1:high",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-review-worker-cross": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "review",
           "effort": "high"
         },
         "k-agent-reviewer": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "review",
           "effort": "high"
         },
         "k-agent-smol": {
-          "model": "openrouter/google/gemini-3.8-flash:low",
+          "model": "openrouter/z-ai/glm-5.3-flash",
           "category": "memory",
-          "effort": "low"
+          "effort": "high"
         },
         "rem-agent": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "research",
           "effort": "high"
         },
         "research": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "research",
           "effort": "high"
         },
         "reviewer": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "review",
           "effort": "high"
         },
         "rubber-duck": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "research",
           "effort": "high"
         },
         "scout": {
-          "model": "openrouter/z-ai/glm-5.3-flash:high",
+          "model": "openrouter/z-ai/glm-5.3-flash",
           "category": "mechanical",
           "effort": "high"
         },
         "security-review": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "review",
           "effort": "high"
         },
         "security-reviewer": {
-          "model": "anthropic/claude-fable-5.1:high",
+          "model": "github-copilot/claude-fable-5.1",
           "category": "review",
           "effort": "high"
         },
         "sonic": {
-          "model": "openrouter/z-ai/glm-5.3-flash:high",
+          "model": "openrouter/z-ai/glm-5.3-flash",
           "category": "mechanical",
           "effort": "high"
         },
         "task": {
-          "model": "openrouter/openai/gpt-5.6-sol:high",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "implement",
           "effort": "high"
         },
         "worker": {
-          "model": "openrouter/openai/gpt-5.6-sol:high",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "implement",
           "effort": "high"
         }
       },
       "counter_models": [
-        "openrouter/openai/gpt-5.6-sol:xhigh"
+        "openrouter/meta/muse-spark-1.3"
       ],
       "cheap_lane_models": [
-        "openrouter/z-ai/glm-5.3-flash:high",
-        "openrouter/google/gemini-3.8-flash:low"
+        "openrouter/z-ai/glm-5.3-flash"
       ],
       "lane_models": [
-        "anthropic/claude-fable-5.1:high",
-        "openrouter/google/gemini-3.8-flash:low",
-        "openrouter/openai/gpt-5.6-sol:high",
-        "openrouter/openai/gpt-5.6-sol:xhigh",
-        "openrouter/z-ai/glm-5.3-flash:high"
-      ]
+        "github-copilot/claude-fable-5.1",
+        "openrouter/meta/muse-spark-1.3",
+        "openrouter/z-ai/glm-5.3-flash"
+      ],
+      "session": {
+        "model": "github-copilot/claude-fable-5.1",
+        "effort": "high",
+        "context": "long"
+      }
     }
   }
 }

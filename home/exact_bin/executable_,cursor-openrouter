@@ -44,7 +44,7 @@ fi
 # `effort-<level>` slug; the default is `z-ai/glm-5.3-flash` at `high`.
 OPENROUTER_MODEL="z-ai/glm-5.3-flash"
 OPENROUTER_EFFORT="high"
-OPENROUTER_CONTEXT="short"
+OPENROUTER_CONTEXT="long"
 # The strict-mode shim is now the session guardrail too, so it is always on for the
 # pinned route: the allowlist admits the primary wire id and the declared Pi lane
 # wire ids, rejecting other /chat/completions model ids before OpenRouter. `strict`
@@ -142,34 +142,34 @@ if [[ ! -x "$OPENROUTER_PRESET_HELPER" ]]; then
   exit 1
 fi
 export OPENROUTER_API_KEY="$api_key"
-"$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"
-if [[ "$OPENROUTER_EFFORT" != "xhigh" ]]; then
-  "$OPENROUTER_PRESET_HELPER" xhigh
-fi
-if [[ "$OPENROUTER_EFFORT" != "high" ]]; then
-  "$OPENROUTER_PRESET_HELPER" high
-fi
-if [[ "$OPENROUTER_EFFORT" != "low" ]]; then
-  "$OPENROUTER_PRESET_HELPER" low
-fi
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
-readonly OPENROUTER_PI_T1_WIRE_MODEL="anthropic/claude-fable-5.1@preset/effort-high"
-readonly OPENROUTER_PI_T2_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-high"
-readonly OPENROUTER_PI_MECHANICAL_WIRE_MODEL="z-ai/glm-5.3-flash@preset/effort-high"
-readonly OPENROUTER_PI_MEMORY_WIRE_MODEL="google/gemini-3.8-flash@preset/effort-low"
-readonly OPENROUTER_PI_REFUTE_WIRE_MODEL="openai/gpt-5.6-sol@preset/effort-xhigh"
+mapfile -t OPENROUTER_PI_WIRE_MODELS < <("$OPENROUTER_PRESET_HELPER" --pi-openrouter-wire-models)
+if [[ "${#OPENROUTER_PI_WIRE_MODELS[@]}" -eq 0 ]]; then
+  echo "Error: Pi tiering declares no OpenRouter lane models." >&2
+  exit 1
+fi
+readonly -a OPENROUTER_PI_WIRE_MODELS
+"$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"
+prepared_efforts=" $OPENROUTER_EFFORT "
+for wire_model in "${OPENROUTER_PI_WIRE_MODELS[@]}"; do
+  wire_effort="${wire_model##*@preset/effort-}"
+  if [[ "$prepared_efforts" != *" $wire_effort "* ]]; then
+    "$OPENROUTER_PRESET_HELPER" "$wire_effort"
+    prepared_efforts+="$wire_effort "
+  fi
+done
 
 # The shim is the verified consumer of this catalog. The direct `--no-shim`
 # short route remains an explicit unverified-capacity escape hatch.
 export CURSOR_AGENT_SHIM_MODEL_CATALOG="$("$OPENROUTER_PRESET_HELPER" --cursor-model-catalog "$OPENROUTER_CONTEXT" \
-  "$OPENROUTER_WIRE_MODEL" "$OPENROUTER_PI_T1_WIRE_MODEL" "$OPENROUTER_PI_T2_WIRE_MODEL" \
-  "$OPENROUTER_PI_MECHANICAL_WIRE_MODEL" "$OPENROUTER_PI_MEMORY_WIRE_MODEL" "$OPENROUTER_PI_REFUTE_WIRE_MODEL")"
+  "$OPENROUTER_WIRE_MODEL" "${OPENROUTER_PI_WIRE_MODELS[@]}")"
 
 # The shim's session guardrail admits the selected primary and declared Pi lanes
 # on /chat/completions in this session. Subagents, profiles, resumes, and
 # caller-supplied Task.model all resolve before the request body is built, so
 # this env is the one knob the shim checks against.
-export CURSOR_AGENT_ALLOWED_MODEL="$OPENROUTER_WIRE_MODEL,$OPENROUTER_PI_T1_WIRE_MODEL,$OPENROUTER_PI_T2_WIRE_MODEL,$OPENROUTER_PI_MECHANICAL_WIRE_MODEL,$OPENROUTER_PI_MEMORY_WIRE_MODEL,$OPENROUTER_PI_REFUTE_WIRE_MODEL"
+printf -v OPENROUTER_PI_ALLOWED_MODELS ",%s" "${OPENROUTER_PI_WIRE_MODELS[@]}"
+export CURSOR_AGENT_ALLOWED_MODEL="$OPENROUTER_WIRE_MODEL$OPENROUTER_PI_ALLOWED_MODELS"
 
 # The env fallbacks (CURSOR_LOCAL_AGENT_BASE_URL/API_KEY, ANTHROPIC_BASE_URL/AUTH_TOKEN) sit below
 # the flags the CLI receives, so inherited values cannot escape the pinned route; drop them anyway

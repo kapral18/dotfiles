@@ -8,7 +8,7 @@ complete -c ',cursor-openrouter' -l effort -x -a '(__openrouter_catalog_efforts)
 complete -c ',cursor-openrouter' -l reasoning-effort -x -a '(__openrouter_catalog_efforts)' -d 'Alias for --effort'
 complete -c ',cursor-openrouter' -l thinking -x -a '(__openrouter_catalog_efforts)' -d 'Alias for --effort'
 complete -c ',cursor-openrouter' -l no-thinking -d 'Minimal reasoning effort'
-complete -c ',cursor-openrouter' -l context -x -a 'short long' -d 'Context tier (default short; long requires shim)'
+complete -c ',cursor-openrouter' -l context -x -a 'short long' -d 'Context tier (default long; long requires shim)'
 complete -c ',cursor-openrouter' -l no-shim -d 'Direct route: skip guardrail, strict fix, and context metadata'
 complete -c ',cursor-openrouter' -l print -s p -d 'Print responses to console (non-interactive)'
 complete -c ',cursor-openrouter' -l output-format -x -a 'text json stream-json' -d 'Output format (only with --print)'
