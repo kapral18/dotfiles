@@ -6,6 +6,8 @@ tool_version: jscpd 4.0.8
 
 # jscpd (Copy/Paste Detector)
 
+Subagent dispatch: inline (mechanical for a settled multi-target scan and report) — small scans run directly; refactors go through Produce.
+
 Do not use:
 
 - unused dependency/export detection: `~/.agents/skills/k-knip/SKILL.md`
@@ -43,3 +45,10 @@ jscpd ./src --threshold 5                       # fail if >5% duplication
 - Supports 150+ languages.
 - Non-zero exit when duplication exceeds `--threshold` — useful for CI gates.
 - Use `--max-size 1mb` to skip large generated files.
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Launch one mechanical packet for a settled multi-target scan and report with a stated rule and return;
+the root MUST NOT substitute its own inline scan for that packet absent an explicit user no-delegation instruction;
+if the lane is unavailable report blocked. Small scans stay inline; refactors go through Produce.

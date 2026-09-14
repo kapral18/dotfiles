@@ -57,6 +57,90 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Premature stopping (including checkpoint commentary) and instruction/gate violations are operational failures.",
         )
 
+    def test_when_routing_work_should_separate_artifact_review_from_claim_challenge(self):
+        section = _sop_rule_text().split("### 3.7 Delegation Categories", 1)[1].split("### 3.8", 1)[0]
+        rows = dict(re.findall(r"^\|\s*`(\w+)`\s*\|([^|\n]+)\|", section, re.MULTILINE))
+        self.assertEqual(set(rows), {"research", "mechanical", "implement", "review", "refute", "memory"})
+        self.assertIn("artifact assessment", rows["review"])
+        self.assertIn("claim", rows["refute"])
+        self.assertIn("Named paths never downgrade", section)
+        self.assertIn("output-heavy", section)
+        self.assertNotIn("3+ files", section)
+        self.assertNotIn("dispatch-intensity.md", section)
+        self.assertIn("No agent per read, command, check result, or tiny edit.", section)
+
+    def test_when_assigning_memory_should_let_only_the_root_persist(self):
+        for path in (
+            "home/readonly_AGENTS.md",
+            "home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt",
+            "home/exact_dot_agents/exact_skills/exact_k-ai-kb/readonly_SKILL.md",
+        ):
+            with self.subTest(path=path):
+                self.assert_file_contains(
+                    path,
+                    "Ordinary children MUST NOT run durable memory writes",
+                    "only the root persists, with root-verified evidence and `,ai-kb remember`",
+                    "no child may invoke another memory agent",
+                )
+                self.assert_file_not_contains(path, "a child MUST NOT run `,ai-kb remember`")
+        # The substitute for a nested memory agent: the child notes a fetch learning with its
+        # primary-source anchor, the packet carries the ids that make the note land, and the root
+        # re-opens the anchor before the fact enters the durable batch.
+        for path in ("home/readonly_AGENTS.md", "home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt"):
+            with self.subTest(path=path, clause="fetch learning"):
+                self.assert_file_contains(
+                    path,
+                    "Record a reusable fetch learning as `,agent-memory note fact --ref <primary-source URL>` with the verbatim quote in the text; the root harvests it.",
+                    "Do not return it as a durable claim.",
+                )
+        self.assert_file_contains(
+            "home/readonly_AGENTS.md",
+            "terminal condition, and the active topic plus session id for `,agent-memory note`.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-ai-kb/readonly_SKILL.md",
+            "A harvested child fact enters the batch only when the root re-opens its `--ref` and the quote matches.",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-ai-kb/exact_references/readonly_smol-operator.md",
+            "judge mode and ordinary workers never run durable writes",
+            "MUST NOT run `,ai-kb remember`",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-ai-kb/exact_references/readonly_smol-operator.md",
+            "## Scribe mode",
+        )
+        # Persist moved to the root: the CLI's own collision gate replaces the scribe's model dedupe.
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-ai-kb/readonly_SKILL.md",
+            "## Persist (root, inline)",
+            "MUST NOT persist unverified, transient, or session-only notes",
+            "Search first:",
+            "Read back the written capsule id",
+            "NEVER through a scribe packet",
+        )
+        self.assert_file_contains(
+            "home/readonly_AGENTS.md",
+            "Persist the final batch inline with `,ai-kb remember`; NEVER through a scribe packet.",
+        )
+        self.assert_file_contains(
+            "home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt",
+            "packet-relevant recall",
+            "packet-supplied topic/session IDs",
+            "otherwise return insights to the parent",
+        )
+
+    def test_when_running_mechanical_procedures_should_return_evidence_not_certification(self):
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_mechanical-worker.md",
+            "retrieval, execution, extraction, transformation, compression, or reporting",
+            "actual command exit statuses, omissions and exceptions",
+            "changed paths only when there were edits",
+            "MUST NOT settle ambiguous meaning",
+            "run acceptance tests or private QA",
+            "Do not claim the produced artifact is verified",
+        )
+
     def test_delegated_agents_are_leaf_workers(self):
         for policy in ("home/readonly_AGENTS.md", "home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt"):
             self.assert_file_contains(

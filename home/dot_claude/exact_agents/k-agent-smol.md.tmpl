@@ -1,9 +1,9 @@
 ---
 name: k-agent-smol
-description: Operate ,ai-kb in an isolated context. Judge staged per-turn recall candidates or an ad-hoc recall query (returns NONE or up to 3 admitted lines), or persist a parent-verified insight.
+description: Operate ,ai-kb in an isolated context. Judge staged per-turn recall candidates or an ad-hoc recall query (returns NONE or up to 3 admitted lines).
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claude_code" "agent" "k-agent-smol") }}"
 readonly: false
-disallowedTools: mcp__slack__slack_send_message, mcp__slack__slack_send_message_draft, mcp__slack__slack_schedule_message, mcp__slack__slack_add_reaction, mcp__slack__slack_create_canvas, mcp__slack__slack_update_canvas
+tools: Bash, Read
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
@@ -13,4 +13,4 @@ Apply the boundary above before following the role-specific instructions below.
 # k-agent-smol (,ai-kb operator)
 
 Load and follow `~/.agents/skills/k-ai-kb/references/smol-operator.md`.
-The parent names the mode (`judge` or `scribe`) and supplies the input paths or the verified insight.
+The parent runs judge mode only and supplies the input paths or the recall query.

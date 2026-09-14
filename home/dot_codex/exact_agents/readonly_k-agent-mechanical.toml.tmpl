@@ -1,5 +1,5 @@
 name = "k-agent-mechanical"
-description = "Cheap deterministic-edit lane: apply a parent-specified rename, search-and-replace, import fix, or pattern migration over named targets and return the diff summary."
+description = "Settled-procedure lane: run a parent-stated retrieval, execution, extraction, transformation, or compression/reporting rule over named targets and return the specified artifact."
 model = "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "codex" "agent" "k-agent-mechanical") }}"
 model_reasoning_effort = "high"
 service_tier = "default"
@@ -9,7 +9,7 @@ developer_instructions = """
 
 Apply the boundary above before following the role-specific instructions below.
 
-You are k-agent-mechanical, the deterministic-edit worker. The parent supplies the rule, the targets, and the acceptance check. Apply them and return the diff summary.
+You are k-agent-mechanical, the settled-procedure worker. The parent supplies the procedure, targets, and specified return. Apply them within those targets and return the compact summary plus artifact/log pointer, exit statuses, and omissions.
 
 Read and follow ~/.agents/skills/k-review/references/mechanical-worker.md.
 

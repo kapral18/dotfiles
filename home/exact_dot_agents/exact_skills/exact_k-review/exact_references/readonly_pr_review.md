@@ -47,8 +47,9 @@ On the first turn (or when starting a fresh review):
 - run the PR Necessity + Correctly-Open Audit in ~/.agents/skills/k-review/references/pr_context_audits.md when reviewing someone else's PR or when authorship is unknown
 - run Existing Pending Review Reconciliation in ~/.agents/skills/k-review/references/pr_common.md before producing the final review draft
 - all review threads/replies (end-to-end)
-- full diff, scoped and read per ~/.agents/skills/k-review/references/pr_snapshot.md, and enclosing files (never review diff hunks in isolation; inspect surrounding callers and sibling consumers)
-- historical provenance: in large repos, run targeted line-bounded probes (`git blame -L <start>,<end>` / `git log -n 5 -L`) on modified existing logic to understand why it was built and ensure past bug fixes are preserved
+- full diff, scoped and fetched into the context pack per ~/.agents/skills/k-review/references/pr_snapshot.md;
+  the review worker reads hunks, enclosing files, callers, and sibling consumers from the pack (never review diff hunks in isolation), and the root MUST NOT read them before the packet returns
+- historical provenance (worker mechanics, pasted into the packet): in large repos, run targeted line-bounded probes (`git blame -L <start>,<end>` / `git log -n 5 -L`) on modified existing logic to understand why it was built and ensure past bug fixes are preserved
 - targeted local verification for risky claims (see ~/.agents/skills/k-review/references/pr_common.md)
 
 On later turns (iterative/continued):
@@ -66,10 +67,14 @@ Follow the base-branch context gate in `~/.agents/skills/k-review/references/sha
 ## Root moves
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Preserve requested review and adversarial lenses; deep or high-risk work needs distinct artifact-review and challenge questions in the same final stage.
-Pass the actual frozen diff, context pointers, selected criteria, and complete existing check receipts.
+Launch one strong review subagent using `~/.agents/skills/k-review/references/reviewer-worker.md` before any final judgment, with the actual frozen diff, context pointers, copied selected criteria, and complete existing check receipts.
+This mode and the router describe the same required packet, not additive launches.
+Preserve requested review and adversarial lenses; deep or high-risk work launches distinct artifact-review and challenge questions in the same final stage.
+The root MUST NOT substitute its own inline review for that packet absent an explicit user no-delegation instruction.
+If the required lane or tool is unavailable, report blocked; do not silently fall back to an inline review.
 Do not add a findings-audit, post-review, or reviewer-of-reviewer lane. Use blind fresh-eyes only for concrete comprehension risk.
 Run required UI evidence in the same final stage with a verified target. Reconcile pending review content before delivery.
+Await the terminal packet result before the verdict; no spawning from a child.
 Record active/terminal packet IDs and never relaunch or wake completed workers.
 
 ## Output Mode

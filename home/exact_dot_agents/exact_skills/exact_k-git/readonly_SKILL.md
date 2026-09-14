@@ -5,6 +5,8 @@ description: "Use for local git operations: status, diff, log, staging, branches
 
 # Git Workflow Skill
 
+Subagent dispatch: inline — commits, pushes and history mutations are root-authorized transactions.
+
 External truth applies:
 
 - verify behavior from the actual repo/version (`git --version`, `git help <cmd>`); do not rely on memory.

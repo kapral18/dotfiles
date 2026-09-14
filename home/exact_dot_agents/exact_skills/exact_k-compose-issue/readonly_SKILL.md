@@ -5,6 +5,8 @@ description: "Use when drafting GitHub issue title/body or publication packet; n
 
 # Compose Issue
 
+Subagent dispatch: inline — composition needs the full task context and ends in a root-owned publication packet.
+
 Use when:
 
 - the user wants an issue title/body draft or issue publication packet only (no `gh` side effects)

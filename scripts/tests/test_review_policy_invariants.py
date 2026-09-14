@@ -429,6 +429,209 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         self.assertIn("It NEVER authorizes new substantive feedback.", reviews)
         self.assertIn("Unapproved authored content still needs its exact draft and approval under SOP §3.8.", reviews)
 
+    LAUNCH_PHRASES = (
+        "Launch one strong review subagent",
+        "Launch one strong final review subagent",
+        "Launch distinct strong review and adversarial packets before any final judgment",
+    )
+    INLINE_BAN = "MUST NOT substitute its own inline review"
+    UNAVAILABLE_BLOCKER = "report blocked; do not silently fall back"
+
+    def mandatory_dispatch(self, text):
+        """Mandatory isolated-launch predicate: explicit launch plus inline ban plus blocker.
+        Source-contract check only; it does not prove model compliance."""
+        has_launch = any(phrase in text for phrase in self.LAUNCH_PHRASES)
+        return has_launch and self.INLINE_BAN in text and self.UNAVAILABLE_BLOCKER in text
+
+    def dispatch_text_sits_under_root_moves(self, text):
+        """True only when every dispatch phrase sits inside the guarded Root moves section."""
+        if "## Root moves" not in text:
+            return False
+        before, rest = text.split("## Root moves", 1)
+        section, _, later = rest.partition("\n## ")
+        phrases = (*self.LAUNCH_PHRASES, self.INLINE_BAN, self.UNAVAILABLE_BLOCKER)
+        if "Only the active root/main session follows this section" not in section:
+            return False
+        return not any(phrase in before or phrase in later for phrase in phrases)
+
+    def assert_dispatch_text_sits_under_root_moves(self, path):
+        self.assertTrue(self.dispatch_text_sits_under_root_moves(self.read(path)), path)
+
+    ROOT_DISPATCH_FILES = (
+        "home/exact_dot_agents/exact_skills/exact_k-light-review/readonly_SKILL.md",
+        "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md",
+        "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
+        "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_local_changes.md",
+        "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_plan_review.md",
+        "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_review.md",
+        "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_fix.md",
+        "home/exact_dot_agents/exact_skills/exact_k-deep-review/exact_references/readonly_reviewer-roster.md",
+    )
+
+    def test_when_review_tier_is_selected_should_require_isolated_dispatch(self):
+        entrypoints = [
+            "home/exact_dot_agents/exact_skills/exact_k-light-review/readonly_SKILL.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md",
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
+        ]
+        for path in entrypoints:
+            with self.subTest(path=path):
+                text = self.read(path)
+                self.assertIn(
+                    "Only the active root/main session follows this section; a delegated leaf skips it",
+                    text,
+                )
+                self.assertTrue(self.mandatory_dispatch(text), path)
+        catalog_only = "The contract `~/.agents/skills/k-review/references/reviewer-worker.md` exists."
+        self.assertFalse(self.mandatory_dispatch(catalog_only))
+        optional_only = (
+            "Choose one strong review/refute packet when isolation is useful; small bounded review can remain inline."
+        )
+        self.assertFalse(self.mandatory_dispatch(optional_only))
+        launch_without_ban = f"{self.LAUNCH_PHRASES[0]} when isolation is useful. {self.UNAVAILABLE_BLOCKER}."
+        self.assertFalse(self.mandatory_dispatch(launch_without_ban))
+        launch_and_ban_without_blocker = f"{self.LAUNCH_PHRASES[0]}. The root {self.INLINE_BAN}."
+        self.assertFalse(self.mandatory_dispatch(launch_and_ban_without_blocker))
+        ban_and_blocker_without_launch = f"The root {self.INLINE_BAN}; if unavailable, {self.UNAVAILABLE_BLOCKER}."
+        self.assertFalse(self.mandatory_dispatch(ban_and_blocker_without_launch))
+
+    def test_when_dispatch_text_exists_should_sit_only_under_root_moves(self):
+        for path in self.ROOT_DISPATCH_FILES:
+            with self.subTest(path=path):
+                self.assert_dispatch_text_sits_under_root_moves(path)
+        guard = "Only the active root/main session follows this section; a delegated leaf skips it."
+        compliant = (
+            f"## Scope\n\nIntro.\n\n## Root moves\n\n{guard}\n{self.LAUNCH_PHRASES[0]}.\n\n## Output\n\nFindings.\n"
+        )
+        self.assertTrue(self.dispatch_text_sits_under_root_moves(compliant))
+        leaked_above = f"{self.LAUNCH_PHRASES[0]} now.\n\n## Root moves\n\n{guard}\n"
+        self.assertFalse(self.dispatch_text_sits_under_root_moves(leaked_above))
+        leaked_below = f"## Root moves\n\n{guard}\n\n## Mode Selection\n\n{self.LAUNCH_PHRASES[0]} here.\n"
+        self.assertFalse(self.dispatch_text_sits_under_root_moves(leaked_below))
+        unguarded = f"## Root moves\n\n{self.LAUNCH_PHRASES[0]}.\n"
+        self.assertFalse(self.dispatch_text_sits_under_root_moves(unguarded))
+        sop = self.read("home/readonly_AGENTS.md")
+        self.assertNotIn("light-path judgment only", sop)
+        self.assertIn("eligibility routing and terminal synthesis", sop)
+
+    def test_when_review_is_light_or_standard_should_not_allow_discretionary_inline_judgment(self):
+        light = self.read("home/exact_dot_agents/exact_skills/exact_k-light-review/readonly_SKILL.md")
+        self.assertNotIn("small bounded review can remain inline", light)
+        self.assertNotIn("when isolation is useful", light)
+        router = self.read("home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md")
+        self.assertNotIn("otherwise isolate substantial context-heavy judgment where it reduces total work", router)
+        local = self.read(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_local_changes.md"
+        )
+        self.assertNotIn("when isolation is useful", local)
+        plan = self.read("home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_plan_review.md")
+        self.assertNotIn("when useful", plan)
+        fix = self.read("home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_fix.md")
+        self.assertNotIn("use strong final judgment where needed", fix)
+
+    def test_when_standard_mode_is_selected_should_reuse_the_required_leaf_packet(self):
+        modes = [
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_local_changes.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_plan_review.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_review.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_fix.md",
+        ]
+        for path in modes:
+            with self.subTest(path=path):
+                text = self.read(path)
+                self.assertTrue(self.mandatory_dispatch(text), path)
+                self.assertIn("the same required packet, not additive launches", text)
+                self.assertIn("no spawning from a child", text)
+        fix = self.read("home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_fix.md")
+        self.assertIn("one batch review, not per-thread reviews", fix)
+
+    def test_when_review_is_deep_should_require_distinct_review_and_refute_packets(self):
+        entry = self.read("home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md")
+        self.assertIn("`~/.agents/skills/k-review/references/reviewer-worker.md`", entry)
+        self.assertIn("`~/.agents/skills/k-review/references/adversarial-verifier.md`", entry)
+        self.assertIn("never as reviews of one another", entry)
+        roster = self.read(
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/exact_references/readonly_reviewer-roster.md"
+        )
+        self.assertTrue(self.mandatory_dispatch(roster))
+        self.assertIn("using the same packets as the entrypoint", roster)
+        self.assertIn("never this roster or a controller router", roster)
+
+    def test_when_delegation_is_forbidden_or_unavailable_should_distinguish_override_from_blocker(self):
+        paths = [
+            "home/exact_dot_agents/exact_skills/exact_k-light-review/readonly_SKILL.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md",
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_local_changes.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_plan_review.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_review.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_fix.md",
+            "home/exact_dot_agents/exact_skills/exact_k-deep-review/exact_references/readonly_reviewer-roster.md",
+        ]
+        for path in paths:
+            with self.subTest(path=path):
+                text = self.read(path)
+                self.assertIn("absent an explicit user no-delegation instruction", text)
+                self.assertIn("report blocked; do not silently fall back", text)
+
+    ROOT_READ_BOUND_FILES = (
+        "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md",
+        "home/exact_dot_agents/exact_skills/exact_k-light-review/readonly_SKILL.md",
+        "home/exact_dot_agents/exact_skills/exact_k-deep-review/readonly_SKILL.md",
+    )
+
+    def test_when_root_prepares_a_review_should_be_bound_to_scope_level_reads(self):
+        # The root used to "own context collection" while the mode file ordered `git diff`, full-file
+        # reads, and blame with no addressee, so the root drifted into worker-depth reading before the
+        # mandatory launch. The bound is a hard ban placed under Root moves in every review tier and
+        # restated at each reference that previously issued unaddressed read instructions.
+        for path in self.ROOT_READ_BOUND_FILES:
+            with self.subTest(path=path):
+                text = self.read(path)
+                self.assertNotIn("context collection", text)
+                section = text.split("## Root moves", 1)[1].split("\n## ", 1)[0]
+                self.assertIn("MUST NOT read diff hunks, changed-file bodies, callers, or blame output", section)
+                self.assertIn("scope-level evidence", section)
+        local = self.read(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_local_changes.md"
+        )
+        self.assertNotIn("## Investigation (Read-Only, Start Immediately)", local)
+        self.assertIn("## Scope Evidence (Root, Read-Only, Start Immediately)", local)
+        self.assertIn("## Worker Investigation (Passed In The Packet)", local)
+        self.assertIn("record its hash; do not read it.", local)
+        self.assertNotIn("- `git diff`\n- `git diff --staged`\n", local)
+        for path, phrase in (
+            (
+                "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_shared_rules.md",
+                "MUST NOT run these source or history reads before the packet returns",
+            ),
+            (
+                "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_shared_rules.md",
+                "never diff hunks or changed-file bodies before the review packet returns",
+            ),
+            (
+                "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_lanes.md",
+                "do not read code bodies to pick lanes or to author the packet",
+            ),
+            (
+                "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_core.md",
+                "MUST NOT read hunks or file bodies itself before that packet returns",
+            ),
+            (
+                "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_review.md",
+                "the root MUST NOT read them before the packet returns",
+            ),
+            (
+                "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_plan_review.md",
+                "MUST NOT read the named source itself before the packet returns",
+            ),
+        ):
+            with self.subTest(path=path, phrase=phrase):
+                self.assertIn(phrase, self.read(path))
+        for path in self.ROOT_DISPATCH_FILES:
+            with self.subTest(path=path, check="no unaddressed root read order"):
+                self.assertNotIn("simple targeted reads remain inline", self.read(path))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # Kibana Backport End-To-End
 
+Subagent dispatch: inline — drives an interactive tmux tool that pushes branches and opens PRs.
+
 Use this skill only when explicitly invoked by name, typically as "run/resolve the backport for PR `<N>`".
 Compute targets, drive one interactive `node scripts/backport` run in a dedicated tmux window, faithfully resolve and stage every conflict, and let the tool push branches and open PRs.
 Stop only at the user-decision boundaries in Contract.

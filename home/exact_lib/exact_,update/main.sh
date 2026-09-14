@@ -127,6 +127,41 @@ step_info() {
   printf '  %s  %s\n' "$ICON_RUN" "$1"
 }
 
+# Relay child output to the terminal with the step prefix at every line start.
+# A pipe through sed held partial lines until a newline arrived, so an interactive
+# prompt such as chezmoi's "... has changed since chezmoi last wrote it [overwrite,skip,quit]"
+# stayed invisible while the child blocked on the tty. read -t hands back partial
+# input on timeout, so a prompt shows within RELAY_POLL_SECONDS and can be answered:
+# the child keeps the terminal as stdin. NUL bytes are dropped (bash cannot hold them).
+RELAY_POLL_SECONDS=0.2
+
+_relay_output() {
+  local prefix="    ${C_DIM}│${C_R} "
+  local chunk line rc at_bol=1
+  while :; do
+    chunk=""
+    IFS= read -r -d '' -n 4096 -t "$RELAY_POLL_SECONDS" chunk
+    rc=$?
+    while [ -n "$chunk" ]; do
+      line=${chunk%%$'\n'*}
+      [ "$at_bol" -eq 1 ] && printf '%s' "$prefix"
+      if [ "$line" = "$chunk" ]; then
+        printf '%s' "$line"
+        at_bol=0
+        chunk=""
+      else
+        printf '%s\n' "$line"
+        at_bol=1
+        chunk=${chunk#*$'\n'}
+      fi
+    done
+    # 0: delimiter (NUL) read; >128: timeout with partial input already emitted; 1: EOF.
+    [ "$rc" -eq 1 ] && break
+  done
+  [ "$at_bol" -eq 0 ] && printf '\n'
+  return 0
+}
+
 run_timed() {
   local label="$1"
   shift
@@ -144,7 +179,7 @@ run_timed() {
 
   local rc=0
   set +e
-  "$@" 2>&1 | sed "s/^/    ${C_DIM}│${C_R} /"
+  "$@" 2>&1 | _relay_output
   rc=${PIPESTATUS[0]}
   set -e
 

@@ -5,6 +5,8 @@ description: "Use for browser-rendered markup, CSS, layout, visual states, acces
 
 # Web Markup And Styling Quality
 
+Subagent dispatch: criteria — loaded by whoever holds the packet; never dispatched alone.
+
 Use this for browser-rendered markup and styling.
 
 ## Secondary Skill Escalation

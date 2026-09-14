@@ -1,4 +1,4 @@
-/** Session-local GPT context selection shared by Pi and OMP. */
+/** Session-local short/long working-context selection shared by Pi and OMP. */
 
 const ENTRY_TYPE = "gpt-context-mode"
 // Astra's standard-price input boundary. For GPT catalogs without tier metadata,
@@ -44,6 +44,30 @@ function isGpt(model: ContextModel): boolean {
   return /(?:^|\/)gpt-\d/i.test(model.id)
 }
 
+function capacityOf(native: ContextModel): number {
+  return Math.max(
+    positive(native.contextWindow) ? native.contextWindow : 0,
+    positive(native.maxContextWindow) ? native.maxContextWindow : 0,
+  )
+}
+
+function shortWindow(native: ContextModel, capacity: number): number | undefined {
+  const current = positive(native.contextWindow) ? native.contextWindow : capacity
+  const thresholds = [
+    native.cost?.longContext?.inputThreshold,
+    ...(native.cost?.tiers ?? []).map((tier) => tier.inputTokensAbove),
+  ].filter(positive)
+  if (thresholds.length) return Math.min(current, Math.min(...thresholds))
+  if (isGpt(native)) return Math.min(current, DEFAULT_SHORT_WINDOW)
+  if (positive(native.maxContextWindow) && current < native.maxContextWindow) return current
+}
+
+function defaultMode(model: ContextModel, native: ContextModel, short: number): Mode {
+  if (isGpt(model)) return "short"
+  const current = positive(native.contextWindow) ? native.contextWindow : short
+  return current <= short ? "short" : "long"
+}
+
 function savedMode(entries: readonly Entry[], model: ContextModel): Mode | undefined {
   for (let index = entries.length - 1; index >= 0; index--) {
     const entry = entries[index]
@@ -65,24 +89,14 @@ export function createContextMode<M extends ContextModel>(
 
   function selection(ctx: Context<M>, requested?: Mode) {
     const model = ctx.model
-    if (!model || !isGpt(model)) return
+    if (!model) return
     const native = ctx.modelRegistry.find(model.provider, model.id) ?? originals.get(model) ?? model
-    const capacity = Math.max(
-      positive(native.contextWindow) ? native.contextWindow : 0,
-      positive(native.maxContextWindow) ? native.maxContextWindow : 0,
-    )
+    const capacity = capacityOf(native)
     if (!capacity) return
+    const short = shortWindow(native, capacity)
+    if (!short || short >= capacity) return
     const stored = savedMode(ctx.sessionManager.getBranch(), model)
-    const mode = requested ?? stored ?? "short"
-    const thresholds = [
-      native.cost?.longContext?.inputThreshold,
-      ...(native.cost?.tiers ?? []).map((tier) => tier.inputTokensAbove),
-    ].filter(positive)
-    const threshold = thresholds.length ? Math.min(...thresholds) : DEFAULT_SHORT_WINDOW
-    const short = Math.min(
-      positive(native.contextWindow) ? native.contextWindow : capacity,
-      threshold,
-    )
+    const mode = requested ?? stored ?? defaultMode(model, native, short)
     return { model, native, mode, window: mode === "long" ? capacity : short, stored }
   }
 
@@ -120,7 +134,7 @@ export function createContextMode<M extends ContextModel>(
     const mode = requested === "short" || requested === "long" ? requested : undefined
     const selected = selection(ctx, mode)
     if (!selected) {
-      ctx.ui.notify("Context modes apply only to GPT models with a known window. This model is unchanged.", "info")
+      ctx.ui.notify("Context modes apply only when this model has a distinct short and long window. This model is unchanged.", "info")
       return
     }
     const tokens = ctx.getContextUsage()?.tokens

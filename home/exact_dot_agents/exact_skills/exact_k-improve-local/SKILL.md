@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # Improve Local
 
+Subagent dispatch: inline — the local diff is small and already in root context; recommendation stays with the root.
+
 Propose the single most compelling, high-leverage addition to the local changes.
 
 Use when:

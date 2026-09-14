@@ -5,6 +5,8 @@ description: "Use for nontrivial code-impact assessment, conceptual code search,
 
 # Semantic Code Search Skill
 
+Subagent dispatch: research — substantial context-heavy SCSI investigation; targeted queries inline.
+
 Use this skill for conceptual investigations using semantic-code-search MCP tools.
 
 When triggered:
@@ -116,7 +118,9 @@ Tool selection guidelines:
 ## Root moves
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Use the strong research category for substantial context-heavy investigations;
-never route symbol selection or synthesis to a cheap mechanical model. Targeted queries may remain inline.
+Launch one strong research packet for a substantial context-heavy investigation before relying on its impact conclusions;
+the root MUST NOT substitute its own inline investigation for that packet absent an explicit user no-delegation instruction;
+if the lane is unavailable report blocked.
+Never route symbol selection or synthesis to a cheap mechanical model. Targeted queries stay inline.
 Dispatch the whole bounded question, not each query/result.
 Workers return conclusions, evidence pointers, uncertainty, and affected interfaces without a private review/verification workflow.

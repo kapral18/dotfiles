@@ -40,6 +40,7 @@ Do not load delivery mechanics for a local/plan report that contains no public-r
 ## Base-Branch Context Gate (Mandatory)
 
 Goal: compare the diff against how base (usually `main`) works today.
+The review worker runs this gate from the packet. The root supplies scope pointers and MUST NOT run these source or history reads before the packet returns (root read bound in `~/.agents/skills/k-review/SKILL.md` Root moves).
 
 ### Evidence selection
 
@@ -132,7 +133,7 @@ Before any GitHub posting step: load `~/.agents/skills/k-review/references/revie
 ## Root moves
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Substantial base-context questions use a strong research packet; simple targeted reads remain inline.
+Substantial base-context questions use a strong research packet; inline root reads stay within the router's root read bound (scope-level evidence and existing-evidence lookup, never diff hunks or changed-file bodies before the review packet returns).
 Select queries from the actual uncertainty, not an unconditional multi-angle roster.
 Keep raw evidence in the context pack and compact decisions/pointers in root context.
 Record each packet ID, stage/category, owned question, model/effort, and active/terminal result in the existing topic.

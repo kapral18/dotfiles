@@ -6,6 +6,8 @@ tool_version: ",nano-banana 1.2.0"
 
 # Nano Banana (cloud generate and edit)
 
+Subagent dispatch: inline — one named cloud image call.
+
 Wraps the `,nano-banana` CLI (`~/bin/,nano-banana` → `~/lib/,nano-banana/main.py`).
 One prompt in, one raster file out, via Gemini Nano Banana 2 (`gemini-3.1-flash-image`).
 Every prompt and `-i`/`--url` input is uploaded to Google. That is the point of this tool.

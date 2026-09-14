@@ -5,6 +5,8 @@ description: "Use for cache-only HTML artifacts, visual reports/diagrams, or liv
 
 # Agent Artifact
 
+Subagent dispatch: inline — the artifact is the user's local browser review surface and feedback loop.
+
 Use `,artifact` to create a local browser review surface without polluting the current worktree.
 
 Store artifacts and runtime state under `$XDG_CACHE_HOME/agent-artifacts` or `~/.cache/agent-artifacts`.

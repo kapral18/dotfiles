@@ -22,7 +22,7 @@ Draft reply intents without claiming unverified outcomes or nonexistent commits.
 
 ## Verify and deliver
 
-Run the combined final check plan once for the frozen batch and use strong final judgment where needed.
+Run the combined final check plan once for the frozen batch; delivery requires the batch's strong final review result.
 Do not run per-thread test suites, independent repair loops, or a Post-Review Stage.
 Failed criteria block dependent publication; the root applies SOP §3.5 when existing authority covers recovery.
 This batch does not create a per-thread repair loop.
@@ -47,3 +47,8 @@ Later comments are new input, not a reason to reopen completed workers or run an
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
 Keep the compact batch decisions and active/terminal packet IDs in the existing topic.
 Dispatch substantial implementation and research, not per-thread audit ladders.
+Launch one strong final review subagent using `~/.agents/skills/k-review/references/reviewer-worker.md` for the frozen batch before delivery; this is one batch review, not per-thread reviews.
+This mode and the router describe the same required packet, not additive launches.
+The root MUST NOT substitute its own inline review for that packet absent an explicit user no-delegation instruction.
+If the required lane or tool is unavailable, report blocked; do not silently fall back to an inline review.
+Await the terminal packet result before the verdict; no spawning from a child.

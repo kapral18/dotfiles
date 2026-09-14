@@ -6,6 +6,9 @@ disable-model-invocation: true
 
 # Converge
 
+Subagent dispatch: refute (implement for fixes) — every round uses fresh adversarial refuter packets and implementation-band fixes;
+the root owns the loop.
+
 Loop adversarial rounds against a claim or changeset until **dry**: the complete exit condition declared in Step 1.
 
 `disable-model-invocation: true` blocks direct auto-invocation of this skill only; enter by explicit user invocation.

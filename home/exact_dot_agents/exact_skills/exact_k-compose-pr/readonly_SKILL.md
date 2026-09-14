@@ -5,6 +5,8 @@ description: "Use when drafting PR title/body or publication packet; no gh side 
 
 # Compose PR Body
 
+Subagent dispatch: inline — composition needs the full task context and ends in a root-owned publication packet.
+
 Use when:
 
 - the user wants a PR title/body draft or PR publication packet only (no `gh` side effects)

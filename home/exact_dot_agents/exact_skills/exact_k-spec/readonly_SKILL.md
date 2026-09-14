@@ -5,6 +5,8 @@ description: "Use when a request needs a compact implementation packet with expl
 
 # Spec
 
+Subagent dispatch: inline (research for substantial questions) — decisions and packet assembly stay with the root.
+
 Develop the active intent topic into the smallest actionable packet. The SOP owns the session lifecycle and safety gates.
 
 1. Establish the actual problem and source evidence. Reuse existing research; do not create a separate necessity-review ceremony.
@@ -31,7 +33,9 @@ Otherwise present the decision/packet requested by the user.
 ## Root moves
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Use a strong research packet for substantial context-heavy questions; keep decisions and packet assembly in the root.
+Launch one strong research packet for a substantial context-heavy question before settling the packet;
+the root MUST NOT substitute its own inline investigation for that packet absent an explicit user no-delegation instruction;
+if the lane is unavailable report blocked. Decisions, fork questions to the user, and packet assembly stay with the root.
 Do not delegate each criterion, run a mechanical check agent, or invoke memory merely to satisfy a step.
 
 ## Output

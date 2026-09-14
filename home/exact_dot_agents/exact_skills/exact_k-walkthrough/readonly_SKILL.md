@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # Walkthrough Skill
 
+Subagent dispatch: research — exploration and evidence gathering run on the research lane; the root renders and presents.
+
 Create interactive exploratory diagrams for understanding codebase architecture and system design.
 
 ## When to Use
@@ -63,6 +65,13 @@ When rendering a diagram, provide:
 - `code`: ASCII diagram showing component relationships
 - `summary`: One-sentence description of what the diagram illustrates
 - `nodes`: Metadata for clickable nodes with titles, descriptions, and links
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Launch one strong research packet for substantial exploration with the evidence return;
+the root MUST NOT substitute its own inline exploration for that packet absent an explicit user no-delegation instruction;
+if the lane is unavailable report blocked. Rendering and presentation stay inline.
 
 ## Output
 

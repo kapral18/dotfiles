@@ -5,6 +5,8 @@ description: "Use for worktrees with ,w or ,gh-worktree: create, switch, open, l
 
 # ,w Worktree Skill (Worktrees + tmux)
 
+Subagent dispatch: inline — creates/switches the user's worktrees and tmux sessions.
+
 Primary goal:
 
 - manage local git worktrees using the user's `,w` CLI instead of raw `git worktree` commands.

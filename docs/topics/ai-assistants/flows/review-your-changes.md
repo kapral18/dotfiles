@@ -15,7 +15,7 @@ Three review scopes share one final Verify stage. Select the scope from the chan
 /k-light-review
 ```
 
-The agent judges the diff against applicable correctness and hygiene criteria, consuming existing check evidence. Missing planned checks run once in final Verify. On your own uncommitted changes, findings inside the diff's own behavior are fixed in the same pass — write scope, not review, is the authority; scope-expanding findings come back as proposals. Findings do not authorize self-audits or convergence. Output names findings, applied fixes, evidence, and remaining gaps.
+The root dispatches one isolated `change-auditor` worker for the final judgment against applicable correctness and hygiene criteria, consuming existing check evidence. Missing planned checks stay root-owned and run once in final Verify. On your own uncommitted changes, the root fixes findings inside the diff's own behavior in Produce before that final judgment — write scope, not review, is the authority, and the leaf worker stays read-only; scope-expanding findings come back as proposals. Findings do not authorize self-audits or convergence. Output names findings, applied fixes, evidence, and remaining gaps.
 
 It will refuse and point up a rung when the target is a PR, someone else's code, or risky/stateful territory — that's the built-in escalation, not an error.
 
@@ -27,7 +27,7 @@ review PR #4321
 
 or for local work that needs base-branch context: `review my branch against main`.
 
-Standard review reads the complete primary PR discussion and references needed for named material questions, then traces base behavior and affected consumers. Stateful risks need transition evidence from focused tests or a disposable harness. Write scope, not authorship, grants edit authority: your own branch is fixed in place; someone else's PR gets proposals until you say fix it. Known fixes belong to Produce before final Verify; publication retains exact-payload approval.
+Standard review dispatches one isolated `reviewer-worker` leaf for the substantive judgment in every mode. The root reads the complete primary PR discussion and references needed for named material questions, packs that context once, and the leaf traces base behavior and affected consumers from it. Until that leaf returns, the root reads only scope-level evidence (status, `--stat`, changed names, log, check receipts, discussion) and never diff hunks or changed-file bodies; worker-depth reads travel in the packet. Stateful risks need transition evidence from focused root-run tests or a disposable harness. Write scope, not authorship, grants edit authority: the root fixes your own branch in Produce before the final judgment while the leaf stays read-only; someone else's PR gets proposals until you say fix it. Known fixes belong to Produce before final Verify; publication retains exact-payload approval.
 
 ## Rung 3 — `/k-deep-review`: independent lanes + adversarial verification
 
@@ -35,7 +35,7 @@ Standard review reads the complete primary PR discussion and references needed f
 /k-deep-review PR #4321
 ```
 
-Deep review retains strong artifact review and adversarial challenge as distinct questions against the same frozen candidate and shared evidence. It prefers a different model family at equal capability. Additional specialist lenses need independent risks; blind fresh-eyes applies only to comprehension risk and receives no narrative, history, or prior findings. Applicable live UI evidence belongs to this same final stage.
+Deep review dispatches distinct strong artifact-review and adversarial leaf packets as distinct questions against the same frozen candidate and shared evidence. It prefers a different model family at equal capability. Additional specialist lenses need independent risks; blind fresh-eyes applies only to comprehension risk and receives no narrative, history, or prior findings. Applicable live UI evidence belongs to this same final stage; the root selects it and views the returned artifacts.
 
 Expect anchored findings, unresolved evidence gaps, relevant UI artifacts, and any requested publication draft. There is no findings-auditor, verifier-of-verifier, post-review, or automatic repair chain.
 

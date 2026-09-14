@@ -6,6 +6,8 @@ tool_version: "letsfg 2026.4.66 (uv tool; --version unavailable); playwriter 0.1
 
 # LetsFG
 
+Subagent dispatch: inline (mechanical for a settled multi-date search and ranking) — bookings and real-money effects stay with the root.
+
 ## Boundaries
 
 - Book, unlock, attach payment, or register only when the user explicitly asks and confirms the real-money or account side effect.
@@ -84,6 +86,13 @@ Use `--return YYYY-MM-DD` for round trips, `--currency EUR` when the user specif
 - The system Python may not import `letsfg` because uv tools live in isolated environments.
   Prefer the `letsfg` executable instead of Python imports.
 - Before using the rendered-UI browser launcher, read and follow `~/.agents/skills/k-letsfg/references/browser-fallback.md` in full.
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Launch one mechanical packet for the settled flexible-date batch search and ranking with a stated rule and return;
+the root MUST NOT substitute its own inline batch for that packet absent an explicit user no-delegation instruction;
+if the lane is unavailable report blocked. Booking, unlock, and payment effects MUST NOT be delegated.
 
 ## Output
 

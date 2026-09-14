@@ -44,7 +44,7 @@ flowchart TB
     end
 
     subgraph LIBS["Shared libs + ,w/history internals (home/exact_lib/)"]
-        L["shared/{worktree_lib,bash_utils_lib}.sh · shared/{openrouter_presets,codex_lanes,claude_lanes}.py<br/>shared/context_mode.ts → Pi/OMP session-local GPT context selection<br/>,w/{main,add,prs,issue,ls,switch,open,mv,prune,remove,doctor}.sh<br/>,w/issue_lib.sh · ,w/lib/iso_date_days_ago.py<br/>,history-sync/{main,fish-history-merge,fish-history-merge.test}.py"]:::wt
+        L["shared/{worktree_lib,bash_utils_lib}.sh · shared/{openrouter_presets,codex_lanes,claude_lanes}.py<br/>shared/context_mode.ts → Pi/OMP session-local short/long working-context selection<br/>,w/{main,add,prs,issue,ls,switch,open,mv,prune,remove,doctor}.sh<br/>,w/issue_lib.sh · ,w/lib/iso_date_days_ago.py<br/>,history-sync/{main,fish-history-merge,fish-history-merge.test}.py"]:::wt
     end
     W --> LIBS
 

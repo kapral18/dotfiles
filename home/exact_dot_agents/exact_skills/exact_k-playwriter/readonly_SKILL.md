@@ -6,6 +6,8 @@ tool_version: playwriter 0.5.0
 
 # Playwriter
 
+Subagent dispatch: inline — browser mechanics used by the root or by a live-UI review leaf that was assigned them.
+
 Use Playwriter for real browser work.
 Fire without waiting for the user to name `playwriter` explicitly whenever the task needs a real browser.
 

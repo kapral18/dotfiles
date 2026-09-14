@@ -5,6 +5,8 @@ description: "Use when preparing/previewing merges, resolving semantic Git confl
 
 # weave
 
+Subagent dispatch: inline — merge-driver setup and conflict resolution in the user's checkout.
+
 Entity-level merge driver for Git. Replaces git's line-based merge with function/class-level merge via tree-sitter.
 Two branches adding different functions to the same file can auto-resolve; input guards can still reject the merge.
 

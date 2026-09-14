@@ -32,7 +32,7 @@ Choose the applicable strong review/refute category and its resolved model/effor
 Use a reachable named profile, or a native generic type with the same explicit registry category model where supported.
 Do not silently fall back to a weaker or more expensive model.
 A missing capability is a reported limitation, not authority to bypass the category.
-Fresh-eyes, criteria, hygiene, and adversarial profiles are optional task framings, not mandatory extra stages.
+Fresh-eyes, criteria, and hygiene profiles are optional framings; adversarial is required for deep or high-risk work.
 No child owns orchestration, verification of another reviewer, or a convergence loop.
 
 ### Claude Code
@@ -67,7 +67,7 @@ Run `/k-deep-review` in the main Antigravity session. Dynamic subagents cannot i
 Antigravity has no repo-owned profile-file surface; define each needed role with `define_subagent`, point its system prompt at the matching shared role contract, then launch it through `invoke_subagent`.
 Every dynamically defined repo-owned role MUST use its `k-agent-<role>` identifier.
 The `invoke_subagent` model field accepts only `inherit`, `flash_lite`, `flash`, or `pro`; every `category_models.antigravity` row is Gemini Flash, so the tier to pass is `flash`.
-Use `flash` for review, audit, refutation, and the cheap lanes (`k-agent-mechanical` edit/exact-retrieval packets, `k-agent-smol` memory).
+Use `flash`: review, audit, refute, `k-agent-mechanical` procedures, `k-agent-smol` memory.
 Do NOT launch any lane on `inherit`; do not use `pro` unless the registry row changes to a Pro model.
 The model surface is Gemini-only, so report `families=same (degraded)` for adversarial verification.
 
@@ -78,11 +78,11 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
 - Generic adversarial-verifier launch: `subagent_type: generalPurpose` with `model:` set to the registry refute value.
   The gate leaves a registry counter model untouched on a generic type, so the cross-family verifier survives the rewrite;
   Other exact registry lane selectors also survive; unregistered selectors are clamped to the type's band.
-- Generic cheap-lane launch (`k-agent-mechanical`, `k-agent-smol` are undiscoverable at user level):
-  `subagent_type: generalPurpose` with `model:` set to the registry mechanical/memory base id (`harnesses.cursor.agents` in `agent-bands.v1.json`).
-  The gate passes a registry cheap-lane model through on the generic type exactly like a counter model.
-  Cursor Task ids carry no effort; effort comes from the user's saved Cursor config, so do not add a reasoning-effort field.
-  When the cheap lane and `implement` share one base id, the gate cannot distinguish them; the profile/packet category is the only signal.
+- `k-agent-mechanical` (procedures) and `k-agent-smol` (memory) are not user-discoverable.
+  `subagent_type: generalPurpose`, `model:` = mechanical/memory base id from `harnesses.cursor.agents` in `agent-bands.v1.json`.
+  The gate preserves registered cheap/counter models.
+  Effort comes from saved user config, not Task ids; do not add a reasoning-effort field.
+  The gate cannot distinguish shared cheap/implement ids; retain the profile/packet category.
 - Cursor source supports custom subagent types (`SubagentType.custom.name`) and loads **project-level** `.cursor/agents` profile files only;
   user-level `~/.cursor/agents` is never scanned (probed 2026-08-30, cursor-agent 2026.08.28-a7f9513), so home-deployed profiles are unreachable.
   Where a workspace carries `k-agent-review-worker`/`k-agent-adversarial-verifier` profiles, launch the review and refute packets through them;

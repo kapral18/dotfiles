@@ -5,6 +5,8 @@ description: "Use when editing, reviewing, or refactoring implementation code or
 
 # Code Quality
 
+Subagent dispatch: criteria — loaded by whoever holds the packet; never dispatched alone.
+
 Owns repository-artifact style, maintainability, edit scope, semantic dedupe, and artifact necessity at point of use.
 The SOP owns compatibility and verification.
 

@@ -1,0 +1,5 @@
+{
+  "modelResponseAliases": {
+    "github-copilot/claude-fable-5.1": ["claude-fable-5-1"]
+  }
+}

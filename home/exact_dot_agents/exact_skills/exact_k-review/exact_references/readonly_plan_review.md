@@ -24,6 +24,7 @@ Out of scope:
 ## Base Context (Mandatory)
 
 A plan is a set of claims about the codebase plus a set of intended steps. Both must be checked against codebase reality.
+The review worker resolves the source claims below from the packet; the root passes the plan's claims and named symbols and MUST NOT read the named source itself before the packet returns.
 
 - Follow the Base-Branch Context Gate in `~/.agents/skills/k-review/references/shared_rules.md`, adapted for the missing diff:
   generate the SCSI/local-source questions from the plan's claims and named symbols instead of a diff, and report the required line as `Base context: ..., base=<branch the plan targets>, diff=n/a (plan review)`.
@@ -58,8 +59,11 @@ Return unsupported assumptions and concrete gaps without rewriting the plan or r
 ## Root moves
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Isolate substantial plan judgment on the strong review/refute category when useful;
-keep the packet scoped to the actual plan and relevant evidence. Do not launch another model to verify the returned review.
+Launch one strong review subagent using `~/.agents/skills/k-review/references/reviewer-worker.md` before any final judgment; keep the packet scoped to the actual plan and relevant evidence with the copied selected criteria.
+This mode and the router describe the same required packet, not additive launches.
+The root MUST NOT substitute its own inline review for that packet absent an explicit user no-delegation instruction.
+If the required lane or tool is unavailable, report blocked; do not silently fall back to an inline review.
+Await the terminal packet result before the verdict; no spawning from a child. Do not launch another model to verify the returned review.
 
 ## Output
 

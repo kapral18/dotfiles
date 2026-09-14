@@ -6,6 +6,9 @@ disable-model-invocation: true
 
 # Build
 
+Subagent dispatch: implement (research for unsettled questions; review/refute for final judgment) —
+production goes to the implementation band, judgment to strong final packets.
+
 Implement the approved `k-spec` packet through the SOP's Scope → Understand → Produce → Verify → Deliver lifecycle.
 This skill supplies build criteria and artifacts; it MUST NOT create another phase graph or verification loop.
 
@@ -41,7 +44,7 @@ This skill MUST NOT create a separate repair, post-review, or convergence loop.
 ## Root moves
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Use the registry's implementation band for substantive edits, with `~/.agents/skills/k-build/references/implement-worker.md`.
+Launch one implement packet on the registry's implementation band for each substantive settled edit set, with `~/.agents/skills/k-build/references/implement-worker.md`; the root MUST NOT substitute its own inline implementation for that packet absent an explicit user no-delegation instruction; if the lane is unavailable report blocked. Trivial single-site edits stay inline.
 Use strong research for substantial unsettled questions and strong review/refute for final judgment; never cheapen judgment work.
 Assign criterion judgment to the root or an existing strong final packet using the criteria-verifier contract, not a second verifier of that packet.
 Dispatch ready stage-sized packets, not an agent for each command or test. Honor an explicit no-delegation request inline.

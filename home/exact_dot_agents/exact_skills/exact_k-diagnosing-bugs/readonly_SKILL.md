@@ -5,6 +5,8 @@ description: "Use for hard bugs, regressions, flaky failures, crashes, thrown er
 
 # Diagnosing Bugs
 
+Subagent dispatch: research — diagnosis of an unresolved cause runs on the research lane and returns evidence; fixes go through Produce.
+
 Supply diagnostic evidence during the root-owned Understand stage; do not create another lifecycle.
 The SOP owns runtime truth, state-machine coverage, authorization, and the single final Verify stage.
 A delegated diagnosis worker owns only its assigned question and returns evidence or a concrete blocker once.
@@ -81,3 +83,4 @@ For an authorized fix, carry the settled cause, intended/preserved behavior and 
 Before regression-test or fix work, read `~/.agents/skills/k-diagnosing-bugs/references/fix-and-cleanup.md`.
 Use k-codebase-design only when resolving an in-scope seam or design question is necessary;
 do not start an automatic post-fix architecture pass.
+Launch one strong research packet for a substantial unresolved cause before settling the diagnosis; the root MUST NOT substitute its own inline diagnosis for that packet absent an explicit user no-delegation instruction; if the lane is unavailable report blocked; bounded targeted reads stay inline.

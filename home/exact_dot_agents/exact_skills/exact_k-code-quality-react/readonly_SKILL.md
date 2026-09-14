@@ -5,6 +5,8 @@ description: "Use when editing, reviewing, or refactoring React/JSX/TSX componen
 
 # React Code Quality
 
+Subagent dispatch: criteria — loaded by whoever holds the packet; never dispatched alone.
+
 Use this for React-specific implementation guidance.
 The `~/.agents/skills/k-code-quality/SKILL.md` skill still applies unless local project rules are stricter.
 

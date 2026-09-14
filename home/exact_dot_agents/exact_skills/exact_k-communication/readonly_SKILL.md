@@ -5,6 +5,8 @@ description: "Use when drafting human-visible communication; apply canonical ton
 
 # Communication (Centralized Tone & Style)
 
+Subagent dispatch: criteria — wording contract loaded before any human-visible draft; never dispatched alone.
+
 Owns wording of human-directed communication produced on the user's behalf, on any surface and in either direction;
 examples below are non-exhaustive.
 

@@ -5,6 +5,8 @@ description: "Use when target is Elastic org, elastic/kibana, Buildkite, ownersh
 
 # Elastic Domain Overlay
 
+Subagent dispatch: criteria — domain overlay applied by whichever skill/packet it layers onto; never dispatched alone.
+
 This is a domain overlay: it adds Elastic/Kibana policy to a primary generic skill; it does not replace that skill.
 
 Use when:

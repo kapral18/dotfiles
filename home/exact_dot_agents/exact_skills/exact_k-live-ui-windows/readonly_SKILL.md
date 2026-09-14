@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # Live UI Windows
 
+Subagent dispatch: inline — manual VirtualBox/CDP environment in the user's session.
+
 Connect Playwriter to the VirtualBox Windows guest browser through a host NAT port-forward over CDP.
 Apply the shared runtime contract's target resolution, readiness guard, screenshots/evidence, and data/setup ladder.
 

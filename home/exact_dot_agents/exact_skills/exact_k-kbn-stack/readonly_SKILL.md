@@ -6,6 +6,8 @@ tool_version: ",kbn-stack shared-ES reaper watchdog (60s no-client; a live Kiban
 
 # Kbn Stack
 
+Subagent dispatch: inline — controls the user's local stack lifecycle and ports.
+
 Use `,kbn-stack` from an `elastic/kibana` git worktree to start a local Elasticsearch + Kibana stack for that worktree.
 Each worktree always gets its own Kibana; default snapshot starts share one background ES per resolved ES version (see Shared ES below).
 

@@ -6,6 +6,8 @@ tool_version: knip 5.88.0
 
 # Knip (Dead Code & Dependency Cleanup)
 
+Subagent dispatch: inline (mechanical for a settled full scan and report) — small scans run directly; cleanup goes through Produce.
+
 Do not use:
 
 - copy/paste detection: `~/.agents/skills/k-jscpd/SKILL.md`
@@ -52,3 +54,10 @@ Ask first: anything in `src/index` / `lib/` / public API paths, deps that may be
 
 - Knip finds unused files/deps/exports across the project. It does NOT find unused imports/variables inside a file — that is a linter's job.
 - Supports monorepos, all major package managers, and 100+ framework plugins (auto-detected).
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Launch one mechanical packet for a settled full scan and report with a stated rule and return;
+the root MUST NOT substitute its own inline scan for that packet absent an explicit user no-delegation instruction;
+if the lane is unavailable report blocked. Small scans stay inline; cleanup goes through Produce.

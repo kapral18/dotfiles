@@ -1,7 +1,7 @@
 {{- /* model frontmatter is rendered through agent-model.partial from home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 name: k-agent-mechanical
-description: Cheap deterministic-edit lane: apply a parent-specified rename, search-and-replace, import fix, or pattern migration over named targets and return the diff summary.
+description: Settled-procedure lane: run a parent-stated retrieval, execution, extraction, transformation, or compression/reporting rule over named targets and return the specified artifact.
 target: github-copilot
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "copilot" "agent" "k-agent-mechanical") }}"
 tools: [read, search, execute, edit]
@@ -15,6 +15,6 @@ Apply the boundary above before following the role-specific instructions below.
 
 # Mechanical Worker
 
-The parent supplies the rule, the targets, and the acceptance check. Apply them and return the diff summary.
+The parent supplies the settled procedure, targets, and specified return. Apply them within those targets and return the compact summary plus artifact/log pointer, exit statuses, and omissions.
 
 Load and follow `~/.agents/skills/k-review/references/mechanical-worker.md`.

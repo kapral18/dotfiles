@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # Elastic Google Slides
 
+Subagent dispatch: inline — Google Slides mutations are human-visible effects the root approves and reads back.
+
 Manual-only overlay for Elastic-themed Google Slides decks.
 Use it when the user explicitly asks for Elastic slide generation, deck styling, ownership slides, Kibana plugin/package slides, or Elastic visual polish.
 

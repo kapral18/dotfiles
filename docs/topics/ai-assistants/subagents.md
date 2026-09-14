@@ -10,20 +10,121 @@ Centralize control, not raw context or execution.
 
 `Scope → Understand → Produce → Verify → Deliver`
 
-The active root owns this sequence. Skills contribute task mechanics and acceptance criteria; they do not add nested workflows. Empty stages need no ceremony. Verification occurs once on the integrated, formatted candidate. SOP §3.5 lets the root diagnose and repair failed checks within existing authority, freeze the repaired candidate, and rerun failed and affected checks. SOP §3.4 stops repeated attempts without new evidence or progress; workers never own recovery loops. Convergence is explicit-only and requires a finite user-approved repair/check allowance before entry.
+The active root owns this sequence. Skills contribute task mechanics and acceptance criteria; they do not add nested workflows. Empty stages need no ceremony. Verification occurs once on the integrated, formatted candidate. SOP §3.5 lets the root diagnose and repair failed checks within existing authority, freeze the repaired candidate, and rerun failed and affected checks. SOP §3.4 stops repeated attempts without new evidence or progress; workers never own recovery loops. Convergence is explicit-only and follows its declared dry exit and correctness filter; it is not ordinary failure recovery.
 
 ## Context and model responsibilities
 
-| Category        | Responsibility                                                               | Context                                                                                       |
-| --------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| session (root)  | Strong root: intent, decisions, dependencies, integration, stage transitions | Compact task handoff, not all source/logs                                                     |
-| research        | Strong bounded investigation                                                 | Task-specific source; return conclusions, evidence pointers, uncertainty, affected interfaces |
-| implement       | Cheaper implementation band: substantial settled edits                       | Owned targets and ready design inputs; return unverified artifacts                            |
-| mechanical      | Deterministic tools directly; cheap model only when needed                   | Exact rule and targets                                                                        |
-| review / refute | Strong final judgment, selected framing and independent risk lenses          | Actual candidate source plus shared check receipts                                            |
-| memory          | Automatic staged recall admission and final batched learning                 | Compact admitted lines; no per-turn memory agents                                             |
+| Category       | Responsibility                                                                                                                    | Context                                                                                                  |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| session (root) | Strong root: intent, decisions, dependencies, integration, stage transitions                                                      | Compact task handoff, not all source/logs                                                                |
+| research       | Strong bounded search, investigation, exploration, discovery, impact mapping                                                      | Task-specific source; return locations, conclusions, evidence pointers, uncertainty, affected interfaces |
+| implement      | Cheaper implementation band: a settled step with stated acceptance and unwritten code                                             | Owned targets and ready design inputs; return unverified artifacts                                       |
+| mechanical     | Settled retrieval, execution, extraction, transformations, compression and reporting; isolate substantial output-heavy procedures | Exact procedure, targets, return and full-artifact pointers                                              |
+| review         | Strong assessment of the frozen artifact                                                                                          | Actual source and shared check receipts                                                                  |
+| refute         | Strong challenge of named claims, criteria or assumptions                                                                         | The claim, counterexamples and shared evidence                                                           |
+| memory         | Automatic staged recall admission and final batched learning                                                                      | Compact admitted lines; no per-turn memory agents                                                        |
 
 `home/.chezmoidata/ai_models/tiering.yaml` remains the model/effort authority. This change preserves model selections. Substantial routine implementation must not default to the expensive root/review model. A user-requested inline session is the explicit exception.
+
+## Dispatch triggers
+
+SOP §3.7 routes by stage-sized judgment and explicit return, not counts: `research` for unresolved interpretation, cause, or impact even on known paths; `mechanical` for a settled procedure with a stated rule and specified return (retrieval, execution, extraction, transformation, compression, or reporting); `implement` once acceptance is settled and code is not written; `review` for a nontrivial requested or skill-gated artifact assessment; `refute` for a named claim, criterion, or assumption challenge; `memory` on the hook pointer or final learning batch.
+The root keeps bounded targeted reads and tiny deterministic operations. Known filenames do not make an interpretive investigation mechanical or require it to stay inline; a deterministic but output-heavy procedure can still benefit from an isolated mechanical packet.
+A prose question or challenge answerable from existing evidence is answered, not launched; a requested nontrivial artifact review still receives strong final judgment in an isolated worker.
+No numeric file-count quota and no mandatory mechanical check agent apply.
+
+All review tiers require root-dispatched isolated review execution before the final judgment. The root MUST NOT substitute its own inline review absent an explicit user no-delegation instruction; an unavailable lane or tool is a reported blocker, not a silent inline fallback.
+
+| Tier     | Required isolated packet                                                                                                |
+| -------- | ----------------------------------------------------------------------------------------------------------------------- |
+| light    | one `change-auditor` review worker with the copied `judging_core` + `judging_pipeline` criteria                         |
+| standard | one `reviewer-worker` review worker with the copied selected criteria and mode lens, in every mode                      |
+| deep     | distinct `reviewer-worker` and `adversarial-verifier` packets with distinct questions against the same frozen candidate |
+
+Pi profiles pin `tools:` (mechanical: `read, grep, find, ls, bash, edit`; implementer: `+ write`; code-searcher: `+ mcp:scsi-main, mcp:scsi-local`) so children do not receive ambient MCP schemas.
+Claude Code profiles pin `tools:` as well, none of them lists `Agent`, and `home/dot_claude/settings.*.json` set `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` in `env`, because Claude Code 2.1.219+ lets subagents nest three layers by default and a profile without `tools:` inherits every tool, `Agent` included (measured 2026-09-14: 52 KB of tool schemas on `k-agent-smol`, 16 KB of it the `Agent` schema).
+Every skill entrypoint declares its dispatch class on one `Subagent dispatch:` line; see Skill dispatch classes below.
+
+## Skill dispatch classes
+
+- `inline`: the root runs the skill itself. Reasons: human-visible or authorization-gated effects, the user's live environment (browser/tmux/worktree/stack), a transaction the root must read back, or an intent loop with the user.
+- `criteria`: not a workflow; loaded as criteria by whoever holds the current packet (root or leaf). Never dispatched by itself.
+- `research|implement|mechanical|review|refute|memory`: the root launches a leaf of that SOP §3.7 category with the skill's role mechanics copied into the packet; the root keeps scope, decisions, synthesis and effects.
+
+| Skill                           | Subagent dispatch                     |
+| ------------------------------- | ------------------------------------- |
+| `k-ai-kb`                       | `memory`                              |
+| `k-artifact`                    | `inline`                              |
+| `k-build`                       | `implement (research; review/refute)` |
+| `k-buildkite`                   | `inline (mechanical)`                 |
+| `k-cli-skills`                  | `inline (implement)`                  |
+| `k-code-quality`                | `criteria`                            |
+| `k-code-quality-react`          | `criteria`                            |
+| `k-code-quality-tests`          | `criteria`                            |
+| `k-code-quality-web`            | `criteria`                            |
+| `k-codebase-design`             | `research`                            |
+| `k-communication`               | `criteria`                            |
+| `k-compose-issue`               | `inline`                              |
+| `k-compose-pr`                  | `inline`                              |
+| `k-converge`                    | `refute (implement)`                  |
+| `k-deep-review`                 | `review (refute)`                     |
+| `k-diagnosing-bugs`             | `research`                            |
+| `k-elastic-domain`              | `criteria`                            |
+| `k-elastic-slides`              | `inline`                              |
+| `k-git`                         | `inline`                              |
+| `k-github`                      | `inline (research)`                   |
+| `k-google-workspace`            | `inline`                              |
+| `k-improve-branch`              | `research`                            |
+| `k-improve-codebase`            | `research`                            |
+| `k-improve-local`               | `inline`                              |
+| `k-improve-targeted`            | `research`                            |
+| `k-instruction-boundaries`      | `criteria`                            |
+| `k-interview-me`                | `inline`                              |
+| `k-jscpd`                       | `inline (mechanical)`                 |
+| `k-kbn-backport`                | `inline`                              |
+| `k-kbn-stack`                   | `inline`                              |
+| `k-kbn-standup`                 | `inline (mechanical)`                 |
+| `k-kibana-console-monaco`       | `inline`                              |
+| `k-kibana-labels-propose`       | `inline (research)`                   |
+| `k-kibana-management-ownership` | `inline`                              |
+| `k-knip`                        | `inline (mechanical)`                 |
+| `k-letsfg`                      | `inline (mechanical)`                 |
+| `k-libra-review`                | `inline`                              |
+| `k-light-review`                | `review`                              |
+| `k-live-ui-windows`             | `inline`                              |
+| `k-nano-banana`                 | `inline`                              |
+| `k-omp`                         | `criteria`                            |
+| `k-playwriter`                  | `inline`                              |
+| `k-pr-fix-loop`                 | `implement (review)`                  |
+| `k-present-pr`                  | `inline (implement)`                  |
+| `k-proof`                       | `inline`                              |
+| `k-prototype`                   | `inline (implement)`                  |
+| `k-public-sources`              | `research (refute)`                   |
+| `k-review`                      | `review`                              |
+| `k-sem`                         | `inline (mechanical)`                 |
+| `k-semantic-code-search`        | `research`                            |
+| `k-slack`                       | `inline`                              |
+| `k-spec`                        | `inline (research)`                   |
+| `k-text-tournament`             | `inline (implement)`                  |
+| `k-tmux`                        | `inline`                              |
+| `k-ui-capture`                  | `inline`                              |
+| `k-walkthrough`                 | `research`                            |
+| `k-weave`                       | `inline`                              |
+| `k-worktrees`                   | `inline`                              |
+| `k-writing-great-skills`        | `criteria`                            |
+
+## Nesting stays flat
+
+Children are flat: every `k-agent-*` profile is terminal (`MUST NOT launch` in the leaf contract, `maxSubagentDepth: 0`).
+A nested `strong → mechanical` tier was designed and shelved: re-opening it would need sustained evidence, not a single small sample.
+`scripts/subagent_child_stats.py` describes reported per-profile child session telemetry over `~/.pi/agent/sessions/*/*/*/run-*/session.jsonl`: run count, message median/p90, compaction count, and reported peak context median/p90/max. Reported usage plus a cutoff does not determine actual window exhaustion or savings.
+Source declarations (profile files, registry rows, prompt contracts) state intent; only runtime evidence from the active harness establishes enforcement, cost, or quality. Text checks do not prove model compliance.
+
+## Memory in a child
+
+A child recalls for itself with `,ai-kb search` / `,ai-kb get` and records session-scoped insights with `,agent-memory note` using the packet's topic and session id; without packet-supplied ids it returns the insight in its terminal artifact.
+Ordinary children MUST NOT run durable memory writes; only the root persists, with root-verified evidence and `,ai-kb remember`, and no child may invoke another memory agent.
+The root harvests child notes with `,ai-kb harvest` into the final learning batch.
 
 ## Worker interface
 
@@ -37,24 +138,24 @@ Keep raw source, diffs, search output, and logs outside root context. Persist a 
 
 Removing child orchestration must not remove the work it used to carry. The migration from the pre-stage contracts (`bc9da0992f5f`) keeps these responsibilities at the following call sites. These are stage owners, not a mandatory agent roster.
 
-| Previous responsibility                                                              | Current owner and reachable contract                                                                                                                     | Deliberately removed machinery                                                                 |
-| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Necessity, intent, forks and acceptance packet                                       | Root Understand: `k-spec` → `check-strength` / `packet-template`; verified overlays supply domain planning forks                                         | Automatic necessity/advisor/prototype ceremonies and red-check approval loops                  |
-| Large code/public-source investigation and design alternatives                       | Strong Understand packets: `code-searcher`, `public-sources`, `k-codebase-design` → `going-deeper`; root owns decisions                                  | Per-query/per-alternative orchestration; cheap research substitution                           |
-| Settled implementation, tests, docs and generation                                   | Root Produce → implementation-band `implement-worker`; direct tools for deterministic transformations                                                    | Worker self-review, test-to-green and mechanical check-runner agents                           |
-| Criterion truth, user-path reachability, clean-state durability and scope accounting | Root final Verify: `k-build` → `criteria-verifier` over actual source and shared receipts                                                                | A verifier per criterion, receipt re-execution and mandatory mutation of every branch          |
-| Low-risk eligibility and complete judging rules                                      | Root routing: `k-light-review` predicate → `judging_core` + `judging_pipeline`                                                                           | Treating a small diff as low risk; light finder/auditor chains                                 |
-| Expert criteria, complete assigned coverage and incidental real defects              | Root `k-review` / deep `reviewer-roster` → `lanes`; final `reviewer-worker` receives selected checks and reports coverage/gaps                           | Agent per heading; stopping at the first severe finding; leaves loading the roster             |
-| Artifact review and adversarial challenge                                            | Distinct strong final questions against the same candidate; registry review/refute bands and `adversarial-verifier`                                      | Reviewing another review as independence; weaker-family substitution                           |
-| Redundancy, verbosity, semantic duplication, missing consumers/docs/tests            | Integrated `judging_pipeline`, reached by standard/deep/light judging                                                                                    | Separate post-review/hygiene certification pass                                                |
-| Finding conflicts, material missing evidence and blind clarity                       | Final synthesis in `judging_pipeline`; conditional `fresh-eyes` retains its blind packet                                                                 | Model votes, silent blocker deletion, or PR narrative used to dismiss newcomer confusion       |
-| Public claims and exact numeric/source support                                       | Root `k-public-sources` → final batched `claim-verifier`; complete captured sources, exact quotes and URLs                                               | Per-claim verification and collect→verify→deepen cycles                                        |
-| PR necessity, current intent and correctly-open status                               | Root Understand: deep `pr-necessity` / standard `pr_common` → `pr_context_audits`                                                                        | Necessity controller ladder; spending on superseded work without an explicit reason            |
-| Live UI applicability, branch/config/data truth and screenshots                      | Final `live-ui-validation` → `live-ui-review` → `live-ui-runtime`; verified overlays own target/setup policy; root views used images once                | Source fixes inside UI verification and automatic post-judgment fix tasks                      |
-| Snapshot, discussion, pending-review deduplication and publication                   | Root `pr_snapshot` / `pr_common` / `review_delivery` and publication skill                                                                               | Worker PR refetches; review authorship treated as edit or publish authority                    |
-| Diagnosis, cleanup and PR-fix batches                                                | Root authorizes known production through `k-diagnosing-bugs`, `k-knip`, `k-pr-fix-loop` / `pr_fix`; SOP owns integrated final checks and scoped recovery | Private check loops, unrequested class-wide cleanup and automatic new-comment drains           |
-| Recall admission, corrections and durable learning                                   | Root `k-ai-kb` → `smol-operator` / `cli`; staged recall and one final learning batch; identical inline fallback                                          | Per-turn scribes, leaf memory orchestration and dropping learning when delegation is forbidden |
-| Convergence and prose alternatives                                                   | Explicit `k-converge` invocation (declared exit + correctness filter) or requested `k-text-tournament`; root owns the enclosing lifecycle                | Automatic convergence and repeated evaluator tournaments                                       |
+| Previous responsibility                                                              | Current owner and reachable contract                                                                                                                     | Deliberately removed machinery                                                                                         |
+| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Necessity, intent, forks and acceptance packet                                       | Root Understand: `k-spec` → `check-strength` / `packet-template`; verified overlays supply domain planning forks                                         | Automatic necessity/advisor/prototype ceremonies and red-check approval loops                                          |
+| Large code/public-source investigation and design alternatives                       | Strong Understand packets: `code-searcher`, `public-sources`, `k-codebase-design` → `going-deeper`; root owns decisions                                  | Per-query/per-alternative orchestration; cheap research substitution                                                   |
+| Settled implementation, tests, docs and generation                                   | Root Produce → implementation-band `implement-worker`; direct tools for deterministic transformations                                                    | Worker self-review, test-to-green and mechanical check-runner agents                                                   |
+| Criterion truth, user-path reachability, clean-state durability and scope accounting | Root final Verify: `k-build` → `criteria-verifier` over actual source and shared receipts                                                                | A verifier per criterion, receipt re-execution and mandatory mutation of every branch                                  |
+| Low-risk eligibility and complete judging rules                                      | Root-dispatched isolated `k-light-review` packet: predicate → `change-auditor` worker with `judging_core` + `judging_pipeline`                           | Treating a small diff as low risk; light finder/auditor chains; root-only inline light judgment                        |
+| Expert criteria, complete assigned coverage and incidental real defects              | Root-dispatched `k-review` / deep `reviewer-roster` → `lanes`; final `reviewer-worker` receives selected checks and reports coverage/gaps                | Agent per heading; stopping at the first severe finding; leaves loading the roster; root-only inline standard judgment |
+| Artifact review and adversarial challenge                                            | Distinct strong final questions against the same candidate; registry review/refute bands and `adversarial-verifier`                                      | Reviewing another review as independence; weaker-family substitution                                                   |
+| Redundancy, verbosity, semantic duplication, missing consumers/docs/tests            | Integrated `judging_pipeline`, reached by standard/deep/light judging                                                                                    | Separate post-review/hygiene certification pass                                                                        |
+| Finding conflicts, material missing evidence and blind clarity                       | Root-owned terminal synthesis in `judging_pipeline`; conditional `fresh-eyes` retains its blind packet                                                   | Model votes, silent blocker deletion, or PR narrative used to dismiss newcomer confusion                               |
+| Public claims and exact numeric/source support                                       | Root `k-public-sources` → final batched `claim-verifier`; complete captured sources, exact quotes and URLs                                               | Per-claim verification and collect→verify→deepen cycles                                                                |
+| PR necessity, current intent and correctly-open status                               | Root Understand: deep `pr-necessity` / standard `pr_common` → `pr_context_audits`                                                                        | Necessity controller ladder; spending on superseded work without an explicit reason                                    |
+| Live UI applicability, branch/config/data truth and screenshots                      | Final `live-ui-validation` → `live-ui-review` → `live-ui-runtime`; verified overlays own target/setup policy; root views used images once                | Source fixes inside UI verification and automatic post-judgment fix tasks                                              |
+| Snapshot, discussion, pending-review deduplication and publication                   | Root `pr_snapshot` / `pr_common` / `review_delivery` and publication skill                                                                               | Worker PR refetches; review authorship treated as edit or publish authority                                            |
+| Diagnosis, cleanup and PR-fix batches                                                | Root authorizes known production through `k-diagnosing-bugs`, `k-knip`, `k-pr-fix-loop` / `pr_fix`; SOP owns integrated final checks and scoped recovery | Private check loops, unrequested class-wide cleanup and automatic new-comment drains                                   |
+| Recall admission, corrections and durable learning                                   | Root `k-ai-kb` → `smol-operator` (judge) / `cli`; staged recall judge, root persists the final batch with `,ai-kb remember`; identical inline fallback   | Per-turn scribes, leaf memory orchestration and dropping learning when delegation is forbidden                         |
+| Convergence and prose alternatives                                                   | Explicit `k-converge` invocation (declared exit + correctness filter) or requested `k-text-tournament`; root owns the enclosing lifecycle                | Automatic convergence and repeated evaluator tournaments                                                               |
 
 Existing named profiles in Claude, Codex, Cursor, Copilot, Pi and OMP point to the same leaf contracts. Dynamic or unsupported adapters remain subject to the capability boundaries below; a contract reference does not prove profile discovery or runtime enforcement. Contract tests check required load edges, profile bindings and retained obligations. Inline source/evidence judgment remains necessary: text tests do not prove model compliance, lower token use or large-project quality parity.
 

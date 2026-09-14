@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # Standup
 
+Subagent dispatch: inline (mechanical for the GitHub/Slack gathering pass) — composition and the pbcopy hand-off stay with the root.
+
 Process: baseline → gather → compile → show and ask, then `pbcopy`.
 
 ## Resolve first (runtime values, not hardcoded IDs)
@@ -163,3 +165,11 @@ Never invoke `slack_send_message` or `slack_send_message_draft`. Do not copy unt
   Also run the negative check `pbpaste | grep -c '<https'` and require `0`; a grep built from what you just wrote confirms itself and catches nothing.
 
 Done when the user has seen the compiled standup inside a fenced code block and paste target, and after a yes `pbpaste` matches with one `[label](URL)` per artifact and `grep -c '<https'` returns `0`.
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Launch one mechanical packet for the gather step with the exact lanes/queries and the return table;
+the root MUST NOT substitute its own inline gather for that packet absent an explicit user no-delegation instruction;
+if the lane is unavailable report blocked. Baseline and compilation stay inline.
+Show, the user-ready ask, `pbcopy`/`pbpaste` verification, and any Slack send stay with the root and MUST NOT be delegated.

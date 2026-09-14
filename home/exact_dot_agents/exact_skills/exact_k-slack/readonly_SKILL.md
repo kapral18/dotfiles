@@ -5,6 +5,8 @@ description: "Use for Slack MCP effects: send/schedule messages, thread replies,
 
 # Slack (MCP Mechanics)
 
+Subagent dispatch: inline — Slack mutations are root-approved transactions; a leaf returns drafts and ids only.
+
 Owns the mechanics of Slack side effects through the Slack MCP tools available in the current runtime.
 Wording is owned by `~/.agents/skills/k-communication/SKILL.md`; whether to publish is the Human-Visible Publication Gate (SOP §3.8, `~/AGENTS.md`).
 This skill restates neither.

@@ -214,10 +214,11 @@ The bridge injects a freshly selected bearer per request, rotating through curso
 
 ## Oh My Pi
 
-The managed `context-mode.ts` extension adds [GPT-only context selection](pi.md#gpt-context-selection):
+The managed `context-mode.ts` extension adds [working-context selection](pi.md#working-context-selection):
 `/context-mode short`, `/context-mode long`, and `/context-mode status`.
 It stores overrides per provider/model in the active session, not in OMP's global `extendedContext` setting.
-Non-GPT models keep their existing policy. OMP reapplies the selected mode before each prompt or an idle `/context-mode` command; native `/extended-context` remains a separate global control.
+Only models with a distinct short and long window are eligible; others keep their existing policy.
+OMP reapplies the selected mode before each prompt or an idle `/context-mode` command; native `/extended-context` remains a separate global control.
 
 | Surface       | Source                                                                                                                   | Target                     |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------- |

@@ -6,6 +6,8 @@ tool_version: gws 0.18.1
 
 # Google Workspace (`gws`) Skill
 
+Subagent dispatch: inline — Workspace mutations and sends are root-approved transactions with read-back.
+
 Default interface:
 
 - Use `gws` for Google Workspace activity.

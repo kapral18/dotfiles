@@ -28,6 +28,7 @@ Use in every non-trivial review.
 - A static read proves what source says, not what the system does; verify runtime behavior whenever candidate keep/drop depends on observed state.
 - **Diff-boundary tunnel vision is forbidden:** reviewing diff hunks in isolation without inspecting surrounding context, caller trees, and sibling consumers is never justified across any review tier (light, standard, or deep).
   The diff is the source for what changed (delta) and commentability; full files and caller trees (via local `rg`, symbol lookup, or SCSI) give the ground truth for system behavior.
+  This obligation belongs to the review worker; the root meets it by passing the full diff and file access in the packet and MUST NOT read hunks or file bodies itself before that packet returns.
 - For diffs not proven mechanical-only, reconstruct semantic delta: old/new rule, intended/preserved differences, evidence.
   Missing/extra/unproven rows are candidates until refuted.
   Prove mechanical-only with `,sem diff --format json` per `~/.agents/skills/k-sem/SKILL.md`:

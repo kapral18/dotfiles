@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # Authorized PR Fix Batch
 
+Subagent dispatch: implement (review for the final batch) — pr_fix's Root moves owns the packets.
+
 Use only when the user explicitly invokes this skill or requests the same bounded no-extra-approval sequence.
 Invocation authorizes scoped code edits, final verification, commits, force-with-lease push to the current PR branch, required PR body/media updates, addressed-thread replies, and resolution.
 It does not authorize merging, rebasing, pulling/merging base, unrelated metadata, or broad refactors.

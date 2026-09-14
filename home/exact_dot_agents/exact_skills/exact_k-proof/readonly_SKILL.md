@@ -6,6 +6,8 @@ tool_version: ",proof 0.2.0"
 
 # Proof
 
+Subagent dispatch: inline — a receipt ledger the root maintains for its own work.
+
 Use `,proof` to create a durable local receipt for qualifying non-review/non-build freeform work without forcing `/k-spec` or `/k-build`.
 The ledger records criteria, evidence assessments, blockers, and a machine-readable gate.
 It is not verification itself: the SOP's source reads, probes, tests, and inline evidence remain mandatory whether or not a ledger exists.

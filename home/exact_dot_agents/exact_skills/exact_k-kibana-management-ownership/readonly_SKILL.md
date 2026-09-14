@@ -5,6 +5,8 @@ description: "Use when checking elastic/kibana ownership, reviewers, path owners
 
 # Kibana Management Ownership (Propose-Only)
 
+Subagent dispatch: inline — a few ,codeowners lookups; propose-only.
+
 Use when:
 
 - composing or reviewing an `elastic/kibana` PR and reviewer/ownership guidance is needed

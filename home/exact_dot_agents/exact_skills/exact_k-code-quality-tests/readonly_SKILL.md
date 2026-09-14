@@ -5,6 +5,8 @@ description: "Use when adding, editing, reviewing, or debugging tests or test pl
 
 # Test Code Quality
 
+Subagent dispatch: criteria — loaded by whoever holds the packet; never dispatched alone.
+
 Use this for test and verification code. The SOP owns the single final Verify stage; writing tests does not expand implementation scope.
 
 ## Test Shape

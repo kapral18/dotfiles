@@ -36,6 +36,47 @@ def render_chezmoi_template(path, *, is_work):
 
 SKILLS_ROOT = "home/exact_dot_agents/exact_skills"
 ROOT_MOVES_HEADING = "## Root moves"
+ALLOWED_DISPATCH_CLASSES = (
+    "inline",
+    "criteria",
+    "research",
+    "implement",
+    "mechanical",
+    "review",
+    "refute",
+    "memory",
+)
+LEAF_DISPATCH_CLASSES = frozenset({"research", "implement", "mechanical", "review", "refute", "memory"})
+DISPATCH_LINE_RE = re.compile(r"^Subagent dispatch:\s+(?P<primary>[a-z]+)\b")
+INLINE_SECONDARY_RE = re.compile(r"^Subagent dispatch:\s*inline\s*\((?P<secondary>[a-z]+)\s+(?:for|when)\b")
+
+
+def dispatch_primary_from_text(text: str) -> str | None:
+    """Primary class token when the H1 follows the frontmatter and exactly one allowed `Subagent dispatch:` paragraph follows the H1.
+
+    The formatter may wrap the reason clause onto continuation lines; only the first line carries the label.
+    """
+    lines = text.splitlines()
+    if not lines or lines[0] != "---":
+        return None
+    close = next((i for i in range(1, len(lines)) if lines[i] == "---"), None)
+    if close is None or close + 4 >= len(lines):
+        return None
+    if lines[close + 1] != "" or not lines[close + 2].startswith("# ") or lines[close + 3] != "":
+        return None
+    match = DISPATCH_LINE_RE.match(lines[close + 4])
+    if not match or match.group("primary") not in ALLOWED_DISPATCH_CLASSES:
+        return None
+    if sum(1 for line in lines if line.startswith("Subagent dispatch:")) != 1:
+        return None
+    return match.group("primary")
+
+
+def dispatch_primary(entry: Path) -> str | None:
+    """Primary class token of the `Subagent dispatch:` paragraph placed directly after the H1."""
+    return dispatch_primary_from_text(entry.read_text(encoding="utf-8"))
+
+
 ROOT_MOVES_LEAD = (
     "Only the active root/main session follows this section; "
     "a delegated leaf skips it and returns findings to its parent."
@@ -111,6 +152,10 @@ _DESCRIPTIVE_CLAUSES = (
     ),
     # The SOP's own rule name, not an order to dispatch: "SOP §3.7 `research` dispatch gate".
     re.compile(r"(?i)\b(dispatch|launch)\s+gate\b"),
+    # A skill's classification label, not an order: "Subagent dispatch: review — one reviewer-worker packet".
+    # Only the label with an optional `(<class> for|when …)` secondary is exempt; the parens may hold
+    # only ordinary words, and an order later on the same line still fails.
+    re.compile(r"(?:^|\s)Subagent dispatch:\s+[a-z]+(?:\s*\([a-z]+ (?:for|when) [^)]*\))?\s+\u2014"),
     # An OS process, not an agent: "the port listener belongs to the spawned Kibana's process tree".
     re.compile(
         r"(?i)\bspawn(s|ed|ing)?\s+((?!to\b)[\w'\u2019-]+\s+){0,2}"
@@ -983,6 +1028,15 @@ class TestAgentSkillInvariants(unittest.TestCase):
             (True, "Do not launch other agents; spawn k-agent-reviewer for this diff."),
             (True, "The parent dispatches a research lane; launch k-agent-reviewer now."),
             (True, "Spawn k-agent-reviewer to audit the diff."),
+            # A classification label is not an order; an order after the label still is.
+            (False, "Subagent dispatch: review — one reviewer-worker packet per mode."),
+            (
+                False,
+                "Subagent dispatch: inline (mechanical for bulk log extraction) — bk reads are small direct commands.",
+            ),
+            (True, "Subagent dispatch: review — one reviewer-worker packet; launch k-agent-reviewer now."),
+            # Parens that are not a `<class> for|when` secondary get no exemption.
+            (True, "Subagent dispatch: inline (launch the worker now) — reason."),
             # Real contract sentences: a leaf's no-spawn sentence, a ban, the parent as actor,
             # a launch named as a point in time, and ordinary English uses of the weak verbs.
             (
@@ -1023,3 +1077,135 @@ class TestAgentSkillInvariants(unittest.TestCase):
         # is root-only text the leaf skips, not a violation.
         gated = [ROOT_MOVES_HEADING, "", ROOT_MOVES_LEAD, "", "- Spawn k-agent-reviewer to audit the diff."]
         assert not launch_instruction_rows(gated), "a `## Root moves` order must stay exempt"
+
+    def test_when_every_skill_entrypoint_has_a_dispatch_line_should_carry_exactly_one_allowed_primary_class(self):
+        skills_root = REPO / SKILLS_ROOT
+        for skill_dir in sorted(p for p in skills_root.iterdir() if p.is_dir()):
+            entry = skill_entry(skill_dir)
+            if entry is None:
+                continue
+            with self.subTest(skill=skill_dir.name):
+                primary = dispatch_primary(entry)
+                self.assertIsNotNone(
+                    primary,
+                    f"{entry} must place exactly one allowed `Subagent dispatch: <class>` paragraph directly after its H1",
+                )
+                lines = entry.read_text(encoding="utf-8").splitlines()
+                start = next(i for i, line in enumerate(lines) if line.startswith("Subagent dispatch:"))
+                end = start
+                while end + 1 < len(lines) and lines[end + 1].strip():
+                    end += 1
+                paragraph = " ".join(line.strip() for line in lines[start : end + 1])
+                self.assertIn(" — ", paragraph, f"{entry} Subagent dispatch paragraph needs an em-dash reason clause")
+                self.assertTrue(
+                    paragraph.split(" — ", 1)[1].strip(), f"{entry} Subagent dispatch reason clause is empty"
+                )
+
+    def test_when_skill_primary_class_is_a_leaf_category_should_have_root_moves(self):
+        # Manual-only skills are scanner-exempt: their launch text never autoloads, so
+        # `k-converge` (refute) and `k-pr-fix-loop` (implement) keep no `## Root moves` section.
+        skills_root = REPO / SKILLS_ROOT
+        for skill_dir in sorted(p for p in skills_root.iterdir() if p.is_dir()):
+            entry = skill_entry(skill_dir)
+            if entry is None or is_manual_only(skill_dir):
+                continue
+            with self.subTest(skill=skill_dir.name):
+                if dispatch_primary(entry) in LEAF_DISPATCH_CLASSES:
+                    self.assertIn(
+                        ROOT_MOVES_HEADING,
+                        entry.read_text(encoding="utf-8").splitlines(),
+                        f"{entry} is delegable but has no `{ROOT_MOVES_HEADING}` section",
+                    )
+
+    def test_when_skill_delegates_should_carry_a_hard_root_moves_instruction(self):
+        # The same three clauses the review tier enforces: an explicit launch, a ban on the root
+        # substituting its own inline work, and an unavailable-lane blocker. `k-omp` is a harness
+        # adapter whose Root moves owns OMP dispatch mechanics rather than a skill packet, and
+        # manual-only skills are scanner-exempt, so both are excluded.
+        skills_root = REPO / SKILLS_ROOT
+        checked = 0
+        for skill_dir in sorted(p for p in skills_root.iterdir() if p.is_dir()):
+            entry = skill_entry(skill_dir)
+            if entry is None or is_manual_only(skill_dir) or skill_dir.name == "exact_k-omp":
+                continue
+            text = entry.read_text(encoding="utf-8")
+            primary = dispatch_primary(entry)
+            dispatch_line = next(line for line in text.splitlines() if line.startswith("Subagent dispatch:"))
+            secondary = INLINE_SECONDARY_RE.match(dispatch_line)
+            if primary not in LEAF_DISPATCH_CLASSES and not secondary:
+                continue
+            with self.subTest(skill=skill_dir.name):
+                section = text.split(ROOT_MOVES_HEADING, 1)[1].split("\n## ", 1)[0]
+                self.assertRegex(section, r"\bLaunch (?:one|distinct)\b", f"{entry} Root moves has no explicit launch")
+                self.assertIn(
+                    "MUST NOT substitute its own inline",
+                    section,
+                    f"{entry} Root moves lacks the inline-substitution ban",
+                )
+                self.assertIn("report blocked", section, f"{entry} Root moves lacks the unavailable-lane blocker")
+                checked += 1
+        # 7 non-manual leaf-primary skills + 10 inline-with-secondary skills today; a smaller count means
+        # the classification set silently shrank.
+        self.assertGreaterEqual(checked, 17)
+
+    def test_when_inline_skill_names_a_leaf_class_should_have_root_moves(self):
+        skills_root = REPO / SKILLS_ROOT
+        for skill_dir in sorted(p for p in skills_root.iterdir() if p.is_dir()):
+            entry = skill_entry(skill_dir)
+            if entry is None:
+                continue
+            with self.subTest(skill=skill_dir.name):
+                lines = entry.read_text(encoding="utf-8").splitlines()
+                dispatch_lines = [line for line in lines if line.startswith("Subagent dispatch:")]
+                if not dispatch_lines:
+                    continue
+                secondary = INLINE_SECONDARY_RE.match(dispatch_lines[0])
+                if secondary and secondary.group("secondary") in LEAF_DISPATCH_CLASSES:
+                    self.assertIn(
+                        ROOT_MOVES_HEADING,
+                        lines,
+                        f"{entry} delegates a {secondary.group('secondary')} slice but has no `{ROOT_MOVES_HEADING}` section",
+                    )
+
+    def test_when_skill_is_criteria_or_plain_inline_should_contain_no_launch_instruction(self):
+        skills_root = REPO / SKILLS_ROOT
+        for skill_dir in sorted(p for p in skills_root.iterdir() if p.is_dir()):
+            entry = skill_entry(skill_dir)
+            if entry is None:
+                continue
+            with self.subTest(skill=skill_dir.name):
+                lines = entry.read_text(encoding="utf-8").splitlines()
+                dispatch_lines = [line for line in lines if line.startswith("Subagent dispatch:")]
+                if not dispatch_lines:
+                    continue
+                primary = DISPATCH_LINE_RE.match(dispatch_lines[0])
+                if primary is None:
+                    continue
+                is_secondary = bool(INLINE_SECONDARY_RE.match(dispatch_lines[0]))
+                if (primary.group("primary") == "criteria") or (
+                    primary.group("primary") == "inline" and not is_secondary
+                ):
+                    rows = launch_instruction_rows(lines)
+                    self.assertFalse(
+                        rows,
+                        f"{entry} is not delegable but orders a launch outside `{ROOT_MOVES_HEADING}`: {rows}",
+                    )
+
+    def test_when_dispatch_line_is_missing_malformed_or_unknown_should_fail(self):
+        good = "---\nname: probe\n---\n\n# Probe\n\nSubagent dispatch: inline — stays with the root.\n\nBody.\n"
+        self.assertEqual(dispatch_primary_from_text(good), "inline")
+        wrapped = "---\nname: probe\n---\n\n# Probe\n\nSubagent dispatch: inline (implement for a settled build) —\nthe rest of the reason.\n\nBody.\n"
+        self.assertEqual(dispatch_primary_from_text(wrapped), "inline")
+        counterfactuals = (
+            "---\nname: probe\n---\n\n# Probe\n\nBody.\n",
+            "---\nname: probe\n---\n\nSubagent dispatch: inline — stays with the root.\n\n# Probe\n",
+            "---\nname: probe\n---\n\n# Probe\nSubagent dispatch: inline — stays with the root.\n\nBody.\n",
+            "---\nname: probe\n---\n\n# Probe\n\nSubagent dispatch inline — stays with the root.\n\nBody.\n",
+            "---\nname: probe\n---\n\n# Probe\n\nSubagent dispatch: teleport — elsewhere.\n\nBody.\n",
+            "---\nname: probe\n---\n\n# Probe\n\nSubagent dispatch: inline — stays with the root.\nSubagent dispatch: review — one packet.\n\nBody.\n",
+        )
+        for body in counterfactuals:
+            with self.subTest(body=body):
+                self.assertIsNone(
+                    dispatch_primary_from_text(body), f"counterfactual should fail dispatch validation: {body!r}"
+                )

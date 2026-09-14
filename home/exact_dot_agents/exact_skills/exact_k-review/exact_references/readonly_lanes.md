@@ -11,7 +11,7 @@ Do not infer a numeric lane budget from this catalog; honor actual user/runtime 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
 
 1. Build the roster from scope-level evidence only: mode, changed paths, `git diff --stat`, `git diff --diff-filter=D --stat`, and the context pack manifest.
-   Roster selection is not implementation analysis — do not read code bodies to pick lanes.
+   Roster selection is not implementation analysis — do not read code bodies to pick lanes or to author the packet; the router's root read bound applies until the packet returns.
 2. Include `correctness-regressions` in the selected final judgment; it does not require another worker.
 3. Add another lane only when its Trigger matches on that scope-level evidence **and** its lens would be under-covered inside an already-selected lane.
 4. Paste the selected lane's **Lens skill** line and **Checks** list verbatim into that worker's scope packet.

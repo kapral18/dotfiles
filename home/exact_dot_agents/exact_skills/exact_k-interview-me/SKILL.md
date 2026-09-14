@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # Interview Me
 
+Subagent dispatch: inline — a user intent loop the root runs turn by turn.
+
 Interview me until you have 100% confidence about what I actually want, not what I think I should want.
 
 The SOP (§3.1 Intent Loop) already owns the mechanics: investigate read-only first, ask exactly one fork-closing question at a time, wait, update the spec, repeat.

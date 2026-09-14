@@ -37,10 +37,10 @@
       "method": "mechanical clause-presence sweep (no live model eval available this run)",
       "target_disposition": "skill",
       "consumer": "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
-      "evidence": "minimal edit scope, semantic-delta preservation, no unrelated cleanup/removal without approval, targeted edits/full-rewrite diffing, introduced-only dead-code removal, sibling-consumer projection symmetry, semantic dedupe guard preservation, no unrequested abstractions/features/error handling, simplicity/no behavior loss, and artifact necessity without-it probe requirements were confirmed present in k-code-quality before this pass 2026-09-10: consumer extended with a non-code-consumer impact bullet (SOP §3.1 impact map: config, template, generated, instruction, completion, and docs readers); additions only, every relocated clause retained verbatim.",
+      "evidence": "minimal edit scope, semantic-delta preservation, no unrelated cleanup/removal without approval, targeted edits/full-rewrite diffing, introduced-only dead-code removal, sibling-consumer projection symmetry, semantic dedupe guard preservation, no unrequested abstractions/features/error handling, simplicity/no behavior loss, and artifact necessity without-it probe requirements were confirmed present in k-code-quality before this pass 2026-09-10: consumer extended with a non-code-consumer impact bullet (SOP §3.1 impact map: config, template, generated, instruction, completion, and docs readers); additions only, every relocated clause retained verbatim. 2026-09-13: consumer gained a one-line `Subagent dispatch: criteria` classification under its H1 (skill dispatch classes); additions only, every relocated clause retained verbatim.",
       "rule_sha256": "4b2d1c447aa70c367f9ab15accc59c566befcf15b2f8002e129c0f0dbd2c4f78",
       "eval_ref": "sop.5.code-quality.mechanical-only",
-      "consumer_sha256": "dd5f0c659615aa607147b47c056084da2bb3e4e3ef9172b0c1da2741f6fdf92d"
+      "consumer_sha256": "d636b87111155071956e7a6ac8b8a46650a15a78a2d5d03cdcd2db29cf393235"
     },
     "sop.6.5.external-human-replies": {
       "status": "mechanical-only",
@@ -48,10 +48,10 @@
       "method": "Mechanical clause-preserving relocation into the mandatory skill entrypoint; no rule retirement.",
       "target_disposition": "skill",
       "consumer": "home/exact_dot_agents/exact_skills/exact_k-communication/readonly_SKILL.md",
-      "evidence": "All external-register rules and their before-drafting scope are retained verbatim in k-communication External register; the entrypoint replaces its unconditional reference load. Existing-thread rules remain conditionally loaded. The SOP still owns central wording ownership. 2026-09-10: consumer extended with explicit load points (composers, k-git, k-github, k-slack, gws, review) and a session-artifact exclusion list; every relocated clause retained verbatim.",
+      "evidence": "All external-register rules and their before-drafting scope are retained verbatim in k-communication External register; the entrypoint replaces its unconditional reference load. Existing-thread rules remain conditionally loaded. The SOP still owns central wording ownership. 2026-09-10: consumer extended with explicit load points (composers, k-git, k-github, k-slack, gws, review) and a session-artifact exclusion list; every relocated clause retained verbatim. 2026-09-13: consumer gained a one-line `Subagent dispatch: criteria` classification under its H1 (skill dispatch classes); additions only, every relocated clause retained verbatim.",
       "rule_sha256": "eeb95ad036a65cb80b6a8bb983e9c6602fdf0e78bfe6cbd7a4f481b7e58f67d3",
       "eval_ref": "sop.6.5.external-human-replies.mechanical-only",
-      "consumer_sha256": "3661db30cec325db51ae7e884a21fe28d920d6e37036c8dbd97fcb236d502347"
+      "consumer_sha256": "ae49b1cadd4b14196b1cf6ba1681ff6edef7b9c57aad71fbe4f0e5abed79f4e8"
     },
     "sop.6.6.examples": {
       "status": "passed",

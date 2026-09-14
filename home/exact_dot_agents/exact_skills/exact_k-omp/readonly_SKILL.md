@@ -5,6 +5,8 @@ description: "Use in OMP to select native structured-read, code-intelligence, an
 
 # Oh My Pi Runtime Adapter
 
+Subagent dispatch: criteria — harness adapter loaded alongside the active skill; its Root moves owns OMP task dispatch mechanics.
+
 Use this skill only when the active harness is OMP.
 It realizes generic skill contracts with OMP-native tools; it does not change their workflow, evidence, or publication gates.
 

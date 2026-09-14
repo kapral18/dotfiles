@@ -5,6 +5,8 @@ description: "Use when running/probing tmux panes, sessions, sockets, popups, ca
 
 # Tmux
 
+Subagent dispatch: inline — the default tmux server is the user's live terminal.
+
 Tmux is often the user's live terminal, not disposable infrastructure.
 Treat the default tmux server as user-owned unless you prove otherwise.
 

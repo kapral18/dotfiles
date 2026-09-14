@@ -33,6 +33,7 @@ session_models:
     effort: "high"
     context: "short"
 agent_categories:
+  # Mechanical covers any settled procedure with a stated rule and specified return: retrieval, execution, extraction, transformation, compression, or reporting.
   mechanical:
     family: "primary"
     contract: "deterministic-edit-or-exact-retrieval"

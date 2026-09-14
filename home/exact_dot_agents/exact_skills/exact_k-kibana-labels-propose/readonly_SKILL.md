@@ -5,6 +5,8 @@ description: "Use when proposing elastic/kibana labels, backports, or version ta
 
 # Elastic / Kibana Label Guidance (Propose-Only)
 
+Subagent dispatch: inline (research when label evidence needs substantial code/issue investigation) — propose-only classification.
+
 Non-negotiables:
 
 - propose only; apply labels only when explicitly approved
@@ -65,3 +67,10 @@ Common patterns (verify in repo):
     Reuse shared intake context when available; this skill does not authorize a backport or metadata mutation.
   - when the linked issue's type/labels contradict the change's substance, flag the mismatch and propose retyping the issue instead of inheriting its type for the backport decision
 - docs tags: `docs`
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Launch one strong research packet when label evidence needs substantial code/issue investigation, returning the evidence ledger;
+the root MUST NOT substitute its own inline investigation for that packet absent an explicit user no-delegation instruction;
+if the lane is unavailable report blocked. Classification stays propose-only.

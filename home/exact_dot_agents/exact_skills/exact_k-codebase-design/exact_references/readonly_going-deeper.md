@@ -56,8 +56,8 @@ Be opinionated: the user wants a strong read, not a menu.
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
 
-**Branch B step 2 — spawn the parallel designs.**
-Use the Task tool to spawn one subagent per brief, each producing a **radically different** interface for the deepened module.
+**Branch B step 2 — send the parallel designs.**
+Send one strong research packet per brief through the harness's existing research-bound mechanics, each producing a **radically different** interface for the deepened module.
 Give each a separate technical brief (target files, coupling, dependency category, what sits behind the seam) and a distinct constraint:
 
 - Agent 1: "Minimise the interface — 1–3 entry points max. Maximise leverage per entry point."

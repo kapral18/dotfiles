@@ -5,6 +5,8 @@ description: "Use when automating/testing Kibana Dev Tools Console Monaco in a h
 
 # Kibana Dev Tools Console — Monaco Editor Interaction
 
+Subagent dispatch: inline — headed-browser interaction in the user's session.
+
 Use for Kibana Dev Tools Console editor automation in a headed browser via Playwright/Playwriter.
 
 ## Navigation and auth

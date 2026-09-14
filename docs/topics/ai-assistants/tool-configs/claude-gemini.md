@@ -20,15 +20,16 @@ Claude Code and Antigravity use config surfaces backed by the shared MCP registr
 
 Claude profile behavior:
 
-| Area                  | Behavior                                                                            |
-| --------------------- | ----------------------------------------------------------------------------------- |
-| Model and context     | `claude-fable-5-1[1m]`; explicit long-context `session_models.claude_code` selector |
-| Thinking and effort   | `alwaysThinkingEnabled: false`; `effortLevel: high` in both profiles                |
-| Local llama.cpp       | model-scoped `high` effort with thinking off; local context windows stay unchanged  |
-| Dangerous-mode prompt | skipped in both profiles                                                            |
-| Work auth             | native Claude enterprise auth; no `apiKeyHelper` / `ANTHROPIC_BASE_URL` override    |
-| MCP storage           | `~/.claude.json` top-level `mcpServers`                                             |
-| Merge strategy        | selected profile plus canonical `session_models.claude_code` model and effort       |
+| Area                  | Behavior                                                                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Model and context     | `claude-fable-5-1[1m]`; explicit long-context `session_models.claude_code` selector                                                               |
+| Thinking and effort   | `alwaysThinkingEnabled: false`; `effortLevel: high` in both profiles                                                                              |
+| Local llama.cpp       | model-scoped `high` effort with thinking off; local context windows stay unchanged                                                                |
+| Dangerous-mode prompt | skipped in both profiles                                                                                                                          |
+| Subagent nesting      | `env.CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` in every settings profile (nesting off); every `exact_agents/` profile pins `tools:` without `Agent` |
+| Work auth             | native Claude enterprise auth; no `apiKeyHelper` / `ANTHROPIC_BASE_URL` override                                                                  |
+| MCP storage           | `~/.claude.json` top-level `mcpServers`                                                                                                           |
+| Merge strategy        | selected profile plus canonical `session_models.claude_code` model and effort                                                                     |
 
 Interactive fish/bash/zsh sessions leave `claude` native. MCP wiring is handled only by the managed registry and apply-time config generation.
 

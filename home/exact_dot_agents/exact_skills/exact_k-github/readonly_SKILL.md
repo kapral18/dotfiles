@@ -5,6 +5,9 @@ description: "Use for GitHub effects and GitHub issue context/targeting: PRs, is
 
 # GitHub + gh Skill
 
+Subagent dispatch: inline (research for substantial context intake) — mutations are root-gated;
+a large read-only intake may run as a research packet returning the intake ledger.
+
 Defaults:
 
 - Use `gh` CLI; set `GH_PAGER=cat` for non-interactive reliability.
@@ -131,6 +134,12 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
 
 - Before PR body edits, invoke `k-compose-pr`; before issue body edits, invoke `k-compose-issue`.
 - For repo-specific labels, ownership, reviewer targeting, or PR body rules, load the verified domain overlay first.
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Launch one strong research packet for a substantial intake (many threads or references) with the intake ledger as return before composing context-dependent output; the root MUST NOT substitute its own inline intake for that packet absent an explicit user no-delegation instruction; if the lane is unavailable report blocked.
+Mutations MUST NOT be delegated.
 
 ## Output
 

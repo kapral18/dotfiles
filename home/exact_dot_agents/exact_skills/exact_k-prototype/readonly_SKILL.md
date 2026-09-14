@@ -5,6 +5,9 @@ description: "Use when building a throwaway prototype to sanity-check logic/stat
 
 # Prototype
 
+Subagent dispatch: inline (implement for a settled throwaway build) — the question and verdict are the root's;
+a fully specified prototype may be built by the implementation band.
+
 A prototype is **throwaway code that answers a question**. The question decides the shape.
 
 `k-code-quality` owns artifact necessity; the core SOP owns minimal edit scope.
@@ -44,3 +47,10 @@ a page/component → UI) and state the assumption at the top of the prototype.
 The _answer_ is the only thing worth keeping.
 Done when the question, the verdict (keep / discard / refactor), and where the validated decision goes are captured somewhere durable (commit message, PR, issue, `,ai-kb`, or a `NOTES.md` next to the prototype), and the prototype is deleted or scheduled for deletion/absorption.
 If the user is around, that capture is a quick conversation; if not, leave the placeholder so the verdict can be filled in before the prototype is deleted.
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Launch one implement packet once the prototype spec is settled, with the spec and acceptance as input;
+the root MUST NOT substitute its own inline build for that packet absent an explicit user no-delegation instruction;
+if the lane is unavailable report blocked. The question and verdict stay with the root.

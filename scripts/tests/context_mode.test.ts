@@ -141,6 +141,55 @@ describe("WHEN applying GPT-only defaults", () => {
   })
 })
 
+describe("WHEN applying non-GPT dual windows", () => {
+  it("SHOULD keep native Grok capacity until short is selected", async () => {
+    const grok = {
+      ...model("grok-4.5", "github-copilot", 500_000),
+      cost: { input: 4, tiers: [{ inputTokensAbove: 200_000 }] },
+    }
+    const h = harness(grok)
+    await h.policy.apply(h.ctx)
+    expect(h.current.contextWindow).toBe(500_000)
+    expect(h.changes).toBe(0)
+    expect(h.entries).toEqual([])
+    await h.policy.command("short", h.ctx)
+    expect(h.current.contextWindow).toBe(200_000)
+    expect(h.entries).toEqual([{
+      type: "custom", customType: "gpt-context-mode",
+      data: { provider: "github-copilot", model: "grok-4.5", mode: "short" },
+    }])
+    await h.policy.command("long", h.ctx)
+    expect(h.current.contextWindow).toBe(500_000)
+  })
+
+  it("SHOULD refuse short when Grok history already exceeds the 200k tier", async () => {
+    const grok = {
+      ...model("grok-4.6", "github-copilot", 500_000),
+      cost: { input: 4, tiers: [{ inputTokensAbove: 200_000 }] },
+    }
+    const h = harness(grok)
+    h.tokens = 200_000
+    await h.policy.command("short", h.ctx)
+    expect(h.current.contextWindow).toBe(500_000)
+    expect(h.entries).toEqual([])
+    expect(h.notices.at(-1)).toContain("Mode unchanged")
+  })
+
+  it("SHOULD use advertised maxContextWindow as long for non-GPT without mutating on apply", async () => {
+    const h = harness({
+      ...model("claude-opus-5", "anthropic", 200_000),
+      maxContextWindow: 1_000_000,
+    })
+    await h.policy.apply(h.ctx)
+    expect(h.current.contextWindow).toBe(200_000)
+    expect(h.changes).toBe(0)
+    await h.policy.command("long", h.ctx)
+    expect(h.current.contextWindow).toBe(1_000_000)
+    await h.policy.command("short", h.ctx)
+    expect(h.current.contextWindow).toBe(200_000)
+  })
+})
+
 describe("WHEN selecting and restoring a model/session context mode", () => {
   it("SHOULD round-trip short/long without changing provider, model, output or cache metadata", async () => {
     const h = harness()

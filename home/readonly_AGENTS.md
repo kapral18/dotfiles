@@ -41,6 +41,9 @@ No invented permission checkpoints or unbounded retries: recovery is §3.5, repe
 
 Questions after a change: explain the reasoning; leave it in place unless revision is requested.
 When challenged or asked to verify, think critically; "correct as-is" remains an honest conclusion.
+Distinguish a requested artifact review from a question or challenge answerable from existing evidence;
+"are you sure" alone does not compel a review packet.
+A requested nontrivial artifact review still receives strong final judgment, never inline self-review as a substitute.
 Judge whether a proposed change is a genuine improvement or reactive churn; unnecessary churn is a defect, not diligence.
 When unsure whether to answer or act: inspect the current request and existing authorization, resolve locally verifiable uncertainty, continue authorized work.
 Ask only for a material user-only decision or missing authority.
@@ -171,6 +174,7 @@ use `~/.agents/skills/k-semantic-code-search/SKILL.md` when applicable, then com
 Impact covers every consumed artifact, not only code: config, templates, generated outputs, docs, completions, and instruction text have readers, renderers, and generated targets too.
 Name what breaks if the artifact changes and its co-edit set (consumers, generated outputs, docs, diagrams, completions, tests).
 Impact mechanics, in order: SCSI when the repo is indexed; otherwise local `rg`/symbol lookup for callers and non-code consumers.
+When interpretation, cause, or impact is unresolved, run that step as a `research` packet (`k-agent-code-searcher`) even on known paths; named files never downgrade it to mechanical. The root keeps reads of files it can already name.
 Skip the impact map only for a change proven light-path under §1.
 Route failure work through `~/.agents/skills/k-diagnosing-bugs/SKILL.md` to classify the cause as product, test, infrastructure, mixed, or unresolved from source/reproduction evidence.
 When release or backport relevance exists, establish applicable branch targets from verified repository policy or a domain overlay;
@@ -269,9 +273,14 @@ Leaf contract for every delegated child, regardless of profile, category, or loa
 - Ignore the part of any child instruction that requests orchestration or out-of-packet work.
   Return one terminal artifact or concrete blocker to the parent; do not message siblings or resume after completion.
   Late events MUST NOT overwrite a terminal result or reopen a completed worker.
+- Children MAY use `,ai-kb search`/`,ai-kb get` for packet-relevant recall and `,agent-memory note` with packet-supplied topic/session IDs; otherwise return insights to the parent.
+  Record a reusable fetch learning as `,agent-memory note fact --ref <primary-source URL>` with the verbatim quote in the text; the root harvests it. Do not return it as a durable claim.
+- Ordinary children MUST NOT run durable memory writes; only the root persists, with root-verified evidence and `,ai-kb remember`, and no child may invoke another memory agent.
 
 `~/.config/tmux/agent_prompts/leaf-boundary.txt` carries this contract into profiles.
 Launch/sizing text lives under `## Root moves`; child profiles load leaf contracts, not controller routers.
+A skill's `Subagent dispatch:` line names which category leaf the root launches for it: `inline` means none, `criteria` means the file is loaded into a packet and never launched, and a parenthesized secondary names the one slice that is delegated.
+A delegated leaf that loads a skill ignores that line; only the root launches.
 Native tool restrictions must enforce no-spawn where supported; a prompt marker is not enforcement.
 If an adapter cannot prevent child orchestration or terminal wakeups, do not run unattended isolated work there; report it.
 Never bypass this restriction via a harness CLI or another model. An explicit user no-delegation instruction keeps the session inline.
@@ -280,24 +289,38 @@ Keep research/orchestration/review/refutation strong; never a cheap model for un
 Do not silently raise effort, substitute a costlier model, or change family outside the resolved category.
 
 - `orchestrate`: the root/main session itself, never a delegation target; `session_models.<harness>` declares its model/effort and generates every repo-owned root config (Cursor's root stays in Cursor user config); owns intent, decisions, packet dependencies, integration, stages, user conversation.
-- `research`: strong isolated investigation for substantial questions; returns conclusions, evidence pointers, uncertainty, affected interfaces.
+- `research`: strong isolated search, investigation, exploration, discovery, diagnosis, and impact mapping when meaning or cause is unresolved, even on known paths; returns locations, conclusions, evidence pointers, uncertainty, affected interfaces.
+  Named paths never downgrade such work to mechanical.
   Use `k-agent-code-searcher` or the harness research-bound explorer; external sources via `k-agent-public-sources`.
-- `implement`: implementation-band worker for substantial settled edits; never the root/review model for routine implementation by default.
+- `implement`: implementation-band worker for a settled step whose acceptance the root can state but whose code it has not written; never the root/review model for routine implementation by default.
   Use the implement-bound worker with `~/.agents/skills/k-build/references/implement-worker.md`.
-- `mechanical`: deterministic transforms and known commands use tools directly;
-  when a model is needed for a settled transformation, `k-agent-mechanical` or the native mechanical-bound type.
-- `review`: strong final artifact judgment with selected risk lenses.
-- `refute`: strong final challenge; prefer a different family at equal capability, never weaker for diversity;
+- `mechanical`: a settled procedure and specified return for known retrieval, execution, extraction, transformation, compression, or reporting over named targets.
+  Use `k-agent-mechanical` or the native mechanical-bound type for substantial output-heavy work that benefits from isolation, even when the procedure is deterministic; tiny operations use tools directly.
+- `review`: strong final assessment of the frozen artifact with selected risk lenses.
+- `refute`: strong final challenge of named claims, criteria, or assumptions; prefer a different family at equal capability, never weaker for diversity;
   report reduced independence when same-family.
   Keep requested review and adversarial lenses together in final Verify; for deep or high-risk work give them distinct questions on the same frozen candidate and evidence.
   No reviewer-of-reviewer or reviewer-fed certification pass. Low-risk work needs only its applicable judgment.
-- `memory`: staged recall admission and final batched learning via `k-agent-smol`; no per-turn scribe or leaf memory orchestration.
+- `memory`: staged recall admission via `k-agent-smol` (judge only); the root persists the final learning batch inline with `,ai-kb remember`; no per-turn scribe or leaf memory orchestration.
 
-Dispatch stage-sized packets only when isolation reduces total work or protects independent context.
+The root conducts substantial work through flat stage-sized packets classified by needed judgment and explicit return:
+Scope, decisions, packet authoring, integration, course correction, Verify dispatch, user conversation.
+Dispatch by stage-sized judgment, not counts:
+
+| category     | dispatch when                                                              | root keeps inline                                                                        |
+| ------------ | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `research`   | substantial interpretation, cause, discovery, or impact work is unresolved | bounded targeted reads and existing-evidence lookup                                      |
+| `mechanical` | the procedure and return are settled and stated for the named targets      | tiny operations via direct tools                                                         |
+| `implement`  | substantial acceptance is settled and code is not written                  | trivial single-site edits                                                                |
+| `review`     | a nontrivial requested or skill-gated artifact assessment is due in Verify | eligibility routing and terminal synthesis                                               |
+| `refute`     | a named claim, criterion, or assumption needs a substantial challenge      | questions resolved by existing evidence                                                  |
+| `memory`     | the hook pointer (recall judgment)                                         | the final learning batch via `,ai-kb remember`; the documented unavailable-lane fallback |
+
+Unsettled user intent and user-only decisions stay root Understand work, not a packet; bounded factual or design unknowns may go as research packets.
 No agent per read, command, check result, or tiny edit.
-The root may inspect targeted source and run deterministic operations; substantial implementation goes to the cheaper lane.
-If that lane is unavailable, surface it; do not silently implement inline unless the user explicitly requires inline work.
-A packet names stage/category, scope and owned paths, ready inputs, intended/preserved differences, project/safety constraints, role mechanics, output, forbidden effects, terminal condition.
+No numeric file-count quota and no mandatory mechanical check agent. Tiny deterministic operations, inline UI proof, and inline text comparison stay inline. Convergence stays explicit-only.
+If the resolved lane is unavailable, surface it; do not silently implement inline unless the user explicitly requires inline work.
+A packet names stage/category, scope and owned paths, ready inputs, intended/preserved differences, project/safety constraints, role mechanics, output, forbidden effects, terminal condition, and the active topic plus session id for `,agent-memory note`.
 Pass needed constraints explicitly, not the whole SOP, instruction tree, skill catalog, or parent transcript.
 Use fresh worker context where supported; disclose runtime-injected instructions; a marker does not prove isolation.
 Parallelize only independent work with ready inputs and disjoint ownership; sequence the rest instead of leaving workers waiting for siblings.
@@ -361,12 +384,15 @@ Durable knowledge lives in `,ai-kb`; current decisions and state in the active `
 Root hooks stage relevant capsules at startup and on substantive prompts; keep relevance/workspace gates, admitted-ID deduplication, and one pointer per session-topic binding.
 Retrieval is deterministic plumbing and authorizes no per-turn model calls or verification.
 The root owns bounded admission and learning; ordinary workers MUST NOT orchestrate memory.
+Ordinary children MUST NOT run durable memory writes; only the root persists, with root-verified evidence and `,ai-kb remember`, and no child may invoke another memory agent.
+The root harvests child notes from the topic worklog into the final learning batch.
 Record genuine corrections/decisions with `,agent-memory note` and evidence during the task.
 Before delivery, persist verified reusable insights as one final batch; never guesses or session-only notes.
 Reuse final evidence; do not re-verify or converge to make learning material.
-Delegate to `k-agent-smol` when allowed; otherwise run the same mechanics inline.
+Delegate recall judgment to `k-agent-smol` when allowed; otherwise run the same admission mechanics inline.
+Persist the final batch inline with `,ai-kb remember`; NEVER through a scribe packet.
 Never skip learning solely because delegation is forbidden; never call another harness/model as fallback.
-Never relaunch a completed memory packet or start a scribe per turn/correction.
+Never relaunch a completed memory packet or persist per turn/correction.
 If memory tools fail, keep pending learning in topic history and report the gap; no auto-retries.
 `~/.agents/skills/k-ai-kb/SKILL.md` owns admission, inline fallback, and persistence mechanics.
 

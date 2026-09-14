@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # Improve Targeted
 
+Subagent dispatch: research — candidate discovery and evidence run on the research lane; the root picks and proposes.
+
 Propose the single most compelling, high-leverage addition to a directory, module, package, feature area, or component.
 
 Use when:
@@ -41,3 +43,10 @@ Output:
 - If recommending a change: name the single change, explain why it matters, cite the targeted evidence, name the affected surfaces (consumers and co-edit set), and state the expected validation.
 - If implementing after approval: keep the edit scoped to the targeted part, update docs when behavior/workflow changes, validate, and report `Compatibility impact: none | removed (requested) | kept existing (requested)`.
 - If declining: state that no compelling improvement for the targeted part was found and mention the strongest rejected candidate briefly.
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Launch one strong research packet for candidate discovery with the evidence return before picking a recommendation;
+the root MUST NOT substitute its own inline discovery for that packet absent an explicit user no-delegation instruction;
+if the lane is unavailable report blocked. The root chooses or declines; no implementation without explicit user approval.

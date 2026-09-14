@@ -23,21 +23,21 @@ Whether a findings audit needs review-grade reasoning is a fact about the job, n
 
 ## Categories
 
-Categories select capability, not mandatory agent launches. The session and strong research/review/refute handle judgment. Substantial settled implementation uses the implementation band; mechanical transformations use deterministic tools or the mechanical band when a model is needed. Automatic memory recall and learning remain; admission is bounded and persistence is batched. Keep raw evidence in task contexts and compact decisions in the strong root. Do not spend the expensive root on routine implementation by default. Model/effort values below remain registry-owned; no model migration is part of the staged-workflow change.
+Categories select capability, not mandatory agent launches. The session and strong research/review/refute handle judgment. Substantial settled implementation uses the implementation band; mechanical packets isolate substantial settled retrieval, execution, extraction, transformation, compression and reporting; tiny operations use direct tools. Automatic memory recall and learning remain; admission is bounded and persistence is batched. Keep raw evidence in task contexts and compact decisions in the strong root. Do not spend the expensive root on routine implementation by default. Model/effort values below remain registry-owned; no model migration is part of the staged-workflow change.
 
 ## Tiers
 
 Within a harness the categories collapse onto three price tiers (user call 2026-09-07). The tier is the routing shorthand; the category is still what a packet names.
 
-| Tier | Categories             | What it is                                                                                                                      |
-| ---- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| T1   | `research`, `review`   | The orchestration-grade category set; the session row is priced at T1                                                           |
-| T2   | `implement`            | One tier below T1; does ~80% of the edits under the SOP §3.7 implement dispatch gate                                            |
-| T3   | `mechanical`, `memory` | The cheapest pick that can apply a settled rule, run a check and return `exit <N>` + log path, or judge a bounded recall packet |
+| Tier | Categories             | What it is                                                                                                                    |
+| ---- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| T1   | `research`, `review`   | The orchestration-grade category set; the session row is priced at T1                                                         |
+| T2   | `implement`            | One tier below T1; settled steps with stated acceptance and unwritten code go to the implementation band                      |
+| T3   | `mechanical`, `memory` | Settled procedure/output work, or bounded memory operations; command returns include actual exit status and full-log pointers |
 
 `refute` sits outside the ladder: it is priced at T1 capability on the counter family where the harness has one.
 
-The SOP §3.7 assigns substantial settled implementation to T2; explicit user no-delegation keeps work inline. The root owns decomposition, stage-sized packets, integration, and one final Verify. Known commands run directly through deterministic tools, not a separate model check runner. Research/production workers do not verify; final failure does not authorize automatic repair or another check cycle. The tier ladder is a price shape, not a promise that every category uses a distinct model. A category may share a model with another category when its harness-literal effort differs.
+The SOP §3.7 routes settled implementation with stated acceptance and unwritten code to T2; explicit user no-delegation keeps work inline. The root owns decomposition, stage-sized packets, integration, and one final Verify. Known commands run directly through deterministic tools, not a separate model check runner. Research/production workers do not verify. After final failure, the root may make an evidence-backed repair within existing authority and rerun failed or affected checks; workers cannot start that recovery. The tier ladder is a price shape, not a promise that every category uses a distinct model. A category may share a model with another category when its harness-literal effort differs.
 
 ## Session model (root)
 

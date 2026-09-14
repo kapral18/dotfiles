@@ -92,8 +92,8 @@ All `run_onchange_after_07-merge-*` scripts source a shared shell library at [`s
 
 Two independent runtime ledgers serve different questions:
 
-- `~/.local/state/chezmoi/managed_configs.tsv` is the generic literal whole-file checksum manifest. [`scripts/managed_config_manifest.py`](../../scripts/managed_config_manifest.py) collapses exact duplicate rows and powers the existing `,doctor` Config Drift section.
-- `~/.local/state/chezmoi/generated_artifacts.v1.json` is the AI-specific effective-state ledger. [`scripts/generated_artifact_ledger.py`](../../scripts/generated_artifact_ledger.py) records source/transform hashes, selected profile, ownership projection, target, consumer, and local probe metadata. `,doctor ai` reads it, so runtime-owned Codex/Copilot fields do not create false drift.
+- `~/.local/state/chezmoi/managed_configs.tsv` is the generic literal whole-file checksum manifest. [`scripts/managed_config_manifest.py`](../../scripts/managed_config_manifest.py) collapses exact duplicate rows and powers the `,doctor` Config Drift section, which joins each row with the artifact ledger below: rows with no artifact and no remaining producer in source retire silently, while artifact-covered rows compare ownership-projected state so app-owned churn stays silent.
+- `~/.local/state/chezmoi/generated_artifacts.v1.json` is the AI-specific effective-state ledger. [`scripts/generated_artifact_ledger.py`](../../scripts/generated_artifact_ledger.py) records source/transform hashes, selected profile, ownership projection, target, consumer, and local probe metadata. `,doctor ai` and the Config Drift section read it, so runtime-owned Codex/Copilot fields do not create false drift.
 
 Both ledgers are atomic and mode `0600`. The AI ledger stores paths and hashes only, never generated config contents or resolved secret values.
 

@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # Instruction Boundaries For LLM Guidance
 
+Subagent dispatch: criteria — applied while editing instruction text; never dispatched alone.
+
 LLMs can miss negation, but deleting negation can delete the boundary. Use hard prohibitions for forbidden behavior.
 Add affirmative wording when it tells the model exactly what to do next.
 

@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -236,6 +238,34 @@ class TestAiModels(unittest.TestCase):
                 text = (agents / filename).read_text()
                 assert name_line in text
                 assert "model:" in text
+
+    def test_when_claude_profile_is_a_leaf_should_pin_tools_without_agent(self):
+        # A Claude profile without `tools:` inherits every tool, `Agent` included, and Claude Code
+        # 2.1.219+ lets subagents nest by default; the allowlist is the native no-spawn enforcement.
+        agents = REPO / "home/dot_claude/exact_agents"
+        tools_re = re.compile(r"^tools:\s*(?P<tools>.+)$", re.MULTILINE)
+        checked = 0
+        for profile in sorted(agents.glob("*.md.tmpl")):
+            with self.subTest(profile=profile.name):
+                text = profile.read_text(encoding="utf-8")
+                front = text.split("---", 2)[1]
+                match = tools_re.search(front)
+                assert match, f"{profile.name} has no tools: allowlist"
+                tools = [tool.strip() for tool in match.group("tools").split(",")]
+                assert "Agent" not in tools, f"{profile.name} exposes the Agent tool to a leaf"
+                assert "disallowedTools:" not in front, f"{profile.name} mixes a denylist with the allowlist"
+                checked += 1
+        assert checked >= 20
+
+    def test_when_claude_root_settings_load_should_turn_subagent_nesting_off(self):
+        for name in ("settings.work.json", "settings.personal.json"):
+            with self.subTest(settings=name):
+                settings = json.loads((REPO / "home/dot_claude" / name).read_text(encoding="utf-8"))
+                assert settings["env"]["CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH"] == "1"
+        for name in ("settings.llama-cpp.json.tmpl", "settings.llama-cpp.qwen3.8.json.tmpl"):
+            with self.subTest(settings=name):
+                text = (REPO / "home/dot_claude" / name).read_text(encoding="utf-8")
+                assert '"CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1"' in text
 
     def test_claude_openrouter_subagents_use_pi_backend_schema(self):
         wrapper = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()

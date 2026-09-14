@@ -5,6 +5,8 @@ description: "Use when inspecting external public source or synthesizing evidenc
 
 # Public Sources
 
+Subagent dispatch: research (refute for the batched claim set) — one research packet per independent question.
+
 Use source-inspection for explicit upstream repositories/files; use multi-source claims for factual synthesis across sources.
 This skill provides evidence mechanics, not a collect→verify→deepen loop.
 Do not use it for the current worktree, account/runtime state, or a simple single-page lookup.
@@ -14,7 +16,7 @@ For multi-source synthesis, read `~/.agents/skills/k-public-sources/references/m
 ## Root moves
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Use one substantial strong research packet per independent question, combining collection and synthesis.
+Launch one strong research packet per independent question, combining collection and synthesis; the root MUST NOT substitute its own inline investigation for that packet absent an explicit user no-delegation instruction; if the lane is unavailable report blocked.
 Keep raw source outside root context; return evidence pointers, supported conclusions, and unresolved gaps.
 For multi-source synthesis, read `~/.agents/skills/k-public-sources/references/claim-verifier.md` and judge the material claim set together in final Verify.
 Assign that contract to the root or a strong refute packet as appropriate; do not spawn a verifier per claim or send new claims into recursive deepening.

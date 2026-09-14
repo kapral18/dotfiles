@@ -5,6 +5,8 @@ description: "Use for standard-rigor review of local changes, PRs, review thread
 
 # Review Router
 
+Subagent dispatch: review — one reviewer-worker packet per mode.
+
 Goal: route standard-rigor review requests to the correct mode while keeping shared rules loaded once.
 
 Contract:
@@ -51,9 +53,18 @@ Read `~/.agents/skills/k-review/references/lanes.md` to select applicable criter
 Preserve requested review and adversarial lenses; for deep or high-risk work, assign them distinct questions against the same frozen candidate.
 Low-risk work needs only its applicable judgment. Specialists consume shared evidence, not one another's verdicts.
 Do not chain finder, audit, adversarial, fresh-eyes, or post-review passes. Do not invoke convergence automatically.
-Gather context in Understand; produce known fixes within the current packet's write scope (`~/.agents/skills/k-review/references/authorship.md`) before entering Verify.
+Collect scope-level evidence in Understand; produce known fixes within the current packet's write scope (`~/.agents/skills/k-review/references/authorship.md`) before entering Verify.
 Research packets return compact evidence, not transcripts. Direct deterministic checks require no mechanical agent.
-When delegation is forbidden, stay inline; otherwise isolate substantial context-heavy judgment where it reduces total work.
+Launch one strong review subagent using `~/.agents/skills/k-review/references/reviewer-worker.md` (the `k-agent-review-worker` or `k-agent-reviewer` profile as exposed by the active harness) before any final judgment, in every `k-review` mode; the light path routed to `k-light-review` uses its own change-auditor packet instead. Pass the copied selected criteria and mode lens, not a router or roster.
+This router and the selected mode file describe the same required packet, not additive launches.
+The root MUST NOT substitute its own inline review for that packet absent an explicit user no-delegation instruction.
+If the required lane or tool is unavailable, report blocked; do not silently fall back to an inline review.
+The root still owns scope, scope-level evidence, deterministic checks, integration, and terminal synthesis; the substantive review judgment executes in the worker.
+Root read bound: until the review packet returns, the root reads only scope-level evidence: `git status`, `git diff --stat` / `--name-only` / `--diff-filter=D --stat`, `git log --oneline`, authorship probes, check receipts, PR discussion and referenced artifacts needed for named material questions, and the patch it writes to a file for the packet.
+The root MUST NOT read diff hunks, changed-file bodies, callers, or blame output before that packet returns; those reads are the worker's mechanics and travel in the packet, not in root context.
+After the packet returns, root reads stay bounded to synthesis of the returned findings or an evidence-backed repair under SOP §3.5.
+Await the terminal packet result before the verdict; no spawning from a child.
+See `~/.agents/skills/k-review/references/runtime-harnesses.md` for harness-specific invocation caveats.
 
 ## Secondary Skill Escalation
 

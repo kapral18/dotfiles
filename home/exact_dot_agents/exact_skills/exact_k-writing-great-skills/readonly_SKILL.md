@@ -5,6 +5,8 @@ description: "Use when authoring/refactoring skills: invocation, triggers, refer
 
 # Writing Great Skills
 
+Subagent dispatch: criteria — skill-craft contract applied while authoring; never dispatched alone.
+
 A skill wrangles predictability from a stochastic system: the agent should take the same **process** every run.
 Every lever below serves that.
 

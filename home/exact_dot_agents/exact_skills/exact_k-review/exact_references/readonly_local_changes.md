@@ -38,13 +38,20 @@ Fix authority follows write scope per `~/.agents/skills/k-review/references/auth
 New final findings past the Produce fix pass are reported, per the packet's own final-Verify boundary if one applies.
 Local ownership alone does not authorize commit or push — those stay separately gated per SOP §3.2 regardless of write scope on the files themselves.
 
-## Investigation (Read-Only, Start Immediately)
+## Scope Evidence (Root, Read-Only, Start Immediately)
 
 - `git status --porcelain=v1 -b`
-- `git diff --stat`
-- `git diff`
-- `git diff --staged`
+- `git diff --stat` and `git diff --staged --stat`
+- `git diff --diff-filter=D --stat`
 - `git log --oneline --decorate -n 15`
+- Write the frozen candidate to a file for the packet (`git diff HEAD > <scratch>/candidate.patch`) and record its hash; do not read it.
+- The root read bound in `~/.agents/skills/k-review/SKILL.md` Root moves applies: no diff hunks, changed-file bodies, callers, or blame output in root context before the packet returns.
+
+## Worker Investigation (Passed In The Packet)
+
+The review worker runs these from the packet; the root pastes them and MUST NOT perform them itself:
+
+- `git diff` / `git diff --staged` (or the frozen patch) read in full
 - Never review diff hunks in isolation: read full enclosing files and trace callers/consumers to discover blast radius and impact on preexisting surrounding behavior.
 - Probe history: in large repos, run targeted line-bounded probes (`git blame -L <start>,<end>` / `git log -n 5 -L`) on modified guards, defensive checks, and error branches to uncover why existing code was written and ensure past bug fixes are preserved.
 
@@ -56,15 +63,13 @@ If staged/unstaged changes exist:
 
 If the user specified a commit range (e.g. "last 3 commits", "since `<ref>`"):
 
-- Use `git diff <ref>...HEAD` and `git log --oneline <ref>..HEAD` to scope the review.
+- Scope with `git diff --stat <ref>...HEAD` and `git log --oneline <ref>..HEAD`; the full `git diff <ref>...HEAD` goes into the packet.
 - If the range reference is ambiguous, ask one direct question.
 
 If the working tree is clean (and no commit range specified):
 
 - Resolve base with: `git symbolic-ref --short refs/remotes/origin/HEAD`
-- Review branch delta using:
-  - `git diff <base>...HEAD`
-  - `git log --oneline <base>..HEAD`
+- Scope the branch delta with `git diff --stat <base>...HEAD` and `git log --oneline <base>..HEAD`; the full `git diff <base>...HEAD` goes into the packet.
 - If base cannot be resolved, ask one direct question for the base target.
 
 If there are no diffs at all:
@@ -78,9 +83,14 @@ Follow the base-branch context gate in `~/.agents/skills/k-review/references/sha
 ## Root moves
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Use a substantial strong final review/refute packet when isolation is useful, with the frozen diff, selected risk questions, and existing evidence.
+Launch one strong review subagent using `~/.agents/skills/k-review/references/reviewer-worker.md` before any final judgment, with the frozen diff, copied selected risk questions, and existing evidence.
+This mode and the router describe the same required packet, not additive launches.
+The root MUST NOT substitute its own inline review for that packet absent an explicit user no-delegation instruction.
+If the required lane or tool is unavailable, report blocked; do not silently fall back to an inline review.
 Do not launch findings auditors, a verifier of the review, post-review cleanup, or automatic convergence.
 Keep discovery context and raw outputs outside the root; retain compact conclusions and pointers.
+The router's root read bound governs every read before the packet returns.
+Await the terminal packet result before the verdict; no spawning from a child.
 Honor explicit no-delegation instructions inline.
 
 ## Output

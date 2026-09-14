@@ -7,6 +7,7 @@ model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "pi" "
 {{- if $thinking }}
 thinking: "{{ $thinking }}"
 {{- end }}
+tools: read, grep, find, ls, bash, mcp:scsi-main, mcp:scsi-local
 systemPromptMode: replace
 inheritProjectContext: false
 inheritGlobalContext: false

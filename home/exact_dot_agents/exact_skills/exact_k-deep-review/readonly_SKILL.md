@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # Deep Review
 
+Subagent dispatch: review (refute for the adversarial packet) — distinct reviewer-worker and adversarial-verifier packets.
+
 Apply deep coverage inside the SOP's single final Verify stage.
 Depth means relevant source, counterexamples, and preserved-behavior analysis, not more workflow layers.
 Do not start finder→auditor→refuter→post-review chains or automatically invoke convergence.
@@ -39,11 +41,16 @@ When existing authority covers recovery, the root applies SOP §3.5; this skill 
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
 Read `~/.agents/skills/k-deep-review/references/reviewer-roster.md` to select the smallest useful strong final roster.
+Launch distinct strong review and adversarial packets before any final judgment: one using `~/.agents/skills/k-review/references/reviewer-worker.md` and one using `~/.agents/skills/k-review/references/adversarial-verifier.md`, each with its selected risk questions against the same frozen candidate.
 Retain strong artifact review and adversarial challenge as distinct questions in the same final stage, never as reviews of one another.
 Select additional specialists only for independent risks; use the blind fresh-eyes contract when comprehension risk warrants it.
+The root MUST NOT substitute its own inline review for those packets absent an explicit user no-delegation instruction.
+If a required lane or tool is unavailable, report blocked; do not silently fall back to an inline review.
+The root still owns scope, scope-level evidence, deterministic checks, integration, and terminal synthesis; the substantive review judgment executes in the workers.
+Until those packets return, the root reads only scope-level evidence (`git status`, `git diff --stat`, changed names, `git log --oneline`, check receipts, PR discussion for named material questions) and MUST NOT read diff hunks, changed-file bodies, callers, or blame output; those reads travel in the packets.
 Use `~/.agents/skills/k-review/references/runtime-harnesses.md` only for actual invocation/capability caveats.
 Workers load leaf contracts and the packet's selected lens, not full controller routers or root memory hooks.
-Await each packet once; do not relaunch active/completed packets, poll without new evidence, message siblings, or revive terminal workers.
+Await each packet once before the verdict; do not relaunch active/completed packets, poll without new evidence, message siblings, or revive terminal workers.
 Record model/effort, stage, packet ID and result pointer in the compact handoff;
 do not turn selection metadata into repeated user-facing commentary. Honor no-delegation requests inline.
 Report unsupported native lifecycle controls instead of claiming prompt-enforced runtime guarantees.

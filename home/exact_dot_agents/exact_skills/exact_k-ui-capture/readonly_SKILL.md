@@ -5,6 +5,8 @@ description: "Use when proving UI visual/behavior, auditing a diff for capturabl
 
 # UI Capture
 
+Subagent dispatch: inline — proof capture runs inline with the root's intended-behavior oracle; upload is root-gated.
+
 The creation-side live-UI proof skill: verify a **built or changed** UI against its **intended visual, state, or behavior**, capture the before/after screenshots and videos that prove it, and (when asked) upload them to GitHub.
 This is the creation-side sibling of `~/.agents/skills/k-review/references/live-ui-review.md`: same runtime machinery, opposite direction.
 `k-agent-live-ui-review` compares PR/head against base to find regressions for `/k-deep-review` to judge;

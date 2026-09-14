@@ -446,8 +446,16 @@ check_ai_configs() {
       if [ "$size" -gt 2 ]; then
         pass "$label"
         if [ "$verbose" -eq 1 ]; then
+          local mtime_raw
+          mtime_raw="$(stat -f %m "$path" 2> /dev/null || true)"
+          case "$mtime_raw" in
+            '' | *[!0-9]*) mtime_raw="$(stat -c %Y "$path" 2> /dev/null || true)" ;;
+          esac
+          case "$mtime_raw" in
+            '' | *[!0-9]*) mtime_raw=0 ;;
+          esac
           local age_days
-          if age_days="$((($(date +%s) - $(stat -f %m "$path" 2> /dev/null || stat -c %Y "$path" 2> /dev/null || echo 0)) / 86400))"; then
+          if age_days="$((($(date +%s) - mtime_raw) / 86400))"; then
             if [ "$age_days" -gt 30 ]; then
               warn "$label last modified ${age_days}d ago" "chezmoi apply"
             fi
@@ -474,41 +482,312 @@ check_ai_configs() {
   fi
 }
 
+# Resolve the chezmoi source directory. Honors CHEZMOI_SOURCE_DIR (set by
+# chezmoi when it runs scripts) so tests can point at fixtures.
+_doctor_source_dir() {
+  if [ -n "${CHEZMOI_SOURCE_DIR:-}" ]; then
+    printf '%s' "$CHEZMOI_SOURCE_DIR"
+  elif has_cmd chezmoi; then
+    chezmoi source-path 2> /dev/null || true
+  fi
+  return 0
+}
+
+# Ledger evaluation cache: TSV rows "target<TAB>reasons<TAB>producer", one per
+# artifact target plus one per json-declared baseline path (reasons "baseline").
+# Built from a single `ai.py report --json` pass joined with the raw ledger.
+# Empty when the ledger tooling is unavailable; callers then fall back to
+# whole-file comparison.
+_doctor_ledger_eval() {
+  local ledger="$1" ai_py="$2"
+  [ -f "$ai_py" ] || return 0
+  local report_json
+  report_json="$(python3 "$ai_py" report --json 2> /dev/null || true)"
+  [ -n "$report_json" ] || return 0
+  printf '%s' "$report_json" | python3 -c '
+import json, sys
+try:
+    raw = json.load(open(sys.argv[1], encoding="utf-8"))
+    report = json.loads(sys.stdin.read())
+    rows = report["artifacts"]
+except (ValueError, OSError, KeyError, TypeError, AttributeError):
+    sys.exit(1)
+producers = {}
+baselines = {}
+for entry in raw.get("artifacts", {}).values():
+    target = str(entry.get("target", ""))
+    producers[target] = str(entry.get("producer", ""))
+    baseline = (entry.get("ownership") or {}).get("baseline_path")
+    if baseline:
+        baselines[str(baseline)] = producers[target]
+seen = set()
+for row in rows:
+    target = row["trace"]["target"]
+    seen.add(target)
+    print("%s\t%s\t%s" % (target, ",".join(row["reasons"]), producers.get(target, "")))
+for baseline, producer in sorted(baselines.items()):
+    if baseline not in seen:
+        print("%s\tbaseline\t%s" % (baseline, producer))
+' "$ledger" 2> /dev/null || true
+  return 0
+}
+
+# Print "reasons<TAB>producer" for a manifest target, or fail when the target
+# has no ledger row.
+_doctor_ledger_lookup() {
+  local eval_cache="$1" target="$2"
+  [ -n "$eval_cache" ] || return 1
+  local row
+  row="$(printf '%s\n' "$eval_cache" | grep -F -e "$target"$'\t' | head -n 1 || true)"
+  [ -n "$row" ] || return 1
+  printf '%s' "$row" | cut -f2,3
+}
+
+# Display form of a manifest target: ~/... under $HOME, absolute otherwise.
+# Basenames alone are ambiguous (several settings.json rows exist).
+_doctor_short_path() {
+  case "${1:-}" in
+    "$HOME"/*) printf '~/%s' "${1#$HOME/}" ;;
+    *) printf '%s' "${1:-}" ;;
+  esac
+}
+
+# Last two path components of a $HOME-relative path, used as a conservative
+# "still referenced" signal for variable-constructed script targets.
+_doctor_tail2() {
+  local rel="$1"
+  local base="${rel##*/}" parent="${rel%/*}"
+  if [ "$parent" = "$rel" ]; then
+    printf '%s' "$base"
+  else
+    printf '%s/%s' "${parent##*/}" "$base"
+  fi
+}
+
+# Print the first source file referencing a manifest target (absolute form,
+# $HOME-relative form, or parent/basename tail), or fail when unreferenced.
+_doctor_first_reference() {
+  local source_dir="$1" target="$2"
+  [ -n "$source_dir" ] && [ -d "$source_dir" ] || return 1
+  local rel="$target"
+  case "$target" in
+    "$HOME"/*) rel="${target#$HOME/}" ;;
+  esac
+  local tail
+  tail="$(_doctor_tail2 "$rel")"
+  grep -rlF -e "$target" -e "\$HOME/$rel" -e "$tail" --exclude-dir=.git "$source_dir" 2> /dev/null | head -n 1
+}
+
+# True when a manifest target is listed in .chezmoiremove (intentionally
+# removed upstream, so absence is the expected state).
+_doctor_removed_upstream() {
+  local source_dir="$1" target="$2"
+  [ -n "$source_dir" ] || return 1
+  local remove_file="$source_dir/.chezmoiremove"
+  [ -f "$remove_file" ] || return 1
+  case "$target" in
+    "$HOME"/*) ;;
+    *) return 1 ;;
+  esac
+  grep -qFx -e "${target#$HOME/}" "$remove_file" 2> /dev/null
+}
+
+# Retire one manifest row via the manifest helper. Fails when the helper is
+# unavailable; recording on the next apply re-adds any row still produced.
+_doctor_forget_row() {
+  local source_dir="$1" manifest="$2" target="$3"
+  local helper="$source_dir/../scripts/managed_config_manifest.py"
+  [ -f "$helper" ] || return 1
+  python3 "$helper" forget "$manifest" "$target" 2> /dev/null
+}
+
+# Print the .chezmoiscripts source file for a ledger producer stem, or fail
+# unless exactly one file matches.
+_doctor_find_producer_script() {
+  local source_dir="$1" producer="$2"
+  [ -n "$source_dir" ] && [ -n "$producer" ] || return 1
+  local scripts_dir="$source_dir/.chezmoiscripts"
+  [ -d "$scripts_dir" ] || return 1
+  local match="" count=0 candidate
+  for candidate in "$scripts_dir"/*"$producer"*; do
+    [ -e "$candidate" ] || continue
+    count=$((count + 1))
+    match="$candidate"
+  done
+  [ "$count" -eq 1 ] || return 1
+  printf '%s' "$match"
+}
+
+# Print the entryState key ($HOME/.chezmoiscripts/<stem>) for a script source
+# file, or fail. run_onchange re-runs are gated on entryState contentsSHA256,
+# not on the scriptState run log: deleting a scriptState key does not force a
+# re-run (verified live 2026-09-14).
+_doctor_script_entry_key() {
+  [ -n "${1:-}" ] || return 1
+  local base="${1##*/}"
+  base="${base%.tmpl}"
+  case "$base" in
+    run_once_* | run_onchange_*) ;;
+    *) return 1 ;;
+  esac
+  base="${base#run_once_}"
+  base="${base#run_onchange_}"
+  case "$base" in
+    before_* | after_*) ;;
+    *) return 1 ;;
+  esac
+  base="${base#before_}"
+  base="${base#after_}"
+  [ -n "$base" ] || return 1
+  printf '$HOME/.chezmoiscripts/%s' "$base"
+}
+
+# Print the command that forces a producer script to re-run on next apply:
+# delete its entryState row (idempotent no-op when already absent), then
+# apply. Prints nothing when the producer script is unknown — no hint beats
+# a wrong one.
+_doctor_rerun_hint() {
+  local entry_key
+  entry_key="$(_doctor_script_entry_key "${1:-}" || true)"
+  [ -n "$entry_key" ] || return 0
+  printf 'chezmoi state delete --bucket=entryState --key="%s" && chezmoi apply' "$entry_key"
+}
+
+# Resolve a referencing source file to its producer run_* script: directly
+# when the reference already is one, else via the consuming script. Fail when
+# the producer is ambiguous or unknown.
+_doctor_script_for_reference() {
+  local source_dir="$1" ref="$2"
+  [ -n "$source_dir" ] && [ -d "$source_dir/.chezmoiscripts" ] || return 1
+  local base="${ref##*/}"
+  case "$ref" in
+    "$source_dir/.chezmoiscripts/"*)
+      case "$base" in
+        run_*)
+          printf '%s' "$ref"
+          return 0
+          ;;
+      esac
+      ;;
+  esac
+  local consumers count
+  consumers="$(grep -rlF -e "$base" --exclude-dir=.git "$source_dir/.chezmoiscripts" 2> /dev/null || true)"
+  [ -n "$consumers" ] || return 1
+  count="$(printf '%s\n' "$consumers" | wc -l | tr -d ' ')"
+  [ "$count" -eq 1 ] || return 1
+  case "${consumers##*/}" in
+    run_*) printf '%s' "$consumers" ;;
+    *) return 1 ;;
+  esac
+}
+
+# Print the entryState-based re-run command for a ledger producer stem.
+_doctor_rerun_hint_for_producer() {
+  local source_dir="$1" producer="$2"
+  local script=""
+  if [ -n "$source_dir" ] && [ -n "$producer" ]; then
+    script="$(_doctor_find_producer_script "$source_dir" "$producer" || true)"
+  fi
+  _doctor_rerun_hint "$script"
+}
+
 check_config_drift() {
   section "Config Drift"
 
-  local manifest="${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi/managed_configs.tsv"
+  local state_home="${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi"
+  local manifest="$state_home/managed_configs.tsv"
   if [ ! -f "$manifest" ]; then
     warn "no managed-configs manifest found" "chezmoi apply"
     return
   fi
 
-  local drifted=0 checked=0
+  local ledger="${CHEZMOI_ARTIFACT_LEDGER:-$state_home/generated_artifacts.v1.json}"
+  local source_dir eval_cache
+  source_dir="$(_doctor_source_dir || true)"
+  eval_cache="$(_doctor_ledger_eval "$ledger" "$HOME/lib/,doctor/ai.py" || true)"
+
+  local drifted=0 checked=0 retired=0
+  local name reasons producer ledger_hit lookup ref script actual_hash
   while IFS=$'\t' read -r target expected_hash _timestamp; do
     [ -z "$target" ] && continue
     [[ "$target" == \#* ]] && continue
+    checked=$((checked + 1))
+
+    name="$(_doctor_short_path "$target")"
+    reasons="" producer="" ledger_hit=0
+    if lookup="$(_doctor_ledger_lookup "$eval_cache" "$target" || true)" && [ -n "$lookup" ]; then
+      IFS=$'\t' read -r reasons producer <<< "$lookup"
+      ledger_hit=1
+    fi
 
     if [ ! -f "$target" ]; then
-      warn "$(basename "$target") missing (was managed)" "chezmoi apply"
-      drifted=$((drifted + 1))
-      checked=$((checked + 1))
+      if [ "$ledger_hit" -eq 1 ]; then
+        warn "$name missing (managed by ${producer:-unknown producer})" "$(_doctor_rerun_hint_for_producer "$source_dir" "$producer")"
+        drifted=$((drifted + 1))
+      elif _doctor_removed_upstream "$source_dir" "$target"; then
+        if [ -n "$source_dir" ] && _doctor_forget_row "$source_dir" "$manifest" "$target"; then
+          retired=$((retired + 1))
+          [ "$verbose" -eq 1 ] && pass "$name retired (intentionally removed upstream)"
+        else
+          warn "$name missing (was managed)" "chezmoi apply"
+          drifted=$((drifted + 1))
+        fi
+      elif ref="$(_doctor_first_reference "$source_dir" "$target" || true)" && [ -n "$ref" ]; then
+        script="$(_doctor_script_for_reference "$source_dir" "$ref" || true)"
+        warn "$name missing (was managed)" "$(_doctor_rerun_hint "$script")"
+        drifted=$((drifted + 1))
+      elif [ -n "$source_dir" ] && _doctor_forget_row "$source_dir" "$manifest" "$target"; then
+        retired=$((retired + 1))
+        [ "$verbose" -eq 1 ] && pass "$name retired (no producer in source)"
+      else
+        warn "$name missing (was managed)" "chezmoi apply"
+        drifted=$((drifted + 1))
+      fi
       continue
     fi
 
-    local actual_hash
     actual_hash="$(shasum -a 256 "$target" | cut -d' ' -f1)"
-    checked=$((checked + 1))
 
-    if [ "$actual_hash" != "$expected_hash" ]; then
-      warn "$(basename "$target") has drifted from managed state" "chezmoi apply"
+    if [ "$ledger_hit" -eq 1 ] && [ "$reasons" != "baseline" ]; then
+      case ",$reasons," in
+        *,owned-drift,*)
+          warn "$name changed outside chezmoi (managed keys differ from policy; re-run restores them)" "$(_doctor_rerun_hint_for_producer "$source_dir" "$producer")"
+          drifted=$((drifted + 1))
+          ;;
+        *,target-invalid,*)
+          warn "$name content unreadable (managed state cannot be verified; re-run restores it)" "$(_doctor_rerun_hint_for_producer "$source_dir" "$producer")"
+          drifted=$((drifted + 1))
+          ;;
+        *)
+          if [ "$actual_hash" != "$expected_hash" ]; then
+            [ "$verbose" -eq 1 ] && pass "$name differs from last apply (managed keys intact)"
+          else
+            [ "$verbose" -eq 1 ] && pass "$name matches managed state"
+          fi
+          ;;
+      esac
+    elif [ "$actual_hash" != "$expected_hash" ]; then
+      if [ "$ledger_hit" -eq 1 ]; then
+        warn "$name has drifted from managed state" "$(_doctor_rerun_hint_for_producer "$source_dir" "$producer")"
+      else
+        ref="$(_doctor_first_reference "$source_dir" "$target" || true)"
+        script=""
+        if [ -n "$ref" ]; then
+          script="$(_doctor_script_for_reference "$source_dir" "$ref" || true)"
+        fi
+        warn "$name has drifted from managed state" "$(_doctor_rerun_hint "$script")"
+      fi
       drifted=$((drifted + 1))
     else
-      [ "$verbose" -eq 1 ] && pass "$(basename "$target") matches managed state"
+      [ "$verbose" -eq 1 ] && pass "$name matches managed state"
     fi
   done < "$manifest"
 
   if [ "$drifted" -eq 0 ] && [ "$checked" -gt 0 ]; then
     pass "$checked managed config(s) in sync"
+  fi
+  if [ "$retired" -gt 0 ]; then
+    pass "$retired stale manifest row(s) retired"
   fi
 }
 

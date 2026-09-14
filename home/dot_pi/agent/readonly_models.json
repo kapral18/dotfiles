@@ -34,7 +34,7 @@
           "maxTokens": 128000,
           "compat": {
             "openRouterRouting": {
-              "preferred_min_throughput": 35,
+              "preferred_min_throughput": 45,
               "quantizations": ["fp8", "fp16", "bf16", "fp32"]
             }
           }

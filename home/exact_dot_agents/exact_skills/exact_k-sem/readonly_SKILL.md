@@ -5,6 +5,8 @@ description: "Use when entity history across file moves, per-entity blame, or en
 
 # ,sem
 
+Subagent dispatch: inline (mechanical for a settled large JSON extraction) — index-free commands run directly.
+
 Entity-level Git CLI (Ataraxy `sem-cli` from homebrew-core, launched through `~/bin/,sem`).
 Shows what _entities_ changed (functions, classes, methods) instead of what lines changed.
 
@@ -81,3 +83,10 @@ Falls back to chunk-based diffing for unsupported file types.
 - Detects renames and moves via structural hashing (same AST structure, different name).
 - `diff --format json` buckets every change as `added`, `modified`, `deleted`, `moved`, `renamed`, or `reordered`, each with a `structuralChange` flag.
 - `--json` / `--format json` on any command produces machine-readable output.
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Launch one mechanical packet for a settled large JSON extraction with a stated rule and return;
+the root MUST NOT substitute its own inline extraction for that packet absent an explicit user no-delegation instruction;
+if the lane is unavailable report blocked. Small index-free commands stay inline.
