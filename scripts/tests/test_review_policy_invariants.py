@@ -711,6 +711,17 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         self.assertNotIn("A failed launch is retried once with the identical packet", text)
         self.assertIn("correct it, never retry it unchanged, never re-ask permission", text)
         self.assertIn("Retry an identical packet once only when the tool executed", text)
+        # Fifth taxonomy row (L3 timeout, 2026-09-15): a timed-out or budget-exhausted child is
+        # re-sized, never relaunched identical. All three carriers name it.
+        timeout_clause = "timed out or exhausted its budget"
+        self.assertIn(timeout_clause, text)
+        self.assertIn(timeout_clause, self.read("home/dot_pi/agent/exact_extensions/subagent-contract.ts"))
+        self.assertIn(timeout_clause, self.read("home/readonly_AGENTS.md"))
+        for carrier in (
+            "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md",
+            "home/dot_pi/agent/exact_extensions/subagent-contract.ts",
+        ):
+            self.assertIn("never relaunched identical", self.read(carrier), carrier)
 
 
 if __name__ == "__main__":

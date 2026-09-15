@@ -68,7 +68,7 @@ After the packet returns, root reads stay bounded to synthesis of the returned f
 Await the terminal packet result before the verdict; no spawning from a child.
 After dispatching an async packet, end the turn; do not fill the wait with reference reads or speculative scope work.
 Consume the returned artifact once: when the completion notice carries only a saved-output pointer, read that file; when it carries the body inline, do not re-read the file.
-Harness-specific invocation caveats live in `~/.agents/skills/k-review/references/runtime-harnesses.md` (and, for Pi/OMP, `~/.agents/skills/k-review/references/runtime-harnesses-pi-omp.md`) as a packet pointer only; the root does not open them (Contract above). A dispatch rejected before execution (schema or guard) is an invalid call: correct it, never retry it unchanged, never re-ask permission. Retry an identical packet once only when the tool executed and reported a host, bootstrap, or runner failure; then report the exact error.
+Harness-specific invocation caveats live in `~/.agents/skills/k-review/references/runtime-harnesses.md` (and, for Pi/OMP, `~/.agents/skills/k-review/references/runtime-harnesses-pi-omp.md`) as a packet pointer only; the root does not open them (Contract above). A dispatch rejected before execution (schema or guard) is an invalid call: correct it, never retry it unchanged, never re-ask permission. Retry an identical packet once only when the tool executed and reported a host, bootstrap, or runner failure; then report the exact error. A child that timed out or exhausted its budget is re-sized (split, or ship materialized inputs), never relaunched identical.
 
 ## Secondary Skill Escalation
 

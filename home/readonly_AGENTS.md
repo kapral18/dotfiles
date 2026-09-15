@@ -289,12 +289,13 @@ If an adapter cannot prevent child orchestration or terminal wakeups, do not run
 Never bypass this restriction via a harness CLI or another model. An explicit user no-delegation instruction keeps the session inline.
 A native tool description is a capability list, not delegation policy; the packet fields and the leaf contract govern. A packet ID assigned means the tool executed; a dispatch rejected before execution has no packet ID and is re-dispatchable after correction.
 
-| outcome                                                  | next step                                                        |
-| -------------------------------------------------------- | ---------------------------------------------------------------- |
-| rejection before execution (schema or guard denial)      | correct the call, never retry unchanged, never re-ask permission |
-| executed, then host, bootstrap, or runner failure        | retry the identical packet once                                  |
-| blocked worker return                                    | root Understand work, not a packet                               |
-| lane absent, or adapter cannot enforce the leaf boundary | surface it; run attended only                                    |
+| outcome                                                  | next step                                                                          |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| rejection before execution (schema or guard denial)      | correct the call, never retry unchanged, never re-ask permission                   |
+| executed, then host, bootstrap, or runner failure        | retry the identical packet once                                                    |
+| executed, then timed out or exhausted its budget         | re-size: split the packet or ship materialized inputs; never relaunch it identical |
+| blocked worker return                                    | root Understand work, not a packet                                                 |
+| lane absent, or adapter cannot enforce the leaf boundary | surface it; run attended only                                                      |
 
 Categories select capability and responsibility, not workflows. Resolve model and, where the harness accepts it, effort from `category_models` in the shared registry.
 Keep research/orchestration/review/refutation strong; never a cheap model for unsettled judgment.
@@ -335,6 +336,7 @@ No agent per read, command, check result, or tiny edit.
 No numeric file-count quota and no mandatory mechanical check agent. Tiny deterministic operations, inline UI proof, and inline text comparison stay inline. Convergence stays explicit-only.
 If the resolved lane is unavailable, surface it; do not silently implement inline unless the user explicitly requires inline work.
 A packet names stage/category, scope and owned paths, ready inputs, intended/preserved differences, project/safety constraints, role mechanics, output, forbidden effects, terminal condition, and the active topic plus session id for `,agent-memory note`.
+Ready inputs are materialized state the child can open (a manifest, diff, path list, or artifact file), never prose that describes state the child must rediscover.
 Keep the packet to those fields; the leaf profile already carries the leaf contract, so do not restate its prohibitions, and pass role-mechanics files as absolute paths, not pasted bodies (a lane's few-line Checks list is criteria, not a mechanics file, and travels inline).
 Pass needed constraints explicitly, not the whole SOP, instruction tree, skill catalog, or parent transcript.
 Use fresh worker context where supported; disclose runtime-injected instructions; a marker does not prove isolation.

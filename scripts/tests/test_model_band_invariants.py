@@ -1169,7 +1169,9 @@ class TestModelBandInvariants(unittest.TestCase):
         glm_selector = f"openrouter/{glm}"
         pi_astra_selector = f"openrouter/{pi_astra}"
         pi_selectable_sonnet_selector = f"openrouter/{pi_selectable_sonnet}"
-        expected_pi_default_throughput = {"work": 35, "personal": 24}
+        # Work raised the GLM 5.3 Flash floor to 45 t/s (f0ef1306, 2026-09-14); personal keeps the
+        # shared 24 t/s policy from provider-routes.yaml.
+        expected_pi_default_throughput = {"work": 45, "personal": 24}
         expected_glm_provider_routing = {
             "preferred_min_throughput": 24,
             "quantizations": ["fp8", "fp16", "bf16", "fp32"],

@@ -97,7 +97,43 @@ export const MANAGEMENT_PARAMETER_KEYS = [
 ] as const;
 
 export const SUBAGENT_DESCRIPTION =
-  'Managed leaf delegation. Dispatch one ready child packet per call with {agent, agentScope:"user", acceptance:false} and fresh context (omit context or use "fresh"); independent packets may run concurrently with async:true. Only the parameters listed in the schema are accepted; any other parameter is rejected before execution and must be corrected, never retried unchanged. Roster and run inspection use {action:"list"|"status"|"debug.run"|"stop"|"interrupt"} with the documented target fields; any other action value is rejected the same way. Two rejection classes both mean invalid invocation, final for that shape: the native schema validator reports Validation failed for tool "subagent", and the deployment guard prefixes INVALID_DISPATCH_REQUEST. Neither is a lost authorization: do not ask permission to reissue an allowed packet. Retry an identical packet once only after the tool executed and then reported a host, bootstrap, or runner failure. Call {action:"list",agentScope:"user",capabilities:true} once per session and reuse that roster. Consume a child result once: a file-only pointer means read the file; an inline body means do not re-read the file.';
+  'Managed leaf delegation. Dispatch one ready child packet per call with {agent, agentScope:"user", acceptance:false} and fresh context (omit context or use "fresh"); independent packets may run concurrently with async:true. Only the parameters listed in the schema are accepted; any other parameter is rejected before execution and must be corrected, never retried unchanged. Roster and run inspection use {action:"list"|"status"|"debug.run"|"stop"|"interrupt"} with the documented target fields; any other action value is rejected the same way. Two rejection classes both mean invalid invocation, final for that shape: the native schema validator reports Validation failed for tool "subagent", and the deployment guard prefixes INVALID_DISPATCH_REQUEST. Neither is a lost authorization: do not ask permission to reissue an allowed packet. Retry an identical packet once only after the tool executed and then reported a host, bootstrap, or runner failure; a child that timed out or exhausted its budget is re-sized (split, or ship materialized inputs), never relaunched identical. Call {action:"list",agentScope:"user",capabilities:true} once per session and reuse that roster. Consume a child result once: a file-only pointer means read the file; an inline body means do not re-read the file.';
+
+// Upstream watchdog notices (`subagent_control_notice`) hard-code `steer` and
+// `resume` nudges that this contract rejects before execution. The lines are
+// rewritten at the sendMessage seam so the parent is never advertised an action
+// the guard denies; the notice's facts, status, and interrupt lines are kept.
+export const CONTROL_NOTICE_TYPE = "subagent_control_notice";
+export const CONTROL_NOTICE_HINT =
+  "Hint: inspect status first. A live child is not steered or resumed under this contract (SOP §3.7: workers return once; the root owns recovery). If it is genuinely stuck, interrupt it and re-size the packet; if it is slow but working, let it finish.";
+const STEER_OR_RESUME_LINE = /^(Hint: .*\b(steer|resume)\b.*|Top-level live async nudge: .*|Routed live nested nudge: .*)$/;
+// completion_guard notices end with "Next: ... retry with a more explicit implementation
+// prompt or handle the fix directly" — an identical relaunch and an inline substitution,
+// both of which SOP §3.7 forbids the root.
+const COMPLETION_GUARD_NEXT_LINE = /^Next: .*\b(retry|handle the fix directly)\b.*$/;
+export const COMPLETION_GUARD_HINT =
+  "Next: read the output artifact once. A failed worker is a `blocked` return (SOP §3.7): resolve the cause in root Understand, then dispatch a corrected or re-sized packet; never relaunch it identical and never substitute an inline fix.";
+
+// Upstream re-reads `details.noticeText` (control-notices.ts formatSubagentControlNotice),
+// so the rewritten text must land in both the content and that field.
+function withNoticeText(details: unknown, content: string): unknown {
+  if (typeof details !== "object" || details === null || !("noticeText" in details)) return details;
+  return { ...details, noticeText: content };
+}
+
+export function rewriteControlNotice(content: string): string {
+  const lines = content.split("\n");
+  const rewritten = lines.flatMap((line) => {
+    if (STEER_OR_RESUME_LINE.test(line)) return [];
+    if (COMPLETION_GUARD_NEXT_LINE.test(line)) return [COMPLETION_GUARD_HINT];
+    return [line];
+  });
+  const droppedNudge = rewritten.length < lines.length;
+  if (!droppedNudge) return rewritten.join("\n");
+  const statusIndex = rewritten.findIndex((line) => line.startsWith("Status: "));
+  const insertAt = statusIndex === -1 ? rewritten.length : statusIndex;
+  return [...rewritten.slice(0, insertAt), CONTROL_NOTICE_HINT, ...rewritten.slice(insertAt)].join("\n");
+}
 
 // Pointer to the single substantive contract above. The tool description and
 // the registered schema are the contract; this note only names the two
@@ -264,6 +300,14 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   let contractParameters: TSchema | undefined;
   const decorated: ExtensionAPI = {
     ...pi,
+    sendMessage(message, options) {
+      if (message.customType !== CONTROL_NOTICE_TYPE || typeof message.content !== "string") {
+        return pi.sendMessage(message, options);
+      }
+      const content = rewriteControlNotice(message.content);
+      const details = withNoticeText(message.details, content);
+      return pi.sendMessage({ ...message, content, details }, options);
+    },
     registerTool(tool) {
       if (tool.name !== CONTRACT_TOOL_NAME) return pi.registerTool(tool);
       seenSubagent = true;

@@ -1321,8 +1321,10 @@ class TestDeployedAgentMemory(unittest.TestCase):
         cls.rendered = {}
         for name in ("agent_memory", "spec_mirror", "worklog_queue"):
             template = cls.repo / f"home/exact_lib/exact_,agent-memory/readonly_{name}.py.tmpl"
+            # chezmoi 2.47 `execute-template` reads the template from stdin; it has no `--file` flag.
             result = subprocess.run(
-                [chezmoi, "--source", str(cls.repo / "home"), "execute-template", "--file", str(template)],
+                [chezmoi, "--source", str(cls.repo / "home"), "execute-template"],
+                input=template.read_text(encoding="utf-8"),
                 capture_output=True,
                 text=True,
                 check=True,

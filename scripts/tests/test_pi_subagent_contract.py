@@ -217,7 +217,40 @@ try {
   const calls = [];
   const handlers = {};
   const commands = [];
-  await factory({ ...base, registerTool(t) { calls.push(t); }, on(e, h) { handlers[e] = h; }, registerCommand(n, o) { commands.push(n); } });
+  const sent = [];
+  let decoratedPi;
+  await factory({ ...base, registerTool(t) { calls.push(t); }, on(e, h) { handlers[e] = h; }, registerCommand(n, o) { commands.push(n); }, sendMessage(m, o) { sent.push({ m, o }); } });
+  // Upstream watchdog notice, formatted by the REAL pi-subagents formatter, then
+  // pushed through the decorated sendMessage the adapter hands upstream. The
+  // adapter must strip every steer/resume nudge and keep status/interrupt.
+  const control = await jiti.import(realpathSync(PS) + "/src/runs/shared/subagent-control.ts");
+  const notices = await jiti.import(realpathSync(PS) + "/src/extension/control-notices.ts");
+  const event = { type: "active_long_running", reason: "tool_open_threshold", agent: "k-agent-adversarial-verifier", runId: "run-1", index: 0, message: "has had tool 'bash' open for 240s" };
+  const upstreamText = control.formatControlNoticeMessage(event, "subagent-k-agent-adversarial-verifier-run-1-1");
+  const rewritten = ns.rewriteControlNotice(upstreamText);
+  const failed = { type: "needs_attention", reason: "completion_guard", agent: "k-agent-implementer", runId: "run-2", message: "completion guard rejected the result" };
+  const failedUpstream = control.formatControlNoticeMessage(failed);
+  const failedRewritten = ns.rewriteControlNotice(failedUpstream);
+  const unrelated = "plain text with steer in prose";
+  out.notice = {
+    upstreamHasSteer: /\bsteer\b/.test(upstreamText),
+    upstreamHasResume: /\bresume\b/.test(upstreamText),
+    rewrittenHasSteer: /\bsteer\b|action: "steer"/.test(rewritten.replace(ns.CONTROL_NOTICE_HINT, "")),
+    rewrittenHasResume: /action: "resume"/.test(rewritten),
+    keepsStatus: rewritten.includes('Status: subagent({ action: "status", id: "run-1" })'),
+    keepsInterrupt: rewritten.includes('Interrupt: subagent({ action: "interrupt", id: "run-1" })'),
+    keepsSignal: rewritten.includes("Signal: has had tool 'bash' open for 240s"),
+    keepsIntercom: rewritten.includes("Direct intercom target: subagent-k-agent-adversarial-verifier-run-1-1"),
+    hintPresent: rewritten.includes(ns.CONTROL_NOTICE_HINT),
+    hintBeforeStatus: rewritten.indexOf(ns.CONTROL_NOTICE_HINT) < rewritten.indexOf("Status: "),
+    unrelatedUntouched: ns.rewriteControlNotice(unrelated) === unrelated,
+    noticeType: notices.SUBAGENT_CONTROL_MESSAGE_TYPE,
+    failedUpstreamSaysRetryOrInline: /retry with a more explicit|handle the fix directly/.test(failedUpstream),
+    failedRewrittenSaysRetryOrInline: /retry with a more explicit|handle the fix directly/.test(failedRewritten),
+    failedRewrittenHasBlockedHint: failedRewritten.includes(ns.COMPLETION_GUARD_HINT),
+    failedKeepsSignal: failedRewritten.includes("Signal: completion guard rejected the result"),
+    failedNoLongRunningHint: !failedRewritten.includes(ns.CONTROL_NOTICE_HINT),
+  };
   const names = calls.map((t) => t.name);
   const registered = calls.find((t) => t.name === "subagent");
   const params = registered.parameters;
@@ -538,6 +571,29 @@ class TestPiSubagentContractNative(unittest.TestCase):
         # The decorated factory publishes exactly one narrowed registration and
         # passes native lifecycle registrations through.
         factory = payload["factory"]
+        # Watchdog notices: the real upstream formatter advertises steer/resume; the
+        # adapter's sendMessage seam must strip both and keep status/interrupt/facts.
+        notice = payload["notice"]
+        self.assertEqual(notice["noticeType"], "subagent_control_notice")
+        self.assertTrue(notice["upstreamHasSteer"] and notice["upstreamHasResume"], notice)
+        self.assertFalse(notice["rewrittenHasSteer"], notice)
+        self.assertFalse(notice["rewrittenHasResume"], notice)
+        for key in (
+            "keepsStatus",
+            "keepsInterrupt",
+            "keepsSignal",
+            "keepsIntercom",
+            "hintPresent",
+            "hintBeforeStatus",
+            "unrelatedUntouched",
+        ):
+            self.assertTrue(notice[key], (key, notice))
+        # completion_guard branch: upstream says "retry … or handle the fix directly"; the
+        # adapter replaces it with the SOP `blocked`-return rule and adds no steer hint.
+        self.assertTrue(notice["failedUpstreamSaysRetryOrInline"], notice)
+        self.assertFalse(notice["failedRewrittenSaysRetryOrInline"], notice)
+        for key in ("failedRewrittenHasBlockedHint", "failedKeepsSignal", "failedNoLongRunningHint"):
+            self.assertTrue(notice[key], (key, notice))
         self.assertEqual(factory["subagentCount"], 1)
         self.assertGreaterEqual(factory["toolCount"], 2)
         self.assertTrue(factory["bgWait"])
@@ -637,7 +693,17 @@ class TestPiSubagentContractNative(unittest.TestCase):
         for entry in pi_entries:
             with self.subTest(entry=entry["path"]):
                 self.assertFalse(entry["enabled"])
-        for entry in resolve["prompts"] + resolve["skills"]:
+        # The package ships two skills (pi-subagents: "scripted chaining"; council-mode) whose
+        # text advertises workflow shapes the contract rejects. The filter must REACH them:
+        # both must be enumerated by the real resolver and both must be disabled. An empty
+        # enumeration would make this loop pass while the skills load in a fresh session.
+        package_skills = {
+            entry["path"].rsplit("/skills/", 1)[-1].split("/", 1)[0]: entry["enabled"]
+            for entry in resolve["skills"]
+            if "pi-subagents" in entry["path"]
+        }
+        self.assertEqual({"pi-subagents": False, "council-mode": False}, package_skills, resolve["skills"])
+        for entry in resolve["prompts"]:
             if "pi-subagents" in entry["path"]:
                 with self.subTest(entry=entry["path"]):
                     self.assertFalse(entry["enabled"])

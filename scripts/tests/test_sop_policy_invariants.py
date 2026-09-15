@@ -166,6 +166,10 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "correct the call, never retry unchanged, never re-ask permission",
             "executed, then host, bootstrap, or runner failure",
             "retry the identical packet once",
+            "executed, then timed out or exhausted its budget",
+            "re-size: split the packet or ship materialized inputs; never relaunch it identical",
+            "Ready inputs are materialized state the child can open (a manifest, diff, path list, or"
+            " artifact file), never prose that describes state the child must rediscover.",
             "blocked worker return",
             "lane absent, or adapter cannot enforce the leaf boundary",
             "surface it; run attended only",
