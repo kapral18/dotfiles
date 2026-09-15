@@ -319,3 +319,9 @@ set -gx PATH $unique_paths
 
 # Google Cloud SDK — static path instead of dynamic path.fish.inc (~150ms saved)
 fish_add_path -gP /opt/homebrew/share/google-cloud-sdk/bin
+
+# Machine-local extras (not in git). Missing file is a no-op.
+# Sourced last so the extra file can override managed settings. fish conf.d/ runs too early for that.
+if test -f $HOME/.config/fish/config.local.fish
+    source $HOME/.config/fish/config.local.fish
+end

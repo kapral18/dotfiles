@@ -183,6 +183,13 @@ TEST_RULES: tuple[TestRule, ...] = (
         tests=("tests/test_model_band_invariants.py",),
     ),
     TestRule(
+        prefixes=(
+            "home/dot_cursor/hooks.json",
+            "home/dot_gemini/config/readonly_hooks.json",
+        ),
+        tests=("tests/test_agent_skill_invariants.py",),
+    ),
+    TestRule(
         prefixes=("home/readonly_AGENTS.md", "home/dot_cursor/plugins/local/exact_k-sop/"),
         tests=("tests/test_agent_skill_invariants.py",),
     ),
@@ -309,6 +316,10 @@ TEST_RULES: tuple[TestRule, ...] = (
         ),
     ),
     TestRule(
+        prefixes=("home/.chezmoitemplates/agent-effort.partial",),
+        tests=("tests/test_model_band_invariants.py",),
+    ),
+    TestRule(
         prefixes=(
             "scripts/generate_session_models.py",
             "home/dot_claude/settings.work.json",
@@ -322,6 +333,16 @@ TEST_RULES: tuple[TestRule, ...] = (
             "home/dot_gemini/antigravity-cli/readonly_settings.policy.json",
         ),
         tests=("test_generate_session_models.py", "tests/test_model_band_invariants.py"),
+    ),
+    TestRule(
+        prefixes=(
+            "home/dot_pi/agent/exact_extensions/subagent-contract.ts",
+            "home/dot_pi/agent/exact_extensions/runtime-parity.ts",
+            "home/dot_pi/agent/readonly_settings.work.json",
+            "home/dot_pi/agent/readonly_settings.personal.json",
+            "scripts/tests/test_pi_subagent_contract.py",
+        ),
+        tests=("tests/test_pi_subagent_contract.py", "tests/test_agent_hooks.py"),
     ),
     TestRule(
         prefixes=(
@@ -403,6 +424,15 @@ TEST_RULES: tuple[TestRule, ...] = (
     TestRule(
         prefixes=("scripts/compile_ai_policy.py", "scripts/ai_policy_ir.py"),
         tests=("tests/test_ai_policy_compiler.py",),
+    ),
+    TestRule(
+        prefixes=(
+            "home/readonly_dot_profile.tmpl",
+            "home/readonly_dot_bashrc.tmpl",
+            "home/readonly_dot_zshrc.tmpl",
+            "home/dot_config/fish/readonly_config.fish.tmpl",
+        ),
+        tests=("tests/test_invariants.py",),
     ),
 )
 

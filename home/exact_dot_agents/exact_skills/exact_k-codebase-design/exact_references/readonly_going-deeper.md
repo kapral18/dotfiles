@@ -57,14 +57,14 @@ Be opinionated: the user wants a strong read, not a menu.
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
 
 **Branch B step 2 — send the parallel designs.**
-Send one strong research packet per brief through the harness's existing research-bound mechanics, each producing a **radically different** interface for the deepened module.
-Give each a separate technical brief (target files, coupling, dependency category, what sits behind the seam) and a distinct constraint:
+Send one strong research packet per selected constraint through the harness's existing research-bound mechanics, each producing a **radically different** interface for the deepened module.
+Give each a separate technical brief (target files, coupling, dependency category, what sits behind the seam) and a distinct constraint selected from this menu:
 
-- Agent 1: "Minimise the interface — 1–3 entry points max. Maximise leverage per entry point."
-- Agent 2: "Maximise flexibility — support many use cases and extension."
-- Agent 3: "Optimise for the most common caller — make the default case trivial."
-- Agent 4 (if cross-seam deps exist): "Design around ports & adapters."
+- "Minimise the interface — 1–3 entry points max. Maximise leverage per entry point."
+- "Maximise flexibility — support many use cases and extension."
+- "Optimise for the most common caller — make the default case trivial."
+- "Design around ports & adapters." (only where cross-seam deps exist)
 
 Every brief demands the return shape named in Branch B step 2 and forbids further spawning.
-How many designs to ask for is a root decision taken from the framed problem space: typically three contrasting briefs;
-the root decides the count. The roster above names candidate briefs, not a fixed batch.
+The root selects the constraints the framed problem space needs and decides the count;
+the menu above names candidate briefs, not a fixed batch.

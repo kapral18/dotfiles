@@ -22,7 +22,7 @@ Do not persist per correction or per turn. Do not reopen Verify to manufacture l
 ## Root moves
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Process a new staged pointer through one memory-band `k-agent-smol` judge packet.
+Process a new staged pointer through one memory-band `k-agent-smol` judge packet. Per-harness profile names live in `~/.config/ai/agent-bands.v1.json` → `harnesses.<h>.agents`.
 Launch one memory-band packet for that judgment; the root MUST NOT substitute its own inline recall for that packet absent the documented forbidden/unavailable-lane fallback below; if the lane is unavailable report blocked and use that fallback.
 Use `~/.agents/skills/k-ai-kb/references/smol-operator.md`; admit only its compact returned lines. Reuse admitted memory.
 Further recall needs a material new question or task shift, not another prompt or compaction alone.

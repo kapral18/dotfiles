@@ -50,6 +50,20 @@ PROTECTED_CORE_RULE_IDS = frozenset(
     }
 )
 NAME_PREFIXES = ("readonly_", "private_", "executable_")
+# Behavioral check guarding each rule: a test or hook path, or "none" for prose-only
+# rules. audit-coverage uses this column to separate hook/test-backed rules from prose-only ones.
+CHECKS_BY_RULE_ID = {
+    "sop.2.1.compatibility-gate": "scripts/tests/test_ai_policy_compiler.py",
+    "sop.2.4.self-claims-falsification-before-assertion": "scripts/tests/test_sop_policy_invariants.py",
+    "sop.2.8.self-report-skepticism": "scripts/tests/test_sop_policy_invariants.py",
+    "sop.3.2.git-commit-and-push-safety": "home/exact_dot_agents/exact_hooks/executable_premise_nudge.py",
+    "sop.3.4.requirements-reset": "home/exact_dot_agents/exact_hooks/correction_detector.py",
+    "sop.3.5.verification-loops": "scripts/tests/test_review_policy_invariants.py",
+    "sop.3.7.delegation-categories": "scripts/tests/test_agent_hooks.py",
+    "sop.3.8.human-visible-publication": "home/exact_dot_agents/exact_hooks/executable_publish_gate.py",
+    "sop.4.1.durable-memory": "scripts/tests/test_sop_policy_invariants.py",
+    "sop.5.3.response-shape": "scripts/tests/test_agent_prompt_wrap.py",
+}
 # Verified SOP excerpts: every sentence in these files must appear verbatim in the core SOP, so the
 # per-prompt reinforcement and the subagent leaf boundary can never drift from the source of truth.
 EXCERPT_PATHS = (
@@ -151,6 +165,7 @@ def _build_manifest(rules: list[ir.Rule], rendered: str) -> dict:
                 "consumer": rule.consumer,
                 "risk_tier": rule.risk_tier,
                 "eval_ref": rule.eval_ref,
+                "checks": CHECKS_BY_RULE_ID.get(rule.id, "none"),
                 "model_scope": rule.model_scope,
                 "harness_scope": rule.harness_scope,
             }

@@ -81,3 +81,6 @@ ppass() {
   export PASSWORD_STORE_DIR="{{ joinPath .chezmoi.homeDir ".password-store" }}"
 }
 {{- end }}
+
+# Machine-local extras (not in git). Missing file is a no-op.
+[ -f ~/.profile.local ] && source ~/.profile.local

@@ -48,6 +48,25 @@ If a command works in one terminal but not another, check whether the shell is l
 
 Non-fish startup files are intentionally side-effect free for secret loading: `pass`-based API key exports run in fish config, not in [`home/readonly_dot_profile.tmpl`](../../../home/readonly_dot_profile.tmpl).
 
+## Machine-local extras
+
+Each profile sources an optional extra file last, if it exists. Chezmoi does not create or manage these files; keep them out of git.
+
+| Shell                             | Extra file                         | Syntax             |
+| --------------------------------- | ---------------------------------- | ------------------ |
+| POSIX login (bash/zsh `.profile`) | `~/.profile.local`                 | POSIX (`export …`) |
+| Bash interactive                  | `~/.bashrc.local`                  | bash               |
+| Zsh interactive                   | `~/.zshrc.local`                   | zsh                |
+| Fish                              | `~/.config/fish/config.local.fish` | fish (`set -gx …`) |
+
+Missing files are a no-op. Prefer `chmod 600` when the file holds secrets.
+
+Fish `conf.d/` runs before `config.fish`, so it cannot override managed settings. Put overrides in `config.local.fish`.
+
+Fish cannot source POSIX `export` files. Use `config.local.fish` for fish, and `~/.profile.local` for bash/zsh login env.
+
+`pass` and 1Password remain the preferred secret path. These extras are the machine-local escape hatch.
+
 ## Verification Workflows
 
 ### Confirm effective shell + path

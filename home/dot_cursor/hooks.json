@@ -60,6 +60,10 @@
       {
         "command": "AGENT_HOOK_HARNESS=cursor $HOME/.agents/hooks/read_gate.py",
         "timeout": 10
+      },
+      {
+        "command": "AGENT_HOOK_HARNESS=cursor $HOME/.agents/hooks/publish_gate.py",
+        "timeout": 10
       }
     ],
     "beforeReadFile": [

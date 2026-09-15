@@ -23,6 +23,7 @@ SPEC_ROOT = Path(
     os.environ.get("AGENT_MEMORY_SPEC_ROOT") or Path(os.environ.get("TMPDIR", "/tmp")) / "agent-hook-specs-agent-hooks"
 )
 PARENT_SESSION_ENV = "COPILOT_AGENT_SESSION_ID"
+KEEP_PI_CHILD_ENV = "AGENT_HOOK_TEST_KEEP_PI_CHILD"
 KEEP_PARENT_SESSION_ENV = "AGENT_HOOK_TEST_KEEP_COPILOT_PARENT"
 GH_STUB_LOGIN = "gh-stub-login"
 
@@ -46,6 +47,12 @@ def hook_env(env: dict | None = None) -> dict:
     effective_env.pop(PARENT_SESSION_ENV, None)
     if keep_parent_session and parent_session:
         effective_env[PARENT_SESSION_ENV] = parent_session
+    # Hook subprocesses simulate explicit root/leaf payloads: the ambient leaf signals of
+    # the test runner itself (notably PI_SUBAGENT_CHILD when the suite runs inside a Pi
+    # child) must not leak in, or every root-shaped probe reads as a leaf. Leaf tests set
+    # their signal explicitly per case instead.
+    if effective_env.pop(KEEP_PI_CHILD_ENV, "") != "1":
+        effective_env.pop("PI_SUBAGENT_CHILD", None)
     effective_env["PYTHONPATH"] = f"{REPO / 'scripts'}{os.pathsep}{effective_env.get('PYTHONPATH', '')}"
     effective_env["PATH"] = f"{GH_STUB_DIR}{os.pathsep}{effective_env.get('PATH', '')}"
     effective_env.setdefault("AGENT_MEMORY_SPEC_ROOT", str(SPEC_ROOT))
@@ -716,6 +723,91 @@ class TestAgentHooks(unittest.TestCase):
             assert '"line": 0' not in context
             assert len(context) < 6500
 
+    def test_session_context_injects_compact_handoff_from_oversized_spec(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            (spec_dir / "current.txt").write_text(
+                "target: fix the widget\n"
+                "HANDOFF:\n"
+                "stage: Verify\n"
+                "snapshot: abc123\n"
+                "END HANDOFF\n"
+                "history: " + ("x" * 4000) + "\nnever inject partial"
+            )
+
+            payload = {"hook_event_name": "sessionStart", "workspace_roots": [tmp]}
+            result = run_hook("executable_session_context.py", payload)
+            context = result["additional_context"]
+
+            assert "HANDOFF:\nstage: Verify\nsnapshot: abc123" in context
+            assert "END HANDOFF" not in context
+            assert "compact handoff from" in context
+            assert "Active topic spec omitted" not in context
+            assert "never inject partial" not in context
+
+    def test_session_context_review_topic_keeps_pointer_even_with_handoff(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            bind_session_topic(spec_dir, "review-session-2", "review-77")
+            (spec_dir / "review-77.txt").write_text(
+                "target: PR owner/repo#77\n"
+                "HANDOFF:\n"
+                "settled: finding A is real\n"
+                "\n"
+                "context: " + ("x" * 4000) + "\n"
+                "verdict: Approve\n"
+            )
+
+            payload = {"hook_event_name": "sessionStart", "workspace_roots": [tmp], "session_id": "review-session-2"}
+            result = run_hook("executable_session_context.py", payload)
+            context = result["additional_context"]
+
+            assert "Active topic spec omitted" in context
+            assert "settled: finding A is real" not in context
+            assert "compact handoff from" not in context
+
+    def test_session_context_mid_slug_review_topic_keeps_pointer_even_with_handoff(self):
+        # Clean-room match is `review` anywhere in the slug, not a prefix: `local-review-7`
+        # takes the review path (pointer only, no HANDOFF text) though it starts with `local`.
+        # A `kind: review` header under a plain slug is the second review signal, kept here as
+        # the preserved-behavior control.
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            bind_session_topic(spec_dir, "review-session-3", "local-review-7")
+            # No `target: PR` line and no `kind:` header: only the slug can make this a review
+            # topic, so the case fails if the slug match regresses to a prefix.
+            (spec_dir / "local-review-7.txt").write_text(
+                "target: local diff of the staged tree\n"
+                "HANDOFF:\n"
+                "settled: finding A is real\n"
+                "\n"
+                "context: " + ("x" * 4000) + "\n"
+                "verdict: Approve\n"
+            )
+
+            payload = {"hook_event_name": "sessionStart", "workspace_roots": [tmp], "session_id": "review-session-3"}
+            context = run_hook("executable_session_context.py", payload)["additional_context"]
+
+            assert "Active topic spec omitted" in context
+            assert "settled: finding A is real" not in context
+            assert "compact handoff from" not in context
+
+            bind_session_topic(spec_dir, "review-session-4", "plain-topic")
+            (spec_dir / "plain-topic.txt").write_text(
+                "kind: review\ntarget: PR owner/repo#9\ncontext: " + ("y" * 4000) + "\nverdict: Approve\n"
+            )
+            payload = {"hook_event_name": "sessionStart", "workspace_roots": [tmp], "session_id": "review-session-4"}
+            context = run_hook("executable_session_context.py", payload)["additional_context"]
+
+            assert "Active topic spec omitted" in context
+            assert "verdict: Approve" not in context
+
     def test_session_context_sanitizes_review_specs(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
@@ -1205,6 +1297,131 @@ class TestAgentHooks(unittest.TestCase):
                 self._gate({**cat, "hook_event_name": "PreToolUse"}, env={**hook_env(), "AGENT_READ_GATE": "off"}), {}
             )
 
+    def test_read_gate_keyless_leaf_is_never_refused_while_roots_and_keyed_leaves_stay_gated(self):
+        # A leaf signalled only by env (Pi child, Copilot child) has no distinct ledger key:
+        # gating is disabled for it rather than merged into the parent's ledger, so its
+        # first read of a root-read file is never refused (D6). Roots and `agent_id` leaves
+        # keep their own ledgers and their own blocks.
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "shared.md"
+            target.write_text("hello\n")
+            transcript = Path(tmp) / "t.jsonl"
+            base = {"session_id": "gate-root", "workspace_roots": [tmp], "transcript_path": str(transcript)}
+            cat = {**base, "tool_name": "Bash", "tool_input": {"command": f"cat {target}"}}
+            self._gate(
+                {**cat, "hook_event_name": "PostToolUse", "tool_use_id": "r1", "tool_response": {"stdout": "hello\n"}}
+            )
+            self._record_result(transcript, "r1", stdout="hello\n")
+            root_pre = {**cat, "hook_event_name": "PreToolUse"}
+            self.assertEqual(self._gate(root_pre)["decision"], "block")
+            for label, env in (
+                ("pi-child", {**hook_env(), "PI_SUBAGENT_CHILD": "1", KEEP_PI_CHILD_ENV: "1"}),
+                ("copilot-child", keep_parent_env("gate-root")),
+            ):
+                with self.subTest(leaf=label):
+                    payload = dict(root_pre)
+                    if label == "copilot-child":
+                        payload["session_id"] = "gate-child"
+                    self.assertEqual(self._gate(payload, env=env), {})
+                    self.assertEqual(
+                        self._gate(
+                            {
+                                **payload,
+                                "hook_event_name": "PostToolUse",
+                                "tool_use_id": "x",
+                                "tool_response": {"stdout": "hello\n"},
+                            },
+                            env=env,
+                        ),
+                        {},
+                    )
+            # Root with an ambient parent env equal to its own session key is still the root: gated.
+            self.assertEqual(self._gate(root_pre, env=keep_parent_env("gate-root"))["decision"], "block")
+            # A keyed leaf keeps gating on its own ledger: first read allowed, identical second blocked.
+            keyed = {**root_pre, "agent_id": "leaf-77"}
+            self.assertEqual(self._gate(keyed), {})
+            self._gate(
+                {**keyed, "hook_event_name": "PostToolUse", "tool_use_id": "k1", "tool_response": {"stdout": "hello\n"}}
+            )
+            self._record_result(transcript, "k1", stdout="hello\n")
+            self.assertEqual(self._gate(keyed)["decision"], "block")
+
+    def test_leaf_predicate_is_shared_by_band_publish_read_and_session_hooks(self):
+        # One owner (`hook_common.is_delegated_leaf`): every hook reads the same three signals
+        # and the same root exception (ambient parent env naming this very session).
+        sys.path.insert(0, str(HOOKS))
+        try:
+            import hook_common
+        finally:
+            sys.path.pop(0)
+        cases = [
+            ({"agent_id": "a1", "session_id": "s"}, {}, True),
+            ({"session_id": "child"}, {PARENT_SESSION_ENV: "parent"}, True),
+            ({}, {PARENT_SESSION_ENV: "parent"}, True),
+            ({"session_id": "parent"}, {PARENT_SESSION_ENV: "parent"}, False),
+            ({"session_id": "s"}, {"PI_SUBAGENT_CHILD": "1"}, True),
+            ({"session_id": "s"}, {}, False),
+        ]
+        for payload, env, expected in cases:
+            with self.subTest(payload=payload, env=env):
+                saved = {k: os.environ.get(k) for k in (PARENT_SESSION_ENV, "PI_SUBAGENT_CHILD")}
+                for k in saved:
+                    os.environ.pop(k, None)
+                os.environ.update(env)
+                try:
+                    self.assertIs(hook_common.is_delegated_leaf(payload), expected)
+                finally:
+                    for k, v in saved.items():
+                        if v is None:
+                            os.environ.pop(k, None)
+                        else:
+                            os.environ[k] = v
+        # Behavioural unity: the same Copilot-child env flips every hook to its leaf branch,
+        # and the root-ambient exception (own key == parent) flips all of them back.
+        child_env = keep_parent_env("parent")
+        band = {"tool_name": "Agent", "tool_input": {"subagent_type": "worker", "prompt": "x"}}
+        band_env = {**child_env, "AGENT_BAND_HARNESS": "claude_code"}
+        self.assertEqual(
+            run_hook("executable_band_gate.py", {**band, "session_id": "child"}, env=band_env)["hookSpecificOutput"][
+                "permissionDecision"
+            ],
+            "deny",
+        )
+        self.assertNotEqual(
+            run_hook("executable_band_gate.py", {**band, "session_id": "parent"}, env=band_env)
+            .get("hookSpecificOutput", {})
+            .get("permissionDecision"),
+            "deny",
+        )
+        publish = {
+            "tool_name": "Bash",
+            "tool_input": {"command": "gh pr comment 1 --body hi"},
+            "hook_event_name": "PreToolUse",
+        }
+        self.assertEqual(
+            run_hook("executable_publish_gate.py", {**publish, "session_id": "child"}, env=child_env)[
+                "hookSpecificOutput"
+            ]["permissionDecision"],
+            "deny",
+        )
+        self.assertNotEqual(
+            run_hook("executable_publish_gate.py", {**publish, "session_id": "parent"}, env=child_env)
+            .get("hookSpecificOutput", {})
+            .get("permissionDecision"),
+            "deny",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = {
+                "session_id": "child",
+                "workspace_roots": [tmp],
+                "transcript_path": str(Path(tmp) / "t.jsonl"),
+                "hook_event_name": "SessionStart",
+            }
+            self.assertEqual(run_hook("executable_session_context.py", ctx, env=child_env), {})
+            self.assertNotEqual(
+                run_hook("executable_session_context.py", {**ctx, "session_id": "parent"}, env=child_env), {}
+            )
+
     def test_read_gate_cursor_events_use_store_db_history_and_stop_shrink(self):
         import sqlite3
 
@@ -1248,6 +1465,14 @@ class TestAgentHooks(unittest.TestCase):
             self.assertEqual(self._gate(shell, env=env)["permission"], "deny")
             self.assertEqual(
                 self._gate({**shell, "command": f"cat {target} | wc -l"}, env=env), {"permission": "allow"}
+            )
+            # `cd <dir> && cat <relative>` is the same whole read resolved against <dir>; other chains stay unmatched.
+            target_dir, target_name = os.path.split(target)
+            self.assertEqual(
+                self._gate({**shell, "command": f"cd {target_dir} && cat {target_name}"}, env=env)["permission"], "deny"
+            )
+            self.assertEqual(
+                self._gate({**shell, "command": f"cat {target}; echo; cat {target}"}, env=env), {"permission": "allow"}
             )
             # A token shrink reported by the stop hook reads as a compaction: the old read no longer blocks.
             stop = {
@@ -1550,7 +1775,11 @@ class TestAgentHooks(unittest.TestCase):
             assert run_perturn_recall(tmp, payload, {**env, "AGENT_REINFORCE": "off"}) == {}
 
     def test_session_context_leaf_suppresses_delegation_blocks(self):
-        """Delegation text is root-only: a leaf gets none of it, the root gets it marked."""
+        """Delegation text is root-only: a leaf gets none of it, the root gets it marked.
+
+        Any leaf signal (`agent_id`, Copilot parent session, Pi child) returns before
+        spec, HANDOFF, worklog, or auto_bind: a leaf never inherits parent context.
+        """
         marker = "[ROOT ONLY] A delegated leaf ignores this block and returns findings to its parent instead."
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
@@ -1566,15 +1795,10 @@ class TestAgentHooks(unittest.TestCase):
             }
             leaf_env = {**keep_parent_env("copilot-parent-session"), "AI_AGENT_DEPTH": "fast"}
             root_env = {**os.environ, "AI_AGENT_DEPTH": "fast"}
-            leaf = run_hook("executable_session_context.py", payload, env=leaf_env)["additional_context"]
+            # A Copilot-signal leaf returns before any context: no spec, no HANDOFF,
+            # no worklog tail, no auto_bind into the parent bucket.
+            assert run_hook("executable_session_context.py", payload, env=leaf_env) == {}
             root = run_hook("executable_session_context.py", payload, env=root_env)["additional_context"]
-
-            # The leaf still gets its topic context; only the blocks that tell it to
-            # delegate are withheld.
-            assert "target: wire memory systems" in leaf
-            assert "k-agent-smol" not in leaf
-            assert "Durable Memory (,ai-kb)" not in leaf
-            assert marker not in leaf
 
             # Harnesses with no child signal fall back to the marker, so the root copy
             # must carry the sentence verbatim.
@@ -1586,8 +1810,9 @@ class TestAgentHooks(unittest.TestCase):
 
         At `balanced` the startup warm start and per-turn recall both retrieve and stage, so
         this is the depth where a missing child guard would leak delegation text into a child
-        and write session state on its behalf. The root at the same depth is the control: it
-        keeps the marked blocks, and its non-marker text is byte-identical to the leaf's.
+        and write session state on its behalf. A Copilot-signal leaf returns before any
+        context (no spec, no HANDOFF, no staging); the root at the same depth is the
+        control and keeps the marked blocks plus staged recall.
         """
         marker = "[ROOT ONLY] A delegated leaf ignores this block and returns findings to its parent instead."
         with tempfile.TemporaryDirectory() as tmp:
@@ -1647,15 +1872,25 @@ class TestAgentHooks(unittest.TestCase):
             leaf_key, leaf_root, leaf_env = fixture("leaf", keep_parent_env("copilot-parent-balanced"))
             root_key, root_spec_root, root_env = fixture("root", dict(os.environ))
             before = sorted(str(path.relative_to(leaf_root)) for path in leaf_root.rglob("*"))
-            leaf_startup, leaf_perturn = runs(leaf_key, leaf_env)
+            leaf_startup = run_hook(
+                "executable_session_context.py",
+                {"hook_event_name": "sessionStart", "workspace_roots": [tmp], "session_id": leaf_key},
+                env=leaf_env,
+            )
             root_startup, root_perturn = runs(root_key, root_env)
-
-            # Leaf: topic context survives, every delegation-instructing block is withheld.
-            assert "target: wire memory systems" in leaf_startup
-            assert marker not in leaf_startup
-            assert "Durable Memory (,ai-kb)" not in leaf_startup
-            assert "candidates staged" not in leaf_startup
-            assert "k-agent-smol" not in leaf_startup
+            # Leaf: the startup hook returns before any context — no spec, no HANDOFF,
+            # no staging, no delegation text at all.
+            assert leaf_startup == {}
+            leaf_perturn = run_perturn_recall(
+                tmp,
+                {
+                    "hook_event_name": "UserPromptSubmit",
+                    "workspace_roots": [tmp],
+                    "conversation_id": leaf_key,
+                    "prompt": "Did you actually verify this claim, or did you just guess again?",
+                },
+                leaf_env,
+            )
             # Nothing is left for the per-turn hook to emit: no pointer, no correction block.
             assert leaf_perturn == {}
             # And the child wrote no candidate/pointer/seen state on its parent's behalf.
@@ -2440,7 +2675,10 @@ console.log(JSON.stringify({
                     payload = json.loads(result.stdout)
 
                     assert payload["active"] == ["read", "bash", "edit", "write", "grep", "find", "ls"]
-                    assert payload["toolCallHooked"] is True
+                    # Pi runtime-parity no longer registers tool_call: subagent admission
+                    # moved to subagent-contract.ts. OMP still guards task/hub dispatch.
+                    expected_tool_call = "dot_omp" in str(extension)
+                    assert payload["toolCallHooked"] is expected_tool_call
                     assert payload["explicit"] == ["read", "bash", "edit", "write"]
 
     def test_runtime_leaf_context_and_peer_send_boundaries(self):
@@ -2451,55 +2689,38 @@ import {join} from 'node:path';
 const tmp=mkdtempSync('/tmp/staged-leaf-runtime-');process.env.HOME=tmp;
 writeFileSync(join(tmp,'AGENTS.md'),'ROOT_SOP_SENTINEL');
 writeFileSync(join(tmp,'leaf.jsonl'),'native-session-fixture');
-const ctx={sessionManager:{getSessionFile:()=>join(tmp,'leaf.jsonl')}};
+const ctx={cwd:tmp,sessionManager:{getSessionFile:()=>join(tmp,'leaf.jsonl')}};
 const piModule=await import(process.argv[1]);const ompModule=await import(process.argv[2]);
 function register(mod,tools=[]){const handlers={};mod.default({events:{on(){}},getAllTools(){return tools.map(name=>({name}))},on(name,callback){handlers[name]=(event)=>callback(event,ctx)}});return handlers}
 const pi=register(piModule);
 assert((await pi.before_agent_start({systemPrompt:'ordinary root'})).systemPrompt.includes('ROOT_SOP_SENTINEL'));
 const rootPrompt=(await pi.before_agent_start({systemPrompt:'ordinary root'})).systemPrompt;
-assert(rootPrompt.includes('Dispatch one leaf packet per subagent call'));
-assert(rootPrompt.includes('"exactly one top-level subagent workflow call" guidance is superseded'));
-assert(rootPrompt.includes('workflowScriptPath, chain, parallel, gate and agentContract inputs are blocked'));
+assert(!rootPrompt.includes('Dispatch one leaf packet per subagent call'));
+assert(!rootPrompt.includes('INVALID_DISPATCH_REQUEST'));
+assert(!('tool_call' in pi), 'subagent admission lives in subagent-contract.ts, not runtime-parity.ts');
 assert.equal(await pi.before_agent_start({systemPrompt:'[DELEGATION BOUNDARY]'}),undefined);
 process.env.PI_SUBAGENT_CHILD='1';assert.equal(await pi.before_agent_start({systemPrompt:'ordinary child'}),undefined);delete process.env.PI_SUBAGENT_CHILD;
 const omp=register(ompModule);
 for(const name of [undefined, '', ' ', '\t\n']) {
-  assert.equal(omp.tool_call({toolName:'hub',input:{op:'send',to:'done-worker',message:'wake',name}}).block,true);
+  assert.equal((await omp.tool_call({toolName:'hub',input:{op:'send',to:'done-worker',message:'wake',name}})).block,true);
 }
-assert.equal(omp.tool_call({toolName:'hub',input:{op:'send',name:'server',message:'input'}}),undefined);
-assert.equal(omp.tool_call({toolName:'hub',input:{op:'send',name:' server ',message:'input'}}),undefined);
-assert.equal(omp.tool_call({toolName:'hub',input:{op:'list'}}),undefined);
-assert.equal(omp.tool_call({toolName:'bash',input:{command:'true'}}),undefined);
-assert.equal(omp.tool_call({toolName:'bash',input:{command:'true',async:true}}),undefined);
-assert.equal(omp.tool_call({toolName:'hub',input:{op:'start',name:'server'}}),undefined);
+assert.equal(await omp.tool_call({toolName:'hub',input:{op:'send',name:'server',message:'input'}}),undefined);
+assert.equal(await omp.tool_call({toolName:'hub',input:{op:'send',name:' server ',message:'input'}}),undefined);
+assert.equal(await omp.tool_call({toolName:'hub',input:{op:'list'}}),undefined);
+assert.equal(await omp.tool_call({toolName:'bash',input:{command:'true'}}),undefined);
+assert.equal(await omp.tool_call({toolName:'bash',input:{command:'true',async:true}}),undefined);
+assert.equal(await omp.tool_call({toolName:'hub',input:{op:'start',name:'server'}}),undefined);
 const tools=['yield'];const leaf=register(ompModule,tools);
 for(const toolName of ['bash','eval','python','mcp']) {
-  assert.equal(leaf.tool_call({toolName,input:{async:true}}).block,true);
-  assert.equal(leaf.tool_call({toolName,input:{}}),undefined);
+  assert.equal((await leaf.tool_call({toolName,input:{async:true}})).block,true);
+  assert.equal(await leaf.tool_call({toolName,input:{}}),undefined);
 }
 tools.length=0;
-for(const toolName of ['task','advisor','hub']) assert.equal(leaf.tool_call({toolName,input:{}}).block,true);
-assert.equal(leaf.tool_call({toolName:'yield',input:{data:{produced:'artifact'}}}),undefined);
-const dispatch={agent:'k-agent-implementer',task:'settled packet',acceptance:false,agentScope:'user'};
-for(const extra of [{},{context:'fresh'},{async:true}]) {
-  assert.equal(pi.tool_call({toolName:'subagent',input:{...dispatch,...extra}}),undefined);
-}
-for(const extra of [{acceptance:undefined},{acceptance:'auto'},{acceptance:true},{context:'fork'},
-  {context:'profile'},{model:'expensive:high'},{skills:true},{skill:true},{skill:['k-deep-review']},
-  {skills:['k-code-quality']},{agentScope:undefined},{agentScope:'both'},{agentScope:'project'},{steeringRecovery:true},
-  {workflow:[]},{workflowScript:'while(true){}'},{workflowScriptPath:'/tmp/loop.ts'},
-  {chain:[]},{parallel:[]},{gate:'make check'},{agentContract:{}},
-  {action:'resume'},{action:'steer'},{action:'schedule.create'},{action:'watchdog.configure'}]) {
-  assert.equal(pi.tool_call({toolName:'subagent',input:{...dispatch,...extra}}).block,true,JSON.stringify(extra));
-}
-for(const action of ['list','status','debug.run','stop','interrupt']) {
-  assert.equal(pi.tool_call({toolName:'subagent',input:{action}}),undefined);
-}
-process.env.PI_SUBAGENT_CHILD='1';
-assert.equal(pi.tool_call({toolName:'subagent',input:dispatch}).block,true);
-assert.equal(pi.tool_call({toolName:'subagent',input:{action:'status'}}).block,true);
-assert.equal(pi.tool_call({toolName:'bash',input:{command:'true'}}),undefined);
-delete process.env.PI_SUBAGENT_CHILD;
+for(const toolName of ['task','advisor','hub']) assert.equal((await leaf.tool_call({toolName,input:{}})).block,true);
+assert.equal(await leaf.tool_call({toolName:'yield',input:{data:{produced:'artifact'}}}),undefined);
+// Subagent allow/deny admission now lives in subagent-contract.ts (see
+// scripts/tests/test_pi_subagent_contract.py); runtime-parity registers no
+// tool_call hook at all.
 console.log('leaf-context and peer/process-send cases passed');
 """
         result = subprocess.run(
@@ -2737,6 +2958,46 @@ console.log(JSON.stringify({ ok: true }));
                 )
                 self.assertEqual(result.returncode, 0, result.stderr[-2000:])
                 self.assertIn('{"ok":true}', result.stdout)
+
+    def test_pi_read_gate_extension_blocks_leaf_bash_publication(self):
+        script = r"""
+import assert from 'node:assert/strict';
+import { mkdir, writeFile, copyFile, chmod } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { mkdtempSync } from 'node:fs';
+const [extension, root] = process.argv.slice(1);
+const tmp = mkdtempSync(join(tmpdir(), 'pi-publish-gate-'));
+const hooks = join(tmp, '.agents/hooks'); await mkdir(hooks, { recursive: true });
+for (const [src, dst] of [['executable_publish_gate.py', 'publish_gate.py'], ['executable_read_gate.py', 'read_gate.py'], ['hook_common.py', 'hook_common.py'], ['reinforcement.py', 'reinforcement.py']]) {
+  await copyFile(join(root, 'home/exact_dot_agents/exact_hooks', src), join(hooks, dst)); await chmod(join(hooks, dst), 0o755);
+}
+process.env.HOME = tmp; process.env.AGENT_MEMORY_SPEC_ROOT = join(tmp, 'specs');
+const session = join(tmp, 'session.jsonl'); await writeFile(session, '');
+const handlers = {};
+const api = { on(k, v) { handlers[k] = v } };
+const mod = await import(extension); await mod.default(api);
+assert.equal(typeof handlers.tool_call, 'function');
+const ctx = { cwd: tmp, sessionManager: { getSessionId() { return 'pi-pub'; }, getSessionFile() { return session; } } };
+const bash = (command, id) => handlers.tool_call({ type: 'tool_call', toolCallId: id, toolName: 'bash', input: { command } }, ctx);
+process.env.PI_SUBAGENT_CHILD = '1';
+const blocked = await bash('gh pr comment 1 --body hi', 'p1');
+assert(blocked && blocked.block === true, JSON.stringify(blocked));
+assert.equal(await bash('echo hi', 'p2'), undefined, 'read-only shell passes');
+delete process.env.PI_SUBAGENT_CHILD;
+assert.equal(await bash('gh pr comment 1 --body hi', 'p3'), undefined, 'root publication is not blocked');
+console.log(JSON.stringify({ ok: true }));
+"""
+        extension = REPO / "home/dot_pi/agent/exact_extensions/read-gate.ts"
+        result = subprocess.run(
+            ["node", "--input-type=module", "-e", script, str(extension), str(REPO)],
+            cwd=str(REPO),
+            capture_output=True,
+            text=True,
+            env=hook_env(),
+        )
+        self.assertEqual(result.returncode, 0, result.stderr[-2000:])
+        self.assertIn('{"ok":true}', result.stdout)
 
     def test_pi_model_pin_extension_repins_only_when_the_echoed_model_diverges(self):
         script = r"""
@@ -4010,6 +4271,32 @@ class PublishGateTests(unittest.TestCase):
         )
         self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
 
+    def test_leaf_bash_tool_name_is_gated_on_every_wired_harness(self):
+        # Pi, OMP, OpenCode and Copilot pass the lowercase `bash` tool name; Claude/Codex pass
+        # `Bash`/`shell`. All must reach the publication surface, or the leaf denial is a no-op.
+        for tool_name in ("bash", "Bash", "shell", "run_command"):
+            with self.subTest(tool_name=tool_name):
+                out = run_hook(
+                    "executable_publish_gate.py",
+                    {
+                        "tool_name": tool_name,
+                        "tool_input": {"command": "gh pr comment 1 --body hi"},
+                        "agent_id": "leaf-1",
+                    },
+                )
+                self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+
+    def test_copilot_root_with_ambient_parent_env_is_not_a_leaf(self):
+        # COPILOT_AGENT_SESSION_ID names the PARENT session. A call whose own session
+        # key equals it is the root itself (ambient env), so publication is gated as
+        # root (checklist context), never denied as a leaf; a distinct key is a child.
+        root_payload = {**self.bash("gh issue create --title t --body b"), "session_id": "parent-session"}
+        out = run_hook("executable_publish_gate.py", root_payload, env=keep_parent_env("parent-session"))
+        self.assertNotEqual(out.get("hookSpecificOutput", {}).get("permissionDecision"), "deny")
+        child_payload = {**self.bash("gh issue create --title t --body b"), "session_id": "child-session"}
+        out = run_hook("executable_publish_gate.py", child_payload, env=keep_parent_env("parent-session"))
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+
     def test_codex_output_mode_keeps_only_hook_specific_output(self):
         env = dict(os.environ)
         env["AGENT_HOOK_OUTPUT"] = "hook_specific"
@@ -4152,6 +4439,11 @@ class BandGateTests(unittest.TestCase):
                 "AGENT_BAND_CLAUDE_ROUTES",
                 "AGENT_BAND_SUBSCRIPTION",
                 "AGENT_BAND_CODEX_ROUTES",
+                # The suite may itself run inside a delegated leaf; root-shaped probes
+                # must not inherit the runner's ambient leaf signals (leaf cases set
+                # theirs explicitly per call).
+                "PI_SUBAGENT_CHILD",
+                "COPILOT_AGENT_SESSION_ID",
             }
             env = {key: value for key, value in os.environ.items() if key not in excluded_env}
             env.update(override or {})
@@ -4168,6 +4460,66 @@ class BandGateTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             return json.loads(result.stdout or "{}")
 
+    def test_band_gate_denies_env_signalled_leaves_and_admits_the_copilot_root(self):
+        # `BandGateTests.gate` strips the leaf env for every probe, so the shared predicate's
+        # env half was never exercised here. Drive the hook directly: a Pi child and a Copilot
+        # child (distinct session key) are denied; the Copilot root with its own key ambient is
+        # admitted and its off-band `model` is rewritten to the lane alias like any root.
+        payload = {
+            "tool_name": "Agent",
+            "tool_input": {"subagent_type": "worker", "prompt": "x"},
+            "session_id": "child",
+        }
+        for label, env in (
+            (
+                "pi-child",
+                {**hook_env(), "AGENT_BAND_HARNESS": "claude_code", "PI_SUBAGENT_CHILD": "1", KEEP_PI_CHILD_ENV: "1"},
+            ),
+            ("copilot-child", {**keep_parent_env("parent"), "AGENT_BAND_HARNESS": "claude_code"}),
+        ):
+            with self.subTest(leaf=label):
+                out = run_hook("executable_band_gate.py", payload, env=env)
+                self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+                self.assertIn("delegated leaf", out["hookSpecificOutput"]["permissionDecisionReason"])
+        with tempfile.TemporaryDirectory() as tmp:
+            bands = Path(tmp) / "agent-bands.v1.json"
+            bands.write_text(json.dumps(BandGateTests.PROJECTION))
+            root = run_hook(
+                "executable_band_gate.py",
+                {
+                    "tool_name": "Agent",
+                    "tool_input": {"subagent_type": "Explore", "prompt": "x", "model": "haiku"},
+                    "session_id": "parent",
+                },
+                env={**keep_parent_env("parent"), "AGENT_BAND_HARNESS": "claude_code", "AGENT_BANDS_FILE": str(bands)},
+            )
+        self.assertEqual(root["hookSpecificOutput"]["updatedInput"]["model"], "fable")
+        self.assertNotIn("permissionDecision", root["hookSpecificOutput"])
+
+    def test_claude_native_route_denies_fork_context_and_resume(self):
+        # SOP §3.7: fresh worker context where supported. The deny must not depend on the
+        # subscription/OpenRouter wrapper route; a plain native Agent call still rewrites.
+        env = {
+            k: v
+            for k, v in hook_env().items()
+            if k not in ("AGENT_BAND_SUBSCRIPTION", "AGENT_BAND_MODEL_FORMAT", "AGENT_BAND_CLAUDE_ROUTES")
+        }
+        env["AGENT_BAND_HARNESS"] = "claude_code"
+        for extra in ({"fork_context": True}, {"resume": "run-1"}):
+            with self.subTest(extra=extra):
+                out = run_hook(
+                    "executable_band_gate.py",
+                    {"tool_name": "Agent", "tool_input": {"subagent_type": "worker", "prompt": "x", **extra}},
+                    env=env,
+                )
+                self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+        out = run_hook(
+            "executable_band_gate.py",
+            {"tool_name": "Agent", "tool_input": {"subagent_type": "worker", "prompt": "x"}},
+            env=env,
+        )
+        self.assertNotEqual(out.get("hookSpecificOutput", {}).get("permissionDecision"), "deny")
+
     def test_codex_namespaced_spawn_tool_name_is_still_gated(self):
         # Live Codex payloads name the tool "collaborationspawn_agent" (probed 2026-09-06).
         answer = self.gate(
@@ -4176,6 +4528,57 @@ class BandGateTests(unittest.TestCase):
         )
         self.assertEqual(answer["hookSpecificOutput"]["permissionDecision"], "allow")
         self.assertIn("model", answer["hookSpecificOutput"]["updatedInput"])
+
+    def test_antigravity_rejects_names_outside_the_managed_lane_prefix(self):
+        # Antigravity lanes are dynamic define/invoke calls, never profile files: the name is
+        # the enforcement surface, so anything not starting `k-agent-` is denied.
+        for tool in ("invoke_subagent", "define_subagent"):
+            with self.subTest(tool=tool):
+                answer = self.gate(
+                    "antigravity",
+                    {"tool_name": tool, "tool_input": {"name": "helper", "model": "flash"}},
+                )
+                self.assertEqual(answer["decision"], "deny")
+        answer = self.gate(
+            "antigravity",
+            {"tool_name": "invoke_subagent", "tool_input": {"name": "k-agent-mechanical", "model": "flash"}},
+        )
+        self.assertEqual(answer["decision"], "allow")
+
+    def test_antigravity_rejects_non_flash_tiers(self):
+        # Every Antigravity category rides the `flash` tier; `pro`, `inherit` and friends are denied.
+        for tier in ("pro", "inherit", "flash_lite"):
+            with self.subTest(tier=tier):
+                answer = self.gate(
+                    "antigravity",
+                    {
+                        "tool_name": "invoke_subagent",
+                        "tool_input": {"name": "k-agent-mechanical", "model": tier},
+                    },
+                )
+                self.assertEqual(answer["decision"], "deny")
+        for tool in ("invoke_subagent", "define_subagent"):
+            for tool_input in ({"name": "k-agent-mechanical", "model": "flash"}, {"name": "k-agent-mechanical"}):
+                with self.subTest(tool=tool, tool_input=tool_input):
+                    answer = self.gate("antigravity", {"tool_name": tool, "tool_input": tool_input})
+                    self.assertEqual(answer["decision"], "allow")
+
+    def test_antigravity_tool_call_envelope_is_parsed_and_non_matching_tools_are_allowed(self):
+        # Antigravity's PreToolUse payload is the `toolCall` envelope (`test_premise_nudge.py`
+        # pins the shape) and treats a missing `decision` as a denial. The gate must read the
+        # envelope and answer `allow` explicitly whenever it has no opinion.
+        envelope = lambda name, args: {"conversationId": "agy-1", "toolCall": {"name": name, "args": args}}
+        allowed = self.gate(
+            "antigravity", envelope("invoke_subagent", {"agent": "k-agent-mechanical", "model": "flash"})
+        )
+        self.assertEqual(allowed["decision"], "allow")
+        denied = self.gate("antigravity", envelope("invoke_subagent", {"agent": "k-agent-mechanical", "model": "pro"}))
+        self.assertEqual(denied["decision"], "deny")
+        for payload in (envelope("run_command", {"CommandLine": "ls"}), {"conversationId": "agy-1"}):
+            with self.subTest(payload=payload):
+                self.assertEqual(self.gate("antigravity", payload)["decision"], "allow")
+        # Other harnesses keep the silent `{}` for tools the gate does not own.
+        self.assertEqual(self.gate("claude_code", {"tool_name": "Read", "tool_input": {}}), {})
 
     def test_SHOULD_require_fresh_exact_subscription_claude_profiles(self):
         projection = {

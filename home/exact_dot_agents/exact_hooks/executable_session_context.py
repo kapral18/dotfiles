@@ -19,6 +19,7 @@ from hook_common import (
     agent_depth,
     emit,
     is_default_branch_workspace,
+    is_delegated_leaf,
     is_named_topic,
     is_session_topic,
     read_payload,
@@ -74,19 +75,8 @@ NO_PERTURN_RECALL_NOTICE = (
 )
 
 
-def is_delegated_leaf(payload: dict | None = None) -> bool:
-    """True when the harness names a parent session for this run.
-
-    Codex/Claude hooks supply agent_id; Copilot supplies a parent session ID;
-    pi-subagents supplies PI_SUBAGENT_CHILD.
-    This does not change worklog parent-bucket routing.
-    """
-    agent_id = (payload or {}).get("agent_id")
-    return (
-        (isinstance(agent_id, str) and bool(agent_id.strip()))
-        or bool(os.environ.get(PARENT_SESSION_ENV, "").strip())
-        or os.environ.get("PI_SUBAGENT_CHILD") == "1"
-    )
+# Leaf identity is single-owned by `hook_common.is_delegated_leaf` (imported above):
+# `agent_id` (Claude/Codex child calls), `COPILOT_AGENT_SESSION_ID`, or `PI_SUBAGENT_CHILD`.
 
 
 def warm_resident_embedder(payload: dict) -> None:
@@ -554,7 +544,10 @@ def context_disabled(spec_path: Path, topic: str) -> bool:
 
 
 def is_review_topic(topic: str, text: str) -> bool:
-    return topic.startswith("review") or "\ntarget: PR " in f"\n{text}"
+    """Clean-room match: `review` anywhere in the slug or a `kind: review` header."""
+    if "review" in topic:
+        return True
+    return bool(re.search(r"(?m)^kind:\s*review\b", text)) or "\ntarget: PR " in f"\n{text}"
 
 
 def neutral_review_spec(text: str, spec_path: Path) -> str:
@@ -578,30 +571,69 @@ def neutral_review_spec(text: str, spec_path: Path) -> str:
     )
 
 
-def bounded_or_omitted(text: str, spec_path: Path) -> str:
+HANDOFF_MARKER = "HANDOFF:"
+HANDOFF_END = "END HANDOFF"
+
+
+def handoff_block(text: str) -> str | None:
+    """The compact handoff block SOP §3.7 asks the root to persist in the topic.
+
+    Starts at the first line equal to `HANDOFF:` outside a ``` fence, runs to the
+    first blank line or `END HANDOFF`, and is returned with the marker line.
+    `None` when absent or when the block has no body lines (a bare marker is not a
+    handoff and must not displace the read pointer).
+    """
+    lines = text.splitlines()
+    in_fence = False
+    for index, line in enumerate(lines):
+        if line.strip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence or line.strip() != HANDOFF_MARKER:
+            continue
+        block = [line.rstrip()]
+        for follow in lines[index + 1 :]:
+            if not follow.strip() or follow.strip() == HANDOFF_END or follow.strip().startswith("```"):
+                break
+            block.append(follow.rstrip())
+        return "\n".join(block) if len(block) > 1 else None
+    return None
+
+
+def bounded_or_omitted(text: str, spec_path: Path, *, allow_handoff: bool = True) -> str:
     """Mirrors agent_memory.py's bounded_or_omitted — change both together.
 
     Applies the shared oversized-spec contract to already-final text (review
     text must already be sanitized by neutral_review_spec() before reaching
     here). Content is never truncated mid-context: once it exceeds the bound
-    it is replaced wholesale with a pointer, so a sanitized-but-still-huge
-    review body cannot leak past the size limit just because it is "already
-    clean".
+    the leading `HANDOFF:` block is injected when it fits, otherwise the whole
+    spec is replaced with a pointer, so a sanitized-but-still-huge review body
+    cannot leak past the size limit just because it is "already clean".
+    Review topics pass `allow_handoff=False`: a root-authored handoff carries
+    settled decisions and verdict-shaped lines that the clean-room contract
+    keeps out of a review start, so those topics keep the pointer.
     """
     if len(text) <= MAX_SPEC_CHARS:
         return text
 
-    return (
+    pointer = (
         f"Active topic spec omitted because it is {len(text)} characters, "
         f"exceeding the {MAX_SPEC_CHARS}-character injection limit. "
         f"Read `{spec_path}` before relying on prior session context."
+    )
+    handoff = handoff_block(text) if allow_handoff else None
+    if handoff is None or len(handoff) > MAX_SPEC_CHARS:
+        return pointer
+    return (
+        handoff + f"\n\n[compact handoff from `{spec_path}` ({len(text)} characters total); "
+        "read the full spec only when a step depends on history the handoff does not carry.]"
     )
 
 
 def spec_context(spec_path: Path, topic: str) -> str:
     text = spec_path.read_text(errors="replace").strip()
     if is_review_topic(topic, text):
-        return bounded_or_omitted(neutral_review_spec(text, spec_path), spec_path)
+        return bounded_or_omitted(neutral_review_spec(text, spec_path), spec_path, allow_handoff=False)
 
     return bounded_or_omitted(text, spec_path)
 
@@ -630,7 +662,9 @@ def context_for_harness(parts: list[str], optional_parts: list[tuple[int, str]])
 
 def main() -> None:
     payload = read_payload()
-    if payload.get("agent_id") and is_delegated_leaf(payload):
+    if is_delegated_leaf(payload):
+        # Any leaf signal (agent_id, Copilot parent session, Pi child) returns before
+        # spec, HANDOFF, worklog, or auto_bind: a leaf never inherits parent context.
         emit({})
         return
     if os.environ.get("AGENT_HOOK_OUTPUT") == "antigravity" and payload.get("invocation_num") != 0:

@@ -54,6 +54,7 @@ Each registry has a declarative list plus the hook that converges it. See [Packa
 | Component               | Source path                                                                                              |
 | ----------------------- | -------------------------------------------------------------------------------------------------------- |
 | Fish main config        | [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl) |
+| Machine-local extras    | unmanaged: `~/.profile.local`, `~/.bashrc.local`, `~/.zshrc.local`, `~/.config/fish/config.local.fish`   |
 | POSIX shellrc (alias)   | [`home/readonly_dot_shellrc`](../../home/readonly_dot_shellrc)                                           |
 | Zsh completions         | [`home/dot_zsh/`](../../home/dot_zsh/)                                                                   |
 | Starship prompt         | [`home/dot_config/readonly_starship.toml`](../../home/dot_config/readonly_starship.toml)                 |

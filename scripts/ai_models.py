@@ -22,6 +22,7 @@ SECTION_FILES = {
     "agent_categories": "tiering.yaml",
     "agent_bindings": "tiering.yaml",
     "category_models": "tiering.yaml",
+    "binding_fallbacks": "tiering.yaml",
 }
 
 REVIEW_BAND_HARNESSES = {"claude": "claude_code"}

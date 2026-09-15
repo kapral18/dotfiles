@@ -8,6 +8,7 @@ This setup assumes secrets live outside the git repo:
 
 - SSH private keys: in 1Password (via the 1Password SSH agent)
 - API tokens and small secrets: in `pass` (password-store)
+- Machine-local overrides that must not be chezmoi-managed: optional extra files sourced last by the shell profiles (see [Shell: Fish](../workflow/shell-fish.md#machine-local-extras))
 
 ## 1Password
 

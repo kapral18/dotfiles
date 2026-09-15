@@ -25,6 +25,7 @@ import sys
 from pathlib import Path
 
 MAX_BYTES = 20480
+WARN_BYTES = 18432
 AGENT_TREE = Path("home/exact_dot_agents")
 # chezmoi attribute prefixes that may precede the deployed basename.
 NAME_PREFIXES = ("readonly_", "private_", "executable_")
@@ -50,12 +51,26 @@ def oversized_files(repo_root: Path) -> list[tuple[Path, int]]:
     return offenders
 
 
+def warning_files(repo_root: Path) -> list[tuple[Path, int]]:
+    """Return (path, size) for every gated file inside the warning band."""
+    warnings: list[tuple[Path, int]] = []
+    for path in sorted((repo_root / AGENT_TREE).rglob("*.md")):
+        if deployed_basename(path) == "SKILL.md":
+            continue
+        size = path.stat().st_size
+        if WARN_BYTES <= size < MAX_BYTES:
+            warnings.append((path.relative_to(repo_root), size))
+    return warnings
+
+
 def main(argv: list[str]) -> int:
     repo_root = Path(argv[1]) if len(argv) > 1 else Path(__file__).resolve().parent.parent
     if not (repo_root / AGENT_TREE).is_dir():
         print(f"verify_agent_file_sizes: missing {AGENT_TREE} under {repo_root}", file=sys.stderr)
         return 1
     offenders = oversized_files(repo_root)
+    for path, size in warning_files(repo_root):
+        print(f"verify_agent_file_sizes: warning: {size:>6}  {path} (>= {WARN_BYTES} bytes; split soon)")
     if offenders:
         print(
             f"verify_agent_file_sizes: {len(offenders)} file(s) at/over {MAX_BYTES} bytes "

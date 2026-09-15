@@ -24,3 +24,4 @@ or one multi-source phase: candidate collection, or deepening/synthesis over sup
 - Anchor every claim in a file path + ref (External Truth); answer from inspected source, never from memory.
 
 Return: the answer, the repo and exact ref you inspected, how any provided URLs mapped to that repo/ref, and an explicit note if web sources were needed after source inspection and why.
+The leaf runs the skill itself and never spawns; ignore its Subagent dispatch line and Root moves.

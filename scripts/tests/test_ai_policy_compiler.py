@@ -1369,10 +1369,17 @@ class EvalScaffoldTest(unittest.TestCase):
 
     def _matrix_expectations(self) -> tuple[int, int, int, tuple[str, ...]]:
         matrix = evals._load_matrix(REPO / "scripts/tests/fixtures/ai_policy_eval/matrix.yaml")
-        static = {"claude", "codex", "copilot", "omp"}
-        runtime = ("crush", "cursor", "gemini", "generic", "opencode", "pi")
         snapshot = json.loads((REPO / capabilities.SNAPSHOT_PATH).read_text())
-        assert set(matrix["harnesses"]) == static | set(runtime) == {row["harness"] for row in snapshot["harnesses"]}
+        # Pinned independently of the planner's predicate: these are the harnesses whose child
+        # model binding is static by construction (profile frontmatter or a closed dispatch
+        # schema). Pi joined when subagent-contract.ts stopped admitting per-call model keys.
+        # A snapshot that disagrees is an IR error, not a reason to move the pin.
+        static = {"claude", "codex", "copilot", "omp", "pi"}
+        runtime = ("crush", "cursor", "gemini", "generic", "opencode")
+        bindings = {row["harness"]: row["subagent_model_binding"] for row in snapshot["harnesses"]}
+        assert {h for h, b in bindings.items() if b == "static"} == static, bindings
+        assert {h for h, b in bindings.items() if b != "static"} == set(runtime), bindings
+        assert set(matrix["harnesses"]) == static | set(runtime) == set(bindings)
         assert matrix["agent_roles"] == ["main-session", "subagent-static-pinned"]
         per_role = len(matrix["frontier_models"]) * len(matrix["scenarios"]) * sum(matrix["repetitions"])
         return per_role * (2 * len(static) + len(runtime)), per_role * len(runtime), per_role, runtime

@@ -2,6 +2,8 @@
 // OMP runtime defaults that mirror the shared Cursor contracts.
 
 import { lstatSync, realpathSync, writeFileSync } from "node:fs"
+import { spawn } from "node:child_process"
+import { homedir } from "node:os"
 import { isAbsolute, join } from "node:path"
 import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent"
 
@@ -91,13 +93,13 @@ async function dispatchProfileProblem(pi: ExtensionAPI, ctx: ExtensionContext, t
     for (const name of new Set(names)) {
       const agent = agents.find((candidate) => candidate.name === name)
       if (!agent || disabled.includes(name) || agent.source !== "user" || !agent.filePath || realpathSync(agent.filePath) !== join(profileDir, `${name}.md`)) {
-        return `Profile ${name} is not the enabled managed user profile. Project, plugin and bundled replacements cannot dispatch workers.`
+        return `Profile ${name} is not the enabled managed user profile. Project, plugin and bundled replacements cannot dispatch workers. Pre-execution denial: correct the profile name and re-dispatch (SOP §3.7 row 1).`
       }
       if (agent.blocking !== true || agent.spawns || agent.advisor || agent.prewalk || !agent.tools?.length || agent.tools.some((tool) => ["task", "advisor", "eval", "hub"].includes(tool)) || !agent.model?.length || agent.model.some((model) => !model.trim()) || !agent.systemPrompt.includes("[DELEGATION BOUNDARY]")) {
-        return `Profile ${name} lacks the managed foreground leaf contract. Do not launch it or substitute another model.`
+        return `Profile ${name} lacks the managed foreground leaf contract. Pre-execution denial: repair the profile, then re-dispatch; do not substitute another model (SOP §3.7 row 1).`
       }
       if (settings.get("task.agentModelOverrides")?.[name] !== undefined) {
-        return `Profile ${name} has a settings-level model override. Use its registry-rendered model instead of bypassing the lane.`
+        return `Profile ${name} has a settings-level model override. Pre-execution denial: remove the override, then re-dispatch with its registry-rendered model (SOP §3.7 row 1).`
       }
       for (const key of ["task.agentAdvisor", "task.agentPrewalk"] as const) {
         const value = settings.get(key)?.[name]
@@ -116,6 +118,52 @@ async function guardDispatch(pi: ExtensionAPI, ctx: ExtensionContext, toolName: 
   // A different root-owned task can finalize while discovery is awaited.
   const failure = terminalFailure() ?? reason
   if (failure) return { block: true as const, reason: failure }
+}
+
+const PUBLISH_GATE_TIMEOUT_MS = 10_000
+
+function publishGatePath(): string {
+  return join(homedir(), ".agents", "hooks", "publish_gate.py")
+}
+
+async function publishBlock(payload: Record<string, unknown>): Promise<{ block: true; reason: string } | undefined> {
+  // SOP §3.8 publication gate on the shell path (same payload shape the read gate
+  // uses). publish_gate.py owns the patterns: it denies a delegated leaf's publication
+  // call and attaches the root checklist as additionalContext. OMP's tool_call channel
+  // can only block, so the root checklist is dropped here while the leaf denial is enforced.
+  // Fail-open everywhere: a missing hook must never block root work.
+  try {
+    const child = spawn(publishGatePath(), [], { stdio: ["pipe", "pipe", "ignore"] })
+    let stdout = ""
+    const done = new Promise<string>((resolve) => {
+      const timer = setTimeout(() => {
+        child.kill("SIGKILL")
+        resolve("")
+      }, PUBLISH_GATE_TIMEOUT_MS)
+      child.stdout.on("data", (chunk: Buffer) => {
+        stdout += chunk.toString()
+      })
+      child.stdin.on("error", () => {})
+      child.on("error", () => {
+        clearTimeout(timer)
+        resolve("")
+      })
+      child.on("close", () => {
+        clearTimeout(timer)
+        resolve(stdout)
+      })
+      child.stdin.end(JSON.stringify(payload))
+    })
+    const text = (await done).trim()
+    if (!text) return undefined
+    const output = JSON.parse(text) as { decision?: string; reason?: string }
+    if (output?.decision === "block" && typeof output.reason === "string") {
+      return { block: true, reason: output.reason }
+    }
+  } catch {
+    // fail open
+  }
+  return undefined
 }
 
 function leafSystemPrompt(chunks: string[]): string[] | undefined {
@@ -162,8 +210,21 @@ export default function (pi: ExtensionAPI) {
       if (reason) return { block: true, reason }
     }
     const input = event.input as { async?: boolean; op?: string; name?: string }
-    if (leaf && (input.async === true || ["task", "advisor", "hub"].includes(event.toolName))) {
+    if (isLeaf() && (input.async === true || ["task", "advisor", "hub"].includes(event.toolName))) {
       return { block: true, reason: "Leaf workers cannot start background work or orchestrate agents/processes. Use foreground tools and return the packet result once; the root owns long-running work." }
+    }
+    // Delegated leaves must not publish human-visible effects (SOP §3.7 leaf contract).
+    // OMP leaf identity (the `yield` latch) is harness-local, so pass it as `agent_id`:
+    // that is the shared leaf predicate's distinct-ledger signal, and it denies there.
+    if (isLeaf() && event.toolName === "bash") {
+      return publishBlock({
+        hook_event_name: "PreToolUse",
+        agent_id: ctx.sessionManager.getSessionFile() ?? "omp-leaf",
+        session_id: ctx.sessionManager.getSessionFile() ?? "",
+        cwd: ctx.cwd,
+        tool_name: event.toolName,
+        tool_input: event.input,
+      })
     }
     // Project/CLI overlays outrank the managed config. Check immediately before
     // native dispatch snapshots root settings into worker tool constructors.

@@ -2,13 +2,13 @@
 
 Use for an explicit request to address review feedback. Review alone remains read-only.
 Resolve PR identity, current head, authorship, and the user-authorized thread set before edits.
-Load `~/.agents/skills/k-review/references/pr_common.md` for complete context, pending-review reconciliation, and publication mechanics.
-Load `~/.agents/skills/k-review/references/pr_snapshot.md` for head/discussion drift.
+`~/.agents/skills/k-review/references/pr_common.md` (complete context, pending-review reconciliation, publication mechanics) and `~/.agents/skills/k-review/references/pr_snapshot.md` (head/discussion drift) are loaded at the step that first needs them, once each; do not preload them here.
 Read complete relevant threads and referenced artifacts, not previews.
 
 ## Understand
 
-Collect the known batch. For each thread, identify the concern, relevant source/base behavior, reachable consequence, and required decision.
+Collect the known batch: load `~/.agents/skills/k-review/references/pr_common.md` (GitHub Context Intake + Reference Resolution) and `~/.agents/skills/k-review/references/pr_snapshot.md` (head/discussion drift) here, once.
+For each thread, identify the concern, relevant source/base behavior, reachable consequence, and required decision.
 Treat comments as hypotheses; do not implement unsupported suggestions or widen into unrelated cleanup.
 Record reply-only, code-change, or ask with evidence. Ask once only for a material user-owned fork.
 For explicitly requested one-at-a-time work, the selected thread is the batch; do not silently drain others.

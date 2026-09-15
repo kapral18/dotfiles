@@ -36,6 +36,8 @@
       "model_mutable": true,
       "subagent_model_binding": "runtime",
       "mutation_scope": "Task model (omitted or in-enum explicit; out-of-enum ids fail validation first); updated_input replaces the whole input object. Explicit in-enum override rewrite asserted by tests but not live-probed (cursor-agent usage limit 2026-09-07).",
+      "leaf_signal": "unverified",
+      "leaf_signal_note": "No live probe offline: Cursor Task children carry no verified identity and conversation_id sharing with the parent is unprobed.",
       "evidence_freshness": "2026-08-02"
     },
     {
@@ -71,18 +73,20 @@
       "hook_support": "mutation",
       "model_mutable": true,
       "subagent_model_binding": "static",
+      "leaf_signal": "unverified",
+      "leaf_signal_note": "No live child-session probe offline: whether Copilot sets COPILOT_AGENT_SESSION_ID for children and whether the extension hooks fire there is unprobed.",
       "mutation_scope": "task tool model and reasoning_effort",
       "evidence_freshness": "2026-08-02"
     },
     {
       "harness": "pi",
-      "version_evidence": "Pi 0.85.1 / pi-subagents 0.66.0: runtime-parity.ts tool_call blocks child delegation, composite controllers, per-call model overrides and dispatch without acceptance:false. Native defaults/resolvers and adapter transitions were probed without model calls. Fresh foreground profiles retain named role skills, not ambient context/catalog. The band hook still has no Pi mutation adapter; these are blocking controls, not argument rewriting.",
+      "version_evidence": "Pi 0.85.1 / pi-subagents 0.67.0: subagent-contract.ts is the sole subagent registration owner (root-object schema with closed leaf/management variants, same registered schema enforced through the native pi-ai validator plus INVALID_DISPATCH_REQUEST guard prefix, explicit user/fresh/acceptance:false). Native defaults/resolvers and adapter transitions were probed without model calls. Fresh foreground profiles retain named role skills, not ambient context/catalog. The band hook still has no Pi mutation adapter; these are blocking controls, not argument rewriting. LEAF_PARAMETER_KEYS in subagent-contract.ts admits no per-call model or workflowScript key (source read 2026-09-14), so the model binding is static.",
       "instruction_entrypoints": ["home/dot_pi/agent/exact_agents/*.md.tmpl"],
       "hook_support": "blocking",
       "model_mutable": true,
-      "subagent_model_binding": "runtime",
+      "subagent_model_binding": "static",
       "mutation_scope": "",
-      "evidence_freshness": "2026-09-08"
+      "evidence_freshness": "2026-09-14"
     },
     {
       "harness": "omp",

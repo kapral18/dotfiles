@@ -1,5 +1,12 @@
 {
   "providers": {
+    "github-copilot": {
+      "modelOverrides": {
+        "gpt-6-astra": {
+          "contextWindow": 272000
+        }
+      }
+    },
     "openrouter": {
       "modelOverrides": {
         "moonshotai/kimi-k3": {

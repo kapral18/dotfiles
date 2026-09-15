@@ -887,12 +887,145 @@ class TestAgentMemory(AgentMemoryEnvMixin, unittest.TestCase):
             finally:
                 agent_memory.SPEC_ROOT = old_spec_root
 
+    def test_select_injects_compact_handoff_from_oversized_spec(self):
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                spec_dir.mkdir(parents=True)
+                (spec_dir / "big-topic.txt").write_text(
+                    "target: fix the widget\n"
+                    "HANDOFF:\n"
+                    "stage: Verify\n"
+                    "snapshot: abc123\n"
+                    "open: rerun test_widget after repair\n"
+                    "\n"
+                    "history: " + ("x" * 4000) + "\nnever inject partial"
+                )
+
+                buffer = io.StringIO()
+                with contextlib.redirect_stdout(buffer):
+                    assert (
+                        agent_memory.main(
+                            ["select", "big-topic", "--workspace", str(workspace), "--session-id", "abc-998"]
+                        )
+                        == 0
+                    )
+
+                output = buffer.getvalue()
+                assert "HANDOFF:\nstage: Verify\nsnapshot: abc123\nopen: rerun test_widget after repair" in output
+                assert "compact handoff from" in output
+                assert "Active topic spec omitted" not in output
+                assert "never inject partial" not in output
+                assert "target: fix the widget" not in output
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_select_omits_oversized_spec_when_handoff_itself_is_oversized(self):
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                spec_dir.mkdir(parents=True)
+                (spec_dir / "big-topic.txt").write_text("HANDOFF:\n" + ("y" * 3000) + "\n\nrest " + ("x" * 100))
+
+                buffer = io.StringIO()
+                with contextlib.redirect_stdout(buffer):
+                    assert (
+                        agent_memory.main(
+                            ["select", "big-topic", "--workspace", str(workspace), "--session-id", "abc-997"]
+                        )
+                        == 0
+                    )
+
+                output = buffer.getvalue()
+                assert "Active topic spec omitted" in output
+                assert "yyyy" not in output
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_select_review_topic_keeps_pointer_even_with_handoff(self):
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                spec_dir.mkdir(parents=True)
+                (spec_dir / "review-77.txt").write_text(
+                    "target: PR owner/repo#77\n"
+                    "HANDOFF:\n"
+                    "settled: finding A is real\n"
+                    "\n"
+                    "context: " + ("x" * 4000) + "\n"
+                    "verdict: Approve\n"
+                )
+
+                buffer = io.StringIO()
+                with contextlib.redirect_stdout(buffer):
+                    assert (
+                        agent_memory.main(
+                            ["select", "review-77", "--workspace", str(workspace), "--session-id", "abc-996"]
+                        )
+                        == 0
+                    )
+
+                output = buffer.getvalue()
+                assert "Active topic spec omitted" in output
+                assert "settled: finding A is real" not in output
+                assert "compact handoff from" not in output
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_select_bare_or_fenced_handoff_marker_keeps_pointer(self):
+        import agent_memory
+
+        cases = {
+            "bare": "HANDOFF:\nEND HANDOFF\nrest " + ("x" * 4000),
+            "last-line": "rest " + ("x" * 4000) + "\nHANDOFF:",
+            "fenced": "```\nHANDOFF:\nstage: V\n```\nrest " + ("x" * 4000),
+        }
+        for label, body in cases.items():
+            with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+                old_spec_root = agent_memory.SPEC_ROOT
+                agent_memory.SPEC_ROOT = Path(spec_root)
+                try:
+                    workspace = Path(tmp).resolve()
+                    spec_dir = agent_memory.spec_dir_for(workspace)
+                    spec_dir.mkdir(parents=True)
+                    (spec_dir / "big-topic.txt").write_text(body)
+                    buffer = io.StringIO()
+                    with contextlib.redirect_stdout(buffer):
+                        assert (
+                            agent_memory.main(
+                                ["select", "big-topic", "--workspace", str(workspace), "--session-id", "abc-995"]
+                            )
+                            == 0
+                        )
+                    output = buffer.getvalue()
+                    assert "Active topic spec omitted" in output, label
+                    assert "compact handoff from" not in output, label
+                    assert "stage: V" not in output, label
+                finally:
+                    agent_memory.SPEC_ROOT = old_spec_root
+
     def test_select_bounds_oversized_review_spec_after_sanitizing(self):
         # Regression guard for memory-review-bypass follow-up (fix-review-context-bound):
         # bounded_spec_text() must not return neutral_review_spec()'s output unconditionally
         # — a review spec whose pre-conclusion body alone exceeds SELECT_CONTEXT_MAX_SPEC_CHARS
         # must still fall through to the wholesale omission-with-pointer contract, never a
-        # verbatim (or partially truncated) dump of the sanitized body.
+        # verbatim (or partially truncated) dump of the sanitized body. Review topics also
+        # bypass the HANDOFF: injection (allow_handoff=False); see the test below.
         import agent_memory
 
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:

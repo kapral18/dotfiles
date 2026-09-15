@@ -67,8 +67,8 @@ agent_bindings:
   k-agent-pr-necessity-auditor: "review"
   k-agent-reviewer: "review"
   k-agent-review-worker: "review"
-  k-agent-deep-review: "research"
-  k-agent-review-controller: "research"
+  k-agent-deep-review: "review"
+  k-agent-review-controller: "review"
   k-agent-code-searcher: "research"
   k-agent-public-sources: "research"
   k-agent-mechanical: "mechanical"
@@ -102,13 +102,40 @@ agent_bindings:
   reviewer: "review"
   security-reviewer: "review"
 
+# Reachability fallback per harness. `generate_agent_bands.py` fails generation when a bound
+# agent has no reachable profile on a harness unless that harness names its fallback here with
+# a reason. `generic` is the harness-native type that carries the lane at dispatch; `none`
+# means the harness exposes no generic type and profile-less pairs must never dispatch there.
+binding_fallbacks:
+  claude_code:
+    generic: "general-purpose"
+    reason: "Built-in and cross-harness native names (task, worker, sonic, ...) have no Claude profile; the hook carries them on the generic implement type."
+  codex:
+    generic: "worker"
+    reason: "Deep-review/controller lanes and cross-harness native names have no Codex role file; the spawn_agent hook carries the registry pick on the generic worker type."
+  copilot:
+    generic: "task"
+    reason: "No research profile ships for Copilot; profile-less lanes dispatch as the generic task type with the registry pick."
+  cursor:
+    generic: "generalPurpose"
+    reason: "Cursor CLI never scans ~/.cursor/agents, so no profile is reachable by name; every lane rides the Task hook on the generic type. No leaf signal exists, so dispatch is attended only (SOP §3.7 row 4)."
+  omp:
+    generic: "task"
+    reason: "The native-name task shim carries T2 implement; deep-review/implementer lanes without OMP profiles resolve through the blocking native task type."
+  pi:
+    generic: "none"
+    reason: "Pi disables builtins and exposes no generic edit-capable type; profile-less pairs are other-harness native names that must never dispatch on Pi, and deep-review/review-worker lanes are covered by the k-agent-review-controller/k-agent-reviewer profiles."
+  antigravity:
+    generic: "generalist"
+    reason: "No profile files exist; all lanes are dynamic define_subagent/invoke_subagent calls at the flash tier."
+
 # `effort` is the harness-literal dial; `thinking: ""` means no separate toggle; `context` is a short/long window tier.
 # `verifier_status` is one of cross_family, reduced_independence, or degraded.
 category_models:
   # Claude Code uses hyphenated point versions only (`claude-sonnet-4-6`); dotted form 404s. `[1m]` selects the 1M window.
   claude_code:
     mechanical:
-      model: "claude-sonnet-4-6[1m]"
+      model: "claude-sonnet-5"
       effort: "high"
       thinking: ""
       context: "long"
@@ -236,6 +263,8 @@ category_models:
       effort: "medium"
       thinking: ""
       context: "short"
+  # Antigravity effort is informational: `invoke_subagent` accepts only abstract tiers, so the
+  # bands generator drops effort for this harness and lanes pass `flash`.
   antigravity:
     mechanical:
       model: "gemini-3.8-flash"

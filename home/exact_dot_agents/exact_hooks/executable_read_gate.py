@@ -36,7 +36,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from hook_common import emit, read_payload, session_key, topic_paths
+from hook_common import emit, is_delegated_leaf, read_payload, session_key, topic_paths
 
 try:
     import reinforcement
@@ -56,7 +56,11 @@ SHELL_TOOLS = {"Bash", "shell", "exec_command", "Shell", "bash", "run_terminal_c
 MAX_HASH_BYTES = 32 * 1024 * 1024
 LEDGER_MAX_ENTRIES = 400
 # A whole-file shell read: one command, one path, no pipes, redirects, or chaining.
-WHOLE_SHELL_READ = re.compile(r"^\s*(?:cat|nl\s+-ba|nl)\s+(?:-[A-Za-z]+\s+)*(['\"]?)([^\s|;&<>'\"]+)\1\s*$")
+# An optional leading `cd <dir> &&` is the one chain allowed: it changes the cwd the path resolves against, not the output.
+WHOLE_SHELL_READ = re.compile(
+    r"^\s*(?:cd\s+(['\"]?)(?P<cwd>[^\s|;&<>'\"]+)\1\s*&&\s*)?"
+    r"(?:cat|nl\s+-ba|nl)\s+(?:-[A-Za-z]+\s+)*(['\"]?)(?P<path>[^\s|;&<>'\"]+)\3\s*$"
+)
 
 
 def disabled() -> bool:
@@ -101,7 +105,11 @@ def whole_read_target(payload: dict[str, Any]) -> str | None:
         match = WHOLE_SHELL_READ.match(str(command))
         if not match:
             return None
-        return os.path.expanduser(match.group(2))
+        target = os.path.expanduser(match.group("path"))
+        cwd = match.group("cwd")
+        if cwd and not os.path.isabs(target):
+            target = os.path.join(os.path.expanduser(cwd), target)
+        return target
     return None
 
 
@@ -575,6 +583,11 @@ def decide(ledger: dict[str, dict[str, Any]], path: str, digest: str, epoch: int
 
 
 def handle_pre(payload: dict[str, Any], event: str) -> dict[str, Any]:
+    # A leaf without a distinct ledger key (agent_id) shares the parent session key: gating it
+    # would refuse the child's first read of a file the root already read. Disable gating for
+    # that call entirely — never merge into the parent key, never refuse a keyless leaf's read.
+    if is_delegated_leaf(payload) and not (isinstance(payload.get("agent_id"), str) and payload["agent_id"]):
+        return {}
     key = context_key(payload)
     path = whole_read_target(payload)
     if not key or not path:
@@ -607,6 +620,9 @@ def handle_pre(payload: dict[str, Any], event: str) -> dict[str, Any]:
 
 
 def handle_post(payload: dict[str, Any]) -> dict[str, Any]:
+    # Mirror handle_pre: a keyless leaf must not pollute the parent ledger either.
+    if is_delegated_leaf(payload) and not (isinstance(payload.get("agent_id"), str) and payload["agent_id"]):
+        return {}
     key = context_key(payload)
     path = whole_read_target(payload)
     if not key or not path:

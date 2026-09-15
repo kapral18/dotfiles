@@ -20,6 +20,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from hook_common import is_delegated_leaf, read_payload
+
 PROJECTION = Path(os.environ.get("AGENT_BANDS_FILE", os.path.expanduser("~/.config/ai/agent-bands.v1.json")))
 HARNESS_ENV = "AGENT_BAND_HARNESS"
 SCHEMA_HARNESS_ENV = "AGENT_BAND_SCHEMA_HARNESS"
@@ -132,7 +134,35 @@ def _format_pick(pick: dict[str, Any], harness: str, schema_harness: str) -> dic
     return formatted
 
 
+def _antigravity(payload: dict[str, Any], tool_input: dict[str, Any]) -> dict[str, Any]:
+    # Antigravity lanes are dynamic `define_subagent`/`invoke_subagent` calls, never profile
+    # files: the registry carries no per-agent pick, so the tier and the name are the whole
+    # enforcement surface (tiers per harness-capabilities IR: inherit|flash_lite|flash|pro).
+    name = _agent_name(payload, tool_input) or tool_input.get("name")
+    if not isinstance(name, str) or not name.startswith("k-agent-"):
+        return {
+            "decision": "deny",
+            "reason": (
+                "Antigravity lanes launch only as `k-agent-<role>` profiles; "
+                f"{name!r} is not a managed lane. Define the role with `define_subagent` first."
+            ),
+        }
+    tier = tool_input.get("model")
+    if tier is not None and tier != "flash":
+        return {
+            "decision": "deny",
+            "reason": (
+                "Antigravity `invoke_subagent` accepts only the `flash` tier; "
+                f"{tier!r} is not a lane tier. Pass `flash` for every category."
+            ),
+        }
+    return {"decision": "allow"}
+
+
 def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]) -> dict[str, Any]:
+    # Fresh managed leaf on every route (SOP §3.7: fresh worker context, a marker is not isolation).
+    if tool_input.get("fork_context") or tool_input.get("resume"):
+        return _deny("claude_code", "Claude lanes require a fresh managed leaf, not a fork or resume.")
     if os.environ.get("AGENT_BAND_SUBSCRIPTION") or os.environ.get(MODEL_FORMAT_ENV) == "openrouter-preset":
         try:
             routes = json.loads(os.environ.get("AGENT_BAND_CLAUDE_ROUTES", ""))
@@ -147,8 +177,6 @@ def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str,
                 or os.environ.get("CLAUDE_CODE_SUBAGENT_MODEL")
             ):
                 raise ValueError("Conflicting inherited Claude lane controls.")
-            if tool_input.get("fork_context") or tool_input.get("resume"):
-                raise ValueError("Cross-provider Claude lanes require a fresh managed leaf, not a fork or resume.")
         except (ValueError, TypeError) as error:
             return _deny("claude_code", str(error))
         updated = {key: value for key, value in tool_input.items() if key not in {"model", "reasoning_effort"}}
@@ -188,6 +216,12 @@ def _cursor(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str,
 
 
 def _codex(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]) -> dict[str, Any]:
+    # Native routes admit forks the same way the subscription path did: deny unconditionally.
+    if tool_input.get("fork_context") or tool_input.get("resume"):
+        return _deny(
+            "codex",
+            "Subscription lanes require a fresh managed leaf; full-history forks inherit root configuration.",
+        )
     # Codex rejects updatedInput unless permissionDecision is "allow" ("PreToolUse hook returned
     # updatedInput without permissionDecision:allow", codex 0.146.0). spawn_agent takes model and
     # reasoning_effort directly, so both dials are enforceable here.
@@ -254,16 +288,18 @@ def _copilot(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str
     return {"modifiedArgs": updated}
 
 
-# Antigravity deliberately has no adapter here. Its dynamic `invoke_subagent`
+# Antigravity deliberately has no projection pick: its dynamic `invoke_subagent`
 # schema accepts abstract model tiers (`inherit`, `flash_lite`, `flash`, `pro`),
-# so the controller passes the registry's tier directly when launching a lane.
+# so the `_antigravity` adapter above enforces the `flash` tier and the `k-agent-`
+# name directly instead of rewriting a registry pick.
 # OMP has none either: its `task` tool takes no model argument at all, and the categories are
 # spelled as `@role` tokens that readonly_config.yml.tmpl's `modelRoles` resolves, so there is
 # nothing on the wire to rewrite.
-# Pi has none because there is nothing to rewrite it with: a per-call model override is reachable
-# (including from a workflowScript), so the binding is runtime rather than static, but Pi exposes no
-# mutating pre-tool-use hook — its extension API can block a call, not modify its arguments. The
-# named child profile's own frontmatter is what holds the band there.
+# Pi has none because there is nothing to rewrite it with: no per-call model override is
+# admitted (the binding is static; `LEAF_PARAMETER_KEYS` in subagent-contract.ts admits no
+# `model` or `workflowScript` key), and Pi exposes no mutating pre-tool-use hook — its
+# extension API can block a call, not modify its arguments. The named child profile's own
+# frontmatter is what holds the band there.
 ADAPTERS = {
     "claude_code": _claude,
     "cursor": _cursor,
@@ -279,7 +315,16 @@ AGENT_KEYS = ("subagent_type", "agent_type", "agent", "agent_name", "role", "sub
 # cursor-agent bundle still names the call type `taskToolCall`; which of the two the preToolUse
 # payload carries as `tool_name` is unverified, so both are matched here, in the hooks.json
 # matcher, and in the Copilot extension's verbatim mirror of this set.
-DELEGATION_TOOLS = {"Task", "Agent", "spawn_agent", "subagent", "Subagent", "task"}
+DELEGATION_TOOLS = {
+    "Task",
+    "Agent",
+    "spawn_agent",
+    "subagent",
+    "Subagent",
+    "task",
+    "invoke_subagent",
+    "define_subagent",
+}
 
 
 def _agent_name(payload: dict[str, Any], tool_input: dict[str, Any]) -> str:
@@ -290,15 +335,22 @@ def _agent_name(payload: dict[str, Any], tool_input: dict[str, Any]) -> str:
     return ""
 
 
-def main() -> int:
-    raw = sys.stdin.read()
-    try:
-        payload = json.loads(raw) if raw.strip() else {}
-    except ValueError:
-        print("{}")
-        return 0
+def _passthrough(harness: str) -> int:
+    # Antigravity PreToolUse treats a missing `decision` as a denial with no reason; every
+    # other harness reads `{}` as "no opinion".
+    print(json.dumps({"decision": "allow"}) if harness == "antigravity" else "{}")
+    return 0
 
+
+def main() -> int:
     harness = os.environ.get(HARNESS_ENV, "")
+    try:
+        payload = read_payload()  # normalises the Antigravity `toolCall` envelope into tool_name/tool_input
+    except ValueError:
+        return _passthrough(harness)
+    if not isinstance(payload, dict):
+        return _passthrough(harness)
+
     schema_harness = os.environ.get(SCHEMA_HARNESS_ENV, "") or harness
     adapter = ADAPTERS.get(harness)
     tool = payload.get("tool_name") or payload.get("tool") or ""
@@ -316,12 +368,22 @@ def main() -> int:
         except ValueError:
             tool_input = {}
 
-    if adapter is None or tool not in DELEGATION_TOOLS or not isinstance(tool_input, dict):
-        print("{}")
+    if adapter is None and harness != "antigravity" or tool not in DELEGATION_TOOLS or not isinstance(tool_input, dict):
+        return _passthrough(harness)
+
+    if is_delegated_leaf(payload):
+        if harness == "antigravity":
+            print(json.dumps({"decision": "deny", "reason": "A delegated leaf must not launch another agent."}))
+        else:
+            print(json.dumps(_deny(harness, "A delegated leaf must not launch another agent.")))
         return 0
 
-    if isinstance(payload.get("agent_id"), str) and payload["agent_id"].strip():
-        print(json.dumps(_deny(harness, "A delegated leaf must not launch another agent.")))
+    if harness == "antigravity" and tool in {"invoke_subagent", "define_subagent"}:
+        print(json.dumps(_antigravity(payload, tool_input) or {}, sort_keys=True))
+        return 0
+
+    if adapter is None:
+        print("{}")
         return 0
 
     subscription = os.environ.get("AGENT_BAND_SUBSCRIPTION", "")

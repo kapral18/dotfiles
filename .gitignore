@@ -9,3 +9,10 @@ mprocs.log
 
 # Generated SOP policy manifest; source audit state lives in policy-audit.v1.json.
 /home/dot_config/ai/exact_policy-ir/readonly_policy-manifest.v1.json
+
+# Accidental chezmoi-source copies of machine-local shell extras
+/home/dot_profile.local
+/home/dot_bashrc.local
+/home/dot_zshrc.local
+/home/dot_config/fish/config.local.fish
+/home/dot_config/fish/readonly_config.local.fish

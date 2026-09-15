@@ -37,3 +37,6 @@ fi
 
 # Ensure path array contains unique values
 typeset -U path
+
+# Machine-local extras (not in git). Missing file is a no-op.
+[ -f ~/.zshrc.local ] && source ~/.zshrc.local

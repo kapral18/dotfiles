@@ -1,6 +1,7 @@
 # Final Claim Audit
 
 Use only for an explicit final Verify packet containing the draft claim set and source evidence.
+If the packet is not a claim set plus its named primary sources, return `blocked: wrong lane` and do nothing else; this lane MUST NOT run a code or diff review.
 Check material claims against the actual supporting sources; reuse complete unchanged evidence.
 Match the source identity/date/ref to the claim.
 Confirm the quoted passage occurs in the captured primary source and entails the claim, not just a related fact.

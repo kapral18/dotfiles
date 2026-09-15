@@ -12,7 +12,7 @@ Review text is human-visible output, so the workflow separates drafting from pos
 | Concern          | Rule                                                                                         |
 | ---------------- | -------------------------------------------------------------------------------------------- |
 | Reply style      | draft direct, anchored review feedback without noisy quoting                                 |
-| Router behavior  | choose exactly one review mode before loading shared rules                                   |
+| Router behavior  | choose exactly one review mode; shared rules travel in the worker packet, not root context   |
 | Publication      | draft and supervise anything a human will see                                                |
 | Bot carve-out    | auto-reply/auto-resolve only verified bot-authored threads inside an explicitly-invoked flow |
 | Deletion/history | verify removals and trace rationale for long-lived or legacy infra                           |
@@ -44,7 +44,7 @@ The review router selects exactly one of four modes:
 | PR fix        | address feedback                                      |
 | plan review   | judge a design/plan document against codebase reality |
 
-Shared rules and PR-common setup are loaded once by the router, not duplicated per mode.
+The root loads the router, `authorship.md`, `lanes.md`, and one mode file. `judging_core.md`, `judging_pipeline.md`, and `shared_rules.md` are reviewer-worker mechanics named in the packet; the root reads only a specific gate section from them when a mode step names it. PR-common setup is loaded once by the mode file at the gate that needs it.
 
 When both a dirty working tree and a current-branch PR exist, the router defaults to local changes mode and notes that the PR exists so the user can switch if needed.
 

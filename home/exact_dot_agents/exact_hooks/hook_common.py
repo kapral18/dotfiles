@@ -20,6 +20,31 @@ AGENT_DEPTH_ENV = "AI_AGENT_DEPTH"
 AGENT_DEPTHS = {"fast", "balanced", "deep"}
 DEFAULT_AGENT_DEPTH = "balanced"
 PARENT_SESSION_ENV = "COPILOT_AGENT_SESSION_ID"
+PI_SUBAGENT_CHILD_ENV = "PI_SUBAGENT_CHILD"
+
+
+def is_delegated_leaf(payload: dict[str, Any] | None = None) -> bool:
+    """True when this call runs inside a delegated leaf on any harness.
+
+    Single owner for leaf identity (SOP §3.7 leaf contract): Claude/Codex child
+    calls carry `agent_id`, Copilot children inherit `COPILOT_AGENT_SESSION_ID` naming the
+    parent (unverified live; a call whose own session key equals it is the root), and
+    pi-subagents children carry `PI_SUBAGENT_CHILD=1`. Cursor has no leaf
+    signal: its children read as roots and must run attended only.
+    """
+    data = payload or {}
+    agent_id = data.get("agent_id")
+    if isinstance(agent_id, str) and agent_id.strip():
+        return True
+    parent = parent_session_key()
+    if parent:
+        # The env names the PARENT session. A call whose own session key equals it
+        # is the root with an ambient variable, not a child; only a distinct key
+        # (or a payload without one) counts as leaf evidence.
+        own = session_key(data)
+        if not own or own != parent:
+            return True
+    return os.environ.get(PI_SUBAGENT_CHILD_ENV) == "1"
 
 
 def read_payload() -> dict[str, Any]:

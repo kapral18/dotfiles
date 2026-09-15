@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Deep Review
 
-Subagent dispatch: review (refute for the adversarial packet) — distinct reviewer-worker and adversarial-verifier packets.
+Subagent dispatch: review (refute slice for the adversarial packet) — distinct reviewer-worker and adversarial-verifier packets.
 
 Apply deep coverage inside the SOP's single final Verify stage.
 Depth means relevant source, counterexamples, and preserved-behavior analysis, not more workflow layers.
@@ -26,9 +26,9 @@ Read `~/.agents/skills/k-review/references/context-pack.md` when producing/consu
 ## Final review
 
 Freeze the integrated candidate and acceptance plan. Known user-authorized fixes must already be produced and formatted.
-Read `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/judging_pipeline.md` for applicable correctness, severity, and integrated hygiene lenses.
+Reviewers load `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/judging_pipeline.md` from the packet for correctness, severity, and integrated hygiene lenses; the root passes the paths and the selected gate names and MUST NOT preload those files.
 Use existing complete check receipts.
-Apply the Check-Coverage Exemption in `~/.agents/skills/k-review/references/judging_core.md` with those receipts and pass the resulting `CI coverage:` line in every final packet.
+Apply the Check-Coverage Exemption in `~/.agents/skills/k-review/references/judging_core.md` with those receipts and pass the resulting `CI coverage:` line in every final packet; read only that section for it.
 Execute missing planned checks once through direct tools; shared or mutating checks stay root-owned and serialized as needed.
 Read `~/.agents/skills/k-deep-review/references/live-ui-validation.md` only when final UI/runtime evidence is needed.
 Final reviewers return anchored findings or evidence gaps once.
@@ -43,12 +43,12 @@ Only the active root/main session follows this section; a delegated leaf skips i
 Read `~/.agents/skills/k-deep-review/references/reviewer-roster.md` to select the smallest useful strong final roster.
 Launch distinct strong review and adversarial packets before any final judgment: one using `~/.agents/skills/k-review/references/reviewer-worker.md` and one using `~/.agents/skills/k-review/references/adversarial-verifier.md`, each with its selected risk questions against the same frozen candidate.
 Retain strong artifact review and adversarial challenge as distinct questions in the same final stage, never as reviews of one another.
-Select additional specialists only for independent risks; use the blind fresh-eyes contract when comprehension risk warrants it.
+Select additional specialists only for independent risks; use the blind fresh-eyes contract when comprehension risk warrants it, where the harness exposes it; otherwise omit.
 The root MUST NOT substitute its own inline review for those packets absent an explicit user no-delegation instruction.
 If a required lane or tool is unavailable, report blocked; do not silently fall back to an inline review.
 The root still owns scope, scope-level evidence, deterministic checks, integration, and terminal synthesis; the substantive review judgment executes in the workers.
 Until those packets return, the root reads only scope-level evidence (`git status`, `git diff --stat`, changed names, `git log --oneline`, check receipts, PR discussion for named material questions) and MUST NOT read diff hunks, changed-file bodies, callers, or blame output; those reads travel in the packets.
-Use `~/.agents/skills/k-review/references/runtime-harnesses.md` only for actual invocation/capability caveats.
+Pass `~/.agents/skills/k-review/references/runtime-harnesses.md` (and, for Pi/OMP, `~/.agents/skills/k-review/references/runtime-harnesses-pi-omp.md`) as a packet pointer only for actual invocation/capability caveats; the root does not open them.
 Workers load leaf contracts and the packet's selected lens, not full controller routers or root memory hooks.
 Await each packet once before the verdict; do not relaunch active/completed packets, poll without new evidence, message siblings, or revive terminal workers.
 Record model/effort, stage, packet ID and result pointer in the compact handoff;

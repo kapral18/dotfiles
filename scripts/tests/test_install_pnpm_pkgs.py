@@ -74,6 +74,21 @@ if args == ["ls", "-g", "--json", "--depth", "0"]:
     print(json.dumps([{ "dependencies": dependencies }]))
     sys.exit(0)
 
+if args == ["outdated", "-g", "--json"]:
+    state["outdated_calls"] = state.get("outdated_calls", 0) + 1
+    state_path.write_text(json.dumps(state), encoding="utf-8")
+    behavior = state.get("outdated_behavior")
+    if behavior == "fail":
+        print("registry unreachable", file=sys.stderr)
+        sys.exit(74)
+    if behavior == "malformed":
+        print("not json")
+        sys.exit(1)
+    outdated = state.get("outdated") or {}
+    print(json.dumps(outdated))
+    # pnpm exits 1 when anything is outdated and 0 when nothing is.
+    sys.exit(1 if outdated else 0)
+
 if "--yes" not in args:
     print("expected noninteractive flag", file=sys.stderr)
     sys.exit(1)
@@ -111,6 +126,8 @@ class TestInstallPnpmPkgs(unittest.TestCase):
         allow_builds: dict[str, object] | None = None,
         root_behavior: str | None = None,
         config_get_behavior: str | None = None,
+        outdated: dict[str, dict[str, str]] | None = None,
+        outdated_behavior: str | None = None,
     ):
         home = Path(tmp) / "home"
         home.mkdir()
@@ -127,6 +144,8 @@ class TestInstallPnpmPkgs(unittest.TestCase):
             "global_workspace": str(global_dir),
             "root_behavior": root_behavior,
             "config_get_behavior": config_get_behavior,
+            "outdated": outdated or {},
+            "outdated_behavior": outdated_behavior,
         }
         for name, version in installed.items():
             package_path = global_dir / f"hash-{name.replace('/', '+')}" / "node_modules" / name
@@ -166,6 +185,10 @@ class TestInstallPnpmPkgs(unittest.TestCase):
         )
 
     @staticmethod
+    def _behind(*names: str) -> dict[str, dict[str, str]]:
+        return {name: {"current": "1.0.0", "latest": "9.9.9", "wanted": "1.0.0"} for name in names}
+
+    @staticmethod
     def _actions(log: Path) -> list[str]:
         return log.read_text(encoding="utf-8").splitlines() if log.exists() else []
 
@@ -187,6 +210,7 @@ class TestInstallPnpmPkgs(unittest.TestCase):
                 tmp,
                 "pinned@1.2.3\n@org/scoped@2.0.0\nunpinned\n",
                 {"pinned": "1.0.0", "@org/scoped": "2.0.0", "unpinned": "0.9.0"},
+                outdated=self._behind("unpinned"),
             )
             result = self._run(home, bindir, log, state, path=str(bindir))
             actions = self._actions(log)
@@ -224,7 +248,13 @@ class TestInstallPnpmPkgs(unittest.TestCase):
                 "sharp": False,
             }
             installed = {name: "1.2.3" if name == "@scope/pinned" else "1.0.0" for name in desired_names}
-            home, bindir, log, state = self._fixture(tmp, desired, installed, allow_builds=unrelated)
+            home, bindir, log, state = self._fixture(
+                tmp,
+                desired,
+                installed,
+                allow_builds=unrelated,
+                outdated=self._behind(*(name for name in desired_names if name != "@scope/pinned")),
+            )
             result = self._run(home, bindir, log, state)
             recorded = json.loads(state.read_text(encoding="utf-8"))
             actions = self._actions(log)
@@ -281,7 +311,9 @@ class TestInstallPnpmPkgs(unittest.TestCase):
 
     def test_SHOULD_sync_without_prompt_when_invoked_with_terminal_stdin(self):
         with tempfile.TemporaryDirectory() as tmp:
-            home, bindir, log, state = self._fixture(tmp, "current\n", {"current": "1.0.0"})
+            home, bindir, log, state = self._fixture(
+                tmp, "current\n", {"current": "1.0.0"}, outdated=self._behind("current")
+            )
             master, terminal = pty.openpty()
             try:
                 assert os.isatty(terminal)
@@ -299,6 +331,7 @@ class TestInstallPnpmPkgs(unittest.TestCase):
                 tmp,
                 "fresh\n@org/pinned@2.0.0\ncurrent\n",
                 {"@org/pinned": "1.0.0", "current": "1.0.0", "stray": "1.0.0"},
+                outdated=self._behind("current"),
             )
             with patch.dict(os.environ, {"PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS": "true"}):
                 result = self._run(home, bindir, log, state)
@@ -309,10 +342,12 @@ class TestInstallPnpmPkgs(unittest.TestCase):
         allowed = {
             "add -g fresh@latest --yes",
             "add -g @org/pinned@2.0.0 --yes",
-            "update -g --latest fresh --yes",
             "update -g --latest current --yes",
         }
         assert allowed.issubset(recorded["calls"])
+        # A package installed at latest in this run is not updated again; the outdated probe runs without the override.
+        assert "update -g --latest fresh --yes" not in recorded["calls"]
+        assert "outdated -g --json" in recorded["calls"]
         assert "remove -g stray --yes" in recorded["calls"]
         assert len(recorded["calls"]) == len(recorded["exotic_settings"])
         for call, setting in zip(recorded["calls"], recorded["exotic_settings"]):
@@ -333,6 +368,7 @@ class TestInstallPnpmPkgs(unittest.TestCase):
                 tmp,
                 "moved\nfails\nafter\n@org/scoped@2.0.0\n",
                 {"moved": "1.0.0", "fails": "1.0.0", "after": "1.0.0", "@org/scoped": "2.0.0"},
+                outdated=self._behind("moved", "fails", "after"),
             )
             moved_new = str(Path(tmp) / "new-moved-path")
             self._seed_link(home, "moved", str(Path(tmp) / "old-moved-path"))
@@ -380,6 +416,7 @@ class TestInstallPnpmPkgs(unittest.TestCase):
                     "current\n",
                     {"current": "1.0.0"},
                     list_behaviors={"2": behavior},
+                    outdated=self._behind("current"),
                 )
                 old_target = str(Path(tmp) / "old-current-path")
                 self._seed_link(home, "current", old_target)
@@ -426,6 +463,7 @@ class TestInstallPnpmPkgs(unittest.TestCase):
                 {"current": "1.0.0"},
                 list_behaviors={"2": "fail"},
                 failures={"update -g --latest current": "upgrade rejected"},
+                outdated=self._behind("current"),
             )
             old_target = str(Path(tmp) / "old-current-path")
             self._seed_link(home, "current", old_target)
@@ -449,6 +487,7 @@ class TestInstallPnpmPkgs(unittest.TestCase):
                 "current\n",
                 {"current": "1.0.0"},
                 failures={"update -g --latest current": "upgrade rejected"},
+                outdated=self._behind("current"),
             )
             parent = home / ".local/share/pnpm-global-links"
             parent.parent.mkdir(parents=True)
@@ -473,6 +512,97 @@ class TestInstallPnpmPkgs(unittest.TestCase):
             assert not root.is_symlink()
             assert list(root.iterdir()) == []
             assert (old / "sentinel").read_text() == "keep"
+
+    def test_SHOULD_skip_update_for_unpinned_packages_already_at_latest(self):
+        # 2026-09-14: a one-package list edit ran `pnpm update -g --latest` on every unpinned global; pnpm
+        # rebuilt each package's directory at the same version and stranded a running Pi session.
+        with tempfile.TemporaryDirectory() as tmp:
+            home, bindir, log, state = self._fixture(
+                tmp,
+                "current\nbehind\nnew-one\n",
+                {"current": "1.0.0", "behind": "1.0.0"},
+                outdated=self._behind("behind"),
+            )
+            result = self._run(home, bindir, log, state)
+            actions = self._actions(log)
+            recorded = json.loads(state.read_text(encoding="utf-8"))
+
+        assert result.returncode == 0, result.stderr
+        assert actions == ["add -g new-one@latest", "update -g --latest behind"]
+        assert "pnpm package current is already at latest" in result.stdout
+        assert recorded["outdated_calls"] == 1
+
+    def test_SHOULD_not_probe_outdated_when_every_package_is_pinned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home, bindir, log, state = self._fixture(tmp, "pinned@1.0.0\n", {"pinned": "1.0.0"})
+            result = self._run(home, bindir, log, state)
+            recorded = json.loads(state.read_text(encoding="utf-8"))
+
+        assert result.returncode == 0, result.stderr
+        assert self._actions(log) == []
+        assert recorded.get("outdated_calls", 0) == 0
+
+    def test_SHOULD_fail_before_updating_when_outdated_probe_is_unusable(self):
+        for behavior in ("fail", "malformed"):
+            with self.subTest(behavior=behavior), tempfile.TemporaryDirectory() as tmp:
+                home, bindir, log, state = self._fixture(
+                    tmp, "current\n", {"current": "1.0.0"}, outdated_behavior=behavior
+                )
+                self._seed_link(home, "current", str(Path(tmp) / "old-current-path"))
+                result = self._run(home, bindir, log, state)
+
+                assert result.returncode == 1
+                assert "pnpm outdated -g" in result.stderr
+                assert self._actions(log) == []
+                # links are still refreshed to the live inventory after the failure
+                assert os.readlink(self._link(home, "current")) == self._state_path(state, "current")
+
+    def _fake_lsof(self, tmp: str, pnpm_home: Path, *, marker: Path) -> Path:
+        gone = pnpm_home / "global" / "v11" / "gone-18d5073542a15678-0" / "node_modules" / "pi"
+        kept = pnpm_home / "global" / "v11" / "kept-18d50b07e3fd3cc8-0" / "node_modules" / "omp"
+        kept.mkdir(parents=True)
+        script = Path(tmp) / "bin" / "lsof"
+        script.write_text(
+            "#!/bin/sh\n"
+            f"touch {marker}\n"
+            "printf 'p4242\\ncpi\\nfcwd\\nn/Users/someone/work\\nftxt\\n'\n"
+            f"printf 'n{gone}/dist/cli.js\\n'\n"
+            "printf 'p66359\\ncbun\\nftxt\\n'\n"
+            f"printf 'n{kept}/dist/index.js\\n'\n",
+            encoding="utf-8",
+        )
+        script.chmod(0o755)
+        return script
+
+    def test_SHOULD_name_processes_still_running_from_removed_pnpm_dirs_after_a_mutation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home, bindir, log, state = self._fixture(tmp, "fresh\n", {})
+            pnpm_home = home / ".local/share/pnpm"
+            marker = Path(tmp) / "lsof-ran"
+            lsof = self._fake_lsof(tmp, pnpm_home, marker=marker)
+            with patch.dict(os.environ, {"INSTALL_PNPM_PKGS_LSOF": str(lsof)}):
+                result = self._run(home, bindir, log, state)
+            ran = marker.exists()
+
+        assert result.returncode == 0, result.stderr
+        assert ran
+        assert "Restart needed: pi (pid 4242) still runs from removed" in result.stdout
+        assert "gone-18d5073542a15678-0" in result.stdout
+        assert "66359" not in result.stdout
+
+    def test_SHOULD_not_scan_processes_when_nothing_changed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home, bindir, log, state = self._fixture(tmp, "current\n", {"current": "1.0.0"})
+            marker = Path(tmp) / "lsof-ran"
+            lsof = self._fake_lsof(tmp, home / ".local/share/pnpm", marker=marker)
+            with patch.dict(os.environ, {"INSTALL_PNPM_PKGS_LSOF": str(lsof)}):
+                result = self._run(home, bindir, log, state)
+            ran = marker.exists()
+
+        assert result.returncode == 0, result.stderr
+        assert self._actions(log) == []
+        assert not ran
+        assert "Restart needed" not in result.stdout
 
 
 if __name__ == "__main__":

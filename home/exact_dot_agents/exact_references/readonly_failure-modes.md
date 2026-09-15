@@ -1,6 +1,8 @@
 # Agent reasoning failure modes
 
-This is a catalog of agent conduct failures that have happened in real sessions on this machine, kept short and load-bearing. Each entry names a single failure mode, the falsifier that would have caught it, and the system change that prevents its recurrence. The list is intentionally small: anti-patterns grouped by category.
+This is a catalog of agent conduct failures that have happened in real sessions on this machine, kept short and load-bearing.
+Each entry names a single failure mode, the falsifier that would have caught it, and the system change that prevents its recurrence.
+The list is intentionally small: anti-patterns grouped by category.
 
 This catalog is not a skill: it has no procedure to invoke. Its consumer is the canonical `AGENTS.md` §2.4 (Self-Claims), where the SOP delegates "before asserting a claim, name what would make it false and check that." When a session reproduces one of the modes below, the SOP already mandates the falsifier; sessions load this file by path so the falsifier is at hand when needed.
 
@@ -26,7 +28,8 @@ This catalog is not a skill: it has no procedure to invoke. Its consumer is the 
 
 ### Merge-ready verdict without reviewer-thread triage
 
-**Mode.** Agent states "merge-ready, no surviving findings" on the first response of a PR review, without reading the live reviewer conversations, the inline reviewer comments, or the PR's CI check enumeration.
+**Mode.**
+Agent states "merge-ready, no surviving findings" on the first response of a PR review, without reading the live reviewer conversations, the inline reviewer comments, or the PR's CI check enumeration.
 
 **Falsifier.** A `Verdict:` line is only honest after `gh pr checks`, the GraphQL reviewThreads pull, and the per-comment author-type classification have all completed on the current head SHA.
 
@@ -36,7 +39,9 @@ This catalog is not a skill: it has no procedure to invoke. Its consumer is the 
 
 **Mode.** Agent proves the requested positive behavior but does not reconstruct the full old-rule -> new-rule semantic delta. A fix for one symptom broadens or narrows behavior elsewhere, while the spec, tests, build verification, and review all inherit the same narrowed oracle.
 
-**Falsifier.** Before implementation or review verdict, state the old rule, new rule, intended differences, preserved differences, and evidence for each. A proposed fix whose semantic delta includes extra differences is not complete until those differences are classified as requested, preserved, or blocked.
+**Falsifier.**
+Before implementation or review verdict, state the old rule, new rule, intended differences, preserved differences, and evidence for each.
+A proposed fix whose semantic delta includes extra differences is not complete until those differences are classified as requested, preserved, or blocked.
 
 **Prevention.** `home/readonly_AGENTS.md`, `k-spec`, `k-build`, `k-code-quality`, `k-code-quality-tests`, and `k-review` all consume the shared semantic-delta contract instead of adding per-domain checklists.
 
@@ -46,9 +51,11 @@ This catalog is not a skill: it has no procedure to invoke. Its consumer is the 
 
 **Mode.** Agent runs 5+ probe commands (mostly Jest or `node -e`) and they all return "fail" because the agent's mental model of the artifact under test is wrong (regex arithmetic off-by-one, harness envelope shapes different from memory, etc.). The agent keeps probing instead of re-reading the source. Observed with minimax-m3, which itself proposed this ledger mechanism after exhibiting the loop; sessions on that model are the population to check when auditing whether the ledger gets written.
 
-**Falsifier.** Reading the source once beats a fifth probe. Specifically for the pattern of "an assertion about how the code behaves keeps returning the opposite of what I expect" — the answer is "go read the source, character by character if needed."
+**Falsifier.** Reading the source once beats a fifth probe.
+Specifically for the pattern of "an assertion about how the code behaves keeps returning the opposite of what I expect" —
+the answer is "go read the source, character by character if needed."
 
-**Prevention.** `~/.agents/hooks/correction_detector.py` carries a `probe-budget-exhausted` signal: it reads a session-scoped JSONL ledger (`/tmp/specs/<workspace>/<session_key>.probe-ledger.jsonl`) and returns the signal when 3+ of the last 8 entries are failures recorded within the last 30 minutes. The companion `,probe` helper at `~/bin/,probe` records failures via `,probe fail "<summary>"`, chained onto the failing command; passes are not recorded. The session-injected `[VERIFICATION DISCIPLINE]` prefix (`~/.config/tmux/agent_prompts/prefix.txt`) carries the recording instruction, so the producer side is wired on every harness. When the per-turn `perturn_recall.py` hook sees the signal, it injects a "re-read the source" note on the next prompt.
+**Prevention.** `~/.agents/hooks/correction_detector.py` carries a `probe-budget-exhausted` signal: it reads a session-scoped JSONL ledger (`/tmp/specs/<workspace>/<session_key>.probe-ledger.jsonl`) and returns the signal when 3+ of the last 8 entries are failures recorded within the last 30 minutes. The companion `,probe` helper at `~/bin/,probe` records failures via `,probe fail "<summary>"`, chained onto the failing command; passes are not recorded. The session-injected `[SOP REINFORCEMENT — verified excerpt; the full SOP stays authoritative]` prefix (`~/.config/tmux/agent_prompts/prefix.txt`) carries the recording instruction, so the producer side is wired on every harness. When the per-turn `perturn_recall.py` hook sees the signal, it injects a "re-read the source" note on the next prompt.
 
 The helper resolves the session key through `,agent-memory status --json`, passing the harness session id when `CLAUDE_SESSION_ID` / `CODEX_SESSION_ID` / `CURSOR_SESSION_ID` / `COPILOT_AGENT_SESSION_ID` is set. In practice most shells expose none of those variables, so entries land in the shared `ad-hoc.probe-ledger.jsonl` for the workspace. The reader closes that gap: when the session-keyed ledger is missing or empty, `probe_budget_signal` falls back to the `ad-hoc` ledger under the same 30-minute failure window, so shell-recorded probes still drive the hint while another session's stale failures cannot fire it.
 
@@ -60,7 +67,9 @@ The consumer is wired on every harness: Cursor, Claude, Codex, OpenCode, and Cop
 
 **Mode.** The user issues a single-tool directive (e.g. "just run `gh pr view`", "trust me, try without args"). The agent argues in prose about why the tool might not work, listing edge cases, instead of running the requested tool first.
 
-**Falsifier.** Directives are inputs. The right response is to run the directive, report what the tool returned, and only then explain the result. If the tool returns a failure, that is evidence to share, not a hypothesis to defend before the run.
+**Falsifier.** Directives are inputs.
+The right response is to run the directive, report what the tool returned, and only then explain the result.
+If the tool returns a failure, that is evidence to share, not a hypothesis to defend before the run.
 
 **Prevention.** No automated hook today; flagged by `correction_detector.py`'s explicit-claim patterns ("you guessed", "instead of testing"). The agents that fall into this mode produce a recognizable verb-heavy prose paragraph before any tool call; that signature is what the user has historically flagged with "are you stupid". Treat the flag as a system bug, not as a personal attack.
 
@@ -70,9 +79,12 @@ The consumer is wired on every harness: Cursor, Claude, Codex, OpenCode, and Cop
 
 **Mode.** Agent names a third-party API contract, OS behavior, or library parameter set from memory rather than reading the artifact, and proceeds on the remembered shape. Examples in this session: Monaco `IKeyboardEvent` semantics (verified live with `web_search`), keycode-vs-key handling (verified against MDN spec), Bash `set -e` and `NOMATCH` interaction.
 
-**Falsifier.** SOP §2.2 "Resolve identity before semantics" already mandates this. Anchoring means: read the source, run a probe, or quote a fetched doc with the exact verbatim phrase. Anything cited from memory is a claim, and a claim about external behavior is a 2.4 self-claim too.
+**Falsifier.** SOP §2.2 "Resolve identity before semantics" already mandates this.
+Anchoring means: read the source, run a probe, or quote a fetched doc with the exact verbatim phrase.
+Anything cited from memory is a claim, and a claim about external behavior is a 2.4 self-claim too.
 
-**Prevention.** The SOP already enforces this; no setup change needed beyond acknowledging that the failure mode repeats and adding it to this index so a session can search it when the user reports it.
+**Prevention.**
+The SOP already enforces this; no setup change needed beyond acknowledging that the failure mode repeats and adding it to this index so a session can search it when the user reports it.
 
 ## Tool-name fidelity
 
@@ -82,9 +94,17 @@ The consumer is wired on every harness: Cursor, Claude, Codex, OpenCode, and Cop
 
 **Falsifier.** The helper's `--help` and `k-github/SKILL.md` spell the name verbatim; a comma-less mention contradicts source already in context. For flags, SOP §2.2 already mandates reading `--help` before use.
 
-**Prevention.** `prefix.txt` carries "User commands are comma-prefixed executables: the leading comma … is part of the command — type it verbatim" (added 2026-08-19), injected at session start and reinforced per turn.
+**Prevention.** No automated hook today. The comma-verbatim rule lives in SOP §4 (`User commands are comma-prefixed ... type the comma verbatim`); `prefix.txt` does not re-inject it. Flagged only when a session visibly strips the comma in prose or argv.
 
 ## Hook surface debt
+
+### Worker runs checks through bash
+
+**Mode.** Workers MUST NOT run verification, yet tool allowlists include `bash`, so a worker can run acceptance checks or lint-to-green through a shell command that no hook classifies as verification work.
+
+**Falsifier.** The SOP §3.7 leaf contract already states the ban; the gap is enforcement, not wording.
+
+**Prevention.** None — open. Text checks do not classify arbitrary shell commands, so do not treat the ban as hook-enforced.
 
 ### Premise_nudge misses its target
 
@@ -92,10 +112,14 @@ The consumer is wired on every harness: Cursor, Claude, Codex, OpenCode, and Cop
 
 **Falsifier.** The premise is part of the command in `premise_nudge.py`'s PREMISE_PATTERNS tuple. Patterns miss when a verb is added (e.g. a new git flag) or the harness envelope differs.
 
-**Prevention.** When premise-nudge fails to fire on what looked like a destructive command, append the missing verb and a matching pattern to PREMISE_PATTERNS; the hook is intentionally pattern-additive.
+**Prevention.**
+When premise-nudge fails to fire on what looked like a destructive command, append the missing verb and a matching pattern to PREMISE_PATTERNS; the hook is intentionally pattern-additive.
 
 ## Operating rules
 
-- One entry per failure mode. If a session produces a new shape, add an entry; do not generalize this catalog until three distinct sessions exhibit the shape.
-- Each entry starts with the **Mode**, names the **Falsifier**, and points at the **Prevention** (system change). When there is no prevention, the entry is a research note, not a closed loop.
-- This catalog does not have a single "best practices" section on purpose; the SOP already owns best practices. The catalog's job is to anchor recurring failure shapes so the SOP can refer to them.
+- One entry per failure mode.
+  If a session produces a new shape, add an entry; do not generalize this catalog until three distinct sessions exhibit the shape.
+- Each entry starts with the **Mode**, names the **Falsifier**, and points at the **Prevention** (system change).
+  When there is no prevention, the entry is a research note, not a closed loop.
+- This catalog does not have a single "best practices" section on purpose; the SOP already owns best practices.
+  The catalog's job is to anchor recurring failure shapes so the SOP can refer to them.

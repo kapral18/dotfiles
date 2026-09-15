@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (174).
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (175).
 %% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Shared hooks → ~/.agents/hooks/.
 %% ============================================================================
 flowchart TB
@@ -61,7 +61,7 @@ flowchart TB
     SUBA -.->|"wraps (skill = source of truth)"| S1 & S3 & S5 & KBN
     DUTIES["Preserved duties, no nested graph (docs: subagents.md)<br/>root recipes explicitly dispatch isolated final packets and load final criteria/claim contracts and the lens catalog;<br/>light predicate rejects risky/unknown scope and dispatches one change-auditor worker with core + pipeline;<br/>criteria judge checks outcome/reachability/clean-state/scope from shared evidence;<br/>root assigns full scoped coverage; leaf completes it and returns evidence gaps once;<br/>root-owned terminal synthesis retains material blockers and blind-clarity constraints;<br/>UI leaf retains allowed setup, never source fixes; root views used screenshots once<br/>cross-harness profile/load-edge regressions: test_review_policy_invariants.py"]:::data
     SUBA --> DUTIES
-    BANDS[("dot_config/ai/readonly_agent-bands.v1.json (generated from ai_models/tiering.yaml by scripts/generate_agent_bands.py)<br/>harness → agent → {model, effort?, alias?}; validate the resolved schema harness: Cursor auto is selector-only, Codex/Copilot require effort; configured adapters enforce their verified per-call mutation scope; generic types preserve exact lane controls, requiring explicit effort on separate-effort backends when one model serves multiple lanes")]:::data
+    BANDS[("dot_config/ai/readonly_agent-bands.v1.json (generated from ai_models/tiering.yaml by scripts/generate_agent_bands.py)<br/>harness → agent → {model, effort?, alias?} + reachable_agents (profile-by-name roster per harness); validate the resolved schema harness: Cursor auto is selector-only, Codex/Copilot require effort; configured adapters enforce their verified per-call mutation scope; generic types preserve exact lane controls, requiring explicit effort on separate-effort backends when one model serves multiple lanes")]:::data
     BANDS --> BG
     BG -. "configured adapters pin within their verified mutation scope" .-> SUBA
     S1 -. "runtime-harnesses: Codex-on-Copilot requires fresh launch-projected leaves and exact gate admission; transport is not live provider completion" .-> BG

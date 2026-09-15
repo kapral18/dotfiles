@@ -48,7 +48,21 @@ ALLOWED_DISPATCH_CLASSES = (
 )
 LEAF_DISPATCH_CLASSES = frozenset({"research", "implement", "mechanical", "review", "refute", "memory"})
 DISPATCH_LINE_RE = re.compile(r"^Subagent dispatch:\s+(?P<primary>[a-z]+)\b")
-INLINE_SECONDARY_RE = re.compile(r"^Subagent dispatch:\s*inline\s*\((?P<secondary>[a-z]+)\s+(?:for|when)\b")
+# A parenthesized secondary names the delegated slices (SOP §3.7): `inline (mechanical for …)`,
+# `implement (research, review/refute slices)`, `review (refute slice for …)`. The head is one or
+# more class words joined by `,`/`/` with an optional `slice`/`slices` noun; a `for`/`when` reason
+# may follow. `(launch the worker now)` is not a secondary: its head is not a class word.
+INLINE_SECONDARY_RE = re.compile(
+    r"^Subagent dispatch:\s*[a-z]+\s*\((?P<secondary>[a-z]+(?:\s*[,/]\s*[a-z/]+)*)"
+    r"(?:\s+slices?)?(?:\s+(?:for|when)\b)?"
+)
+
+
+def secondary_leaf_classes(match: re.Match[str] | None) -> set[str]:
+    """Leaf-class tokens named by a dispatch-line secondary (`research, review/refute` → three)."""
+    if match is None:
+        return set()
+    return {token for token in re.split(r"[^a-z]+", match.group("secondary")) if token in LEAF_DISPATCH_CLASSES}
 
 
 def dispatch_primary_from_text(text: str) -> str | None:
@@ -84,13 +98,15 @@ ROOT_MOVES_LEAD = (
 
 # A launch instruction is a launch verb applied to an agent-shaped object.
 # `spawn`/`launch`/`dispatch`/`delegate`/`fan out` name a launch by themselves, so an agent-shaped
-# object anywhere in the same line makes the line an order.
+# object anywhere in the same line makes the line an order. (`send` stays out: it is ordinary
+# English with non-launch uses — `send-keys`, `send ENTER`, `hub send` — that the same-line
+# object gate cannot separate, so `Send one … packet` outside Root moves remains a known gap.)
 _LAUNCH_VERB = re.compile(
     r"(?i)\b(spawn(s|ed|ing)?|launch(es|ed|ing)?|dispatch(es|ed|ing)?"
     r"|delegate(s|d)?|delegating|fan[- ]?out|fans out)\b"
 )
 _LAUNCH_OBJECT = re.compile(
-    r"(?i)(agent|lane|worker|subagent|verifier|auditor|evaluator|refuter|task tool|workpool|k-agent-)"
+    r"(?i)(agent|lane|worker|subagent|verifier|auditor|evaluator|refuter|task tool|workpool|k-agent-|packet|question)"
 )
 # `start`/`use`/`hand`/`run`/`invoke` are ordinary English ("run the focused tests", "Controller-run
 # lanes are told not to repeat them"), so they only order a launch when a named agent mechanism is
@@ -104,11 +120,13 @@ _NAMED_AGENT_LAUNCH = re.compile(
     r"(?:\s+[\w`'\u2019./-]+){0,3}?\s+['\"`]?"
     r"(task tool|task(?=[`'\"])|subagents?|k-agent-[a-z-]+)\b"
 )
-# Verbs a prohibition can ban, enumerated or not: "never launch, invoke, or delegate", "does not run".
+# Verbs a prohibition can ban, enumerated or not: "never launch, invoke, or delegate", "does not run",
+# "never dispatched alone". Past forms included: a ban names the completed act too.
 _BANNED_VERBS = (
-    r"launch|launches|launching|spawn|spawns|spawning|invoke|invokes|invoking"
-    r"|delegate|delegates|delegating|dispatch|dispatches|dispatching|create|creates"
-    r"|run|runs|running|use|uses|using|start|starts|starting|hand|hands|handing"
+    r"launch|launches|launching|launched|spawn|spawns|spawning|spawned|invoke|invokes|invoking"
+    r"|invoked|delegate|delegates|delegating|delegated|dispatch|dispatches|dispatching|dispatched"
+    r"|create|creates|created|run|runs|running|use|uses|using|start|starts|starting|started"
+    r"|hand|hands|handing|handed"
 )
 # Clauses that carry a launch verb without ordering a launch. Each one is deleted from the line
 # before the verb/object test runs, so a line that both describes and orders a launch still fails.
@@ -117,10 +135,12 @@ _DESCRIPTIVE_CLAUSES = (
     # so a following positive launch in the same line remains visible to the scanner.
     re.compile(r"(?i)\bnot an instruction to\s+(launch|spawn|dispatch|delegate)\b"),
     # A ban, enumerated or not: "never launch, invoke, or delegate to another agent",
-    # "cannot spawn", "with zero further subagent launches".
+    # "cannot spawn", "with zero further subagent launches". The filler spans a comma-list
+    # enumeration ("Do not load the router, spawn agents, run another pass") and `-ing`
+    # forms, but never crosses a sentence boundary, so a real order after one still fails.
     re.compile(
         r"(?i)\b(never|not|cannot|can(?:'|\u2019)t|do not|must not|no|zero|without)[-\s]\s*"
-        r"(further\s+)?((?!to\b)[\w-]+\s+){0,2}"
+        r"(further\s+)?((?!to\b)[\w'\u2019,-]+\s+){0,6}"
         rf"({_BANNED_VERBS})"
         rf"(\s*,?\s*(or\s+)?({_BANNED_VERBS}))*\b"
     ),
@@ -139,9 +159,11 @@ _DESCRIPTIVE_CLAUSES = (
         r"|task|tasks|lane|lanes|flow|role|context|execution)\b"
     ),
     # The parent is the actor, so the sentence hands work up rather than out:
-    # "the root dispatches the `k-agent-smol` scribe path".
+    # "the root dispatches the `k-agent-smol` scribe path". A harness described as the
+    # actor ("this harness launches the lane through a named profile") is the same shape:
+    # no model reading the leaf profile is ordered to launch.
     re.compile(
-        r"(?i)\b(the|its)\s+(root|parent|controller)(?:'s|\u2019s)?(\s+[\w-]+)?\s+"
+        r"(?i)\b(the|its|this)\s+(root|parent|controller|harness)(?:'s|\u2019s)?(\s+[\w-]+)?\s+"
         r"(launch(es)?|spawn(s)?|dispatch(es)?|delegate(s)?|fans out)\b"
     ),
     # A launch named as a point in time, not ordered: "before launching lanes".
@@ -153,9 +175,22 @@ _DESCRIPTIVE_CLAUSES = (
     # The SOP's own rule name, not an order to dispatch: "SOP §3.7 `research` dispatch gate".
     re.compile(r"(?i)\b(dispatch|launch)\s+gate\b"),
     # A skill's classification label, not an order: "Subagent dispatch: review — one reviewer-worker packet".
-    # Only the label with an optional `(<class> for|when …)` secondary is exempt; the parens may hold
-    # only ordinary words, and an order later on the same line still fails.
-    re.compile(r"(?:^|\s)Subagent dispatch:\s+[a-z]+(?:\s*\([a-z]+ (?:for|when) [^)]*\))?\s+\u2014"),
+    # The parens may hold a `<class>[(,|/) <class>…] [slice[s]] [for|when …]` secondary;
+    # an order later on the same line still fails, and `(launch the worker now)` gets no exemption.
+    re.compile(
+        r"(?:^|\s)Subagent dispatch:\s+[a-z]+(?:\s*\([a-z]+(?:\s*[,/]\s*[a-z/]+)*(?:\s+slices?)?(?:\s+(?:for|when)\b[^)]*)?\))?\s+\u2014"
+    ),
+    # A nominalized launch verb names an event, not an order: "a launch failure is reported",
+    # "OMP task dispatch mechanics live in … as a packet pointer". The noun after the verb
+    # must be an event/mechanics word; a real object (`launch the worker`) still fails.
+    re.compile(
+        r"(?i)\b(a|an|the|this|that|its|their|task)\s+"
+        r"(launch|spawn|dispatch|delegation)\s+"
+        r"(failure|error|mechanics|text|instruction|order|line)\b"
+    ),
+    # An instruction to ignore dispatch text orders nothing: "ignore its Subagent dispatch
+    # line and Root moves" (the leaf-runs-it-itself sentence in preloaded references).
+    re.compile(r"(?i)\bignore\s+(?:its|the|this)\s+\S*\s*dispatch\s+line\b"),
     # An OS process, not an agent: "the port listener belongs to the spawned Kibana's process tree".
     re.compile(
         r"(?i)\bspawn(s|ed|ing)?\s+((?!to\b)[\w'\u2019-]+\s+){0,2}"
@@ -186,6 +221,8 @@ def _orders_a_launch(text: str) -> bool:
     """True when `text` orders a launch, after deleting the clauses that only describe or ban one."""
     # A full skill file path names an artifact, not an agent to launch.
     text = re.sub(r"~/.agents/skills/[^`\s]+", " skill-file ", text)
+    # The SOP itself is an artifact too: `~/AGENTS.md` names no agent.
+    text = re.sub(r"~/AGENTS\.md", " sop-file ", text)
     for clause in _DESCRIPTIVE_CLAUSES:
         text = clause.sub(" ", text)
     if _LAUNCH_VERB.search(text) and _LAUNCH_OBJECT.search(text):
@@ -193,21 +230,22 @@ def _orders_a_launch(text: str) -> bool:
     return bool(_NAMED_AGENT_LAUNCH.search(text))
 
 
-def launch_instruction_rows(lines) -> list[tuple[int, str]]:
+def launch_instruction_rows(lines, *, root_moves_gate: bool = True) -> list[tuple[int, str]]:
     """`(line number, matched text)` rows for launch instructions outside a `## Root moves` section.
 
     Every candidate line is tested alone and then joined with the next candidate line, so an
     instruction that wraps across two physical lines (`Launch` / `` `k-agent-reviewer` over this
-    diff.``) is caught at the line the verb sits on.
+    diff.``) is caught at the line the verb sits on. With `root_moves_gate=False` (leaf profile
+    bodies) no heading exempts anything: every launch order is a row.
     """
     candidates: list[tuple[int, str]] = []
     in_root_moves = False
     for number, line in enumerate(lines, 1):
         if line.startswith("## "):
             # `###` headings stay inside the section their `##` opened.
-            in_root_moves = line.strip() == ROOT_MOVES_HEADING
+            in_root_moves = root_moves_gate and line.strip() == ROOT_MOVES_HEADING
             continue
-        if in_root_moves or line.strip() == ROOT_MOVES_LEAD:
+        if in_root_moves or (root_moves_gate and line.strip() == ROOT_MOVES_LEAD):
             continue
         candidates.append((number, line))
     rows: list[tuple[int, str]] = []
@@ -228,16 +266,76 @@ def root_moves_violations(root: Path) -> list[str]:
     """Launch instructions in model-invocable skill text that sit outside a `## Root moves` section.
 
     Returns `path:line - text` rows; empty means every launch instruction is root-gated.
+    Manual-only trees are exempt only at their entrypoint: their `exact_references/` files
+    still autoload (leaf profiles preload them), so those are scanned. Agent profile bodies
+    (`*/exact_agents/*.tmpl`) are scanned separately by `profile_launch_violations`.
     """
     skills_root = root / SKILLS_ROOT
     if not skills_root.is_dir():
         raise FileNotFoundError(f"no skills tree at {skills_root}")
     violations = []
     for path in sorted(skills_root.rglob("*.md")):
-        if is_manual_only(skills_root / path.relative_to(skills_root).parts[0]):
+        skill_dir = skills_root / path.relative_to(skills_root).parts[0]
+        if is_manual_only(skill_dir) and path == skill_entry(skill_dir):
             continue
         for number, text in launch_instruction_rows(path.read_text(encoding="utf-8").splitlines()):
             violations.append(f"{path.relative_to(root)}:{number} - {text}")
+    return violations
+
+
+PROFILE_DIRS = (
+    "home/dot_claude/exact_agents",
+    "home/dot_codex/exact_agents",
+    "home/dot_cursor/exact_agents",
+    "home/dot_omp/private_agent/exact_agents",
+    "home/dot_pi/agent/exact_agents",
+    "home/private_dot_copilot/exact_agents",
+)
+
+
+def profile_body_lines(path: Path, lines: list[str]) -> tuple[int, list[str]]:
+    """(file-line offset, model-visible instruction body) of an agent profile template.
+
+    Markdown profiles carry a leading chezmoi template comment plus one `---...---`
+    frontmatter block (name/description/model/tools are harness metadata, not orders);
+    Codex TOML profiles carry the orders in `developer_instructions = \"\"\"...\"\"\"`.
+    The offset restores file-relative line numbers for violation rows.
+    """
+    if path.name.endswith(".toml.tmpl"):
+        text = "\n".join(lines)
+        match = re.search(r'developer_instructions\s*=\s*"""(.*?)"""', text, re.DOTALL)
+        if not match:
+            return 0, []
+        start_line = text.count("\n", 0, match.start(1))
+        return start_line, match.group(1).splitlines()
+    body = list(lines)
+    while body and body[0].startswith("{{"):
+        body.pop(0)
+    if body and body[0] == "---":
+        close = next((i for i in range(1, len(body)) if body[i] == "---"), None)
+        if close is not None:
+            body = body[close + 1 :]
+    return len(lines) - len(body), body
+
+
+def profile_launch_violations(root: Path) -> list[str]:
+    """Launch orders inside leaf profile bodies (a leaf profile must never order a launch).
+
+    Profiles have no `## Root moves` section: a delegated leaf skips nothing, so any
+    launch instruction in the body is a violation, not root-gated text.
+    """
+    violations = []
+    for directory in PROFILE_DIRS:
+        profiles = root / directory
+        if not profiles.is_dir():
+            continue
+        for path in sorted(profiles.glob("*.tmpl")):
+            lines = path.read_text(encoding="utf-8").splitlines()
+            # No Root moves section exists in a profile: scan every body line alone and
+            # joined with its successor, mirroring `launch_instruction_rows` without the gate.
+            offset, body = profile_body_lines(path, lines)
+            for number, text in launch_instruction_rows(body, root_moves_gate=False):
+                violations.append(f"{path.relative_to(root)}:{number + offset} - {text}")
     return violations
 
 
@@ -475,9 +573,18 @@ class TestAgentSkillInvariants(unittest.TestCase):
         for profile in ("work", "personal"):
             path = REPO / f"home/dot_pi/agent/readonly_settings.{profile}.json"
             settings = json.loads(path.read_text(encoding="utf-8"))
+            # pi-subagents stays installed but contributes no registration: the
+            # source-owned subagent-contract.ts adapter is the sole `subagent`
+            # owner, so the package entry filters extensions, skills, and prompts.
             assert settings["packages"] == [
                 "~/.local/share/pnpm-global-links/node_modules/pi-mcp-adapter",
-                "~/.local/share/pnpm-global-links/node_modules/pi-subagents",
+                {
+                    "source": "~/.local/share/pnpm-global-links/node_modules/pi-subagents",
+                    "extensions": [],
+                    "skills": [],
+                    "prompts": [],
+                },
+                "~/.local/share/pnpm-global-links/node_modules/@rahularya01/pi-cursor",
             ]
 
     def test_pi_extensions_directory_prunes_unmanaged_drops(self):
@@ -970,20 +1077,58 @@ class TestAgentSkillInvariants(unittest.TestCase):
 
     def test_root_moves_sections_present(self):
         # SOP §3.7 makes launch/fan-out text root-only, and a leaf cannot honor that per sentence:
-        # it needs one skippable section. Every model-invocable skill that still carries launch text
-        # declares it, so the child profiles that preload these files have a boundary to skip.
-        for skill in (
-            "exact_k-ai-kb",
-            "exact_k-codebase-design",
-            "exact_k-light-review",
-            "exact_k-omp",
-            "exact_k-review",
-            "exact_k-spec",
-            "exact_k-text-tournament",
-        ):
-            path = REPO / SKILLS_ROOT / skill / "readonly_SKILL.md"
-            lines = path.read_text(encoding="utf-8").splitlines()
-            assert ROOT_MOVES_HEADING in lines, f"{path} has no `{ROOT_MOVES_HEADING}` section"
+        # it needs one skippable section. The expected set is derived from the tree, not
+        # hand-listed: every model-invocable entrypoint with a delegable (leaf-category)
+        # primary carries one. `k-omp` carries none by design (a criteria adapter whose
+        # dispatch mechanics live in `runtime-harnesses-pi-omp.md` as a packet pointer).
+        # Reference files holding Root moves are pinned from L2's authoritative split list;
+        # a smaller count means the classification set silently shrank.
+        skills_root = REPO / SKILLS_ROOT
+        for skill_dir in sorted(p for p in skills_root.iterdir() if p.is_dir()):
+            entry = skill_entry(skill_dir)
+            if entry is None or is_manual_only(skill_dir):
+                continue
+            with self.subTest(skill=skill_dir.name):
+                if dispatch_primary(entry) in LEAF_DISPATCH_CLASSES:
+                    lines = entry.read_text(encoding="utf-8").splitlines()
+                    assert ROOT_MOVES_HEADING in lines, f"{entry} has no `{ROOT_MOVES_HEADING}` section"
+        reference_root_moves = [
+            path
+            for path in sorted((REPO / SKILLS_ROOT).rglob("*.md"))
+            if path.name != "readonly_SKILL.md"
+            and path.name != "SKILL.md"
+            and ROOT_MOVES_HEADING in path.read_text(encoding="utf-8").splitlines()
+        ]
+        # L2's authoritative post-split list holds 12 reference files with Root moves;
+        # error below that floor, not above it (new pointers are welcome).
+        self.assertGreaterEqual(len(reference_root_moves), 12)
+
+    def test_leaf_profile_bodies_carry_no_launch_orders(self):
+        # M1 was a live instance: a root-facing launch order inside a leaf profile.
+        # Profiles are leaves with no `## Root moves` to skip, so any launch instruction
+        # in the model-visible body (frontmatter excluded) is a violation. Bodies cover
+        # every harness profile dir, including the Codex TOML `developer_instructions`.
+        violations = profile_launch_violations(REPO)
+        assert not violations, "launch orders inside leaf profile bodies:\n" + "\n".join(violations)
+        # A `## Root moves` heading inside a profile body exempts nothing: run the real scanner
+        # over a fixture profile tree and require the launch order under that heading to be rowed.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            profile_dir = root / PROFILE_DIRS[0]
+            profile_dir.mkdir(parents=True)
+            (profile_dir / "k-agent-fixture.md.tmpl").write_text(
+                "---\nname: k-agent-fixture\n---\nYou are one reviewer angle.\n## Root moves\nLaunch a worker over the diff.\n",
+                encoding="utf-8",
+            )
+            codex_dir = root / "home/dot_codex/exact_agents"
+            codex_dir.mkdir(parents=True)
+            (codex_dir / "readonly_k-agent-fixture.toml.tmpl").write_text(
+                'model_reasoning_effort = "high"\ndeveloper_instructions = """\nReturn findings once.\nLaunch a worker over the diff.\n"""\n',
+                encoding="utf-8",
+            )
+            rows = profile_launch_violations(root)
+            assert len(rows) == 2 and all(row.endswith("Launch a worker over the diff.") for row in rows), rows
+            assert any(".toml.tmpl:" in row for row in rows), rows
 
     def test_root_moves_guard_dispatch_text(self):
         # The boundary is only real if it is both announced and complete: a leaf must be able to
@@ -1067,6 +1212,14 @@ class TestAgentSkillInvariants(unittest.TestCase):
                 "Run the focused tests and lint for the touched files.\n"
                 "The `k-agent-implementer` packet names the check to run.",
             ),
+            # Packet/question phrasing is the dispatch vocabulary of 24 of 27 Root moves
+            # sections: outside one it must flag, however the verb moved.
+            (True, "Launch one strong research packet over the diff."),
+            (True, "Launch one implement packet with `implement-worker.md`."),
+            (True, "Dispatch the whole bounded question to a worker."),
+            # A fork-closing question is ordinary English, not a launch: `ask` is neither a
+            # launch verb nor a named-agent mechanism verb.
+            (False, "Bind automatically when one bucket matches; otherwise ask one fork-closing question."),
         )
         for expected, body in probes:
             rows = launch_instruction_rows(body.splitlines())
@@ -1119,14 +1272,14 @@ class TestAgentSkillInvariants(unittest.TestCase):
 
     def test_when_skill_delegates_should_carry_a_hard_root_moves_instruction(self):
         # The same three clauses the review tier enforces: an explicit launch, a ban on the root
-        # substituting its own inline work, and an unavailable-lane blocker. `k-omp` is a harness
-        # adapter whose Root moves owns OMP dispatch mechanics rather than a skill packet, and
-        # manual-only skills are scanner-exempt, so both are excluded.
+        # substituting its own inline work, and an unavailable-lane blocker. Manual-only skills
+        # are scanner-exempt; `k-omp` needs no by-name exemption (a criteria adapter with no
+        # parenthesized secondary, skipped by the rule below like every other criteria skill).
         skills_root = REPO / SKILLS_ROOT
         checked = 0
         for skill_dir in sorted(p for p in skills_root.iterdir() if p.is_dir()):
             entry = skill_entry(skill_dir)
-            if entry is None or is_manual_only(skill_dir) or skill_dir.name == "exact_k-omp":
+            if entry is None or is_manual_only(skill_dir):
                 continue
             text = entry.read_text(encoding="utf-8")
             primary = dispatch_primary(entry)
@@ -1152,7 +1305,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
         skills_root = REPO / SKILLS_ROOT
         for skill_dir in sorted(p for p in skills_root.iterdir() if p.is_dir()):
             entry = skill_entry(skill_dir)
-            if entry is None:
+            if entry is None or is_manual_only(skill_dir):
                 continue
             with self.subTest(skill=skill_dir.name):
                 lines = entry.read_text(encoding="utf-8").splitlines()
@@ -1160,7 +1313,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
                 if not dispatch_lines:
                     continue
                 secondary = INLINE_SECONDARY_RE.match(dispatch_lines[0])
-                if secondary and secondary.group("secondary") in LEAF_DISPATCH_CLASSES:
+                if secondary_leaf_classes(secondary):
                     self.assertIn(
                         ROOT_MOVES_HEADING,
                         lines,

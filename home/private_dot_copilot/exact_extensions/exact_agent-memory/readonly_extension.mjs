@@ -8,12 +8,16 @@ const WORKLOG_RECORDER_HOOK = "worklog_dispatcher.sh";
 const PERTURN_RECALL_HOOK = "perturn_recall.py";
 const BAND_GATE_HOOK = "band_gate.py";
 const READ_GATE_HOOK = "read_gate.py";
+const PUBLISH_GATE_HOOK = "publish_gate.py";
 // Copilot's file reader is `view` (args.path) and its shell is `bash` (args.command); the
 // session event log under ~/.copilot/session-state/<id>/events.jsonl holds every tool result
 // verbatim plus session.compaction_complete markers (probed 2026-09-06).
 const READ_GATED_TOOLS = new Set([ "view", "bash" ]);
+// publish_gate.py owns the SOP §3.8 leaf-publication denial on the shell path;
+// read-only tools never reach it.
+const PUBLISH_GATED_TOOLS = new Set([ "bash" ]);
 // Kept in sync BY HAND with DELEGATION_TOOLS in ~/.agents/hooks/band_gate.py.
-const DELEGATION_TOOLS = new Set([ "Task", "Agent", "spawn_agent", "subagent", "Subagent", "task" ]);
+const DELEGATION_TOOLS = new Set([ "Task", "Agent", "spawn_agent", "subagent", "Subagent", "task", "invoke_subagent", "define_subagent" ]);
 const EXTENSION_INFO = { source: "user", name: "agent-memory" };
 
 function hookPath(name) {
@@ -97,6 +101,27 @@ export async function readGateDecision(scriptPath, payload) {
         const result = await runHookScript(scriptPath, payload);
         if (result?.decision === "block" && typeof result.reason === "string") {
             return { permissionDecision: "deny", permissionDecisionReason: result.reason };
+        }
+    } catch {
+        // fail open
+    }
+    return undefined;
+}
+
+export async function publishDecision(scriptPath, payload) {
+    // Deny a delegated leaf's publication call; surface the §3.8 checklist to the root.
+    // Same payload shape read_gate already uses. Returns a PreToolUseHookOutput or undefined.
+    if (!PUBLISH_GATED_TOOLS.has(payload?.tool_name)) {
+        return undefined;
+    }
+    try {
+        const result = await runHookScript(scriptPath, payload);
+        if (result?.decision === "block" && typeof result.reason === "string") {
+            return { permissionDecision: "deny", permissionDecisionReason: result.reason };
+        }
+        const context = contextFromHookResult(result);
+        if (context) {
+            return { additionalContext: context };
         }
     } catch {
         // fail open
@@ -267,6 +292,10 @@ async function main() {
                 const denial = await readGateDecision(hookPath(READ_GATE_HOOK), payload);
                 if (denial) {
                     return denial;
+                }
+                const publication = await publishDecision(hookPath(PUBLISH_GATE_HOOK), payload);
+                if (publication) {
+                    return publication;
                 }
                 return await bandDecision(hookPath(BAND_GATE_HOOK), payload);
             },

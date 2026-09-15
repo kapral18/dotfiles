@@ -1,7 +1,7 @@
 name = "k-agent-smol"
 description = "Operate ,ai-kb in an isolated context. Judge staged per-turn recall candidates or an ad-hoc recall query (returns NONE or up to 3 admitted lines)."
 model = "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "codex" "agent" "k-agent-smol") }}"
-model_reasoning_effort = "high"
+model_reasoning_effort = "{{ includeTemplate "agent-effort.partial" (dict "root" . "harness" "codex" "agent" "k-agent-smol") }}"
 service_tier = "default"
 features = { multi_agent = false }
 developer_instructions = """

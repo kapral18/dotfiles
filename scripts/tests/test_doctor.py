@@ -263,5 +263,111 @@ class TestDoctor(unittest.TestCase):
             )
 
 
+PI_RUNTIME = REPO / "home/exact_lib/exact_,doctor/readonly_pi_runtime.py"
+
+
+def _pi_store(root: Path, store: str, peers: tuple[str, ...]) -> Path:
+    """pnpm global-store layout: <store>/node_modules/@earendil-works/pi-coding-agent -> ../.pnpm/<key>/node_modules/..."""
+    pnpm_dir = (
+        root / "pnpm/global/v11" / store / "node_modules/.pnpm/@earendil-works+pi-coding-agent@0.85.1/node_modules"
+    )
+    for pkg in peers:
+        (pnpm_dir / pkg).mkdir(parents=True)
+        (pnpm_dir / pkg / "package.json").write_text('{"name": "%s"}' % pkg, encoding="utf-8")
+    host = pnpm_dir / "@earendil-works/pi-coding-agent"
+    (host / "dist/bundle").mkdir(parents=True, exist_ok=True)
+    (host / "dist/bundle/cli.js").write_text("", encoding="utf-8")
+    top = root / "pnpm/global/v11" / store / "node_modules/@earendil-works"
+    top.mkdir(parents=True)
+    (top / "pi-coding-agent").symlink_to(host)
+    return top / "pi-coding-agent/dist/bundle/cli.js"
+
+
+def _pi_shim(root: Path, target: Path) -> Path:
+    shim = root / "bin/pi"
+    shim.parent.mkdir(parents=True, exist_ok=True)
+    shim.write_text(f'#!/bin/sh\nexec node "{target}" "$@"\n# cmd-shim-target={target}\n', encoding="utf-8")
+    shim.chmod(0o755)
+    return shim
+
+
+class TestPiRuntimeProbe(unittest.TestCase):
+    PEERS = (
+        "@earendil-works/pi-coding-agent",
+        "@earendil-works/pi-agent-core",
+        "@earendil-works/pi-tui",
+        "@earendil-works/pi-ai",
+        "typebox",
+        "@earendil-works/chord",
+    )
+
+    def _probe(self, shim: Path) -> dict:
+        result = subprocess.run(
+            ["python3", str(PI_RUNTIME), "--shim", str(shim)], capture_output=True, text=True, check=True
+        )
+        return json.loads(result.stdout)
+
+    def test_live_store_with_every_peer_passes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cli = _pi_store(root, "2454-18d50b07e3fd3cc8-0", self.PEERS)
+            report = self._probe(_pi_shim(root, cli))
+            self.assertEqual(report["status"], "pass", report)
+            self.assertIn("2454-18d50b0", report["detail"])
+
+    def test_removed_store_warns_with_reinstall_hint(self) -> None:
+        """The audited failure: `pnpm add -g` pruned the store the shim (and a live Pi) still named."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cli = _pi_store(root, "a3ab-18d5073542a15678-0", self.PEERS)
+            shim = _pi_shim(root, cli)
+            shutil.rmtree(root / "pnpm/global/v11/a3ab-18d5073542a15678-0")
+            report = self._probe(shim)
+            self.assertEqual(report["status"], "warn", report)
+            self.assertIn("removed install", report["detail"])
+            self.assertIn("pnpm add -g @earendil-works/pi-coding-agent", report["hint"])
+
+    def test_missing_peer_names_the_package(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cli = _pi_store(root, "2454-18d50b07e3fd3cc8-0", tuple(p for p in self.PEERS if p != "typebox"))
+            report = self._probe(_pi_shim(root, cli))
+            self.assertEqual(report["status"], "warn", report)
+            self.assertIn("typebox", report["detail"])
+
+    def test_peer_directory_with_foreign_manifest_name_is_missing(self) -> None:
+        """Mirrors the runner: a directory named like the peer but whose manifest names another package does not resolve."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cli = _pi_store(root, "2454-18d50b07e3fd3cc8-0", self.PEERS)
+            pnpm_dir = (
+                root
+                / "pnpm/global/v11/2454-18d50b07e3fd3cc8-0/node_modules/.pnpm/@earendil-works+pi-coding-agent@0.85.1/node_modules"
+            )
+            (pnpm_dir / "typebox/package.json").write_text('{"name": "not-typebox"}', encoding="utf-8")
+            report = self._probe(_pi_shim(root, cli))
+            self.assertEqual(report["status"], "warn", report)
+            self.assertIn("typebox", report["detail"])
+
+    def test_absent_shim_is_skipped(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self._probe(Path(tmp) / "nope")
+            self.assertEqual(report["status"], "skip", report)
+
+    def test_doctor_surfaces_the_probe(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            (home / "lib" / ",doctor").mkdir(parents=True)
+            shutil.copy(PI_RUNTIME, home / "lib/,doctor/pi_runtime.py")
+            cli = _pi_store(root, "a3ab-18d5073542a15678-0", self.PEERS)
+            shim = _pi_shim(home, cli)
+            shutil.rmtree(root / "pnpm/global/v11/a3ab-18d5073542a15678-0")
+            result = _run_doctor(
+                home, "--quiet", env_extra={"PATH": os.pathsep.join((str(shim.parent), os.environ["PATH"]))}
+            )
+            self.assertIn("Pi runtime: pi shim targets a removed install", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

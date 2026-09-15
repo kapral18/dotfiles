@@ -259,6 +259,84 @@ test("recordWorklog fails open and reports a nonzero recorder", async () => {
     }
 });
 
+test("WHEN the session is a delegated leaf, bandDecision SHOULD surface the gate delegation denial", async () => {
+    // band_gate.py denies delegation tools once the inherited COPILOT_AGENT_SESSION_ID
+    // marks the session as a child; the extension only has to propagate that ambient
+    // signal (spawn inherits process.env) and retain the denial, never a lane rewrite.
+    const scratch = mkdtempSync(join(tmpdir(), "copilot-agent-memory-leaf-deny-"));
+    const previousParent = process.env.COPILOT_AGENT_SESSION_ID;
+    try {
+        const stub = join(scratch, "hook.sh");
+        writeFileSync(
+            stub,
+            "#!/bin/sh\ncat >/dev/null\n" +
+            "if [ -n \"$COPILOT_AGENT_SESSION_ID\" ]; then " +
+            "printf '%s' '{\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"delegated leaf must not delegate\"}'; " +
+            "else printf '%s' '{\"modifiedArgs\":{\"model\":\"root-lane\"}}'; fi\n",
+        );
+        chmodSync(stub, 0o755);
+        process.env.COPILOT_AGENT_SESSION_ID = "parent-session";
+        const denial = await mod.bandDecision(stub, { tool_name: "task" });
+        assert.equal(denial.permissionDecision, "deny");
+        assert.equal(denial.permissionDecisionReason, "delegated leaf must not delegate");
+        delete process.env.COPILOT_AGENT_SESSION_ID;
+        // The same gate admits the root for every wired delegation name, including both
+        // Antigravity names (a name missing from DELEGATION_TOOLS would return undefined).
+        for (const toolName of ["task", "invoke_subagent", "define_subagent"]) {
+            assert.deepEqual(await mod.bandDecision(stub, { tool_name: toolName }), { modifiedArgs: { model: "root-lane" } }, toolName);
+        }
+    } finally {
+        if (previousParent == null) {
+            delete process.env.COPILOT_AGENT_SESSION_ID;
+        } else {
+            process.env.COPILOT_AGENT_SESSION_ID = previousParent;
+        }
+        rmSync(scratch, { recursive: true, force: true });
+    }
+});
+
+test("WHEN bash carries a leaf publication call, publishDecision SHOULD deny with the gate reason", async () => {
+    const scratch = mkdtempSync(join(tmpdir(), "copilot-agent-memory-publish-deny-"));
+    try {
+        const stub = join(scratch, "hook.sh");
+        writeFileSync(stub, "#!/bin/sh\ncat >/dev/null\nprintf '%s' '{\"decision\":\"block\",\"reason\":\"SOP 3.8: leaves must not publish; return findings to the parent\"}'\n");
+        chmodSync(stub, 0o755);
+        assert.deepEqual(await mod.publishDecision(stub, { tool_name: "bash", tool_input: { command: ",publish now" } }), {
+            permissionDecision: "deny",
+            permissionDecisionReason: "SOP 3.8: leaves must not publish; return findings to the parent",
+        });
+    } finally {
+        rmSync(scratch, { recursive: true, force: true });
+    }
+});
+
+test("WHEN the publish gate stays silent, publishDecision SHOULD surface checklist context and ignore read-only tools", async () => {
+    // publish_gate.py owns the SOP 3.8 denial on the shell path only: read-only tools
+    // never reach it, a failing hook fails open, and root-facing checklist context
+    // passes through for the root to enforce.
+    const scratch = mkdtempSync(join(tmpdir(), "copilot-agent-memory-publish-quiet-"));
+    try {
+        const marker = join(scratch, "ran");
+        const stub = join(scratch, "hook.sh");
+        writeFileSync(stub, `#!/bin/sh\ncat >/dev/null\ntouch ${marker}\nprintf '%s' '{"additionalContext":"SOP 3.8 checklist for the root"}'\n`);
+        chmodSync(stub, 0o755);
+        assert.deepEqual(
+            await mod.publishDecision(stub, { tool_name: "bash", tool_input: { command: "make check" } }),
+            { additionalContext: "SOP 3.8 checklist for the root" },
+        );
+        assert.equal(existsSync(marker), true);
+        rmSync(marker);
+        assert.equal(await mod.publishDecision(stub, { tool_name: "view", tool_input: { path: "README.md" } }), undefined);
+        assert.equal(existsSync(marker), false, "view spawned the publish gate");
+        const failing = join(scratch, "fail.sh");
+        writeFileSync(failing, "#!/bin/sh\ncat >/dev/null\nexit 5\n");
+        chmodSync(failing, 0o755);
+        assert.equal(await mod.publishDecision(failing, { tool_name: "bash" }), undefined);
+    } finally {
+        rmSync(scratch, { recursive: true, force: true });
+    }
+});
+
 let failures = 0;
 for (const [ name, fn ] of tests) {
     try {

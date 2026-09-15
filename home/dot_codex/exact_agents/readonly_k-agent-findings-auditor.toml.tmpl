@@ -1,7 +1,7 @@
 name = "k-agent-findings-auditor"
 description = "Optional final findings-quality lens over the frozen artifact and shared evidence; no separate post-review audit."
 model = "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "codex" "agent" "k-agent-findings-auditor") }}"
-model_reasoning_effort = "high"
+model_reasoning_effort = "{{ includeTemplate "agent-effort.partial" (dict "root" . "harness" "codex" "agent" "k-agent-findings-auditor") }}"
 service_tier = "default"
 features = { multi_agent = false }
 developer_instructions = """

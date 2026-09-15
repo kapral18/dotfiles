@@ -32,7 +32,7 @@ flowchart TB
     GPG --> PASS
 
     subgraph RCFILES["Plain dotfiles (home/readonly_dot_* → ~/.*)"]
-        SH["shell: dot_bashrc.tmpl · dot_bash_profile · dot_zshrc.tmpl<br/>dot_zprofile · dot_profile.tmpl · dot_shellrc · dot_inputrc<br/>empty_readonly_dot_hushlogin"]:::rc
+        SH["shell: dot_bashrc.tmpl · dot_bash_profile · dot_zshrc.tmpl<br/>dot_zprofile · dot_profile.tmpl · dot_shellrc · dot_inputrc<br/>empty_readonly_dot_hushlogin<br/>unmanaged last-source: ~/.profile.local · ~/.bashrc.local · ~/.zshrc.local · ~/.config/fish/config.local.fish"]:::rc
         TOOLRC["tool rc: dot_curlrc · dot_ripgreprc · dot_editorconfig<br/>dot_gemrc · dot_markdownlint.jsonc"]:::rc
         SEMRC["dot_sem/readonly_telemetry.json → ~/.sem/telemetry.json (mode off; ~/bin/,sem also exports DO_NOT_TRACK/SEM_NO_NETWORK)"]:::rc
     end
@@ -41,5 +41,5 @@ flowchart TB
         IG["dot_config/readonly_ignore-globs (rg/fd shared ignores)"]:::sec
     end
 
-    NOTE["Credentials never in plaintext configs — injected at runtime<br/>via 1Password + pass. .tmpl gates work vs personal."]:::pass
+    NOTE["Credentials never in git-managed plaintext configs — injected at runtime<br/>via 1Password + pass. .tmpl gates work vs personal.<br/>Optional unmanaged *.local extras may hold machine-local secrets; they stay off git."]:::pass
     PASS --- NOTE

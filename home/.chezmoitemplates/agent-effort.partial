@@ -1,0 +1,11 @@
+{{- /*
+Resolve the harness-literal effort dial a profile should carry from its category. Call with:
+(dict "root" . "harness" "<category_models key>" "agent" "<agent_bindings key>").
+
+Mirrors agent-thinking.partial: the profile names only itself, agent_bindings selects the
+portable category, and category_models decides the effort for that category on this harness.
+*/ -}}
+{{- $root := .root -}}
+{{- $category := index $root.agent_bindings .agent -}}
+{{- $pick := index (index $root.category_models .harness) $category -}}
+{{- $pick.effort -}}

@@ -2,7 +2,7 @@ name = "worker"
 description = "Managed native worker leaf; one parent-scoped packet, no child orchestration."
 # Native generic model selection stays with band_gate.py, including explicit
 # registry-backed lane picks. A role model would override those selections.
-model_reasoning_effort = "high"
+model_reasoning_effort = "{{ includeTemplate "agent-effort.partial" (dict "root" . "harness" "codex" "agent" "worker") }}"
 service_tier = "default"
 features = { multi_agent = false }
 developer_instructions = """

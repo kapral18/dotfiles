@@ -10,6 +10,7 @@ These are the commands most likely to change how you work day to day.
 
 - Source: [`home/exact_bin/executable_,doctor`](../../../../home/exact_bin/executable_,doctor)
 - Checks: chezmoi state, Homebrew, shell, tmux+TPM, git+signing, SSH agent, pass/GPG, editors, AI tools, key CLIs, `~/bin` wrapper integrity, cursor-cli bundled `rg`, and worktrees. Missing AI configs are reported only when their actual consumer command is installed, including `agy` for Antigravity.
+- Pi runtime: `~/lib/,doctor/pi_runtime.py` reads the `pi` pnpm shim's `cmd-shim-target`, warns when that install directory was pruned by a later `pnpm add -g` (the state that makes every pi-subagents background launch fail with "does not provide @earendil-works/pi-agent-core …"), and warns when the live install lacks a peer that pi-subagents aliases. The hint is the reinstall command plus a restart of running Pi sessions.
 - AI effective state: `,doctor ai` traces each generated AI config from source declaration and transforms through selected profile, owned target projection, runtime consumer, and an optional local liveness probe.
 
 ```bash

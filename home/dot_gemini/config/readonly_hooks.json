@@ -38,6 +38,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "invoke_subagent|define_subagent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AGENT_HOOK_OUTPUT=antigravity AGENT_BAND_HARNESS=antigravity AGENT_HOOK_EVENT=PreToolUse $HOME/.agents/hooks/band_gate.py",
+            "timeout": 10
+          }
+        ]
       }
     ]
   }

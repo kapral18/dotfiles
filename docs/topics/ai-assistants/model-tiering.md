@@ -96,16 +96,16 @@ The env var that does not help is `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING`: it is
 
 ### Claude Code
 
-| Category     | Model                   | Effort | Context | Verifier status |
-| ------------ | ----------------------- | ------ | ------- | --------------- |
-| `mechanical` | `claude-sonnet-4-6[1m]` | high   | long    | —               |
-| `research`   | `claude-fable-5-1[1m]`  | high   | long    | —               |
-| `implement`  | `claude-opus-5[1m]`     | high   | long    | —               |
-| `review`     | `claude-fable-5-1[1m]`  | high   | long    | —               |
-| `refute`     | `claude-fable-5-1[1m]`  | high   | long    | degraded        |
-| `memory`     | `claude-sonnet-5`       | medium | short   | —               |
+| Category     | Model                  | Effort | Context | Verifier status |
+| ------------ | ---------------------- | ------ | ------- | --------------- |
+| `mechanical` | `claude-sonnet-5`      | high   | long    | —               |
+| `research`   | `claude-fable-5-1[1m]` | high   | long    | —               |
+| `implement`  | `claude-opus-5[1m]`    | high   | long    | —               |
+| `review`     | `claude-fable-5-1[1m]` | high   | long    | —               |
+| `refute`     | `claude-fable-5-1[1m]` | high   | long    | degraded        |
+| `memory`     | `claude-sonnet-5`      | medium | short   | —               |
 
-Claude Code accepts hyphenated point versions only: `claude-sonnet-4-6` and `claude-fable-5-1`. Dotted point versions 404. The `[1m]` suffix selects the 1M context window. Claude's single-vendor catalog cannot provide an independent refute family.
+Claude Code accepts hyphenated point versions only: `claude-sonnet-4-6` and `claude-fable-5-1`. Dotted point versions 404. The `[1m]` suffix selects the 1M context window. Claude's single-vendor catalog cannot provide an independent refute family. Same-family refutation is reduced independence: the report must state the shared family.
 
 ### Codex
 
@@ -144,7 +144,7 @@ The captured Copilot catalog includes the live-verified `grok-4.6` and `kimi-k3`
 | `refute`     | `muse-spark-1.3`   | max             | long    | cross_family    |
 | `memory`     | `grok-4.6`         | medium          | short   | —               |
 
-Cursor Task accepts only base catalog names. Legacy slugs such as `cursor-grok-4.6-high` and bracketed selectors silently fall back to the parent model, so the gate writes only `model=<base>`. Effort comes from the user's saved Cursor configuration, not from the id. `-fast` ids are a price tier and are never category picks. `cursor_task_base_models` captures the Task resolver's accepted names. The cross-review override is `grok-4.6`, a non-Anthropic base id available in the Cursor catalog.
+Cursor Task accepts only base catalog names. Legacy slugs such as `cursor-grok-4.6-high` and bracketed selectors silently fall back to the parent model, so the gate writes only `model=<base>`. Effort comes from the user's saved Cursor configuration, not from the id. `-fast` ids are a price tier and are never category picks. `cursor_task_base_models` captures the Task resolver's accepted names. Refute shares the implement base id (`muse-spark-1.3`) with only effort differing (`max` vs `high`), and Task ids cannot carry effort, so the refute lane is indistinguishable from implement on the wire; the `max` effort is recorded, not enforced.
 
 ### Antigravity
 

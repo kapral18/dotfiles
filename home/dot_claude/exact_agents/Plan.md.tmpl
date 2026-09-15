@@ -1,7 +1,7 @@
 ---
 name: Plan
 description: Software architect agent for designing implementation plans; returns step-by-step plans and tradeoffs without editing.
-model: inherit
+model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claude_code" "agent" "Plan") }}"
 tools: Read, Grep, Glob, Bash
 ---
 

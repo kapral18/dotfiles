@@ -43,6 +43,84 @@ def run_pnpm(*args: str, allow_exotic_subdeps: bool = False) -> subprocess.Compl
     return result
 
 
+def outdated_globals() -> set[str]:
+    """Names `pnpm outdated -g --json` reports behind their latest release.
+
+    pnpm exits 1 when at least one package is outdated and 0 when none are, so both codes are success here.
+    Every other exit code, unreadable JSON, or a non-object body is a failure: upgrades then do not run at all,
+    because guessing would either re-run `pnpm update` for every package (which rebuilds each package's
+    directory even at the same version) or skip a real upgrade silently.
+    """
+    try:
+        result = subprocess.run(
+            ["pnpm", "outdated", "-g", "--json"], stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False
+        )
+    except OSError as error:
+        raise PnpmFailure(f"could not run pnpm outdated -g --json: {error}") from error
+    if result.returncode not in (0, 1):
+        raise PnpmFailure(f"pnpm outdated -g --json failed (exit {result.returncode})", result.stdout, result.stderr)
+    body = result.stdout.strip() or "{}"
+    try:
+        listing = json.loads(body)
+    except json.JSONDecodeError as error:
+        raise PnpmFailure(f"pnpm outdated -g returned malformed JSON: {error}", result.stdout, result.stderr) from error
+    if not isinstance(listing, dict):
+        raise PnpmFailure("pnpm outdated -g returned a non-object JSON body", result.stdout, result.stderr)
+    behind: set[str] = set()
+    for name, metadata in listing.items():
+        if not isinstance(name, str) or not isinstance(metadata, dict):
+            raise PnpmFailure("pnpm outdated -g returned malformed package metadata", result.stdout, result.stderr)
+        if metadata.get("current") != metadata.get("latest"):
+            behind.add(name)
+    return behind
+
+
+def report_stale_consumers(pnpm_home: str) -> list[str]:
+    """Name processes still running from a global pnpm project directory that no longer exists.
+
+    pnpm 11+ rebuilds a package's hashed project directory on every add or update; a process that loaded
+    code from the old directory keeps running but fails on its next lazy import (a Pi that can no longer start
+    subagents, for example). Printing the pid, command, and removed directory right after the mutation is the
+    only moment the operator can connect cause and effect. Best effort: no `lsof`, a timeout, or an lsof
+    error prints nothing and never changes the exit status.
+    """
+    lsof = os.environ.get("INSTALL_PNPM_PKGS_LSOF") or shutil.which("lsof")
+    if not lsof:
+        return []
+    global_root = Path(pnpm_home) / "global"
+    try:
+        result = subprocess.run(
+            [lsof, "-w", "-F", "pcn"], stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False, timeout=60
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    stale: dict[tuple[str, str], Path] = {}
+    pid = command = ""
+    for line in result.stdout.splitlines():
+        tag, value = line[:1], line[1:]
+        if tag == "p":
+            pid, command = value, ""
+        elif tag == "c":
+            command = value
+        elif tag == "n":
+            try:
+                parts = Path(value).relative_to(global_root).parts
+            except ValueError:
+                continue
+            if len(parts) < 2:
+                continue
+            project = global_root / parts[0] / parts[1]
+            if not project.exists():
+                stale.setdefault((pid, command), project)
+    lines = [
+        f"Restart needed: {command} (pid {pid}) still runs from removed {project}"
+        for (pid, command), project in sorted(stale.items())
+    ]
+    for line in lines:
+        print(line, flush=True)
+    return lines
+
+
 def read_desired(path: Path) -> list[tuple[str, str]]:
     if not path.is_file():
         raise PnpmFailure(f"default-pnpm-pkgs file not found at {path}")
@@ -194,11 +272,13 @@ def main() -> int:
     desired_names = {name for name, _pin in desired}
     failure: PnpmFailure | None = None
     cleanup_failure: PnpmFailure | None = None
+    mutated = False
     try:
         for name, pin in desired:
             installed_version = installed.get(name, ("", ""))[0]
             if name not in installed or (pin and installed_version != pin):
                 print(f"Installing pnpm package: {name}@{pin or 'latest'}", flush=True)
+                mutated = True
                 run_pnpm("add", "-g", f"{name}@{pin or 'latest'}", "--yes", allow_exotic_subdeps=True)
             else:
                 print(f"pnpm package {name} is already installed", flush=True)
@@ -206,12 +286,23 @@ def main() -> int:
         for name in installed:
             if name not in desired_names:
                 print(f"Uninstalling pnpm package: {name}", flush=True)
+                mutated = True
                 run_pnpm("remove", "-g", name, "--yes")
 
-        print("Upgrading unpinned global pnpm packages to latest", flush=True)
-        for name, pin in desired:
-            if not pin:
-                run_pnpm("update", "-g", "--latest", name, "--yes", allow_exotic_subdeps=True)
+        # `pnpm update -g --latest` rebuilds the package's project directory even when the version does not
+        # change, which strands every process still running from the old directory. Ask pnpm which unpinned
+        # packages are actually behind and touch only those.
+        unpinned = [name for name, pin in desired if not pin]
+        if unpinned:
+            print("Checking unpinned global pnpm packages against latest", flush=True)
+            behind = outdated_globals()
+            for name in unpinned:
+                if name in behind:
+                    print(f"Upgrading pnpm package to latest: {name}", flush=True)
+                    mutated = True
+                    run_pnpm("update", "-g", "--latest", name, "--yes", allow_exotic_subdeps=True)
+                else:
+                    print(f"pnpm package {name} is already at latest", flush=True)
     except PnpmFailure as error:
         failure = error
     finally:
@@ -219,6 +310,8 @@ def main() -> int:
             refresh_links(links_root)
         except PnpmFailure as error:
             cleanup_failure = error
+        if mutated:
+            report_stale_consumers(pnpm_home)
 
     if failure is not None:
         emit_failure(failure)

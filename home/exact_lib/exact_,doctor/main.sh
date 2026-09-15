@@ -329,6 +329,27 @@ check_editors_ai() {
       warn "$label not installed"
     fi
   done
+
+  _doctor_pi_runtime
+}
+
+# The pi shim and pnpm-global-links must name the same pnpm store directory;
+# a stale shim after a global upgrade breaks every pi-subagents background launch.
+_doctor_pi_runtime() {
+  local probe="$HOME/lib/,doctor/pi_runtime.py"
+  [ -f "$probe" ] || return 0
+  local report status detail hint
+  report="$(python3 "$probe" 2> /dev/null || true)"
+  [ -n "$report" ] || return 0
+  IFS=$'\t' read -r status detail hint < <(
+    printf '%s' "$report" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("status",""), d.get("detail",""), d.get("hint",""), sep="\t")' 2> /dev/null || true
+  )
+  case "$status" in
+    pass) pass "Pi runtime: $detail" ;;
+    warn) warn "Pi runtime: $detail" "$hint" ;;
+    skip) [ "$verbose" -eq 1 ] && pass "Pi runtime (skipped — $detail)" ;;
+  esac
+  return 0
 }
 
 check_tools() {

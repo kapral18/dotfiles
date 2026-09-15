@@ -194,23 +194,62 @@ def neutral_review_spec(text: str, spec_path: Path) -> str:
     )
 
 
-def bounded_or_omitted(text: str, spec_path: Path) -> str:
+HANDOFF_MARKER = "HANDOFF:"
+HANDOFF_END = "END HANDOFF"
+
+
+def handoff_block(text: str) -> str | None:
+    """The compact handoff block SOP §3.7 asks the root to persist in the topic.
+
+    Starts at the first line equal to `HANDOFF:` outside a ``` fence, runs to the
+    first blank line or `END HANDOFF`, and is returned with the marker line.
+    `None` when absent or when the block has no body lines (a bare marker is not a
+    handoff and must not displace the read pointer).
+    """
+    lines = text.splitlines()
+    in_fence = False
+    for index, line in enumerate(lines):
+        if line.strip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence or line.strip() != HANDOFF_MARKER:
+            continue
+        block = [line.rstrip()]
+        for follow in lines[index + 1 :]:
+            if not follow.strip() or follow.strip() == HANDOFF_END or follow.strip().startswith("```"):
+                break
+            block.append(follow.rstrip())
+        return "\n".join(block) if len(block) > 1 else None
+    return None
+
+
+def bounded_or_omitted(text: str, spec_path: Path, *, allow_handoff: bool = True) -> str:
     """Mirrors session_context.py's bounded_or_omitted — change both together.
 
     Applies the shared oversized-spec contract to already-final text (review
     text must already be sanitized by neutral_review_spec() before reaching
     here). Content is never truncated mid-context: once it exceeds the bound
-    it is replaced wholesale with a pointer, so a sanitized-but-still-huge
-    review body cannot leak past the size limit just because it is "already
-    clean".
+    the leading `HANDOFF:` block is injected when it fits, otherwise the whole
+    spec is replaced with a pointer, so a sanitized-but-still-huge review body
+    cannot leak past the size limit just because it is "already clean".
+    Review topics pass `allow_handoff=False`: a root-authored handoff carries
+    settled decisions and verdict-shaped lines that the clean-room contract
+    keeps out of a review start, so those topics keep the pointer.
     """
     if len(text) <= SELECT_CONTEXT_MAX_SPEC_CHARS:
         return text
 
-    return (
+    pointer = (
         f"Active topic spec omitted because it is {len(text)} characters, "
         f"exceeding the {SELECT_CONTEXT_MAX_SPEC_CHARS}-character injection limit. "
         f"Read `{spec_path}` before relying on prior session context."
+    )
+    handoff = handoff_block(text) if allow_handoff else None
+    if handoff is None or len(handoff) > SELECT_CONTEXT_MAX_SPEC_CHARS:
+        return pointer
+    return (
+        handoff + f"\n\n[compact handoff from `{spec_path}` ({len(text)} characters total); "
+        "read the full spec only when a step depends on history the handoff does not carry.]"
     )
 
 
@@ -223,7 +262,7 @@ def bounded_spec_text(text: str, spec_path: Path, topic: str) -> tuple[str, bool
     text = text.strip()
     is_review = is_review_topic(topic, text)
     if is_review:
-        return bounded_or_omitted(neutral_review_spec(text, spec_path), spec_path), True
+        return bounded_or_omitted(neutral_review_spec(text, spec_path), spec_path, allow_handoff=False), True
 
     return bounded_or_omitted(text, spec_path), False
 

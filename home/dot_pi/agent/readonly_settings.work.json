@@ -15,7 +15,13 @@
   },
   "packages": [
     "~/.local/share/pnpm-global-links/node_modules/pi-mcp-adapter",
-    "~/.local/share/pnpm-global-links/node_modules/pi-subagents"
+    {
+      "source": "~/.local/share/pnpm-global-links/node_modules/pi-subagents",
+      "extensions": [],
+      "skills": [],
+      "prompts": []
+    },
+    "~/.local/share/pnpm-global-links/node_modules/@rahularya01/pi-cursor"
   ],
   "subagents": {
     "disableBuiltins": true,

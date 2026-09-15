@@ -555,6 +555,12 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         )
         self.assertTrue(self.mandatory_dispatch(roster))
         self.assertIn("using the same packets as the entrypoint", roster)
+        # One deep review launched four adversarial packets for one PR (2026-09-14 audit); the bound
+        # keeps refutation to one packet per candidate unless a distinct named risk is recorded first.
+        self.assertIn(
+            "Launch one adversarial packet per frozen candidate; launch another only for a distinct named risk the first packet does not own",
+            roster,
+        )
         self.assertIn("never this roster or a controller router", roster)
 
     def test_when_delegation_is_forbidden_or_unavailable_should_distinguish_override_from_blocker(self):
@@ -631,6 +637,80 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         for path in self.ROOT_DISPATCH_FILES:
             with self.subTest(path=path, check="no unaddressed root read order"):
                 self.assertNotIn("simple targeted reads remain inline", self.read(path))
+
+    def test_when_claim_verifier_gets_a_non_claim_packet_should_block_as_wrong_lane(self):
+        # A review packet once ran on this profile and read 430 KB of source (2026-09-14 audit).
+        text = self.read(
+            "home/exact_dot_agents/exact_skills/exact_k-public-sources/exact_references/readonly_claim-verifier.md"
+        )
+        self.assertIn("return `blocked: wrong lane` and do nothing else", text)
+        self.assertIn("this lane MUST NOT run a code or diff review", text)
+
+    def test_root_forbidden_files_are_not_root_required_elsewhere(self):
+        # Reachability both ways (D2): `k-review:24` forbids the root opening the
+        # runtime-harness references, so no Root moves section anywhere may require the
+        # root to load or open them. Packet-conditional pointers ("as a packet pointer
+        # only", "when the scope packet names …") are the sanctioned shape and stay quiet;
+        # a bare "Before dispatch, load `runtime-harnesses.md`" fails. Both halves of the
+        # split file are covered.
+        for name in ("readonly_runtime-harnesses.md", "readonly_runtime-harnesses-pi-omp.md"):
+            self.assertTrue(
+                (REPO / "home/exact_dot_agents/exact_skills/exact_k-review/exact_references" / name).is_file(),
+                f"split harness reference missing: {name}",
+            )
+        forbidden = {
+            "runtime-harnesses.md",
+            "runtime-harnesses-pi-omp.md",
+            "context-pack.md",
+            "execution-controls.md",
+        }
+        qualifier = re.compile(
+            r"pointer only|packet pointer|does not open|MUST NOT|never|packet names|passed in the packet"
+        )
+        requiring: list[str] = []
+        skills_root = REPO / "home/exact_dot_agents/exact_skills"
+        for path in sorted(skills_root.rglob("*.md")):
+            lines = path.read_text(encoding="utf-8").splitlines()
+            in_root_moves = False
+            for number, line in enumerate(lines, 1):
+                if line.startswith("## "):
+                    in_root_moves = line.strip() == "## Root moves"
+                    continue
+                if not in_root_moves:
+                    continue
+                if not re.search(r"\b(load|open|read)\b", line, re.IGNORECASE):
+                    continue
+                # Judge each named file by the clause that names it: a ban on one file must not
+                # vouch for a sibling clause that requires another.
+                for clause in re.split(r"[;.]\s+|\s+(?:and|then|but)\s+", line):
+                    named = {name for name in forbidden if name in clause}
+                    if (
+                        named
+                        and re.search(r"\b(load|open|read)\b", clause, re.IGNORECASE)
+                        and not qualifier.search(clause)
+                    ):
+                        requiring.append(f"{path.relative_to(REPO)}:{number} - {clause.strip()}")
+        self.assertEqual([], requiring)
+        # The clause split is what makes a mixed line fail: ban on one file, requirement on another.
+        mixed = "The root MUST NOT open runtime-harnesses.md; read context-pack.md before dispatch."
+        flagged = [
+            clause
+            for clause in re.split(r"[;.]\s+|\s+(?:and|then|but)\s+", mixed)
+            if {name for name in forbidden if name in clause}
+            and re.search(r"\b(load|open|read)\b", clause, re.IGNORECASE)
+            and not qualifier.search(clause)
+        ]
+        self.assertEqual(["read context-pack.md before dispatch."], flagged)
+
+    def test_k_review_retry_is_qualified_by_dispatch_outcome(self):
+        # X1/D1: the unqualified "A failed launch is retried once with the identical
+        # packet" now contradicts SOP §3.7. k-review must carry the qualified taxonomy:
+        # rejection-before-run means correct, never retry unchanged, never re-ask;
+        # identical retry once only after an executed-then-host/bootstrap/runner failure.
+        text = self.read("home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md")
+        self.assertNotIn("A failed launch is retried once with the identical packet", text)
+        self.assertIn("correct it, never retry it unchanged, never re-ask permission", text)
+        self.assertIn("Retry an identical packet once only when the tool executed", text)
 
 
 if __name__ == "__main__":

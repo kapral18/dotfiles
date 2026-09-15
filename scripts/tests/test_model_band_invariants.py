@@ -16,6 +16,15 @@ import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import REPO
 
 
+def root_gate_env(extra: dict[str, str]) -> dict[str, str]:
+    """Env for root-shaped band-gate probes: the suite may itself run inside a delegated
+    leaf, so the runner's ambient leaf signals must not leak into the hook subprocess."""
+    env = {**os.environ, **extra}
+    env.pop("PI_SUBAGENT_CHILD", None)
+    env.pop("COPILOT_AGENT_SESSION_ID", None)
+    return env
+
+
 class TestModelBandInvariants(unittest.TestCase):
     def test_model_tiering_doc_tables_match_category_models(self):
         # docs/topics/ai-assistants/model-tiering.md hand-copies each harness's category rows into a
@@ -388,7 +397,8 @@ class TestModelBandInvariants(unittest.TestCase):
                     self.assertIn("band_gate.py", config)
                     self.assertIn("features = { multi_agent = false }", config)
                     self.assertIn('service_tier = "default"', config)
-                    self.assertIn('model_reasoning_effort = "high"', config)
+                    self.assertIn('includeTemplate "agent-effort.partial"', config)
+                    self.assertIn(f'"agent" "{agent}"', config)
                     continue
                 self.assertIn('"harness" "codex"', config)
                 self.assertRegex(config, re.compile(rf'^service_tier\s*=\s*"{expected_service_tier}"$', re.MULTILINE))
@@ -398,10 +408,36 @@ class TestModelBandInvariants(unittest.TestCase):
                     self.assertIn('includeTemplate "agent-model.partial"', config)
                 else:
                     self.assertIn("review-agent-model.partial", config)
-                # The model is rendered from the registry but model_reasoning_effort is a hand-kept
-                # literal, so it has to carry the effort of the row it renders (the bound category).
-                _, lane_effort = expected[category]
-                self.assertRegex(config, re.compile(rf'^model_reasoning_effort\s*=\s*"{lane_effort}"$', re.MULTILINE))
+                # Effort renders from the registry via `agent-effort.partial` (one-line
+                # category-row edit propagates); the registry half of this test above pins
+                # the row's effort, so the template only has to name the right partial.
+                self.assertIn('includeTemplate "agent-effort.partial"', config)
+                self.assertIn(f'"agent" "{agent}"', config)
+
+    def test_codex_profiles_render_the_registry_effort_through_the_partial(self):
+        # `agent-effort.partial` is only a contract if the rendered TOML carries the registry
+        # row's effort; naming the partial in the source proves nothing about its output.
+        import ai_models
+
+        registry = REPO / "home/.chezmoidata/ai_models"
+        with tempfile.NamedTemporaryFile("w", suffix=".toml") as config:
+            config.write("[data]\nisWork = true\n")
+            config.flush()
+            for template in sorted((REPO / "home/dot_codex/exact_agents").glob("*.toml.tmpl")):
+                agent = template.name.removeprefix("readonly_").removesuffix(".toml.tmpl")
+                resolved = ai_models.resolve_agent_model(registry, "codex", agent)
+                result = subprocess.run(
+                    ["chezmoi", "--source", str(REPO), "--config", config.name, "execute-template"],
+                    input=template.read_text(),
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(0, result.returncode, (template, result.stderr))
+                self.assertRegex(
+                    result.stdout,
+                    re.compile(rf'^model_reasoning_effort\s*=\s*"{re.escape(resolved["effort"])}"$', re.MULTILINE),
+                    template,
+                )
 
     def test_codex_agent_registry_matches_the_profile_files_it_points_at(self):
         # Without an `[agents.<name>]` entry the files under ~/.codex/agents are never read:
@@ -666,12 +702,13 @@ class TestModelBandInvariants(unittest.TestCase):
                 "tool_name": tool_name,
                 "tool_input": {"subagent_type": "generalPurpose", "model": model, "prompt": "x"},
             }
+            env = root_gate_env({"AGENT_BAND_HARNESS": "cursor", "AGENT_BANDS_FILE": str(projection)})
             result = subprocess.run(
                 [sys.executable, str(REPO / "home/exact_dot_agents/exact_hooks/executable_band_gate.py")],
                 input=json.dumps(payload),
                 capture_output=True,
                 text=True,
-                env={**os.environ, "AGENT_BAND_HARNESS": "cursor", "AGENT_BANDS_FILE": str(projection)},
+                env=env,
                 check=True,
             )
             return json.loads(result.stdout)
@@ -702,7 +739,7 @@ class TestModelBandInvariants(unittest.TestCase):
             ),
             capture_output=True,
             text=True,
-            env={**os.environ, "AGENT_BAND_HARNESS": "cursor", "AGENT_BANDS_FILE": str(projection)},
+            env=root_gate_env({"AGENT_BAND_HARNESS": "cursor", "AGENT_BANDS_FILE": str(projection)}),
             check=True,
         )
         assert json.loads(smol.stdout)["updated_input"]["model"] == smol_model, smol.stdout
@@ -717,12 +754,13 @@ class TestModelBandInvariants(unittest.TestCase):
             ),
             capture_output=True,
             text=True,
-            env={
-                **os.environ,
-                "AGENT_BAND_HARNESS": "cursor",
-                "AGENT_BANDS_FILE": str(projection),
-                "AGENT_BAND_MODEL_OVERRIDE": "byok/one-model",
-            },
+            env=root_gate_env(
+                {
+                    "AGENT_BAND_HARNESS": "cursor",
+                    "AGENT_BANDS_FILE": str(projection),
+                    "AGENT_BAND_MODEL_OVERRIDE": "byok/one-model",
+                }
+            ),
             check=True,
         )
         assert json.loads(byok.stdout)["updated_input"]["model"] == "byok/one-model"
@@ -739,7 +777,7 @@ class TestModelBandInvariants(unittest.TestCase):
             ),
             capture_output=True,
             text=True,
-            env={**os.environ, "AGENT_BAND_HARNESS": "claude_code", "AGENT_BANDS_FILE": str(projection)},
+            env=root_gate_env({"AGENT_BAND_HARNESS": "claude_code", "AGENT_BANDS_FILE": str(projection)}),
             check=True,
         )
         assert json.loads(clamp.stdout)["hookSpecificOutput"]["updatedInput"]["model"] == alias, clamp.stdout
@@ -763,7 +801,7 @@ class TestModelBandInvariants(unittest.TestCase):
                 input=json.dumps({"tool_name": "Agent", "tool_input": {"subagent_type": agent, "model": model}}),
                 capture_output=True,
                 text=True,
-                env={**os.environ, "AGENT_BAND_HARNESS": "claude_code", "AGENT_BANDS_FILE": str(projection)},
+                env=root_gate_env({"AGENT_BAND_HARNESS": "claude_code", "AGENT_BANDS_FILE": str(projection)}),
                 check=True,
             )
             out = json.loads(result.stdout)
@@ -780,6 +818,46 @@ class TestModelBandInvariants(unittest.TestCase):
         assert claude_alias("k-agent-smol", "opus") == "sonnet", "a memory lane must not reach T2 Opus"
         assert claude_alias("general-purpose", "sonnet") == "opus", "implementation must keep its assigned model"
 
+    def test_every_binding_resolves_to_a_profile_or_a_reasoned_fallback(self):
+        # D10/C8: a binding with no reachable profile on a harness must sit on a
+        # reasoned `binding_fallbacks` entry (generic type + why), or delegation fails
+        # natively at best and silently routes to generic at worst. Consumes the
+        # deployed projection's `reachable_agents` plus the registry allow-list, and
+        # pins bands schema 1.6.0 (the version that carries `reachable_agents`).
+        import ai_models
+
+        registry = REPO / "home/.chezmoidata/ai_models"
+        bindings = ai_models.load_agent_bindings(registry)
+        fallbacks = ai_models._load_block_map(registry, "binding_fallbacks")
+        projection = json.loads((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_text())
+        assert projection["schema_version"] == "1.6.0"
+        reachable = {harness: set(rows["reachable_agents"]) for harness, rows in projection["harnesses"].items()}
+        uncovered: list[str] = []
+        for agent in sorted(bindings):
+            for harness in sorted(reachable):
+                if agent in reachable[harness]:
+                    continue
+                entry = fallbacks.get(harness, {})
+                generic = entry.get("generic", "")
+                reason = entry.get("reason", "")
+                if not generic or not reason:
+                    uncovered.append(f"{harness}/{agent}: no profile and no reasoned fallback")
+                elif generic != "none" and generic not in bindings:
+                    uncovered.append(f"{harness}/{agent}: fallback generic {generic!r} is not a bound agent")
+        self.assertEqual([], uncovered)
+
+    def test_deep_review_leaves_bind_to_review(self):
+        # B14: `k-agent-deep-review` and `k-agent-review-controller` load
+        # `reviewer-worker.md` but were bound to `research`; a future tiering split
+        # would silently misprice them. Both rebinds are `review`.
+        import ai_models
+
+        registry = REPO / "home/.chezmoidata/ai_models"
+        bindings = ai_models.load_agent_bindings(registry)
+        for agent in ("k-agent-deep-review", "k-agent-review-controller"):
+            with self.subTest(agent=agent):
+                self.assertEqual("review", bindings[agent])
+
     def test_the_band_gate_passes_any_explicit_lane_pick_on_a_generic_subagent_type(self) -> None:
         # Most harnesses cannot reach the per-lane profiles at all (Cursor never scans
         # ~/.cursor/agents), so a research or review launch arrives as the generic `implement`
@@ -793,8 +871,8 @@ class TestModelBandInvariants(unittest.TestCase):
 
         projection_path = REPO / "home/dot_config/ai/readonly_agent-bands.v1.json"
         projection = json.loads(projection_path.read_text(encoding="utf-8"))
-        assert projection["schema_version"] == "1.5.0", (
-            "session is a schema addition; bump generate_agent_bands.py SCHEMA_VERSION"
+        assert projection["schema_version"] == "1.6.0", (
+            "reachable_agents is a schema addition; bump generate_agent_bands.py SCHEMA_VERSION"
         )
 
         def gate_model(payload: dict, harness: str) -> str | None:
@@ -804,7 +882,7 @@ class TestModelBandInvariants(unittest.TestCase):
                 input=json.dumps(payload),
                 capture_output=True,
                 text=True,
-                env={**os.environ, "AGENT_BAND_HARNESS": harness, "AGENT_BANDS_FILE": str(projection_path)},
+                env=root_gate_env({"AGENT_BAND_HARNESS": harness, "AGENT_BANDS_FILE": str(projection_path)}),
                 check=True,
             )
             out = json.loads(result.stdout)
@@ -1019,11 +1097,13 @@ class TestModelBandInvariants(unittest.TestCase):
             settings = json.loads((REPO / f"home/dot_claude/settings.{profile}.json").read_text(encoding="utf-8"))
             check(f"claude settings.{profile}.json model", settings.get("model", ""))
 
-    def test_claude_code_mechanical_category_uses_sonnet_4_6_1m_high(self):
+    def test_claude_code_mechanical_category_uses_sonnet_5_high(self):
+        # Retiered 2026-09-14: Sonnet 5 lists at $2/$10 per MTok vs Sonnet 4.6 at $3/$15 and is the
+        # newer model; the lane exists to be cheap, so it must not pin the pricier tier.
         import ai_models
 
         row = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["claude_code"]["mechanical"]
-        self.assertEqual("claude-sonnet-4-6[1m]", row["model"])
+        self.assertEqual("claude-sonnet-5", row["model"])
         self.assertEqual("high", row["effort"])
         self.assertEqual("long", row["context"])
         self.assertNotRegex(row["model"], r"claude-\w+-\d+\.\d+")
@@ -1429,3 +1509,45 @@ class TestModelBandInvariants(unittest.TestCase):
             "home/exact_lib/exact_,copilot/main.py",
             'os.environ.setdefault("COPILOT_DISABLE_ANTHROPIC_THINKING", "1")',
         )
+
+    def test_unreachable_binding_without_fallback_fails_generation(self):
+        # generate_agent_bands fails closed when a bound agent has no profile on a harness with
+        # no reasoned fallback: without the raise an unreachable lane silently ships. Patches
+        # profile discovery and the fallback reader so only the failure branch is exercised.
+        import generate_agent_bands
+
+        with (
+            mock.patch.object(generate_agent_bands, "_profile_names", return_value=set()),
+            mock.patch.object(generate_agent_bands, "_load_binding_fallbacks", return_value={}),
+        ):
+            with self.assertRaisesRegex(SystemExit, "zz-harness/k-agent-orphan"):
+                generate_agent_bands._check_reachability(
+                    {"k-agent-orphan": "mechanical"}, {"zz-harness": {"mechanical": {}}}
+                )
+
+    def test_fallback_generic_outside_the_bindings_fails_generation(self):
+        # A fallback whose generic names no bound agent is a typo blessing an unreachable lane,
+        # so generation fails naming the bad generic rather than shipping it.
+        import generate_agent_bands
+
+        fallbacks = {"zz-harness": {"generic": "k-agent-ghost", "reason": "dynamic lanes"}}
+        with (
+            mock.patch.object(generate_agent_bands, "_profile_names", return_value=set()),
+            mock.patch.object(generate_agent_bands, "_load_binding_fallbacks", return_value=fallbacks),
+        ):
+            with self.assertRaisesRegex(SystemExit, "is not a bound agent"):
+                generate_agent_bands._check_reachability(
+                    {"k-agent-actual": "mechanical"}, {"zz-harness": {"mechanical": {}}}
+                )
+
+    def test_current_registry_reachability_passes_as_control(self):
+        # The failure branches above must not fire on the deployed registry: every binding
+        # resolves to a profile or a reasoned fallback today.
+        import ai_models
+        import generate_agent_bands
+
+        registry = REPO / "home/.chezmoidata/ai_models"
+        bindings = ai_models.load_agent_bindings(registry)
+        category_models = ai_models.load_category_models(registry)
+        reachable = generate_agent_bands._check_reachability(bindings, category_models)
+        self.assertEqual(set(reachable), set(category_models))

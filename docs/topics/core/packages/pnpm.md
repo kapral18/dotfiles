@@ -4,7 +4,7 @@ sidebar_position: 15
 
 # Add A Global pnpm Package
 
-Global pnpm packages are managed via a plain list. The sync command installs missing packages, removes unmanaged packages, then runs `pnpm update -g --latest` for every unpinned package so installed packages are refreshed instead of staying within the semver range recorded at install time.
+Global pnpm packages are managed via a plain list. The sync command installs missing packages, removes unmanaged packages, then asks `pnpm outdated -g --json` which unpinned packages are behind their latest release and runs `pnpm update -g --latest` only for those, so installed packages are refreshed instead of staying within the semver range recorded at install time while packages already at latest are left untouched.
 
 ## Preconditions
 
@@ -41,9 +41,11 @@ pnpm ls -g --depth 0 | rg '<package-name>'
 
 The installer reads `~/.default-pnpm-pkgs`, resolves `pnpm root -g`, and merges every exact desired package name into `<pnpm root -g>/pnpm-workspace.yaml` with `allowBuilds[<name>]` set to `true` before reading inventory or changing packages. Pins reduce to the bare name. Unrelated approval, denial, and placeholder entries remain unchanged, and this only approves listed top-level packages; it does not approve third-party transitive packages. This durable workspace setting means direct `pnpm -g update` commands inherit the same build decisions after a sync.
 
-It then compares the desired list with `pnpm ls -g --json`, installs missing packages (`pnpm add -g`), re-pins packages whose installed version differs from an exact pin, uninstalls global packages not on the list (`pnpm remove -g`), then runs `pnpm update -g --latest` for each unpinned package.
+It then compares the desired list with `pnpm ls -g --json`, installs missing packages (`pnpm add -g`), re-pins packages whose installed version differs from an exact pin, uninstalls global packages not on the list (`pnpm remove -g`), then runs `pnpm update -g --latest` for each unpinned package that `pnpm outdated -g --json` reports behind (pnpm exits 1 when anything is outdated and 0 when nothing is; any other exit or unreadable body stops the upgrade step and fails the sync). A package already at latest is never re-updated, because `pnpm update` rebuilds the package's hashed project directory even at the same version.
 
-pnpm 11+ installs every global package into its own hashed project directory under `~/.local/share/pnpm/global/v11/`, and that directory moves on every add or update. Consumers that need a stable module path (Pi's `packages` setting loads `pi-mcp-adapter` and `pi-subagents` by path) read `~/.local/share/pnpm-global-links/node_modules/<package>` instead; the installer rebuilds that symlink tree after every sync.
+After any add, remove, or update, the installer runs `lsof` and prints `Restart needed: <command> (pid <n>) still runs from removed <dir>` for every process that still has files open under a global project directory that no longer exists. On 2026-09-14 a one-package list edit rebuilt every global directory and a running Pi session silently lost its subagent launcher; this report names that process at the moment it happens. It is best effort: without `lsof`, or on a timeout, nothing is printed and the exit status is unchanged.
+
+pnpm 11+ installs every global package into its own hashed project directory under `~/.local/share/pnpm/global/v11/`, and that directory moves on every add or update. Consumers that need a stable module path (Pi's `packages` setting loads `pi-mcp-adapter`, `pi-subagents`, and `@rahularya01/pi-cursor` by path; scoped names keep their `@scope/name` directory shape) read `~/.local/share/pnpm-global-links/node_modules/<package>` instead; the installer rebuilds that symlink tree after every sync.
 
 Package operations pass `--yes` and disconnect stdin so pnpm does not prompt during a chezmoi run, including when launched from a terminal. Unapproved dependency build scripts remain ignored.
 

@@ -13,6 +13,9 @@ pi-mcp-adapter
 # Description: Subagent delegation extension (chains, parallel, isolated child context) loaded by Pi from npm package settings
 # URL: https://github.com/nicobailon/pi-subagents
 pi-subagents
+# Description: Native Cursor model provider for Pi (same agent.v1 Connect/protobuf + PKCE OAuth transport as OMP's built-in cursor provider); loaded by Pi from package settings
+# URL: https://github.com/Rahularya01/pi-cursor
+@rahularya01/pi-cursor
 # Description: Terminal-based AI coding assistant by Anthropic
 # URL: https://www.anthropic.com/claude-code
 @anthropic-ai/claude-code

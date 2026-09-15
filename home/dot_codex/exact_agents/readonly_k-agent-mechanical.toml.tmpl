@@ -1,7 +1,7 @@
 name = "k-agent-mechanical"
 description = "Settled-procedure lane: run a parent-stated retrieval, execution, extraction, transformation, or compression/reporting rule over named targets and return the specified artifact."
 model = "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "codex" "agent" "k-agent-mechanical") }}"
-model_reasoning_effort = "high"
+model_reasoning_effort = "{{ includeTemplate "agent-effort.partial" (dict "root" . "harness" "codex" "agent" "k-agent-mechanical") }}"
 service_tier = "default"
 features = { multi_agent = false }
 developer_instructions = """

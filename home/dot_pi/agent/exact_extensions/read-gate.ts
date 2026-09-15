@@ -13,6 +13,10 @@ import { join } from "node:path"
 const GATE_TIMEOUT_MS = 10_000
 const GATE_STDOUT_MAX_BYTES = 64 * 1024
 const GATED_TOOLS = new Set(["read", "bash"])
+// SOP §3.8 publication gate on the shell path (same payload shape the read gate uses).
+// publish_gate.py denies a delegated leaf's publication call and attaches the root
+// checklist as additionalContext; Pi's tool_call channel can only block, so the root
+// checklist is dropped here while the leaf denial is enforced.
 
 interface GateProcessResult {
   code: number
@@ -20,18 +24,18 @@ interface GateProcessResult {
   stdout: string
 }
 
-function gatePath(): string {
+function hookPath(name: string): string {
   const home = process.env.HOME || homedir()
-  return join(home, ".agents", "hooks", "read_gate.py")
+  return join(home, ".agents", "hooks", name)
 }
 
-function runGate(payload: Record<string, unknown>): Promise<GateProcessResult> {
+function runHook(name: string, payload: Record<string, unknown>): Promise<GateProcessResult> {
   return new Promise((resolve) => {
     let stdout = ""
     let stdoutBytes = 0
     let killed = false
     let settled = false
-    const child = spawn(gatePath(), [], { stdio: ["pipe", "pipe", "ignore"] })
+    const child = spawn(hookPath(name), [], { stdio: ["pipe", "pipe", "ignore"] })
     const finish = (code: number) => {
       if (settled) return
       settled = true
@@ -58,6 +62,29 @@ function runGate(payload: Record<string, unknown>): Promise<GateProcessResult> {
   })
 }
 
+const runGate = (payload: Record<string, unknown>) => runHook("read_gate.py", payload)
+
+// publish_gate.py denies a delegated leaf's human-visible publication calls and
+// returns the root's SOP §3.8 checklist otherwise; the gate fails open.
+async function publishBlock(payload: Record<string, unknown>): Promise<{ block: true; reason: string } | undefined> {
+  let result: GateProcessResult
+  try {
+    result = await runHook("publish_gate.py", payload)
+  } catch {
+    return undefined
+  }
+  if (result.killed || result.code !== 0 || !result.stdout.trim()) return undefined
+  try {
+    const output = JSON.parse(result.stdout)
+    if (output?.decision === "block" && typeof output.reason === "string") {
+      return { block: true, reason: output.reason }
+    }
+  } catch {
+    // fail open
+  }
+  return undefined
+}
+
 function resultText(content: unknown): string {
   if (!Array.isArray(content)) return ""
   return content
@@ -73,6 +100,17 @@ export default function (pi: ExtensionAPI) {
   })
 
   pi.on("tool_call", async (event, ctx) => {
+    if (event.toolName === "bash") {
+      // Publication gate first: a delegated leaf must not publish human-visible effects.
+      const publication = await publishBlock({
+        ...base(ctx),
+        hook_event_name: "PreToolUse",
+        tool_name: event.toolName,
+        tool_input: event.input,
+        tool_use_id: event.toolCallId,
+      })
+      if (publication) return publication
+    }
     if (!GATED_TOOLS.has(event.toolName)) return
     try {
       const result = await runGate({

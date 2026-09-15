@@ -90,7 +90,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             with self.subTest(path=path, clause="fetch learning"):
                 self.assert_file_contains(
                     path,
-                    "Record a reusable fetch learning as `,agent-memory note fact --ref <primary-source URL>` with the verbatim quote in the text; the root harvests it.",
+                    "Record a reusable fetch learning as `,agent-memory note fact --ref <primary-source URL>` with the verbatim quote; the root harvests it.",
                     "Do not return it as a durable claim.",
                 )
         self.assert_file_contains(
@@ -150,6 +150,47 @@ class TestSopPolicyInvariants(unittest.TestCase):
                 "A final Verify worker MUST NOT create another lane or repeat a completed check.",
                 "Late events MUST NOT overwrite a terminal result or reopen a completed worker.",
             )
+
+    def test_dispatch_failure_taxonomy_sentences_are_present(self):
+        # L1's §3.7/§1.1 unison sentences: the 4-row dispatch-outcome table, return
+        # schema + consume-once, tool-description-is-capability, packet-ID⇔executed,
+        # authorization persistence, and the slice/effort wording. Whitespace-normalized:
+        # `make fmt` wraps the §1.1 sentence across two lines without changing words.
+        text = re.sub(r"\s+", " ", (REPO / "home/readonly_AGENTS.md").read_text(encoding="utf-8"))
+        for sentence in (
+            "A native tool description is a capability list, not delegation policy;"
+            " the packet fields and the leaf contract govern.",
+            "A packet ID assigned means the tool executed; a dispatch rejected before"
+            " execution has no packet ID and is re-dispatchable after correction.",
+            "rejection before execution (schema or guard denial)",
+            "correct the call, never retry unchanged, never re-ask permission",
+            "executed, then host, bootstrap, or runner failure",
+            "retry the identical packet once",
+            "blocked worker return",
+            "lane absent, or adapter cannot enforce the leaf boundary",
+            "surface it; run attended only",
+            "Workers return `produced` or `blocked` with artifact pointers; consume a child"
+            " result once: a file pointer means read the file once, an inline body means do"
+            " not re-read the file.",
+            "Children MUST NOT select, use, or create topics with `,agent-memory`.",
+            "Authorization persists within its target, scope, and allowed effects until"
+            " revoked or completed; re-check current preconditions without resetting permission.",
+            "Named files count toward the same accumulated bound.",
+            "dispatch it, and consume its terminal result; do not continue inline reads in that turn.",
+            "Ownership covers the path set and mutable shared state (git index, generated"
+            " outputs, lockfiles); one writer per worktree unless targets are proven independent.",
+            "Root routing steps (predicate, roster) are not chained workers.",
+            "including the light tier's `change-auditor` packet.",
+            "(final Verify certifies, §2.8).",
+            "(never certify from a status report, §2.4).",
+            "never nested lifecycles except the user-invoked `k-converge` loop named below.",
+            "and a parenthesized secondary names the slices that are delegated.",
+            "Resolve model and, where the harness accepts it, effort from `category_models` in the shared registry.",
+            "A delegated leaf that loads a skill ignores its `Subagent dispatch:` line and Root moves; only the root launches.",
+            "Never bypass this restriction via a harness CLI or another model.",
+        ):
+            with self.subTest(sentence=sentence[:48]):
+                self.assertIn(sentence, text)
 
     def test_global_sop_keeps_truth_runtime_and_completion_gates(self):
         self.assert_file_contains(
@@ -416,12 +457,12 @@ class TestSopPolicyInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
             "Centralize control, not raw context or execution.",
-            "Resolve model AND effort from `category_models`",
+            "Resolve model and, where the harness accepts it, effort from `category_models`",
             "Keep research/orchestration/review/refutation strong",
             "- `mechanical`:",
             "No agent per read, command, check result, or tiny edit.",
             "On compaction or continuation resume from it",
-            "Resolve model AND effort from `category_models` in the shared registry.",
+            "Resolve model and, where the harness accepts it, effort from `category_models` in the shared registry.",
             "Repo-owned agent IDs use `k-agent-<role>`",
         )
 

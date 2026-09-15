@@ -98,8 +98,7 @@ Unresolved probes prevent a dry verdict.
 
 ## Step 4 — Fan out refuters under the filter
 
-Spawn fresh `refute`-lane passes every round, each on a distinct dimension (correctness, published claims, test integrity, environment/CI).
-Launch each as `k-agent-adversarial-verifier` per the active harness's launch instructions in `~/.agents/skills/k-review/references/runtime-harnesses.md`; report the resolved model/effort.
+Fan out fresh `refute`-lane passes every round under the filter, each on a distinct dimension (correctness, published claims, test integrity, environment/CI); the launch mechanics live in Root moves below.
 Keep their judgments independent.
 Verified raw artifacts may be reused after checking identity, hashes, and dependencies;
 prior verdicts never replace fresh refutation or required checks.
@@ -116,7 +115,7 @@ Completion criterion: each refuter returned findings or an explicit "none", and 
 
 ## Step 5 — Act, refuse, and re-verify discrimination
 
-Dispatch class (a)/(b)/(c) fixes to the `implement`-category worker per SOP §3.7 (`~/.agents/skills/k-build/references/implement-worker.md`); edit inline only trivial single-site fixes.
+Route class (a)/(b)/(c) fixes per Root moves below; edit inline only trivial single-site fixes.
 List refusals with reasons.
 Class (c) fixes that amend commits or edit published text must pass the SOP §3.2 commit gate and §3.8 publication approval before being applied; working-tree fixes need no gate.
 
@@ -140,6 +139,11 @@ Continue locally resolvable work; report a verified external blocker when it pre
 Report per round: mutations caught/total, findings by class, refusals, and what changed.
 
 Completion criterion: a dry round is reached, or a blocker is named that no further round can clear.
+
+## Root moves
+
+Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Spawn fresh `refute`-lane passes every round, each on a distinct dimension (correctness, published claims, test integrity, environment/CI). Launch each as `k-agent-adversarial-verifier`; pass the applicable launch instructions from `~/.agents/skills/k-review/references/runtime-harnesses.md` (and, for Pi/OMP, `~/.agents/skills/k-review/references/runtime-harnesses-pi-omp.md`) as a packet pointer only — the root does not open them; report the resolved model/effort. Dispatch class (a)/(b)/(c) fixes to the `implement`-category worker per SOP §3.7 (`~/.agents/skills/k-build/references/implement-worker.md`). Per-harness profile names live in `~/.config/ai/agent-bands.v1.json` → `harnesses.<h>.agents`. The root MUST NOT substitute its own inline refutation or inline fixes for those packets absent an explicit user no-delegation instruction; if a required lane or tool is unavailable, report blocked.
 
 ## Honest residue
 

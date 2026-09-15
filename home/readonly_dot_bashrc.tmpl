@@ -63,3 +63,6 @@ dedup_path
 
 # Clean up
 unset -f dedup_path
+
+# Machine-local extras (not in git). Missing file is a no-op.
+[ -f ~/.bashrc.local ] && source ~/.bashrc.local

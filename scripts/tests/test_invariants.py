@@ -97,5 +97,53 @@ class TestOnchangeHookHashClosure(unittest.TestCase):
         self.assertTrue(any(HASH_EXPRESSION_RE.search(line) for line in helper_hash_lines))
 
 
+class TestMachineLocalShellExtras(unittest.TestCase):
+    """WHEN shell profiles need a git-unmanaged extra source."""
+
+    TAILS = (
+        (
+            REPO / "home/readonly_dot_profile.tmpl",
+            ["[ -f ~/.profile.local ] && source ~/.profile.local"],
+        ),
+        (
+            REPO / "home/readonly_dot_bashrc.tmpl",
+            ["[ -f ~/.bashrc.local ] && source ~/.bashrc.local"],
+        ),
+        (
+            REPO / "home/readonly_dot_zshrc.tmpl",
+            ["[ -f ~/.zshrc.local ] && source ~/.zshrc.local"],
+        ),
+        (
+            REPO / "home/dot_config/fish/readonly_config.fish.tmpl",
+            [
+                "if test -f $HOME/.config/fish/config.local.fish",
+                "    source $HOME/.config/fish/config.local.fish",
+                "end",
+            ],
+        ),
+    )
+
+    def test_SHOULD_source_optional_local_override_as_last_code(self):
+        for path, tail in self.TAILS:
+            with self.subTest(path=path.name):
+                code = [
+                    line
+                    for line in path.read_text(encoding="utf-8").splitlines()
+                    if line.strip() and not line.lstrip().startswith("#")
+                ]
+                self.assertEqual(code[-len(tail) :], tail)
+
+    def test_SHOULD_keep_local_override_files_out_of_source(self):
+        forbidden = (
+            REPO / "home/dot_profile.local",
+            REPO / "home/dot_bashrc.local",
+            REPO / "home/dot_zshrc.local",
+            REPO / "home/dot_config/fish/config.local.fish",
+            REPO / "home/dot_config/fish/readonly_config.local.fish",
+        )
+        present = [str(path.relative_to(REPO)) for path in forbidden if path.exists()]
+        self.assertEqual(present, [])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -26,3 +26,9 @@ app_icons/
 crontab
 **/__pycache__/**
 **/*.pyc
+
+# Machine-local extras live only on the machine; never deploy from source.
+.profile.local
+.bashrc.local
+.zshrc.local
+.config/fish/config.local.fish

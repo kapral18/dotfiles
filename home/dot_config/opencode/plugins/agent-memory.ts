@@ -32,8 +32,10 @@ export const AgentMemoryPlugin: Plugin = async ({ $, directory, client }) => {
   const recorder = join(hooksDir, "worklog_dispatcher.sh")
   const perturn = join(hooksDir, "perturn_recall.py")
   const readGate = join(hooksDir, "read_gate.py")
+  const publishGate = join(hooksDir, "publish_gate.py")
   const store = join(homedir(), ".local", "share", "opencode", "opencode.db")
   const gatedTools = new Set(["read", "bash"])
+  const publishGatedTools = new Set(["bash"])
   if (!existsSync(sessionCtx) || !existsSync(recorder)) {
     console.warn("[agent-memory] Optional memory helpers missing; task guards and available hooks remain active")
   }
@@ -148,6 +150,21 @@ export const AgentMemoryPlugin: Plugin = async ({ $, directory, client }) => {
       }
       if (input.tool === "task" && output?.args?.task_id) {
         throw new Error("Do not resume a completed worker. Dispatch a new authorized packet from the root.")
+      }
+      // SOP §3.8 publication gate on the shell path (same payload shape read_gate
+      // already uses). A non-root session is a delegated leaf: pass its session id as
+      // `agent_id` so the shared leaf predicate denies instead of attaching the root
+      // checklist, and so the read ledger never merges into the parent key. A refused
+      // re-read throws the reason the model reads; a leaf publication denial throws too.
+      if (publishGatedTools.has(input.tool) && existsSync(publishGate)) {
+        const root = await isRoot(input.sessionID)
+        const verdict = await runJsonHook(publishGate, {
+          ...gatePayload("PreToolUse", input, output?.args),
+          ...(root ? {} : { agent_id: input.sessionID }),
+        })
+        if (verdict.decision === "block" && typeof verdict.reason === "string" && verdict.reason) {
+          throw new Error(verdict.reason)
+        }
       }
       if (!gatedTools.has(input.tool) || !existsSync(readGate)) return
       const verdict = await runJsonHook(readGate, gatePayload("PreToolUse", input, output?.args))

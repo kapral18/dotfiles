@@ -24,14 +24,14 @@ Each package source has a different convergence model. The important question is
 
 ## Notable package decisions
 
-| Decision                                            | Reason                                                                                                                                       |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Homebrew `link: false` for colliding `sem` binaries | GNU `parallel` and Ataraxy semantic-git both expose `sem`; wrappers expose the intended `,parallel` and `,sem` commands                      |
-| Pi globals live in pnpm                             | `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`, `pi-mcp-adapter`, and `pi-subagents` are kept together in the managed pnpm list |
-| Custom installer includes `ytsurf`                  | installed outside standard package managers in this setup                                                                                    |
-| `git_maven_jar` rows are declarative                | add/update rows clone/build/install; removed clean repos are deleted; dirty stale repos are preserved                                        |
-| `zip_opt` keeps sibling dylibs                      | zip extracts to `~/.local/opt/<name>/`; removing the row does not delete that directory                                                      |
-| FLUX.2 klein weights are command-only               | `,image-local sync` downloads ~15 GB; `chezmoi apply` never pulls them (not gated on `downloadLlamaCppModels`)                               |
+| Decision                                            | Reason                                                                                                                                                                 |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Homebrew `link: false` for colliding `sem` binaries | GNU `parallel` and Ataraxy semantic-git both expose `sem`; wrappers expose the intended `,parallel` and `,sem` commands                                                |
+| Pi globals live in pnpm                             | `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`, `pi-mcp-adapter`, `pi-subagents`, and `@rahularya01/pi-cursor` are kept together in the managed pnpm list |
+| Custom installer includes `ytsurf`                  | installed outside standard package managers in this setup                                                                                                              |
+| `git_maven_jar` rows are declarative                | add/update rows clone/build/install; removed clean repos are deleted; dirty stale repos are preserved                                                                  |
+| `zip_opt` keeps sibling dylibs                      | zip extracts to `~/.local/opt/<name>/`; removing the row does not delete that directory                                                                                |
+| FLUX.2 klein weights are command-only               | `,image-local sync` downloads ~15 GB; `chezmoi apply` never pulls them (not gated on `downloadLlamaCppModels`)                                                         |
 
 ## Where to make changes
 

@@ -30,13 +30,14 @@ import os
 import re
 import sys
 
-from hook_common import PARENT_SESSION_ENV, emit, read_payload
+import hook_common
+from hook_common import emit, is_delegated_leaf, read_payload
 
 GATE_ENV = "AGENT_PUBLISH_GATE"
 ROOT_MODE_ENV = "AGENT_PUBLISH_GATE_ROOT"
 ANTIGRAVITY_OUTPUT = "antigravity"
 
-SHELL_TOOLS = {"Bash", "shell", "run_command", "run_shell_command", "runTerminalCommand", "terminal"}
+SHELL_TOOLS = {"Bash", "bash", "shell", "run_command", "run_shell_command", "runTerminalCommand", "terminal"}
 
 # Slack MCP mutation tools. Claude Code reports them as `mcp__slack__<tool>`; other harnesses may
 # drop the prefix, so match on the bare tool name as a suffix.
@@ -141,12 +142,8 @@ def publication_surface(payload: dict) -> str:
 
 
 def is_delegated_leaf(payload: dict) -> bool:
-    agent_id = payload.get("agent_id")
-    if isinstance(agent_id, str) and agent_id:
-        return True
-    if os.environ.get(PARENT_SESSION_ENV, "").strip():
-        return True
-    return os.environ.get("PI_SUBAGENT_CHILD") == "1"
+    """Leaf identity, single-owned by `hook_common.is_delegated_leaf`."""
+    return hook_common.is_delegated_leaf(payload)
 
 
 def _silent(antigravity: bool) -> int:

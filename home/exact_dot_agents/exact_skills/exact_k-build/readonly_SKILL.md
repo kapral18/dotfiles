@@ -6,8 +6,9 @@ disable-model-invocation: true
 
 # Build
 
-Subagent dispatch: implement (research for unsettled questions; review/refute for final judgment) —
-production goes to the implementation band, judgment to strong final packets.
+Subagent dispatch: implement (research, review/refute slices) —
+production goes to the implementation band, judgment to strong final packets;
+the research slice covers unsettled questions and the review/refute slice covers final judgment.
 
 Implement the approved `k-spec` packet through the SOP's Scope → Understand → Produce → Verify → Deliver lifecycle.
 This skill supplies build criteria and artifacts; it MUST NOT create another phase graph or verification loop.

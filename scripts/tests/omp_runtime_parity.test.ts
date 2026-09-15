@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "bun:test"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { tmpdir, homedir } from "node:os"
 import { join } from "node:path"
 import register from "../../home/dot_omp/private_agent/extensions/runtime-parity.ts"
 
@@ -321,5 +321,80 @@ describe("WHEN native OMP finalizes a worker result", () => {
     expect((await child.call("read"))?.reason).toContain("persisted native session")
     child.provider()
     expect(child.aborts).toBe(1)
+  })
+})
+
+describe("WHEN native OMP advertises its task tool", () => {
+  it("SHOULD NOT advertise Pi-forbidden composite tokens in the installed task description", async () => {
+    // The native description is generated at runtime: TaskTool.description renders
+    // src/prompts/tools/task.md from live settings, so probe it through the installed
+    // package's own TaskTool export with a stub session, mirroring Pi's
+    // FORBIDDEN_ADVERTISEMENT_TOKENS. Skip only when the package is absent.
+    const pkgDir = join(homedir(), ".local/share/pnpm-global-links/node_modules/@oh-my-pi/pi-coding-agent")
+    const taskIndex = join(pkgDir, "src/task/index.ts")
+    if (!existsSync(join(pkgDir, "package.json")) || !existsSync(taskIndex)) {
+      console.log(`SKIP: ${pkgDir} absent; cannot probe the native OMP task description`)
+      return
+    }
+    const { TaskTool } = (await import(taskIndex)) as unknown as {
+      TaskTool: new (session: unknown, agents: unknown[]) => { description: string }
+    }
+    for (const batch of [false, true]) {
+      const tool = new TaskTool(
+        {
+          cwd: mkdtempSync(join(tmpdir(), "omp-task-description-")),
+          taskDepth: 0,
+          getSessionSpawns: () => "*",
+          settings: {
+            get: (key: string) =>
+              key === "task.disabledAgents"
+                ? []
+                : key === "task.batch"
+                  ? batch
+                  : key === "task.enableEffort" || key === "eval.tools.enabled" || key === "async.enabled"
+                    ? true
+                    : undefined,
+          },
+        },
+        [],
+      )
+      const description = tool.description
+      expect(description).toContain("Available Agents")
+      for (const token of ["workflowScript", '"guide"', "resume", "schedule", "agentContract", "exactly one top-level"]) {
+        expect(description).not.toContain(token)
+      }
+      // "steer" mirrors Pi's list, but the native template's benign IRC prose
+      // ("delivered immediately as steering") contains that substring, so pin the
+      // carve-out: every occurrence must sit inside "steering", never a steer action.
+      expect(description.split("steer").length - 1).toBe(description.split("steering").length - 1)
+    }
+  })
+})
+
+describe("WHEN an OMP leaf runs shell commands", () => {
+  it("SHOULD block leaf publication commands via the publish gate while passing read-only shell", async () => {
+    const root = realpathSync(join(import.meta.dir, "..", ".."))
+    const home = mkdtempSync(join(tmpdir(), "omp-publish-gate-"))
+    try {
+      const hooks = join(home, ".agents", "hooks")
+      mkdirSync(hooks, { recursive: true })
+      for (const [src, dst] of [["executable_publish_gate.py", "publish_gate.py"], ["hook_common.py", "hook_common.py"]]) {
+        writeFileSync(join(hooks, dst), readFileSync(join(root, "home/exact_dot_agents/exact_hooks", src)))
+        chmodSync(join(hooks, dst), 0o755)
+      }
+      const priorHome = process.env.HOME
+      process.env.HOME = home
+      try {
+        const leaf = harness(undefined, ["yield"])
+        const blocked = await leaf.call("bash", { command: "gh pr comment 1 --body hi" })
+        expect(blocked?.block).toBe(true)
+        expect(await leaf.call("bash", { command: "echo hi" })).toBeUndefined()
+      } finally {
+        if (priorHome === undefined) delete process.env.HOME
+        else process.env.HOME = priorHome
+      }
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+    }
   })
 })

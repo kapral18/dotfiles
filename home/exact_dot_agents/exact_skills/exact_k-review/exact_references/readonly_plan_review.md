@@ -3,7 +3,8 @@
 Precondition:
 
 - You already loaded `~/.agents/skills/k-review/SKILL.md`.
-- Follow `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/shared_rules.md` (loaded once by the router; do not re-load).
+- `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/shared_rules.md` are the reviewer worker's mechanics; pass them in the review packet.
+  The root does not preload them; when a step below names one of their gates, the root reads only that gate's section.
 
 Use when:
 
