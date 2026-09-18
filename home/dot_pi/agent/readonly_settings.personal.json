@@ -1,7 +1,7 @@
 {
-  "defaultProvider": "github-copilot",
-  "defaultModel": "claude-fable-5.1",
-  "defaultThinkingLevel": "high",
+  "defaultProvider": "openrouter",
+  "defaultModel": "meta/muse-spark-1.3",
+  "defaultThinkingLevel": "xhigh",
   "showCacheMissNotices": true,
   "theme": "dark",
   "compaction": {

@@ -1,5 +1,9 @@
-{{- /* Resolve Pi subagent thinking from the bound category's effort. */ -}}
+{{- /* Resolve Pi subagent thinking from the bound category's effort, under the active Pi profile. */ -}}
 {{- $root := .root -}}
 {{- $category := index $root.agent_bindings .agent -}}
-{{- $pick := index (index $root.category_models .harness) $category -}}
+{{- $rows := index $root.category_models .harness -}}
+{{- if eq .harness "pi" -}}
+{{- $rows = (includeTemplate "pi-model-profile.partial" $root | fromJson).categories -}}
+{{- end -}}
+{{- $pick := index $rows $category -}}
 {{- $pick.effort -}}

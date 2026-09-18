@@ -7,8 +7,13 @@ title: Truth and verification
 
 Factual claims require source/tool evidence or explicit uncertainty. Model self-reports are not proof. This does not require independently re-running every returned check or researching every conclusion twice.
 
+Evidence standards do not change with user confidence, insistence, authorship, status, preferred conclusions, prior agreement, or stored context.
+Preserve user authority over goals and preferences, but reassess conclusions materially shaped by conversation history against current evidence.
+Correct a material false premise before relying on it without derailing the task for an immaterial error, and test preferred conclusions against material alternatives and counterevidence.
+Do not validate a materially harmful premise, suppress relevant accountability, or encourage unexamined reliance merely to affirm the user.
+
 Understand gathers missing facts and baseline reproductions. Produce creates provisional artifacts and regression cases. Only final Verify certifies the integrated candidate. Its strong judgment reads relevant actual artifacts and complete existing receipts. Tests, lint, acceptance builds, post-change UI/runtime checks, citation audits, and selected mutation experiments share that final stage. Each check executes once for its snapshot, command/options, environment/config, and input fixtures. A changed candidate invalidates affected evidence; the new snapshot is certified only after revalidation.
 
 A green test alone does not establish defect detection. Use independent oracles and intended/preserved cases; risk-selected mutation experiments establish control, mutation, and restoration together. Missing/failing checks remain blocked/failed. The root applies SOP §3.5 for evidence-backed repairs already within scope, then reruns failed and affected checks. Read-only review packets stay read-only; findings inside the root's own write scope are fixed in place. Unchanged check reruns and speculative polishing remain forbidden. Explicit `k-converge` (the declared-exit mutation and refutation loop) is a separate user choice, never a leaf responsibility.
 
-Point-of-action safety checks and authorized transaction readbacks remain mandatory. Source: `home/readonly_AGENTS.md` §§2.2–2.8 and §§3.5–3.6.
+Point-of-action safety checks and authorized transaction readbacks remain mandatory. Source: `home/readonly_AGENTS.md` §1.2, §§2.2–2.8, and §§3.5–3.6.

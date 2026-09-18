@@ -23,9 +23,13 @@ SECTION_FILES = {
     "agent_bindings": "tiering.yaml",
     "category_models": "tiering.yaml",
     "binding_fallbacks": "tiering.yaml",
+    "pi_model_profiles": "tiering.yaml",
 }
 
 REVIEW_BAND_HARNESSES = {"claude": "claude_code"}
+
+#: Reserved profile name: the ``session_models.pi`` / ``category_models.pi`` rows themselves.
+DEFAULT_PI_PROFILE = "default"
 
 
 def section_path(registry, section_key):
@@ -91,6 +95,39 @@ def load_agent_bindings(registry):
     return _load_block_map(registry, "agent_bindings")
 
 
+def load_pi_model_profiles(registry):
+    """Load the alternate whole Pi pricings from ``pi_model_profiles``.
+
+    Each profile carries a full ``session`` row plus a full ``categories`` map, so a profile is
+    never a sparse overlay on the default rows. ``default`` is reserved for those default rows
+    and must not appear as a key.
+    """
+    profiles = _load_block_map(registry, "pi_model_profiles")
+    if DEFAULT_PI_PROFILE in profiles:
+        raise ValueError(f"pi_model_profiles must not define the reserved {DEFAULT_PI_PROFILE!r} name")
+    return profiles
+
+
+def resolve_pi_profile(registry, name=DEFAULT_PI_PROFILE):
+    """Resolve one Pi profile name to its ``{"session": ..., "categories": ...}`` rows.
+
+    ``default`` reads ``session_models.pi`` / ``category_models.pi`` directly; any other name must
+    exist in ``pi_model_profiles``. An unknown name raises rather than falling back, because a
+    silent fallback would quietly restore rows whose provider the profile exists to avoid.
+    """
+    if name == DEFAULT_PI_PROFILE:
+        return {
+            "session": load_session_models(registry)["pi"],
+            "categories": load_category_models(registry)["pi"],
+        }
+    profiles = load_pi_model_profiles(registry)
+    if name not in profiles:
+        valid = ", ".join([DEFAULT_PI_PROFILE, *sorted(profiles)])
+        raise ValueError(f"unknown pi model profile {name!r} (valid: {valid})")
+    profile = profiles[name]
+    return {"session": profile["session"], "categories": profile["categories"]}
+
+
 _BLOCK_ENTRY_RE = re.compile(r"^([\w.@-]+):\s*(.*?)(?:\s+#.*)?$")
 
 
@@ -135,16 +172,26 @@ def _load_block_map(registry, section_key):
     return result
 
 
-def resolve_agent_model(registry, harness, agent):
+def _category_models_for(registry, profile):
+    """Category rows for one profile: the registry's own, or a named Pi profile's replacements."""
+    category_models = load_category_models(registry)
+    if profile == DEFAULT_PI_PROFILE:
+        return category_models
+    return dict(category_models, pi=resolve_pi_profile(registry, profile)["categories"])
+
+
+def resolve_agent_model(registry, harness, agent, profile=DEFAULT_PI_PROFILE):
     """Resolve the model pick a harness should run ``agent`` on, or ``None`` if unbound.
 
     Returns the model pick plus the resolved ``category``/``family`` metadata.
     A counter-family category reports whether the verifier is cross-family, reduced
     independence, or degraded so callers do not treat same-family refutation as fully independent.
+    ``profile`` names a ``pi_model_profiles`` entry and only substitutes the ``pi`` rows; every
+    generator resolves ``default``, and only tests and the picker ask for another name.
     """
     categories = load_agent_categories(registry)
     bindings = load_agent_bindings(registry)
-    category_models = load_category_models(registry)
+    category_models = _category_models_for(registry, profile)
 
     category = bindings.get(agent)
     if category is None:
@@ -169,13 +216,14 @@ def resolve_agent_model(registry, harness, agent):
     )
 
 
-def resolve_review_agent_model(registry, harness, agent, slot=None):
+def resolve_review_agent_model(registry, harness, agent, slot=None, profile=DEFAULT_PI_PROFILE):
     """Resolve the review profile model for ``agent`` on ``harness``.
 
     Review roles use ``agent_bindings`` / ``agent_categories`` to choose their direct category
     pick, exactly like every other delegable agent; the ``slot`` (``verifier`` for counter-family
     categories, ``lanes`` otherwise) is reported so callers can tell a refute pick from a lane pick.
     ``harness`` accepts the review alias ``claude`` for the ``claude_code`` category key.
+    ``profile`` behaves as in ``resolve_agent_model``: it only substitutes the ``pi`` rows.
     """
     categories = load_agent_categories(registry)
     bindings = load_agent_bindings(registry)
@@ -189,7 +237,7 @@ def resolve_review_agent_model(registry, harness, agent, slot=None):
         slot = "verifier" if spec["family"] == "counter" else "lanes"
     band_harness = REVIEW_BAND_HARNESSES.get(harness, harness)
 
-    category_models = load_category_models(registry)
+    category_models = _category_models_for(registry, profile)
     row = category_models.get(band_harness, {}).get(category)
     if row is None:
         return None

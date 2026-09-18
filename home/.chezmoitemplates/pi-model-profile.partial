@@ -1,0 +1,38 @@
+{{- /*
+Resolve the active Pi model profile to JSON `{name, session, categories}`. Call with the root
+context and decode the result:
+
+  {{ $profile := includeTemplate "pi-model-profile.partial" . | fromJson }}
+
+The active name is one line in `${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi/pi-model-profile`,
+written by `,pi-model-profile`. It lives outside the source state on purpose: the pick is per
+machine, not per commit, and every apply re-reads it.
+
+Missing or empty file means `default`, which is `session_models.pi` + `category_models.pi` and is
+never a `pi_model_profiles` key. An unrecognised name fails the apply instead of falling back,
+because a silent fallback would restore rows whose provider the profile exists to avoid.
+*/ -}}
+{{- $stateHome := env "XDG_STATE_HOME" -}}
+{{- if not $stateHome -}}
+{{- $stateHome = joinPath .chezmoi.homeDir ".local/state" -}}
+{{- end -}}
+{{- $statePath := joinPath $stateHome "chezmoi" "pi-model-profile" -}}
+{{- $name := "default" -}}
+{{- if stat $statePath -}}
+{{- $stored := include $statePath | trim -}}
+{{- if $stored -}}
+{{- $name = $stored -}}
+{{- end -}}
+{{- end -}}
+{{- $session := index .session_models "pi" -}}
+{{- $categories := index .category_models "pi" -}}
+{{- if ne $name "default" -}}
+{{- $profiles := .pi_model_profiles | default dict -}}
+{{- if not (hasKey $profiles $name) -}}
+{{- fail (printf "unknown pi model profile %q in %s (valid: %s)" $name $statePath (append (keys $profiles) "default" | sortAlpha | join ", ")) -}}
+{{- end -}}
+{{- $profile := index $profiles $name -}}
+{{- $session = $profile.session -}}
+{{- $categories = $profile.categories -}}
+{{- end -}}
+{{- dict "name" $name "session" $session "categories" $categories | toJson -}}

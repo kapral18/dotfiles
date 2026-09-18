@@ -41,15 +41,14 @@ Sidecar markdown is canonical for content/identity; SQLite holds curation/runtim
 | `scope`                             | `workspace`/`project`/`domain`/`universal`                                            |
 | `tags`/`domain_tags`/`refs`         | Retrieval taxonomy and provenance links                                               |
 | `confidence`/`verified_by`          | 0–1 + verifier role                                                                   |
-| `supersedes`/`superseded_by`        | Dedupe links; superseded excluded from search                                         |
 | `decay_score`                       | Incremented by the `curate` decay pass; cleared on retrieval (14-day shield)          |
 | `embedding`/`embedding_model`/`dim` | Default `BAAI/bge-small-en-v1.5`, 384d via [`embed.py`](../../../../scripts/embed.py) |
 
-Write-time dedup refuses a case-insensitive title collision or same-kind cosine ≥ 0.95 unless the caller explicitly supersedes the old capsule or confirms a false positive with `--force`. Degraded metadata warns rather than silently storing. Schema drift rebuilds from sidecars; a sidecar that does not parse is moved to `<home>/quarantine/` with a stderr warning (surfaced by `doctor`) so one bad file cannot block the rebuild, and the rest of the store stays usable.
+Write-time dedup refuses a case-insensitive title collision or same-kind cosine ≥ 0.95 unless the caller amends the old capsule in place with `--supersedes <id>` (same id, omitted fields keep their stored value) or confirms a false positive with `--force`. The weekly `curate` dedupe deletes the losing near-duplicate outright (row, FTS row, and sidecar). Degraded metadata warns rather than silently storing. Schema drift rebuilds from sidecars; a sidecar that does not parse is moved to `<home>/quarantine/` with a stderr warning (surfaced by `doctor`) so one bad file cannot block the rebuild, and the rest of the store stays usable.
 
 ## Retrieval
 
-Hybrid search combines FTS5/BM25 and cosine (`sqlite-vec` via [`vec_runner.py`](../../../../scripts/vec_runner.py)), then applies RRF and MMR. Workspace matches receive a soft boost and superseded capsules stay hidden. Inside a retrieved near-duplicate group (same kind and workspace, pairwise cosine ≥ 0.85), the newest capsule takes the group's best rank and survives MMR — an un-adjudicated knowledge update outranks the stale twin it corrects; decayed capsules never join a group, and hits outside a group keep their rank. Without embeddings, `bm25` remains available and `hybrid` returns its lexical lane; a vector-runner failure surfaces instead of silently changing hybrid semantics. Escape hatches: `AI_KB_DISABLE_EMBED=1` and `AI_KB_DISABLE_VEC=1`.
+Hybrid search combines FTS5/BM25 and cosine (`sqlite-vec` via [`vec_runner.py`](../../../../scripts/vec_runner.py)), then applies RRF and MMR. Workspace matches receive a soft boost. Inside a retrieved near-duplicate group (same kind and workspace, pairwise cosine ≥ 0.85), the newest capsule takes the group's best rank and survives MMR — an un-adjudicated knowledge update outranks the stale twin it corrects; decayed capsules never join a group, and hits outside a group keep their rank. Without embeddings, `bm25` remains available and `hybrid` returns its lexical lane; a vector-runner failure surfaces instead of silently changing hybrid semantics. Escape hatches: `AI_KB_DISABLE_EMBED=1` and `AI_KB_DISABLE_VEC=1`.
 
 ## Embedding lanes
 

@@ -29,8 +29,8 @@ Output:
   Each hit carries: `id`, `title`, `body`, `snippet`, `source`, `tags`, `kind`, `scope`, `workspace_path`, `domain_tags`, and `confidence`.
   It also carries ranking fields: `bm25_rank`, `vector_rank`, `bm25_score`, `cosine_score`, `rrf_score`, `mmr_selected`.
 - Cite folded hits by `title` (and `id` when acting on one).
-  Treat low-`confidence` or superseded-looking hits with caution; verify against the live repo before relying on them.
-- Superseded capsules are excluded from results by default; results are already RRF-ranked and MMR-diversified — do not re-sort.
+  Treat low-`confidence` or stale-looking hits with caution; verify against the live repo before relying on them.
+- No capsule is hidden as superseded (a correction amends its capsule in place), but a `--force`-written stale twin can still rank; results are already RRF-ranked and MMR-diversified — do not re-sort.
 
 ## Write: remember
 
@@ -65,7 +65,8 @@ Field selection (each affects retrieval — choose, do not default):
 - `--domain` repeatable for cross-cutting tags (`--domain frontend --domain retrieval`); omitting it strands domain-scoped recall.
 - `--tags` for finer CSV keywords.
 - `--verified-by <ref>` when strengthening an existing insight.
-- `--supersedes <id>` when replacing stale/wrong recall; it links both directions and retires the old capsule. Non-existent ids error.
+- `--supersedes <id>` when replacing stale/wrong recall; it AMENDS that capsule in place (same id, same `created_at`), so no retired twin is left behind.
+  `--title`/`--body` replace the stored text; every metadata flag you omit keeps the capsule's stored value. Non-existent ids error.
 - `--refs <id-or-ref>` (repeatable) for related capsules or anchors.
 
 Body structure for retrieval: the body is embedded (title+body) and BM25-indexed;
@@ -74,7 +75,7 @@ The body must contain the literal terms a future query would use — exact symbo
 Front-load them; a body that describes the insight in generic prose will not match a specific future query.
 
 Before writing a refinement: search first. If you find a stale or wrong capsule on the same point, pass `--supersedes <its-id>`.
-That lets the corrected capsule retire the old one (the old one drops out of future results) instead of leaving two conflicting capsules for curation to guess between.
+That rewrites the capsule in place under its own id instead of leaving two conflicting capsules for curation to guess between.
 `remember` also enforces this at write time: an exact title collision or a same-kind near-duplicate embedding is refused with the existing capsule id.
 On refusal, prefer `--supersedes <that-id>`; use `--force` only when the collision is a genuine false positive.
 A clamped `--confidence`, a defaulted `--source`, or a missing `--domain` prints a degraded-metadata warning —

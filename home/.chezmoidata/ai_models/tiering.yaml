@@ -25,13 +25,13 @@ session_models:
     effort: "high"
     context: "long"
   pi:
-    model: "github-copilot/claude-fable-5.1"
-    effort: "high"
+    model: "openrouter/meta/muse-spark-1.3"
+    effort: "xhigh"
     context: "long"
   omp:
-    model: "anthropic/claude-fable-5.1"
-    effort: "high"
-    context: "short"
+    model: "openrouter/meta/muse-spark-1.3"
+    effort: "xhigh"
+    context: "long"
 agent_categories:
   # Mechanical covers any settled procedure with a stated rule and specified return: retrieval, execution, extraction, transformation, compression, or reporting.
   mechanical:
@@ -305,26 +305,26 @@ category_models:
       thinking: ""
       context: "long"
     research:
-      model: "github-copilot/claude-fable-5.1"
-      effort: "high"
+      model: "openrouter/z-ai/glm-5.3"
+      effort: "max"
       thinking: ""
       context: "long"
     implement:
-      model: "openrouter/meta/muse-spark-1.3"
+      model: "openrouter/z-ai/glm-5.3"
       effort: "high"
       thinking: ""
       context: "long"
     review:
-      model: "github-copilot/claude-fable-5.1"
-      effort: "high"
-      thinking: ""
-      context: "long"
-    # Counter family for the Anthropic review lane (user call 2026-09-13: flash refuters produced a false finding and skipped a packet step).
-    refute:
       model: "openrouter/meta/muse-spark-1.3"
       effort: "max"
       thinking: ""
       context: "long"
+    # Grok counters the Muse Spark review lane (user call 2026-09-13: flash refuters produced a false finding and skipped a packet step).
+    refute:
+      model: "openrouter/x-ai/grok-4.6"
+      effort: "high"
+      thinking: ""
+      context: "short"
       verifier_status: "cross_family"
     memory:
       model: "openrouter/z-ai/glm-5.3-flash"
@@ -364,3 +364,130 @@ category_models:
       effort: "high"
       thinking: ""
       context: "short"
+
+# Alternate whole pricings for Pi only, selected per machine by `,pi-model-profile` (the active name
+# lives in `${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi/pi-model-profile`, outside this repo). `default` is a reserved name meaning
+# `session_models.pi` + `category_models.pi` above; it must never appear as a key here, because those
+# two sections are the shared schema every generator, projection, and OpenRouter wrapper reads.
+# Profiles are full rows, not sparse overlays: every structural rule that holds for `category_models.pi`
+# holds for each profile, so switching cannot silently drop a tier.
+pi_model_profiles:
+  # Everything on the local llama.cpp router (`,llama-cpp`): no subscription provider, no network.
+  local:
+    session:
+      model: "llama-cpp/qwen3.8-27b"
+      effort: "high"
+      context: "long"
+    categories:
+      mechanical:
+        model: "llama-cpp/qwen3.5-9b"
+        effort: "high"
+        thinking: ""
+        context: "long"
+      research:
+        model: "llama-cpp/qwen3.8-27b"
+        effort: "high"
+        thinking: ""
+        context: "long"
+      # The instruct build keeps implement distinct from the session and mechanical picks.
+      implement:
+        model: "llama-cpp/qwen3.8-27b-instruct"
+        effort: "high"
+        thinking: ""
+        context: "long"
+      review:
+        model: "llama-cpp/qwen3.8-27b"
+        effort: "high"
+        thinking: ""
+        context: "long"
+      # Qwen only, so the counter cannot be cross-family; Nemotron was dropped as too weak for any lane (user call 2026-09-17).
+      refute:
+        model: "llama-cpp/qwen3.8-27b"
+        effort: "max"
+        thinking: ""
+        context: "long"
+        verifier_status: "degraded"
+      memory:
+        model: "llama-cpp/qwen3.5-9b"
+        effort: "high"
+        thinking: ""
+        context: "short"
+  # Everything on the direct Anthropic provider; lanes mirror `category_models.claude_code`.
+  anthropic:
+    session:
+      model: "anthropic/claude-fable-5-1"
+      effort: "high"
+      context: "long"
+    categories:
+      mechanical:
+        model: "anthropic/claude-sonnet-5"
+        effort: "high"
+        thinking: ""
+        context: "long"
+      research:
+        model: "anthropic/claude-fable-5-1"
+        effort: "high"
+        thinking: ""
+        context: "long"
+      implement:
+        model: "anthropic/claude-opus-5"
+        effort: "high"
+        thinking: ""
+        context: "long"
+      review:
+        model: "anthropic/claude-fable-5-1"
+        effort: "high"
+        thinking: ""
+        context: "long"
+      # One family only, so the counter cannot be cross-family (same call as `category_models.claude_code.refute`).
+      refute:
+        model: "anthropic/claude-fable-5-1"
+        effort: "high"
+        thinking: ""
+        context: "long"
+        verifier_status: "degraded"
+      memory:
+        model: "anthropic/claude-sonnet-5"
+        effort: "medium"
+        thinking: ""
+        context: "short"
+  # Everything on the ChatGPT-subscription `openai-codex` provider; lanes mirror `category_models.codex`.
+  # All short: that provider only exposes short windows.
+  codex:
+    session:
+      model: "openai-codex/gpt-6-astra"
+      effort: "high"
+      context: "short"
+    categories:
+      mechanical:
+        model: "openai-codex/gpt-5.6-luna"
+        effort: "high"
+        thinking: ""
+        context: "short"
+      research:
+        model: "openai-codex/gpt-6-astra"
+        effort: "high"
+        thinking: ""
+        context: "short"
+      implement:
+        model: "openai-codex/gpt-5.6-terra"
+        effort: "high"
+        thinking: ""
+        context: "short"
+      review:
+        model: "openai-codex/gpt-6-astra"
+        effort: "high"
+        thinking: ""
+        context: "short"
+      # One family only, so the counter cannot be cross-family (same call as `category_models.codex.refute`).
+      refute:
+        model: "openai-codex/gpt-5.6-sol"
+        effort: "high"
+        thinking: ""
+        context: "short"
+        verifier_status: "degraded"
+      memory:
+        model: "openai-codex/gpt-5.6-terra"
+        effort: "high"
+        thinking: ""
+        context: "short"

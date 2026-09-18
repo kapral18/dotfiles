@@ -212,10 +212,90 @@ class TestAiModels(unittest.TestCase):
             category_models = load_category_models(directory)
         assert category_models["claude_code"]["lookup"] == '{ model: "x", effort: "high" }'
 
+    def test_resolve_pi_profile_substitutes_whole_pi_rows_and_rejects_unknown_names(self):
+        import ai_models
+
+        registry = Path(tempfile.mkdtemp())
+        (registry / "tiering.yaml").write_text(
+            "session_models:\n"
+            "  pi:\n"
+            '    model: "default/session"\n'
+            '    effort: "high"\n'
+            '    context: "long"\n'
+            "  codex:\n"
+            '    model: "codex-session"\n'
+            '    effort: "high"\n'
+            '    context: "short"\n'
+            "category_models:\n"
+            "  pi:\n"
+            "    review:\n"
+            '      model: "default/review"\n'
+            '      effort: "high"\n'
+            '      thinking: ""\n'
+            '      context: "long"\n'
+            "  codex:\n"
+            "    review:\n"
+            '      model: "codex-review"\n'
+            '      effort: "high"\n'
+            '      thinking: ""\n'
+            '      context: "short"\n'
+            "agent_categories:\n"
+            "  review:\n"
+            '    family: "primary"\n'
+            '    contract: "review"\n'
+            "agent_bindings:\n"
+            "  k-agent-reviewer: review\n"
+            "pi_model_profiles:\n"
+            "  alt:\n"
+            "    session:\n"
+            '      model: "alt/session"\n'
+            '      effort: "max"\n'
+            '      context: "long"\n'
+            "    categories:\n"
+            "      review:\n"
+            '        model: "alt/review"\n'
+            '        effort: "max"\n'
+            '        thinking: ""\n'
+            '        context: "long"\n',
+            encoding="utf-8",
+        )
+
+        assert set(ai_models.load_pi_model_profiles(registry)) == {"alt"}
+        assert ai_models.resolve_pi_profile(registry)["session"]["model"] == "default/session"
+        assert ai_models.resolve_pi_profile(registry, "alt")["session"]["model"] == "alt/session"
+
+        # A profile only substitutes the pi rows; every other harness keeps its own.
+        assert ai_models.resolve_agent_model(registry, "pi", "k-agent-reviewer", profile="alt")["model"] == "alt/review"
+        assert ai_models.resolve_agent_model(registry, "pi", "k-agent-reviewer")["model"] == "default/review"
+        assert (
+            ai_models.resolve_agent_model(registry, "codex", "k-agent-reviewer", profile="alt")["model"]
+            == "codex-review"
+        )
+        assert (
+            ai_models.resolve_review_agent_model(registry, "pi", "k-agent-reviewer", profile="alt")["model"]
+            == "alt/review"
+        )
+
+        # No silent fallback: an unknown name would otherwise restore the very rows a profile replaces.
+        with self.assertRaisesRegex(ValueError, "unknown pi model profile 'bogus'"):
+            ai_models.resolve_pi_profile(registry, "bogus")
+
+    def test_pi_model_profiles_reject_the_reserved_default_key(self):
+        import ai_models
+
+        registry = Path(tempfile.mkdtemp())
+        (registry / "tiering.yaml").write_text(
+            'pi_model_profiles:\n  default:\n    session:\n      model: "x/y"\n',
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ValueError, "reserved 'default' name"):
+            ai_models.load_pi_model_profiles(registry)
+
     def test_sections_resolve_to_their_own_file(self):
         from ai_models import SECTION_FILES, section_path
 
         assert section_path("/registry", "category_models").name == "tiering.yaml"
+        assert section_path("/registry", "pi_model_profiles").name == "tiering.yaml"
         assert section_path("/registry", "session_models").name == "tiering.yaml"
         assert section_path("/registry", "cursor_models").name == "harness-catalogs.yaml"
         assert section_path("/registry", "cursor_task_base_models").name == "harness-catalogs.yaml"

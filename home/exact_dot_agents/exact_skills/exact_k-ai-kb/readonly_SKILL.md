@@ -41,13 +41,13 @@ The root supplies its own final batch of verified reusable insights with evidenc
 Process each insight once; do not re-verify the task.
 
 1. Search first: `,ai-kb search "<the insight's literal identifiers>" --limit 5 --json`.
-   A stale or wrong capsule on the same point means `--supersedes <its-id>`; a duplicate means stop and record the existing id instead of writing.
+   A stale or wrong capsule on the same point means `--supersedes <its-id>`, which amends that capsule in place under the same id; a duplicate means stop and record the existing id instead of writing.
 2. Write with every metadata field deliberate (`,ai-kb remember --help` is the live interface):
    honest `--kind`, reuse-breadth `--scope` (`--workspace` only for workspace/project), the evidence anchor as `--source`, honest `--confidence`, `--domain` tags.
    A defaulted field is a degraded write; fix it, do not ignore the warning.
 3. Front-load literal identifiers (symbols, paths, error strings, flags) in title and body; a future query matches literals, not paraphrase.
 4. Single-quote prose arguments: an unescaped backtick inside double quotes triggers shell substitution.
-5. Read back the written capsule id with `,ai-kb get <id> --json` and record `stored <id>`, `duplicate of <id>`, or `superseded <old-id> -> <new-id>` in the topic.
+5. Read back the written capsule id with `,ai-kb get <id> --json` and record `stored <id>`, `amended <id>`, or `duplicate of <id>` in the topic.
 
 MUST NOT persist unverified, transient, or session-only notes; those belong in `,agent-memory note`, not the KB.
 Persist only candidates supported by the final evidence; keep unsupported candidates pending in the topic, without a new research or review loop.

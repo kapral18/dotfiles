@@ -4,7 +4,8 @@ Resolve the model id a review-role profile should carry. Call with:
 
 Review roles share the same category table as all other delegable agents: primary review roles
 take their category pick and counter roles take the `refute` category pick. The review harness
-alias `claude` maps onto the `claude_code` category key.
+alias `claude` maps onto the `claude_code` category key. Pi reads its rows through
+pi-model-profile.partial instead, so a machine-local profile switch re-renders every Pi profile.
 */ -}}
 {{- $root := .root -}}
 {{- $bandHarness := .harness -}}
@@ -12,5 +13,9 @@ alias `claude` maps onto the `claude_code` category key.
 {{- $bandHarness = "claude_code" -}}
 {{- end -}}
 {{- $category := index $root.agent_bindings .agent -}}
-{{- $pick := index (index $root.category_models $bandHarness) $category -}}
+{{- $rows := index $root.category_models $bandHarness -}}
+{{- if eq $bandHarness "pi" -}}
+{{- $rows = (includeTemplate "pi-model-profile.partial" $root | fromJson).categories -}}
+{{- end -}}
+{{- $pick := index $rows $category -}}
 {{- $pick.model -}}

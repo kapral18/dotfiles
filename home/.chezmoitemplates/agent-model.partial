@@ -3,9 +3,14 @@ Resolve the model id an agent profile should carry from its category. Call with:
 (dict "root" . "harness" "<category_models key>" "agent" "<agent_bindings key>").
 
 The profile names only itself, agent_bindings selects the portable category, and category_models
-decides what that category costs on this harness.
+decides what that category costs on this harness. Pi reads its rows through
+pi-model-profile.partial instead, so a machine-local profile switch re-renders every Pi profile.
 */ -}}
 {{- $root := .root -}}
 {{- $category := index $root.agent_bindings .agent -}}
-{{- $pick := index (index $root.category_models .harness) $category -}}
+{{- $rows := index $root.category_models .harness -}}
+{{- if eq .harness "pi" -}}
+{{- $rows = (includeTemplate "pi-model-profile.partial" $root | fromJson).categories -}}
+{{- end -}}
+{{- $pick := index $rows $category -}}
 {{- $pick.model -}}

@@ -1,4 +1,4 @@
-{{- if ne .isWork true -}}
+{{- if and (ne .isWork true) (index . "secondaryPublicSshKey") -}}
 [core]
   sshCommand = ssh -o IdentitiesOnly=yes -o IdentityFile="~/.ssh/secondary_public_key.pub"
 

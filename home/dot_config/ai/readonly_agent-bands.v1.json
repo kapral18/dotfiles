@@ -1536,47 +1536,47 @@
         "@task"
       ],
       "session": {
-        "model": "anthropic/claude-fable-5.1",
-        "effort": "high",
-        "context": "short"
+        "model": "openrouter/meta/muse-spark-1.3",
+        "effort": "xhigh",
+        "context": "long"
       }
     },
     "pi": {
       "agents": {
         "Explore": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "research",
-          "effort": "high"
+          "effort": "max"
         },
         "Plan": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "research",
-          "effort": "high"
+          "effort": "max"
         },
         "best-of-n-runner": {
-          "model": "openrouter/meta/muse-spark-1.3",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "implement",
           "effort": "high"
         },
         "browser_agent": {
-          "model": "openrouter/meta/muse-spark-1.3",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "implement",
           "effort": "high"
         },
         "bugbot": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "review",
-          "effort": "high"
+          "effort": "max"
         },
         "claude": {
-          "model": "openrouter/meta/muse-spark-1.3",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "implement",
           "effort": "high"
         },
         "claude-code-guide": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "research",
-          "effort": "high"
+          "effort": "max"
         },
         "cli_help": {
           "model": "openrouter/z-ai/glm-5.3-flash",
@@ -1584,99 +1584,99 @@
           "effort": "high"
         },
         "code-review": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "review",
-          "effort": "high"
+          "effort": "max"
         },
         "codebase_investigator": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "research",
-          "effort": "high"
+          "effort": "max"
         },
         "cursor-guide": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "research",
-          "effort": "high"
+          "effort": "max"
         },
         "default": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "research",
-          "effort": "high"
+          "effort": "max"
         },
         "explore": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "research",
-          "effort": "high"
+          "effort": "max"
         },
         "explorer": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "research",
-          "effort": "high"
+          "effort": "max"
         },
         "general-purpose": {
-          "model": "openrouter/meta/muse-spark-1.3",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "implement",
           "effort": "high"
         },
         "generalPurpose": {
-          "model": "openrouter/meta/muse-spark-1.3",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "implement",
           "effort": "high"
         },
         "generalist": {
-          "model": "openrouter/meta/muse-spark-1.3",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "implement",
           "effort": "high"
         },
         "k-agent-adversarial-verifier": {
-          "model": "openrouter/meta/muse-spark-1.3",
+          "model": "openrouter/x-ai/grok-4.6",
           "category": "refute",
-          "effort": "max"
+          "effort": "high"
         },
         "k-agent-change-auditor": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "review",
-          "effort": "high"
+          "effort": "max"
         },
         "k-agent-claim-verifier": {
-          "model": "openrouter/meta/muse-spark-1.3",
+          "model": "openrouter/x-ai/grok-4.6",
           "category": "refute",
-          "effort": "max"
+          "effort": "high"
         },
         "k-agent-code-searcher": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "research",
-          "effort": "high"
-        },
-        "k-agent-criteria-verifier": {
-          "model": "openrouter/meta/muse-spark-1.3",
-          "category": "refute",
           "effort": "max"
         },
-        "k-agent-deep-review": {
-          "model": "github-copilot/claude-fable-5.1",
-          "category": "review",
+        "k-agent-criteria-verifier": {
+          "model": "openrouter/x-ai/grok-4.6",
+          "category": "refute",
           "effort": "high"
+        },
+        "k-agent-deep-review": {
+          "model": "openrouter/meta/muse-spark-1.3",
+          "category": "review",
+          "effort": "max"
         },
         "k-agent-findings-auditor": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "review",
-          "effort": "high"
+          "effort": "max"
         },
         "k-agent-fresh-eyes": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "review",
-          "effort": "high"
+          "effort": "max"
         },
         "k-agent-implementer": {
-          "model": "openrouter/meta/muse-spark-1.3",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "implement",
           "effort": "high"
         },
         "k-agent-live-ui-review": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "review",
-          "effort": "high"
+          "effort": "max"
         },
         "k-agent-mechanical": {
           "model": "openrouter/z-ai/glm-5.3-flash",
@@ -1684,34 +1684,34 @@
           "effort": "high"
         },
         "k-agent-post-review": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "review",
-          "effort": "high"
+          "effort": "max"
         },
         "k-agent-pr-necessity-auditor": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "review",
-          "effort": "high"
+          "effort": "max"
         },
         "k-agent-public-sources": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "research",
-          "effort": "high"
+          "effort": "max"
         },
         "k-agent-review-controller": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "review",
-          "effort": "high"
+          "effort": "max"
         },
         "k-agent-review-worker": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "review",
-          "effort": "high"
+          "effort": "max"
         },
         "k-agent-reviewer": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "review",
-          "effort": "high"
+          "effort": "max"
         },
         "k-agent-smol": {
           "model": "openrouter/z-ai/glm-5.3-flash",
@@ -1719,24 +1719,24 @@
           "effort": "high"
         },
         "rem-agent": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "research",
-          "effort": "high"
+          "effort": "max"
         },
         "research": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "research",
-          "effort": "high"
+          "effort": "max"
         },
         "reviewer": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "review",
-          "effort": "high"
+          "effort": "max"
         },
         "rubber-duck": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "research",
-          "effort": "high"
+          "effort": "max"
         },
         "scout": {
           "model": "openrouter/z-ai/glm-5.3-flash",
@@ -1744,14 +1744,14 @@
           "effort": "high"
         },
         "security-review": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "review",
-          "effort": "high"
+          "effort": "max"
         },
         "security-reviewer": {
-          "model": "github-copilot/claude-fable-5.1",
+          "model": "openrouter/meta/muse-spark-1.3",
           "category": "review",
-          "effort": "high"
+          "effort": "max"
         },
         "sonic": {
           "model": "openrouter/z-ai/glm-5.3-flash",
@@ -1759,12 +1759,12 @@
           "effort": "high"
         },
         "task": {
-          "model": "openrouter/meta/muse-spark-1.3",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "implement",
           "effort": "high"
         },
         "worker": {
-          "model": "openrouter/meta/muse-spark-1.3",
+          "model": "openrouter/z-ai/glm-5.3",
           "category": "implement",
           "effort": "high"
         }
@@ -1788,19 +1788,20 @@
         "k-agent-smol"
       ],
       "counter_models": [
-        "openrouter/meta/muse-spark-1.3"
+        "openrouter/x-ai/grok-4.6"
       ],
       "cheap_lane_models": [
         "openrouter/z-ai/glm-5.3-flash"
       ],
       "lane_models": [
-        "github-copilot/claude-fable-5.1",
         "openrouter/meta/muse-spark-1.3",
+        "openrouter/x-ai/grok-4.6",
+        "openrouter/z-ai/glm-5.3",
         "openrouter/z-ai/glm-5.3-flash"
       ],
       "session": {
-        "model": "github-copilot/claude-fable-5.1",
-        "effort": "high",
+        "model": "openrouter/meta/muse-spark-1.3",
+        "effort": "xhigh",
         "context": "long"
       }
     }

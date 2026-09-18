@@ -16,6 +16,7 @@ Usage:
                       [--project PROJECT_ID] [--domain TAGS]
                       [--confidence FLOAT] [--verified-by RID]
                       [--supersedes ID] [--refs REF]
+                      (--supersedes amends that capsule in place)
                       [--source SOURCE] [--tags TAGS]
                       [--no-embed]
     ai_kb.py search QUERY [--limit N]
@@ -65,7 +66,7 @@ CAPSULE_KINDS = (
     "doc",
 )
 CAPSULE_SCOPES = ("workspace", "project", "domain", "universal")
-SCHEMA_VERSION = 3  # bumped any time the table shape changes
+SCHEMA_VERSION = 4  # bumped any time the table shape changes
 
 # RRF constant used by hybrid retrieval; 60 is the canonical value from
 # the original RRF paper and works well for top-K in [5, 50] without
@@ -95,14 +96,15 @@ DECAY_RECENT_DAYS = 14
 # takes the better rank slot of the pair. 0.85 matches the curate
 # contradiction band — close enough to describe the same thing, but below
 # the write-time dedupe bar (0.95), so such pairs exist exactly where a
-# knowledge update landed without a supersede link. Rank-neutral outside
+# knowledge update landed without an amend. Rank-neutral outside
 # the group: members exchange rank slots, every other hit keeps its rank.
 NEAR_DUPLICATE_RECENCY_COSINE = 0.85
 
 # Write-time near-duplicate refusal threshold: `remember` refuses a new
 # capsule whose embedding cosine against an existing same-kind live
 # capsule is at or above this value (mirrors the `curate` dedupe
-# threshold) unless --force or --supersedes covers the collision.
+# threshold) unless --force or --supersedes (amend-in-place) covers the
+# collision.
 DUPLICATE_COSINE_THRESHOLD = 0.95
 
 # --- Worklog harvest -------------------------------------------------------
@@ -117,6 +119,40 @@ HARVEST_NOISE_PROGRAMS = frozenset({"cd", "ls", "pwd", "echo", "cat", "clear", "
 
 
 # --- Helpers ---------------------------------------------------------------
+
+
+class _Unset:
+    """Sentinel for "the caller did not supply this field".
+
+    `remember` needs to tell "omitted" from "passed the same value the
+    default happens to be": when `--supersedes` amends an existing
+    capsule, an omitted field keeps the target's stored value instead of
+    silently resetting it to the CLI default (kind=fact, scope=universal,
+    source=manual, confidence=0.5, empty tags/refs/domains). Without an
+    amend the sentinel collapses to those same documented defaults, so
+    plain `remember` is unchanged.
+    """
+
+    _instance = None
+
+    def __new__(cls) -> "_Unset":
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __repr__(self) -> str:  # pragma: no cover - debugging aid
+        return "UNSET"
+
+    def __bool__(self) -> bool:
+        return False
+
+
+UNSET = _Unset()
+
+
+def _supplied(value):
+    """True when the caller passed the field (even as None or "")."""
+    return not isinstance(value, _Unset)
 
 
 def default_home() -> Path:
@@ -194,8 +230,6 @@ class Capsule:
     domain_tags: str
     confidence: float
     verified_by: str | None
-    supersedes: str | None
-    superseded_by: str | None
     refs: str
     embedding_model: str | None
     embedding_dim: int
@@ -221,8 +255,6 @@ CAPSULE_COLUMNS: tuple[str, ...] = (
     "domain_tags",
     "confidence",
     "verified_by",
-    "supersedes",
-    "superseded_by",
     "refs",
     "embedding",  # BLOB, not on Capsule dataclass
     "embedding_model",
@@ -317,6 +349,7 @@ class KnowledgeBase:
         """
         self.capsules_dir.mkdir(parents=True, exist_ok=True)
         with self.connect() as db:
+            self._migrate_v3_supersede_rows(db)
             state = self._schema_state(db)
             if state == "capsules_stale":
                 capsules = self._load_sidecar_capsules()
@@ -333,6 +366,47 @@ class KnowledgeBase:
                 self._repair_derived_tables(db)
                 return
             self._create_schema(db)
+
+    def _migrate_v3_supersede_rows(self, db: sqlite3.Connection) -> None:
+        """Drop superseded capsules when upgrading a v3 store to v4.
+
+        v3 kept a retired capsule as a row linked by `superseded_by`;
+        v4 amends the capsule in place instead, so those rows are dead
+        knowledge with no reader. They must go BEFORE the column-shape
+        rebuild runs, because the rebuild reloads every sidecar and
+        would resurrect them under the v4 shape.
+
+        Idempotent: a v4 store has no `superseded_by` column and is left
+        untouched; a v3 store with zero superseded rows just falls
+        through to the normal rebuild.
+        """
+        rows = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='capsules'").fetchall()
+        if not rows:
+            return
+        cols = {r[1] for r in db.execute("PRAGMA table_info(capsules)").fetchall()}
+        if "superseded_by" not in cols:
+            return
+        dead = [
+            str(r[0])
+            for r in db.execute("SELECT id FROM capsules WHERE superseded_by IS NOT NULL AND superseded_by != ''")
+        ]
+        if not dead:
+            return
+        for note_id in dead:
+            try:
+                (self.capsules_dir / f"{note_id}.md").unlink()
+            except FileNotFoundError:
+                pass
+        placeholders = ",".join("?" * len(dead))
+        db.execute(f"DELETE FROM capsules WHERE id IN ({placeholders})", dead)
+        fts = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='capsule_fts'").fetchall()
+        if fts:
+            db.execute(f"DELETE FROM capsule_fts WHERE id IN ({placeholders})", dead)
+        db.commit()
+        print(
+            f"ai-kb: migrated v3->v4, removed {len(dead)} superseded capsules",
+            file=sys.stderr,
+        )
 
     def init_doc_ingest_table(self) -> None:
         """Idempotent table for tracking ingested documents.
@@ -378,8 +452,6 @@ class KnowledgeBase:
                 domain_tags TEXT NOT NULL,
                 confidence REAL NOT NULL,
                 verified_by TEXT,
-                supersedes TEXT,
-                superseded_by TEXT,
                 refs TEXT NOT NULL,
                 embedding BLOB,
                 embedding_model TEXT,
@@ -463,9 +535,6 @@ class KnowledgeBase:
             by_id[capsule.id] = capsule
             capsules.append(capsule)
         capsules.sort(key=lambda c: (c.created_at, c.id))
-        for capsule in capsules:
-            if capsule.supersedes and capsule.supersedes in by_id:
-                by_id[capsule.supersedes].superseded_by = capsule.id
         return capsules
 
     def _quarantine_sidecar(self, path: Path, reason: str) -> None:
@@ -488,8 +557,6 @@ class KnowledgeBase:
             return {}
         allowed = [
             "id",
-            "supersedes",
-            "superseded_by",
             "embedding",
             "embedding_model",
             "embedding_dim",
@@ -503,10 +570,6 @@ class KnowledgeBase:
         recovered: dict[str, dict[str, object]] = {}
         for row in rows:
             state = {
-                "supersedes": row["supersedes"] if "supersedes" in row.keys() and row["supersedes"] else None,
-                "superseded_by": (
-                    row["superseded_by"] if "superseded_by" in row.keys() and row["superseded_by"] else None
-                ),
                 "embedding": row["embedding"] if "embedding" in row.keys() else None,
                 "embedding_model": (
                     row["embedding_model"] if "embedding_model" in row.keys() and row["embedding_model"] else None
@@ -552,19 +615,9 @@ class KnowledgeBase:
     def _merge_rebuilt_rows(
         self, capsules: list[Capsule], recovered: dict[str, dict[str, object]]
     ) -> list[dict[str, object]]:
-        sidecar_ids = {capsule.id for capsule in capsules}
         rows: list[dict[str, object]] = []
-        by_id: dict[str, dict[str, object]] = {}
         for capsule in capsules:
             state = recovered.get(capsule.id, {})
-            supersedes = capsule.supersedes
-            if not supersedes:
-                candidate = state.get("supersedes")
-                if candidate in sidecar_ids:
-                    supersedes = str(candidate)
-            superseded_by = state.get("superseded_by")
-            if superseded_by not in sidecar_ids:
-                superseded_by = None
             row = {
                 "id": capsule.id,
                 "kind": capsule.kind,
@@ -579,8 +632,6 @@ class KnowledgeBase:
                 "domain_tags": capsule.domain_tags,
                 "confidence": capsule.confidence,
                 "verified_by": capsule.verified_by,
-                "supersedes": supersedes,
-                "superseded_by": superseded_by,
                 "refs": capsule.refs,
                 "embedding": state.get("embedding"),
                 "embedding_model": state.get("embedding_model"),
@@ -592,11 +643,6 @@ class KnowledgeBase:
                 "updated_at": str(state.get("updated_at") or capsule.updated_at),
             }
             rows.append(row)
-            by_id[capsule.id] = row
-        for row in rows:
-            loser_id = row["supersedes"]
-            if loser_id and loser_id in by_id:
-                by_id[str(loser_id)]["superseded_by"] = row["id"]
         return rows
 
     def _parse_sidecar(self, path: Path) -> Capsule:
@@ -678,8 +724,9 @@ class KnowledgeBase:
             domain_tags=frontmatter.get("domain_tags", ""),
             confidence=confidence,
             verified_by=frontmatter.get("verified_by") or None,
-            supersedes=frontmatter.get("supersedes") or None,
-            superseded_by=frontmatter.get("superseded_by") or None,
+            # Legacy v3 keys (`supersedes` / `superseded_by`) are parsed
+            # like any other frontmatter line and then ignored: a store
+            # written before the amend-in-place model must still load.
             refs=frontmatter.get("refs", ""),
             embedding_model=frontmatter.get("embedding_model") or None,
             embedding_dim=embedding_dim,
@@ -705,14 +752,14 @@ class KnowledgeBase:
             INSERT INTO capsules(
                 id, kind, title, body, source, tags, path, scope,
                 workspace_path, project_id, domain_tags, confidence,
-                verified_by, supersedes, superseded_by, refs,
+                verified_by, refs,
                 embedding, embedding_model, embedding_dim,
                 decay_score, retrieved_at, retrieval_count, created_at, updated_at
             )
             VALUES(
                 :id, :kind, :title, :body, :source, :tags, :path, :scope,
                 :workspace_path, :project_id, :domain_tags, :confidence,
-                :verified_by, :supersedes, :superseded_by, :refs,
+                :verified_by, :refs,
                 :embedding, :embedding_model, :embedding_dim,
                 :decay_score, :retrieved_at, :retrieval_count, :created_at, :updated_at
             )
@@ -911,41 +958,80 @@ class KnowledgeBase:
         title: str,
         body: str,
         *,
-        kind: str = "fact",
-        scope: str = "universal",
-        source: str = "manual",
-        tags: str = "",
-        workspace_path: str | None = None,
-        project_id: str | None = None,
-        domain_tags: list[str] | str | None = None,
-        confidence: float = 0.5,
-        verified_by: str | None = None,
+        kind: str = UNSET,  # type: ignore[assignment]
+        scope: str = UNSET,  # type: ignore[assignment]
+        source: str = UNSET,  # type: ignore[assignment]
+        tags: str = UNSET,  # type: ignore[assignment]
+        workspace_path: str | None = UNSET,  # type: ignore[assignment]
+        project_id: str | None = UNSET,  # type: ignore[assignment]
+        domain_tags: list[str] | str | None = UNSET,  # type: ignore[assignment]
+        confidence: float = UNSET,  # type: ignore[assignment]
+        verified_by: str | None = UNSET,  # type: ignore[assignment]
         supersedes: str | None = None,
-        refs: list[str] | None = None,
+        refs: list[str] | None = UNSET,  # type: ignore[assignment]
         embed_now: bool = True,
         force: bool = False,
     ) -> Capsule:
-        """Persist a new capsule with structured metadata and (optional)
-        embedding. The kind, scope, and tags determine how downstream
-        retrieval will filter and bias the result.
+        """Persist a capsule with structured metadata and (optional) embedding.
+
+        Without ``supersedes`` this stores a NEW capsule; the kind, scope,
+        and tags determine how downstream retrieval will filter and bias
+        the result. Omitted fields take the documented defaults
+        (kind=fact, scope=universal, source=manual, confidence=0.5).
+
+        With ``supersedes=<id>`` this AMENDS that capsule in place: the id
+        and `created_at` are kept, title and body are replaced, every
+        metadata field the caller did not supply keeps its stored value,
+        `updated_at` is stamped, and the embedding is recomputed (or
+        cleared with `embed_now=False`, leaving the capsule out of the
+        vector lane until a manual `reembed`). No
+        second row is created, so there is no retired twin to filter.
 
         Duplicate refusal: an exact (case-insensitive) title match against
-        a live capsule, or a same-kind embedding cosine at or above
+        an existing capsule, or a same-kind embedding cosine at or above
         `DUPLICATE_COSINE_THRESHOLD`, raises ``ValueError`` naming the
-        existing capsule — pass ``supersedes`` for that capsule to update
-        it, or ``force`` to store anyway.
+        existing capsule — pass ``supersedes`` for that capsule to amend
+        it, or ``force`` to store anyway. An amend never collides with
+        its own target.
         """
+        self.init()
+        existing: Capsule | None = None
+        if supersedes is not None:
+            existing = self.get(supersedes)
+            if existing is None:
+                raise ValueError(f"supersedes target {supersedes!r} not found")
+
+        kind = self._resolve_field(kind, existing, "kind", "fact")
+        scope = self._resolve_field(scope, existing, "scope", "universal")
+        source = self._resolve_field(source, existing, "source", "manual")
+        tags = self._resolve_field(tags, existing, "tags", "")
+        workspace_path = self._resolve_field(workspace_path, existing, "workspace_path", None)
+        project_id = self._resolve_field(project_id, existing, "project_id", None)
+        verified_by = self._resolve_field(verified_by, existing, "verified_by", None)
+        confidence = self._resolve_field(confidence, existing, "confidence", 0.5)
+
+        if _supplied(domain_tags):
+            domain_csv = csv_join(domain_tags) if isinstance(domain_tags, list) else (domain_tags or "")
+        else:
+            domain_csv = existing.domain_tags if existing is not None else ""
+        if _supplied(refs):
+            refs_csv = csv_join(refs or [])
+        else:
+            refs_csv = existing.refs if existing is not None else ""
+
         if kind not in CAPSULE_KINDS:
             raise ValueError(f"unknown kind {kind!r}; expected one of {CAPSULE_KINDS}")
         if scope not in CAPSULE_SCOPES:
             raise ValueError(f"unknown scope {scope!r}; expected one of {CAPSULE_SCOPES}")
         confidence = float(max(0.0, min(1.0, confidence)))
-        domain_csv = csv_join(domain_tags) if isinstance(domain_tags, list) else (domain_tags or "")
-        refs_csv = csv_join(refs or [])
 
-        self.init()
-        note_id = make_id(title)
         now = utc_now()
+        if existing is not None:
+            note_id = existing.id
+            created_at = existing.created_at
+        else:
+            note_id = make_id(title)
+            created_at = now
         path = self.capsules_dir / f"{note_id}.md"
         body_clean = body.strip()
 
@@ -990,79 +1076,109 @@ class KnowledgeBase:
             f"domain_tags: {domain_csv}\n"
             f"confidence: {confidence}\n"
             f"verified_by: {verified_by or ''}\n"
-            f"supersedes: {supersedes or ''}\n"
             f"refs: {refs_csv}\n"
-            f"created_at: {now}\n"
+            f"created_at: {created_at}\n"
             "---\n\n"
             f"# {title}\n\n"
             f"{body_clean}\n"
         )
-        path.write_text(front)
 
-        # If we set supersedes, also flip the parent's superseded_by
-        # pointer so the link is bidirectional.
-        if supersedes:
-            with self.connect() as db:
-                db.execute(
-                    "UPDATE capsules SET superseded_by = ?, updated_at = ? WHERE id = ?",
-                    (note_id, now, supersedes),
-                )
+        row = {
+            "id": note_id,
+            "kind": kind,
+            "title": title,
+            "body": body_clean,
+            "source": source,
+            "tags": tags,
+            "path": str(path),
+            "scope": scope,
+            "workspace_path": workspace_path,
+            "project_id": project_id,
+            "domain_tags": domain_csv,
+            "confidence": confidence,
+            "verified_by": verified_by,
+            "refs": refs_csv,
+            "embedding": embedding_blob,
+            "embedding_model": embedding_model,
+            "embedding_dim": embedding_dim,
+            "created_at": created_at,
+            "updated_at": now,
+        }
+        fts_row = {
+            "id": note_id,
+            "title": title,
+            "body": body_clean,
+            "tags": tags,
+            "source": source,
+            "domain_tags": domain_csv,
+        }
 
+        # Row + FTS move together in one transaction; the canonical sidecar
+        # is written after the commit via a temp file + rename so a crash
+        # mid-write can never truncate an existing capsule's sidecar.
         with self.connect() as db:
-            db.execute(
-                """
-                INSERT INTO capsules(
-                    id, kind, title, body, source, tags, path, scope,
-                    workspace_path, project_id, domain_tags, confidence,
-                    verified_by, supersedes, superseded_by, refs,
-                    embedding, embedding_model, embedding_dim,
-                    decay_score, retrieved_at, retrieval_count, created_at, updated_at
+            db.execute("BEGIN IMMEDIATE")
+            if existing is not None:
+                # Amend in place: id, created_at, decay, and retrieval
+                # state stay; content and supplied metadata are replaced;
+                # the embedding is recomputed above (or cleared with
+                # --no-embed) so a stale vector can never survive an edit.
+                cur = db.execute(
+                    """
+                    UPDATE capsules SET
+                        kind = :kind,
+                        title = :title,
+                        body = :body,
+                        source = :source,
+                        tags = :tags,
+                        path = :path,
+                        scope = :scope,
+                        workspace_path = :workspace_path,
+                        project_id = :project_id,
+                        domain_tags = :domain_tags,
+                        confidence = :confidence,
+                        verified_by = :verified_by,
+                        refs = :refs,
+                        embedding = :embedding,
+                        embedding_model = :embedding_model,
+                        embedding_dim = :embedding_dim,
+                        updated_at = :updated_at
+                    WHERE id = :id
+                    """,
+                    row,
                 )
-                VALUES(
-                    :id, :kind, :title, :body, :source, :tags, :path, :scope,
-                    :workspace_path, :project_id, :domain_tags, :confidence,
-                    :verified_by, :supersedes, NULL, :refs,
-                    :embedding, :embedding_model, :embedding_dim,
-                    0.0, NULL, 0, :created_at, :updated_at
+                if cur.rowcount != 1:
+                    raise ValueError(f"supersedes target {note_id!r} vanished before the amend committed")
+                db.execute("DELETE FROM capsule_fts WHERE id = :id", {"id": note_id})
+            else:
+                db.execute(
+                    """
+                    INSERT INTO capsules(
+                        id, kind, title, body, source, tags, path, scope,
+                        workspace_path, project_id, domain_tags, confidence,
+                        verified_by, refs,
+                        embedding, embedding_model, embedding_dim,
+                        decay_score, retrieved_at, retrieval_count, created_at, updated_at
+                    )
+                    VALUES(
+                        :id, :kind, :title, :body, :source, :tags, :path, :scope,
+                        :workspace_path, :project_id, :domain_tags, :confidence,
+                        :verified_by, :refs,
+                        :embedding, :embedding_model, :embedding_dim,
+                        0.0, NULL, 0, :created_at, :updated_at
+                    )
+                    """,
+                    row,
                 )
-                """,
-                {
-                    "id": note_id,
-                    "kind": kind,
-                    "title": title,
-                    "body": body_clean,
-                    "source": source,
-                    "tags": tags,
-                    "path": str(path),
-                    "scope": scope,
-                    "workspace_path": workspace_path,
-                    "project_id": project_id,
-                    "domain_tags": domain_csv,
-                    "confidence": confidence,
-                    "verified_by": verified_by,
-                    "supersedes": supersedes,
-                    "refs": refs_csv,
-                    "embedding": embedding_blob,
-                    "embedding_model": embedding_model,
-                    "embedding_dim": embedding_dim,
-                    "created_at": now,
-                    "updated_at": now,
-                },
-            )
             db.execute(
                 """
                 INSERT INTO capsule_fts(id, title, body, tags, source, domain_tags)
                 VALUES(:id, :title, :body, :tags, :source, :domain_tags)
                 """,
-                {
-                    "id": note_id,
-                    "title": title,
-                    "body": body_clean,
-                    "tags": tags,
-                    "source": source,
-                    "domain_tags": domain_csv,
-                },
+                fts_row,
             )
+
+        self._write_sidecar(path, front)
 
         return Capsule(
             id=note_id,
@@ -1078,15 +1194,27 @@ class KnowledgeBase:
             domain_tags=domain_csv,
             confidence=confidence,
             verified_by=verified_by,
-            supersedes=supersedes,
-            superseded_by=None,
             refs=refs_csv,
             embedding_model=embedding_model,
             embedding_dim=embedding_dim,
-            decay_score=0.0,
-            created_at=now,
+            decay_score=existing.decay_score if existing is not None else 0.0,
+            created_at=created_at,
             updated_at=now,
         )
+
+    @staticmethod
+    def _resolve_field(value, existing: "Capsule | None", field_name: str, fallback):
+        """Pick a field value for `remember`.
+
+        Supplied by the caller -> use it. Omitted while amending -> keep
+        the target capsule's stored value. Omitted on a fresh store ->
+        the documented default.
+        """
+        if _supplied(value):
+            return value
+        if existing is not None:
+            return getattr(existing, field_name)
+        return fallback
 
     @staticmethod
     def _embed_text(title: str, body: str) -> str:
@@ -1104,29 +1232,29 @@ class KnowledgeBase:
         *,
         exempt_id: str | None = None,
     ) -> "tuple[str, str] | None":
-        """Write-time duplicate probe over live (non-superseded) capsules.
+        """Write-time duplicate probe over the stored capsules.
 
         Returns ``(existing_id, reason)`` for an exact case-insensitive
         title collision (any kind) or a same-kind embedding cosine at or
         above `DUPLICATE_COSINE_THRESHOLD`; ``None`` when the capsule is
         novel. ``exempt_id`` skips the capsule an explicit ``supersedes``
-        already covers. Fail-open on the vector lane: without a comparable
-        embedding only the title check applies.
+        amends — an amend must never collide with its own target. Fail-open
+        on the vector lane: without a comparable embedding only the title
+        check applies.
         """
         with self.connect() as db:
             row = db.execute(
-                "SELECT id FROM capsules WHERE superseded_by IS NULL AND lower(title) = lower(?) LIMIT 1",
-                (title,),
+                "SELECT id FROM capsules WHERE lower(title) = lower(?) AND id IS NOT ? LIMIT 1",
+                (title, exempt_id),
             ).fetchone()
-            if row is not None and row["id"] != exempt_id:
+            if row is not None:
                 return str(row["id"]), "title"
             if not embedding_vec or not embedding_model:
                 return None
             candidates = db.execute(
                 """
                 SELECT id, embedding FROM capsules
-                WHERE superseded_by IS NULL
-                  AND kind = ?
+                WHERE kind = ?
                   AND embedding IS NOT NULL
                   AND embedding_model = ?
                 """,
@@ -1408,6 +1536,13 @@ class KnowledgeBase:
                 (note_id,),
             ).fetchone()
         return row_to_capsule(row) if row else None
+
+    @staticmethod
+    def _write_sidecar(path: Path, text: str) -> None:
+        """Write `text` to `path` atomically (temp file in the same dir + rename)."""
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(text)
+        os.replace(tmp, path)
 
     def remove(self, note_id: str) -> bool:
         self.init()
@@ -1710,13 +1845,10 @@ class KnowledgeBase:
         against the CSV column because we don't normalize them into a
         join table for now (small N, low value).
 
-        Superseded capsules are always filtered out — they represent
-        stale knowledge that has been replaced by a newer/better
-        capsule via curation. Callers that explicitly want them (e.g.
-        diagnostics tools) bypass `search()` and read the table
-        directly.
+        There is no retired-row filter: a correction amends its capsule
+        in place, so every stored row is current knowledge.
         """
-        parts: list[str] = [f"{alias}.superseded_by IS NULL"]
+        parts: list[str] = []
         params: list = []
         if scopes:
             placeholders = ",".join("?" * len(scopes))
@@ -1732,6 +1864,8 @@ class KnowledgeBase:
                 sub.append(f"{alias}.domain_tags LIKE ?")
                 params.append(f"%{d}%")
             parts.append("(" + " OR ".join(sub) + ")")
+        if not parts:
+            return "", params
         return " AND " + " AND ".join(parts), params
 
     def _fetch_rows(self, ids: list[str]) -> dict[str, sqlite3.Row]:
@@ -1783,8 +1917,8 @@ class KnowledgeBase:
         """Within a near-duplicate group, let the newer capsule take the better rank.
 
         A knowledge update often lands as a fresh capsule semantically on top of
-        an older one — below the write-dedupe bar or force-written — with no
-        supersede link, and the older row can outrank the newer correction on
+        an older one — below the write-dedupe bar or force-written — instead of
+        amending it, and the older row can outrank the newer correction on
         lexical rank alone. Grouping is greedy complete-linkage in rank order:
         a hit joins a group only when its cosine reaches
         NEAR_DUPLICATE_RECENCY_COSINE against EVERY member, so a chain of
@@ -1958,11 +2092,10 @@ class KnowledgeBase:
         Operations (each independently flag-able):
 
         - dedupe: pair-wise cosine on stored embeddings; for each pair
-          above `dedupe_cosine_threshold` with the same `kind`, mark
-          the older / lower-confidence capsule as `superseded_by` the
-          winner. The loser stays in the DB so retrieval history
-          remains intact; downstream consumers (search) can choose to
-          filter superseded rows.
+          above `dedupe_cosine_threshold` with the same `kind`, DELETE
+          the older / lower-confidence capsule (row, FTS entry, and
+          sidecar). A duplicate carries no knowledge the winner lacks,
+          so keeping it as a retired row only costs retrieval slots.
 
         - decay: every capsule not retrieved in this pass has its
           `decay_score` increased by `decay_step`, capped at
@@ -1990,7 +2123,7 @@ class KnowledgeBase:
             rows = db.execute(
                 """
                 SELECT id, title, body, kind, scope, confidence,
-                       supersedes, superseded_by, decay_score, created_at
+                       decay_score, created_at
                 FROM capsules
                 WHERE embedding IS NOT NULL
                 """
@@ -2004,13 +2137,14 @@ class KnowledgeBase:
                 "confidence": r["confidence"],
                 "decay_score": r["decay_score"],
                 "created_at": r["created_at"],
-                "superseded_by": r["superseded_by"],
             }
             for r in rows
         }
 
         dedupes_applied = 0
+        removed: set[str] = set()
         contradictions: list[dict[str, object]] = []
+        removed_pairs: list[dict[str, object]] = []
         if meta and (dedupe or contradiction_scan):
             # Use the lower of the two thresholds so the runner emits
             # everything we might need; we partition into dedupe vs
@@ -2032,7 +2166,9 @@ class KnowledgeBase:
                 a, b = meta.get(a_id), meta.get(b_id)
                 if a is None or b is None:
                     continue
-                if a["superseded_by"] or b["superseded_by"]:
+                # A losing capsule can appear in several pairs; once it
+                # is deleted the later pair has nothing left to compare.
+                if a["id"] in removed or b["id"] in removed:
                     continue
                 sim = float(pair["cosine"])
                 if dedupe and a["kind"] == b["kind"] and sim >= dedupe_cosine_threshold:
@@ -2042,9 +2178,20 @@ class KnowledgeBase:
                     # one-line stub doesn't outrank a fully-written
                     # version of the same lesson.
                     keeper, loser = self._dedupe_winner(a, b)
-                    self._mark_superseded(loser["id"], keeper["id"])
-                    loser["superseded_by"] = keeper["id"]
-                    dedupes_applied += 1
+                    entry: dict[str, object] = {
+                        "removed_id": loser["id"],
+                        "keeper_id": keeper["id"],
+                        "cosine": round(sim, 4),
+                    }
+                    # One failed delete must not abort the pass or lose the
+                    # audit trail of the deletes that already committed.
+                    try:
+                        self.remove(loser["id"])
+                        dedupes_applied += 1
+                    except (OSError, sqlite3.Error) as exc:
+                        entry["error"] = f"{type(exc).__name__}: {exc}"
+                    removed.add(loser["id"])
+                    removed_pairs.append(entry)
                 elif (
                     contradiction_scan
                     and {a["kind"], b["kind"]} == {"fact", "gotcha"}
@@ -2074,8 +2221,7 @@ class KnowledgeBase:
                     UPDATE capsules
                     SET decay_score = MIN(?, decay_score + ?),
                         updated_at = ?
-                    WHERE superseded_by IS NULL
-                      AND (retrieved_at IS NULL OR retrieved_at < ?)
+                    WHERE retrieved_at IS NULL OR retrieved_at < ?
                     """,
                     (decay_max, decay_step, now, cutoff),
                 )
@@ -2083,6 +2229,7 @@ class KnowledgeBase:
 
         return {
             "duplicates": dedupes_applied,
+            "removed": removed_pairs,
             "decayed": decayed,
             "contradictions": contradictions[:20],
             "candidates_examined": len(meta),
@@ -2105,25 +2252,6 @@ class KnowledgeBase:
         # Last-resort tie-break: lexical id order so the choice is
         # stable across runs even when nothing else differentiates.
         return (a, b) if a["id"] < b["id"] else (b, a)
-
-    def _mark_superseded(self, loser_id: str, keeper_id: str) -> None:
-        """Wire `loser → keeper` in both directions: the loser's
-        `superseded_by` points at the keeper, and the keeper's
-        `supersedes` is set if not already (chain-aware: if keeper
-        already supersedes another capsule, leave that link intact).
-        """
-        now = utc_now()
-        with self.connect() as db:
-            db.execute(
-                "UPDATE capsules SET superseded_by = ?, updated_at = ? WHERE id = ?",
-                (keeper_id, now, loser_id),
-            )
-            row = db.execute("SELECT supersedes FROM capsules WHERE id = ?", (keeper_id,)).fetchone()
-            if row and not row["supersedes"]:
-                db.execute(
-                    "UPDATE capsules SET supersedes = ?, updated_at = ? WHERE id = ?",
-                    (loser_id, now, keeper_id),
-                )
 
     # --- doctor ------------------------------------------------------------
 
@@ -2554,12 +2682,18 @@ def build_parser() -> argparse.ArgumentParser:
     remember = sub.add_parser("remember")
     remember.add_argument("--title", required=True)
     remember.add_argument("--body", required=True)
-    remember.add_argument("--kind", default="fact", choices=CAPSULE_KINDS)
-    remember.add_argument("--scope", default="universal", choices=CAPSULE_SCOPES)
-    remember.add_argument("--source", default="manual")
-    remember.add_argument("--tags", default="")
-    remember.add_argument("--workspace", default=None, dest="workspace_path")
-    remember.add_argument("--project", default=None, dest="project_id")
+    # Metadata flags default to UNSET, not to their documented value, so
+    # `--supersedes` can tell "omitted" (keep the amended capsule's stored
+    # value) from "explicitly passed". Without `--supersedes` the library
+    # collapses UNSET to the documented default shown in each help string.
+    remember.add_argument("--kind", default=UNSET, choices=CAPSULE_KINDS, help="Capsule kind (default: fact)")
+    remember.add_argument("--scope", default=UNSET, choices=CAPSULE_SCOPES, help="Capsule scope (default: universal)")
+    remember.add_argument("--source", default=UNSET, help="Evidence anchor (default: manual)")
+    remember.add_argument("--tags", default=UNSET, help="CSV keywords (default: empty)")
+    remember.add_argument("--workspace", default=UNSET, dest="workspace_path")
+    remember.add_argument("--project", default=UNSET, dest="project_id")
+    # `action="append"` requires a list-or-None default, so these two keep
+    # `None` and the caller below maps None -> UNSET.
     remember.add_argument(
         "--domain",
         default=None,
@@ -2567,12 +2701,12 @@ def build_parser() -> argparse.ArgumentParser:
         dest="domain_tags",
         help="Domain tag (repeat for multiple)",
     )
-    remember.add_argument("--confidence", type=float, default=0.5)
-    remember.add_argument("--verified-by", default=None)
+    remember.add_argument("--confidence", type=float, default=UNSET, help="0..1 (default: 0.5)")
+    remember.add_argument("--verified-by", default=UNSET)
     remember.add_argument(
         "--supersedes",
         default=None,
-        help="ID of an existing capsule this one replaces (links both directions)",
+        help="ID of an existing capsule to amend in place (same id; omitted fields keep their stored value)",
     )
     remember.add_argument(
         "--refs",
@@ -2672,22 +2806,29 @@ def main(argv: list[str] | None = None) -> int:
         print(kb.home)
         return 0
     if args.cmd == "remember":
-        if args.supersedes is not None and kb.get(args.supersedes) is None:
+        amending = args.supersedes is not None
+        if amending and kb.get(args.supersedes) is None:
             print(f"error: --supersedes target {args.supersedes!r} not found", file=sys.stderr)
             return 1
-        if not 0.0 <= args.confidence <= 1.0:
+        if _supplied(args.confidence) and not 0.0 <= args.confidence <= 1.0:
             print(
                 f"warning: confidence {args.confidence} is outside [0, 1] and will be clamped",
                 file=sys.stderr,
             )
-        degraded = [
-            label
-            for label, missing in (
-                ("--source left at the 'manual' default", args.source == "manual"),
-                ("no --domain tag", not args.domain_tags),
-            )
-            if missing
-        ]
+        # An amend inherits the target's metadata for every omitted flag,
+        # so an omission is not a degraded write there.
+        degraded = (
+            []
+            if amending
+            else [
+                label
+                for label, missing in (
+                    ("--source left at the 'manual' default", not _supplied(args.source) or args.source == "manual"),
+                    ("no --domain tag", not args.domain_tags),
+                )
+                if missing
+            ]
+        )
         if degraded:
             print(f"warning: degraded capsule metadata: {'; '.join(degraded)}", file=sys.stderr)
         try:
@@ -2700,11 +2841,11 @@ def main(argv: list[str] | None = None) -> int:
                 tags=args.tags,
                 workspace_path=args.workspace_path,
                 project_id=args.project_id,
-                domain_tags=args.domain_tags or [],
+                domain_tags=args.domain_tags if args.domain_tags is not None else UNSET,
                 confidence=args.confidence,
                 verified_by=args.verified_by,
                 supersedes=args.supersedes,
-                refs=args.refs or [],
+                refs=args.refs if args.refs is not None else UNSET,
                 embed_now=not args.no_embed,
                 force=args.force,
             )
@@ -2778,11 +2919,16 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(summary, indent=2))
         else:
             print(
-                f"duplicates_marked={summary.get('duplicates', 0)} "
+                f"duplicates_removed={summary.get('duplicates', 0)} "
                 f"decayed={summary.get('decayed', 0)} "
                 f"contradictions={len(summary.get('contradictions', []))} "
                 f"candidates_examined={summary.get('candidates_examined', 0)}"
             )
+            for r in summary.get("removed", []):
+                if r.get("error"):
+                    print(f"  ! failed removing {r['removed_id']} (kept {r['keeper_id']}): {r['error']}")
+                else:
+                    print(f"  - removed {r['removed_id']} (kept {r['keeper_id']}) cosine={r['cosine']}")
             for c in summary.get("contradictions", []):
                 print(f"  ! pair {c['a_id']} ({c['a_kind']}) <-> {c['b_id']} ({c['b_kind']}) cosine={c['cosine']}")
         return 0

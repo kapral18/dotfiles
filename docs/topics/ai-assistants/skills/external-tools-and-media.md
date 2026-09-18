@@ -21,7 +21,8 @@ These skills route non-code tools, browser automation, and generated visual asse
 
 | Field    | Value                                                                                                  |
 | -------- | ------------------------------------------------------------------------------------------------------ |
-| Use when | inspecting or changing Gmail, Drive, Calendar, Admin, Docs, Sheets, or Slides via `gws`                |
+| Use when | inspecting or changing Gmail, Drive, Calendar, Admin, Docs, Sheets, Slides, or Apps Script via `gws`   |
+| Accounts | one credential set per config dir; a second account uses `GOOGLE_WORKSPACE_CLI_CONFIG_DIR=<dir>`       |
 | Source   | [`exact_k-google-workspace`](../../../../home/exact_dot_agents/exact_skills/exact_k-google-workspace/) |
 | Tool     | `gws` CLI                                                                                              |
 | Related  | generic Slides deck geometry and automation live in `references/slides-deck-design-and-automation.md`  |

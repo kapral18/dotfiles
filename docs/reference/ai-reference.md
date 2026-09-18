@@ -34,13 +34,14 @@ Per-tool config sources and the `run_onchange_after_07-*` hooks that render them
 
 ## Model registry
 
-Single source of truth for curated Cursor models, Pi extras, provider routes, category routing (`agent_categories` / `agent_bindings` / `category_models`), and review-lane model policy; per-tool model configs, the generated delegation-band projection, and the generated mirror all derive from it. See [Model registry & routing](../topics/ai-assistants/model-registry.md).
+Single source of truth for curated Cursor models, Pi extras, provider routes, category routing (`agent_categories` / `agent_bindings` / `category_models`), the alternate whole Pi pricings in `pi_model_profiles`, and review-lane model policy; per-tool model configs, the generated delegation-band projection, and the generated mirror all derive from it. See [Model registry & routing](../topics/ai-assistants/model-registry.md).
 
 | Component           | Source path                                                                                                                          |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | Model definitions   | [`home/.chezmoidata/ai_models/`](../../home/.chezmoidata/ai_models)                                                                  |
 | YAML reader         | [`scripts/ai_models.py`](../../scripts/ai_models.py)                                                                                 |
 | Pi session analyzer | [`scripts/analyze_pi_session.py`](../../scripts/analyze_pi_session.py)                                                               |
+| Pi profile picker   | [`home/exact_bin/executable_,pi-model-profile`](../../home/exact_bin/executable_,pi-model-profile)                                   |
 | Band generator      | [`scripts/generate_agent_bands.py`](../../scripts/generate_agent_bands.py)                                                           |
 | Band projection     | [`home/dot_config/ai/readonly_agent-bands.v1.json`](../../home/dot_config/ai/readonly_agent-bands.v1.json)                           |
 | Delegation gate     | [`home/exact_dot_agents/exact_hooks/executable_band_gate.py`](../../home/exact_dot_agents/exact_hooks/executable_band_gate.py)       |

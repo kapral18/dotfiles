@@ -4809,7 +4809,7 @@ class BandGateTests(unittest.TestCase):
             "AGENT_BAND_CODEX_ROUTES": json.dumps(
                 {
                     "k-agent-mechanical": "z-ai/glm-5.3-flash@preset/effort-high",
-                    "k-agent-adversarial-verifier": "meta/muse-spark-1.3@preset/effort-max",
+                    "k-agent-adversarial-verifier": "x-ai/grok-4.6@preset/effort-high",
                 }
             ),
         }
@@ -4830,7 +4830,7 @@ class BandGateTests(unittest.TestCase):
             route_env,
         )
         updated = refute["hookSpecificOutput"]["updatedInput"]
-        self.assertEqual(updated["model"], "meta/muse-spark-1.3@preset/effort-max")
+        self.assertEqual(updated["model"], "x-ai/grok-4.6@preset/effort-high")
         self.assertNotIn("reasoning_effort", updated)
 
     def test_SHOULD_admit_only_fresh_projected_codex_openrouter_pairs(self):
@@ -4899,7 +4899,7 @@ class BandGateTests(unittest.TestCase):
     def test_SHOULD_keep_openrouter_refute_distinct_from_implementation(self):
         projection = json.loads((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_text())
         routes = {
-            "k-agent-adversarial-verifier": "meta/muse-spark-1.3@preset/effort-max",
+            "k-agent-adversarial-verifier": "x-ai/grok-4.6@preset/effort-high",
         }
         env = {
             "AGENT_BAND_SCHEMA_HARNESS": "pi",

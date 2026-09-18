@@ -3,8 +3,11 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -65,9 +68,9 @@ class TestAiKb(unittest.TestCase):
 
 class TestKnowledgeBaseSchemaV2(unittest.TestCase):
     """Phase 1 of the BIG redesign: structured capsule schema with kind,
-    scope, domain tags, confidence, verified_by, supersedes, embedding
-    BLOB and the rest. Schema changes are breaking by policy — old
-    DBs are rebuilt from canonical sidecars, not migrated in place.
+    scope, domain tags, confidence, verified_by, embedding BLOB and the
+    rest. Schema changes are breaking by policy — old DBs are rebuilt
+    from canonical sidecars, not migrated in place.
     """
 
     @staticmethod
@@ -101,7 +104,6 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
             body="shared-needle canonical-keeper",
             source="tests:keeper",
             project_id="proj-curation",
-            supersedes=old.id,
         )
         loser = kb.remember(
             title="Curated loser fact",
@@ -109,7 +111,6 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
             source="tests:loser",
             project_id="proj-curation",
         )
-        kb._mark_superseded(loser.id, keeper.id)
         with kb.connect() as db:
             db.execute(
                 "UPDATE capsules SET decay_score = ?, updated_at = ? WHERE id = ?",
@@ -122,7 +123,7 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
         with kb.connect() as db:
             rows = db.execute(
                 f"""
-                SELECT id, supersedes, superseded_by, decay_score,
+                SELECT id, decay_score,
                        retrieved_at, retrieval_count,
                        created_at, updated_at,
                        hex(embedding) AS embedding_hex,
@@ -135,8 +136,6 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
             ).fetchall()
         return {
             row["id"]: {
-                "supersedes": row["supersedes"],
-                "superseded_by": row["superseded_by"],
                 "decay_score": row["decay_score"],
                 "retrieved_at": row["retrieved_at"],
                 "retrieval_count": row["retrieval_count"],
@@ -169,8 +168,6 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                     domain_tags TEXT NOT NULL,
                     confidence REAL NOT NULL,
                     verified_by TEXT,
-                    supersedes TEXT,
-                    superseded_by TEXT,
                     refs TEXT NOT NULL,
                     embedding BLOB,
                     embedding_model TEXT,
@@ -186,14 +183,14 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 INSERT INTO capsules(
                     id, kind, title, body, source, tags, path, scope,
                     workspace_path, domain_tags, confidence, verified_by,
-                    supersedes, superseded_by, refs, embedding,
+                    refs, embedding,
                     embedding_model, embedding_dim, decay_score,
                     created_at, updated_at
                 )
                 SELECT
                     id, kind, title, body, source, tags, path, scope,
                     workspace_path, domain_tags, confidence, verified_by,
-                    supersedes, superseded_by, refs, embedding,
+                    refs, embedding,
                     embedding_model, embedding_dim, decay_score,
                     created_at, updated_at
                 FROM capsules_backup
@@ -274,7 +271,6 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                     domain_tags=["ai-kb", "rebuild"],
                     confidence=0.8,
                     verified_by="rid-456",
-                    supersedes=old.id,
                     refs=["docs/rebuild.md:42"],
                     embed_now=False,
                 )
@@ -308,8 +304,6 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 assert rebuilt_old.confidence == 0.9
                 assert rebuilt_old.verified_by == "rid-123"
                 assert rebuilt_old.refs == "docs/rebuild.md:10,https://example.test/rebuild"
-                assert rebuilt_old.superseded_by == new.id
-                assert rebuilt_new.supersedes == old.id
 
                 hits = kb.search("schema-heal-needle", limit=5, mode="bm25")
                 assert [hit["id"] for hit in hits] == [new.id], hits
@@ -336,14 +330,12 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 kb = ai_kb.KnowledgeBase(home=Path(tmp), embedder=self._fake_embedder())
                 old, keeper, loser = self._seed_curated_state(kb)
                 state_before = self._capsule_state(kb, old.id, keeper.id, loser.id)
-                assert state_before[keeper.id]["supersedes"] == old.id
-                assert state_before[loser.id]["superseded_by"] == keeper.id
                 assert abs(state_before[keeper.id]["decay_score"] - 0.6) < 1e-6
                 assert state_before[keeper.id]["updated_at"] == "2026-07-10T12:34:56+00:00"
                 assert state_before[keeper.id]["embedding_model"] == "test/fake-embedder"
                 assert state_before[keeper.id]["embedding_dim"] == 3
                 hits_before = kb.search("shared-needle", limit=10, mode="bm25")
-                assert loser.id not in [hit["id"] for hit in hits_before], hits_before
+                assert keeper.id in [hit["id"] for hit in hits_before], hits_before
 
                 # The search stamps retrieval on the returned capsules and
                 # clears their decay. The simulated stale schema predates the
@@ -370,7 +362,7 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 hits_after = kb.search("shared-needle", limit=10, mode="bm25")
                 hit_ids = [hit["id"] for hit in hits_after]
                 assert keeper.id in hit_ids, hit_ids
-                assert loser.id not in hit_ids, hit_ids
+                assert loser.id in hit_ids, hit_ids
             finally:
                 if saved_disable is None:
                     os.environ.pop("AI_KB_DISABLE_EMBED", None)
@@ -494,7 +486,7 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 hits = kb.search("shared-needle", limit=10, mode="bm25")
                 hit_ids = [hit["id"] for hit in hits]
                 assert keeper.id in hit_ids, hit_ids
-                assert loser.id not in hit_ids, hit_ids
+                assert loser.id in hit_ids, hit_ids
 
                 with kb.connect() as db:
                     rootpage_after = db.execute(
@@ -678,7 +670,9 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
             finally:
                 os.environ.pop("AI_KB_DISABLE_EMBED", None)
 
-    def test_supersedes_links_bidirectionally(self):
+    def test_supersedes_amends_capsule_in_place(self):
+        """`supersedes` edits the target under its own id: no second row,
+        no retired twin, title/body replaced, created_at kept."""
         import ai_kb
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -687,12 +681,313 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 kb = ai_kb.KnowledgeBase(home=Path(tmp))
                 old = kb.remember(title="v1", body="old fact")
                 new = kb.remember(title="v2", body="new fact", supersedes=old.id)
-                refreshed_old = kb.get(old.id)
-                assert refreshed_old is not None
-                assert refreshed_old.superseded_by == new.id, (
-                    f"superseded_by must be set bidirectionally: got {refreshed_old.superseded_by!r}"
+
+                assert new.id == old.id, f"amend must keep the id: {new.id!r} != {old.id!r}"
+                assert new.title == "v2"
+                assert new.body == "new fact"
+                assert new.created_at == old.created_at, "created_at belongs to the capsule, not the edit"
+                assert new.updated_at >= old.updated_at
+
+                rows = kb.list(limit=10)
+                assert [r.id for r in rows] == [old.id], f"amend must not add a row: {rows}"
+                refreshed = kb.get(old.id)
+                assert refreshed is not None
+                assert refreshed.title == "v2"
+                assert refreshed.body == "new fact"
+
+                # The sidecar is rewritten in place, no second file.
+                sidecars = sorted(p.name for p in kb.capsules_dir.glob("*.md"))
+                assert sidecars == [f"{old.id}.md"], sidecars
+                text = (kb.capsules_dir / f"{old.id}.md").read_text()
+                assert "title: v2" in text, text
+                assert "new fact" in text, text
+                assert "supersedes:" not in text, "v4 sidecars carry no supersede key"
+
+                # FTS follows the amend: the old body is gone from search.
+                assert [h["id"] for h in kb.search("new fact", limit=5, mode="bm25")] == [old.id]
+                # "fact" survives in the new body, so probe the token that only
+                # the old body had.
+                assert kb.search("old", limit=5, mode="bm25") == []
+            finally:
+                os.environ.pop("AI_KB_DISABLE_EMBED", None)
+
+    def test_amend_keeps_unspecified_metadata_and_takes_supplied_values(self):
+        """An omitted flag keeps the target's stored value (no silent reset
+        to the CLI default); a supplied flag wins."""
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp))
+                old = kb.remember(
+                    title="Metadata carrier",
+                    body="v1",
+                    kind="gotcha",
+                    scope="project",
+                    source="tests:carrier",
+                    tags="alpha,beta",
+                    workspace_path="/ws/carrier",
+                    project_id="proj-carrier",
+                    domain_tags=["d1", "d2"],
+                    confidence=0.9,
+                    verified_by="rid-carrier",
+                    refs=["lib.py:1"],
                 )
-                assert new.supersedes == old.id
+                kept = kb.remember(title="Metadata carrier v2", body="v2", supersedes=old.id)
+                assert kept.kind == "gotcha"
+                assert kept.scope == "project"
+                assert kept.source == "tests:carrier"
+                assert kept.tags == "alpha,beta"
+                assert kept.workspace_path == "/ws/carrier"
+                assert kept.project_id == "proj-carrier"
+                assert kept.domain_tags == "d1,d2"
+                assert kept.confidence == 0.9
+                assert kept.verified_by == "rid-carrier"
+                assert kept.refs == "lib.py:1"
+
+                overridden = kb.remember(
+                    title="Metadata carrier v3",
+                    body="v3",
+                    supersedes=old.id,
+                    kind="fact",
+                    confidence=0.4,
+                    domain_tags=["d3"],
+                )
+                assert overridden.kind == "fact"
+                assert overridden.confidence == 0.4
+                assert overridden.domain_tags == "d3"
+                # Still-omitted fields keep the stored values.
+                assert overridden.scope == "project"
+                assert overridden.source == "tests:carrier"
+                assert overridden.tags == "alpha,beta"
+            finally:
+                os.environ.pop("AI_KB_DISABLE_EMBED", None)
+
+    def test_amend_clears_the_stale_embedding(self):
+        """A stale vector must never survive an edit: the amend re-embeds
+        the new text, or clears the embedding when embedding is off."""
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            saved = os.environ.pop("AI_KB_DISABLE_EMBED", None)
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp), embedder=self._fake_embedder())
+                old = kb.remember(title="Embedded capsule", body="first body")
+                before = self._capsule_state(kb, old.id)[old.id]
+                assert before["embedding_hex"], before
+
+                amended = kb.remember(title="Embedded capsule v2", body="second body", supersedes=old.id)
+                after = self._capsule_state(kb, amended.id)[amended.id]
+                assert after["embedding_hex"] != before["embedding_hex"], "amend must re-embed the new text"
+                assert after["embedding_model"] == "test/fake-embedder"
+                assert after["embedding_dim"] == 3
+
+                cleared = kb.remember(
+                    title="Embedded capsule v3",
+                    body="third body",
+                    supersedes=old.id,
+                    embed_now=False,
+                )
+                final = self._capsule_state(kb, cleared.id)[cleared.id]
+                # sqlite's hex(NULL) is '', so an empty hex means the BLOB is NULL.
+                assert final["embedding_hex"] == "", final
+                assert final["embedding_model"] is None
+                assert final["embedding_dim"] == 0
+            finally:
+                if saved is not None:
+                    os.environ["AI_KB_DISABLE_EMBED"] = saved
+
+    def test_amend_excludes_its_own_target_from_the_duplicate_probe(self):
+        """Re-storing the target's own title through an amend is an edit,
+        not a collision — but another capsule's title still collides."""
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp))
+                target = kb.remember(title="Same title", body="v1")
+                other = kb.remember(title="Other title", body="unrelated")
+
+                same = kb.remember(title="Same title", body="v2", supersedes=target.id)
+                assert same.id == target.id
+                assert same.body == "v2"
+
+                with self.assertRaisesRegex(ValueError, other.id):
+                    kb.remember(title="Other title", body="v3", supersedes=target.id)
+            finally:
+                os.environ.pop("AI_KB_DISABLE_EMBED", None)
+
+    def test_amend_of_unknown_id_errors(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp))
+                with self.assertRaisesRegex(ValueError, "not found"):
+                    kb.remember(title="orphan", body="b", supersedes="does-not-exist-id")
+                assert kb.list(limit=10) == []
+            finally:
+                os.environ.pop("AI_KB_DISABLE_EMBED", None)
+
+    def test_rebuild_tolerates_legacy_supersedes_key_in_sidecar(self):
+        """A v3 sidecar carries `supersedes:`; the v4 parser must ignore
+        the key instead of quarantining the file."""
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp))
+                kb.init()
+                legacy_id = "20260101000000000000-legacy-capsule"
+                (kb.capsules_dir / f"{legacy_id}.md").write_text(
+                    "---\n"
+                    f"id: {legacy_id}\n"
+                    "title: Legacy capsule\n"
+                    "kind: fact\n"
+                    "scope: universal\n"
+                    "source: tests:legacy\n"
+                    "tags: \n"
+                    "workspace_path: \n"
+                    "project_id: \n"
+                    "domain_tags: \n"
+                    "confidence: 0.5\n"
+                    "verified_by: \n"
+                    "supersedes: 20251231000000000000-older-capsule\n"
+                    "superseded_by: 20260102000000000000-newer-capsule\n"
+                    "refs: \n"
+                    "created_at: 2026-01-01T00:00:00+00:00\n"
+                    "---\n\n"
+                    "# Legacy capsule\n\n"
+                    "legacy-needle body\n"
+                )
+                # Force a column-shape rebuild so the sidecars reload.
+                with kb.connect() as db:
+                    db.execute("DROP TABLE IF EXISTS capsule_fts")
+                    db.execute("DROP TABLE IF EXISTS kb_meta")
+                    db.execute("DROP TABLE IF EXISTS capsules")
+                    db.execute("CREATE TABLE capsules (id TEXT PRIMARY KEY)")
+
+                rows = kb.list(limit=10)
+                assert [r.id for r in rows] == [legacy_id], rows
+                assert not list((kb.home / "quarantine").glob("*.md")), "legacy keys must not quarantine a sidecar"
+                assert [h["id"] for h in kb.search("legacy-needle", limit=5, mode="bm25")] == [legacy_id]
+            finally:
+                os.environ.pop("AI_KB_DISABLE_EMBED", None)
+
+    def test_init_migrates_v3_store_by_deleting_superseded_capsules(self):
+        """v3 -> v4: every row with `superseded_by` set (a whole chain, not
+        just the last hop) is deleted with its sidecar before the rebuild,
+        the independent row survives, and a second init is a no-op."""
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
+            try:
+                home = Path(tmp)
+                capsules = home / "capsules"
+                capsules.mkdir(parents=True)
+                chain = ["20260101000000000001-hop-one", "20260101000000000002-hop-two"]
+                head = "20260101000000000003-hop-three"
+                independent = "20260101000000000004-independent"
+                ordered = [*chain, head, independent]
+                for idx, note_id in enumerate(ordered):
+                    supersedes = ordered[idx - 1] if 0 < idx < len(chain) + 1 else ""
+                    (capsules / f"{note_id}.md").write_text(
+                        "---\n"
+                        f"id: {note_id}\n"
+                        f"title: t-{note_id}\n"
+                        "kind: fact\n"
+                        "scope: universal\n"
+                        "source: tests:v3\n"
+                        "tags: \n"
+                        "workspace_path: \n"
+                        "project_id: \n"
+                        "domain_tags: \n"
+                        "confidence: 0.5\n"
+                        "verified_by: \n"
+                        f"supersedes: {supersedes}\n"
+                        "refs: \n"
+                        "created_at: 2026-01-01T00:00:00+00:00\n"
+                        "---\n\n"
+                        f"# t-{note_id}\n\n"
+                        f"migrate-needle body {note_id}\n"
+                    )
+                superseded_by = {
+                    chain[0]: chain[1],
+                    chain[1]: head,
+                }
+                supersedes_map = {chain[1]: chain[0], head: chain[1]}
+                db = sqlite3.connect(home / "kb.sqlite3")
+                db.execute(
+                    """
+                    CREATE TABLE capsules (
+                        id TEXT PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL,
+                        body TEXT NOT NULL, source TEXT NOT NULL, tags TEXT NOT NULL,
+                        path TEXT NOT NULL, scope TEXT NOT NULL, workspace_path TEXT,
+                        project_id TEXT, domain_tags TEXT NOT NULL, confidence REAL NOT NULL,
+                        verified_by TEXT, supersedes TEXT, superseded_by TEXT, refs TEXT NOT NULL,
+                        embedding BLOB, embedding_model TEXT, embedding_dim INTEGER NOT NULL,
+                        decay_score REAL NOT NULL, retrieved_at TEXT, retrieval_count INTEGER NOT NULL,
+                        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+                    )
+                    """
+                )
+                db.execute(
+                    "CREATE VIRTUAL TABLE capsule_fts USING fts5(id UNINDEXED, title, body, tags, source, domain_tags)"
+                )
+                db.execute("CREATE TABLE kb_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+                db.execute("INSERT INTO kb_meta(key, value) VALUES('schema_version', '3')")
+                for note_id in ordered:
+                    db.execute(
+                        """
+                        INSERT INTO capsules VALUES(
+                            ?, 'fact', ?, ?, 'tests:v3', '', ?, 'universal', NULL, NULL, '', 0.5,
+                            NULL, ?, ?, '', NULL, NULL, 0, 0.0, NULL, 0,
+                            '2026-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00'
+                        )
+                        """,
+                        (
+                            note_id,
+                            f"t-{note_id}",
+                            f"migrate-needle body {note_id}",
+                            str(capsules / f"{note_id}.md"),
+                            supersedes_map.get(note_id),
+                            superseded_by.get(note_id),
+                        ),
+                    )
+                    db.execute(
+                        "INSERT INTO capsule_fts VALUES(?, ?, ?, '', 'tests:v3', '')",
+                        (note_id, f"t-{note_id}", f"migrate-needle body {note_id}"),
+                    )
+                db.commit()
+                db.close()
+
+                kb = ai_kb.KnowledgeBase(home=home)
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr):
+                    kb.init()
+                assert "migrated v3->v4, removed 2 superseded capsules" in stderr.getvalue(), stderr.getvalue()
+
+                assert sorted(c.id for c in kb.list(limit=10)) == sorted([head, independent])
+                assert sorted(p.stem for p in capsules.glob("*.md")) == sorted([head, independent])
+                with kb.connect() as conn:
+                    cols = tuple(r[1] for r in conn.execute("PRAGMA table_info(capsules)").fetchall())
+                assert cols == ai_kb.CAPSULE_COLUMNS, cols
+                assert "supersedes" not in cols and "superseded_by" not in cols
+
+                # Idempotent: a v4 store reports nothing and loses nothing.
+                second = io.StringIO()
+                with contextlib.redirect_stderr(second):
+                    kb.init()
+                assert "migrated v3->v4" not in second.getvalue(), second.getvalue()
+                assert sorted(c.id for c in kb.list(limit=10)) == sorted([head, independent])
+                assert sorted(h["id"] for h in kb.search("migrate-needle", limit=10, mode="bm25")) == sorted(
+                    [head, independent]
+                )
             finally:
                 os.environ.pop("AI_KB_DISABLE_EMBED", None)
 
@@ -779,6 +1074,31 @@ class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
             assert len(vec) == 1, f"vector lane must surface the semantically-related capsule; got {vec}"
             assert vec[0]["title"] == "Animal taxonomy"
             assert vec[0]["cosine_score"] is not None
+
+    def test_vector_lane_follows_an_amend(self):
+        """An amend keeps the id, so vec_index must re-index the rewritten
+        vector instead of trusting id presence."""
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp))
+            old = kb.remember(
+                title="Animal taxonomy",
+                body="The domestic feline is a small carnivorous mammal.",
+                kind="fact",
+                scope="universal",
+            )
+            assert [h["id"] for h in kb.search("cat pet", limit=3, mode="vector")] == [old.id]
+            kb.remember(
+                title="Orbital mechanics",
+                body="A satellite in low earth orbit completes a revolution in about ninety minutes.",
+                supersedes=old.id,
+            )
+            vec = kb.search("satellite orbit period", limit=3, mode="vector")
+            assert [h["id"] for h in vec] == [old.id], vec
+            assert vec[0]["title"] == "Orbital mechanics"
+            stale = kb.search("cat pet", limit=3, mode="vector")
+            assert not stale or stale[0]["cosine_score"] < vec[0]["cosine_score"], stale
 
     def test_hybrid_mode_combines_lanes_via_rrf(self):
         import ai_kb
@@ -901,7 +1221,7 @@ class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
 
     def test_newer_near_duplicate_outranks_older_lexical_winner(self):
         # Recency preference inside near-duplicate groups: a knowledge update
-        # written on top of an older capsule (force-written, no supersede link)
+        # written on top of an older capsule (force-written instead of amended)
         # must take the older twin's rank even when the older twin wins the
         # lexical lane, while unrelated hits keep their rank slots.
         import ai_kb
@@ -1223,19 +1543,24 @@ class TestKnowledgeBaseWriteDedupe(unittest.TestCase):
                         kind="gotcha",
                     )
                 # An explicit supersedes for the colliding capsule is the
-                # sanctioned update path and must not be refused.
+                # sanctioned update path and must not be refused: it amends
+                # that capsule instead of storing a near-duplicate twin.
                 replacement = kb.remember(
                     title="Validate JWT signatures",
                     body="Always validate the JWT signature before using any claims.",
                     kind="gotcha",
                     supersedes=first.id,
                 )
-                assert kb.get(first.id).superseded_by == replacement.id
+                assert replacement.id == first.id
+                assert kb.get(first.id).title == "Validate JWT signatures"
+                assert [c.id for c in kb.list(limit=10)] == [first.id]
             finally:
                 if saved is not None:
                     os.environ["AI_KB_DISABLE_EMBED"] = saved
 
-    def test_superseded_capsules_do_not_block_new_titles(self):
+    def test_amended_away_title_stops_blocking_new_capsules(self):
+        """An amend replaces the target's title, so the old wording is free
+        for a genuinely new capsule."""
         import ai_kb
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -1244,10 +1569,11 @@ class TestKnowledgeBaseWriteDedupe(unittest.TestCase):
                 kb = ai_kb.KnowledgeBase(home=Path(tmp))
                 first = kb.remember(title="Old truth", body="v1")
                 second = kb.remember(title="New truth", body="v2", supersedes=first.id)
-                assert second.supersedes == first.id
-                # first is retired; reusing its title is legitimate.
+                assert second.id == first.id
+                # The capsule now holds "New truth"; "Old truth" is unused.
                 third = kb.remember(title="Old truth", body="v3")
                 assert third.id != first.id
+                assert sorted(c.title for c in kb.list(limit=10)) == ["New truth", "Old truth"]
             finally:
                 os.environ.pop("AI_KB_DISABLE_EMBED", None)
 
@@ -1409,7 +1735,7 @@ class TestKnowledgeBaseCurate(unittest.TestCase):
             finally:
                 os.environ.pop("AI_KB_DISABLE_EMBED", None)
 
-    def test_dedupe_marks_near_duplicates_as_superseded(self):
+    def test_dedupe_deletes_the_losing_near_duplicate(self):
         import embed
 
         if not embed.Embedder().is_available():
@@ -1453,22 +1779,20 @@ class TestKnowledgeBaseCurate(unittest.TestCase):
                     contradiction_scan=False,
                 )
                 assert summary["duplicates"] >= 1, summary
-                # Higher confidence wins → older becomes the loser.
-                refreshed_older = kb.get(older.id)
+                # An irreversible delete must leave an audit trail.
+                assert [(r["removed_id"], r["keeper_id"]) for r in summary["removed"]] == [(older.id, newer.id)], summary
+                # Higher confidence wins → older becomes the loser and is
+                # deleted outright: row, FTS entry, and sidecar.
+                assert kb.get(older.id) is None, "dedupe must delete the losing row"
                 refreshed_newer = kb.get(newer.id)
-                assert refreshed_older is not None and refreshed_newer is not None
-                assert refreshed_older.superseded_by == newer.id, (
-                    f"older capsule must be marked superseded by newer; got {refreshed_older.superseded_by!r}"
-                )
-                assert refreshed_newer.supersedes == older.id, (
-                    f"newer capsule must point at older via `supersedes`; got {refreshed_newer.supersedes!r}"
-                )
+                assert refreshed_newer is not None
+                assert not (kb.capsules_dir / f"{older.id}.md").exists(), "dedupe must delete the loser's sidecar"
+                assert (kb.capsules_dir / f"{newer.id}.md").exists()
 
-                # Search must filter superseded rows out by default.
                 hits = kb.search("validate JWT", limit=5, mode="bm25", kind="gotcha")
                 ids = [h["id"] for h in hits]
                 assert refreshed_newer.id in ids, ids
-                assert refreshed_older.id not in ids, "search must hide superseded capsules"
+                assert older.id not in ids, "a deleted duplicate cannot surface"
             finally:
                 if saved is not None:
                     os.environ["AI_KB_DISABLE_EMBED"] = saved
@@ -1874,7 +2198,7 @@ class TestKnowledgeBaseSearchReturnsBody(unittest.TestCase):
 
 
 class TestAiKbRememberSupersedes(unittest.TestCase):
-    """WHEN `,ai-kb remember` is called with --supersedes / --refs."""
+    """WHEN `,ai-kb remember` is called with --supersedes (amend) / --refs."""
 
     AIKB = SCRIPTS / "ai_kb.py"
 
@@ -1890,8 +2214,9 @@ class TestAiKbRememberSupersedes(unittest.TestCase):
             raise AssertionError(f"remember failed:\n{result.stderr}")
         return json.loads(result.stdout)
 
-    def test_supersedes_links_both_directions_and_retires_old_capsule(self):
-        """SHOULD set superseded_by on the old capsule and supersedes on the new one, and drop the old from search."""
+    def test_supersedes_amends_the_target_in_place(self):
+        """SHOULD replace the target's content under its own id, keep the
+        metadata the call omitted, and leave exactly one capsule behind."""
         with tempfile.TemporaryDirectory() as tmp:
             old = self._remember(
                 tmp,
@@ -1903,6 +2228,10 @@ class TestAiKbRememberSupersedes(unittest.TestCase):
                 "fact",
                 "--scope",
                 "project",
+                "--source",
+                "tests:x",
+                "--tags",
+                "x,approach",
             )
             new = self._remember(
                 tmp,
@@ -1910,15 +2239,22 @@ class TestAiKbRememberSupersedes(unittest.TestCase):
                 "Corrected fact about X",
                 "--body",
                 "X actually uses approach bar, verified at lib.py:10",
-                "--kind",
-                "fact",
-                "--scope",
-                "project",
                 "--supersedes",
                 old["id"],
                 "--confidence",
                 "0.9",
             )
+
+            assert new["id"] == old["id"]
+            assert new["title"] == "Corrected fact about X"
+            assert new["confidence"] == 0.9
+            # Omitted flags keep the stored values instead of resetting to
+            # the CLI defaults (kind=fact happens to match; scope/source/tags
+            # would otherwise reset to universal/manual/empty).
+            assert new["scope"] == "project"
+            assert new["source"] == "tests:x"
+            assert new["tags"] == "x,approach"
+            assert new["created_at"] == old["created_at"]
 
             get_old = subprocess.run(
                 [sys.executable, str(self.AIKB), "get", old["id"], "--json"],
@@ -1926,10 +2262,18 @@ class TestAiKbRememberSupersedes(unittest.TestCase):
                 text=True,
                 env={**os.environ, "XDG_DATA_HOME": tmp},
             )
-            old_capsule = json.loads(get_old.stdout)
+            stored = json.loads(get_old.stdout)
+            assert stored["body"].startswith("X actually uses approach bar")
+            assert "superseded_by" not in stored, stored
+            assert "supersedes" not in stored, stored
 
-            assert old_capsule["superseded_by"] == new["id"]  # old points forward to replacement
-            assert new["supersedes"] == old["id"]  # new points back to what it retired
+            listed = subprocess.run(
+                [sys.executable, str(self.AIKB), "list", "--json"],
+                capture_output=True,
+                text=True,
+                env={**os.environ, "XDG_DATA_HOME": tmp},
+            )
+            assert [c["id"] for c in json.loads(listed.stdout or "[]")] == [old["id"]]
 
             search = subprocess.run(
                 [sys.executable, str(self.AIKB), "search", "fact about X", "--mode", "bm25", "--json"],
@@ -1938,11 +2282,10 @@ class TestAiKbRememberSupersedes(unittest.TestCase):
                 env={**os.environ, "XDG_DATA_HOME": tmp},
             )
             hit_ids = [r["id"] for r in json.loads(search.stdout or "[]")]
-            assert new["id"] in hit_ids  # replacement surfaces
-            assert old["id"] not in hit_ids  # superseded capsule excluded from results
+            assert hit_ids == [old["id"]]  # one capsule, the amended one
 
     def test_supersedes_unknown_id_errors_without_writing(self):
-        """SHOULD exit non-zero and not create a capsule when the supersede target is missing."""
+        """SHOULD exit non-zero and not create a capsule when the amend target is missing."""
         with tempfile.TemporaryDirectory() as tmp:
             result = subprocess.run(
                 [

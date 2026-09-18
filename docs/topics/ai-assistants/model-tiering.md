@@ -43,15 +43,15 @@ The SOP §3.7 routes settled implementation with stated acceptance and unwritten
 
 `session_models` is the root/main-session pick the user talks to. It is generated into every repo-owned root config and is never a binding target.
 
-| Harness       | Model                             | Effort | Context | Generated into                                                             |
-| ------------- | --------------------------------- | ------ | ------- | -------------------------------------------------------------------------- |
-| `claude_code` | `claude-fable-5-1[1m]`            | high   | long    | `home/dot_claude/settings.{work,personal}.json`                            |
-| `codex`       | `gpt-6-astra`                     | high   | short   | `home/dot_codex/private_config.{work,personal}.toml`                       |
-| `copilot`     | `claude-fable-5.1`                | high   | long    | `home/private_dot_copilot/settings.json` root fields                       |
-| `cursor`      | `claude-fable-5-1`                | high   | long    | none (user-config-owned, informational)                                    |
-| `antigravity` | `gemini-3.8-flash`                | high   | long    | `home/dot_gemini/antigravity-cli/readonly_settings.policy.json`            |
-| `pi`          | `github-copilot/claude-fable-5.1` | high   | long    | `home/dot_pi/agent/readonly_settings.{work,personal}.json`                 |
-| `omp`         | `anthropic/claude-fable-5.1`      | high   | short   | `home/dot_omp/private_agent/readonly_config.yml.tmpl` `modelRoles.default` |
+| Harness       | Model                            | Effort | Context | Generated into                                                             |
+| ------------- | -------------------------------- | ------ | ------- | -------------------------------------------------------------------------- |
+| `claude_code` | `claude-fable-5-1[1m]`           | high   | long    | `home/dot_claude/settings.{work,personal}.json`                            |
+| `codex`       | `gpt-6-astra`                    | high   | short   | `home/dot_codex/private_config.{work,personal}.toml`                       |
+| `copilot`     | `claude-fable-5.1`               | high   | long    | `home/private_dot_copilot/settings.json` root fields                       |
+| `cursor`      | `claude-fable-5-1`               | high   | long    | none (user-config-owned, informational)                                    |
+| `antigravity` | `gemini-3.8-flash`               | high   | long    | `home/dot_gemini/antigravity-cli/readonly_settings.policy.json`            |
+| `pi`          | `openrouter/meta/muse-spark-1.3` | xhigh  | long    | `home/dot_pi/agent/readonly_settings.{work,personal}.json`                 |
+| `omp`         | `openrouter/meta/muse-spark-1.3` | xhigh  | long    | `home/dot_omp/private_agent/readonly_config.yml.tmpl` `modelRoles.default` |
 
 Cursor: user-config-owned, informational.
 
@@ -161,37 +161,58 @@ The category registry key is `antigravity`. The mirror continues to publish a `g
 
 ### Pi
 
-| Category     | Model                             | `thinking` | Context | Verifier status |
-| ------------ | --------------------------------- | ---------- | ------- | --------------- |
-| `mechanical` | `openrouter/z-ai/glm-5.3-flash`   | high       | long    | —               |
-| `research`   | `github-copilot/claude-fable-5.1` | high       | long    | —               |
-| `implement`  | `openrouter/meta/muse-spark-1.3`  | high       | long    | —               |
-| `review`     | `github-copilot/claude-fable-5.1` | high       | long    | —               |
-| `refute`     | `openrouter/meta/muse-spark-1.3`  | max        | long    | cross_family    |
-| `memory`     | `openrouter/z-ai/glm-5.3-flash`   | high       | short   | —               |
+| Category     | Model                            | `thinking` | Context | Verifier status |
+| ------------ | -------------------------------- | ---------- | ------- | --------------- |
+| `mechanical` | `openrouter/z-ai/glm-5.3-flash`  | high       | long    | —               |
+| `research`   | `openrouter/z-ai/glm-5.3`        | max        | long    | —               |
+| `implement`  | `openrouter/z-ai/glm-5.3`        | high       | long    | —               |
+| `review`     | `openrouter/meta/muse-spark-1.3` | max        | long    | —               |
+| `refute`     | `openrouter/x-ai/grok-4.6`       | high       | short   | cross_family    |
+| `memory`     | `openrouter/z-ai/glm-5.3-flash`  | high       | short   | —               |
 
-Pi `review` rides the session's Fable route; `refute` is the Meta counter at max effort. The earlier `gemini-3.8-flash` refuter produced a false finding and skipped a packet-mandated parser run in the 2026-09-12 PR 4412 convergence session, so the counter moved to a stronger model (user call 2026-09-13).
+Every Pi row now rides OpenRouter. `review` is the Meta route at max effort and `refute` is the Grok counter, a different vendor family. The earlier `gemini-3.8-flash` refuter produced a false finding and skipped a packet-mandated parser run in the 2026-09-12 PR 4412 convergence session, so the counter moved to a stronger model (user call 2026-09-13). `research` and `implement` share GLM 5.3 but split on effort, which keeps `implement` distinct from both `mechanical` and the session row.
 
 Pi category models never include a `:level` suffix. Every managed profile renders `model:` through the existing model partial and renders a separate `thinking:` line through `agent-thinking.partial`; the line is omitted when effort is empty. `pi-subagents` accepts `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and `max` in that frontmatter field.
 
 Only Pi rows beginning with `openrouter/` can become OpenRouter wrapper wire models. The deployed `openrouter_presets.py --pi-openrouter-wire-models` helper reads those rows and emits `<model-without-openrouter/>@preset/effort-<effort>`. GitHub Copilot Pi rows are never added to `CURSOR_AGENT_ALLOWED_MODEL`.
 
+#### Pi model profiles
+
+Pi is the one harness with a machine-local alternate pricing. The `pi_model_profiles` section of [`tiering.yaml`](../../../home/.chezmoidata/ai_models/tiering.yaml) holds whole replacement pricings — a full `session` row plus a full `categories` map, never a sparse overlay — and [`,pi-model-profile`](../workflow/custom-commands/catalog.md) selects which one this machine runs.
+
+| Profile     | Session                      | Lanes                                                                                                                                     |
+| ----------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `default`   | the table above              | the table above                                                                                                                           |
+| `local`     | `llama-cpp/qwen3.8-27b`      | Qwen3.8 27B for research/review and the degraded max-effort same-family counter, its instruct build for implement, Qwen3.5 9B cheap lanes |
+| `anthropic` | `anthropic/claude-fable-5-1` | Fable 5.1 for research/review and the degraded same-family counter, Opus 5 for implement, Sonnet 5 cheap lanes                            |
+| `codex`     | `openai-codex/gpt-6-astra`   | GPT-6 Astra for research/review, GPT-5.6 Terra for implement and memory, Luna for mechanical, Sol as the degraded same-family counter     |
+
+`default` is a reserved name, not a key: it means `session_models.pi` + `category_models.pi` themselves, because those two sections are the shared schema every generator, the committed projection and the OpenRouter wrappers read. `local` runs entirely on the [llama.cpp router](./llama-cpp/index.md), so it needs no subscription provider and no network.
+
+The active name is one line in `${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi/pi-model-profile`, outside the source state: the pick is per machine, not per commit. `pi-model-profile.partial` reads it at apply time, so `agent-model.partial`, `review-agent-model.partial` and `agent-thinking.partial` render the active rows into the 16 Pi agent profiles, and the Pi merge hook patches `defaultProvider`/`defaultModel`/`defaultThinkingLevel` in `~/.pi/agent/settings.json` from the active session row. With no state file everything renders `default`. An unrecognised name fails the apply instead of falling back, because a silent fallback would restore the rows the profile exists to replace.
+
+Every structural rule that holds for the default Pi rows holds for each profile: six categories, no `:level` suffix, `long` context except `memory`, `implement` distinct from both `mechanical` and the session, and a declared `verifier_status` on `refute`.
+
+Inside a running Pi session the same switch is `/model-profile` ([`pi-model-profile.ts`](../../../home/dot_pi/agent/exact_extensions/pi-model-profile.ts)): it drives the same picker, then re-points only that session's model and thinking level from the profile's session row, because the apply reaches new sessions and subagents rather than the one already running.
+
+`harnesses.pi` in the generated band projection stays the `default` profile regardless of the active name. Nothing in Pi reads it; its readers are the `*-openrouter` wrappers, which filter to `openrouter/` rows and would lose every lane on a non-OpenRouter profile. Read it as "the OpenRouter wrapper lane table", not "what Pi runs now".
+
 ### OMP
 
-OMP is the one harness with native role indirection. Native `extendedContext: true` gives the Fable/high root long context while role pins stay unchanged, so category rows are spelled as `@role` tokens and [`readonly_config.yml.tmpl`](../../../home/dot_omp/private_agent/readonly_config.yml.tmpl)'s `modelRoles` prices them in one profile-independent block. `modelRoles.default` is generated from `session_models.omp`. Installed `omp/18.0.3` reports `default`, `smol`, `vision`, `slow`, `plan`, `task`, and `advisor` from `omp config get modelRoles`; the repo uses those role names as local implementation detail, not as the portable taxonomy.
+OMP is the one harness with native role indirection. Native `extendedContext: true` gives the root long context while role pins stay unchanged, so category rows are spelled as `@role` tokens and [`readonly_config.yml.tmpl`](../../../home/dot_omp/private_agent/readonly_config.yml.tmpl)'s `modelRoles` prices them in one profile-independent block. `modelRoles.default` is generated from `session_models.omp`. Installed `omp/18.0.3` reports `default`, `smol`, `vision`, `slow`, `plan`, `task`, and `advisor` from `omp config get modelRoles`; the repo uses those role names as local implementation detail, not as the portable taxonomy.
 
-| Category               | Token      | `modelRoles` (both profiles)      | Tier | Verifier status |
-| ---------------------- | ---------- | --------------------------------- | ---- | --------------- |
-| `research`, `review`   | `@default` | `anthropic/claude-fable-5.1:high` | T1   | —               |
-| `implement`            | `@task`    | `anthropic/claude-opus-5:high`    | T2   | —               |
-| `mechanical`, `memory` | `@smol`    | `anthropic/claude-sonnet-5:high`  | T3   | —               |
-| `refute`               | `@advisor` | `openai-codex/gpt-6-astra:high`   | —    | cross_family    |
+| Category               | Token      | `modelRoles` (both profiles)           | Tier | Verifier status |
+| ---------------------- | ---------- | -------------------------------------- | ---- | --------------- |
+| `research`, `review`   | `@default` | `openrouter/meta/muse-spark-1.3:xhigh` | T1   | —               |
+| `implement`            | `@task`    | `openrouter/z-ai/glm-5.3:high`         | T2   | —               |
+| `mechanical`, `memory` | `@smol`    | `openrouter/z-ai/glm-5.3-flash:high`   | T3   | —               |
+| `refute`               | `@advisor` | `openrouter/x-ai/grok-4.6:xhigh`       | —    | cross_family    |
 
-Verified on 17.2.4: a profile carrying `model: "@smol"` runs on `modelRoles.smol`, and an unknown token fails loudly with `Error: No model selected.` rather than falling back. Provider and model are separated by `/`, never `:` — `cursor:` parses as a bogus provider. Like Pi, OMP's `:<level>` suffix is a single thinking dial the runtime maps straight onto `reasoning`, so "high effort, non-thinking" is not expressible here. User call 2026-09-07: one profile-independent `modelRoles` block ahead of the `isWork` branch rides the native `anthropic` provider — `default`/`vision`/`slow`/`plan` on `claude-fable-5.1:high` (T1), `task` on `claude-opus-5:high` (T2: the native `task` agent and every implement worker land there), `smol` on `claude-sonnet-5:high` (T3), `tiny` and `commit` on `claude-sonnet-5:medium` — and the native `openai-codex` provider for `advisor` on `gpt-6-astra:high`; every built-in role is pinned so nothing falls through to the harness default. This replaced the 2026-08-30 split (work on the Cursor backend with `cursor/gpt-5.5:xhigh` primaries, personal on the Codex backend with `openai-codex/gpt-5.5:xhigh`, both with `smol` on `cursor/default`): every `@smol` lane (bundled `scout`/`sonic`) ran over the `cursor-agent` transport and settled `failed (exit 1)` once Cursor's free-request limit hit mid-run.
+Verified on 17.2.4: a profile carrying `model: "@smol"` runs on `modelRoles.smol`, and an unknown token fails loudly with `Error: No model selected.` rather than falling back. Provider and model are separated by `/`, never `:` — `cursor:` parses as a bogus provider. Like Pi, OMP's `:<level>` suffix is a single thinking dial the runtime maps straight onto `reasoning`, so "high effort, non-thinking" is not expressible here. User call 2026-09-07: one profile-independent `modelRoles` block ahead of the `isWork` branch, now entirely on the `openrouter` provider — `default` on `meta/muse-spark-1.3:xhigh` with `slow`/`plan` at `:max` and `vision` at `:high` (T1), `task` on `z-ai/glm-5.3:high` (T2: the native `task` agent and every implement worker land there), `smol` on `z-ai/glm-5.3-flash:high` (T3), `tiny` and `commit` on `z-ai/glm-5.3-flash:medium`, and `advisor` on `x-ai/grok-4.6:xhigh`; every built-in role is pinned so nothing falls through to the harness default. This replaced the 2026-08-30 split (work on the Cursor backend with `cursor/gpt-5.5:xhigh` primaries, personal on the Codex backend with `openai-codex/gpt-5.5:xhigh`, both with `smol` on `cursor/default`): every `@smol` lane (bundled `scout`/`sonic`) ran over the `cursor-agent` transport and settled `failed (exit 1)` once Cursor's free-request limit hit mid-run.
 
-`memory` rides `@smol` again. Between 2026-08-29 and 2026-09-07 it bypassed the role table, pinned directly to `openrouter/google/gemini-3.7-flash:high`: DeepSeek V4 Flash (then `modelRoles.smol`) failed the live scribe probes (stored a known duplicate on Pi; hung as OMP scribe, killed at 9 min, 2026-08-28), while Gemini 3.7 Flash returned the correct `duplicate of <id>` on the same fixture. With `smol` on Sonnet 5 the role token is the pick, so `mechanical` and `memory` share one T3 role. The `:<level>` suffix in `modelRoles` is load-bearing: [`agent-model.partial`](../../../home/.chezmoitemplates/agent-model.partial) renders only the model string into the agent frontmatter (the registry `effort` field is never rendered for OMP), and OMP's spawn precedence honors an explicit `:level` suffix over its defaults (`task/executor.ts`: effort > `:level` suffix > agent-definition default > pattern-derived).
+`memory` rides `@smol` again. Between 2026-08-29 and 2026-09-07 it bypassed the role table, pinned directly to `openrouter/google/gemini-3.7-flash:high`: DeepSeek V4 Flash (then `modelRoles.smol`) failed the live scribe probes (stored a known duplicate on Pi; hung as OMP scribe, killed at 9 min, 2026-08-28), while Gemini 3.7 Flash returned the correct `duplicate of <id>` on the same fixture. With `smol` on GLM 5.3 Flash the role token is the pick, so `mechanical` and `memory` share one T3 role. The `:<level>` suffix in `modelRoles` is load-bearing: [`agent-model.partial`](../../../home/.chezmoitemplates/agent-model.partial) renders only the model string into the agent frontmatter (the registry `effort` field is never rendered for OMP), and OMP's spawn precedence honors an explicit `:level` suffix over its defaults (`task/executor.ts`: effort > `:level` suffix > agent-definition default > pattern-derived).
 
-Background advice is disabled (`advisor.enabled: false`, `advisor.subagents: false`, and `task.agentAdvisor.task: "off"`). The `modelRoles.advisor` selector is retained for explicit final refutation, not automatic advice. `review` rides `@default` (Fable 5.1) and `refute` resolves `@advisor` (`openai-codex/gpt-6-astra:high`); the registry declares `verifier_status: cross_family` on the refute row, because the advisor pin is an OpenAI-family model refuting Anthropic-family Fable 5.1 lanes.
+Background advice is disabled (`advisor.enabled: false`, `advisor.subagents: false`, and `task.agentAdvisor.task: "off"`). The `modelRoles.advisor` selector is retained for explicit final refutation, not automatic advice. `review` rides `@default` (Muse Spark 1.3) and `refute` resolves `@advisor` (`openrouter/x-ai/grok-4.6:xhigh`); the registry declares `verifier_status: cross_family` on the refute row, because the advisor pin is a Grok-family model refuting Meta-family Muse Spark lanes. Both route through OpenRouter, so the independence is in the model family, not the transport.
 
 ## Native subagent takeover risk
 

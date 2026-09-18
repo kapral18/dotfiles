@@ -1,7 +1,7 @@
 ---
 name: k-google-workspace
-description: "Use for gws Google Workspace: Gmail, Drive, Calendar, Docs, Sheets, Slides, Forms, Contacts, Chat, Tasks."
-tool_version: gws 0.18.1
+description: "Use for gws Google Workspace: Gmail, Drive, Calendar, Docs, Sheets, Slides, Forms, Contacts, Chat, Tasks, Apps Script."
+tool_version: "gws 0.22.5"
 ---
 
 # Google Workspace (`gws`) Skill
@@ -14,6 +14,16 @@ Default interface:
 - Verify the local CLI first: `command -v gws`, `gws --version`, `gws --help`.
 - Use the execution loop below: inspect each method with `gws schema <service.resource.method>` before calling `gws <service> <resource> [sub-resource] <method>` in-session.
 - Do not invent service/resource/method names, params, request bodies, or scopes; verify them from `gws schema` output.
+
+Accounts & auth:
+
+- `gws` keeps one credential set per config dir (`~/.config/gws` by default) and has no account or profile flag.
+  For a second Google account, copy `client_secret.json` into a separate dir and prefix every call with `GOOGLE_WORKSPACE_CLI_CONFIG_DIR=<dir>`; never re-login in the default dir to switch accounts.
+- Confirm the active identity with `gws auth status` (`user` field) before any mutation.
+- `gws auth login --full` adds the `pubsub` and `cloud-platform` scopes; a Workspace-managed account (`hd=` in the OAuth callback) can reject the whole consent as an invalid scope.
+  Use plain `gws auth login` for those accounts.
+- A non-owner account needs two grants on the OAuth client's GCP project: OAuth consent-screen test user (Google Auth Platform → Audience) and IAM role `Service Usage Consumer` (IAM & Admin → IAM).
+  Missing the first gives `access_denied` at consent; missing the second gives 403 `serviceusage.services.use` on every API call after a successful login. IAM propagation takes minutes.
 
 Google Slides:
 
@@ -55,6 +65,10 @@ Targeting & safety:
   apply SOP §3.8 to the exact payload and recipient/target, reusing existing authorization within its scope;
   draft and obtain approval for unapproved content or effects.
   For the _wording_ of any such message/reply/comment, follow the centralized `~/.agents/skills/k-communication/SKILL.md`.
+- Gmail helpers `+send`, `+reply`, `+reply-all`, `+forward` accept `--draft` (save as a draft, no send); use it while the send itself is not yet approved.
+  The publish gate matches these helpers even with `--draft`: a delegated leaf is denied, and the root answers the SOP §3.8 checklist.
+  A draft is not a send, so the root may proceed without send approval.
+  `+forward` includes the original attachments by default; pass `--no-original-attachments` to omit them.
 
 Output guidance:
 

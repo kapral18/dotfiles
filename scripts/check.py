@@ -316,7 +316,11 @@ TEST_RULES: tuple[TestRule, ...] = (
         ),
     ),
     TestRule(
-        prefixes=("home/.chezmoitemplates/agent-effort.partial",),
+        prefixes=(
+            "home/.chezmoitemplates/agent-effort.partial",
+            "home/.chezmoitemplates/pi-model-profile.partial",
+            "home/exact_bin/executable_,pi-model-profile",
+        ),
         tests=("tests/test_model_band_invariants.py",),
     ),
     TestRule(
@@ -445,6 +449,14 @@ EXTRA_TESTS: tuple[ExtraTest, ...] = (
             "home/exact_lib/exact_shared/context_mode.ts",
             "home/dot_pi/agent/exact_extensions/context-mode.ts.tmpl",
             "home/dot_omp/private_agent/extensions/context-mode.ts.tmpl",
+        ),
+    ),
+    ExtraTest(
+        name="pi-model-profile",
+        argv=("bun", "test", "scripts/tests/pi_model_profile.test.ts"),
+        prefixes=(
+            "scripts/tests/pi_model_profile.test.ts",
+            "home/dot_pi/agent/exact_extensions/pi-model-profile.ts",
         ),
     ),
     ExtraTest(

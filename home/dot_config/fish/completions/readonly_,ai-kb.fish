@@ -31,7 +31,7 @@ complete -c ',ai-kb' -n '__fish_seen_subcommand_from remember' -l project -r -d 
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from remember' -l domain -r -d 'Domain tag'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from remember' -l confidence -r -d 'Confidence 0..1'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from remember' -l verified-by -r -d 'Verifier reference'
-complete -c ',ai-kb' -n '__fish_seen_subcommand_from remember' -l supersedes -r -d 'Capsule id replaced'
+complete -c ',ai-kb' -n '__fish_seen_subcommand_from remember' -l supersedes -r -d 'Capsule id to amend in place'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from remember' -l refs -r -d 'Related capsule or external ref'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from remember' -l no-embed -d 'Skip embedding'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from remember' -l force -d 'Store despite a title or near-duplicate collision'

@@ -298,6 +298,10 @@ pi_extra_models:
   - id: "openrouter/openai/gpt-5.6-sol"
     recommended: true
   - id: "openrouter/z-ai/glm-5.3-flash"
+  # Pi implement lane (`pi --list-models`: 1.0M context, 943.7K max output).
+  - id: "openrouter/z-ai/glm-5.3"
+  # Pi refute counter for the Muse Spark review lane (`pi --list-models`: 500K context, 450K max output).
+  - id: "openrouter/x-ai/grok-4.6"
   - id: "openrouter/deepseek/deepseek-v4.1-flash"
   - id: "openrouter/google/gemini-3.8-flash"
   - id: "openrouter/anthropic/claude-sonnet-4.6"

@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
@@ -984,33 +985,34 @@ class TestModelBandInvariants(unittest.TestCase):
 
     def test_omp_category_models_use_native_role_tokens(self) -> None:
         # OMP already has role indirection, so the repo maps categories to local role tokens rather
-        # than pretending cost bands exist there. Review rides the session model (@default, Anthropic)
-        # and refute rides @advisor (openai-codex), so the status is cross_family: the counter comes
-        # from a genuinely different vendor. It reported reduced_independence only while review also
-        # rode @advisor.
+        # than pretending cost bands exist there. Review rides the session model (@default, Muse Spark)
+        # and refute rides @advisor (grok), so the status is cross_family: the counter comes
+        # from a genuinely different vendor even though both route through openrouter. It reported
+        # reduced_independence only while review also rode @advisor.
         import ai_models
 
         path = REPO / "home/.chezmoidata/ai_models"
         category_models = ai_models.load_category_models(path)["omp"]
         roles = self._omp_model_roles()
 
-        # User call 2026-09-07: one profile-independent modelRoles block, three tiers. T1
-        # default/plan/slow/vision ride the native anthropic provider on Fable 5.1 :high; T2 task is
-        # Opus 5 :high (the native `task` agent and every implement worker land there); T3 smol is
-        # Sonnet 5 :high (cursor/default ran the @smol lanes over the cursor-agent transport and
-        # died on Cursor's free-request limit); tiny/commit ride Sonnet 5 :medium; advisor is the
-        # native openai-codex provider on gpt-6-astra:high. Every built-in role is pinned so
-        # nothing falls through to the harness default.
+        # User call 2026-09-07: one profile-independent modelRoles block, three tiers, now all on
+        # the openrouter provider. T1 default/plan/slow/vision ride Muse Spark 1.3 (:xhigh default,
+        # :max for the deliberate slow/plan lanes, :high vision); T2 task is GLM 5.3 :high (the
+        # native `task` agent and every implement worker land there); T3 smol is GLM 5.3 Flash :high
+        # (cursor/default ran the @smol lanes over the cursor-agent transport and died on Cursor's
+        # free-request limit); tiny/commit ride GLM 5.3 Flash :medium; advisor is grok-4.6:xhigh,
+        # the counter family. Every built-in role is pinned so nothing falls through to the harness
+        # default.
         expected_roles = {
-            "default": "anthropic/claude-fable-5.1:high",
-            "smol": "anthropic/claude-sonnet-5:high",
-            "slow": "anthropic/claude-fable-5.1:high",
-            "vision": "anthropic/claude-fable-5.1:high",
-            "plan": "anthropic/claude-fable-5.1:high",
-            "commit": "anthropic/claude-sonnet-5:medium",
-            "tiny": "anthropic/claude-sonnet-5:medium",
-            "task": "anthropic/claude-opus-5:high",
-            "advisor": "openai-codex/gpt-6-astra:high",
+            "default": "openrouter/meta/muse-spark-1.3:xhigh",
+            "smol": "openrouter/z-ai/glm-5.3-flash:high",
+            "slow": "openrouter/meta/muse-spark-1.3:max",
+            "vision": "openrouter/meta/muse-spark-1.3:high",
+            "plan": "openrouter/meta/muse-spark-1.3:max",
+            "commit": "openrouter/z-ai/glm-5.3-flash:medium",
+            "tiny": "openrouter/z-ai/glm-5.3-flash:medium",
+            "task": "openrouter/z-ai/glm-5.3:high",
+            "advisor": "openrouter/x-ai/grok-4.6:xhigh",
         }
         assert roles == expected_roles, f"omp modelRoles drifted: {roles!r}"
         # T2 is a different model from T1 and T3 from T2; otherwise a delegated implement or
@@ -1026,8 +1028,8 @@ class TestModelBandInvariants(unittest.TestCase):
         # mechanical and memory both ride @smol. mechanical used to name @task, which resolved to
         # the session's own Fable model, so a delegated mechanical edit cost the same as inlining
         # it; memory used to pin a direct gemini id while modelRoles.smol was deepseek (failed the
-        # live scribe probes) and rides the role token again now that smol is Sonnet 5 (user call
-        # 2026-09-07).
+        # live scribe probes) and rides the role token again now that smol is GLM 5.3 Flash (user
+        # call 2026-09-07).
         assert category_models["mechanical"]["model"] == "@smol"
         assert category_models["memory"]["model"] == "@smol"
 
@@ -1040,6 +1042,36 @@ class TestModelBandInvariants(unittest.TestCase):
             ],
             source.splitlines(),
         )
+
+    def _render_pi_agent_profiles(self, profile: str | None = None):
+        """Render every managed Pi agent profile under one Pi model profile.
+
+        Yields `(template_path, frontmatter)`. The render always runs against a throwaway
+        `XDG_STATE_HOME`, because `pi-model-profile.partial` reads the active name from
+        `$XDG_STATE_HOME/chezmoi/pi-model-profile`: without the override the suite would assert
+        against whatever profile the developer's machine happens to have selected. `profile=None`
+        writes no state file at all, which is the `default` profile on a fresh machine and in CI.
+        """
+        with (
+            tempfile.NamedTemporaryFile("w", suffix=".toml") as config,
+            tempfile.TemporaryDirectory() as state_home,
+        ):
+            config.write("[data]\nisWork = false\n")
+            config.flush()
+            if profile is not None:
+                state_dir = Path(state_home) / "chezmoi"
+                state_dir.mkdir(parents=True)
+                (state_dir / "pi-model-profile").write_text(f"{profile}\n", encoding="utf-8")
+            for template in sorted((REPO / "home/dot_pi/agent/exact_agents").glob("*.md.tmpl")):
+                result = subprocess.run(
+                    ["chezmoi", "--source", str(REPO), "--config", config.name, "execute-template"],
+                    input=template.read_text(),
+                    capture_output=True,
+                    text=True,
+                    env={**os.environ, "XDG_STATE_HOME": state_home},
+                )
+                self.assertEqual(0, result.returncode, (template, profile, result.stderr))
+                yield template, result.stdout.split("---", 2)[1]
 
     @staticmethod
     def _omp_model_roles() -> dict[str, str]:
@@ -1118,7 +1150,8 @@ class TestModelBandInvariants(unittest.TestCase):
             "copilot": {"memory"},
             "cursor": {"memory"},
             "antigravity": set(),
-            "pi": {"memory"},
+            # Grok is priced for short prompts only (user call 2026-09-17), so the pi counter stays short.
+            "pi": {"memory", "refute"},
             "omp": set(category_models["omp"]),
         }
         self.assertEqual(set(short_rows), set(category_models))
@@ -1135,14 +1168,129 @@ class TestModelBandInvariants(unittest.TestCase):
             expected = "default" if category_models["copilot"][bindings[name]]["context"] == "short" else "long_context"
             self.assertEqual(expected, agent["contextTier"], name)
 
+    def test_pi_model_profiles_never_redefine_the_reserved_default_name(self):
+        # `default` means `session_models.pi` + `category_models.pi` themselves, which every
+        # generator, the committed projection and the OpenRouter wrappers read. A literal `default`
+        # key here would either duplicate those rows (drifting silently) or move them.
+        import ai_models
+
+        registry = REPO / "home/.chezmoidata/ai_models"
+        profiles = ai_models.load_pi_model_profiles(registry)
+        self.assertNotIn("default", profiles)
+        self.assertEqual(
+            ai_models.resolve_pi_profile(registry, "default"),
+            {
+                "session": ai_models.load_session_models(registry)["pi"],
+                "categories": ai_models.load_category_models(registry)["pi"],
+            },
+        )
+        source = (REPO / "home/.chezmoidata/ai_models/tiering.yaml").read_text(encoding="utf-8")
+        section = source.split("\npi_model_profiles:\n", 1)[1]
+        self.assertNotRegex(section, r"^  default:", "pi_model_profiles must not declare `default`")
+
+    def test_every_pi_model_profile_is_a_complete_and_structurally_valid_pricing(self):
+        # Profiles are whole pricings, not sparse overlays: switching one in must not be able to
+        # drop a tier, collapse the implement lane onto mechanical/session, lose the counter's
+        # independence, or widen a context tier. Registry-only, so this is machine-independent.
+        import ai_models
+
+        registry = REPO / "home/.chezmoidata/ai_models"
+        categories = set(ai_models.load_agent_categories(registry))
+        thinking_levels = {"off", "minimal", "low", "medium", "high", "xhigh", "max"}
+        # Explicit short-context rows per profile, like `short_rows` for the harness tables: the
+        # `openai-codex` provider only exposes short windows, so that whole profile is short.
+        short_context = {"codex": categories}
+
+        def family(model: str) -> str:
+            base = model.rsplit("/", 1)[-1]
+            for name in ("claude", "gpt", "gemini", "grok", "composer", "kimi", "glm"):
+                if name in base:
+                    return name
+            return base
+
+        for name in ai_models.load_pi_model_profiles(registry):
+            with self.subTest(profile=name):
+                resolved = ai_models.resolve_pi_profile(registry, name)
+                session, rows = resolved["session"], resolved["categories"]
+                self.assertEqual(categories, set(rows), "profile must price every category")
+
+                self.assertEqual({"model", "effort", "context"}, set(session))
+                self.assertIn("/", session["model"], "pi session models are provider/model")
+                self.assertNotIn(":", session["model"], "pi models never carry a `:level` suffix")
+                self.assertIn(session["effort"], thinking_levels)
+
+                for category, row in rows.items():
+                    expected_keys = {"model", "effort", "thinking", "context"}
+                    if category == "refute":
+                        expected_keys.add("verifier_status")
+                    self.assertEqual(expected_keys, set(row), category)
+                    self.assertIn("/", row["model"], category)
+                    self.assertNotIn(":", row["model"], category)
+                    self.assertIn(row["effort"], thinking_levels, category)
+                    self.assertEqual("", row["thinking"], category)
+                    expected_context = "short" if category in short_context.get(name, {"memory"}) else "long"
+                    self.assertEqual(expected_context, row["context"], category)
+
+                implement = (rows["implement"]["model"], rows["implement"]["effort"])
+                self.assertNotEqual(implement, (rows["mechanical"]["model"], rows["mechanical"]["effort"]))
+                self.assertNotEqual(implement, (session["model"], session["effort"]))
+
+                status = rows["refute"]["verifier_status"]
+                self.assertIn(status, ("cross_family", "reduced_independence", "degraded"))
+                review_family = family(rows["review"]["model"])
+                refute_family = family(rows["refute"]["model"])
+                if status == "cross_family":
+                    self.assertNotEqual(review_family, refute_family)
+                elif status == "reduced_independence":
+                    self.assertEqual(review_family, refute_family)
+
+                verifier = ai_models.resolve_agent_model(registry, "pi", "k-agent-adversarial-verifier", profile=name)
+                self.assertEqual(rows["refute"]["model"], verifier["model"])
+                self.assertEqual(status == "degraded", verifier["degraded"])
+
+    def test_pi_agent_profiles_render_the_active_pi_model_profile(self):
+        # The state file outside the source state is what makes a profile switch reach the 16
+        # rendered ~/.pi/agent/agents/*.md profiles; an unknown name must fail the apply loudly
+        # rather than quietly restoring the rows the profile exists to replace.
+        import ai_models
+
+        registry = REPO / "home/.chezmoidata/ai_models"
+        for name in ai_models.load_pi_model_profiles(registry):
+            with self.subTest(profile=name):
+                for template, frontmatter in self._render_pi_agent_profiles(name):
+                    agent = template.name.removesuffix(".md.tmpl")
+                    resolved = ai_models.resolve_agent_model(registry, "pi", agent, profile=name)
+                    self.assertIn(f'model: "{resolved["model"]}"', frontmatter, template)
+                    self.assertIn(f'thinking: "{resolved["effort"]}"', frontmatter, template)
+
+        with (
+            tempfile.NamedTemporaryFile("w", suffix=".toml") as config,
+            tempfile.TemporaryDirectory() as state_home,
+        ):
+            config.write("[data]\nisWork = false\n")
+            config.flush()
+            state_dir = Path(state_home) / "chezmoi"
+            state_dir.mkdir(parents=True)
+            (state_dir / "pi-model-profile").write_text("no-such-profile\n", encoding="utf-8")
+            result = subprocess.run(
+                ["chezmoi", "--source", str(REPO), "--config", config.name, "execute-template"],
+                input='{{ includeTemplate "pi-model-profile.partial" . }}',
+                capture_output=True,
+                text=True,
+                env={**os.environ, "XDG_STATE_HOME": state_home},
+            )
+            self.assertNotEqual(0, result.returncode, result.stdout)
+            self.assertIn("unknown pi model profile", result.stderr)
+            self.assertIn("no-such-profile", result.stderr)
+
     def test_openrouter_routes_are_a_strict_route(self):
         import ai_models
         import model_mirrors
 
         default = "z-ai/glm-5.3-flash"
-        # One OpenRouter id carries the `recommended` picker entry, T2 implement (:high) and
-        # refute (:xhigh) since gpt-5.6-sol superseded gpt-5.5 (user call 2026-09-07); Sonnet 4.6
-        # stays listed as selectable-only, like kimi-k3 and glm-5.2.
+        # gpt-5.6-sol keeps the `recommended` picker entry — the route to reach for by hand — since
+        # it superseded gpt-5.5 (user call 2026-09-07). It no longer carries a pi category row;
+        # Sonnet 4.6 stays listed as selectable-only, like kimi-k3 and glm-5.2.
         pi_route = "openai/gpt-5.6-sol"
         pi_mechanical = "z-ai/glm-5.3-flash"
         # DeepSeek V4 Flash carried the default and mechanical lanes until 2026-09-10; DeepSeek stays
@@ -1152,7 +1300,11 @@ class TestModelBandInvariants(unittest.TestCase):
         deepseek = "deepseek/deepseek-v4.1-flash"
         pi_deepseek = deepseek
         pi_memory = "google/gemini-3.8-flash"
-        pi_refute = "meta/muse-spark-1.3"
+        # T2 implement and the counter for the Muse Spark review lane (`pi --list-models`:
+        # glm-5.3 1.0M/943.7K, grok-4.6 500K/450K).
+        pi_implement = "z-ai/glm-5.3"
+        pi_counter = "x-ai/grok-4.6"
+        pi_review = "meta/muse-spark-1.3"
         pi_selectable_sonnet = "anthropic/claude-sonnet-4.6"
         optional = "moonshotai/kimi-k3"
         glm = "z-ai/glm-5.2"
@@ -1164,7 +1316,9 @@ class TestModelBandInvariants(unittest.TestCase):
         pi_mechanical_selector = f"openrouter/{pi_mechanical}"
         pi_deepseek_selector = f"openrouter/{pi_deepseek}"
         pi_memory_selector = f"openrouter/{pi_memory}"
-        pi_refute_selector = f"openrouter/{pi_refute}"
+        pi_implement_selector = f"openrouter/{pi_implement}"
+        pi_counter_selector = f"openrouter/{pi_counter}"
+        pi_review_selector = f"openrouter/{pi_review}"
         optional_selector = f"openrouter/{optional}"
         glm_selector = f"openrouter/{glm}"
         pi_astra_selector = f"openrouter/{pi_astra}"
@@ -1202,29 +1356,31 @@ class TestModelBandInvariants(unittest.TestCase):
                 # Retained native Anthropic category model for T1 child lanes.
                 {"id": "anthropic/claude-fable-5.1"},
                 # The curated OpenRouter picker, not the category-pick list: `recommended` marks the
-                # route to reach for by hand, and gpt-5.6-sol keeps it because it carries both T2
-                # implement (:high) and `refute` (:xhigh). It appears once, not once per effort.
+                # route to reach for by hand. It appears once, not once per effort.
                 {"id": pi_route_selector, "recommended": True},
                 {"id": pi_mechanical_selector},
+                # T2 implement (GLM 5.3) and the refute counter (grok-4.6) for the Muse Spark
+                # review lane; both are category picks, so both must stay in the pi catalog.
+                {"id": pi_implement_selector},
+                {"id": pi_counter_selector},
                 {"id": pi_deepseek_selector},
                 # memory lane (smol): gemini-3.8-flash, superseding the 3.7-flash the lane was
                 # live-probed on 2026-08-29.
                 {"id": pi_memory_selector},
-                # Selectable-only since the retier swapped review onto Anthropic and refute onto
-                # the OpenAI route; no pi category names it now, like kimi-k3 and glm-5.2 below.
+                # Selectable-only; no pi category names it, like kimi-k3 and glm-5.2 below.
                 {"id": pi_selectable_sonnet_selector},
                 {"id": optional_selector},
                 {"id": glm_selector},
                 {"id": pi_astra_selector},
-                {"id": pi_refute_selector},
+                {"id": pi_review_selector},
             ],
             ai_models.load_pi_extra_models(registry),
         )
 
         for profile in ("work", "personal"):
             settings = json.loads((REPO / f"home/dot_pi/agent/readonly_settings.{profile}.json").read_text())
-            # The interactive root uses native GitHub Copilot Fable 5.1. Category/child selections
-            # stay on their existing matrix, and explicit OpenRouter routes remain selectable.
+            # The interactive root rides the OpenRouter Muse Spark route. Category/child selections
+            # stay on their own matrix, and every explicit OpenRouter route remains selectable.
             session = ai_models.load_session_models(registry)["pi"]
             provider, model = session["model"].split("/", 1)
             self.assertEqual(provider, settings["defaultProvider"])
@@ -1296,47 +1452,38 @@ class TestModelBandInvariants(unittest.TestCase):
         category_models = ai_models.load_category_models(registry)["pi"]
         expected_pi = {
             "mechanical": (pi_mechanical_selector, "high"),
-            "research": ("github-copilot/claude-fable-5.1", "high"),
-            "implement": (pi_refute_selector, "high"),
-            "review": ("github-copilot/claude-fable-5.1", "high"),
-            "refute": (pi_refute_selector, "max"),
+            "research": (pi_implement_selector, "max"),
+            "implement": (pi_implement_selector, "high"),
+            "review": (pi_review_selector, "max"),
+            "refute": (pi_counter_selector, "high"),
             "memory": (pi_mechanical_selector, "high"),
         }
         for category, (model, effort) in expected_pi.items():
             self.assertEqual(model, category_models[category]["model"], category)
             self.assertEqual(effort, category_models[category]["effort"], category)
             self.assertNotIn(":", model, category)
-        # Anthropic review lane, Meta counter (user call 2026-09-13).
+        # Meta review lane, Grok counter (user call 2026-09-13).
         self.assertEqual("cross_family", category_models["refute"]["verifier_status"])
         self.assertEqual(
-            "github-copilot/claude-fable-5.1",
+            pi_review_selector,
             ai_models.resolve_review_agent_model(registry, "pi", "k-agent-reviewer")["model"],
         )
         self.assertEqual(
-            pi_refute_selector,
+            pi_counter_selector,
             ai_models.resolve_review_agent_model(registry, "pi", "k-agent-adversarial-verifier")["model"],
         )
 
-        with tempfile.NamedTemporaryFile("w", suffix=".toml") as config:
-            config.write("[data]\nisWork = false\n")
-            config.flush()
-            for template in sorted((REPO / "home/dot_pi/agent/exact_agents").glob("*.md.tmpl")):
-                agent = template.name.removesuffix(".md.tmpl")
-                resolved = ai_models.resolve_agent_model(registry, "pi", agent)
-                result = subprocess.run(
-                    ["chezmoi", "--source", str(REPO), "--config", config.name, "execute-template"],
-                    input=template.read_text(),
-                    capture_output=True,
-                    text=True,
-                )
-                self.assertEqual(0, result.returncode, (template, result.stderr))
-                frontmatter = result.stdout.split("---", 2)[1]
-                self.assertIn(f'model: "{resolved["model"]}"', frontmatter, template)
-                self.assertIn(f'thinking: "{resolved["effort"]}"', frontmatter, template)
-                self.assertNotRegex(
-                    frontmatter,
-                    re.compile(r'^model: .*:(?:off|minimal|low|medium|high|xhigh|max)"$', re.MULTILINE),
-                )
+        # No state file in the isolated state home, so this renders the `default` profile
+        # regardless of which profile this machine has actually selected.
+        for template, frontmatter in self._render_pi_agent_profiles():
+            agent = template.name.removesuffix(".md.tmpl")
+            resolved = ai_models.resolve_agent_model(registry, "pi", agent)
+            self.assertIn(f'model: "{resolved["model"]}"', frontmatter, template)
+            self.assertIn(f'thinking: "{resolved["effort"]}"', frontmatter, template)
+            self.assertNotRegex(
+                frontmatter,
+                re.compile(r'^model: .*:(?:off|minimal|low|medium|high|xhigh|max)"$', re.MULTILINE),
+            )
 
         for relative in (
             "home/exact_bin/executable_,claude-openrouter",
@@ -1350,9 +1497,8 @@ class TestModelBandInvariants(unittest.TestCase):
             self.assertIn('OPENROUTER_EFFORT="high"', source)
 
         omp = (REPO / "home/dot_omp/private_agent/readonly_config.yml.tmpl").read_text()
-        # Neither profile's modelRoles route through OpenRouter anymore (work → Cursor backend,
-        # personal → Codex backend, 2026-08-30); the provider order must keep listing openrouter
-        # for both profiles because the memory lane and models.yml preset routes still ride it.
+        # Every modelRoles entry routes through OpenRouter for both profiles, and the memory lane
+        # and models.yml preset routes ride it too, so the provider order must keep listing it.
         self.assertIn("  - openrouter\n", omp)
         omp_models = (REPO / "home/dot_omp/private_agent/readonly_models.yml").read_text()
         # OMP 17.2.9 does not put modelOverrides…compat.extraBody.provider on the wire, so the
@@ -1434,10 +1580,10 @@ class TestModelBandInvariants(unittest.TestCase):
             assert "-fast" not in row["model"], f"category_models.cursor.{category} uses the `-fast` price tier"
 
         # OMP resolves the cheap lane through the profile-independent modelRoles block; @smol is
-        # anthropic/claude-sonnet-5:high (user call 2026-09-07: cursor/default died on Cursor's
+        # openrouter/z-ai/glm-5.3-flash:high (user call 2026-09-07: cursor/default died on Cursor's
         # free-request limit).
         assert category_models["omp"]["mechanical"]["model"] == "@smol"
-        assert self._omp_model_roles()["smol"] == "anthropic/claude-sonnet-5:high"
+        assert self._omp_model_roles()["smol"] == "openrouter/z-ai/glm-5.3-flash:high"
 
     def test_generated_subagent_rosters_match_the_category_registry(self):
         # Copilot pins subagent models inside a settings file the harness rewrites at runtime,

@@ -40,7 +40,12 @@ OMP_SEARCH_PROVIDER_ORDER = (
     "public",
 )
 OMP_KEYLESS_SEARCH_PROVIDERS = ("startpage", "duckduckgo", "ecosia", "google", "mojeek", "public")
-WORK_WEB_SEARCH_ORDER = ("codex", "gemini", "google", "duckduckgo")
+# Work leads with "openrouter", which OMP 18.1.22 does not define as a search provider id
+# (SEARCH_PROVIDER_OPTIONS in src/web/search/types.ts has no such value, and
+# config/provider-globals.ts applies `.filter(isSearchProviderId)`), so the runtime drops it and
+# the effective chain starts at codex. It is therefore absent from OMP_SEARCH_PROVIDER_ORDER and
+# never appears in the rendered exclude list.
+WORK_WEB_SEARCH_ORDER = ("openrouter", "codex", "gemini", "google", "duckduckgo")
 PERSONAL_WEB_SEARCH_ORDER = ("codex", *OMP_KEYLESS_SEARCH_PROVIDERS)
 
 YAML_LIST_RE = re.compile(
@@ -89,21 +94,22 @@ class TestOmpMigration(unittest.TestCase):
         provider_order = (
             "modelProviderOrder:\n  - anthropic\n  - openai-codex\n  - openrouter\n  - cursor\n  - openai\n"
         )
-        # One profile-independent modelRoles block (user call 2026-09-07): primaries on Fable 5.1
-        # at :high effort via the native anthropic provider, advisor on gpt-6-astra:high via the
-        # native openai-codex provider, smol on Sonnet 5 :high (cursor/default ran @smol lanes over
-        # the cursor-agent transport and died on Cursor's free-request limit), and the remaining
-        # built-in roles pinned explicitly: tiny on Sonnet 5 :medium, commit on Sonnet 5 :medium.
+        # One profile-independent modelRoles block (user call 2026-09-07): every role rides the
+        # openrouter provider. Primaries on Muse Spark 1.3 (:xhigh default, :max for the deliberate
+        # slow/plan lanes, :high vision), advisor on grok-4.6:xhigh as the counter family, smol on
+        # GLM 5.3 Flash :high (cursor/default ran @smol lanes over the cursor-agent transport and
+        # died on Cursor's free-request limit), and the remaining built-in roles pinned explicitly:
+        # tiny and commit on GLM 5.3 Flash :medium, task (T2 implement) on GLM 5.3 :high.
         work_role_values = (
-            "default: anthropic/claude-fable-5.1:high",
-            "smol: anthropic/claude-sonnet-5:high",
-            "slow: anthropic/claude-fable-5.1:high",
-            "vision: anthropic/claude-fable-5.1:high",
-            "plan: anthropic/claude-fable-5.1:high",
-            "commit: anthropic/claude-sonnet-5:medium",
-            "tiny: anthropic/claude-sonnet-5:medium",
-            "task: anthropic/claude-opus-5:high",
-            "advisor: openai-codex/gpt-6-astra:high",
+            "default: openrouter/meta/muse-spark-1.3:xhigh",
+            "smol: openrouter/z-ai/glm-5.3-flash:high",
+            "slow: openrouter/meta/muse-spark-1.3:max",
+            "vision: openrouter/meta/muse-spark-1.3:high",
+            "plan: openrouter/meta/muse-spark-1.3:max",
+            "commit: openrouter/z-ai/glm-5.3-flash:medium",
+            "tiny: openrouter/z-ai/glm-5.3-flash:medium",
+            "task: openrouter/z-ai/glm-5.3:high",
+            "advisor: openrouter/x-ai/grok-4.6:xhigh",
             provider_order,
         )
         personal_role_values = work_role_values

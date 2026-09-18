@@ -168,6 +168,22 @@ def _ensure_vec_index(db: sqlite3.Connection) -> int | None:
         )
         """
     )
+    # An amend keeps the capsule id but rewrites its embedding, so presence
+    # alone is not enough: drop indexed rows whose vector no longer matches
+    # the capsule's blob and let the insert below re-add them.
+    stale = db.execute(
+        """
+        SELECT c.id
+        FROM capsules c
+        JOIN vec_index v ON v.id = c.id
+        WHERE c.embedding IS NOT NULL
+          AND c.embedding_dim = ?
+          AND v.embedding != c.embedding
+        """,
+        (cap_dim,),
+    ).fetchall()
+    if stale:
+        db.executemany("DELETE FROM vec_index WHERE id = ?", [(r[0],) for r in stale])
     new_rows = db.execute(
         """
         SELECT c.id, c.embedding
@@ -192,9 +208,12 @@ def _build_filter_clause(filters: dict[str, Any]) -> tuple[str, list]:
     """Compose a SQL fragment + params for filtering capsules.
 
     Mirrors `ai_kb.py::_build_filter_clause` but operates on the
-    `capsules c` alias inside the JOIN.
+    `capsules c` alias inside the JOIN. The `1 = 1` seed keeps the
+    caller's `WHERE {where}` well-formed when no filter is requested;
+    there is no retired-row filter because corrections amend their
+    capsule in place.
     """
-    parts: list[str] = ["c.superseded_by IS NULL"]
+    parts: list[str] = ["1 = 1"]
     params: list = []
     scopes = filters.get("scopes") or []
     kinds = filters.get("kinds") or []

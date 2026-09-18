@@ -1,0 +1,221 @@
+#!/usr/bin/env bash
+# Select which Pi model profile this machine runs, then re-apply the Pi surfaces.
+#
+# Usage:
+#   ,pi-model-profile              # fzf over the available names, apply the pick
+#   ,pi-model-profile <name>       # non-interactive: select <name> and apply
+#   ,pi-model-profile --show       # print the active name and its rows, change nothing
+#   ,pi-model-profile --list       # print one name per line (`default` first), change nothing
+#   ,pi-model-profile --session <name>
+#                                  # print `<provider/model-id>\t<effort>` for <name>, change nothing
+#
+# `default` is reserved: it means the repo's own `session_models.pi` + `category_models.pi` rows.
+# Every other name comes from `pi_model_profiles` in home/.chezmoidata/ai_models/tiering.yaml.
+#
+# The pick is per machine, not per commit, so it is stored outside the source state as one line in
+# ${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi/pi-model-profile (same dir as the managed-config
+# manifest). `pi-model-profile.partial` reads that file at apply time, so a switch re-renders every
+# ~/.pi/agent/agents/*.md profile and re-patches ~/.pi/agent/settings.json.
+#
+# Applying is a full `chezmoi apply`: the profile drives a run_onchange script plus 16 agent
+# profiles, and naming a script target explicitly is not a verified way to make chezmoi run it.
+set -euo pipefail
+
+DEFAULT_PROFILE="default"
+STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi/pi-model-profile"
+
+usage() {
+  sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+require_cmd() {
+  local cmd="$1"
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    printf "Missing required dependency: '%s'.\n" "$cmd" >&2
+    exit 1
+  fi
+}
+
+# Same rule as `pi-model-profile.partial`: a missing, empty, or whitespace-only file means `default`.
+active_profile() {
+  local name=""
+  if [ -f "$STATE_FILE" ]; then
+    name="$(tr -d '[:space:]' <"$STATE_FILE")"
+  fi
+  printf '%s' "${name:-$DEFAULT_PROFILE}"
+}
+
+# `default` first, then the registry's own profile names; chezmoi is the only reader of the
+# registry that is deployed to $HOME (scripts/ is not), so the names come from `chezmoi data`.
+profile_names() {
+  printf '%s\n' "$DEFAULT_PROFILE"
+  chezmoi data --format json | jq -r '.pi_model_profiles // {} | keys[]'
+}
+
+# Rows for one name, as `<category>\t<model>\t<thinking>` plus a leading `session` row.
+profile_rows() {
+  local name="$1"
+  chezmoi data --format json | jq -r --arg name "$name" --arg default "$DEFAULT_PROFILE" '
+    if $name == $default
+    then {session: .session_models.pi, categories: .category_models.pi}
+    else .pi_model_profiles[$name]
+    end
+    | ["session", .session.model, .session.effort],
+      (.categories | to_entries[] | [.key, .value.model, .value.effort])
+    | @tsv
+  '
+}
+
+# Machine-readable session row for one name: `<provider/model-id>\t<effort>`, no header, no
+# categories. `/model-profile` inside Pi reads this to re-point the live session at the same model
+# the apply just wrote into ~/.pi/agent/settings.json.
+session_row() {
+  local name="$1"
+  profile_rows "$name" | awk -F'\t' '$1 == "session" { printf "%s\t%s\n", $2, $3; exit }'
+}
+
+show_profile() {
+  local name="$1"
+  printf 'active pi model profile: %s\n' "$name"
+  profile_rows "$name" | while IFS=$'\t' read -r row model thinking; do
+    printf '  %-11s %s (%s)\n' "$row" "$model" "$thinking"
+  done
+}
+
+require_cmd chezmoi
+require_cmd jq
+
+selection=""
+show_only=0
+list_only=0
+session_only=0
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  --show)
+    show_only=1
+    shift
+    ;;
+  --list)
+    list_only=1
+    shift
+    ;;
+  --session)
+    session_only=1
+    shift
+    ;;
+  -*)
+    printf "Unknown option: '%s'.\n" "$1" >&2
+    usage >&2
+    exit 2
+    ;;
+  *)
+    if [ -n "$selection" ]; then
+      printf 'Expected at most one profile name.\n' >&2
+      exit 2
+    fi
+    selection="$1"
+    shift
+    ;;
+  esac
+done
+
+current="$(active_profile)"
+
+# Captured first so a `chezmoi data` failure stops the script instead of shrinking the list.
+names_out="$(profile_names)"
+mapfile -t names <<<"$names_out"
+
+is_known() {
+  local candidate="$1" name
+  for name in "${names[@]}"; do
+    [ "$name" = "$candidate" ] && return 0
+  done
+  return 1
+}
+
+unknown_profile() {
+  printf "Unknown pi model profile '%s'. Valid names: %s\n" "$1" "$(
+    IFS=,
+    printf '%s' "${names[*]}"
+  )" >&2
+  exit 1
+}
+
+if [ $((show_only + list_only + session_only)) -gt 1 ]; then
+  printf -- '--show, --list and --session are mutually exclusive.\n' >&2
+  exit 2
+fi
+
+if [ "$show_only" -eq 1 ]; then
+  if [ -n "$selection" ]; then
+    printf -- '--show takes no profile name.\n' >&2
+    exit 2
+  fi
+  is_known "$current" || unknown_profile "$current"
+  show_profile "$current"
+  exit 0
+fi
+
+# Plain names, no active marker: the caller (`/model-profile` in Pi, completions) marks its own.
+if [ "$list_only" -eq 1 ]; then
+  if [ -n "$selection" ]; then
+    printf -- '--list takes no profile name.\n' >&2
+    exit 2
+  fi
+  printf '%s\n' "${names[@]}"
+  exit 0
+fi
+
+if [ "$session_only" -eq 1 ]; then
+  if [ -z "$selection" ]; then
+    printf -- '--session needs a profile name.\n' >&2
+    exit 2
+  fi
+  is_known "$selection" || unknown_profile "$selection"
+  session_row "$selection"
+  exit 0
+fi
+
+if [ -z "$selection" ]; then
+  require_cmd fzf
+  # The marker is display-only; the name is the first field.
+  selection="$(
+    for name in "${names[@]}"; do
+      if [ "$name" = "$current" ]; then
+        printf '%s\t(active)\n' "$name"
+      else
+        printf '%s\t\n' "$name"
+      fi
+    done | fzf --no-preview --with-nth=1,2 --delimiter='\t' --prompt 'pi model profile> ' | cut -f1
+  )"
+  if [ -z "$selection" ]; then
+    printf 'No profile selected.\n'
+    exit 1
+  fi
+fi
+
+# Validate before writing: an unknown name in the state file fails every later apply, including
+# applies that have nothing to do with Pi.
+is_known "$selection" || unknown_profile "$selection"
+
+# Write beside the target and rename, so a concurrent apply never reads a truncated file.
+state_dir="$(dirname "$STATE_FILE")"
+mkdir -p "$state_dir"
+state_tmp="$(mktemp "$state_dir/pi-model-profile.XXXXXX")"
+printf '%s\n' "$selection" >"$state_tmp"
+mv "$state_tmp" "$STATE_FILE"
+
+# Without a terminal (Pi's `/model-profile` runs this with stdin closed) a chezmoi prompt must fail
+# instead of waiting on /dev/tty behind the caller's UI.
+if [ -t 0 ]; then
+  chezmoi apply
+else
+  chezmoi apply --no-tty
+fi
+
+show_profile "$selection"
