@@ -636,7 +636,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
             "home/dot_claude/settings.personal.json",
             "home/dot_claude/settings.work.json",
             "home/dot_claude/settings.llama-cpp.json.tmpl",
-            "home/dot_claude/settings.llama-cpp.qwen3.8.json.tmpl",
+            "home/dot_claude/settings.llama-cpp.qwen3.6.json.tmpl",
             "home/dot_codex/hooks.json.tmpl",
             "home/dot_cursor/hooks.json",
             "home/dot_gemini/config/readonly_hooks.json",
@@ -658,31 +658,31 @@ class TestAgentSkillInvariants(unittest.TestCase):
         self.assertEqual(settings["autoCompactWindow"], 200000)
         self.assertFalse(settings["alwaysThinkingEnabled"])
         self.assertEqual(
-            {"nemotron-3.5": {"effortLevel": "high"}, "qwen3.5-9b": {"effortLevel": "high"}},
+            {"nemotron-3.5": {"effortLevel": "high"}},
             settings["modelSettings"],
         )
-        qwen38_settings = json.loads(
-            render_chezmoi_template(REPO / "home/dot_claude/settings.llama-cpp.qwen3.8.json.tmpl", is_work=True)
+        qwen36_settings = json.loads(
+            render_chezmoi_template(REPO / "home/dot_claude/settings.llama-cpp.qwen3.6.json.tmpl", is_work=True)
         )
-        self.assertEqual(qwen38_settings["env"]["CLAUDE_CODE_ATTRIBUTION_HEADER"], "0")
-        self.assertEqual(qwen38_settings["autoCompactWindow"], 100000)
-        self.assertFalse(qwen38_settings["alwaysThinkingEnabled"])
+        self.assertEqual(qwen36_settings["env"]["CLAUDE_CODE_ATTRIBUTION_HEADER"], "0")
+        self.assertEqual(qwen36_settings["autoCompactWindow"], 100000)
+        self.assertFalse(qwen36_settings["alwaysThinkingEnabled"])
         self.assertEqual(
             {
-                "qwen3.8-27b": {"effortLevel": "high"},
-                "qwen3.8-27b-instruct": {"effortLevel": "high"},
+                "qwen3.6-35b-a3b": {"effortLevel": "high"},
+                "qwen3.6-35b-a3b-instruct": {"effortLevel": "high"},
             },
-            qwen38_settings["modelSettings"],
+            qwen36_settings["modelSettings"],
         )
 
         personal_settings = json.loads(
             render_chezmoi_template(REPO / "home/dot_claude/settings.llama-cpp.json.tmpl", is_work=False)
         )
         self.assertEqual(personal_settings["autoCompactWindow"], 200000)
-        qwen38_personal_settings = json.loads(
-            render_chezmoi_template(REPO / "home/dot_claude/settings.llama-cpp.qwen3.8.json.tmpl", is_work=False)
+        qwen36_personal_settings = json.loads(
+            render_chezmoi_template(REPO / "home/dot_claude/settings.llama-cpp.qwen3.6.json.tmpl", is_work=False)
         )
-        self.assertEqual(qwen38_personal_settings["autoCompactWindow"], 200000)
+        self.assertEqual(qwen36_personal_settings["autoCompactWindow"], 200000)
 
     def test_ai_docs_track_current_runtime_contracts(self):
         self.assert_file_contains(

@@ -118,9 +118,8 @@ class TestStaticModelMirrors(unittest.TestCase):
             expected,
             {
                 "nemotron-3.5",
-                "qwen3.5-9b",
-                "qwen3.8-27b",
-                "qwen3.8-27b-instruct",
+                "qwen3.6-35b-a3b",
+                "qwen3.6-35b-a3b-instruct",
             },
         )
 
@@ -133,15 +132,16 @@ class TestStaticModelMirrors(unittest.TestCase):
         pi_personal_context = {
             model["id"]: model["contextWindow"] for model in pi_personal["providers"]["llama-cpp"]["models"]
         }
-        preserved_262k_models = ("nemotron-3.5", "qwen3.5-9b")
+        preserved_262k_models = ("nemotron-3.5",)
         for model_id in preserved_262k_models:
             with self.subTest(consumer="pi", model=model_id):
                 self.assertEqual(262144, pi_work_context[model_id])
                 self.assertEqual(262144, pi_personal_context[model_id])
-        self.assertEqual(131072, pi_work_context["qwen3.8-27b"])
-        self.assertEqual(131072, pi_work_context["qwen3.8-27b-instruct"])
-        self.assertEqual(262144, pi_personal_context["qwen3.8-27b"])
-        self.assertEqual(262144, pi_personal_context["qwen3.8-27b-instruct"])
+        capped_128k_models = ("qwen3.6-35b-a3b", "qwen3.6-35b-a3b-instruct")
+        for model_id in capped_128k_models:
+            with self.subTest(consumer="pi", model=model_id):
+                self.assertEqual(131072, pi_work_context[model_id])
+                self.assertEqual(262144, pi_personal_context[model_id])
 
         for profile in ("work", "personal"):
             config = model_mirrors._read_jsonc(REPO / f"home/dot_config/opencode/readonly_opencode.{profile}.jsonc")
@@ -149,7 +149,7 @@ class TestStaticModelMirrors(unittest.TestCase):
             for model_id, model in config["provider"]["llama-cpp"]["models"].items():
                 # OpenCode 1.18.30 disables automatic compaction for a missing context limit.
                 # Its native output allowance is 32000; router profile limits remain authoritative.
-                context = 131072 if profile == "work" and model_id.startswith("qwen3.8-") else 262144
+                context = 131072 if profile == "work" and model_id in capped_128k_models else 262144
                 self.assertEqual(model["limit"], {"context": context, "output": 32000})
 
         codex_template = REPO / "home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl"
@@ -173,18 +173,14 @@ class TestStaticModelMirrors(unittest.TestCase):
                 self.assertEqual(262144, codex_personal_max_context[model_id])
                 self.assertEqual(200000, codex_work_compact[model_id])
                 self.assertEqual(200000, codex_personal_compact[model_id])
-        self.assertEqual(131072, codex_work_context["qwen3.8-27b"])
-        self.assertEqual(131072, codex_work_context["qwen3.8-27b-instruct"])
-        self.assertEqual(131072, codex_work_max_context["qwen3.8-27b"])
-        self.assertEqual(131072, codex_work_max_context["qwen3.8-27b-instruct"])
-        self.assertEqual(100000, codex_work_compact["qwen3.8-27b"])
-        self.assertEqual(100000, codex_work_compact["qwen3.8-27b-instruct"])
-        self.assertEqual(262144, codex_personal_context["qwen3.8-27b"])
-        self.assertEqual(262144, codex_personal_context["qwen3.8-27b-instruct"])
-        self.assertEqual(262144, codex_personal_max_context["qwen3.8-27b"])
-        self.assertEqual(262144, codex_personal_max_context["qwen3.8-27b-instruct"])
-        self.assertEqual(200000, codex_personal_compact["qwen3.8-27b"])
-        self.assertEqual(200000, codex_personal_compact["qwen3.8-27b-instruct"])
+        for model_id in capped_128k_models:
+            with self.subTest(consumer="codex", model=model_id):
+                self.assertEqual(131072, codex_work_context[model_id])
+                self.assertEqual(131072, codex_work_max_context[model_id])
+                self.assertEqual(100000, codex_work_compact[model_id])
+                self.assertEqual(262144, codex_personal_context[model_id])
+                self.assertEqual(262144, codex_personal_max_context[model_id])
+                self.assertEqual(200000, codex_personal_compact[model_id])
 
         router_text = (REPO / "home/dot_config/llama.cpp/models.ini.tmpl").read_text()
         router_work = render_chezmoi_template(REPO / "home/dot_config/llama.cpp/models.ini.tmpl", is_work=True)
@@ -204,17 +200,12 @@ class TestStaticModelMirrors(unittest.TestCase):
             manifest,
         )
         self.assertNotIn("ggml-org/", manifest)
-        self.assertIn("unsloth/Qwen3.5-9B-GGUF|Qwen3.5-9B-UD-Q4_K_XL.gguf", manifest)
+        self.assertIn("unsloth/Qwen3.6-35B-A3B-GGUF|Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf", manifest)
         self.assertIn(
-            "unsloth/Qwen3.5-9B-GGUF|mmproj-F16.gguf|Qwen3.5-9B-mmproj-F16.gguf",
+            "unsloth/Qwen3.6-35B-A3B-GGUF|mmproj-F16.gguf|Qwen3.6-35B-A3B-mmproj-F16.gguf",
             manifest,
         )
-        self.assertIn("unsloth/Qwen3.8-27B-GGUF|Qwen3.8-27B-UD-Q4_K_XL.gguf", manifest)
-        self.assertIn(
-            "unsloth/Qwen3.8-27B-GGUF|mmproj-F16.gguf|Qwen3.8-27B-mmproj-F16.gguf",
-            manifest,
-        )
-        # The upstream external MTP draft must stay out of the download entries (comment-only mention is fine).
+        # Qwen MTP must stay out of the download entries because llama.cpp support is unverified.
         self.assertNotIn("|MTP/", manifest)
         self.assertNotIn("unsloth/Qwen3.6-27B-MTP-GGUF|", manifest)
         self.assertNotIn("unsloth/Qwen3.6-27B-GGUF|", manifest)
@@ -228,52 +219,38 @@ class TestStaticModelMirrors(unittest.TestCase):
         self.assertIn("min-p = 0.00", router_text)
         self.assertNotIn("reasoning-preserve = true", router_text)
         self.assertNotIn("[qwen3.6-27b]", router_text)
-        nemotron_block = router_text.split("[qwen3.5-9b]", 1)[0]
+        nemotron_block = router_text.split("[qwen3.6-35b-a3b]", 1)[0]
         self.assertIn("spec-type = draft-mtp", nemotron_block)
         self.assertIn("spec-draft-n-max = 2", nemotron_block)
         self.assertNotIn("reasoning = on", nemotron_block)
+        self.assertIn("reasoning = off", nemotron_block)
         self.assertIn("temp = 0.6", nemotron_block)
         self.assertIn("top-p = 0.95", nemotron_block)
         self.assertIn("min-p = 0.01", nemotron_block)
-        qwen35_block = router_text.split("[qwen3.5-9b]", 1)[1].split("[qwen3.8-27b]", 1)[0]
-        self.assertIn("reasoning = on", qwen35_block)
-        self.assertNotIn("spec-type = draft-mtp", qwen35_block)
-        self.assertIn("temp = 0.6", qwen35_block)
-        self.assertIn("top-k = 20", qwen35_block)
-        self.assertIn("min-p = 0.00", qwen35_block)
-        # Hybrid thinking (on by default): [*] reasoning=auto stands, unsloth thinking-mode sampling.
-        qwen38_block = router_text.split("[qwen3.8-27b]", 1)[1].split("[qwen3.8-27b-instruct]", 1)[0]
-        self.assertNotIn("reasoning = on", qwen38_block)
-        self.assertNotIn("reasoning = off", qwen38_block)
-        self.assertNotIn("spec-type = draft-mtp", qwen38_block)
-        self.assertNotIn("presence-penalty", qwen38_block)
-        self.assertIn("Qwen3.8-27B-UD-Q4_K_XL.gguf", qwen38_block)
-        self.assertIn("Qwen3.8-27B-mmproj-F16.gguf", qwen38_block)
-        self.assertIn("temp = 1.0", qwen38_block)
-        self.assertIn("top-p = 0.95", qwen38_block)
-        self.assertIn("top-k = 20", qwen38_block)
-        self.assertIn("min-p = 0.00", qwen38_block)
-        qwen38_work_settings = effective_ini_settings(router_work, "qwen3.8-27b")
-        qwen38_personal_settings = effective_ini_settings(router_personal, "qwen3.8-27b")
-        self.assertEqual("131072", qwen38_work_settings.get("ctx-size"))
-        self.assertEqual("131072", qwen38_work_settings.get("n-predict"))
-        self.assertEqual("262144", qwen38_personal_settings.get("ctx-size"))
-        self.assertEqual("262144", qwen38_personal_settings.get("n-predict"))
-        # Instruct profile: same weights, thinking forced off, unsloth instruct-mode sampling.
-        qwen38_instruct_block = router_text.split("[qwen3.8-27b-instruct]", 1)[1]
-        self.assertIn("Qwen3.8-27B-UD-Q4_K_XL.gguf", qwen38_instruct_block)
-        self.assertIn("reasoning = off", qwen38_instruct_block)
-        self.assertIn("temp = 0.7", qwen38_instruct_block)
-        self.assertIn("top-p = 0.80", qwen38_instruct_block)
-        self.assertIn("top-k = 20", qwen38_instruct_block)
-        self.assertIn("min-p = 0.00", qwen38_instruct_block)
-        self.assertIn("presence-penalty = 1.5", qwen38_instruct_block)
-        qwen38_instruct_work_settings = effective_ini_settings(router_work, "qwen3.8-27b-instruct")
-        qwen38_instruct_personal_settings = effective_ini_settings(router_personal, "qwen3.8-27b-instruct")
-        self.assertEqual("131072", qwen38_instruct_work_settings.get("ctx-size"))
-        self.assertEqual("131072", qwen38_instruct_work_settings.get("n-predict"))
-        self.assertEqual("262144", qwen38_instruct_personal_settings.get("ctx-size"))
-        self.assertEqual("262144", qwen38_instruct_personal_settings.get("n-predict"))
+        qwen_block = router_text.split("[qwen3.6-35b-a3b]", 1)[1].split("[qwen3.6-35b-a3b-instruct]", 1)[0]
+        self.assertNotIn("reasoning = on", qwen_block)
+        self.assertNotIn("reasoning = off", qwen_block)
+        self.assertNotIn("spec-type = draft-mtp", qwen_block)
+        self.assertIn("Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf", qwen_block)
+        self.assertIn("Qwen3.6-35B-A3B-mmproj-F16.gguf", qwen_block)
+        self.assertIn("temp = 1.0", qwen_block)
+        self.assertIn("top-p = 0.95", qwen_block)
+        self.assertIn("top-k = 20", qwen_block)
+        self.assertIn("min-p = 0.00", qwen_block)
+        self.assertIn("presence-penalty = 1.5", qwen_block)
+        self.assertIn("repeat-penalty = 1.0", qwen_block)
+        for model_id in ("qwen3.6-35b-a3b", "qwen3.6-35b-a3b-instruct"):
+            for rendered, budget in ((router_work, "131072"), (router_personal, "262144")):
+                with self.subTest(model=model_id, budget=budget):
+                    settings = effective_ini_settings(rendered, model_id)
+                    self.assertEqual(budget, settings.get("ctx-size"))
+                    self.assertEqual(budget, settings.get("n-predict"))
+        qwen_instruct_block = router_text.split("[qwen3.6-35b-a3b-instruct]", 1)[1]
+        self.assertIn("reasoning = off", qwen_instruct_block)
+        self.assertIn("temp = 0.7", qwen_instruct_block)
+        self.assertIn("top-p = 0.80", qwen_instruct_block)
+        self.assertIn("presence-penalty = 1.5", qwen_instruct_block)
+        self.assertIn("repeat-penalty = 1.0", qwen_instruct_block)
 
         ini_ggufs = set(re.findall(r"/([^/\s]+\.gguf)$", router_text, flags=re.MULTILINE))
         manifest_files = {

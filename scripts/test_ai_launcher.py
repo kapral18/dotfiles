@@ -346,7 +346,11 @@ class TestAiLauncher(unittest.TestCase):
 
     def test_when_pi_names_a_non_openrouter_model_the_pin_does_not_claim_it(self) -> None:
         # Pi still ships llama-cpp local models, so naming one must not be read as OpenRouter.
-        for model in ("nemotron-3.5", "qwen3.5-9b", "qwen3.8-27b", "qwen3.8-27b-instruct"):
+        for model in (
+            "nemotron-3.5",
+            "qwen3.6-35b-a3b",
+            "qwen3.6-35b-a3b-instruct",
+        ):
             with self.subTest(model=model):
                 plan = self.dry_plan("pi", "--model", model)
 

@@ -13,9 +13,8 @@ Pi settings and models are installed readonly, so the llama.cpp provider is decl
 ```bash
 ,llama-cpp serve
 pi --model llama-cpp/nemotron-3.5
-pi --model llama-cpp/qwen3.5-9b
-pi --model llama-cpp/qwen3.8-27b
-pi --model llama-cpp/qwen3.8-27b-instruct
+pi --model llama-cpp/qwen3.6-35b-a3b
+pi --model llama-cpp/qwen3.6-35b-a3b-instruct
 ```
 
 The provider declares the llama.cpp router ids:

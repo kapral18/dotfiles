@@ -1780,7 +1780,9 @@ class TestKnowledgeBaseCurate(unittest.TestCase):
                 )
                 assert summary["duplicates"] >= 1, summary
                 # An irreversible delete must leave an audit trail.
-                assert [(r["removed_id"], r["keeper_id"]) for r in summary["removed"]] == [(older.id, newer.id)], summary
+                assert [(r["removed_id"], r["keeper_id"]) for r in summary["removed"]] == [(older.id, newer.id)], (
+                    summary
+                )
                 # Higher confidence wins → older becomes the loser and is
                 # deleted outright: row, FTS entry, and sidecar.
                 assert kb.get(older.id) is None, "dedupe must delete the losing row"

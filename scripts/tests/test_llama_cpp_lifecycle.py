@@ -384,6 +384,74 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         _wait_for(lambda: not _router_reachable(port), "fixture router did not stop")
 
 
+class TestLlamaCppServerBinaryResolution(unittest.TestCase):
+    """WHEN resolving which llama-server binary the router runs."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        self.prism_root = self.root / "prism"
+        (self.prism_root / "bin").mkdir(parents=True)
+        self.prism_server = self.prism_root / "bin/llama-server"
+        self.path_dir = self.root / "path"
+        self.path_dir.mkdir()
+        self.path_server = self.path_dir / "llama-server"
+
+    @staticmethod
+    def _make_executable(path: Path) -> None:
+        path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        path.chmod(0o755)
+
+    def config(self, **overrides: str) -> object:
+        environment = {
+            "LLAMA_CPP_PRISM_ROOT": str(self.prism_root),
+            "PATH": str(self.path_dir),
+            **overrides,
+        }
+        with mock.patch.dict(os.environ, environment, clear=False):
+            if "LLAMA_CPP_SERVER_BIN" not in overrides:
+                os.environ.pop("LLAMA_CPP_SERVER_BIN", None)
+            return LIFECYCLE_MODULE.Config.from_environment()
+
+    def test_SHOULD_prefer_an_explicit_server_binary_over_the_prism_build(self) -> None:
+        explicit = self.root / "explicit-llama-server"
+        self._make_executable(explicit)
+        self._make_executable(self.prism_server)
+        self._make_executable(self.path_server)
+        config = self.config(LLAMA_CPP_SERVER_BIN=str(explicit))
+
+        with mock.patch.dict(os.environ, {"PATH": str(self.path_dir)}, clear=False):
+            self.assertEqual(str(explicit), LIFECYCLE_MODULE.resolved_server_binary(config))
+
+    def test_SHOULD_prefer_the_prism_build_when_no_explicit_binary_is_set(self) -> None:
+        self._make_executable(self.prism_server)
+        self._make_executable(self.path_server)
+        config = self.config()
+
+        with mock.patch.dict(os.environ, {"PATH": str(self.path_dir)}, clear=False):
+            self.assertEqual(str(self.prism_server), LIFECYCLE_MODULE.resolved_server_binary(config))
+
+    def test_SHOULD_fall_back_to_path_when_the_prism_build_is_absent(self) -> None:
+        self._make_executable(self.path_server)
+        config = self.config()
+
+        with mock.patch.dict(os.environ, {"PATH": str(self.path_dir)}, clear=False):
+            self.assertEqual(str(self.path_server), LIFECYCLE_MODULE.resolved_server_binary(config))
+
+    def test_SHOULD_name_all_three_sources_when_no_binary_resolves(self) -> None:
+        config = self.config()
+
+        with mock.patch.dict(os.environ, {"PATH": str(self.path_dir)}, clear=False):
+            with self.assertRaises(LIFECYCLE_MODULE.LifecycleError) as raised:
+                LIFECYCLE_MODULE.resolved_server_binary(config)
+
+        message = str(raised.exception)
+        self.assertIn("LLAMA_CPP_SERVER_BIN", message)
+        self.assertIn(str(self.prism_server), message)
+        self.assertIn("PATH", message)
+
+
 class TestLlamaCppModelSync(unittest.TestCase):
     """WHEN syncing the llama.cpp GGUF manifest into a models root."""
 

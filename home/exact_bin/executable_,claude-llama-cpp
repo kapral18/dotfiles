@@ -11,7 +11,7 @@
 #     CLAUDE_CODE_ATTRIBUTION_HEADER=0 keeps the llama.cpp KV cache stable.
 #   - Injects --model $CLAUDE_LLAMA_CPP_MODEL (default nemotron-3.5) only when the
 #     caller did not pass their own --model/-m, so `,claude-llama-cpp --model
-#     qwen3.5-9b ...` selects the model with no duplicate flag.
+#     qwen3.6-35b-a3b ...` selects the model with no duplicate flag.
 
 set -euo pipefail
 
@@ -20,7 +20,7 @@ LLAMA_CPP_PORT="${LLAMA_CPP_PORT:-8080}"
 LLAMA_CPP_API_KEY="${LLAMA_CPP_API_KEY:-sk-no-key-required}"
 CLAUDE_LLAMA_CPP_MODEL="${CLAUDE_LLAMA_CPP_MODEL-nemotron-3.5}"
 DEFAULT_CLAUDE_LLAMA_CPP_SETTINGS="$HOME/.claude/settings.llama-cpp.json"
-QWEN38_CLAUDE_LLAMA_CPP_SETTINGS="$HOME/.claude/settings.llama-cpp.qwen3.8.json"
+QWEN36_CLAUDE_LLAMA_CPP_SETTINGS="$HOME/.claude/settings.llama-cpp.qwen3.6.json"
 CLAUDE_LLAMA_CPP_SETTINGS="${CLAUDE_LLAMA_CPP_SETTINGS:-}"
 
 if ! command -v claude >/dev/null 2>&1; then
@@ -58,8 +58,8 @@ done
 
 if [[ -z "$CLAUDE_LLAMA_CPP_SETTINGS" ]]; then
   case "$selected_model" in
-  qwen3.8-27b | qwen3.8-27b-instruct)
-    CLAUDE_LLAMA_CPP_SETTINGS="$QWEN38_CLAUDE_LLAMA_CPP_SETTINGS"
+  qwen3.6-35b-a3b | qwen3.6-35b-a3b-instruct)
+    CLAUDE_LLAMA_CPP_SETTINGS="$QWEN36_CLAUDE_LLAMA_CPP_SETTINGS"
     ;;
   *)
     CLAUDE_LLAMA_CPP_SETTINGS="$DEFAULT_CLAUDE_LLAMA_CPP_SETTINGS"

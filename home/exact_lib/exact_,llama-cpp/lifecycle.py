@@ -43,6 +43,7 @@ class Config:
     api_key: str
     preset: Path
     server_bin: str
+    prism_root: Path
     root: Path
     grace_seconds: int
 
@@ -72,7 +73,13 @@ class Config:
                     str(home / ".config/llama.cpp/models.ini"),
                 )
             ).expanduser(),
-            server_bin=os.environ.get("LLAMA_CPP_SERVER_BIN", "llama-server"),
+            server_bin=os.environ.get("LLAMA_CPP_SERVER_BIN", ""),
+            prism_root=Path(
+                os.environ.get(
+                    "LLAMA_CPP_PRISM_ROOT",
+                    str(home / ".llama.cpp/prism"),
+                )
+            ).expanduser(),
             root=Path(
                 os.environ.get(
                     "LLAMA_CPP_LIFECYCLE_DIR",
@@ -218,15 +225,32 @@ def prune_and_count_leases(namespace: Path) -> int:
 
 
 def resolved_server_binary(config: Config) -> str:
-    if os.path.sep in config.server_bin:
-        binary = Path(config.server_bin).expanduser()
-        if binary.is_file() and os.access(binary, os.X_OK):
-            return str(binary)
-    else:
-        found = shutil.which(config.server_bin)
-        if found:
-            return found
-    raise LifecycleError(f"llama-server executable not found: {config.server_bin}")
+    """Prefer an explicit binary, then the PrismML fork build, then PATH."""
+
+    if config.server_bin:
+        if os.path.sep in config.server_bin:
+            binary = Path(config.server_bin).expanduser()
+            if binary.is_file() and os.access(binary, os.X_OK):
+                return str(binary)
+        else:
+            found = shutil.which(config.server_bin)
+            if found:
+                return found
+        raise LifecycleError(f"llama-server executable not found: {config.server_bin}")
+
+    prism_binary = config.prism_root / "bin/llama-server"
+    if prism_binary.is_file() and os.access(prism_binary, os.X_OK):
+        return str(prism_binary)
+
+    found = shutil.which("llama-server")
+    if found:
+        return found
+
+    raise LifecycleError(
+        "llama-server executable not found; tried LLAMA_CPP_SERVER_BIN (unset), "
+        f"{prism_binary} (build it with ',llama-cpp build-prism'), "
+        "and llama-server on PATH"
+    )
 
 
 def signal_exact_owner(owner: dict[str, object], signum: int) -> bool:

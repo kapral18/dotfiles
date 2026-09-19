@@ -1,6 +1,7 @@
 # Previously-managed targets intentionally removed from this chezmoi source.
 # Chezmoi deletes these from $HOME on apply; entries stay listed so every
 # machine converges, and cost nothing once absent.
+.claude/settings.llama-cpp.qwen3.8.json
 bin/,fleet
 bin/,ralph
 bin/,palantir

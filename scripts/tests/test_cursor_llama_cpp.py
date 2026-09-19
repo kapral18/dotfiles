@@ -281,9 +281,8 @@ with urlopen(request, timeout=5) as response:
     def test_SHOULD_offer_router_ids_from_every_llama_cpp_harness_completion(self):
         cases = (
             ("ne", "nemotron-3.5"),
-            ("qwen3.5", "qwen3.5-9b"),
-            ("qwen3.8", "qwen3.8-27b"),
-            ("qwen3.8-27b-i", "qwen3.8-27b-instruct"),
+            ("qwen3.6", "qwen3.6-35b-a3b"),
+            ("qwen3.6-35b-a3b-i", "qwen3.6-35b-a3b-instruct"),
         )
         for harness in ("claude", "codex", "cursor", "opencode"):
             for prefix, model_id in cases:
@@ -341,7 +340,7 @@ class TestClaudeLlamaCppWrapper(unittest.TestCase):
             bindir.mkdir()
             for name in (
                 "settings.llama-cpp.json",
-                "settings.llama-cpp.qwen3.8.json",
+                "settings.llama-cpp.qwen3.6.json",
                 "custom-settings.json",
             ):
                 (claude_dir / name).write_text("{}\n", encoding="utf-8")
@@ -385,21 +384,30 @@ printf 'base=%s\nkey=%s\ncompact=%s\nargs=%s\n' "$ANTHROPIC_BASE_URL" "$ANTHROPI
         cases = (
             ((), {}, "settings.llama-cpp.json", "--model nemotron-3.5"),
             (
-                ("--model", "qwen3.8-27b", "-p", "review"),
+                ("--model", "qwen3.6-35b-a3b", "-p", "review"),
                 {},
-                "settings.llama-cpp.qwen3.8.json",
-                "--model qwen3.8-27b -p review",
+                "settings.llama-cpp.qwen3.6.json",
+                "--model qwen3.6-35b-a3b -p review",
             ),
-            (("--model=qwen3.8-27b-instruct",), {}, "settings.llama-cpp.qwen3.8.json", "--model=qwen3.8-27b-instruct"),
-            (("-m", "qwen3.8-27b-instruct"), {}, "settings.llama-cpp.qwen3.8.json", "-m qwen3.8-27b-instruct"),
-            (("-m", "qwen3.5-9b"), {}, "settings.llama-cpp.json", "-m qwen3.5-9b"),
             (
-                ("--", "--model", "qwen3.8-27b"),
+                ("--model=qwen3.6-35b-a3b-instruct",),
+                {},
+                "settings.llama-cpp.qwen3.6.json",
+                "--model=qwen3.6-35b-a3b-instruct",
+            ),
+            (("-m", "qwen3.6-35b-a3b-instruct"), {}, "settings.llama-cpp.qwen3.6.json", "-m qwen3.6-35b-a3b-instruct"),
+            (
+                ("--", "--model", "qwen3.6-35b-a3b"),
                 {},
                 "settings.llama-cpp.json",
-                "--model nemotron-3.5 -- --model qwen3.8-27b",
+                "--model nemotron-3.5 -- --model qwen3.6-35b-a3b",
             ),
-            ((), {"CLAUDE_LLAMA_CPP_MODEL": "qwen3.8-27b"}, "settings.llama-cpp.qwen3.8.json", "--model qwen3.8-27b"),
+            (
+                (),
+                {"CLAUDE_LLAMA_CPP_MODEL": "qwen3.6-35b-a3b"},
+                "settings.llama-cpp.qwen3.6.json",
+                "--model qwen3.6-35b-a3b",
+            ),
         )
         for argv, extra_env, settings_name, forwarded in cases:
             with self.subTest(argv=argv, env=extra_env):
@@ -415,7 +423,7 @@ printf 'base=%s\nkey=%s\ncompact=%s\nargs=%s\n' "$ANTHROPIC_BASE_URL" "$ANTHROPI
 
     def test_SHOULD_respect_an_explicit_settings_override(self):
         result, home = self.run_wrapper(
-            ("--model", "qwen3.8-27b"),
+            ("--model", "qwen3.6-35b-a3b"),
             settings_override="custom-settings.json",
         )
 
@@ -424,12 +432,12 @@ printf 'base=%s\nkey=%s\ncompact=%s\nargs=%s\n' "$ANTHROPIC_BASE_URL" "$ANTHROPI
             "base=http://127.0.0.9:9090",
             "key=fixture-local-key",
             "compact=",
-            f"args=--settings {home}/.claude/custom-settings.json --model qwen3.8-27b",
+            f"args=--settings {home}/.claude/custom-settings.json --model qwen3.6-35b-a3b",
         ]
 
     def test_SHOULD_clear_an_inherited_global_compaction_window_for_model_scoped_settings(self):
         result, home = self.run_wrapper(
-            ("--model", "qwen3.8-27b"),
+            ("--model", "qwen3.6-35b-a3b"),
             extra_env={"CLAUDE_CODE_AUTO_COMPACT_WINDOW": "999999"},
         )
 
@@ -438,7 +446,7 @@ printf 'base=%s\nkey=%s\ncompact=%s\nargs=%s\n' "$ANTHROPIC_BASE_URL" "$ANTHROPI
             "base=http://127.0.0.9:9090",
             "key=fixture-local-key",
             "compact=",
-            f"args=--settings {home}/.claude/settings.llama-cpp.qwen3.8.json --model qwen3.8-27b",
+            f"args=--settings {home}/.claude/settings.llama-cpp.qwen3.6.json --model qwen3.6-35b-a3b",
         ]
 
 

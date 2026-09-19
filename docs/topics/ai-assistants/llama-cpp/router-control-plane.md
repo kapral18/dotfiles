@@ -11,7 +11,7 @@ The router control plane is the local runtime layer for llama.cpp models. It map
 
 `models.ini` is the preset: it names the models and their per-model defaults. `,llama-cpp` is the operator interface: it manages the shared server lifecycle and calls the model API.
 
-The shipped preset defines these model ids. They inherit shared `[*]` defaults unless a section overrides `ctx-size` / `n-predict`; the work profile caps both Qwen3.8 presets at 128k. The router loads one at a time on demand.
+The shipped preset defines these model ids. They inherit shared `[*]` defaults unless a section overrides `ctx-size` / `n-predict`; the work profile caps both Qwen3.6 presets at 131072 tokens. The router loads one at a time on demand.
 
 ## Using it
 
@@ -24,35 +24,39 @@ llama.cpp model routing and per-model defaults live in an INI preset:
 
 The shipped preset defines these short model ids:
 
-| ID                     | GGUF path                                                                   | Use                                               |
-| ---------------------- | --------------------------------------------------------------------------- | ------------------------------------------------- |
-| `nemotron-3.5`         | `~/.llama.cpp/models/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-UD-Q4_K_XL.gguf` | Unsloth Nemotron agentic model                    |
-| `qwen3.5-9b`           | `~/.llama.cpp/models/Qwen3.5-9B-UD-Q4_K_XL.gguf`                            | Unsloth Qwen3.5 9B + dest-renamed mmproj          |
-| `qwen3.8-27b`          | `~/.llama.cpp/models/Qwen3.8-27B-UD-Q4_K_XL.gguf`                           | Unsloth Qwen3.8 27B + dest-renamed mmproj         |
-| `qwen3.8-27b-instruct` | same `Qwen3.8-27B-UD-Q4_K_XL.gguf`                                          | Non-thinking instruct profile of the same weights |
+| ID                         | GGUF path                                                                   | Use                                           |
+| -------------------------- | --------------------------------------------------------------------------- | --------------------------------------------- |
+| `nemotron-3.5`             | `~/.llama.cpp/models/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-UD-Q4_K_XL.gguf` | Unsloth Nemotron agentic model                |
+| `qwen3.6-35b-a3b`          | `~/.llama.cpp/models/Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf`                       | Unsloth Qwen3.6 35B A3B + dest-renamed mmproj |
+| `qwen3.6-35b-a3b-instruct` | same `Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf`                                      | Non-thinking profile of the same weights      |
 
 They inherit shared `[*]` defaults:
 
 - `ctx-size=262144`
-- work profile only: `qwen3.8-27b` and `qwen3.8-27b-instruct` override `ctx-size=131072` and `n-predict=131072`
+- work profile only: `qwen3.6-35b-a3b` and `qwen3.6-35b-a3b-instruct` override `ctx-size=131072` and `n-predict=131072`
 - Metal offload
 - flash attention
 - Jinja chat templates
 - q8 KV cache
 - `reasoning=auto`
-- `nemotron-3.5` sets in-model NextN MTP (`spec-type=draft-mtp`, `spec-draft-n-max=2`) plus Unsloth thinking sampling (`temp=0.6`, `top-p=0.95`, `min-p=0.01`)
-- `qwen3.5-9b` forces `reasoning=on` (Small-series thinking is off by default) plus Unsloth coding sampling (`temp=0.6`, `top-p=0.95`, `top-k=20`, `min-p=0`)
-- `qwen3.8-27b` keeps `reasoning=auto` (hybrid thinking, on by default at `reasoning_effort=xhigh`) plus Unsloth thinking-mode sampling (`temp=1.0`, `top-p=0.95`, `top-k=20`, `min-p=0`)
-- `qwen3.8-27b-instruct` forces `reasoning=off` plus Unsloth instruct-mode sampling (`temp=0.7`, `top-p=0.80`, `top-k=20`, `min-p=0`, `presence-penalty=1.5`); same weights, loaded on demand as a separate preset
+- `nemotron-3.5` forces `reasoning=off` (thinking off by default for speed; a request's `chat_template_kwargs.enable_thinking` still turns it on), sets in-model NextN MTP (`spec-type=draft-mtp`, `spec-draft-n-max=2`) plus Unsloth thinking sampling (`temp=0.6`, `top-p=0.95`, `min-p=0.01`)
+- `qwen3.6-35b-a3b` keeps `reasoning=auto` with thinking sampling (`temp=1.0`, `top-p=0.95`, `top-k=20`, `min-p=0`, `presence-penalty=1.5`, `repeat-penalty=1.0`)
+- `qwen3.6-35b-a3b-instruct` forces `reasoning=off` with instruct sampling (`temp=0.7`, `top-p=0.80`, `top-k=20`, `min-p=0`, `presence-penalty=1.5`, `repeat-penalty=1.0`); same weights, loaded on demand as a separate preset
 
 Switch with `,llama-cpp load <id>` / `,llama-cpp unload <id>`.
 
-The served default `ctx-size` is `262144`, matching Nemotron and Qwen3.5-9B on both profiles and Qwen3.8-27B on personal. Work Qwen3.8 uses `131072`; Claude Code selects a Qwen3.8-specific settings file that renders `autoCompactWindow=100000` on work and `200000` on personal.
+The served default `ctx-size` is `262144`, matching Nemotron and Qwen3.6 on personal. Work Qwen3.6 uses `131072`; Claude Code selects a Qwen3.6-specific settings file that renders `autoCompactWindow=100000` on work and `200000` on personal.
 
 ```bash
 ,llama-cpp serve
 curl -s http://localhost:8080/models | python3 -m json.tool
 ```
+
+### Optional `llama-server` binary selection
+
+`serve` and `run` retain the optional [PrismML fork](https://github.com/PrismML-Eng/llama.cpp) build path for compatible future model weights. The current roster has no fork-only preset.
+
+Both `serve` and `run` resolve the server binary in the same order: `$LLAMA_CPP_SERVER_BIN` when set, else `$LLAMA_CPP_PRISM_ROOT/bin/llama-server` when it is an executable file, else `llama-server` from PATH. Homebrew `llama.cpp` remains installed and untouched as that PATH fallback, so every other model id keeps serving normally whether or not the fork is built. See [Launchers](./launchers.md) for the build command and layout.
 
 ### Shared lifecycle
 
@@ -78,6 +82,7 @@ This repo ships a thin wrapper around `llama-server` router mode and its model A
 ,llama-cpp load <model-id> [<id> ...] # POST /models/load
 ,llama-cpp unload <model-id> [<id> ...]
 ,llama-cpp unload --all
+,llama-cpp build-prism                # build/install the PrismML fork server
 ```
 
 ## Reference
@@ -90,16 +95,18 @@ This repo ships a thin wrapper around `llama-server` router mode and its model A
 | `LLAMA_CPP_MODELS_PRESET` | `~/.config/llama.cpp/models.ini`     | alternate model preset                        |
 | `LLAMA_CPP_LIFECYCLE_DIR` | `~/.local/state/llama-cpp/lifecycle` | lease, owner, router-log, and shutdown state  |
 | `LLAMA_CPP_GRACE_SECONDS` | `600`                                | delay after the last lease; `0` stops at once |
+| `LLAMA_CPP_PRISM_ROOT`    | `~/.llama.cpp/prism`                 | PrismML fork checkout and installed binaries  |
+| `LLAMA_CPP_SERVER_BIN`    | unset                                | explicit `llama-server` path or PATH name     |
 
 `,llama-cpp` respects `LLAMA_CPP_HOST` / `LLAMA_CPP_PORT` / `LLAMA_CPP_API_KEY` / `LLAMA_CPP_MODELS_PRESET` (defaults: `127.0.0.1:8080`, no auth header unless `LLAMA_CPP_API_KEY` is set, preset at `~/.config/llama.cpp/models.ini`).
 
 ## Internals
 
-The `,llama-cpp` command is a thin launcher. Its command library implements `serve`/`run`/`stop`/`status`/`load`/`unload`; `lifecycle.py` owns locking, leases, process identity, and cleanup. Its fish completion provides context-aware subcommand + model-id completions.
+The `,llama-cpp` command is a thin launcher. Its command library implements `serve`/`run`/`stop`/`status`/`load`/`unload`/`build-prism`; `lifecycle.py` owns locking, leases, process identity, and cleanup. Its fish completion provides context-aware subcommand + model-id completions.
 
 ## Sources and verification
 
 - [`home/exact_bin/executable_,llama-cpp`](../../../../home/exact_bin/executable_,llama-cpp) → `~/bin/,llama-cpp` (thin launcher)
-- [`home/exact_lib/exact_,llama-cpp/main.sh`](../../../../home/exact_lib/exact_,llama-cpp/main.sh) → `~/lib/,llama-cpp/main.sh` (subcommand implementation: `serve`/`run`/`stop`/`status`/`load`/`unload`)
-- [`home/exact_lib/exact_,llama-cpp/lifecycle.py`](../../../../home/exact_lib/exact_,llama-cpp/lifecycle.py) → `~/lib/,llama-cpp/lifecycle.py` (shared router leases, shutdown grace, and owned-process cleanup)
+- [`home/exact_lib/exact_,llama-cpp/main.sh`](../../../../home/exact_lib/exact_,llama-cpp/main.sh) → `~/lib/,llama-cpp/main.sh` (subcommand implementation: `serve`/`run`/`stop`/`status`/`load`/`unload`/`build-prism`)
+- [`home/exact_lib/exact_,llama-cpp/lifecycle.py`](../../../../home/exact_lib/exact_,llama-cpp/lifecycle.py) → `~/lib/,llama-cpp/lifecycle.py` (shared router leases, server binary resolution, shutdown grace, and owned-process cleanup)
 - [`home/dot_config/fish/completions/readonly_,llama-cpp.fish`](../../../../home/dot_config/fish/completions/readonly_,llama-cpp.fish) — context-aware subcommand + model-id completions

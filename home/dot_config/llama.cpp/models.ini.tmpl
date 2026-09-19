@@ -10,8 +10,11 @@ cache-type-k = q8_0
 cache-type-v = q8_0
 reasoning = auto
 
+# Thinking off by default: non-thinking Nemotron is the one local tier on par with paid models for
+# speed (user call 2026-09-18). A request's `chat_template_kwargs.enable_thinking` still overrides it.
 [nemotron-3.5]
 model = {{ .chezmoi.homeDir }}/.llama.cpp/models/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-UD-Q4_K_XL.gguf
+reasoning = off
 spec-type = draft-mtp
 spec-draft-n-max = 2
 temp = 0.6
@@ -19,23 +22,11 @@ top-p = 0.95
 min-p = 0.01
 load-on-startup = false
 
-[qwen3.5-9b]
-model = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.5-9B-UD-Q4_K_XL.gguf
-mmproj = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.5-9B-mmproj-F16.gguf
-reasoning = on
-temp = 0.6
-top-p = 0.95
-top-k = 20
-min-p = 0.00
-load-on-startup = false
-
-# Hybrid thinking model; thinking on by default (reasoning_effort=xhigh in the chat template),
-# so reasoning stays on the [*] auto default. Unsloth thinking-mode sampling below; the
-# instruct (non-thinking) profile would be temp 0.7, top-p 0.80, presence-penalty 1.5.
-# Work machines cap Qwen3.8 at 128k; personal machines inherit the 262144 [*] default.
-[qwen3.8-27b]
-model = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.8-27B-UD-Q4_K_XL.gguf
-mmproj = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.8-27B-mmproj-F16.gguf
+# Hybrid thinking model; thinking uses the [*] auto default.
+# Work machines use 131072 tokens; personal machines inherit the 262144 [*] default.
+[qwen3.6-35b-a3b]
+model = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf
+mmproj = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.6-35B-A3B-mmproj-F16.gguf
 {{ if eq .isWork true }}
 ctx-size = 131072
 n-predict = 131072
@@ -44,14 +35,16 @@ temp = 1.0
 top-p = 0.95
 top-k = 20
 min-p = 0.00
+presence-penalty = 1.5
+repeat-penalty = 1.0
 load-on-startup = false
 
-# Same Qwen3.8-27B weights in the unsloth instruct (non-thinking) profile:
+# Same Qwen3.6-35B-A3B weights in the Unsloth instruct (non-thinking) profile:
 # reasoning forced off, temp 0.7, top-p 0.80, presence penalty 1.5.
 # The router loads presets on demand, so the two ids never occupy RAM together unless both are loaded.
-[qwen3.8-27b-instruct]
-model = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.8-27B-UD-Q4_K_XL.gguf
-mmproj = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.8-27B-mmproj-F16.gguf
+[qwen3.6-35b-a3b-instruct]
+model = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf
+mmproj = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen3.6-35B-A3B-mmproj-F16.gguf
 {{ if eq .isWork true }}
 ctx-size = 131072
 n-predict = 131072
@@ -62,4 +55,5 @@ top-p = 0.80
 top-k = 20
 min-p = 0.00
 presence-penalty = 1.5
+repeat-penalty = 1.0
 load-on-startup = false

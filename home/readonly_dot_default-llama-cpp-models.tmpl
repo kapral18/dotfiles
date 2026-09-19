@@ -24,18 +24,10 @@
 # https://huggingface.co/unsloth/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF
 unsloth/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF|NVIDIA-Nemotron-3.5-Lightning-30B-A3B-UD-Q4_K_XL.gguf
 
-# Unsloth Qwen3.5-9B Dynamic Q4_K_XL (~6.0 GB) plus F16 mmproj companion.
+# Unsloth Qwen3.6-35B-A3B Dynamic Q5_K_XL plus F16 mmproj companion.
 # Dest-rename mmproj so a generic Hugging Face mmproj-F16.gguf name stays unique on disk.
-# Small-series thinking is off by default; models.ini forces reasoning=on.
-# https://huggingface.co/unsloth/Qwen3.5-9B-GGUF
-unsloth/Qwen3.5-9B-GGUF|Qwen3.5-9B-UD-Q4_K_XL.gguf
-unsloth/Qwen3.5-9B-GGUF|mmproj-F16.gguf|Qwen3.5-9B-mmproj-F16.gguf
-
-# Unsloth Qwen3.8-27B Dynamic Q4_K_XL (~17.6 GB) plus F16 mmproj companion.
-# Hybrid thinking model, thinking on by default at reasoning_effort=xhigh; models.ini carries the
-# unsloth thinking-mode sampling (temp 1.0, top_p 0.95, top_k 20, min_p 0.0).
-# An external MTP draft exists upstream (MTP/mtp-Qwen3.8-27B-Q4_0.gguf); not added — llama.cpp
-# external-MTP support for it is unverified, unlike Nemotron's in-model draft-mtp.
-# https://huggingface.co/unsloth/Qwen3.8-27B-GGUF
-unsloth/Qwen3.8-27B-GGUF|Qwen3.8-27B-UD-Q4_K_XL.gguf
-unsloth/Qwen3.8-27B-GGUF|mmproj-F16.gguf|Qwen3.8-27B-mmproj-F16.gguf
+# The thinking profile keeps the hybrid default; its companion profile forces non-thinking mode.
+# No Qwen MTP draft is configured because llama.cpp support is unverified.
+# https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF
+unsloth/Qwen3.6-35B-A3B-GGUF|Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf
+unsloth/Qwen3.6-35B-A3B-GGUF|mmproj-F16.gguf|Qwen3.6-35B-A3B-mmproj-F16.gguf

@@ -17,11 +17,46 @@ OpenCode reads providers from `~/.config/opencode/opencode.jsonc`, so its launch
 
 Cursor's cloud build rejects local provider flags. `,cursor-llama-cpp` therefore runs the version-matched `agent-cli-local` flavor, pins its provider environment to llama.cpp, and rewrites `-m` to Cursor's `--model` flag.
 
-Claude Code has one global `autoCompactWindow`, but cloud `opus[1m]`, 262144-token local models, and work Qwen3.8 need different values. The llama.cpp launcher picks a model-scoped additive settings file: base local models use `200000`, work Qwen3.8 uses `100000`, and plain cloud Claude sessions stay untouched. Those additive files keep thinking off and pin each local model to `high`, matching the native cloud root's effort without changing local context windows.
+Claude Code has one global `autoCompactWindow`, but cloud `opus[1m]`, 262144-token local models, and work Qwen3.6 need different values. The llama.cpp launcher picks a model-scoped additive settings file: base local models use `200000`, work Qwen3.6 uses `100000`, and plain cloud Claude sessions stay untouched. Those additive files keep thinking off and pin each local model to `high`, matching the native cloud root's effort without changing local context windows.
 
 ## Using it
 
 No separate server command is required for these launchers. Start any harness directly; use `,llama-cpp serve` only when you want the router to remain available independently of harness sessions.
+
+### Which `llama-server` the launchers run
+
+Every launcher reaches the router through `,llama-cpp run`, so they all inherit one binary resolution order, implemented in both `main.sh` (`serve`) and `lifecycle.py` (`run`):
+
+| Order | Source                                   | Used when                                                      |
+| ----- | ---------------------------------------- | -------------------------------------------------------------- |
+| 1     | `$LLAMA_CPP_SERVER_BIN`                  | set (absolute/relative path, or a bare name looked up on PATH) |
+| 2     | `$LLAMA_CPP_PRISM_ROOT/bin/llama-server` | that file exists and is executable                             |
+| 3     | `llama-server` on PATH                   | otherwise (Homebrew `llama.cpp`)                               |
+
+When none resolves, the error names all three sources. Homebrew `llama.cpp` stays installed and is the fallback; building the fork never replaces it.
+
+### Optional PrismML fork build (`,llama-cpp build-prism`)
+
+The optional [PrismML fork](https://github.com/PrismML-Eng/llama.cpp) build remains available for compatible future weights. The current Qwen3.6 and Nemotron roster does not require it. The fork ships no macOS release binaries, so `build-prism` builds it from source:
+
+```bash
+,llama-cpp build-prism                                   # newest prism-* tag
+,llama-cpp build-prism --tag prism-b10687-5d80cff        # pin a tag
+,llama-cpp build-prism --force                           # rebuild the same tag
+```
+
+The command is idempotent: it clones on first run and fetches tags afterwards, picks `--tag` or the newest `prism-*` tag by creation date, and exits with `up to date (<tag>)` when `bin/.tag` already records that tag and `bin/llama-server` exists. Otherwise it checks the tag out, configures a Release build (`LLAMA_BUILD_TESTS=OFF`, `LLAMA_BUILD_EXAMPLES=OFF`, `LLAMA_BUILD_TOOLS=ON`, `LLAMA_CURL=ON`; Metal is the macOS default), builds the three targets, installs them plus any shared libraries they need, records the tag, and prints `llama-server --version`.
+
+Layout under `$LLAMA_CPP_PRISM_ROOT` (default `~/.llama.cpp/prism`):
+
+| Path                                           | Contents                                         |
+| ---------------------------------------------- | ------------------------------------------------ |
+| `llama.cpp/`                                   | fork checkout, parked on a `prism-*` release tag |
+| `llama.cpp/build/`                             | cmake build tree                                 |
+| `bin/llama-server`, `llama-cli`, `llama-bench` | installed binaries                               |
+| `bin/.tag`                                     | tag the installed binaries were built from       |
+
+After a successful build, step 2 of the resolution order picks the fork up automatically — no launcher flag or env var change is needed.
 
 ### Codex launcher metadata
 
@@ -49,8 +84,8 @@ The wrapper adds its default `--model $CODEX_LLAMA_CPP_MODEL` only when you did 
 
 ```bash
 ,codex-llama-cpp                          # default model nemotron-3.5
-,codex-llama-cpp --model qwen3.5-9b       # Unsloth Qwen3.5 9B
-,codex-llama-cpp -m qwen3.5-9b exec "..."  # one-shot
+,codex-llama-cpp --model qwen3.6-35b-a3b       # Unsloth Qwen3.6 35B A3B
+,codex-llama-cpp -m qwen3.6-35b-a3b exec "..."  # one-shot
 ```
 
 ### Cursor launcher (`,cursor-llama-cpp`)
@@ -61,7 +96,7 @@ It routes Cursor through a loopback metadata proxy to `http://${LLAMA_CPP_HOST}:
 
 ```bash
 ,cursor-llama-cpp                          # default model nemotron-3.5
-,cursor-llama-cpp --model qwen3.5-9b       # Unsloth Qwen3.5 9B
+,cursor-llama-cpp --model qwen3.6-35b-a3b   # Unsloth Qwen3.6 35B A3B
 ,cursor-llama-cpp -p "summarize README.md" # one-shot
 ```
 
@@ -77,7 +112,7 @@ The `llama-cpp` provider is declared in both profile sources and flows through t
 | Base URL    | `http://127.0.0.1:8080/v1` |
 | Models      | llama.cpp router ids       |
 
-Each model declares `limit.context` matching the router: `262144` normally, or `131072` for work Qwen3.8 models. `limit.output=32000` preserves OpenCode's native output allowance and enables automatic compaction before the context fills.
+Each model declares `limit.context` matching the router: `262144` normally, or `131072` for work Qwen3.6 models. `limit.output=32000` preserves OpenCode's native output allowance and enables automatic compaction before the context fills.
 
 The provider id avoids a dot (`llama-cpp`, not `llama.cpp`) because OpenCode's SDK derives an incorrect lookup key from dotted ids.
 
@@ -87,7 +122,7 @@ Any subcommand/args pass through.
 
 ```bash
 ,opencode-llama-cpp                            # interactive TUI, default model nemotron-3.5
-,opencode-llama-cpp --model qwen3.5-9b run "…"  # Unsloth Qwen3.5 9B
+,opencode-llama-cpp --model qwen3.6-35b-a3b run "…"  # Unsloth Qwen3.6 35B A3B
 ```
 
 ### Claude Code launcher (`,claude-llama-cpp`)
@@ -122,15 +157,15 @@ The wrapper injects its default `--model $CLAUDE_LLAMA_CPP_MODEL` only when you 
 | `CLAUDE_LLAMA_CPP_MODEL`    | `nemotron-3.5`       | Default model; overridden by a caller `--model`/`-m`, empty to skip |
 | `CLAUDE_LLAMA_CPP_SETTINGS` | model-derived        | Point at an alternate llama.cpp settings file                       |
 
-The wrapper clears inherited `CLAUDE_CODE_AUTO_COMPACT_WINDOW` and `CLAUDE_CODE_MAX_CONTEXT_TOKENS` so an outer hosted session cannot override the local budget. It derives the settings file from the effective model before `--`. `nemotron-3.5` and `qwen3.5-9b` use `~/.claude/settings.llama-cpp.json` with `autoCompactWindow=200000`; `qwen3.8-27b` and `qwen3.8-27b-instruct` use `~/.claude/settings.llama-cpp.qwen3.8.json`, which renders `100000` on work and `200000` on personal.
+The wrapper clears inherited `CLAUDE_CODE_AUTO_COMPACT_WINDOW` and `CLAUDE_CODE_MAX_CONTEXT_TOKENS` so an outer hosted session cannot override the local budget. It derives the settings file from the effective model before `--`. `nemotron-3.5` uses `~/.claude/settings.llama-cpp.json` with `autoCompactWindow=200000`; `qwen3.6-35b-a3b` and `qwen3.6-35b-a3b-instruct` use `~/.claude/settings.llama-cpp.qwen3.6.json`, which renders `100000` on work and `200000` on personal.
 
-`autoCompactWindow=100000` leaves a ~31k token buffer under the work Qwen3.8 131072-token server context. `200000` leaves a ~62k token buffer under the 262144-token server context.
+`autoCompactWindow=100000` leaves a ~31k token buffer under the work Qwen3.6 131072-token server context. `200000` leaves a ~62k token buffer under the 262144-token server context.
 
 `env.CLAUDE_CODE_ATTRIBUTION_HEADER=0` stops Claude Code from prepending a per-request `x-anthropic-billing-header` that would miss the llama.cpp KV cache. Claude Code 2.1.220 copies `--settings` `env` into `process.env` and treats `"0"` as off.
 
 ```bash
 ,claude-llama-cpp                           # interactive session, default model nemotron-3.5
-,claude-llama-cpp --model qwen3.5-9b        # Unsloth Qwen3.5 9B
+,claude-llama-cpp --model qwen3.6-35b-a3b   # Unsloth Qwen3.6 35B A3B
 ,claude-llama-cpp -p "summarize README.md"  # one-shot prompt
 ```
 
@@ -138,6 +173,8 @@ Cloud Claude sessions are unaffected — plain `claude ...` still reads only `~/
 
 ## Sources and verification
 
+- [`home/exact_lib/exact_,llama-cpp/main.sh`](../../../../home/exact_lib/exact_,llama-cpp/main.sh) → `~/lib/,llama-cpp/main.sh` (`serve` binary resolution and `build-prism`)
+- [`home/exact_lib/exact_,llama-cpp/lifecycle.py`](../../../../home/exact_lib/exact_,llama-cpp/lifecycle.py) → `~/lib/,llama-cpp/lifecycle.py` (`run` binary resolution)
 - [`home/exact_bin/executable_,codex`](../../../../home/exact_bin/executable_,codex) → `~/bin/,codex`
 - [`home/exact_lib/exact_,codex/main.py`](../../../../home/exact_lib/exact_,codex/main.py) → `~/lib/,codex/main.py`
 - [`home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl`](../../../../home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl) → `~/.codex/llama-cpp-model-catalog.json` (defines the local llama.cpp router ids and profile-specific context metadata)
@@ -148,5 +185,5 @@ Cloud Claude sessions are unaffected — plain `claude ...` still reads only `~/
 - [`home/dot_config/opencode/readonly_opencode.personal.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.personal.jsonc) / [`readonly_opencode.work.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.work.jsonc) — declare the `llama-cpp` provider
 - [`home/exact_bin/executable_,opencode-llama-cpp`](../../../../home/exact_bin/executable_,opencode-llama-cpp) → `~/bin/,opencode-llama-cpp`
 - [`home/dot_claude/settings.llama-cpp.json.tmpl`](../../../../home/dot_claude/settings.llama-cpp.json.tmpl) → `~/.claude/settings.llama-cpp.json` (base local `autoCompactWindow` and `CLAUDE_CODE_ATTRIBUTION_HEADER=0`)
-- [`home/dot_claude/settings.llama-cpp.qwen3.8.json.tmpl`](../../../../home/dot_claude/settings.llama-cpp.qwen3.8.json.tmpl) → `~/.claude/settings.llama-cpp.qwen3.8.json` (work Qwen3.8 `autoCompactWindow` and `CLAUDE_CODE_ATTRIBUTION_HEADER=0`)
+- [`home/dot_claude/settings.llama-cpp.qwen3.6.json.tmpl`](../../../../home/dot_claude/settings.llama-cpp.qwen3.6.json.tmpl) → `~/.claude/settings.llama-cpp.qwen3.6.json` (work Qwen3.6 `autoCompactWindow` and `CLAUDE_CODE_ATTRIBUTION_HEADER=0`)
 - [`home/exact_bin/executable_,claude-llama-cpp`](../../../../home/exact_bin/executable_,claude-llama-cpp) → `~/bin/,claude-llama-cpp`

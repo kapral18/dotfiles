@@ -7,7 +7,7 @@
 #   -c model_provider=llama-cpp
 # Host/port come from LLAMA_CPP_HOST/PORT. Injects --model $CODEX_LLAMA_CPP_MODEL
 # (default nemotron-3.5) only when the caller did not pass their own --model/-m, so
-# `,codex-llama-cpp --model qwen3.5-9b ...` selects the model with no duplicate
+# `,codex-llama-cpp --model qwen3.6-35b-a3b ...` selects the model with no duplicate
 # flag. The ~/bin/,codex shim still injects the llama.cpp model catalog json.
 
 set -euo pipefail

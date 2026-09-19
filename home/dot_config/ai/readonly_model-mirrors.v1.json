@@ -663,9 +663,8 @@
           "openrouter/deepseek/deepseek-v4.1-flash@preset/deepseek-lanes-max",
           "openrouter/z-ai/glm-5.2@preset/glm-lanes-max",
           "llama-cpp/nemotron-3.5",
-          "llama-cpp/qwen3.5-9b",
-          "llama-cpp/qwen3.8-27b",
-          "llama-cpp/qwen3.8-27b-instruct"
+          "llama-cpp/qwen3.6-35b-a3b",
+          "llama-cpp/qwen3.6-35b-a3b-instruct"
         ],
         "provenance": [
           {
@@ -695,9 +694,8 @@
           "openrouter/deepseek/deepseek-v4.1-flash@preset/deepseek-lanes-max",
           "openrouter/z-ai/glm-5.2@preset/glm-lanes-max",
           "llama-cpp/nemotron-3.5",
-          "llama-cpp/qwen3.5-9b",
-          "llama-cpp/qwen3.8-27b",
-          "llama-cpp/qwen3.8-27b-instruct"
+          "llama-cpp/qwen3.6-35b-a3b",
+          "llama-cpp/qwen3.6-35b-a3b-instruct"
         ],
         "provenance": [
           {
@@ -856,9 +854,8 @@
         "complete": false,
         "models": [
           "nemotron-3.5",
-          "qwen3.5-9b",
-          "qwen3.8-27b",
-          "qwen3.8-27b-instruct"
+          "qwen3.6-35b-a3b",
+          "qwen3.6-35b-a3b-instruct"
         ],
         "provenance": [
           {
@@ -873,9 +870,8 @@
         "complete": true,
         "models": [
           "nemotron-3.5",
-          "qwen3.5-9b",
-          "qwen3.8-27b",
-          "qwen3.8-27b-instruct"
+          "qwen3.6-35b-a3b",
+          "qwen3.6-35b-a3b-instruct"
         ],
         "provenance": [
           {
@@ -897,9 +893,8 @@
         "complete": true,
         "models": [
           "nemotron-3.5",
-          "qwen3.5-9b",
-          "qwen3.8-27b",
-          "qwen3.8-27b-instruct"
+          "qwen3.6-35b-a3b",
+          "qwen3.6-35b-a3b-instruct"
         ],
         "provenance": [
           {

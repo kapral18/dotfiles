@@ -1216,7 +1216,11 @@ class TestModelBandInvariants(unittest.TestCase):
 
                 self.assertEqual({"model", "effort", "context"}, set(session))
                 self.assertIn("/", session["model"], "pi session models are provider/model")
-                self.assertNotIn(":", session["model"], "pi models never carry a `:level` suffix")
+                # An OpenRouter variant tag such as `:free` is part of the id; only a thinking level
+                # after the last colon is a `:level` suffix.
+                self.assertNotIn(
+                    session["model"].rsplit(":", 1)[-1], thinking_levels, "pi models never carry a `:level` suffix"
+                )
                 self.assertIn(session["effort"], thinking_levels)
 
                 for category, row in rows.items():
@@ -1225,15 +1229,18 @@ class TestModelBandInvariants(unittest.TestCase):
                         expected_keys.add("verifier_status")
                     self.assertEqual(expected_keys, set(row), category)
                     self.assertIn("/", row["model"], category)
-                    self.assertNotIn(":", row["model"], category)
+                    self.assertNotIn(row["model"].rsplit(":", 1)[-1], thinking_levels, category)
                     self.assertIn(row["effort"], thinking_levels, category)
                     self.assertEqual("", row["thinking"], category)
                     expected_context = "short" if category in short_context.get(name, {"memory"}) else "long"
                     self.assertEqual(expected_context, row["context"], category)
 
-                implement = (rows["implement"]["model"], rows["implement"]["effort"])
-                self.assertNotEqual(implement, (rows["mechanical"]["model"], rows["mechanical"]["effort"]))
-                self.assertNotEqual(implement, (session["model"], session["effort"]))
+                # A profile that prices a single model has no second pick to keep implement apart
+                # from (`local`, `nvidia-free`: one model on every lane); the rule binds the rest.
+                if len({session["model"], *(row["model"] for row in rows.values())}) > 1:
+                    implement = (rows["implement"]["model"], rows["implement"]["effort"])
+                    self.assertNotEqual(implement, (rows["mechanical"]["model"], rows["mechanical"]["effort"]))
+                    self.assertNotEqual(implement, (session["model"], session["effort"]))
 
                 status = rows["refute"]["verifier_status"]
                 self.assertIn(status, ("cross_family", "reduced_independence", "degraded"))

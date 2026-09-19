@@ -67,7 +67,11 @@ class TestCodexWrapper(unittest.TestCase):
             real_codex = bindir / "codex-real"
             real_codex.write_text("#!/usr/bin/env bash\nprintf 'ARGS=%s\\n' \"$*\"\n")
             real_codex.chmod(0o755)
-            for model in ("nemotron-3.5", "qwen3.5-9b", "qwen3.8-27b", "qwen3.8-27b-instruct"):
+            for model in (
+                "nemotron-3.5",
+                "qwen3.6-35b-a3b",
+                "qwen3.6-35b-a3b-instruct",
+            ):
                 with self.subTest(model=model):
                     result = subprocess.run(
                         [sys.executable, str(CODEX_COMMAND), "--model", model, "exec", "hi"],

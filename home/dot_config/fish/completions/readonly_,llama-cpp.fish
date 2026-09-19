@@ -32,7 +32,7 @@ function __llama_cpp_cp_ids_loaded
         | jq -r '.data[]? | select(.status.value == "loaded") | "\(.id)\tloaded"' 2>/dev/null
 end
 
-set -l __llama_cpp_cp_subs serve run stop status load unload help
+set -l __llama_cpp_cp_subs serve run stop status load unload build-prism help
 
 complete -c ',llama-cpp' -f
 
@@ -49,6 +49,8 @@ complete -c ',llama-cpp' -n "not __fish_seen_subcommand_from $__llama_cpp_cp_sub
 complete -c ',llama-cpp' -n "not __fish_seen_subcommand_from $__llama_cpp_cp_subs" \
     -a unload -d 'Unload a model'
 complete -c ',llama-cpp' -n "not __fish_seen_subcommand_from $__llama_cpp_cp_subs" \
+    -a build-prism -d 'Build and install the PrismML llama.cpp fork server'
+complete -c ',llama-cpp' -n "not __fish_seen_subcommand_from $__llama_cpp_cp_subs" \
     -a help -d 'Show usage'
 
 complete -c ',llama-cpp' -n '__fish_seen_subcommand_from load' \
@@ -64,3 +66,8 @@ complete -c ',llama-cpp' -n '__fish_seen_subcommand_from unload' \
     -a '(__llama_cpp_cp_ids_loaded)'
 complete -c ',llama-cpp' -n '__fish_seen_subcommand_from unload' \
     -s a -l all -d 'Unload every loaded model'
+
+complete -c ',llama-cpp' -n '__fish_seen_subcommand_from build-prism' \
+    -l tag -r -d 'Fork release tag to build (default: newest prism-* tag)'
+complete -c ',llama-cpp' -n '__fish_seen_subcommand_from build-prism' \
+    -s f -l force -d 'Rebuild even when the tag is already installed'

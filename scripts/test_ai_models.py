@@ -342,7 +342,7 @@ class TestAiModels(unittest.TestCase):
             with self.subTest(settings=name):
                 settings = json.loads((REPO / "home/dot_claude" / name).read_text(encoding="utf-8"))
                 assert settings["env"]["CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH"] == "1"
-        for name in ("settings.llama-cpp.json.tmpl", "settings.llama-cpp.qwen3.8.json.tmpl"):
+        for name in ("settings.llama-cpp.json.tmpl", "settings.llama-cpp.qwen3.6.json.tmpl"):
             with self.subTest(settings=name):
                 text = (REPO / "home/dot_claude" / name).read_text(encoding="utf-8")
                 assert '"CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1"' in text

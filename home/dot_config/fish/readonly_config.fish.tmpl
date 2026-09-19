@@ -143,6 +143,17 @@ if type -q pass; and test -z "$OPENROUTER_API_KEY"
     set -gx OPENROUTER_API_KEY (pass openrouter/api/token)
 end
 
+# ------------------------------------
+# NVIDIA NIM API Key Configuration
+# ------------------------------------
+
+# Pi and OMP both ship a built-in `nvidia` provider (integrate.api.nvidia.com) that reads this
+# variable. Stays unset when the active password store has no NIM entry.
+if type -q pass; and test -z "$NVIDIA_API_KEY"
+    set -l nvidia_nim_token (pass nvidia/nim/api/token 2>/dev/null)
+    and set -gx NVIDIA_API_KEY $nvidia_nim_token
+end
+
 {{ if ne .isWork true -}}
 # ------------------------------------
 # Conditional Configurations

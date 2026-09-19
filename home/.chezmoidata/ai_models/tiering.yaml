@@ -373,42 +373,138 @@ category_models:
 # holds for each profile, so switching cannot silently drop a tier.
 pi_model_profiles:
   # Everything on the local llama.cpp router (`,llama-cpp`): no subscription provider, no network.
+  # Qwen3.6 35B-A3B UD-Q5_K_XL carries the session and every lane on one router ID.
+  # Sharing that ID avoids loading separate thinking and instruct presets for this profile.
   local:
     session:
-      model: "llama-cpp/qwen3.8-27b"
-      effort: "high"
+      model: "llama-cpp/qwen3.6-35b-a3b"
+      effort: "off"
       context: "long"
     categories:
       mechanical:
-        model: "llama-cpp/qwen3.5-9b"
-        effort: "high"
-        thinking: ""
+        model: "llama-cpp/qwen3.6-35b-a3b"
+        effort: "off"
+        thinking: "off"
         context: "long"
       research:
-        model: "llama-cpp/qwen3.8-27b"
-        effort: "high"
+        model: "llama-cpp/qwen3.6-35b-a3b"
+        effort: "off"
         thinking: ""
         context: "long"
-      # The instruct build keeps implement distinct from the session and mechanical picks.
+      # Keep thinking off on the same Qwen router ID for every lane.
+      # One model, one effort: implement has nothing to stay distinct from, so the distinctness
+      # rule exempts single-model profiles.
       implement:
-        model: "llama-cpp/qwen3.8-27b-instruct"
-        effort: "high"
-        thinking: ""
+        model: "llama-cpp/qwen3.6-35b-a3b"
+        effort: "off"
+        thinking: "off"
         context: "long"
       review:
-        model: "llama-cpp/qwen3.8-27b"
-        effort: "high"
+        model: "llama-cpp/qwen3.6-35b-a3b"
+        effort: "off"
         thinking: ""
         context: "long"
-      # Qwen only, so the counter cannot be cross-family; Nemotron was dropped as too weak for any lane (user call 2026-09-17).
+      # One model only, so the counter cannot be cross-family.
       refute:
-        model: "llama-cpp/qwen3.8-27b"
-        effort: "max"
+        model: "llama-cpp/qwen3.6-35b-a3b"
+        effort: "off"
         thinking: ""
         context: "long"
         verifier_status: "degraded"
       memory:
-        model: "llama-cpp/qwen3.5-9b"
+        model: "llama-cpp/qwen3.6-35b-a3b"
+        effort: "off"
+        thinking: "off"
+        context: "short"
+  # Everything on OpenRouter `:free` variants: zero-cost, rate-limited upstream, and only as stable as
+  # OpenRouter's free roster. `:free` is part of the model id, not a thinking level: Pi exact-matches
+  # the id before it splits on the last colon, so `…:free:high` still resolves. Picks are the free ids
+  # that completed a tool call through `pi` on 2026-09-18 (user call). Rejected that day: every
+  # Nemotron, Inkling and Laguna free id (blocked by the account's OpenRouter free-model training
+  # privacy setting), `z-ai/glm-5.2:free` (no tool-use endpoint), both MiniMax ids (no longer free),
+  # Qwen3.8 27B and Gemma 4 31B (upstream 429).
+  openrouter-free:
+    session:
+      model: "openrouter/deepseek/deepseek-v4-flash-0731:free"
+      effort: "high"
+      context: "long"
+    categories:
+      mechanical:
+        model: "openrouter/nex-agi/nex-n2.5-mini:free"
+        effort: "high"
+        thinking: ""
+        context: "long"
+      research:
+        model: "openrouter/deepseek/deepseek-v4-flash-0731:free"
+        effort: "max"
+        thinking: ""
+        context: "long"
+      # Nex N2.5 Pro keeps implement distinct from the session and mechanical picks and spreads load
+      # across a second free rate-limit bucket.
+      implement:
+        model: "openrouter/nex-agi/nex-n2.5-pro:free"
+        effort: "high"
+        thinking: ""
+        context: "long"
+      review:
+        model: "openrouter/deepseek/deepseek-v4-flash-0731:free"
+        effort: "max"
+        thinking: ""
+        context: "long"
+      # Nex counters the DeepSeek review lane: a different vendor family.
+      refute:
+        model: "openrouter/nex-agi/nex-n2.5-pro:free"
+        effort: "high"
+        thinking: ""
+        context: "long"
+        verifier_status: "cross_family"
+      memory:
+        model: "openrouter/nex-agi/nex-n2.5-mini:free"
+        effort: "high"
+        thinking: ""
+        context: "short"
+  # Everything on NVIDIA NIM's free hosted endpoints through Pi's built-in `nvidia` provider, keyed by
+  # `NVIDIA_API_KEY` (fish exports it from the `nvidia/nim/api/token` pass entry). GLM 5.3 Flash is the
+  # superior NIM model and the fastest endpoint probed (tool call in 1s direct, ~11s through `pi` at
+  # high, xhigh and max). Every lane is free, so it carries all of them (user call 2026-09-19).
+  # Not responding on NIM that day: GLM 5.3 and Kimi K3 (no bytes in 240s), DeepSeek V4 Pro and
+  # MiniMax M3 (410), Kimi K2.6 (404). DeepSeek V4 Flash worked but was slow (87s per tool call).
+  nvidia-free:
+    session:
+      model: "nvidia/z-ai/glm-5.3-flash"
+      effort: "high"
+      context: "long"
+    categories:
+      mechanical:
+        model: "nvidia/z-ai/glm-5.3-flash"
+        effort: "high"
+        thinking: ""
+        context: "long"
+      research:
+        model: "nvidia/z-ai/glm-5.3-flash"
+        effort: "max"
+        thinking: ""
+        context: "long"
+      # One model on every lane, so implement has nothing to stay distinct from (single-model rule).
+      implement:
+        model: "nvidia/z-ai/glm-5.3-flash"
+        effort: "high"
+        thinking: ""
+        context: "long"
+      review:
+        model: "nvidia/z-ai/glm-5.3-flash"
+        effort: "max"
+        thinking: ""
+        context: "long"
+      # Same model as review, so the counter cannot be cross-family.
+      refute:
+        model: "nvidia/z-ai/glm-5.3-flash"
+        effort: "high"
+        thinking: ""
+        context: "long"
+        verifier_status: "degraded"
+      memory:
+        model: "nvidia/z-ai/glm-5.3-flash"
         effort: "high"
         thinking: ""
         context: "short"
