@@ -22,9 +22,7 @@ AGENT_MEMORY = REPO / "scripts" / "agent_memory.py"
 SPEC_ROOT = Path(
     os.environ.get("AGENT_MEMORY_SPEC_ROOT") or Path(os.environ.get("TMPDIR", "/tmp")) / "agent-hook-specs-agent-hooks"
 )
-PARENT_SESSION_ENV = "COPILOT_AGENT_SESSION_ID"
 KEEP_PI_CHILD_ENV = "AGENT_HOOK_TEST_KEEP_PI_CHILD"
-KEEP_PARENT_SESSION_ENV = "AGENT_HOOK_TEST_KEEP_COPILOT_PARENT"
 GH_STUB_LOGIN = "gh-stub-login"
 
 
@@ -41,12 +39,7 @@ GH_STUB_DIR = _make_gh_stub_dir()
 
 
 def hook_env(env: dict | None = None) -> dict:
-    effective_env = dict(os.environ) if env is None else dict(env)
-    parent_session = effective_env.get(PARENT_SESSION_ENV, "")
-    keep_parent_session = effective_env.pop(KEEP_PARENT_SESSION_ENV, "") == "1"
-    effective_env.pop(PARENT_SESSION_ENV, None)
-    if keep_parent_session and parent_session:
-        effective_env[PARENT_SESSION_ENV] = parent_session
+    effective_env = dict(env) if env is not None else dict(os.environ)
     # Hook subprocesses simulate explicit root/leaf payloads: the ambient leaf signals of
     # the test runner itself (notably PI_SUBAGENT_CHILD when the suite runs inside a Pi
     # child) must not leak in, or every root-shaped probe reads as a leaf. Leaf tests set
@@ -76,10 +69,11 @@ def run_hook(name: str, payload: dict, env: dict | None = None) -> dict:
     return json.loads(result.stdout or "{}")
 
 
-def keep_parent_env(parent_session: str) -> dict:
+def pi_child_env() -> dict:
+    """Env whose only leaf signal is Pi's native child marker (`PI_SUBAGENT_CHILD`)."""
     env = dict(os.environ)
-    env[PARENT_SESSION_ENV] = parent_session
-    env[KEEP_PARENT_SESSION_ENV] = "1"
+    env["PI_SUBAGENT_CHILD"] = "1"
+    env[KEEP_PI_CHILD_ENV] = "1"
     return env
 
 
@@ -504,54 +498,6 @@ class TestAgentHooks(unittest.TestCase):
             assert not (spec_dir / "current.worklog.jsonl").exists()
             assert (spec_dir / "session-abc-123.worklog.jsonl").exists()
 
-    def test_worklog_recorder_uses_parent_selected_topic_for_copilot_subagent_writes(self):
-        with self.make_git_workspace("main") as tmp:
-            workspace = str(Path(tmp).resolve())
-            spec_dir = SPEC_ROOT / workspace.lstrip("/")
-            spec_dir.mkdir(parents=True, exist_ok=True)
-            parent_session = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
-            bind_session_topic(spec_dir, parent_session, "kibana-pr-review-277247")
-            payload = {
-                "session_id": "toolu_01EoFakeSubagentCall",
-                "hook_event_name": "postToolUse",
-                "workspace_roots": [tmp],
-                "tool_name": "Shell",
-                "tool_input": {"command": "printf subagent"},
-                "tool_output": "ok",
-            }
-
-            assert run_hook("executable_worklog_recorder.py", payload, env=keep_parent_env(parent_session)) == {}
-            flush_worklog(spec_dir)
-            entries = worklog_entries(spec_dir / "kibana-pr-review-277247.worklog.jsonl")
-
-            assert len(entries) == 1
-            assert entries[0]["topic"] == "kibana-pr-review-277247"
-            assert entries[0]["session_key"] == "toolu_01EoFakeSubagentCall"
-            assert not (spec_dir / "session-toolu_01EoFakeSubagentCa.worklog.jsonl").exists()
-
-    def test_worklog_recorder_uses_parent_fallback_bucket_for_unselected_copilot_subagent_on_default_branch(self):
-        with self.make_git_workspace("main") as tmp:
-            workspace = str(Path(tmp).resolve())
-            spec_dir = SPEC_ROOT / workspace.lstrip("/")
-            parent_session = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
-            parent_bucket = f"session-{parent_session[:24]}"
-            payload = {
-                "session_id": "toolu_01EoFakeSubagentCall",
-                "hook_event_name": "postToolUse",
-                "workspace_roots": [tmp],
-                "tool_name": "Shell",
-                "tool_input": {"command": "printf fallback"},
-                "tool_output": "ok",
-            }
-
-            assert run_hook("executable_worklog_recorder.py", payload, env=keep_parent_env(parent_session)) == {}
-            flush_worklog(spec_dir)
-            entries = worklog_entries(spec_dir / f"{parent_bucket}.worklog.jsonl")
-
-            assert entries[0]["topic"] == parent_bucket
-            assert entries[0]["session_key"] == "toolu_01EoFakeSubagentCall"
-            assert not (spec_dir / "session-toolu_01EoFakeSubagentCa.worklog.jsonl").exists()
-
     def test_worklog_recorder_without_parent_env_keeps_payload_session_fallback(self):
         with self.make_git_workspace("main") as tmp:
             workspace = str(Path(tmp).resolve())
@@ -570,14 +516,14 @@ class TestAgentHooks(unittest.TestCase):
 
             assert (spec_dir / "session-toolu_01EoFakeSubagentCa.worklog.jsonl").exists()
 
-    def test_worklog_recorder_payload_selection_wins_over_parent_selection(self):
+    def test_worklog_recorder_payload_selection_wins_over_another_session_selection(self):
         with self.make_git_workspace("main") as tmp:
             workspace = str(Path(tmp).resolve())
             spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             parent_session = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
             payload_session = "toolu_01EoFakeSubagentCall"
-            bind_session_topic(spec_dir, parent_session, "parent-topic")
+            bind_session_topic(spec_dir, parent_session, "other-topic")
             bind_session_topic(spec_dir, payload_session, "payload-topic")
             payload = {
                 "session_id": payload_session,
@@ -588,17 +534,17 @@ class TestAgentHooks(unittest.TestCase):
                 "tool_output": "ok",
             }
 
-            assert run_hook("executable_worklog_recorder.py", payload, env=keep_parent_env(parent_session)) == {}
+            assert run_hook("executable_worklog_recorder.py", payload) == {}
             flush_worklog(spec_dir)
 
             assert (spec_dir / "payload-topic.worklog.jsonl").exists()
-            assert not (spec_dir / "parent-topic.worklog.jsonl").exists()
+            assert not (spec_dir / "other-topic.worklog.jsonl").exists()
 
     def test_worklog_recorder_keeps_current_topic_on_feature_branch_without_selections(self):
         with self.make_git_workspace("feature/worklog-parent") as tmp:
             workspace = str(Path(tmp).resolve())
             spec_dir = SPEC_ROOT / workspace.lstrip("/")
-            parent_session = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
+            other_session = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
             payload = {
                 "session_id": "toolu_01EoFakeSubagentCall",
                 "hook_event_name": "postToolUse",
@@ -608,30 +554,27 @@ class TestAgentHooks(unittest.TestCase):
                 "tool_output": "ok",
             }
 
-            assert run_hook("executable_worklog_recorder.py", payload, env=keep_parent_env(parent_session)) == {}
+            assert run_hook("executable_worklog_recorder.py", payload) == {}
             flush_worklog(spec_dir)
 
             assert (spec_dir / "current.worklog.jsonl").exists()
-            assert not (spec_dir / f"session-{parent_session[:24]}.worklog.jsonl").exists()
+            assert not (spec_dir / f"session-{other_session[:24]}.worklog.jsonl").exists()
 
-    def test_read_topic_paths_ignore_parent_session_env(self):
+    def test_read_topic_paths_use_the_payload_session_fallback_on_a_default_branch(self):
         with self.make_git_workspace("main") as tmp:
             workspace = str(Path(tmp).resolve())
             spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
-            parent_session = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
-            bind_session_topic(spec_dir, parent_session, "parent-topic")
+            bind_session_topic(spec_dir, "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5", "other-topic")
             payload = {
                 "session_id": "toolu_01EoFakeSubagentCall",
                 "hook_event_name": "SessionStart",
                 "workspace_roots": [tmp],
             }
 
-            without_parent = topic_paths_result(payload)
-            with_parent = topic_paths_result(payload, env=keep_parent_env(parent_session))
+            resolved = topic_paths_result(payload)
 
-            self.assertEqual(with_parent, without_parent)
-            self.assertEqual(with_parent["topic"], "session-toolu_01EoFakeSubagentCa")
+            self.assertEqual(resolved["topic"], "session-toolu_01EoFakeSubagentCa")
 
     def test_worklog_recorder_does_not_write_to_workspace_active_topic_for_unbound_session(self):
         with self.make_git_workspace("main") as tmp:
@@ -1298,7 +1241,7 @@ class TestAgentHooks(unittest.TestCase):
             )
 
     def test_read_gate_keyless_leaf_is_never_refused_while_roots_and_keyed_leaves_stay_gated(self):
-        # A leaf signalled only by env (Pi child, Copilot child) has no distinct ledger key:
+        # A leaf signalled only by env (Pi child) has no distinct ledger key:
         # gating is disabled for it rather than merged into the parent's ledger, so its
         # first read of a root-read file is never refused (D6). Roots and `agent_id` leaves
         # keep their own ledgers and their own blocks.
@@ -1314,14 +1257,9 @@ class TestAgentHooks(unittest.TestCase):
             self._record_result(transcript, "r1", stdout="hello\n")
             root_pre = {**cat, "hook_event_name": "PreToolUse"}
             self.assertEqual(self._gate(root_pre)["decision"], "block")
-            for label, env in (
-                ("pi-child", {**hook_env(), "PI_SUBAGENT_CHILD": "1", KEEP_PI_CHILD_ENV: "1"}),
-                ("copilot-child", keep_parent_env("gate-root")),
-            ):
+            for label, env in (("pi-child", {**hook_env(), "PI_SUBAGENT_CHILD": "1", KEEP_PI_CHILD_ENV: "1"}),):
                 with self.subTest(leaf=label):
                     payload = dict(root_pre)
-                    if label == "copilot-child":
-                        payload["session_id"] = "gate-child"
                     self.assertEqual(self._gate(payload, env=env), {})
                     self.assertEqual(
                         self._gate(
@@ -1335,8 +1273,6 @@ class TestAgentHooks(unittest.TestCase):
                         ),
                         {},
                     )
-            # Root with an ambient parent env equal to its own session key is still the root: gated.
-            self.assertEqual(self._gate(root_pre, env=keep_parent_env("gate-root"))["decision"], "block")
             # A keyed leaf keeps gating on its own ledger: first read allowed, identical second blocked.
             keyed = {**root_pre, "agent_id": "leaf-77"}
             self.assertEqual(self._gate(keyed), {})
@@ -1347,8 +1283,7 @@ class TestAgentHooks(unittest.TestCase):
             self.assertEqual(self._gate(keyed)["decision"], "block")
 
     def test_leaf_predicate_is_shared_by_band_publish_read_and_session_hooks(self):
-        # One owner (`hook_common.is_delegated_leaf`): every hook reads the same three signals
-        # and the same root exception (ambient parent env naming this very session).
+        # One owner (`hook_common.is_delegated_leaf`): every hook reads the same two signals.
         sys.path.insert(0, str(HOOKS))
         try:
             import hook_common
@@ -1356,15 +1291,12 @@ class TestAgentHooks(unittest.TestCase):
             sys.path.pop(0)
         cases = [
             ({"agent_id": "a1", "session_id": "s"}, {}, True),
-            ({"session_id": "child"}, {PARENT_SESSION_ENV: "parent"}, True),
-            ({}, {PARENT_SESSION_ENV: "parent"}, True),
-            ({"session_id": "parent"}, {PARENT_SESSION_ENV: "parent"}, False),
             ({"session_id": "s"}, {"PI_SUBAGENT_CHILD": "1"}, True),
             ({"session_id": "s"}, {}, False),
         ]
         for payload, env, expected in cases:
             with self.subTest(payload=payload, env=env):
-                saved = {k: os.environ.get(k) for k in (PARENT_SESSION_ENV, "PI_SUBAGENT_CHILD")}
+                saved = {k: os.environ.get(k) for k in ("PI_SUBAGENT_CHILD",)}
                 for k in saved:
                     os.environ.pop(k, None)
                 os.environ.update(env)
@@ -1376,9 +1308,10 @@ class TestAgentHooks(unittest.TestCase):
                             os.environ.pop(k, None)
                         else:
                             os.environ[k] = v
-        # Behavioural unity: the same Copilot-child env flips every hook to its leaf branch,
-        # and the root-ambient exception (own key == parent) flips all of them back.
-        child_env = keep_parent_env("parent")
+        # Behavioural unity: the same Pi-child env flips every hook to its leaf branch,
+        # and its absence flips all of them back.
+        child_env = pi_child_env()
+        root_env = hook_env()
         band = {"tool_name": "Agent", "tool_input": {"subagent_type": "worker", "prompt": "x"}}
         band_env = {**child_env, "AGENT_BAND_HARNESS": "claude_code"}
         self.assertEqual(
@@ -1388,7 +1321,11 @@ class TestAgentHooks(unittest.TestCase):
             "deny",
         )
         self.assertNotEqual(
-            run_hook("executable_band_gate.py", {**band, "session_id": "parent"}, env=band_env)
+            run_hook(
+                "executable_band_gate.py",
+                {**band, "session_id": "parent"},
+                env={**root_env, "AGENT_BAND_HARNESS": "claude_code"},
+            )
             .get("hookSpecificOutput", {})
             .get("permissionDecision"),
             "deny",
@@ -1405,7 +1342,7 @@ class TestAgentHooks(unittest.TestCase):
             "deny",
         )
         self.assertNotEqual(
-            run_hook("executable_publish_gate.py", {**publish, "session_id": "parent"}, env=child_env)
+            run_hook("executable_publish_gate.py", {**publish, "session_id": "parent"}, env=root_env)
             .get("hookSpecificOutput", {})
             .get("permissionDecision"),
             "deny",
@@ -1419,7 +1356,7 @@ class TestAgentHooks(unittest.TestCase):
             }
             self.assertEqual(run_hook("executable_session_context.py", ctx, env=child_env), {})
             self.assertNotEqual(
-                run_hook("executable_session_context.py", {**ctx, "session_id": "parent"}, env=child_env), {}
+                run_hook("executable_session_context.py", {**ctx, "session_id": "parent"}, env=root_env), {}
             )
 
     def test_read_gate_cursor_events_use_store_db_history_and_stop_shrink(self):
@@ -1486,54 +1423,6 @@ class TestAgentHooks(unittest.TestCase):
             self._gate(stop, env=env)
             self._gate({**stop, "cache_read_tokens": 20000}, env=env)
             self.assertEqual(self._gate(read, env=env), {"permission": "allow"})
-
-    def test_read_gate_copilot_events_verify_history_and_respect_compaction(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            target = Path(tmp) / "c.txt"
-            target.write_text("line one\nline two\n")
-            events = Path(tmp) / "events.jsonl"
-            base = {
-                "session_id": "cop-1",
-                "workspace_roots": [tmp],
-                "transcript_path": str(events),
-                "tool_name": "view",
-                "tool_input": {"path": str(target)},
-            }
-            self._gate({**base, "hook_event_name": "PostToolUse", "tool_response": target.read_text()})
-            with events.open("a") as handle:
-                handle.write(
-                    json.dumps(
-                        {
-                            "type": "tool.execution_complete",
-                            "timestamp": "2099-01-01T00:00:00.000Z",
-                            "data": {
-                                "toolCallId": "call_1",
-                                "success": True,
-                                "result": {"content": target.read_text()},
-                            },
-                        }
-                    )
-                    + "\n"
-                )
-            self.assertEqual(
-                self._gate({**base, "hook_event_name": "PreToolUse"})["hookSpecificOutput"]["permissionDecision"],
-                "deny",
-            )
-            # Copilot's ranged read (view_range) is the escape hatch and must pass.
-            self.assertEqual(
-                self._gate(
-                    {**base, "hook_event_name": "PreToolUse", "tool_input": {"path": str(target), "view_range": [1, 2]}}
-                ),
-                {},
-            )
-            with events.open("a") as handle:
-                handle.write(
-                    json.dumps(
-                        {"type": "session.compaction_complete", "timestamp": "2099-01-02T00:00:00.000Z", "data": {}}
-                    )
-                    + "\n"
-                )
-            self.assertEqual(self._gate({**base, "hook_event_name": "PreToolUse"}), {})
 
     def test_read_gate_opencode_payloads_verify_the_part_store_and_unwrap_the_read_envelope(self):
         import sqlite3
@@ -1735,7 +1624,7 @@ class TestAgentHooks(unittest.TestCase):
             assert grown["hookSpecificOutput"]["additionalContext"].startswith("PREFIX_SENTINEL_REINFORCE")
 
     def test_perturn_reinforcement_falls_back_to_a_prompt_interval_without_usage(self):
-        # Cursor/Copilot payloads carry no transcript; the interval is the documented proxy.
+        # Cursor payloads carry no transcript; the interval is the documented proxy.
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
             spec_dir = SPEC_ROOT / workspace.lstrip("/")
@@ -1777,7 +1666,7 @@ class TestAgentHooks(unittest.TestCase):
     def test_session_context_leaf_suppresses_delegation_blocks(self):
         """Delegation text is root-only: a leaf gets none of it, the root gets it marked.
 
-        Any leaf signal (`agent_id`, Copilot parent session, Pi child) returns before
+        Any leaf signal (`agent_id`, Pi child) returns before
         spec, HANDOFF, worklog, or auto_bind: a leaf never inherits parent context.
         """
         marker = "[ROOT ONLY] A delegated leaf ignores this block and returns findings to its parent instead."
@@ -1793,9 +1682,9 @@ class TestAgentHooks(unittest.TestCase):
                 "workspace_roots": [tmp],
                 "session_id": "leaf-session",
             }
-            leaf_env = {**keep_parent_env("copilot-parent-session"), "AI_AGENT_DEPTH": "fast"}
+            leaf_env = {**pi_child_env(), "AI_AGENT_DEPTH": "fast"}
             root_env = {**os.environ, "AI_AGENT_DEPTH": "fast"}
-            # A Copilot-signal leaf returns before any context: no spec, no HANDOFF,
+            # A Pi-signal leaf returns before any context: no spec, no HANDOFF,
             # no worklog tail, no auto_bind into the parent bucket.
             assert run_hook("executable_session_context.py", payload, env=leaf_env) == {}
             root = run_hook("executable_session_context.py", payload, env=root_env)["additional_context"]
@@ -1810,7 +1699,7 @@ class TestAgentHooks(unittest.TestCase):
 
         At `balanced` the startup warm start and per-turn recall both retrieve and stage, so
         this is the depth where a missing child guard would leak delegation text into a child
-        and write session state on its behalf. A Copilot-signal leaf returns before any
+        and write session state on its behalf. A Pi-signal leaf returns before any
         context (no spec, no HANDOFF, no staging); the root at the same depth is the
         control and keeps the marked blocks plus staged recall.
         """
@@ -1869,7 +1758,7 @@ class TestAgentHooks(unittest.TestCase):
                 )
                 return startup, perturn
 
-            leaf_key, leaf_root, leaf_env = fixture("leaf", keep_parent_env("copilot-parent-balanced"))
+            leaf_key, leaf_root, leaf_env = fixture("leaf", pi_child_env())
             root_key, root_spec_root, root_env = fixture("root", dict(os.environ))
             before = sorted(str(path.relative_to(leaf_root)) for path in leaf_root.rglob("*"))
             leaf_startup = run_hook(
@@ -2193,56 +2082,7 @@ class TestAgentHooks(unittest.TestCase):
             assert "pr-anchor-gate" not in content
             assert "pulls/.*/(reviews|comments)" not in content
 
-        assert not (
-            REPO / "home" / "private_dot_copilot" / "exact_hooks" / "executable_copilot-pr-anchor-gate.sh"
-        ).exists()
         assert not (HOOKS / "executable_gemini-pr-anchor-gate.sh").exists()
-
-    def test_copilot_agent_memory_extension_maps_sdk_payloads(self):
-        extension = REPO / "home/private_dot_copilot/exact_extensions/exact_agent-memory/readonly_extension.mjs"
-        script = """
-process.env.COPILOT_AGENT_MEMORY_EXTENSION_TEST = "1";
-const mod = await import(process.argv[1]);
-const sessionStart = mod.sessionStartPayload({
-  sessionId: "copilot-session",
-  workingDirectory: "/tmp/workspace",
-  source: "new",
-  initialPrompt: "hello"
-});
-const postTool = mod.postToolUsePayload({
-  sessionId: "copilot-session",
-  workingDirectory: "/tmp/workspace",
-  toolName: "bash",
-  toolArgs: { command: "printf ok" },
-  toolResult: { textResultForLlm: "ok", resultType: "success" }
-});
-const failedTool = mod.postToolUseFailurePayload({
-  sessionId: "copilot-session",
-  workingDirectory: "/tmp/workspace",
-  toolName: "bash",
-  toolArgs: { command: "false" },
-  error: "exit 1"
-});
-console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
-"""
-        result = subprocess.run(
-            ["node", "--input-type=module", "-e", script, str(extension)],
-            cwd=str(REPO),
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        payload = json.loads(result.stdout)
-
-        assert payload["sessionStart"]["session_id"] == "copilot-session"
-        assert payload["sessionStart"]["workspace_roots"] == ["/tmp/workspace"]
-        assert payload["sessionStart"]["initial_prompt"] == "hello"
-        assert payload["sessionStart"]["warm_embedder"] is True
-        assert payload["postTool"]["tool_name"] == "bash"
-        assert payload["postTool"]["tool_input"] == {"command": "printf ok"}
-        assert payload["postTool"]["tool_output"] == "ok"
-        assert payload["failedTool"]["hook_event_name"] == "postToolUseFailure"
-        assert payload["failedTool"]["error_message"] == "exit 1"
 
     def test_perturn_recall_without_session_key_stages_nothing_and_injects_nothing(self):
         # Staging is session-scoped state: without a session key there is nothing to
@@ -3006,24 +2846,24 @@ const mod = await import(process.argv[1]);
 const handlers = {}; await mod.default({ on(k, v) { handlers[k] = v } });
 const appended = [];
 const makeCtx = (leaf) => ({
-  model: { provider: 'github-copilot', id: 'claude-fable-5.1' },
+  model: { provider: 'anthropic', id: 'claude-fable-5.1' },
   sessionManager: { getLeafEntry: () => leaf, appendModelChange: (p, m) => { appended.push(`${p}/${m}`); return 'id'; } },
 });
-const assistant = (model) => ({ role: 'assistant', provider: 'github-copilot', model, content: [] });
+const assistant = (model) => ({ role: 'assistant', provider: 'anthropic', model, content: [] });
 const user = { role: 'user', content: 'hi' };
-// Echo diverges (Copilot returns Anthropic's hyphenated id): re-pin the catalog id once.
+// Echo diverges (the provider returns a hyphenated id): re-pin the catalog id once.
 await handlers.agent_end({ type: 'agent_end', messages: [user, assistant('claude-fable-5-1')] }, makeCtx({ type: 'message' }));
-assert.deepEqual(appended, ['github-copilot/claude-fable-5.1']);
+assert.deepEqual(appended, ['anthropic/claude-fable-5.1']);
 // Echo matches: nothing appended.
 await handlers.agent_end({ type: 'agent_end', messages: [user, assistant('claude-fable-5.1')] }, makeCtx({ type: 'message' }));
 assert.equal(appended.length, 1);
 // Leaf already pins this exact model: nothing appended.
 await handlers.agent_end({ type: 'agent_end', messages: [user, assistant('claude-fable-5-1')] },
-  makeCtx({ type: 'model_change', provider: 'github-copilot', modelId: 'claude-fable-5.1' }));
+  makeCtx({ type: 'model_change', provider: 'anthropic', modelId: 'claude-fable-5.1' }));
 assert.equal(appended.length, 1);
 // Leaf pins a different model: re-pin.
 await handlers.agent_end({ type: 'agent_end', messages: [user, assistant('claude-fable-5-1')] },
-  makeCtx({ type: 'model_change', provider: 'github-copilot', modelId: 'gemini-3.8-flash' }));
+  makeCtx({ type: 'model_change', provider: 'anthropic', modelId: 'gemini-3.8-flash' }));
 assert.equal(appended.length, 2);
 // Last assistant message wins over earlier ones; no assistant message or no model: no-op.
 await handlers.agent_end({ type: 'agent_end', messages: [assistant('claude-fable-5-1'), user, assistant('claude-fable-5.1')] }, makeCtx({ type: 'message' }));
@@ -3175,7 +3015,6 @@ print('clean-room/context table passed')
     // Children must neither retrieve nor receive root workflow hints.
     const searchesBeforeLeaf=await readFile(searchLog,'utf8');
     process.env.PI_SUBAGENT_CHILD='1';assert.equal(await content(),'');delete process.env.PI_SUBAGENT_CHILD;
-    process.env.COPILOT_AGENT_SESSION_ID='parent';assert.equal(await content(),'');delete process.env.COPILOT_AGENT_SESSION_ID;
     assert.equal(await handlers.before_agent_start({prompt:'Did you verify?',systemPrompt:'[DELEGATION BOUNDARY]'},ctx),undefined);
     assert.equal(await readFile(searchLog,'utf8'),searchesBeforeLeaf);
     // A successful empty hook is not a disabled hook.
@@ -4263,16 +4102,16 @@ class PublishGateTests(unittest.TestCase):
         )
         self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
         self.assertIn("slack_send_message", out["hookSpecificOutput"]["permissionDecisionReason"])
-        # Copilot sub-agent: the parent session env marks the leaf.
+        # Pi sub-agent: the native child marker marks the leaf.
         out = run_hook(
             "executable_publish_gate.py",
             self.bash("gh issue create --title t --body b"),
-            env=keep_parent_env("parent-session"),
+            env=pi_child_env(),
         )
         self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
 
     def test_leaf_bash_tool_name_is_gated_on_every_wired_harness(self):
-        # Pi, OMP, OpenCode and Copilot pass the lowercase `bash` tool name; Claude/Codex pass
+        # Pi, OMP and OpenCode pass the lowercase `bash` tool name; Claude/Codex pass
         # `Bash`/`shell`. All must reach the publication surface, or the leaf denial is a no-op.
         for tool_name in ("bash", "Bash", "shell", "run_command"):
             with self.subTest(tool_name=tool_name):
@@ -4285,17 +4124,6 @@ class PublishGateTests(unittest.TestCase):
                     },
                 )
                 self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
-
-    def test_copilot_root_with_ambient_parent_env_is_not_a_leaf(self):
-        # COPILOT_AGENT_SESSION_ID names the PARENT session. A call whose own session
-        # key equals it is the root itself (ambient env), so publication is gated as
-        # root (checklist context), never denied as a leaf; a distinct key is a child.
-        root_payload = {**self.bash("gh issue create --title t --body b"), "session_id": "parent-session"}
-        out = run_hook("executable_publish_gate.py", root_payload, env=keep_parent_env("parent-session"))
-        self.assertNotEqual(out.get("hookSpecificOutput", {}).get("permissionDecision"), "deny")
-        child_payload = {**self.bash("gh issue create --title t --body b"), "session_id": "child-session"}
-        out = run_hook("executable_publish_gate.py", child_payload, env=keep_parent_env("parent-session"))
-        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
 
     def test_codex_output_mode_keeps_only_hook_specific_output(self):
         env = dict(os.environ)
@@ -4389,15 +4217,6 @@ class BandGateTests(unittest.TestCase):
             },
             "cursor": {"agents": {"bugbot": {"category": "review", "model": "claude-opus-5-high", "effort": "high"}}},
             "codex": {"agents": {"explorer": {"category": "research", "model": "gpt-5.4", "effort": "high"}}},
-            "copilot": {
-                "agents": {
-                    "explore": {
-                        "category": "research",
-                        "model": "gpt-5.3-codex",
-                        "effort": "high",
-                    }
-                }
-            },
             "pi": {
                 "agents": {
                     "explorer": {
@@ -4443,7 +4262,6 @@ class BandGateTests(unittest.TestCase):
                 # must not inherit the runner's ambient leaf signals (leaf cases set
                 # theirs explicitly per call).
                 "PI_SUBAGENT_CHILD",
-                "COPILOT_AGENT_SESSION_ID",
             }
             env = {key: value for key, value in os.environ.items() if key not in excluded_env}
             env.update(override or {})
@@ -4460,11 +4278,10 @@ class BandGateTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             return json.loads(result.stdout or "{}")
 
-    def test_band_gate_denies_env_signalled_leaves_and_admits_the_copilot_root(self):
+    def test_band_gate_denies_env_signalled_leaves_and_admits_the_root(self):
         # `BandGateTests.gate` strips the leaf env for every probe, so the shared predicate's
-        # env half was never exercised here. Drive the hook directly: a Pi child and a Copilot
-        # child (distinct session key) are denied; the Copilot root with its own key ambient is
-        # admitted and its off-band `model` is rewritten to the lane alias like any root.
+        # env half was never exercised here. Drive the hook directly: a Pi child is denied;
+        # the root is admitted and its off-band `model` is rewritten to the lane alias.
         payload = {
             "tool_name": "Agent",
             "tool_input": {"subagent_type": "worker", "prompt": "x"},
@@ -4475,7 +4292,6 @@ class BandGateTests(unittest.TestCase):
                 "pi-child",
                 {**hook_env(), "AGENT_BAND_HARNESS": "claude_code", "PI_SUBAGENT_CHILD": "1", KEEP_PI_CHILD_ENV: "1"},
             ),
-            ("copilot-child", {**keep_parent_env("parent"), "AGENT_BAND_HARNESS": "claude_code"}),
         ):
             with self.subTest(leaf=label):
                 out = run_hook("executable_band_gate.py", payload, env=env)
@@ -4491,7 +4307,7 @@ class BandGateTests(unittest.TestCase):
                     "tool_input": {"subagent_type": "Explore", "prompt": "x", "model": "haiku"},
                     "session_id": "parent",
                 },
-                env={**keep_parent_env("parent"), "AGENT_BAND_HARNESS": "claude_code", "AGENT_BANDS_FILE": str(bands)},
+                env={**hook_env(), "AGENT_BAND_HARNESS": "claude_code", "AGENT_BANDS_FILE": str(bands)},
             )
         self.assertEqual(root["hookSpecificOutput"]["updatedInput"]["model"], "fable")
         self.assertNotIn("permissionDecision", root["hookSpecificOutput"])
@@ -4667,7 +4483,7 @@ class BandGateTests(unittest.TestCase):
 
     def test_deployed_claude_projection_clamps_upward_alias_escapes(self):
         projection = json.loads((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_text(encoding="utf-8"))
-        for agent, asked, clamped in (("cli_help", "fable", "sonnet"), ("general-purpose", "fable", "opus")):
+        for agent, asked, clamped in (("cli_help", "opus", "sonnet"), ("general-purpose", "opus", "sonnet")):
             with self.subTest(agent=agent, asked=asked):
                 answer = self.gate(
                     "claude_code",
@@ -4679,10 +4495,10 @@ class BandGateTests(unittest.TestCase):
         self.assertEqual(
             self.gate(
                 "claude_code",
-                {"tool_name": "Agent", "tool_input": {"subagent_type": "Explore", "model": "opus"}},
+                {"tool_name": "Agent", "tool_input": {"subagent_type": "Explore", "model": "fable"}},
                 projection=projection,
             )["hookSpecificOutput"]["updatedInput"]["model"],
-            "fable",
+            "opus",
         )
 
     def test_claude_leaves_an_unqualified_call_alone_so_the_profile_keeps_the_exact_id(self):
@@ -4745,55 +4561,24 @@ class BandGateTests(unittest.TestCase):
         self.assertEqual(mechanical["alias"], memory["alias"])
         self.assertNotEqual(mechanical["effort"], memory["effort"])
 
-    def test_copilot_answers_with_modified_args(self):
-        answer = self.gate(
-            "copilot",
-            {"tool_name": "task", "tool_input": {"agent_type": "explore", "prompt": "p"}},
-        )
-        self.assertEqual(
-            answer["modifiedArgs"],
-            {
-                "agent_type": "explore",
-                "prompt": "p",
-                "model": "gpt-5.3-codex",
-                "reasoning_effort": "high",
-            },
-        )
-
-    def test_copilot_tool_args_arrive_as_a_json_string(self):
-        # copilot 1.0.77 serialises toolArgs before handing them to the extension hook; without
-        # parsing them the gate silently no-ops and the caller's model wins.
-        answer = self.gate(
-            "copilot",
-            {
-                "tool_name": "task",
-                "tool_input": json.dumps({"agent_type": "explore", "mode": "sync", "model": "claude-opus-5"}),
-            },
-        )
-        self.assertEqual(
-            answer["modifiedArgs"],
-            {
-                "agent_type": "explore",
-                "mode": "sync",
-                "model": "gpt-5.3-codex",
-                "reasoning_effort": "high",
-            },
-        )
-
     def test_schema_harness_reads_backend_projection_but_keeps_frontend_shape(self):
+        # The wire shape belongs to the frontend harness and the pick to the backend one: the
+        # `codex` frontend keeps its `spawn_agent` keys (`agent_type`, `model`,
+        # `reasoning_effort`) while the model/effort pair is read from `pi`'s projection, so the
+        # rewritten model is Pi's `anthropic/...` row rather than any Codex catalog id.
         answer = self.gate(
             "codex",
-            {"tool_name": "spawn_agent", "tool_input": {"agent_type": "explore", "message": "go"}},
-            override={"AGENT_BAND_SCHEMA_HARNESS": "copilot"},
+            {"tool_name": "spawn_agent", "tool_input": {"agent_type": "explorer", "message": "go"}},
+            override={"AGENT_BAND_SCHEMA_HARNESS": "pi"},
         )
         specific = answer["hookSpecificOutput"]
         self.assertEqual(specific["permissionDecision"], "allow")
         self.assertEqual(
             specific["updatedInput"],
             {
-                "agent_type": "explore",
+                "agent_type": "explorer",
                 "message": "go",
-                "model": "gpt-5.3-codex",
+                "model": "anthropic/claude-fable-5.1",
                 "reasoning_effort": "high",
             },
         )
@@ -4920,14 +4705,6 @@ class BandGateTests(unittest.TestCase):
         # A BYOK launcher sells one provider model; a band id that is not that model reaches the
         # provider as its own wire model, so the override has to cover agents with no binding too.
         override = {"AGENT_BAND_MODEL_OVERRIDE": "openai/gpt-5.2", "AGENT_BAND_EFFORT_OVERRIDE": "high"}
-        copilot = self.gate(
-            "copilot",
-            {"tool_name": "task", "tool_input": {"agent_type": "not-in-any-band", "prompt": "p"}},
-            override=override,
-        )
-        self.assertEqual(copilot["modifiedArgs"]["model"], "openai/gpt-5.2")
-        self.assertEqual(copilot["modifiedArgs"]["reasoning_effort"], "high")
-
         codex = self.gate(
             "codex",
             {"tool_name": "spawn_agent", "tool_input": {"agent_type": "explorer", "message": "go"}},
@@ -4991,7 +4768,7 @@ class BandGateTests(unittest.TestCase):
                 self.assertEqual(result["hookSpecificOutput"]["permissionDecision"], "deny")
 
     def test_SHOULD_enforce_generic_model_effort_pairs_without_collapsing_other_lanes(self):
-        for harness, tool, key in (("codex", "spawn_agent", "agent_type"), ("copilot", "task", "agent_type")):
+        for harness, tool, key in (("codex", "spawn_agent", "agent_type"),):
             projection = {
                 "harnesses": {
                     harness: {
@@ -5040,7 +4817,6 @@ class BandGateTests(unittest.TestCase):
                     }
                 },
                 "codex": {"agents": {"generalPurpose": {"category": "implement", "model": "backend"}}},
-                "copilot": {"agents": {"generalPurpose": {"category": "implement", "model": "backend"}}},
                 "pi": {"agents": {"generalPurpose": {"category": "implement", "model": "openrouter/backend"}}},
             }
         }
@@ -5066,7 +4842,7 @@ class BandGateTests(unittest.TestCase):
                     projection,
                 )
                 self.assertEqual(result["updated_input"], {"subagent_type": role, "model": "auto", "prompt": "packet"})
-        for backend in ("codex", "copilot", "pi"):
+        for backend in ("codex", "pi"):
             with self.subTest(backend=backend):
                 result = self.gate(
                     "cursor",
@@ -5079,7 +4855,6 @@ class BandGateTests(unittest.TestCase):
     def test_SHOULD_deny_unverified_subscription_delegation_transports(self):
         cases = (
             ("codex", "spawn_agent", "permissionDecision"),
-            ("copilot", "task", "permissionDecision"),
             ("cursor", "Task", "permission"),
         )
         for harness, tool, key in cases:
@@ -5087,72 +4862,9 @@ class BandGateTests(unittest.TestCase):
                 result = self.gate(
                     harness,
                     {"tool_name": tool, "tool_input": {"agent_type": "explore"}},
-                    override={"AGENT_BAND_SUBSCRIPTION": "copilot"},
+                    override={"AGENT_BAND_SUBSCRIPTION": "codex"},
                 )
                 self.assertEqual((result.get("hookSpecificOutput") or result)[key], "deny")
-
-    def test_SHOULD_project_codex_subscription_lanes_only_for_fresh_registered_leaves(self):
-        projection = {
-            "harnesses": {
-                "copilot": {
-                    "agents": {
-                        "worker": {"category": "implement", "model": "claude-opus-5", "effort": "high"},
-                        "explorer": {"category": "research", "model": "gpt-5.6-sol", "effort": "xhigh"},
-                        "k-agent-smol": {"category": "memory", "model": "claude-sonnet-5", "effort": "low"},
-                    }
-                }
-            }
-        }
-        routes = {
-            "worker": "claude-opus-5@lane-high",
-            "explorer": "gpt-5.6-sol@lane-xhigh",
-            "k-agent-smol": "claude-sonnet-5@lane-low",
-        }
-        env = {
-            "AGENT_BAND_SUBSCRIPTION": "copilot",
-            "AGENT_BAND_SCHEMA_HARNESS": "copilot",
-            "AGENT_BAND_CODEX_ROUTES": json.dumps(routes),
-        }
-        for role, selector in routes.items():
-            with self.subTest(role=role):
-                payload = {
-                    "tool_name": "multi_agent_v1.spawn_agent",
-                    "tool_input": {"agent_type": role, "message": "packet", "model": "root"},
-                }
-                result = self.gate("codex", payload, projection, env)["hookSpecificOutput"]
-                self.assertEqual(result["permissionDecision"], "allow")
-                self.assertEqual(result["updatedInput"]["model"], selector)
-                self.assertEqual(result["updatedInput"]["reasoning_effort"], selector.split("@lane-")[1])
-                self.assertEqual(result["updatedInput"]["message"], "packet")
-        payload = {
-            "tool_name": "spawn_agent",
-            "tool_input": {"agent_type": "worker", "model": "claude-sonnet-5@lane-low", "reasoning_effort": "low"},
-        }
-        result = self.gate("codex", payload, projection, env)["hookSpecificOutput"]
-        self.assertEqual(result["updatedInput"]["model"], "claude-sonnet-5@lane-low")
-        for patch, changed_env in (
-            ({"fork_context": True}, env),
-            ({"reasoning_effort": "high"}, env),
-            ({}, {**env, "AGENT_BAND_CODEX_ROUTES": "{}"}),
-            ({}, {**env, "AGENT_BAND_CODEX_ROUTES": "invalid"}),
-            ({}, {**env, "AGENT_BAND_MODEL_OVERRIDE": "root"}),
-        ):
-            with self.subTest(patch=patch, env=changed_env):
-                bad = {**payload, "tool_input": {**payload["tool_input"], **patch}}
-                result = self.gate("codex", bad, projection, changed_env)["hookSpecificOutput"]
-                self.assertEqual(result["permissionDecision"], "deny")
-        result = self.gate("codex", {**payload, "agent_id": "child"}, projection, env)["hookSpecificOutput"]
-        self.assertEqual(result["permissionDecision"], "deny")
-        for role in ("worker", "k-agent-smol"):
-            stale = {**routes, role: routes["explorer"]}
-            with self.subTest(stale_role=role):
-                result = self.gate(
-                    "codex",
-                    {"tool_name": "spawn_agent", "tool_input": {"agent_type": role}},
-                    projection,
-                    {**env, "AGENT_BAND_CODEX_ROUTES": json.dumps(stale)},
-                )["hookSpecificOutput"]
-                self.assertEqual(result["permissionDecision"], "deny")
 
     def test_SHOULD_keep_native_codex_child_startup_and_recall_out_of_root_context(self):
         with tempfile.TemporaryDirectory() as directory:

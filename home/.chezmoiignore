@@ -12,10 +12,6 @@ app_icons/
 **/*.personal.toml
 .claude/settings.json
 .codex/config.toml
-.copilot/mcp-config.json
-.copilot/settings.json
-.copilot/hooks.json
-.copilot/hooks/agent-memory.json
 .gemini/antigravity-cli/settings.json
 .config/gh-dash/gh-dash-shared.yml
 # Compile/verify-only AI policy IR under ~/.config/ai/policy-ir (source: home/dot_config/ai/exact_policy-ir).

@@ -20,7 +20,7 @@ for (const [name, source] of adapters) {
   ))
 }
 
-function model(id = "gpt-6-astra", provider = "github-copilot", contextWindow = 1_000_000) {
+function model(id = "gpt-6-astra", provider = "openrouter", contextWindow = 1_000_000) {
   return {
     provider, id, contextWindow, maxTokens: 128_000, api: "openai-responses",
     cost: { input: 10 }, headers: { "x-fixture": "keep" },
@@ -144,7 +144,7 @@ describe("WHEN applying GPT-only defaults", () => {
 describe("WHEN applying non-GPT dual windows", () => {
   it("SHOULD keep native Grok capacity until short is selected", async () => {
     const grok = {
-      ...model("grok-4.5", "github-copilot", 500_000),
+      ...model("grok-4.5", "openrouter", 500_000),
       cost: { input: 4, tiers: [{ inputTokensAbove: 200_000 }] },
     }
     const h = harness(grok)
@@ -156,7 +156,7 @@ describe("WHEN applying non-GPT dual windows", () => {
     expect(h.current.contextWindow).toBe(200_000)
     expect(h.entries).toEqual([{
       type: "custom", customType: "gpt-context-mode",
-      data: { provider: "github-copilot", model: "grok-4.5", mode: "short" },
+      data: { provider: "openrouter", model: "grok-4.5", mode: "short" },
     }])
     await h.policy.command("long", h.ctx)
     expect(h.current.contextWindow).toBe(500_000)
@@ -164,7 +164,7 @@ describe("WHEN applying non-GPT dual windows", () => {
 
   it("SHOULD refuse short when Grok history already exceeds the 200k tier", async () => {
     const grok = {
-      ...model("grok-4.6", "github-copilot", 500_000),
+      ...model("grok-4.6", "openrouter", 500_000),
       cost: { input: 4, tiers: [{ inputTokensAbove: 200_000 }] },
     }
     const h = harness(grok)
@@ -198,11 +198,11 @@ describe("WHEN selecting and restoring a model/session context mode", () => {
     expect(h.current.contextWindow).toBe(1_000_000)
     expect(h.entries).toEqual([{
       type: "custom", customType: "gpt-context-mode",
-      data: { provider: "github-copilot", model: "gpt-6-astra", mode: "long" },
+      data: { provider: "openrouter", model: "gpt-6-astra", mode: "long" },
     }])
     await h.policy.command("short", h.ctx)
     expect(h.current.contextWindow).toBe(272_000)
-    expect(h.current.provider).toBe("github-copilot")
+    expect(h.current.provider).toBe("openrouter")
     expect(h.current.id).toBe("gpt-6-astra")
     expect(h.current.maxTokens).toBe(128_000)
   })
@@ -210,7 +210,10 @@ describe("WHEN selecting and restoring a model/session context mode", () => {
   it("SHOULD restore per-provider and per-model selections without leaking into another session", async () => {
     const h = harness()
     await h.policy.command("long", h.ctx)
-    h.switch(model("gpt-6-astra", "openrouter"))
+    // Same model id on a second provider: the saved `long` entry is keyed by provider *and*
+    // model, so it must not restore here. Keep this provider different from `model()`'s
+    // default, or the case stops probing the leak it is named for.
+    h.switch(model("gpt-6-astra", "anthropic"))
     await h.policy.apply(h.ctx)
     expect(h.current.contextWindow).toBe(272_000)
     h.switch(model("gpt-5.6-sol"))
@@ -244,8 +247,8 @@ describe("WHEN selecting and restoring a model/session context mode", () => {
     h.entries = [
       { type: "custom", customType: "gpt-context-mode", data: null },
       { type: "custom", customType: "gpt-context-mode", data: { provider: "other", model: "gpt-6-astra", mode: "long" } },
-      { type: "custom", customType: "other", data: { provider: "github-copilot", model: "gpt-6-astra", mode: "long" } },
-      { type: "custom", customType: "gpt-context-mode", data: { provider: "github-copilot", model: "gpt-6-astra", mode: "invalid" } },
+      { type: "custom", customType: "other", data: { provider: "openrouter", model: "gpt-6-astra", mode: "long" } },
+      { type: "custom", customType: "gpt-context-mode", data: { provider: "openrouter", model: "gpt-6-astra", mode: "invalid" } },
     ]
     await h.policy.apply(h.ctx)
     expect(h.current.contextWindow).toBe(272_000)

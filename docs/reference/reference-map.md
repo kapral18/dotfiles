@@ -135,7 +135,6 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 | `inject_mcp_into_codex_toml.py`     | Inject MCP servers into Codex TOML at a marker line                                                                             |
 | `inject_mcp_into_opencode_jsonc.py` | Inject MCP servers into an OpenCode JSONC placeholder                                                                           |
 | `merge_claude_mcp.py`               | Surgically update only `mcpServers` in `~/.claude.json`                                                                         |
-| `merge_copilot_settings.py`         | Typed declared-over-live merge for Copilot `settings.json` (exact `subagents.agents`)                                           |
 | `managed_config_manifest.py`        | Declared-key manifests shared by the config merge hooks                                                                         |
 | `generated_artifact_ledger.py`      | Record/evaluate generated artifacts for semantic drift (backs `,doctor ai`)                                                     |
 | `ai_models.py`                      | Parse the registry sections under `home/.chezmoidata/ai_models/`                                                                |

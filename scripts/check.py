@@ -266,7 +266,6 @@ TEST_RULES: tuple[TestRule, ...] = (
             "tests/test_mcp_token.py",
             "tests/test_openrouter_wrappers.py",
             "tests/test_install_pnpm_pkgs.py",
-            "tests/test_copilot.py",
             "tests/test_codex.py",
             "tests/test_cursor_llama_cpp.py",
             "tests/test_cursor.py",
@@ -277,7 +276,6 @@ TEST_RULES: tuple[TestRule, ...] = (
         prefixes=(
             "home/exact_bin/executable_,claude-openrouter",
             "home/exact_bin/executable_,codex-openrouter",
-            "home/exact_bin/executable_,copilot-openrouter",
             "home/exact_bin/executable_,cursor-openrouter",
             "home/exact_lib/exact_shared/executable_openrouter_presets.py",
         ),
@@ -330,7 +328,6 @@ TEST_RULES: tuple[TestRule, ...] = (
             "home/dot_claude/settings.personal.json",
             "home/dot_codex/private_config.work.toml",
             "home/dot_codex/private_config.personal.toml",
-            "home/private_dot_copilot/settings.json",
             "home/dot_pi/agent/readonly_settings.work.json",
             "home/dot_pi/agent/readonly_settings.personal.json",
             "home/dot_omp/private_agent/readonly_config.yml.tmpl",
@@ -366,7 +363,6 @@ TEST_RULES: tuple[TestRule, ...] = (
             "home/dot_claude/",
             "home/dot_codex/",
             "home/dot_omp/",
-            "home/private_dot_copilot/",
             "home/dot_config/opencode/",
             "home/dot_config/exact_nvim/",
             "home/.chezmoiscripts/",
@@ -378,7 +374,6 @@ TEST_RULES: tuple[TestRule, ...] = (
             "tests/test_invariants.py",
         ),
     ),
-    TestRule(prefixes=("home/private_dot_copilot/settings.json",), tests=("test_merge_copilot_settings.py",)),
     TestRule(prefixes=(".githooks/pre-commit", "bin/fmt", "bin/check"), tests=("test_pre_commit.py",)),
     TestRule(
         prefixes=("scripts/check.py", "scripts/test_runner.py", "Makefile", "AGENTS.md"), tests=("test_check.py",)
@@ -399,12 +394,11 @@ TEST_RULES: tuple[TestRule, ...] = (
     TestRule(prefixes=("home/exact_lib/exact_,wh/",), tests=("tests/test_wh.py",)),
     TestRule(
         prefixes=("home/exact_lib/exact_,codex-adapter/",),
-        tests=("tests/test_codex_adapter.py", "tests/test_copilot_adapter.py"),
+        tests=("tests/test_codex_adapter.py",),
     ),
-    TestRule(prefixes=("home/exact_lib/exact_,copilot-adapter/",), tests=("tests/test_copilot_adapter.py",)),
     TestRule(
         prefixes=("home/exact_lib/exact_shared/codex_lanes.py", "home/exact_lib/exact_shared/claude_lanes.py"),
-        tests=("tests/test_copilot_adapter.py", "tests/test_codex_adapter.py", "tests/test_openrouter_wrappers.py"),
+        tests=("tests/test_codex_adapter.py", "tests/test_openrouter_wrappers.py"),
     ),
     TestRule(
         prefixes=("home/exact_lib/exact_,cursor-agent-shim/",),
@@ -471,16 +465,6 @@ EXTRA_TESTS: tuple[ExtraTest, ...] = (
         name="fish-history-merge",
         argv=("python3", "home/exact_lib/exact_,history-sync/fish-history-merge.test.py", "-v"),
         prefixes=("home/exact_lib/exact_,history-sync/",),
-    ),
-    ExtraTest(
-        name="copilot-agent-memory-extension",
-        argv=("node", "scripts/tests/copilot_agent_memory_extension.test.mjs"),
-        prefixes=(
-            "scripts/tests/copilot_agent_memory_extension.test.mjs",
-            "home/private_dot_copilot/settings.json",
-            "home/private_dot_copilot/exact_extensions/exact_agent-memory/",
-        ),
-        env=(("COPILOT_AGENT_MEMORY_EXTENSION_TEST", "1"),),
     ),
 )
 

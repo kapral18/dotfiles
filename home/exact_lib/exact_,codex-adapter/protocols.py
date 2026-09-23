@@ -691,7 +691,7 @@ def _anthropic_usage(usage: object, *, output: bool = False) -> dict[str, int]:
     cached share reported under `input_tokens_details.cached_tokens` and writes under
     `cache_write_tokens` (observed live from the ChatGPT Codex backend on 2026-09-06:
     `{"input_tokens": 2815, "input_tokens_details": {"cache_write_tokens": 0, "cached_tokens": 0}}`;
-    Copilot's chat shape spells the write field `cache_creation_tokens`). Anthropic `input_tokens` is the fresh share
+    some chat shapes spell the write field `cache_creation_tokens`). Anthropic `input_tokens` is the fresh share
     only, with cache reads and writes as separate fields, so the frontend can add the three
     without double counting. Missing detail fields translate to zero fresh-cache split, never
     to an invented number.

@@ -12,8 +12,8 @@
 # usable current-workspace cache; a workspace missing auth is seeded from the
 # newest verified cached chain, with cursor's browser login as last resort
 # before the session starts. Proactive rotation stays off the launch path
-# because cursor-agent can refresh a still-valid token itself. Unlike ,copilot,
-# no config re-bake is needed.
+# because cursor-agent can refresh a still-valid token itself. No config
+# re-bake is needed.
 #
 # Refresh is skipped for admin/introspection subcommands (login, logout, mcp,
 # update, help, about, status/whoami, models) and for --help/--version, which do

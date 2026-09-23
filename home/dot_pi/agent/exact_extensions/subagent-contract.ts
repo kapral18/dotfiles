@@ -6,10 +6,12 @@
 // schema validator. Native execute/render/backend and lifecycle callbacks pass
 // through by identity; only the model-facing advertisement is deployment-owned.
 //
-// Native anchors (Pi 0.85.1 / pi-subagents 0.67.0):
-// - registration point: pi-subagents/src/extension/index.ts registers the
+// Native anchors (Pi 0.87.1 / pi-subagents 0.70.1):
+// - entry: the package's own `pi.extensions` manifest entry (compiled
+//   `./index.js` since 0.70.0; a source checkout still declares `./index.ts`).
+// - registration point: pi-subagents/src/extension/index.js registers the
 //   `subagent` tool with parameters from createSubagentParamsSchema() in
-//   src/extension/schemas.ts (80 flat optional properties).
+//   src/extension/schemas.js (82 flat optional properties).
 // - package filter: pi-coding-agent dist/core/package-manager.js
 //   (collectPackageResources/applyPackageFilter) disables the package entry's
 //   own extensions/skills/prompts, so this adapter is the only registrar and
@@ -26,9 +28,9 @@
 import { validateToolArguments } from "@earendil-works/pi-ai";
 import type { Tool, ToolCall } from "@earendil-works/pi-ai";
 import type { CustomToolCallEvent, ExtensionAPI, ToolDefinition } from "@earendil-works/pi-coding-agent";
-import { realpathSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { Type } from "typebox";
 import type { TSchema } from "typebox";
 
@@ -38,9 +40,25 @@ export const NATIVE_VALIDATION_PREFIX = 'Validation failed for tool "subagent"';
 
 export const CONTRACT_TOOL_NAME = "subagent";
 
-export const UPSTREAM_PACKAGE_ENTRY = join(
-  ".local/share/pnpm-global-links/node_modules/pi-subagents/index.ts",
-);
+export const UPSTREAM_PACKAGE_DIR = ".local/share/pnpm-global-links/node_modules/pi-subagents";
+
+// Resolve the entry the package itself declares, so a compiled (`index.js`) or
+// source (`index.ts`) layout loads alike. Anything but one declared entry fails
+// closed: no partial subagent tool is published.
+export function resolveUpstreamEntry(home: string): string {
+  const packageDir = realpathSync(join(home, UPSTREAM_PACKAGE_DIR));
+  const manifest: unknown = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8"));
+  const extensions: unknown =
+    typeof manifest === "object" && manifest !== null && "pi" in manifest
+      ? (manifest as { pi?: { extensions?: unknown } }).pi?.extensions
+      : undefined;
+  if (!Array.isArray(extensions) || extensions.length !== 1 || typeof extensions[0] !== "string") {
+    throw new Error(
+      "subagent-contract: pi-subagents package.json must declare exactly one pi.extensions entry; refusing to publish a partial subagent tool.",
+    );
+  }
+  return realpathSync(resolve(packageDir, extensions[0]));
+}
 
 export const ALLOWED_MANAGEMENT_ACTIONS = ["list", "status", "debug.run", "stop", "interrupt"] as const;
 
@@ -107,12 +125,6 @@ export const CONTROL_NOTICE_TYPE = "subagent_control_notice";
 export const CONTROL_NOTICE_HINT =
   "Hint: inspect status first. A live child is not steered or resumed under this contract (SOP §3.7: workers return once; the root owns recovery). If it is genuinely stuck, interrupt it and re-size the packet; if it is slow but working, let it finish.";
 const STEER_OR_RESUME_LINE = /^(Hint: .*\b(steer|resume)\b.*|Top-level live async nudge: .*|Routed live nested nudge: .*)$/;
-// completion_guard notices end with "Next: ... retry with a more explicit implementation
-// prompt or handle the fix directly" — an identical relaunch and an inline substitution,
-// both of which SOP §3.7 forbids the root.
-const COMPLETION_GUARD_NEXT_LINE = /^Next: .*\b(retry|handle the fix directly)\b.*$/;
-export const COMPLETION_GUARD_HINT =
-  "Next: read the output artifact once. A failed worker is a `blocked` return (SOP §3.7): resolve the cause in root Understand, then dispatch a corrected or re-sized packet; never relaunch it identical and never substitute an inline fix.";
 
 // Upstream re-reads `details.noticeText` (control-notices.ts formatSubagentControlNotice),
 // so the rewritten text must land in both the content and that field.
@@ -123,11 +135,7 @@ function withNoticeText(details: unknown, content: string): unknown {
 
 export function rewriteControlNotice(content: string): string {
   const lines = content.split("\n");
-  const rewritten = lines.flatMap((line) => {
-    if (STEER_OR_RESUME_LINE.test(line)) return [];
-    if (COMPLETION_GUARD_NEXT_LINE.test(line)) return [COMPLETION_GUARD_HINT];
-    return [line];
-  });
+  const rewritten = lines.filter((line) => !STEER_OR_RESUME_LINE.test(line));
   const droppedNudge = rewritten.length < lines.length;
   if (!droppedNudge) return rewritten.join("\n");
   const statusIndex = rewritten.findIndex((line) => line.startsWith("Status: "));
@@ -287,7 +295,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     });
     return;
   }
-  const entry = realpathSync(join(process.env.HOME || homedir(), UPSTREAM_PACKAGE_ENTRY));
+  const entry = resolveUpstreamEntry(process.env.HOME || homedir());
   const mod: unknown = await import(entry);
   const register: unknown =
     typeof mod === "function" ? mod : (mod as { default?: unknown }).default;

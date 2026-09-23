@@ -462,17 +462,14 @@ console.log(JSON.stringify({ first, second, third, staleProbes, freshProbes }));
     def test_adapter_inventory_keeps_shared_depth_contract_and_perturn_wiring(self) -> None:
         claude = (REPO / "home/dot_claude/settings.personal.json").read_text(encoding="utf-8")
         opencode = (REPO / "home/dot_config/opencode/plugins/agent-memory.ts").read_text(encoding="utf-8")
-        copilot = (
-            REPO / "home/private_dot_copilot/exact_extensions/exact_agent-memory/readonly_extension.mjs"
-        ).read_text(encoding="utf-8")
         pi = PI_EXTENSION.read_text(encoding="utf-8")
         cursor = (REPO / "home/dot_cursor/hooks.json").read_text(encoding="utf-8")
         codex = (REPO / "home/dot_codex/hooks.json.tmpl").read_text(encoding="utf-8")
         antigravity = (REPO / "home/dot_gemini/config/readonly_hooks.json").read_text(encoding="utf-8")
 
-        for adapter in (claude, opencode, copilot, codex, cursor):
+        for adapter in (claude, opencode, codex, cursor):
             self.assertIn("perturn_recall.py", adapter)
-        for adapter in (claude, opencode, copilot, cursor, codex):
+        for adapter in (claude, opencode, cursor, codex):
             self.assertIn("worklog_dispatcher.sh", adapter)
         self.assertIn("session_context.py", antigravity)
         self.assertIn("worklog_dispatcher.sh", antigravity)

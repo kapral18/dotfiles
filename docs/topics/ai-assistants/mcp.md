@@ -4,7 +4,7 @@ sidebar_position: 8
 
 # MCP Servers
 
-A single canonical registry defines every MCP server once. At `chezmoi apply` time, generators render per-tool configs for Cursor, Claude Code, Antigravity, Pi, OMP, Codex, OpenCode, and GitHub Copilot CLI, avoiding eight hand-maintained copies of the same server list.
+A single canonical registry defines every MCP server once. At `chezmoi apply` time, generators render per-tool configs for Cursor, Claude Code, Antigravity, Pi, OMP, Codex, and OpenCode, avoiding seven hand-maintained copies of the same server list.
 
 Use this page when adding, removing, or debugging an MCP server, or when tracing how a server reaches a given assistant.
 
@@ -33,29 +33,25 @@ Each entry is one of two shapes:
 
 The work set includes `scsi-main`, `scsi-local`, and `slack`:
 
-| Server       | Current behavior                                                                                                                                                                                                                                                   |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `scsi-main`  | Hosted Semantic Code Search server using Elastic SSO/OAuth. Claude and Pi keep tool-specific OAuth metadata. Antigravity, Cursor, OMP, Copilot, and Codex use `,mcp-token --bridge` at runtime; Cursor keeps OAuth client metadata for a dedicated mint workspace. |
-| `scsi-local` | Local SCSI stdio backend emitted to every work-profile harness, including OMP, Copilot, and Codex.                                                                                                                                                                 |
-| `slack`      | Slack MCP server with per-tool OAuth metadata. Antigravity, Cursor, OMP, Copilot, and Codex use the shared token bridge at runtime.                                                                                                                                |
+| Server       | Current behavior                                                                                                                                                                                                                                          |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scsi-main`  | Hosted Semantic Code Search server using Elastic SSO/OAuth. Claude and Pi keep tool-specific OAuth metadata. Antigravity, Cursor, OMP, and Codex use `,mcp-token --bridge` at runtime; Cursor keeps OAuth client metadata for a dedicated mint workspace. |
+| `scsi-local` | Local SCSI stdio backend emitted to every work-profile harness, including OMP and Codex.                                                                                                                                                                  |
+| `slack`      | Slack MCP server with per-tool OAuth metadata. Antigravity, Cursor, OMP, and Codex use the shared token bridge at runtime.                                                                                                                                |
 
-Antigravity, OMP, Copilot, Codex, and Cursor get `scsi-local` as a stdio server and `scsi-main` plus `slack` as local `,mcp-token --bridge` stdio servers that forward to the hosted endpoints with per-request bearer injection. OpenCode gets `scsi-local` only: its injector intentionally emits command servers and skips every HTTP entry.
+Antigravity, OMP, Codex, and Cursor get `scsi-local` as a stdio server and `scsi-main` plus `slack` as local `,mcp-token --bridge` stdio servers that forward to the hosted endpoints with per-request bearer injection. OpenCode gets `scsi-local` only: its injector intentionally emits command servers and skips every HTTP entry.
 
 ### Hosted OAuth exceptions
 
-Copilot cannot run the hosted servers' OAuth flows itself. It hardcodes its OAuth redirect to `http://127.0.0.1:{port}/`, which is not registered for the SCSI Okta app or the public Slack client.
-
 Slack's MCP authorization server offers no dynamic client registration and requires a client secret at the token endpoint: `grant_types = [authorization_code, refresh_token]`, `token_endpoint_auth_methods = [client_secret_post]`.
-
-Both `scsi-main` and `slack` therefore give their `copilot` block a `tokenBridge` value naming the `,mcp-token` token source. Copilot rides the rotating token cursor-cli already minted rather than running OAuth itself, and the bridge re-reads that cache per request, so a session never depends on a token captured at launch.
 
 Codex supports streamable HTTP MCP natively, but its OAuth callback settings are global: `mcp_oauth_callback_port` / `mcp_oauth_callback_url`. The hosted SCSI and Slack apps need different approved callback registrations, and its `bearer_token_env_var` support reads the env var once at launch, dying with that token.
 
 Both `scsi-main` and `slack` therefore give their `codex` block the same `tokenBridge` value, so Codex spawns the identical per-request stdio bridge.
 
-Cursor can run the hosted OAuth flows, but its native HTTP MCP client has been observed mid-session as `enabled` with `0 tools` after token/session failure. The Cursor `tokenBridge` entries therefore match Copilot/Codex for runtime transport. OAuth minting stays on a dedicated mint workspace at `~/.cache/mcp-token/oauth-mint/.cursor/mcp.json` (OAuth HTTP shapes only): `,mcp-token` silent rotate and browser login always use that cwd so project OAuth config wins over the user-level bridge (cursor-agent loads project then user MCP config; project wins).
+Cursor can run the hosted OAuth flows, but its native HTTP MCP client has been observed mid-session as `enabled` with `0 tools` after token/session failure. The Cursor `tokenBridge` entries therefore match Codex for runtime transport. OAuth minting stays on a dedicated mint workspace at `~/.cache/mcp-token/oauth-mint/.cursor/mcp.json` (OAuth HTTP shapes only): `,mcp-token` silent rotate and browser login always use that cwd so project OAuth config wins over the user-level bridge (cursor-agent loads project then user MCP config; project wins).
 
-Pi can run Slack's OAuth flow via `pi-mcp-adapter`, but only against Slack's public MCP client (`1601185624273.8899143856786`), and that client is not approved for the `search:read.*` scopes for this user: consent fails with `Unapproved permissions requested: search:read`. Slack moved search to the granular `search:read.public/private/mpim/im/files/users` scopes (see `scopes_supported` in `https://mcp.slack.com/.well-known/oauth-authorization-server`); cursor-cli's IDE client is approved for them and its minted tokens carry them. The `slack` `pi` block therefore uses `tokenBridge: "slack"` like Copilot/Codex/OMP, riding the rotating cursor-minted token instead of its own OAuth grant.
+Pi can run Slack's OAuth flow via `pi-mcp-adapter`, but only against Slack's public MCP client (`1601185624273.8899143856786`), and that client is not approved for the `search:read.*` scopes for this user: consent fails with `Unapproved permissions requested: search:read`. Slack moved search to the granular `search:read.public/private/mpim/im/files/users` scopes (see `scopes_supported` in `https://mcp.slack.com/.well-known/oauth-authorization-server`); cursor-cli's IDE client is approved for them and its minted tokens carry them. The `slack` `pi` block therefore uses `tokenBridge: "slack"` like Codex/OMP, riding the rotating cursor-minted token instead of its own OAuth grant.
 
 ## Using it
 
@@ -81,7 +77,6 @@ chezmoi apply
 python3 -m json.tool < ~/.cursor/mcp.json
 python3 -c "import json; print(list(json.load(open('$HOME/.claude.json')).get('mcpServers', {})))"
 codex mcp list     # bridge servers appear as local command servers
-copilot mcp list   # lists the loaded Copilot servers and their transport types
 ```
 
 ### Refresh a hosted token by hand
@@ -134,29 +129,10 @@ Tools whose config is not plain JSON get dedicated injectors with explicit owner
 | Antigravity | `~/.gemini/config/mcp_config.json`  | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
 | OpenCode    | `~/.config/opencode/opencode.jsonc` | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl) |
 | Codex       | `~/.codex/config.toml`              | [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl)       |
-| Copilot     | `~/.copilot/mcp-config.json`        | [`run_onchange_after_07-merge-copilot-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-copilot-config.sh.tmpl)   |
-
-## Copilot transform and launch wiring
-
-Copilot transform behavior:
-
-| Server class      | Emitted shape                                                                                           |
-| ----------------- | ------------------------------------------------------------------------------------------------------- |
-| stdio             | `type: "local"` with `tools: ["*"]`                                                                     |
-| OAuth HTTP        | `type: "http"` with `oauthClientId`, `auth.redirectPort`, and `oauthScopes`                             |
-| Token-bridge HTTP | `type: "local"` running `,mcp-token <source> --bridge --url <url>` when the block carries `tokenBridge` |
-
-Copilot's wired servers:
-
-- `slack` and `scsi-main` are emitted as token-bridge stdio servers.
-- Each `copilot` block sets `tokenBridge: "<source>"`; the generator emits the bridge command with the server's registry URL, so no Authorization value or placeholder is ever baked into the config.
-- `scsi-local` is emitted as a stdio server (`type: "local"`). It has no OAuth because it runs locally with `pass` Elasticsearch credentials, so no token is needed.
-
-The built-in `github-mcp-server` is provided by Copilot and is not emitted.
 
 ### Per-request token bridge
 
-[`mcp-token`](../workflow/custom-commands/catalog.md) `--bridge --url <endpoint>` speaks stdio MCP to the agent and forwards each message as an HTTP POST with a freshly selected bearer. Antigravity, OMP, Copilot, and Codex spawn it like any local MCP server, so their sessions no longer depend on any single token's lifetime.
+[`mcp-token`](../workflow/custom-commands/catalog.md) `--bridge --url <endpoint>` speaks stdio MCP to the agent and forwards each message as an HTTP POST with a freshly selected bearer. Antigravity, OMP, and Codex spawn it like any local MCP server, so their sessions no longer depend on any single token's lifetime.
 
 Per request, the bridge reads the freshest still-valid token from cursor-cli's per-project OAuth caches at `~/.cursor/projects/*/mcp-auth.json`. Cursor runs the `authorization_code` flow with its own approved clients (Slack workspace app / SCSI Elastic Okta) and refreshes the rotating token in place.
 
@@ -180,7 +156,7 @@ Why cursor-agent cannot do this itself: hourly access-token expiry is already ha
 
 Silent rotation relies on cursor running the provider's `refresh_token` grant whenever a stored access token stops working. Before rotation or browser login, `,mcp-token` runs Cursor's idempotent `mcp enable <server>` in the selected OAuth workspace because Cursor gates both auth paths on its local approved list. When the mint workspace exists, `,mcp-token` seeds/rotates that project's cache and runs `cursor-agent mcp list-tools <server>` there so list-tools hits OAuth HTTP config rather than the user-level bridge. Otherwise it invalidates the access token in the newest project cache that holds a `refresh_token` and whose `.workspace-trusted` records an existing workspace directory, runs the same bounded list-tools there, and cursor writes the freshly minted chain back in place with no browser and without revoking the in-flight token running sessions already hold.
 
-Concurrent rotations serialize through `~/.cache/mcp-token/rotation.lock` and recheck whether rotation remains due before touching the shared cache. Bridge recovery keeps the same lock through browser fallback, so multiple Copilot/Codex sessions cannot open duplicate login tabs. Cursor's login output stays off the bridge's JSON-RPC stdout; the bridge announces the interactive recovery on stderr and resumes the blocked MCP request after authorization succeeds.
+Concurrent rotations serialize through `~/.cache/mcp-token/rotation.lock` and recheck whether rotation remains due before touching the shared cache. Bridge recovery keeps the same lock through browser fallback, so multiple Codex sessions cannot open duplicate login tabs. Cursor's login output stays off the bridge's JSON-RPC stdout; the bridge announces the interactive recovery on stderr and resumes the blocked MCP request after authorization succeeds.
 
 ### Opaque token liveness
 
@@ -196,12 +172,6 @@ Opaque tokens such as Slack expose no expiry. The local refresh ledger under `~/
 | Network errors, timeouts, `5xx`, or missing URL | Leave liveness unknown and preserve the existing ledger token rather than forcing a browser login.                                                             |
 
 Plain reads stay local and never probe.
-
-### Copilot config safety
-
-The rendered `~/.copilot/mcp-config.json` carries no secrets — bridge entries name only the command, token source, and URL — and rendering happens entirely at `chezmoi apply` time. `,copilot` remains the stable launcher all `,copilot-*` provider wrappers route through; it passes arguments through except for bare `--resume`, where it selects from `~/.copilot/session-store.db` and invokes `--session-id=<id>` to avoid Copilot 1.0.73's temporary-session MCP startup race.
-
-The config is still written `0600` and `~/.copilot/` is forced to `0700`.
 
 ## Codex bridge wiring
 

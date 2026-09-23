@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 from typing import Any
 
 from mcp_registry import TOKEN_BRIDGE_COMMAND, load_servers, token_bridge_args
@@ -157,68 +156,8 @@ def _transform_pi(spec: dict[str, Any]) -> dict[str, Any]:
 _TOOL_TRANSFORMS["pi"] = _transform_pi
 
 
-def _scopes_list(oauth: dict[str, Any]) -> list[str]:
-    """Normalise a ``scope``/``scopes`` value to a list of space/comma tokens."""
-    raw = oauth.get("scopes") or oauth.get("scope")
-    if isinstance(raw, list):
-        return raw
-    if isinstance(raw, str):
-        return [s.strip() for s in re.split(r"[,\s]+", raw) if s.strip()]
-    return []
-
-
-def _transform_copilot(spec: dict[str, Any]) -> dict[str, Any]:
-    """GitHub Copilot CLI (~/.copilot/mcp-config.json).
-
-    stdio  -> { type: "local", command, args, tools: ["*"] }
-    http   -> { type: "http", url, tools: ["*"], oauthClientId, auth.redirectPort, oauthScopes }
-
-    OAuth is expressed with ``oauthClientId`` + ``auth.redirectPort`` (the
-    supported keys; Copilot also auto-migrates the legacy ``oauth.clientId`` /
-    ``oauth.callbackPort`` shape, but we emit the canonical form). Copilot does
-    the browser ``authorization_code`` flow and discovers endpoints from the
-    server's protected-resource metadata, so no client secret is stored.
-
-    A server may instead supply ``tokenBridge`` (a ,mcp-token token source)
-    when Copilot cannot run the server's OAuth flow itself. The server is then
-    emitted as a *local* stdio bridge (",mcp-token <source> --bridge --url
-    <url>") that injects a freshly selected bearer per request, so the session
-    never depends on a launch-time token capture.
-    """
-    if spec.get("type") != "http":
-        return {
-            "type": "local",
-            "command": spec["command"],
-            "args": spec.get("args", []),
-            "tools": ["*"],
-        }
-
-    oauth = spec.get("oauth")
-    if isinstance(oauth, dict) and oauth.get("tokenBridge"):
-        return {
-            "type": "local",
-            "command": TOKEN_BRIDGE_COMMAND,
-            "args": token_bridge_args(str(spec.get("url")), spec),
-            "tools": ["*"],
-        }
-    out: dict[str, Any] = {"type": "http", "url": spec["url"], "tools": ["*"]}
-    if oauth:
-        client_id = oauth.get("clientId")
-        if client_id:
-            out["oauthClientId"] = client_id
-        port = oauth.get("callbackPort") or oauth.get("redirectPort")
-        if port is not None:
-            out["auth"] = {"redirectPort": int(port)}
-        scopes = _scopes_list(oauth)
-        if scopes:
-            out["oauthScopes"] = scopes
-    return out
-
-
-_TOOL_TRANSFORMS["copilot"] = _transform_copilot
-
 # Tools whose transform must also rewrite stdio (not only http) specs.
-_TRANSFORM_ALL_TYPES = {"copilot", "omp"}
+_TRANSFORM_ALL_TYPES = {"omp"}
 
 
 def _render_servers(servers: dict[str, dict[str, Any]], tool: str | None) -> dict[str, dict[str, Any]]:

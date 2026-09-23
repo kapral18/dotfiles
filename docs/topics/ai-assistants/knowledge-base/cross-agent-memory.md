@@ -19,6 +19,6 @@ Genuine corrections and decisions are captured with `,agent-memory note`. Every 
 
 ## Harness delivery
 
-Shared Python hooks serve their existing Claude/Codex/Cursor/Copilot/Antigravity/OpenCode adapters. Pi/OMP extensions retain topic/sentinel checks, worklog forwarding, and reinforcement, with matching retrieval/staging behavior and leaf suppression. Managed leaf preambles suppress optional Pi/OMP prompt-context injection; Pi's native child signal also suppresses it. Pi runtime parity does not append the complete root SOP to a managed leaf. The actual harness controls determine enforcement; no universal context-isolation guarantee is inferred from text.
+Shared Python hooks serve their existing Claude/Codex/Cursor/Antigravity/OpenCode adapters. Pi/OMP extensions retain topic/sentinel checks, worklog forwarding, and reinforcement, with matching retrieval/staging behavior and leaf suppression. Managed leaf preambles suppress optional Pi/OMP prompt-context injection; Pi's native child signal also suppresses it. Pi runtime parity does not append the complete root SOP to a managed leaf. The actual harness controls determine enforcement; no universal context-isolation guarantee is inferred from text.
 
 Sources: shared `session_context.py` / `perturn_recall.py`, Pi/OMP `ai-kb-recall.ts`, `runtime-parity.ts`, and `k-ai-kb`. See [hook memory](hook-memory.md) for CLI/topic mechanics.

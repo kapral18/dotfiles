@@ -3,8 +3,7 @@
 
 Fixture shapes mirror real local records observed on 2026-09-06: Claude Code transcripts
 (message.usage + requestId), Codex rollouts (token_count events), Pi and OMP session
-JSONL (usage with input/cacheRead/cacheWrite), the OpenCode sqlite session table, and
-Copilot events.jsonl (session.shutdown modelMetrics).
+JSONL (usage with input/cacheRead/cacheWrite), and the OpenCode sqlite session table.
 """
 
 from __future__ import annotations
@@ -254,50 +253,6 @@ class AiUsageReaderTests(unittest.TestCase):
         self.assertEqual((session.calls, session.fresh_input, session.cache_read, session.output), (3, 5827, 23104, 14))
         self.assertEqual(session.cache_misses, 1)
         self.assertEqual((session.model, session.provider), ("deepseek/deepseek-v4-flash", "openrouter"))
-
-    def test_copilot_reader_prefers_shutdown_rollup_and_flags_open_sessions(self) -> None:
-        closed = self.home / ".copilot" / "session-state" / "closed" / "events.jsonl"
-        write_jsonl(
-            closed,
-            [
-                {
-                    "type": "assistant.message",
-                    "timestamp": self.now,
-                    "data": {"model": "claude-fable-5", "outputTokens": 4},
-                },
-                {
-                    "type": "session.shutdown",
-                    "data": {
-                        "modelMetrics": {
-                            "claude-fable-5": {
-                                "requests": {"count": 1, "cost": 15},
-                                "usage": {
-                                    "inputTokens": 39179,
-                                    "outputTokens": 4,
-                                    "cacheReadTokens": 0,
-                                    "cacheWriteTokens": 39177,
-                                    "reasoningTokens": 0,
-                                },
-                            }
-                        }
-                    },
-                },
-            ],
-        )
-        write_jsonl(
-            self.home / ".copilot" / "session-state" / "open" / "events.jsonl",
-            [{"type": "assistant.message", "timestamp": self.now, "data": {"model": "gpt-5.5", "outputTokens": 7}}],
-        )
-
-        sessions = {s.session_id: s for s in self.core.read_copilot(0)}
-        done = sessions["closed"]
-        # inputTokens includes the cache write, so fresh is the remainder.
-        self.assertEqual(
-            (done.fresh_input, done.cache_write, done.cache_read, done.output, done.calls), (2, 39177, 0, 4, 1)
-        )
-        pending = sessions["open"]
-        self.assertEqual((pending.output, pending.fresh_input, pending.calls), (7, 0, 1))
-        self.assertTrue(pending.notes and "unknown" in pending.notes[0])
 
     def test_signals_view_counts_corrections_and_reinforcements(self) -> None:
         usage = {"input_tokens": 1, "cache_read_input_tokens": 9, "cache_creation_input_tokens": 0, "output_tokens": 1}

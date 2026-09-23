@@ -17,22 +17,8 @@ from pathlib import Path
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 
-PARENT_SESSION_ENV = "COPILOT_AGENT_SESSION_ID"
 
-
-class AgentMemoryEnvMixin:
-    def setUp(self):
-        self._old_parent_session = os.environ.pop(PARENT_SESSION_ENV, None)
-        self.addCleanup(self._restore_parent_session)
-
-    def _restore_parent_session(self):
-        if self._old_parent_session is None:
-            os.environ.pop(PARENT_SESSION_ENV, None)
-        else:
-            os.environ[PARENT_SESSION_ENV] = self._old_parent_session
-
-
-class TestAgentMemory(AgentMemoryEnvMixin, unittest.TestCase):
+class TestAgentMemory(unittest.TestCase):
     """WHEN wiping hook memory for a workspace."""
 
     def test_worklog_selection_is_atomic_and_bounded(self):
@@ -238,161 +224,7 @@ class TestAgentMemory(AgentMemoryEnvMixin, unittest.TestCase):
             finally:
                 agent_memory.SPEC_ROOT = old_spec_root
 
-    def test_status_and_note_with_subagent_session_use_parent_selected_topic(self):
-        import agent_memory
-
-        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
-            old_spec_root = agent_memory.SPEC_ROOT
-            agent_memory.SPEC_ROOT = Path(spec_root)
-            try:
-                subprocess.run(["git", "init", "-q", "-b", "main"], cwd=tmp, check=True)
-                workspace = Path(tmp).resolve()
-                spec_dir = agent_memory.spec_dir_for(workspace)
-                spec_dir.mkdir(parents=True)
-                parent_session = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
-                os.environ[PARENT_SESSION_ENV] = parent_session
-                (spec_dir / f".session-topic-{parent_session}.txt").write_text("parent-review\n")
-
-                status_buffer = io.StringIO()
-                with contextlib.redirect_stdout(status_buffer):
-                    assert (
-                        agent_memory.main(
-                            [
-                                "status",
-                                "--json",
-                                "--workspace",
-                                str(workspace),
-                                "--session-id",
-                                "toolu_01EoFakeSubagentCall",
-                            ]
-                        )
-                        == 0
-                    )
-                status = json.loads(status_buffer.getvalue())
-                assert status["selected_topic"] == "parent-review"
-
-                with contextlib.redirect_stdout(io.StringIO()):
-                    assert (
-                        agent_memory.main(
-                            [
-                                "note",
-                                "gotcha",
-                                "subagent note uses parent topic",
-                                "--workspace",
-                                str(workspace),
-                                "--session-id",
-                                "toolu_01EoFakeSubagentCall",
-                            ]
-                        )
-                        == 0
-                    )
-                entries = [
-                    json.loads(line) for line in (spec_dir / "parent-review.worklog.jsonl").read_text().splitlines()
-                ]
-                assert entries[-1]["topic"] == "parent-review"
-                assert entries[-1]["session_key"] == "toolu_01EoFakeSubagentCall"
-                assert entries[-1]["text"] == "subagent note uses parent topic"
-            finally:
-                agent_memory.SPEC_ROOT = old_spec_root
-
-    def test_status_with_subagent_session_uses_parent_fallback_on_default_branch(self):
-        import agent_memory
-
-        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
-            old_spec_root = agent_memory.SPEC_ROOT
-            agent_memory.SPEC_ROOT = Path(spec_root)
-            try:
-                subprocess.run(["git", "init", "-q", "-b", "main"], cwd=tmp, check=True)
-                workspace = Path(tmp).resolve()
-                parent_session = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
-                os.environ[PARENT_SESSION_ENV] = parent_session
-
-                buffer = io.StringIO()
-                with contextlib.redirect_stdout(buffer):
-                    assert (
-                        agent_memory.main(
-                            [
-                                "status",
-                                "--json",
-                                "--workspace",
-                                str(workspace),
-                                "--session-id",
-                                "toolu_01EoFakeSubagentCall",
-                            ]
-                        )
-                        == 0
-                    )
-                payload = json.loads(buffer.getvalue())
-                assert payload["selected_topic"] == f"session-{parent_session[:24]}"
-            finally:
-                agent_memory.SPEC_ROOT = old_spec_root
-
-    def test_status_with_own_session_selection_beats_parent_selection(self):
-        import agent_memory
-
-        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
-            old_spec_root = agent_memory.SPEC_ROOT
-            agent_memory.SPEC_ROOT = Path(spec_root)
-            try:
-                workspace = Path(tmp).resolve()
-                spec_dir = agent_memory.spec_dir_for(workspace)
-                spec_dir.mkdir(parents=True)
-                parent_session = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
-                sub_session = "toolu_01EoFakeSubagentCall"
-                os.environ[PARENT_SESSION_ENV] = parent_session
-                (spec_dir / f".session-topic-{parent_session}.txt").write_text("parent-topic\n")
-                (spec_dir / f".session-topic-{sub_session}.txt").write_text("payload-topic\n")
-
-                buffer = io.StringIO()
-                with contextlib.redirect_stdout(buffer):
-                    assert (
-                        agent_memory.main(
-                            ["status", "--json", "--workspace", str(workspace), "--session-id", sub_session]
-                        )
-                        == 0
-                    )
-                assert json.loads(buffer.getvalue())["selected_topic"] == "payload-topic"
-            finally:
-                agent_memory.SPEC_ROOT = old_spec_root
-
-    def test_requested_topic_beats_session_and_parent_selection(self):
-        import agent_memory
-
-        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
-            old_spec_root = agent_memory.SPEC_ROOT
-            agent_memory.SPEC_ROOT = Path(spec_root)
-            try:
-                workspace = Path(tmp).resolve()
-                spec_dir = agent_memory.spec_dir_for(workspace)
-                spec_dir.mkdir(parents=True)
-                parent_session = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
-                sub_session = "toolu_01EoFakeSubagentCall"
-                os.environ[PARENT_SESSION_ENV] = parent_session
-                (spec_dir / f".session-topic-{parent_session}.txt").write_text("parent-topic\n")
-                (spec_dir / f".session-topic-{sub_session}.txt").write_text("payload-topic\n")
-
-                buffer = io.StringIO()
-                with contextlib.redirect_stdout(buffer):
-                    assert (
-                        agent_memory.main(
-                            [
-                                "status",
-                                "--json",
-                                "--workspace",
-                                str(workspace),
-                                "--session-id",
-                                sub_session,
-                                "--topic",
-                                "requested-topic",
-                            ]
-                        )
-                        == 0
-                    )
-                assert json.loads(buffer.getvalue())["selected_topic"] == "requested-topic"
-            finally:
-                agent_memory.SPEC_ROOT = old_spec_root
-
-    def test_status_without_parent_env_keeps_session_and_no_session_paths(self):
+    def test_status_keeps_session_and_no_session_paths(self):
         import agent_memory
 
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
@@ -427,37 +259,6 @@ class TestAgentMemory(AgentMemoryEnvMixin, unittest.TestCase):
                 with contextlib.redirect_stdout(without_session):
                     assert agent_memory.main(["status", "--json", "--workspace", str(workspace)]) == 0
                 assert json.loads(without_session.getvalue())["selected_topic"] == "active-topic"
-            finally:
-                agent_memory.SPEC_ROOT = old_spec_root
-
-    def test_status_main_session_env_matches_unset_env_when_session_ids_match(self):
-        import agent_memory
-
-        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
-            old_spec_root = agent_memory.SPEC_ROOT
-            agent_memory.SPEC_ROOT = Path(spec_root)
-            try:
-                subprocess.run(["git", "init", "-q", "-b", "main"], cwd=tmp, check=True)
-                workspace = Path(tmp).resolve()
-                parent_session = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
-                command = [
-                    "status",
-                    "--json",
-                    "--workspace",
-                    str(workspace),
-                    "--session-id",
-                    parent_session,
-                ]
-
-                without_env = io.StringIO()
-                with contextlib.redirect_stdout(without_env):
-                    assert agent_memory.main(command) == 0
-                os.environ[PARENT_SESSION_ENV] = parent_session
-                with_env = io.StringIO()
-                with contextlib.redirect_stdout(with_env):
-                    assert agent_memory.main(command) == 0
-
-                assert json.loads(with_env.getvalue()) == json.loads(without_env.getvalue())
             finally:
                 agent_memory.SPEC_ROOT = old_spec_root
 
@@ -520,7 +321,7 @@ class TestAgentMemory(AgentMemoryEnvMixin, unittest.TestCase):
             finally:
                 agent_memory.SPEC_ROOT = old_spec_root
 
-    def test_select_binds_the_explicit_session_id_even_when_parent_env_is_set(self):
+    def test_select_binds_the_explicit_session_id(self):
         import agent_memory
 
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
@@ -530,7 +331,6 @@ class TestAgentMemory(AgentMemoryEnvMixin, unittest.TestCase):
                 workspace = Path(tmp).resolve()
                 spec_dir = agent_memory.spec_dir_for(workspace)
                 spec_dir.mkdir(parents=True)
-                os.environ[PARENT_SESSION_ENV] = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
 
                 with contextlib.redirect_stdout(io.StringIO()):
                     assert (
@@ -1080,7 +880,7 @@ class TestAgentMemory(AgentMemoryEnvMixin, unittest.TestCase):
                 agent_memory.SPEC_ROOT = old_spec_root
 
 
-class TestAgentMemoryNote(AgentMemoryEnvMixin, unittest.TestCase):
+class TestAgentMemoryNote(unittest.TestCase):
     """WHEN recording structured insights with `,agent-memory note`."""
 
     def _roots(self, stack: contextlib.ExitStack):
@@ -1190,7 +990,7 @@ class TestAgentMemoryNote(AgentMemoryEnvMixin, unittest.TestCase):
             assert entries[0]["note_kind"] == "decision"
 
 
-class TestAgentMemoryMirror(AgentMemoryEnvMixin, unittest.TestCase):
+class TestAgentMemoryMirror(unittest.TestCase):
     """WHEN named topics are mirrored to persistent state and restored."""
 
     def _roots(self, stack: contextlib.ExitStack):

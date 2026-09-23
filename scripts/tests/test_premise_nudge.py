@@ -280,7 +280,7 @@ class TestPremiseNudgeWireFormat(unittest.TestCase):
         result = run_hook({"command": "git push --force-with-lease"})
         self.assertIn("Premise check", context_of(result))
 
-    def test_when_payload_is_copilot_shaped_should_parse_json_encoded_args(self):
+    def test_when_payload_carries_json_encoded_args_should_parse_them(self):
         result = run_hook({"tool_name": "shell", "arguments": json.dumps({"command": "git stash"})})
         self.assertIn("Premise check", context_of(result))
 

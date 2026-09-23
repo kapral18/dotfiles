@@ -94,22 +94,21 @@ class TestOmpMigration(unittest.TestCase):
         provider_order = (
             "modelProviderOrder:\n  - anthropic\n  - openai-codex\n  - openrouter\n  - cursor\n  - openai\n"
         )
-        # One profile-independent modelRoles block (user call 2026-09-07): every role rides the
-        # openrouter provider. Primaries on Muse Spark 1.3 (:xhigh default, :max for the deliberate
-        # slow/plan lanes, :high vision), advisor on grok-4.6:xhigh as the counter family, smol on
-        # GLM 5.3 Flash :high (cursor/default ran @smol lanes over the cursor-agent transport and
-        # died on Cursor's free-request limit), and the remaining built-in roles pinned explicitly:
-        # tiny and commit on GLM 5.3 Flash :medium, task (T2 implement) on GLM 5.3 :high.
+        # One profile-independent modelRoles block (user call 2026-09-23): every role rides the
+        # openai-codex provider, mirroring category_models.codex. Primaries on GPT-6 Sol (:high
+        # default, :max for the deliberate slow/plan lanes), vision on GPT-6 Luna :high, advisor on GPT-6 Sol :high as
+        # a degraded same-family counter, smol on GPT-6 Luna :high, and the remaining built-in roles
+        # pinned explicitly: tiny and commit on GPT-6 Luna :medium, task (T2 implement) on GPT-6 Sol :medium.
         work_role_values = (
-            "default: openrouter/meta/muse-spark-1.3:xhigh",
-            "smol: openrouter/z-ai/glm-5.3-flash:high",
-            "slow: openrouter/meta/muse-spark-1.3:max",
-            "vision: openrouter/meta/muse-spark-1.3:high",
-            "plan: openrouter/meta/muse-spark-1.3:max",
-            "commit: openrouter/z-ai/glm-5.3-flash:medium",
-            "tiny: openrouter/z-ai/glm-5.3-flash:medium",
-            "task: openrouter/z-ai/glm-5.3:high",
-            "advisor: openrouter/x-ai/grok-4.6:xhigh",
+            "default: openai-codex/gpt-6-sol:high",
+            "smol: openai-codex/gpt-6-luna:high",
+            "slow: openai-codex/gpt-6-sol:max",
+            "vision: openai-codex/gpt-6-luna:high",
+            "plan: openai-codex/gpt-6-sol:max",
+            "commit: openai-codex/gpt-6-luna:medium",
+            "tiny: openai-codex/gpt-6-luna:medium",
+            "task: openai-codex/gpt-6-sol:medium",
+            "advisor: openai-codex/gpt-6-sol:high",
             provider_order,
         )
         personal_role_values = work_role_values

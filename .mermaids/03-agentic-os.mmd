@@ -37,9 +37,8 @@ flowchart TB
         GEMINI["Antigravity: category key antigravity; deployed review/mirror harness gemini; config/symlink_AGENTS.md + symlink_skills + generated mcp_config.json"]:::exec
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (OpenRouter selectors)<br/>depth one + worker task deny; parentID root-only memory; terminal guards survive missing optional memory helpers"]:::exec
         CODEX["Codex: dot_codex/private_config.{work,personal}.toml<br/>managed/native fallback child roles disable collaboration<br/>+ ,codex bearer-token env wrapper for hosted MCP"]:::exec
-        PI["Pi: dot_pi/agent/* (native root github-copilot/claude-fable-5.1/high; separate model + thinking profile fields; per-lane picks: see tiering.yaml pi rows)<br/>runtime-parity before_agent_start appends canonical SOP iff absent;<br/>root user-scope fresh dispatch only; acceptance:false explicit; per-call model/skill overrides and composite/revival flows denied by the sole-registration subagent-contract adapter"]:::exec
-        OMP["OMP: dot_omp/private_agent/readonly_config.yml.tmpl<br/>native extendedContext:true gives the Fable/high root long context; foreground Bash/Eval default + native-yield leaf async/hub/task guard<br/>one profile-independent modelRoles block: Fable 5.1:high primaries (default/vision/slow/plan, T1); task Opus 5:high (T2 implement); smol Sonnet 5:high (T3 mechanical/memory); tiny Sonnet 5:medium; commit Sonnet 5:medium; advisor openai-codex gpt-6-astra:high (refute, cross_family)<br/>+ generated ~/.omp/agent/mcp.json token bridges"]:::exec
-        COPILOT["Copilot CLI: private_dot_copilot/* (settings + gates + review agents;<br/>MCP stdio-only, OAuth http unusable)"]:::exec
+        PI["Pi: dot_pi/agent/* (native root openrouter/meta/muse-spark-1.3/xhigh; separate model + thinking profile fields; per-lane picks: see tiering.yaml pi rows)<br/>runtime-parity before_agent_start appends canonical SOP iff absent;<br/>root user-scope fresh dispatch only; acceptance:false explicit; per-call model/skill overrides and composite/revival flows denied by the sole-registration subagent-contract adapter"]:::exec
+        OMP["OMP: dot_omp/private_agent/readonly_config.yml.tmpl<br/>native extendedContext:true gives the root long context; foreground Bash/Eval default + native-yield leaf async/hub/task guard<br/>one profile-independent modelRoles block: openai-codex GPT-6 Sol primaries (default:high, slow/plan:max, T1); vision GPT-6 Luna:high; task GPT-6 Sol:medium (T2 implement); smol GPT-6 Luna:high (T3 mechanical/memory); tiny/commit GPT-6 Luna:medium; advisor GPT-6 Sol:high (refute, degraded)<br/>+ generated ~/.omp/agent/mcp.json token bridges"]:::exec
         TUICR["tuicr: dot_config/tuicr/readonly_config.toml"]:::exec
         LGTM["lgtm: dot_config/lgtm/readonly_config.toml"]:::exec
         LOCAL["llama.cpp (local, opt-in)"]:::exec
@@ -47,7 +46,7 @@ flowchart TB
 
     GEN -->|07-generate-mcp-configs + 07-merge-* hooks| EXECL
     MODELS -->|generate_pi_models / merge_opencode_models| EXECL
-    SK -. symlinked or natively discovered by .-> CURSOR & CLAUDE & OPENCODE & CODEX & PI & OMP & COPILOT & GEMINI
+    SK -. symlinked or natively discovered by .-> CURSOR & CLAUDE & OPENCODE & CODEX & PI & OMP & GEMINI
 
     subgraph HOOKS["Shared lifecycle hooks — detail in 03b"]
         H["Cursor + Antigravity session context and worklog adapters<br/>compact topic/worklog context + reinforcement; root-only automatic KB retrieval/staging; admission and final learning stay in the root"]:::ctx

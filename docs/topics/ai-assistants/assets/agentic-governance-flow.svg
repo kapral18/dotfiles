@@ -9,7 +9,7 @@
   </defs>
   <rect class="bg" width="1320" height="420" rx="24"/>
   <text class="text" x="48" y="58">Governed route, not prompt soup</text>
-  <text class="small" x="48" y="90">The same request path applies across Cursor, Copilot, Claude, Codex, Gemini, Pi, and other harnesses.</text>
+  <text class="small" x="48" y="90">The same request path applies across Cursor, Claude, Codex, Gemini, Pi, and other harnesses.</text>
   <rect class="box" x="48" y="145" width="155" height="110"/>
   <text class="text" x="78" y="188">User</text><text class="small" x="78" y="218">request</text>
   <path class="line" d="M203 200 H278"/>

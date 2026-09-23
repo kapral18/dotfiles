@@ -289,7 +289,6 @@ PROFILE_DIRS = (
     "home/dot_cursor/exact_agents",
     "home/dot_omp/private_agent/exact_agents",
     "home/dot_pi/agent/exact_agents",
-    "home/private_dot_copilot/exact_agents",
 )
 
 
@@ -366,8 +365,8 @@ class TestAgentSkillInvariants(unittest.TestCase):
             assert snippet not in text, f"{relative_path} should not contain: {snippet}"
 
     def test_skill_namespace_uses_k_prefix(self):
-        # Copilot CLI validates the frontmatter `name` (dir name as fallback) and silently
-        # drops leading `,`/`_`/`.`/`-`; dir-keyed harnesses (Claude/opencode/pi) use the
+        # Some harnesses validate the frontmatter `name` (dir name as fallback) and silently
+        # drop leading `,`/`_`/`.`/`-`; dir-keyed harnesses (Claude/opencode/pi) use the
         # directory name. The uniform `k-` namespace avoids native-skill collisions in both,
         # so every skill dir and its frontmatter name must carry it.
         skills_root = REPO / "home/exact_dot_agents/exact_skills"
@@ -424,7 +423,6 @@ class TestAgentSkillInvariants(unittest.TestCase):
             REPO / "home/dot_cursor/exact_agents",
             REPO / "home/dot_omp/private_agent/exact_agents",
             REPO / "home/dot_pi/agent/exact_agents",
-            REPO / "home/private_dot_copilot/exact_agents",
         )
         name_re = re.compile(r'^name(?:\s*=|:)\s*"?(?P<name>[^"\n]+)"?$', re.MULTILINE)
         profile_names: dict[str, set[str]] = {}
@@ -488,7 +486,6 @@ class TestAgentSkillInvariants(unittest.TestCase):
         agents_dirs = {
             "claude": REPO / "home/dot_claude/exact_agents",
             "codex": REPO / "home/dot_codex/exact_agents",
-            "copilot": REPO / "home/private_dot_copilot/exact_agents",
             "cursor": REPO / "home/dot_cursor/exact_agents",
             "omp": REPO / "home/dot_omp/private_agent/exact_agents",
             "pi": REPO / "home/dot_pi/agent/exact_agents",
@@ -685,22 +682,9 @@ class TestAgentSkillInvariants(unittest.TestCase):
         self.assertEqual(qwen36_personal_settings["autoCompactWindow"], 200000)
 
     def test_ai_docs_track_current_runtime_contracts(self):
-        self.assert_file_contains(
-            "docs/topics/ai-assistants/tool-configs/other-harnesses.md",
-            "injects a bearer token minted by cursor-cli per request",
-            "`,copilot` passes through to the real binary except for bare `--resume`",
-            "The bearer-free `~/.copilot/mcp-config.json`",
-        )
         self.assert_file_not_contains(
             "docs/topics/ai-assistants/tool-configs/other-harnesses.md",
-            "Before launch, `,copilot` holds a private config lock",
             "sends the Authorization values to a single generator render over stdin",
-            "The token-bearing `~/.copilot/mcp-config.json`",
-        )
-        self.assert_file_contains(
-            "docs/topics/ai-assistants/tool-configs/profile-merging.md",
-            "Copilot MCP rendering is apply-time only",
-            "Runtime `,copilot` does not render config or change the ledger",
         )
         self.assert_file_contains(
             "docs/topics/ai-assistants/llama-cpp/launchers.md",
@@ -714,7 +698,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "docs/topics/ai-assistants/mcp.md",
-            "emitted to every work-profile harness, including OMP, Copilot, and Codex",
+            "emitted to every work-profile harness, including OMP and Codex",
             "OpenCode gets `scsi-local` only",
             "HTTP entries are intentionally skipped",
         )
@@ -738,10 +722,6 @@ class TestAgentSkillInvariants(unittest.TestCase):
         self.assert_file_not_contains(
             ".mermaids/03-agentic-os.mmd",
             "readonly_GEMINI.md",
-        )
-        self.assert_file_not_contains(
-            ".mermaids/11-scripts-helpers.mmd",
-            "Copilot typed header-auth plan + stdin override render",
         )
         self.assert_file_not_contains(
             ".mermaids/SR-index.mmd",

@@ -237,8 +237,6 @@ class TestLauncherOptions(unittest.TestCase):
             "ANTHROPIC_BASE_URL": "https://outside.example",
             "ANTHROPIC_AUTH_TOKEN": "outside-token",
             "CLAUDE_CODE_USE_VERTEX": "1",
-            "COPILOT_PROVIDER_API_KEY": "real-copilot-key",
-            "COPILOT_PROVIDER_BEARER_TOKEN": "real-copilot-bearer",
             "OPENAI_API_KEY": "real-openai-key",
             "CURSOR_LOCAL_AGENT_BASE_URL": "https://outside.example",
             "CURSOR_LOCAL_AGENT_API_KEY": "outside-key",
@@ -249,15 +247,6 @@ class TestLauncherOptions(unittest.TestCase):
             claude_command, claude_env = main.child_command(
                 "claude",
                 "/usr/bin/claude",
-                "http://127.0.0.1:3210",
-                "local-token",
-                "gpt-selected",
-                ["-p", "hello"],
-                main.ContextBudget(272_000, 258_400, 244_800),
-            )
-            copilot_command, copilot_env = main.child_command(
-                "copilot",
-                "/usr/bin/copilot",
                 "http://127.0.0.1:3210",
                 "local-token",
                 "gpt-selected",
@@ -287,16 +276,6 @@ class TestLauncherOptions(unittest.TestCase):
         self.assertNotIn("CLAUDE_CODE_USE_VERTEX", claude_env)
         self.assertNotIn("OPENAI_API_KEY", claude_env)
 
-        self.assertEqual(copilot_command, ["/usr/bin/copilot", "-p", "hello"])
-        self.assertEqual(copilot_env["COPILOT_PROVIDER_BEARER_TOKEN"], "local-token")
-        self.assertEqual(copilot_env["COPILOT_PROVIDER_WIRE_API"], "responses")
-        self.assertEqual(copilot_env["COPILOT_PROVIDER_TRANSPORT"], "http")
-        self.assertEqual(copilot_env["COPILOT_PROVIDER_MODEL_ID"], "gpt-selected")
-        self.assertEqual(copilot_env["COPILOT_PROVIDER_MAX_PROMPT_TOKENS"], "258400")
-        self.assertNotIn("COPILOT_PROVIDER_MAX_OUTPUT_TOKENS", copilot_env)
-        self.assertNotIn("COPILOT_PROVIDER_API_KEY", copilot_env)
-        self.assertNotIn("OPENAI_API_KEY", copilot_env)
-
         self.assertEqual(cursor_command, ["/usr/bin/cursor-agent-local", "--model", "gpt-selected", "-p", "hello"])
         self.assertEqual(cursor_env["CURSOR_LOCAL_AGENT_BASE_URL"], "http://127.0.0.1:3210/v1")
         self.assertEqual(cursor_env["CURSOR_LOCAL_AGENT_API_KEY"], "local-token")
@@ -311,30 +290,7 @@ class TestLauncherOptions(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     main.validate_cursor_forwarded([option])
 
-    def test_SHOULD_use_usable_input_and_clear_inherited_copilot_output_override(self) -> None:
-        with mock.patch.dict(
-            os.environ,
-            {
-                "PATH": "/usr/bin",
-                "COPILOT_PROVIDER_MAX_PROMPT_TOKENS": "999999",
-                "COPILOT_PROVIDER_MAX_OUTPUT_TOKENS": "128000",
-            },
-            clear=True,
-        ):
-            _, env = main.child_command(
-                "copilot",
-                "/usr/bin/copilot",
-                "http://127.0.0.1:3210",
-                "local-token",
-                "arbitrary-codex-model",
-                [],
-                main.ContextBudget(272_000, 258_400, 244_800),
-            )
-
-        self.assertEqual(env["COPILOT_PROVIDER_MAX_PROMPT_TOKENS"], "258400")
-        self.assertNotIn("COPILOT_PROVIDER_MAX_OUTPUT_TOKENS", env)
-
-    def test_SHOULD_apply_copilot_launch_overrides_and_context_metadata(self) -> None:
+    def test_SHOULD_apply_launch_overrides_and_context_metadata(self) -> None:
         server = mock.Mock()
         server.server_port = 3210
         thread = mock.Mock()
@@ -342,7 +298,7 @@ class TestLauncherOptions(unittest.TestCase):
         auth_provider = mock.Mock(return_value=credentials)
         child = mock.Mock(
             return_value=(
-                ["/usr/bin/copilot"],
+                ["/usr/bin/cursor-agent-local"],
                 {"PATH": "/usr/bin", "AGENT_BAND_MODEL_OVERRIDE": "stale", "AGENT_BAND_MODEL_FORMAT": "stale"},
             )
         )
@@ -353,7 +309,7 @@ class TestLauncherOptions(unittest.TestCase):
                 "main.resolve_model_budget",
                 return_value=main.ContextBudget(272_000, 258_400, 244_800),
             ) as resolve_budget,
-            mock.patch("main.harness_binary", return_value="/usr/bin/copilot"),
+            mock.patch("main.cursor_binary", return_value="/usr/bin/cursor-agent-local"),
             mock.patch("main.codex_binary", return_value="/usr/bin/codex"),
             mock.patch("main.CodexAuth", auth_provider),
             mock.patch("main.CodexClient"),
@@ -363,8 +319,8 @@ class TestLauncherOptions(unittest.TestCase):
             mock.patch("main.run_child", return_value=0) as run_child,
         ):
             result = main.launch(
-                "copilot",
-                ["--model", "gpt-selected", "--effort", "high", "--", "--effort", "low"],
+                "cursor",
+                ["--model", "gpt-selected", "--effort", "high", "--", "-p", "hello"],
             )
 
         self.assertEqual(result, 0)
@@ -375,12 +331,12 @@ class TestLauncherOptions(unittest.TestCase):
         self.assertNotIn("AGENT_BAND_MODEL_FORMAT", launched_env)
         resolve_budget.assert_called_once_with("gpt-selected")
         child.assert_called_once_with(
-            "copilot",
-            "/usr/bin/copilot",
+            "cursor",
+            "/usr/bin/cursor-agent-local",
             "http://127.0.0.1:3210",
             "local-token",
             "gpt-selected",
-            ["--effort", "low", "--effort", "high"],
+            ["-p", "hello"],
             main.ContextBudget(272_000, 258_400, 244_800),
             None,
         )
@@ -610,14 +566,13 @@ class TestCodexAuthentication(unittest.TestCase):
 
 
 class TestResponsesProtocol(unittest.TestCase):
-    """Copilot receives its requested Responses shape over a stream-only backend."""
+    """A Responses client receives its requested shape over a stream-only backend."""
 
     def test_SHOULD_force_streaming_and_apply_only_explicit_overrides(self) -> None:
         original = {
             "model": "harness-model",
             "input": "hello",
             "stream": False,
-            "initiator": "copilot-cli",
             "max_output_tokens": 4096,
             "reasoning": {"effort": "low", "summary": "auto"},
             "include": ["file_search_call.results"],
@@ -1160,7 +1115,7 @@ class TestLoopbackServer(unittest.TestCase):
         self.assertGreater(payload["input_tokens"], 0)
         self.fake_client.open.assert_not_called()
 
-    def test_SHOULD_aggregate_non_streaming_copilot_request(self) -> None:
+    def test_SHOULD_aggregate_non_streaming_responses_request(self) -> None:
         self.fake_client.open.return_value = sse_response(*completed_text_events("server"))
 
         with self.request(

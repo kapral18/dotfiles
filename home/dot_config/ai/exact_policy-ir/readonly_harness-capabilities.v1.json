@@ -65,20 +65,6 @@
       "evidence_freshness": "2026-08-20"
     },
     {
-      "harness": "copilot",
-      "version_evidence": "copilot 1.0.77: the agent-memory extension's onPreToolUse returns modifiedArgs and pinned three explore spawns to gpt-5.3-codex against a caller-supplied claude-opus-5, confirmed in assistant_usage_events — probed 2026-08-02. toolArgs arrive as a JSON string.",
-      "instruction_entrypoints": [
-        "home/private_dot_copilot/symlink_copilot-instructions.md -> ../AGENTS.md"
-      ],
-      "hook_support": "mutation",
-      "model_mutable": true,
-      "subagent_model_binding": "static",
-      "leaf_signal": "unverified",
-      "leaf_signal_note": "No live child-session probe offline: whether Copilot sets COPILOT_AGENT_SESSION_ID for children and whether the extension hooks fire there is unprobed.",
-      "mutation_scope": "task tool model and reasoning_effort",
-      "evidence_freshness": "2026-08-02"
-    },
-    {
       "harness": "pi",
       "version_evidence": "Pi 0.85.1 / pi-subagents 0.67.0: subagent-contract.ts is the sole subagent registration owner (root-object schema with closed leaf/management variants, same registered schema enforced through the native pi-ai validator plus INVALID_DISPATCH_REQUEST guard prefix, explicit user/fresh/acceptance:false). Native defaults/resolvers and adapter transitions were probed without model calls. Fresh foreground profiles retain named role skills, not ambient context/catalog. The band hook still has no Pi mutation adapter; these are blocking controls, not argument rewriting. LEAF_PARAMETER_KEYS in subagent-contract.ts admits no per-call model or workflowScript key (source read 2026-09-14), so the model binding is static.",
       "instruction_entrypoints": ["home/dot_pi/agent/exact_agents/*.md.tmpl"],

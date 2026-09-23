@@ -32,21 +32,6 @@
         "supported": false
       }
     },
-    "copilot": {
-      "catalog": {
-        "mode": "unknown",
-        "reason": "installed CLI exposes --model and BYOK providers but no complete catalog command"
-      },
-      "identity": {
-        "binary": "copilot",
-        "package": "Homebrew cask copilot-cli 1.0.68",
-        "version": "GitHub Copilot CLI 1.0.70"
-      },
-      "live_probe": {
-        "reason": "no locally verified complete catalog command",
-        "supported": false
-      }
-    },
     "cursor": {
       "catalog": {
         "mode": "unknown",

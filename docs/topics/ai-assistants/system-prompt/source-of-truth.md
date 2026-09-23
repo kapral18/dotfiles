@@ -48,7 +48,6 @@ Update the source and then verify the rendered effect.
 | `~/.cursor/plugins/local/k-sop/rules/sop.md` | full SOP rendered from the canonical source with `alwaysApply: true` |
 | `~/.codex/AGENTS.md`                         | symlink to `~/AGENTS.md`                                             |
 | `~/.config/opencode/AGENTS.md`               | symlink to `~/AGENTS.md`                                             |
-| `~/.copilot/copilot-instructions.md`         | symlink to `~/AGENTS.md`                                             |
 | `~/.agents/skills/*/SKILL.md`                | rendered from `home/exact_dot_agents/exact_skills/`                  |
 
 Claude resolves `@AGENTS.md` imports natively and deduplicates canonical paths. Its global `~/.claude/CLAUDE.md` symlink supplies the home SOP outside `$HOME` too; this repository’s `CLAUDE.md` imports its project `AGENTS.md`. The home import removes the second full body from Cursor’s ancestor-rule list.

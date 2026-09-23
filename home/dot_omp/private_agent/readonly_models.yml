@@ -3,7 +3,7 @@
 # extraBody.provider` on the wire — a model lookup confirmed the merged cache entry carries no
 # extraBody — so per-request routing filters never reach OpenRouter and providers of ANY
 # quantization were eligible. The provider policy therefore rides the OpenRouter preset slug, the
-# same mechanism the Claude/Codex/Copilot/Cursor wrappers and OpenCode use:
+# same mechanism the Claude/Codex/Cursor wrappers and OpenCode use:
 #   - `glm-lanes-high` (z-ai/glm-5.3-flash) and `glm-lanes-max` (z-ai/glm-5.2) allow only
 #     FP8-or-higher quantization (`fp8, fp16, bf16, fp32`) under a 24 t/s
 #     preferred-minimum-throughput floor, with `sort` omitted so default load balancing keeps

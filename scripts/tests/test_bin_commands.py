@@ -7,7 +7,6 @@ import unittest
 
 from .test_artifact import *  # noqa: F401,F403
 from .test_codex import *  # noqa: F401,F403
-from .test_copilot import *  # noqa: F401,F403
 from .test_cursor import *  # noqa: F401,F403
 from .test_cursor_llama_cpp import *  # noqa: F401,F403
 from .test_format_md import *  # noqa: F401,F403

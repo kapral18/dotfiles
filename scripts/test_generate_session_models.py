@@ -22,12 +22,6 @@ class TestGenerateSessionModels(unittest.TestCase):
             "claude_code",
         ),
         ("codex.toml", REPO / "home/dot_codex/private_config.work.toml", generate_session_models.apply_codex, "codex"),
-        (
-            "copilot.json",
-            REPO / "home/private_dot_copilot/settings.json",
-            generate_session_models.apply_copilot,
-            "copilot",
-        ),
         ("pi.json", REPO / "home/dot_pi/agent/readonly_settings.work.json", generate_session_models.apply_pi, "pi"),
         (
             "omp.yml",
@@ -106,15 +100,6 @@ class TestGenerateSessionModels(unittest.TestCase):
             generate_session_models.apply_codex('approval_policy = "never"\n', self.DRIFT)
         with self.assertRaisesRegex(ValueError, "no top-level model_reasoning_effort"):
             generate_session_models.apply_codex('model = "x"\n', self.DRIFT)
-
-    def test_apply_copilot_writes_root_fields_and_leaves_subagents_alone(self):
-        current = (REPO / "home/private_dot_copilot/settings.json").read_text(encoding="utf-8")
-        before = json.loads(current)
-        after = json.loads(generate_session_models.apply_copilot(current, self.DRIFT))
-        self.assertEqual("vendor/drift-model-9", after["model"])
-        self.assertEqual("low", after["effortLevel"])
-        self.assertEqual("default", after["contextTier"])
-        self.assertEqual(before["subagents"], after["subagents"])
 
     def test_apply_pi_splits_provider_on_the_first_slash_and_writes_thinking(self):
         current = (REPO / "home/dot_pi/agent/readonly_settings.work.json").read_text(encoding="utf-8")

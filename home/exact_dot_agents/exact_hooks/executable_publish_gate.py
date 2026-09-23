@@ -6,7 +6,7 @@ Slack messages, email, chat). The wording rule lives in `k-communication`, the a
 SOP, and the leaf contract (§3.7) forbids a delegated child from publishing at all. Until now every
 one of those was prose; this hook is the deterministic backstop for the two pieces a harness can see:
 
-- A **delegated leaf** (Claude Code child `agent_id`, Copilot parent session, pi subagent) calling a
+- A **delegated leaf** (Claude Code child `agent_id`, pi subagent) calling a
   publication tool is denied. Leaves return drafts; only the root publishes under user authority.
 - The **root** keeps its authority: the call is allowed and a short §3.8 checklist rides along as
   `additionalContext`, so the reminder lands at the action instead of at the end of the turn.

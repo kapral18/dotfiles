@@ -163,14 +163,14 @@ class TestCheckPlan(unittest.TestCase):
                 if path == "home/dot_config/llama.cpp/models.ini.tmpl":
                     assert "tests/test_llama_cpp_lifecycle.py" in plan.tests
 
-    def test_WHEN_copilot_adapter_changes_SHOULD_skip_bin_commands_and_pickers(self):
+    def test_WHEN_codex_adapter_changes_SHOULD_skip_bin_commands_and_pickers(self):
         plan = plan_check(
             REPO,
             full=False,
-            changed=("home/exact_lib/exact_,copilot-adapter/main.py",),
+            changed=("home/exact_lib/exact_,codex-adapter/main.py",),
             add_delete=False,
         )
-        assert "tests/test_copilot_adapter.py" in plan.tests
+        assert "tests/test_codex_adapter.py" in plan.tests
         assert "tests/test_bin_commands.py" not in plan.tests
         assert "tests/test_tmux_pickers.py" not in plan.tests
 

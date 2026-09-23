@@ -36,7 +36,6 @@ import ai_models
 from _test_support import (
     ARTIFACT_COMMAND,
     CODEX_COMMAND,
-    COPILOT_COMMAND,
     KBN_STACK_COMMAND,
     MCP_TOKEN_COMMAND,
     REPO,
@@ -426,6 +425,18 @@ def _redirecting_endpoint(status: int = 302):
             t.join()
 
 
+def _pi_openrouter_wires() -> list[str]:
+    """The live `--pi-openrouter-wire-models` list, so preset stubs track the Pi rows instead of a copy."""
+    module = _load_openrouter_presets_module()
+    with mock.patch.dict(os.environ, {"CHEZMOI_SOURCE_DIR": str(REPO)}):
+        return module._pi_openrouter_wire_models()
+
+
+def _pi_openrouter_wire_echo(indent: str = "") -> str:
+    """Shell `echo` lines that print the live Pi OpenRouter wires, one per line."""
+    return "".join(f'{indent}echo "{wire}"\n' for wire in _pi_openrouter_wires())
+
+
 def _install_openrouter_preset_stub(home: Path) -> None:
     preset_helper = home / "lib" / "shared" / "openrouter_presets.py"
     preset_helper.parent.mkdir(parents=True, exist_ok=True)
@@ -454,10 +465,9 @@ if [[ "$1" == "--cursor-model-catalog" ]]; then
   exit 0
 fi
 if [[ "$1" == "--pi-openrouter-wire-models" ]]; then
-  echo "z-ai/glm-5.3-flash@preset/effort-high"
-  echo "meta/muse-spark-1.3@preset/effort-high"
-  echo "meta/muse-spark-1.3@preset/effort-max"
-  exit 0
+"""
+        + _pi_openrouter_wire_echo("  ")
+        + """  exit 0
 fi
 exit 0
 """,

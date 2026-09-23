@@ -564,7 +564,7 @@ class TestInstallPnpmPkgs(unittest.TestCase):
         script = Path(tmp) / "bin" / "lsof"
         script.write_text(
             "#!/bin/sh\n"
-            f"touch {marker}\n"
+            f'printf "%s\\n" "$*" > {marker}\n'
             "printf 'p4242\\ncpi\\nfcwd\\nn/Users/someone/work\\nftxt\\n'\n"
             f"printf 'n{gone}/dist/cli.js\\n'\n"
             "printf 'p66359\\ncbun\\nftxt\\n'\n"
@@ -583,9 +583,12 @@ class TestInstallPnpmPkgs(unittest.TestCase):
             with patch.dict(os.environ, {"INSTALL_PNPM_PKGS_LSOF": str(lsof)}):
                 result = self._run(home, bindir, log, state)
             ran = marker.exists()
+            lsof_args = marker.read_text(encoding="utf-8").split() if ran else []
 
         assert result.returncode == 0, result.stderr
         assert ran
+        # Name lookups are what made a real scan outlast the 60s timeout.
+        assert {"-n", "-P"} <= set(lsof_args), lsof_args
         assert "Restart needed: pi (pid 4242) still runs from removed" in result.stdout
         assert "gone-18d5073542a15678-0" in result.stdout
         assert "66359" not in result.stdout

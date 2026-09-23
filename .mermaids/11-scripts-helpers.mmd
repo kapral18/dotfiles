@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 11-scripts-helpers.mmd — Every file in scripts/ (148). Repo-side Python
+%% 11-scripts-helpers.mmd — Every file in scripts/ (142). Repo-side Python
 %% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
 %% Grouped by consumer. Shared parsers feed the generators/mergers.
 %% ============================================================================
@@ -21,7 +21,7 @@ flowchart TB
 
     subgraph MCPGEN["MCP config generation (hook 07-generate-mcp-configs)"]
         MR["mcp_registry.py (load mcp_servers.yaml, filter;<br/>default shell resolution + shared tokenBridge argv policy)"]:::mcp
-        GMC["generate_mcp_configs.py (per-tool MCP json;<br/>OMP/Copilot/Codex tokenBridge entries → local ,mcp-token stdio bridges;<br/>registry-gated connect-timeout retry for repeat-safe endpoints)"]:::mcp
+        GMC["generate_mcp_configs.py (per-tool MCP json;<br/>OMP/Codex tokenBridge entries → local ,mcp-token stdio bridges;<br/>registry-gated connect-timeout retry for repeat-safe endpoints)"]:::mcp
         MCM["merge_claude_mcp.py (surgical mcpServers in ~/.claude.json;<br/>malformed live JSON fails before write; missing file bootstraps even with empty registry)<br/>merge_antigravity_mcp.py (declared-over-live MCP with prior-owned retirement)"]:::mcp
         ICT["inject_mcp_into_codex_toml.py (hook 07-merge-codex; runtime table comments preserve ownership)"]:::mcp
         IOJ["inject_mcp_into_opencode_jsonc.py (hook 07-merge-opencode)"]:::mcp
@@ -29,16 +29,14 @@ flowchart TB
     YP --> MR --> GMC --> MCM & ICT & IOJ
 
     subgraph RECON["Mixed-ownership config reconciliation"]
-        MCS["merge_copilot_settings.py (recursive policy merge;<br/>exact subagents.agents ownership)<br/>merge_antigravity_cli_settings.py (declared-over-live;<br/>pins modelProvider+model; strips gcp)"]:::mcp
+        MCS["merge_antigravity_cli_settings.py (declared-over-live;<br/>pins modelProvider+model; strips gcp)"]:::mcp
     end
 
     subgraph BANDGEN["Category model tiering (band registry projections)"]
         GAB["generate_agent_bands.py (flattens agent_bindings × agent_categories × category_models<br/>into gate-used picks in dot_config/ai/readonly_agent-bands.v1.json for the band_gate hook; check|write)"]:::model
-        GSM["generate_subagent_models.py (writes the harnesses with no agent files:<br/>copilot settings.json subagents.agents; check|write)"]:::model
-        GSESS["generate_session_models.py (writes every repo-owned root config from session_models;<br/>Claude/Codex/Copilot/Pi/OMP/Antigravity; Cursor informational; check|write)"]:::model
+        GSESS["generate_session_models.py (writes every repo-owned root config from session_models;<br/>Claude/Codex/Pi/OMP/Antigravity; Cursor informational; check|write)"]:::model
     end
-    AM --> GAB & GSM & GSESS
-    GSM --> MCS
+    AM --> GAB & GSESS
 
     subgraph MODELGEN["Model catalog generation"]
         MM["model_mirrors.py + model_capabilities.v1.json<br/>deterministic v1 available/curated/recommended mirror;<br/>Claude defaults follow session_models.claude_code<br/>+ complete source provenance + fail-closed bounded live drift adapters"]:::model
@@ -76,8 +74,8 @@ flowchart TB
     PCAP --> PCOMP
 
     subgraph TESTS["Tests + fixtures"]
-        TTOP["top-level tests: test_{ai_usage,agent_memory,ai_kb,ai_launcher,ai_models,analyze_pi_session,check,subagent_child_stats,chezmoi_lib,embed,<br/>generate_mcp_configs,generate_session_models,generated_artifact_ledger,inject_mcp_into_codex_toml,<br/>inject_mcp_into_opencode_jsonc,mcp_registry,merge_antigravity_cli_settings,merge_antigravity_mcp,merge_copilot_settings,<br/>model_mirrors,pre_commit,verify_agent_file_sizes,<br/>verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py<br/>test_omp_migration.py (OMP install/config/agents/extensions migration contract)"]:::shared
-        IT["scripts/tests/: __init__.py · copilot_agent_memory_extension.test.mjs · context_mode.test.ts (shared Pi/OMP selector state + rendered adapters) · pi_model_profile.test.ts (/model-profile list/marker parsing, first-slash provider split, live-switch warning paths) · recall_worklog_state_machine.py<br/>bin_command_support.py · test_bin_commands.py (compat aggregator) · test_{artifact,codex,copilot,cursor,cursor_llama_cpp,install_pnpm_pkgs,kbn_stack,mcp_token,openrouter_wrappers,format_md,w_issue,sem_launcher}.py<br/>test_{agent_hooks,agent_prompt_wrap,agent_skill_invariants,codex_adapter,copilot_adapter,correction_detector,cursor_agent_shim,doctor,recall_worklog,gh_picker_dispatch_state,gh_picker_lock,gh_picker_review_requests,invariants,model_band_invariants,review_policy_invariants,sop_policy_invariants,llama_cpp_lifecycle,nano_banana,image_local,image_openrouter,image_codex,image_openai,install_github_zip_bundle}.py<br/>test_pi_subagent_contract.py (Pi subagent-contract adapter: native loader/schema/guard probes)<br/>test_ai_policy_compiler.py (IR/capability/compiler offline contract tests)<br/>test_present_pr_template.py (fixed-code byte preservation, content edits, malformed markers, input/output separation)<br/>test_playwriter_skill_docs.py (complete doc partitions, required common guards, unknown-source full fallback, CLI errors)<br/>test_{plain_session_removal,proof_cli,q,session_github_cache,tmux_handoff_lifecycle,<br/>tmux_handoff_namespace,tmux_pickers,wh,worktree_delete_boundaries}.py"]:::shared
+        TTOP["top-level tests: test_{ai_usage,agent_memory,ai_kb,ai_launcher,ai_models,analyze_pi_session,check,subagent_child_stats,chezmoi_lib,embed,<br/>generate_mcp_configs,generate_session_models,generated_artifact_ledger,inject_mcp_into_codex_toml,<br/>inject_mcp_into_opencode_jsonc,mcp_registry,merge_antigravity_cli_settings,merge_antigravity_mcp,<br/>model_mirrors,pre_commit,verify_agent_file_sizes,<br/>verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py<br/>test_omp_migration.py (OMP install/config/agents/extensions migration contract)"]:::shared
+        IT["scripts/tests/: __init__.py · context_mode.test.ts (shared Pi/OMP selector state + rendered adapters) · pi_model_profile.test.ts (/model-profile list/marker parsing, first-slash provider split, live-switch warning paths) · recall_worklog_state_machine.py<br/>bin_command_support.py · test_bin_commands.py (compat aggregator) · test_{artifact,codex,cursor,cursor_llama_cpp,install_pnpm_pkgs,kbn_stack,mcp_token,openrouter_wrappers,format_md,w_issue,sem_launcher}.py<br/>test_{agent_hooks,agent_prompt_wrap,agent_skill_invariants,codex_adapter,correction_detector,cursor_agent_shim,doctor,recall_worklog,gh_picker_dispatch_state,gh_picker_lock,gh_picker_review_requests,invariants,model_band_invariants,review_policy_invariants,sop_policy_invariants,llama_cpp_lifecycle,nano_banana,image_local,image_openrouter,image_codex,image_openai,install_github_zip_bundle}.py<br/>test_pi_subagent_contract.py (Pi subagent-contract adapter: native loader/schema/guard probes)<br/>test_ai_policy_compiler.py (IR/capability/compiler offline contract tests)<br/>test_present_pr_template.py (fixed-code byte preservation, content edits, malformed markers, input/output separation)<br/>test_playwriter_skill_docs.py (complete doc partitions, required common guards, unknown-source full fallback, CLI errors)<br/>test_{plain_session_removal,proof_cli,q,session_github_cache,tmux_handoff_lifecycle,<br/>tmux_handoff_namespace,tmux_pickers,wh,worktree_delete_boundaries}.py"]:::shared
         FX["fixtures/: ai_models/ + ai_models_with_claude/ (split registry dirs) · {mcp_servers,mcp_servers_exclude}.yaml<br/>codex_base.toml · golden_codex_personal.toml · golden_mcp_{personal,work}.json<br/>golden_opencode_{models,models_with_claude,personal}.jsonc · golden_pi_models.json<br/>model_probe_cases.json · opencode_{base,work_base}.jsonc<br/>ai_policy_eval/matrix.yaml (routing/behavioral scenario fixture, one triple per compiled rule)"]:::shared
     end
     MCPGEN -.verified by golden.-> TESTS

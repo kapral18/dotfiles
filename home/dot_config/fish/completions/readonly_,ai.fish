@@ -1,4 +1,4 @@
-set -l __ai_harnesses cursor claude codex gemini opencode pi copilot
+set -l __ai_harnesses cursor claude codex gemini opencode pi
 set -l __ai_aliases audit offline
 set -l __ai_depths fast balanced deep
 set -l __ai_executions readonly supervised autonomous

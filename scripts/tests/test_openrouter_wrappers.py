@@ -14,6 +14,18 @@ except ImportError:  # direct execution from scripts/tests
 globals().update({name: value for name, value in vars(_support).items() if not name.startswith("__")})
 
 
+def _load_hook_module(name: str, path: str):
+    """Load a module by path; band_gate imports its sibling `hook_common`, so its dir leads sys.path."""
+    spec = importlib.util.spec_from_file_location(name, REPO / path)
+    module = importlib.util.module_from_spec(spec)
+    sys.path.insert(0, str((REPO / path).parent))
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.path.pop(0)
+    return module
+
+
 class TestOpenRouterWrappers(unittest.TestCase):
     """WHEN launching a harness through OpenRouter."""
 
@@ -60,7 +72,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
             "print(json.dumps({'env': dict(os.environ), 'argv': sys.argv[1:], 'profiles':profiles}))\n"
         )
         local = home / ".local/share/cursor-agent-local/versions/fixture/cursor-agent-local"
-        for path in (local, *(bindir / name for name in ("claude", "copilot", ",copilot", "codex"))):
+        for path in (local, *(bindir / name for name in ("claude", "codex"))):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(capture)
             path.chmod(0o755)
@@ -68,7 +80,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
         helper = home / "lib/shared/openrouter_presets.py"
         helper.write_text(
             '#!/bin/sh\nif [ "$1" = "--context-window" ]; then echo 200000; exit; fi\n'
-            'if [ "$1" = "--pi-openrouter-wire-models" ]; then echo "z-ai/glm-5.3-flash@preset/effort-high"; echo "meta/muse-spark-1.3@preset/effort-high"; echo "meta/muse-spark-1.3@preset/effort-max"; exit; fi\n'
+            'if [ "$1" = "--pi-openrouter-wire-models" ]; then\n' + _pi_openrouter_wire_echo() + "exit; fi\n"
             'if [ "$1" = "--session-budget-env" ]; then echo "CONTEXT_LIMIT=1048576"; echo "MAX_OUTPUT_TOKENS=131072"; echo "PROMPT_LIMIT=200000"; exit; fi\n'
             'if [ "$1" = "--codex-model-catalog" ]; then shift 2; '
             f'''exec "{sys.executable}" -c 'import json,sys;print(json.dumps({{"models":[{{"slug":m}} for m in sys.argv[1:]]}}))' "$@"; fi\n'''
@@ -92,7 +104,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
             "CURSOR_AGENT_LOCAL_VERSION": "fixture",
             "CODEX_WRAPPER_BIN": str(bindir / "codex"),
             "PRESET_CALLS": str(calls),
-            "AGENT_BAND_SUBSCRIPTION": "copilot",
+            "AGENT_BAND_SUBSCRIPTION": "codex",
             "AGENT_BAND_CLAUDE_ROUTES": '{"stale@lane-high":"opus"}',
             "AGENT_BAND_CODEX_ROUTES": '{"stale@lane-high":{"model":"stale","effort":"high"}}',
         }
@@ -145,22 +157,17 @@ class TestOpenRouterWrappers(unittest.TestCase):
 
     def test_SHOULD_route_openrouter_pi_rows_and_prepare_each_required_effort_once(self):
         """WHEN a wrapper uses Pi routing, only OpenRouter rows become wire models."""
-        import importlib.util
-
         modules = []
         for name, path in (
             ("shim_contract", "home/exact_lib/exact_,cursor-agent-shim/shim.py"),
             ("band_contract", "home/exact_dot_agents/exact_hooks/executable_band_gate.py"),
         ):
-            spec = importlib.util.spec_from_file_location(name, REPO / path)
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            modules.append(module)
+            modules.append(_load_hook_module(name, path))
         shim, band_gate = modules
         band_gate.PROJECTION = REPO / "home/dot_config/ai/readonly_agent-bands.v1.json"
         projection = json.loads(band_gate.PROJECTION.read_text())
         calls, env = self._openrouter_route_fixture()
-        for harness in ("claude", "codex", "copilot", "cursor"):
+        for harness in ("claude", "codex", "cursor"):
             for effort in ("none", "high", "xhigh", "max"):
                 with self.subTest(harness=harness, effort=effort):
                     calls.write_text("")
@@ -493,7 +500,6 @@ class TestOpenRouterWrappers(unittest.TestCase):
         for relative in (
             "home/exact_bin/executable_,claude-openrouter",
             "home/exact_bin/executable_,codex-openrouter",
-            "home/exact_bin/executable_,copilot-openrouter",
             "home/exact_bin/executable_,cursor-openrouter",
         ):
             with self.subTest(command=relative):
@@ -517,13 +523,15 @@ class TestOpenRouterWrappers(unittest.TestCase):
         module = _load_openrouter_presets_module()
         with mock.patch.dict(os.environ, {"CHEZMOI_SOURCE_DIR": str(REPO)}):
             wires = module._pi_openrouter_wire_models()
-        # mechanical and memory share one wire (deduped); implement and refute share a model at
+        # mechanical and memory share one wire (deduped); research and implement share a model at
         # different efforts, so each effort is its own wire. Order follows the category rows.
         self.assertEqual(
             [
                 "z-ai/glm-5.3-flash@preset/effort-high",
-                "meta/muse-spark-1.3@preset/effort-high",
+                "z-ai/glm-5.3@preset/effort-max",
+                "z-ai/glm-5.3@preset/effort-high",
                 "meta/muse-spark-1.3@preset/effort-max",
+                "x-ai/grok-4.6@preset/effort-high",
             ],
             wires,
         )
@@ -542,13 +550,8 @@ class TestOpenRouterWrappers(unittest.TestCase):
         expectations = {
             "claude-openrouter": ("pi", "openrouter-preset"),
             "codex-openrouter": ("pi", "openrouter-preset"),
-            "copilot-openrouter": ("pi", "openrouter-preset"),
             "cursor-openrouter": ("pi", "openrouter-preset"),
-            "claude-copilot": ("copilot", None),
-            "codex-copilot": ("copilot", None),
-            "cursor-copilot": ("copilot", None),
             "claude-codex": ("codex", None),
-            "copilot-codex": ("codex", None),
             "cursor-codex": ("codex", None),
         }
         for command, (schema, model_format) in expectations.items():
@@ -596,7 +599,6 @@ class TestOpenRouterWrappers(unittest.TestCase):
         for relative in (
             "home/exact_bin/executable_,claude-openrouter",
             "home/exact_bin/executable_,codex-openrouter",
-            "home/exact_bin/executable_,copilot-openrouter",
             "home/exact_bin/executable_,cursor-openrouter",
         ):
             with self.subTest(command=relative):
@@ -652,7 +654,6 @@ class TestOpenRouterWrappers(unittest.TestCase):
         for relative in (
             "home/dot_config/fish/completions/readonly_,claude-openrouter.fish",
             "home/dot_config/fish/completions/readonly_,codex-openrouter.fish",
-            "home/dot_config/fish/completions/readonly_,copilot-openrouter.fish",
             "home/dot_config/fish/completions/readonly_,cursor-openrouter.fish",
         ):
             with self.subTest(completion=relative):
@@ -744,7 +745,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
                     ["--model", expected_model, "--effort", expected_client_effort, "-p", "review"],
                 )
 
-    def test_SHOULD_hard_pin_codex_and_copilot_routes_over_environment_values(self):
+    def test_SHOULD_hard_pin_codex_route_over_environment_values(self):
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp)
             codex = bindir / "codex"
@@ -757,21 +758,6 @@ printf 'schema=%s\\nformat=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
                 encoding="utf-8",
             )
             codex.chmod(0o755)
-            copilot = bindir / "copilot"
-            copilot.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
-            copilot.chmod(0o755)
-            copilot_wrapper = bindir / ",copilot"
-            copilot_wrapper.write_text(
-                """#!/usr/bin/env bash
-printf 'type=%s\\nmodel=%s\\nwire=%s\\nschema=%s\\nformat=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
-  "$COPILOT_PROVIDER_TYPE" "$COPILOT_MODEL" "$COPILOT_PROVIDER_WIRE_MODEL" \
-  "$AGENT_BAND_SCHEMA_HARNESS" "$AGENT_BAND_MODEL_FORMAT" \
-  "${AGENT_BAND_MODEL_OVERRIDE-}" "${AGENT_BAND_EFFORT_OVERRIDE-}" "$*"
-echo "base=$COPILOT_PROVIDER_BASE_URL"
-""",
-                encoding="utf-8",
-            )
-            copilot_wrapper.chmod(0o755)
             env = {
                 **os.environ,
                 "PATH": f"{bindir}:{os.environ['PATH']}",
@@ -790,17 +776,6 @@ echo "base=$COPILOT_PROVIDER_BASE_URL"
                 text=True,
                 env={**env, "CODEX_WRAPPER_BIN": str(codex), "CODEX_OPENROUTER_MODEL": "other-model"},
             )
-            copilot_result = subprocess.run(
-                [modern_bash(), str(REPO / "home/exact_bin/executable_,copilot-openrouter"), "-p", "review"],
-                capture_output=True,
-                text=True,
-                env={
-                    **env,
-                    "COPILOT_PROVIDER_TYPE": "openai",
-                    "COPILOT_PROVIDER_BASE_URL": "https://other.example/api",
-                    "COPILOT_OPENROUTER_MODEL": "other-model",
-                },
-            )
 
         assert codex_result.returncode == 0, codex_result.stderr
         assert codex_result.stdout.splitlines()[:4] == [
@@ -812,18 +787,6 @@ echo "base=$COPILOT_PROVIDER_BASE_URL"
         assert f"--model {OPENROUTER_WIRE_PIN}" in codex_result.stdout
         # Effort rides the preset slug, not a Codex body field, so model_reasoning_effort is unset.
         assert "model_reasoning_effort" not in codex_result.stdout
-        assert copilot_result.returncode == 0, copilot_result.stderr
-        assert copilot_result.stdout.splitlines() == [
-            "type=anthropic",
-            f"model={OPENROUTER_PIN}",
-            f"wire={OPENROUTER_WIRE_PIN}",
-            "schema=pi",
-            "format=openrouter-preset",
-            "band-model=",
-            "band-effort=",
-            f"args=--model {OPENROUTER_PIN} --effort high -p review",
-            "base=https://openrouter.ai/api",
-        ]
 
     def test_SHOULD_hard_pin_cursor_route_over_environment_values(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -868,7 +831,7 @@ printf 'base=%s\nkey=%s\nallowed=%s\nschema=%s\nformat=%s\nband-model=%s\nargs=%
         assert result.stdout.splitlines() == [
             "base=http://127.0.0.1:9876/api/v1",
             "key=fixture-key",
-            "allowed=z-ai/glm-5.3-flash@preset/effort-high,z-ai/glm-5.3-flash@preset/effort-high,meta/muse-spark-1.3@preset/effort-high,meta/muse-spark-1.3@preset/effort-max",
+            "allowed=" + ",".join([OPENROUTER_WIRE_PIN, *_pi_openrouter_wires()]),
             "schema=pi",
             "format=openrouter-preset",
             "band-model=",
@@ -964,9 +927,9 @@ touch "%s"
                     assert result.returncode == 0, result.stderr
                     assert f"model={expected}" in result.stdout
 
-    def test_SHOULD_compose_wire_model_for_codex_copilot_and_cursor(self):
+    def test_SHOULD_compose_wire_model_for_codex_and_cursor(self):
         # The same model/effort -> preset-slug composition runs in every wrapper; only the
-        # leaf delivery differs (argv for codex/cursor, provider env for copilot).
+        # leaf delivery differs.
         cases = [
             (["-p", "x"], "z-ai/glm-5.3-flash@preset/effort-high"),
         ]
@@ -976,9 +939,6 @@ touch "%s"
             codex = bindir / "codex"
             codex.write_text('#!/usr/bin/env bash\necho "args=$*"\n', encoding="utf-8")
             codex.chmod(0o755)
-            copilot = bindir / ",copilot"
-            copilot.write_text('#!/usr/bin/env bash\necho "wire=$COPILOT_PROVIDER_WIRE_MODEL"\n', encoding="utf-8")
-            copilot.chmod(0o755)
             home = Path(tmp) / "home"
             _install_shim_stub(home)
             version = "2026.08.04-test"
@@ -992,7 +952,6 @@ touch "%s"
             cursor_agent.chmod(0o755)
             runners = {
                 "home/exact_bin/executable_,codex-openrouter": {"CODEX_WRAPPER_BIN": str(codex)},
-                "home/exact_bin/executable_,copilot-openrouter": {},
                 "home/exact_bin/executable_,cursor-openrouter": {"HOME": str(home)},
             }
             for argv, expected in cases:
@@ -1021,15 +980,6 @@ touch "%s"
                 encoding="utf-8",
             )
             claude.chmod(0o755)
-            copilot_cli = bindir / "copilot"
-            copilot_cli.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
-            copilot_cli.chmod(0o755)
-            managed_copilot = bindir / ",copilot"
-            managed_copilot.write_text(
-                '#!/usr/bin/env bash\necho "prompt=$COPILOT_PROVIDER_MAX_PROMPT_TOKENS wire=$COPILOT_PROVIDER_WIRE_MODEL"\n',
-                encoding="utf-8",
-            )
-            managed_copilot.chmod(0o755)
 
             cases = [
                 (
@@ -1041,11 +991,6 @@ touch "%s"
                     "home/exact_bin/executable_,claude-openrouter",
                     ["--context", "long"],
                     "model=z-ai/glm-5.3-flash@preset/effort-high",
-                ),
-                (
-                    "home/exact_bin/executable_,copilot-openrouter",
-                    ["--context=short"],
-                    "prompt=200000 wire=z-ai/glm-5.3-flash@preset/effort-high",
                 ),
             ]
             for relative, argv, expected in cases:
@@ -1072,9 +1017,8 @@ touch "%s"
             with self.subTest(output_limit=output_limit):
                 helper.write_text(
                     '#!/bin/sh\nif [ "$1" = "--pi-openrouter-wire-models" ]; then\n'
-                    'echo "z-ai/glm-5.3-flash@preset/effort-high"\n'
-                    'echo "meta/muse-spark-1.3@preset/effort-high"\n'
-                    'echo "meta/muse-spark-1.3@preset/effort-max"\nexit\nfi\n'
+                    + _pi_openrouter_wire_echo()
+                    + "exit\nfi\n"
                     'if [ "$1" = "--session-budget-env" ]; then\n'
                     f'echo "CONTEXT_LIMIT=65536"\necho "MAX_OUTPUT_TOKENS={output_limit}"\n'
                     f'echo "PROMPT_LIMIT={prompt_limit}"\nfi\n'
@@ -1169,7 +1113,7 @@ touch "%s"
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp) / "bin"
             bindir.mkdir()
-            for command in ("claude", "codex", ",copilot"):
+            for command in ("claude", "codex"):
                 fake = bindir / command
                 fake.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
                 fake.chmod(0o755)
@@ -1187,7 +1131,6 @@ touch "%s"
             runners = {
                 "home/exact_bin/executable_,claude-openrouter": {},
                 "home/exact_bin/executable_,codex-openrouter": {"CODEX_WRAPPER_BIN": str(bindir / "codex")},
-                "home/exact_bin/executable_,copilot-openrouter": {},
                 "home/exact_bin/executable_,cursor-openrouter": {"HOME": str(home)},
             }
             for relative, extra_env in runners.items():
@@ -1211,7 +1154,7 @@ touch "%s"
         # Route-pinning flags (base URL, API key, config) stay rejected; only model/effort open up.
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp)
-            for command in ("claude", "copilot", ",copilot"):
+            for command in ("claude",):
                 fake = bindir / command
                 fake.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
                 fake.chmod(0o755)
@@ -1287,10 +1230,7 @@ touch "%s"
             ("shim_allowlist", "home/exact_lib/exact_,cursor-agent-shim/shim.py"),
             ("band_gate_allowlist", "home/exact_dot_agents/exact_hooks/executable_band_gate.py"),
         ):
-            spec = importlib.util.spec_from_file_location(name, REPO / path)
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            modules.append(module)
+            modules.append(_load_hook_module(name, path))
         shim, band_gate = modules
         rows = {
             category: row

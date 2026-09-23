@@ -98,7 +98,7 @@ class TestStaticModelMirrors(unittest.TestCase):
 
         self.assertEqual(
             set(mirror["harnesses"]),
-            {"cursor", "claude", "codex", "gemini", "opencode", "pi", "copilot"},
+            {"cursor", "claude", "codex", "gemini", "opencode", "pi"},
         )
         self.assertEqual(
             set(mirror["providers"]),
@@ -298,7 +298,7 @@ class TestStaticModelMirrors(unittest.TestCase):
             set(gemini["curated"]["models"]),
         )
         self.assertNotIn("new-live", cursor["curated"]["models"])
-        self.assertEqual(["openrouter/openai/gpt-5.6-sol"], pi_recommended)
+        self.assertEqual(["openrouter/openai/gpt-6-sol"], pi_recommended)
 
     def test_SHOULD_follow_the_antigravity_category_for_the_deployed_gemini_mirror(self):
         import model_mirrors
@@ -481,25 +481,12 @@ class TestStaticModelMirrors(unittest.TestCase):
         def registry(section: str) -> tuple[str, str]:
             owner = {
                 "pi_extra_models": "harness-catalogs.yaml",
-                "copilot_models": "harness-catalogs.yaml",
                 "agent_bindings": "tiering.yaml",
                 "agent_categories": "tiering.yaml",
                 "category_models": "tiering.yaml",
                 "session_models": "tiering.yaml",
             }[section]
             return (f"home/.chezmoidata/ai_models/{owner}", section)
-
-        copilot_policy_sources = {
-            registry("agent_bindings"),
-            registry("agent_categories"),
-            registry("category_models"),
-        }
-        self.assertEqual(sources("copilot", "curated"), copilot_policy_sources)
-        self.assertEqual(sources("copilot", "recommended"), copilot_policy_sources)
-        self.assertEqual(
-            sources("copilot", "available"),
-            {registry("copilot_models")},
-        )
 
         expected = {
             "claude": {registry("session_models")},

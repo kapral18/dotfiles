@@ -11,7 +11,7 @@ Fill signal, in order of preference:
 1. `transcript_path` in the hook payload: Claude Code JSONL (`message.usage`, input plus
    cache read/creation of the newest API call) or a Codex rollout (`token_count` events).
 2. A Codex rollout located by `session_id` under `~/.codex/sessions/`.
-3. No usage signal (Cursor, Copilot): a prompt-count interval. This is a proxy for growth,
+3. No usage signal (Cursor): a prompt-count interval. This is a proxy for growth,
    documented as such, and the interval is tunable.
 
 State is one small JSON file per session next to the topic spec. Every failure path is

@@ -1,34 +1,32 @@
 # Managed by chezmoi (source: home/dot_omp/private_agent/readonly_config.yml.tmpl).
 # Keep OMP native guidance/features as the base; this file only pins user policy.
 #
-# modelRoles is profile-independent (user call 2026-09-07): both machines ride the
-# openrouter provider for every role, so the block lives outside the isWork branch.
-# Only the web-search chains below still fork on isWork.
+# modelRoles is profile-independent: both machines ride the ChatGPT-subscription openai-codex
+# provider for every role (user call 2026-09-23; was openrouter since 2026-09-07), so the block
+# lives outside the isWork branch. Only the web-search chains below still fork on isWork.
 #
 # Every built-in omp role is pinned explicitly (default/smol/slow/vision/plan/commit/
 # tiny/task/advisor per `omp config get modelRoles`); nothing falls through to the
-# harness default or the @smol fallback.
-# - T1 primaries (default/vision/slow/plan): Muse Spark 1.3, :xhigh for default, :max for the
-#   deliberate slow/plan lanes and :high for vision. research/review profiles ride @default.
-# - task (T2 implement: the native `task` agent and every implement worker): GLM 5.3 at :high
-#   (user call 2026-09-07; the orchestrator thinks, the implementer runs one tier below).
-# - smol: GLM 5.3 Flash at :high. cursor/default rode the cursor-agent transport and every
-#   @smol lane (bundled scout/sonic) died on Cursor's free-request limit.
-# - tiny (titles, memory, auto-thinking classification, unexpected-stop detection):
-#   GLM 5.3 Flash at :medium — background chores.
-# - commit (commit-message generation): GLM 5.3 Flash at :medium.
-# - advisor: grok-4.6 at :xhigh. A non-Anthropic, non-Z.ai counter family keeps the
-#   advisor/review/refute lanes independent of the primaries.
+# harness default or the @smol fallback. Roles mirror `category_models.codex`:
+# - T1 primaries (default/slow/plan): GPT-6 Sol, :high for default, :max for the deliberate slow/plan
+#   lanes. research/review profiles ride @default.
+# - vision: GPT-6 Luna at :high (image input; user call 2026-09-23).
+# - task (T2 implement: the native `task` agent and every implement worker): GPT-6 Sol at :medium.
+# - smol (mechanical/memory): GPT-6 Luna at :high.
+# - tiny (titles, memory, auto-thinking classification, unexpected-stop detection) and commit
+#   (commit-message generation): GPT-6 Luna at :medium — background chores.
+# - advisor: GPT-6 Sol at :high. One OpenAI family only, so refute is degraded (same call as
+#   `category_models.codex.refute`).
 modelRoles:
-  default: openrouter/meta/muse-spark-1.3:xhigh
-  smol: openrouter/z-ai/glm-5.3-flash:high
-  slow: openrouter/meta/muse-spark-1.3:max
-  vision: openrouter/meta/muse-spark-1.3:high
-  plan: openrouter/meta/muse-spark-1.3:max
-  commit: openrouter/z-ai/glm-5.3-flash:medium
-  tiny: openrouter/z-ai/glm-5.3-flash:medium
-  task: openrouter/z-ai/glm-5.3:high
-  advisor: openrouter/x-ai/grok-4.6:xhigh
+  default: openai-codex/gpt-6-sol:high
+  smol: openai-codex/gpt-6-luna:high
+  slow: openai-codex/gpt-6-sol:max
+  vision: openai-codex/gpt-6-luna:high
+  plan: openai-codex/gpt-6-sol:max
+  commit: openai-codex/gpt-6-luna:medium
+  tiny: openai-codex/gpt-6-luna:medium
+  task: openai-codex/gpt-6-sol:medium
+  advisor: openai-codex/gpt-6-sol:high
 
 modelProviderOrder:
   - anthropic

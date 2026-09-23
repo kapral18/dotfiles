@@ -10,7 +10,7 @@ mcp_servers:
   - name: excluded-tool
     work_only: false
     exclude_tools:
-      - copilot
+      - omp
     command: docker
     args:
       - run

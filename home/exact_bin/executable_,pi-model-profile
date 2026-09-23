@@ -9,7 +9,7 @@
 #   ,pi-model-profile --session <name>
 #                                  # print `<provider/model-id>\t<effort>` for <name>, change nothing
 #
-# `default` is reserved: it means the repo's own `session_models.pi` + `category_models.pi` rows.
+# `default` is reserved: the repo's own `session_models.pi` + `category_models.pi` rows. No saved pick runs `codex`.
 # Every other name comes from `pi_model_profiles` in home/.chezmoidata/ai_models/tiering.yaml.
 #
 # The pick is per machine, not per commit, so it is stored outside the source state as one line in
@@ -22,6 +22,8 @@
 set -euo pipefail
 
 DEFAULT_PROFILE="default"
+# Applied when no pick is saved (user call 2026-09-23); must match `pi-model-profile.partial`.
+FALLBACK_PROFILE="codex"
 STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi/pi-model-profile"
 
 usage() {
@@ -36,13 +38,13 @@ require_cmd() {
   fi
 }
 
-# Same rule as `pi-model-profile.partial`: a missing, empty, or whitespace-only file means `default`.
+# Same rule as `pi-model-profile.partial`: a missing, empty, or whitespace-only file means `codex`.
 active_profile() {
   local name=""
   if [ -f "$STATE_FILE" ]; then
     name="$(tr -d '[:space:]' <"$STATE_FILE")"
   fi
-  printf '%s' "${name:-$DEFAULT_PROFILE}"
+  printf '%s' "${name:-$FALLBACK_PROFILE}"
 }
 
 # `default` first, then the registry's own profile names; chezmoi is the only reader of the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launch Claude Code, Copilot CLI, or Cursor through the Codex subscription adapter."""
+"""Launch Claude Code or Cursor through the Codex subscription adapter."""
 
 from __future__ import annotations
 
@@ -64,7 +64,6 @@ Without --model, the wrapper reads model from the active Codex config.
 Without --effort, the harness-generated effort is preserved. Use -- before an
 underlying harness flag that has the same name as an adapter option.
 Managed Claude profiles carry the projected child lanes.
-Copilot requires its SDK extension to enforce the configured child-delegation denial.
 The tested Cursor local frontend bypasses Task hooks; governed delegation is unsupported.
 Exact child routing and full leaf lifecycle remain uncertified. Native routes are separate.
 """
@@ -249,10 +248,6 @@ def claude_frontend_model(model: str, budget: ContextBudget) -> str:
 
 
 def harness_binary(harness: str) -> str:
-    if harness == "copilot":
-        managed = Path.home() / "bin" / ",copilot"
-        if managed.is_file() and os.access(managed, os.X_OK):
-            return str(managed)
     binary = shutil.which(harness)
     if binary:
         return binary
@@ -297,27 +292,8 @@ def child_command(
         "OPENAI_API_KEY",
         "CODEX_API_KEY",
         "ANTHROPIC_API_KEY",
-        "COPILOT_PROVIDER_API_KEY",
-        "COPILOT_PROVIDER_BEARER_TOKEN",
     ):
         env.pop(key, None)
-    if harness == "copilot":
-        env.pop("COPILOT_PROVIDER_MAX_PROMPT_TOKENS", None)
-        env.pop("COPILOT_PROVIDER_MAX_OUTPUT_TOKENS", None)
-        env.update(
-            {
-                "COPILOT_PROVIDER_BASE_URL": f"{base_url}/v1",
-                "COPILOT_PROVIDER_TYPE": "openai",
-                "COPILOT_PROVIDER_BEARER_TOKEN": token,
-                "COPILOT_PROVIDER_WIRE_API": "responses",
-                "COPILOT_PROVIDER_TRANSPORT": "http",
-                "COPILOT_MODEL": model,
-                "COPILOT_PROVIDER_MODEL_ID": model,
-                "COPILOT_PROVIDER_WIRE_MODEL": model,
-            }
-        )
-        env["COPILOT_PROVIDER_MAX_PROMPT_TOKENS"] = str(budget.usable_input_tokens)
-        return [binary, *forwarded], env
     if harness == "cursor":
         for key in (
             "CURSOR_LOCAL_AGENT_BASE_URL",
@@ -434,8 +410,6 @@ def launch(harness: str, argv: list[str]) -> int:
     base_url = f"http://127.0.0.1:{server.server_port}"
     try:
         forwarded = [*lane_args, *options.forwarded]
-        if harness == "copilot" and options.effort is not None:
-            forwarded = [*forwarded, "--effort", options.effort]
         command, env = child_command(
             harness,
             binary,
@@ -464,8 +438,8 @@ def launch(harness: str, argv: list[str]) -> int:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) < 1 or argv[0] not in {"claude", "copilot", "cursor"}:
-        print("Usage: main.py {claude|copilot|cursor} [arguments]", file=sys.stderr)
+    if len(argv) < 1 or argv[0] not in {"claude", "cursor"}:
+        print("Usage: main.py {claude|cursor} [arguments]", file=sys.stderr)
         return 2
     return launch(argv[0], argv[1:])
 

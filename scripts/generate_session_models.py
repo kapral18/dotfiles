@@ -21,7 +21,6 @@ import ai_models
 
 REPO = Path(__file__).resolve().parent.parent
 REGISTRY = REPO / "home/.chezmoidata/ai_models"
-CONTEXT_TIERS = {"short": "default", "long": "long_context"}
 ANTIGRAVITY_DISPLAY = {"gemini-3.8-flash": "Gemini 3.8 Flash"}
 CODEX_MODEL_RE = re.compile(r'^model\s*=\s*"[^"]*"', re.MULTILINE)
 CODEX_EFFORT_RE = re.compile(r'^model_reasoning_effort\s*=\s*"[^"]*"', re.MULTILINE)
@@ -50,14 +49,6 @@ def apply_codex(current: str, row: dict[str, str]) -> str:
     if effort_n != 1:
         raise ValueError("codex config has no top-level model_reasoning_effort assignment")
     return updated
-
-
-def apply_copilot(current: str, row: dict[str, str]) -> str:
-    settings = json.loads(current)
-    settings["model"] = row["model"]
-    settings["effortLevel"] = row["effort"]
-    settings["contextTier"] = CONTEXT_TIERS[row["context"]]
-    return json.dumps(settings, indent=2) + "\n"
 
 
 def apply_pi(current: str, row: dict[str, str]) -> str:
@@ -117,7 +108,6 @@ def default_targets(session: dict[str, dict[str, str]]) -> list[tuple[Path, dict
         (REPO / "home/dot_claude/settings.personal.json", session["claude_code"], apply_claude),
         (REPO / "home/dot_codex/private_config.work.toml", session["codex"], apply_codex),
         (REPO / "home/dot_codex/private_config.personal.toml", session["codex"], apply_codex),
-        (REPO / "home/private_dot_copilot/settings.json", session["copilot"], apply_copilot),
         (REPO / "home/dot_pi/agent/readonly_settings.work.json", session["pi"], apply_pi),
         (REPO / "home/dot_pi/agent/readonly_settings.personal.json", session["pi"], apply_pi),
         (REPO / "home/dot_omp/private_agent/readonly_config.yml.tmpl", session["omp"], apply_omp),

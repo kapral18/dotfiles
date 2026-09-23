@@ -1,7 +1,8 @@
 """Session-local Codex leaf profiles for cross-provider model routing.
 
-Native role settings override spawn arguments. Both subscription and OpenRouter
-launchers must remove those model pins without changing the managed leaf body.
+Native role settings override spawn arguments. The OpenRouter launcher
+(`,codex-openrouter`) is the only consumer and MUST remove those model pins
+without changing the managed leaf body.
 """
 
 from __future__ import annotations

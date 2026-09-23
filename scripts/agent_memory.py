@@ -16,7 +16,6 @@ DEFAULT_TOPIC = "current"
 DEFAULT_BRANCH_NAMES = {"main", "master", "dev", "develop", "trunk"}
 SPEC_ROOT = Path(os.environ.get("AGENT_MEMORY_SPEC_ROOT", "/tmp/specs"))
 SESSION_TOPIC_PREFIX = ".session-topic-"
-PARENT_SESSION_ENV = "COPILOT_AGENT_SESSION_ID"
 # One vocabulary with the durable store: note kinds are the `,ai-kb` capsule
 # kinds (minus ingestion-only `doc`) plus task-scoped `question` and `decision`.
 # The kind is the knowledge TYPE; verification status is carried by where the
@@ -96,10 +95,6 @@ def session_key(value: str | None) -> str | None:
         return None
     topic = safe_topic(value)
     return topic if topic != DEFAULT_TOPIC else None
-
-
-def parent_session_key() -> str | None:
-    return session_key(os.environ.get(PARENT_SESSION_ENV))
 
 
 def session_fallback_topic(session_id: str | None) -> str | None:
@@ -389,17 +384,9 @@ def resolve_selected_topic(
     if session_topic:
         return session_topic
 
-    key = session_key(session_id)
-    parent_key = parent_session_key()
-    has_distinct_parent = bool(parent_key and parent_key != key)
-    if has_distinct_parent:
-        parent_topic = session_selected_topic(spec_dir, parent_key)
-        if parent_topic:
-            return parent_topic
-
     if session_id:
         if current_git_branch(workspace) in DEFAULT_BRANCH_NAMES:
-            fallback = session_fallback_topic(parent_key if has_distinct_parent else session_id)
+            fallback = session_fallback_topic(session_id)
             if fallback:
                 return fallback
         return DEFAULT_TOPIC

@@ -22,7 +22,6 @@ def root_gate_env(extra: dict[str, str]) -> dict[str, str]:
     leaf, so the runner's ambient leaf signals must not leak into the hook subprocess."""
     env = {**os.environ, **extra}
     env.pop("PI_SUBAGENT_CHILD", None)
-    env.pop("COPILOT_AGENT_SESSION_ID", None)
     return env
 
 
@@ -38,7 +37,6 @@ class TestModelBandInvariants(unittest.TestCase):
         headings = {
             "Claude Code": "claude_code",
             "Codex": "codex",
-            "Copilot CLI": "copilot",
             "Cursor": "cursor",
             "Antigravity": "antigravity",
             "Pi": "pi",
@@ -76,103 +74,6 @@ class TestModelBandInvariants(unittest.TestCase):
         for snippet in snippets:
             assert snippet not in text, f"{relative_path} should not contain: {snippet}"
 
-    def test_copilot_subagent_settings_match_the_review_model_resolver(self):
-        # Copilot resolves subagent models from ~/.copilot/settings.json, which a merge script
-        # reads as source JSON, so it cannot be a chezmoi template. The expected picks come from
-        # the same review resolver profile templates use.
-        import ai_models
-
-        registry = REPO / "home/.chezmoidata/ai_models"
-        agents = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text(encoding="utf-8"))["subagents"][
-            "agents"
-        ]
-
-        review_roles = (
-            "k-agent-deep-review",
-            "k-agent-review-worker",
-            "k-agent-findings-auditor",
-            "k-agent-pr-necessity-auditor",
-            "k-agent-live-ui-review",
-            "k-agent-adversarial-verifier",
-            "k-agent-criteria-verifier",
-        )
-        for role in review_roles:
-            expected = ai_models.resolve_review_agent_model(registry, "copilot", role)
-            assert expected is not None, f"{role} has no resolved review model"
-            assert agents[role]["model"] == expected["model"], (
-                f"copilot settings.json {role} model {agents[role]['model']!r} != "
-                f"resolved review model {expected['model']!r}"
-            )
-            assert agents[role]["effortLevel"] == expected["effort"], (
-                f"copilot settings.json {role} effortLevel is {agents[role]['effortLevel']!r}, "
-                f"expected {expected['effort']!r}"
-            )
-
-    def test_copilot_policy_models_exist_in_the_copilot_catalog(self):
-        # When calibrating models, do not assume cross-harness availability. Copilot's effective
-        # "available model set" is a captured catalog snapshot (copilot_models); any policy model
-        # outside that set is an unverified assumption and must fail fast.
-        #
-        # Live Copilot metadata now confirms `claude-fable-5.1` on Messages and Chat Completions,
-        # with low through max effort and default/long-context tiers. This test still checks only
-        # the declared catalog relationship; it does not perform a live probe.
-        import ai_models
-
-        registry = REPO / "home/.chezmoidata/ai_models"
-        available = {row["id"] for row in ai_models.load_copilot_models(registry)}
-
-        category_models = ai_models.load_category_models(registry)["copilot"]
-        review_roles = (
-            "k-agent-deep-review",
-            "k-agent-review-worker",
-            "k-agent-findings-auditor",
-            "k-agent-pr-necessity-auditor",
-            "k-agent-live-ui-review",
-            "k-agent-adversarial-verifier",
-            "k-agent-criteria-verifier",
-        )
-
-        used: set[str] = set()
-        for category, row in category_models.items():
-            model = row.get("model")
-            if model:
-                used.add(model)
-
-        for role in review_roles:
-            pick = ai_models.resolve_review_agent_model(registry, "copilot", role)
-            if pick and pick["model"] and pick["model"] != "inherit":
-                used.add(pick["model"])
-
-        missing = sorted(model for model in used if model not in available)
-        assert not missing, f"copilot policy names models not in copilot_models: {missing}"
-
-    def test_copilot_root_uses_fable_long_while_category_matrix_preserves_child_picks(self):
-        import ai_models
-
-        rows = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["copilot"]
-        settings = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text(encoding="utf-8"))
-
-        expected = {
-            "mechanical": ("grok-4.6", "medium", "long"),
-            "research": ("claude-fable-5.1", "high", "long"),
-            "implement": ("grok-4.6", "high", "long"),
-            "review": ("claude-fable-5.1", "high", "long"),
-            "refute": ("kimi-k3", "high", "long"),
-            "memory": ("grok-4.6", "medium", "short"),
-        }
-        for category, (model, effort, context) in expected.items():
-            with self.subTest(category=category):
-                self.assertEqual(model, rows[category]["model"])
-                self.assertEqual(effort, rows[category]["effort"])
-                self.assertEqual(context, rows[category]["context"])
-        self.assertEqual("cross_family", rows["refute"]["verifier_status"])
-        session = ai_models.load_session_models(REPO / "home/.chezmoidata/ai_models")["copilot"]
-        self.assertEqual(session["model"], settings["model"])
-        self.assertEqual(session["effort"], settings["effortLevel"])
-        self.assertEqual({"short": "default", "long": "long_context"}[session["context"]], settings["contextTier"])
-        available = {row["id"] for row in ai_models.load_copilot_models(REPO / "home/.chezmoidata/ai_models")}
-        self.assertIn(settings["model"], available)
-
     def test_cursor_category_matrix_uses_task_enum_models_with_requested_exceptions(self):
         import ai_models
 
@@ -181,9 +82,9 @@ class TestModelBandInvariants(unittest.TestCase):
         available = {row["name"] for row in ai_models.load_cursor_task_base_models(registry)}
         expected = {
             "mechanical": ("grok-4.6", "medium", "long"),
-            "research": ("claude-fable-5-1", "high", "long"),
+            "research": ("claude-opus-5-5", "high", "long"),
             "implement": ("muse-spark-1.3", "high", "long"),
-            "review": ("claude-fable-5-1", "high", "long"),
+            "review": ("claude-opus-5-5", "high", "long"),
             "refute": ("muse-spark-1.3", "max", "long"),
             "memory": ("grok-4.6", "medium", "short"),
         }
@@ -308,12 +209,6 @@ class TestModelBandInvariants(unittest.TestCase):
             assert model and model.group(1) == codex["model"]
             assert effort and effort.group(1) == codex["effort"]
 
-        copilot_row = session_models["copilot"]
-        copilot = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text(encoding="utf-8"))
-        assert copilot["model"] == copilot_row["model"]
-        assert copilot["effortLevel"] == copilot_row["effort"]
-        assert copilot["contextTier"] == generate_session_models.CONTEXT_TIERS[copilot_row["context"]]
-
         pi_row = session_models["pi"]
         provider, model = pi_row["model"].split("/", 1)
         for profile in ("work", "personal"):
@@ -347,12 +242,12 @@ class TestModelBandInvariants(unittest.TestCase):
 
         registry = REPO / "home/.chezmoidata/ai_models"
         expected = {
-            "research": ("gpt-6-astra", "high"),
-            "review": ("gpt-6-astra", "high"),
-            "implement": ("gpt-5.6-terra", "high"),
-            "refute": ("gpt-5.6-sol", "high"),
-            "mechanical": ("gpt-5.6-luna", "high"),
-            "memory": ("gpt-5.6-terra", "high"),
+            "research": ("gpt-6-sol", "high"),
+            "review": ("gpt-6-sol", "high"),
+            "implement": ("gpt-6-sol", "medium"),
+            "refute": ("gpt-6-sol", "high"),
+            "mechanical": ("gpt-6-luna", "high"),
+            "memory": ("gpt-6-sol", "high"),
         }
         session = ai_models.load_session_models(registry)["codex"]
         expected_root_model, expected_root_effort = session["model"], session["effort"]
@@ -366,7 +261,7 @@ class TestModelBandInvariants(unittest.TestCase):
                 self.assertEqual(category_models[category]["effort"], effort)
 
         bindings = ai_models.load_agent_bindings(registry)
-        # Review lanes render the review row (gpt-6-astra); verifiers render refute (gpt-5.6-sol, same OpenAI family).
+        # Review lanes render the review row (gpt-6-sol); verifiers render refute (the same gpt-6-sol pick).
         for role in (
             "k-agent-review-worker",
             "k-agent-findings-auditor",
@@ -643,24 +538,10 @@ class TestModelBandInvariants(unittest.TestCase):
     def test_the_band_gate_only_spawns_for_delegation_tools(self) -> None:
         # band_gate.py no-ops on non-delegation tools, but only after a Python interpreter has
         # spawned and parsed the whole projection. Every wiring must filter before that cost:
-        # hooks.json files via a matcher, and the Copilot extension (whose SDK exposes no matcher)
-        # via its own copy of DELEGATION_TOOLS, which has to stay in sync with the hook's.
+        # hooks.json files via a matcher.
         hook = (REPO / "home/exact_dot_agents/exact_hooks/executable_band_gate.py").read_text(encoding="utf-8")
         tools = re.search(r"^DELEGATION_TOOLS = \{([^}]+)\}", hook, re.MULTILINE)
         assert tools, "band_gate.py no longer declares DELEGATION_TOOLS"
-        expected = set(re.findall(r'"([^"]+)"', tools.group(1)))
-
-        extension = (
-            REPO / "home/private_dot_copilot/exact_extensions/exact_agent-memory/readonly_extension.mjs"
-        ).read_text(encoding="utf-8")
-        mirrored = re.search(r"^const DELEGATION_TOOLS = new Set\(\[([^\]]+)\]\)", extension, re.MULTILINE)
-        assert mirrored, "the Copilot extension no longer mirrors DELEGATION_TOOLS"
-        assert set(re.findall(r'"([^"]+)"', mirrored.group(1))) == expected, (
-            "readonly_extension.mjs DELEGATION_TOOLS has drifted from band_gate.py's"
-        )
-        assert "DELEGATION_TOOLS.has(payload?.tool_name)" in extension, (
-            "the Copilot extension spawns band_gate.py without filtering by tool name first"
-        )
 
         for path, key in (
             ("home/dot_cursor/hooks.json", "preToolUse"),
@@ -783,16 +664,16 @@ class TestModelBandInvariants(unittest.TestCase):
         )
         assert json.loads(clamp.stdout)["hookSpecificOutput"]["updatedInput"]["model"] == alias, clamp.stdout
 
-        # The alias rank is the tier ladder, not model size: under the 2026-09-07 tiers `fable`
-        # (T1) is the research / review thinker, `opus` (T2) implements and `sonnet` (T3) is the
-        # cheap lane. So asking for `fable` from a T2 or T3 band is an upward escape, while a T1
-        # agent asking for `opus` is a forbidden downgrade. The aliases are
+        # The alias rank is the tier ladder, not model size: under the 2026-09-22 tiers `opus`
+        # (T1) is the research / review thinker and `sonnet` carries both T2 implement and T3
+        # mechanical / memory. So asking for `opus` from a `sonnet` band is an upward escape, while a
+        # T1 agent asking for `sonnet` is a forbidden downgrade. The aliases are
         # asserted first so the probes fail loudly if the alias projection drifts instead of
         # silently testing a different ladder rung.
         agents = claude["agents"]
         assert agents["cli_help"]["alias"] == "sonnet", agents["cli_help"]
-        assert agents["general-purpose"]["alias"] == "opus", agents["general-purpose"]
-        assert agents["k-agent-code-searcher"]["alias"] == "fable", agents["k-agent-code-searcher"]
+        assert agents["general-purpose"]["alias"] == "sonnet", agents["general-purpose"]
+        assert agents["k-agent-code-searcher"]["alias"] == "opus", agents["k-agent-code-searcher"]
         assert agents["k-agent-smol"]["alias"] == "sonnet", agents["k-agent-smol"]
 
         def claude_alias(agent: str, model: str) -> str | None:
@@ -811,13 +692,13 @@ class TestModelBandInvariants(unittest.TestCase):
             return out["hookSpecificOutput"]["updatedInput"]["model"]
 
         # Upward: the T3 mechanical and T2 implement bands may not reach the T1 thinker.
-        assert claude_alias("cli_help", "fable") == "sonnet", "a mechanical lane must not reach T1 Fable"
-        assert claude_alias("general-purpose", "fable") == "opus", "an implement lane must not reach T1 Fable"
+        assert claude_alias("cli_help", "opus") == "sonnet", "a mechanical lane must not reach T1 Opus"
+        assert claude_alias("general-purpose", "opus") == "sonnet", "an implement lane must not reach T1 Opus"
         # A capability floor is as binding as a spend ceiling.
-        assert claude_alias("k-agent-code-searcher", "opus") == "fable", "research must keep its strong model"
-        # Upward again: the memory lane sits on T3 and must not climb to T2.
-        assert claude_alias("k-agent-smol", "opus") == "sonnet", "a memory lane must not reach T2 Opus"
-        assert claude_alias("general-purpose", "sonnet") == "opus", "implementation must keep its assigned model"
+        assert claude_alias("k-agent-code-searcher", "sonnet") == "opus", "research must keep its strong model"
+        # Sideways: `fable` is no band's alias, so every lane clamps it back to its own.
+        assert claude_alias("k-agent-smol", "fable") == "sonnet", "a memory lane must not reach Fable"
+        assert claude_alias("general-purpose", "fable") == "sonnet", "implementation must keep its assigned model"
 
     def test_every_binding_resolves_to_a_profile_or_a_reasoned_fallback(self):
         # D10/C8: a binding with no reachable profile on a harness must sit on a
@@ -928,39 +809,21 @@ class TestModelBandInvariants(unittest.TestCase):
         # 5. Codex exposes the generic implement type as `worker` through spawn_agent.
         codex = projection["harnesses"]["codex"]
         codex_implement = codex["agents"]["worker"]["model"]
-        codex_research = codex["agents"]["cursor-guide"]["model"]
         assert codex["agents"]["worker"]["category"] == "implement"
-        assert {codex_research, codex_implement} <= set(codex["lane_models"]), codex["lane_models"]
-        assert codex_research != codex_implement
+        # Research may share implement's model at another effort (both gpt-6-sol since 2026-09-23),
+        # so probe with the first non-implement lane whose model differs.
+        codex_other = next(
+            agent["model"]
+            for agent in codex["agents"].values()
+            if agent["category"] != "implement" and agent["model"] != codex_implement
+        )
+        assert {codex_other, codex_implement} <= set(codex["lane_models"]), codex["lane_models"]
         codex_model = gate_model(
-            {"tool_name": "spawn_agent", "tool_input": {"agent_type": "worker", "model": codex_research}},
+            {"tool_name": "spawn_agent", "tool_input": {"agent_type": "worker", "model": codex_other}},
             "codex",
         )
-        assert codex_model in (None, codex_research), (
-            f"codex worker carrying the research pick was rewritten to {codex_model}"
-        )
-
-        # 6. Copilot's generic type is `task`, and its extension hands tool_input over as a JSON
-        # string rather than an object.
-        copilot = projection["harnesses"]["copilot"]
-        copilot_implement = copilot["agents"]["task"]["model"]
-        copilot_research = copilot["agents"]["cursor-guide"]["model"]
-        assert copilot_research != copilot_implement
-        copilot_model = gate_model(
-            {
-                "tool_name": "task",
-                "tool_input": json.dumps(
-                    {
-                        "agent": "task",
-                        "model": copilot_research,
-                        "reasoning_effort": copilot["agents"]["cursor-guide"]["effort"],
-                    }
-                ),
-            },
-            "copilot",
-        )
-        assert copilot_model in (None, copilot_research), (
-            f"copilot task carrying the research pick was rewritten to {copilot_model}"
+        assert codex_model in (None, codex_other), (
+            f"codex worker carrying the {codex_other} lane pick was rewritten to {codex_model}"
         )
 
     def test_the_band_gate_is_wired_on_every_claude_profile(self) -> None:
@@ -995,24 +858,22 @@ class TestModelBandInvariants(unittest.TestCase):
         category_models = ai_models.load_category_models(path)["omp"]
         roles = self._omp_model_roles()
 
-        # User call 2026-09-07: one profile-independent modelRoles block, three tiers, now all on
-        # the openrouter provider. T1 default/plan/slow/vision ride Muse Spark 1.3 (:xhigh default,
-        # :max for the deliberate slow/plan lanes, :high vision); T2 task is GLM 5.3 :high (the
-        # native `task` agent and every implement worker land there); T3 smol is GLM 5.3 Flash :high
-        # (cursor/default ran the @smol lanes over the cursor-agent transport and died on Cursor's
-        # free-request limit); tiny/commit ride GLM 5.3 Flash :medium; advisor is grok-4.6:xhigh,
-        # the counter family. Every built-in role is pinned so nothing falls through to the harness
-        # default.
+        # User call 2026-09-23: one profile-independent modelRoles block on the openai-codex provider,
+        # mirroring category_models.codex. T1 default/plan/slow ride GPT-6 Sol (:high default,
+        # :max for the deliberate slow/plan lanes), vision rides GPT-6 Luna :high; T2 task is GPT-6 Sol :medium (the native
+        # `task` agent and every implement worker land there); T3 smol is GPT-6 Luna :high; tiny/commit
+        # ride GPT-6 Luna :medium; advisor is GPT-6 Sol :high, a degraded same-family counter. Every
+        # built-in role is pinned so nothing falls through to the harness default.
         expected_roles = {
-            "default": "openrouter/meta/muse-spark-1.3:xhigh",
-            "smol": "openrouter/z-ai/glm-5.3-flash:high",
-            "slow": "openrouter/meta/muse-spark-1.3:max",
-            "vision": "openrouter/meta/muse-spark-1.3:high",
-            "plan": "openrouter/meta/muse-spark-1.3:max",
-            "commit": "openrouter/z-ai/glm-5.3-flash:medium",
-            "tiny": "openrouter/z-ai/glm-5.3-flash:medium",
-            "task": "openrouter/z-ai/glm-5.3:high",
-            "advisor": "openrouter/x-ai/grok-4.6:xhigh",
+            "default": "openai-codex/gpt-6-sol:high",
+            "smol": "openai-codex/gpt-6-luna:high",
+            "slow": "openai-codex/gpt-6-sol:max",
+            "vision": "openai-codex/gpt-6-luna:high",
+            "plan": "openai-codex/gpt-6-sol:max",
+            "commit": "openai-codex/gpt-6-luna:medium",
+            "tiny": "openai-codex/gpt-6-luna:medium",
+            "task": "openai-codex/gpt-6-sol:medium",
+            "advisor": "openai-codex/gpt-6-sol:high",
         }
         assert roles == expected_roles, f"omp modelRoles drifted: {roles!r}"
         # T2 is a different model from T1 and T3 from T2; otherwise a delegated implement or
@@ -1024,7 +885,7 @@ class TestModelBandInvariants(unittest.TestCase):
         assert category_models["implement"]["model"] == "@task"
         assert category_models["review"]["model"] == "@default"
         assert category_models["refute"]["model"] == "@advisor"
-        assert category_models["refute"]["verifier_status"] == "cross_family"
+        assert category_models["refute"]["verifier_status"] == "degraded"
         # mechanical and memory both ride @smol. mechanical used to name @task, which resolved to
         # the session's own Fable model, so a delegated mechanical edit cost the same as inlining
         # it; memory used to pin a direct gemini id while modelRoles.smol was deepseek (failed the
@@ -1050,7 +911,7 @@ class TestModelBandInvariants(unittest.TestCase):
         `XDG_STATE_HOME`, because `pi-model-profile.partial` reads the active name from
         `$XDG_STATE_HOME/chezmoi/pi-model-profile`: without the override the suite would assert
         against whatever profile the developer's machine happens to have selected. `profile=None`
-        writes no state file at all, which is the `default` profile on a fresh machine and in CI.
+        writes no state file at all, which is the `codex` fallback on a fresh machine and in CI.
         """
         with (
             tempfile.NamedTemporaryFile("w", suffix=".toml") as config,
@@ -1109,8 +970,8 @@ class TestModelBandInvariants(unittest.TestCase):
 
         def wrong_version_spelling(model: str) -> bool:
             # Claude Code hyphenates point versions. Its own 404 troubleshooting text names
-            # `claude-sonnet-4.6` as the typo for `claude-sonnet-4-6`. Other harnesses (Copilot,
-            # Cursor) do use the dotted form, so this spelling is only wrong on this harness.
+            # `claude-sonnet-4.6` as the typo for `claude-sonnet-4-6`. Other harnesses (Cursor)
+            # do use the dotted form, so this spelling is only wrong on this harness.
             return bool(re.search(r"claude-\w+-\d+\.\d+", model))
 
         def check(where: str, model: str) -> None:
@@ -1147,7 +1008,6 @@ class TestModelBandInvariants(unittest.TestCase):
         short_rows = {
             "claude_code": {"memory"},
             "codex": set(category_models["codex"]),
-            "copilot": {"memory"},
             "cursor": {"memory"},
             "antigravity": set(),
             # Grok is priced for short prompts only (user call 2026-09-17), so the pi counter stays short.
@@ -1160,13 +1020,6 @@ class TestModelBandInvariants(unittest.TestCase):
                 expected = "short" if category in short_rows[harness] else "long"
                 with self.subTest(harness=harness, category=category):
                     self.assertEqual(expected, row["context"])
-
-        copilot = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text(encoding="utf-8"))
-        self.assertEqual("long_context", copilot["contextTier"])
-        bindings = ai_models.load_agent_bindings(REPO / "home/.chezmoidata/ai_models")
-        for name, agent in copilot["subagents"]["agents"].items():
-            expected = "default" if category_models["copilot"][bindings[name]]["context"] == "short" else "long_context"
-            self.assertEqual(expected, agent["contextTier"], name)
 
     def test_pi_model_profiles_never_redefine_the_reserved_default_name(self):
         # `default` means `session_models.pi` + `category_models.pi` themselves, which every
@@ -1270,6 +1123,12 @@ class TestModelBandInvariants(unittest.TestCase):
                     self.assertIn(f'model: "{resolved["model"]}"', frontmatter, template)
                     self.assertIn(f'thinking: "{resolved["effort"]}"', frontmatter, template)
 
+        # No saved pick renders the `codex` profile (user call 2026-09-23), not the repo rows.
+        for template, frontmatter in self._render_pi_agent_profiles():
+            agent = template.name.removesuffix(".md.tmpl")
+            resolved = ai_models.resolve_agent_model(registry, "pi", agent, profile="codex")
+            self.assertIn(f'model: "{resolved["model"]}"', frontmatter, template)
+
         with (
             tempfile.NamedTemporaryFile("w", suffix=".toml") as config,
             tempfile.TemporaryDirectory() as state_home,
@@ -1295,10 +1154,10 @@ class TestModelBandInvariants(unittest.TestCase):
         import model_mirrors
 
         default = "z-ai/glm-5.3-flash"
-        # gpt-5.6-sol keeps the `recommended` picker entry — the route to reach for by hand — since
-        # it superseded gpt-5.5 (user call 2026-09-07). It no longer carries a pi category row;
+        # gpt-6-sol keeps the `recommended` picker entry — the route to reach for by hand — since
+        # it superseded gpt-5.6-sol (user call 2026-09-23). It no longer carries a pi category row;
         # Sonnet 4.6 stays listed as selectable-only, like kimi-k3 and glm-5.2.
-        pi_route = "openai/gpt-5.6-sol"
+        pi_route = "openai/gpt-6-sol"
         pi_mechanical = "z-ai/glm-5.3-flash"
         # DeepSeek V4 Flash carried the default and mechanical lanes until 2026-09-10; DeepSeek stays
         # selectable on every route with its own policy (FP8-or-higher until 2026-09-11; now a 35 t/s
@@ -1365,6 +1224,8 @@ class TestModelBandInvariants(unittest.TestCase):
                 # The curated OpenRouter picker, not the category-pick list: `recommended` marks the
                 # route to reach for by hand. It appears once, not once per effort.
                 {"id": pi_route_selector, "recommended": True},
+                # Former pin, kept selectable after gpt-6-sol took the route (2026-09-23).
+                {"id": "openrouter/openai/gpt-5.6-sol"},
                 {"id": pi_mechanical_selector},
                 # T2 implement (GLM 5.3) and the refute counter (grok-4.6) for the Muse Spark
                 # review lane; both are category picks, so both must stay in the pi catalog.
@@ -1480,9 +1341,9 @@ class TestModelBandInvariants(unittest.TestCase):
             ai_models.resolve_review_agent_model(registry, "pi", "k-agent-adversarial-verifier")["model"],
         )
 
-        # No state file in the isolated state home, so this renders the `default` profile
-        # regardless of which profile this machine has actually selected.
-        for template, frontmatter in self._render_pi_agent_profiles():
+        # An explicit `default` pick in the isolated state home renders the repo rows regardless of
+        # which profile this machine has actually selected (no pick would render the `codex` fallback).
+        for template, frontmatter in self._render_pi_agent_profiles("default"):
             agent = template.name.removesuffix(".md.tmpl")
             resolved = ai_models.resolve_agent_model(registry, "pi", agent)
             self.assertIn(f'model: "{resolved["model"]}"', frontmatter, template)
@@ -1495,7 +1356,6 @@ class TestModelBandInvariants(unittest.TestCase):
         for relative in (
             "home/exact_bin/executable_,claude-openrouter",
             "home/exact_bin/executable_,codex-openrouter",
-            "home/exact_bin/executable_,copilot-openrouter",
             "home/exact_bin/executable_,cursor-openrouter",
         ):
             source = (REPO / relative).read_text()
@@ -1587,26 +1447,9 @@ class TestModelBandInvariants(unittest.TestCase):
             assert "-fast" not in row["model"], f"category_models.cursor.{category} uses the `-fast` price tier"
 
         # OMP resolves the cheap lane through the profile-independent modelRoles block; @smol is
-        # openrouter/z-ai/glm-5.3-flash:high (user call 2026-09-07: cursor/default died on Cursor's
-        # free-request limit).
+        # openai-codex/gpt-6-luna:high (user call 2026-09-23: every role on the codex matrix).
         assert category_models["omp"]["mechanical"]["model"] == "@smol"
-        assert self._omp_model_roles()["smol"] == "openrouter/z-ai/glm-5.3-flash:high"
-
-    def test_generated_subagent_rosters_match_the_category_registry(self):
-        # Copilot pins subagent models inside a settings file the harness rewrites at runtime,
-        # so it cannot be a chezmoi template over the registry. The generator reconciles it.
-        import subprocess
-
-        result = subprocess.run(
-            [sys.executable, str(REPO / "scripts/generate_subagent_models.py"), "check"],
-            capture_output=True,
-            text=True,
-            cwd=str(REPO),
-        )
-        assert result.returncode == 0, (
-            "Copilot subagent roster diverges from category_models; run "
-            f"`python3 scripts/generate_subagent_models.py write`:\n{result.stderr}"
-        )
+        assert self._omp_model_roles()["smol"] == "openai-codex/gpt-6-luna:high"
 
     def test_the_deployed_agent_projection_is_current(self):
         # The hook runs from ~/.agents/hooks with no access to this repo, so it reads a flattened
@@ -1655,15 +1498,6 @@ class TestModelBandInvariants(unittest.TestCase):
                 f"claude settings.{profile}.json sets CLAUDE_CODE_DISABLE_THINKING, which forces "
                 "the omit path and lets adaptive models keep thinking"
             )
-
-    def test_copilot_launcher_disables_anthropic_thinking(self):
-        # Anthropic models think by default on Copilot. The registry pins Sonnet/Fable lanes as
-        # non-thinking picks, which is only true while the launcher exports this env var:
-        # app.js Q3e() feeds it to nativeModelClientDefaultOptionsJson, which sets thinkingBudget.
-        self.assert_file_contains(
-            "home/exact_lib/exact_,copilot/main.py",
-            'os.environ.setdefault("COPILOT_DISABLE_ANTHROPIC_THINKING", "1")',
-        )
 
     def test_unreachable_binding_without_fallback_fails_generation(self):
         # generate_agent_bands fails closed when a bound agent has no profile on a harness with

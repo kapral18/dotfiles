@@ -23,9 +23,6 @@ Sources (all local, read-only, stdlib only):
 - OpenCode      ~/.local/share/opencode/opencode.db  session rows carry tokens_* rollups and a
                                                    model JSON; calls are counted from assistant
                                                    message rows.
-- Copilot       ~/.copilot/session-state/*/events.jsonl  session.shutdown carries per-model usage
-                                                   (inputTokens INCLUDES cache read/write); sessions
-                                                   still open only have per-call outputTokens.
 
 Harnesses without a local record (or with one this tool cannot read yet) are listed in
 the footer so their absence reads as "unknown", never as zero.
@@ -60,7 +57,7 @@ REINFORCEMENT_MARKER = "[SOP REINFORCEMENT"
 # the footer so a missing row is never mistaken for zero usage.
 UNRECORDED = {
     "cursor": "no local per-request usage record exists (Cursor dashboard only)",
-    "adapters": "Claude/Cursor/Codex over the Codex or Copilot subscription adapters report through the frontend record; the adapters pass cache fields through since 2026-09-06, older adapter-routed records show zero cache",
+    "adapters": "Claude/Cursor over the Codex subscription adapter report through the frontend record; the adapters pass cache fields through since 2026-09-06, older adapter-routed records show zero cache",
 }
 
 
@@ -398,59 +395,12 @@ def read_opencode(since: float) -> list[Session]:
     return sessions
 
 
-def read_copilot(since: float) -> list[Session]:
-    sessions = []
-    for path in _recent(glob.glob(str(_home() / ".copilot" / "session-state" / "*" / "events.jsonl")), since):
-        session = Session("copilot", path.parent.name, str(path), path.stat().st_mtime)
-        first_ts = None
-        shutdown = None
-        per_call_output = 0
-        calls = 0
-        for row in _iter_json_lines(path):
-            ts = _parse_ts(row.get("timestamp"))
-            if ts is not None and first_ts is None:
-                first_ts = ts
-            data = row.get("data") or {}
-            if row.get("type") == "assistant.message" and isinstance(data, dict):
-                calls += 1
-                per_call_output += _int(data.get("outputTokens"))
-                session.model = str(data.get("model") or session.model)
-            elif row.get("type") == "session.shutdown" and isinstance(data, dict):
-                shutdown = data
-        if first_ts is not None:
-            session.started = first_ts
-        metrics = (shutdown or {}).get("modelMetrics")
-        if isinstance(metrics, dict) and metrics:
-            for model_id, entry in metrics.items():
-                usage = (entry or {}).get("usage") or {}
-                requests = (entry or {}).get("requests") or {}
-                cache_read = _int(usage.get("cacheReadTokens"))
-                cache_write = _int(usage.get("cacheWriteTokens"))
-                session.fresh_input += max(0, _int(usage.get("inputTokens")) - cache_read - cache_write)
-                session.cache_read += cache_read
-                session.cache_write += cache_write
-                session.output += _int(usage.get("outputTokens"))
-                session.reasoning += _int(usage.get("reasoningTokens"))
-                session.calls += _int(requests.get("count"))
-                session.model = str(model_id)
-            if not session.calls:
-                session.calls = calls
-        elif calls:
-            session.calls = calls
-            session.output = per_call_output
-            session.notes.append("no session.shutdown rollup yet: input/cache unknown, output from per-call events")
-        if session.calls:
-            sessions.append(session)
-    return sessions
-
-
 READERS: dict[str, Callable[[float], list[Session]]] = {
     "claude": read_claude,
     "codex": read_codex,
     "pi": read_pi,
     "omp": read_omp,
     "opencode": read_opencode,
-    "copilot": read_copilot,
 }
 
 

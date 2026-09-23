@@ -17,7 +17,7 @@ from model_mirror_consumer import load_consumer_view
 DEPTH_VALUES = ("fast", "balanced", "deep")
 EXECUTION_VALUES = ("readonly", "supervised", "autonomous")
 CONNECTIVITY_VALUES = ("online", "offline")
-HARNESS_NAMES = ("cursor", "claude", "codex", "gemini", "opencode", "pi", "copilot")
+HARNESS_NAMES = ("cursor", "claude", "codex", "gemini", "opencode", "pi")
 DEFAULT_AXES = {
     "depth": "balanced",
     "execution": "supervised",
@@ -34,7 +34,7 @@ AGENT_BANDS_DISPLAY_PATH = "~/.config/ai/agent-bands.v1.json"
 OPENROUTER_PROVIDER = "openrouter"
 OPENROUTER_MODEL = "z-ai/glm-5.3-flash"
 OPENROUTER_SELECTOR = f"{OPENROUTER_PROVIDER}/{OPENROUTER_MODEL}"
-PI_OPENROUTER_MODEL = "openai/gpt-5.6-sol"
+PI_OPENROUTER_MODEL = "openai/gpt-6-sol"
 PI_OPENROUTER_THINKING = "xhigh"
 PI_OPENROUTER_SELECTOR = f"{OPENROUTER_PROVIDER}/{PI_OPENROUTER_MODEL}"
 PI_OPENROUTER_GLM_FLASH_SELECTOR = f"{OPENROUTER_PROVIDER}/z-ai/glm-5.3-flash"
@@ -412,38 +412,6 @@ CAPABILITIES = {
         },
         sensitive_options=frozenset({"--api-key"}),
     ),
-    "copilot": HarnessCapability(
-        leaf=",copilot",
-        verified_version="1.0.70",
-        depth_transport="effort-flag",
-        execution={
-            "readonly": ("--mode", "plan"),
-            "supervised": ("--mode", "interactive"),
-            "autonomous": ("--mode", "autopilot", "--allow-all"),
-        },
-        connectivity={"online": (), "offline": None},
-        model_flag="--model",
-        provider_flag=None,
-        owned_options={
-            "--mode": "execution",
-            "--plan": "execution",
-            "--autopilot": "execution",
-            "--allow-all": "execution",
-            "--allow-all-tools": "execution",
-            "--allow-all-paths": "execution",
-            "--allow-all-urls": "execution",
-            "--allow-all-mcp-server-instructions": "execution",
-            "--allow-tool": "execution",
-            "--deny-tool": "execution",
-            "--available-tools": "execution",
-            "--excluded-tools": "execution",
-            "--yolo": "execution",
-            "--effort": "depth",
-            "--reasoning-effort": "depth",
-            "--model": "model selection",
-        },
-        sensitive_options=frozenset({"--additional-mcp-config"}),
-    ),
 }
 
 
@@ -740,7 +708,7 @@ def _enforce_openrouter_selection(
             raise PlanError(f"OpenRouter is pinned to {', '.join(sanctioned)}; use another provider for {explicit!r}")
         if depth.explicit:
             raise PlanError(f"OpenRouter is pinned to {PI_OPENROUTER_THINKING} effort; --depth cannot override it")
-        policy = Provenance("route-policy", "OpenRouter openai/gpt-5.6-sol pin")
+        policy = Provenance("route-policy", "OpenRouter openai/gpt-6-sol pin")
         return (
             AvailabilitySelection(
                 model=PI_OPENROUTER_MODEL,

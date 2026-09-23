@@ -16,7 +16,6 @@ SECTION_FILES = {
     "cursor_models": "harness-catalogs.yaml",
     "cursor_task_base_models": "harness-catalogs.yaml",
     "pi_extra_models": "harness-catalogs.yaml",
-    "copilot_models": "harness-catalogs.yaml",
     "provider_models": "provider-routes.yaml",
     "session_models": "tiering.yaml",
     "agent_categories": "tiering.yaml",
@@ -62,10 +61,6 @@ def load_pi_extra_models(registry):
 
 def load_provider_models(registry):
     return _load_section(registry, "provider_models")
-
-
-def load_copilot_models(registry):
-    return _load_section(registry, "copilot_models")
 
 
 def load_session_models(registry):

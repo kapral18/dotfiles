@@ -67,7 +67,7 @@ class TestReviewPolicyInvariants(unittest.TestCase):
                     seen_adapters.add(path.relative_to(REPO / "home").parts[0])
         self.assertEqual(
             seen_adapters,
-            {"dot_claude", "dot_codex", "dot_cursor", "dot_pi", "dot_omp", "private_dot_copilot"},
+            {"dot_claude", "dot_codex", "dot_cursor", "dot_pi", "dot_omp"},
         )
 
     def test_light_eligibility_remains_a_gate_not_a_small_diff_heuristic(self):
@@ -188,7 +188,9 @@ class TestReviewPolicyInvariants(unittest.TestCase):
             for p in (REPO / "home").glob("**/exact_agents/*.tmpl")
             if "deep-review" in p.name or "review-controller" in p.name
         ]
-        self.assertGreaterEqual(len(profiles), 5)
+        # Guards against a silently empty glob; the four remaining profiles are Claude and
+        # Cursor `deep-review` plus OMP and Pi `review-controller`.
+        self.assertGreaterEqual(len(profiles), 4)
         for path in profiles:
             with self.subTest(profile=str(path)):
                 text = path.read_text()

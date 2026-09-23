@@ -15,7 +15,6 @@ from pathlib import Path
 
 from hook_common import (
     DEFAULT_TOPIC,
-    PARENT_SESSION_ENV,
     agent_depth,
     emit,
     is_default_branch_workspace,
@@ -76,7 +75,7 @@ NO_PERTURN_RECALL_NOTICE = (
 
 
 # Leaf identity is single-owned by `hook_common.is_delegated_leaf` (imported above):
-# `agent_id` (Claude/Codex child calls), `COPILOT_AGENT_SESSION_ID`, or `PI_SUBAGENT_CHILD`.
+# `agent_id` (Claude/Codex child calls) or `PI_SUBAGENT_CHILD`.
 
 
 def warm_resident_embedder(payload: dict) -> None:
@@ -104,7 +103,7 @@ def warm_resident_embedder(payload: dict) -> None:
 def per_turn_recall_requested(payload: dict) -> bool:
     """True when the invoking adapter has per-turn recall wiring.
 
-    Adapters with per-turn retrieval (Claude, Gemini, OpenCode, Copilot,
+    Adapters with per-turn retrieval (Claude, Gemini, OpenCode,
     Codex, Cursor, Pi) request the resident warm-up via `AI_EMBED_WARM=1` or the
     `warm_embedder` payload flag; an adapter that sends neither has no
     per-turn hook surface, so its mid-session recall must come from a
@@ -663,7 +662,7 @@ def context_for_harness(parts: list[str], optional_parts: list[tuple[int, str]])
 def main() -> None:
     payload = read_payload()
     if is_delegated_leaf(payload):
-        # Any leaf signal (agent_id, Copilot parent session, Pi child) returns before
+        # Any leaf signal (agent_id, Pi child) returns before
         # spec, HANDOFF, worklog, or auto_bind: a leaf never inherits parent context.
         emit({})
         return

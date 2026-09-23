@@ -29,10 +29,6 @@ mcp_servers:
         callbackPort: 3118
       cursor:
         clientId: "$(echo cursor-client-id)"
-      copilot:
-        clientId: "copilot-client-id"
-        callbackPort: 4242
-        scopes: "openid, email"
       codex:
         tokenBridge: "http-tool"
       gemini: {}
@@ -46,9 +42,6 @@ mcp_servers:
         ideClientId: "cursor-bridge-client"
         clientId: "cursor-bridge-client"
         scopes: "user"
-        tokenBridge: "bridge-source"
-        retryConnectTimeouts: true
-      copilot:
         tokenBridge: "bridge-source"
         retryConnectTimeouts: true
       codex:

@@ -13,7 +13,7 @@
   <text class="text" x="105" y="178">Shared skills</text><text class="small" x="105" y="208">home/exact_dot_agents</text><text class="small" x="105" y="234">source of truth</text>
   <path class="line" d="M330 195 H420"/>
   <rect class="box" x="420" y="130" width="260" height="130"/>
-  <text class="text" x="455" y="178">Runtime profiles</text><text class="small" x="455" y="208">Cursor, Copilot, Claude,</text><text class="small" x="455" y="234">Codex, Gemini, Pi, OMP</text>
+  <text class="text" x="455" y="178">Runtime profiles</text><text class="small" x="455" y="208">Cursor, Claude,</text><text class="small" x="455" y="234">Codex, Gemini, Pi, OMP</text>
   <path class="line" d="M680 195 H770"/>
   <rect class="box" x="770" y="130" width="240" height="130"/>
   <text class="text" x="805" y="178">Root controller</text><text class="small" x="805" y="208">active main session</text><text class="small" x="805" y="234">owns all fan-out</text>

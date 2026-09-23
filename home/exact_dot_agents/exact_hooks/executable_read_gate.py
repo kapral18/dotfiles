@@ -92,7 +92,7 @@ def whole_read_target(payload: dict[str, Any]) -> str | None:
     if not isinstance(tool_input, dict):
         return None
     if tool in READ_TOOLS:
-        # Any ranged read is targeted: Claude offset/limit, Copilot view_range, Antigravity
+        # Any ranged read is targeted: Claude offset/limit, Antigravity
         # StartLine/EndLine, generic start/end line keys.
         if any(tool_input.get(key) for key in TARGETED_READ_KEYS):
             return None
@@ -347,11 +347,6 @@ def _row_output_texts(row: dict[str, Any]) -> list[str]:
     payload = row.get("payload") if isinstance(row.get("payload"), dict) else {}
     if payload.get("type") in ("function_call_output", "custom_tool_call_output"):
         return _texts_from_output(payload.get("output"))
-    data = row.get("data") if isinstance(row.get("data"), dict) else {}
-    if row.get("type") == "tool.execution_complete":
-        # Copilot session events: the tool result content, verbatim (probed 2026-09-06).
-        result = data.get("result") if isinstance(data.get("result"), dict) else {}
-        return [t for t in (result.get("content"), result.get("detailedContent")) if isinstance(t, str)]
     result = row.get("toolUseResult")
     texts: list[str] = []
     message = row.get("message") if isinstance(row.get("message"), dict) else {}
@@ -405,16 +400,6 @@ def history_contains(payload: dict[str, Any], path: str, since: float) -> bool:
         try:
             with transcript.open(encoding="utf-8", errors="replace") as handle:
                 for line in handle:
-                    if "compaction_complete" in line:
-                        try:
-                            row = json.loads(line)
-                        except ValueError:
-                            continue
-                        ts = _row_ts(row)
-                        if "compaction_complete" in str(row.get("type")) and (ts is None or ts >= since - 5):
-                            # Copilot compacted after that read: the bytes left the live context.
-                            return False
-                        continue
                     if not any(marker in line for marker in _RESULT_LINE_MARKERS):
                         continue
                     try:
@@ -434,8 +419,8 @@ def history_contains(payload: dict[str, Any], path: str, since: float) -> bool:
     return False
 
 
-# Cheap pre-filter before JSON parsing: Claude, Codex, Pi/OMP, and Copilot result rows.
-_RESULT_LINE_MARKERS = ("output", "toolUseResult", "toolResult", "execution_complete")
+# Cheap pre-filter before JSON parsing: Claude, Codex, and Pi/OMP result rows.
+_RESULT_LINE_MARKERS = ("output", "toolUseResult", "toolResult")
 
 
 def _store_db_contains(path: Path, needle: str) -> bool:

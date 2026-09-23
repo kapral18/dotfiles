@@ -30,16 +30,7 @@ MIRROR_KIND = "ai.model-mirrors"
 DRIFT_KIND = "ai.model-mirror-drift"
 CAPABILITIES_REL = Path("scripts/model_capabilities.v1.json")
 MIRROR_REL = Path("home/dot_config/ai/readonly_model-mirrors.v1.json")
-HARNESSES = ("cursor", "claude", "codex", "gemini", "opencode", "pi", "copilot")
-COPILOT_REVIEW_POLICY_AGENTS = (
-    "k-agent-deep-review",
-    "k-agent-review-worker",
-    "k-agent-findings-auditor",
-    "k-agent-pr-necessity-auditor",
-    "k-agent-live-ui-review",
-    "k-agent-adversarial-verifier",
-    "k-agent-criteria-verifier",
-)
+HARNESSES = ("cursor", "claude", "codex", "gemini", "opencode", "pi")
 PROVIDERS = (
     "llama-cpp",
     "openrouter",
@@ -364,33 +355,6 @@ def _load_pi_policy(
     return _unique(curated), _unique(recommended), defaults
 
 
-def _load_copilot_policy(registry_path: Path) -> tuple[list[str], list[str], dict[str, str]]:
-    values = ["auto"]
-    for agent in COPILOT_REVIEW_POLICY_AGENTS:
-        pick = ai_models.resolve_review_agent_model(registry_path, "copilot", agent)
-        if pick and pick["model"] and pick["model"] != "inherit":
-            values.append(pick["model"])
-    models = _unique(values)
-    return models, models, {"default": "auto"}
-
-
-def _load_copilot_available(registry_path: Path) -> list[str]:
-    entries = ai_models.load_copilot_models(registry_path)
-    available: list[str] = []
-    seen: set[str] = set()
-    for index, entry in enumerate(entries):
-        if not isinstance(entry, dict):
-            raise ValueError(f"copilot_models[{index}] must be a mapping")
-        model_id = entry.get("id")
-        if not isinstance(model_id, str) or MODEL_ID_RE.fullmatch(model_id) is None:
-            raise ValueError(f"copilot_models[{index}].id is invalid")
-        if model_id in seen:
-            raise ValueError(f"copilot_models contains duplicate id: {model_id}")
-        seen.add(model_id)
-        available.append(model_id)
-    return available
-
-
 def _validate_cursor_policy(policy: Any) -> list[dict[str, Any]]:
     if not isinstance(policy, list) or not policy:
         raise ValueError("cursor_models must contain at least one model")
@@ -530,8 +494,6 @@ def build_static_mirror(repo_root: str | Path) -> dict[str, Any]:
     gemini_curated, gemini_recommended, gemini_defaults = _load_antigravity_policy(root)
     opencode_curated, opencode_recommended, opencode_defaults = _load_opencode_policy(root)
     pi_curated, pi_recommended, pi_defaults = _load_pi_policy(root, pi_extras)
-    copilot_curated, copilot_recommended, copilot_defaults = _load_copilot_policy(registry_path)
-    copilot_available = _load_copilot_available(registry_path)
 
     policies = {
         "cursor": (cursor_curated, cursor_recommended, {}),
@@ -540,7 +502,6 @@ def build_static_mirror(repo_root: str | Path) -> dict[str, Any]:
         "gemini": (gemini_curated, gemini_recommended, gemini_defaults),
         "opencode": (opencode_curated, opencode_recommended, opencode_defaults),
         "pi": (pi_curated, pi_recommended, pi_defaults),
-        "copilot": (copilot_curated, copilot_recommended, copilot_defaults),
     }
 
     harnesses = {}
@@ -563,13 +524,6 @@ def build_static_mirror(repo_root: str | Path) -> dict[str, Any]:
             "recommended": _catalog_policy(recommended, provenance=recommended_provenance),
         }
         harness_defaults[harness] = defaults
-
-    if copilot_available:
-        harnesses["copilot"]["available"] = _catalog_policy(
-            copilot_available,
-            provenance=[_registry_provenance("copilot_models")],
-            complete=True,
-        )
 
     mirror = {
         "adapters": {
@@ -629,14 +583,6 @@ def _harness_policy_provenance(harness: str, set_name: str) -> list[dict[str, An
         return list(profile_sources[harness])
     if harness == "pi":
         return [_registry_provenance("pi_extra_models")]
-    if harness == "copilot":
-        if set_name == "available":
-            return [_registry_provenance("copilot_models")]
-        return [
-            _registry_provenance("agent_bindings"),
-            _registry_provenance("agent_categories"),
-            _registry_provenance("category_models"),
-        ]
     return profile_sources[harness]
 
 

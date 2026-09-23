@@ -4,8 +4,7 @@
 
 Print a currently-valid MCP access token for an OAuth HTTP server, for use as a
 bearer header by clients that cannot run the server's browser OAuth flow
-themselves (notably GitHub Copilot CLI, whose hardcoded redirect URI the SCSI
-Okta app and Slack client reject).
+themselves, or that capture a bearer only once at launch.
 
 Tokens are sourced from cursor-cli's per-project OAuth caches
 (``~/.cursor/projects/*/mcp-auth.json``). cursor performs each server's OAuth
@@ -49,7 +48,7 @@ login run.
 
 ``--bridge --url <endpoint>`` runs a stdio <-> streamable-HTTP MCP bridge
 (``bridge.py``) that injects a freshly selected bearer per request instead of
-ever printing one. Copilot and Codex spawn it as a local MCP server, so their
+ever printing one. Codex spawns it as a local MCP server, so its
 sessions no longer depend on any single token's lifetime: the bridge re-reads
 the cursor caches per request, rotates when runway drops below
 ``BLOCKING_ROTATE_TTL_SECONDS`` (throttled on repeated failure), retries once

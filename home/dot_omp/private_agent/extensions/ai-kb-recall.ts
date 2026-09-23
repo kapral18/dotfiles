@@ -24,7 +24,7 @@
 // domain/universal, so a large/cross-project KB cannot stuff context.
 //
 // Worklog capture: tool_result events are forwarded to the shared
-// worklog_dispatcher.sh (same payload shape as the Copilot adapter), so pi
+// worklog_dispatcher.sh (same payload shape as the shared hook adapters), so pi
 // sessions feed the same <topic>.worklog.jsonl trail as every other harness.
 
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent"
@@ -753,7 +753,7 @@ export default async function (pi: ExtensionAPI) {
     state.lastPrefixPercent = null
   })
 
-  // Worklog capture: mirror the Copilot adapter's postToolUse payload so the
+  // Worklog capture: mirror the shared postToolUse payload so the
   // shared recorder treats pi like every other harness. Fail-open by design.
   pi.on("tool_result", (event, ctx) => {
     try {
@@ -772,7 +772,7 @@ export default async function (pi: ExtensionAPI) {
   })
 
   pi.on("before_agent_start", async (event, ctx) => {
-    if (process.env.PI_SUBAGENT_CHILD === "1" || process.env.COPILOT_AGENT_SESSION_ID || /^\[DELEGATION BOUNDARY\]$/m.test(event.systemPrompt ?? "")) return
+    if (process.env.PI_SUBAGENT_CHILD === "1" || /^\[DELEGATION BOUNDARY\]$/m.test(event.systemPrompt ?? "")) return
     try {
       const sessionId = ctx.sessionManager.getSessionId()
       let state = stateBySession.get(sessionId)

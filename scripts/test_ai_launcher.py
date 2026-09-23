@@ -26,7 +26,6 @@ LEAVES = {
     "gemini": "agy",
     "opencode": "opencode",
     "pi": "pi",
-    "copilot": ",copilot",
 }
 
 
@@ -122,7 +121,7 @@ class TestAiLauncher(unittest.TestCase):
 
     def test_when_an_explicit_value_matches_an_alias_it_wins_provenance(self) -> None:
         plan = self.dry_plan(
-            "copilot",
+            "cursor",
             "--alias",
             "audit",
             "--depth",
@@ -142,7 +141,7 @@ class TestAiLauncher(unittest.TestCase):
         )
 
     def test_when_alias_and_explicit_axis_conflict_resolution_fails_visibly(self) -> None:
-        result = self.run_ai("copilot", "--alias", "audit", "--execution", "autonomous", "--dry-run")
+        result = self.run_ai("cursor", "--alias", "audit", "--execution", "autonomous", "--dry-run")
 
         self.assertEqual(2, result.returncode)
         self.assertIn("contradictory execution selections", result.stderr)
@@ -156,30 +155,30 @@ class TestAiLauncher(unittest.TestCase):
 
     def test_when_leaf_args_bypass_an_owned_field_resolution_fails_visibly(self) -> None:
         result = self.run_ai(
-            "copilot",
+            "cursor",
             "--alias",
             "audit",
             "--dry-run",
             "--",
             "--mode",
-            "autopilot",
-            "--allow-all",
+            "plan",
+            "--yolo",
         )
 
         self.assertEqual(2, result.returncode)
         self.assertIn("leaf argument --mode contradicts launcher-owned execution", result.stderr)
 
         result = self.run_ai(
-            "copilot",
+            "cursor",
             "--execution",
             "supervised",
             "--dry-run",
             "--",
-            "--allow-all-paths",
+            "--sandbox",
         )
 
         self.assertEqual(2, result.returncode)
-        self.assertIn("leaf argument --allow-all-paths contradicts launcher-owned execution", result.stderr)
+        self.assertIn("leaf argument --sandbox contradicts launcher-owned execution", result.stderr)
 
     def test_when_multi_character_or_attached_leaf_options_bypass_axes_resolution_fails(self) -> None:
         cases = [
@@ -212,7 +211,6 @@ class TestAiLauncher(unittest.TestCase):
             "gemini": ("readonly", ["--mode", "plan"]),
             "opencode": ("autonomous", ["--auto"]),
             "pi": ("readonly", ["--tools", "read,grep,find,ls"]),
-            "copilot": ("autonomous", ["--mode", "autopilot", "--allow-all"]),
         }
 
         for harness, (execution, expected) in cases.items():
@@ -235,7 +233,6 @@ class TestAiLauncher(unittest.TestCase):
             ("gemini", ["--connectivity", "offline"], "connectivity=offline"),
             ("opencode", ["--connectivity", "offline"], "connectivity=offline"),
             ("pi", ["--connectivity", "offline"], "connectivity=offline"),
-            ("copilot", ["--connectivity", "offline"], "connectivity=offline"),
         ]
 
         for harness, args, label in cases:
@@ -261,7 +258,6 @@ class TestAiLauncher(unittest.TestCase):
             # Native Pi inheritance owns the unconstrained route, so explicit --depth reaches
             # Pi's --thinking flag; only an explicit OpenRouter provider rejects it.
             "pi": ([], "applied", "--thinking"),
-            "copilot": ([], "applied", "--effort"),
         }
 
         for harness, (extra, status, marker) in cases.items():
@@ -355,7 +351,7 @@ class TestAiLauncher(unittest.TestCase):
                 plan = self.dry_plan("pi", "--model", model)
 
                 self.assertEqual(model, plan["selection"]["model"]["value"])
-                self.assertNotIn("openai/gpt-5.6-sol", plan["leaf"]["argv"])
+                self.assertNotIn("openai/gpt-6-sol", plan["leaf"]["argv"])
 
     def test_when_provider_is_explicit_only_verified_harness_support_is_used(self) -> None:
         pi = self.dry_plan("pi", "--provider", "openrouter")
@@ -364,7 +360,7 @@ class TestAiLauncher(unittest.TestCase):
         unsupported = self.run_ai("claude", "--provider", "openrouter", "--dry-run")
 
         self.assertEqual(
-            [",ai-selection", "--provider", "openrouter", "--model", "openai/gpt-5.6-sol"],
+            [",ai-selection", "--provider", "openrouter", "--model", "openai/gpt-6-sol"],
             pi["selection"]["transport_trace"],
         )
         self.assertIn("--provider", pi["leaf"]["argv"])
@@ -398,10 +394,10 @@ class TestAiLauncher(unittest.TestCase):
 
         self.assertEqual(("pi", None, "openrouter"), adapter.request)
         self.assertEqual(
-            ("--provider", "openrouter", "--model", "openai/gpt-5.6-sol"),
+            ("--provider", "openrouter", "--model", "openai/gpt-6-sol"),
             plan.selection.transport_args,
         )
-        self.assertEqual("OpenRouter openai/gpt-5.6-sol pin", plan.selection.model_provenance.source)
+        self.assertEqual("OpenRouter openai/gpt-6-sol pin", plan.selection.model_provenance.source)
         self.assertFalse(plan.selection.model_is_explicit)
         self.assertIn("--thinking", plan.actual_argv)
         self.assertIn("xhigh", plan.actual_argv)
@@ -413,7 +409,7 @@ class TestAiLauncher(unittest.TestCase):
         other_opencode_model = self.run_ai(
             "opencode",
             "--model",
-            "openrouter/openai/gpt-5.6-sol",
+            "openrouter/openai/gpt-6-sol",
             "--dry-run",
         )
 
@@ -429,7 +425,7 @@ class TestAiLauncher(unittest.TestCase):
         # DeepSeek/Sonnet/Kimi/GLM, and GPT-6 Astra pinned to OpenAI's Flex tier);
         # the launcher must accept the per-harness selectors the generated mirror sanctions and reject
         # anything else.
-        pi_gpt = self.dry_plan("pi", "--model", "openrouter/openai/gpt-5.6-sol")
+        pi_gpt = self.dry_plan("pi", "--model", "openrouter/openai/gpt-6-sol")
         pi_glm_flash = self.dry_plan("pi", "--model", "openrouter/z-ai/glm-5.3-flash")
         pi_deepseek = self.dry_plan("pi", "--model", "openrouter/deepseek/deepseek-v4.1-flash")
         pi_sonnet = self.dry_plan("pi", "--model", "openrouter/anthropic/claude-sonnet-4.6")
@@ -457,7 +453,7 @@ class TestAiLauncher(unittest.TestCase):
             "--dry-run",
         )
 
-        self.assertIn("openai/gpt-5.6-sol", pi_gpt["leaf"]["argv"])
+        self.assertIn("openai/gpt-6-sol", pi_gpt["leaf"]["argv"])
         self.assertIn("openrouter/z-ai/glm-5.3-flash", pi_glm_flash["leaf"]["argv"])
         self.assertIn("openrouter/deepseek/deepseek-v4.1-flash", pi_deepseek["leaf"]["argv"])
         self.assertIn("openrouter/anthropic/claude-sonnet-4.6", pi_sonnet["leaf"]["argv"])
@@ -570,10 +566,6 @@ class TestAiLauncher(unittest.TestCase):
             ),
             "opencode": (["-popencode-secret"], ["opencode-secret"]),
             "pi": (["--api-key=pi-secret"], ["pi-secret"]),
-            "copilot": (
-                ["--additional-mcp-config", '{"Authorization":"copilot-secret"}'],
-                ["copilot-secret"],
-            ),
         }
 
         for harness, (leaf_args, secrets) in cases.items():

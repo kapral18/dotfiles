@@ -175,9 +175,7 @@ class PolicyIRTest(unittest.TestCase):
 class CapabilitySnapshotTest(unittest.TestCase):
     def test_SHOULD_cover_managed_native_harnesses_beyond_the_unified_launcher(self):
         snapshot = capabilities.load_snapshot(REPO)
-        self.assertTrue(
-            {"claude", "codex", "cursor", "copilot", "opencode", "pi", "omp", "gemini", "crush"} <= snapshot.keys()
-        )
+        self.assertTrue({"claude", "codex", "cursor", "opencode", "pi", "omp", "gemini", "crush"} <= snapshot.keys())
         for harness in ("pi", "omp", "opencode"):
             self.assertTrue(capabilities.hook_support_at_least(snapshot[harness].hook_support, "blocking"), harness)
 
@@ -1374,7 +1372,7 @@ class EvalScaffoldTest(unittest.TestCase):
         # model binding is static by construction (profile frontmatter or a closed dispatch
         # schema). Pi joined when subagent-contract.ts stopped admitting per-call model keys.
         # A snapshot that disagrees is an IR error, not a reason to move the pin.
-        static = {"claude", "codex", "copilot", "omp", "pi"}
+        static = {"claude", "codex", "omp", "pi"}
         runtime = ("crush", "cursor", "gemini", "generic", "opencode")
         bindings = {row["harness"]: row["subagent_model_binding"] for row in snapshot["harnesses"]}
         assert {h for h, b in bindings.items() if b == "static"} == static, bindings

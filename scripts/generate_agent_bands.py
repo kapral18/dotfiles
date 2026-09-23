@@ -43,7 +43,6 @@ EFFORTLESS_HARNESSES = frozenset({"antigravity"})
 PROFILE_DIRS = {
     "claude_code": ("home/dot_claude/exact_agents", "", ".md.tmpl"),
     "codex": ("home/dot_codex/exact_agents", "readonly_", ".toml.tmpl"),
-    "copilot": ("home/private_dot_copilot/exact_agents", "readonly_", ".agent.md.tmpl"),
     "cursor": None,
     "omp": ("home/dot_omp/private_agent/exact_agents", "", ".md.tmpl"),
     "pi": ("home/dot_pi/agent/exact_agents", "", ".md.tmpl"),
@@ -160,7 +159,7 @@ def build() -> dict:
             entry = {
                 "model": pick["model"],
                 # The gate's lane-pick pass-through applies only to `implement`-bound generic
-                # types (Cursor `generalPurpose`, Codex `worker`, Copilot `task`, ...), never to a
+                # types (Cursor `generalPurpose`, Codex `worker`, OMP `task`, ...), never to a
                 # bound profile asking for another lane's pick.
                 "category": bindings[agent],
             }

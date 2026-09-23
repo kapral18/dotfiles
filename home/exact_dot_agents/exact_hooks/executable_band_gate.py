@@ -88,8 +88,6 @@ def _deny(harness: str, reason: str) -> dict[str, Any]:
     if harness == "cursor":
         return {"permission": "deny", "user_message": reason}
     decision = {"permissionDecision": "deny", "permissionDecisionReason": reason}
-    if harness == "copilot":
-        return decision
     return {"hookSpecificOutput": {"hookEventName": "PreToolUse", **decision}}
 
 
@@ -97,9 +95,9 @@ def _override(harness: str) -> dict[str, Any] | None:
     """One model for every band, for a route whose catalog is a single model.
 
     A BYOK launcher points the whole session at one provider model; the bands still name the
-    harness's native ids, and those travel to that provider as their own wire model. Copilot's
-    `explore` reached openai/gpt-5.3-codex from a session pinned to gpt-5.6-terra this way, so
-    the override has to reach unbound agents too, not just rewrite a band's pick.
+    harness's native ids, and those travel to that provider as their own wire model. A BYOK
+    `explore` lane reached openai/gpt-5.3-codex from a session pinned to gpt-5.6-terra this way,
+    so the override has to reach unbound agents too, not just rewrite a band's pick.
 
     Claude Code is excluded because its Agent tool takes only the family aliases, and each alias
     already resolves through one ANTHROPIC_DEFAULT_*_MODEL the launcher sets.
@@ -184,8 +182,8 @@ def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str,
     # Claude's Agent tool constrains `model` to the family aliases sonnet|opus|haiku|fable
     # (claude-code 2.1.222; anything else fails updatedInput schema validation), and each alias
     # resolves through one ANTHROPIC_DEFAULT_*_MODEL. The alias is a lossy projection of the band:
-    # the tiers map onto three aliases (T1 research/review/session `fable`, T2 implement `opus`,
-    # T3 mechanical/memory `sonnet`), so effort inside a tier is invisible to the hook — the profile
+    # the tiers map onto two aliases (T1 research/review/session `opus`, T2 implement and
+    # T3 mechanical/memory `sonnet`), so effort inside an alias is invisible to the hook — the profile
     # frontmatter's exact id and effort are what hold that, and they win whenever no `model` is passed.
     #
     # Enforce the assigned alias in both directions. A cheaper model is not a valid
@@ -240,25 +238,6 @@ def _codex(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, 
     }
 
 
-def _codex_subscription_pick(
-    agent: str, assigned: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]
-) -> dict[str, Any]:
-    """Admit only fresh leaves whose catalog and model-free profiles were projected at launch."""
-    if tool_input.get("fork_context"):
-        raise ValueError(
-            "Subscription lanes require a fresh managed leaf; full-history forks inherit root configuration."
-        )
-    try:
-        routes = json.loads(os.environ.get("AGENT_BAND_CODEX_ROUTES", ""))
-    except ValueError as error:
-        raise ValueError("Codex subscription lane configuration is missing; relaunch the repaired wrapper.") from error
-    wire = f"{pick['model']}@lane-{pick['effort']}"
-    expected = f"{assigned['model']}@lane-{assigned['effort']}"
-    if not isinstance(routes, dict) or routes.get(agent) != expected or wire not in routes.values():
-        raise ValueError("This Codex role or exact lane is unavailable in the session's projected provider catalog.")
-    return {**pick, "model": wire}
-
-
 def _codex_openrouter_pick(
     agent: str, assigned: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]
 ) -> dict[str, Any]:
@@ -278,16 +257,6 @@ def _codex_openrouter_pick(
     return formatted
 
 
-def _copilot(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]) -> dict[str, Any]:
-    # Reached through the agent-memory extension's onPreToolUse, which returns modifiedArgs
-    # (PreToolUseHookOutput, @github/copilot-sdk 1.0.77). The `task` schema exposes both `model`
-    # and `reasoning_effort`, so both dials are enforceable here.
-    updated = dict(tool_input, model=pick["model"])
-    if pick.get("effort"):
-        updated["reasoning_effort"] = pick["effort"]
-    return {"modifiedArgs": updated}
-
-
 # Antigravity deliberately has no projection pick: its dynamic `invoke_subagent`
 # schema accepts abstract model tiers (`inherit`, `flash_lite`, `flash`, `pro`),
 # so the `_antigravity` adapter above enforces the `flash` tier and the `k-agent-`
@@ -304,7 +273,6 @@ ADAPTERS = {
     "claude_code": _claude,
     "cursor": _cursor,
     "codex": _codex,
-    "copilot": _copilot,
 }
 
 # Each harness names the delegation tool and its agent-selecting argument differently. Codex's
@@ -313,8 +281,8 @@ ADAPTERS = {
 AGENT_KEYS = ("subagent_type", "agent_type", "agent", "agent_name", "role", "subagent")
 # Cursor transcript exports label the delegation tool `Subagent` (2026-09-04) while the
 # cursor-agent bundle still names the call type `taskToolCall`; which of the two the preToolUse
-# payload carries as `tool_name` is unverified, so both are matched here, in the hooks.json
-# matcher, and in the Copilot extension's verbatim mirror of this set.
+# payload carries as `tool_name` is unverified, so both are matched here and in the hooks.json
+# matcher.
 DELEGATION_TOOLS = {
     "Task",
     "Agent",
@@ -360,8 +328,8 @@ def main() -> int:
         tool = "spawn_agent"
     tool_input = payload.get("tool_input") or payload.get("arguments") or {}
 
-    # Copilot hands the tool arguments over as a JSON string rather than an object (verified
-    # against copilot 1.0.77); every other harness sends an object.
+    # Some harnesses hand the tool arguments over as a JSON string rather than an object;
+    # every other harness sends an object.
     if isinstance(tool_input, str):
         try:
             tool_input = json.loads(tool_input)
@@ -387,11 +355,10 @@ def main() -> int:
         return 0
 
     subscription = os.environ.get("AGENT_BAND_SUBSCRIPTION", "")
-    codex_subscription = harness == "codex" and subscription == schema_harness == "copilot"
     codex_openrouter = (
         harness == "codex" and schema_harness == "pi" and os.environ.get(MODEL_FORMAT_ENV) == "openrouter-preset"
     )
-    if subscription and harness != "claude_code" and not codex_subscription:
+    if subscription and harness != "claude_code":
         print(
             json.dumps(
                 _deny(
@@ -422,7 +389,7 @@ def main() -> int:
         return 0
 
     # A generic subagent type binds to `implement` (Cursor `generalPurpose`, Codex `worker`,
-    # Copilot `task`), and lanes whose profile is unreachable on a harness are launched through
+    # OMP `task`), and lanes whose profile is unreachable on a harness are launched through
     # that same generic type carrying their registry pick as an explicit `model` — Cursor never
     # scans ~/.cursor/agents, so the adversarial verifier, the cheap mechanical / k-agent-smol
     # lanes, and the research and review lanes all arrive that way. Rewriting such a launch to
@@ -436,11 +403,6 @@ def main() -> int:
     if harness != "claude_code" and not override and pick.get("category") == "implement":
         try:
             selection = tool_input
-            if codex_subscription and isinstance(tool_input.get("model"), str) and "@lane-" in tool_input["model"]:
-                base, _, effort = tool_input["model"].rpartition("@lane-")
-                if tool_input.get("reasoning_effort", effort) != effort:
-                    raise ValueError("The explicit subscription selector and reasoning effort disagree.")
-                selection = dict(tool_input, model=base, reasoning_effort=effort)
             if (
                 codex_openrouter
                 and isinstance(tool_input.get("model"), str)
@@ -451,15 +413,6 @@ def main() -> int:
                     raise ValueError("The explicit OpenRouter selector and reasoning effort disagree.")
                 selection = dict(tool_input, model=f"openrouter/{base}", reasoning_effort=effort)
             pick = _generic_pick(schema_harness, pick, selection)
-        except ValueError as error:
-            print(json.dumps(_deny(harness, str(error))))
-            return 0
-
-    if codex_subscription:
-        try:
-            if override or os.environ.get(MODEL_FORMAT_ENV):
-                raise ValueError("Conflicting inherited provider controls on the Codex subscription route.")
-            pick = _codex_subscription_pick(agent, assigned, pick, tool_input)
         except ValueError as error:
             print(json.dumps(_deny(harness, str(error))))
             return 0

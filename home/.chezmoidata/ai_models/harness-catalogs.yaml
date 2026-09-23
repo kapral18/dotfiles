@@ -182,6 +182,17 @@ cursor_models:
   - id: "claude-fable-5-high"
   - id: "claude-fable-5-1-high"
   - id: "claude-fable-5-1-thinking-high"
+  # claude-opus-5-5-* verified in live `cursor-agent models` on 2026-09-22 (no thinking variants listed).
+  - id: "claude-opus-5-5-low"
+  - id: "claude-opus-5-5-low-fast"
+  - id: "claude-opus-5-5-medium"
+  - id: "claude-opus-5-5-medium-fast"
+  - id: "claude-opus-5-5-high"
+  - id: "claude-opus-5-5-high-fast"
+  - id: "claude-opus-5-5-xhigh"
+  - id: "claude-opus-5-5-xhigh-fast"
+  - id: "claude-opus-5-5-max"
+  - id: "claude-opus-5-5-max-fast"
   - id: "claude-sonnet-5-low"
   - id: "claude-sonnet-5-medium"
   - id: "claude-sonnet-5-high"
@@ -233,9 +244,11 @@ cursor_models:
   - id: "kimi-k3-low"
   - id: "kimi-k3-max"
 
-# cursor-agent AvailableModels base names, probed 2026-09-12.
+# cursor-agent AvailableModels base names, probed 2026-09-12; claude-opus-5-5 added 2026-09-22 from
+# the live `cursor-agent models` family (claude-opus-5-5-{low..max}).
 cursor_task_base_models:
   - name: "default"
+  - name: "claude-opus-5-5"
   - name: "grok-4.6"
   - name: "claude-opus-5"
   - name: "gpt-5.6-sol"
@@ -286,17 +299,17 @@ cursor_task_base_models:
 # Pi resolves the `openrouter/` prefix through its own built-in provider, so no generated provider
 # block backs these entries.
 pi_extra_models:
-  # Native Pi root default. The installed Pi catalog exposes Fable 5.1 with its 1M window through
-  # github-copilot; category/child selections remain independent of this interactive root selection.
+  # Selectable through Pi's built-in github-copilot provider (GitHub Copilot subscription, not the
+  # Copilot CLI); category/child selections remain independent of these ids.
   - id: "github-copilot/claude-fable-5.1"
   - id: "github-copilot/grok-4.6"
   - id: "github-copilot/gemini-3.8-flash"
-  # Former native root retained as a selectable GitHub Copilot id.
   - id: "github-copilot/gpt-6-astra"
   # Native Anthropic category model retained for the T1 research/review child rows.
   - id: "anthropic/claude-fable-5.1"
-  - id: "openrouter/openai/gpt-5.6-sol"
+  - id: "openrouter/openai/gpt-6-sol"
     recommended: true
+  - id: "openrouter/openai/gpt-5.6-sol"
   - id: "openrouter/z-ai/glm-5.3-flash"
   # Pi implement lane (`pi --list-models`: 1.0M context, 943.7K max output).
   - id: "openrouter/z-ai/glm-5.3"
@@ -312,39 +325,3 @@ pi_extra_models:
   # tiers, so the explicit tag is required; live-probed 2026-09-11, user call). Selectable only.
   - id: "openrouter/openai/gpt-6-astra"
   - id: "openrouter/meta/muse-spark-1.3"
-
-# Copilot CLI available-model catalog. Based on the Copilot CLI 1.0.71 model list plus later
-# entitlement-filtered live metadata additions (the CLI exposes no --list-models command). Refresh by
-# re-probing and editing here — the mirror generator consumes this as the copilot "available" set. Excludes the
-# `auto` selector (not a model) and `kimi-k2.7-code` (recognized but currently unavailable).
-copilot_models:
-  - id: "claude-sonnet-5"
-  - id: "claude-sonnet-4.6"
-  - id: "claude-sonnet-4.5"
-  - id: "claude-haiku-4.5"
-  - id: "claude-fable-5"
-  # Live Copilot metadata: Messages and Chat Completions; low through max effort; 264k default and
-  # 1M long-context windows with 200k/936k prompt limits.
-  - id: "claude-fable-5.1"
-  - id: "claude-opus-5"
-  - id: "claude-opus-4.8"
-  - id: "claude-opus-4.8-fast"
-  - id: "claude-opus-4.7"
-  - id: "claude-opus-4.6"
-  - id: "claude-opus-4.5"
-  - id: "gpt-5.6-sol"
-  - id: "gpt-5.6-terra"
-  - id: "gpt-5.6-luna"
-  - id: "gpt-5.5"
-  - id: "gpt-5.4"
-  - id: "gpt-5.3-codex"
-  # Live Copilot catalog metadata confirms Responses support, high/xhigh effort, and default/long tiers.
-  - id: "gpt-6-astra"
-  - id: "gpt-5.4-mini"
-  - id: "gpt-5-mini"
-  - id: "gemini-3.1-pro-preview"
-  - id: "gemini-3.5-flash"
-  - id: "gemini-3.8-flash"
-  - id: "grok-4.6"
-  # Live-probed 2026-09-13: `copilot -p ... --model kimi-k3` completed on Copilot CLI 1.0.83 (Copilot refute counter).
-  - id: "kimi-k3"

@@ -16,7 +16,7 @@ See [The Agentic Operating System](../topics/ai-assistants/index.md) and [SOP so
 | Cursor CLI hooks       | [`home/dot_cursor/hooks.json`](../../home/dot_cursor/hooks.json)                                 |
 | Antigravity hooks      | [`home/dot_gemini/config/readonly_hooks.json`](../../home/dot_gemini/config/readonly_hooks.json) |
 
-`~/CLAUDE.md` imports `@AGENTS.md`; `~/.claude/CLAUDE.md` links to `~/AGENTS.md` for Claude's global loader. `~/.gemini/config/AGENTS.md`, `~/.cursor/AGENTS.md`, `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`, and `~/.copilot/copilot-instructions.md` are symlinks to `~/AGENTS.md`.
+`~/CLAUDE.md` imports `@AGENTS.md`; `~/.claude/CLAUDE.md` links to `~/AGENTS.md` for Claude's global loader. `~/.gemini/config/AGENTS.md`, `~/.cursor/AGENTS.md`, `~/.codex/AGENTS.md`, and `~/.config/opencode/AGENTS.md` are symlinks to `~/AGENTS.md`.
 
 ## Harness configs
 
@@ -29,7 +29,6 @@ Per-tool config sources and the `run_onchange_after_07-*` hooks that render them
 | Antigravity | [`home/dot_gemini/`](../../home/dot_gemini/)                   | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)             |
 | OpenCode    | [`home/dot_config/opencode/`](../../home/dot_config/opencode/) | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl)           |
 | Pi          | [`home/dot_pi/agent/`](../../home/dot_pi/agent/)               | [`run_onchange_after_07-merge-pi-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl)                       |
-| Copilot     | [`home/private_dot_copilot/`](../../home/private_dot_copilot/) | [`run_onchange_after_07-merge-copilot-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-copilot-config.sh.tmpl)             |
 | Cursor      | [`home/dot_cursor/`](../../home/dot_cursor/)                   | settings tracked directly                                                                                                                         |
 
 ## Model registry

@@ -304,18 +304,17 @@ Native global entrypoints link to it; `~/CLAUDE.md` uses Claude's native `@AGENT
 `~/.claude/CLAUDE.md` is Claude's global entrypoint. `CLAUDE.md` imports `AGENTS.md`.
 The compiled ownership model lives in `docs/topics/ai-assistants/system-prompt/source-of-truth.md`.
 
-| Source                                                     | Target                               |
-| ---------------------------------------------------------- | ------------------------------------ |
-| `home/readonly_AGENTS.md`                                  | `~/AGENTS.md`                        |
-| `home/readonly_CLAUDE.md`                                  | `~/CLAUDE.md`                        |
-| `home/dot_claude/symlink_CLAUDE.md`                        | `~/.claude/CLAUDE.md`                |
-| `home/dot_gemini/config/symlink_AGENTS.md`                 | `~/.gemini/config/AGENTS.md`         |
-| `home/dot_cursor/symlink_AGENTS.md`                        | `~/.cursor/AGENTS.md`                |
-| `home/dot_codex/symlink_AGENTS.md`                         | `~/.codex/AGENTS.md`                 |
-| `home/dot_config/opencode/symlink_AGENTS.md`               | `~/.config/opencode/AGENTS.md`       |
-| `home/dot_omp/private_agent/symlink_AGENTS.md`             | `~/.omp/agent/AGENTS.md`             |
-| `home/private_dot_copilot/symlink_copilot-instructions.md` | `~/.copilot/copilot-instructions.md` |
-| `home/exact_dot_agents/exact_skills/`                      | `~/.agents/skills/`                  |
+| Source                                         | Target                         |
+| ---------------------------------------------- | ------------------------------ |
+| `home/readonly_AGENTS.md`                      | `~/AGENTS.md`                  |
+| `home/readonly_CLAUDE.md`                      | `~/CLAUDE.md`                  |
+| `home/dot_claude/symlink_CLAUDE.md`            | `~/.claude/CLAUDE.md`          |
+| `home/dot_gemini/config/symlink_AGENTS.md`     | `~/.gemini/config/AGENTS.md`   |
+| `home/dot_cursor/symlink_AGENTS.md`            | `~/.cursor/AGENTS.md`          |
+| `home/dot_codex/symlink_AGENTS.md`             | `~/.codex/AGENTS.md`           |
+| `home/dot_config/opencode/symlink_AGENTS.md`   | `~/.config/opencode/AGENTS.md` |
+| `home/dot_omp/private_agent/symlink_AGENTS.md` | `~/.omp/agent/AGENTS.md`       |
+| `home/exact_dot_agents/exact_skills/`          | `~/.agents/skills/`            |
 
 Rules:
 

@@ -117,10 +117,16 @@ def _pi_package_dir() -> Path | None:
 
 
 def _pi_subagents_entry() -> Path | None:
-    entry = Path.home() / ".local/share/pnpm-global-links/node_modules/pi-subagents/index.ts"
-    if entry.is_file():
-        return Path(os.path.realpath(entry))
-    return None
+    """The entry the package declares in `pi.extensions` (compiled `index.js` since 0.70.0)."""
+    package_dir = Path.home() / ".local/share/pnpm-global-links/node_modules/pi-subagents"
+    manifest_path = package_dir / "package.json"
+    if not manifest_path.is_file():
+        return None
+    extensions = json.loads(manifest_path.read_text(encoding="utf-8")).get("pi", {}).get("extensions")
+    if not (isinstance(extensions, list) and len(extensions) == 1 and isinstance(extensions[0], str)):
+        raise AssertionError(f"pi-subagents manifest must declare exactly one pi.extensions entry: {manifest_path}")
+    entry = Path(os.path.realpath(package_dir)) / extensions[0]
+    return Path(os.path.realpath(entry)) if entry.is_file() else None
 
 
 def _run_node(script: str, *args: str, timeout: int = 300) -> dict:
@@ -138,10 +144,13 @@ def _run_node(script: str, *args: str, timeout: int = 300) -> dict:
 CONTRACT_DRIVER = r"""
 import { createRequire } from "node:module";
 import { realpathSync } from "node:fs";
+import { dirname, extname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 const PI = process.argv[1];
 const ADAPTER = process.argv[2];
-const PS = process.argv[3];
+const ENTRY = process.argv[3];
+const PS = dirname(ENTRY);
+const EXT = extname(ENTRY);
 const out = {};
 // The root fixture must never inherit a child marker: save it, clear it for
 // every root section below, and restore it before reporting.
@@ -181,7 +190,7 @@ try {
   // oracle for the projection. A second factory run would mint fresh closures
   // and make any === comparison meaningless.
   const nativeCalls = [];
-  const upstream = await jiti.import(realpathSync(PS) + "/index.ts");
+  const upstream = await jiti.import(ENTRY);
   await (upstream.default ?? upstream)({ ...base, registerTool(t) { nativeCalls.push(t); } });
   const native = nativeCalls.find((t) => t.name === "subagent");
   out.native = {
@@ -223,12 +232,12 @@ try {
   // Upstream watchdog notice, formatted by the REAL pi-subagents formatter, then
   // pushed through the decorated sendMessage the adapter hands upstream. The
   // adapter must strip every steer/resume nudge and keep status/interrupt.
-  const control = await jiti.import(realpathSync(PS) + "/src/runs/shared/subagent-control.ts");
-  const notices = await jiti.import(realpathSync(PS) + "/src/extension/control-notices.ts");
+  const control = await jiti.import(PS + "/src/runs/shared/subagent-control" + EXT);
+  const notices = await jiti.import(PS + "/src/extension/control-notices" + EXT);
   const event = { type: "active_long_running", reason: "tool_open_threshold", agent: "k-agent-adversarial-verifier", runId: "run-1", index: 0, message: "has had tool 'bash' open for 240s" };
   const upstreamText = control.formatControlNoticeMessage(event, "subagent-k-agent-adversarial-verifier-run-1-1");
   const rewritten = ns.rewriteControlNotice(upstreamText);
-  const failed = { type: "needs_attention", reason: "completion_guard", agent: "k-agent-implementer", runId: "run-2", message: "completion guard rejected the result" };
+  const failed = { type: "needs_attention", reason: "tool_failures", agent: "k-agent-implementer", runId: "run-2", message: "repeated tool failures" };
   const failedUpstream = control.formatControlNoticeMessage(failed);
   const failedRewritten = ns.rewriteControlNotice(failedUpstream);
   const unrelated = "plain text with steer in prose";
@@ -245,11 +254,11 @@ try {
     hintBeforeStatus: rewritten.indexOf(ns.CONTROL_NOTICE_HINT) < rewritten.indexOf("Status: "),
     unrelatedUntouched: ns.rewriteControlNotice(unrelated) === unrelated,
     noticeType: notices.SUBAGENT_CONTROL_MESSAGE_TYPE,
-    failedUpstreamSaysRetryOrInline: /retry with a more explicit|handle the fix directly/.test(failedUpstream),
-    failedRewrittenSaysRetryOrInline: /retry with a more explicit|handle the fix directly/.test(failedRewritten),
-    failedRewrittenHasBlockedHint: failedRewritten.includes(ns.COMPLETION_GUARD_HINT),
-    failedKeepsSignal: failedRewritten.includes("Signal: completion guard rejected the result"),
-    failedNoLongRunningHint: !failedRewritten.includes(ns.CONTROL_NOTICE_HINT),
+    failedUpstreamHasSteer: /\bsteer\b/.test(failedUpstream) && /\bresume\b/.test(failedUpstream),
+    failedRewrittenHasSteerOrResume: /action: "steer"|action: "resume"/.test(failedRewritten),
+    failedHintPresent: failedRewritten.includes(ns.CONTROL_NOTICE_HINT),
+    failedKeepsSignal: failedRewritten.includes("Signal: repeated tool failures"),
+    failedKeepsStatus: failedRewritten.includes('Status: subagent({ action: "status", id: "run-2" })'),
   };
   const names = calls.map((t) => t.name);
   const registered = calls.find((t) => t.name === "subagent");
@@ -554,10 +563,10 @@ class TestPiSubagentContractNative(unittest.TestCase):
         )
 
     def test_adapter_projection_and_contract_table(self):
-        payload = _run_node(CONTRACT_DRIVER, str(self.pi_dir), str(ADAPTER), str(self.ps_entry.parent))
+        payload = _run_node(CONTRACT_DRIVER, str(self.pi_dir), str(ADAPTER), str(self.ps_entry))
         self.assertTrue(payload.get("ok"), payload.get("error"))
         self.assertTrue(payload["native"]["seen"])
-        self.assertEqual(payload["native"]["propCount"], 80)
+        self.assertEqual(payload["native"]["propCount"], 82)
         # Projection keeps THAT captured native tool's callbacks by identity.
         projection = payload["projection"]
         self.assertFalse(projection["hasSnippet"])
@@ -588,11 +597,11 @@ class TestPiSubagentContractNative(unittest.TestCase):
             "unrelatedUntouched",
         ):
             self.assertTrue(notice[key], (key, notice))
-        # completion_guard branch: upstream says "retry … or handle the fix directly"; the
-        # adapter replaces it with the SOP `blocked`-return rule and adds no steer hint.
-        self.assertTrue(notice["failedUpstreamSaysRetryOrInline"], notice)
-        self.assertFalse(notice["failedRewrittenSaysRetryOrInline"], notice)
-        for key in ("failedRewrittenHasBlockedHint", "failedKeepsSignal", "failedNoLongRunningHint"):
+        # needs_attention branch: upstream advertises the same steer/resume nudges; the adapter
+        # strips them, adds the status/interrupt hint, and keeps the signal and status lines.
+        self.assertTrue(notice["failedUpstreamHasSteer"], notice)
+        self.assertFalse(notice["failedRewrittenHasSteerOrResume"], notice)
+        for key in ("failedHintPresent", "failedKeepsSignal", "failedKeepsStatus"):
             self.assertTrue(notice[key], (key, notice))
         self.assertEqual(factory["subagentCount"], 1)
         self.assertGreaterEqual(factory["toolCount"], 2)

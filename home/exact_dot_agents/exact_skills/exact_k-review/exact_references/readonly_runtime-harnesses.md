@@ -20,7 +20,7 @@ Only the active root/main session follows this section; a delegated leaf skips i
   Same-family runs keep refutation framing and report the reduced independence, never hidden).
   Named profiles carry their resolved model/effort controls; do not override those fields merely to repeat the profile.
   A supported generic fallback receives the resolved category controls through that harness's actual fields.
-  Codex/Copilot use model plus reasoning effort; Cursor uses its model selector. Do not invent fields on another harness.
+  Codex uses model plus reasoning effort; Cursor uses its model selector. Do not invent fields on another harness.
 - Every resolved review-lane value is a concrete category id (Claude Code included since 2026-09-13; its profiles no longer render `inherit`).
   Named profile pins satisfy that requirement without per-call overrides. Generic fallbacks must preserve the same category.
   Antigravity has no profile surface; its abstract tier is stated in the Antigravity section below.
@@ -108,16 +108,6 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
   Use it only for independent ready root packets when the active Task schema exposes `run_in_background` and a native completion signal.
   If no native completion signal is available, end the controller turn and wait for the completion notification, or do one transcript completion check; never loop fixed-interval sleeps.
 
-### Copilot CLI
-
-- Copilot profiles carry resolver-rendered `model` frontmatter (`lanes` on workers/auditors/controller, `verifier` on `k-agent-adversarial-verifier`).
-  The managed `~/.copilot/settings.json` subagent entries also include resolver-aligned `model`/`effortLevel`/`contextTier` so stale target-only model overrides cannot survive Copilot's settings merge.
-  Copilot CLI 1.0.83 requires `enabledFeatureFlags.EXTENSIONS=true` before it discovers the managed SDK extension that supplies context, read, band, and worklog hooks.
-  Per-task model overrides are runtime-verified but reserved for fail-visible recovery, not steering, except generic fresh-eyes where the explicit model is the profile-equivalent resolved lane value.
-- Launch the review packet as the `k-agent-review-worker` agent type (model-invocable, not user-invocable).
-  Do not use the generic `task` type unless a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason.
-  A supported fallback passes the registry model and reasoning effort explicitly; it is not permission to change category.
-
 ### Subscription wrapper boundary
 
 Resolve the backend matrix, not the frontend catalog, on subscription wrappers.
@@ -126,22 +116,10 @@ The hook requires a fresh `AGENT_BAND_CLAUDE_ROUTES` role/pair map and removes t
 Do not delegate through a missing/unavailable profile, conflicting inherited controls, resume, or fork.
 The projected tools exclude `Agent`, `Task`, and `SendMessage`; this does not prove terminal-wakeup prevention by the root.
 
-`,codex-copilot` supports fresh native leaves only with its launch-projected `AGENT_BAND_CODEX_ROUTES`, entitled model catalog, and managed profile copies.
-Those copies omit native model/effort pins, retain leaf instructions, and disable `multi_agent`.
-The band gate must admit the role and exact `model@lane-<effort>` pair; the adapter strips the tag and applies lane effort instead of root controls.
-Do not delegate with missing, malformed, stale, or unavailable session projections; relaunch the wrapper when its launch projection is missing.
-Do not use full-history `fork_context`, conflicting provider controls, or child-originated delegation.
-Native child-tag transport does not certify live provider acceptance or successful refuter completion.
-A backend route map or adapter-only translation test is not evidence that the frontend transports child selectors.
-
-On `,copilot-codex`, Copilot 1.0.83 skipped its band gate without `enabledFeatureFlags.EXTENSIONS`.
-Enabling only that flag made the managed SDK extension deny subscription tasks before a child request.
-This proves denial, not selector impossibility, successful governed delegation, or full leaf lifecycle.
 Cursor `2026.09.08-6caf4ff` local-provider Task configuration (`nhe()`) hardcodes `enableExecuteHookExec:false`.
-Authenticated scripted-provider probes under both subscription environments returned child results without user/workspace gate calls.
-Both routes bypass configured denial; exact role/model/effort routing and full lifecycle remain uncertified.
-The prior `,cursor-codex` live root shell smoke does not certify the live Copilot backend for `,cursor-copilot`.
-MUST NOT assign unattended child work to `,copilot-codex`, `,cursor-codex`, or `,cursor-copilot` while those route-specific capabilities remain uncertified. Do not bypass a denial by dropping effort, using a raw backend model, invoking another harness, or substituting the root model.
+Authenticated scripted-provider probes under the subscription environment returned child results without user/workspace gate calls.
+That route bypasses configured denial; exact role/model/effort routing and full lifecycle remain uncertified.
+MUST NOT assign unattended child work to `,cursor-codex` while those route-specific capabilities remain uncertified. Do not bypass a denial by dropping effort, using a raw backend model, invoking another harness, or substituting the root model.
 Report the limitation. Root sessions and native harness routes remain separate capabilities.
 
 ### Codex on OpenRouter

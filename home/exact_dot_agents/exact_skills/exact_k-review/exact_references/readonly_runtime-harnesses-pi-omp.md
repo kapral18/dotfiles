@@ -58,6 +58,6 @@ Only the active root/main session follows this section; a delegated leaf skips i
   Pi review rides the Anthropic session route and refute a Meta counter, so `category_models.pi.refute` declares `verifier_status: cross_family`; report the registry status, do not substitute a model.
   OMP resolves review roles through its own `modelRoles`.
   One profile-independent `modelRoles` block in `home/dot_omp/private_agent/readonly_config.yml.tmpl` prices every role (`default` is generated from `session_models.omp`); read the pins there, not here.
-  Every `category_models.omp.*` row carries effort `high`; the `@role` token itself carries the real tier.
-  Adversarial and criteria verifiers follow `@advisor`, a different family than the Anthropic lanes, so `category_models.omp.refute` marks `verifier_status: cross_family`.
+  `category_models.omp.*` row efforts mirror `category_models.codex` (implement `medium`, the rest `high`); the `@role` token itself carries the real tier.
+  Adversarial and criteria verifiers follow `@advisor`, the same OpenAI GPT-6 Sol model as the primaries, so `category_models.omp.refute` marks `verifier_status: degraded`; report the registry status, do not substitute a model.
   Other repo-owned Pi/OMP profiles resolve their model from the review resolver or category registry (`agent_bindings` → `agent_categories` → `category_models`) so they do not fall through to `defaultProvider`/`defaultModel` unless a future profile deliberately omits `model` and documents why.

@@ -26,7 +26,7 @@ function harness(
   const models: Array<{ provider: string; modelId: string }> = []
   const levels: string[] = []
   let selectOptions: string[] = []
-  const catalogue = options.catalogue ?? ["llama-cpp/qwen3.8-27b", "github-copilot/claude-fable-5.1", "openrouter/z-ai/glm-5.3"]
+  const catalogue = options.catalogue ?? ["llama-cpp/qwen3.8-27b", "anthropic/claude-fable-5.1", "openrouter/z-ai/glm-5.3"]
   let handler: ((args: string, ctx: unknown) => Promise<void>) | undefined
   let completions: ((prefix: string) => Promise<unknown[] | null>) | undefined
 

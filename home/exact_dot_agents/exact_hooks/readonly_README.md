@@ -2,7 +2,7 @@
 
 Shared lifecycle hooks for terminal AI agents.
 
-Cursor CLI is the primary runtime. Claude Code, Codex, Antigravity, OpenCode, and Copilot reuse compatible shared scripts.
+Cursor CLI is the primary runtime. Claude Code, Codex, Antigravity, and OpenCode reuse compatible shared scripts.
 Those scripts cover bounded session context, compaction reinforcement, correction hints, and worklog recording.
 Each adapter passes its native session ID so topic selection, worklogs, and recall dedupe use the same binding.
 PR review anchor verification is instruction-owned by the review/GitHub skills, not enforced by a shell hook.
@@ -46,9 +46,9 @@ The agent should bind automatically when exactly one bucket clearly matches the 
 It then runs `,agent-memory select <topic> [--create] --session-id <id>` itself.
 Feature/topic worktrees keep `current` continuity by default when no `_active_topic.txt` hint is present.
 
-Copilot sub-agents are expected to run with `COPILOT_AGENT_SESSION_ID` set to the parent session id; that signal is unverified (recorded in `harness-capabilities.v1.json`, never probed live), so Copilot children without it read as roots and must run attended only.
-Worklog writes (`worklog_recorder.py` via `topic_paths_for_write`) and the `,agent-memory` CLI resolve the parent's selected topic, or its `session-<parent>` fallback on default branches, so sub-agent activity lands in the parent's bucket.
-Hook topic resolution ignores it, so blind lanes receive no parent context; `hook_common.is_delegated_leaf()` reads it to suppress the delegation blocks below.
+Worklog writes (`worklog_recorder.py` via `topic_paths_for_write`) and the `,agent-memory` CLI resolve the topic selected for the payload's session key (`conversation_id`, then `session_id`, then `generation_id`), or its `session-<id>` fallback on default branches.
+`agent_id` is not part of that key, so a child whose payload carries its parent's `session_id` (Claude Code subagents do) writes to the parent's bucket.
+`hook_common.is_delegated_leaf()` reads the leaf signal to suppress the delegation blocks below.
 
 Session-bound topics receive bounded spec/worklog context.
 Startup BM25 and per-turn hybrid retrieval stage complete relevance/workspace-filtered candidates;
@@ -96,13 +96,13 @@ A changed file is always allowed with a "changed since your read" note. First re
 Ledger `.reads-<context>.json` is keyed by child `agent_id` (Claude Code passes the parent's `transcript_path` for children) or by session;
 entries from before a compaction epoch never block.
 A leaf without a distinct ledger key (no `agent_id`) disables gating for that call entirely: it is never merged into the parent key and its first read is never refused.
-Coverage: Claude Code and Codex (hooks.json), Pi (`read-gate.ts`), Cursor (`beforeReadFile`/shell events, history in `~/.config/cursor/chats/*/<conversation_id>/store.db`, `stop` token shrink = compaction), Copilot (extension `onPreToolUse`/`onPostToolUse`, history in `session-state/<id>/events.jsonl`, `session.compaction_complete` resets).
+Coverage: Claude Code and Codex (hooks.json), Pi (`read-gate.ts`), Cursor (`beforeReadFile`/shell events, history in `~/.config/cursor/chats/*/<conversation_id>/store.db`, `stop` token shrink = compaction).
 OMP supersedes earlier reads itself and is left alone; Pi and OpenCode get the same via their `read-supersede.ts` (older results of a re-read file become a notice on the outgoing list, with OMP's cache guard); OpenCode is gated by `plugins/agent-memory.ts` (`tool.execute.before` throws the reason; history is the `part` table of `opencode.db`); Antigravity is unwired.
 
 `publish_gate.py` is the deterministic backstop for SOP §3.8 and the §3.7 leaf contract.
-It recognises publication calls (`gh pr|issue|release|gist` mutating verbs, non-GET `gh api` REST calls with a body, `gh api graphql` mutations, `gws gmail`/`gws chat` sends, Slack MCP mutation tools) and denies them from a delegated leaf (Claude Code child `agent_id`, Copilot parent session, pi child, OpenCode non-root session, OMP `yield` leaf); read-only calls are never touched.
+It recognises publication calls (`gh pr|issue|release|gist` mutating verbs, non-GET `gh api` REST calls with a body, `gh api graphql` mutations, `gws gmail`/`gws chat` sends, Slack MCP mutation tools) and denies them from a delegated leaf (Claude Code child `agent_id`, pi child, OpenCode non-root session, OMP `yield` leaf); read-only calls are never touched.
 For the root it allows the call and rides a short §3.8 checklist (approved exact target/payload, `k-communication` wording without session artifacts, read-back) as `additionalContext`; `AGENT_PUBLISH_GATE_ROOT=ask` turns that into a harness confirmation, `AGENT_PUBLISH_GATE=off` disables the hook.
-Coverage: Claude Code (`Bash|mcp__slack__.*`) and Codex (`Bash|shell`, `hook_specific` output); Cursor (`beforeShellExecution`, same payload as the read gate; no leaf signal, so every call reads as root and keeps the checklist); Copilot (extension `onPreToolUse` on `bash`: leaf denial plus the root checklist as `additionalContext`); OpenCode (`tool.execute.before` on `bash`: non-root sessions pass `agent_id` so the shared leaf predicate denies; the root checklist has no allow-with-note channel there and is dropped); Pi (`read-gate.ts` `tool_call` on `bash`); OMP (`runtime-parity.ts` `tool_call` on `bash` for `yield` leaves, passing the leaf session as `agent_id`; roots are not gated, so no checklist there).
+Coverage: Claude Code (`Bash|mcp__slack__.*`) and Codex (`Bash|shell`, `hook_specific` output); Cursor (`beforeShellExecution`, same payload as the read gate; no leaf signal, so every call reads as root and keeps the checklist); OpenCode (`tool.execute.before` on `bash`: non-root sessions pass `agent_id` so the shared leaf predicate denies; the root checklist has no allow-with-note channel there and is dropped); Pi (`read-gate.ts` `tool_call` on `bash`); OMP (`runtime-parity.ts` `tool_call` on `bash` for `yield` leaves, passing the leaf session as `agent_id`; roots are not gated, so no checklist there).
 Antigravity keeps the prose boundary plus a `disallowedTools` denial of the six Slack mutation tools (reads stay available) on the Claude profiles that inherit every tool.
 
 Tool adapters invoke `worklog_dispatcher.sh`, which captures the JSON payload and launches `worklog_recorder.py` without waiting for filesystem bookkeeping.
@@ -177,7 +177,3 @@ Two disciplines that earlier lived in `stop` hooks now live in the SOP, enforced
 
 On macOS, `/tmp` usually resolves to `/private/tmp`.
 A temporary workspace like `/tmp/example` therefore records state under `/tmp/specs/private/tmp/example/`.
-
-## Codex frontend on the Copilot backend
-
-The launcher projects entitled `@lane-<effort>` models and model-free managed leaf profiles into a temporary session directory. `AGENT_BAND_CODEX_ROUTES` advertises those roles to the band gate. The gate rejects missing projections, unregistered pairs, full-history forks and child-originated delegation; it does not infer transport capability from a backend name alone. Native profile files remain unchanged. Startup and per-turn hooks recognize Codex/Claude `agent_id` and return before loading root topic or recall context.

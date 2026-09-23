@@ -62,7 +62,7 @@ pi
 claude
 ```
 
-Per-tool configuration (auth, models, MCP, profile merging) lives in [Tool configs](../topics/ai-assistants/tool-configs/index.md). When you run `claude`, `cursor-agent`, `pi`, or `copilot` inside tmux, `Alt-Enter` prepends a calibrated verification scaffold and leaves the prompt editable (toggle with `prefix` + `W`); plain `Enter` is never touched.
+Per-tool configuration (auth, models, MCP, profile merging) lives in [Tool configs](../topics/ai-assistants/tool-configs/index.md). When you run `claude`, `cursor-agent`, or `pi` inside tmux, `Alt-Enter` prepends a calibrated verification scaffold and leaves the prompt editable (toggle with `prefix` + `W`); plain `Enter` is never touched.
 
 Across sessions, agents carry context through two memory layers: short-lived per-workspace hook memory (`/tmp/specs`) and a durable knowledge base (`,ai-kb`). See [Agent memory](../topics/ai-assistants/knowledge-base/index.md).
 

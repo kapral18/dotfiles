@@ -6,7 +6,6 @@ harnesses:
   - "cursor"
   - "opencode"
   - "gemini"
-  - "copilot"
   - "pi"
   - "omp"
   - "crush"

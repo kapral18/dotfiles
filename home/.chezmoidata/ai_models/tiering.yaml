@@ -4,20 +4,16 @@
 # Never a delegation target.
 session_models:
   claude_code:
-    model: "claude-fable-5-1[1m]"
+    model: "claude-opus-5-5[1m]"
     effort: "high"
     context: "long"
   codex:
-    model: "gpt-6-astra"
+    model: "gpt-6-sol"
     effort: "high"
     context: "short"
-  copilot:
-    model: "claude-fable-5.1"
-    effort: "high"
-    context: "long"
   # session row is informational: Cursor's root model/effort live in Cursor saved user config, not in this repo
   cursor:
-    model: "claude-fable-5-1"
+    model: "claude-opus-5-5"
     effort: "high"
     context: "long"
   antigravity:
@@ -29,9 +25,9 @@ session_models:
     effort: "xhigh"
     context: "long"
   omp:
-    model: "openrouter/meta/muse-spark-1.3"
-    effort: "xhigh"
-    context: "long"
+    model: "openai-codex/gpt-6-sol"
+    effort: "high"
+    context: "short"
 agent_categories:
   # Mechanical covers any settled procedure with a stated rule and specified return: retrieval, execution, extraction, transformation, compression, or reporting.
   mechanical:
@@ -113,9 +109,6 @@ binding_fallbacks:
   codex:
     generic: "worker"
     reason: "Deep-review/controller lanes and cross-harness native names have no Codex role file; the spawn_agent hook carries the registry pick on the generic worker type."
-  copilot:
-    generic: "task"
-    reason: "No research profile ships for Copilot; profile-less lanes dispatch as the generic task type with the registry pick."
   cursor:
     generic: "generalPurpose"
     reason: "Cursor CLI never scans ~/.cursor/agents, so no profile is reachable by name; every lane rides the Task hook on the generic type. No leaf signal exists, so dispatch is attended only (SOP §3.7 row 4)."
@@ -140,22 +133,22 @@ category_models:
       thinking: ""
       context: "long"
     research:
-      model: "claude-fable-5-1[1m]"
+      model: "claude-opus-5-5[1m]"
       effort: "high"
       thinking: ""
       context: "long"
     implement:
-      model: "claude-opus-5[1m]"
-      effort: "high"
+      model: "claude-sonnet-5"
+      effort: "xhigh"
       thinking: "off"
       context: "long"
     review:
-      model: "claude-fable-5-1[1m]"
+      model: "claude-opus-5-5[1m]"
       effort: "high"
       thinking: ""
       context: "long"
     refute:
-      model: "claude-fable-5-1[1m]"
+      model: "claude-opus-5-5[1m]"
       effort: "high"
       thinking: ""
       context: "long"
@@ -167,66 +160,34 @@ category_models:
       context: "short"
   codex:
     mechanical:
-      model: "gpt-5.6-luna"
+      model: "gpt-6-luna"
       effort: "high"
       thinking: ""
       context: "short"
     research:
-      model: "gpt-6-astra"
+      model: "gpt-6-sol"
       effort: "high"
       thinking: ""
       context: "short"
     implement:
-      model: "gpt-5.6-terra"
-      effort: "high"
+      model: "gpt-6-sol"
+      effort: "medium"
       thinking: ""
       context: "short"
     review:
-      model: "gpt-6-astra"
+      model: "gpt-6-sol"
       effort: "high"
       thinking: ""
       context: "short"
     refute:
-      model: "gpt-5.6-sol"
+      model: "gpt-6-sol"
       effort: "high"
       thinking: ""
       context: "short"
       verifier_status: "degraded"
     memory:
-      model: "gpt-5.6-terra"
+      model: "gpt-6-sol"
       effort: "high"
-      thinking: ""
-      context: "short"
-  copilot:
-    mechanical:
-      model: "grok-4.6"
-      effort: "medium"
-      thinking: ""
-      context: "long"
-    research:
-      model: "claude-fable-5.1"
-      effort: "high"
-      thinking: "off"
-      context: "long"
-    implement:
-      model: "grok-4.6"
-      effort: "high"
-      thinking: ""
-      context: "long"
-    review:
-      model: "claude-fable-5.1"
-      effort: "high"
-      thinking: ""
-      context: "long"
-    refute:
-      model: "kimi-k3"
-      effort: "high"
-      thinking: ""
-      context: "long"
-      verifier_status: "cross_family"
-    memory:
-      model: "grok-4.6"
-      effort: "medium"
       thinking: ""
       context: "short"
   # Cursor rows use Task-resolver base ids; effort rides user config, not the id. `-fast` ids are a price tier, never a pick.
@@ -238,7 +199,7 @@ category_models:
       thinking: ""
       context: "long"
     research:
-      model: "claude-fable-5-1"
+      model: "claude-opus-5-5"
       effort: "high"
       thinking: "off"
       context: "long"
@@ -248,7 +209,7 @@ category_models:
       thinking: ""
       context: "long"
     review:
-      model: "claude-fable-5-1"
+      model: "claude-opus-5-5"
       effort: "high"
       thinking: ""
       context: "long"
@@ -345,7 +306,7 @@ category_models:
       context: "short"
     implement:
       model: "@task"
-      effort: "high"
+      effort: "medium"
       thinking: ""
       context: "short"
     review:
@@ -358,7 +319,7 @@ category_models:
       effort: "high"
       thinking: ""
       context: "short"
-      verifier_status: "cross_family"
+      verifier_status: "degraded"
     memory:
       model: "@smol"
       effort: "high"
@@ -384,7 +345,7 @@ pi_model_profiles:
       mechanical:
         model: "llama-cpp/qwen3.6-35b-a3b"
         effort: "off"
-        thinking: "off"
+        thinking: ""
         context: "long"
       research:
         model: "llama-cpp/qwen3.6-35b-a3b"
@@ -397,7 +358,7 @@ pi_model_profiles:
       implement:
         model: "llama-cpp/qwen3.6-35b-a3b"
         effort: "off"
-        thinking: "off"
+        thinking: ""
         context: "long"
       review:
         model: "llama-cpp/qwen3.6-35b-a3b"
@@ -414,7 +375,7 @@ pi_model_profiles:
       memory:
         model: "llama-cpp/qwen3.6-35b-a3b"
         effort: "off"
-        thinking: "off"
+        thinking: ""
         context: "short"
   # Everything on OpenRouter `:free` variants: zero-cost, rate-limited upstream, and only as stable as
   # OpenRouter's free roster. `:free` is part of the model id, not a thinking level: Pi exact-matches
@@ -511,7 +472,7 @@ pi_model_profiles:
   # Everything on the direct Anthropic provider; lanes mirror `category_models.claude_code`.
   anthropic:
     session:
-      model: "anthropic/claude-fable-5-1"
+      model: "anthropic/claude-opus-5-5"
       effort: "high"
       context: "long"
     categories:
@@ -521,7 +482,7 @@ pi_model_profiles:
         thinking: ""
         context: "long"
       research:
-        model: "anthropic/claude-fable-5-1"
+        model: "anthropic/claude-opus-5-5"
         effort: "high"
         thinking: ""
         context: "long"
@@ -531,13 +492,13 @@ pi_model_profiles:
         thinking: ""
         context: "long"
       review:
-        model: "anthropic/claude-fable-5-1"
+        model: "anthropic/claude-opus-5-5"
         effort: "high"
         thinking: ""
         context: "long"
       # One family only, so the counter cannot be cross-family (same call as `category_models.claude_code.refute`).
       refute:
-        model: "anthropic/claude-fable-5-1"
+        model: "anthropic/claude-opus-5-5"
         effort: "high"
         thinking: ""
         context: "long"
@@ -551,39 +512,39 @@ pi_model_profiles:
   # All short: that provider only exposes short windows.
   codex:
     session:
-      model: "openai-codex/gpt-6-astra"
+      model: "openai-codex/gpt-6-sol"
       effort: "high"
       context: "short"
     categories:
       mechanical:
-        model: "openai-codex/gpt-5.6-luna"
+        model: "openai-codex/gpt-6-luna"
         effort: "high"
         thinking: ""
         context: "short"
       research:
-        model: "openai-codex/gpt-6-astra"
+        model: "openai-codex/gpt-6-sol"
         effort: "high"
         thinking: ""
         context: "short"
       implement:
-        model: "openai-codex/gpt-5.6-terra"
-        effort: "high"
+        model: "openai-codex/gpt-6-sol"
+        effort: "medium"
         thinking: ""
         context: "short"
       review:
-        model: "openai-codex/gpt-6-astra"
+        model: "openai-codex/gpt-6-sol"
         effort: "high"
         thinking: ""
         context: "short"
       # One family only, so the counter cannot be cross-family (same call as `category_models.codex.refute`).
       refute:
-        model: "openai-codex/gpt-5.6-sol"
+        model: "openai-codex/gpt-6-sol"
         effort: "high"
         thinking: ""
         context: "short"
         verifier_status: "degraded"
       memory:
-        model: "openai-codex/gpt-5.6-terra"
+        model: "openai-codex/gpt-6-sol"
         effort: "high"
         thinking: ""
         context: "short"

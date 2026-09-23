@@ -43,8 +43,6 @@ AI_INSTRUCTION_PATH_MARKERS = (
     "/.cursor/skills-cursor/",
     "/.cursor/agents/",
     "/.cursor/plugins/local/k-sop/rules/",
-    "/.copilot/skills/",
-    "/.copilot/agents/",
     "/.gemini/config/skills/",
     "/.omp/agent/skills/",
     "/.omp/agent/agents/",

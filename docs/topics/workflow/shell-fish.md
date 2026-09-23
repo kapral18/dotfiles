@@ -40,7 +40,6 @@ Fish setup in this repo is split by shell mode:
   - Adds Homebrew, `~/.local/bin`, `~/bin`, and mise shims to `PATH`.
 - Interactive shell:
   - Adds aliases (`g`, `v`, `c`, `t`, and others).
-  - Defines the `copilot` function, which routes through the native `,copilot` wrapper.
   - Defines the `codex` function, which routes through the managed `,codex` wrapper.
   - Initializes prompt/tools (`starship`, `zoxide`, `navi` when installed).
 

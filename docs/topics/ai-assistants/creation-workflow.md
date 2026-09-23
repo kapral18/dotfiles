@@ -56,7 +56,7 @@ Worker contract: [`k-build/references/criteria-verifier.md`](../../../home/exact
 
 This optional final framing judges each acceptance criterion, intended differences and preserved behavior against the frozen artifact and existing receipts. It returns one consolidated supported/unsupported/unknown result with exact evidence; it does not edit, repeat checks, broaden into unrelated audits or start a repair loop.
 
-Per-harness profiles are rendered through the same review-model resolver the review verifier uses. Cursor, Copilot, Codex, Pi, and OMP ship a `k-agent-criteria-verifier` profile; Antigravity defines the role dynamically and invokes its `pro` tier.
+Per-harness profiles are rendered through the same review-model resolver the review verifier uses. Cursor, Codex, Pi, and OMP ship a `k-agent-criteria-verifier` profile; Antigravity defines the role dynamically and invokes its `pro` tier.
 
 Claude runs the lane degraded on the session model with refutation framing, reported as `families=same (degraded)`. This mirrors the adversarial-verifier convention in [Cross-harness subagents](subagents.md).
 

@@ -144,3 +144,8 @@ chezmoi_record_artifact --id antigravity-mcp \
 chezmoi_forget_checksum "$antigravity_target"
 chezmoi_forget_checksum "$HOME/.gemini/settings.json"
 chezmoi_forget_artifact "gemini-settings"
+# Retired GitHub Copilot CLI harness: its merge script recorded these; ~/.copilot runtime data stays.
+chezmoi_forget_checksum "$HOME/.copilot/mcp-config.json"
+chezmoi_forget_checksum "$HOME/.copilot/settings.json"
+chezmoi_forget_artifact "copilot-mcp"
+chezmoi_forget_artifact "copilot-settings"

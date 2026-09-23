@@ -2,7 +2,7 @@
 """stdio <-> streamable-HTTP MCP bridge with per-request bearer injection.
 
 ``,mcp-token <server> --bridge --url <url>`` runs this bridge. The agent
-(Copilot, Codex) speaks newline-delimited JSON-RPC on stdio as if the bridge
+(Codex) speaks newline-delimited JSON-RPC on stdio as if the bridge
 were a local MCP server; every client message is forwarded as an HTTP POST to
 the real streamable-HTTP endpoint with a **freshly selected** bearer token.
 This decouples an agent session's lifetime from any single token's lifetime:

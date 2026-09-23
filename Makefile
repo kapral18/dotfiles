@@ -34,7 +34,6 @@ verify-agent-policy: ## Check compiled SOP/provenance with permissive architectu
 test: ## Run the full Python unit test suite (file-sharded via scripts/test_runner.py)
 	python3 scripts/test_runner.py
 	python3 home/exact_lib/exact_,history-sync/fish-history-merge.test.py -v
-	COPILOT_AGENT_MEMORY_EXTENSION_TEST=1 node scripts/tests/copilot_agent_memory_extension.test.mjs
 
 check: ## Affected lint/gates/tests (bin/check)
 	bin/check

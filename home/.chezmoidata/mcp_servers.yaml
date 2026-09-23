@@ -21,7 +21,7 @@ mcp_servers:
         scope: "user"
       cursor:
         # Runtime transport is the shared ,mcp-token --bridge (same mid-session
-        # recovery as Copilot/Codex). OAuth minting stays on a dedicated mint
+        # recovery as Codex). OAuth minting stays on a dedicated mint
         # workspace whose project mcp.json keeps these client fields so
         # cursor-agent mcp list-tools/login can still run the Okta refresh and
         # authorization_code flows (project config wins over user bridge).
@@ -39,34 +39,21 @@ mcp_servers:
         clientId: "0oa1aviou3pe7dITS1t8"
         scopes: "openid, email, offline_access"
         redirectUri: "http://localhost:12345/callback"
-      copilot:
-        # Copilot CLI cannot run the SCSI Okta flow itself: it hardcodes its
-        # OAuth redirect to http://127.0.0.1:{port}/ (only the port is
-        # configurable via auth.redirectPort), which the SCSI Okta app
-        # 0oa1aviou3pe7dITS1t8 rejects (verified: HTTP 400 "redirect_uri must
-        # be a Login redirect URI" — only .../callback and .../oauth/callback
-        # are registered).
-        #
-        # Instead, ride the rotating token cursor-cli already minted via its
-        # confidential Okta authorization_code flow. tokenBridge spawns
-        # ",mcp-token scsi-main --bridge --url <this url>" as a local stdio
-        # MCP server that injects a freshly selected bearer per request, so a
-        # Copilot session outlives any single token: SCSI tokens expire after
-        # ~1h (expires_in=3600) and the bridge rotates behind the seam via
-        # cursor's refresh grant instead of dying with a launch-time capture.
+      codex:
+        # Codex can run streamable HTTP MCP natively, but its native OAuth
+        # client's redirect/client-registration does not match this Okta app.
+        # Its bearer_token_env_var support reads the env var once at launch and
+        # never reloads it, so sessions died with the captured token; instead
+        # ride the rotating token cursor-cli already minted via its confidential
+        # Okta authorization_code flow. tokenBridge spawns ",mcp-token scsi-main
+        # --bridge --url <this url>" as a local stdio MCP server that injects a
+        # freshly selected bearer per request, so a session outlives any single
+        # token: SCSI tokens expire after ~1h (expires_in=3600) and the bridge
+        # rotates behind the seam via cursor's refresh grant.
         tokenBridge: "scsi-main"
         # The hosted ingress intermittently returns an Envoy connection-timeout
         # 503 before a request reaches SCSI. All SCSI tools are read-only, so
         # retrying that exact transport failure once is safe.
-        retryConnectTimeouts: true
-      codex:
-        # Codex can run streamable HTTP MCP natively, but its native OAuth
-        # client has the same redirect/client-registration mismatch as
-        # Copilot for this Okta app. Its bearer_token_env_var support reads
-        # the env var once at launch and never reloads it, so sessions died
-        # with the captured token; spawn the same per-request stdio bridge
-        # Copilot uses instead.
-        tokenBridge: "scsi-main"
         retryConnectTimeouts: true
       omp:
         tokenBridge: "scsi-main"
@@ -100,13 +87,13 @@ mcp_servers:
         # Slack's public MCP client is not approved for the search:read.*
         # scopes for this user (consent fails with "Unapproved permissions"),
         # so ride the rotating user token cursor-cli already mints via the
-        # shared stdio bridge, same as Copilot/Codex/OMP below.
+        # shared stdio bridge, same as Codex/OMP below.
         tokenBridge: "slack"
-      copilot:
-        # Copilot CLI cannot run Slack's OAuth flow itself: it hardcodes its
-        # redirect to http://127.0.0.1:{port}/ (only the port is configurable),
-        # Slack's MCP authorization server offers no dynamic client
-        # registration, and its token endpoint requires a client secret
+      codex:
+        # Codex's bearer_token_env_var reads the env once at launch and never
+        # reloads it, so the session died with the captured token. Slack's MCP
+        # authorization server offers no dynamic client registration and its
+        # token endpoint requires a client secret
         # (token_endpoint_auth_methods = [client_secret_post]; grant_types =
         # [authorization_code, refresh_token]) — verified against
         # https://mcp.slack.com/.well-known/oauth-authorization-server.
@@ -118,10 +105,6 @@ mcp_servers:
         # bearer per request (Slack MCP bearer_methods_supported = [header]),
         # so the session outlives Slack's 12h tokens; cursor's browser flow is
         # last.
-        tokenBridge: "slack"
-      codex:
-        # Codex's bearer_token_env_var reads the env once at launch and never
-        # reloads it; spawn the same per-request stdio bridge Copilot uses.
         tokenBridge: "slack"
       omp:
         tokenBridge: "slack"

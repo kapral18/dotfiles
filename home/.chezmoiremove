@@ -71,3 +71,25 @@ bin/,unwrap-md
 .config/fish/completions/,unwrap-md.fish
 .config/nvim/lua/plugins_local/unwrap-md.lua
 .config/nvim/lua/plugins_local_src/unwrap-md.lua
+
+# Retired GitHub Copilot CLI harness (deploy dir, wrappers, adapter, completions).
+# ~/.copilot runtime state (config.json, session-store.db, logs, permissions-config.json)
+# is user data and stays: only the formerly chezmoi-managed paths are listed.
+.copilot/agents
+.copilot/extensions
+.copilot/copilot-instructions.md
+.copilot/skills
+bin/,copilot
+bin/,claude-copilot
+bin/,codex-copilot
+bin/,copilot-codex
+bin/,copilot-openrouter
+bin/,cursor-copilot
+lib/,copilot
+lib/,copilot-adapter
+.config/fish/completions/,copilot.fish
+.config/fish/completions/,claude-copilot.fish
+.config/fish/completions/,codex-copilot.fish
+.config/fish/completions/,copilot-codex.fish
+.config/fish/completions/,copilot-openrouter.fish
+.config/fish/completions/,cursor-copilot.fish

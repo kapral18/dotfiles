@@ -90,7 +90,13 @@ def report_stale_consumers(pnpm_home: str) -> list[str]:
     global_root = Path(pnpm_home) / "global"
     try:
         result = subprocess.run(
-            [lsof, "-w", "-F", "pcn"], stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False, timeout=60
+            # -n/-P skip reverse-DNS and port-name lookups; without them one scan can outlast the timeout.
+            [lsof, "-n", "-P", "-w", "-F", "pcn"],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
         )
     except (OSError, subprocess.TimeoutExpired):
         return []

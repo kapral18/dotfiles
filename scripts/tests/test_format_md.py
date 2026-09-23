@@ -123,8 +123,6 @@ class TestFormatMdCommand(unittest.TestCase):
             ".cursor/skills/example/references/guide.md",
             ".cursor/agents/guide.md",
             ".cursor/plugins/local/k-sop/rules/sop.md",
-            ".copilot/skills/example/references/guide.md",
-            ".copilot/agents/guide.agent.md",
             ".gemini/config/skills/example/references/guide.md",
             ".omp/agent/skills/example/references/guide.md",
             ".omp/agent/agents/guide.md",

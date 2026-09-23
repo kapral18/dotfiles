@@ -115,7 +115,7 @@ def command_from(payload: dict) -> str:
         return command
 
     tool_input = payload.get("tool_input") or payload.get("arguments") or {}
-    # Copilot sends arguments as a JSON string; every other harness sends an object.
+    # Some harnesses send arguments as a JSON string; every other harness sends an object.
     if isinstance(tool_input, str):
         try:
             tool_input = json.loads(tool_input)

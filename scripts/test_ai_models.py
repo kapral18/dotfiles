@@ -38,8 +38,8 @@ class TestAiModels(unittest.TestCase):
         from ai_models import load_cursor_models
 
         cases = {
-            "missing": "copilot_models:\n  - id: model-a\n",
-            "empty": "cursor_models:\ncopilot_models:\n",
+            "missing": "pi_extra_models:\n  - id: model-a\n",
+            "empty": "cursor_models:\npi_extra_models:\n",
             "unrecognized": "cursor_models:\n  models: cursor-model-a\n",
             "absent file": None,
         }

@@ -68,9 +68,9 @@ class TestMcpRegistry(unittest.TestCase):
 
         fixture = str(FIXTURES / "mcp_servers_exclude.yaml")
 
-        copilot = load_servers(fixture, is_work=False, tool="copilot")
-        assert "shared-tool" in copilot
-        assert "excluded-tool" not in copilot
+        omp = load_servers(fixture, is_work=False, tool="omp")
+        assert "shared-tool" in omp
+        assert "excluded-tool" not in omp
 
         claude = load_servers(fixture, is_work=False, tool="claude")
         assert "excluded-tool" in claude
