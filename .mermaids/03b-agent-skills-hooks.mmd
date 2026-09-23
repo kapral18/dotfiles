@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (175).
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (174).
 %% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Shared hooks → ~/.agents/hooks/.
 %% ============================================================================
 flowchart TB
@@ -40,7 +40,7 @@ flowchart TB
     end
 
     subgraph TOOLS["Tool-backed skills (wrap a CLI; some have references)"]
-        S5["k-buildkite/ (+refs: bk-commands, build-debugging, troubleshooting)<br/>k-tmux/ (safe tmux sockets, panes, observations, interactive CLIs)<br/>k-sem skill (,sem CLI; index-free diff/log/blame for mechanical-only proof + entity archaeology; indexed queries only on explicit request) · k-weave · k-knip · k-jscpd · k-semantic-code-search (nontrivial diagnosis/implementation impact + review base context; justified index and local confirmation; index scope from domain overlay)"]:::skill
+        S5["k-buildkite/ (+refs: bk-commands, build-debugging, troubleshooting)<br/>k-tmux/ (safe tmux sockets, panes, observations, interactive CLIs)<br/>k-sem skill (,sem CLI; index-free diff/log/blame for mechanical-only proof + entity archaeology; indexed queries only on explicit request) · k-knip · k-jscpd · k-semantic-code-search (nontrivial diagnosis/implementation impact + review base context; justified index and local confirmation; index scope from domain overlay)"]:::skill
         S6["k-google-workspace · k-slack (Slack MCP mechanics; §3.8-gated send/schedule/react/canvas, live-id resolution, read-back; draft tool is user-only) · k-playwriter (+ref: video-recording; native window viewport by default, task-specific fixed sizes in owned pages/isolated browsers; resize images instead of live pages; scripts/read_docs.py selects complete installed docs by audited version/hash: mandatory core + operation profiles; unknown source or recorder reads full docs) · k-omp (OMP adapter; browser → k-playwriter; root-only managed task/named-process hub routing; Eval model helpers prohibited, native bridge still unguarded) · k-letsfg(assets/Dockerfile; +refs: flexible-date-search, browser-fallback) · k-nano-banana (named Nano Banana/Gemini/Google image only) · k-artifact (+refs: generated-artifacts, live-overlay)"]:::skill
         S7["k-ai-kb/ (wrap ,ai-kb; durable cross-session memory read/write)"]:::skill
     end

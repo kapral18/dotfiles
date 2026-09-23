@@ -20,7 +20,7 @@ When the user does ask: stay inside one package, pass `--depth 0` across barrel 
 
 Do not use:
 
-- for merging branches (use the `k-weave` skill)
+- for merging branches (use the `k-git` skill)
 - for line-level diffs where entity granularity adds no value
 - `"$SEM_BIN" setup` / `"$SEM_BIN" unsetup`: upstream setup writes a `sem-diff-wrapper` that execs bare `sem`, which is intentionally not on PATH in this dotfiles setup.
 - `mcp` / `hook`: the CLI already returns JSON and our hooks own prompt-time context.

@@ -36,7 +36,7 @@ The `description` frontmatter is the primary routing signal. For non-manual skil
 | Entrypoint | `SKILL.md` in each skill folder                                                          |
 | References | optional `references/` under the skill folder                                            |
 
-Inventory both `readonly_SKILL.md` and plain `SKILL.md` source files; the shared tree currently contains 58 skills. Audit the complete instruction references and incoming callers as well as each entrypoint. Templates, executable helpers, and invocation metadata have separate consumers and must be accounted for without treating them all as instruction prose.
+Inventory both `readonly_SKILL.md` and plain `SKILL.md` source files; the shared tree currently contains 57 skills. Audit the complete instruction references and incoming callers as well as each entrypoint. Templates, executable helpers, and invocation metadata have separate consumers and must be accounted for without treating them all as instruction prose.
 
 ## Semantic maintenance
 

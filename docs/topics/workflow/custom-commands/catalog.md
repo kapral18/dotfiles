@@ -124,26 +124,24 @@ printf '%s' "$prompt" | ,q
 
 ## Utility helpers
 
-| Command                | Description                                                                             |
-| ---------------------- | --------------------------------------------------------------------------------------- |
-| `,cp-files-for-llm`    | Copy a directory tree's text contents to the clipboard with file headers                |
-| `,appid`               | Print the macOS bundle identifier for an app name/path                                  |
-| `,dumputi`             | Dump the system's registered Uniform Type Identifiers                                   |
-| `,to-gif`              | Convert a video to an optimized GIF                                                     |
-| `,vid-ipad`            | Re-encode a video for iPad playback                                                     |
-| `,pdf-diff`            | Visual diff two PDFs by compositing pages                                               |
-| `,nano-banana`         | Cloud Gemini generate/edit/compose/inpaint (uploads to Google)                          |
-| `,image-local`         | On-device FLUX.2 klein 9B generate (512 default) and `-i` edit at input size            |
-| `,image-openrouter`    | OpenRouter generate/edit; Seedream 5 Pro; strips input metadata; ZDR routing            |
-| `,image-codex`         | Codex subscription GPT Image 2 generate/edit; automatic settings; strips inputs         |
-| `,image-openai`        | Native GPT Image 2 generate/edit/mask with quality, size, and format controls           |
-| `,set-default-mic`     | Select the preferred external microphone, falling back to the MacBook microphone        |
-| `,update`              | Reconcile dotfiles and package-manager update categories                                |
-| `,parallel`            | Forward to GNU Parallel when both GNU Parallel and semantic-git are installed           |
-| `,sem`                 | Forward to Ataraxy semantic-git's entity-level CLI (telemetry, update check, cloud off) |
-| `,format-md`           | Conservatively format AI Markdown; leave ordinary Markdown unchanged                    |
-| `,weave-setup-local`   | Configure weave merge driver in repo-local git config and `.git/info/attributes`        |
-| `,weave-unsetup-local` | Remove the local-only weave merge driver setup                                          |
+| Command             | Description                                                                             |
+| ------------------- | --------------------------------------------------------------------------------------- |
+| `,cp-files-for-llm` | Copy a directory tree's text contents to the clipboard with file headers                |
+| `,appid`            | Print the macOS bundle identifier for an app name/path                                  |
+| `,dumputi`          | Dump the system's registered Uniform Type Identifiers                                   |
+| `,to-gif`           | Convert a video to an optimized GIF                                                     |
+| `,vid-ipad`         | Re-encode a video for iPad playback                                                     |
+| `,pdf-diff`         | Visual diff two PDFs by compositing pages                                               |
+| `,nano-banana`      | Cloud Gemini generate/edit/compose/inpaint (uploads to Google)                          |
+| `,image-local`      | On-device FLUX.2 klein 9B generate (512 default) and `-i` edit at input size            |
+| `,image-openrouter` | OpenRouter generate/edit; Seedream 5 Pro; strips input metadata; ZDR routing            |
+| `,image-codex`      | Codex subscription GPT Image 2 generate/edit; automatic settings; strips inputs         |
+| `,image-openai`     | Native GPT Image 2 generate/edit/mask with quality, size, and format controls           |
+| `,set-default-mic`  | Select the preferred external microphone, falling back to the MacBook microphone        |
+| `,update`           | Reconcile dotfiles and package-manager update categories                                |
+| `,parallel`         | Forward to GNU Parallel when both GNU Parallel and semantic-git are installed           |
+| `,sem`              | Forward to Ataraxy semantic-git's entity-level CLI (telemetry, update check, cloud off) |
+| `,format-md`        | Conservatively format AI Markdown; leave ordinary Markdown unchanged                    |
 
 ## Fish history sync: `,history-sync`
 

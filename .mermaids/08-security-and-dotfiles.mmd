@@ -16,7 +16,7 @@ flowchart TB
 
     subgraph GIT["Git identity + signing"]
         GC["private_readonly_dot_gitconfig.tmpl<br/>sshCommand → primary_public_key.pub<br/>includeIf gitdir:~/work/ → secondary key<br/>rerere · autoSquash · updateRefs · zdiff3 · histogram"]:::id
-        GA["private_readonly_dot_gitattributes (+ weave merge driver)"]:::id
+        GA["private_readonly_dot_gitattributes"]:::id
         GI["readonly_dot_gitignore (global)"]:::id
     end
     SSH --> GIT

@@ -22,7 +22,7 @@ The root produces the pack during Understand and checks freshness once in final 
 - If `mergeable` is `CONFLICTING` or `mergeStateStatus` is `DIRTY`:
   - Flag at the top: "This PR has merge conflicts with base. Findings may be invalidated once conflicts are resolved."
   - Continue the review (conflicts do not block), but note findings in conflict-affected files as potentially stale.
-  - If the user asks to resolve conflicts, load and follow `~/.agents/skills/k-weave/SKILL.md` (entity-level semantic merge driver).
+  - If the user asks to resolve conflicts, load and follow `~/.agents/skills/k-git/SKILL.md`.
 
 ## Large-PR Triage
 

@@ -38,16 +38,6 @@ This applies whether the path is absolute (`/Users/.../bin/utils/...`), tilde-ba
 **This applies to every file under `$HOME`**.
 Examples include shell configs, scripts in `~/bin/`, app configs in `~/.config/`, SOP files, skill files, tmux scripts, and anything else chezmoi might manage.
 
-**Common mappings (not exhaustive):**
-
-| Deployed path       | Chezmoi source                                |
-| ------------------- | --------------------------------------------- |
-| `~/bin/`            | `home/exact_bin/`                             |
-| `~/lib/`            | `home/exact_lib/`                             |
-| `~/.config/<app>/`  | `home/dot_config/<app>/`                      |
-| `~/.agents/skills/` | `home/exact_dot_agents/exact_skills/`         |
-| `~/.claude/skills`  | symlink → `~/.agents/skills` (resolve first!) |
-
 **Chezmoi naming conventions:** `exact_` = exact directory, `readonly_` = read-only, `executable_` = executable.
 `dot_` = dotfile (leading `.`), `.tmpl` = template.
 

@@ -109,7 +109,6 @@ Every skill entrypoint declares its dispatch class on one `Subagent dispatch:` l
 | `k-tmux`                        | `inline`                              |
 | `k-ui-capture`                  | `inline`                              |
 | `k-walkthrough`                 | `research`                            |
-| `k-weave`                       | `inline`                              |
 | `k-worktrees`                   | `inline`                              |
 | `k-writing-great-skills`        | `criteria`                            |
 
