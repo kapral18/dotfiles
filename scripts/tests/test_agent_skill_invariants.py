@@ -735,6 +735,20 @@ class TestAgentSkillInvariants(unittest.TestCase):
                 settings = json.loads((REPO / "home/dot_claude" / name).read_text(encoding="utf-8"))
                 self.assertEqual(settings["autoCompactWindow"], 400000)
 
+    def test_SHOULD_keep_ai_kb_the_only_durable_memory(self):
+        """WHEN a harness ships native auto-memory, it stays off so ,ai-kb is the single durable store."""
+        for name in ("settings.personal.json", "settings.work.json"):
+            with self.subTest(settings=name):
+                settings = json.loads((REPO / "home/dot_claude" / name).read_text(encoding="utf-8"))
+                self.assertIs(settings["autoMemoryEnabled"], False)
+        for name in ("private_config.personal.toml", "private_config.work.toml"):
+            with self.subTest(config=name):
+                self.assertRegex(
+                    (REPO / "home/dot_codex" / name).read_text(encoding="utf-8"), r"(?m)^memories = false$"
+                )
+        omp = (REPO / "home/dot_omp/private_agent/readonly_config.yml.tmpl").read_text(encoding="utf-8")
+        self.assertRegex(omp, r"(?m)^memory:\n  backend: off$")
+
     def test_ai_docs_track_current_runtime_contracts(self):
         self.assert_file_not_contains(
             "docs/topics/ai-assistants/tool-configs/other-harnesses.md",

@@ -9,6 +9,7 @@
   "model": "claude-opus-5-5[1m]",
   "effortLevel": "high",
   "autoCompactWindow": 400000,
+  "autoMemoryEnabled": false,
   "disableClaudeAiConnectors": true,
   "modelSettings": {
     "claude-opus-5-5[1m]": {
