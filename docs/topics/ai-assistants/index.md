@@ -63,6 +63,7 @@ Entrypoints installed into `$HOME`:
 There is one canonical SOP body. Harness-specific imports, aliases, and native loader adapters deliver it; see [source of truth](system-prompt/source-of-truth.md) for delivery paths and verified limitations. Claude also uses the native global `~/.claude/CLAUDE.md` alias outside `$HOME`. Cursor uses a contained local plugin when native user-local plugins are enabled.
 
 Skills live under `~/.agents/skills/`; the chezmoi source is [`home/exact_dot_agents/exact_skills/`](../../../home/exact_dot_agents/exact_skills/).
+Claude Code writes account-synced skills into the reserved `~/.agents/skills/synced/` bucket; [`home/.chezmoiignore`](../../../home/.chezmoiignore) excludes it so the exact skills directory never purges it.
 
 ## Core workflow: change a skill
 

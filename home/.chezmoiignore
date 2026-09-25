@@ -28,3 +28,8 @@ crontab
 .bashrc.local
 .zshrc.local
 .config/fish/config.local.fish
+
+# Claude Code writes account-synced skills into the reserved `synced` bucket under ~/.agents/skills
+# (~/.claude/skills links there). The harness owns it, so exact_skills must never purge it.
+.agents/skills/synced
+.agents/skills/synced/**
