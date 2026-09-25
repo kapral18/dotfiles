@@ -10,8 +10,7 @@
 // Injection points, all delivered through before_agent_start:
 //   0. Shared session context: session_context.py supplies topic buckets or the active
 //      topic spec/worklog and named-topic BM25 warm-start (no prefix: the SOP is fresh at start).
-//   1. Verification prefix injection only after compaction or material context growth.
-//      Context fill + compaction track real decay better than a turn count.
+//   1. Verification prefix injection only after a compaction (session_compact event).
 //   2. Per-turn (every substantive prompt): query = the user's actual prompt — the
 //      highest-relevance signal. Gate-passing rows are staged in full to a per-session
 //      candidates file and only a pointer to the k-agent-smol judge is injected — capsule bodies
@@ -82,14 +81,11 @@ const PERTURN_COSINE_FLOOR_FRACTION = 0.85
 // Staging contract tokens, pinned by the parity test against executable_perturn_recall.py.
 const SMOL_CONTRACT_PATH = "~/.agents/skills/k-ai-kb/references/smol-operator.md"
 const STAGING_HEADER = "### ,ai-kb candidates staged"
-// Re-inject the verification prefix once context-window fill has grown by at least this
-// many percentage points since it was last injected (decay proxy). Compaction forces a
-// re-inject regardless, since it summarizes/drops the prior prefix.
-const PREFIX_REINJECT_DELTA_PCT = 20
 
 // Same verification-discipline core the tmux wrap pastes manually and that
 // session_context.py injects for cursor-agent/claude. Read from the deployed file
-// (single source of truth) on each turn it is re-injected (see PREFIX_REINJECT_DELTA_PCT).
+// (single source of truth) on each turn it is re-injected: only after a compaction
+// forces a re-inject, since that event summarizes/drops the prior prefix.
 //
 // prefix.txt holds only the discipline core; framing is owned per consumer because
 // placement differs. pi appends before_agent_start messages AFTER the user message
@@ -130,7 +126,6 @@ interface Capsule {
 interface RecallSessionState {
   contextKey: string
   initialContextDone: boolean
-  lastPrefixPercent: number | null
   forceReinject: boolean
 }
 
@@ -300,7 +295,7 @@ const PROBE_BUDGET_FAILURE_THRESHOLD = 3
 // correction_detector.PROBE_RECENT_WINDOW_SECONDS).
 const PROBE_RECENT_WINDOW_MS = 30 * 60 * 1000
 const PROBE_BUDGET_NOTE =
-  "Probe-budget hint: the prior turn ran several probes that returned `fail` (expectation contradicted reality). Before the next probe, re-read the source the probe was meant to exercise — regex/regex-flag arithmetic, `,gh-prw` semantics, and lint-tool option names have all been the offender in past sessions. The fix is rarely another probe; it is usually a one-character rewrite of the expected value."
+  "Probe-budget hint: the prior turn ran several probes that returned `fail` (expectation contradicted reality), so the expectation behind them is likely wrong. Re-read the source the probe exercises before running another probe."
 
 async function readProbeRows(path: string): Promise<Array<Record<string, unknown>>> {
   let text: string
@@ -750,7 +745,6 @@ export default async function (pi: ExtensionAPI) {
       return
     }
     state.forceReinject = true
-    state.lastPrefixPercent = null
   })
 
   // Worklog capture: mirror the shared postToolUse payload so the
@@ -819,7 +813,6 @@ export default async function (pi: ExtensionAPI) {
         state = {
           contextKey,
           initialContextDone: sharedContext.ok,
-          lastPrefixPercent: null,
           forceReinject: pendingCompaction.delete(sessionId),
         }
         stateBySession.set(sessionId, state)
@@ -827,24 +820,14 @@ export default async function (pi: ExtensionAPI) {
       const blocks: string[] = sharedContext.context ? [sharedContext.context] : []
       await stageCandidates([], status.spec_file, status.session_key)
 
-      // 0. Verification prefix: after a compaction, or once context fill has grown
-      //    PREFIX_REINJECT_DELTA_PCT points since the last injection. Never at warm-start:
-      //    the SOP is fresh at the top then, and the excerpt would only duplicate it.
-      const usage = ctx.getContextUsage()
-      const percent = usage && usage.percent != null ? usage.percent : null
-      if (state.lastPrefixPercent == null && percent != null && !state.forceReinject) {
-        state.lastPrefixPercent = percent
-      }
-      const grewEnough =
-        state.lastPrefixPercent != null &&
-        percent != null &&
-        percent - state.lastPrefixPercent >= PREFIX_REINJECT_DELTA_PCT
-      if (state.forceReinject || grewEnough) {
+      // 0. Verification prefix: only after a compaction (session_compact event). Never
+      //    at warm-start: the SOP is fresh at the top then, and the excerpt would only
+      //    duplicate it.
+      if (state.forceReinject) {
         const prefix = await readPrefix(pi)
         if (prefix) {
           blocks.push(prefix)
           state.forceReinject = false
-          if (percent != null) state.lastPrefixPercent = percent
         }
       }
 

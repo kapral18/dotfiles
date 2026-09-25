@@ -27,9 +27,8 @@ First actions:
 
 1. Identify the targeted scope from the user's request or context (resolve any @path, dir name, or component reference).
 2. Inspect the targeted part: its files, structure, tests, docs, and how it integrates with the rest of the repo.
-3. Identify up to three candidate improvements internally, grounded in the observed targeted part.
-4. Choose exactly one candidate only if it is clearly smart, accretive, useful, and compelling for this targeted part now.
-5. If no candidate clears that bar, say so and do not propose a marginal change.
+3. Weigh candidate improvements grounded in the observed targeted part, and choose exactly one only if it clearly earns its cost for this targeted part now.
+4. If no candidate clears that bar, say so and do not propose a marginal change.
 
 Selection rules:
 

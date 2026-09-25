@@ -240,7 +240,7 @@ def correction_directive(prompt: str, probe_budget_signal_value: str | None = No
 
 
 def reinforcement_block(payload: dict, spec_dir: Path, key: str) -> str:
-    """Verified SOP excerpt, due only after material context growth or a compaction."""
+    """Verified SOP excerpt, due only after a compaction."""
     if reinforcement is None:
         return ""
     try:
@@ -274,7 +274,7 @@ def main() -> None:
             bound_block = f"### Session bound\nBound this session to `{topic}` because the prompt named it; its spec is {spec_path}."
     reinforce = reinforcement_block(payload, spec_path.parent, key)
     # Short prompts skip recall (nothing to search on) but still count toward
-    # reinforcement, which is keyed on context growth rather than prompt text.
+    # reinforcement, which is keyed on compaction rather than prompt text.
     if len(prompt.strip()) < MIN_PROMPT_CHARS:
         short_blocks = [block for block in (bound_block, reinforce) if block]
         emit(_output(payload, "\n\n".join(short_blocks)) if short_blocks else {})

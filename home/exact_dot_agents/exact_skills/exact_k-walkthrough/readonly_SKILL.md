@@ -84,9 +84,4 @@ if the lane is unavailable report blocked. Rendering and presentation stay inlin
 Before rendering a diagram, read and follow `~/.agents/skills/k-walkthrough/references/diagram-nodes.md` in full for node metadata and the complete example.
 Written walkthroughs do not require this reference.
 
-## Tips for Effective Walkthroughs
-
-- Progressive disclosure: start high-level, then explore specific components
-- Clarify relationships: show data flow, control flow, and dependency relationships
-
 When available, tool calls are `walkthrough(topic, context)` and `walkthrough_diagram(code, summary, nodes)`.

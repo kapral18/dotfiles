@@ -838,7 +838,7 @@ class TestAgentHooks(unittest.TestCase):
 
     def test_session_context_no_longer_injects_the_prefix_at_session_start(self):
         # The SOP is fresh at the top of a new session; the excerpt only earns its place
-        # after context growth or a compaction (see the reinforcement tests below).
+        # after a compaction (see the reinforcement tests below).
         with tempfile.TemporaryDirectory() as tmp:
             config_home = Path(tmp) / "config"
             prefix_path = config_home / "tmux" / "agent_prompts" / "prefix.txt"
@@ -1515,7 +1515,10 @@ class TestAgentHooks(unittest.TestCase):
             )
             self.assertEqual(self._gate(pre), {})
 
-    def test_perturn_reinforcement_fires_only_after_material_context_growth(self):
+    def test_perturn_reinforcement_ignores_growth_without_compaction_or_shrink(self):
+        # Growth alone is no longer a trigger: only a forced re-inject (compaction) or a
+        # detected shrink (proxy compaction) fires. This guards against regressing the
+        # removed growth-cadence branch.
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
             spec_dir = SPEC_ROOT / workspace.lstrip("/")
@@ -1535,22 +1538,16 @@ class TestAgentHooks(unittest.TestCase):
 
             self._write_claude_transcript(transcript, 150_000)
             steady = run_perturn_recall(tmp, payload, env)
-            assert "PREFIX_SENTINEL_REINFORCE" not in json.dumps(steady), "130k growth is under the 200k threshold"
+            assert "PREFIX_SENTINEL_REINFORCE" not in json.dumps(steady), "growth alone never fires"
 
-            self._write_claude_transcript(transcript, 221_000)
+            self._write_claude_transcript(transcript, 900_000)
             grown = run_perturn_recall(tmp, payload, env)
-            context = grown["hookSpecificOutput"]["additionalContext"]
-            assert context.startswith("PREFIX_SENTINEL_REINFORCE")
-            assert "Apply the discipline above to this and later prompts" in context
-            assert grown["additional_context"] == context
-
-            again = run_perturn_recall(tmp, payload, env)
-            assert "PREFIX_SENTINEL_REINFORCE" not in json.dumps(again), "baseline moved to the injection point"
+            assert "PREFIX_SENTINEL_REINFORCE" not in json.dumps(grown), "even a huge growth never fires"
 
             state = json.loads((spec_dir / "reinforce-growth.reinforce.json").read_text())
-            assert state["reinjections"] == 1
-            assert state["last_reason"] == "growth"
-            assert state["last_tokens"] == 221_000
+            assert "reinjections" not in state
+            assert "last_reason" not in state
+            assert state["last_tokens"] == 20_000, "pinned to the baseline; growth never moves it without a shrink"
 
     def test_perturn_reinforcement_fires_after_compaction_signal_or_shrink(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1617,18 +1614,23 @@ class TestAgentHooks(unittest.TestCase):
                 ]
                 rollout.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
 
-            write(22_000)
-            run_perturn_recall(tmp, payload, env)
+            write(200_000)
+            run_perturn_recall(tmp, payload, env)  # baseline
             write(223_000)
-            grown = run_perturn_recall(tmp, payload, env)
-            assert grown["hookSpecificOutput"]["additionalContext"].startswith("PREFIX_SENTINEL_REINFORCE")
+            steady = run_perturn_recall(tmp, payload, env)
+            assert "PREFIX_SENTINEL_REINFORCE" not in json.dumps(steady), "growth alone never fires"
+            write(50_000)
+            shrunk = run_perturn_recall(tmp, payload, env)
+            assert shrunk["hookSpecificOutput"]["additionalContext"].startswith("PREFIX_SENTINEL_REINFORCE")
 
-    def test_perturn_reinforcement_falls_back_to_a_prompt_interval_without_usage(self):
-        # Cursor payloads carry no transcript; the interval is the documented proxy.
+    def test_perturn_reinforcement_never_injects_without_usage_or_force(self):
+        # Cursor payloads carry no transcript; without a shrink/compaction signal, repeated
+        # prompts alone never trigger a re-injection (the prompt-count fallback is removed).
+        # Only an explicit forced re-inject (SessionStart source=compact) still fires.
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
             spec_dir = SPEC_ROOT / workspace.lstrip("/")
-            env = self._reinforcement_env(tmp, AGENT_REINFORCE_PROMPTS="3")
+            env = self._reinforcement_env(tmp)
             payload = {
                 "hook_event_name": "UserPromptSubmit",
                 "conversation_id": "reinforce-interval",
@@ -1636,11 +1638,24 @@ class TestAgentHooks(unittest.TestCase):
                 "prompt": "a substantive prompt for reinforcement",
             }
             outcomes = [
-                "PREFIX_SENTINEL_REINFORCE" in json.dumps(run_perturn_recall(tmp, payload, env)) for _ in range(5)
+                "PREFIX_SENTINEL_REINFORCE" in json.dumps(run_perturn_recall(tmp, payload, env)) for _ in range(12)
             ]
-            assert outcomes == [False, False, False, True, False]
+            assert outcomes == [False] * 12
+
+            run_hook(
+                "executable_session_context.py",
+                {
+                    "hook_event_name": "SessionStart",
+                    "source": "compact",
+                    "conversation_id": "reinforce-interval",
+                    "workspace_roots": [tmp],
+                },
+                env=env,
+            )
+            forced = run_perturn_recall(tmp, payload, env)
+            assert forced["hookSpecificOutput"]["additionalContext"].startswith("PREFIX_SENTINEL_REINFORCE")
             state = json.loads((spec_dir / "reinforce-interval.reinforce.json").read_text())
-            assert state["last_reason"] == "prompt-count"
+            assert state["last_reason"] == "compaction"
 
     def test_perturn_reinforcement_counts_short_prompts_and_honours_the_kill_switch(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1653,14 +1668,14 @@ class TestAgentHooks(unittest.TestCase):
                 "transcript_path": str(transcript),
                 "prompt": "go",
             }
-            self._write_claude_transcript(transcript, 10_000)
+            self._write_claude_transcript(transcript, 200_000)
             assert run_perturn_recall(tmp, payload, env) == {}
-            self._write_claude_transcript(transcript, 215_000)
+            self._write_claude_transcript(transcript, 50_000)
             short = run_perturn_recall(tmp, payload, env)
             assert short["hookSpecificOutput"]["additionalContext"].startswith("PREFIX_SENTINEL_REINFORCE")
             assert "candidates staged" not in short["hookSpecificOutput"]["additionalContext"]
 
-            self._write_claude_transcript(transcript, 500_000)
+            self._write_claude_transcript(transcript, 10_000)
             assert run_perturn_recall(tmp, payload, {**env, "AGENT_REINFORCE": "off"}) == {}
 
     def test_session_context_leaf_suppresses_delegation_blocks(self):
@@ -2370,38 +2385,32 @@ const pi = {
   },
   on(event, handler) { handlers[event] = handler; }
 };
-let contextPercent = 5;
 const ctx = {
   cwd: workspace,
-  getContextUsage() { return { percent: contextPercent }; },
   sessionManager: { getSessionId() { return "pi-session-context"; } }
 };
 await mod.default(pi);
 await handlers.session_start({ type: "session_start", reason: "startup" }, ctx);
 const first = await handlers.before_agent_start({ prompt: "first" }, ctx);
 const second = await handlers.before_agent_start({ prompt: "next" }, ctx);
-contextPercent = 26;
-const grown = await handlers.before_agent_start({ prompt: "growth" }, ctx);
+// No growth trigger remains: a later same-topic prompt still injects nothing.
+const steady = await handlers.before_agent_start({ prompt: "steady" }, ctx);
 selectedTopic = "next-topic";
 specFile = specFile.replace("current.txt", "next-topic.txt");
 const topicChanged = await handlers.before_agent_start({ prompt: "topic shift" }, ctx);
 await handlers.session_compact({ type: "session_compact" }, ctx);
-contextPercent = null;
 const compacted = await handlers.before_agent_start({ prompt: "compacted" }, ctx);
-contextPercent = 7;
-const afterCompactionBaseline = await handlers.before_agent_start({ prompt: "baseline" }, ctx);
-contextPercent = 28;
-const grownAfterCompaction = await handlers.before_agent_start({ prompt: "regrowth" }, ctx);
+// The compaction was already consumed; a later prompt injects nothing again.
+const afterCompactionSteady = await handlers.before_agent_start({ prompt: "steady-after" }, ctx);
 await handlers.session_start({ type: "session_start", reason: "resume" }, ctx);
 const resumed = await handlers.before_agent_start({ prompt: "resume" }, ctx);
 console.log(JSON.stringify({
   first,
   second: second ?? null,
-  grown,
+  steady: steady ?? null,
   topicChanged,
   compacted,
-  afterCompactionBaseline: afterCompactionBaseline ?? null,
-  grownAfterCompaction,
+  afterCompactionSteady: afterCompactionSteady ?? null,
   resumed
 }));
 """
@@ -2421,14 +2430,13 @@ console.log(JSON.stringify({
 
             assert "SHARED_SESSION_CONTEXT::pi-session-context" in payload["first"]["message"]["content"]
             assert payload["second"] is None
-            assert "PREFIX_TAIL" in payload["grown"]["message"]["content"]
+            assert payload["steady"] is None, "no growth trigger remains"
             assert (
                 "SHARED_SESSION_CONTEXT::pi-session-context::topic shift"
                 in payload["topicChanged"]["message"]["content"]
             )
             assert "PREFIX_TAIL" in payload["compacted"]["message"]["content"]
-            assert payload["afterCompactionBaseline"] is None
-            assert "PREFIX_TAIL" in payload["grownAfterCompaction"]["message"]["content"]
+            assert payload["afterCompactionSteady"] is None, "the compaction was already consumed"
             assert "SHARED_SESSION_CONTEXT::pi-session-context" in payload["resumed"]["message"]["content"]
             hook_payloads = [json.loads(line) for line in payload_log.read_text().splitlines()]
             assert hook_payloads == [

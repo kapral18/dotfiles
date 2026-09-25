@@ -1,8 +1,8 @@
 # Dotfiles Project - Agent Instructions
 
-## Architecture Map Preload (Mandatory, First Action)
+## Architecture Map Preload
 
-At the start of **every** session in this repo, before planning or editing, preload the architecture map in `.mermaids/`.
+Before planning or editing in this repo, read the architecture map in `.mermaids/`.
 It is the navigation cloud for the whole solution — the concepts, invariants, data flows, and state machines of every subsystem.
 It has two layers: a **semantic cloud** (how it works together) and a **catalog** (where every file lives). Read the semantic layer first.
 

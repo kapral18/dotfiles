@@ -148,7 +148,6 @@ class TestModelBandInvariants(unittest.TestCase):
 
         review_agents = (
             "k-agent-reviewer",
-            "k-agent-deep-review",
             "k-agent-findings-auditor",
             "k-agent-live-ui-review",
             "k-agent-adversarial-verifier",
@@ -727,18 +726,6 @@ class TestModelBandInvariants(unittest.TestCase):
                 elif generic != "none" and generic not in bindings:
                     uncovered.append(f"{harness}/{agent}: fallback generic {generic!r} is not a bound agent")
         self.assertEqual([], uncovered)
-
-    def test_deep_review_leaves_bind_to_review(self):
-        # B14: `k-agent-deep-review` and `k-agent-review-controller` load
-        # `reviewer-worker.md` but were bound to `research`; a future tiering split
-        # would silently misprice them. Both rebinds are `review`.
-        import ai_models
-
-        registry = REPO / "home/.chezmoidata/ai_models"
-        bindings = ai_models.load_agent_bindings(registry)
-        for agent in ("k-agent-deep-review", "k-agent-review-controller"):
-            with self.subTest(agent=agent):
-                self.assertEqual("review", bindings[agent])
 
     def test_the_band_gate_passes_any_explicit_lane_pick_on_a_generic_subagent_type(self) -> None:
         # Most harnesses cannot reach the per-lane profiles at all (Cursor never scans
@@ -1481,10 +1468,9 @@ class TestModelBandInvariants(unittest.TestCase):
                 assert row["effort"], f"category_models.cursor.{category}.effort must record saved-config intent"
 
     def test_claude_settings_keep_thinking_disabled(self):
-        # category_models.claude_code declares thinking "off" for every Anthropic category. The only
-        # thing enforcing that is alwaysThinkingEnabled: false, which makes Hye() return false so
-        # thinkingConfig resolves to {type:"disabled"} instead of {type:"adaptive"}. Dropping it
-        # silently turns Opus 5 review lanes back into thinking lanes.
+        # category_models.claude_code declares thinking "off" for the Sonnet 5 implement and memory
+        # rows; alwaysThinkingEnabled: false enforces that. Opus 5.5 rows (root, research, review,
+        # refute) reject disabled thinking, so the setting does not reach them.
         for profile in ("personal", "work"):
             settings = json.loads((REPO / f"home/dot_claude/settings.{profile}.json").read_text(encoding="utf-8"))
             assert settings.get("alwaysThinkingEnabled") is False, (

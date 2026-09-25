@@ -1,7 +1,7 @@
 {{- /* model frontmatter is rendered from the model registries in home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 name: k-agent-findings-auditor
-description: Optional final findings-quality lens over the frozen artifact and shared evidence; no separate post-review audit.
+description: Final findings-quality lens over a supplied finding set that is itself the review target (never this session's other reviewers' output); use only when the root assigns it as a distinct final Verify question. Returns anchored findings once.
 model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-findings-auditor") }}"
 {{- $thinking := includeTemplate "agent-thinking.partial" (dict "root" . "harness" "pi" "agent" "k-agent-findings-auditor") }}
 {{- if $thinking }}

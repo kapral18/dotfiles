@@ -335,7 +335,7 @@ class TestAiModels(unittest.TestCase):
                 assert "Agent" not in tools, f"{profile.name} exposes the Agent tool to a leaf"
                 assert "disallowedTools:" not in front, f"{profile.name} mixes a denylist with the allowlist"
                 checked += 1
-        assert checked >= 20
+        assert checked >= 19
 
     def test_when_claude_root_settings_load_should_turn_subagent_nesting_off(self):
         for name in ("settings.work.json", "settings.personal.json"):

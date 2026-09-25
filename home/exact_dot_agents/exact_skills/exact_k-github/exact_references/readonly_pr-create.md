@@ -12,7 +12,7 @@ Load before `gh pr create` or PR body/title edits.
 - PR title is a human-readable change summary, not necessarily a Conventional Commit header.
 - Multiline bodies/comments: use bash/zsh `$'...'` so `\n` becomes real newlines;
   do not rely on `\\n` escapes inside normal quotes with `gh api -f body=...`.
-- Test Plan is inferred from the change surface; run the smallest sufficient checks and record commands/results.
+- Test Plan content follows the `k-compose-pr` publication packet: reviewer-runnable steps plus the commands and observed results from final Verify receipts.
 - Repro-driven fixes need portable local repro steps plus commands/results; do not publish session-specific evidence such as private hostnames or browser automation state.
 - Before creating/editing a PR body, ensure the Test Plan covers any `## Reproduction`, `Expected`, or `Actual` evidence from linked/closing issues.
   If manual repro was not run, include portable reviewer-run steps and say which automated checks ran.

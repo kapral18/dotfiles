@@ -29,13 +29,13 @@ Plain `Enter` is never touched. Press it when the wrapped prompt is ready to sen
 
 `prefix.txt` is a compiler-verified excerpt of the SOP (`compile_ai_policy.py verify` rejects any sentence that is not verbatim SOP text). It is also injected automatically, but never at session start, where the full SOP is fresh:
 
-| Consumer                          | Injection path                                                                                                                               |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `claude`, `codex`, `cursor-agent` | per-prompt hook `perturn_recall.py` re-injects after 200k tokens of context growth (Claude transcript / Codex rollout usage) or a compaction |
-| `cursor-agent` without usage data | same hook, prompt-interval fallback (`AGENT_REINFORCE_PROMPTS`, default 10)                                                                  |
-| `pi`, `omp`                       | `ai-kb-recall.ts` re-injects after 20 points of context fill growth or a compaction                                                          |
-| custom subagents                  | render the sibling `leaf-boundary.txt` (SOP §3.7 leaf-worker boundary) as the first body/developer-instructions block                        |
+| Consumer          | Injection path                                                                                                                                                                        |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `claude`, `codex` | per-prompt hook `perturn_recall.py` re-injects after a compaction, or a large drop in observed context tokens (Claude transcript / Codex rollout usage) that reads as the same signal |
+| `cursor-agent`    | same hook, but its payload carries no transcript, so no mid-session re-injection fires; only a fresh session shows the full SOP                                                       |
+| `pi`, `omp`       | `ai-kb-recall.ts` re-injects only on the native `session_compact` event                                                                                                               |
+| custom subagents  | render the sibling `leaf-boundary.txt` (SOP §3.7 leaf-worker boundary) as the first body/developer-instructions block                                                                 |
 
-Tuning: `AGENT_REINFORCE=off` disables re-injection; `AGENT_REINFORCE_DELTA_TOKENS` changes the growth threshold. State lives in `<session-key>.reinforce.json` next to the topic spec.
+Tuning: `AGENT_REINFORCE=off` disables re-injection. State lives in `<session-key>.reinforce.json` next to the topic spec.
 
 `Alt-Enter` remains the manual way to prepend the prefix to a specific prompt as a direct user message.

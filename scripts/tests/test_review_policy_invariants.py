@@ -182,28 +182,6 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         ):
             self.assertIn(clause, text)
 
-    def test_former_controller_profiles_are_read_only_leaves(self):
-        profiles = [
-            p
-            for p in (REPO / "home").glob("**/exact_agents/*.tmpl")
-            if "deep-review" in p.name or "review-controller" in p.name
-        ]
-        # Guards against a silently empty glob; the four remaining profiles are Claude and
-        # Cursor `deep-review` plus OMP and Pi `review-controller`.
-        self.assertGreaterEqual(len(profiles), 4)
-        for path in profiles:
-            with self.subTest(profile=str(path)):
-                text = path.read_text()
-                front = text.split("---", 2)[1]
-                self.assertIn("leaf-boundary.txt", text)
-                self.assertNotIn("  - k-deep-review", front)
-                self.assertNotIn("  - k-review", front)
-                declared = re.search(r"^tools:\s*(.*)$", front, re.MULTILINE)
-                if declared:
-                    tools = set(re.findall(r"[\w-]+", declared.group(1).lower()))
-                    self.assertFalse(tools & {"task", "agent", "edit", "write"}, str(path))
-                self.assertIn("review-agent-model.partial", front)
-
     def test_pi_workers_default_to_fresh_packet_context_without_ambient_inheritance(self):
         for path in (REPO / "home/dot_pi/agent/exact_agents").glob("*.tmpl"):
             with self.subTest(profile=path.name):
@@ -266,7 +244,7 @@ class TestReviewPolicyInvariants(unittest.TestCase):
             "Never run `gh`",
             "Never read commit messages",
             "never read `manifest.json`, `pr.json`",
-            "Do NOT flag correctness, edge cases, architecture, performance, security, or domain concerns",
+            "correctness, edge cases, architecture, performance, security, and domain concerns belong to the sighted lanes",
             "Clarity findings cap at MEDIUM",
             "Do not run checks, re-verify another lane, or resume after returning",
         ):

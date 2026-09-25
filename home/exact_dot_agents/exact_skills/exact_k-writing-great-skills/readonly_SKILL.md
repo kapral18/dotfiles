@@ -7,7 +7,9 @@ description: "Use when authoring/refactoring skills: invocation, triggers, refer
 
 Subagent dispatch: criteria — skill-craft contract applied while authoring; never dispatched alone.
 
-A skill wrangles predictability from a stochastic system: the agent should take the same **process** every run.
+A skill makes outcomes predictable.
+Match specificity to fragility: exact ordered steps where only one sequence is safe (destructive, auth, publication, interactive tooling);
+outcomes, constraints, and completion criteria where the work is judgment.
 Every lever below serves that.
 
 This skill owns skill craft.
@@ -78,8 +80,11 @@ Hunt restatements a leading word retires: “fast, deterministic, low-overhead�
 - **Hard size bound (references)**: keep reference files under 20 KB (`make check` enforces this under `home/exact_dot_agents/`).
   `SKILL.md` is skill-loader delivered and exempt, but nearing the bound is a sprawl signal;
   disclose sections behind pointers or split before squeezing qualifiers.
+- **Fossils**: write each rule as if it always existed.
+  Drop incident stories, commit hashes, dates, "now / no longer / previous" phrasing, and model names from behavioral text;
+  keep the reason as a present-tense mechanism, and keep version pins only as dated verification facts.
 
-A weak leading word is a no-op (_be thorough_); fix with a stronger word (_relentless_), not a new technique.
+A generic virtue word (_be thorough_) is a no-op; delete it, or replace it with the concrete completion criterion it stood for (what must be checked, and when it counts as done).
 
 ## Failure modes
 

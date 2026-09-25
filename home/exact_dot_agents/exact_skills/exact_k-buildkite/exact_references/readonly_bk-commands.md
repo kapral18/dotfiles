@@ -1,6 +1,6 @@
 # Buildkite CLI — Command Reference
 
-Command reference for the `bk` CLI (v3.54.1), verified against the installed binary. For quick examples, see SKILL.md.
+Command reference for the `bk` CLI at the SKILL.md `tool_version`, verified against the installed binary. For quick examples, see SKILL.md.
 
 ---
 

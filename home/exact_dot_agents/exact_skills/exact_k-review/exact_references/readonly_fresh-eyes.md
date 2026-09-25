@@ -41,8 +41,7 @@ What to flag (clarity only):
 
 Scope boundaries:
 
-- Do NOT flag correctness, edge cases, architecture, performance, security, or domain concerns; the sighted lanes own those.
-- ONLY flag what hurts comprehension for a zero-context reader.
+- Flag only what hurts comprehension for a zero-context reader; correctness, edge cases, architecture, performance, security, and domain concerns belong to the sighted lanes.
 
 Return findings ordered by severity. Clarity findings cap at MEDIUM; most are LOW. For each:
 

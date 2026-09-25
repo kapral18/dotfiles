@@ -33,8 +33,7 @@ python3 ~/.agents/skills/k-playwriter/scripts/read_docs.py core
 
 The reader runs `playwriter skill` and selects complete source sections only for the audited installed version and document hash.
 `core` contains the common safety, session/page ownership, observation/logging, selectors, navigation, and inspection rules.
-Before an operation below, read every applicable profile in full; multiple profiles can share one command. **Do NOT skip this step.**
-**Read the ENTIRE selected or fallback output.** Do NOT pipe through `head`, `tail`, or any truncation command.
+Read every applicable profile before the operation; multiple profiles can share one command. Read the complete reader output without `head`, `tail`, or other truncation, because the profiles carry the session-ownership and safety rules a partial read drops.
 Do not replace required source sections with remembered examples. After compaction or lost guidance, reload `core` and the active profiles.
 
 ```bash

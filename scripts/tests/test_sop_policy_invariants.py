@@ -54,7 +54,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Deviate only on explicit user override or approval.",
             "project-local instructions may add constraints but must not weaken it.",
             "Continue until the user's goal is complete, §3.5 requires a stop, or a verified blocker/user decision fork remains.",
-            "Premature stopping (including checkpoint commentary) and instruction/gate violations are operational failures.",
+            "Do not end a turn to report progress while authorized work remains",
         )
 
     def test_when_routing_work_should_separate_artifact_review_from_claim_challenge(self):
@@ -180,7 +180,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Authorization persists within its target, scope, and allowed effects until"
             " revoked or completed; re-check current preconditions without resetting permission.",
             "Named files count toward the same accumulated bound.",
-            "dispatch it, and consume its terminal result; do not continue inline reads in that turn.",
+            "dispatch it, and consume its terminal result.",
             "Ownership covers the path set and mutable shared state (git index, generated"
             " outputs, lockfiles); one writer per worktree unless targets are proven independent.",
             "Root routing steps (predicate, roster) are not chained workers.",
@@ -290,7 +290,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             ',probe fail "<summary>"',
             '`<cmd> || ,probe fail "<summary>"`',
         )
-        # The reinforcement excerpt re-injects the producer line after context growth.
+        # The reinforcement excerpt re-injects the producer line after compaction.
         self.assert_file_contains(
             "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
             ',probe fail "<summary>"',
@@ -400,8 +400,8 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Think from first principles; unverified ideas are hypotheses until probed or sourced.",
             "Choose the narrowest complete path:",
             "Choose the narrowest complete path",
-            "Default to deeper coverage for non-trivial work",
-            "Any Unknown triggers deeper coverage.",
+            "For non-trivial work, cover what correctness needs",
+            "Resolve a material Unknown before relying on it.",
             "Use the light path only after proving all four",
             "### 1.2 Decision Fallbacks",
             "Questions after a change",
@@ -427,7 +427,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "max 5",
             "Code citations: `startLine:endLine:filepath`.",
             "type the comma verbatim",
-            "do not stop at the first plausible explanation; verify thoroughly.",
+            "check indirect effects before settling on a root cause.",
             "surface it and ask one direct question.",
             "Concise means unpadded, not shallow.",
         )
@@ -664,7 +664,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Keep functions under 50 lines",
             "Prefer `async`/`await` over `.then()` chains",
             "Add JSDoc/TSDoc for complex functions",
-            "Run relevant tests/linters when feasible; report results or state why skipped",
+            "Plan the relevant tests/linters with the change",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-code-quality-react/readonly_SKILL.md",

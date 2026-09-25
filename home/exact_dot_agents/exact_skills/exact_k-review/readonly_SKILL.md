@@ -81,7 +81,7 @@ Do not load secondary skills until read/diff evidence proves the surface is in s
 - Never review someone else's draft PR unless the user explicitly asks.
 - If a PR is in draft state and the user did not explicitly request a review, stop and note: "This PR is a draft —
   skipping review unless you explicitly ask."
-- When a draft PR is reviewed (because explicitly asked), apply full thoroughness — a review is a review regardless of draft status.
+- When a draft PR is reviewed (because explicitly asked), apply the same mode, criteria, and depth as for a ready PR.
 
 ## PR Detection (Do First When PR Is Involved)
 

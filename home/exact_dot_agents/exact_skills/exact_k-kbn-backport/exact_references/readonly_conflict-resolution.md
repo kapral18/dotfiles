@@ -31,8 +31,7 @@ Do not resolve from the conflict hunks alone.
 1. Identify the source change:
    - `git show CHERRY_PICK_HEAD` for the full original diff, message, and rationale.
    - Extract the originating PR number from the commit message (Kibana commits end with `(#NNNNN)`).
-2. Read the original PR exhaustively — every reference, comment, and linked issue, all the way down.
-   Do not skim the description and stop; build the complete context for why the change exists and what shape reviewers landed on.
+2. Read the original PR and the artifacts it references until you know why the change exists and what shape reviewers settled on.
    - Full PR body, metadata, and linked issues: `gh pr view <NNNNN> --repo elastic/kibana --json title,body,state,labels,closingIssuesReferences,comments,reviews,url`.
    - Every conversation comment: `gh pr view <NNNNN> --repo elastic/kibana --comments` (read all of them, not just the latest).
    - Every review and inline review-thread comment (these hold the design rationale):

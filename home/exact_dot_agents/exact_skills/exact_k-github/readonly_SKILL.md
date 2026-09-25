@@ -12,7 +12,7 @@ Defaults:
 
 - Use `gh` CLI; set `GH_PAGER=cat` for non-interactive reliability.
 - Follow repo merge settings; merge into the base branch only via the GitHub UI, never via CLI.
-- Gists use `gh gist` or `gh api`, replacing direct gist URL fetches.
+- Gists: use `gh gist` or `gh api`; do not fetch gist URLs directly.
 - Attachment uploads (local images/videos/files -> `user-attachments`) are impossible via REST/GraphQL;
   use `~/.agents/skills/k-github/references/attachments.md`.
 
@@ -28,7 +28,6 @@ Defaults:
   3. `gh pr view` (no args) — relies on the branch's tracked remote, regardless of authenticated `gh` account.
   4. `gh pr view <branch> --repo <owner>/<repo>` — use the verified target repository when the branch is on a fork without a default-remote config.
   5. `gh issue view <n> --repo <owner>/<repo>` — covers the common case where a number is an issue, not a PR.
-     Three rounds of guessing "this number is the PR" without trying any of those is the failure mode.
 - Implicit current issue: resolve with `,gh-issuew --number` / `,gh-issuew --url`; same fallback applies if the helper fails.
   Verify the association from repository and object metadata; NEVER treat a branch number alone as the issue identity.
 

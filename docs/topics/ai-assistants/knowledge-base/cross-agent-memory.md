@@ -9,7 +9,7 @@ Task continuity and durable knowledge are separate.
 
 ## Task handoff
 
-The existing topic spec/worklog and persistent mirror preserve intent and execution state. Keep the root handoff compact: stage, scope/snapshot, decisions, dependencies, active/terminal packets, open questions, and evidence pointers. Raw transcripts/source/logs stay outside root context. After compaction, resume rather than rediscover or relaunch. Startup hooks retain bounded complete topic/worklog artifacts, context-disable sentinels, and harness output envelopes. Per-turn hooks retain topic binding, correction hints, and growth/compaction-gated reinforcement.
+The existing topic spec/worklog and persistent mirror preserve intent and execution state. Keep the root handoff compact: stage, scope/snapshot, decisions, dependencies, active/terminal packets, open questions, and evidence pointers. Raw transcripts/source/logs stay outside root context. After compaction, resume rather than rediscover or relaunch. Startup hooks retain bounded complete topic/worklog artifacts, context-disable sentinels, and harness output envelopes. Per-turn hooks retain topic binding, correction hints, and compaction-gated reinforcement.
 
 ## Durable knowledge
 

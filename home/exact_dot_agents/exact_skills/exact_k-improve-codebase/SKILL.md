@@ -26,9 +26,8 @@ Do not use:
 First actions:
 
 1. Inspect the repo shape, documentation, test/validation commands, and current git state.
-2. Identify up to three candidate improvements internally, grounded in observed code or docs.
-3. Choose exactly one candidate only if it is clearly smart, accretive, useful, and compelling for this repo now.
-4. If no candidate clears that bar, say so and do not propose a marginal change.
+2. Weigh candidate improvements grounded in observed code or docs, and choose exactly one only if it clearly earns its cost for this repo now.
+3. If no candidate clears that bar, say so and do not propose a marginal change.
 
 Selection rules:
 

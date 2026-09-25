@@ -43,10 +43,8 @@ PROBE_BUDGET_FAILURE_THRESHOLD = 3  # 3+ failures in the window => hint
 PROBE_RECENT_WINDOW_SECONDS = 30 * 60
 PROBE_BUDGET_NOTE = (
     "Probe-budget hint: the prior turn ran several probes that returned `fail` (expectation "
-    "contradicted reality). Before the next probe, re-read the source the probe was meant to "
-    "exercise — regex/regex-flag arithmetic, `,gh-prw` semantics, and lint-tool option names "
-    "have all been the offender in past sessions. The fix is rarely another probe; it is usually "
-    "a one-character rewrite of the expected value."
+    "contradicted reality), so the expectation behind them is likely wrong. Re-read the source "
+    "the probe exercises before running another probe."
 )
 
 UNREQUESTED_ACTION_NEGATION_RE = re.compile(r"\b(?:never|do\s+not|i\s+didn['’]?t\s+ask|undo|revert)\b", re.IGNORECASE)

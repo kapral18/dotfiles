@@ -29,7 +29,7 @@ Resolve the target packet and required runtime config the same way `k-ui-capture
 
 ## Local-also or Windows-only
 
-Proceed with the default — run both, mirroring the previous `windows_additional` behavior — and state the choice.
+Proceed with the default — run both local and Windows verification — and state the choice.
 Ask only when the user constrained verification scope; Windows-only (skip local) applies when the user says the path is Windows-exclusive.
 Resolve this once per invocation; never re-decide it per finding/criterion.
 

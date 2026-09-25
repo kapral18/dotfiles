@@ -21,7 +21,7 @@ Only the active root/main session follows this section; a delegated leaf skips i
   Named profiles carry their resolved model/effort controls; do not override those fields merely to repeat the profile.
   A supported generic fallback receives the resolved category controls through that harness's actual fields.
   Codex uses model plus reasoning effort; Cursor uses its model selector. Do not invent fields on another harness.
-- Every resolved review-lane value is a concrete category id (Claude Code included since 2026-09-13; its profiles no longer render `inherit`).
+- Every resolved review-lane value is a concrete category id on every harness, Claude Code included; profiles never render `inherit`.
   Named profile pins satisfy that requirement without per-call overrides. Generic fallbacks must preserve the same category.
   Antigravity has no profile surface; its abstract tier is stated in the Antigravity section below.
 - A model unavailable in the active runtime is a fail-visible launch error to surface; fix the registry, never substitute at launch.

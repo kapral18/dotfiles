@@ -68,7 +68,7 @@ Rules:
   - `Bug` is appropriate for verified unexpected behavior, regressions, crashes, broken UI, incorrect output, or failing existing workflows
   - `Enhancement` is appropriate for feature requests, improvements, and new functionality
   - `Task`, `Meta`, `Epic`, and other planning types require explicit user/domain evidence
-  - keep the old `bug` label only when the repo still uses it for triage; it does not satisfy the GitHub issue type gate
+  - apply a `bug` label only when the repo uses it for triage; a label does not satisfy the GitHub issue type gate
 
 Output:
 

@@ -114,8 +114,7 @@ If explicitly asked to POST a batch as a draft (PENDING) review, or when SOP §3
 Upload mechanics, URL harvesting, and image/video layout rules are generic and live in `~/.agents/skills/k-github/references/attachments.md` — load that reference first.
 Review-specific rules on top of it:
 
-- Use this flow when the user approves attaching local screenshots to review feedback (it replaces the old manual drag-and-drop handoff;
-  the approval gate still applies).
+- Use this flow when the user approves attaching local screenshots to review feedback; the approval gate applies.
 - Since pending review comments cannot be PATCHed, delete the pending review and recreate it with the image markup embedded in the comment bodies (same merge-guard and no-`event` rules as above).
 - Verify after recreation: draft comment image counts via `--jq`, and that visible PR comments are unchanged (nothing leaked to the author).
 

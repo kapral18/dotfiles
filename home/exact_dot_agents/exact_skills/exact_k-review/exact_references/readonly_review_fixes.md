@@ -18,8 +18,8 @@ It becomes a proposal instead — reported with the smallest change and left una
 when it would need a new user-visible state (loading, error, retry), a new prop or export on a component outside the diff's package, a file outside the packages the diff touches, or new translated strings beyond the changed component.
 A review that finds a defect it cannot fix inside that scope reports the defect; it does not build the feature.
 
-This boundary exists because a review defect once became an unbounded 2.5-hour feature build:
-three redesigns, a shared-component API change, six full-suite runs, and a dead session with 11 uncommitted files.
+This boundary exists because an out-of-scope fix grows into an unbounded feature build:
+redesigns, shared-component API changes, and repeated full-suite runs.
 The fix pass in this reference is one round: fix the in-scope findings, then one final judgment over the fix diff.
 A finding that judgment raises against the fix is ordinary SOP §3.5 recovery when it stays inside Fix Scope (repair, rerun the affected checks, stop under §3.4); outside Fix Scope it is a proposal for the user.
 Neither is a fresh refutation round.

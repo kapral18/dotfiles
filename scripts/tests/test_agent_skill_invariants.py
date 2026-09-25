@@ -543,10 +543,10 @@ class TestAgentSkillInvariants(unittest.TestCase):
     def test_pi_named_dispatch_targets_have_profiles(self):
         # Pi disables built-in subagents and exposes no generic edit-capable type, so every lane the
         # SOP dispatches has to exist here as a named profile — there is no fallback that keeps the
-        # band. Former controller profiles are leaves and MUST NOT carry a launch roster.
+        # band. Reviewer profiles are leaves and MUST NOT carry a launch roster.
         agents_dir = REPO / "home/dot_pi/agent/exact_agents"
         profiles = {path.name.removesuffix(".md.tmpl") for path in agents_dir.glob("*.md.tmpl")}
-        controller = (agents_dir / "k-agent-review-controller.md.tmpl").read_text(encoding="utf-8")
+        reviewer = (agents_dir / "k-agent-reviewer.md.tmpl").read_text(encoding="utf-8")
         optional_final_roles = {
             "k-agent-reviewer",
             "k-agent-fresh-eyes",
@@ -556,15 +556,15 @@ class TestAgentSkillInvariants(unittest.TestCase):
             "k-agent-findings-auditor",
         }
         # k-agent-implementer is the Pi-only T2 implement target and k-agent-claim-verifier the
-        # public-claim refuter; neither is a review-controller lane, so they are pinned for
+        # public-claim refuter; neither is a review lane, so they are pinned for
         # existence only.
         required = optional_final_roles | {"k-agent-implementer", "k-agent-claim-verifier"}
 
         assert required <= profiles, f"Pi is missing dispatch-target profiles: {sorted(required - profiles)}"
-        assert "leaf-boundary.txt" in controller
-        assert "reviewer-worker.md" in controller
-        assert "  - k-deep-review" not in controller
-        assert "  - k-review" not in controller
+        assert "leaf-boundary.txt" in reviewer
+        assert "reviewer-worker.md" in reviewer
+        assert "  - k-deep-review" not in reviewer
+        assert "  - k-review" not in reviewer
 
     def test_pi_settings_use_native_shared_skills_and_real_extension_packages(self):
         for profile in ("work", "personal"):

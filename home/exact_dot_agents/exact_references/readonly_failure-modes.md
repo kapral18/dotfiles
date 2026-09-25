@@ -4,7 +4,7 @@ This is a catalog of agent conduct failures that have happened in real sessions 
 Each entry names a single failure mode, the falsifier that would have caught it, and the system change that prevents its recurrence.
 The list is intentionally small: anti-patterns grouped by category.
 
-This catalog is not a skill: it has no procedure to invoke. Its consumer is the canonical `AGENTS.md` §2.4 (Self-Claims), where the SOP delegates "before asserting a claim, name what would make it false and check that." When a session reproduces one of the modes below, the SOP already mandates the falsifier; sessions load this file by path so the falsifier is at hand when needed.
+This catalog is not a skill: it has no procedure to invoke. `AGENTS.md` §2.4 (Self-Claims) names it as diagnostic input, not authority to broaden the task. Sessions load it by path when a mode below reproduces, so its falsifier is at hand.
 
 ## Identity / Repository resolution
 
@@ -49,7 +49,7 @@ A proposed fix whose semantic delta includes extra differences is not complete u
 
 ### Probe-budget exhaustion
 
-**Mode.** Agent runs 5+ probe commands (mostly Jest or `node -e`) and they all return "fail" because the agent's mental model of the artifact under test is wrong (regex arithmetic off-by-one, harness envelope shapes different from memory, etc.). The agent keeps probing instead of re-reading the source. Observed with minimax-m3, which itself proposed this ledger mechanism after exhibiting the loop; sessions on that model are the population to check when auditing whether the ledger gets written.
+**Mode.** Agent runs 5+ probe commands (mostly Jest or `node -e`) and they all return "fail" because the agent's mental model of the artifact under test is wrong (regex arithmetic off-by-one, harness envelope shapes different from memory, etc.). The agent keeps probing instead of re-reading the source.
 
 **Falsifier.** Reading the source once beats a fifth probe.
 Specifically for the pattern of "an assertion about how the code behaves keeps returning the opposite of what I expect" —
@@ -77,7 +77,7 @@ If the tool returns a failure, that is evidence to share, not a hypothesis to de
 
 ### Stating external behavior without anchoring
 
-**Mode.** Agent names a third-party API contract, OS behavior, or library parameter set from memory rather than reading the artifact, and proceeds on the remembered shape. Examples in this session: Monaco `IKeyboardEvent` semantics (verified live with `web_search`), keycode-vs-key handling (verified against MDN spec), Bash `set -e` and `NOMATCH` interaction.
+**Mode.** Agent names a third-party API contract, OS behavior, or library parameter set from memory rather than reading the artifact, and proceeds on the remembered shape. Examples: Monaco `IKeyboardEvent` semantics, keycode-vs-key handling, Bash `set -e` and `NOMATCH` interaction.
 
 **Falsifier.** SOP §2.2 "Resolve identity before semantics" already mandates this.
 Anchoring means: read the source, run a probe, or quote a fetched doc with the exact verbatim phrase.
@@ -90,7 +90,7 @@ The SOP already enforces this; no setup change needed beyond acknowledging that 
 
 ### Comma-CLI name stripped in prose
 
-**Mode.** User commands are comma-prefixed executables (`~/bin/,gh-prw`, `,probe`, `,ai-kb`). A session runs `,gh-prw` correctly in argv yet writes `gh-prw` in chat prose and tool-call descriptions, normalizing the leading comma away as punctuation because the remainder looks like a `gh` helper. The same slip pairs with flag mashing: `--json` passed to `,gh-prw`, whose surface is `--number`/`--url` only (observed in a Cursor session, 2026-08-19).
+**Mode.** User commands are comma-prefixed executables (`~/bin/,gh-prw`, `,probe`, `,ai-kb`). A session runs `,gh-prw` correctly in argv yet writes `gh-prw` in chat prose and tool-call descriptions, normalizing the leading comma away as punctuation because the remainder looks like a `gh` helper. The same slip pairs with flag mashing: `--json` passed to `,gh-prw`, whose surface is `--number`/`--url` only.
 
 **Falsifier.** The helper's `--help` and `k-github/SKILL.md` spell the name verbatim; a comma-less mention contradicts source already in context. For flags, SOP §2.2 already mandates reading `--help` before use.
 

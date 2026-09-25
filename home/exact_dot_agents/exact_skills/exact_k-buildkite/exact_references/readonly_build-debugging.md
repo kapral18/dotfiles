@@ -84,7 +84,7 @@ bk job log JOB_UUID -p SLUG -b BUILD_NUMBER | grep -iE '(ERR!|could not resolve|
 - Build terminated without test output completing
 - Builds that ran much longer than usual
 
-**Action:** Check for infinite loops, long-running tests, or resource contention. Consider increasing timeout or splitting the job.
+**Action:** Check for infinite loops, long-running tests, or resource contention; classify the cause through `k-diagnosing-bugs` before changing timeouts or job layout.
 
 ### Out of Memory (OOM)
 
@@ -116,7 +116,7 @@ bk build rebuild BUILD_NUMBER -p SLUG
 `bk build rebuild` creates an org-visible build and updates the PR's CI status (SOP §3.8):
 a user request to confirm flakiness or rebuild covers it; otherwise propose it first.
 
-**Action:** Fix timing dependencies, add retries for external service calls, quarantine flaky tests.
+**Action:** Classify the cause through `k-diagnosing-bugs`; a green retry, timeout extension, or quarantine does not establish a test-only cause.
 
 ### Infrastructure Issues
 
@@ -150,7 +150,7 @@ bk job log JOB_UUID -p SLUG -b BUILD_NUMBER | grep -iE '(403|401|forbidden|unaut
 ## Tips
 
 - **Start with the last 50 lines** of a failed job log — the error summary is usually at the end.
-  The tail is orientation only: recover the full log before drawing any conclusion, since SOP §2.4 requires complete artifacts for build debugging.
+  The tail is orientation only: recover the full log before drawing any conclusion, since SOP §2.7 requires complete artifacts for build debugging.
 - **Compare with last passing build** — diff the logs to find what changed.
 - **Check the commit diff** — the failure is usually in the code that changed between the last green build and this one.
 - **Use `bk api`** for detailed job metadata if standard commands are insufficient.

@@ -92,10 +92,6 @@
           "model": "gemini-3.8-flash",
           "category": "refute"
         },
-        "k-agent-deep-review": {
-          "model": "gemini-3.8-flash",
-          "category": "review"
-        },
         "k-agent-findings-auditor": {
           "model": "gemini-3.8-flash",
           "category": "review"
@@ -127,10 +123,6 @@
         "k-agent-public-sources": {
           "model": "gemini-3.8-flash",
           "category": "research"
-        },
-        "k-agent-review-controller": {
-          "model": "gemini-3.8-flash",
-          "category": "review"
         },
         "k-agent-review-worker": {
           "model": "gemini-3.8-flash",
@@ -335,12 +327,6 @@
           "effort": "high",
           "alias": "opus"
         },
-        "k-agent-deep-review": {
-          "model": "claude-opus-5-5[1m]",
-          "category": "review",
-          "effort": "high",
-          "alias": "opus"
-        },
         "k-agent-findings-auditor": {
           "model": "claude-opus-5-5[1m]",
           "category": "review",
@@ -386,12 +372,6 @@
         "k-agent-public-sources": {
           "model": "claude-opus-5-5[1m]",
           "category": "research",
-          "effort": "high",
-          "alias": "opus"
-        },
-        "k-agent-review-controller": {
-          "model": "claude-opus-5-5[1m]",
-          "category": "review",
           "effort": "high",
           "alias": "opus"
         },
@@ -485,7 +465,6 @@
         "k-agent-claim-verifier",
         "k-agent-code-searcher",
         "k-agent-criteria-verifier",
-        "k-agent-deep-review",
         "k-agent-findings-auditor",
         "k-agent-fresh-eyes",
         "k-agent-live-ui-review",
@@ -624,11 +603,6 @@
           "category": "refute",
           "effort": "high"
         },
-        "k-agent-deep-review": {
-          "model": "gpt-6-sol",
-          "category": "review",
-          "effort": "high"
-        },
         "k-agent-findings-auditor": {
           "model": "gpt-6-sol",
           "category": "review",
@@ -667,11 +641,6 @@
         "k-agent-public-sources": {
           "model": "gpt-6-sol",
           "category": "research",
-          "effort": "high"
-        },
-        "k-agent-review-controller": {
-          "model": "gpt-6-sol",
-          "category": "review",
           "effort": "high"
         },
         "k-agent-review-worker": {
@@ -882,11 +851,6 @@
           "category": "refute",
           "effort": "max"
         },
-        "k-agent-deep-review": {
-          "model": "claude-opus-5-5",
-          "category": "review",
-          "effort": "high"
-        },
         "k-agent-findings-auditor": {
           "model": "claude-opus-5-5",
           "category": "review",
@@ -925,11 +889,6 @@
         "k-agent-public-sources": {
           "model": "claude-opus-5-5",
           "category": "research",
-          "effort": "high"
-        },
-        "k-agent-review-controller": {
-          "model": "claude-opus-5-5",
-          "category": "review",
           "effort": "high"
         },
         "k-agent-review-worker": {
@@ -1128,11 +1087,6 @@
           "category": "refute",
           "effort": "high"
         },
-        "k-agent-deep-review": {
-          "model": "@default",
-          "category": "review",
-          "effort": "high"
-        },
         "k-agent-findings-auditor": {
           "model": "@default",
           "category": "review",
@@ -1171,11 +1125,6 @@
         "k-agent-public-sources": {
           "model": "@default",
           "category": "research",
-          "effort": "high"
-        },
-        "k-agent-review-controller": {
-          "model": "@default",
-          "category": "review",
           "effort": "high"
         },
         "k-agent-review-worker": {
@@ -1257,7 +1206,6 @@
         "k-agent-post-review",
         "k-agent-pr-necessity-auditor",
         "k-agent-public-sources",
-        "k-agent-review-controller",
         "k-agent-reviewer",
         "k-agent-smol",
         "scout",
@@ -1394,11 +1342,6 @@
           "category": "refute",
           "effort": "high"
         },
-        "k-agent-deep-review": {
-          "model": "openrouter/meta/muse-spark-1.3",
-          "category": "review",
-          "effort": "max"
-        },
         "k-agent-findings-auditor": {
           "model": "openrouter/meta/muse-spark-1.3",
           "category": "review",
@@ -1437,11 +1380,6 @@
         "k-agent-public-sources": {
           "model": "openrouter/z-ai/glm-5.3",
           "category": "research",
-          "effort": "max"
-        },
-        "k-agent-review-controller": {
-          "model": "openrouter/meta/muse-spark-1.3",
-          "category": "review",
           "effort": "max"
         },
         "k-agent-review-worker": {
@@ -1524,7 +1462,6 @@
         "k-agent-post-review",
         "k-agent-pr-necessity-auditor",
         "k-agent-public-sources",
-        "k-agent-review-controller",
         "k-agent-reviewer",
         "k-agent-smol"
       ],

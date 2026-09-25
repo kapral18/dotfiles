@@ -38,17 +38,15 @@ Keep it deterministic where possible; intermittent evidence must record its samp
 
 Reuse an unchanged baseline instead of rerunning it at each handoff, skill load or continuation.
 Minimize only when removing irrelevant inputs will distinguish causes or make the necessary experiment practical.
-Do not require every fixture element to be proved indispensable before diagnosis can proceed.
 
 Done when the failure and affected path are evidenced, or the exact missing evidence and its consequence are named.
 
 ## Discriminate causes
 
 Keep competing explanations when the evidence permits them.
-Do not manufacture a fixed quota of hypotheses or keep testing causes already ruled out.
+Drop causes the evidence has already ruled out.
 Each material hypothesis needs a prediction that available source, a trace, or a targeted probe can distinguish.
 When causal attribution remains ambiguous, use a relevant negative control: changing an irrelevant input must not produce the claimed effect.
-Do not demand a separate control or model judgment for every assertion.
 Classify the failure as product, test, infrastructure, mixed, or unresolved from source/reproduction evidence.
 A flaky test, green retry, timeout extension, assertion weakening, or quarantine does not establish a test-only cause.
 NEVER hide a product defect with a test patch; the original product behavior remains an acceptance criterion.
@@ -64,7 +62,6 @@ Tag temporary logs with a unique prefix so the requested fix can remove them dur
 For slowness, gather a relevant baseline measurement or profile; compare the repaired behavior in final Verify, not in a private worker loop.
 
 Done when evidence settles the material cause and affected interfaces, or a specific unresolved dependency prevents that conclusion.
-Do not exhaust hypothetical causes, minimize every input, or rerun the baseline merely to complete a phase.
 
 ## Return diagnostic evidence
 

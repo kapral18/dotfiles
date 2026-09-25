@@ -66,7 +66,7 @@ never use a port probe to discover or substitute an arbitrary localhost target.
 If a ready entry's process/port/log evidence contradicts the registry, treat it as stale or corrupt:
 for an agent-owned entry, stop/recreate it when safe; for a user-owned entry, return `Blocked` with the exact `,kbn-stack --stop && ,kbn-stack --detach ...` recovery command.
 If the registry has no usable entry after that integrity check, the stack is missing.
-In a shell-capable harness you MUST start it yourself with `,kbn-stack --detach` from that worktree and continue once the registry entry reports `ready: true` (see Data/setup ladder Rung 0).
+In a shell-capable harness, start it yourself with `,kbn-stack --detach` from that worktree and continue once the registry entry reports `ready: true` (see Data/setup ladder Rung 0).
 Return `Blocked` for a missing stack only in a read-only/Ask-mode harness or when `,kbn-stack --detach` fails.
 Include the exact `,kbn-stack --detach` command for each missing worktree for the user to run.
 Probe only registry-resolved targets, never arbitrary localhost ports.
@@ -149,8 +149,7 @@ Only applies when the manually-invoked `~/.agents/skills/k-live-ui-windows/SKILL
 
 - `Not applicable` can be per-target.
   If the feature/surface is absent on base because the PR introduces it, mark base comparison `Not applicable` with evidence and continue head-only verification on the PR/head target when the feature exists there.
-- Return full `Not applicable` only when the candidate is not UI/runtime-relevant or the feature/surface is absent from every relevant target.
-- Return `Not applicable` only for a UI/runtime-irrelevant candidate or an absent feature/surface;
+- Return full `Not applicable` only when the candidate is not UI/runtime-relevant or the feature/surface is absent from every relevant target;
   a target with no data means setup work or `Blocked`.
 
 ## Data/setup ladder

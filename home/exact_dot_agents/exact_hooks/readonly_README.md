@@ -81,10 +81,10 @@ Cursor startup additionally enforces its 10,000 UTF-16-unit carrier limit: omit 
 Never slice the mandatory instructions to fit the carrier.
 
 Session start injects no verification prefix: the full SOP is fresh at the top of a new session.
-`reinforcement.py` (called from `perturn_recall.py`) re-injects the compiler-verified `prefix.txt` excerpt only after the context grew by 200k tokens since the last injection or after a compaction.
-Growth is read from the Claude transcript (`message.usage`) or the Codex rollout (`token_count`);
-harnesses without a usage signal fall back to a prompt interval.
-A `SessionStart` with `source=compact` marks the next prompt for re-injection.
+`reinforcement.py` (called from `perturn_recall.py`) re-injects the compiler-verified `prefix.txt` excerpt only after a compaction.
+A `SessionStart` with `source=compact` marks the next prompt for re-injection (Claude Code).
+A large drop in the observed Claude transcript (`message.usage`) or Codex rollout (`token_count`) tokens since the last baseline reads as the same signal for harnesses with no explicit compaction event.
+Harnesses with neither signal (e.g. Cursor, whose per-prompt hook payload carries no transcript) get no mid-session re-injection at all; only a fresh session start shows the full SOP.
 State is `<session-key>.reinforce.json` next to the topic spec; every failure path is fail-open.
 Worklogs are trimmed during serialized queue flush so runtime state does not grow forever.
 The same flush pass also removes `session-*` fallback worklogs and per-session recall state (`.recall-seen-*`, `.recall-candidates-*`, `.recall-staged-*`, `.recall-pointed-*`, `.recall-warm-*`) older than seven days; named-topic worklogs are never swept.

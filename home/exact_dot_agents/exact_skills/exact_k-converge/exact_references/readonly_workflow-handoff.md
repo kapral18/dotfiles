@@ -1,7 +1,7 @@
 # Workflow handoff
 
 Entry is explicit user invocation.
-An explicitly invoked `k-build`, `k-review`, or `k-light-review` flow may also hand off here only where that caller defines a handoff trigger; none does today, and SOP §1.1/§3.5 forbid automatic convergence.
+An explicitly invoked `k-build`, `k-review`, or `k-light-review` flow may also hand off here only where that caller defines a handoff trigger; SOP §1.1/§3.5 forbid automatic convergence.
 That invocation authorizes the scoped handoff without another invocation approval.
 Merely loading a caller skill does not authorize its flow.
 

@@ -191,7 +191,6 @@ class TestOmpMigration(unittest.TestCase):
             "scout",
             "k-agent-public-sources",
             "k-agent-reviewer",
-            "k-agent-review-controller",
             "k-agent-code-searcher",
             "k-agent-change-auditor",
             "k-agent-findings-auditor",

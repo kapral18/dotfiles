@@ -1,18 +1,20 @@
-"""Per-prompt SOP reinforcement: re-inject the verified `prefix.txt` excerpt only when it helps.
+"""Per-prompt SOP reinforcement: re-inject the verified `prefix.txt` excerpt only after a compaction.
 
-The SOP sits at the top of every session. As tool output and conversation history
-accumulate, top-of-context rules dilute, so the shared discipline core is re-injected
-close to the current prompt, but only after material context growth or a compaction.
-This mirrors `PREFIX_REINJECT_DELTA_PCT` in the pi/omp `ai-kb-recall.ts` extensions
-(20 points of fill there; 200k tokens here, the same distance on the 1M windows in use);
-those harnesses keep their native mechanism and read the same file.
+The SOP sits at the top of every session. A compaction summarizes the transcript and
+drops the earlier injection, so the shared discipline core is re-injected close to the
+current prompt once that happens. This mirrors the pi/omp `ai-kb-recall.ts` extensions,
+which re-inject on their native `session_compact` event; those harnesses keep their own
+mechanism and read the same file.
 
-Fill signal, in order of preference:
-1. `transcript_path` in the hook payload: Claude Code JSONL (`message.usage`, input plus
-   cache read/creation of the newest API call) or a Codex rollout (`token_count` events).
-2. A Codex rollout located by `session_id` under `~/.codex/sessions/`.
-3. No usage signal (Cursor): a prompt-count interval. This is a proxy for growth,
-   documented as such, and the interval is tunable.
+Compaction signal, in order of preference:
+1. An explicit forced re-inject: a `SessionStart` with `source=compact` marks the next
+   prompt (see `mark_compaction`).
+2. A large drop in observed context tokens since the last baseline, read from
+   `transcript_path` in the hook payload (Claude Code JSONL `message.usage`, or a Codex
+   rollout's `token_count` events) or a Codex rollout located by `session_id`. This is
+   the proxy compaction reads for harnesses that summarize without an explicit event.
+3. No usage signal and no forced re-inject (e.g. Cursor payloads without a transcript):
+   no injection is due until a `SessionStart` compaction or session-start path sets it.
 
 State is one small JSON file per session next to the topic spec. Every failure path is
 fail-open: a broken transcript, missing file, or bad state yields no injection, never an
@@ -29,20 +31,9 @@ from typing import Any
 PREFIX_REL_PATH = "tmux/agent_prompts/prefix.txt"
 # Pinned equal to PREFIX_MAX_CHARS in the pi/omp extensions by the parity test.
 MAX_PREFIX_CHARS = 6000
-# Re-inject once the context grew by this many tokens since the last injection (or the
-# first observation). Dilution is a function of the absolute distance between the rules at
-# the top and the current prompt, not of the window size, so growth is measured in tokens.
-# 200k is 20 points of the 1M windows the configured models run (the pi/omp extensions use
-# the same 20 points in percent); agents routinely churn through hundreds of thousands of
-# tokens, so anything smaller re-injects far more often than dilution warrants.
-REINJECT_DELTA_TOKENS = 200_000
-DELTA_TOKENS_ENV = "AGENT_REINFORCE_DELTA_TOKENS"
 # A context shrinking to this fraction of the last observation reads as a compaction: the
 # prior injection was summarized away, so force one now.
 COMPACTION_SHRINK_RATIO = 0.75
-# Harnesses that expose no usage signal: re-inject every N prompts after the first.
-FALLBACK_PROMPT_INTERVAL = 10
-PROMPT_INTERVAL_ENV = "AGENT_REINFORCE_PROMPTS"
 DISABLE_ENV = "AGENT_REINFORCE"
 DISABLE_VALUES = {"0", "false", "no", "off", "disabled"}
 STATE_SUFFIX = ".reinforce.json"
@@ -163,31 +154,14 @@ def context_tokens(payload: dict[str, Any]) -> int | None:
     return None
 
 
-def _delta_tokens() -> int:
-    raw = os.environ.get(DELTA_TOKENS_ENV, "")
-    try:
-        value = int(raw)
-    except ValueError:
-        return REINJECT_DELTA_TOKENS
-    return value if value > 0 else REINJECT_DELTA_TOKENS
-
-
-def _prompt_interval() -> int:
-    raw = os.environ.get(PROMPT_INTERVAL_ENV, "")
-    try:
-        value = int(raw)
-    except ValueError:
-        return FALLBACK_PROMPT_INTERVAL
-    return value if value > 0 else FALLBACK_PROMPT_INTERVAL
-
-
 def decide(state: dict[str, Any], tokens: int | None) -> tuple[bool, str]:
     """Pure decision: (inject, reason). Updates `state` in place; never touches disk.
 
-    On an injection the baseline moves to the current observation, so the next one is
-    due only after another `REINJECT_DELTA_TOKENS` of growth (or another compaction).
+    Injection is due only on a forced re-inject (a `SessionStart` after a compaction) or
+    a detected context shrink (the proxy compaction reads when no explicit compaction
+    event is available). A harness with neither signal gets no injection here; it relies
+    on `force`/session-start alone, same as today.
     """
-    state["prompts"] = int(state.get("prompts", 0)) + 1
     inject, reason = False, "steady"
     if state.get("force"):
         inject, reason = True, "compaction"
@@ -198,17 +172,8 @@ def decide(state: dict[str, Any], tokens: int | None) -> tuple[bool, str]:
         elif tokens < last * COMPACTION_SHRINK_RATIO:
             inject, reason = True, "compaction"
             state["compactions"] = int(state.get("compactions", 0) or 0) + 1
-        elif tokens - last >= _delta_tokens():
-            inject, reason = True, "growth"
-    else:
-        last_prompt = state.get("last_prompt")
-        if not isinstance(last_prompt, int):
-            reason = "baseline"
-        elif state["prompts"] - last_prompt >= _prompt_interval():
-            inject, reason = True, "prompt-count"
     if inject or reason == "baseline":
         state["force"] = False
-        state["last_prompt"] = state["prompts"]
         if tokens is not None:
             state["last_tokens"] = int(tokens)
     if inject:

@@ -2,7 +2,7 @@
 
 ## When Responding To An Existing Message/Thread
 
-Reply mechanics (in addition to everything above):
+Reply mechanics (in addition to `~/.agents/skills/k-communication/SKILL.md`):
 
 - Reply directly; quote at most the minimum fragment needed (one short blockquote), then reply.
   Skip email-style interleaved quoting and whole-message quotes.

@@ -98,7 +98,7 @@ Do not invent a parallel store:
 
 - Convention: `/tmp/specs/<pwd>/` from the parent SOP. Topic key: `review-<pr-number>` for PR modes (else `k-review`).
   Take `<pr-number>` from the `,gh-prw --number` output of this session, never from memory or a context summary;
-  a summarized context has produced a wrong number before, and the wrong bucket then carries every later turn.
+  a summarized context can carry a wrong number, and the wrong bucket then carries every later turn.
 - The agent-owned intent file is `<topic>.txt`.
 - The hook system additionally maintains `<topic>.worklog.jsonl`.
 - Inspect review state only with a topic- or session-bound `,agent-memory status`;

@@ -10,7 +10,7 @@
 git clone <repo-url> /tmp/<tool-name>
 ```
 
-1. Investigate the CLI surface thoroughly from source — focus on:
+1. Investigate the CLI surface from source — focus on:
    - Command/subcommand registration (entrypoints, command files)
    - Flag and argument declarations
    - Help text templates

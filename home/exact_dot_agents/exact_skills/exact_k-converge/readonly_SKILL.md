@@ -12,7 +12,7 @@ the root owns the loop.
 Loop adversarial rounds against a claim or changeset until **dry**: the complete exit condition declared in Step 1.
 
 `disable-model-invocation: true` blocks direct auto-invocation of this skill only; enter by explicit user invocation.
-An explicitly invoked `k-build`, `k-review`, or `k-light-review` flow may hand off here only where that caller defines a handoff trigger (none does today); before any handoff, load and follow `~/.agents/skills/k-converge/references/workflow-handoff.md` in full.
+An explicitly invoked `k-build`, `k-review`, or `k-light-review` flow may hand off here only where that caller defines a handoff trigger; before any handoff, load and follow `~/.agents/skills/k-converge/references/workflow-handoff.md` in full.
 Authorship never gates entry: run the loop on your own changes or on someone else's.
 Write scope (`~/.agents/skills/k-review/references/authorship.md`) decides only whether a Step 5 fix is applied or returned as a proposal.
 
@@ -109,7 +109,7 @@ no working-tree writes, git/GitHub writes, installs, or shared-state mutation) â
 mutation belongs to Step 3 alone, so a refuter never collides with the tree under test and needs no isolation of its own.
 
 **Never forward-chain on a refuter's verdict.** Re-verify every material finding against the artifact yourself.
-Refuters confidently assert wrong things; in practice they have inverted a real finding and invented a stale-test claim that would have broken passing code.
+Refuters can assert wrong things confidently, including inverting a real finding or calling a passing test stale.
 
 Completion criterion: each refuter returned findings or an explicit "none", and every finding you plan to act on was independently re-verified.
 

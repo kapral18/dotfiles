@@ -6,7 +6,7 @@ Default snapshot starts reuse one background ES per resolved ES version — the 
 The first compatible start creates the instance (registry key `__es__`, data dir `es_data/shared-<version>`);
 later compatible starts attach only their Kibana to it.
 
-- Sharing applies only when the start carries no ES-level override: any `-E`, `--data`, non-default `--es-heap`, or explicit `--isolated-es` starts an isolated per-worktree ES (the historical behavior).
+- Sharing applies only when the start carries no ES-level override: any `-E`, `--data`, non-default `--es-heap`, or explicit `--isolated-es` starts an isolated per-worktree ES.
   `-K` and `--groups` never affect sharing.
 - Same-version Kibanas on one shared ES share the `.kibana*` saved-object indices (normal HA topology):
   saved objects created from one worktree are visible in the other.
@@ -105,8 +105,7 @@ A start's own stdout is the evidence; when it is redirected to a file, read that
   The notice names both paths. The moved dir is kept, not deleted; it cannot be reused with this tool (its trial is spent).
   Delete `es_data/*.expired-*` to reclaim disk.
   Do not pick a new `--data` name to dodge an expired dir; rerun the same command and let the rotation run, so the branch keeps its data dir name.
-- A start fails as soon as the spawned ES launcher exits before setup completes and prints the log's last error lines;
-  it no longer waits out the 600s setup timeout.
+- A start fails as soon as the spawned ES launcher exits before setup completes, without waiting for the 600s setup timeout, and prints the log's last error lines.
   Read the full `log` path from the failure message before retrying, and fix the named cause instead of rerunning the same command.
 - Never start the same worktree twice while `--status` shows it `starting`: the first start still owns the slot's ports, so the second fails with "ports are already in use" naming the first start's own ES pid.
   Wait for the first start to return (it always returns: ready, failed, or timed out), or `--stop` it first.

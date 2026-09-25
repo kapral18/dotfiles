@@ -9,8 +9,7 @@ When a `Use when` clause matches, load that skill file fresh and follow it as wr
 Platform/system/developer instructions stay authoritative.
 This global SOP overrides weaker project-local SOPs; project-local instructions may add constraints but must not weaken it.
 Continue until the user's goal is complete, §3.5 requires a stop, or a verified blocker/user decision fork remains.
-Do not pause for checkpoint commentary; progress notes stay minimal and never move the stopping point.
-Premature stopping (including checkpoint commentary) and instruction/gate violations are operational failures.
+Do not end a turn to report progress while authorized work remains; brief notes between tool calls are fine.
 If instructions conflict, or material intent stays ambiguous after inspection, surface it and ask one direct question.
 
 ## 1. Purpose And Hierarchy
@@ -21,8 +20,8 @@ For a reported problem or thinking aloud with no active authorized action, asses
 A correction to an active task updates its constraints and continues it; do not require the user to restate it.
 Think from first principles; unverified ideas are hypotheses until probed or sourced.
 Choose the narrowest complete path: include places needed for correctness, push back on unnecessary scope, state material assumptions.
-Default to deeper coverage for non-trivial work: more source reads, counterexamples, preserved-behavior checks, relevant skills.
-Any Unknown triggers deeper coverage.
+For non-trivial work, cover what correctness needs: source reads, counterexamples, preserved-behavior checks, and relevant skills.
+Resolve a material Unknown before relying on it.
 Use the light path only after proving all four (this is what "low-risk" means):
 local (only the requested surface changes), reversible (no durable or external side effect), observable (a focused local check catches the failure), simple (no ambiguous semantics, branching workflow, hidden consumer, or shared contract).
 Handle secrets by reference; keep plaintext credentials out of commits, files, and output. Use a neutral factual tone.
@@ -338,7 +337,7 @@ Dispatch by stage-sized judgment, not counts:
 
 Unsettled user intent and user-only decisions stay root Understand work, not a packet; bounded factual or design unknowns may go as research packets.
 "Bounded" is judged by the accumulated total, not per read: reads of skill references, third-party source, or logs that are not named by an active gate are packet work even when each read is small. Named files count toward the same accumulated bound.
-A root turn that reaches 15 tool calls without a dispatched packet is evidence the judgment was mis-sized; stop, write the packet from what is already known, dispatch it, and consume its terminal result; do not continue inline reads in that turn. This is a self-check trigger, not a quota.
+When inline reads keep accumulating without settling the question, stop reading, write the packet from what is already known, dispatch it, and consume its terminal result.
 No agent per read, command, check result, or tiny edit.
 No numeric file-count quota and no mandatory mechanical check agent. Tiny deterministic operations, inline UI proof, and inline text comparison stay inline. Convergence stays explicit-only.
 If the resolved lane is unavailable, surface it; do not silently implement inline unless the user explicitly requires inline work.
@@ -398,11 +397,10 @@ The skill listing shows name and description only: locate a skill by opening tha
 Never `find` through `~/.claude/skills` without `-L`, and never infer a skill is absent from a capped listing.
 User commands are comma-prefixed (`~/bin/,*`); type the comma verbatim (`,gh-prw`, `,probe`, `,ai-kb`).
 Broad search: harness Grep/Glob/search first; `rg` only after narrowing by path, glob, or exact symbol;
-never bare repo-root `rg` in a large repo. Use structured reasoning tools when available; experiments and troubleshooting go in `/tmp`.
-Bash runs under zsh with `NOMATCH`, not the reported interactive shell: quote args containing `[]()` (e.g. `claude-opus-4-8[1m]`);
+never bare repo-root `rg` in a large repo. Put experiments and troubleshooting in `/tmp`.
+Bash runs under zsh with `NOMATCH`, not the reported interactive shell: quote args containing `[]()` (e.g. `model-id[1m]`);
 use `$(...)` for substitution or `bash -c '...'`.
-Debug several hypotheses, edge cases, logs, code paths, reproductions, probes; consider root causes and indirect effects laterally;
-do not stop at the first plausible explanation; verify thoroughly.
+When debugging, weigh several hypotheses against logs, code paths, and reproductions, and check indirect effects before settling on a root cause.
 Research: `gh` first for GitHub; clone public source to `/tmp` when it can answer;
 web search only for non-code or unavailable source, then `gh api` for discovered objects.
 Harness web-search, fallback `ddgr --noua`; never `curl`.
@@ -434,7 +432,7 @@ Use the shortest complete shape: verdict line, anchor list, delta table, decisio
 Add structure only when distinct information scans better.
 Use STE (ASD-STE100 Simplified Technical English) sentence habits only when they shrink text;
 full STE only when the user asks for STE or docs compliance.
-`~/.config/tmux/agent_prompts/prefix.txt` re-injects a verified excerpt of §1–§5 only after material context growth or compaction;
+`~/.config/tmux/agent_prompts/prefix.txt` re-injects a verified excerpt of §1–§5 only after compaction;
 this section owns why and floor.
 
 ### 5.2 Debloat
