@@ -10,6 +10,7 @@
   "effortLevel": "high",
   "autoCompactWindow": 400000,
   "autoMemoryEnabled": false,
+  "awaySummaryEnabled": false,
   "disableClaudeAiConnectors": true,
   "agentPushNotifEnabled": true,
   "tui": "fullscreen",

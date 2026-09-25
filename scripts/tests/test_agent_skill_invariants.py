@@ -735,6 +735,13 @@ class TestAgentSkillInvariants(unittest.TestCase):
                 settings = json.loads((REPO / "home/dot_claude" / name).read_text(encoding="utf-8"))
                 self.assertEqual(settings["autoCompactWindow"], 400000)
 
+    def test_SHOULD_skip_the_claude_away_recap(self):
+        """WHEN the user returns after 5+ minutes, Claude Code generates no session recap (it delays the turn end)."""
+        for name in ("settings.personal.json", "settings.work.json"):
+            with self.subTest(settings=name):
+                settings = json.loads((REPO / "home/dot_claude" / name).read_text(encoding="utf-8"))
+                self.assertIs(settings["awaySummaryEnabled"], False)
+
     def test_SHOULD_keep_ai_kb_the_only_durable_memory(self):
         """WHEN a harness ships native auto-memory, it stays off so ,ai-kb is the single durable store."""
         for name in ("settings.personal.json", "settings.work.json"):

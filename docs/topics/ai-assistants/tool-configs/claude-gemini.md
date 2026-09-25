@@ -20,18 +20,19 @@ Claude Code and Antigravity use config surfaces backed by the shared MCP registr
 
 Claude profile behavior:
 
-| Area                  | Behavior                                                                                                                                                |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Model and context     | `claude-opus-5-5[1m]`; explicit long-context `session_models.claude_code` selector                                                                      |
-| Thinking and effort   | `alwaysThinkingEnabled: false`; `effortLevel: high` in both profiles                                                                                    |
-| Local llama.cpp       | model-scoped `high` effort with thinking off; local context windows stay unchanged                                                                      |
-| Dangerous-mode prompt | skipped in both profiles                                                                                                                                |
-| Subagent nesting      | `env.CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` in every settings profile (nesting off); every `exact_agents/` profile pins `tools:` without `Agent`       |
-| Auto-compact window   | `autoCompactWindow: 400000` in both profiles; root sessions and subagents compact near 366k instead of near 1M                                          |
-| Auto-memory           | `autoMemoryEnabled: false` in both profiles: Claude Code neither reads nor writes `~/.claude/projects/*/memory`, so `,ai-kb` is the only durable memory |
-| Work auth             | native Claude enterprise auth; no `apiKeyHelper` / `ANTHROPIC_BASE_URL` override                                                                        |
-| MCP storage           | `~/.claude.json` top-level `mcpServers`                                                                                                                 |
-| Merge strategy        | selected profile plus canonical `session_models.claude_code` model and effort                                                                           |
+| Area                  | Behavior                                                                                                                                                                                                              |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Model and context     | `claude-opus-5-5[1m]`; explicit long-context `session_models.claude_code` selector                                                                                                                                    |
+| Thinking and effort   | `alwaysThinkingEnabled: false`; `effortLevel: high` in both profiles                                                                                                                                                  |
+| Local llama.cpp       | model-scoped `high` effort with thinking off; local context windows stay unchanged                                                                                                                                    |
+| Dangerous-mode prompt | skipped in both profiles                                                                                                                                                                                              |
+| Subagent nesting      | `env.CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` in every settings profile (nesting off); every `exact_agents/` profile pins `tools:` without `Agent`                                                                     |
+| Auto-compact window   | `autoCompactWindow: 400000` in both profiles; root sessions and subagents compact near 366k instead of near 1M                                                                                                        |
+| Auto-memory           | `autoMemoryEnabled: false` in both profiles: Claude Code neither reads nor writes `~/.claude/projects/*/memory`, so `,ai-kb` is the only durable memory                                                               |
+| Away recap            | `awaySummaryEnabled: false` in both profiles: no session recap is generated when you return after 5+ minutes away (an internal setting in Claude Code 2.1.283; `CLAUDE_CODE_ENABLE_AWAY_SUMMARY=1` would override it) |
+| Work auth             | native Claude enterprise auth; no `apiKeyHelper` / `ANTHROPIC_BASE_URL` override                                                                                                                                      |
+| MCP storage           | `~/.claude.json` top-level `mcpServers`                                                                                                                                                                               |
+| Merge strategy        | selected profile plus canonical `session_models.claude_code` model and effort                                                                                                                                         |
 
 Interactive fish/bash/zsh sessions leave `claude` native. MCP wiring is handled only by the managed registry and apply-time config generation.
 
