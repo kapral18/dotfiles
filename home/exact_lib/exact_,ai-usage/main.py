@@ -5,21 +5,35 @@ Raw "input tokens" overstate cost: providers re-read most of a long conversation
 cache at a discounted rate, and only new material (tool output, the agent's own text)
 is written at full price. This report splits every session into fresh input, cache
 read, cache write, output and reasoning so routes can be compared on the numbers
-that are actually billed. It applies no prices: provider discounts differ and change.
+that are actually billed. It applies no prices unless --cost asks for the Anthropic ones.
 
 Sources (all local, read-only, stdlib only):
 
 - Claude Code   ~/.claude/projects/*/*.jsonl      assistant rows carry message.usage per API
                                                    call; rows sharing a requestId are one call.
-                                                   input_tokens is fresh; cache_* are separate.
+                                                   input_tokens is fresh; cache_* are separate;
+                                                   cache_creation splits writes by 5m/1h lifetime.
+                ~/.claude/projects/*/<session>/subagents/agent-*.jsonl
+                                                   one file per subagent, same row shape; the
+                                                   sibling .meta.json names its agentType.
 - Codex         ~/.codex/sessions/**/rollout-*.jsonl  the last token_count event carries the
                                                    session total; input_tokens INCLUDES cached
                                                    reads and writes, so fresh = input - read - write.
+                                                   Subagent rollouts carry session_meta
+                                                   source.subagent: thread_spawn (with agent_role),
+                                                   {"other": name}, or a bare "review"/"compact".
 - Pi            ~/.pi/agent/sessions/*/*.jsonl    message.usage per call; input is fresh and
                                                    totalTokens = input+output+cacheRead+cacheWrite.
+                ~/.pi/agent/sessions/*/subagent-artifacts/<uuid>_<agent>[_N]_transcript.jsonl
+                                                   pi-subagents child transcripts, same row shape.
+                ~/.pi/agent/sessions/*/<session>/<run uuid>/run-N/session.jsonl
+                                                   child run sessions; counted only when the run
+                                                   has no transcript (same calls otherwise).
 - OMP           ~/.omp/agent/sessions/*/*.jsonl   same row shape as Pi (OMP is a Pi fork), with
                                                    reasoningTokens; input is treated as fresh like Pi.
                                                    No cached OMP row was available locally to confirm.
+                ~/.omp/agent/sessions/*/<session>/<Task>.jsonl and __advisor.jsonl beside
+                                                   a session or <Task>: task children and advisors.
 - OpenCode      ~/.local/share/opencode/opencode.db  session rows carry tokens_* rollups and a
                                                    model JSON; calls are counted from assistant
                                                    message rows.
@@ -28,8 +42,11 @@ Harnesses without a local record (or with one this tool cannot read yet) are lis
 the footer so their absence reads as "unknown", never as zero.
 
 Usage:
-    ,ai-usage [--days N] [--harness NAME ...] [--by session|harness|model] [--json]
-              [--limit N]
+    ,ai-usage [--days N] [--harness NAME ...] [--by session|harness|model|agent] [--json]
+              [--limit N] [--cost]
+
+--cost adds an API list-price equivalent for Anthropic models only (ANTHROPIC_PRICES). On a
+Claude subscription nothing is billed per token; the figure ranks spend by billing type.
 """
 
 from __future__ import annotations
@@ -38,6 +55,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import sys
 import time
 from dataclasses import asdict, dataclass, field
@@ -53,6 +71,15 @@ FIELDS = ("fresh_input", "cache_read", "cache_write", "output", "reasoning")
 # was re-injected (AGENT_REINFORCE=off sessions show zero of the latter).
 CORRECTION_MARKER = "### User correction signal"
 REINFORCEMENT_MARKER = "[SOP REINFORCEMENT"
+# $/MTok (input, output, cache read) from the claude-api skill bundled with Claude Code 2.1.282.
+# Cache writes bill at 1.25x input for the 5-minute lifetime and 2x for the 1-hour lifetime.
+ANTHROPIC_PRICES = {
+    "claude-fable-5-1": (10.0, 50.0, 0.25),
+    "claude-opus-5-5": (4.0, 20.0, 0.20),
+    "claude-opus-5": (5.0, 25.0, 0.50),
+    "claude-sonnet-5": (2.0, 10.0, 0.20),
+    "claude-haiku-4-5": (1.0, 5.0, 0.10),
+}
 # Routes the user runs that leave no per-call usage record this tool can read. Reported in
 # the footer so a missing row is never mistaken for zero usage.
 UNRECORDED = {
@@ -69,6 +96,7 @@ class Session:
     started: float  # epoch seconds
     model: str = ""
     provider: str = ""
+    agent: str = ""  # subagent type; empty for a root session
     calls: int = 0
     prompts: int = 0
     corrections: int = 0
@@ -80,9 +108,29 @@ class Session:
     fresh_input: int = 0
     cache_read: int = 0
     cache_write: int = 0
+    cache_write_1h: int = 0  # the part of cache_write stored for 1 hour (billed at 2x input)
     output: int = 0
     reasoning: int = 0
+    cost_usd: float = 0.0  # API list-price equivalent of the priced calls
+    priced_calls: int = 0
     notes: list[str] = field(default_factory=list)
+
+    def price_call(self, model: str, fresh: int, read: int, write: int, write_1h: int, output: int) -> None:
+        # Claude Code writes "<synthetic>" rows for local placeholders (errors, interrupts); no provider billed them.
+        # Dated snapshots (`claude-haiku-4-5-20251001`) bill at their alias's rate.
+        rates = (0.0, 0.0, 0.0) if model == "<synthetic>" else ANTHROPIC_PRICES.get(re.sub(r"-\d{8}$", "", model))
+        if rates is None:
+            return
+        self.priced_calls += 1
+        per_input, per_output, per_read = rates
+        write_5m = max(0, write - write_1h)
+        self.cost_usd += (
+            fresh * per_input
+            + read * per_read
+            + write_5m * 1.25 * per_input
+            + write_1h * 2.0 * per_input
+            + output * per_output
+        ) / 1e6
 
     def observe_call(self, fresh: int, cache_read: int, cache_write: int) -> None:
         """Count a cache miss when this call re-read far less than the previous call held."""
@@ -105,6 +153,9 @@ class Session:
         self.corrections += other.corrections
         self.reinforcements += other.reinforcements
         self.cache_misses += other.cache_misses
+        self.cache_write_1h += other.cache_write_1h
+        self.cost_usd += other.cost_usd
+        self.priced_calls += other.priced_calls
         for name in FIELDS:
             setattr(self, name, getattr(self, name) + getattr(other, name))
 
@@ -160,10 +211,25 @@ def _recent(paths: Iterable[str], since: float) -> list[Path]:
 # ---------------------------------------------------------------- readers
 
 
+def _subagent_type(path: Path) -> str:
+    try:
+        meta = json.loads(path.with_suffix(".meta.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        meta = {}
+    return str(meta.get("agentType") or "") if isinstance(meta, dict) else ""
+
+
 def read_claude(since: float) -> list[Session]:
+    projects = _home() / ".claude" / "projects"
+    roots = [(path, "") for path in _recent(glob.glob(str(projects / "*" / "*.jsonl")), since)]
+    # Subagents write their own transcripts; without them a delegating session reads as a fraction of its cost.
+    children = [
+        (path, _subagent_type(path) or "subagent")
+        for path in _recent(glob.glob(str(projects / "*" / "*" / "subagents" / "agent-*.jsonl")), since)
+    ]
     sessions = []
-    for path in _recent(glob.glob(str(_home() / ".claude" / "projects" / "*" / "*.jsonl")), since):
-        session = Session("claude", path.stem, str(path), path.stat().st_mtime)
+    for path, agent in roots + children:
+        session = Session("claude", path.stem, str(path), path.stat().st_mtime, agent=agent)
         seen: set[str] = set()
         first_ts = None
         for row in _iter_json_lines(path):
@@ -201,12 +267,19 @@ def read_claude(since: float) -> list[Session]:
                 _int(usage.get("cache_read_input_tokens")),
                 _int(usage.get("cache_creation_input_tokens")),
             )
-            session.fresh_input += _int(usage.get("input_tokens"))
-            session.cache_read += _int(usage.get("cache_read_input_tokens"))
-            session.cache_write += _int(usage.get("cache_creation_input_tokens"))
-            session.output += _int(usage.get("output_tokens"))
+            fresh = _int(usage.get("input_tokens"))
+            read = _int(usage.get("cache_read_input_tokens"))
+            write = _int(usage.get("cache_creation_input_tokens"))
+            write_1h = min(write, _int((usage.get("cache_creation") or {}).get("ephemeral_1h_input_tokens")))
+            output = _int(usage.get("output_tokens"))
+            session.fresh_input += fresh
+            session.cache_read += read
+            session.cache_write += write
+            session.cache_write_1h += write_1h
+            session.output += output
             session.reasoning += _int((usage.get("output_tokens_details") or {}).get("thinking_tokens"))
             model = str(message.get("model") or "")
+            session.price_call(model, fresh, read, write, write_1h, output)
             if model and model != "<synthetic>":
                 session.model = model
         if first_ts is not None:
@@ -233,6 +306,16 @@ def read_codex(since: float) -> list[Session]:
                 if ts is not None:
                     session.started = ts
                 session.session_id = str(payload.get("id") or payload.get("session_id") or session.session_id)
+                source = payload.get("source")
+                # Unit variants serialize as a string (`"review"`, `"compact"`); `thread_spawn` and `other` as objects.
+                sub = source.get("subagent") if isinstance(source, dict) else None
+                spawn = (sub.get("thread_spawn") if isinstance(sub, dict) else None) or {}
+                if isinstance(sub, str):
+                    session.agent = sub
+                elif isinstance(sub, dict) and isinstance(sub.get("other"), str):
+                    session.agent = sub["other"]
+                if spawn or payload.get("parent_thread_id"):
+                    session.agent = str(payload.get("agent_role") or spawn.get("agent_role") or "subagent")
             elif row.get("type") == "turn_context":
                 session.model = str(payload.get("model") or session.model)
             elif (
@@ -277,18 +360,48 @@ def read_codex(since: float) -> list[Session]:
     return sessions
 
 
+def _pi_subagent_type(path: Path) -> str:
+    # pi-subagents names child transcripts `<run uuid>_<agent>[_<index>]_transcript.jsonl`.
+    match = re.match(r"^[0-9a-f-]{36}_(.+?)(?:_\d+)?_transcript$", path.stem)
+    return match.group(1) if match else "subagent"
+
+
 def read_pi(since: float) -> list[Session]:
     sessions = []
-    for path in _recent(glob.glob(str(_home() / ".pi" / "agent" / "sessions" / "*" / "*.jsonl")), since):
-        session = Session("pi", path.stem, str(path), path.stat().st_mtime)
+    base = _home() / ".pi" / "agent" / "sessions"
+    roots = [(path, "") for path in _recent(glob.glob(str(base / "*" / "*.jsonl")), since)]
+    children = [
+        (path, _pi_subagent_type(path))
+        for path in _recent(glob.glob(str(base / "*" / "subagent-artifacts" / "*_transcript.jsonl")), since)
+    ]
+    # Child runs also keep `<session>/<run uuid>/run-N/session.jsonl`; a run with a transcript is already counted.
+    transcribed = {path.name[:36] for path, _ in children}
+    runs = [
+        (path, "subagent")
+        for path in _recent(glob.glob(str(base / "*" / "*" / "*" / "run-*" / "session.jsonl")), since)
+        if path.parent.parent.name not in transcribed
+    ]
+    for path, agent in roots + children + runs:
+        session = Session("pi", path.stem, str(path), path.stat().st_mtime, agent=agent)
+        if path.name == "session.jsonl":
+            session.session_id = path.parent.parent.name
         first_ts = None
         for row in _iter_json_lines(path):
             ts = _parse_ts(row.get("timestamp"))
             if ts is not None and first_ts is None:
                 first_ts = ts
+            if agent and row.get("type") == "session_info":
+                # Run sessions name themselves `subagent-<agent>-<run uuid>-<N>`.
+                match = re.match(r"^subagent-(.+)-[0-9a-f-]{36}-\d+$", str(row.get("name") or ""))
+                if match:
+                    session.agent = match.group(1)
             message = row.get("message") or {}
             usage = message.get("usage")
-            if row.get("type") != "message" or not isinstance(usage, dict):
+            # Child transcripts drop the row `type`; their provider calls are the assistant messages.
+            is_call = row.get("type") == "message" or (
+                agent and "type" not in row and message.get("role") == "assistant"
+            )
+            if not is_call or not isinstance(usage, dict):
                 continue
             session.calls += 1
             session.observe_call(_int(usage.get("input")), _int(usage.get("cacheRead")), _int(usage.get("cacheWrite")))
@@ -308,8 +421,14 @@ def read_pi(since: float) -> list[Session]:
 
 def read_omp(since: float) -> list[Session]:
     sessions = []
-    for path in _recent(glob.glob(str(_home() / ".omp" / "agent" / "sessions" / "*" / "*.jsonl")), since):
-        session = Session("omp", path.stem, str(path), path.stat().st_mtime)
+    base = _home() / ".omp" / "agent" / "sessions"
+    # Task children write `<session dir>/<Task>.jsonl`; advisors write `__advisor.jsonl` beside what they advise.
+    layout = (("*/*.jsonl", ""), ("*/*/*.jsonl", "subagent"), ("*/*/*/__advisor.jsonl", "advisor"))
+    paths = [(path, agent) for pattern, agent in layout for path in _recent(glob.glob(str(base / pattern)), since)]
+    for path, agent in paths:
+        if path.name == "__advisor.jsonl":
+            agent = "advisor"
+        session = Session("omp", path.stem, str(path), path.stat().st_mtime, agent=agent)
         first_ts = None
         for row in _iter_json_lines(path):
             ts = _parse_ts(row.get("timestamp"))
@@ -425,10 +544,15 @@ def group(sessions: list[Session], by: str) -> list[Session]:
         return sessions
     buckets: dict[str, Session] = {}
     for session in sessions:
-        key = session.harness if by == "harness" else f"{session.harness} {session.provider} {session.model}".strip()
+        if by == "harness":
+            key = session.harness
+        elif by == "agent":
+            key = f"{session.harness} {session.agent or 'root'} {session.model}".strip()
+        else:
+            key = f"{session.harness} {session.provider} {session.model}".strip()
         bucket = buckets.get(key)
         if bucket is None:
-            bucket = Session(session.harness, key, "", session.started, session.model, session.provider)
+            bucket = Session(session.harness, key, "", session.started, session.model, session.provider, session.agent)
             buckets[key] = bucket
         bucket.add(session)
         bucket.started = max(bucket.started, session.started)
@@ -450,11 +574,26 @@ def _when(ts: float) -> str:
     return datetime.fromtimestamp(ts, tz=timezone.utc).astimezone().strftime("%m-%d %H:%M")
 
 
+def _cost(row: Session) -> str:
+    if not row.priced_calls:
+        return "n/a"
+    partial = "+" if row.priced_calls < row.calls else ""
+    return f"{row.cost_usd:,.2f}{partial}"
+
+
 def render(
-    rows: list[Session], by: str, days: float, limit: int, harnesses: Iterable[str], signals: bool = False
+    rows: list[Session],
+    by: str,
+    days: float,
+    limit: int,
+    harnesses: Iterable[str],
+    signals: bool = False,
+    cost: bool = False,
 ) -> str:
     lines = []
     head = ("harness", "when", "id/model", "calls", "fresh", "cache read", "cache write", "output", "reasoning", "hit")
+    if cost:
+        head = head[:7] + ("write 1h",) + head[7:] + ("api $",)
     if signals:
         head = (
             "harness",
@@ -470,7 +609,10 @@ def render(
         )
     table = []
     for row in rows[:limit]:
-        ident = row.session_id[:28] if by == "session" else row.session_id[:44]
+        # Agent keys repeat the harness and model, so a cut would merge distinct rows visually.
+        ident = row.session_id[:28] if by == "session" else row.session_id if by == "agent" else row.session_id[:44]
+        if by == "session" and row.agent:
+            ident = f"{ident} [{row.agent}]"[:52]
         if by == "session" and row.model:
             ident = f"{ident} {row.model}"[:52]
         if signals:
@@ -489,20 +631,21 @@ def render(
                 )
             )
             continue
-        table.append(
-            (
-                row.harness,
-                _when(row.started),
-                ident,
-                str(row.calls),
-                _fmt(row.fresh_input),
-                _fmt(row.cache_read),
-                _fmt(row.cache_write),
-                _fmt(row.output),
-                _fmt(row.reasoning),
-                _pct(row.hit_rate),
-            )
+        cells = (
+            row.harness,
+            _when(row.started),
+            ident,
+            str(row.calls),
+            _fmt(row.fresh_input),
+            _fmt(row.cache_read),
+            _fmt(row.cache_write),
+            _fmt(row.output),
+            _fmt(row.reasoning),
+            _pct(row.hit_rate),
         )
+        if cost:
+            cells = cells[:7] + (_fmt(row.cache_write_1h),) + cells[7:] + (_cost(row),)
+        table.append(cells)
     widths = [max(len(head[i]), *(len(r[i]) for r in table)) if table else len(head[i]) for i in range(len(head))]
     fmt = "  ".join("{:<%d}" % w if i < 3 else "{:>%d}" % w for i, w in enumerate(widths))
     lines.append(fmt.format(*head))
@@ -526,9 +669,15 @@ def render(
             "(a miss = a call that re-read under half of the previous call's context; prompt/correction/re-injection "
             "signals come from Claude transcripts and Codex rollouts only, misses from every recorded route)"
         )
-    lines.append(
-        "raw provider counts; no prices applied (cache discounts differ per provider and are not verified here)"
-    )
+    if cost and not signals:
+        lines.append(
+            f"api $ {total.cost_usd:,.2f}: Anthropic list-price equivalent (writes 1.25x input for 5m, 2x for 1h); "
+            "n/a = no verified rate for the model, + = some calls unpriced; a subscription bills none of this per token"
+        )
+    else:
+        lines.append(
+            "raw provider counts; no prices applied (cache discounts differ per provider and are not verified here)"
+        )
     missing = [f"{name}: {why}" for name, why in UNRECORDED.items() if name not in READERS]
     wanted = set(harnesses)
     if missing and (not wanted or wanted & set(UNRECORDED)):
@@ -561,7 +710,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--harness", action="append", choices=sorted(READERS), help="restrict to a harness (repeatable)"
     )
     parser.add_argument(
-        "--by", choices=("session", "harness", "model"), default="session", help="grouping (default session)"
+        "--by",
+        choices=("session", "harness", "model", "agent"),
+        default="session",
+        help="grouping (default session); agent = root or subagent type per model",
     )
     parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT, help=f"rows to print (default {DEFAULT_LIMIT})")
     parser.add_argument("--json", action="store_true", help="emit JSON instead of a table")
@@ -569,6 +721,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--signals",
         action="store_true",
         help="show prompts, user-correction signals, SOP re-injections and cache misses per row",
+    )
+    parser.add_argument(
+        "--cost",
+        action="store_true",
+        help="add 1-hour cache writes and an Anthropic list-price equivalent (Anthropic models only)",
     )
     return parser
 
@@ -580,7 +737,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(to_json(rows))
     else:
-        print(render(rows, args.by, args.days, args.limit, args.harness or (), signals=args.signals))
+        print(render(rows, args.by, args.days, args.limit, args.harness or (), signals=args.signals, cost=args.cost))
     return 0
 
 

@@ -3,12 +3,15 @@ name: k-agent-public-sources
 description: Delegate source-first investigation of an EXTERNAL/public GitHub repo, library, or tool to an isolated context. Use when the question is "how does <third-party project> work" or the user gives a repo/file/directory URL to inspect. Not for the current repo/worktree and not for product/account/runtime state.
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claude_code" "agent" "k-agent-public-sources") }}"
 readonly: false
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
+omitClaudeMd: true
 skills:
   - k-public-sources
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
+
+{{ include "dot_config/exact_tmux/agent_prompts/leaf-rules.txt" }}
 
 Apply the boundary above before following the role-specific instructions below.
 

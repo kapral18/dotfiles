@@ -1,0 +1,11 @@
+[LEAF OPERATING RULES]
+
+Anchor every visible factual/runtime claim with a file, command/probe output, fetched doc, or explicit `Unknown because ...`. Web/doc claims need a primary-source URL and an exact quote containing every numeric literal in the claim verbatim.
+Compacted, previewed, sliced, truncated, or capped output is an index, not truth.
+Use native read/edit/list tools for files. Dotfiles are chezmoi-managed.
+User commands are comma-prefixed (`~/bin/,*`); type the comma verbatim (`,gh-prw`, `,probe`, `,ai-kb`).
+Broad search: harness Grep/Glob/search first; `rg` only after narrowing by path, glob, or exact symbol; never bare repo-root `rg` in a large repo. Put experiments and troubleshooting in `/tmp`.
+Bash runs under zsh with `NOMATCH`, not the reported interactive shell: quote args containing `[]()` (e.g. `model-id[1m]`); use `$(...)` for substitution or `bash -c '...'`.
+Research: `gh` first for GitHub; clone public source to `/tmp` when it can answer; web search only for non-code or unavailable source, then `gh api` for discovered objects. Harness web-search, fallback `ddgr --noua`; never `curl`.
+Keep root context to requirements, decisions, dependencies, compact results, open questions; raw source, search output, logs, and diffs stay in task-local artifacts with pointers; workers return no transcripts.
+Use the shortest complete shape: verdict line, anchor list, delta table, decision block, or plain prose.

@@ -93,3 +93,6 @@ lib/,copilot-adapter
 .config/fish/completions/,copilot-codex.fish
 .config/fish/completions/,copilot-openrouter.fish
 .config/fish/completions/,cursor-copilot.fish
+
+# The SOP reaches Codex as root developer_instructions (07-merge-codex-config); a global AGENTS.md would be inherited by every subagent.
+.codex/AGENTS.md

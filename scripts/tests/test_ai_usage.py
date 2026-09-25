@@ -349,6 +349,172 @@ class AiUsageReaderTests(unittest.TestCase):
         self.assertEqual(payload["sessions"][0]["hit_rate"], 0.9)
         self.assertIn("cursor", payload["not_measured"])
 
+    def test_SHOULD_count_subagent_transcripts_tagged_with_their_agent_type(self) -> None:
+        """WHEN a session delegates, its subagents' calls live in <session>/subagents/ and must be counted."""
+        usage = {
+            "input_tokens": 1,
+            "cache_read_input_tokens": 100,
+            "cache_creation_input_tokens": 0,
+            "output_tokens": 1,
+        }
+        root = self.home / ".claude" / "projects" / "-ws"
+        write_jsonl(
+            root / "sess.jsonl",
+            [{"type": "assistant", "requestId": "r0", "message": {"model": "claude-opus-5-5", "usage": usage}}],
+        )
+        child = root / "sess" / "subagents" / "agent-a1.jsonl"
+        write_jsonl(
+            child,
+            [
+                {"type": "user", "isSidechain": True, "message": {"role": "user", "content": "packet"}},
+                {"type": "assistant", "requestId": "r1", "message": {"model": "claude-sonnet-5", "usage": usage}},
+                {"type": "assistant", "requestId": "r2", "message": {"model": "claude-sonnet-5", "usage": usage}},
+            ],
+        )
+        child.with_suffix(".meta.json").write_text(json.dumps({"agentType": "general-purpose"}))
+        write_jsonl(
+            root / "sess" / "subagents" / "agent-a2.jsonl",
+            [{"type": "assistant", "requestId": "r3", "message": {"model": "claude-sonnet-5", "usage": usage}}],
+        )
+
+        sessions = self.core.read_claude(0)
+        by_agent = {s.agent: (s.calls, s.prompts, s.cache_read) for s in sessions}
+        self.assertEqual(by_agent, {"": (1, 0, 100), "general-purpose": (2, 0, 200), "subagent": (1, 0, 100)})
+        rows = {row.session_id: row.calls for row in self.core.group(sessions, "agent")}
+        self.assertEqual(
+            rows,
+            {
+                "claude root claude-opus-5-5": 1,
+                "claude general-purpose claude-sonnet-5": 2,
+                "claude subagent claude-sonnet-5": 1,
+            },
+        )
+        (total,) = self.core.group(sessions, "harness")
+        self.assertEqual(total.calls, 4)
+
+    def test_SHOULD_count_codex_pi_and_omp_subagents_tagged_by_role(self) -> None:
+        """WHEN Codex, Pi or OMP delegate, child records must be counted and tagged, never read as roots."""
+        total = {"input_tokens": 100, "cached_input_tokens": 90, "output_tokens": 5}
+        count = {
+            "type": "event_msg",
+            "payload": {"type": "token_count", "info": {"last_token_usage": total, "total_token_usage": total}},
+        }
+        spawn = {"subagent": {"thread_spawn": {"parent_thread_id": "p1", "agent_role": "explorer"}}}
+        day = self.home / ".codex" / "sessions" / "2026" / "09" / "06"
+        write_jsonl(
+            day / "rollout-root.jsonl", [{"type": "session_meta", "payload": {"id": "p1", "source": "cli"}}, count]
+        )
+        write_jsonl(
+            day / "rollout-child.jsonl",
+            [{"type": "session_meta", "payload": {"id": "c1", "source": spawn, "agent_role": "explorer"}}, count],
+        )
+        # Unit variants serialize as a bare string (codex protocol SubAgentSource::Review); `other` as an object.
+        write_jsonl(
+            day / "rollout-review.jsonl",
+            [{"type": "session_meta", "payload": {"id": "r1", "source": {"subagent": "review"}}}, count],
+        )
+        write_jsonl(
+            day / "rollout-guardian.jsonl",
+            [{"type": "session_meta", "payload": {"id": "g1", "source": {"subagent": {"other": "guardian"}}}}, count],
+        )
+        self.assertEqual(
+            {s.session_id: s.agent for s in self.core.read_codex(0)},
+            {"p1": "", "c1": "explorer", "r1": "review", "g1": "guardian"},
+        )
+
+        usage = {"input": 10, "output": 1, "cacheRead": 90, "cacheWrite": 0}
+        row = {"type": "message", "message": {"role": "assistant", "model": "m", "usage": usage}}
+        pi = self.home / ".pi" / "agent" / "sessions" / "ws"
+        write_jsonl(pi / "2026-09-06T10-00-00_root.jsonl", [row])
+        # Child transcripts carry no row `type` (shape observed in ~/.pi subagent-artifacts, 2026-09-19).
+        child = {"message": {"role": "assistant", "model": "m", "usage": usage}}
+        user = {"message": {"role": "user", "usage": usage}}
+        write_jsonl(
+            pi / "subagent-artifacts" / "364c1e87-a035-43c5-bb74-3b06fb49a8d5_k-agent-reviewer_transcript.jsonl",
+            [user, child],
+        )
+        write_jsonl(
+            pi
+            / "subagent-artifacts"
+            / "9f246831-d353-45cd-955f-7d58c0c4f837_k-agent-claim-verifier_0_transcript.jsonl",
+            [child],
+        )
+        # Run sessions duplicate a transcript's calls when one exists; untranscribed runs are counted once.
+        run_row = {"type": "message", "message": {"role": "assistant", "model": "m", "usage": usage}}
+        write_jsonl(
+            pi / "2026-09-06T10-00-00_root" / "364c1e87-a035-43c5-bb74-3b06fb49a8d5" / "run-0" / "session.jsonl",
+            [run_row],
+        )
+        info = {"type": "session_info", "name": "subagent-k-agent-smol-4152d2e9-2c96-4a50-a02d-9de119b27528-1"}
+        write_jsonl(
+            pi / "2026-09-06T10-00-00_root" / "34e1e654-b8a7-495c-acae-79220cd96f5a" / "run-0" / "session.jsonl",
+            [info, run_row, run_row],
+        )
+        self.assertEqual(
+            sorted((s.agent, s.calls) for s in self.core.read_pi(0)),
+            [("", 1), ("k-agent-claim-verifier", 1), ("k-agent-reviewer", 1), ("k-agent-smol", 2)],
+        )
+
+        omp = self.home / ".omp" / "agent" / "sessions" / "ws"
+        write_jsonl(omp / "2026-09-07T00-38-40_s1.jsonl", [row])
+        write_jsonl(omp / "2026-09-07T00-38-40_s1" / "KbRecall.jsonl", [row, row])
+        write_jsonl(omp / "2026-09-07T00-38-40_s1" / "KbRecall" / "__advisor.jsonl", [row])
+        # The root session's own advisor sits beside its task children.
+        write_jsonl(omp / "2026-09-07T00-38-40_s1" / "__advisor.jsonl", [row])
+        sessions = self.core.read_omp(0)
+        self.assertEqual(
+            sorted((s.agent, s.calls) for s in sessions), [("", 1), ("advisor", 1), ("advisor", 1), ("subagent", 2)]
+        )
+
+    def test_SHOULD_price_anthropic_calls_by_billing_type_only_when_asked(self) -> None:
+        """WHEN --cost is set, each call is priced at its own model's list rates with 5m/1h write multipliers."""
+        priced = {
+            "input_tokens": 10,
+            "cache_read_input_tokens": 1_000_000,
+            "cache_creation_input_tokens": 100_000,
+            "cache_creation": {"ephemeral_5m_input_tokens": 60_000, "ephemeral_1h_input_tokens": 40_000},
+            "output_tokens": 10_000,
+        }
+        zero = {"input_tokens": 0, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0, "output_tokens": 0}
+        write_jsonl(
+            self.home / ".claude" / "projects" / "-ws" / "priced.jsonl",
+            [
+                {"type": "assistant", "requestId": "r1", "message": {"model": "claude-opus-5-5", "usage": priced}},
+                {"type": "assistant", "requestId": "r2", "message": {"model": "<synthetic>", "usage": zero}},
+            ],
+        )
+        write_jsonl(
+            self.home / ".claude" / "projects" / "-ws" / "unpriced.jsonl",
+            [{"type": "assistant", "requestId": "r1", "message": {"model": "claude-unknown", "usage": priced}}],
+        )
+        write_jsonl(
+            self.home / ".claude" / "projects" / "-ws" / "dated.jsonl",
+            [
+                {
+                    "type": "assistant",
+                    "requestId": "r1",
+                    "message": {"model": "claude-opus-5-5-20260101", "usage": priced},
+                }
+            ],
+        )
+        sessions = {s.session_id: s for s in self.core.read_claude(0)}
+        session = sessions["priced"]
+        # Opus 5.5 at $4 in / $20 out / $0.20 read: 10*4 + 1e6*0.2 + 60k*1.25*4 + 40k*2*4 + 10k*20.
+        self.assertAlmostEqual(session.cost_usd, 1.02004)
+        self.assertEqual((session.cache_write_1h, session.priced_calls, session.calls), (40_000, 2, 2))
+        self.assertAlmostEqual(sessions.pop("dated").cost_usd, 1.02004)
+
+        text = self.core.render(list(sessions.values()), "session", 7, 40, ["claude"], cost=True)
+        self.assertIn("write 1h", text)
+        self.assertIn("1.02", text)
+        self.assertIn("n/a", text)
+        self.assertIn("api $ 1.02", text)
+        plain = self.core.render(list(sessions.values()), "session", 7, 40, ["claude"])
+        self.assertNotIn("$", plain)
+        # --signals drops the cost columns, so it drops the cost summary too.
+        signals = self.core.render(list(sessions.values()), "session", 7, 40, ["claude"], signals=True, cost=True)
+        self.assertNotIn("$", signals)
+
     def test_launcher_and_completion_cover_every_flag(self) -> None:
         launcher = LAUNCHER.read_text()
         self.assertIn('lib="$HOME/lib/,ai-usage/main.py"', launcher)

@@ -8,6 +8,7 @@
   },
   "model": "claude-opus-5-5[1m]",
   "effortLevel": "high",
+  "autoCompactWindow": 400000,
   "disableClaudeAiConnectors": true,
   "agentPushNotifEnabled": true,
   "tui": "fullscreen",

@@ -8,6 +8,8 @@ features = { multi_agent = false }
 developer_instructions = """
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
 
+{{ include "readonly_AGENTS.md" }}
+
 Implement only the settled packet in the owned paths. Return produced or blocked; do not run acceptance checks.
 
 Read and follow ~/.agents/skills/k-build/references/implement-worker.md.

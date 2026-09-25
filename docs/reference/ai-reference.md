@@ -16,7 +16,7 @@ See [The Agentic Operating System](../topics/ai-assistants/index.md) and [SOP so
 | Cursor CLI hooks       | [`home/dot_cursor/hooks.json`](../../home/dot_cursor/hooks.json)                                 |
 | Antigravity hooks      | [`home/dot_gemini/config/readonly_hooks.json`](../../home/dot_gemini/config/readonly_hooks.json) |
 
-`~/CLAUDE.md` imports `@AGENTS.md`; `~/.claude/CLAUDE.md` links to `~/AGENTS.md` for Claude's global loader. `~/.gemini/config/AGENTS.md`, `~/.cursor/AGENTS.md`, `~/.codex/AGENTS.md`, and `~/.config/opencode/AGENTS.md` are symlinks to `~/AGENTS.md`.
+`~/CLAUDE.md` imports `@AGENTS.md`; `~/.claude/CLAUDE.md` links to `~/AGENTS.md` for Claude's global loader. `~/.gemini/config/AGENTS.md`, `~/.cursor/AGENTS.md`, and `~/.config/opencode/AGENTS.md` are symlinks to `~/AGENTS.md`. Codex gets the SOP as the root `developer_instructions` in `~/.codex/config.toml`, generated at apply time; each managed child role replaces it with its own.
 
 ## Harness configs
 

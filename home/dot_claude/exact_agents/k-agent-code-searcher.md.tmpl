@@ -4,11 +4,14 @@ description: Delegate SCSI semantic code investigation or base-context gathering
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claude_code" "agent" "k-agent-code-searcher") }}"
 readonly: false
 tools: Read, Grep, Glob, Bash, mcp__scsi-main, mcp__scsi-local
+omitClaudeMd: true
 skills:
   - k-semantic-code-search
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
+
+{{ include "dot_config/exact_tmux/agent_prompts/leaf-rules.txt" }}
 
 Apply the boundary above before following the role-specific instructions below.
 

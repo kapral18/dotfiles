@@ -8,6 +8,8 @@ features = { multi_agent = false }
 developer_instructions = """
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
 
+{{ include "readonly_AGENTS.md" }}
+
 Resolve only the bounded question assigned by the root. This native fallback is a leaf, never another orchestrator.
 
 Read and follow ~/.agents/skills/k-review/references/code-searcher.md.

@@ -3,9 +3,12 @@ name: Plan
 description: Software architect agent for designing implementation plans; returns step-by-step plans and tradeoffs without editing.
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claude_code" "agent" "Plan") }}"
 tools: Read, Grep, Glob, Bash
+omitClaudeMd: true
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
+
+{{ include "dot_config/exact_tmux/agent_prompts/leaf-rules.txt" }}
 
 Apply the boundary above before following the role-specific instructions below.
 

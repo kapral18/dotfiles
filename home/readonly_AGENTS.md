@@ -347,6 +347,7 @@ Keep the packet to those fields; the leaf profile already carries the leaf contr
 Pass needed constraints explicitly, not the whole SOP, instruction tree, skill catalog, or parent transcript.
 Use fresh worker context where supported; disclose runtime-injected instructions; a marker does not prove isolation.
 Parallelize only independent work with ready inputs and disjoint ownership; sequence the rest instead of leaving workers waiting for siblings. Ownership covers the path set and mutable shared state (git index, generated outputs, lockfiles); one writer per worktree unless targets are proven independent.
+Give each independent implementation task its own implement packet; do not chain unrelated tasks through one worker.
 The root validates return structure, ownership, and artifact availability without repeating semantic review. Workers return `produced` or `blocked` with artifact pointers; consume a child result once: a file pointer means read the file once, an inline body means do not re-read the file.
 Keep root context to requirements, decisions, dependencies, compact results, open questions;
 raw source, search output, logs, and diffs stay in task-local artifacts with pointers; workers return no transcripts.

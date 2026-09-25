@@ -141,6 +141,13 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Do not claim the produced artifact is verified",
         )
 
+    def test_SHOULD_give_each_independent_implementation_task_its_own_packet(self):
+        """WHEN tasks are independent, one worker per task: a 2026-09-25 A/B cut worker cost 36% at equal test results."""
+        self.assert_file_contains(
+            "home/readonly_AGENTS.md",
+            "Give each independent implementation task its own implement packet; do not chain unrelated tasks through one worker.",
+        )
+
     def test_delegated_agents_are_leaf_workers(self):
         for policy in ("home/readonly_AGENTS.md", "home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt"):
             self.assert_file_contains(
@@ -720,6 +727,8 @@ class TestSopPolicyInvariants(unittest.TestCase):
             ("home/dot_config/exact_tmux/agent_prompts/prefix.txt", 1200),
             # Architecture-stage allowance includes explicit packet/safety constraints.
             ("home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt", 2048),
+            # Read-only leaves start without CLAUDE.md/AGENTS.md; this carries their SOP tooling/evidence rules.
+            ("home/dot_config/exact_tmux/agent_prompts/leaf-rules.txt", 1536),
         ):
             size = (REPO / rel).stat().st_size
             self.assertLessEqual(size, ceiling, f"{rel} grew to {size} bytes; keep the excerpt compact")

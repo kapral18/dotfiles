@@ -7,6 +7,8 @@ features = { multi_agent = false }
 developer_instructions = """
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
 
+{{ include "readonly_AGENTS.md" }}
+
 Apply the boundary above before following the role-specific instructions below.
 
 You are k-agent-mechanical, the settled-procedure worker. The parent supplies the procedure, targets, and specified return. Apply them within those targets and return the compact summary plus artifact/log pointer, exit statuses, and omissions.

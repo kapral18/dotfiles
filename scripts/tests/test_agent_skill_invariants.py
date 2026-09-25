@@ -527,6 +527,53 @@ class TestAgentSkillInvariants(unittest.TestCase):
                 with self.subTest(agent=agent, harness=harness, presence="forbidden"):
                     self.assertNotIn(agent, profiles[harness])
 
+    def test_SHOULD_start_read_only_claude_leaves_without_claude_md(self):
+        """WHEN a Claude leaf cannot edit, it takes everything from the packet and the verified leaf rules."""
+        agents = REPO / "home/dot_claude/exact_agents"
+        omitted = set()
+        for profile in sorted(agents.glob("*.md.tmpl")):
+            with self.subTest(profile=profile.name):
+                front = profile.read_text(encoding="utf-8").split("---", 2)[1]
+                tools_line = re.search(r"^tools:.*$", front, re.MULTILINE).group(0)
+                writes = bool(re.search(r"\b(Edit|Write)\b", tools_line))
+                if "omitClaudeMd: true" in front.splitlines():
+                    self.assertFalse(writes, "a write-capable profile must keep its repository CLAUDE.md")
+                    omitted.add(profile.name.removesuffix(".md.tmpl"))
+        read_only = {
+            p.name.removesuffix(".md.tmpl")
+            for p in agents.glob("*.md.tmpl")
+            if not re.search(r"^tools:.*\b(Edit|Write)\b", p.read_text(encoding="utf-8"), re.MULTILINE)
+        }
+        self.assertEqual(read_only - omitted, set())
+
+    def test_SHOULD_give_read_only_leaves_the_rules_excerpt_and_writers_the_full_sop(self):
+        """WHEN a leaf starts without the SOP, the verified leaf-rules excerpt replaces it; Codex writers keep the SOP."""
+        rules = '{{ include "dot_config/exact_tmux/agent_prompts/leaf-rules.txt" }}'
+        sop = '{{ include "readonly_AGENTS.md" }}'
+        for profile in sorted((REPO / "home/dot_claude/exact_agents").glob("*.md.tmpl")):
+            with self.subTest(profile=profile.name):
+                text = profile.read_text(encoding="utf-8")
+                self.assertEqual(rules in text, "omitClaudeMd: true" in text.split("---", 2)[1].splitlines())
+        codex = REPO / "home/dot_codex/exact_agents"
+        writers = {"default", "worker", "k-agent-mechanical"}
+        for role in sorted(codex.glob("readonly_*.toml.tmpl")):
+            name = role.name.removeprefix("readonly_").removesuffix(".toml.tmpl")
+            with self.subTest(role=name):
+                text = role.read_text(encoding="utf-8")
+                self.assertEqual((sop in text, rules in text), (name in writers, name not in writers))
+        # Pi (inheritGlobalContext: false) and OMP (runtime-parity.ts drops the inherited SOP) leaves start without it too.
+        for agents in ("home/dot_pi/agent/exact_agents", "home/dot_omp/private_agent/exact_agents"):
+            for profile in sorted((REPO / agents).glob("*.md.tmpl")):
+                with self.subTest(profile=f"{agents}/{profile.name}"):
+                    text = profile.read_text(encoding="utf-8")
+                    front = text.split("---", 2)[1]
+                    writes = bool(re.search(r"^tools:.*\b(edit|write)\b", front, re.MULTILINE))
+                    self.assertEqual(rules in text, not writes)
+        # The SOP is embedded in a TOML basic multi-line string for the writer roles.
+        body = (REPO / "home/readonly_AGENTS.md").read_text(encoding="utf-8")
+        self.assertNotIn("\\", body)
+        self.assertNotIn('"""', body)
+
     def test_skill_description_with_colon_is_quoted(self):
         skills_root = REPO / "home/exact_dot_agents/exact_skills"
         description_re = re.compile(r"^description:\s+(?P<value>[^\"'\n].*:.*)$", re.MULTILINE)
@@ -680,6 +727,13 @@ class TestAgentSkillInvariants(unittest.TestCase):
             render_chezmoi_template(REPO / "home/dot_claude/settings.llama-cpp.qwen3.6.json.tmpl", is_work=False)
         )
         self.assertEqual(qwen36_personal_settings["autoCompactWindow"], 200000)
+
+    def test_SHOULD_compact_cloud_claude_sessions_and_subagents_at_400k(self):
+        """WHEN cloud Claude context passes 400k, it compacts; the llama.cpp --settings files keep their own windows."""
+        for name in ("settings.personal.json", "settings.work.json"):
+            with self.subTest(settings=name):
+                settings = json.loads((REPO / "home/dot_claude" / name).read_text(encoding="utf-8"))
+                self.assertEqual(settings["autoCompactWindow"], 400000)
 
     def test_ai_docs_track_current_runtime_contracts(self):
         self.assert_file_not_contains(

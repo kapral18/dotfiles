@@ -3,9 +3,12 @@ name: Explore
 description: Read-only search agent for broad fan-out searches; locates code and reports conclusions without editing.
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claude_code" "agent" "Explore") }}"
 tools: Read, Grep, Glob, Bash
+omitClaudeMd: true
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
+
+{{ include "dot_config/exact_tmux/agent_prompts/leaf-rules.txt" }}
 
 Apply the boundary above before following the role-specific instructions below.
 

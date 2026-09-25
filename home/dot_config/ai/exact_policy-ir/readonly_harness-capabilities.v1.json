@@ -18,7 +18,7 @@
       "harness": "codex",
       "version_evidence": "codex 0.146.0: hooks.json PreToolUse matcher 'spawn_agent' rewrote a profile-less explorer spawn to gpt-5.4/high while the parent ran gpt-5.5, confirmed in the child rollout turn_context — probed 2026-08-02. updatedInput needs permissionDecision:allow.",
       "instruction_entrypoints": [
-        "home/dot_codex/symlink_AGENTS.md -> ../AGENTS.md"
+        "home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl -> ~/.codex/config.toml developer_instructions (from home/readonly_AGENTS.md)"
       ],
       "hook_support": "mutation",
       "model_mutable": true,

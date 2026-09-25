@@ -301,10 +301,11 @@ The compiled ownership model lives in `docs/topics/ai-assistants/system-prompt/s
 | `home/dot_claude/symlink_CLAUDE.md`            | `~/.claude/CLAUDE.md`          |
 | `home/dot_gemini/config/symlink_AGENTS.md`     | `~/.gemini/config/AGENTS.md`   |
 | `home/dot_cursor/symlink_AGENTS.md`            | `~/.cursor/AGENTS.md`          |
-| `home/dot_codex/symlink_AGENTS.md`             | `~/.codex/AGENTS.md`           |
 | `home/dot_config/opencode/symlink_AGENTS.md`   | `~/.config/opencode/AGENTS.md` |
 | `home/dot_omp/private_agent/symlink_AGENTS.md` | `~/.omp/agent/AGENTS.md`       |
 | `home/exact_dot_agents/exact_skills/`          | `~/.agents/skills/`            |
+
+Codex has no `AGENTS.md` entrypoint: `07-merge-codex-config` writes the SOP into `~/.codex/config.toml` as the root `developer_instructions`; each managed child role replaces it with its own.
 
 Rules:
 

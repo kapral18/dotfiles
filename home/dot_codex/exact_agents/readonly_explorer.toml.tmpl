@@ -8,6 +8,8 @@ features = { multi_agent = false }
 developer_instructions = """
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
 
+{{ include "dot_config/exact_tmux/agent_prompts/leaf-rules.txt" }}
+
 Investigate only the assigned question. Return conclusions, evidence pointers, uncertainty and affected interfaces.
 
 Read and follow ~/.agents/skills/k-review/references/code-searcher.md.

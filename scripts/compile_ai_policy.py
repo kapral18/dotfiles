@@ -65,10 +65,11 @@ CHECKS_BY_RULE_ID = {
     "sop.5.3.response-shape": "scripts/tests/test_agent_prompt_wrap.py",
 }
 # Verified SOP excerpts: every sentence in these files must appear verbatim in the core SOP, so the
-# per-prompt reinforcement and the subagent leaf boundary can never drift from the source of truth.
+# per-prompt reinforcement, the subagent leaf boundary and the read-only leaf rules can never drift from the source of truth.
 EXCERPT_PATHS = (
     Path("home/dot_config/exact_tmux/agent_prompts/prefix.txt"),
     Path("home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt"),
+    Path("home/dot_config/exact_tmux/agent_prompts/leaf-rules.txt"),
 )
 _EXCERPT_SENTENCE_SPLIT = re.compile(r"(?<=[.;:!?])\s+")
 _EXCERPT_MIN_FRAGMENT_CHARS = 12

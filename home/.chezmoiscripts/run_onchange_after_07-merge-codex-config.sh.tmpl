@@ -9,6 +9,8 @@ set -euo pipefail
 {{- end }}
 # mcp_servers hash: {{ include ".chezmoidata/mcp_servers.yaml" | sha256sum }}
 # inject_mcp_into_codex_toml.py hash: {{ include "../scripts/inject_mcp_into_codex_toml.py" | sha256sum }}
+# SOP (root developer_instructions) hash: {{ include "readonly_AGENTS.md" | sha256sum }}
+# inject_codex_instructions.py hash: {{ include "../scripts/inject_codex_instructions.py" | sha256sum }}
 # mcp_registry.py hash: {{ include "../scripts/mcp_registry.py" | sha256sum }}
 # yaml_parser.py hash: {{ include "../scripts/yaml_parser.py" | sha256sum }}
 # chezmoi_lib.sh hash: {{ include "../scripts/chezmoi_lib.sh" | sha256sum }}
@@ -28,8 +30,11 @@ src="$(chezmoi_pick_src "$is_work" "$source_dir" \
 
 yaml_src="$source_dir/.chezmoidata/mcp_servers.yaml"
 inject="$source_dir/../scripts/inject_mcp_into_codex_toml.py"
+# The SOP reaches the Codex root as developer_instructions, not ~/.codex/AGENTS.md, so child roles do not inherit it.
+sop="$source_dir/readonly_AGENTS.md"
+instructions="$source_dir/../scripts/inject_codex_instructions.py"
 
-desired="$(python3 "$inject" "$src" "$yaml_src" "$is_work" codex "$target")"
+desired="$(python3 "$inject" "$src" "$yaml_src" "$is_work" codex "$target" | python3 "$instructions" "$sop")"
 chezmoi_write_if_changed "$desired" "$target" 0600
 chezmoi_record_artifact --id codex-config \
   --producer 07-merge-codex-config --profile "$profile" \
@@ -41,7 +46,9 @@ chezmoi_record_artifact --id codex-config \
   --exclude-key '^mcp_servers\.[^.]+$::^default_tools_approval_mode$' \
   --input "$src" \
   --input "$yaml_src" \
+  --input "$sop" \
   --transform "$inject" \
+  --transform "$instructions" \
   --transform "$source_dir/../scripts/mcp_registry.py" \
   --transform "$source_dir/../scripts/yaml_parser.py" \
   --transform "$source_dir/../scripts/chezmoi_lib.sh" \

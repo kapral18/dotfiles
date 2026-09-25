@@ -4,9 +4,12 @@ description: Operate ,ai-kb in an isolated context. Judge staged per-turn recall
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "claude_code" "agent" "k-agent-smol") }}"
 readonly: false
 tools: Bash, Read
+omitClaudeMd: true
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
+
+{{ include "dot_config/exact_tmux/agent_prompts/leaf-rules.txt" }}
 
 Apply the boundary above before following the role-specific instructions below.
 
