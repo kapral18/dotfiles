@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
 .ruff_cache/
+# Lean/Lake build output (e.g. an accidental in-tree build of the ,formal FormalKit)
+.lake/
 .DS_Store
 mprocs.log
 .agent-test-artifacts/

@@ -4,25 +4,34 @@ This is a catalog of agent conduct failures that have happened in real sessions 
 Each entry names a single failure mode, the falsifier that would have caught it, and the system change that prevents its recurrence.
 The list is intentionally small: anti-patterns grouped by category.
 
-This catalog is not a skill: it has no procedure to invoke. `AGENTS.md` §2.4 (Self-Claims) names it as diagnostic input, not authority to broaden the task. Sessions load it by path when a mode below reproduces, so its falsifier is at hand.
+This catalog is not a skill: it has no procedure to invoke.
+`AGENTS.md` §2.4 (Self-Claims) names it as diagnostic input, not authority to broaden the task.
+Sessions load it by path when a mode below reproduces, so its falsifier is at hand.
 
 ## Identity / Repository resolution
 
 ### Identity mismatch hallucination
 
-**Mode.** Session runs `gh pr view 284530` (or similar) and gets `Could not resolve to a PullRequest`. The agent concludes "no such PR exists" or "the repo isn't authed" without verifying `gh auth status`.
+**Mode.** Session runs `gh pr view 284530` (or similar) and gets `Could not resolve to a PullRequest`.
+The agent concludes "no such PR exists" or "the repo isn't authed" without verifying `gh auth status`.
 
 **Falsifier.** Run `gh auth status` once per session start. The authenticated principal is a fact, not a hypothesis.
 
-**Prevention.** `~/.agents/hooks/session_context.py` injects a `### GitHub identity` line at the top of every SessionStart context block, populated from `gh api user --jq .login` with a 2-second timeout. The line is plain text and fails open — empty output means `gh` was unavailable, not that auth failed.
+**Prevention.**
+`~/.agents/hooks/session_context.py` injects a `### GitHub identity` line at the top of every SessionStart context block, populated from `gh api user --jq .login` with a 2-second timeout.
+The line is plain text and fails open — empty output means `gh` was unavailable, not that auth failed.
 
 ### PR number misread
 
-**Mode.** The branch suffix `259250` is read as a PR number; `gh pr view 259250` returns "could not resolve"; the agent falls back to "no PR, review the local branch" without trying the standard `gh pr view` (no args) or `,gh-prw` fallbacks.
+**Mode.**
+The branch suffix `259250` is read as a PR number; `gh pr view 259250` returns "could not resolve";
+the agent falls back to "no PR, review the local branch" without trying the standard `gh pr view` (no args) or `,gh-prw` fallbacks.
 
-**Falsifier.** `,gh-prw` already probes the current branch + commit SHA and is the first check. If it cannot resolve the user's claim, load and follow the complete `Targeting` fallback chain in `~/.agents/skills/k-github/SKILL.md` before declaring that no PR exists.
+**Falsifier.** `,gh-prw` already probes the current branch + commit SHA and is the first check.
+If it cannot resolve the user's claim, load and follow the complete `Targeting` fallback chain in `~/.agents/skills/k-github/SKILL.md` before declaring that no PR exists.
 
-**Prevention.** `k-github/SKILL.md` Targeting section documents the chain and explicitly warns against declaring "no PR exists" before step 5.
+**Prevention.**
+`k-github/SKILL.md` Targeting section documents the chain and explicitly warns against declaring "no PR exists" before step 5.
 
 ## Verdict prematureness
 
@@ -31,9 +40,12 @@ This catalog is not a skill: it has no procedure to invoke. `AGENTS.md` §2.4 (S
 **Mode.**
 Agent states "merge-ready, no surviving findings" on the first response of a PR review, without reading the live reviewer conversations, the inline reviewer comments, or the PR's CI check enumeration.
 
-**Falsifier.** A `Verdict:` line is only honest after `gh pr checks`, the GraphQL reviewThreads pull, and the per-comment author-type classification have all completed on the current head SHA.
+**Falsifier.**
+A `Verdict:` line is only honest after `gh pr checks`, the GraphQL reviewThreads pull, and the per-comment author-type classification have all completed on the current head SHA.
 
-**Prevention.** `k-review/SKILL.md` adds a "Verdict Gate" section that names those three checks as the precondition for any verdict; earlier responses are required to be status ledgers without the verdict word.
+**Prevention.**
+`k-review/SKILL.md` adds a "Verdict Gate" section that names those three checks as the precondition for any verdict;
+earlier responses are required to be status ledgers without the verdict word.
 
 ### Positive-delta tunnel vision
 
@@ -43,41 +55,60 @@ Agent states "merge-ready, no surviving findings" on the first response of a PR 
 Before implementation or review verdict, state the old rule, new rule, intended differences, preserved differences, and evidence for each.
 A proposed fix whose semantic delta includes extra differences is not complete until those differences are classified as requested, preserved, or blocked.
 
-**Prevention.** `home/readonly_AGENTS.md`, `k-spec`, `k-build`, `k-code-quality`, `k-code-quality-tests`, and `k-review` all consume the shared semantic-delta contract instead of adding per-domain checklists.
+**Prevention.**
+`home/readonly_AGENTS.md`, `k-spec`, `k-build`, `k-code-quality`, `k-code-quality-tests`, and `k-review` all consume the shared semantic-delta contract instead of adding per-domain checklists.
 
 ## Probe budget
 
 ### Probe-budget exhaustion
 
-**Mode.** Agent runs 5+ probe commands (mostly Jest or `node -e`) and they all return "fail" because the agent's mental model of the artifact under test is wrong (regex arithmetic off-by-one, harness envelope shapes different from memory, etc.). The agent keeps probing instead of re-reading the source.
+**Mode.**
+Agent runs 5+ probe commands (mostly Jest or `node -e`) and they all return "fail" because the agent's mental model of the artifact under test is wrong (regex arithmetic off-by-one, harness envelope shapes different from memory, etc.).
+The agent keeps probing instead of re-reading the source.
 
 **Falsifier.** Reading the source once beats a fifth probe.
 Specifically for the pattern of "an assertion about how the code behaves keeps returning the opposite of what I expect" —
 the answer is "go read the source, character by character if needed."
 
-**Prevention.** `~/.agents/hooks/correction_detector.py` carries a `probe-budget-exhausted` signal: it reads a session-scoped JSONL ledger (`/tmp/specs/<workspace>/<session_key>.probe-ledger.jsonl`) and returns the signal when 3+ of the last 8 entries are failures recorded within the last 30 minutes. The companion `,probe` helper at `~/bin/,probe` records failures via `,probe fail "<summary>"`, chained onto the failing command; passes are not recorded. The session-injected `[SOP REINFORCEMENT — verified excerpt; the full SOP stays authoritative]` prefix (`~/.config/tmux/agent_prompts/prefix.txt`) carries the recording instruction, so the producer side is wired on every harness. When the per-turn `perturn_recall.py` hook sees the signal, it injects a "re-read the source" note on the next prompt.
+**Prevention.**
+`~/.agents/hooks/correction_detector.py` carries a `probe-budget-exhausted` signal:
+it reads a session-scoped JSONL ledger (`/tmp/specs/<workspace>/<session_key>.probe-ledger.jsonl`) and returns the signal when 3+ of the last 8 entries are failures recorded within the last 30 minutes.
+The companion `,probe` helper at `~/bin/,probe` records failures via `,probe fail "<summary>"`, chained onto the failing command;
+passes are not recorded.
+The session-injected `[SOP REINFORCEMENT — verified excerpt; the full SOP stays authoritative]` prefix (`~/.config/tmux/agent_prompts/prefix.txt`) carries the recording instruction, so the producer side is wired on every harness.
+When the per-turn `perturn_recall.py` hook sees the signal, it injects a "re-read the source" note on the next prompt.
 
-The helper resolves the session key through `,agent-memory status --json`, passing the harness session id when `CLAUDE_SESSION_ID` / `CODEX_SESSION_ID` / `CURSOR_SESSION_ID` is set. In practice most shells expose none of those variables, so entries land in the shared `ad-hoc.probe-ledger.jsonl` for the workspace. The reader closes that gap: when the session-keyed ledger is missing or empty, `probe_budget_signal` falls back to the `ad-hoc` ledger under the same 30-minute failure window, so shell-recorded probes still drive the hint while another session's stale failures cannot fire it.
+The helper resolves the session key through `,agent-memory status --json`, passing the harness session id when `CLAUDE_SESSION_ID` / `CODEX_SESSION_ID` / `CURSOR_SESSION_ID` is set.
+In practice most shells expose none of those variables, so entries land in the shared `ad-hoc.probe-ledger.jsonl` for the workspace.
+The reader closes that gap: when the session-keyed ledger is missing or empty, `probe_budget_signal` falls back to the `ad-hoc` ledger under the same 30-minute failure window, so shell-recorded probes still drive the hint while another session's stale failures cannot fire it.
 
-The consumer is wired on every harness: Cursor, Claude, Codex, and OpenCode run the shared `perturn_recall.py`; the pi/omp `ai-kb-recall.ts` mirrors implement the same signal with identical thresholds; Antigravity, which has no user-prompt hook, receives the note through the premise-nudge `PreInvocation` drain.
+The consumer is wired on every harness: Cursor, Claude, Codex, and OpenCode run the shared `perturn_recall.py`;
+the pi/omp `ai-kb-recall.ts` mirrors implement the same signal with identical thresholds;
+Antigravity, which has no user-prompt hook, receives the note through the premise-nudge `PreInvocation` drain.
 
 ## Argument-by-tool vs. argument-by-text
 
 ### Refusing a direct tool directive in prose
 
-**Mode.** The user issues a single-tool directive (e.g. "just run `gh pr view`", "trust me, try without args"). The agent argues in prose about why the tool might not work, listing edge cases, instead of running the requested tool first.
+**Mode.** The user issues a single-tool directive (e.g. "just run `gh pr view`", "trust me, try without args").
+The agent argues in prose about why the tool might not work, listing edge cases, instead of running the requested tool first.
 
 **Falsifier.** Directives are inputs.
 The right response is to run the directive, report what the tool returned, and only then explain the result.
 If the tool returns a failure, that is evidence to share, not a hypothesis to defend before the run.
 
-**Prevention.** No automated hook today; flagged by `correction_detector.py`'s explicit-claim patterns ("you guessed", "instead of testing"). The agents that fall into this mode produce a recognizable verb-heavy prose paragraph before any tool call; that signature is what the user has historically flagged with "are you stupid". Treat the flag as a system bug, not as a personal attack.
+**Prevention.**
+No automated hook today; flagged by `correction_detector.py`'s explicit-claim patterns ("you guessed", "instead of testing").
+The agents that fall into this mode produce a recognizable verb-heavy prose paragraph before any tool call;
+that signature is what the user has historically flagged with "are you stupid". Treat the flag as a system bug, not as a personal attack.
 
 ## Source-claim drift
 
 ### Stating external behavior without anchoring
 
-**Mode.** Agent names a third-party API contract, OS behavior, or library parameter set from memory rather than reading the artifact, and proceeds on the remembered shape. Examples: Monaco `IKeyboardEvent` semantics, keycode-vs-key handling, Bash `set -e` and `NOMATCH` interaction.
+**Mode.**
+Agent names a third-party API contract, OS behavior, or library parameter set from memory rather than reading the artifact, and proceeds on the remembered shape.
+Examples: Monaco `IKeyboardEvent` semantics, keycode-vs-key handling, Bash `set -e` and `NOMATCH` interaction.
 
 **Falsifier.** SOP §2.2 "Resolve identity before semantics" already mandates this.
 Anchoring means: read the source, run a probe, or quote a fetched doc with the exact verbatim phrase.
@@ -90,17 +121,24 @@ The SOP already enforces this; no setup change needed beyond acknowledging that 
 
 ### Comma-CLI name stripped in prose
 
-**Mode.** User commands are comma-prefixed executables (`~/bin/,gh-prw`, `,probe`, `,ai-kb`). A session runs `,gh-prw` correctly in argv yet writes `gh-prw` in chat prose and tool-call descriptions, normalizing the leading comma away as punctuation because the remainder looks like a `gh` helper. The same slip pairs with flag mashing: `--json` passed to `,gh-prw`, whose surface is `--number`/`--url` only.
+**Mode.** User commands are comma-prefixed executables (`~/bin/,gh-prw`, `,probe`, `,ai-kb`).
+A session runs `,gh-prw` correctly in argv yet writes `gh-prw` in chat prose and tool-call descriptions, normalizing the leading comma away as punctuation because the remainder looks like a `gh` helper.
+The same slip pairs with flag mashing: `--json` passed to `,gh-prw`, whose surface is `--number`/`--url` only.
 
-**Falsifier.** The helper's `--help` and `k-github/SKILL.md` spell the name verbatim; a comma-less mention contradicts source already in context. For flags, SOP §2.2 already mandates reading `--help` before use.
+**Falsifier.**
+The helper's `--help` and `k-github/SKILL.md` spell the name verbatim; a comma-less mention contradicts source already in context.
+For flags, SOP §2.2 already mandates reading `--help` before use.
 
-**Prevention.** No automated hook today. The comma-verbatim rule lives in SOP §4 (`User commands are comma-prefixed ... type the comma verbatim`); `prefix.txt` does not re-inject it. Flagged only when a session visibly strips the comma in prose or argv.
+**Prevention.** No automated hook today.
+The comma-verbatim rule lives in SOP §4 (`User commands are comma-prefixed ... type the comma verbatim`);
+`prefix.txt` does not re-inject it. Flagged only when a session visibly strips the comma in prose or argv.
 
 ## Hook surface debt
 
 ### Worker runs checks through bash
 
-**Mode.** Workers MUST NOT run verification, yet tool allowlists include `bash`, so a worker can run acceptance checks or lint-to-green through a shell command that no hook classifies as verification work.
+**Mode.**
+Workers MUST NOT run verification, yet tool allowlists include `bash`, so a worker can run acceptance checks or lint-to-green through a shell command that no hook classifies as verification work.
 
 **Falsifier.** The SOP §3.7 leaf contract already states the ban; the gap is enforcement, not wording.
 
@@ -108,9 +146,13 @@ The SOP already enforces this; no setup change needed beyond acknowledging that 
 
 ### Premise_nudge misses its target
 
-**Mode.** Premise-nudge fires when the agent fires a destructive or premise-bearing command (e.g. `git stash`, `git clean -fd`, `--force` push). It rides an `additionalContext` note along with the call so the nudge lands at the step that depends on the premise rather than at the end of the turn. A blocked command would be worse than an unverified one, so the hook does **not** block.
+**Mode.**
+Premise-nudge fires when the agent fires a destructive or premise-bearing command (e.g. `git stash`, `git clean -fd`, `--force` push).
+It rides an `additionalContext` note along with the call so the nudge lands at the step that depends on the premise rather than at the end of the turn.
+A blocked command would be worse than an unverified one, so the hook does **not** block.
 
-**Falsifier.** The premise is part of the command in `premise_nudge.py`'s PREMISE_PATTERNS tuple. Patterns miss when a verb is added (e.g. a new git flag) or the harness envelope differs.
+**Falsifier.** The premise is part of the command in `premise_nudge.py`'s PREMISE_PATTERNS tuple.
+Patterns miss when a verb is added (e.g. a new git flag) or the harness envelope differs.
 
 **Prevention.**
 When premise-nudge fails to fire on what looked like a destructive command, append the missing verb and a matching pattern to PREMISE_PATTERNS; the hook is intentionally pattern-additive.

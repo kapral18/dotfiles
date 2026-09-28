@@ -57,18 +57,27 @@ Low-risk work needs only its applicable judgment. Specialists consume shared evi
 Do not chain finder, audit, adversarial, fresh-eyes, or post-review passes. Do not invoke convergence automatically.
 Collect scope-level evidence in Understand; produce known fixes within the current packet's write scope (`~/.agents/skills/k-review/references/authorship.md`) before entering Verify.
 Research packets return compact evidence, not transcripts. Direct deterministic checks require no mechanical agent.
-Launch one strong review subagent using `~/.agents/skills/k-review/references/reviewer-worker.md` (the `k-agent-review-worker` or `k-agent-reviewer` profile as exposed by the active harness, or the active harness's generic review-category type carrying that contract where neither named profile exists) before any final judgment, in every `k-review` mode; the light path routed to `k-light-review` uses its own change-auditor packet instead. Pass the copied selected criteria and mode lens, not a router or roster. Per-harness profile names live in `~/.config/ai/agent-bands.v1.json` → `harnesses.<h>.agents`.
+Launch one strong review subagent using `~/.agents/skills/k-review/references/reviewer-worker.md` (the `k-agent-review-worker` or `k-agent-reviewer` profile as exposed by the active harness, or the active harness's generic review-category type carrying that contract where neither named profile exists) before any final judgment, in every `k-review` mode; the light path routed to `k-light-review` uses its own change-auditor packet instead.
+Pass the copied selected criteria and mode lens, not a router or roster.
+Per-harness profile names live in `~/.config/ai/agent-bands.v1.json` → `harnesses.<h>.agents`.
 This router and the selected mode file describe the same required packet, not additive launches.
 The root MUST NOT substitute its own inline review for that packet absent an explicit user no-delegation instruction.
 If the required lane or tool is unavailable, report blocked; do not silently fall back to an inline review.
-The root still owns scope, scope-level evidence, deterministic checks, integration, and terminal synthesis; the substantive review judgment executes in the worker.
-Root read bound: until the review packet returns, the root reads only scope-level evidence: `git status`, `git diff --stat` / `--name-only` / `--diff-filter=D --stat`, `git log --oneline`, authorship probes, check receipts, PR discussion and referenced artifacts needed for named material questions, and the patch it writes to a file for the packet.
-The root MUST NOT read diff hunks, changed-file bodies, callers, or blame output before that packet returns; those reads are the worker's mechanics and travel in the packet, not in root context.
+The root still owns scope, scope-level evidence, deterministic checks, integration, and terminal synthesis;
+the substantive review judgment executes in the worker.
+Root read bound: until the review packet returns, the root reads only scope-level evidence:
+`git status`, `git diff --stat` / `--name-only` / `--diff-filter=D --stat`, `git log --oneline`, authorship probes, check receipts, PR discussion and referenced artifacts needed for named material questions, and the patch it writes to a file for the packet.
+The root MUST NOT read diff hunks, changed-file bodies, callers, or blame output before that packet returns;
+those reads are the worker's mechanics and travel in the packet, not in root context.
 After the packet returns, root reads stay bounded to synthesis of the returned findings or an evidence-backed repair under SOP §3.5.
 Await the terminal packet result before the verdict; no spawning from a child.
 After dispatching an async packet, end the turn; do not fill the wait with reference reads or speculative scope work.
-Consume the returned artifact once: when the completion notice carries only a saved-output pointer, read that file; when it carries the body inline, do not re-read the file.
-Harness-specific invocation caveats live in `~/.agents/skills/k-review/references/runtime-harnesses.md` (and, for Pi/OMP, `~/.agents/skills/k-review/references/runtime-harnesses-pi-omp.md`) as a packet pointer only; the root does not open them (Contract above). A dispatch rejected before execution (schema or guard) is an invalid call: correct it, never retry it unchanged, never re-ask permission. Retry an identical packet once only when the tool executed and reported a host, bootstrap, or runner failure; then report the exact error. A child that timed out or exhausted its budget is re-sized (split, or ship materialized inputs), never relaunched identical.
+Consume the returned artifact once: when the completion notice carries only a saved-output pointer, read that file;
+when it carries the body inline, do not re-read the file.
+Harness-specific invocation caveats live in `~/.agents/skills/k-review/references/runtime-harnesses.md` (and, for Pi/OMP, `~/.agents/skills/k-review/references/runtime-harnesses-pi-omp.md`) as a packet pointer only; the root does not open them (Contract above).
+A dispatch rejected before execution (schema or guard) is an invalid call: correct it, never retry it unchanged, never re-ask permission.
+Retry an identical packet once only when the tool executed and reported a host, bootstrap, or runner failure; then report the exact error.
+A child that timed out or exhausted its budget is re-sized (split, or ship materialized inputs), never relaunched identical.
 
 ## Secondary Skill Escalation
 
@@ -126,7 +135,9 @@ Pick exactly one mode. If ambiguous, ask one fork-closing question and state a d
 ### Mode: Local changes review (working tree, branch delta, or commit range)
 
 - Use when: the user asks to review local changes/diff, a commit range, or a no-PR branch delta.
-- If no PR is involved, apply the Light-Eligibility Predicate before opening `~/.agents/skills/k-review/references/local_changes.md`: all of local-only diff, verified self-authorship, reversible change, focused observable check, and semantically simple behavior must hold; unknown is not eligible; PR context, explicit full/deep review, security/auth/crypto, persisted data, public API, deletion/replacement, stateful/parser/workflow behavior, or required base/runtime investigation excludes the light path.
+- If no PR is involved, apply the Light-Eligibility Predicate before opening `~/.agents/skills/k-review/references/local_changes.md`:
+  all of local-only diff, verified self-authorship, reversible change, focused observable check, and semantically simple behavior must hold;
+  unknown is not eligible; PR context, explicit full/deep review, security/auth/crypto, persisted data, public API, deletion/replacement, stateful/parser/workflow behavior, or required base/runtime investigation excludes the light path.
   When self-authored and trigger-free, route to `k-light-review` unless the user explicitly requested full/deep review;
   it is cheaper, not weaker. Otherwise open `~/.agents/skills/k-review/references/local_changes.md`.
 

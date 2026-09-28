@@ -23,7 +23,8 @@ Accounts & auth:
 - `gws auth login --full` adds the `pubsub` and `cloud-platform` scopes; a Workspace-managed account (`hd=` in the OAuth callback) can reject the whole consent as an invalid scope.
   Use plain `gws auth login` for those accounts.
 - A non-owner account needs two grants on the OAuth client's GCP project: OAuth consent-screen test user (Google Auth Platform → Audience) and IAM role `Service Usage Consumer` (IAM & Admin → IAM).
-  Missing the first gives `access_denied` at consent; missing the second gives 403 `serviceusage.services.use` on every API call after a successful login. IAM propagation takes minutes.
+  Missing the first gives `access_denied` at consent; missing the second gives 403 `serviceusage.services.use` on every API call after a successful login.
+  IAM propagation takes minutes.
 
 Google Slides:
 
@@ -65,7 +66,8 @@ Targeting & safety:
   apply SOP §3.8 to the exact payload and recipient/target, reusing existing authorization within its scope;
   draft and obtain approval for unapproved content or effects.
   For the _wording_ of any such message/reply/comment, follow the centralized `~/.agents/skills/k-communication/SKILL.md`.
-- Gmail helpers `+send`, `+reply`, `+reply-all`, `+forward` accept `--draft` (save as a draft, no send); use it while the send itself is not yet approved.
+- Gmail helpers `+send`, `+reply`, `+reply-all`, `+forward` accept `--draft` (save as a draft, no send);
+  use it while the send itself is not yet approved.
   The publish gate matches these helpers even with `--draft`: a delegated leaf is denied, and the root answers the SOP §3.8 checklist.
   A draft is not a send, so the root may proceed without send approval.
   `+forward` includes the original attachments by default; pass `--no-original-attachments` to omit them.

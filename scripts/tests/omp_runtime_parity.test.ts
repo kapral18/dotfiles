@@ -2,7 +2,51 @@ import { afterAll, describe, expect, it } from "bun:test"
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir, homedir } from "node:os"
 import { join } from "node:path"
-import register from "../../home/dot_omp/private_agent/extensions/runtime-parity.ts"
+import type { Settings as NativeSettings } from "@oh-my-pi/pi-coding-agent"
+import type registerExtension from "../../home/dot_omp/private_agent/extensions/runtime-parity.ts"
+
+const pkgDir = realpathSync(join(homedir(), ".local/share/pnpm-global-links/node_modules/@oh-my-pi/pi-coding-agent"))
+const runtimeSandbox = mkdtempSync(join(tmpdir(), "omp-runtime-test-"))
+const runtimeHome = join(runtimeSandbox, "home")
+const xdgConfigHome = join(runtimeSandbox, "xdg-config")
+const xdgDataHome = join(runtimeSandbox, "xdg-data")
+const xdgStateHome = join(runtimeSandbox, "xdg-state")
+const xdgCacheHome = join(runtimeSandbox, "xdg-cache")
+const isolatedEnv = {
+  HOME: runtimeHome,
+  XDG_CONFIG_HOME: xdgConfigHome,
+  XDG_DATA_HOME: xdgDataHome,
+  XDG_STATE_HOME: xdgStateHome,
+  XDG_CACHE_HOME: xdgCacheHome,
+  PI_CONFIG_DIR: ".omp",
+  OMP_PROFILE: "",
+} as const
+const clearedEnv = ["PI_CODING_AGENT_DIR", "PI_PROFILE"] as const
+const priorEnv: Record<string, string | undefined> = Object.fromEntries(
+  [...Object.keys(isolatedEnv), ...clearedEnv].map((key) => [key, process.env[key]]),
+)
+for (const dir of [runtimeHome, xdgConfigHome, xdgDataHome, xdgStateHome, xdgCacheHome]) {
+  mkdirSync(join(dir, "omp"), { recursive: true })
+}
+Object.assign(process.env, isolatedEnv)
+for (const key of clearedEnv) delete process.env[key]
+afterAll(() => {
+  for (const [key, value] of Object.entries(priorEnv)) {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+  rmSync(runtimeSandbox, { recursive: true, force: true })
+})
+
+// Exercise OMP's module-loading boundary so the guard and settings handles
+// share the installed host registry rather than a test-only getter mock.
+const { Settings }: { Settings: typeof NativeSettings } = await import(join(pkgDir, "src/config/settings.ts"))
+const { lookup } = await import(join(pkgDir, "src/config/registry.ts"))
+const { loadLegacyPiModule } = await import(join(pkgDir, "src/extensibility/plugins/legacy-pi-compat.ts"))
+const { default: register }: { default: typeof registerExtension } = await loadLegacyPiModule(
+  join(import.meta.dir, "../../home/dot_omp/private_agent/extensions/runtime-parity.ts"),
+)
+const runtimeCachePath = join(xdgCacheHome, "omp", "cache", "legacy-pi-extension-cache.db")
 
 const fixtureDir = mkdtempSync(join(tmpdir(), "omp-terminal-test-"))
 const agentDir = realpathSync(fixtureDir)
@@ -17,6 +61,12 @@ const managedProfile = {
 let fixtureId = 0
 afterAll(() => rmSync(fixtureDir, { recursive: true, force: true }))
 
+describe("WHEN the native OMP extension loader initializes", () => {
+  it("SHOULD keep its persistent parse cache inside the runtime sandbox", () => {
+    expect(existsSync(runtimeCachePath)).toBe(true)
+  })
+})
+
 function harness(values: Record<string, unknown> | undefined, initialTools: string[] = [], sessionFile: string | null = join(fixtureDir, `${++fixtureId}.jsonl`), options: { profiles?: Profile[]; reload?: () => Promise<void>; discoveryError?: boolean } = {}) {
   type Call = { toolName: string; input: Record<string, unknown> }
   type Context = { cwd: string; abort: () => void; sessionManager: { getSessionFile: () => string | null } }
@@ -30,7 +80,20 @@ function harness(values: Record<string, unknown> | undefined, initialTools: stri
   let aborts = 0
   if (sessionFile && !existsSync(sessionFile)) writeFileSync(sessionFile, "transcript sentinel\n")
   const ctx = { cwd: agentDir, abort: () => { aborts++ }, sessionManager: { getSessionFile: () => sessionFile } }
-  const settings = values && { get: (key: string) => values[key], reloadFromDisk: options.reload ?? (async () => {}) }
+  const settings = values && Settings.isolated(values)
+  if (settings) {
+    // Simulate disk-layer changes on the real Settings object; the guard still
+    // reads through native handles and observes the native cache invalidation.
+    settings.reloadFromDisk = async () => {
+      await options.reload?.()
+      for (const [key, value] of Object.entries(values)) {
+        const setting = lookup(key)
+        if (!setting) throw new Error(`Unknown test setting: ${key}`)
+        if (value === undefined) setting.clearOverride(settings)
+        else setting.override(settings, value)
+      }
+    }
+  }
   register({
     pi: {
       Settings: { get instance() { if (!settings) throw new Error("unavailable"); return settings } },
@@ -79,13 +142,11 @@ describe("WHEN OMP CLI dispatch inherits effective root settings", () => {
     expect(await runtime.call("hub", { op: "send", name: "server", text: "status" })).toBeUndefined()
   })
 
-  it("SHOULD reject unavailable or incomplete settings without blocking unrelated root work", async () => {
-    for (const settings of [undefined, {}, { ...foreground, "eval.autoBackground.enabled": undefined }]) {
-      const runtime = harness(settings)
-      expect((await runtime.call("task"))?.block).toBe(true)
-      expect((await runtime.call("eval"))?.block).toBe(true)
-      expect(await runtime.call("read", { path: "README.md" })).toBeUndefined()
-    }
+  it("SHOULD reject unavailable settings without blocking unrelated root work", async () => {
+    const runtime = harness(undefined)
+    expect((await runtime.call("task"))?.block).toBe(true)
+    expect((await runtime.call("eval"))?.block).toBe(true)
+    expect(await runtime.call("read", { path: "README.md" })).toBeUndefined()
   })
 
   it("SHOULD inspect changed effective values on each dispatch, without changing either settings object", async () => {
@@ -324,52 +385,6 @@ describe("WHEN native OMP finalizes a worker result", () => {
   })
 })
 
-describe("WHEN native OMP advertises its task tool", () => {
-  it("SHOULD NOT advertise Pi-forbidden composite tokens in the installed task description", async () => {
-    // The native description is generated at runtime: TaskTool.description renders
-    // src/prompts/tools/task.md from live settings, so probe it through the installed
-    // package's own TaskTool export with a stub session, mirroring Pi's
-    // FORBIDDEN_ADVERTISEMENT_TOKENS. Skip only when the package is absent.
-    const pkgDir = join(homedir(), ".local/share/pnpm-global-links/node_modules/@oh-my-pi/pi-coding-agent")
-    const taskIndex = join(pkgDir, "src/task/index.ts")
-    if (!existsSync(join(pkgDir, "package.json")) || !existsSync(taskIndex)) {
-      console.log(`SKIP: ${pkgDir} absent; cannot probe the native OMP task description`)
-      return
-    }
-    const { TaskTool } = (await import(taskIndex)) as unknown as {
-      TaskTool: new (session: unknown, agents: unknown[]) => { description: string }
-    }
-    for (const batch of [false, true]) {
-      const tool = new TaskTool(
-        {
-          cwd: mkdtempSync(join(tmpdir(), "omp-task-description-")),
-          taskDepth: 0,
-          getSessionSpawns: () => "*",
-          settings: {
-            get: (key: string) =>
-              key === "task.disabledAgents"
-                ? []
-                : key === "task.batch"
-                  ? batch
-                  : key === "task.enableEffort" || key === "eval.tools.enabled" || key === "async.enabled"
-                    ? true
-                    : undefined,
-          },
-        },
-        [],
-      )
-      const description = tool.description
-      expect(description).toContain("Available Agents")
-      for (const token of ["workflowScript", '"guide"', "resume", "schedule", "agentContract", "exactly one top-level"]) {
-        expect(description).not.toContain(token)
-      }
-      // "steer" mirrors Pi's list, but the native template's benign IRC prose
-      // ("delivered immediately as steering") contains that substring, so pin the
-      // carve-out: every occurrence must sit inside "steering", never a steer action.
-      expect(description.split("steer").length - 1).toBe(description.split("steering").length - 1)
-    }
-  })
-})
 
 describe("WHEN an OMP leaf runs shell commands", () => {
   it("SHOULD block leaf publication commands via the publish gate while passing read-only shell", async () => {

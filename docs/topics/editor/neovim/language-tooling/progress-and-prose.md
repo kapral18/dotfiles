@@ -17,7 +17,8 @@ The statusline shows client name, spinner, latest title/message, optional server
 
 ## Markdown / MDX prose behavior
 
-Markdown and MDX use Prettier with `--prose-wrap=preserve` so editor formatting does not reflow prose to `printWidth`. For plain Markdown, `,format-md` runs after Prettier and leaves ordinary files unchanged. In recognized AI paths, it preserves authored sentence breaks and joins only plain mid-sentence continuations that fit the soft 140-character boundary. Long lines split at sentence or strong clause boundaries when possible; ambiguous markup retains its existing lines. Markdownlint and Prettier still apply their own formatting before this step.
+Markdown and MDX use Prettier with `--prose-wrap=preserve` so editor formatting does not reflow prose to `printWidth`. For plain Markdown, `,format-md` runs after Prettier and leaves ordinary files unchanged. In recognized AI paths, it preserves authored sentence breaks and joins mid-sentence continuations around complete single-line inline code when the full line fits the soft 140-character boundary. Complete code spans keep their exact bytes, including backslashes and whitespace; outside a span, odd backslash runs escape a following backtick and even runs do not. Long lines split at sentence or strong clause boundaries when possible; unmatched or multiline code and other ambiguous markup retain their existing lines. Markdownlint and Prettier still apply their own formatting before this step.
+Only the first backtick after an odd backslash run is escaped; adjacent backticks remain eligible code delimiters.
 
 Relevant files:
 

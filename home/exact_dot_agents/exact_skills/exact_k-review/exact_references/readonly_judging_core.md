@@ -85,6 +85,8 @@ Evidence is the frozen snapshot's present checks: PR CI checks (`~/.agents/skill
 ## State-Machine Verification Gate
 
 Apply SOP `### 3.6 State-Machine Verification` to reviewed behavior that is stateful, parser-like, branch-heavy, or dependent on ordered conditions.
+Its executable oracle is `~/.agents/skills/k-formal/SKILL.md` (the `,formal` catalog) for stateful behavior.
+Pure input-to-output behavior uses a disposable oracle harness instead.
 
 Examples include parsers, tokenizers, formatters, routing/matching logic, retry/workflow loops, permission matrices, compatibility-sensitive branching, multi-flag control flow.
 

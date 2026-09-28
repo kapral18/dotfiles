@@ -2483,7 +2483,10 @@ console.log(JSON.stringify({
                     home = Path(tmp) / "home"
                     home.mkdir(parents=True)
                     script = """
-const mod = await import(process.argv[1]);
+const {loadLegacyPiModule} = await import(process.argv[2]);
+const mod = process.argv[1].includes("/dot_omp/")
+  ? await loadLegacyPiModule(process.argv[1])
+  : await import(process.argv[1]);
 function makePi() {
   const handlers = {};
   let active = ["read", "bash", "edit", "write"];
@@ -2513,7 +2516,16 @@ console.log(JSON.stringify({
                     env["HOME"] = str(home)
                     env["NODE_NO_WARNINGS"] = "1"
                     result = subprocess.run(
-                        ["node", "--input-type=module", "-e", script, str(extension)],
+                        [
+                            "bun",
+                            "-e",
+                            script,
+                            str(extension),
+                            str(
+                                Path.home()
+                                / ".local/share/pnpm-global-links/node_modules/@oh-my-pi/pi-coding-agent/src/extensibility/plugins/legacy-pi-compat.ts"
+                            ),
+                        ],
                         cwd=str(REPO),
                         capture_output=True,
                         text=True,
@@ -2538,7 +2550,8 @@ const tmp=mkdtempSync('/tmp/staged-leaf-runtime-');process.env.HOME=tmp;
 writeFileSync(join(tmp,'AGENTS.md'),'ROOT_SOP_SENTINEL');
 writeFileSync(join(tmp,'leaf.jsonl'),'native-session-fixture');
 const ctx={cwd:tmp,sessionManager:{getSessionFile:()=>join(tmp,'leaf.jsonl')}};
-const piModule=await import(process.argv[1]);const ompModule=await import(process.argv[2]);
+const {loadLegacyPiModule} = await import(process.argv[3]);
+const piModule=await import(process.argv[1]);const ompModule=await loadLegacyPiModule(process.argv[2]);
 function register(mod,tools=[]){const handlers={};mod.default({events:{on(){}},getAllTools(){return tools.map(name=>({name}))},on(name,callback){handlers[name]=(event)=>callback(event,ctx)}});return handlers}
 const pi=register(piModule);
 assert((await pi.before_agent_start({systemPrompt:'ordinary root'})).systemPrompt.includes('ROOT_SOP_SENTINEL'));
@@ -2573,13 +2586,15 @@ console.log('leaf-context and peer/process-send cases passed');
 """
         result = subprocess.run(
             [
-                "node",
-                "--no-warnings",
-                "--input-type=module",
+                "bun",
                 "-e",
                 script,
                 str(REPO / "home/dot_pi/agent/exact_extensions/runtime-parity.ts"),
                 str(REPO / "home/dot_omp/private_agent/extensions/runtime-parity.ts"),
+                str(
+                    Path.home()
+                    / ".local/share/pnpm-global-links/node_modules/@oh-my-pi/pi-coding-agent/src/extensibility/plugins/legacy-pi-compat.ts"
+                ),
             ],
             capture_output=True,
             text=True,

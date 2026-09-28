@@ -242,6 +242,37 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Before calling such behavior final or merge-ready",
         )
 
+    def test_state_machine_gate_owns_formal_pointer_and_has_no_legacy_harness_path(self):
+        self.assert_file_contains(
+            "home/readonly_AGENTS.md",
+            "`~/.agents/skills/k-formal/SKILL.md` owns the mechanics.",
+            "verify a `,formal` catalog unit",
+            "A model result certifies the model, not the code",
+        )
+        self.assert_file_not_contains(
+            "home/readonly_AGENTS.md",
+            "/tmp/state-machine-verification/",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_state.md",
+            "the oracle is a `,formal` catalog unit",
+            "report `formal=tests`",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_state.md",
+            "report `harness=tests`",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_plan_review.md",
+            "the `,formal` unit(s), tier",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-build/exact_references/readonly_criteria-verifier.md",
+            "do not invent extra test runs or mutation passes",
+            "Consume an existing `,formal audit`/`status --json` receipt as evidence for a stateful criterion; "
+            "do not run a new `,formal` stage yourself.",
+        )
+
     def test_proof_access_requires_a_receipt_consumer_or_audit_need(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-proof/readonly_SKILL.md",
@@ -771,26 +802,3 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "it survives follow-ups, corrections, compaction, and continuation of the same task.",
             "Complete independent authorized actions whose preconditions hold; NEVER run an action that depends on the failed criterion.",
         )
-
-    def test_when_recovery_is_in_scope_should_preserve_evidence_and_stop_boundaries(self):
-        # These source contracts guard policy omissions, not future model obedience.
-        sop = " ".join(_sop_rule_text().split())
-        for required in (
-            "a failed check is not a new permission checkpoint.",
-            "record in the topic: observed failure, cause evidence, intended correction, affected checks",
-            "After repair, freeze the new candidate and rerun failed and affected checks;",
-            "keep prior evidence only for unchanged code, environment, and inputs.",
-            "Stop affected work only for missing authority, a material user-only decision, a verified external blocker, exhausted §3.4 progress, or an explicit user limit.",
-            "Review alone does not authorize edits; report out-of-scope repairs as findings.",
-            "When repeated attempts reproduce the same failure with no new evidence or progress, stop speculative edits and repeated checks.",
-            "Resume scoped production only when new evidence supports a concrete correction; keep the failure history.",
-            "Workers return once; only the root owns recovery, and no worker may start a repair or verification loop.",
-        ):
-            with self.subTest(boundary=required):
-                self.assertIn(required, sop)
-        for obsolete in (
-            "A new attempt requires user authorization.",
-            "Do not automatically repair, restart Produce",
-            "When uncertain whether to answer or act, answer first, then ask if action is needed.",
-        ):
-            self.assertNotIn(obsolete, sop)

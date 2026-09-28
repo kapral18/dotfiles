@@ -84,7 +84,8 @@ Session start injects no verification prefix: the full SOP is fresh at the top o
 `reinforcement.py` (called from `perturn_recall.py`) re-injects the compiler-verified `prefix.txt` excerpt only after a compaction.
 A `SessionStart` with `source=compact` marks the next prompt for re-injection (Claude Code).
 A large drop in the observed Claude transcript (`message.usage`) or Codex rollout (`token_count`) tokens since the last baseline reads as the same signal for harnesses with no explicit compaction event.
-Harnesses with neither signal (e.g. Cursor, whose per-prompt hook payload carries no transcript) get no mid-session re-injection at all; only a fresh session start shows the full SOP.
+Harnesses with neither signal (e.g. Cursor, whose per-prompt hook payload carries no transcript) get no mid-session re-injection at all;
+only a fresh session start shows the full SOP.
 State is `<session-key>.reinforce.json` next to the topic spec; every failure path is fail-open.
 Worklogs are trimmed during serialized queue flush so runtime state does not grow forever.
 The same flush pass also removes `session-*` fallback worklogs and per-session recall state (`.recall-seen-*`, `.recall-candidates-*`, `.recall-staged-*`, `.recall-pointed-*`, `.recall-warm-*`) older than seven days; named-topic worklogs are never swept.
@@ -95,14 +96,20 @@ a truncated preview, missing row, or garbled copy allows the read silently and n
 A changed file is always allowed with a "changed since your read" note. First reads, slices, pipes and redirects are never touched.
 Ledger `.reads-<context>.json` is keyed by child `agent_id` (Claude Code passes the parent's `transcript_path` for children) or by session;
 entries from before a compaction epoch never block.
-A leaf without a distinct ledger key (no `agent_id`) disables gating for that call entirely: it is never merged into the parent key and its first read is never refused.
+A leaf without a distinct ledger key (no `agent_id`) disables gating for that call entirely:
+it is never merged into the parent key and its first read is never refused.
 Coverage: Claude Code and Codex (hooks.json), Pi (`read-gate.ts`), Cursor (`beforeReadFile`/shell events, history in `~/.config/cursor/chats/*/<conversation_id>/store.db`, `stop` token shrink = compaction).
 OMP supersedes earlier reads itself and is left alone; Pi and OpenCode get the same via their `read-supersede.ts` (older results of a re-read file become a notice on the outgoing list, with OMP's cache guard); OpenCode is gated by `plugins/agent-memory.ts` (`tool.execute.before` throws the reason; history is the `part` table of `opencode.db`); Antigravity is unwired.
 
 `publish_gate.py` is the deterministic backstop for SOP §3.8 and the §3.7 leaf contract.
 It recognises publication calls (`gh pr|issue|release|gist` mutating verbs, non-GET `gh api` REST calls with a body, `gh api graphql` mutations, `gws gmail`/`gws chat` sends, Slack MCP mutation tools) and denies them from a delegated leaf (Claude Code child `agent_id`, pi child, OpenCode non-root session, OMP `yield` leaf); read-only calls are never touched.
 For the root it allows the call and rides a short §3.8 checklist (approved exact target/payload, `k-communication` wording without session artifacts, read-back) as `additionalContext`; `AGENT_PUBLISH_GATE_ROOT=ask` turns that into a harness confirmation, `AGENT_PUBLISH_GATE=off` disables the hook.
-Coverage: Claude Code (`Bash|mcp__slack__.*`) and Codex (`Bash|shell`, `hook_specific` output); Cursor (`beforeShellExecution`, same payload as the read gate; no leaf signal, so every call reads as root and keeps the checklist); OpenCode (`tool.execute.before` on `bash`: non-root sessions pass `agent_id` so the shared leaf predicate denies; the root checklist has no allow-with-note channel there and is dropped); Pi (`read-gate.ts` `tool_call` on `bash`); OMP (`runtime-parity.ts` `tool_call` on `bash` for `yield` leaves, passing the leaf session as `agent_id`; roots are not gated, so no checklist there).
+Coverage: Claude Code (`Bash|mcp__slack__.*`) and Codex (`Bash|shell`, `hook_specific` output);
+Cursor (`beforeShellExecution`, same payload as the read gate; no leaf signal, so every call reads as root and keeps the checklist);
+OpenCode (`tool.execute.before` on `bash`: non-root sessions pass `agent_id` so the shared leaf predicate denies;
+the root checklist has no allow-with-note channel there and is dropped); Pi (`read-gate.ts` `tool_call` on `bash`);
+OMP (`runtime-parity.ts` `tool_call` on `bash` for `yield` leaves, passing the leaf session as `agent_id`;
+roots are not gated, so no checklist there).
 Antigravity keeps the prose boundary plus a `disallowedTools` denial of the six Slack mutation tools (reads stay available) on the Claude profiles that inherit every tool.
 
 Tool adapters invoke `worklog_dispatcher.sh`, which captures the JSON payload and launches `worklog_recorder.py` without waiting for filesystem bookkeeping.

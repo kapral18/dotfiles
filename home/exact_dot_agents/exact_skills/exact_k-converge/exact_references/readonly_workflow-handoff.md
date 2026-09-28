@@ -1,6 +1,6 @@
 # Workflow handoff
 
-Entry is explicit user invocation.
+Entry is an explicit user request for this loop (`/k-converge` or plain words).
 An explicitly invoked `k-build`, `k-review`, or `k-light-review` flow may also hand off here only where that caller defines a handoff trigger; SOP §1.1/§3.5 forbid automatic convergence.
 That invocation authorizes the scoped handoff without another invocation approval.
 Merely loading a caller skill does not authorize its flow.
@@ -13,8 +13,10 @@ Before entry, retain pointers in the existing ledger/spec to the caller and phas
 Include the approved spec packet and criteria ledger for `k-build`; keep the selected mode and review gates for `k-review`.
 For `k-light-review`, recheck its eligibility predicate; if an escalation trigger holds, route to `k-review` before convergence.
 
-`k-converge` owns repetition and per-round verification once entered; its cadence replaces the caller's ordinary bounded-pass count and once-only check schedule.
+`k-converge` owns finite repetition and per-round verification once entered; its cadence replaces the caller's ordinary bounded-pass count and once-only check schedule.
 All caller checks remain required.
+A later-round dimension may be retained only when its surface and every dependency supporting its verdict are unchanged;
+otherwise it is selected for fresh refutation.
 Never bypass caller fix-scope limits, read-only boundaries, ownership, requirements resets, user-only decisions, or publication gates.
 The handoff grants no additional edit, commit, push, or publication permission.
 Report a finding outside existing fix authority as an unapplied proposal or decision; do not fix it through convergence.

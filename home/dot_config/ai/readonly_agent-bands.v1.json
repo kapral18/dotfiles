@@ -494,217 +494,217 @@
     "codex": {
       "agents": {
         "Explore": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "research",
           "effort": "high"
         },
         "Plan": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "research",
           "effort": "high"
         },
         "best-of-n-runner": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "implement",
           "effort": "medium"
         },
         "browser_agent": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "implement",
           "effort": "medium"
         },
         "bugbot": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "review",
           "effort": "high"
         },
         "claude": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "implement",
           "effort": "medium"
         },
         "claude-code-guide": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "research",
           "effort": "high"
         },
         "cli_help": {
-          "model": "gpt-6-luna",
+          "model": "gpt-5.6-luna",
           "category": "mechanical",
           "effort": "high"
         },
         "code-review": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "review",
           "effort": "high"
         },
         "codebase_investigator": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "research",
           "effort": "high"
         },
         "cursor-guide": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "research",
           "effort": "high"
         },
         "default": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "research",
           "effort": "high"
         },
         "explore": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "research",
           "effort": "high"
         },
         "explorer": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "research",
           "effort": "high"
         },
         "general-purpose": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "implement",
           "effort": "medium"
         },
         "generalPurpose": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "implement",
           "effort": "medium"
         },
         "generalist": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "implement",
           "effort": "medium"
         },
         "k-agent-adversarial-verifier": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "refute",
           "effort": "high"
         },
         "k-agent-change-auditor": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "review",
           "effort": "high"
         },
         "k-agent-claim-verifier": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "refute",
           "effort": "high"
         },
         "k-agent-code-searcher": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "research",
           "effort": "high"
         },
         "k-agent-criteria-verifier": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "refute",
           "effort": "high"
         },
         "k-agent-findings-auditor": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "review",
           "effort": "high"
         },
         "k-agent-fresh-eyes": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "review",
           "effort": "high"
         },
         "k-agent-implementer": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "implement",
           "effort": "medium"
         },
         "k-agent-live-ui-review": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "review",
           "effort": "high"
         },
         "k-agent-mechanical": {
-          "model": "gpt-6-luna",
+          "model": "gpt-5.6-luna",
           "category": "mechanical",
           "effort": "high"
         },
         "k-agent-post-review": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "review",
           "effort": "high"
         },
         "k-agent-pr-necessity-auditor": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "review",
           "effort": "high"
         },
         "k-agent-public-sources": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "research",
           "effort": "high"
         },
         "k-agent-review-worker": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "review",
           "effort": "high"
         },
         "k-agent-reviewer": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "review",
           "effort": "high"
         },
         "k-agent-smol": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "memory",
           "effort": "high"
         },
         "rem-agent": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "research",
           "effort": "high"
         },
         "research": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "research",
           "effort": "high"
         },
         "reviewer": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "review",
           "effort": "high"
         },
         "rubber-duck": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "research",
           "effort": "high"
         },
         "scout": {
-          "model": "gpt-6-luna",
+          "model": "gpt-5.6-luna",
           "category": "mechanical",
           "effort": "high"
         },
         "security-review": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "review",
           "effort": "high"
         },
         "security-reviewer": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "review",
           "effort": "high"
         },
         "sonic": {
-          "model": "gpt-6-luna",
+          "model": "gpt-5.6-luna",
           "category": "mechanical",
           "effort": "high"
         },
         "task": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "implement",
           "effort": "medium"
         },
         "worker": {
-          "model": "gpt-6-sol",
+          "model": "gpt-5.6-sol",
           "category": "implement",
           "effort": "medium"
         }
@@ -723,18 +723,18 @@
         "worker"
       ],
       "counter_models": [
-        "gpt-6-sol"
+        "gpt-5.6-sol"
       ],
       "cheap_lane_models": [
-        "gpt-6-luna",
-        "gpt-6-sol"
+        "gpt-5.6-luna",
+        "gpt-5.6-sol"
       ],
       "lane_models": [
-        "gpt-6-luna",
-        "gpt-6-sol"
+        "gpt-5.6-luna",
+        "gpt-5.6-sol"
       ],
       "session": {
-        "model": "gpt-6-sol",
+        "model": "gpt-6-astra",
         "effort": "high",
         "context": "short"
       }
@@ -1225,7 +1225,7 @@
         "@task"
       ],
       "session": {
-        "model": "openai-codex/gpt-6-sol",
+        "model": "openai-codex/gpt-6-astra",
         "effort": "high",
         "context": "short"
       }

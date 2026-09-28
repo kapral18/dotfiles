@@ -84,7 +84,8 @@ bk job log JOB_UUID -p SLUG -b BUILD_NUMBER | grep -iE '(ERR!|could not resolve|
 - Build terminated without test output completing
 - Builds that ran much longer than usual
 
-**Action:** Check for infinite loops, long-running tests, or resource contention; classify the cause through `k-diagnosing-bugs` before changing timeouts or job layout.
+**Action:** Check for infinite loops, long-running tests, or resource contention;
+classify the cause through `k-diagnosing-bugs` before changing timeouts or job layout.
 
 ### Out of Memory (OOM)
 

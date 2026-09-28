@@ -72,6 +72,11 @@ NEVER assume an Elastic index covers a non-Elastic repository.
 
 Before preparing or creating an Elastic commit, read and follow `~/.agents/skills/k-elastic-domain/references/commit-attribution.md` in full for required tool attribution and its exceptions.
 
+## Formal verification adapters
+
+For `elastic/kibana` SOP `3.6` / `,formal replay` work, read and follow
+`~/.agents/skills/k-elastic-domain/references/kibana-formal-adapters.md` in full for the replay-adapter runner choice per surface.
+
 ## Live UI overlay
 
 For `elastic/kibana` live UI verification, load:

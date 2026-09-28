@@ -13,6 +13,7 @@ do not independently fetch the same PR/history again.
 Do not load full routers, rosters, mode files, memory workflows, or other controller contracts.
 Stay read-only; no shared-state mutations, installs, servers, git/GitHub writes, or code fixes.
 Do not launch agents, message siblings, repeat existing checks, or run another audit/refutation/convergence pass.
-Return anchored actionable findings or explicit evidence gaps once.
-A missing planned check is `verification_needed`, not permission to invent another workflow. Keep raw evidence outside the parent context.
+Return all assigned findings, coverage, exclusions/blockers, the current snapshot, and evidence inline or through one complete artifact pointer once.
+The terminal result MUST be self-contained and MUST NOT rely on earlier incremental messages.
+A missing planned check is `verification_needed`, not permission to invent another workflow.
 A clean result needs evidence for the assigned scope, not a model confidence statement.

@@ -6,6 +6,9 @@ import { spawn } from "node:child_process"
 import { homedir } from "node:os"
 import { isAbsolute, join } from "node:path"
 import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent"
+import { cfgBashAutoBackgroundEnabled } from "@oh-my-pi/pi-coding-agent/exec/settings"
+import { cfgEvalAutoBackgroundEnabled } from "@oh-my-pi/pi-coding-agent/eval/settings"
+import { cfgTaskDisabledAgents, cfgTaskAgentModelOverrides, cfgTaskAgentAdvisor, cfgTaskAgentPrewalk } from "@oh-my-pi/pi-coding-agent/task/settings"
 
 const SEARCH_TOOLS = ["grep", "find", "ls"]
 const TOOL_SELECTION_FLAGS = ["--tools", "-t", "--exclude-tools", "-xt", "--no-tools", "-nt", "--no-builtin-tools", "-nbt"]
@@ -60,15 +63,15 @@ function enableSearchTools(pi: ExtensionAPI): void {
 
 async function dispatchSettingsProblem(pi: ExtensionAPI): Promise<string | undefined> {
   // The shipped CLI gives its root the bundled Settings singleton (main.ts).
-  // Read through pi.pi: importing the source/legacy settings module can create
-  // a different singleton with defaults. Never mutate process-wide settings.
+  // Keep that singleton; the native extension loader resolves setting handles
+  // against the same host modules. Never mutate process-wide settings.
   try {
     const settings = pi.pi.Settings.instance
     // Native subagent preflight reloads these layers too. Admit the same
     // on-disk configuration, not a stale snapshot from session startup.
     await settings.reloadFromDisk()
-    const unsafe = (["bash.autoBackground.enabled", "eval.autoBackground.enabled"] as const)
-      .filter((key) => settings.get(key) !== false)
+    const unsafe = [cfgBashAutoBackgroundEnabled, cfgEvalAutoBackgroundEnabled]
+      .filter((setting) => setting.get(settings) !== false).map((setting) => setting.id)
     if (unsafe.length === 0) return
     return `Worker dispatch requires foreground defaults. Disable ${unsafe.join(" and ")} in the effective OMP configuration before dispatch; do not retry unchanged or launch another harness.`
   } catch {
@@ -80,7 +83,7 @@ async function dispatchProfileProblem(pi: ExtensionAPI, ctx: ExtensionContext, t
   try {
     const { agents } = await pi.pi.discoverAgents(ctx.cwd)
     const settings = pi.pi.Settings.instance
-    const disabled = settings.get("task.disabledAgents") ?? []
+    const disabled = cfgTaskDisabledAgents.get(settings)
     const packets = Array.isArray(input.tasks) ? input.tasks : [input]
     const requested: unknown[] = toolName === "task"
       ? packets.map((packet: unknown) => packet && typeof packet === "object" && "agent" in packet ? packet.agent : undefined)
@@ -98,13 +101,13 @@ async function dispatchProfileProblem(pi: ExtensionAPI, ctx: ExtensionContext, t
       if (agent.blocking !== true || agent.spawns || agent.advisor || agent.prewalk || !agent.tools?.length || agent.tools.some((tool) => ["task", "advisor", "eval", "hub"].includes(tool)) || !agent.model?.length || agent.model.some((model) => !model.trim()) || !agent.systemPrompt.includes("[DELEGATION BOUNDARY]")) {
         return `Profile ${name} lacks the managed foreground leaf contract. Pre-execution denial: repair the profile, then re-dispatch; do not substitute another model (SOP §3.7 row 1).`
       }
-      if (settings.get("task.agentModelOverrides")?.[name] !== undefined) {
+      if (cfgTaskAgentModelOverrides.get(settings)[name] !== undefined) {
         return `Profile ${name} has a settings-level model override. Pre-execution denial: remove the override, then re-dispatch with its registry-rendered model (SOP §3.7 row 1).`
       }
-      for (const key of ["task.agentAdvisor", "task.agentPrewalk"] as const) {
-        const value = settings.get(key)?.[name]
+      for (const setting of [cfgTaskAgentAdvisor, cfgTaskAgentPrewalk]) {
+        const value = setting.get(settings)[name]
         if (value !== undefined && !["", "off", "false"].includes(value.trim().toLowerCase())) {
-          return `Profile ${name} enables ${key}. Worker advisors and automatic model handoffs are not leaf packets; disable this override before dispatch.`
+          return `Profile ${name} enables ${setting.id}. Worker advisors and automatic model handoffs are not leaf packets; disable this override before dispatch.`
         }
       }
     }

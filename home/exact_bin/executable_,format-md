@@ -75,7 +75,7 @@ STRUCTURAL = re.compile(
 )
 
 LIST_ITEM = re.compile(r"^(\s*(?:[-*+]\s+|\d+[.)]\s+|[a-zA-Z][.)]\s+))(.*)$")
-SENTENCE_START = re.compile(r"[A-Z0-9`\"'(\[*_]")
+SENTENCE_START = re.compile(r"[A-Z0-9`\"'(\[*_\ue000-\uf8ff]")
 SENTENCE_CLOSERS = set("\"')]}*_")
 ABBREVIATIONS = {
     "e.g.",
@@ -211,21 +211,74 @@ def sentence_boundary_lines(text, prefix="", continuation_prefix="", max_width=A
     return out
 
 
+def mask_inline_code(raw_lines):
+    """Replace complete single-line code spans with same-length opaque markers."""
+    spans = []
+    masked = []
+    used = set("".join(raw_lines))
+    marker_codepoint = 0xE000
+    for line in raw_lines:
+        runs = list(re.finditer(r"`+", line))
+        parts = []
+        position = 0
+        run_index = 0
+        while run_index < len(runs):
+            opener = runs[run_index]
+            opener_start = opener.start()
+            opener_length = opener.end() - opener_start
+            backslash_index = opener.start() - 1
+            while backslash_index >= 0 and line[backslash_index] == "\\":
+                backslash_index -= 1
+            if (opener.start() - backslash_index - 1) % 2 == 1:
+                opener_start += 1
+                opener_length -= 1
+                if opener_length == 0:
+                    run_index += 1
+                    continue
+            closer_index = next(
+                (
+                    index
+                    for index in range(run_index + 1, len(runs))
+                    if runs[index].end() - runs[index].start() == opener_length
+                ),
+                None,
+            )
+            while marker_codepoint <= 0xF8FF and chr(marker_codepoint) in used:
+                marker_codepoint += 1
+            if closer_index is None or marker_codepoint > 0xF8FF:
+                return None
+            closer = runs[closer_index]
+            span = line[opener_start : closer.end()]
+            marker = chr(marker_codepoint)
+            marker_codepoint += 1
+            spans.append((marker, span))
+            parts.extend((line[position:opener_start], marker * len(span)))
+            position = closer.end()
+            run_index = closer_index + 1
+        parts.append(line[position:])
+        masked.append("".join(parts))
+    return masked, spans
+
+
 def conservative_prose_lines(raw_lines, prefix, continuation_prefix):
     # Preserve ambiguous markup instead of guessing where its prose begins.
+    protected = mask_inline_code(raw_lines)
+    if protected is None:
+        return raw_lines
+    masked_lines, spans = protected
     code_indent = len(continuation_prefix) + 4
     if any(
-        re.search(r"[`\[\]<>|]|\w+://", line)
+        re.search(r"[\[\]<>|]|\w+://", line)
         or line.endswith(("  ", "\\"))
         or "\t" in line
         or len(line) - len(line.lstrip(" ")) >= code_indent
-        for line in raw_lines
+        for line in masked_lines
     ):
         return raw_lines
 
     out = []
-    current = raw_lines[0]
-    for line in raw_lines[1:]:
+    current = masked_lines[0]
+    for line in masked_lines[1:]:
         candidate = current.rstrip() + " " + line.strip()
         # Punctuation at an authored line end is a boundary, even when an
         # abbreviation or a lowercase next line makes sentence detection unsure.
@@ -238,6 +291,8 @@ def conservative_prose_lines(raw_lines, prefix, continuation_prefix):
             prefix = indent
             current = line
     out.extend(sentence_boundary_lines(current[len(prefix) :], prefix, continuation_prefix))
+    for marker, span in spans:
+        out = [line.replace(marker * len(span), span) for line in out]
     return out
 
 

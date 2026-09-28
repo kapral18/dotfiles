@@ -23,6 +23,8 @@ The overlay also carries a Kibana planning fork checklist (`references/kibana-pl
 
 The overlay also owns SCSI index scope: `scsi-main` serves Elastic-curated indices (Elastic-org repositories plus a few upstream dependencies) and `scsi-local` the user's own. Outside that set the generic `k-semantic-code-search` fallback (`rg`) applies, and the overlay forbids assuming Elastic coverage for a non-Elastic repository.
 
+The overlay also owns the `,formal replay` adapter policy for `elastic/kibana` (`references/kibana-formal-adapters.md`): runner choice per surface for SOP `3.6` / `k-formal` stateful verification work. The generic `k-formal` skill and `,formal` command stay domain-free.
+
 ## `k-elastic-slides`
 
 | Field    | Value                                                                                                      |

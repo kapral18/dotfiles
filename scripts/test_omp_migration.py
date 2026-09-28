@@ -94,28 +94,9 @@ class TestOmpMigration(unittest.TestCase):
         provider_order = (
             "modelProviderOrder:\n  - anthropic\n  - openai-codex\n  - openrouter\n  - cursor\n  - openai\n"
         )
-        # One profile-independent modelRoles block (user call 2026-09-23): every role rides the
-        # openai-codex provider, mirroring category_models.codex. Primaries on GPT-6 Sol (:high
-        # default, :max for the deliberate slow/plan lanes), vision on GPT-6 Luna :high, advisor on GPT-6 Sol :high as
-        # a degraded same-family counter, smol on GPT-6 Luna :high, and the remaining built-in roles
-        # pinned explicitly: tiny and commit on GPT-6 Luna :medium, task (T2 implement) on GPT-6 Sol :medium.
-        work_role_values = (
-            "default: openai-codex/gpt-6-sol:high",
-            "smol: openai-codex/gpt-6-luna:high",
-            "slow: openai-codex/gpt-6-sol:max",
-            "vision: openai-codex/gpt-6-luna:high",
-            "plan: openai-codex/gpt-6-sol:max",
-            "commit: openai-codex/gpt-6-luna:medium",
-            "tiny: openai-codex/gpt-6-luna:medium",
-            "task: openai-codex/gpt-6-sol:medium",
-            "advisor: openai-codex/gpt-6-sol:high",
-            provider_order,
-        )
-        personal_role_values = work_role_values
-        expected_values = {
-            True: work_role_values,
-            False: personal_role_values,
-        }
+        # The role table is profile-independent and uses the subscription provider;
+        # category and effort relationships are covered by the band invariants.
+        expected_roles = {"default", "smol", "slow", "vision", "plan", "commit", "tiny", "task", "advisor"}
         shared_values = (
             "modelRoles:\n",
             "advisor:\n  enabled: false\n  subagents: false\n  syncBacklog: 1\n  immuneTurns: 0\n",
@@ -135,13 +116,20 @@ class TestOmpMigration(unittest.TestCase):
             "setupVersion: 2\n",
         )
 
-        for is_work, values in expected_values.items():
+        rendered = {is_work: self.render_omp_config(is_work) for is_work in (True, False)}
+        for is_work, config in rendered.items():
             with self.subTest(is_work=is_work):
-                config = self.render_omp_config(is_work)
-
                 self.assertNotIn("{{", config)
-                for value in (*values, *shared_values):
+                for value in (*shared_values, provider_order):
                     self.assertIn(value, config)
+                roles = config.split("modelRoles:\n", 1)[1].split("\n\n", 1)[0]
+                pairs = dict(re.findall(r"(?m)^  ([a-z]+): (.+)$", roles))
+                self.assertEqual(set(pairs), expected_roles)
+                self.assertTrue(all(value.startswith("openai-codex/") for value in pairs.values()))
+        self.assertEqual(
+            rendered[True].split("modelRoles:\n", 1)[1].split("\n\n", 1)[0],
+            rendered[False].split("modelRoles:\n", 1)[1].split("\n\n", 1)[0],
+        )
 
     def test_web_search_uses_profile_specific_provider_chains(self):
         expected = {

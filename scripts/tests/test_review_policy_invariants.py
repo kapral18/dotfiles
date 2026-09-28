@@ -95,6 +95,28 @@ class TestReviewPolicyInvariants(unittest.TestCase):
             self.assertIn(duty, text)
         self.assertIn("do not invent extra test runs or mutation passes", text)
         self.assertIn("affected criterion as unknown", text)
+        self.assertIn(
+            "Consume an existing `,formal audit`/`status --json` receipt as evidence for a stateful criterion; "
+            "do not run a new `,formal` stage yourself.",
+            text,
+        )
+
+    def test_state_machine_gate_routes_review_and_plan_work_through_formal(self):
+        judging_state = self.read(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_state.md"
+        )
+        self.assertIn("the oracle is a `,formal` catalog unit", judging_state)
+        self.assertIn("report `formal=tests`", judging_state)
+        self.assertNotIn("harness=tests", judging_state)
+        judging_change = self.read(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_change.md"
+        )
+        self.assertIn(",formal replay <unit> --against <base>", judging_change)
+        plan_review = self.read(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_plan_review.md"
+        )
+        self.assertIn("the `,formal` unit(s), tier", plan_review)
+        self.assertIn("a design unit (`--design`)", plan_review)
 
     def test_claim_judgment_retains_exact_source_and_numeric_evidence(self):
         text = self.read(
@@ -263,9 +285,19 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         self.assertIn("Do not start a separate findings-audit pass", change)
 
     def test_windows_and_tournament_remain_explicit_only(self):
-        for name in ("k-live-ui-windows", "k-text-tournament", "k-converge"):
+        for name in ("k-live-ui-windows", "k-text-tournament"):
             text = self.read(f"home/exact_dot_agents/exact_skills/exact_{name}/readonly_SKILL.md")
             self.assertIn("disable-model-invocation: true", text)
+        converge = self.read("home/exact_dot_agents/exact_skills/exact_k-converge/readonly_SKILL.md")
+        self.assertIn("Enter only on an explicit user request for this loop", converge)
+        self.assertIn("never start it automatically or for routine recovery", converge)
+        # The frontmatter `description` governs model auto-invocation, so pin it directly
+        # alongside the body text.
+        description_match = re.search(r'^description:\s+"(?P<value>[^"]*)"$', converge, re.MULTILINE)
+        assert description_match, "k-converge SKILL.md frontmatter has no quoted description"
+        description = description_match.group("value")
+        self.assertIn("explicitly asks", description)
+        self.assertIn("never for routine recovery", description)
         for path in (REPO / "home").glob("**/exact_agents/*.tmpl"):
             text = path.read_text()
             front = text.split("---", 2)[1] if text.startswith("---") else text

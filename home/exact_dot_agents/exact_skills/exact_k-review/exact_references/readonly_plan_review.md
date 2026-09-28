@@ -45,7 +45,11 @@ Walk the plan end-to-end, ordered by risk:
    Apply the Check-Coverage Exemption in `~/.agents/skills/k-review/references/judging_core.md` (plan clause):
    do not report formatting, lint, or type-error classes the repo's existing checks catch at implementation.
 5. **Gates by content:** planned removals get the Deletion-Safety Audit and Historical-Rationale Gate;
-   planned replacements the Replacement/Migration Parity Gate; stateful/parser-like planned behavior must include a State-Machine Verification step in the plan; cross-module/deploy plans the Systemic-Risk Checks; user-facing flows the Product-Flow Lens; alerting/monitoring work the Signal-Quality Gate.
+   planned replacements the Replacement/Migration Parity Gate; a stateful/parser-like plan must name its State-Machine Verification step —
+   the `,formal` unit(s), tier (F1 pure-oracle or F2/F3 catalog), and the properties each unit will check; a design unit (`--design`)
+   before code exists is allowed;
+   cross-module/deploy plans the Systemic-Risk Checks; user-facing flows the Product-Flow Lens;
+   alerting/monitoring work the Signal-Quality Gate.
 6. **Gaps:** missing steps, unowned risks, absent rollback/verification, and co-edit-set members the plan does not mention (docs, diagrams, configs).
 7. **Compatibility intent (SOP `2.1`):** the plan's compatibility posture is explicit and matches the request;
    flag unrequested shims/legacy paths.
@@ -60,7 +64,8 @@ Return unsupported assumptions and concrete gaps without rewriting the plan or r
 ## Root moves
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Launch one strong review subagent using `~/.agents/skills/k-review/references/reviewer-worker.md` before any final judgment; keep the packet scoped to the actual plan and relevant evidence with the copied selected criteria.
+Launch one strong review subagent using `~/.agents/skills/k-review/references/reviewer-worker.md` before any final judgment;
+keep the packet scoped to the actual plan and relevant evidence with the copied selected criteria.
 This mode and the router describe the same required packet, not additive launches.
 The root MUST NOT substitute its own inline review for that packet absent an explicit user no-delegation instruction.
 If the required lane or tool is unavailable, report blocked; do not silently fall back to an inline review.

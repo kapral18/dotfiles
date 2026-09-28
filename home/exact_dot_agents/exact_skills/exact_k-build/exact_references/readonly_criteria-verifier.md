@@ -14,6 +14,7 @@ For every criterion, distinguish the claimed outcome from what the check actuall
   An unassigned behavior is a missing criterion or scope violation, not an implicit approval.
 
 Use source and shared receipts to answer these questions; do not invent extra test runs or mutation passes.
+Consume an existing `,formal audit`/`status --json` receipt as evidence for a stateful criterion; do not run a new `,formal` stage yourself.
 When deciding evidence is absent, name the missing observation and affected criterion as unknown;
 do not certify reachability or clean-state behavior from a green exit alone.
 Return one consolidated result: criterion, supported/unsupported/unknown, exact evidence, and concrete failure if present.

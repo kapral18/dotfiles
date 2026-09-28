@@ -9,3 +9,5 @@ Use actual repository commands and focused fixtures; retain full logs and comman
 Prepare checks during Produce and execute them once in final Verify. Unrun checks are `planned`, never red/green proof.
 A baseline reproduction in Understand answers a diagnostic question; it is not a required per-criterion rehearsal.
 Mutation discrimination is risk-selected final evidence, not a prerequisite for approving every packet.
+For stateful behavior (SOP `3.6`), a criterion's independent oracle is a `,formal` catalog unit: `check: ,formal audit <unit>`,
+with each model mutant killed by a named property; author and resolve/build the unit during Produce, run the audit once in final Verify.

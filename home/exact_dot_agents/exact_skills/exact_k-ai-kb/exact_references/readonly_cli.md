@@ -30,7 +30,8 @@ Output:
   It also carries ranking fields: `bm25_rank`, `vector_rank`, `bm25_score`, `cosine_score`, `rrf_score`, `mmr_selected`.
 - Cite folded hits by `title` (and `id` when acting on one).
   Treat low-`confidence` or stale-looking hits with caution; verify against the live repo before relying on them.
-- No capsule is hidden as superseded (a correction amends its capsule in place), but a `--force`-written stale twin can still rank; results are already RRF-ranked and MMR-diversified — do not re-sort.
+- No capsule is hidden as superseded (a correction amends its capsule in place), but a `--force`-written stale twin can still rank;
+  results are already RRF-ranked and MMR-diversified — do not re-sort.
 
 ## Write: remember
 

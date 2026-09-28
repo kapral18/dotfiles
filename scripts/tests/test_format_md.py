@@ -58,7 +58,6 @@ class TestFormatMdCommand(unittest.TestCase):
         examples = (
             "Keep this break  \ncontinued here.\n",
             "Keep this break\\\ncontinued here.\n",
-            "Use `some command`\nwith these arguments.\n",
             "Use [this link](https://example.com)\nfor more information.\n",
             "Visit https://example.com\nfor more information.\n",
             "Use <span>this text</span>\nwith this qualifier.\n",
@@ -73,6 +72,91 @@ class TestFormatMdCommand(unittest.TestCase):
         for text in examples:
             with self.subTest(text=text):
                 self.assertEqual(format_md.unwrap(text, "AGENTS.md"), text)
+
+    def test_SHOULD_join_prose_around_complete_inline_code_without_changing_its_bytes(self):
+        format_md = _load_format_md_command()
+        examples = (
+            ("Use `some command`\nwith these arguments.\n", "Use `some command` with these arguments.\n"),
+            ("Keep `a  b. :;` and\ncontinue here.\n", "Keep `a  b. :;` and continue here.\n"),
+            ("Use ``a ` b.  c`` and\nthen `x:y` here.\n", "Use ``a ` b.  c`` and then `x:y` here.\n"),
+        )
+        for original, expected in examples:
+            with self.subTest(original=original):
+                self.assertEqual(format_md.unwrap(original, "AGENTS.md"), expected)
+                self.assertEqual(format_md.unwrap(expected, "AGENTS.md"), expected)
+
+    def test_SHOULD_distinguish_escaped_backticks_without_changing_complete_code_spans(self):
+        format_md = _load_format_md_command()
+        examples = (
+            (
+                r"Use \` then `a  b` then \` and" "\ncontinue.\n",
+                r"Use \` then `a  b` then \` and continue." "\n",
+            ),
+            (
+                r"Use \\`a  b` and" "\ncontinue.\n",
+                r"Use \\`a  b` and continue." "\n",
+            ),
+            (
+                r"Use ``a \` b  c`` and" "\ncontinue.\n",
+                r"Use ``a \` b  c`` and continue." "\n",
+            ),
+            (
+                r"Use \``a  b` then `c` then \` and" "\ncontinue.\n",
+                r"Use \``a  b` then `c` then \` and continue." "\n",
+            ),
+        )
+        for original, expected in examples:
+            with self.subTest(original=original):
+                self.assertEqual(format_md.unwrap(original, "AGENTS.md"), expected)
+                self.assertEqual(format_md.unwrap(expected, "AGENTS.md"), expected)
+
+    def test_SHOULD_count_all_inline_code_characters_toward_the_soft_width(self):
+        format_md = _load_format_md_command()
+        for count, joins in ((127, True), (128, False)):
+            first = "Keep `" + "a" * count + "`"
+            original = first + "\nnext.\n"
+            expected = first + (" " if joins else "\n") + "next.\n"
+            with self.subTest(count=count):
+                self.assertEqual(format_md.unwrap(original, "AGENTS.md"), expected)
+
+    def test_SHOULD_split_the_reported_converge_paragraph_at_its_sentence_boundary(self):
+        format_md = _load_format_md_command()
+        first = (
+            "Dispatch class (a)/(b)/(c) fixes to the `implement`-category worker per SOP §3.7 "
+            "(`~/.agents/skills/k-build/references/implement-worker.md`)."
+        )
+        second = "Size those fix packets per `~/.agents/skills/k-build/SKILL.md` Root moves."
+        original = first + " " + second + "\n"
+        expected = first + "\n" + second + "\n"
+        self.assertEqual(format_md.unwrap(original, "readonly_SKILL.md"), expected)
+        self.assertEqual(format_md.unwrap(expected, "readonly_SKILL.md"), expected)
+
+    def test_SHOULD_preserve_unmatched_or_multiline_backticks(self):
+        format_md = _load_format_md_command()
+        examples = (
+            "Use `unclosed\nand continue here.\n",
+            "Use `one` and ``unclosed\nthen continue.\n",
+            "- `First sentence. Second sentence\nwithout closing until here.`\n",
+        )
+        for original in examples:
+            with self.subTest(original=original):
+                self.assertEqual(format_md.unwrap(original, "AGENTS.md"), original)
+
+    def test_SHOULD_report_then_write_inline_code_prose_through_the_cli(self):
+        command = REPO / "home/exact_bin/executable_,format-md"
+        original = "Use `some command`\nwith these arguments.\n"
+        expected = "Use `some command` with these arguments.\n"
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "SKILL.md"
+            path.write_text(original)
+            check = subprocess.run([sys.executable, str(command), "--check", str(path)], capture_output=True, text=True)
+            self.assertEqual(check.returncode, 1, check.stderr)
+            self.assertEqual(path.read_text(), original)
+            write = subprocess.run([sys.executable, str(command), str(path)], capture_output=True, text=True)
+            self.assertEqual(write.returncode, 0, write.stderr)
+            self.assertEqual(path.read_text(), expected)
+            clean = subprocess.run([sys.executable, str(command), "--check", str(path)], capture_output=True, text=True)
+            self.assertEqual(clean.returncode, 0, clean.stdout + clean.stderr)
 
     def test_SHOULD_preserve_ai_fence_contents_until_a_matching_close(self):
         format_md = _load_format_md_command()

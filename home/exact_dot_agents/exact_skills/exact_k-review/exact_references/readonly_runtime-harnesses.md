@@ -66,7 +66,8 @@ Do not select a lane from model membership alone when one model serves multiple 
 Run `/k-deep-review` in the main Antigravity session. Dynamic subagents cannot invoke further subagents.
 Antigravity has no repo-owned profile-file surface; define each needed role with `define_subagent`, point its system prompt at the matching shared role contract, then launch it through `invoke_subagent`.
 Every dynamically defined repo-owned role MUST use its `k-agent-<role>` identifier.
-The `invoke_subagent` model field accepts only `inherit`, `flash_lite`, `flash`, or `pro`; every `category_models.antigravity` row is Gemini Flash, so the tier to pass is `flash`.
+The `invoke_subagent` model field accepts only `inherit`, `flash_lite`, `flash`, or `pro`;
+every `category_models.antigravity` row is Gemini Flash, so the tier to pass is `flash`.
 Use `flash`: review, audit, refute, `k-agent-mechanical` procedures, `k-agent-smol` memory.
 Do NOT launch any lane on `inherit`; do not use `pro` unless the registry row changes to a Pro model.
 The model surface is Gemini-only, so report `families=same (degraded)` for adversarial verification.
@@ -87,9 +88,11 @@ The model surface is Gemini-only, so report `families=same (degraded)` for adver
   user-level `~/.cursor/agents` is never scanned (probed 2026-08-30, cursor-agent 2026.08.28-a7f9513), so home-deployed profiles are unreachable.
   Where a workspace carries `k-agent-review-worker`/`k-agent-adversarial-verifier` profiles, launch the review and refute packets through them;
   both carry resolver-rendered `model` frontmatter.
-- Resolved `lanes` and `verifier` are Task base ids from `category_models.cursor` (`review` / `refute`); read them from `harnesses.cursor.agents` in `agent-bands.v1.json`.
+- Resolved `lanes` and `verifier` are Task base ids from `category_models.cursor` (`review` / `refute`);
+  read them from `harnesses.cursor.agents` in `agent-bands.v1.json`.
   `category_models.cursor.refute` carries `verifier_status: cross_family`, so the adversarial verifier runs as a cross-family lane.
-  An omitted Cursor subagent model falls to Cursor's own default (`auto` router; observed `composer-2.5-fast` in 2026-08 probes, unverified since).
+  An omitted Cursor subagent model falls to Cursor's own default (`auto` router;
+  observed `composer-2.5-fast` in 2026-08 probes, unverified since).
   Treat any omitted Cursor subagent model as a matrix bypass.
 - Same-name custom profiles do **not** shadow native Cursor enum agents (`explore`, `debug`, `cursor_guide`, `unspecified`):
   custom profiles are carried as a separate `custom` oneof with a `name`, while native cases are distinct empty oneof variants.
@@ -119,7 +122,8 @@ The projected tools exclude `Agent`, `Task`, and `SendMessage`; this does not pr
 Cursor `2026.09.08-6caf4ff` local-provider Task configuration (`nhe()`) hardcodes `enableExecuteHookExec:false`.
 Authenticated scripted-provider probes under the subscription environment returned child results without user/workspace gate calls.
 That route bypasses configured denial; exact role/model/effort routing and full lifecycle remain uncertified.
-MUST NOT assign unattended child work to `,cursor-codex` while those route-specific capabilities remain uncertified. Do not bypass a denial by dropping effort, using a raw backend model, invoking another harness, or substituting the root model.
+MUST NOT assign unattended child work to `,cursor-codex` while those route-specific capabilities remain uncertified.
+Do not bypass a denial by dropping effort, using a raw backend model, invoking another harness, or substituting the root model.
 Report the limitation. Root sessions and native harness routes remain separate capabilities.
 
 ### Codex on OpenRouter
@@ -132,5 +136,6 @@ A scripted native transport check does not establish paid-provider acceptance, c
 
 ### Pi and OMP index
 
-Pi and OMP native capability boundaries live in `~/.agents/skills/k-review/references/runtime-harnesses-pi-omp.md` as a packet pointer only; the root does not open it (Contract above).
+Pi and OMP native capability boundaries live in `~/.agents/skills/k-review/references/runtime-harnesses-pi-omp.md` as a packet pointer only;
+the root does not open it (Contract above).
 Pass the applicable section in the packet; a launch failure is reported with its exact error rather than diagnosed by reading harness docs.

@@ -23,7 +23,7 @@ Whether a findings audit needs review-grade reasoning is a fact about the job, n
 
 ## Categories
 
-Categories select capability, not mandatory agent launches. The session and strong research/review/refute handle judgment. Substantial settled implementation uses the implementation band; mechanical packets isolate substantial settled retrieval, execution, extraction, transformation, compression and reporting; tiny operations use direct tools. Automatic memory recall and learning remain; admission is bounded and persistence is batched. Keep raw evidence in task contexts and compact decisions in the strong root. Do not spend the expensive root on routine implementation by default. Model/effort values below remain registry-owned; no model migration is part of the staged-workflow change.
+Categories select capability, not mandatory agent launches. The session and strong research/review/refute handle judgment. Substantial settled implementation uses the implementation band; mechanical packets isolate substantial settled retrieval, execution, extraction, transformation, compression and reporting; tiny operations use direct tools. Automatic memory recall and learning remain; admission is bounded and persistence is batched. Keep raw evidence in task contexts and compact decisions in the strong root. Do not spend the expensive root on routine implementation by default. Model/effort values below remain registry-owned.
 
 ## Tiers
 
@@ -46,11 +46,11 @@ The SOP §3.7 routes settled implementation with stated acceptance and unwritten
 | Harness       | Model                            | Effort | Context | Generated into                                                             |
 | ------------- | -------------------------------- | ------ | ------- | -------------------------------------------------------------------------- |
 | `claude_code` | `claude-opus-5-5[1m]`            | high   | long    | `home/dot_claude/settings.{work,personal}.json`                            |
-| `codex`       | `gpt-6-sol`                      | high   | short   | `home/dot_codex/private_config.{work,personal}.toml`                       |
+| `codex`       | `gpt-6-astra`                    | high   | short   | `home/dot_codex/private_config.{work,personal}.toml`                       |
 | `cursor`      | `claude-opus-5-5`                | high   | long    | none (user-config-owned, informational)                                    |
 | `antigravity` | `gemini-3.8-flash`               | high   | long    | `home/dot_gemini/antigravity-cli/readonly_settings.policy.json`            |
 | `pi`          | `openrouter/meta/muse-spark-1.3` | xhigh  | long    | `home/dot_pi/agent/readonly_settings.{work,personal}.json`                 |
-| `omp`         | `openai-codex/gpt-6-sol`         | high   | short   | `home/dot_omp/private_agent/readonly_config.yml.tmpl` `modelRoles.default` |
+| `omp`         | `openai-codex/gpt-6-astra`       | high   | short   | `home/dot_omp/private_agent/readonly_config.yml.tmpl` `modelRoles.default` |
 
 Cursor: user-config-owned, informational.
 
@@ -104,16 +104,16 @@ Claude Code accepts hyphenated point versions only: `claude-sonnet-4-6`, `claude
 
 ### Codex
 
-| Category     | Model        | Effort | Context | Verifier status |
-| ------------ | ------------ | ------ | ------- | --------------- |
-| `mechanical` | `gpt-6-luna` | high   | short   | —               |
-| `research`   | `gpt-6-sol`  | high   | short   | —               |
-| `implement`  | `gpt-6-sol`  | medium | short   | —               |
-| `review`     | `gpt-6-sol`  | high   | short   | —               |
-| `refute`     | `gpt-6-sol`  | high   | short   | degraded        |
-| `memory`     | `gpt-6-sol`  | high   | short   | —               |
+| Category     | Model          | Effort | Context | Verifier status |
+| ------------ | -------------- | ------ | ------- | --------------- |
+| `mechanical` | `gpt-5.6-luna` | high   | short   | —               |
+| `research`   | `gpt-5.6-sol`  | high   | short   | —               |
+| `implement`  | `gpt-5.6-sol`  | medium | short   | —               |
+| `review`     | `gpt-5.6-sol`  | high   | short   | —               |
+| `refute`     | `gpt-5.6-sol`  | high   | short   | degraded        |
+| `memory`     | `gpt-5.6-sol`  | high   | short   | —               |
 
-Codex is OpenAI-only, so refutation is degraded; `refute` uses the same `gpt-6-sol` pick and effort as review (user call 2026-09-23), so it adds no model diversity and reports reduced independence. Model and effort are separate fields on native profiles and gate rewrites.
+Codex is OpenAI-only, so refutation is degraded; `refute` uses the same `gpt-5.6-sol` pick and effort as review, so it adds no model diversity and reports reduced independence. Model and effort are separate fields on native profiles and gate rewrites.
 
 ### Cursor
 
@@ -167,7 +167,7 @@ Pi is the one harness with a machine-local alternate pricing. The `pi_model_prof
 | `default`         | the table above                                   | the table above                                                                                                                                                                                                                     |
 | `local`           | `llama-cpp/qwen3.6-35b-a3b`                       | Qwen3.6 35B-A3B UD-Q5_K_XL with thinking off; root and every lane share one router ID, without mixing the instruct preset; the same-model counter is degraded                                                                       |
 | `anthropic`       | `anthropic/claude-opus-5-5`                       | Opus 5.5 for research/review and the degraded same-family counter, Opus 5 for implement, Sonnet 5 cheap lanes                                                                                                                       |
-| `codex`           | `openai-codex/gpt-6-sol`                          | GPT-6 Sol for research/review/memory and at medium effort for implement, GPT-6 Luna for mechanical, GPT-6 Sol at review's effort as the degraded same-family counter                                                                |
+| `codex`           | `openai-codex/gpt-6-astra`                        | GPT-5.6 Sol for research/review/memory and at medium effort for implement, GPT-5.6 Luna for mechanical, GPT-5.6 Sol at review's effort as the degraded same-family counter                                                          |
 | `openrouter-free` | `openrouter/deepseek/deepseek-v4-flash-0731:free` | OpenRouter `:free` ids only: DeepSeek V4 Flash for research/review at max, Nex N2.5 Pro for implement and the cross-family counter, Nex N2.5 Mini cheap lanes; rate-limited upstream and only as stable as OpenRouter's free roster |
 | `nvidia-free`     | `nvidia/z-ai/glm-5.3-flash`                       | NVIDIA NIM free endpoints only: GLM 5.3 Flash on every lane (research/review at max, the rest at high; the same-model counter is degraded); needs `NVIDIA_API_KEY`                                                                  |
 
@@ -185,18 +185,18 @@ Inside a running Pi session the same switch is `/model-profile` ([`pi-model-prof
 
 OMP is the one harness with native role indirection. Native `extendedContext: true` gives the root long context while role pins stay unchanged, so category rows are spelled as `@role` tokens and [`readonly_config.yml.tmpl`](../../../home/dot_omp/private_agent/readonly_config.yml.tmpl)'s `modelRoles` prices them in one profile-independent block. `modelRoles.default` is generated from `session_models.omp`. Installed `omp/18.0.3` reports `default`, `smol`, `vision`, `slow`, `plan`, `task`, and `advisor` from `omp config get modelRoles`; the repo uses those role names as local implementation detail, not as the portable taxonomy.
 
-| Category               | Token      | `modelRoles` (both profiles)    | Tier | Verifier status |
-| ---------------------- | ---------- | ------------------------------- | ---- | --------------- |
-| `research`, `review`   | `@default` | `openai-codex/gpt-6-sol:high`   | T1   | —               |
-| `implement`            | `@task`    | `openai-codex/gpt-6-sol:medium` | T2   | —               |
-| `mechanical`, `memory` | `@smol`    | `openai-codex/gpt-6-luna:high`  | T3   | —               |
-| `refute`               | `@advisor` | `openai-codex/gpt-6-sol:high`   | —    | degraded        |
+| Category               | Token      | `modelRoles` (both profiles)      | Tier | Verifier status |
+| ---------------------- | ---------- | --------------------------------- | ---- | --------------- |
+| `research`, `review`   | `@default` | inherits parent (normally Astra)  | T1   | —               |
+| `implement`            | `@task`    | `openai-codex/gpt-5.6-sol:medium` | T2   | —               |
+| `mechanical`, `memory` | `@smol`    | `openai-codex/gpt-5.6-luna:high`  | T3   | —               |
+| `refute`               | `@advisor` | `openai-codex/gpt-5.6-sol:high`   | —    | degraded        |
 
-Verified on 17.2.4: a profile carrying `model: "@smol"` runs on `modelRoles.smol`, and an unknown token fails loudly with `Error: No model selected.` rather than falling back. Provider and model are separated by `/`, never `:` — `cursor:` parses as a bogus provider. Like Pi, OMP's `:<level>` suffix is a single thinking dial the runtime maps straight onto `reasoning`, so "high effort, non-thinking" is not expressible here. User call 2026-09-23: one profile-independent `modelRoles` block ahead of the `isWork` branch, now entirely on the `openai-codex` provider and mirroring `category_models.codex` — `default` on `gpt-6-sol:high` with `slow`/`plan` at `:max` (T1), `vision` on `gpt-6-luna:high`, `task` on `gpt-6-sol:medium` (T2: the native `task` agent and every implement worker land there), `smol` on `gpt-6-luna:high` (T3), `tiny` and `commit` on `gpt-6-luna:medium`, and `advisor` on `gpt-6-sol:high`; every built-in role is pinned so nothing falls through to the harness default. It replaced the 2026-09-07 `openrouter` block (Muse Spark 1.3 primaries, GLM 5.3 task, GLM 5.3 Flash smol, Grok 4.6 advisor). That block replaced the 2026-08-30 split (work on the Cursor backend with `cursor/gpt-5.5:xhigh` primaries, personal on the Codex backend with `openai-codex/gpt-5.5:xhigh`, both with `smol` on `cursor/default`): every `@smol` lane (bundled `scout`/`sonic`) ran over the `cursor-agent` transport and settled `failed (exit 1)` once Cursor's free-request limit hit mid-run.
+Verified on 17.2.4: a profile carrying `model: "@smol"` runs on `modelRoles.smol`, and an unknown token fails loudly with `Error: No model selected.` rather than falling back. Provider and model are separated by `/`, never `:` — `cursor:` parses as a bogus provider. Like Pi, OMP's `:<level>` suffix is a single thinking dial the runtime maps straight onto `reasoning`, so "high effort, non-thinking" is not expressible here. The profile-independent `modelRoles` block precedes the `isWork` branch and uses the `openai-codex` provider: `default` on `gpt-6-astra:high`; `slow` and `plan` explicitly on `gpt-5.6-sol:max` (T1); `vision` on `gpt-5.6-luna:high`; `task` on `gpt-5.6-sol:medium` (T2); `smol` on `gpt-5.6-luna:high` (T3); `tiny` and `commit` on `gpt-5.6-luna:medium`; and `advisor` on `gpt-5.6-sol:high`. Research/review profiles carry `@default` and inherit the active parent's model (normally Astra for a fresh root), not a separately hard-pinned child pick. Every built-in role is configured so nothing falls through to the harness default.
 
-`memory` rides `@smol` again. Between 2026-08-29 and 2026-09-07 it bypassed the role table, pinned directly to `openrouter/google/gemini-3.7-flash:high`: DeepSeek V4 Flash (then `modelRoles.smol`) failed the live scribe probes (stored a known duplicate on Pi; hung as OMP scribe, killed at 9 min, 2026-08-28), while Gemini 3.7 Flash returned the correct `duplicate of <id>` on the same fixture. With `smol` on GPT-6 Luna the role token is the pick, so `mechanical` and `memory` share one T3 role. The `:<level>` suffix in `modelRoles` is load-bearing: [`agent-model.partial`](../../../home/.chezmoitemplates/agent-model.partial) renders only the model string into the agent frontmatter (the registry `effort` field is never rendered for OMP), and OMP's spawn precedence honors an explicit `:level` suffix over its defaults (`task/executor.ts`: effort > `:level` suffix > agent-definition default > pattern-derived).
+`memory` rides `@smol` again. Between 2026-08-29 and 2026-09-07 it bypassed the role table, pinned directly to `openrouter/google/gemini-3.7-flash:high`: DeepSeek V4 Flash (then `modelRoles.smol`) failed the live scribe probes (stored a known duplicate on Pi; hung as OMP scribe, killed at 9 min, 2026-08-28), while Gemini 3.7 Flash returned the correct `duplicate of <id>` on the same fixture. With `smol` on GPT-5.6 Luna the role token is the pick, so `mechanical` and `memory` share one T3 role. The `:<level>` suffix in `modelRoles` is load-bearing: [`agent-model.partial`](../../../home/.chezmoitemplates/agent-model.partial) renders only the model string into the agent frontmatter (the registry `effort` field is never rendered for OMP), and OMP's spawn precedence honors an explicit `:level` suffix over its defaults (`task/executor.ts`: effort > `:level` suffix > agent-definition default > pattern-derived).
 
-Background advice is disabled (`advisor.enabled: false`, `advisor.subagents: false`, and `task.agentAdvisor.task: "off"`). The `modelRoles.advisor` selector is retained for explicit final refutation, not automatic advice. `review` rides `@default` (GPT-6 Sol) and `refute` resolves `@advisor` (`openai-codex/gpt-6-sol:high`); the registry declares `verifier_status: degraded` on the refute row, because the advisor is the same OpenAI model as the primaries (same call as `category_models.codex.refute`).
+Background advice is disabled (`advisor.enabled: false`, `advisor.subagents: false`, and `task.agentAdvisor.task: "off"`). The `modelRoles.advisor` selector is retained for explicit final refutation, not automatic advice. `review` rides `@default`, inheriting the active parent's model (normally GPT-6 Astra), while `refute` resolves `@advisor` (`openai-codex/gpt-5.6-sol:high`); the registry still declares `verifier_status: degraded` because both are from the same OpenAI family, despite their different model IDs.
 
 ## Native subagent takeover risk
 

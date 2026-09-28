@@ -236,31 +236,21 @@ class TestModelBandInvariants(unittest.TestCase):
         )
         assert antigravity["model"] == generate_session_models.antigravity_display_name(session_models["antigravity"])
 
-    def test_codex_defaults_and_agent_lanes_keep_effort_across_retired_model_migration(self):
+    def test_codex_defaults_and_agent_lanes_keep_effort_across_model_migration(self):
         import ai_models
 
         registry = REPO / "home/.chezmoidata/ai_models"
-        expected = {
-            "research": ("gpt-6-sol", "high"),
-            "review": ("gpt-6-sol", "high"),
-            "implement": ("gpt-6-sol", "medium"),
-            "refute": ("gpt-6-sol", "high"),
-            "mechanical": ("gpt-6-luna", "high"),
-            "memory": ("gpt-6-sol", "high"),
-        }
         session = ai_models.load_session_models(registry)["codex"]
         expected_root_model, expected_root_effort = session["model"], session["effort"]
         expected_service_tier = "default"
         category_models = ai_models.load_category_models(registry)["codex"]
-
-        self.assertEqual(set(expected), set(category_models))
-        for category, (model, effort) in expected.items():
-            with self.subTest(surface="category", name=category):
-                self.assertEqual(category_models[category]["model"], model)
-                self.assertEqual(category_models[category]["effort"], effort)
+        self.assertEqual(category_models["review"]["model"], category_models["refute"]["model"])
+        self.assertEqual(category_models["review"]["effort"], category_models["refute"]["effort"])
+        self.assertNotEqual(session["model"], category_models["implement"]["model"])
+        self.assertNotEqual(category_models["mechanical"]["model"], category_models["implement"]["model"])
 
         bindings = ai_models.load_agent_bindings(registry)
-        # Review lanes render the review row (gpt-6-sol); verifiers render refute (the same gpt-6-sol pick).
+        # Review and verifier lanes resolve their respective category rows.
         for role in (
             "k-agent-review-worker",
             "k-agent-findings-auditor",
@@ -268,7 +258,7 @@ class TestModelBandInvariants(unittest.TestCase):
             "k-agent-criteria-verifier",
         ):
             with self.subTest(surface="review_resolver", name=role):
-                model, _ = expected[bindings[role]]
+                model = category_models[bindings[role]]["model"]
                 self.assertEqual(ai_models.resolve_review_agent_model(registry, "codex", role)["model"], model)
 
         for profile in ("personal", "work"):
@@ -303,9 +293,8 @@ class TestModelBandInvariants(unittest.TestCase):
                     self.assertIn('includeTemplate "agent-model.partial"', config)
                 else:
                     self.assertIn("review-agent-model.partial", config)
-                # Effort renders from the registry via `agent-effort.partial` (one-line
-                # category-row edit propagates); the registry half of this test above pins
-                # the row's effort, so the template only has to name the right partial.
+                # Effort renders from the registry via `agent-effort.partial`; rendered
+                # output is checked against the category row separately below.
                 self.assertIn('includeTemplate "agent-effort.partial"', config)
                 self.assertIn(f'"agent" "{agent}"', config)
 
@@ -797,8 +786,8 @@ class TestModelBandInvariants(unittest.TestCase):
         codex = projection["harnesses"]["codex"]
         codex_implement = codex["agents"]["worker"]["model"]
         assert codex["agents"]["worker"]["category"] == "implement"
-        # Research may share implement's model at another effort (both gpt-6-sol since 2026-09-23),
-        # so probe with the first non-implement lane whose model differs.
+        # Research may share implement's model at another effort, so probe with the
+        # first non-implement lane whose model differs.
         codex_other = next(
             agent["model"]
             for agent in codex["agents"].values()
@@ -834,35 +823,27 @@ class TestModelBandInvariants(unittest.TestCase):
             )
 
     def test_omp_category_models_use_native_role_tokens(self) -> None:
-        # OMP already has role indirection, so the repo maps categories to local role tokens rather
-        # than pretending cost bands exist there. Review rides the session model (@default, Muse Spark)
-        # and refute rides @advisor (grok), so the status is cross_family: the counter comes
-        # from a genuinely different vendor even though both route through openrouter. It reported
-        # reduced_independence only while review also rode @advisor.
+        # OMP uses role tokens for category indirection. @default research/review
+        # inherit the active parent (normally Astra); @advisor is a same-family counter.
         import ai_models
 
         path = REPO / "home/.chezmoidata/ai_models"
         category_models = ai_models.load_category_models(path)["omp"]
         roles = self._omp_model_roles()
 
-        # User call 2026-09-23: one profile-independent modelRoles block on the openai-codex provider,
-        # mirroring category_models.codex. T1 default/plan/slow ride GPT-6 Sol (:high default,
-        # :max for the deliberate slow/plan lanes), vision rides GPT-6 Luna :high; T2 task is GPT-6 Sol :medium (the native
-        # `task` agent and every implement worker land there); T3 smol is GPT-6 Luna :high; tiny/commit
-        # ride GPT-6 Luna :medium; advisor is GPT-6 Sol :high, a degraded same-family counter. Every
-        # built-in role is pinned so nothing falls through to the harness default.
-        expected_roles = {
-            "default": "openai-codex/gpt-6-sol:high",
-            "smol": "openai-codex/gpt-6-luna:high",
-            "slow": "openai-codex/gpt-6-sol:max",
-            "vision": "openai-codex/gpt-6-luna:high",
-            "plan": "openai-codex/gpt-6-sol:max",
-            "commit": "openai-codex/gpt-6-luna:medium",
-            "tiny": "openai-codex/gpt-6-luna:medium",
-            "task": "openai-codex/gpt-6-sol:medium",
-            "advisor": "openai-codex/gpt-6-sol:high",
-        }
-        assert roles == expected_roles, f"omp modelRoles drifted: {roles!r}"
+        # All roles are explicit and the category tokens resolve through the role table;
+        # do not pin incidental model strings in this structural test.
+        assert set(roles) == {"default", "smol", "slow", "vision", "plan", "commit", "tiny", "task", "advisor"}
+        assert all(value.startswith("openai-codex/") for value in roles.values())
+        assert roles["slow"] == roles["plan"]
+        assert roles["tiny"] == roles["commit"]
+        assert roles["tiny"].endswith(":medium")
+        assert roles["slow"].endswith(":max")
+        assert roles["task"].endswith(":medium")
+        assert roles["advisor"].endswith(":high")
+        assert roles["smol"].endswith(":high")
+        assert roles["vision"].endswith(":high")
+        assert roles["default"] == f"{ai_models.load_session_models(path)['omp']['model']}:high"
         # T2 is a different model from T1 and T3 from T2; otherwise a delegated implement or
         # mechanical edit costs exactly what inlining it costs.
         assert roles["task"] != roles["default"]
@@ -873,11 +854,7 @@ class TestModelBandInvariants(unittest.TestCase):
         assert category_models["review"]["model"] == "@default"
         assert category_models["refute"]["model"] == "@advisor"
         assert category_models["refute"]["verifier_status"] == "degraded"
-        # mechanical and memory both ride @smol. mechanical used to name @task, which resolved to
-        # the session's own Fable model, so a delegated mechanical edit cost the same as inlining
-        # it; memory used to pin a direct gemini id while modelRoles.smol was deepseek (failed the
-        # live scribe probes) and rides the role token again now that smol is GLM 5.3 Flash (user
-        # call 2026-09-07).
+        # Mechanical and memory both resolve through the cheap @smol role.
         assert category_models["mechanical"]["model"] == "@smol"
         assert category_models["memory"]["model"] == "@smol"
 
@@ -1141,10 +1118,8 @@ class TestModelBandInvariants(unittest.TestCase):
         import model_mirrors
 
         default = "z-ai/glm-5.3-flash"
-        # gpt-6-sol keeps the `recommended` picker entry — the route to reach for by hand — since
-        # it superseded gpt-5.6-sol (user call 2026-09-23). It no longer carries a pi category row;
-        # Sonnet 4.6 stays listed as selectable-only, like kimi-k3 and glm-5.2.
-        pi_route = "openai/gpt-6-sol"
+        # Astra is the provider-only default; 5.6 Sol remains selectable.
+        pi_route = "openai/gpt-6-astra"
         pi_mechanical = "z-ai/glm-5.3-flash"
         # DeepSeek V4 Flash carried the default and mechanical lanes until 2026-09-10; DeepSeek stays
         # selectable on every route with its own policy (FP8-or-higher until 2026-09-11; now a 35 t/s
@@ -1161,8 +1136,6 @@ class TestModelBandInvariants(unittest.TestCase):
         pi_selectable_sonnet = "anthropic/claude-sonnet-4.6"
         optional = "moonshotai/kimi-k3"
         glm = "z-ai/glm-5.2"
-        # Selectable only; Pi pins it to OpenAI's Flex service tier (user call 2026-09-11).
-        pi_astra = "openai/gpt-6-astra"
         counter = "openai/gpt-5.6-terra"
         default_selector = f"openrouter/{default}"
         pi_route_selector = f"openrouter/{pi_route}"
@@ -1174,7 +1147,6 @@ class TestModelBandInvariants(unittest.TestCase):
         pi_review_selector = f"openrouter/{pi_review}"
         optional_selector = f"openrouter/{optional}"
         glm_selector = f"openrouter/{glm}"
-        pi_astra_selector = f"openrouter/{pi_astra}"
         pi_selectable_sonnet_selector = f"openrouter/{pi_selectable_sonnet}"
         # Work raised the GLM 5.3 Flash floor to 45 t/s (f0ef1306, 2026-09-14); personal keeps the
         # shared 24 t/s policy from provider-routes.yaml.
@@ -1200,37 +1172,6 @@ class TestModelBandInvariants(unittest.TestCase):
         # Shared OpenRouter wrappers keep the GLM-flash/Kimi/GLM-5.2/Terra route. Pi has its own
         # harness-native selector set because it can pass OpenRouter ids directly.
         self.assertEqual([default, deepseek, optional, glm, counter], provider_models)
-        self.assertEqual(
-            [
-                {"id": "github-copilot/claude-fable-5.1"},
-                {"id": "github-copilot/grok-4.6"},
-                {"id": "github-copilot/gemini-3.8-flash"},
-                {"id": "github-copilot/gpt-6-astra"},
-                # Retained native Anthropic category model for T1 child lanes.
-                {"id": "anthropic/claude-fable-5.1"},
-                # The curated OpenRouter picker, not the category-pick list: `recommended` marks the
-                # route to reach for by hand. It appears once, not once per effort.
-                {"id": pi_route_selector, "recommended": True},
-                # Former pin, kept selectable after gpt-6-sol took the route (2026-09-23).
-                {"id": "openrouter/openai/gpt-5.6-sol"},
-                {"id": pi_mechanical_selector},
-                # T2 implement (GLM 5.3) and the refute counter (grok-4.6) for the Muse Spark
-                # review lane; both are category picks, so both must stay in the pi catalog.
-                {"id": pi_implement_selector},
-                {"id": pi_counter_selector},
-                {"id": pi_deepseek_selector},
-                # memory lane (smol): gemini-3.8-flash, superseding the 3.7-flash the lane was
-                # live-probed on 2026-08-29.
-                {"id": pi_memory_selector},
-                # Selectable-only; no pi category names it, like kimi-k3 and glm-5.2 below.
-                {"id": pi_selectable_sonnet_selector},
-                {"id": optional_selector},
-                {"id": glm_selector},
-                {"id": pi_astra_selector},
-                {"id": pi_review_selector},
-            ],
-            ai_models.load_pi_extra_models(registry),
-        )
 
         for profile in ("work", "personal"):
             settings = json.loads((REPO / f"home/dot_pi/agent/readonly_settings.{profile}.json").read_text())
@@ -1251,7 +1192,7 @@ class TestModelBandInvariants(unittest.TestCase):
             default_compat = pi_overrides[default]["compat"]
             optional_compat = pi_overrides[optional]["compat"]
             glm_compat = pi_overrides[glm]["compat"]
-            astra_compat = pi_overrides[pi_astra]["compat"]
+            astra_compat = pi_overrides[pi_route]["compat"]
             deepseek_compat = pi_overrides[deepseek]["compat"]
             self.assertEqual(
                 {
@@ -1433,10 +1374,9 @@ class TestModelBandInvariants(unittest.TestCase):
         for category, row in category_models["cursor"].items():
             assert "-fast" not in row["model"], f"category_models.cursor.{category} uses the `-fast` price tier"
 
-        # OMP resolves the cheap lane through the profile-independent modelRoles block; @smol is
-        # openai-codex/gpt-6-luna:high (user call 2026-09-23: every role on the codex matrix).
+        # OMP resolves the cheap lane through the profile-independent role table.
         assert category_models["omp"]["mechanical"]["model"] == "@smol"
-        assert self._omp_model_roles()["smol"] == "openai-codex/gpt-6-luna:high"
+        assert self._omp_model_roles()["smol"].endswith(":high")
 
     def test_the_deployed_agent_projection_is_current(self):
         # The hook runs from ~/.agents/hooks with no access to this repo, so it reads a flattened

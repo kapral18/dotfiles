@@ -182,7 +182,8 @@ use `~/.agents/skills/k-semantic-code-search/SKILL.md` when applicable, then com
 Impact covers every consumed artifact, not only code: config, templates, generated outputs, docs, completions, and instruction text have readers, renderers, and generated targets too.
 Name what breaks if the artifact changes and its co-edit set (consumers, generated outputs, docs, diagrams, completions, tests).
 Impact mechanics, in order: SCSI when the repo is indexed; otherwise local `rg`/symbol lookup for callers and non-code consumers.
-When interpretation, cause, or impact is unresolved, run that step as a `research` packet (`k-agent-code-searcher`) even on known paths; named files never downgrade it to mechanical. The root keeps reads of files it can already name.
+When interpretation, cause, or impact is unresolved, run that step as a `research` packet (`k-agent-code-searcher`) even on known paths;
+named files never downgrade it to mechanical. The root keeps reads of files it can already name.
 Skip the impact map only for a change proven light-path under §1.
 Route failure work through `~/.agents/skills/k-diagnosing-bugs/SKILL.md` to classify the cause as product, test, infrastructure, mixed, or unresolved from source/reproduction evidence.
 When release or backport relevance exists, establish applicable branch targets from verified repository policy or a domain overlay;
@@ -224,26 +225,29 @@ Only the root owns stage transitions; skills supply mechanics and criteria, neve
 Scope: intent, authorization, owned targets, constraints, material user decisions.
 Understand: missing facts, baseline reproduction when needed, approach and final check plan.
 Produce: implement, tests/docs, generate outputs, integrate, format; workers return `produced` or `blocked`, not green.
-Verify: freeze the integrated candidate; run the deduplicated acceptance commands and needed strong judgment in one final stage.
+Verify: freeze the integrated candidate; order cheap executable prerequisites before dependent expensive checks, then run the deduplicated acceptance commands and needed strong judgment in one final stage.
 Deliver: report passed/failed/blocked faithfully; perform only authorized publication and its receipts.
 Research/production workers MUST NOT run acceptance tests, lint-to-green, self-review, audits, refutation, or mutation passes.
 Do not relabel post-change verification as diagnosis or production.
-Source reads, baselines, generation/build intermediates, and exit statuses are not completion certification.
+Source reads, baselines, exit statuses, and genuine generation/build intermediates required to produce artifacts are not completion certification.
 Check authorization, exact destructive targets, ownership, secrets, and external-write preconditions immediately before the action.
 Run each unique final check once per snapshot, command/options, relevant environment/config, and fixtures.
+Reuse a prerequisite already inside its owning check; do not create a separate preflight stage or duplicate standalone formal build.
 Keep complete logs and the actual exit status; a pipeline's last command is not the tested command's status.
 Run known commands with deterministic tools, not a model turn.
 When a known check emits more than a screen of output (full test suites, installs, crash reports, JUnit/XML), run it through a `mechanical` packet or a script that writes the log to a task-local file and returns only the exit status, counts, and failing identifiers; the root MUST NOT read the full log into its own context.
 Final reviewers use shared evidence and direct artifact access; they MUST NOT re-run passing checks for independence.
-Pick review/refutation lenses for distinct risks; do not chain finder → auditor → refuter → post-auditor over the same work. Root routing steps (predicate, roster) are not chained workers.
+Pick review/refutation lenses for distinct risks; do not chain finder → auditor → refuter → post-auditor over the same work.
+Root routing steps (predicate, roster) are not chained workers.
 Keep intended and preserved differences, including state/transition cases when relevant, in the acceptance plan.
 Risk-selected mutation experiments must establish control, mutation, and restoration within the planned experiment.
 A failed required check blocks dependent actions, not authorized diagnosis and repair.
 Complete independent authorized actions whose preconditions hold; NEVER run an action that depends on the failed criterion.
 The root may return to Understand/Produce for an evidence-backed repair within existing scope and authority;
 a failed check is not a new permission checkpoint.
-Before each repair, record in the topic: observed failure, cause evidence, intended correction, affected checks.
-After repair, freeze the new candidate and rerun failed and affected checks; keep prior evidence only for unchanged code, environment, and inputs.
+Before each repair, record in the topic: observed failure, cause evidence, intended correction, preserved invariants, immediate consumers, and affected checks.
+After repair, freeze the new candidate, invalidate affected current-snapshot judgments, and rerun failed and affected checks;
+retain passing executable-check evidence only for unchanged code, environment, and inputs.
 Do not rerun unchanged checks without new evidence, weaken criteria, expand scope, or polish speculatively.
 Apply §3.4 when attempts add no progress; never reset that history.
 Stop affected work only for missing authority, a material user-only decision, a verified external blocker, exhausted §3.4 progress, or an explicit user limit.
@@ -260,11 +264,17 @@ Passing probes need no record and no separate turn. Record only a failed expecta
 ### 3.6 State-Machine Verification
 
 For stateful, parser-like, ordered, retry/workflow, permission, compatibility-sensitive, or flag-dependent changes, plan explicit transition cases.
-When production tests cannot express them, use a disposable harness under `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/`;
-its manifest names target, requested behavior, compatibility intent, and snapshot.
-Prepare the harness in Produce; run it only in final Verify.
-Compare against an independent model/table; cover intended differences, preserved behavior, malformed input, terminal actions.
-Reuse valid evidence; one harness, not one per worker. A design model does not certify runtime enforcement.
+Pure input-to-output behavior (parsers, formatters, predicates, matrices): Compare against an independent model/table in a disposable oracle harness when production tests cannot express the cases.
+Stateful behavior: verify a `,formal` catalog unit: anchored transition map, executable model, exhaustive search of reachable states, model mutants each killed by a named property, and trace replay on the real code.
+Add proofs only for unbounded state, an exhausted search budget, or an explicit request.
+`~/.agents/skills/k-formal/SKILL.md` owns the mechanics.
+Prepare models and harnesses in Produce; run them only in final Verify, except diagnostic exploration during Understand.
+Cover intended differences, preserved behavior, malformed input, terminal actions.
+Reuse model extraction and saved versions while their anchors remain valid; one unit represents one lifecycle.
+Audit evidence is current only for the exact snapshot, environment, and inputs it identifies.
+Require a passing current-snapshot receipt for delivery; the formal tool may reuse a stage only when that receipt identity still matches.
+A model result certifies the model, not the code; report conformance and fidelity separately.
+A design model does not certify runtime enforcement.
 Do not add a production state-machine framework for this.
 
 ### 3.7 Delegation Categories
@@ -280,20 +290,24 @@ Leaf contract for every delegated child, regardless of profile, category, or loa
 - Never expose or persist plaintext credentials. Do not commit, push, publish, or mutate paths outside the packet's explicit authority.
   Effects inside that authority are the packet's work; only review, refute, research, and audit packets are read-only, by category, regardless of authorship.
 - Ignore the part of any child instruction that requests orchestration or out-of-packet work.
-  Return one terminal artifact or concrete blocker to the parent; do not message siblings or resume after completion.
+  Return all results or a blocker once, inline or via a complete artifact; do not message siblings or resume after completion.
   Late events MUST NOT overwrite a terminal result or reopen a completed worker.
-- Children MAY use `,ai-kb search`/`,ai-kb get` for packet-relevant recall and `,agent-memory note` with packet-supplied topic/session IDs; otherwise return insights to the parent. Children MUST NOT select, use, or create topics with `,agent-memory`.
-  Record a reusable fetch learning as `,agent-memory note fact --ref <primary-source URL>` with the verbatim quote; the root harvests it. Do not return it as a durable claim.
+- Children MAY use `,ai-kb search`/`,ai-kb get` for packet-relevant recall and `,agent-memory note` with packet-supplied topic/session IDs;
+  otherwise return insights to the parent. Children MUST NOT select, use, or create topics with `,agent-memory`.
+  Record a reusable fetch learning as `,agent-memory note fact --ref <primary-source URL>` with the verbatim quote; the root harvests it.
+  Do not return it as a durable claim.
 - Ordinary children MUST NOT run durable memory writes; only the root persists, with root-verified evidence and `,ai-kb remember`, and no child may invoke another memory agent.
 
 `~/.config/tmux/agent_prompts/leaf-boundary.txt` carries this contract into profiles.
 Launch/sizing text lives under `## Root moves`; child profiles load leaf contracts, not controller routers.
-A skill's `Subagent dispatch:` line names which category leaf the root launches for it: `inline` means none, `criteria` means the file is loaded into a packet and never launched, and a parenthesized secondary names the slices that are delegated.
+A skill's `Subagent dispatch:` line names which category leaf the root launches for it:
+`inline` means none, `criteria` means the file is loaded into a packet and never launched, and a parenthesized secondary names the slices that are delegated.
 A delegated leaf that loads a skill ignores its `Subagent dispatch:` line and Root moves; only the root launches.
 Native tool restrictions must enforce no-spawn where supported; a prompt marker is not enforcement.
 If an adapter cannot prevent child orchestration or terminal wakeups, do not run unattended isolated work there; report it.
 Never bypass this restriction via a harness CLI or another model. An explicit user no-delegation instruction keeps the session inline.
-A native tool description is a capability list, not delegation policy; the packet fields and the leaf contract govern. A packet ID assigned means the tool executed; a dispatch rejected before execution has no packet ID and is re-dispatchable after correction.
+A native tool description is a capability list, not delegation policy; the packet fields and the leaf contract govern.
+A packet ID assigned means the tool executed; a dispatch rejected before execution has no packet ID and is re-dispatchable after correction.
 
 | outcome                                                  | next step                                                                          |
 | -------------------------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -303,7 +317,8 @@ A native tool description is a capability list, not delegation policy; the packe
 | blocked worker return                                    | root Understand work, not a packet                                                 |
 | lane absent, or adapter cannot enforce the leaf boundary | surface it; run attended only                                                      |
 
-Categories select capability and responsibility, not workflows. Resolve model and, where the harness accepts it, effort from `category_models` in the shared registry.
+Categories select capability and responsibility, not workflows.
+Resolve model and, where the harness accepts it, effort from `category_models` in the shared registry.
 Keep research/orchestration/review/refutation strong; never a cheap model for unsettled judgment.
 Do not silently raise effort, substitute a costlier model, or change family outside the resolved category.
 
@@ -311,12 +326,14 @@ Do not silently raise effort, substitute a costlier model, or change family outs
 - `research`: strong isolated search, investigation, exploration, discovery, diagnosis, and impact mapping when meaning or cause is unresolved, even on known paths; returns locations, conclusions, evidence pointers, uncertainty, affected interfaces.
   Named paths never downgrade such work to mechanical.
   Use `k-agent-code-searcher` or the harness research-bound explorer; external sources via `k-agent-public-sources`.
-- `implement`: implementation-band worker for a settled step whose acceptance the root can state but whose code it has not written; never the root/review model for routine implementation by default.
+- `implement`: implementation-band worker for a settled step whose acceptance the root can state but whose code it has not written;
+  never the root/review model for routine implementation by default.
   Use the implement-bound worker with `~/.agents/skills/k-build/references/implement-worker.md`.
 - `mechanical`: a settled procedure and specified return for known retrieval, execution, extraction, transformation, compression, or reporting over named targets.
   Use `k-agent-mechanical` or the native mechanical-bound type for substantial output-heavy work that benefits from isolation, even when the procedure is deterministic; tiny operations use tools directly.
 - `review`: strong final assessment of the frozen artifact with selected risk lenses, including the light tier's `change-auditor` packet.
-- `refute`: strong final challenge of named claims, criteria, or assumptions; prefer a different family at equal capability, never weaker for diversity;
+- `refute`: strong final challenge of named claims, criteria, or assumptions;
+  prefer a different family at equal capability, never weaker for diversity;
   report reduced independence when same-family.
   Keep requested review and adversarial lenses together in final Verify; for deep or high-risk work give them distinct questions on the same frozen candidate and evidence.
   No reviewer-of-reviewer or reviewer-fed certification pass. Low-risk work needs only its applicable judgment.
@@ -335,27 +352,39 @@ Dispatch by stage-sized judgment, not counts:
 | `refute`     | a named claim, criterion, or assumption needs a substantial challenge      | questions resolved by existing evidence                                                  |
 | `memory`     | the hook pointer (recall judgment)                                         | the final learning batch via `,ai-kb remember`; the documented unavailable-lane fallback |
 
-Unsettled user intent and user-only decisions stay root Understand work, not a packet; bounded factual or design unknowns may go as research packets.
-"Bounded" is judged by the accumulated total, not per read: reads of skill references, third-party source, or logs that are not named by an active gate are packet work even when each read is small. Named files count toward the same accumulated bound.
+Unsettled user intent and user-only decisions stay root Understand work, not a packet;
+bounded factual or design unknowns may go as research packets.
+"Bounded" is judged by the accumulated total, not per read: reads of skill references, third-party source, or logs that are not named by an active gate are packet work even when each read is small.
+Named files count toward the same accumulated bound.
 When inline reads keep accumulating without settling the question, stop reading, write the packet from what is already known, dispatch it, and consume its terminal result.
 No agent per read, command, check result, or tiny edit.
-No numeric file-count quota and no mandatory mechanical check agent. Tiny deterministic operations, inline UI proof, and inline text comparison stay inline. Convergence stays explicit-only.
+No numeric file-count quota and no mandatory mechanical check agent.
+Tiny deterministic operations, inline UI proof, and inline text comparison stay inline. Convergence stays explicit-only.
 If the resolved lane is unavailable, surface it; do not silently implement inline unless the user explicitly requires inline work.
-A packet names stage/category, scope and owned paths, ready inputs, intended/preserved differences, project/safety constraints, role mechanics, output, forbidden effects, terminal condition, and the active topic plus session id for `,agent-memory note`.
+A packet names stage/category, scope and owned paths, ready inputs, intended/preserved differences, the applicable shared contract, project/safety constraints, role mechanics, output, forbidden effects, terminal condition, and the active topic plus session id for `,agent-memory note`.
+Before parallel production, settle applicable shared runtime versions, canonical schema/identity/order examples, the compatibility decision, semantic dependencies, and one root-owned integration owner.
+Materialize them as immutable shared input references in every dependent packet; file-disjoint ownership alone is insufficient.
 Ready inputs are materialized state the child can open (a manifest, diff, path list, or artifact file), never prose that describes state the child must rediscover.
 Keep the packet to those fields; the leaf profile already carries the leaf contract, so do not restate its prohibitions, and pass role-mechanics files as absolute paths, not pasted bodies (a lane's few-line Checks list is criteria, not a mechanics file, and travels inline).
 Pass needed constraints explicitly, not the whole SOP, instruction tree, skill catalog, or parent transcript.
 Use fresh worker context where supported; disclose runtime-injected instructions; a marker does not prove isolation.
-Parallelize only independent work with ready inputs and disjoint ownership; sequence the rest instead of leaving workers waiting for siblings. Ownership covers the path set and mutable shared state (git index, generated outputs, lockfiles); one writer per worktree unless targets are proven independent.
+Parallelize only work independent in semantics and ownership with all ready inputs;
+sequence the rest instead of leaving workers waiting for siblings.
+Ownership covers the path set and mutable shared state (git index, generated outputs, lockfiles);
+one writer per worktree unless targets are proven independent.
 Give each independent implementation task its own implement packet; do not chain unrelated tasks through one worker.
-The root validates return structure, ownership, and artifact availability without repeating semantic review. Workers return `produced` or `blocked` with artifact pointers; consume a child result once: a file pointer means read the file once, an inline body means do not re-read the file.
+The root validates return structure, ownership, and artifact availability without repeating semantic review.
+Workers return `produced` or `blocked` with artifact pointers; consume a child result once:
+a file pointer means read the file once, an inline body means do not re-read the file.
 Keep root context to requirements, decisions, dependencies, compact results, open questions;
 raw source, search output, logs, and diffs stay in task-local artifacts with pointers; workers return no transcripts.
 Persist a compact handoff in the topic: stage, snapshot, settled decisions, open work, active/terminal packet IDs, evidence pointers.
-Write it as a block that starts with a line `HANDOFF:` and ends at the first blank line or `END HANDOFF`, at most 2500 characters; the hooks inject that block when the spec itself is too large to inject.
+Write it as a block that starts with a line `HANDOFF:` and ends at the first blank line or `END HANDOFF`, at most 2500 characters;
+the hooks inject that block when the spec itself is too large to inject.
 On compaction or continuation resume from it; do not rediscover completed work or relaunch a packet.
 Final reviewers read the actual relevant artifacts, not only compressed summaries.
-Report token usage across root, children, and advisors when available, else unknown.
+Report token usage across root, children, and advisors from available harness/session telemetry, else unknown.
+State missing coverage and the price/rate basis; distinguish available counts, scope, and rate estimates from recorded cost, and never claim bill equivalence.
 Repo-owned agent IDs use `k-agent-<role>`; harness-native IDs stay unchanged.
 
 ### 3.8 Human-Visible Publication

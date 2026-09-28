@@ -24,5 +24,5 @@ The fix pass in this reference is one round: fix the in-scope findings, then one
 A finding that judgment raises against the fix is ordinary SOP §3.5 recovery when it stays inside Fix Scope (repair, rerun the affected checks, stop under §3.4); outside Fix Scope it is a proposal for the user.
 Neither is a fresh refutation round.
 
-**`k-converge` is the only unbounded loop.**
+**`k-converge` is the only multi-round loop.**
 Its declared exit condition (`~/.agents/skills/k-converge/SKILL.md` Step 1) is the named exception to this bound and to SOP §3.5's "Only the active root/main session owns stage transitions; skills supply task mechanics and criteria, never nested lifecycles" — enter it only by explicit user invocation or the caller's authorized handoff under its workflow-handoff contract, never by re-running this reference's fix pass as a substitute for its refutation rounds.

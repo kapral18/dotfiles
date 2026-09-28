@@ -8,7 +8,7 @@ session_models:
     effort: "high"
     context: "long"
   codex:
-    model: "gpt-6-sol"
+    model: "gpt-6-astra"
     effort: "high"
     context: "short"
   # session row is informational: Cursor's root model/effort live in Cursor saved user config, not in this repo
@@ -25,7 +25,7 @@ session_models:
     effort: "xhigh"
     context: "long"
   omp:
-    model: "openai-codex/gpt-6-sol"
+    model: "openai-codex/gpt-6-astra"
     effort: "high"
     context: "short"
 agent_categories:
@@ -158,33 +158,33 @@ category_models:
       context: "short"
   codex:
     mechanical:
-      model: "gpt-6-luna"
+      model: "gpt-5.6-luna"
       effort: "high"
       thinking: ""
       context: "short"
     research:
-      model: "gpt-6-sol"
+      model: "gpt-5.6-sol"
       effort: "high"
       thinking: ""
       context: "short"
     implement:
-      model: "gpt-6-sol"
+      model: "gpt-5.6-sol"
       effort: "medium"
       thinking: ""
       context: "short"
     review:
-      model: "gpt-6-sol"
+      model: "gpt-5.6-sol"
       effort: "high"
       thinking: ""
       context: "short"
     refute:
-      model: "gpt-6-sol"
+      model: "gpt-5.6-sol"
       effort: "high"
       thinking: ""
       context: "short"
       verifier_status: "degraded"
     memory:
-      model: "gpt-6-sol"
+      model: "gpt-5.6-sol"
       effort: "high"
       thinking: ""
       context: "short"
@@ -510,39 +510,39 @@ pi_model_profiles:
   # All short: that provider only exposes short windows.
   codex:
     session:
-      model: "openai-codex/gpt-6-sol"
+      model: "openai-codex/gpt-6-astra"
       effort: "high"
       context: "short"
     categories:
       mechanical:
-        model: "openai-codex/gpt-6-luna"
+        model: "openai-codex/gpt-5.6-luna"
         effort: "high"
         thinking: ""
         context: "short"
       research:
-        model: "openai-codex/gpt-6-sol"
+        model: "openai-codex/gpt-5.6-sol"
         effort: "high"
         thinking: ""
         context: "short"
       implement:
-        model: "openai-codex/gpt-6-sol"
+        model: "openai-codex/gpt-5.6-sol"
         effort: "medium"
         thinking: ""
         context: "short"
       review:
-        model: "openai-codex/gpt-6-sol"
+        model: "openai-codex/gpt-5.6-sol"
         effort: "high"
         thinking: ""
         context: "short"
       # One family only, so the counter cannot be cross-family (same call as `category_models.codex.refute`).
       refute:
-        model: "openai-codex/gpt-6-sol"
+        model: "openai-codex/gpt-5.6-sol"
         effort: "high"
         thinking: ""
         context: "short"
         verifier_status: "degraded"
       memory:
-        model: "openai-codex/gpt-6-sol"
+        model: "openai-codex/gpt-5.6-sol"
         effort: "high"
         thinking: ""
         context: "short"

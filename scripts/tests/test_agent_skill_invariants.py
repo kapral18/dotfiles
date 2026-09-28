@@ -646,10 +646,22 @@ class TestAgentSkillInvariants(unittest.TestCase):
         )
 
     def test_convergence_is_explicit_finite_and_never_hook_started(self):
+        converge_path = "home/exact_dot_agents/exact_skills/exact_k-converge/readonly_SKILL.md"
         self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-converge/readonly_SKILL.md",
-            "disable-model-invocation: true",
+            converge_path,
+            "Enter only on an explicit user request for this loop",
             "finite",
+        )
+        # The frontmatter `description` is what a harness matches to auto-invoke a skill, so pin
+        # it directly instead of only the body text: losing either phrase there would let a model
+        # auto-invoke the loop for routine recovery.
+        converge_text = (REPO / converge_path).read_text(encoding="utf-8")
+        description_match = re.search(r'^description:\s+"(?P<value>[^"]*)"$', converge_text, re.MULTILINE)
+        assert description_match, f"{converge_path} frontmatter has no quoted description"
+        description = description_match.group("value")
+        assert "explicitly asks" in description, f"{converge_path} description dropped 'explicitly asks'"
+        assert "never for routine recovery" in description, (
+            f"{converge_path} description dropped 'never for routine recovery'"
         )
         for impl in (
             "home/exact_dot_agents/exact_hooks/executable_perturn_recall.py",

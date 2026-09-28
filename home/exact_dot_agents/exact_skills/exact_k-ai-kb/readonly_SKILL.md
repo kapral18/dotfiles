@@ -22,16 +22,20 @@ Do not persist per correction or per turn. Do not reopen Verify to manufacture l
 ## Root moves
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Process a new staged pointer through one memory-band `k-agent-smol` judge packet. Per-harness profile names live in `~/.config/ai/agent-bands.v1.json` → `harnesses.<h>.agents`.
+Process a new staged pointer through one memory-band `k-agent-smol` judge packet.
+Per-harness profile names live in `~/.config/ai/agent-bands.v1.json` → `harnesses.<h>.agents`.
 Launch one memory-band packet for that judgment; the root MUST NOT substitute its own inline recall for that packet absent the documented forbidden/unavailable-lane fallback below; if the lane is unavailable report blocked and use that fallback.
 Use `~/.agents/skills/k-ai-kb/references/smol-operator.md`; admit only its compact returned lines. Reuse admitted memory.
 Further recall needs a material new question or task shift, not another prompt or compaction alone.
 No staged data: query recall only when prior knowledge could change the current decision.
 Record packet IDs and results in the active topic; do not relaunch active/completed packets.
-After final verification, the root persists the verified learning batch itself with `,ai-kb remember` (Persist below); NEVER through a scribe packet.
-Harvest child notes first: `,ai-kb harvest` surfaces `,agent-memory note` rows that delegated children wrote under the packet's topic; they enter the batch only with root-verified evidence.
+After final verification, the root persists the verified learning batch itself with `,ai-kb remember` (Persist below);
+NEVER through a scribe packet.
+Harvest child notes first: `,ai-kb harvest` surfaces `,agent-memory note` rows that delegated children wrote under the packet's topic;
+they enter the batch only with root-verified evidence.
 A harvested child fact enters the batch only when the root re-opens its `--ref` and the quote matches.
-`,ai-kb remember` refuses a title collision or near-duplicate embedding on its own; use `--force` only after reading the colliding capsule and deciding it is a different fact.
+`,ai-kb remember` refuses a title collision or near-duplicate embedding on its own;
+use `--force` only after reading the colliding capsule and deciding it is a different fact.
 Memory workers MUST NOT invoke agents, perform their own recall workflow, audit another worker, or resume after returning.
 Do not use an expensive model as a substitute for an unavailable memory lane or invoke another harness as a fallback.
 
@@ -41,7 +45,8 @@ The root supplies its own final batch of verified reusable insights with evidenc
 Process each insight once; do not re-verify the task.
 
 1. Search first: `,ai-kb search "<the insight's literal identifiers>" --limit 5 --json`.
-   A stale or wrong capsule on the same point means `--supersedes <its-id>`, which amends that capsule in place under the same id; a duplicate means stop and record the existing id instead of writing.
+   A stale or wrong capsule on the same point means `--supersedes <its-id>`, which amends that capsule in place under the same id;
+   a duplicate means stop and record the existing id instead of writing.
 2. Write with every metadata field deliberate (`,ai-kb remember --help` is the live interface):
    honest `--kind`, reuse-breadth `--scope` (`--workspace` only for workspace/project), the evidence anchor as `--source`, honest `--confidence`, `--domain` tags.
    A defaulted field is a degraded write; fix it, do not ignore the warning.

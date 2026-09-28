@@ -12,7 +12,7 @@ import unittest
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 import inject_codex_instructions as mod
 
-BASE = 'model = "gpt-6-sol"\n\n[features]\nmulti_agent = true\n\n[agents.explorer]\nconfig_file = "~/.codex/agents/explorer.toml"\n'
+BASE = 'model = "gpt-6-astra"\n\n[features]\nmulti_agent = true\n\n[agents.explorer]\nconfig_file = "~/.codex/agents/explorer.toml"\n'
 
 
 def toml_loads(text: str) -> dict:
@@ -41,7 +41,7 @@ class InjectCodexInstructionsTests(unittest.TestCase):
             with self.subTest(sop=sop[:20]):
                 data = toml_loads(mod.inject(BASE, sop))
                 self.assertEqual(data["developer_instructions"], sop)
-                self.assertEqual(data["model"], "gpt-6-sol")
+                self.assertEqual(data["model"], "gpt-6-astra")
                 self.assertEqual(data["agents"]["explorer"]["config_file"], "~/.codex/agents/explorer.toml")
                 self.assertNotIn("developer_instructions", data["features"])
 

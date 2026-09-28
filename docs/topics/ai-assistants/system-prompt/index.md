@@ -14,7 +14,7 @@ Read these pages as human documentation about the system's contract: where the p
 | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | [Source of truth](source-of-truth.md)                                   | canonical body, native delivery paths, and update workflow                                                |
 | [Truth and verification](truth-and-verification.md)                     | compatibility, external truth, runtime truth, completion, compact-output recovery, self-report skepticism |
-| [Execution workflow](execution-workflow.md)                             | reverse interview, persistent specs, verification loops, state-machine harnesses                          |
+| [Execution workflow](execution-workflow.md)                             | reverse interview, persistent specs, verification loops, formal verification tiers                        |
 | [Side-effect gates](side-effect-gates.md)                               | git push safety, ownership, publication, bot/human split                                                  |
 | [Code-quality and dotfiles policy](code-quality-and-dotfiles-policy.md) | style matching, semantic dedupe, docs hygiene, shell/helper rules                                         |
 

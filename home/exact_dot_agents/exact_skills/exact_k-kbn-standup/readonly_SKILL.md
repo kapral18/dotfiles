@@ -160,7 +160,8 @@ Never invoke `slack_send_message` or `slack_send_message_draft`. Do not copy unt
 - Paste target = newest Slackbot reminder thread that tags `@admin-ux-team`: `slack_search_public_and_private` `from:<@USLACKBOT> "share your daily update" in:#admin-ux-internal`, `sort=timestamp`, `include_bots=true` (private channel; `slack_search_public` misses it).
   If none exists, the paste target is a standalone message in `#admin-ux-internal`.
   Never paste or post the compiled standup in `#kibana-management`.
-- Show the compiled standup inside a fenced raw code block (` ```text `) so the assistant UI rendering layer does not obscure or render Markdown links, and show the paste target, then ask if they are ready for `pbcopy`. A yes in the invoking prompt counts.
+- Show the compiled standup inside a fenced raw code block (` ```text `) so the assistant UI rendering layer does not obscure or render Markdown links, and show the paste target, then ask if they are ready for `pbcopy`.
+  A yes in the invoking prompt counts.
 - On yes: copy the compiled standup as plain text with `pbcopy`, then verify `pbpaste` exactly matches the source and contains one `[label](URL)` per artifact.
   Also run the negative check `pbpaste | grep -c '<https'` and require `0`; a grep built from what you just wrote confirms itself and catches nothing.
 

@@ -16,9 +16,13 @@ For multi-source synthesis, read `~/.agents/skills/k-public-sources/references/m
 ## Root moves
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Launch one strong research packet per independent question, combining collection and synthesis; the root MUST NOT substitute its own inline investigation for that packet absent an explicit user no-delegation instruction; if the lane is unavailable report blocked.
+Launch one strong research packet per independent question, combining collection and synthesis;
+the root MUST NOT substitute its own inline investigation for that packet absent an explicit user no-delegation instruction;
+if the lane is unavailable report blocked.
 Keep raw source outside root context; return evidence pointers, supported conclusions, and unresolved gaps.
 For multi-source synthesis, read `~/.agents/skills/k-public-sources/references/claim-verifier.md` and judge the material claim set together in final Verify.
-Assign that contract to a strong refute packet when the set holds two or more independent claims or any claim gates a decision; the root judges inline only under an explicit user no-delegation instruction; do not spawn a verifier per claim or send new claims into recursive deepening.
+Assign that contract to a strong refute packet when the set holds two or more independent claims or any claim gates a decision;
+the root judges inline only under an explicit user no-delegation instruction;
+do not spawn a verifier per claim or send new claims into recursive deepening.
 Resolve capability/model/effort through the registry; report reduced independence for same-family or inline judgment.
 Honor no-delegation requests inline.

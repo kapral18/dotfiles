@@ -87,6 +87,8 @@ When the task is to deepen a real cluster given its dependencies, or to explore 
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
 
-Launch one strong research packet for a substantial interface/seam investigation before deciding the design; the root MUST NOT substitute its own inline investigation for that packet absent an explicit user no-delegation instruction; if the lane is unavailable report blocked. The design decision stays with the root.
+Launch one strong research packet for a substantial interface/seam investigation before deciding the design;
+the root MUST NOT substitute its own inline investigation for that packet absent an explicit user no-delegation instruction;
+if the lane is unavailable report blocked. The design decision stays with the root.
 Branch B of `~/.agents/skills/k-codebase-design/references/going-deeper.md` compares several interfaces produced in parallel;
 its own Root moves section holds that fan-out, the per-design briefs, and the return shape.

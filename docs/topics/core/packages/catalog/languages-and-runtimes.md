@@ -13,6 +13,7 @@ This slice shows the language/runtime packages this repo controls directly.
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------- |
 | [`mise`](https://mise.jdx.dev/)                         | `brew` + [`config.toml.tmpl`](../../../../../home/dot_config/mise/config.toml.tmpl)   | central runtime manager                   |
 | [`uv`](https://docs.astral.sh/uv/)                      | `brew`                                                                                | Python runtime/tool manager               |
+| [`elan`](https://github.com/leanprover/elan)            | `brew` (`elan-init`)                                                                  | Lean toolchain manager for `,formal`      |
 | [Python `3.13`, `3.11`, `3.9`](https://www.python.org/) | [`home/readonly_dot_python-version`](../../../../../home/readonly_dot_python-version) | managed uv Python versions                |
 | [Bun `1.2.20`](https://bun.com/)                        | mise config                                                                           | JavaScript runtime/tooling                |
 | [Go `1.25.0`](https://go.dev/)                          | mise config                                                                           | Go compiler/toolchain                     |

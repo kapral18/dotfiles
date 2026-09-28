@@ -37,6 +37,9 @@ Before a candidate can become review feedback:
      absence-of-observation never substitutes for naming the replacement's contract.
    - A migration handing a property to the target component (e.g. local CSS replaced by a shared component default) is only `preserved_limitation`/`scope_expansion`/intended-replacement after citing the target's contract (static source proof) or verifying it live.
      Until then the candidate stays unclassified, not dropped.
+   - For a stateful replacement (lifecycle, retry, ordered/flag-dependent state), the root runs `,formal replay <unit> --against <base>`
+     in Verify (differential replay: the old implementation is the oracle); a leaf reviewer cites the root-provided per-trace comparison
+     evidence as parity evidence instead of a static read, and reports missing replay evidence as a gap rather than running it itself.
 2. **Assign exactly one classification:**
    - `parity_gap`: old behavior or coverage existed and the replacement omits or weakens it.
    - `new_regression`: the replacement adds a failure mode the old implementation did not have.

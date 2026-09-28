@@ -17,13 +17,14 @@ This skill supplies build criteria and artifacts; it MUST NOT create another pha
 
 Read the active packet and its approval. Do not ask again when the user already approved implementation.
 Missing material intent goes through `k-spec`; a clear approved request does not need another approval ceremony.
-Carry old/new rules, intended and preserved differences, the impact map, owned targets, and final acceptance conditions into the packet.
+Carry old/new rules, intended and preserved differences, the impact map, owned targets, final acceptance conditions, and the packet's applicable shared contract into production.
 Approval covers scoped working-tree edits, needed generation/setup, and final checks, not commits, pushes, or publication.
 Keep the packet's Out of scope constraints and the SOP ownership, compatibility, and publication gates.
 
 ## Produce
 
-Sequence dependencies; independent owned modules may be separate substantial implementation packets.
+Sequence dependencies from the packet's immutable shared input references and integration owner;
+do not infer independence from file-disjoint targets.
 Create tests and docs with the change, integrate generated outputs, and format before freezing the final candidate.
 Update every co-edit-set member named in the impact map in the same change; a consumer left unchanged needs recorded evidence that it is unaffected.
 Maintain the compact topic handoff: decisions, dependencies, active/completed packet IDs, artifact pointers, and open criteria.
@@ -33,7 +34,9 @@ If a source discovery invalidates the approved approach, return the concrete dec
 
 ## Verify
 
-Freeze the integrated candidate and run the planned checks once, using direct deterministic commands and retained full logs.
+Freeze the integrated candidate, order cheap executable prerequisites before dependent expensive checks, and run the planned checks once using direct deterministic commands and retained full logs.
+Reuse prerequisites inside their owning checks; do not add a preflight stage or duplicate standalone formal build.
+Run each planned `,formal audit <unit>` once alongside the other checks (SOP `3.6`); cite its `certifies` string as the evidence.
 Read `~/.agents/skills/k-build/references/criteria-verifier.md` for final criterion judgment over the candidate and those receipts.
 Run visual/runtime evidence only for applicable criteria with a verified target; load `k-ui-capture` and the applicable domain overlay then.
 Windows coverage remains explicit-only through `k-live-ui-windows`.
@@ -45,10 +48,14 @@ This skill MUST NOT create a separate repair, post-review, or convergence loop.
 ## Root moves
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Launch one implement packet on the registry's implementation band for each substantive settled edit set, with `~/.agents/skills/k-build/references/implement-worker.md`; the root MUST NOT substitute its own inline implementation for that packet absent an explicit user no-delegation instruction; if the lane is unavailable report blocked. Trivial single-site edits stay inline.
+Launch one implement packet on the registry's implementation band for each substantive settled edit set, with `~/.agents/skills/k-build/references/implement-worker.md`; the root MUST NOT substitute its own inline implementation for that packet absent an explicit user no-delegation instruction; if the lane is unavailable report blocked.
+Trivial single-site edits stay inline.
 Use strong research for substantial unsettled questions and strong review/refute for final judgment; never cheapen judgment work.
 Assign criterion judgment to the root or an existing strong final packet using the criteria-verifier contract, not a second verifier of that packet.
 Dispatch ready stage-sized packets, not an agent for each command or test. Honor an explicit no-delegation request inline.
+Size each implement packet to one module or at most five settled items; split a larger edit set into sequential packets, or parallel packets with disjoint owned paths.
+Keep bulk test-gap work in its own per-module packets, separate from production fixes.
+NEVER ask an implement packet to run mutation or discrimination passes; those stay in the root-owned verification plan.
 
 ## Output
 

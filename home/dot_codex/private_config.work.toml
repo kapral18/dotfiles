@@ -6,7 +6,7 @@ sandbox_mode = "workspace-write"
 web_search = "cached"
 check_for_update_on_startup = true
 personality = "pragmatic"
-model = "gpt-6-sol"
+model = "gpt-6-astra"
 model_reasoning_effort = "high"
 service_tier = "default"
 
@@ -20,6 +20,7 @@ writable_roots = [
   "~/.cache/ai-embed-runtime",
   "~/.cache/agent-artifacts",
   "~/.local/state/agent-proof",
+  "~/.local/state/agent-formal",
   "~/.local/state/chezmoi",
   "~/.cache/mcp-token",
   "~/.local/state/llama-cpp/lifecycle",

@@ -45,19 +45,23 @@ Only the active root/main session follows this section; a delegated leaf skips i
   Do not resume a completed workpool batch, remove markers to bypass the guard, or claim coverage for pre-existing unmarked workers.
   Missing session persistence or failed marker writes block the guarded operation; do not retry or use another harness to bypass it.
   Native registry retention/session construction still occurs. No-worker pipeline fixtures are not full worker lifecycle evidence.
-- OMP task dispatch mechanics. When delegation is permitted, use `task` with explicit managed profile names and ready stage-sized packets; task packets must name the profile explicitly, including every batch item.
+- OMP task dispatch mechanics.
+  When delegation is permitted, use `task` with explicit managed profile names and ready stage-sized packets;
+  task packets must name the profile explicitly, including every batch item.
   Pass large packets with `local://`; inspect returned artifacts through `agent://`, `history://`, and `artifact://`.
   Use `hub` only for authorized named-process lifecycle operations. Do not use peer messages to wake or resume workers.
   Do not dispatch unattended workers in native plan mode or restricted SDK sessions; those children omit the managed extensions.
   Keep the registry's category model/effort and the SOP's single final Verify stage. Honor no-delegation requests inline.
 - Pi and OMP launch subagents through named profiles; profile model controls determine the lane.
-  Pi profiles render `model:` from `category_models.pi` and a separate `thinking:` line from the row's `effort` (`agent-thinking.partial`); OMP resolves profile role tokens through `modelRoles`.
+  Pi profiles render `model:` from `category_models.pi` and a separate `thinking:` line from the row's `effort` (`agent-thinking.partial`);
+  OMP resolves profile role tokens through `modelRoles`.
 - Resolved `lanes` and `verifier` are concrete.
   Pi review workers, fresh-eyes, and the adversarial/criteria verifiers all resolve from `category_models.pi.review` / `category_models.pi.refute` in `home/.chezmoidata/ai_models/tiering.yaml`;
   read the live ids from `subagent({action:"list", capabilities:true})`, not from this file.
   Pi review rides the Anthropic session route and refute a Meta counter, so `category_models.pi.refute` declares `verifier_status: cross_family`; report the registry status, do not substitute a model.
   OMP resolves review roles through its own `modelRoles`.
   One profile-independent `modelRoles` block in `home/dot_omp/private_agent/readonly_config.yml.tmpl` prices every role (`default` is generated from `session_models.omp`); read the pins there, not here.
-  `category_models.omp.*` row efforts mirror `category_models.codex` (implement `medium`, the rest `high`); the `@role` token itself carries the real tier.
+  `category_models.omp.*` row efforts mirror `category_models.codex` (implement `medium`, the rest `high`);
+  the `@role` token itself carries the real tier.
   Adversarial and criteria verifiers follow `@advisor`, the same model family as the primaries, so `category_models.omp.refute` marks `verifier_status: degraded`; report the registry status, do not substitute a model.
   Other repo-owned Pi/OMP profiles resolve their model from the review resolver or category registry (`agent_bindings` → `agent_categories` → `category_models`) so they do not fall through to `defaultProvider`/`defaultModel` unless a future profile deliberately omits `model` and documents why.

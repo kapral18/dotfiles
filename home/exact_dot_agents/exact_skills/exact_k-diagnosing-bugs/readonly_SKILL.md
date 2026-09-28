@@ -6,6 +6,7 @@ description: "Use for hard bugs, regressions, flaky failures, crashes, thrown er
 # Diagnosing Bugs
 
 Subagent dispatch: research — diagnosis of an unresolved cause runs on the research lane and returns evidence; fixes go through Produce.
+For a resolvable `,formal` unit, the root or another explicitly authorized execution category runs catalog-writing diagnostics and gives their output to research for analysis; a research packet MUST NOT run `,formal traces`, `,formal replay`, or `,formal audit`.
 
 Supply diagnostic evidence during the root-owned Understand stage; do not create another lifecycle.
 The SOP owns runtime truth, state-machine coverage, authorization, and the single final Verify stage.
@@ -29,6 +30,8 @@ When existing evidence cannot distinguish the reported failure, choose the small
 - A focused existing test, CLI/API fixture, or captured-trace replay.
 - A browser probe through k-playwriter when the symptom requires the real UI.
 - A disposable harness when no existing seam expresses the failure.
+- For stateful behavior with a resolvable `,formal` unit, have the root or another explicitly authorized execution category run `,formal explore` for the shortest trace from `init` to the bad state, then `,formal traces <unit> --mode failures` and `,formal replay`; research analyzes the returned trace and replay diagnostics.
+  This is a baseline reproduction, not acceptance evidence; acceptance replay stays inside the root's Verify `,formal audit`.
 - Bisection, differential comparison, or a seeded stress/fuzz experiment for a history-dependent or intermittent failure.
 
 These are alternatives, not a checklist of mandatory techniques.
@@ -80,4 +83,6 @@ For an authorized fix, carry the settled cause, intended/preserved behavior and 
 Before regression-test or fix work, read `~/.agents/skills/k-diagnosing-bugs/references/fix-and-cleanup.md`.
 Use k-codebase-design only when resolving an in-scope seam or design question is necessary;
 do not start an automatic post-fix architecture pass.
-Launch one strong research packet for a substantial unresolved cause before settling the diagnosis; the root MUST NOT substitute its own inline diagnosis for that packet absent an explicit user no-delegation instruction; if the lane is unavailable report blocked; bounded targeted reads stay inline.
+Launch one strong research packet for a substantial unresolved cause before settling the diagnosis;
+the root MUST NOT substitute its own inline diagnosis for that packet absent an explicit user no-delegation instruction;
+if the lane is unavailable report blocked; bounded targeted reads stay inline.

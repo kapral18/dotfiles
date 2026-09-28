@@ -28,7 +28,8 @@ Do not load delivery mechanics for a local/plan report that contains no public-r
 ## Hard Constraints
 
 - Fix authority follows write scope, not review mode; resolve it per `~/.agents/skills/k-review/references/authorship.md`.
-  A final-Verify-stage packet is read-only by its own category regardless of authorship (SOP §3.7); a scoped fix request carries its authority into root-owned recovery under SOP §3.5, and the final packet's own findings never supply that authority.
+  A final-Verify-stage packet is read-only by its own category regardless of authorship (SOP §3.7);
+  a scoped fix request carries its authority into root-owned recovery under SOP §3.5, and the final packet's own findings never supply that authority.
 - Final workers use existing evidence and return once; they do not repeat successful checks, mutate shared state, or invoke other models.
 - Execute known final commands directly with complete retained logs and actual exit status; no mechanical runner agent is required.
 - Keep git/worktree changes and human-visible effects within explicit user authority. Never create/switch worktrees proactively.
@@ -40,7 +41,8 @@ Do not load delivery mechanics for a local/plan report that contains no public-r
 ## Base-Branch Context Gate (Mandatory)
 
 Goal: compare the diff against how base (usually `main`) works today.
-The review worker runs this gate from the packet. The root supplies scope pointers and MUST NOT run these source or history reads before the packet returns (root read bound in `~/.agents/skills/k-review/SKILL.md` Root moves).
+The review worker runs this gate from the packet.
+The root supplies scope pointers and MUST NOT run these source or history reads before the packet returns (root read bound in `~/.agents/skills/k-review/SKILL.md` Root moves).
 
 ### Evidence selection
 

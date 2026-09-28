@@ -35,7 +35,8 @@ When this mode is loaded inside any read-only review worker, that worker's role 
 
 ## Fix Authority
 
-Fix authority follows write scope per `~/.agents/skills/k-review/references/authorship.md` (SOP §3.7: only review, refute, research, and audit packets are read-only, by category).
+Fix authority follows write scope per `~/.agents/skills/k-review/references/authorship.md` (SOP §3.7:
+only review, refute, research, and audit packets are read-only, by category).
 New final findings past the Produce fix pass are reported, per the packet's own final-Verify boundary if one applies.
 Local ownership alone does not authorize commit or push — those stay separately gated per SOP §3.2 regardless of write scope on the files themselves.
 
@@ -46,7 +47,8 @@ Local ownership alone does not authorize commit or push — those stay separatel
 - `git diff --diff-filter=D --stat`
 - `git log --oneline --decorate -n 15`
 - Write the frozen candidate to a file for the packet (`git diff HEAD > <scratch>/candidate.patch`) and record its hash; do not read it.
-- The root read bound in `~/.agents/skills/k-review/SKILL.md` Root moves applies: no diff hunks, changed-file bodies, callers, or blame output in root context before the packet returns.
+- The root read bound in `~/.agents/skills/k-review/SKILL.md` Root moves applies:
+  no diff hunks, changed-file bodies, callers, or blame output in root context before the packet returns.
 
 ## Worker Investigation (Passed In The Packet)
 
@@ -70,7 +72,8 @@ If the user specified a commit range (e.g. "last 3 commits", "since `<ref>`"):
 If the working tree is clean (and no commit range specified):
 
 - Resolve base with: `git symbolic-ref --short refs/remotes/origin/HEAD`
-- Scope the branch delta with `git diff --stat <base>...HEAD` and `git log --oneline <base>..HEAD`; the full `git diff <base>...HEAD` goes into the packet.
+- Scope the branch delta with `git diff --stat <base>...HEAD` and `git log --oneline <base>..HEAD`;
+  the full `git diff <base>...HEAD` goes into the packet.
 - If base cannot be resolved, ask one direct question for the base target.
 
 If there are no diffs at all:

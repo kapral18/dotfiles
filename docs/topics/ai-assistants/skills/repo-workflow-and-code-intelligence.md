@@ -53,10 +53,10 @@ These skills operate on local repositories, code search, cleanup, external sourc
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Use when | diagnosing a hard bug, failure, flake, or performance regression from source and observed failure evidence                                                   |
 | Source   | [`exact_k-diagnosing-bugs`](../../../../home/exact_dot_agents/exact_skills/exact_k-diagnosing-bugs/)                                                         |
-| Boundary | routes into SOP §3.5 plus SOP State-Machine Verification; not the runtime-truth chain for "is X set up right"                                                |
+| Boundary | routes into SOP §3.5 plus SOP State-Machine Verification (`,formal` catalog for stateful reproductions); not the runtime-truth chain for "is X set up right" |
 | Pivots   | necessary in-scope seam/design question → `k-codebase-design`; authorized regression cases → `k-code-quality-tests`; no automatic post-fix architecture pass |
 
-Reuse existing failure evidence. Source investigation does not require a runnable reproduction first. New probes must resolve a material uncertainty; minimization and competing hypotheses are evidence-driven, not mandatory quotas. Production workers return artifacts without private QA; the root owns one integrated final verification.
+Reuse existing failure evidence. Source investigation does not require a runnable reproduction first. New probes must resolve a material uncertainty; minimization and competing hypotheses are evidence-driven, not mandatory quotas. For stateful diagnosis, an authorized executor runs catalog-writing `,formal` trace/replay commands and research analyzes the returned diagnostics. Research remains read-only, production workers return artifacts without private QA, and the root owns one integrated final verification.
 
 Failure assessment identifies product, test, infrastructure, mixed, or unresolved causes. A green retry or a test-only patch does not establish a test-only defect; the original product behavior stays in the acceptance criteria.
 

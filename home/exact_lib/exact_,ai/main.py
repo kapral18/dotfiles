@@ -34,14 +34,14 @@ AGENT_BANDS_DISPLAY_PATH = "~/.config/ai/agent-bands.v1.json"
 OPENROUTER_PROVIDER = "openrouter"
 OPENROUTER_MODEL = "z-ai/glm-5.3-flash"
 OPENROUTER_SELECTOR = f"{OPENROUTER_PROVIDER}/{OPENROUTER_MODEL}"
-PI_OPENROUTER_MODEL = "openai/gpt-6-sol"
+PI_OPENROUTER_MODEL = "openai/gpt-6-astra"
 PI_OPENROUTER_THINKING = "xhigh"
 PI_OPENROUTER_SELECTOR = f"{OPENROUTER_PROVIDER}/{PI_OPENROUTER_MODEL}"
 PI_OPENROUTER_GLM_FLASH_SELECTOR = f"{OPENROUTER_PROVIDER}/z-ai/glm-5.3-flash"
 PI_OPENROUTER_DEEPSEEK_SELECTOR = f"{OPENROUTER_PROVIDER}/deepseek/deepseek-v4.1-flash"
 PI_OPENROUTER_SONNET_SELECTOR = f"{OPENROUTER_PROVIDER}/anthropic/claude-sonnet-4.6"
 # Pi pins GPT-6 Astra to OpenAI's Flex service tier through modelOverrides (`only: ["openai/flex"]`).
-PI_OPENROUTER_ASTRA_SELECTOR = f"{OPENROUTER_PROVIDER}/openai/gpt-6-astra"
+PI_OPENROUTER_SOL_SELECTOR = f"{OPENROUTER_PROVIDER}/openai/gpt-5.6-sol"
 # OpenCode cannot inject OpenRouter's `provider` routing body field, so its lane route carries
 # the FP8-or-higher, 24 t/s floor, no-sort (uptime-aware default LB) policy and high effort in the `glm-lanes-high` preset slug.
 # The request model overrides the preset's pinned GLM-5.2 id (live-probed 2026-09-10), so GLM 5.3 Flash rides the same slug.
@@ -671,12 +671,12 @@ def _openrouter_sanctioned_selectors(
     if command.harness == "pi":
         return (
             PI_OPENROUTER_SELECTOR,
+            PI_OPENROUTER_SOL_SELECTOR,
             PI_OPENROUTER_GLM_FLASH_SELECTOR,
             PI_OPENROUTER_DEEPSEEK_SELECTOR,
             PI_OPENROUTER_SONNET_SELECTOR,
             OPENROUTER_KIMI_SELECTOR,
             OPENROUTER_GLM_SELECTOR,
-            PI_OPENROUTER_ASTRA_SELECTOR,
         )
     return (OPENROUTER_OPENCODE_SELECTOR, OPENROUTER_OPENCODE_DEEPSEEK_SELECTOR, OPENROUTER_OPENCODE_KIMI_SELECTOR)
 
@@ -697,7 +697,7 @@ def _enforce_openrouter_selection(
     if pi and openrouter_asked:
         sanctioned = _openrouter_sanctioned_selectors(command, selection)
         explicit = selection.model if selection.model_is_explicit else None
-        if explicit is not None and explicit not in {PI_OPENROUTER_MODEL, PI_OPENROUTER_SELECTOR}:
+        if explicit is not None:
             selector = (
                 explicit if explicit.startswith(f"{OPENROUTER_PROVIDER}/") else f"{OPENROUTER_PROVIDER}/{explicit}"
             )
@@ -708,7 +708,7 @@ def _enforce_openrouter_selection(
             raise PlanError(f"OpenRouter is pinned to {', '.join(sanctioned)}; use another provider for {explicit!r}")
         if depth.explicit:
             raise PlanError(f"OpenRouter is pinned to {PI_OPENROUTER_THINKING} effort; --depth cannot override it")
-        policy = Provenance("route-policy", "OpenRouter openai/gpt-6-sol pin")
+        policy = Provenance("route-policy", "OpenRouter openai/gpt-6-astra pin")
         return (
             AvailabilitySelection(
                 model=PI_OPENROUTER_MODEL,

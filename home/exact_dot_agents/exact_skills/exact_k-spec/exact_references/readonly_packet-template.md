@@ -11,6 +11,8 @@ Context: <why now; links: issue/PR/thread/prototype verdict>
 
 Semantic delta: <none | old rule; new rule; intended differences; preserved differences; evidence>
 
+Shared contract: <applicable runtime versions; canonical schema/identity/order examples; compatibility decision; semantic dependencies; immutable input references; one integration owner | none, with applicability evidence>
+
 Impact map: <none (light-path proven) | affected callers/consumers; invariants; co-edit set (generated outputs, docs, diagrams, completions, tests); evidence>
 
 In scope:
@@ -28,6 +30,9 @@ Acceptance criteria:
    now: planned                # execute once in the final Verify stage
 2. <observable statement>
    judgment: <what evidence settles it>
+3. <stateful-behavior statement, SOP `3.6`>
+   check: `,formal audit <unit>` # each model mutant killed by a named property; run once in final Verify
+   now: planned
 
 Risks / unknowns:
 

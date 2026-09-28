@@ -38,7 +38,7 @@ flowchart TB
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (OpenRouter selectors)<br/>depth one + worker task deny; parentID root-only memory; terminal guards survive missing optional memory helpers"]:::exec
         CODEX["Codex: dot_codex/private_config.{work,personal}.toml<br/>managed/native fallback child roles disable collaboration<br/>+ ,codex bearer-token env wrapper for hosted MCP"]:::exec
         PI["Pi: dot_pi/agent/* (native root openrouter/meta/muse-spark-1.3/xhigh; separate model + thinking profile fields; per-lane picks: see tiering.yaml pi rows)<br/>runtime-parity before_agent_start appends canonical SOP iff absent;<br/>root user-scope fresh dispatch only; acceptance:false explicit; per-call model/skill overrides and composite/revival flows denied by the sole-registration subagent-contract adapter"]:::exec
-        OMP["OMP: dot_omp/private_agent/readonly_config.yml.tmpl<br/>native extendedContext:true gives the root long context; foreground Bash/Eval default + native-yield leaf async/hub/task guard<br/>one profile-independent modelRoles block: openai-codex GPT-6 Sol primaries (default:high, slow/plan:max, T1); vision GPT-6 Luna:high; task GPT-6 Sol:medium (T2 implement); smol GPT-6 Luna:high (T3 mechanical/memory); tiny/commit GPT-6 Luna:medium; advisor GPT-6 Sol:high (refute, degraded)<br/>+ generated ~/.omp/agent/mcp.json token bridges"]:::exec
+        OMP["OMP: dot_omp/private_agent/readonly_config.yml.tmpl<br/>native extendedContext:true gives the root long context; foreground Bash/Eval default + native-yield leaf async/hub/task guard<br/>one profile-independent modelRoles block: openai-codex GPT-6 Astra default:high (T1; research/review @default inherit the active parent), GPT-5.6 Sol slow/plan:max; vision GPT-5.6 Luna:high; task GPT-5.6 Sol:medium (T2 implement); smol GPT-5.6 Luna:high (T3 mechanical/memory); tiny/commit GPT-5.6 Luna:medium; advisor GPT-5.6 Sol:high (same-family refute, degraded)<br/>+ generated ~/.omp/agent/mcp.json token bridges"]:::exec
         TUICR["tuicr: dot_config/tuicr/readonly_config.toml"]:::exec
         LGTM["lgtm: dot_config/lgtm/readonly_config.toml"]:::exec
         LOCAL["llama.cpp (local, opt-in)"]:::exec
@@ -57,6 +57,6 @@ flowchart TB
     HOOKS <--> MEM
     SK <--> KBDB
 
-    AG --> SCOPE["Scope"] --> UNDERSTAND["Understand · strong research"] --> PRODUCE["Produce · implementation/mechanical"] --> VERIFY["Verify per snapshot · strong judgment + shared checks"] --> DELIVER["Deliver · pass/fail/blocked"]
-    VERIFY -->|root: scoped failure diagnosis, existing authority| UNDERSTAND
+    AG --> SCOPE["Scope"] --> UNDERSTAND["Understand · strong research + settled shared contracts"] --> PRODUCE["Produce · implementation/mechanical"] --> VERIFY["Verify per snapshot · prerequisites before dependent checks/judgment"] --> DELIVER["Deliver · pass/fail/blocked"]
+    VERIFY -->|root: scoped repair, preserved invariants, affected checks/judgments| UNDERSTAND
     UNDERSTAND -->|missing authority, user decision, external blocker, no progress| DELIVER

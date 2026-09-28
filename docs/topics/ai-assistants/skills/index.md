@@ -9,7 +9,7 @@ Skills are the intent router below the SOP. The SOP says "load the matching skil
 | Slice                                                                         | Covers                                                               |
 | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | [Review and delivery](review-and-delivery.md)                                 | reviews, GitHub, PR/issue text, communication                        |
-| [Memory and orchestration](memory-and-orchestration.md)                       | durable memory, proof receipts, specs, builds                        |
+| [Memory and orchestration](memory-and-orchestration.md)                       | durable memory, proof receipts, specs, builds, formal verification   |
 | [Repo workflow and code intelligence](repo-workflow-and-code-intelligence.md) | git/worktrees, semantic tools, clone research, cleanup scanners      |
 | [Elastic and Kibana](elastic-and-kibana.md)                                   | domain overlay, Buildkite, labels, ownership, backports, kbn-standup |
 | [External tools and media](external-tools-and-media.md)                       | Google Workspace, flights, browser control, images                   |
@@ -36,7 +36,7 @@ The `description` frontmatter is the primary routing signal. For non-manual skil
 | Entrypoint | `SKILL.md` in each skill folder                                                          |
 | References | optional `references/` under the skill folder                                            |
 
-Inventory both `readonly_SKILL.md` and plain `SKILL.md` source files; the shared tree currently contains 57 skills. Audit the complete instruction references and incoming callers as well as each entrypoint. Templates, executable helpers, and invocation metadata have separate consumers and must be accounted for without treating them all as instruction prose.
+Inventory both `readonly_SKILL.md` and plain `SKILL.md` source files; the shared tree currently contains 58 skills. Audit the complete instruction references and incoming callers as well as each entrypoint. Templates, executable helpers, and invocation metadata have separate consumers and must be accounted for without treating them all as instruction prose.
 
 ## Semantic maintenance
 
@@ -57,6 +57,7 @@ Entrypoints retain routing, shared boundaries, and mandatory load triggers. Comp
 | `k-communication`         | Existing-thread reply procedure; shared external-register rules are inline in the entrypoint                            |
 | `k-diagnosing-bugs`       | Evidence-driven Understand; authorized fix and cleanup in Produce, with one root-owned final Verify                     |
 | `k-elastic-domain`        | GitHub composition or commit attribution                                                                                |
+| `k-formal`                | Lean-model, catalog, adapter, and proof references by stage and tier (F2 vs F3)                                         |
 | `k-git`                   | Commit/push details before the corresponding operation                                                                  |
 | `k-kbn-stack`             | Runtime lifecycle and isolation before start, reuse, stop, or runtime interpretation                                    |
 | `k-kbn-backport`          | Staging and continuing a conflicted run, in the existing conflict reference                                             |

@@ -1241,8 +1241,11 @@ class TestMcpTokenBridge(unittest.TestCase):
 
     Real-seam tests: an isolated ``HOME`` holds cursor caches, a stub
     cursor-agent plays the refresh grant, and a fake streamable-HTTP server
-    classifies bearers. The deep state table (resurrection, same-token retry,
-    malformed stdin, concurrency) lives in the /tmp state-machine harness.
+    classifies bearers. Concurrency is covered here by
+    ``test_concurrent_bridges_share_one_browser_login``; same-token retry is
+    covered by ``TestMcpTokenSilentRotation.test_rotate_after_reject_adopts_concurrent_rotation_without_regrant``
+    (line ~898). Neither resurrection nor malformed-stdin handling has test
+    coverage.
     """
 
     def _jwt(self, exp: int, subject: str = "a") -> str:

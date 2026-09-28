@@ -30,6 +30,8 @@ Use this for test and verification code. The SOP owns the single final Verify st
   Asserting a suggestion/definition list equals itself proves nothing about whether the suggested values are valid.
 - For artifact-producing changes (suggestion lists, codegen output, definitions, config), verify acceptance against the real consumer:
   probe it live when a safe runtime exists, otherwise cite the consumer's contract (spec/source) for every emitted form.
+- For stateful behavior (SOP `3.6`), a `,formal` catalog unit is an independent oracle; an admissible model counterexample trace
+  (one an existing seam expresses) becomes a regression test when the task owns the repo.
 
 ## Validation
 

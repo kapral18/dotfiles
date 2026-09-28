@@ -6,11 +6,27 @@ Apply matching gates in full; loading this group does not activate an unrelated 
 
 ## State-Machine Verification Gate
 
-In review-only PR mode for someone else's work, keep the worktree read-only, use the harness to verify claims when safe, and surface missing or inadequate state-machine coverage as a test gap when risk remains.
-
-The harness is an executable independent oracle: it loads the implementation (or a faithful extraction of the predicate) and compares its outputs against a table the harness computes on its own.
+For pure input-to-output behavior (parsers, formatters, predicates, matrices), when production tests cannot express the cases the oracle is
+a disposable harness under the path `~/.agents/skills/k-formal/SKILL.md` owns (`/tmp/formal-oracle/<pwd>/<topic>/<slug>/`): it loads the
+implementation (or a faithful extraction of the predicate) and compares
+its outputs against a table the harness computes on its own, with a manifest naming target, requested behavior, compatibility intent, and
+snapshot. One harness serves the whole task, never one per worker.
 A script that runs the existing tests, or checks that test names appear in a test file, is not a harness.
-When the focused tests are the only executable check, report `harness=tests` and write no manifest.
+When the focused tests are the only executable check, report `formal=tests` and write no manifest.
+
+For stateful behavior (lifecycles, retries, ordered/flag-dependent state, permissions over time), the oracle is a `,formal` catalog unit's
+audit evidence. The root resolves or builds the unit and runs `,formal audit <unit> --json` once per snapshot in Verify, before assigning a
+review lens; a leaf reviewer MUST NOT resolve, build, or audit a unit, and MUST NOT run `,formal audit`/`replay`/`explore`/`mutate` itself.
+Read the root-provided `receipts/<snapshot>/audit.json` and cite its `certifies` string. Model results certify the model, not the code;
+report conformance (the audit's replay stage) and fidelity (rows vs. code, dispatch/enabledness modeled, hard-coded arguments anchored)
+as separate findings. `bounded` search is never reported as an unbounded pass. When no unit or no audit evidence exists for a matching
+stateful surface, report a missing-unit gap to the root instead of resolving, building, or auditing one yourself.
+
+In review-only PR mode for someone else's work, the root still keeps the worktree read-only: units live in the catalog, never committed to
+the reviewed repo. The root always runs `,formal audit`; only the replay stage inside it is conditional — it runs `replay` only when the
+reviewed code runs locally and safely, otherwise `audit.json` reports conformance `unverified`, never pass. A leaf reviewer only ever
+reads that evidence.
+Surface missing or inadequate state-machine coverage as a test gap when risk remains.
 
 ## Async-Derived State Gate (Run On Values Resolved Over Time)
 

@@ -385,6 +385,26 @@ TEST_RULES: tuple[TestRule, ...] = (
     TestRule(prefixes=("home/exact_lib/exact_,proof/",), tests=("tests/test_proof_cli.py",)),
     TestRule(
         prefixes=(
+            "home/exact_lib/exact_,formal/",
+            "home/exact_bin/executable_,formal",
+            "home/dot_config/fish/completions/readonly_,formal.fish",
+            "scripts/tests/fixtures/formal/",
+            "scripts/tests/formal_support.py",
+        ),
+        tests=(
+            "tests/test_formal_anchors.py",
+            "tests/test_formal_audit.py",
+            "tests/test_formal_build_exe.py",
+            "tests/test_formal_catalog.py",
+            "tests/test_formal_cli.py",
+            "tests/test_formal_e2e.py",
+            "tests/test_formal_manifest.py",
+            "tests/test_formal_prove.py",
+            "tests/test_formal_replay.py",
+        ),
+    ),
+    TestRule(
+        prefixes=(
             "home/exact_lib/exact_,ai-usage/",
             "home/exact_bin/executable_,ai-usage",
             "home/dot_config/fish/completions/readonly_,ai-usage.fish",

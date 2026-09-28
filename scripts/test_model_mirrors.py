@@ -287,7 +287,6 @@ class TestStaticModelMirrors(unittest.TestCase):
         mirror = model_mirrors.build_static_mirror(REPO)
         cursor = mirror["harnesses"]["cursor"]
         gemini = mirror["harnesses"]["gemini"]
-        pi_recommended = mirror["harnesses"]["pi"]["recommended"]["models"]
 
         self.assertLess(
             set(cursor["recommended"]["models"]),
@@ -298,7 +297,6 @@ class TestStaticModelMirrors(unittest.TestCase):
             set(gemini["curated"]["models"]),
         )
         self.assertNotIn("new-live", cursor["curated"]["models"])
-        self.assertEqual(["openrouter/openai/gpt-6-sol"], pi_recommended)
 
     def test_SHOULD_follow_the_antigravity_category_for_the_deployed_gemini_mirror(self):
         import model_mirrors

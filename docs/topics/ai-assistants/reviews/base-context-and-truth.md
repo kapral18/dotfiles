@@ -9,13 +9,13 @@ Review decisions compare the diff under review with the codebase reality it is c
 
 ## Mental model
 
-| Layer                | What it proves                                                                                               |
-| -------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Base truth           | what base branch does today, using SCSI when indexed or `git show <base>:<path>` plus local search otherwise |
-| Change truth         | what the branch/PR actually does, using local diff plus file reads                                           |
-| Assumption tests     | the smallest safe experiment that could disprove the review decision                                         |
-| State-machine checks | ordered/stateful behavior matches an independent model or table before final/merge-ready claims              |
-| Quality gates        | planned lint/type/test commands once on the integrated final candidate                                       |
+| Layer                | What it proves                                                                                                                                                                                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Base truth           | what base branch does today, using SCSI when indexed or `git show <base>:<path>` plus local search otherwise                                                                                                                                                             |
+| Change truth         | what the branch/PR actually does, using local diff plus file reads                                                                                                                                                                                                       |
+| Assumption tests     | the smallest safe experiment that could disprove the review decision                                                                                                                                                                                                     |
+| State-machine checks | ordered/stateful behavior passes a `,formal` catalog audit (stateful) before final/merge-ready claims; pure input→output behavior uses an independent-oracle table only when production tests cannot express the cases, otherwise focused tests suffice (`formal=tests`) |
+| Quality gates        | planned lint/type/test commands once on the integrated final candidate                                                                                                                                                                                                   |
 
 ## Using it
 
@@ -32,7 +32,7 @@ For non-trivial review decisions — accepting a suggestion, pushing back, or pr
 1. Establish base truth: what base branch does today.
 2. Establish change truth: what the branch/PR actually does.
 3. Test assumptions: reproduce in `/tmp` when possible; otherwise run the smallest safe experiment in the worktree.
-4. Check state machines: for reviewed behavior that is stateful, parser-like, branch-heavy, or ordered-condition dependent, a `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/` harness is required before the change is final, merge-ready, or a review concern resolved.
+4. Check state machines: for reviewed behavior that is stateful, branch-heavy, or ordered-condition dependent, a `,formal audit` on the relevant catalog unit is required before the change is final, merge-ready, or a review concern resolved. For pure input-to-output behavior (parsers, formatters, predicates, matrices), the independent-oracle harness (SOP §3.6) is required only when production tests cannot express the cases; otherwise focused tests suffice (`formal=tests`).
 5. Run quality gates: consume the integrated candidate's planned lint/type/test receipts; do not re-run completed checks. Discover the correct commands from the repo; do not guess.
 
 ## Reference: skill support
