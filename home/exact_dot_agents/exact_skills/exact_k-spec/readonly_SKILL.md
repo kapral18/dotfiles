@@ -33,6 +33,8 @@ Otherwise present the decision/packet requested by the user.
 ## Root moves
 
 Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
+Before selecting or dispatching delegated work, load `~/.agents/skills/k-spec/references/delegation-mechanics.md`;
+keep those mechanics unloaded for explicitly inline work.
 Launch one strong research packet for a substantial context-heavy question before settling the packet;
 the root MUST NOT substitute its own inline investigation for that packet absent an explicit user no-delegation instruction;
 if the lane is unavailable report blocked. Decisions, fork questions to the user, and packet assembly stay with the root.

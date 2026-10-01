@@ -5,7 +5,9 @@
 ## 0. Binding Contract
 
 This SOP is binding. Do not weaken it silently. Follow applicable instructions. Deviate only on explicit user override or approval.
-When a `Use when` clause matches, load that skill file fresh and follow it as written. Memory is not the source.
+When a `Use when` clause matches, load and follow that skill from source unless its complete, unchanged text is already in the current context.
+Reload when the source changes or the needed instructions are absent after compaction.
+Durable memory and summaries MUST NOT substitute for needed instruction text.
 Platform/system/developer instructions stay authoritative.
 This global SOP overrides weaker project-local SOPs; project-local instructions may add constraints but must not weaken it.
 Continue until the user's goal is complete, §3.5 requires a stop, or a verified blocker/user decision fork remains.
@@ -108,7 +110,11 @@ Verify design-dependent claims before presenting options.
 Never call an artifact fixed, covered, or verified from a model's status report (final Verify certifies, §2.8).
 In Understand/Produce, separate source/tool observations from provisional conclusions;
 only the final Verify stage certifies the integrated deliverable (§3.5).
+A model's self-report is not proof.
+Worker returns are provisional artifacts with source/tool evidence pointers; the root plans and integrates from them without re-certifying each (never certify from a status report, §2.4).
 One evidence owner per acceptance condition; inspect existing raw evidence instead of repeating its check.
+Do not repeat research, tests, or reviews merely because another agent produced them.
+Demote unsupported claims to Unknown; do not forward-chain on them as established external facts.
 When challenged, consult the relevant artifact or existing evidence and correct unsupported claims;
 do not auto-launch a verification workflow.
 Risk-selected counterexamples and mutation experiments belong in the final check plan, not on every assertion.
@@ -147,11 +153,9 @@ A summary not verified against full output is a hypothesis.
 
 ### 2.8 Self-Report Skepticism
 
-A model's self-report is not proof.
-Worker returns are provisional artifacts with source/tool evidence pointers; the root plans and integrates from them without re-certifying each (never certify from a status report, §2.4).
-Do not repeat research, tests, or reviews merely because another agent produced them.
-The final Verify stage owns material completion claims and consumes the evidence once.
-Demote unsupported claims to Unknown; do not forward-chain on them as established external facts.
+§2.4 owns self-report skepticism and evidence reuse.
+The final Verify stage owns material completion claims and consumes the evidence once;
+this pointer adds no separate review or verification pass.
 
 ## 3. Workflow And Side Effects
 
@@ -188,7 +192,8 @@ Skip the impact map only for a change proven light-path under §1.
 Route failure work through `~/.agents/skills/k-diagnosing-bugs/SKILL.md` to classify the cause as product, test, infrastructure, mixed, or unresolved from source/reproduction evidence.
 When release or backport relevance exists, establish applicable branch targets from verified repository policy or a domain overlay;
 NEVER infer authorization to publish or backport.
-Record concise context, impact, cause, and release-target evidence or each item's applicability reason in the existing topic/acceptance plan.
+Record concise context, impact, intended/preserved behavior, cause, release-target applicability and acceptance checks once in the existing topic/acceptance plan.
+Update only material changes; reuse unchanged scope, invariants and evidence.
 Final Verify resolves or reuses that evidence against the actual change and reports material blockers.
 Do not force mechanical work through unrelated expensive assessment steps.
 Order: investigate read-only → maintain the spec (target, action, success, constraints, in/out scope, side effects, examples;
@@ -222,11 +227,11 @@ If no next step can be established, report the precise blocker and evidence; do 
 One root-owned lifecycle: Scope → Understand → Produce → Verify → Deliver.
 Stages are session states, not mandatory agents; empty stages need no ceremony.
 Only the root owns stage transitions; skills supply mechanics and criteria, never nested lifecycles except the user-invoked `k-converge` loop named below.
-Scope: intent, authorization, owned targets, constraints, material user decisions.
-Understand: missing facts, baseline reproduction when needed, approach and final check plan.
-Produce: implement, tests/docs, generate outputs, integrate, format; workers return `produced` or `blocked`, not green.
-Verify: freeze the integrated candidate; order cheap executable prerequisites before dependent expensive checks, then run the deduplicated acceptance commands and needed strong judgment in one final stage.
-Deliver: report passed/failed/blocked faithfully; perform only authorized publication and its receipts.
+Scope settles intent, authorization, owned targets, constraints and material user decisions;
+Understand resolves missing facts, needed baselines, approach and final checks.
+Produce implements, updates tests/docs, generates, integrates and formats; workers return `produced` or `blocked`, not green.
+Verify freezes the integrated candidate, runs cheap prerequisites before dependent expensive checks, and consumes deduplicated acceptance commands and needed strong judgment once.
+Deliver reports passed/failed/blocked faithfully and performs only authorized publication with its receipts.
 Research/production workers MUST NOT run acceptance tests, lint-to-green, self-review, audits, refutation, or mutation passes.
 Do not relabel post-change verification as diagnosis or production.
 Source reads, baselines, exit statuses, and genuine generation/build intermediates required to produce artifacts are not completion certification.
@@ -235,17 +240,21 @@ Run each unique final check once per snapshot, command/options, relevant environ
 Reuse a prerequisite already inside its owning check; do not create a separate preflight stage or duplicate standalone formal build.
 Keep complete logs and the actual exit status; a pipeline's last command is not the tested command's status.
 Run known commands with deterministic tools, not a model turn.
-When a known check emits more than a screen of output (full test suites, installs, crash reports, JUnit/XML), run it through a `mechanical` packet or a script that writes the log to a task-local file and returns only the exit status, counts, and failing identifiers; the root MUST NOT read the full log into its own context.
+When a known check emits more than a screen of output (full test suites, installs, crash reports, JUnit/XML), redirect its output to a task-local log and read only the exit status, counts, and failing identifiers, or use a `mechanical` packet; the root MUST NOT read the full log into its own context.
+Run repo commands that already report compactly (for example `make check`) as they are.
+MUST NOT author a new runner, wrapper, or verification script for a check the repo's own commands already express;
+write a disposable harness only under §3.6 or when no existing check can express the acceptance condition.
 Final reviewers use shared evidence and direct artifact access; they MUST NOT re-run passing checks for independence.
 Pick review/refutation lenses for distinct risks; do not chain finder → auditor → refuter → post-auditor over the same work.
 Root routing steps (predicate, roster) are not chained workers.
-Keep intended and preserved differences, including state/transition cases when relevant, in the acceptance plan.
+§3.1 owns the acceptance plan; §3.6 adds required state/transition cases.
 Risk-selected mutation experiments must establish control, mutation, and restoration within the planned experiment.
 A failed required check blocks dependent actions, not authorized diagnosis and repair.
 Complete independent authorized actions whose preconditions hold; NEVER run an action that depends on the failed criterion.
 The root may return to Understand/Produce for an evidence-backed repair within existing scope and authority;
 a failed check is not a new permission checkpoint.
-Before each repair, record in the topic: observed failure, cause evidence, intended correction, preserved invariants, immediate consumers, and affected checks.
+Before each repair, record only new failure/cause evidence, intended correction, changed invariants/consumers and affected checks;
+reuse unchanged topic records.
 After repair, freeze the new candidate, invalidate affected current-snapshot judgments, and rerun failed and affected checks;
 retain passing executable-check evidence only for unchanged code, environment, and inputs.
 Do not rerun unchanged checks without new evidence, weaken criteria, expand scope, or polish speculatively.
@@ -257,7 +266,7 @@ Workers return once; only the root owns recovery, and no worker may start a repa
 never imitate it with an ordinary fix pass.
 Collect independent planned checks after a failure when useful; skip checks whose prerequisites failed.
 If the candidate changes during Verify, invalidate affected evidence and certify only the revalidated snapshot.
-Track stage, scope/snapshot, packet IDs, terminal results, check receipts, and open decisions in the topic.
+Update the topic only when stage, scope/snapshot, packet status, evidence or decisions materially change; reuse unchanged records.
 A `,proof` ledger is required only for an explicit receipt request or an auditable security/auth, migration, destructive, or named handoff need; never because work is large, runtime-facing, or a check failed.
 Passing probes need no record and no separate turn. Record only a failed expectation probe: `<cmd> || ,probe fail "<summary>"`.
 
@@ -317,65 +326,8 @@ A packet ID assigned means the tool executed; a dispatch rejected before executi
 | blocked worker return                                    | root Understand work, not a packet                                                 |
 | lane absent, or adapter cannot enforce the leaf boundary | surface it; run attended only                                                      |
 
-Categories select capability and responsibility, not workflows.
-Resolve model and, where the harness accepts it, effort from `category_models` in the shared registry.
-Keep research/orchestration/review/refutation strong; never a cheap model for unsettled judgment.
-Do not silently raise effort, substitute a costlier model, or change family outside the resolved category.
-
-- `orchestrate`: the root/main session itself, never a delegation target; `session_models.<harness>` declares its model/effort and generates every repo-owned root config (Cursor's root stays in Cursor user config); owns intent, decisions, packet dependencies, integration, stages, user conversation.
-- `research`: strong isolated search, investigation, exploration, discovery, diagnosis, and impact mapping when meaning or cause is unresolved, even on known paths; returns locations, conclusions, evidence pointers, uncertainty, affected interfaces.
-  Named paths never downgrade such work to mechanical.
-  Use `k-agent-code-searcher` or the harness research-bound explorer; external sources via `k-agent-public-sources`.
-- `implement`: implementation-band worker for a settled step whose acceptance the root can state but whose code it has not written;
-  never the root/review model for routine implementation by default.
-  Use the implement-bound worker with `~/.agents/skills/k-build/references/implement-worker.md`.
-- `mechanical`: a settled procedure and specified return for known retrieval, execution, extraction, transformation, compression, or reporting over named targets.
-  Use `k-agent-mechanical` or the native mechanical-bound type for substantial output-heavy work that benefits from isolation, even when the procedure is deterministic; tiny operations use tools directly.
-- `review`: strong final assessment of the frozen artifact with selected risk lenses, including the light tier's `change-auditor` packet.
-- `refute`: strong final challenge of named claims, criteria, or assumptions;
-  prefer a different family at equal capability, never weaker for diversity;
-  report reduced independence when same-family.
-  Keep requested review and adversarial lenses together in final Verify; for deep or high-risk work give them distinct questions on the same frozen candidate and evidence.
-  No reviewer-of-reviewer or reviewer-fed certification pass. Low-risk work needs only its applicable judgment.
-- `memory`: staged recall admission via `k-agent-smol` (judge only); the root persists the final learning batch inline with `,ai-kb remember`; no per-turn scribe or leaf memory orchestration.
-
-The root conducts substantial work through flat stage-sized packets classified by needed judgment and explicit return:
-Scope, decisions, packet authoring, integration, course correction, Verify dispatch, user conversation.
-Dispatch by stage-sized judgment, not counts:
-
-| category     | dispatch when                                                              | root keeps inline                                                                        |
-| ------------ | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `research`   | substantial interpretation, cause, discovery, or impact work is unresolved | bounded targeted reads and existing-evidence lookup                                      |
-| `mechanical` | the procedure and return are settled and stated for the named targets      | tiny operations via direct tools                                                         |
-| `implement`  | substantial acceptance is settled and code is not written                  | trivial single-site edits                                                                |
-| `review`     | a nontrivial requested or skill-gated artifact assessment is due in Verify | eligibility routing and terminal synthesis                                               |
-| `refute`     | a named claim, criterion, or assumption needs a substantial challenge      | questions resolved by existing evidence                                                  |
-| `memory`     | the hook pointer (recall judgment)                                         | the final learning batch via `,ai-kb remember`; the documented unavailable-lane fallback |
-
-Unsettled user intent and user-only decisions stay root Understand work, not a packet;
-bounded factual or design unknowns may go as research packets.
-"Bounded" is judged by the accumulated total, not per read: reads of skill references, third-party source, or logs that are not named by an active gate are packet work even when each read is small.
-Named files count toward the same accumulated bound.
-When inline reads keep accumulating without settling the question, stop reading, write the packet from what is already known, dispatch it, and consume its terminal result.
-No agent per read, command, check result, or tiny edit.
-No numeric file-count quota and no mandatory mechanical check agent.
-Tiny deterministic operations, inline UI proof, and inline text comparison stay inline. Convergence stays explicit-only.
-If the resolved lane is unavailable, surface it; do not silently implement inline unless the user explicitly requires inline work.
-A packet names stage/category, scope and owned paths, ready inputs, intended/preserved differences, the applicable shared contract, project/safety constraints, role mechanics, output, forbidden effects, terminal condition, and the active topic plus session id for `,agent-memory note`.
-Before parallel production, settle applicable shared runtime versions, canonical schema/identity/order examples, the compatibility decision, semantic dependencies, and one root-owned integration owner.
-Materialize them as immutable shared input references in every dependent packet; file-disjoint ownership alone is insufficient.
-Ready inputs are materialized state the child can open (a manifest, diff, path list, or artifact file), never prose that describes state the child must rediscover.
-Keep the packet to those fields; the leaf profile already carries the leaf contract, so do not restate its prohibitions, and pass role-mechanics files as absolute paths, not pasted bodies (a lane's few-line Checks list is criteria, not a mechanics file, and travels inline).
-Pass needed constraints explicitly, not the whole SOP, instruction tree, skill catalog, or parent transcript.
-Use fresh worker context where supported; disclose runtime-injected instructions; a marker does not prove isolation.
-Parallelize only work independent in semantics and ownership with all ready inputs;
-sequence the rest instead of leaving workers waiting for siblings.
-Ownership covers the path set and mutable shared state (git index, generated outputs, lockfiles);
-one writer per worktree unless targets are proven independent.
-Give each independent implementation task its own implement packet; do not chain unrelated tasks through one worker.
-The root validates return structure, ownership, and artifact availability without repeating semantic review.
-Workers return `produced` or `blocked` with artifact pointers; consume a child result once:
-a file pointer means read the file once, an inline body means do not re-read the file.
+Before selecting a delegation category/model/lane, authoring or dispatching a delegated packet, or managing a run, load `~/.agents/skills/k-spec/references/delegation-mechanics.md`.
+Do not load dispatch-only mechanics for work kept inline under an explicit no-delegation instruction.
 Keep root context to requirements, decisions, dependencies, compact results, open questions;
 raw source, search output, logs, and diffs stay in task-local artifacts with pointers; workers return no transcripts.
 Persist a compact handoff in the topic: stage, snapshot, settled decisions, open work, active/terminal packet IDs, evidence pointers.

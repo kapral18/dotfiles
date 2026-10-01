@@ -524,7 +524,12 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         self.assertFalse(self.dispatch_text_sits_under_root_moves(unguarded))
         sop = self.read("home/readonly_AGENTS.md")
         self.assertNotIn("light-path judgment only", sop)
-        self.assertIn("eligibility routing and terminal synthesis", sop)
+        self.assertIn(
+            "eligibility routing and terminal synthesis",
+            self.read(
+                "home/exact_dot_agents/exact_skills/exact_k-spec/exact_references/readonly_delegation-mechanics.md"
+            ),
+        )
 
     def test_when_review_is_light_or_standard_should_not_allow_discretionary_inline_judgment(self):
         light = self.read("home/exact_dot_agents/exact_skills/exact_k-light-review/readonly_SKILL.md")

@@ -6,12 +6,12 @@
 // schema validator. Native execute/render/backend and lifecycle callbacks pass
 // through by identity; only the model-facing advertisement is deployment-owned.
 //
-// Native anchors (Pi 0.87.1 / pi-subagents 0.70.1):
+// Native anchors (Pi 0.99.2 / pi-subagents 0.74.0):
 // - entry: the package's own `pi.extensions` manifest entry (compiled
 //   `./index.js` since 0.70.0; a source checkout still declares `./index.ts`).
 // - registration point: pi-subagents/src/extension/index.js registers the
 //   `subagent` tool with parameters from createSubagentParamsSchema() in
-//   src/extension/schemas.js (82 flat optional properties).
+//   src/extension/schemas.js (80 flat optional properties).
 // - package filter: pi-coding-agent dist/core/package-manager.js
 //   (collectPackageResources/applyPackageFilter) disables the package entry's
 //   own extensions/skills/prompts, so this adapter is the only registrar and

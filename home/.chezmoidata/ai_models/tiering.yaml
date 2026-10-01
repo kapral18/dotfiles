@@ -4,11 +4,11 @@
 # Never a delegation target.
 session_models:
   claude_code:
-    model: "claude-opus-5-5[1m]"
+    model: "claude-opus-5-5"
     effort: "high"
     context: "long"
   codex:
-    model: "gpt-6-astra"
+    model: "gpt-6.1-sol"
     effort: "high"
     context: "short"
   # session row is informational: Cursor's root model/effort live in Cursor saved user config, not in this repo
@@ -21,11 +21,11 @@ session_models:
     effort: "high"
     context: "long"
   pi:
-    model: "openrouter/meta/muse-spark-1.3"
-    effort: "xhigh"
-    context: "long"
+    model: "openai-codex/gpt-6.1-sol"
+    effort: "high"
+    context: "short"
   omp:
-    model: "openai-codex/gpt-6-astra"
+    model: "openai-codex/gpt-6.1-sol"
     effort: "high"
     context: "short"
 agent_categories:
@@ -123,68 +123,70 @@ binding_fallbacks:
 # `effort` is the harness-literal dial; `thinking: ""` means no separate toggle; `context` is a short/long window tier.
 # `verifier_status` is one of cross_family, reduced_independence, or degraded.
 category_models:
-  # Claude Code uses hyphenated point versions only (`claude-sonnet-4-6`); dotted form 404s. `[1m]` selects the 1M window.
+  # Claude Code uses hyphenated point versions only (`claude-sonnet-4-6`); dotted form 404s.
+  # Every row uses the bare id: Sonnet 5.5 and Opus 5.5 are 1M natively (`native_1m` in the Claude Code 2.1.287
+  # model registry), so no row carries the `[1m]` suffix.
   claude_code:
     mechanical:
-      model: "claude-sonnet-5"
+      model: "claude-sonnet-5-5"
       effort: "high"
       thinking: ""
       context: "long"
     research:
-      model: "claude-opus-5-5[1m]"
+      model: "claude-opus-5-5"
       effort: "high"
       thinking: ""
       context: "long"
     implement:
-      model: "claude-sonnet-5"
+      model: "claude-sonnet-5-5"
       effort: "xhigh"
-      thinking: "off"
+      thinking: ""
       context: "long"
     review:
-      model: "claude-opus-5-5[1m]"
+      model: "claude-opus-5-5"
       effort: "high"
       thinking: ""
       context: "long"
     refute:
-      model: "claude-opus-5-5[1m]"
+      model: "claude-opus-5-5"
       effort: "high"
       thinking: ""
       context: "long"
       verifier_status: "degraded"
     memory:
-      model: "claude-sonnet-5"
+      model: "claude-sonnet-5-5"
       effort: "medium"
-      thinking: "off"
+      thinking: ""
       context: "short"
   codex:
     mechanical:
-      model: "gpt-5.6-luna"
+      model: "gpt-6-luna"
       effort: "high"
       thinking: ""
       context: "short"
     research:
-      model: "gpt-5.6-sol"
+      model: "gpt-6.1-sol"
       effort: "high"
       thinking: ""
       context: "short"
     implement:
-      model: "gpt-5.6-sol"
+      model: "gpt-6.1-sol"
       effort: "medium"
       thinking: ""
       context: "short"
     review:
-      model: "gpt-5.6-sol"
+      model: "gpt-6.1-sol"
       effort: "high"
       thinking: ""
       context: "short"
     refute:
-      model: "gpt-5.6-sol"
+      model: "gpt-6.1-sol"
       effort: "high"
       thinking: ""
       context: "short"
       verifier_status: "degraded"
     memory:
-      model: "gpt-5.6-sol"
+      model: "gpt-6.1-sol"
       effort: "high"
       thinking: ""
       context: "short"
@@ -257,36 +259,38 @@ category_models:
       thinking: ""
       context: "long"
   # Pi stores models without `:level`; `effort` renders as frontmatter `thinking`.
+  # Pi defaults to the ChatGPT-subscription `openai-codex` provider (user call 2026-09-30: Sol root and lanes, Luna mechanical; was OpenRouter).
+  # All short: that provider only exposes short windows.
   pi:
     mechanical:
-      model: "openrouter/z-ai/glm-5.3-flash"
-      effort: "high"
-      thinking: ""
-      context: "long"
-    research:
-      model: "openrouter/z-ai/glm-5.3"
-      effort: "max"
-      thinking: ""
-      context: "long"
-    implement:
-      model: "openrouter/z-ai/glm-5.3"
-      effort: "high"
-      thinking: ""
-      context: "long"
-    review:
-      model: "openrouter/meta/muse-spark-1.3"
-      effort: "max"
-      thinking: ""
-      context: "long"
-    # Grok counters the Muse Spark review lane (user call 2026-09-13: flash refuters produced a false finding and skipped a packet step).
-    refute:
-      model: "openrouter/x-ai/grok-4.6"
+      model: "openai-codex/gpt-6-luna"
       effort: "high"
       thinking: ""
       context: "short"
-      verifier_status: "cross_family"
+    research:
+      model: "openai-codex/gpt-6.1-sol"
+      effort: "high"
+      thinking: ""
+      context: "short"
+    implement:
+      model: "openai-codex/gpt-6.1-sol"
+      effort: "medium"
+      thinking: ""
+      context: "short"
+    review:
+      model: "openai-codex/gpt-6.1-sol"
+      effort: "high"
+      thinking: ""
+      context: "short"
+    # One family only, so the counter cannot be cross-family (same call as `category_models.codex.refute`).
+    refute:
+      model: "openai-codex/gpt-6.1-sol"
+      effort: "high"
+      thinking: ""
+      context: "short"
+      verifier_status: "degraded"
     memory:
-      model: "openrouter/z-ai/glm-5.3-flash"
+      model: "openai-codex/gpt-6.1-sol"
       effort: "high"
       thinking: ""
       context: "short"
@@ -475,7 +479,7 @@ pi_model_profiles:
       context: "long"
     categories:
       mechanical:
-        model: "anthropic/claude-sonnet-5"
+        model: "anthropic/claude-sonnet-5-5"
         effort: "high"
         thinking: ""
         context: "long"
@@ -484,9 +488,10 @@ pi_model_profiles:
         effort: "high"
         thinking: ""
         context: "long"
+      # Same model as the session, kept distinct by effort.
       implement:
-        model: "anthropic/claude-opus-5"
-        effort: "high"
+        model: "anthropic/claude-opus-5-5"
+        effort: "medium"
         thinking: ""
         context: "long"
       review:
@@ -502,7 +507,7 @@ pi_model_profiles:
         context: "long"
         verifier_status: "degraded"
       memory:
-        model: "anthropic/claude-sonnet-5"
+        model: "anthropic/claude-sonnet-5-5"
         effort: "medium"
         thinking: ""
         context: "short"
@@ -510,39 +515,39 @@ pi_model_profiles:
   # All short: that provider only exposes short windows.
   codex:
     session:
-      model: "openai-codex/gpt-6-astra"
+      model: "openai-codex/gpt-6.1-sol"
       effort: "high"
       context: "short"
     categories:
       mechanical:
-        model: "openai-codex/gpt-5.6-luna"
+        model: "openai-codex/gpt-6-luna"
         effort: "high"
         thinking: ""
         context: "short"
       research:
-        model: "openai-codex/gpt-5.6-sol"
+        model: "openai-codex/gpt-6.1-sol"
         effort: "high"
         thinking: ""
         context: "short"
       implement:
-        model: "openai-codex/gpt-5.6-sol"
+        model: "openai-codex/gpt-6.1-sol"
         effort: "medium"
         thinking: ""
         context: "short"
       review:
-        model: "openai-codex/gpt-5.6-sol"
+        model: "openai-codex/gpt-6.1-sol"
         effort: "high"
         thinking: ""
         context: "short"
       # One family only, so the counter cannot be cross-family (same call as `category_models.codex.refute`).
       refute:
-        model: "openai-codex/gpt-5.6-sol"
+        model: "openai-codex/gpt-6.1-sol"
         effort: "high"
         thinking: ""
         context: "short"
         verifier_status: "degraded"
       memory:
-        model: "openai-codex/gpt-5.6-sol"
+        model: "openai-codex/gpt-6.1-sol"
         effort: "high"
         thinking: ""
         context: "short"

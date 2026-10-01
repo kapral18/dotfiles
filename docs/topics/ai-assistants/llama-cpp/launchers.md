@@ -17,7 +17,7 @@ OpenCode reads providers from `~/.config/opencode/opencode.jsonc`, so its launch
 
 Cursor's cloud build rejects local provider flags. `,cursor-llama-cpp` therefore runs the version-matched `agent-cli-local` flavor, pins its provider environment to llama.cpp, and rewrites `-m` to Cursor's `--model` flag.
 
-Claude Code has one global `autoCompactWindow`, but cloud `opus[1m]`, 262144-token local models, and work Qwen3.6 need different values. The llama.cpp launcher picks a model-scoped additive settings file: base local models use `200000` and work Qwen3.6 uses `100000`. Plain cloud Claude sessions and their subagents use the `400000` from the user settings. Those additive files keep thinking off and pin each local model to `high`, matching the native cloud root's effort without changing local context windows.
+Claude Code has one global `autoCompactWindow`, but cloud `claude-opus-5-5`, 262144-token local models, and work Qwen3.6 need different values. The llama.cpp launcher picks a model-scoped additive settings file: base local models use `200000` and work Qwen3.6 uses `100000`. Plain cloud Claude sessions and their subagents use the `400000` from the user settings. Those additive files keep thinking off and pin each local model to `high`, matching the native cloud root's effort without changing local context windows.
 
 ## Using it
 
@@ -129,10 +129,10 @@ Any subcommand/args pass through.
 
 Claude Code compacts conversation history at `autoCompactWindow` tokens.
 
-| Context          | Desired value                                                        |
-| ---------------- | -------------------------------------------------------------------- |
-| Cloud `opus[1m]` | `400000` from `settings.{personal,work}.json`                        |
-| Local llama.cpp  | compact below server context so llama.cpp does not reject the prompt |
+| Context                 | Desired value                                                        |
+| ----------------------- | -------------------------------------------------------------------- |
+| Cloud `claude-opus-5-5` | `400000` from `settings.{personal,work}.json`                        |
+| Local llama.cpp         | compact below server context so llama.cpp does not reject the prompt |
 
 Those needs conflict on a single global setting.
 
@@ -169,7 +169,7 @@ The wrapper clears inherited `CLAUDE_CODE_AUTO_COMPACT_WINDOW` and `CLAUDE_CODE_
 ,claude-llama-cpp -p "summarize README.md"  # one-shot prompt
 ```
 
-Cloud Claude sessions are unaffected — plain `claude ...` still reads only `~/.claude/settings.json`, where `autoCompactWindow` stays unset so the default for `opus[1m]` applies.
+Cloud Claude sessions are unaffected — plain `claude ...` still reads only `~/.claude/settings.json`, where `autoCompactWindow` is `400000`.
 
 ## Sources and verification
 

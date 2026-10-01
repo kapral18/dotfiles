@@ -566,7 +566,7 @@ class TestPiSubagentContractNative(unittest.TestCase):
         payload = _run_node(CONTRACT_DRIVER, str(self.pi_dir), str(ADAPTER), str(self.ps_entry))
         self.assertTrue(payload.get("ok"), payload.get("error"))
         self.assertTrue(payload["native"]["seen"])
-        self.assertEqual(payload["native"]["propCount"], 82)
+        self.assertEqual(payload["native"]["propCount"], 80)
         # Projection keeps THAT captured native tool's callbacks by identity.
         projection = payload["projection"]
         self.assertFalse(projection["hasSnippet"])

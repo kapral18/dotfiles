@@ -9,6 +9,16 @@ title: Source of truth
 
 This page is the maintenance map for changing the prompt without editing rendered `$HOME` outputs directly.
 
+## Task-triggered instruction loading
+
+The core keeps root/leaf isolation and no-recursion boundaries. Detailed category selection, model/lane resolution and packet mechanics live in `~/.agents/skills/k-spec/references/delegation-mechanics.md`, loaded before delegated work. Inline work under an explicit no-delegation instruction does not load this reference. Its frozen policy rule and mechanical-only consumer/hash record preserve the complete relocated text; they do not prove model compliance or runtime speed.
+
+Matching skills load from source once while their complete, unchanged bodies remain in context. Changed files or missing instructions after compaction require a reload; summaries and durable memory are not instruction substitutes.
+
+Project `AGENTS.md` loads architecture by unfamiliar subsystem or targeted known-path lookup rather than preloading every map. Its installation, shell/helper and command recipes live in [dotfiles agent recipes](dotfiles-recipes.md), loaded only for those tasks. Source ownership, validation and documentation gates remain in the project entrypoint.
+
+Delegation dispatch-cost, timeout-sizing and timeout-recovery rules live in §3.7b of that reference, outside its frozen §3.7a body; the audit receipt's `consumer_sha256` must be refreshed when the reference changes. §2.4 owns self-report skepticism and evidence reuse; §2.8 is a pointer, not a second pass. The topic records acceptance context once and updates only material facts. Repairs reuse unchanged scope/invariants/evidence and rerun only failed or affected checks.
+
 Wording-only compression keeps each numbered rule and its existing core/consumer disposition. Review the full clause mapping for conditions, exceptions, examples, and prohibitions before accepting a shorter version. Invariant checks protect instruction presence; isolated model decision probes can find regressions, but passing probes do not establish universal equivalence or justify retiring a rule. The current evaluator scaffold does not execute those probes.
 
 The core SOP owns the default user-response shape, and §5 keeps that contract compact: the user is dyslexic, so replies use the shortest complete shape that preserves evidence, uncertainty, paths, commands, and safety qualifiers. It keeps the per-class budgets (direct answer ≤80 words, comparison/audit ≤120 words plus one table or anchor list, multi-part investigation ≤200 words), response shape, and the substance floor in core. Time neutrality lives earlier in §1.1 because it is a planning axiom: assume available work time is unbounded and development speed is instant, then scope by correctness, evidence, risk, and explicit user constraints. §1 also owns the depth threshold: cover what correctness needs for non-trivial work, and use the light path only after proving the work is local, reversible, observable, and semantically simple. Optional STE (ASD-STE100 Simplified Technical English) sentence habits apply only when they shrink text, and full STE applies only when the user asks for STE or docs compliance. The detailed reinforcement is intentionally carried by `prefix.txt`, not repeated in full here.

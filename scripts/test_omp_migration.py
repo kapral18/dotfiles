@@ -96,7 +96,7 @@ class TestOmpMigration(unittest.TestCase):
         )
         # The role table is profile-independent and uses the subscription provider;
         # category and effort relationships are covered by the band invariants.
-        expected_roles = {"default", "smol", "slow", "vision", "plan", "commit", "tiny", "task", "advisor"}
+        expected_roles = {"default", "smol", "slow", "vision", "plan", "commit", "tiny", "task", "advisor", "web"}
         shared_values = (
             "modelRoles:\n",
             "advisor:\n  enabled: false\n  subagents: false\n  syncBacklog: 1\n  immuneTurns: 0\n",
@@ -125,6 +125,7 @@ class TestOmpMigration(unittest.TestCase):
                 roles = config.split("modelRoles:\n", 1)[1].split("\n\n", 1)[0]
                 pairs = dict(re.findall(r"(?m)^  ([a-z]+): (.+)$", roles))
                 self.assertEqual(set(pairs), expected_roles)
+                self.assertEqual(pairs["web"], "openai-codex/gpt-6-luna")
                 self.assertTrue(all(value.startswith("openai-codex/") for value in pairs.values()))
         self.assertEqual(
             rendered[True].split("modelRoles:\n", 1)[1].split("\n\n", 1)[0],

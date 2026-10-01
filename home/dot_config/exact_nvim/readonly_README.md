@@ -2,18 +2,18 @@
 
 This directory contains my personal Neovim setup, managed with `chezmoi`.
 
-The config targets **Neovim 0.12+** and uses built-in `vim.pack` for plugin installation and updates, with trigger-aware deferred loading (`cmd`, `event`, `ft`, and key-triggered specs) handled by `lua/core/plugins.lua`.
+The config targets **Neovim 0.12+** and uses built-in `vim.pack` for plugin installation and updates, with trigger-aware deferred loading (`cmd`, `event`, `ft`, and key-triggered specs) handled by [`dash-paq.nvim`](https://github.com/kapral18/dash-paq.nvim), bootstrapped by `lua/core/init.lua` and configured with `lua/plugins/dash-paq.lua`.
 
 For a guided tour (including an IDE-first on-ramp for VSCode/JetBrains users), see [`docs/topics/editor/neovim/index.md`](../../../docs/topics/editor/neovim/index.md).
 
 ## Implementation notes
 
-- The config sets `vim.opt.loadplugins = false` early (in `init.lua`) so Neovim does not auto-source `plugin/` / `after/plugin/` scripts for everything on `runtimepath`. This avoids double-sourcing and lets `lua/core/plugins.lua` fully control when plugin code is actually loaded.
-- Built-in runtime packages needed for mappings (e.g. `matchit` for `g%`) are explicitly `packadd`'d.
+- `lua/core/init.lua` bootstraps `dash-paq.nvim` onto `runtimepath` before calling its `setup()`: a local checkout at `~/code/dash-paq.nvim/main` (or a saved dev-toggle choice) if present, else `vim.pack.add` from GitHub.
+- `plugin/` / `after/plugin/` sourcing uses Neovim's native load-plugins step; `dash-paq.nvim` relies on that step for its own deferred loading. `lua/core/options.lua` sets a guard global for each `$VIMRUNTIME/plugin/*` script that should stay inert; `matchit` (`g%`), `editorconfig`, and `osc52` load.
 
 ## Usage
 
 1. Install the pinned version (`mise install neovim@0.12.2`).
 2. `chezmoi apply`
-3. Launch Neovim (`nvim`) and run `:PackDashboard` (or `<leader>ll`) for the floating plugin dashboard (status, risk, diff/repo links, single/multi/all updates, filter/sort/search). Repeated opens reuse the same window; use `:PackDashboard!` to force-close and re-scan. Run `:PackTrace` (or `<leader>lt`) to inspect deferred-load reasons, `:AutoSession save` (or `<localleader>ss`) to save sessions, `:PackSync` for the raw `vim.pack` report, `:PackLockInfo` / `:PackLockExport <path>` / `:PackLockImport <path>` to work with `nvim-pack-lock.json` when syncing dotfiles across machines, or `:PackPolicyRebuild [plugin-name]` to clear and recompute the cached tag/branch heuristic. Per-plugin pinning is expressed directly in the spec via `version = "*"` (latest tag), `version = false` (branch tip), `version = "<range|tag|commit>"`, or the `commit`/`tag`/`branch` fields — same format as lazy.nvim. Dashboard/trace popup buffers are transient and excluded from session save. Session search integrations are loaded on demand to improve startup time.
+3. Launch Neovim (`nvim`). Plugin management (dashboard, load trace, lockfile commands, version pinning) comes from [`dash-paq.nvim`](https://github.com/kapral18/dash-paq.nvim); see its README for commands and keys. This config maps `<leader>ll` (dashboard), `<leader>lL` (status), and `<leader>lt` (load trace). Run `:AutoSession save` (or `<localleader>ss`) to save sessions; the plugin's dashboard/trace popup buffers are transient and excluded from session save. Session search integrations are loaded on demand to improve startup time.
 4. Review `exact_lua/exact_core/options.lua` and `exact_lua/exact_core/keymaps.lua` (installed as `lua/core/options.lua` and `lua/core/keymaps.lua`), and the modules under `exact_lua/exact_plugins/` (installed as `lua/plugins/`) for customization.

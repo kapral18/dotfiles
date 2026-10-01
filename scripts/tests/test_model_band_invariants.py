@@ -246,7 +246,12 @@ class TestModelBandInvariants(unittest.TestCase):
         category_models = ai_models.load_category_models(registry)["codex"]
         self.assertEqual(category_models["review"]["model"], category_models["refute"]["model"])
         self.assertEqual(category_models["review"]["effort"], category_models["refute"]["effort"])
-        self.assertNotEqual(session["model"], category_models["implement"]["model"])
+        # Sol is both the root and the implement model (user call 2026-10-01), so the implement lane
+        # stays distinct from the root by effort.
+        self.assertNotEqual(
+            (session["model"], session["effort"]),
+            (category_models["implement"]["model"], category_models["implement"]["effort"]),
+        )
         self.assertNotEqual(category_models["mechanical"]["model"], category_models["implement"]["model"])
 
         bindings = ai_models.load_agent_bindings(registry)
@@ -833,7 +838,7 @@ class TestModelBandInvariants(unittest.TestCase):
 
         # All roles are explicit and the category tokens resolve through the role table;
         # do not pin incidental model strings in this structural test.
-        assert set(roles) == {"default", "smol", "slow", "vision", "plan", "commit", "tiny", "task", "advisor"}
+        assert set(roles) == {"default", "smol", "slow", "vision", "plan", "commit", "tiny", "task", "advisor", "web"}
         assert all(value.startswith("openai-codex/") for value in roles.values())
         assert roles["slow"] == roles["plan"]
         assert roles["tiny"] == roles["commit"]
@@ -954,13 +959,13 @@ class TestModelBandInvariants(unittest.TestCase):
             settings = json.loads((REPO / f"home/dot_claude/settings.{profile}.json").read_text(encoding="utf-8"))
             check(f"claude settings.{profile}.json model", settings.get("model", ""))
 
-    def test_claude_code_mechanical_category_uses_sonnet_5_high(self):
-        # Retiered 2026-09-14: Sonnet 5 lists at $2/$10 per MTok vs Sonnet 4.6 at $3/$15 and is the
+    def test_claude_code_mechanical_category_uses_sonnet_5_5_high(self):
+        # Retiered 2026-09-14, moved to Sonnet 5.5 on 2026-10-01: it lists at $2/$10 per MTok vs Sonnet 4.6 at $3/$15 and is the
         # newer model; the lane exists to be cheap, so it must not pin the pricier tier.
         import ai_models
 
         row = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["claude_code"]["mechanical"]
-        self.assertEqual("claude-sonnet-5", row["model"])
+        self.assertEqual("claude-sonnet-5-5", row["model"])
         self.assertEqual("high", row["effort"])
         self.assertEqual("long", row["context"])
         self.assertNotRegex(row["model"], r"claude-\w+-\d+\.\d+")
@@ -974,8 +979,8 @@ class TestModelBandInvariants(unittest.TestCase):
             "codex": set(category_models["codex"]),
             "cursor": {"memory"},
             "antigravity": set(),
-            # Grok is priced for short prompts only (user call 2026-09-17), so the pi counter stays short.
-            "pi": {"memory", "refute"},
+            # Pi defaults to the openai-codex provider, which only exposes short windows (user call 2026-09-30).
+            "pi": set(category_models["pi"]),
             "omp": set(category_models["omp"]),
         }
         self.assertEqual(set(short_rows), set(category_models))
@@ -1120,31 +1125,19 @@ class TestModelBandInvariants(unittest.TestCase):
         default = "z-ai/glm-5.3-flash"
         # Astra is the provider-only default; 5.6 Sol remains selectable.
         pi_route = "openai/gpt-6-astra"
-        pi_mechanical = "z-ai/glm-5.3-flash"
         # DeepSeek V4 Flash carried the default and mechanical lanes until 2026-09-10; DeepSeek stays
         # selectable on every route with its own policy (FP8-or-higher until 2026-09-11; now a 35 t/s
         # preferred floor under a $1.20/M completion cap and no quantization filter, user call) and moved
         # to the V4.1 Flash id on 2026-09-11 (user call): one bare id, no dated snapshot slug.
         deepseek = "deepseek/deepseek-v4.1-flash"
         pi_deepseek = deepseek
-        pi_memory = "google/gemini-3.8-flash"
-        # T2 implement and the counter for the Muse Spark review lane (`pi --list-models`:
-        # glm-5.3 1.0M/943.7K, grok-4.6 500K/450K).
-        pi_implement = "z-ai/glm-5.3"
-        pi_counter = "x-ai/grok-4.6"
-        pi_review = "meta/muse-spark-1.3"
         pi_selectable_sonnet = "anthropic/claude-sonnet-4.6"
         optional = "moonshotai/kimi-k3"
         glm = "z-ai/glm-5.2"
         counter = "openai/gpt-5.6-terra"
         default_selector = f"openrouter/{default}"
         pi_route_selector = f"openrouter/{pi_route}"
-        pi_mechanical_selector = f"openrouter/{pi_mechanical}"
         pi_deepseek_selector = f"openrouter/{pi_deepseek}"
-        pi_memory_selector = f"openrouter/{pi_memory}"
-        pi_implement_selector = f"openrouter/{pi_implement}"
-        pi_counter_selector = f"openrouter/{pi_counter}"
-        pi_review_selector = f"openrouter/{pi_review}"
         optional_selector = f"openrouter/{optional}"
         glm_selector = f"openrouter/{glm}"
         pi_selectable_sonnet_selector = f"openrouter/{pi_selectable_sonnet}"
@@ -1175,8 +1168,8 @@ class TestModelBandInvariants(unittest.TestCase):
 
         for profile in ("work", "personal"):
             settings = json.loads((REPO / f"home/dot_pi/agent/readonly_settings.{profile}.json").read_text())
-            # The interactive root rides the OpenRouter Muse Spark route. Category/child selections
-            # stay on their own matrix, and every explicit OpenRouter route remains selectable.
+            # The interactive root rides the openai-codex Sol route. Every explicit OpenRouter route
+            # below remains selectable.
             session = ai_models.load_session_models(registry)["pi"]
             provider, model = session["model"].split("/", 1)
             self.assertEqual(provider, settings["defaultProvider"])
@@ -1246,26 +1239,30 @@ class TestModelBandInvariants(unittest.TestCase):
             self.assertNotIn(counter, openrouter_models)
 
         category_models = ai_models.load_category_models(registry)["pi"]
+        # Pi's default lanes ride the built-in openai-codex provider: Sol everywhere except Luna for
+        # mechanical, mirroring `category_models.codex` (user call 2026-09-30).
+        pi_sol = "openai-codex/gpt-6.1-sol"
+        pi_luna = "openai-codex/gpt-6-luna"
         expected_pi = {
-            "mechanical": (pi_mechanical_selector, "high"),
-            "research": (pi_implement_selector, "max"),
-            "implement": (pi_implement_selector, "high"),
-            "review": (pi_review_selector, "max"),
-            "refute": (pi_counter_selector, "high"),
-            "memory": (pi_mechanical_selector, "high"),
+            "mechanical": (pi_luna, "high"),
+            "research": (pi_sol, "high"),
+            "implement": (pi_sol, "medium"),
+            "review": (pi_sol, "high"),
+            "refute": (pi_sol, "high"),
+            "memory": (pi_sol, "high"),
         }
         for category, (model, effort) in expected_pi.items():
             self.assertEqual(model, category_models[category]["model"], category)
             self.assertEqual(effort, category_models[category]["effort"], category)
             self.assertNotIn(":", model, category)
-        # Meta review lane, Grok counter (user call 2026-09-13).
-        self.assertEqual("cross_family", category_models["refute"]["verifier_status"])
+        # One family only, so the counter cannot be cross-family.
+        self.assertEqual("degraded", category_models["refute"]["verifier_status"])
         self.assertEqual(
-            pi_review_selector,
+            pi_sol,
             ai_models.resolve_review_agent_model(registry, "pi", "k-agent-reviewer")["model"],
         )
         self.assertEqual(
-            pi_counter_selector,
+            pi_sol,
             ai_models.resolve_review_agent_model(registry, "pi", "k-agent-adversarial-verifier")["model"],
         )
 
@@ -1408,9 +1405,9 @@ class TestModelBandInvariants(unittest.TestCase):
                 assert row["effort"], f"category_models.cursor.{category}.effort must record saved-config intent"
 
     def test_claude_settings_keep_thinking_disabled(self):
-        # category_models.claude_code declares thinking "off" for the Sonnet 5 implement and memory
-        # rows; alwaysThinkingEnabled: false enforces that. Opus 5.5 rows (root, research, review,
-        # refute) reject disabled thinking, so the setting does not reach them.
+        # Every category_models.claude_code row is Sonnet 5.5 or Opus 5.5, and both reject disabled
+        # thinking (`rejects_disabled_thinking` in the Claude Code 2.1.287 model registry), so the
+        # rows declare no thinking toggle. alwaysThinkingEnabled: false stays for models that accept it.
         for profile in ("personal", "work"):
             settings = json.loads((REPO / f"home/dot_claude/settings.{profile}.json").read_text(encoding="utf-8"))
             assert settings.get("alwaysThinkingEnabled") is False, (

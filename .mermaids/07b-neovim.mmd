@@ -1,7 +1,8 @@
 %% ============================================================================
-%% 07b-neovim.mmd — Every file under home/dot_config/exact_nvim/ (155).
+%% 07b-neovim.mmd — Every file under home/dot_config/exact_nvim/ (130).
 %% Deployed to ~/.config/nvim/. Loader init.lua → core → plugins → util.
-%% Plugin manager: native vim.pack (exact_core/exact_pack policy+semver).
+%% Plugin manager: dash-paq.nvim (external plugin, bootstrapped by
+%% core/init.lua) over native vim.pack.
 %% ============================================================================
 flowchart TB
     classDef boot fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
@@ -12,13 +13,13 @@ flowchart TB
 
     BOOT["readonly_init.lua (entry)<br/>+ readonly_dot_neoconf.json · stylua.toml · LICENSE · README<br/>+ readonly_dot_gitignore"]:::boot
 
-    BOOT --> CORE["exact_lua/exact_core/<br/>init · options · keymaps · autocmds · plugins<br/>pack_dashboard facade · exact_pack_dashboard/{state,analysis,report,ui,lockfile} facades<br/>· exact_analysis/{version,gitcmd,signals,url}<br/>· exact_report/{notify,parser,fetch,pipeline,rows}<br/>· exact_ui/{view,render,rows,format,popups,refresh,operations,bindings}<br/>exact_pack/{policy,semver}.lua"]:::core
+    BOOT --> CORE["exact_lua/exact_core/<br/>init (bootstraps dash-paq.nvim onto rtp, then<br/>require(\"dash_paq\").setup{modules=...}) · options<br/>(incl. $VIMRUNTIME/plugin guard globals) · keymaps · autocmds"]:::core
 
-    CORE --> PLUGINS["exact_lua/exact_plugins/ (57 specs)"]:::plug
+    CORE --> PLUGINS["exact_lua/exact_plugins/ (56 files, incl. dash-paq.nvim<br/>itself, dev = \"~/code/dash-paq.nvim\")"]:::plug
     subgraph PG["Plugin specs (grouped)"]
         PG1["LSP/lang: lsp · typescript-tools · go · rust · python<br/>lua · bash · fish · helm · jinja · docker · html-css · json<br/>jsonl · kdl · xml · yaml · markdown · strudel"]:::plug
         PG2["Editing: completion · formatting · lint · eslint · treesitter<br/>inc-rename · search-and-replace · multi-cursors · marks<br/>leap · numb · live-command · undo · hlargs · highlight"]:::plug
-        PG3["UI/UX: colorscheme · bufferline · lualine · which-key<br/>snacks · telescope · fzf · neo-tree · outline · session<br/>dashboard(pack_dashboard) · core · tpope · gx · lazydev"]:::plug
+        PG3["UI/UX: colorscheme · bufferline · lualine · which-key<br/>snacks · telescope · fzf · neo-tree · outline · session<br/>dash-paq (loader+dashboard) · core · tpope · gx · lazydev"]:::plug
         PG4["Git/AI/Debug: git · github · diff · ai (copilot) · dap · osv"]:::plug
     end
     PLUGINS --- PG

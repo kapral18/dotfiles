@@ -21,6 +21,7 @@
     "sop.3.5.verification-loops",
     "sop.3.6.state-machine-verification",
     "sop.3.7.delegation-categories",
+    "sop.3.7a.delegation-mechanics",
     "sop.3.8.human-visible-publication",
     "sop.3.workflow-and-side-effects",
     "sop.4.1.durable-memory",

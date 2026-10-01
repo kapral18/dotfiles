@@ -46,13 +46,15 @@ If extracting, route every entry point through the shared helper/reference and v
 
 ## Reference: dotfiles overlay
 
-| Concern                   | Rule                                                                                              |
-| ------------------------- | ------------------------------------------------------------------------------------------------- |
-| Chezmoi source of truth   | resolve target → `chezmoi source-path` → edit `home/**` source                                    |
-| Read-only `$HOME` targets | investigate `readonly_` source; never `chmod` deployed output                                     |
-| Validation                | run `make check` then `make fmt` after repo changes; never `make check-full` / `bin/check --full` |
-| Affected tests            | name tests for `scripts/check.py` convention, or add a `TEST_RULES` row in the same change        |
-| Docs hygiene              | behavior changes under `home/`, `scripts/`, or `tools/` update docs and `.mermaids`               |
-| Shell scripts             | shell stays glue; non-trivial logic goes under `scripts/` helpers                                 |
-| `~/bin` commands          | command updates require fish completion and docs/catalog updates                                  |
-| `~/lib` command internals | large command internals belong under `home/exact_lib/exact_,<name>/`, not repo-only `scripts/`    |
+Load the complete [dotfiles agent recipes](dotfiles-recipes.md) before package/app installation changes, shell/helper architecture changes or deployed-command updates. The project entrypoint keeps this trigger plus source ownership, validation and documentation gates; detailed recipes are not loaded for unrelated work.
+
+| Concern                   | Rule                                                                                                              |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Chezmoi source of truth   | resolve target → `chezmoi source-path` → edit `home/**` source                                                    |
+| Read-only `$HOME` targets | investigate `readonly_` source; never `chmod` deployed output                                                     |
+| Validation                | run `make fmt` during Produce, then affected `make check` in Verify; never `make check-full` / `bin/check --full` |
+| Affected tests            | name tests for `scripts/check.py` convention, or add a `TEST_RULES` row in the same change                        |
+| Docs hygiene              | behavior changes under `home/`, `scripts/`, or `tools/` update docs and `.mermaids`                               |
+| Shell scripts             | shell stays glue; non-trivial logic goes under `scripts/` helpers                                                 |
+| `~/bin` commands          | command updates require fish completion and docs/catalog updates                                                  |
+| `~/lib` command internals | large command internals belong under `home/exact_lib/exact_,<name>/`, not repo-only `scripts/`                    |

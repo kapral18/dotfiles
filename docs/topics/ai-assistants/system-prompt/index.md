@@ -17,6 +17,7 @@ Read these pages as human documentation about the system's contract: where the p
 | [Execution workflow](execution-workflow.md)                             | reverse interview, persistent specs, verification loops, formal verification tiers                        |
 | [Side-effect gates](side-effect-gates.md)                               | git push safety, ownership, publication, bot/human split                                                  |
 | [Code-quality and dotfiles policy](code-quality-and-dotfiles-policy.md) | style matching, semantic dedupe, docs hygiene, shell/helper rules                                         |
+| [Dotfiles agent recipes](dotfiles-recipes.md)                           | task-triggered installation, shell/helper and deployed-command instruction bodies                         |
 
 ## Using it
 

@@ -180,7 +180,7 @@ return {
           end
           -- force the deferred vim.pack entry to run its config/setup,
           -- otherwise oil.config.adapter_to_scheme is nil inside open_float
-          vim.cmd("PackLoad oil.nvim")
+          vim.cmd("DashPaq load oil.nvim")
           require("oil").open_float(path)
         end,
         diff_files = function(state)

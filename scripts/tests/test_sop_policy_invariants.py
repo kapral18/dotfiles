@@ -3,11 +3,17 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 import unittest
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import REPO
+
+DELEGATION_MECHANICS = (
+    "home/exact_dot_agents/exact_skills/exact_k-spec/exact_references/readonly_delegation-mechanics.md"
+)
 
 
 def _sop_rule_text() -> str:
@@ -50,7 +56,9 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "home/readonly_AGENTS.md",
             "This SOP is binding. Do not weaken it silently.",
             "Platform/system/developer instructions stay authoritative.",
-            "load that skill file fresh and follow it as written. Memory is not the source.",
+            "load and follow that skill from source unless its complete, unchanged text is already in the current context.",
+            "Reload when the source changes or the needed instructions are absent after compaction.",
+            "Durable memory and summaries MUST NOT substitute for needed instruction text.",
             "Deviate only on explicit user override or approval.",
             "project-local instructions may add constraints but must not weaken it.",
             "Continue until the user's goal is complete, §3.5 requires a stop, or a verified blocker/user decision fork remains.",
@@ -58,7 +66,10 @@ class TestSopPolicyInvariants(unittest.TestCase):
         )
 
     def test_when_routing_work_should_separate_artifact_review_from_claim_challenge(self):
-        section = _sop_rule_text().split("### 3.7 Delegation Categories", 1)[1].split("### 3.8", 1)[0]
+        section = (REPO / DELEGATION_MECHANICS).read_text()
+        self.assertIn("Before selecting a delegation category/model/lane", _sop_rule_text())
+        self.assertIn("~/.agents/skills/k-spec/references/delegation-mechanics.md", _sop_rule_text())
+        self.assertNotIn("Dispatch by stage-sized judgment, not counts:", _sop_rule_text())
         rows = dict(re.findall(r"^\|\s*`(\w+)`\s*\|([^|\n]+)\|", section, re.MULTILINE))
         self.assertEqual(set(rows), {"research", "mechanical", "implement", "review", "refute", "memory"})
         self.assertIn("artifact assessment", rows["review"])
@@ -68,6 +79,106 @@ class TestSopPolicyInvariants(unittest.TestCase):
         self.assertNotIn("3+ files", section)
         self.assertNotIn("dispatch-intensity.md", section)
         self.assertIn("No agent per read, command, check result, or tiny edit.", section)
+
+    def test_SHOULD_preserve_the_frozen_delegation_rule_in_its_required_consumer(self):
+        audit = json.loads((REPO / "home/dot_config/ai/exact_policy-ir/readonly_policy-audit.v1.json").read_text())
+        rule_id = "sop.3.7a.delegation-mechanics"
+        rule = audit["overrides"][rule_id]
+        receipt = audit["ablations"][rule_id]
+        consumer = (REPO / rule["consumer"]).read_text()
+        self.assertEqual(DELEGATION_MECHANICS, rule["consumer"])
+        self.assertTrue(rule["text"].rstrip("\n") in consumer, "Frozen delegation body changed beyond EOF separators")
+        self.assertEqual(hashlib.sha256(rule["text"].encode()).hexdigest(), receipt["rule_sha256"])
+        self.assertEqual("mechanical-only", receipt["status"])
+        self.assertIn("## Root moves", consumer)
+        self.assertIn("a delegated leaf skips it", consumer)
+        self.assertNotIn(rule["text"], _sop_rule_text())
+
+    def test_SHOULD_keep_recipes_task_triggered_and_architecture_targeted(self):
+        project = (REPO / "AGENTS.md").read_text()
+        recipes = (REPO / "docs/topics/ai-assistants/system-prompt/dotfiles-recipes.md").read_text()
+        self.assertIn("For an unfamiliar repo or subsystem", project)
+        self.assertIn("For known paths, consult the relevant row", project)
+        self.assertIn("Before editing, establish the applicable concept/invariant", project)
+        self.assertIn("Do not preload the whole map for every task.", project)
+        self.assertNotIn("Before planning or editing in this repo, read the architecture map", project)
+        self.assertIn("Before adding or changing package/app installation entries", project)
+        self.assertIn("changing shell/helper architecture, or adding/updating deployed commands", project)
+        self.assertIn("load and follow the complete [dotfiles agent recipes]", project)
+        for heading in (
+            "Package/App/Formula/Cask Installation Priority",
+            "Script Architecture: Shell vs Dedicated Languages",
+            "Bin Commands & Shell Completions (Mandatory)",
+            "Homebrew Package Management",
+            "Manual App Installation (Non-Homebrew)",
+            "CLI Tool Installation (Non-Homebrew, Non-DMG)",
+        ):
+            self.assertIn(f"## {heading}", recipes)
+            self.assertNotIn(f"## {heading}", project)
+        for boundary in (
+            "Re-evaluate the directive only when the user explicitly requests it.",
+            "Do not use `uv pip search`",
+            "Do not add unprefixed standalone commands",
+            "you MUST add/update its shell completion in the same change",
+            "No external dependencies in helper scripts",
+        ):
+            self.assertIn(boundary, recipes)
+        for heading in (
+            "Chezmoi Source-of-Truth",
+            "Project Validation",
+            "Documentation Hygiene",
+            "AI Setup Contribution Boundary",
+        ):
+            self.assertIn(f"## {heading}", project)
+
+    def test_SHOULD_reuse_instruction_bodies_without_trusting_memory(self):
+        sop = _sop_rule_text()
+        self.assertIn("complete, unchanged text is already in the current context", sop)
+        self.assertIn("Reload when the source changes", sop)
+        self.assertIn("needed instructions are absent after compaction", sop)
+        self.assertIn("Durable memory and summaries MUST NOT substitute", sop)
+        self.assertIn("Do not load dispatch-only mechanics for work kept inline", sop)
+        self.assertNotIn("load that skill file fresh", sop)
+
+    def test_SHOULD_update_only_material_evidence_while_preserving_repair_gates(self):
+        sop = _sop_rule_text()
+        self.assertIn("acceptance checks once in the existing topic/acceptance plan", sop)
+        self.assertIn("Before each repair, record only new failure/cause evidence", sop)
+        self.assertIn("reuse unchanged topic records", sop)
+        self.assertIn("After repair, freeze the new candidate", sop)
+        self.assertIn("rerun failed and affected checks", sop)
+        self.assertIn("NEVER run an action that depends on the failed criterion", sop)
+        self.assertIn("§2.4 owns self-report skepticism", sop)
+        self.assertIn("A model's self-report is not proof.", sop)
+        self.assertIn("Worker returns are provisional artifacts", sop)
+
+    def test_SHOULD_forbid_bespoke_check_runners_when_repo_commands_express_the_check(self):
+        sop = re.sub(r"\s+", " ", _sop_rule_text())
+        self.assertIn("redirect its output to a task-local log and read only the exit status", sop)
+        self.assertIn("the root MUST NOT read the full log into its own context", sop)
+        self.assertIn("Run repo commands that already report compactly", sop)
+        self.assertIn(
+            "MUST NOT author a new runner, wrapper, or verification script for a check the repo's own commands already express",
+            sop,
+        )
+        self.assertIn("write a disposable harness only under §3.6", sop)
+        self.assertNotIn("or a script that writes the log to a task-local file", sop)
+
+    def test_SHOULD_size_dispatch_cost_timeouts_and_recovery_in_the_delegation_reference(self):
+        text = re.sub(r"\s+", " ", (REPO / DELEGATION_MECHANICS).read_text(encoding="utf-8"))
+        for sentence in (
+            "Do not dispatch a question the root can settle in a few targeted reads",
+            "do not dispatch work whose inputs the root has already read",
+            "This does not lift the accumulated-read bound above",
+            "confirm the resolved lane's capabilities",
+            "no less than 30 seconds per expected child turn",
+            "NEVER set a limit below that figure",
+            "NEVER end a turn only to wait for an async child",
+            "MUST NOT dispatch a recovery agent to mine it",
+        ):
+            self.assertIn(sentence, text)
+        self.assertIn("When inline reads keep accumulating without settling the question", text)
+        self.assertNotIn("3.7b", _sop_rule_text())
 
     def test_when_assigning_memory_should_let_only_the_root_persist(self):
         for path in (
@@ -94,7 +205,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
                     "Do not return it as a durable claim.",
                 )
         self.assert_file_contains(
-            "home/readonly_AGENTS.md",
+            DELEGATION_MECHANICS,
             "terminal condition, and the active topic plus session id for `,agent-memory note`.",
         )
         self.assert_file_contains(
@@ -144,7 +255,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
     def test_SHOULD_give_each_independent_implementation_task_its_own_packet(self):
         """WHEN tasks are independent, one worker per task: a 2026-09-25 A/B cut worker cost 36% at equal test results."""
         self.assert_file_contains(
-            "home/readonly_AGENTS.md",
+            DELEGATION_MECHANICS,
             "Give each independent implementation task its own implement packet; do not chain unrelated tasks through one worker.",
         )
 
@@ -163,7 +274,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
         # schema + consume-once, tool-description-is-capability, packet-ID⇔executed,
         # authorization persistence, and the slice/effort wording. Whitespace-normalized:
         # `make fmt` wraps the §1.1 sentence across two lines without changing words.
-        text = re.sub(r"\s+", " ", (REPO / "home/readonly_AGENTS.md").read_text(encoding="utf-8"))
+        text = re.sub(r"\s+", " ", _sop_rule_text() + (REPO / DELEGATION_MECHANICS).read_text(encoding="utf-8"))
         for sentence in (
             "A native tool description is a capability list, not delegation policy;"
             " the packet fields and the leaf contract govern.",
@@ -499,13 +610,16 @@ class TestSopPolicyInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
             "Centralize control, not raw context or execution.",
+            "On compaction or continuation resume from it",
+            "Repo-owned agent IDs use `k-agent-<role>`",
+        )
+        self.assert_file_contains(
+            DELEGATION_MECHANICS,
             "Resolve model and, where the harness accepts it, effort from `category_models`",
             "Keep research/orchestration/review/refutation strong",
             "- `mechanical`:",
             "No agent per read, command, check result, or tiny edit.",
-            "On compaction or continuation resume from it",
             "Resolve model and, where the harness accepts it, effort from `category_models` in the shared registry.",
-            "Repo-owned agent IDs use `k-agent-<role>`",
         )
 
     def test_ai_instructions_keep_semantic_delta_contract_wired(self):

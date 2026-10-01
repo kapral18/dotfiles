@@ -132,6 +132,21 @@ vim.g.loaded_ruby_provider = 0
 vim.g.loaded_perl_provider = 0
 vim.g.loaded_node_provider = 0
 
+-- Guard globals for the $VIMRUNTIME/plugin scripts we don't use. `matchit` is
+-- left on (plugin/matchit.vim `packadd`s it); editorconfig.lua and osc52.lua
+-- have no guard, so they load.
+vim.g.loaded_gzip = 1
+vim.g.loaded_man = true
+vim.g.loaded_matchparen = 1
+vim.g.loaded_nvim_net_plugin = true
+vim.g.loaded_netrwPlugin = 1
+vim.g.loaded_remote_plugins = 1
+vim.g.loaded_shada_plugin = 1
+vim.g.loaded_spellfile_plugin = true
+vim.g.loaded_tarPlugin = 1
+vim.g.loaded_tutor_mode_plugin = 1
+vim.g.loaded_zipPlugin = 1
+
 opt.shell = "/bin/sh"
 
 vim.opt.syntax = "off"

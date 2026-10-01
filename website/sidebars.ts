@@ -89,6 +89,7 @@ const sidebars: SidebarsConfig = {
             'topics/ai-assistants/system-prompt/execution-workflow',
             'topics/ai-assistants/system-prompt/side-effect-gates',
             'topics/ai-assistants/system-prompt/code-quality-and-dotfiles-policy',
+            'topics/ai-assistants/system-prompt/dotfiles-recipes',
           ],
         },
         {
@@ -200,16 +201,6 @@ const sidebars: SidebarsConfig = {
       link: { type: 'doc', id: 'topics/editor/neovim/index' },
       items: [
         'topics/editor/neovim/architecture-and-source',
-        {
-          type: 'category',
-          label: '📊 PackDashboard',
-          link: { type: 'doc', id: 'topics/editor/neovim/pack-dashboard/index' },
-          items: [
-            'topics/editor/neovim/pack-dashboard/loading-and-version-policy',
-            'topics/editor/neovim/pack-dashboard/dashboard-ui',
-            'topics/editor/neovim/pack-dashboard/operations-and-commands',
-          ],
-        },
         {
           type: 'category',
           label: '🧰 Language tooling',

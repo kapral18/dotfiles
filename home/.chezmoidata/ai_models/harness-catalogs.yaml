@@ -305,6 +305,10 @@ pi_extra_models:
   - id: "github-copilot/grok-4.6"
   - id: "github-copilot/gemini-3.8-flash"
   - id: "github-copilot/gpt-6-astra"
+  # Pi default root and category lanes ride Pi's built-in ChatGPT-subscription `openai-codex` provider (user call 2026-09-30).
+  - id: "openai-codex/gpt-6.1-sol"
+    recommended: true
+  - id: "openai-codex/gpt-6-luna"
   # Native Anthropic category model retained for the T1 research/review child rows.
   - id: "anthropic/claude-fable-5.1"
   - id: "openrouter/openai/gpt-5.6-sol"

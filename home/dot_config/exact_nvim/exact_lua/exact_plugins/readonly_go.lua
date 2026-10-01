@@ -24,7 +24,7 @@ return {
   },
   {
     "ray-x/go.nvim",
-    version = "*",
+    version = false,
     dependencies = {
       { "ray-x/guihua.lua", version = false },
       "neovim/nvim-lspconfig",

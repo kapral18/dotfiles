@@ -13,7 +13,7 @@ return {
             { icon = " ", key = "f", desc = "Find File", action = ":lua require('fzf-lua').files()" },
             { icon = " ", key = "n", desc = "New File", action = ":ene | startinsert" },
             { icon = " ", key = "c", desc = "Config", action = ":lua require('fzf-lua').files({ cwd = vim.fn.stdpath('config') })" },
-            { icon = "󰒲 ", key = "p", desc = "Plugins", action = ":PackSync" },
+            { icon = "󰒲 ", key = "p", desc = "Plugins", action = ":DashPaq sync" },
             { icon = " ", key = "q", desc = "Quit", action = ":qa" },
           },
         },

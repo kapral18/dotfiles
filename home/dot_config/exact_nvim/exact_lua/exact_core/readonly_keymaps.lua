@@ -136,9 +136,9 @@ map("n", "<leader>uI", function()
   vim.api.nvim_input("I")
 end, { desc = "Inspect Tree" })
 
-map("n", "<leader>ll", "<cmd>PackDashboard<cr>", { desc = "Plugins Dashboard (vim.pack)" })
-map("n", "<leader>lL", "<cmd>PackStatus<cr>", { desc = "Plugins Status (vim.pack)" })
-map("n", "<leader>lt", "<cmd>PackTrace<cr>", { desc = "Plugins Trace (vim.pack)" })
+map("n", "<leader>ll", "<cmd>DashPaq<cr>", { desc = "Plugins Dashboard (vim.pack)" })
+map("n", "<leader>lL", "<cmd>DashPaq status<cr>", { desc = "Plugins Status (vim.pack)" })
+map("n", "<leader>lt", "<cmd>DashPaq trace<cr>", { desc = "Plugins Trace (vim.pack)" })
 map("n", "<leader>cm", "<cmd>Mason<cr>", { desc = "Mason" })
 
 map("n", "<leader>-", "<C-W>s", { desc = "Split Window Below", remap = true })

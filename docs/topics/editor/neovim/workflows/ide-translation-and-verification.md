@@ -29,7 +29,7 @@ If you are used to clicking around panels, start with fzf pickers, quickfix, and
 ```bash
 nvim --version
 mise ls --current | rg neovim
-nvim "+PackSync" +qa
+nvim "+DashPaq sync" +qa
 nvim "+checkhealth" +qa
 ```
 

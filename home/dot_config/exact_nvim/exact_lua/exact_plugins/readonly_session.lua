@@ -21,8 +21,8 @@ return {
       suppressed_dirs = { "~/", "~/code", "~/Downloads", "/" },
       use_git_branch = true,
       session_lens = { load_on_setup = false },
-      bypass_save_filetypes = { "packdashboard", "packtrace" },
-      close_filetypes_on_save = { "checkhealth", "packdashboard", "packtrace" },
+      bypass_save_filetypes = { "dashpaq", "dashpaq-details", "dashpaq-trace" },
+      close_filetypes_on_save = { "checkhealth", "dashpaq", "dashpaq-details", "dashpaq-trace" },
       -- Suppress chezmoi.vim filetype detection during restore to prevent
       -- keep_filetype → FileType → keep_filetype infinite recursion (E218).
       -- chezmoi_keepfiletype autocmds normally get cleaned up by VimEnter/

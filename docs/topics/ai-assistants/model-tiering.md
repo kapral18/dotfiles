@@ -43,14 +43,14 @@ The SOP §3.7 routes settled implementation with stated acceptance and unwritten
 
 `session_models` is the root/main-session pick the user talks to. It is generated into every repo-owned root config and is never a binding target.
 
-| Harness       | Model                            | Effort | Context | Generated into                                                             |
-| ------------- | -------------------------------- | ------ | ------- | -------------------------------------------------------------------------- |
-| `claude_code` | `claude-opus-5-5[1m]`            | high   | long    | `home/dot_claude/settings.{work,personal}.json`                            |
-| `codex`       | `gpt-6-astra`                    | high   | short   | `home/dot_codex/private_config.{work,personal}.toml`                       |
-| `cursor`      | `claude-opus-5-5`                | high   | long    | none (user-config-owned, informational)                                    |
-| `antigravity` | `gemini-3.8-flash`               | high   | long    | `home/dot_gemini/antigravity-cli/readonly_settings.policy.json`            |
-| `pi`          | `openrouter/meta/muse-spark-1.3` | xhigh  | long    | `home/dot_pi/agent/readonly_settings.{work,personal}.json`                 |
-| `omp`         | `openai-codex/gpt-6-astra`       | high   | short   | `home/dot_omp/private_agent/readonly_config.yml.tmpl` `modelRoles.default` |
+| Harness       | Model                      | Effort | Context | Generated into                                                             |
+| ------------- | -------------------------- | ------ | ------- | -------------------------------------------------------------------------- |
+| `claude_code` | `claude-opus-5-5`          | high   | long    | `home/dot_claude/settings.{work,personal}.json`                            |
+| `codex`       | `gpt-6.1-sol`              | high   | short   | `home/dot_codex/private_config.{work,personal}.toml`                       |
+| `cursor`      | `claude-opus-5-5`          | high   | long    | none (user-config-owned, informational)                                    |
+| `antigravity` | `gemini-3.8-flash`         | high   | long    | `home/dot_gemini/antigravity-cli/readonly_settings.policy.json`            |
+| `pi`          | `openai-codex/gpt-6.1-sol` | high   | short   | `home/dot_pi/agent/readonly_settings.{work,personal}.json`                 |
+| `omp`         | `openai-codex/gpt-6.1-sol` | high   | short   | `home/dot_omp/private_agent/readonly_config.yml.tmpl` `modelRoles.default` |
 
 Cursor: user-config-owned, informational.
 
@@ -60,60 +60,60 @@ Every harness names models differently and sets effort differently — there is 
 
 **Effort-setting mechanism per harness** (confirmed live, 2026-07-27):
 
-| Harness     | Mechanism                                                                                                                            |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Cursor      | Task receives only a base catalog name. Effort comes from the user's saved Cursor config and is not encodable in the Task id.        |
-| Claude Code | Separate effort (`low`, `medium`, `high`, `xhigh`, `max`); point versions use hyphens and `[1m]` selects the 1M window.              |
-| Codex CLI   | `model_reasoning_effort` alongside the model.                                                                                        |
-| Pi          | Managed profile `model` contains no `:level`; `thinking:` is rendered separately from the category row's `effort`.                   |
-| OMP         | Category `@role` tokens resolve through `modelRoles`; those role values carry provider/model and the OMP thinking suffix.            |
-| Antigravity | Category rows use the `antigravity` key; `invoke_subagent` takes only abstract tiers, and every row is Flash, so lanes pass `flash`. |
+| Harness     | Mechanism                                                                                                                               |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Cursor      | Task receives only a base catalog name. Effort comes from the user's saved Cursor config and is not encodable in the Task id.           |
+| Claude Code | Separate effort (`low`, `medium`, `high`, `xhigh`, `max`); point versions use hyphens; current picks are 1M natively, so ids stay bare. |
+| Codex CLI   | `model_reasoning_effort` alongside the model.                                                                                           |
+| Pi          | Managed profile `model` contains no `:level`; `thinking:` is rendered separately from the category row's `effort`.                      |
+| OMP         | Category `@role` tokens resolve through `modelRoles`; those role values carry provider/model and the OMP thinking suffix.               |
+| Antigravity | Category rows use the `antigravity` key; `invoke_subagent` takes only abstract tiers, and every row is Flash, so lanes pass `flash`.    |
 
 Do not assume one mechanism works across harnesses — a suffix that means "max effort" in Cursor is not a valid model ID anywhere else.
 
 **Where "high effort, non-thinking" is actually reachable** (verified 2026-08-01):
 
-| Harness     | Reachable?   | Why                                                                                                                                        |
-| ----------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Cursor      | not per call | Task accepts only the base id; saved user config, not the delegation payload, owns effort/thinking.                                        |
-| Claude Code | yes          | `alwaysThinkingEnabled: false` in `settings.json` yields `thinking: {type:"disabled"}` on first-party; already set in both profiles        |
-| Pi / OMP    | no           | Pi renders `thinking: high` separately from its model; OMP carries `:high` in `modelRoles`, but each is still one thinking/reasoning dial. |
-| Codex       | n/a          | OpenAI-only harness, no Opus                                                                                                               |
-| Antigravity | n/a          | Google-only harness, no Opus                                                                                                               |
+| Harness     | Reachable?   | Why                                                                                                                                                                               |
+| ----------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cursor      | not per call | Task accepts only the base id; saved user config, not the delegation payload, owns effort/thinking.                                                                               |
+| Claude Code | by model     | `alwaysThinkingEnabled: false` in `settings.json` yields `thinking: {type:"disabled"}` on first-party; set in both profiles, but Sonnet 5.5 and Opus 5.5 reject disabled thinking |
+| Pi / OMP    | no           | Pi renders `thinking: high` separately from its model; OMP carries `:high` in `modelRoles`, but each is still one thinking/reasoning dial.                                        |
+| Codex       | n/a          | OpenAI-only harness, no Opus                                                                                                                                                      |
+| Antigravity | n/a          | Google-only harness, no Opus                                                                                                                                                      |
 
 Claude Code can request the combination directly. Cursor delegation cannot encode it; Pi and OMP expose one combined thinking/reasoning dial.
 
-Claude Code turns thinking off through the settings file, not an env var, and the chain is visible in the 2.1.220 binary. `Hye()` returns `false` when `alwaysThinkingEnabled === false`, which makes `thinkingConfig` resolve to `{type:"disabled"}` rather than `{type:"adaptive"}`, and the request builder then sends `thinking: {type:"disabled"}` under `r.type==="disabled" && xn()==="firstParty" && !bn`. Both `settings.personal.json` and `settings.work.json` already set `alwaysThinkingEnabled: false`, so conclusion-forming Opus 5.5 categories are genuinely non-thinking on the native route. That guard keys on the settings flag, not on the model id, so it holds across a category model change.
+Claude Code turns thinking off through the settings file, not an env var, and the chain is visible in the 2.1.220 binary. `Hye()` returns `false` when `alwaysThinkingEnabled === false`, which makes `thinkingConfig` resolve to `{type:"disabled"}` rather than `{type:"adaptive"}`, and the request builder then sends `thinking: {type:"disabled"}` under `r.type==="disabled" && xn()==="firstParty" && !bn`. Both `settings.personal.json` and `settings.work.json` already set `alwaysThinkingEnabled: false`, so models that accept disabled thinking run non-thinking on the native route. Sonnet 5.5 and Opus 5.5 do not accept it: both carry `rejects_disabled_thinking` in the Claude Code 2.1.287 model registry, so no current `category_models.claude_code` row runs non-thinking and effort is their only depth control.
 
 Two conditions in that guard are easy to break. `xn()==="firstParty"` means the guarantee holds only on the native Anthropic route; a gateway route such as `,claude-openrouter` falls through to omitting the parameter, and adaptive-reasoning models may still think. `!bn` means `CLAUDE_CODE_DISABLE_THINKING=1` _defeats_ the hard disable rather than reinforcing it — it forces the omit path. It is correct in `,claude-openrouter`, whose route is not first-party, but it must never be set for a native session.
 
-The env var that does not help is `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING`: it is gated to `f.includes("opus-4-6") || f.includes("sonnet-4-6")`, so it never applies to Opus 5 or Sonnet 5. `alwaysThinkingEnabled: false` is the lever that does.
+The env var that does not help is `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING`: it is gated to `f.includes("opus-4-6") || f.includes("sonnet-4-6")`, so it never applies to the Opus 5 or Sonnet 5 generations. `alwaysThinkingEnabled: false` is the lever that does.
 
 ### Claude Code
 
-| Category     | Model                 | Effort | Context | Verifier status |
-| ------------ | --------------------- | ------ | ------- | --------------- |
-| `mechanical` | `claude-sonnet-5`     | high   | long    | —               |
-| `research`   | `claude-opus-5-5[1m]` | high   | long    | —               |
-| `implement`  | `claude-sonnet-5`     | xhigh  | long    | —               |
-| `review`     | `claude-opus-5-5[1m]` | high   | long    | —               |
-| `refute`     | `claude-opus-5-5[1m]` | high   | long    | degraded        |
-| `memory`     | `claude-sonnet-5`     | medium | short   | —               |
+| Category     | Model               | Effort | Context | Verifier status |
+| ------------ | ------------------- | ------ | ------- | --------------- |
+| `mechanical` | `claude-sonnet-5-5` | high   | long    | —               |
+| `research`   | `claude-opus-5-5`   | high   | long    | —               |
+| `implement`  | `claude-sonnet-5-5` | xhigh  | long    | —               |
+| `review`     | `claude-opus-5-5`   | high   | long    | —               |
+| `refute`     | `claude-opus-5-5`   | high   | long    | degraded        |
+| `memory`     | `claude-sonnet-5-5` | medium | short   | —               |
 
-Claude Code accepts hyphenated point versions only: `claude-sonnet-4-6`, `claude-fable-5-1`, and `claude-opus-5-5`. Dotted point versions 404. The `[1m]` suffix selects the 1M context window. Claude's single-vendor catalog cannot provide an independent refute family. Same-family refutation is reduced independence: the report must state the shared family.
+Claude Code accepts hyphenated point versions only: `claude-sonnet-4-6`, `claude-fable-5-1`, and `claude-opus-5-5`. Dotted point versions 404. Sonnet 5.5 and Opus 5.5 are 1M natively (`native_1m` in the Claude Code 2.1.287 model registry), so every row uses the bare id without the `[1m]` suffix and compacts at `autoCompactWindow`. Claude's single-vendor catalog cannot provide an independent refute family. Same-family refutation is reduced independence: the report must state the shared family.
 
 ### Codex
 
-| Category     | Model          | Effort | Context | Verifier status |
-| ------------ | -------------- | ------ | ------- | --------------- |
-| `mechanical` | `gpt-5.6-luna` | high   | short   | —               |
-| `research`   | `gpt-5.6-sol`  | high   | short   | —               |
-| `implement`  | `gpt-5.6-sol`  | medium | short   | —               |
-| `review`     | `gpt-5.6-sol`  | high   | short   | —               |
-| `refute`     | `gpt-5.6-sol`  | high   | short   | degraded        |
-| `memory`     | `gpt-5.6-sol`  | high   | short   | —               |
+| Category     | Model         | Effort | Context | Verifier status |
+| ------------ | ------------- | ------ | ------- | --------------- |
+| `mechanical` | `gpt-6-luna`  | high   | short   | —               |
+| `research`   | `gpt-6.1-sol` | high   | short   | —               |
+| `implement`  | `gpt-6.1-sol` | medium | short   | —               |
+| `review`     | `gpt-6.1-sol` | high   | short   | —               |
+| `refute`     | `gpt-6.1-sol` | high   | short   | degraded        |
+| `memory`     | `gpt-6.1-sol` | high   | short   | —               |
 
-Codex is OpenAI-only, so refutation is degraded; `refute` uses the same `gpt-5.6-sol` pick and effort as review, so it adds no model diversity and reports reduced independence. Model and effort are separate fields on native profiles and gate rewrites.
+Codex is OpenAI-only, so refutation is degraded; `refute` uses the same `gpt-6.1-sol` pick and effort as review, so it adds no model diversity and reports reduced independence. Model and effort are separate fields on native profiles and gate rewrites.
 
 ### Cursor
 
@@ -143,20 +143,20 @@ The category registry key is `antigravity`. The mirror continues to publish a `g
 
 ### Pi
 
-| Category     | Model                            | `thinking` | Context | Verifier status |
-| ------------ | -------------------------------- | ---------- | ------- | --------------- |
-| `mechanical` | `openrouter/z-ai/glm-5.3-flash`  | high       | long    | —               |
-| `research`   | `openrouter/z-ai/glm-5.3`        | max        | long    | —               |
-| `implement`  | `openrouter/z-ai/glm-5.3`        | high       | long    | —               |
-| `review`     | `openrouter/meta/muse-spark-1.3` | max        | long    | —               |
-| `refute`     | `openrouter/x-ai/grok-4.6`       | high       | short   | cross_family    |
-| `memory`     | `openrouter/z-ai/glm-5.3-flash`  | high       | short   | —               |
+| Category     | Model                      | `thinking` | Context | Verifier status |
+| ------------ | -------------------------- | ---------- | ------- | --------------- |
+| `mechanical` | `openai-codex/gpt-6-luna`  | high       | short   | —               |
+| `research`   | `openai-codex/gpt-6.1-sol` | high       | short   | —               |
+| `implement`  | `openai-codex/gpt-6.1-sol` | medium     | short   | —               |
+| `review`     | `openai-codex/gpt-6.1-sol` | high       | short   | —               |
+| `refute`     | `openai-codex/gpt-6.1-sol` | high       | short   | degraded        |
+| `memory`     | `openai-codex/gpt-6.1-sol` | high       | short   | —               |
 
-Every Pi row now rides OpenRouter. `review` is the Meta route at max effort and `refute` is the Grok counter, a different vendor family. The earlier `gemini-3.8-flash` refuter produced a false finding and skipped a packet-mandated parser run in the 2026-09-12 PR 4412 convergence session, so the counter moved to a stronger model (user call 2026-09-13). `research` and `implement` share GLM 5.3 but split on effort, which keeps `implement` distinct from both `mechanical` and the session row.
+Pi defaults to the ChatGPT-subscription `openai-codex` provider: GPT-6.1 Sol for the root and every lane, GPT-6 Luna for mechanical (user call 2026-09-30; it was OpenRouter GLM/Muse Spark/Grok rows before). The provider only exposes short windows. Only one family is in play, so `refute` reuses the review pick and effort, adds no model diversity, and reports degraded independence.
 
 Pi category models never include a `:level` suffix. Every managed profile renders `model:` through the existing model partial and renders a separate `thinking:` line through `agent-thinking.partial`; the line is omitted when effort is empty. `pi-subagents` accepts `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and `max` in that frontmatter field.
 
-Only Pi rows beginning with `openrouter/` can become OpenRouter wrapper wire models. The deployed `openrouter_presets.py --pi-openrouter-wire-models` helper reads those rows and emits `<model-without-openrouter/>@preset/effort-<effort>`.
+Only Pi rows beginning with `openrouter/` can become OpenRouter wrapper wire models; the default rows contain none, so only an OpenRouter-backed Pi profile produces them. The deployed `openrouter_presets.py --pi-openrouter-wire-models` helper reads those rows and emits `<model-without-openrouter/>@preset/effort-<effort>`.
 
 #### Pi model profiles
 
@@ -166,8 +166,8 @@ Pi is the one harness with a machine-local alternate pricing. The `pi_model_prof
 | ----------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `default`         | the table above                                   | the table above                                                                                                                                                                                                                     |
 | `local`           | `llama-cpp/qwen3.6-35b-a3b`                       | Qwen3.6 35B-A3B UD-Q5_K_XL with thinking off; root and every lane share one router ID, without mixing the instruct preset; the same-model counter is degraded                                                                       |
-| `anthropic`       | `anthropic/claude-opus-5-5`                       | Opus 5.5 for research/review and the degraded same-family counter, Opus 5 for implement, Sonnet 5 cheap lanes                                                                                                                       |
-| `codex`           | `openai-codex/gpt-6-astra`                        | GPT-5.6 Sol for research/review/memory and at medium effort for implement, GPT-5.6 Luna for mechanical, GPT-5.6 Sol at review's effort as the degraded same-family counter                                                          |
+| `anthropic`       | `anthropic/claude-opus-5-5`                       | Opus 5.5 for research/review and the degraded same-family counter, Opus 5.5 at medium effort for implement, Sonnet 5.5 cheap lanes                                                                                                  |
+| `codex`           | `openai-codex/gpt-6.1-sol`                        | GPT-6.1 Sol for research/review/memory and at medium effort for implement, GPT-6 Luna for mechanical, GPT-6.1 Sol at review's effort as the degraded same-family counter                                                            |
 | `openrouter-free` | `openrouter/deepseek/deepseek-v4-flash-0731:free` | OpenRouter `:free` ids only: DeepSeek V4 Flash for research/review at max, Nex N2.5 Pro for implement and the cross-family counter, Nex N2.5 Mini cheap lanes; rate-limited upstream and only as stable as OpenRouter's free roster |
 | `nvidia-free`     | `nvidia/z-ai/glm-5.3-flash`                       | NVIDIA NIM free endpoints only: GLM 5.3 Flash on every lane (research/review at max, the rest at high; the same-model counter is degraded); needs `NVIDIA_API_KEY`                                                                  |
 
@@ -187,16 +187,16 @@ OMP is the one harness with native role indirection. Native `extendedContext: tr
 
 | Category               | Token      | `modelRoles` (both profiles)      | Tier | Verifier status |
 | ---------------------- | ---------- | --------------------------------- | ---- | --------------- |
-| `research`, `review`   | `@default` | inherits parent (normally Astra)  | T1   | —               |
-| `implement`            | `@task`    | `openai-codex/gpt-5.6-sol:medium` | T2   | —               |
-| `mechanical`, `memory` | `@smol`    | `openai-codex/gpt-5.6-luna:high`  | T3   | —               |
-| `refute`               | `@advisor` | `openai-codex/gpt-5.6-sol:high`   | —    | degraded        |
+| `research`, `review`   | `@default` | inherits parent (normally Sol)    | T1   | —               |
+| `implement`            | `@task`    | `openai-codex/gpt-6.1-sol:medium` | T2   | —               |
+| `mechanical`, `memory` | `@smol`    | `openai-codex/gpt-6-luna:high`    | T3   | —               |
+| `refute`               | `@advisor` | `openai-codex/gpt-6.1-sol:high`   | —    | degraded        |
 
-Verified on 17.2.4: a profile carrying `model: "@smol"` runs on `modelRoles.smol`, and an unknown token fails loudly with `Error: No model selected.` rather than falling back. Provider and model are separated by `/`, never `:` — `cursor:` parses as a bogus provider. Like Pi, OMP's `:<level>` suffix is a single thinking dial the runtime maps straight onto `reasoning`, so "high effort, non-thinking" is not expressible here. The profile-independent `modelRoles` block precedes the `isWork` branch and uses the `openai-codex` provider: `default` on `gpt-6-astra:high`; `slow` and `plan` explicitly on `gpt-5.6-sol:max` (T1); `vision` on `gpt-5.6-luna:high`; `task` on `gpt-5.6-sol:medium` (T2); `smol` on `gpt-5.6-luna:high` (T3); `tiny` and `commit` on `gpt-5.6-luna:medium`; and `advisor` on `gpt-5.6-sol:high`. Research/review profiles carry `@default` and inherit the active parent's model (normally Astra for a fresh root), not a separately hard-pinned child pick. Every built-in role is configured so nothing falls through to the harness default.
+Verified on 17.2.4: a profile carrying `model: "@smol"` runs on `modelRoles.smol`, and an unknown token fails loudly with `Error: No model selected.` rather than falling back. Provider and model are separated by `/`, never `:` — `cursor:` parses as a bogus provider. Like Pi, OMP's `:<level>` suffix is a single thinking dial the runtime maps straight onto `reasoning`, so "high effort, non-thinking" is not expressible here. The profile-independent `modelRoles` block precedes the `isWork` branch and uses the `openai-codex` provider: `default` on `gpt-6.1-sol:high`; `slow` and `plan` explicitly on `gpt-6.1-sol:max` (T1); `vision` on `gpt-6-luna:high`; `task` on `gpt-6.1-sol:medium` (T2); `smol` on `gpt-6-luna:high` (T3); `tiny` and `commit` on `gpt-6-luna:medium`; `advisor` on `gpt-6.1-sol:high`; and `web` on `gpt-6-luna` with runtime-default effort. Research/review profiles carry `@default` and inherit the active parent's model (normally Sol for a fresh root), not a separately hard-pinned child pick. Every built-in role is configured so nothing falls through to the harness default.
 
-`memory` rides `@smol` again. Between 2026-08-29 and 2026-09-07 it bypassed the role table, pinned directly to `openrouter/google/gemini-3.7-flash:high`: DeepSeek V4 Flash (then `modelRoles.smol`) failed the live scribe probes (stored a known duplicate on Pi; hung as OMP scribe, killed at 9 min, 2026-08-28), while Gemini 3.7 Flash returned the correct `duplicate of <id>` on the same fixture. With `smol` on GPT-5.6 Luna the role token is the pick, so `mechanical` and `memory` share one T3 role. The `:<level>` suffix in `modelRoles` is load-bearing: [`agent-model.partial`](../../../home/.chezmoitemplates/agent-model.partial) renders only the model string into the agent frontmatter (the registry `effort` field is never rendered for OMP), and OMP's spawn precedence honors an explicit `:level` suffix over its defaults (`task/executor.ts`: effort > `:level` suffix > agent-definition default > pattern-derived).
+`memory` rides `@smol` again. Between 2026-08-29 and 2026-09-07 it bypassed the role table, pinned directly to `openrouter/google/gemini-3.7-flash:high`: DeepSeek V4 Flash (then `modelRoles.smol`) failed the live scribe probes (stored a known duplicate on Pi; hung as OMP scribe, killed at 9 min, 2026-08-28), while Gemini 3.7 Flash returned the correct `duplicate of <id>` on the same fixture. With `smol` on GPT-6 Luna the role token is the pick, so `mechanical` and `memory` share one T3 role. The `:<level>` suffix in `modelRoles` is load-bearing: [`agent-model.partial`](../../../home/.chezmoitemplates/agent-model.partial) renders only the model string into the agent frontmatter (the registry `effort` field is never rendered for OMP), and OMP's spawn precedence honors an explicit `:level` suffix over its defaults (`task/executor.ts`: effort > `:level` suffix > agent-definition default > pattern-derived).
 
-Background advice is disabled (`advisor.enabled: false`, `advisor.subagents: false`, and `task.agentAdvisor.task: "off"`). The `modelRoles.advisor` selector is retained for explicit final refutation, not automatic advice. `review` rides `@default`, inheriting the active parent's model (normally GPT-6 Astra), while `refute` resolves `@advisor` (`openai-codex/gpt-5.6-sol:high`); the registry still declares `verifier_status: degraded` because both are from the same OpenAI family, despite their different model IDs.
+Background advice is disabled (`advisor.enabled: false`, `advisor.subagents: false`, and `task.agentAdvisor.task: "off"`). The `modelRoles.advisor` selector is retained for explicit final refutation, not automatic advice. `review` rides `@default`, inheriting the active parent's model (normally GPT-6.1 Sol), while `refute` resolves `@advisor` (`openai-codex/gpt-6.1-sol:high`); the registry still declares `verifier_status: degraded` because both are from the same OpenAI family, despite their different model IDs.
 
 ## Native subagent takeover risk
 

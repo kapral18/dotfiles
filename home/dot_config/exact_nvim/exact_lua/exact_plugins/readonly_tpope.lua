@@ -1,8 +1,8 @@
 return {
-  { "tpope/vim-eunuch", version = "*" },
+  { "tpope/vim-eunuch", version = false },
   { "tpope/vim-fugitive", version = false },
-  { "tpope/vim-abolish" },
-  { "tpope/vim-repeat", version = "*" },
-  { "tpope/vim-surround", version = "*" },
-  { "tpope/vim-characterize", version = "*" },
+  { "tpope/vim-abolish", version = false },
+  { "tpope/vim-repeat", version = false },
+  { "tpope/vim-surround", version = false },
+  { "tpope/vim-characterize", version = false },
 }

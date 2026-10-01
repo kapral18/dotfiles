@@ -6,24 +6,25 @@
 # lives outside the isWork branch. Only the web-search chains below still fork on isWork.
 #
 # Every built-in omp role is pinned explicitly (default/smol/slow/vision/plan/commit/
-# tiny/task/advisor per `omp config get modelRoles`); nothing falls through to the
-# harness default or the @smol fallback. The root uses GPT-6 Astra :high. Research/review
-# profiles use @default and inherit the active parent's model (normally Astra for a fresh
-# root), rather than pinning a separate child model.
-# - slow/plan: GPT-5.6 Sol :max; task (T2 implement): GPT-5.6 Sol :medium.
-# - advisor: GPT-5.6 Sol :high; refute remains degraded in the same OpenAI family
-#   as the primaries, even though @default may resolve to Astra.
-# - vision/smol: GPT-5.6 Luna :high; tiny/commit: GPT-5.6 Luna :medium.
+# tiny/task/advisor/web per `omp config get modelRoles`); nothing falls through to the
+# harness default or the @smol fallback. The root uses GPT-6.1 Sol :high (user call 2026-09-30:
+# Sol/Luna only, no Astra). Research/review profiles use @default and inherit the active
+# parent's model (normally Sol for a fresh root), rather than pinning a separate child model.
+# - slow/plan: GPT-6.1 Sol :max; task (T2 implement): GPT-6.1 Sol :medium.
+# - advisor: GPT-6.1 Sol :high; refute remains degraded in the same OpenAI family
+#   as the primaries.
+# - vision/smol: GPT-6 Luna :high; tiny/commit: GPT-6 Luna :medium.
 modelRoles:
-  default: openai-codex/gpt-6-astra:high
-  smol: openai-codex/gpt-5.6-luna:high
-  slow: openai-codex/gpt-5.6-sol:max
-  vision: openai-codex/gpt-5.6-luna:high
-  plan: openai-codex/gpt-5.6-sol:max
-  commit: openai-codex/gpt-5.6-luna:medium
-  tiny: openai-codex/gpt-5.6-luna:medium
-  task: openai-codex/gpt-5.6-sol:medium
-  advisor: openai-codex/gpt-5.6-sol:high
+  default: openai-codex/gpt-6.1-sol:high
+  smol: openai-codex/gpt-6-luna:high
+  slow: openai-codex/gpt-6.1-sol:max
+  vision: openai-codex/gpt-6-luna:high
+  plan: openai-codex/gpt-6.1-sol:max
+  commit: openai-codex/gpt-6-luna:medium
+  tiny: openai-codex/gpt-6-luna:medium
+  task: openai-codex/gpt-6.1-sol:medium
+  advisor: openai-codex/gpt-6.1-sol:high
+  web: openai-codex/gpt-6-luna
 
 modelProviderOrder:
   - anthropic

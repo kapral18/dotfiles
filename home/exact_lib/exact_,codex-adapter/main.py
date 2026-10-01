@@ -25,6 +25,9 @@ from server import AdapterContext, start_server
 from state import OpaqueReasoningStore
 
 CLAUDE_DEFAULT_CONTEXT_WINDOW = 200_000
+# Codex model ids are not in Claude Code's model registry, so the frontend assumes the default
+# window for them; the `[1m]` marker is what lifts it for a larger Codex window. Native Claude
+# picks do not need it (they are 1M natively).
 CLAUDE_EXTENDED_CONTEXT_SUFFIX = "[1m]"
 EFFORTS = {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
 CURSOR_PINNED_OPTIONS = {"--base-url", "--local-agent-api-key", "--authless", "--model", "-m"}

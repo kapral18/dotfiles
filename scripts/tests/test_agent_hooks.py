@@ -4606,11 +4606,28 @@ class BandGateTests(unittest.TestCase):
             },
         )
 
+    def _projection_with_pi_openrouter_rows(self) -> dict:
+        # Pi's default rows ride `openai-codex` (2026-09-30), so the OpenRouter wire normalization is
+        # probed against explicit `openrouter/` rows, as an OpenRouter-backed Pi profile would project.
+        projection = json.loads((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_text())
+        agents = projection["harnesses"]["pi"]["agents"]
+        agents["k-agent-mechanical"] = {
+            **agents["k-agent-mechanical"],
+            "model": "openrouter/z-ai/glm-5.3-flash",
+            "effort": "high",
+        }
+        agents["k-agent-adversarial-verifier"] = {
+            **agents["k-agent-adversarial-verifier"],
+            "model": "openrouter/x-ai/grok-4.6",
+            "effort": "high",
+        }
+        return projection
+
     def test_openrouter_schema_rows_normalize_to_preset_wire_models(self):
         # Pi rows are spelled `openrouter/<provider>/<model>` with the level in `effort`; only rows
         # on the OpenRouter route reach it, as `<provider>/<model>@preset/effort-<level>`, so the
         # prefix strip and the effort suffix are probed on the mechanical and refute rows.
-        projection = json.loads((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_text())
+        projection = self._projection_with_pi_openrouter_rows()
         route_env = {
             "AGENT_BAND_SCHEMA_HARNESS": "pi",
             "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
@@ -4705,7 +4722,7 @@ class BandGateTests(unittest.TestCase):
         self.assertEqual(result["permissionDecision"], "deny")
 
     def test_SHOULD_keep_openrouter_refute_distinct_from_implementation(self):
-        projection = json.loads((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_text())
+        projection = self._projection_with_pi_openrouter_rows()
         routes = {
             "k-agent-adversarial-verifier": "x-ai/grok-4.6@preset/effort-high",
         }

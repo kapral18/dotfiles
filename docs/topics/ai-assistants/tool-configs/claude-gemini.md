@@ -22,7 +22,7 @@ Claude profile behavior:
 
 | Area                  | Behavior                                                                                                                                                                                                              |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Model and context     | `claude-opus-5-5[1m]`; explicit long-context `session_models.claude_code` selector                                                                                                                                    |
+| Model and context     | `claude-opus-5-5`; natively 1M `session_models.claude_code` selector                                                                                                                                                  |
 | Thinking and effort   | `alwaysThinkingEnabled: false`; `effortLevel: high` in both profiles                                                                                                                                                  |
 | Local llama.cpp       | model-scoped `high` effort with thinking off; local context windows stay unchanged                                                                                                                                    |
 | Dangerous-mode prompt | skipped in both profiles                                                                                                                                                                                              |
@@ -62,4 +62,4 @@ Do not export `GOOGLE_GENAI_USE_VERTEXAI`, `GOOGLE_CLOUD_PROJECT`, or `GOOGLE_CL
 
 An A/B on 2026-09-25 used 3 tests-first tasks rebuilt from past commits, with 2 repetitions per arm. It tested subagents and main sessions separately. Long implementation subagents cost $15.16 and $15.56 with the window, against $21.90 and $24.94 without it. All tasks passed in every run and no test file was edited. The one main session that compacted also passed every task, at $11.00 against $12.48 for its control run. The `,claude-llama-cpp` additive settings files and the env overrides of other wrappers take precedence over this value.
 
-The personal Claude profile keeps fullscreen mode and push notifications. Both profiles explicitly pin `modelSettings.claude-opus-5-5[1m].effortLevel` to `high`, matching the canonical long-context `session_models.claude_code` row.
+The personal Claude profile keeps fullscreen mode and push notifications. Both profiles explicitly pin `modelSettings.claude-opus-5-5.effortLevel` to `high`, matching the canonical `session_models.claude_code` row.
