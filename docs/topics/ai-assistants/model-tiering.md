@@ -47,7 +47,7 @@ The SOP §3.7 routes settled implementation with stated acceptance and unwritten
 | ------------- | -------------------------- | ------ | ------- | -------------------------------------------------------------------------- |
 | `claude_code` | `claude-opus-5-5`          | high   | long    | `home/dot_claude/settings.{work,personal}.json`                            |
 | `codex`       | `gpt-6.1-sol`              | high   | short   | `home/dot_codex/private_config.{work,personal}.toml`                       |
-| `antigravity` | `gemini-3.8-flash`         | high   | long    | `home/dot_gemini/antigravity-cli/readonly_settings.policy.json`            |
+| `antigravity` | `gemini-3.8-flash`         | high   | long    | `home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json`    |
 | `pi`          | `openai-codex/gpt-6.1-sol` | high   | short   | `home/dot_pi/agent/readonly_settings.{work,personal}.json`                 |
 | `omp`         | `openai-codex/gpt-6.1-sol` | high   | short   | `home/dot_omp/private_agent/readonly_config.yml.tmpl` `modelRoles.default` |
 

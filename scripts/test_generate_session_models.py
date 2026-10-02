@@ -31,7 +31,7 @@ class TestGenerateSessionModels(unittest.TestCase):
         ),
         (
             "antigravity.json",
-            REPO / "home/dot_gemini/antigravity-cli/readonly_settings.policy.json",
+            REPO / "home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json",
             generate_session_models.apply_antigravity,
             "antigravity",
         ),
@@ -125,7 +125,9 @@ class TestGenerateSessionModels(unittest.TestCase):
             generate_session_models.apply_omp("advisor:\n  default: a/b:high\n", self.DRIFT)
 
     def test_apply_antigravity_renders_display_name_with_capitalized_effort(self):
-        current = (REPO / "home/dot_gemini/antigravity-cli/readonly_settings.policy.json").read_text(encoding="utf-8")
+        current = (REPO / "home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json").read_text(
+            encoding="utf-8"
+        )
         after = json.loads(
             generate_session_models.apply_antigravity(current, {"model": "gemini-3.8-flash", "effort": "low"})
         )
@@ -133,7 +135,9 @@ class TestGenerateSessionModels(unittest.TestCase):
         self.assertEqual("gemini", after["modelProvider"])
 
     def test_unmapped_antigravity_id_raises(self):
-        current = (REPO / "home/dot_gemini/antigravity-cli/readonly_settings.policy.json").read_text(encoding="utf-8")
+        current = (REPO / "home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json").read_text(
+            encoding="utf-8"
+        )
         with self.assertRaisesRegex(ValueError, "unmapped antigravity model id"):
             generate_session_models.apply_antigravity(current, {"model": "not-a-gemini-id", "effort": "high"})
 

@@ -323,7 +323,7 @@ TEST_RULES: tuple[TestRule, ...] = (
             "home/dot_pi/agent/readonly_settings.work.json",
             "home/dot_pi/agent/readonly_settings.personal.json",
             "home/dot_omp/private_agent/readonly_config.yml.tmpl",
-            "home/dot_gemini/antigravity-cli/readonly_settings.policy.json",
+            "home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json",
         ),
         tests=("test_generate_session_models.py", "tests/test_model_band_invariants.py"),
     ),

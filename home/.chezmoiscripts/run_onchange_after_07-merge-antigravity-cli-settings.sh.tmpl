@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-# antigravity-cli settings policy hash: {{ include "dot_gemini/antigravity-cli/readonly_settings.policy.json" | sha256sum }}
+# antigravity-cli settings policy hash: {{ include "dot_gemini/private_antigravity-cli/readonly_settings.policy.json" | sha256sum }}
 # merge_antigravity_cli_settings.py hash: {{ include "../scripts/merge_antigravity_cli_settings.py" | sha256sum }}
 # chezmoi_lib.sh hash: {{ include "../scripts/chezmoi_lib.sh" | sha256sum }}
 # managed_config_manifest.py hash: {{ include "../scripts/managed_config_manifest.py" | sha256sum }}
@@ -14,7 +14,7 @@ source "$source_dir/../scripts/chezmoi_lib.sh"
 
 profile="{{ if eq .isWork true }}work{{ else }}personal{{ end }}"
 settings_target="$HOME/.gemini/antigravity-cli/settings.json"
-policy_src="$source_dir/dot_gemini/antigravity-cli/readonly_settings.policy.json"
+policy_src="$source_dir/dot_gemini/private_antigravity-cli/readonly_settings.policy.json"
 settings_merge="$source_dir/../scripts/merge_antigravity_cli_settings.py"
 
 mkdir -p "$HOME/.gemini/antigravity-cli"

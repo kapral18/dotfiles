@@ -206,7 +206,7 @@ class TestModelBandInvariants(unittest.TestCase):
         assert default_line == f"{omp_row['model']}:{omp_row['effort']}"
 
         antigravity = json.loads(
-            (REPO / "home/dot_gemini/antigravity-cli/readonly_settings.policy.json").read_text(encoding="utf-8")
+            (REPO / "home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json").read_text(encoding="utf-8")
         )
         assert antigravity["model"] == generate_session_models.antigravity_display_name(session_models["antigravity"])
 

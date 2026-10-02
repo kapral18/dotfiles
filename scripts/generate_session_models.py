@@ -111,7 +111,7 @@ def default_targets(session: dict[str, dict[str, str]]) -> list[tuple[Path, dict
         (REPO / "home/dot_pi/agent/readonly_settings.personal.json", session["pi"], apply_pi),
         (REPO / "home/dot_omp/private_agent/readonly_config.yml.tmpl", session["omp"], apply_omp),
         (
-            REPO / "home/dot_gemini/antigravity-cli/readonly_settings.policy.json",
+            REPO / "home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json",
             session["antigravity"],
             apply_antigravity,
         ),

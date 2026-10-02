@@ -16,7 +16,7 @@ from merge_antigravity_cli_settings import merge_antigravity_cli_settings
 
 SCRIPT = SCRIPTS / "merge_antigravity_cli_settings.py"
 HOOK = REPO / "home/.chezmoiscripts/run_onchange_after_07-merge-antigravity-cli-settings.sh.tmpl"
-POLICY = REPO / "home/dot_gemini/antigravity-cli/readonly_settings.policy.json"
+POLICY = REPO / "home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json"
 
 
 class TestMergeAntigravityCliSettings(unittest.TestCase):
