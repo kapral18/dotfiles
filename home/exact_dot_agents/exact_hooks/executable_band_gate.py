@@ -237,8 +237,8 @@ def _codex_openrouter_pick(
         routes = json.loads(os.environ.get("AGENT_BAND_CODEX_ROUTES", ""))
     except ValueError as error:
         raise ValueError("Codex OpenRouter lane configuration is missing; relaunch the wrapper.") from error
-    expected = _format_pick(assigned, "codex", "pi")["model"]
-    formatted = _format_pick(pick, "codex", "pi")
+    expected = _format_pick(assigned, "codex", "openrouter")["model"]
+    formatted = _format_pick(pick, "codex", "openrouter")
     if not isinstance(routes, dict) or routes.get(agent) != expected or formatted["model"] not in routes.values():
         raise ValueError("This Codex role or exact OpenRouter lane is unavailable in the session's projected catalog.")
     return formatted
@@ -337,7 +337,9 @@ def main() -> int:
 
     subscription = os.environ.get("AGENT_BAND_SUBSCRIPTION", "")
     codex_openrouter = (
-        harness == "codex" and schema_harness == "pi" and os.environ.get(MODEL_FORMAT_ENV) == "openrouter-preset"
+        harness == "codex"
+        and schema_harness == "openrouter"
+        and os.environ.get(MODEL_FORMAT_ENV) == "openrouter-preset"
     )
     if subscription and harness != "claude_code":
         print(

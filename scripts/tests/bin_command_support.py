@@ -42,7 +42,7 @@ from _test_support import (
 )
 
 # Every OpenRouter wrapper defaults to this route; model and effort remain selectable.
-OPENROUTER_PIN = "z-ai/glm-5.3-flash"
+OPENROUTER_PIN = "xiaomi/mimo-v2.6-pro"
 OPENROUTER_WIRE_PIN = f"{OPENROUTER_PIN}@preset/effort-high"
 
 
@@ -292,16 +292,16 @@ def _capture_stop_existing_serverless(kbn_stack, registry: dict, new_started_by:
     return blocked, stopped, saved
 
 
-def _pi_openrouter_wires() -> list[str]:
-    """The live `--pi-openrouter-wire-models` list, so preset stubs track the Pi rows instead of a copy."""
+def _lane_wires() -> list[str]:
+    """The live `--lane-wire-models` list, so preset stubs track the `category_models.openrouter` rows instead of a copy."""
     module = _load_openrouter_presets_module()
     with mock.patch.dict(os.environ, {"CHEZMOI_SOURCE_DIR": str(REPO)}):
-        return module._pi_openrouter_wire_models()
+        return module._lane_wire_models()
 
 
-def _pi_openrouter_wire_echo(indent: str = "") -> str:
-    """Shell `echo` lines that print the live Pi OpenRouter wires, one per line."""
-    return "".join(f'{indent}echo "{wire}"\n' for wire in _pi_openrouter_wires())
+def _lane_wire_echo(indent: str = "") -> str:
+    """Shell `echo` lines that print the live OpenRouter lane wires, one per line."""
+    return "".join(f'{indent}echo "{wire}"\n' for wire in _lane_wires())
 
 
 def _install_openrouter_preset_stub(home: Path) -> None:
@@ -327,9 +327,9 @@ if [[ "$1" == "--codex-model-catalog" ]]; then
   echo '{"models":[]}'
   exit 0
 fi
-if [[ "$1" == "--pi-openrouter-wire-models" ]]; then
+if [[ "$1" == "--lane-wire-models" ]]; then
 """
-        + _pi_openrouter_wire_echo("  ")
+        + _lane_wire_echo("  ")
         + """  exit 0
 fi
 exit 0
@@ -346,7 +346,7 @@ exit 0
     (preset_helper.parent / "claude_lanes.py").write_bytes(
         (REPO / "home/exact_lib/exact_shared/claude_lanes.py").read_bytes()
     )
-    for role in json.loads(bands.read_text())["harnesses"]["pi"]["agents"]:
+    for role in json.loads(bands.read_text())["harnesses"]["openrouter"]["agents"]:
         profile = home / ".claude/agents" / f"{role}.md"
         profile.parent.mkdir(parents=True, exist_ok=True)
         if profile.exists():

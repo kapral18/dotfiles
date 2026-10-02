@@ -32,9 +32,9 @@ Each entry is one of two shapes:
 
 The work set declares one server:
 
-| Server  | Current behavior                                                                                      |
-| ------- | ----------------------------------------------------------------------------------------------------- |
-| `slack` | Hosted Slack MCP server. Only Claude Code carries OAuth client metadata, so only Claude Code gets it. |
+| Server  | Current behavior                                                                              |
+| ------- | --------------------------------------------------------------------------------------------- |
+| `slack` | Hosted Slack MCP server. Claude Code and Pi carry OAuth client metadata, so only they get it. |
 
 An HTTP server reaches a harness only when `oauth_by_tool` names that harness; every other harness omits it. OpenCode and Codex emit command servers only and skip every HTTP entry.
 
@@ -44,7 +44,7 @@ Slack's MCP authorization server offers no dynamic client registration and requi
 
 Codex supports streamable HTTP MCP natively, but its OAuth callback settings are global (`mcp_oauth_callback_port` / `mcp_oauth_callback_url`), and its `bearer_token_env_var` support reads the env var once at launch, dying with that token. Codex therefore gets no hosted server.
 
-Pi can run Slack's OAuth flow via `pi-mcp-adapter`, but only against Slack's public MCP client (`1601185624273.8899143856786`), and that client is not approved for the `search:read.*` scopes for this user: consent fails with `Unapproved permissions requested: search:read`. Slack moved search to the granular `search:read.public/private/mpim/im/files/users` scopes (see `scopes_supported` in `https://mcp.slack.com/.well-known/oauth-authorization-server`). Pi therefore carries no `slack` row.
+Pi 1.0.0 connects HTTP servers through its built-in MCP support, which accepts a registered OAuth client (`oauth.clientId`, `callbackPort` or `callbackUrl`, `scope`). The Pi `slack` row reuses Slack's public MCP client (`1601185624273.8899143856786`), spells the loopback URI like Claude's (`http://localhost:3118/callback`), and requests the six granular `search:read.*` scopes from `scopes_supported` in `https://mcp.slack.com/.well-known/oauth-authorization-server`. Pi parses the row and reports `needs sign-in`; whether Slack's consent and token exchange succeed (the token endpoint lists only `client_secret_post`) is unverified until `pi mcp login slack` runs on the work profile.
 
 ## Using it
 
@@ -83,13 +83,7 @@ The common pipeline has two stages:
 
 Per-tool transforms handle schema differences, such as Antigravity's `serverUrl` vs the standard `url` field.
 
-Pi gets one extra block:
-
-```json
-{ "settings": { "autoAuth": true } }
-```
-
-That lets `pi-mcp-adapter` run OAuth + reconnect automatically on the first tool call to a `needs-auth` server. It still opens the browser in an interactive session; it is not headless auth. Other tools have their own config schemas and do not get this block.
+Pi emits `{ url, oauth }` for HTTP servers, with `scope` normalised to space-separated tokens, as its built-in MCP expects. Other tools have their own config schemas.
 
 Tools whose config is not plain JSON get dedicated injectors with explicit ownership rules:
 

@@ -328,8 +328,8 @@ class TestAiModels(unittest.TestCase):
         wrapper = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()
 
         assert "unset CLAUDE_CODE_SUBAGENT_MODEL" in wrapper
-        assert 'exec python3 "$HOME/lib/shared/claude_lanes.py" pi -- claude' in wrapper
-        assert 'export AGENT_BAND_SCHEMA_HARNESS="pi"' in wrapper
+        assert 'exec python3 "$HOME/lib/shared/claude_lanes.py" openrouter -- claude' in wrapper
+        assert 'export AGENT_BAND_SCHEMA_HARNESS="openrouter"' in wrapper
         assert 'export AGENT_BAND_MODEL_FORMAT="openrouter-preset"' in wrapper
 
 

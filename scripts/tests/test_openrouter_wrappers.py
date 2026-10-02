@@ -78,13 +78,13 @@ class TestOpenRouterWrappers(unittest.TestCase):
         helper = home / "lib/shared/openrouter_presets.py"
         helper.write_text(
             '#!/bin/sh\nif [ "$1" = "--context-window" ]; then echo 200000; exit; fi\n'
-            'if [ "$1" = "--pi-openrouter-wire-models" ]; then\n' + _pi_openrouter_wire_echo() + "exit; fi\n"
+            'if [ "$1" = "--lane-wire-models" ]; then\n' + _lane_wire_echo() + "exit; fi\n"
             'if [ "$1" = "--session-budget-env" ]; then echo "CONTEXT_LIMIT=1048576"; echo "MAX_OUTPUT_TOKENS=131072"; echo "PROMPT_LIMIT=200000"; exit; fi\n'
             'if [ "$1" = "--codex-model-catalog" ]; then shift 2; '
             f'''exec "{sys.executable}" -c 'import json,sys;print(json.dumps({{"models":[{{"slug":m}} for m in sys.argv[1:]]}}))' "$@"; fi\n'''
             'printf "%s\\n" "$1" >> "$PRESET_CALLS"\n'
         )
-        agents = json.loads((home / ".config/ai/agent-bands.v1.json").read_text())["harnesses"]["pi"]["agents"]
+        agents = json.loads((home / ".config/ai/agent-bands.v1.json").read_text())["harnesses"]["openrouter"]["agents"]
         for role in agents:
             path = home / ".codex/agents" / f"{role}.toml"
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -107,10 +107,10 @@ class TestOpenRouterWrappers(unittest.TestCase):
         return calls, env
 
     def _assert_openrouter_roles(self, harness, observed, band_gate, projection):
-        rows = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["pi"]
+        rows = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["openrouter"]
         gate_env = {**observed["env"], "AGENT_BAND_HARNESS": "claude_code" if harness == "claude" else harness}
         with mock.patch.dict(os.environ, gate_env, clear=True):
-            for role, pick in projection["harnesses"]["pi"]["agents"].items():
+            for role, pick in projection["harnesses"]["openrouter"]["agents"].items():
                 row = rows[pick["category"]]
                 if not row["model"].startswith("openrouter/"):
                     continue
@@ -147,8 +147,8 @@ class TestOpenRouterWrappers(unittest.TestCase):
                     model = definitions[role]["model"]
                 self.assertEqual(model, expected, (harness, role))
 
-    def test_SHOULD_route_openrouter_pi_rows_and_prepare_each_required_effort_once(self):
-        """WHEN a wrapper uses Pi routing, only OpenRouter rows become wire models."""
+    def test_SHOULD_route_openrouter_lane_rows_and_prepare_each_required_effort_once(self):
+        """WHEN a wrapper routes lanes, only `category_models.openrouter` rows become wire models."""
         band_gate = _load_hook_module("band_contract", "home/exact_dot_agents/exact_hooks/executable_band_gate.py")
         band_gate.PROJECTION = REPO / "home/dot_config/ai/readonly_agent-bands.v1.json"
         projection = json.loads(band_gate.PROJECTION.read_text())
@@ -191,7 +191,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
                             self.assertIn("Fixture leaf; do not delegate.", profile)
                     else:
                         self.assertNotIn("AGENT_BAND_CODEX_ROUTES", observed["env"])
-                    self.assertCountEqual(calls.read_text().splitlines(), set((effort, "high", "max")))
+                    self.assertCountEqual(calls.read_text().splitlines(), set((effort, "high", "medium")))
                     wire = f"moonshotai/kimi-k3@preset/effort-{effort}"
                     self.assertTrue(wire in observed["argv"] or wire in observed["env"].values())
                     self._assert_openrouter_roles(harness, observed, band_gate, projection)
@@ -503,37 +503,85 @@ class TestOpenRouterWrappers(unittest.TestCase):
         assert "export CLAUDE_CODE_DISABLE_THINKING=1" in source
         assert 'export CLAUDE_CODE_EFFORT_LEVEL="$CLAUDE_EFFORT"' in source
 
-    def test_SHOULD_derive_openrouter_pi_wires_from_split_model_and_effort_rows(self):
+    def test_SHOULD_derive_the_wrapper_wires_from_the_live_openrouter_lane_rows(self):
         module = _load_openrouter_presets_module()
         with mock.patch.dict(os.environ, {"CHEZMOI_SOURCE_DIR": str(REPO)}):
-            wires = module._pi_openrouter_wire_models()
-        # mechanical and memory share one wire (deduped); research and implement share a model at
-        # different efforts, so each effort is its own wire. Order follows the category rows.
+            wires = module._lane_wire_models()
+        # mechanical and memory share the flash wire; research, review and refute share pro at high, and
+        # implement is pro at medium, so each distinct model and effort is one wire. Order follows the rows.
+        self.assertEqual(
+            [
+                "xiaomi/mimo-v2.6-flash@preset/effort-high",
+                "xiaomi/mimo-v2.6-pro@preset/effort-high",
+                "xiaomi/mimo-v2.6-pro@preset/effort-medium",
+            ],
+            wires,
+        )
+
+    def test_SHOULD_dedupe_split_efforts_and_skip_non_openrouter_rows_in_the_lane_matrix(self):
+        module = _load_openrouter_presets_module()
+        tiering = (
+            "category_models:\n"
+            "  pi:\n"
+            "    mechanical:\n"
+            '      model: "openrouter/ignored/pi-row"\n'
+            '      effort: "high"\n'
+            "  openrouter:\n"
+            "    mechanical:\n"
+            '      model: "openrouter/z-ai/glm-5.3-flash"\n'
+            '      effort: "high"\n'
+            "    memory:\n"
+            '      model: "openrouter/z-ai/glm-5.3-flash"\n'
+            '      effort: "high"\n'
+            "    research:\n"
+            '      model: "openrouter/z-ai/glm-5.3"\n'
+            '      effort: "max"\n'
+            "    implement:\n"
+            '      model: "openrouter/z-ai/glm-5.3"\n'
+            '      effort: "high"\n'
+            "    review:\n"
+            '      model: "native/not-routed"\n'
+            '      effort: "high"\n'
+            "other_section:\n"
+            "  openrouter:\n"
+            "    mechanical:\n"
+            '      model: "openrouter/ignored/other-section"\n'
+            '      effort: "high"\n'
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            registry = Path(tmp) / "home/.chezmoidata/ai_models"
+            registry.mkdir(parents=True)
+            (registry / "tiering.yaml").write_text(tiering, encoding="utf-8")
+            with mock.patch.dict(os.environ, {"CHEZMOI_SOURCE_DIR": tmp}):
+                wires = module._lane_wire_models()
+                (registry / "tiering.yaml").write_text(
+                    tiering.replace("openrouter/z-ai", "native/z-ai"), encoding="utf-8"
+                )
+                with self.assertRaises(module.PresetError):
+                    module._lane_wire_models()
         self.assertEqual(
             [
                 "z-ai/glm-5.3-flash@preset/effort-high",
                 "z-ai/glm-5.3@preset/effort-max",
                 "z-ai/glm-5.3@preset/effort-high",
-                "meta/muse-spark-1.3@preset/effort-max",
-                "x-ai/grok-4.6@preset/effort-high",
             ],
             wires,
         )
 
-    def test_SHOULD_map_claude_tiers_to_the_pi_openrouter_backend_schema(self):
+    def test_SHOULD_map_claude_tiers_to_the_openrouter_backend_schema(self):
         source = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()
-        assert "--pi-openrouter-wire-models" in source
-        assert "readonly -a OPENROUTER_PI_WIRE_MODELS" in source
-        assert 'export ANTHROPIC_DEFAULT_SONNET_MODEL="${OPENROUTER_PI_WIRE_MODELS[0]}"' in source
+        assert "--lane-wire-models" in source
+        assert "readonly -a OPENROUTER_LANE_WIRE_MODELS" in source
+        assert 'export ANTHROPIC_DEFAULT_SONNET_MODEL="${OPENROUTER_LANE_WIRE_MODELS[0]}"' in source
         assert "unset CLAUDE_CODE_SUBAGENT_MODEL" in source
-        assert 'export AGENT_BAND_SCHEMA_HARNESS="pi"' in source
+        assert 'export AGENT_BAND_SCHEMA_HARNESS="openrouter"' in source
         assert 'export AGENT_BAND_MODEL_FORMAT="openrouter-preset"' in source
         assert "OPENROUTER_PI_T1_WIRE_MODEL" not in source
 
     def test_SHOULD_mark_suffix_wrappers_with_their_backend_lane_schema(self):
         expectations = {
-            "claude-openrouter": ("pi", "openrouter-preset"),
-            "codex-openrouter": ("pi", "openrouter-preset"),
+            "claude-openrouter": ("openrouter", "openrouter-preset"),
+            "codex-openrouter": ("openrouter", "openrouter-preset"),
             "claude-codex": ("codex", None),
         }
         for command, (schema, model_format) in expectations.items():
@@ -684,9 +732,9 @@ class TestOpenRouterWrappers(unittest.TestCase):
             )
             claude.chmod(0o755)
             cases = [
-                (["--effort", "low"], "z-ai/glm-5.3-flash@preset/effort-low", "low"),
-                (["--effort=xhigh"], "z-ai/glm-5.3-flash@preset/effort-xhigh", "xhigh"),
-                (["--effort", "none"], "z-ai/glm-5.3-flash@preset/effort-none", "low"),
+                (["--effort", "low"], "xiaomi/mimo-v2.6-pro@preset/effort-low", "low"),
+                (["--effort=xhigh"], "xiaomi/mimo-v2.6-pro@preset/effort-xhigh", "xhigh"),
+                (["--effort", "none"], "xiaomi/mimo-v2.6-pro@preset/effort-none", "low"),
             ]
             for argv, expected_model, expected_client_effort in cases:
                 with self.subTest(argv=argv):
@@ -751,7 +799,7 @@ printf 'schema=%s\\nformat=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
 
         assert codex_result.returncode == 0, codex_result.stderr
         assert codex_result.stdout.splitlines()[:4] == [
-            "schema=pi",
+            "schema=openrouter",
             "format=openrouter-preset",
             "band-model=",
             "band-effort=",
@@ -763,7 +811,7 @@ printf 'schema=%s\\nformat=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
     def test_SHOULD_compose_wire_model_from_model_and_effort_flags(self):
         # Model and effort are selectable; the wire id composes the matching preset slug.
         cases = [
-            (["-p", "x"], "z-ai/glm-5.3-flash@preset/effort-high"),
+            (["-p", "x"], "xiaomi/mimo-v2.6-pro@preset/effort-high"),
             (
                 ["--model", "z-ai/glm-5.3-flash", "--effort", "max"],
                 "z-ai/glm-5.3-flash@preset/effort-max",
@@ -775,7 +823,7 @@ printf 'schema=%s\\nformat=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
             ),
             (
                 ["--effort", "none"],
-                "z-ai/glm-5.3-flash@preset/effort-none",
+                "xiaomi/mimo-v2.6-pro@preset/effort-none",
             ),
             (
                 ["--model", "openai/gpt-5.6-terra", "--effort", "none"],
@@ -809,7 +857,7 @@ printf 'schema=%s\\nformat=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
         # The same model/effort -> preset-slug composition runs in every wrapper; only the
         # leaf delivery differs.
         cases = [
-            (["-p", "x"], "z-ai/glm-5.3-flash@preset/effort-high"),
+            (["-p", "x"], "xiaomi/mimo-v2.6-pro@preset/effort-high"),
         ]
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp) / "bin"
@@ -851,12 +899,12 @@ printf 'schema=%s\\nformat=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
                 (
                     "home/exact_bin/executable_,claude-openrouter",
                     ["--context", "short"],
-                    "model=z-ai/glm-5.3-flash@preset/effort-high",
+                    "model=xiaomi/mimo-v2.6-pro@preset/effort-high",
                 ),
                 (
                     "home/exact_bin/executable_,claude-openrouter",
                     ["--context", "long"],
-                    "model=z-ai/glm-5.3-flash@preset/effort-high",
+                    "model=xiaomi/mimo-v2.6-pro@preset/effort-high",
                 ),
             ]
             for relative, argv, expected in cases:
@@ -882,9 +930,7 @@ printf 'schema=%s\\nformat=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
             prompt_limit = 65536 - output_limit
             with self.subTest(output_limit=output_limit):
                 helper.write_text(
-                    '#!/bin/sh\nif [ "$1" = "--pi-openrouter-wire-models" ]; then\n'
-                    + _pi_openrouter_wire_echo()
-                    + "exit\nfi\n"
+                    '#!/bin/sh\nif [ "$1" = "--lane-wire-models" ]; then\n' + _lane_wire_echo() + "exit\nfi\n"
                     'if [ "$1" = "--session-budget-env" ]; then\n'
                     f'echo "CONTEXT_LIMIT=65536"\necho "MAX_OUTPUT_TOKENS={output_limit}"\n'
                     f'echo "PROMPT_LIMIT={prompt_limit}"\nfi\n'

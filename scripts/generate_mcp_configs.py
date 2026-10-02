@@ -45,9 +45,7 @@ _TOOL_TRANSFORMS["gemini"] = _transform_gemini
 
 
 def _transform_pi(spec: dict[str, Any]) -> dict[str, Any]:
-    """pi-mcp-adapter wants ``oauth`` with a singular space-separated ``scope``
-    and explicit ``auth: "oauth"``.
-    """
+    """Pi's built-in MCP wants ``oauth`` with a singular space-separated ``scope``."""
     oauth = spec.get("oauth")
     out: dict[str, Any] = {"url": spec["url"]}
     if oauth:
@@ -60,7 +58,6 @@ def _transform_pi(spec: dict[str, Any]) -> dict[str, Any]:
         if merged_scope:
             # pi sends scope verbatim; normalise to space-separated tokens.
             pi_oauth["scope"] = " ".join(s.strip() for s in str(merged_scope).split(",") if s.strip())
-        out["auth"] = "oauth"
         out["oauth"] = pi_oauth
     return out
 
@@ -94,8 +91,6 @@ def render_document(yaml_path: str, is_work: bool, tool: str | None) -> dict[str
         document["$schema"] = (
             "https://raw.githubusercontent.com/can1357/oh-my-pi/main/packages/coding-agent/src/config/mcp-schema.json"
         )
-    if tool == "pi":
-        document["settings"] = {"autoAuth": True}
     return document
 
 

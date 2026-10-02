@@ -446,7 +446,7 @@
         "claude-sonnet-5-5"
       ],
       "session": {
-        "model": "claude-opus-5-5",
+        "model": "claude-sonnet-5-5",
         "effort": "high",
         "context": "long"
       }
@@ -912,6 +912,221 @@
         "model": "openai-codex/gpt-6.1-sol",
         "effort": "high",
         "context": "short"
+      }
+    },
+    "openrouter": {
+      "agents": {
+        "Explore": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "research",
+          "effort": "high"
+        },
+        "Plan": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "research",
+          "effort": "high"
+        },
+        "browser_agent": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "implement",
+          "effort": "medium"
+        },
+        "claude": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "implement",
+          "effort": "medium"
+        },
+        "claude-code-guide": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "research",
+          "effort": "high"
+        },
+        "cli_help": {
+          "model": "openrouter/xiaomi/mimo-v2.6-flash",
+          "category": "mechanical",
+          "effort": "high"
+        },
+        "code-review": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "review",
+          "effort": "high"
+        },
+        "codebase_investigator": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "research",
+          "effort": "high"
+        },
+        "default": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "research",
+          "effort": "high"
+        },
+        "explore": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "research",
+          "effort": "high"
+        },
+        "explorer": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "research",
+          "effort": "high"
+        },
+        "general-purpose": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "implement",
+          "effort": "medium"
+        },
+        "generalist": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "implement",
+          "effort": "medium"
+        },
+        "k-agent-adversarial-verifier": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "refute",
+          "effort": "high"
+        },
+        "k-agent-change-auditor": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-claim-verifier": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "refute",
+          "effort": "high"
+        },
+        "k-agent-code-searcher": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "research",
+          "effort": "high"
+        },
+        "k-agent-criteria-verifier": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "refute",
+          "effort": "high"
+        },
+        "k-agent-findings-auditor": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-fresh-eyes": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-implementer": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "implement",
+          "effort": "medium"
+        },
+        "k-agent-live-ui-review": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-mechanical": {
+          "model": "openrouter/xiaomi/mimo-v2.6-flash",
+          "category": "mechanical",
+          "effort": "high"
+        },
+        "k-agent-post-review": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-pr-necessity-auditor": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-public-sources": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "research",
+          "effort": "high"
+        },
+        "k-agent-review-worker": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-reviewer": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "review",
+          "effort": "high"
+        },
+        "k-agent-smol": {
+          "model": "openrouter/xiaomi/mimo-v2.6-flash",
+          "category": "memory",
+          "effort": "high"
+        },
+        "rem-agent": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "research",
+          "effort": "high"
+        },
+        "research": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "research",
+          "effort": "high"
+        },
+        "reviewer": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "review",
+          "effort": "high"
+        },
+        "rubber-duck": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "research",
+          "effort": "high"
+        },
+        "scout": {
+          "model": "openrouter/xiaomi/mimo-v2.6-flash",
+          "category": "mechanical",
+          "effort": "high"
+        },
+        "security-review": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "review",
+          "effort": "high"
+        },
+        "security-reviewer": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "review",
+          "effort": "high"
+        },
+        "sonic": {
+          "model": "openrouter/xiaomi/mimo-v2.6-flash",
+          "category": "mechanical",
+          "effort": "high"
+        },
+        "task": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "implement",
+          "effort": "medium"
+        },
+        "worker": {
+          "model": "openrouter/xiaomi/mimo-v2.6-pro",
+          "category": "implement",
+          "effort": "medium"
+        }
+      },
+      "reachable_agents": [],
+      "counter_models": [
+        "openrouter/xiaomi/mimo-v2.6-pro"
+      ],
+      "cheap_lane_models": [
+        "openrouter/xiaomi/mimo-v2.6-flash"
+      ],
+      "lane_models": [
+        "openrouter/xiaomi/mimo-v2.6-flash",
+        "openrouter/xiaomi/mimo-v2.6-pro"
+      ],
+      "session": {
+        "model": "openrouter/xiaomi/mimo-v2.6-pro",
+        "effort": "high",
+        "context": "long"
       }
     },
     "pi": {

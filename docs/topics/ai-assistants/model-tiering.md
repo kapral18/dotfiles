@@ -43,13 +43,14 @@ The SOP §3.7 routes settled implementation with stated acceptance and unwritten
 
 `session_models` is the root/main-session pick the user talks to. It is generated into every repo-owned root config and is never a binding target.
 
-| Harness       | Model                      | Effort | Context | Generated into                                                             |
-| ------------- | -------------------------- | ------ | ------- | -------------------------------------------------------------------------- |
-| `claude_code` | `claude-opus-5-5`          | high   | long    | `home/dot_claude/settings.{work,personal}.json`                            |
-| `codex`       | `gpt-6.1-sol`              | high   | short   | `home/dot_codex/private_config.{work,personal}.toml`                       |
-| `antigravity` | `gemini-3.8-flash`         | high   | long    | `home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json`    |
-| `pi`          | `openai-codex/gpt-6.1-sol` | high   | short   | `home/dot_pi/agent/readonly_settings.{work,personal}.json`                 |
-| `omp`         | `openai-codex/gpt-6.1-sol` | high   | short   | `home/dot_omp/private_agent/readonly_config.yml.tmpl` `modelRoles.default` |
+| Harness       | Model                             | Effort | Context | Generated into                                                             |
+| ------------- | --------------------------------- | ------ | ------- | -------------------------------------------------------------------------- |
+| `claude_code` | `claude-sonnet-5-5`               | high   | long    | `home/dot_claude/settings.{work,personal}.json`                            |
+| `codex`       | `gpt-6.1-sol`                     | high   | short   | `home/dot_codex/private_config.{work,personal}.toml`                       |
+| `antigravity` | `gemini-3.8-flash`                | high   | long    | `home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json`    |
+| `pi`          | `openai-codex/gpt-6.1-sol`        | high   | short   | `home/dot_pi/agent/readonly_settings.{work,personal}.json`                 |
+| `omp`         | `openai-codex/gpt-6.1-sol`        | high   | short   | `home/dot_omp/private_agent/readonly_config.yml.tmpl` `modelRoles.default` |
+| `openrouter`  | `openrouter/xiaomi/mimo-v2.6-pro` | high   | long    | nothing: virtual harness for the `*-openrouter` wrappers                   |
 
 ## Per-harness picks
 
@@ -138,7 +139,20 @@ Pi defaults to the ChatGPT-subscription `openai-codex` provider: GPT-6.1 Sol for
 
 Pi category models never include a `:level` suffix. Every managed profile renders `model:` through the existing model partial and renders a separate `thinking:` line through `agent-thinking.partial`; the line is omitted when effort is empty. `pi-subagents` accepts `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and `max` in that frontmatter field.
 
-Only Pi rows beginning with `openrouter/` can become OpenRouter wrapper wire models; the default rows contain none, so only an OpenRouter-backed Pi profile produces them. The deployed `openrouter_presets.py --pi-openrouter-wire-models` helper reads those rows and emits `<model-without-openrouter/>@preset/effort-<effort>`.
+### OpenRouter wrapper lanes
+
+`category_models.openrouter` is the lane matrix of `,claude-openrouter` and `,codex-openrouter`. It is a virtual harness: no profile files, no root config, and no dispatch of its own, so `binding_fallbacks.openrouter` is `none`. The wrappers export `AGENT_BAND_SCHEMA_HARNESS=openrouter`, and the deployed `openrouter_presets.py --lane-wire-models` helper reads the rows beginning with `openrouter/` and emits `<model-without-openrouter/>@preset/effort-<effort>`.
+
+| Category     | Model                               | Effort | Context | Verifier status |
+| ------------ | ----------------------------------- | ------ | ------- | --------------- |
+| `mechanical` | `openrouter/xiaomi/mimo-v2.6-flash` | high   | long    | —               |
+| `research`   | `openrouter/xiaomi/mimo-v2.6-pro`   | high   | long    | —               |
+| `implement`  | `openrouter/xiaomi/mimo-v2.6-pro`   | medium | long    | —               |
+| `review`     | `openrouter/xiaomi/mimo-v2.6-pro`   | high   | long    | —               |
+| `refute`     | `openrouter/xiaomi/mimo-v2.6-pro`   | high   | long    | degraded        |
+| `memory`     | `openrouter/xiaomi/mimo-v2.6-flash` | high   | short   | —               |
+
+The matrix is the MiMo V2.6 Pro/Flash pair (user call 2026-10-02). One family is in play, so `refute` reuses the review pick and reports degraded independence.
 
 #### Pi model profiles
 
@@ -153,7 +167,7 @@ Pi is the one harness with a machine-local alternate pricing. The `pi_model_prof
 | `openrouter-free` | `openrouter/deepseek/deepseek-v4-flash-0731:free` | OpenRouter `:free` ids only: DeepSeek V4 Flash for research/review at max, Nex N2.5 Pro for implement and the cross-family counter, Nex N2.5 Mini cheap lanes; rate-limited upstream and only as stable as OpenRouter's free roster |
 | `nvidia-free`     | `nvidia/z-ai/glm-5.3-flash`                       | NVIDIA NIM free endpoints only: GLM 5.3 Flash on every lane (research/review at max, the rest at high; the same-model counter is degraded); needs `NVIDIA_API_KEY`                                                                  |
 
-`default` is a reserved name, not a key: it means `session_models.pi` + `category_models.pi` themselves, because those two sections are the shared schema every generator, the committed projection and the OpenRouter wrappers read. `local` runs entirely on the [llama.cpp router](./llama-cpp/index.md), so it needs no subscription provider and no network.
+`default` is a reserved name, not a key: it means `session_models.pi` + `category_models.pi` themselves, because those two sections are the shared schema every Pi generator and the committed projection read. `local` runs entirely on the [llama.cpp router](./llama-cpp/index.md), so it needs no subscription provider and no network.
 
 The active name is one line in `${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi/pi-model-profile`, outside the source state: the pick is per machine, not per commit. `pi-model-profile.partial` reads it at apply time, so `agent-model.partial`, `review-agent-model.partial` and `agent-thinking.partial` render the active rows into the 16 Pi agent profiles, and the Pi merge hook patches `defaultProvider`/`defaultModel`/`defaultThinkingLevel` in `~/.pi/agent/settings.json` from the active session row. With no state file everything renders the `codex` profile (user call 2026-09-23); `default` stays selectable by name, and its OpenRouter rows remain the schema the OpenRouter launchers read. An unrecognised name fails the apply instead of falling back, because a silent fallback would restore the rows the profile exists to replace.
 
@@ -161,7 +175,7 @@ Every structural rule that holds for the default Pi rows holds for each profile:
 
 Inside a running Pi session the same switch is `/model-profile` ([`pi-model-profile.ts`](../../../home/dot_pi/agent/exact_extensions/pi-model-profile.ts)): it drives the same picker, then re-points only that session's model and thinking level from the profile's session row, because the apply reaches new sessions and subagents rather than the one already running.
 
-`harnesses.pi` in the generated band projection stays the `default` profile regardless of the active name. Nothing in Pi reads it; its readers are the `*-openrouter` wrappers, which filter to `openrouter/` rows and would lose every lane on a non-OpenRouter profile. Read it as "the OpenRouter wrapper lane table", not "what Pi runs now".
+`harnesses.pi` in the generated band projection stays the `default` profile regardless of the active name. Nothing in Pi reads it.
 
 ### OMP
 

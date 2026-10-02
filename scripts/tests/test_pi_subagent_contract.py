@@ -494,7 +494,6 @@ class TestPiSubagentContractSource(unittest.TestCase):
                 self.assertEqual(
                     settings["packages"],
                     [
-                        "~/.local/share/pnpm-global-links/node_modules/pi-mcp-adapter",
                         {
                             "source": PI_SUBAGENTS_SOURCE,
                             "extensions": [],
@@ -718,9 +717,6 @@ class TestPiSubagentContractNative(unittest.TestCase):
         adapter_entries = [e for e in resolve["extensions"] if e["path"].endswith("subagent-contract.ts")]
         self.assertEqual(len(adapter_entries), 1)
         self.assertTrue(adapter_entries[0]["enabled"])
-        package_entries = [e for e in resolve["extensions"] if "pi-mcp-adapter" in e["path"]]
-        self.assertTrue(package_entries)
-        self.assertTrue(all(e["enabled"] for e in package_entries))
 
 
 if __name__ == "__main__":

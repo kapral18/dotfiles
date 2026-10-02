@@ -351,7 +351,7 @@ def _codex_catalog(tier: str, model_ids: list[str], api_key: str) -> dict:
     return {"models": models}
 
 
-def _pi_openrouter_wire_models() -> list[str]:
+def _lane_wire_models() -> list[str]:
     configured = os.environ.get("CHEZMOI_SOURCE_DIR")
     candidates = [Path(configured).expanduser()] if configured else []
     candidates.extend((Path("~/.local/share/chezmoi").expanduser(), Path.cwd()))
@@ -367,9 +367,9 @@ def _pi_openrouter_wire_models() -> list[str]:
         raise PresetError("cannot locate home/.chezmoidata/ai_models/tiering.yaml")
     lines = tiering.read_text(encoding="utf-8").splitlines()
 
-    # `session_models.pi` precedes `category_models.pi`; only the category block carries lane rows.
+    # `session_models.openrouter` precedes `category_models.openrouter`; only the category block carries lane rows.
     in_category_models = False
-    in_pi = False
+    in_lanes = False
     category = ""
     rows: dict[str, dict[str, str]] = {}
     for line in lines:
@@ -377,14 +377,14 @@ def _pi_openrouter_wire_models() -> list[str]:
         stripped = line.strip()
         if indent == 0 and stripped and not stripped.startswith("#"):
             in_category_models = stripped == "category_models:"
-            in_pi = False
+            in_lanes = False
             continue
         if not in_category_models:
             continue
-        if stripped == "pi:" and indent == 2:
-            in_pi = True
+        if stripped == "openrouter:" and indent == 2:
+            in_lanes = True
             continue
-        if not in_pi:
+        if not in_lanes:
             continue
         if stripped and not stripped.startswith("#") and indent <= 2:
             break
@@ -405,21 +405,21 @@ def _pi_openrouter_wire_models() -> list[str]:
             continue
         effort = row.get("effort", "")
         if not effort:
-            raise PresetError(f"category_models.pi.{category}.effort must not be empty")
+            raise PresetError(f"category_models.openrouter.{category}.effort must not be empty")
         wire = f"{model.removeprefix('openrouter/')}@preset/effort-{effort}"
         if wire not in wires:
             wires.append(wire)
     if not wires:
-        raise PresetError("category_models.pi has no OpenRouter rows")
+        raise PresetError("category_models.openrouter has no OpenRouter rows")
     return wires
 
 
 def main(argv: list[str]) -> int:
-    if argv == ["--pi-openrouter-wire-models"]:
+    if argv == ["--lane-wire-models"]:
         try:
-            print("\n".join(_pi_openrouter_wire_models()))
+            print("\n".join(_lane_wire_models()))
         except PresetError as error:
-            print(f"Error: OpenRouter Pi lane projection failed: {error}", file=sys.stderr)
+            print(f"Error: OpenRouter lane projection failed: {error}", file=sys.stderr)
             return 1
         return 0
     if len(argv) == 3 and argv[0] == "--context-window":
@@ -448,7 +448,7 @@ def main(argv: list[str]) -> int:
         return 0
     if len(argv) != 1:
         print(
-            "Usage: openrouter_presets.py EFFORT | --pi-openrouter-wire-models | "
+            "Usage: openrouter_presets.py EFFORT | --lane-wire-models | "
             "--context-window MODEL short|long | --session-budget-env short|long MODEL... | "
             "--codex-model-catalog short|long MODEL...",
             file=sys.stderr,

@@ -17,3 +17,8 @@ mcp_servers:
       claude:
         clientId: "1601185624273.8899143856786"
         callbackPort: 3118
+      # Same public client; scopes are the granular `search:read.*` set from Slack's `scopes_supported`.
+      pi:
+        clientId: "1601185624273.8899143856786"
+        callbackUrl: "http://localhost:3118/callback"
+        scope: "search:read.public search:read.private search:read.mpim search:read.im search:read.files search:read.users"

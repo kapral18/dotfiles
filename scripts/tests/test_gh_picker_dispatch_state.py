@@ -259,9 +259,9 @@ class TestGhPickerDispatchState(unittest.TestCase):
             assert nohup_log.exists(), "foreground dispatch never invoked nohup"
             assert "OUTER_TMUX_SOCKET=/private/tmp/outer/default" in nohup_log.read_text()
 
-    def test_branch_agent_uses_glm_flash_max_effort(self):
+    def test_branch_agent_uses_mimo_flash_high_effort(self):
         script = (TMUX_PICKERS / "github/executable_gh_batch_worktree.sh").read_text()
-        assert ('exec ,claude-openrouter --model z-ai/glm-5.3-flash --effort high -- "$(cat "$1")"') in script
+        assert ('exec ,claude-openrouter --model xiaomi/mimo-v2.6-flash --effort high -- "$(cat "$1")"') in script
 
     def test_foreground_issue_editor_exit_dispatches_every_worktree(self):
         script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"

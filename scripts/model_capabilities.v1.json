@@ -91,7 +91,7 @@
       "identity": {
         "binary": "pi",
         "package": "@earendil-works/pi-coding-agent",
-        "version": "0.80.6"
+        "version": "1.0.0"
       },
       "live_probe": {
         "adapter": "pi-list-models",

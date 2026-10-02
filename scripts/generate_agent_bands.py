@@ -45,6 +45,7 @@ PROFILE_DIRS = {
     "omp": ("home/dot_omp/private_agent/exact_agents", "", ".md.tmpl"),
     "pi": ("home/dot_pi/agent/exact_agents", "", ".md.tmpl"),
     "antigravity": None,
+    "openrouter": None,
 }
 
 

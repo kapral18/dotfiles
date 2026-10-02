@@ -362,7 +362,7 @@ CAPABILITIES = {
     ),
     "pi": HarnessCapability(
         leaf="pi",
-        verified_version="0.80.6",
+        verified_version="1.0.0",
         depth_transport="thinking-flag",
         execution={
             "readonly": ("--tools", "read,grep,find,ls"),

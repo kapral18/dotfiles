@@ -41,7 +41,7 @@ Claude subagent model overrides are limited to the installed SDK schema (`sonnet
 
 - Review profiles pin the `category_models.claude_code` id (`review` / `refute` rows) so profile frontmatter and the bands projection name the same model; a session launched on another model does not silently retarget them.
 - Built-in shadows: repo-owned same-name profiles override high-risk embedded builtins (`Explore`, `Plan`, `general-purpose`, `claude-code-guide`, `claude`) so normal Task launches use our profile frontmatter instead of embedded defaults.
-- Wrapper guard: `,claude-openrouter` uses the Pi backend matrix through session-projected native `--agents` definitions.
+- Wrapper guard: `,claude-openrouter` uses the `openrouter` backend matrix through session-projected native `--agents` definitions.
   Each managed profile carries its exact preset selector, including refute's distinct effort, while its prompt and skill preloads remain unchanged.
   The hook requires the fresh `AGENT_BAND_CLAUDE_ROUTES` role/pair map and removes call-level model overrides so the profile wins.
   Do not delegate with missing or stale profiles, conflicting inherited controls, a resume request, or a full-history fork.

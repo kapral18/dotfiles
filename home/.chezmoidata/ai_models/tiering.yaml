@@ -4,7 +4,7 @@
 # Never a delegation target.
 session_models:
   claude_code:
-    model: "claude-opus-5-5"
+    model: "claude-sonnet-5-5"
     effort: "high"
     context: "long"
   codex:
@@ -23,6 +23,11 @@ session_models:
     model: "openai-codex/gpt-6.1-sol"
     effort: "high"
     context: "short"
+  # Virtual harness for `,claude-openrouter` and `,codex-openrouter`: no profile files, no root config.
+  openrouter:
+    model: "openrouter/xiaomi/mimo-v2.6-pro"
+    effort: "high"
+    context: "long"
 agent_categories:
   # Mechanical covers any settled procedure with a stated rule and specified return: retrieval, execution, extraction, transformation, compression, or reporting.
   mechanical:
@@ -107,6 +112,9 @@ binding_fallbacks:
   antigravity:
     generic: "generalist"
     reason: "No profile files exist; all lanes are dynamic define_subagent/invoke_subagent calls at the flash tier."
+  openrouter:
+    generic: "none"
+    reason: "Lane-matrix schema only: the wrapped Claude or Codex harness owns every dispatch, so this schema never dispatches a profile."
 
 # `effort` is the harness-literal dial; `thinking: ""` means no separate toggle; `context` is a short/long window tier.
 # `verifier_status` is one of cross_family, reduced_independence, or degraded.
@@ -281,11 +289,45 @@ category_models:
       effort: "high"
       thinking: ""
       context: "short"
+  # Lane matrix the OpenRouter wrappers project (user call 2026-10-02: the MiMo V2.6 pair).
+  # One vendor family, so refute reuses the review pick and declares degraded independence.
+  openrouter:
+    mechanical:
+      model: "openrouter/xiaomi/mimo-v2.6-flash"
+      effort: "high"
+      thinking: ""
+      context: "long"
+    research:
+      model: "openrouter/xiaomi/mimo-v2.6-pro"
+      effort: "high"
+      thinking: ""
+      context: "long"
+    implement:
+      model: "openrouter/xiaomi/mimo-v2.6-pro"
+      effort: "medium"
+      thinking: ""
+      context: "long"
+    review:
+      model: "openrouter/xiaomi/mimo-v2.6-pro"
+      effort: "high"
+      thinking: ""
+      context: "long"
+    refute:
+      model: "openrouter/xiaomi/mimo-v2.6-pro"
+      effort: "high"
+      thinking: ""
+      context: "long"
+      verifier_status: "degraded"
+    memory:
+      model: "openrouter/xiaomi/mimo-v2.6-flash"
+      effort: "high"
+      thinking: ""
+      context: "short"
 
 # Alternate whole pricings for Pi only, selected per machine by `,pi-model-profile` (the active name
 # lives in `${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi/pi-model-profile`, outside this repo). `default` is a reserved name meaning
 # `session_models.pi` + `category_models.pi` above; it must never appear as a key here, because those
-# two sections are the shared schema every generator, projection, and OpenRouter wrapper reads.
+# two sections are the shared schema every Pi generator and projection read.
 # Profiles are full rows, not sparse overlays: every structural rule that holds for `category_models.pi`
 # holds for each profile, so switching cannot silently drop a tier.
 pi_model_profiles:

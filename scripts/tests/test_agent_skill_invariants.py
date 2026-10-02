@@ -599,7 +599,6 @@ class TestAgentSkillInvariants(unittest.TestCase):
             # source-owned subagent-contract.ts adapter is the sole `subagent`
             # owner, so the package entry filters extensions, skills, and prompts.
             assert settings["packages"] == [
-                "~/.local/share/pnpm-global-links/node_modules/pi-mcp-adapter",
                 {
                     "source": "~/.local/share/pnpm-global-links/node_modules/pi-subagents",
                     "extensions": [],

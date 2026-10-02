@@ -13,8 +13,8 @@
   "defaults": {
     "harnesses": {
       "claude": {
-        "personal": "claude-opus-5-5",
-        "work": "claude-opus-5-5"
+        "personal": "claude-sonnet-5-5",
+        "work": "claude-sonnet-5-5"
       },
       "codex": {
         "personal": "gpt-6.1-sol",
@@ -91,7 +91,7 @@
       "curated": {
         "complete": true,
         "models": [
-          "claude-opus-5-5"
+          "claude-sonnet-5-5"
         ],
         "provenance": [
           {
@@ -115,7 +115,7 @@
       "recommended": {
         "complete": true,
         "models": [
-          "claude-opus-5-5"
+          "claude-sonnet-5-5"
         ],
         "provenance": [
           {
@@ -394,7 +394,7 @@
             "kind": "installed-harness",
             "observed_at": "2026-08-24",
             "source": "@earendil-works/pi-coding-agent",
-            "version": "0.80.6"
+            "version": "1.0.0"
           },
           {
             "kind": "registry",
@@ -440,7 +440,7 @@
       "identity": {
         "binary": "pi",
         "package": "@earendil-works/pi-coding-agent",
-        "version": "0.80.6"
+        "version": "1.0.0"
       },
       "live_probe": {
         "adapter": "pi-list-models",

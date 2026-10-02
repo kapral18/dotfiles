@@ -22,7 +22,7 @@ fi
 # model-agnostic OpenRouter workspace preset: `<model>@preset/effort-<level>` on /api/v1/messages.
 # Every --model uses the same slug. Presets are workspace state via
 # POST /api/v1/presets/<slug>/chat/completions.
-OPENROUTER_MODEL="z-ai/glm-5.3-flash"
+OPENROUTER_MODEL="xiaomi/mimo-v2.6-pro"
 OPENROUTER_EFFORT="high"
 OPENROUTER_CONTEXT="long"
 
@@ -104,15 +104,15 @@ fi
 export OPENROUTER_API_KEY="$api_key"
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
 readonly OPENROUTER_CLAUDE_MODEL="$OPENROUTER_WIRE_MODEL"
-mapfile -t OPENROUTER_PI_WIRE_MODELS < <("$OPENROUTER_PRESET_HELPER" --pi-openrouter-wire-models)
-if [[ "${#OPENROUTER_PI_WIRE_MODELS[@]}" -eq 0 ]]; then
-  echo "Error: Pi tiering declares no OpenRouter lane models." >&2
+mapfile -t OPENROUTER_LANE_WIRE_MODELS < <("$OPENROUTER_PRESET_HELPER" --lane-wire-models)
+if [[ "${#OPENROUTER_LANE_WIRE_MODELS[@]}" -eq 0 ]]; then
+  echo "Error: category_models.openrouter declares no lane models." >&2
   exit 1
 fi
-readonly -a OPENROUTER_PI_WIRE_MODELS
+readonly -a OPENROUTER_LANE_WIRE_MODELS
 "$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"
 prepared_efforts=" $OPENROUTER_EFFORT "
-for wire_model in "${OPENROUTER_PI_WIRE_MODELS[@]}"; do
+for wire_model in "${OPENROUTER_LANE_WIRE_MODELS[@]}"; do
   wire_effort="${wire_model##*@preset/effort-}"
   if [[ "$prepared_efforts" != *" $wire_effort "* ]]; then
     "$OPENROUTER_PRESET_HELPER" "$wire_effort"
@@ -120,7 +120,7 @@ for wire_model in "${OPENROUTER_PI_WIRE_MODELS[@]}"; do
   fi
 done
 session_budget="$("$OPENROUTER_PRESET_HELPER" --session-budget-env "$OPENROUTER_CONTEXT" \
-  "$OPENROUTER_MODEL" "${OPENROUTER_PI_WIRE_MODELS[@]}")"
+  "$OPENROUTER_MODEL" "${OPENROUTER_LANE_WIRE_MODELS[@]}")"
 while IFS='=' read -r budget_name budget_value; do
   case "$budget_name" in
   CONTEXT_LIMIT) OPENROUTER_CONTEXT_LIMIT="$budget_value" ;;
@@ -136,8 +136,8 @@ readonly OPENROUTER_CONTEXT_LIMIT OPENROUTER_MAX_OUTPUT_TOKENS OPENROUTER_PROMPT
 
 # Claude Code appends /v1/messages, so the base URL stops at /api. OpenRouter answers
 # that path with the Anthropic Messages schema, usage block included.
-# Managed --agents definitions carry exact Pi model/effort selectors, including
-# refute's distinct xhigh route. The gate removes call-level model overrides.
+# Managed --agents definitions carry exact `category_models.openrouter` model/effort selectors.
+# The gate removes call-level model overrides.
 # The OpenRouter preset carries the real effort; the Claude client effort
 # mirrors it when supported, with low as the client gate for non-thinking presets.
 case "$OPENROUTER_EFFORT" in
@@ -156,7 +156,7 @@ readonly CLAUDE_EFFORT
 export ANTHROPIC_MODEL="$OPENROUTER_CLAUDE_MODEL"
 export ANTHROPIC_DEFAULT_FABLE_MODEL="$OPENROUTER_WIRE_MODEL"
 export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_WIRE_MODEL"
-export ANTHROPIC_DEFAULT_SONNET_MODEL="${OPENROUTER_PI_WIRE_MODELS[0]}"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="${OPENROUTER_LANE_WIRE_MODELS[0]}"
 export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OPENROUTER_WIRE_MODEL"
 unset CLAUDE_CODE_SUBAGENT_MODEL
 export CLAUDE_CODE_DISABLE_THINKING=1
@@ -175,11 +175,11 @@ readonly CLAUDE_AUTO_COMPACT
 export CLAUDE_CODE_AUTO_COMPACT_WINDOW="$CLAUDE_AUTO_COMPACT"
 unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE
 unset AGENT_BAND_SUBSCRIPTION AGENT_BAND_CLAUDE_ROUTES AGENT_BAND_CODEX_ROUTES
-export AGENT_BAND_SCHEMA_HARNESS="pi"
+export AGENT_BAND_SCHEMA_HARNESS="openrouter"
 export AGENT_BAND_MODEL_FORMAT="openrouter-preset"
 export ANTHROPIC_BASE_URL="https://openrouter.ai/api"
 export ANTHROPIC_AUTH_TOKEN="$api_key"
 export ANTHROPIC_API_KEY=""
 unset ANTHROPIC_CUSTOM_HEADERS
 
-exec python3 "$HOME/lib/shared/claude_lanes.py" pi -- claude --model "$OPENROUTER_CLAUDE_MODEL" --effort "$CLAUDE_EFFORT" "${args[@]}"
+exec python3 "$HOME/lib/shared/claude_lanes.py" openrouter -- claude --model "$OPENROUTER_CLAUDE_MODEL" --effort "$CLAUDE_EFFORT" "${args[@]}"

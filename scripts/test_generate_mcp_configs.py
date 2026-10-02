@@ -57,6 +57,34 @@ mcp_servers:
             "local": {"type": "stdio", "command": "echo", "args": ["plain"]},
         }
 
+    def test_pi_transform_emits_the_built_in_oauth_shape(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            registry = Path(temporary) / "mcp_servers.yaml"
+            registry.write_text(
+                """
+mcp_servers:
+  - name: remote
+    work_only: false
+    type: http
+    url: https://first.example/mcp
+    oauth_by_tool:
+      pi:
+        clientId: "client-1"
+        callbackPort: 8765
+        scope: "read.a, read.b"
+""".lstrip()
+            )
+            actual = json.loads(run_script(["generate_mcp_configs.py", str(registry), "false", "pi"]))
+
+        assert actual == {
+            "mcpServers": {
+                "remote": {
+                    "url": "https://first.example/mcp",
+                    "oauth": {"clientId": "client-1", "callbackPort": 8765, "scope": "read.a read.b"},
+                }
+            }
+        }
+
     def test_gemini_transform_uses_antigravity_server_url(self):
         actual = json.loads(
             run_script(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false", "gemini"])

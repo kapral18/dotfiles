@@ -27,7 +27,6 @@ The AI package set spans casks, Homebrew formulae, pnpm globals, uv tools, custo
 
 | Tool                                                                        | Source                      | Why it is here                                                |
 | --------------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------- |
-| [`pi-mcp-adapter`](https://github.com/nicobailon/pi-mcp-adapter)            | `pnpm`                      | MCP adapter extension loaded by Pi settings                   |
 | [`pi-subagents`](https://github.com/nicobailon/pi-subagents)                | `pnpm`                      | subagent delegation extension for Pi child contexts           |
 | [`tuicr`](https://github.com/agavra/tuicr)                                  | `brew`                      | terminal review UI used around agent diff review flows        |
 | [`lgtm`](https://github.com/kunkka19xx/lgtm)                                | `brew` tap `kunkka19xx/tap` | live terminal diff reviewer that runs beside an agent in tmux |

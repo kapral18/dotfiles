@@ -15,7 +15,7 @@ Codex has two layers. The transparent `,codex` wrapper supplies catalog metadata
 
 OpenCode reads providers from `~/.config/opencode/opencode.jsonc`, so its launcher only normalizes model selection and passes the rest through.
 
-Claude Code has one global `autoCompactWindow`, but cloud `claude-opus-5-5`, 262144-token local models, and work Qwen3.6 need different values. The llama.cpp launcher picks a model-scoped additive settings file: base local models use `200000` and work Qwen3.6 uses `100000`. Plain cloud Claude sessions and their subagents use the `400000` from the user settings. Those additive files keep thinking off and pin each local model to `high`, matching the native cloud root's effort without changing local context windows.
+Claude Code has one global `autoCompactWindow`, but cloud `claude-sonnet-5-5`, 262144-token local models, and work Qwen3.6 need different values. The llama.cpp launcher picks a model-scoped additive settings file: base local models use `200000` and work Qwen3.6 uses `100000`. Plain cloud Claude sessions and their subagents use the `400000` from the user settings. Those additive files keep thinking off and pin each local model to `high`, matching the native cloud root's effort without changing local context windows.
 
 ## Using it
 
@@ -115,10 +115,10 @@ Any subcommand/args pass through.
 
 Claude Code compacts conversation history at `autoCompactWindow` tokens.
 
-| Context                 | Desired value                                                        |
-| ----------------------- | -------------------------------------------------------------------- |
-| Cloud `claude-opus-5-5` | `400000` from `settings.{personal,work}.json`                        |
-| Local llama.cpp         | compact below server context so llama.cpp does not reject the prompt |
+| Context                   | Desired value                                                        |
+| ------------------------- | -------------------------------------------------------------------- |
+| Cloud `claude-sonnet-5-5` | `400000` from `settings.{personal,work}.json`                        |
+| Local llama.cpp           | compact below server context so llama.cpp does not reject the prompt |
 
 Those needs conflict on a single global setting.
 

@@ -1,1 +1,1 @@
-complete -c ',install-pnpm-pkgs' --no-files -d 'Sync listed pnpm packages with exotic subdependencies allowed, build approvals, and stable links'
+complete -c ',install-pnpm-pkgs' --no-files -d 'Sync listed pnpm packages with build approvals and stable links'

@@ -26,7 +26,6 @@ state = json.loads(state_path.read_text(encoding="utf-8"))
 state["pnpm_home"] = os.environ["PNPM_HOME"]
 args = sys.argv[1:]
 state.setdefault("calls", []).append(" ".join(args))
-state.setdefault("exotic_settings", []).append(os.environ.get("PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS"))
 if args == ["root", "-g"]:
     state_path.write_text(json.dumps(state), encoding="utf-8")
     if state.get("root_behavior") == "fail":
@@ -324,34 +323,6 @@ class TestInstallPnpmPkgs(unittest.TestCase):
             assert result.returncode == 0, result.stderr
             assert self._actions(log) == ["update -g --latest current"]
             assert self._link(home, "current").is_symlink()
-
-    def test_SHOULD_allow_exotic_subdeps_only_for_desired_adds_and_updates(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            home, bindir, log, state = self._fixture(
-                tmp,
-                "fresh\n@org/pinned@2.0.0\ncurrent\n",
-                {"@org/pinned": "1.0.0", "current": "1.0.0", "stray": "1.0.0"},
-                outdated=self._behind("current"),
-            )
-            with patch.dict(os.environ, {"PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS": "true"}):
-                result = self._run(home, bindir, log, state)
-                assert os.environ["PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS"] == "true"
-            recorded = json.loads(state.read_text())
-
-        assert result.returncode == 0, result.stderr
-        allowed = {
-            "add -g fresh@latest --yes",
-            "add -g @org/pinned@2.0.0 --yes",
-            "update -g --latest current --yes",
-        }
-        assert allowed.issubset(recorded["calls"])
-        # A package installed at latest in this run is not updated again; the outdated probe runs without the override.
-        assert "update -g --latest fresh --yes" not in recorded["calls"]
-        assert "outdated -g --json" in recorded["calls"]
-        assert "remove -g stray --yes" in recorded["calls"]
-        assert len(recorded["calls"]) == len(recorded["exotic_settings"])
-        for call, setting in zip(recorded["calls"], recorded["exotic_settings"]):
-            assert setting == ("false" if call in allowed else "true"), (call, setting)
 
     def test_SHOULD_fail_without_pnpm_on_path(self):
         with tempfile.TemporaryDirectory() as tmp:

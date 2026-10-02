@@ -74,7 +74,7 @@ function __openrouter_catalog_model
                 return
         end
     end
-    echo z-ai/glm-5.3-flash
+    echo xiaomi/mimo-v2.6-pro
 end
 
 function __openrouter_catalog_efforts

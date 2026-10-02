@@ -183,7 +183,7 @@ if [ "$background" -eq 0 ]; then
       {
         printf '#!/usr/bin/env bash\n'
         printf 'set -euo pipefail\n'
-        printf 'exec ,claude-openrouter --model z-ai/glm-5.3-flash --effort high -- "$(cat "$1")"\n'
+        printf 'exec ,claude-openrouter --model xiaomi/mimo-v2.6-flash --effort high -- "$(cat "$1")"\n'
       } > "$agent_launcher"
       chmod +x "$agent_launcher"
       agent_cmd="$(printf '%q %q' "$agent_launcher" "$prompt_inst")"

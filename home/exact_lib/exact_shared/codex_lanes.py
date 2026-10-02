@@ -55,7 +55,7 @@ def project_roles(directory: Path, selectors: dict[str, str], available: set[str
 
 def openrouter_roles(directory: Path, catalog_path: Path) -> tuple[list[str], dict[str, str]]:
     projection = Path(os.environ.get("AGENT_BANDS_FILE", Path.home() / ".config/ai/agent-bands.v1.json"))
-    agents = json.loads(projection.read_text())["harnesses"]["pi"]["agents"]
+    agents = json.loads(projection.read_text())["harnesses"]["openrouter"]["agents"]
     selectors = {}
     for name, pick in agents.items():
         model, effort = pick["model"], pick.get("effort")

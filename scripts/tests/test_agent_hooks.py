@@ -4434,11 +4434,11 @@ class BandGateTests(unittest.TestCase):
             },
         )
 
-    def _projection_with_pi_openrouter_rows(self) -> dict:
-        # Pi's default rows ride `openai-codex` (2026-09-30), so the OpenRouter wire normalization is
-        # probed against explicit `openrouter/` rows, as an OpenRouter-backed Pi profile would project.
+    def _projection_with_openrouter_lane_rows(self) -> dict:
+        # The live `openrouter` matrix is one MiMo family with a degraded refute, so a distinct refute model
+        # is injected to probe the wire normalization and the refute-distinct admission with two wires.
         projection = json.loads((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_text())
-        agents = projection["harnesses"]["pi"]["agents"]
+        agents = projection["harnesses"]["openrouter"]["agents"]
         agents["k-agent-mechanical"] = {
             **agents["k-agent-mechanical"],
             "model": "openrouter/z-ai/glm-5.3-flash",
@@ -4452,12 +4452,12 @@ class BandGateTests(unittest.TestCase):
         return projection
 
     def test_openrouter_schema_rows_normalize_to_preset_wire_models(self):
-        # Pi rows are spelled `openrouter/<provider>/<model>` with the level in `effort`; only rows
+        # Lane rows are spelled `openrouter/<provider>/<model>` with the level in `effort`; only rows
         # on the OpenRouter route reach it, as `<provider>/<model>@preset/effort-<level>`, so the
         # prefix strip and the effort suffix are probed on the mechanical and refute rows.
-        projection = self._projection_with_pi_openrouter_rows()
+        projection = self._projection_with_openrouter_lane_rows()
         route_env = {
-            "AGENT_BAND_SCHEMA_HARNESS": "pi",
+            "AGENT_BAND_SCHEMA_HARNESS": "openrouter",
             "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
             "AGENT_BAND_CODEX_ROUTES": json.dumps(
                 {
@@ -4497,7 +4497,7 @@ class BandGateTests(unittest.TestCase):
                 "effort": "xhigh",
             },
         }
-        projection = {"harnesses": {"pi": {"agents": picks}}}
+        projection = {"harnesses": {"openrouter": {"agents": picks}}}
         routes = {
             "worker": "openai/gpt-test@preset/effort-high",
             "k-agent-smol": "google/gemini-test@preset/effort-low",
@@ -4505,7 +4505,7 @@ class BandGateTests(unittest.TestCase):
             "k-agent-adversarial-verifier": "openai/gpt-test@preset/effort-xhigh",
         }
         env = {
-            "AGENT_BAND_SCHEMA_HARNESS": "pi",
+            "AGENT_BAND_SCHEMA_HARNESS": "openrouter",
             "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
             "AGENT_BAND_CODEX_ROUTES": json.dumps(routes),
         }
@@ -4550,12 +4550,12 @@ class BandGateTests(unittest.TestCase):
         self.assertEqual(result["permissionDecision"], "deny")
 
     def test_SHOULD_keep_openrouter_refute_distinct_from_implementation(self):
-        projection = self._projection_with_pi_openrouter_rows()
+        projection = self._projection_with_openrouter_lane_rows()
         routes = {
             "k-agent-adversarial-verifier": "x-ai/grok-4.6@preset/effort-high",
         }
         env = {
-            "AGENT_BAND_SCHEMA_HARNESS": "pi",
+            "AGENT_BAND_SCHEMA_HARNESS": "openrouter",
             "AGENT_BAND_MODEL_FORMAT": "openrouter-preset",
             "AGENT_BAND_CLAUDE_ROUTES": json.dumps(routes),
         }

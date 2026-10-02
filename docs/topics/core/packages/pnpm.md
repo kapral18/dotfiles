@@ -45,11 +45,9 @@ It then compares the desired list with `pnpm ls -g --json`, installs missing pac
 
 After any add, remove, or update, the installer runs `lsof -n -P` (no host or port name lookups, which can otherwise outlast its 60-second timeout) and prints `Restart needed: <command> (pid <n>) still runs from removed <dir>` for every process that still has files open under a global project directory that no longer exists. On 2026-09-14 a one-package list edit rebuilt every global directory and a running Pi session silently lost its subagent launcher; this report names that process at the moment it happens. It is best effort: without `lsof`, or on a timeout, nothing is printed and the exit status is unchanged.
 
-pnpm 11+ installs every global package into its own hashed project directory under `~/.local/share/pnpm/global/v11/`, and that directory moves on every add or update. Consumers that need a stable module path (Pi's `packages` setting loads `pi-mcp-adapter` and `pi-subagents` by path; scoped names keep their `@scope/name` directory shape) read `~/.local/share/pnpm-global-links/node_modules/<package>` instead; the installer rebuilds that symlink tree after every sync.
+pnpm 11+ installs every global package into its own hashed project directory under `~/.local/share/pnpm/global/v11/`, and that directory moves on every add or update. Consumers that need a stable module path (Pi's `packages` setting loads `pi-subagents` by path; scoped names keep their `@scope/name` directory shape) read `~/.local/share/pnpm-global-links/node_modules/<package>` instead; the installer rebuilds that symlink tree after every sync.
 
 Package operations pass `--yes` and disconnect stdin so pnpm does not prompt during a chezmoi run, including when launched from a terminal. Unapproved dependency build scripts remain ignored.
-
-For installs and updates of listed packages, the installer passes `PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS=false` to that pnpm subprocess. This permits URL/git dependencies throughout those packages' dependency trees, including the `pkg.pr.new` dependencies used by `pi-mcp-adapter`. The override is not written to pnpm configuration and does not affect removal, inventory, build approvals, release-age rules, or ordinary pnpm commands outside the installer.
 
 If a package operation fails, the installer prints pnpm's error and stops with a nonzero exit status. It refreshes links from the installed state even after a partial sync. If that state cannot be read or parsed, it preserves the existing link tree and reports the failure.
 

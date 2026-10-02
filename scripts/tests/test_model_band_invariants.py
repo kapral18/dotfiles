@@ -840,6 +840,7 @@ class TestModelBandInvariants(unittest.TestCase):
             # Pi defaults to the openai-codex provider, which only exposes short windows (user call 2026-09-30).
             "pi": set(category_models["pi"]),
             "omp": set(category_models["omp"]),
+            "openrouter": {"memory"},
         }
         self.assertEqual(set(short_rows), set(category_models))
         for harness, rows in category_models.items():
@@ -1136,14 +1137,14 @@ class TestModelBandInvariants(unittest.TestCase):
                 re.compile(r'^model: .*:(?:off|minimal|low|medium|high|xhigh|max)"$', re.MULTILINE),
             )
 
+        wrapper_session = ai_models.load_session_models(registry)["openrouter"]
         for relative in (
             "home/exact_bin/executable_,claude-openrouter",
             "home/exact_bin/executable_,codex-openrouter",
         ):
             source = (REPO / relative).read_text()
-            # Default route is GLM 5.3 Flash high; model/effort flags still compose other preset slugs.
-            self.assertIn(f'OPENROUTER_MODEL="{default}"', source)
-            self.assertIn('OPENROUTER_EFFORT="high"', source)
+            self.assertIn(f'OPENROUTER_MODEL="{wrapper_session["model"].removeprefix("openrouter/")}"', source)
+            self.assertIn(f'OPENROUTER_EFFORT="{wrapper_session["effort"]}"', source)
 
         omp = (REPO / "home/dot_omp/private_agent/readonly_config.yml.tmpl").read_text()
         # Every modelRoles entry routes through OpenRouter for both profiles, and the memory lane

@@ -14,7 +14,6 @@
     "maxRetries": 5
   },
   "packages": [
-    "~/.local/share/pnpm-global-links/node_modules/pi-mcp-adapter",
     {
       "source": "~/.local/share/pnpm-global-links/node_modules/pi-subagents",
       "extensions": [],

@@ -872,13 +872,14 @@ class TestClaudeProfileProjection(unittest.TestCase):
                 picks[role] = {"model": f"openrouter/{model}", "effort": effort}
                 (agents / f"{role}.md").write_text(
                     f'---\nname: {role}\ndescription: "Preserved description"\nmodel: native\nreadonly: true\n'
-                    "tools: Read, Bash, Agent, SendMessage\ndisallowedTools: Write\nskills:\n  - k-fixture\n---\n"
+                    + ("omitClaudeMd: true\n" if role == "research" else "")
+                    + "tools: Read, Bash, Agent, SendMessage\ndisallowedTools: Write\nskills:\n  - k-fixture\n---\n"
                     "\nExact body.\nDo not delegate.\n"
                 )
             bands = home / "bands.json"
-            bands.write_text(json.dumps({"harnesses": {"pi": {"agents": picks}}}))
+            bands.write_text(json.dumps({"harnesses": {"openrouter": {"agents": picks}}}))
             with mock.patch.dict(os.environ, {"CLAUDE_CONFIG_DIR": str(home), "AGENT_BANDS_FILE": str(bands)}):
-                args, env = claude_lanes.project_roles("pi")
+                args, env = claude_lanes.project_roles("openrouter")
                 self.assertEqual(args[0], "--agents")
                 definitions = json.loads(args[1])
                 routes = json.loads(env["AGENT_BAND_CLAUDE_ROUTES"])
@@ -892,13 +893,14 @@ class TestClaudeProfileProjection(unittest.TestCase):
                             "tools": ["Read", "Bash"],
                             "disallowedTools": ["Agent", "SendMessage", "Task", "Write"],
                             "skills": ["k-fixture"],
+                            **({"omitClaudeMd": True} if role == "research" else {}),
                         },
                     )
                     self.assertEqual(routes[role], definitions[role]["model"])
-                limited, _ = claude_lanes.project_roles("pi", {"counter@preset/effort-xhigh"})
+                limited, _ = claude_lanes.project_roles("openrouter", {"counter@preset/effort-xhigh"})
                 self.assertEqual(set(json.loads(limited[1])), {"refute"})
                 with self.assertRaises(ValueError):
-                    claude_lanes.project_roles("pi", set())
+                    claude_lanes.project_roles("openrouter", set())
 
     def test_SHOULD_discover_only_exact_case_preserved_profile_names(self):
         import claude_lanes

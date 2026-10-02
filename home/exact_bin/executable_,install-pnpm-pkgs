@@ -29,13 +29,10 @@ def emit_failure(failure: PnpmFailure, prefix: str = "Error") -> None:
         print(failure.stderr, end="" if failure.stderr.endswith("\n") else "\n", file=sys.stderr)
 
 
-def run_pnpm(*args: str, allow_exotic_subdeps: bool = False) -> subprocess.CompletedProcess[str]:
-    env = {**os.environ, "PNPM_CONFIG_BLOCK_EXOTIC_SUBDEPS": "false"} if allow_exotic_subdeps else None
+def run_pnpm(*args: str) -> subprocess.CompletedProcess[str]:
     try:
         # pnpm can still prompt with --yes when stdin is a terminal and output is captured.
-        result = subprocess.run(
-            ["pnpm", *args], env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False
-        )
+        result = subprocess.run(["pnpm", *args], stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False)
     except OSError as error:
         raise PnpmFailure(f"could not run pnpm {' '.join(args)}: {error}") from error
     if result.returncode:
@@ -285,7 +282,7 @@ def main() -> int:
             if name not in installed or (pin and installed_version != pin):
                 print(f"Installing pnpm package: {name}@{pin or 'latest'}", flush=True)
                 mutated = True
-                run_pnpm("add", "-g", f"{name}@{pin or 'latest'}", "--yes", allow_exotic_subdeps=True)
+                run_pnpm("add", "-g", f"{name}@{pin or 'latest'}", "--yes")
             else:
                 print(f"pnpm package {name} is already installed", flush=True)
 
@@ -306,7 +303,7 @@ def main() -> int:
                 if name in behind:
                     print(f"Upgrading pnpm package to latest: {name}", flush=True)
                     mutated = True
-                    run_pnpm("update", "-g", "--latest", name, "--yes", allow_exotic_subdeps=True)
+                    run_pnpm("update", "-g", "--latest", name, "--yes")
                 else:
                     print(f"pnpm package {name} is already at latest", flush=True)
     except PnpmFailure as error:

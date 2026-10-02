@@ -41,7 +41,16 @@ def leaf_definition(source: str, name: str, wire: str) -> dict:
         if not match or match[1] in fields:
             raise ValueError(f"unsupported Claude profile header: {name}")
         key, value = match.groups()
-        if key not in {"name", "description", "model", "readonly", "tools", "disallowedTools", "skills"}:
+        if key not in {
+            "name",
+            "description",
+            "model",
+            "readonly",
+            "omitClaudeMd",
+            "tools",
+            "disallowedTools",
+            "skills",
+        }:
             raise ValueError(f"unsupported Claude profile setting {key}: {name}")
         fields[key] = [] if key == "skills" and not value else _scalar(value)
     if fields.get("name") != name or not fields.get("description"):
@@ -58,6 +67,11 @@ def leaf_definition(source: str, name: str, wire: str) -> dict:
     # the actual tools and prompt, not an invented permission-mode equivalent.
     if fields.get("readonly", "false") not in {"true", "false"}:
         raise ValueError(f"unsupported readonly annotation: {name}")
+    # Claude Code 2.1.287 accepts `omitClaudeMd` in `--agents` definitions as well as in profile frontmatter.
+    if fields.get("omitClaudeMd", "false") not in {"true", "false"}:
+        raise ValueError(f"unsupported omitClaudeMd annotation: {name}")
+    if fields.get("omitClaudeMd") == "true":
+        result["omitClaudeMd"] = True
     if "tools" in result:
         result["tools"] = [tool for tool in result["tools"] if tool not in ORCHESTRATION_TOOLS]
     result["disallowedTools"] = sorted(set(result.get("disallowedTools", [])) | ORCHESTRATION_TOOLS)
@@ -78,7 +92,7 @@ def project_roles(harness: str, available: set[str] | None = None) -> tuple[list
         if source is None:
             continue
         model, effort = pick["model"], pick["effort"]
-        if harness == "pi":
+        if harness == "openrouter":
             if not model.startswith("openrouter/"):
                 continue
             wire = f"{model.removeprefix('openrouter/')}@preset/effort-{effort}"
