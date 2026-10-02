@@ -6,6 +6,11 @@
       "command": ["docker", "run", "--rm", "-i", "public/image"],
       "enabled": true,
     },
+    "plain-tool": {
+      "type": "local",
+      "command": ["echo", "plain"],
+      "enabled": true,
+    },
   },
   "provider": {},
 }

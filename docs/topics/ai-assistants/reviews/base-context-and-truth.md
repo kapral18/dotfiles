@@ -11,7 +11,7 @@ Review decisions compare the diff under review with the codebase reality it is c
 
 | Layer                | What it proves                                                                                                                                                                                                                                                           |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Base truth           | what base branch does today, using SCSI when indexed or `git show <base>:<path>` plus local search otherwise                                                                                                                                                             |
+| Base truth           | what base branch does today, using `git show <base>:<path>` plus local search                                                                                                                                                                                            |
 | Change truth         | what the branch/PR actually does, using local diff plus file reads                                                                                                                                                                                                       |
 | Assumption tests     | the smallest safe experiment that could disprove the review decision                                                                                                                                                                                                     |
 | State-machine checks | ordered/stateful behavior passes a `,formal` catalog audit (stateful) before final/merge-ready claims; pure input→output behavior uses an independent-oracle table only when production tests cannot express the cases, otherwise focused tests suffice (`formal=tests`) |
@@ -19,11 +19,11 @@ Review decisions compare the diff under review with the codebase reality it is c
 
 ## Using it
 
-### Base-branch context and semantic search
+### Base-branch context
 
 Review skills require comparing your local diff/PR against how base, usually `main`, works today.
 
-Use scoped source/history for targeted questions and semantic search for substantial missing context when useful. Before querying an index, resolve it with `list_indices` and establish its snapshot. Do not repeat preflight when valid evidence already exists. Record the actual base/head scope and evidence source in the compact review receipt; do not invent a completed index check.
+Use scoped source/history for targeted questions. Do not repeat a query net when valid evidence already exists. Record the actual base/head scope and evidence source in the compact review receipt; do not invent a completed preflight.
 
 ### Final truth validation
 

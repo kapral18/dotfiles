@@ -84,8 +84,7 @@ ANTHROPIC_PRICES = {
 # Routes the user runs that leave no per-call usage record this tool can read. Reported in
 # the footer so a missing row is never mistaken for zero usage.
 UNRECORDED = {
-    "cursor": "no local per-request usage record exists (Cursor dashboard only)",
-    "adapters": "Claude/Cursor over the Codex subscription adapter report through the frontend record; the adapters pass cache fields through since 2026-09-06, older adapter-routed records show zero cache",
+    "adapters": "Claude over the Codex subscription adapter reports through the frontend record; the adapters pass cache fields through since 2026-09-06, older adapter-routed records show zero cache",
 }
 
 

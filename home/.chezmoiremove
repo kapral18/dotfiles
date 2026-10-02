@@ -96,3 +96,23 @@ lib/,copilot-adapter
 
 # The SOP reaches Codex as root developer_instructions (07-merge-codex-config); a global AGENTS.md would be inherited by every subagent.
 .codex/AGENTS.md
+.cursor/agents
+.cursor/hooks.json
+.cursor/mcp.json
+.cursor/AGENTS.md
+.cursor/skills
+.cursor/plugins/local/k-sop
+bin/,cursor
+bin/,cursor-codex
+bin/,cursor-llama-cpp
+bin/,cursor-openrouter
+bin/,mcp-token
+lib/,cursor-agent-local
+lib/,cursor-agent-shim
+lib/,mcp-token
+.config/fish/completions/,cursor.fish
+.config/fish/completions/,cursor-codex.fish
+.config/fish/completions/,cursor-llama-cpp.fish
+.config/fish/completions/,cursor-openrouter.fish
+.config/fish/completions/,mcp-token.fish
+.agents/skills/k-semantic-code-search

@@ -14,16 +14,11 @@ from urllib.parse import urlsplit
 
 from client import CodexClient, UpstreamError
 from protocols import (
-    aggregate_responses,
     anthropic_to_responses,
-    chat_to_responses,
     collect_anthropic_message,
-    collect_chat_completion,
     encode_sse,
     iter_sse_json,
-    prepare_responses_request,
     responses_to_anthropic_events,
-    responses_to_chat_events,
     subscription_lane,
 )
 from state import OpaqueReasoningStore
@@ -84,19 +79,8 @@ class AdapterHandler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             return
 
-    def _error(self, frontend: str, status: int, error_type: str, message: str) -> None:
-        if frontend == "anthropic":
-            payload = {"type": "error", "error": {"type": error_type, "message": message}}
-        else:
-            payload = {
-                "error": {
-                    "type": error_type,
-                    "message": message,
-                    "param": None,
-                    "code": None,
-                }
-            }
-        self._json(status, payload)
+    def _error(self, status: int, error_type: str, message: str) -> None:
+        self._json(status, {"type": "error", "error": {"type": error_type, "message": message}})
 
     def _read_body(self) -> dict[str, Any]:
         try:
@@ -116,7 +100,7 @@ class AdapterHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         path = urlsplit(self.path).path.rstrip("/")
         if not self._authorized():
-            self._error("anthropic", HTTPStatus.UNAUTHORIZED, "authentication_error", "invalid adapter token")
+            self._error(HTTPStatus.UNAUTHORIZED, "authentication_error", "invalid adapter token")
             return
         if path == "/healthz":
             self._json(HTTPStatus.OK, {"status": "ok"})
@@ -131,7 +115,6 @@ class AdapterHandler(BaseHTTPRequestHandler):
                             "id": self.context.model,
                             "display_name": self.context.model,
                             "created_at": "1970-01-01T00:00:00Z",
-                            "api_types": ["responses", "chat_completions"],
                             "capabilities": {
                                 "context_length": self.context.usable_input_tokens,
                                 "output_modalities": ["text"],
@@ -146,42 +129,35 @@ class AdapterHandler(BaseHTTPRequestHandler):
                 },
             )
             return
-        self._error("anthropic", HTTPStatus.NOT_FOUND, "not_found_error", "unknown adapter endpoint")
+        self._error(HTTPStatus.NOT_FOUND, "not_found_error", "unknown adapter endpoint")
 
     def do_POST(self) -> None:
         path = urlsplit(self.path).path.rstrip("/")
-        frontend = "responses" if path == "/v1/responses" else "chat" if path == "/v1/chat/completions" else "anthropic"
         if not self._authorized():
-            self._error(frontend, HTTPStatus.UNAUTHORIZED, "authentication_error", "invalid adapter token")
+            self._error(HTTPStatus.UNAUTHORIZED, "authentication_error", "invalid adapter token")
             return
         if path == "/v1/messages/count_tokens":
             self._count_tokens()
             return
-        if path not in {"/v1/responses", "/v1/chat/completions", "/v1/messages"}:
-            self._error(frontend, HTTPStatus.NOT_FOUND, "not_found_error", "unknown adapter endpoint")
+        if path != "/v1/messages":
+            self._error(HTTPStatus.NOT_FOUND, "not_found_error", "unknown adapter endpoint")
             return
         try:
-            body = self._read_body()
-            if path == "/v1/responses":
-                self._responses(body)
-            elif path == "/v1/chat/completions":
-                self._chat(body)
-            else:
-                self._anthropic(body)
+            self._anthropic(self._read_body())
         except (BrokenPipeError, ConnectionResetError):
             return
         except ValueError as error:
-            self._error(frontend, HTTPStatus.BAD_REQUEST, "invalid_request_error", str(error))
+            self._error(HTTPStatus.BAD_REQUEST, "invalid_request_error", str(error))
         except UpstreamError as error:
-            self._error(frontend, error.status, error.error_type, error.message)
+            self._error(error.status, error.error_type, error.message)
         except (OSError, RuntimeError) as error:
-            self._error(frontend, HTTPStatus.BAD_GATEWAY, "api_error", str(error))
+            self._error(HTTPStatus.BAD_GATEWAY, "api_error", str(error))
 
     def _count_tokens(self) -> None:
         try:
             body = self._read_body()
         except ValueError as error:
-            self._error("anthropic", HTTPStatus.BAD_REQUEST, "invalid_request_error", str(error))
+            self._error(HTTPStatus.BAD_REQUEST, "invalid_request_error", str(error))
             return
         serialized = json.dumps(
             {
@@ -195,24 +171,6 @@ class AdapterHandler(BaseHTTPRequestHandler):
             HTTPStatus.OK,
             {"input_tokens": max(1, (len(serialized.encode("utf-8")) + 3) // 4)},
         )
-
-    def _responses(self, body: dict[str, Any]) -> None:
-        lane = subscription_lane(body.get("model"), self.context.lane_routes)
-        wants_stream = body.get("stream") is True
-        payload = prepare_responses_request(
-            body,
-            model_override=lane["model"] if lane else self.context.model,
-            effort_override=lane["effort"] if lane else self.context.effort,
-        )
-        upstream = self.context.codex.open(payload)
-        try:
-            events = iter_sse_json(upstream)
-            if wants_stream:
-                self._stream_responses(events)
-            else:
-                self._json(HTTPStatus.OK, aggregate_responses(events))
-        finally:
-            upstream.close()
 
     def _anthropic(self, body: dict[str, Any]) -> None:
         lane = subscription_lane(body.get("model"), self.context.lane_routes)
@@ -237,25 +195,6 @@ class AdapterHandler(BaseHTTPRequestHandler):
         finally:
             upstream.close()
 
-    def _chat(self, body: dict[str, Any]) -> None:
-        lane = subscription_lane(body.get("model"), self.context.lane_routes)
-        wants_stream = body.get("stream") is True
-        payload = chat_to_responses(
-            body,
-            model_override=lane["model"] if lane else self.context.model,
-            effort_override=lane["effort"] if lane else self.context.effort,
-            store=self.context.store,
-        )
-        upstream = self.context.codex.open(payload)
-        try:
-            events = iter_sse_json(upstream)
-            if wants_stream:
-                self._write_stream(responses_to_chat_events(events, payload["model"], self.context.store))
-            else:
-                self._json(HTTPStatus.OK, collect_chat_completion(events, payload["model"], self.context.store))
-        finally:
-            upstream.close()
-
     def _write_stream(self, chunks: Iterable[bytes]) -> None:
         try:
             self.send_response(HTTPStatus.OK)
@@ -270,35 +209,6 @@ class AdapterHandler(BaseHTTPRequestHandler):
             return
         finally:
             self.close_connection = True
-
-    def _stream_responses(self, events: Iterable[dict[str, Any]]) -> None:
-        def chunks() -> Iterable[bytes]:
-            # The Codex backend streams the items but can leave the terminal response's `output`
-            # empty, and a Responses client that builds the turn from `response.completed`
-            # then sees no tool calls at all. Restore the item list the
-            # non-streaming path already assembles in `aggregate_responses`.
-            output: list[dict[str, Any]] = []
-            try:
-                for event in events:
-                    event_type = event.get("type")
-                    if event_type == "response.output_item.done":
-                        item = event.get("item")
-                        if isinstance(item, dict):
-                            output.append(item)
-                    elif event_type == "response.completed":
-                        response = event.get("response")
-                        if isinstance(response, dict) and not response.get("output"):
-                            response["output"] = output
-                    yield encode_sse(event)
-            except UpstreamError as error:
-                yield encode_sse(
-                    {
-                        "type": "error",
-                        "error": {"type": error.error_type, "message": error.message},
-                    }
-                )
-
-        self._write_stream(chunks())
 
     def _stream_anthropic(self, events: Iterable[dict[str, Any]]) -> None:
         def chunks() -> Iterable[bytes]:

@@ -58,11 +58,11 @@ CENSUS: list[Claim] = [
     Claim(
         name="total effective git files",
         globs=None,
-        claimed=1537,
+        claimed=1503,
         anchors=[
-            ("README.md", "1537 files in the effective git file set"),
-            ("00-overview.mmd", "1537 files in the effective git file set"),
-            ("00-overview.mmd", "file census (1537 total)"),
+            ("README.md", "1503 files in the effective git file set"),
+            ("00-overview.mmd", "1503 files in the effective git file set"),
+            ("00-overview.mmd", "file census (1503 total)"),
         ],
     ),
     Claim(
@@ -74,10 +74,10 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/.chezmoiscripts/",
         globs=["home/.chezmoiscripts/*"],
-        claimed=28,
+        claimed=27,
         anchors=[
-            ("01-chezmoi-pipeline.mmd", ".chezmoiscripts/ (28)"),
-            ("README.md", "`.chezmoiscripts/` hook (28)"),
+            ("01-chezmoi-pipeline.mmd", ".chezmoiscripts/ (27)"),
+            ("README.md", "`.chezmoiscripts/` hook (27)"),
         ],
     ),
     Claim(
@@ -117,28 +117,28 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/dot_config/fish/",
         globs=["home/dot_config/fish/*"],
-        claimed=83,
-        anchors=[("00-overview.mmd", "fish 83")],
+        claimed=78,
+        anchors=[("00-overview.mmd", "fish 78")],
     ),
     Claim(
         name="home/exact_bin/",
         globs=["home/exact_bin/*"],
-        claimed=79,
+        claimed=74,
         anchors=[
-            ("07c-bin-commands.mmd", "exact_bin/ (79 thin commands)"),
-            ("README.md", "`exact_bin/` (79)"),
-            ("00-overview.mmd", "bin 79"),
+            ("07c-bin-commands.mmd", "exact_bin/ (74 thin commands)"),
+            ("README.md", "`exact_bin/` (74)"),
+            ("00-overview.mmd", "bin 74"),
         ],
     ),
     Claim(
         name="home/exact_lib/",
         globs=["home/exact_lib/*"],
-        claimed=143,
+        claimed=138,
         anchors=[
-            ("07c-bin-commands.mmd", "home/exact_lib/ (143 command/shared library files)"),
-            ("README.md", "`home/exact_lib/` (143 command/shared library files)"),
-            ("README.md", "39 command libraries plus shared helpers"),
-            ("00-overview.mmd", "command-lib 143 (39 command dirs + shared)"),
+            ("07c-bin-commands.mmd", "home/exact_lib/ (138 command/shared library files)"),
+            ("README.md", "`home/exact_lib/` (138 command/shared library files)"),
+            ("README.md", "36 command libraries plus shared helpers"),
+            ("00-overview.mmd", "command-lib 138 (36 command dirs + shared)"),
         ],
     ),
     Claim(
@@ -150,20 +150,20 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/exact_dot_agents/",
         globs=["home/exact_dot_agents/*"],
-        claimed=181,
+        claimed=180,
         anchors=[
-            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (181)"),
-            ("00-overview.mmd", "agents 181"),
+            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (180)"),
+            ("00-overview.mmd", "agents 180"),
         ],
     ),
     Claim(
         name="scripts/",
         globs=["scripts/*"],
-        claimed=169,
+        claimed=166,
         anchors=[
-            ("11-scripts-helpers.mmd", "scripts/ (169)"),
-            ("README.md", "`scripts/` (169)"),
-            ("00-overview.mmd", "scripts 169"),
+            ("11-scripts-helpers.mmd", "scripts/ (166)"),
+            ("README.md", "`scripts/` (166)"),
+            ("00-overview.mmd", "scripts 166"),
         ],
     ),
 ]

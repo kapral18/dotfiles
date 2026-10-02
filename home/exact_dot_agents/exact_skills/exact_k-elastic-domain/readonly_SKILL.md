@@ -14,7 +14,7 @@ Use when:
 - current repo/target belongs to the `elastic` GitHub org
 - current repo is `elastic/kibana`
 - another skill says to load this overlay
-- handling Elastic Buildkite, SCSI, Kibana labels, ownership, live UI, Dev Tools Console, or domain policy
+- handling Elastic Buildkite, Kibana labels, ownership, live UI, Dev Tools Console, or domain policy
 
 Do not use standalone for review, GitHub, git, compose, posting, labeling, resolving, committing, pushing, or mutation.
 Outside Elastic/Kibana contexts, use only when explicitly requested.
@@ -59,14 +59,6 @@ Evidence-first: answer from issue/diff/codebase before asking; only genuine gaps
   ES|QL / Query DSL must match target stack syntax/semantics; fields must match mapping types; aggregation buckets must fit expected volume;
   flag timeout/OOM-prone queries.
 - Known Elastic bot logins: `elasticmachine`, `kibanamachine`, `github-actions[bot]`.
-
-## Semantic code search scope
-
-Apply with `k-semantic-code-search`.
-`scsi-main` (hosted, Elastic SSO) serves Elastic-curated indices: Elastic-org repositories plus a few upstream dependencies;
-`scsi-local` holds the user's own indices.
-Outside that set `list_indices` returns no match; use the generic local fallback (`rg`) and record `not indexed`.
-NEVER assume an Elastic index covers a non-Elastic repository.
 
 ## Git commit attribution
 

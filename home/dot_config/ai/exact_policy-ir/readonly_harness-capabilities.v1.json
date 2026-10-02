@@ -27,20 +27,6 @@
       "evidence_freshness": "2026-08-02"
     },
     {
-      "harness": "cursor",
-      "version_evidence": "cursor-agent 2026.07.23-e383d2b: hooks.json preToolUse rewrote a Task call with no model argument to composer-2.5 and the subagent ran — probed 2026-08-02. A caller-supplied model is validated before updated_input applies and fails with 'Invalid model selection', with or without the hook, so the gate can inject a band but cannot clamp an explicit override here.",
-      "instruction_entrypoints": [
-        "home/dot_cursor/symlink_AGENTS.md -> ../AGENTS.md"
-      ],
-      "hook_support": "mutation",
-      "model_mutable": true,
-      "subagent_model_binding": "runtime",
-      "mutation_scope": "Task model (omitted or in-enum explicit; out-of-enum ids fail validation first); updated_input replaces the whole input object. Explicit in-enum override rewrite asserted by tests but not live-probed (cursor-agent usage limit 2026-09-07).",
-      "leaf_signal": "unverified",
-      "leaf_signal_note": "No live probe offline: Cursor Task children carry no verified identity and conversation_id sharing with the parent is unprobed.",
-      "evidence_freshness": "2026-08-02"
-    },
-    {
       "harness": "opencode",
       "version_evidence": "OpenCode 1.18.20: plugins/agent-memory.ts blocks task calls from child/unknown sessions and task_id resumes through tool.execute.before; native worker permission.task deny was probed with the installed CLI. Native work root permits worker_*; personal task is disabled. No category-backed strong-lane adapter is configured.",
       "instruction_entrypoints": [

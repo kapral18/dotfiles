@@ -2,10 +2,9 @@
 ---
 blocking: true
 name: k-agent-code-searcher
-description: Delegate SCSI semantic code investigation or base-context gathering to an isolated context.
+description: Delegate a substantial code investigation or base-context gathering to an isolated context.
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "omp" "agent" "k-agent-code-searcher") }}"
 tools: read, grep, glob, bash
-autoloadSkills: k-semantic-code-search
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}

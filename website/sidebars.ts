@@ -135,11 +135,11 @@ const sidebars: SidebarsConfig = {
           label: '⚙️ Tool configs',
           link: { type: 'doc', id: 'topics/ai-assistants/tool-configs/index' },
           items: [
-            'topics/ai-assistants/tool-configs/cursor-and-prompt-wrap',
             'topics/ai-assistants/tool-configs/profile-merging',
             'topics/ai-assistants/tool-configs/claude-gemini',
             'topics/ai-assistants/tool-configs/pi',
             'topics/ai-assistants/tool-configs/other-harnesses',
+            'topics/ai-assistants/tool-configs/prompt-wrap',
           ],
         },
         {

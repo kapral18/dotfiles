@@ -21,7 +21,6 @@ Create interactive exploratory diagrams for understanding codebase architecture 
 
 ## When NOT to Use
 
-- Semantic code search alone (use `k-semantic-code-search` directly when the user explicitly asks for SCSI-style investigation, not a walkthrough)
 - Simple file reading
 - Single file analysis without relationship context
 - Modifying or editing code
@@ -47,11 +46,10 @@ When using a walkthrough tool, provide:
 - `topic`: the specific question/area to explore (example: "How does auth flow work?")
 - `context`: optional extra constraints or what the user cares about
 
-When semantic code search helps:
+When base-branch context helps:
 
-- If you are investigating a PR and need additional context from `main` (existing behavior, patterns, related call sites), use `~/.agents/skills/k-semantic-code-search/SKILL.md` to query the indexed snapshot, but ONLY if the current repo is indexed (present in `list_indices`).
-  Run `list_indices` first; do not guess an index.
-- Treat semantic results as base-branch context only; validate the actual change by reading the local branch diff.
+- If you are investigating a PR and need additional context from `main` (existing behavior, patterns, related call sites), read it from the base ref (`git show <base>:<path>`, local `rg`).
+- Treat base-ref reads as base-branch context only; validate the actual change by reading the local branch diff.
 
 ### Step 2: Present The Walkthrough
 
@@ -76,7 +74,6 @@ if the lane is unavailable report blocked. Rendering and presentation stay inlin
 ## Output
 
 - Give an evidence-backed walkthrough with file/path references.
-- If you used semantic code search, say it was supporting base context rather than the sole source of truth.
 - Render a diagram only when it materially improves understanding.
 
 ## Node Metadata and diagram example

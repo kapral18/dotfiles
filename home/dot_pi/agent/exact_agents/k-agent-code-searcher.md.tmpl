@@ -1,20 +1,19 @@
 {{- /* model frontmatter is rendered from the model registries in home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 name: k-agent-code-searcher
-description: Delegate SCSI semantic code investigation or base-context gathering to an isolated context.
+description: Delegate a substantial code investigation or base-context gathering to an isolated context.
 model: "{{ includeTemplate "agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-code-searcher") }}"
 {{- $thinking := includeTemplate "agent-thinking.partial" (dict "root" . "harness" "pi" "agent" "k-agent-code-searcher") }}
 {{- if $thinking }}
 thinking: "{{ $thinking }}"
 {{- end }}
-tools: read, grep, find, ls, bash, mcp:scsi-main, mcp:scsi-local
+tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: false
 inheritGlobalContext: false
 inheritSkills: false
 maxSubagentDepth: 0
 defaultContext: fresh
-skills: k-semantic-code-search
 output: k-agent-code-searcher.md
 outputMode: file-only
 ---

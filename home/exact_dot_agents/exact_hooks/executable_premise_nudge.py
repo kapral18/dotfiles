@@ -213,7 +213,7 @@ def main() -> int:
         return _emit_antigravity_pending(payload)
 
     tool = payload.get("tool_name") or payload.get("tool") or ""
-    # Cursor's shell events carry the command without naming a tool.
+    # A payload that names no tool is still checked for a command.
     if tool and tool not in SHELL_TOOLS:
         return _silent(antigravity, event)
 

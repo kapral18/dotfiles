@@ -98,7 +98,7 @@ class TestStaticModelMirrors(unittest.TestCase):
 
         self.assertEqual(
             set(mirror["harnesses"]),
-            {"cursor", "claude", "codex", "gemini", "opencode", "pi"},
+            {"claude", "codex", "gemini", "opencode", "pi"},
         )
         self.assertEqual(
             set(mirror["providers"]),
@@ -285,18 +285,18 @@ class TestStaticModelMirrors(unittest.TestCase):
         import model_mirrors
 
         mirror = model_mirrors.build_static_mirror(REPO)
-        cursor = mirror["harnesses"]["cursor"]
+        pi = mirror["harnesses"]["pi"]
         gemini = mirror["harnesses"]["gemini"]
 
         self.assertLess(
-            set(cursor["recommended"]["models"]),
-            set(cursor["curated"]["models"]),
+            set(pi["recommended"]["models"]),
+            set(pi["curated"]["models"]),
         )
         self.assertGreater(
             set(gemini["available"]["models"]),
             set(gemini["curated"]["models"]),
         )
-        self.assertNotIn("new-live", cursor["curated"]["models"])
+        self.assertNotIn("new-live", pi["curated"]["models"])
 
     def test_SHOULD_follow_the_antigravity_category_for_the_deployed_gemini_mirror(self):
         import model_mirrors
@@ -430,23 +430,6 @@ class TestStaticModelMirrors(unittest.TestCase):
             with self.subTest(model=model):
                 self.assertIn(model, pi_curated)
 
-    def test_SHOULD_fail_generation_for_invalid_cursor_policy(self):
-        import model_mirrors
-
-        cases = {
-            "empty": [],
-            "missing_id": [{"recommended": True}],
-            "invalid_id": [{"id": "not a model id"}],
-            "non_string_id": [{"id": 42}],
-        }
-        for name, policy in cases.items():
-            with (
-                self.subTest(name=name),
-                mock.patch.object(model_mirrors.ai_models, "load_cursor_models", return_value=policy),
-                self.assertRaisesRegex(ValueError, "cursor_models"),
-            ):
-                model_mirrors.build_static_mirror(REPO)
-
     def test_SHOULD_fail_generation_for_unsupported_provider_models_provider(self):
         import model_mirrors
 
@@ -573,23 +556,26 @@ class TestLiveModelMirrorDrift(unittest.TestCase):
         import model_mirrors
 
         mirror = model_mirrors.synthetic_mirror(
-            target="harness:cursor",
-            curated=["curated-stable", "curated-missing"],
-            recommended=["curated-stable"],
+            target="harness:pi",
+            curated=["openrouter/curated-stable", "openrouter/curated-missing"],
+            recommended=["openrouter/curated-stable"],
         )
-        curated_before = list(mirror["harnesses"]["cursor"]["curated"]["models"])
+        curated_before = list(mirror["harnesses"]["pi"]["curated"]["models"])
 
         result = model_mirrors.probe_target(
             mirror,
-            "harness:cursor",
-            fixture=self._fixture("cursor_success"),
+            "harness:pi",
+            fixture=self._fixture("pi_success"),
         )
 
         self.assertEqual(result["status"], "drift")
-        self.assertEqual(result["stale_curated"], ["curated-missing"])
-        self.assertEqual(result["new_available"], ["curated-stale", "new-live"])
+        self.assertEqual(result["stale_curated"], ["openrouter/curated-missing"])
         self.assertEqual(
-            mirror["harnesses"]["cursor"]["curated"]["models"],
+            result["new_available"],
+            ["openrouter/new-live", "openrouter/~anthropic/claude-opus-latest"],
+        )
+        self.assertEqual(
+            mirror["harnesses"]["pi"]["curated"]["models"],
             curated_before,
             "live availability must never mutate or promote curated policy",
         )
@@ -598,21 +584,21 @@ class TestLiveModelMirrorDrift(unittest.TestCase):
         import model_mirrors
 
         mirror = model_mirrors.synthetic_mirror(
-            target="harness:cursor",
-            curated=["curated-stable"],
-            recommended=["curated-stable"],
+            target="harness:pi",
+            curated=["openrouter/curated-stable"],
+            recommended=["openrouter/curated-stable"],
         )
         cases = [
-            self._fixture("cursor_command_failure"),
-            {"target": "harness:cursor", "returncode": 0, "stdout": "", "stderr": ""},
-            self._fixture("cursor_unparseable"),
-            {"target": "harness:cursor", "state": "unknown", "reason": "timeout"},
-            {"target": "harness:cursor", "state": "error", "reason": "malformed response"},
+            self._fixture("pi_command_failure"),
+            {"target": "harness:pi", "returncode": 0, "stdout": "", "stderr": ""},
+            self._fixture("pi_unparseable"),
+            {"target": "harness:pi", "state": "unknown", "reason": "timeout"},
+            {"target": "harness:pi", "state": "error", "reason": "malformed response"},
         ]
 
         for fixture in cases:
             with self.subTest(fixture=fixture):
-                result = model_mirrors.probe_target(mirror, "harness:cursor", fixture=fixture)
+                result = model_mirrors.probe_target(mirror, "harness:pi", fixture=fixture)
                 self.assertEqual(result["status"], "unknown")
                 self.assertEqual(result["live"]["models"], [])
                 self.assertTrue(result["reason"])
@@ -754,12 +740,12 @@ class TestLiveModelMirrorDrift(unittest.TestCase):
             )
 
         mirror = model_mirrors.synthetic_mirror(
-            target="harness:cursor",
-            curated=["curated-stable"],
-            recommended=["curated-stable"],
+            target="harness:pi",
+            curated=["openrouter/curated-stable"],
+            recommended=["openrouter/curated-stable"],
         )
         completed = subprocess.CompletedProcess(
-            ["cursor-agent", "--list-models"],
+            ["pi", "--offline", "--list-models"],
             1,
             "",
             "Authorization failed: SENSITIVE-FIXTURE-TEXT",
@@ -768,29 +754,29 @@ class TestLiveModelMirrorDrift(unittest.TestCase):
 
         result = model_mirrors.probe_target(
             mirror,
-            "harness:cursor",
+            "harness:pi",
             runner=runner,
-            which=lambda _name: "/verified/cursor-agent",
+            which=lambda _name: "/verified/pi",
         )
 
         self.assertEqual(result["status"], "unknown")
         self.assertNotIn("SENSITIVE-FIXTURE-TEXT", json.dumps(result))
         args, kwargs = runner.call_args
-        self.assertEqual(args[0], ["/verified/cursor-agent", "--list-models"])
+        self.assertEqual(args[0], ["/verified/pi", "--offline", "--list-models"])
         self.assertLessEqual(kwargs["timeout"], 20)
         self.assertTrue(kwargs["capture_output"])
 
         oversized = subprocess.CompletedProcess(
-            ["cursor-agent", "--list-models"],
+            ["pi", "--offline", "--list-models"],
             0,
             "x" * (model_mirrors.MAX_COMMAND_OUTPUT_BYTES + 1),
             "",
         )
         result = model_mirrors.probe_target(
             mirror,
-            "harness:cursor",
+            "harness:pi",
             runner=mock.Mock(return_value=oversized),
-            which=lambda _name: "/verified/cursor-agent",
+            which=lambda _name: "/verified/pi",
         )
         self.assertEqual(result["status"], "unknown")
         self.assertEqual(result["reason"], "output_too_large")

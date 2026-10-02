@@ -30,14 +30,13 @@ MIRROR_KIND = "ai.model-mirrors"
 DRIFT_KIND = "ai.model-mirror-drift"
 CAPABILITIES_REL = Path("scripts/model_capabilities.v1.json")
 MIRROR_REL = Path("home/dot_config/ai/readonly_model-mirrors.v1.json")
-HARNESSES = ("cursor", "claude", "codex", "gemini", "opencode", "pi")
+HARNESSES = ("claude", "codex", "gemini", "opencode", "pi")
 PROVIDERS = (
     "llama-cpp",
     "openrouter",
 )
 EXPLICIT_POLICY_PROVIDERS = ("openrouter",)
 MODEL_ID_RE = re.compile(r"^[A-Za-z0-9@~][A-Za-z0-9@~+._:/\[\]=-]*$")
-CURSOR_MODEL_ROW_RE = re.compile(r"^([a-z0-9][a-z0-9._-]*) - .+$")
 MAX_COMMAND_OUTPUT_BYTES = 4 * 1024 * 1024
 MAX_HTTP_RESPONSE_BYTES = 8 * 1024 * 1024
 AI_MODELS_REGISTRY = "home/.chezmoidata/ai_models"
@@ -355,25 +354,6 @@ def _load_pi_policy(
     return _unique(curated), _unique(recommended), defaults
 
 
-def _validate_cursor_policy(policy: Any) -> list[dict[str, Any]]:
-    if not isinstance(policy, list) or not policy:
-        raise ValueError("cursor_models must contain at least one model")
-
-    validated = []
-    seen = set()
-    for index, entry in enumerate(policy):
-        if not isinstance(entry, dict):
-            raise ValueError(f"cursor_models[{index}] must be a mapping")
-        model_id = entry.get("id")
-        if not isinstance(model_id, str) or MODEL_ID_RE.fullmatch(model_id) is None:
-            raise ValueError(f"cursor_models[{index}].id is invalid")
-        if model_id in seen:
-            raise ValueError(f"cursor_models contains duplicate id: {model_id}")
-        seen.add(model_id)
-        validated.append(entry)
-    return validated
-
-
 def _is_anthropic(model_id: str) -> bool:
     lowered = model_id.lower()
     return "claude" in lowered or "anthropic" in lowered
@@ -471,24 +451,9 @@ def build_static_mirror(repo_root: str | Path) -> dict[str, Any]:
     capabilities = _read_json(root / CAPABILITIES_REL)
     observed_at = capabilities["observed_at"]
 
-    cursor_policy = _validate_cursor_policy(ai_models.load_cursor_models(registry_path))
     pi_extras = ai_models.load_pi_extra_models(registry_path)
     provider_policy = _group_provider_policy(ai_models.load_provider_models(registry_path))
 
-    cursor_curated = [model["id"] for model in cursor_policy]
-    cursor_recommended_entries = [model for model in cursor_policy if model.get("recommended") is True]
-    recommendation_ranks = [
-        model["recommendation_rank"] for model in cursor_recommended_entries if "recommendation_rank" in model
-    ]
-    if len(recommendation_ranks) != len(set(recommendation_ranks)):
-        raise ValueError("cursor recommendation ranks must be unique")
-    cursor_recommended = [
-        model["id"]
-        for model in sorted(
-            cursor_recommended_entries,
-            key=lambda model: model.get("recommendation_rank", sys.maxsize),
-        )
-    ]
     claude_curated, claude_recommended, claude_defaults = _load_claude_policy(root)
     codex_curated, codex_recommended, codex_defaults = _load_codex_policy(root)
     gemini_curated, gemini_recommended, gemini_defaults = _load_antigravity_policy(root)
@@ -496,7 +461,6 @@ def build_static_mirror(repo_root: str | Path) -> dict[str, Any]:
     pi_curated, pi_recommended, pi_defaults = _load_pi_policy(root, pi_extras)
 
     policies = {
-        "cursor": (cursor_curated, cursor_recommended, {}),
         "claude": (claude_curated, claude_recommended, claude_defaults),
         "codex": (codex_curated, codex_recommended, codex_defaults),
         "gemini": (gemini_curated, gemini_recommended, gemini_defaults),
@@ -577,8 +541,6 @@ def _harness_policy_provenance(harness: str, set_name: str) -> list[dict[str, An
             _provenance("config", "home/dot_config/opencode/readonly_opencode.personal.jsonc"),
         ],
     }
-    if harness == "cursor":
-        return [_registry_provenance("cursor_models")]
     if harness == "opencode":
         return list(profile_sources[harness])
     if harness == "pi":
@@ -642,23 +604,6 @@ def validate_mirror(mirror: dict[str, Any]) -> None:
             recommended = set(entry["recommended"]["models"])
             if not recommended <= curated:
                 raise ValueError(f"{namespace}.{name}: recommended must be a subset of curated")
-
-
-def parse_cursor_catalog(output: str) -> list[str] | None:
-    lines = [line.strip() for line in output.splitlines()]
-    while lines and not lines[-1]:
-        lines.pop()
-    if len(lines) < 3 or lines[0] != "Available models" or not lines[-1].startswith("Tip:"):
-        return None
-    models: list[str] = []
-    for line in lines[1:-1]:
-        if not line:
-            continue
-        match = CURSOR_MODEL_ROW_RE.fullmatch(line)
-        if match is None or match.group(1) in models:
-            return None
-        models.append(match.group(1))
-    return models or None
 
 
 def parse_pi_catalog(output: str) -> list[str] | None:
@@ -755,7 +700,6 @@ def _fixture_live_state(target: str, fixture: dict[str, Any], adapter: str) -> d
 
 def _parse_command_output(adapter: str, output: str) -> list[str] | None:
     parsers = {
-        "cursor-list-models": parse_cursor_catalog,
         "opencode-models": parse_opencode_catalog,
         "pi-list-models": parse_pi_catalog,
     }
@@ -868,7 +812,7 @@ def probe_target(
         live = _fixture_live_state(target, fixture, adapter)
     elif not probe.get("supported"):
         live = _unknown(probe.get("reason") or "unsupported_probe", provenance=[])
-    elif adapter in {"cursor-list-models", "pi-list-models", "opencode-models"}:
+    elif adapter in {"pi-list-models", "opencode-models"}:
         live = _command_live_state(target, probe, runner=runner, which=which)
     else:
         live = _provider_live_state(target, probe, fetch_json)
@@ -914,13 +858,11 @@ def synthetic_mirror(
     namespace, name = target.split(":", 1)
     collection = {"harness": "harnesses", "provider": "providers"}[namespace]
     adapters = {
-        "harness:cursor": "cursor-list-models",
         "harness:pi": "pi-list-models",
         "harness:opencode": "opencode-models",
         "provider:openrouter": "openrouter-models",
     }
     commands = {
-        "harness:cursor": ["cursor-agent", "--list-models"],
         "harness:pi": ["pi", "--offline", "--list-models"],
         "harness:opencode": ["opencode", "models"],
     }

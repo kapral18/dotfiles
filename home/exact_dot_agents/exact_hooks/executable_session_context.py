@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inject active topic context at the start of Cursor/Claude sessions."""
+"""Inject active topic context at the start of agent sessions."""
 
 from __future__ import annotations
 
@@ -104,7 +104,7 @@ def per_turn_recall_requested(payload: dict) -> bool:
     """True when the invoking adapter has per-turn recall wiring.
 
     Adapters with per-turn retrieval (Claude, Gemini, OpenCode,
-    Codex, Cursor, Pi) request the resident warm-up via `AI_EMBED_WARM=1` or the
+    Codex, Pi) request the resident warm-up via `AI_EMBED_WARM=1` or the
     `warm_embedder` payload flag; an adapter that sends neither has no
     per-turn hook surface, so its mid-session recall must come from a
     delegated k-agent-smol recall query (the Recall Notice below).
@@ -637,28 +637,6 @@ def spec_context(spec_path: Path, topic: str) -> str:
     return bounded_or_omitted(text, spec_path)
 
 
-def context_for_harness(parts: list[str], optional_parts: list[tuple[int, str]]) -> str:
-    """Cursor carriers cap trimmed context at 10,000 JavaScript UTF-16 units.
-
-    Omit whole optional artifacts, retaining a read pointer. Never slice a rule,
-    spec, or JSONL row to fit. Other harnesses retain their existing envelope.
-    """
-    context = "\n".join(parts)
-    if os.environ.get("AGENT_HOOK_HARNESS") != "cursor":
-        return context
-    selected = list(parts)
-    for index, pointer in optional_parts:
-        if len(context.encode("utf-16-le")) // 2 <= 10_000:
-            return context
-        selected[index] = pointer
-        context = "\n".join(selected)
-    if len(context.encode("utf-16-le")) // 2 > 10_000:
-        raise ValueError(
-            "Required startup instructions exceed Cursor's 10,000 UTF-16-unit context limit; refusing partial instructions"
-        )
-    return context
-
-
 def main() -> None:
     payload = read_payload()
     if is_delegated_leaf(payload):
@@ -703,7 +681,6 @@ def main() -> None:
 
     warm_resident_embedder(payload)
 
-    optional_parts: list[tuple[int, str]] = []
     parts = [
         "## Agent Hook Context",
         f"- Workspace: `{workspace}`",
@@ -747,17 +724,11 @@ def main() -> None:
     no_session_key_default_branch = not key and is_default_branch_workspace(workspace)
     if not has_session_binding and should_offer_topic_buckets(spec_path, topic, no_session_key_default_branch):
         parts.extend(["", topic_buckets_context(spec_dir, payload)])
-        optional_parts.append(
-            (
-                len(parts) - 1,
-                f"### Topic Buckets\nBucket details omitted for Cursor’s context limit. Inspect `{spec_dir}` and bind with `,agent-memory select <topic> --session-id {key or '<session-id>'}` before relying on prior state.",
-            )
-        )
         if not is_delegated_leaf():
             if not per_turn_recall_requested(payload):
                 parts.extend(["", NO_PERTURN_RECALL_NOTICE])
             parts.extend(["", AIKB_REMINDER])
-        context = context_for_harness(parts, optional_parts)
+        context = "\n".join(parts)
         emit(
             {
                 "additional_context": context,
@@ -777,23 +748,10 @@ def main() -> None:
         spec_text = spec_context(spec_path, topic)
         if spec_text:
             parts.extend(["", "### Active Topic Spec", spec_text])
-            optional_parts.append(
-                (
-                    len(parts) - 1,
-                    f"Spec omitted for Cursor’s context limit. Read `{spec_path}` before relying on prior state.",
-                )
-            )
 
     worklog = "" if is_review else transcript_tail(worklog_path, lines=MAX_WORKLOG_LINES, limit=MAX_WORKLOG_CHARS)
     if worklog:
         parts.extend(["", "### Recent Hook Worklog", worklog])
-        optional_parts.insert(
-            0,
-            (
-                len(parts) - 1,
-                f"Worklog omitted for Cursor’s context limit. Read complete rows from `{worklog_path}` when prior activity is needed.",
-            ),
-        )
 
     if (
         not is_delegated_leaf()
@@ -816,7 +774,7 @@ def main() -> None:
     if spec_mirror is not None:
         spec_mirror.sync_topic(spec_dir, workspace, topic)
 
-    context = context_for_harness(parts, optional_parts)
+    context = "\n".join(parts)
     emit(
         {
             "additional_context": context,

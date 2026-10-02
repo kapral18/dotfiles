@@ -36,7 +36,7 @@ The `description` frontmatter is the primary routing signal. For non-manual skil
 | Entrypoint | `SKILL.md` in each skill folder                                                          |
 | References | optional `references/` under the skill folder                                            |
 
-Inventory both `readonly_SKILL.md` and plain `SKILL.md` source files; the shared tree currently contains 58 skills. Audit the complete instruction references and incoming callers as well as each entrypoint. Templates, executable helpers, and invocation metadata have separate consumers and must be accounted for without treating them all as instruction prose.
+Inventory both `readonly_SKILL.md` and plain `SKILL.md` source files; the shared tree currently contains 57 skills. Audit the complete instruction references and incoming callers as well as each entrypoint. Templates, executable helpers, and invocation metadata have separate consumers and must be accounted for without treating them all as instruction prose.
 
 ## Semantic maintenance
 
@@ -94,4 +94,4 @@ Four skills are adapted from Matt Pocock's [`mattpocock/skills`](https://github.
 | `k-diagnosing-bugs`      | [`k-diagnosing-bugs`](https://github.com/mattpocock/skills/tree/main/skills/engineering/diagnosing-bugs)            |
 | `k-prototype`            | [`k-prototype`](https://github.com/mattpocock/skills/tree/main/skills/engineering/prototype)                        |
 
-The comprehensive audit includes all 58 entrypoints and their owned references, including plain `SKILL.md` files. Changes preserve mandatory loads and distinct contracts while removing repeated explanations and recursive loads within one invocation. Explicit corrections align spec/build regression guards, review miss-sweep auditing, capture/publication timing, scoped runtime lifecycle exceptions, and read-only tool requests. These corrections are intentional semantic differences; bounded decision checks and clause correspondence do not prove universal model equivalence.
+The comprehensive audit includes all 57 entrypoints and their owned references, including plain `SKILL.md` files. Changes preserve mandatory loads and distinct contracts while removing repeated explanations and recursive loads within one invocation. Explicit corrections align spec/build regression guards, review miss-sweep auditing, capture/publication timing, scoped runtime lifecycle exceptions, and read-only tool requests. These corrections are intentional semantic differences; bounded decision checks and clause correspondence do not prove universal model equivalence.

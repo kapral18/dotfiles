@@ -9,9 +9,7 @@
 #   chezmoi_write_if_changed – string write, enforce mode without rewriting current bytes
 #   chezmoi_install_if_changed – file copy via install(1), enforce mode without recopying current bytes
 #   chezmoi_record_checksum – record a file's sha256 in the managed-configs manifest
-#   chezmoi_forget_checksum – retire a literal path from the managed-configs manifest
 #   chezmoi_record_artifact – record one ownership-aware generated AI artifact
-#   chezmoi_forget_artifact – retire one generated AI artifact id
 
 set -euo pipefail
 
@@ -45,24 +43,10 @@ chezmoi_record_checksum() {
   python3 "$_CHEZMOI_MANIFEST_HELPER" record "$_CHEZMOI_MANIFEST" "$target"
 }
 
-# Remove every checksum row whose first TSV field exactly matches a retired
-# generated target. Missing manifests and absent rows are true no-ops.
-#   chezmoi_forget_checksum <target_path>
-chezmoi_forget_checksum() {
-  local target="${1:-}"
-  python3 "$_CHEZMOI_MANIFEST_HELPER" forget "$_CHEZMOI_MANIFEST" "$target"
-}
-
 # Record one generated AI artifact after its target write succeeds.
 # Metadata is passed through to the stdlib Python implementation.
 chezmoi_record_artifact() {
   python3 "$_CHEZMOI_ARTIFACT_HELPER" --ledger "$_CHEZMOI_ARTIFACT_LEDGER" record "$@"
-}
-
-# Retire one exact artifact id. Missing ledgers and absent ids are no-ops.
-chezmoi_forget_artifact() {
-  local artifact_id="${1:-}"
-  python3 "$_CHEZMOI_ARTIFACT_HELPER" --ledger "$_CHEZMOI_ARTIFACT_LEDGER" forget --id "$artifact_id"
 }
 
 # ── Idempotent write helpers ─────────────────────────────────────────────────

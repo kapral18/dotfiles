@@ -4,7 +4,6 @@
 
 When the repo belongs to `elastic`, every commit needs a `Co-authored-by` trailer for the AI tool. Use the active tool identity:
 
-- Cursor: `Co-authored-by: Cursor <cursoragent@cursor.com>`
 - Claude Code: `Co-authored-by: Claude <noreply@anthropic.com>`
 - Copilot: `Co-authored-by: Copilot <noreply@github.com>`
 - OpenCode: `Co-authored-by: opencode <noreply@opencode.ai>`

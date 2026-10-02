@@ -83,7 +83,7 @@ const SMOL_CONTRACT_PATH = "~/.agents/skills/k-ai-kb/references/smol-operator.md
 const STAGING_HEADER = "### ,ai-kb candidates staged"
 
 // Same verification-discipline core the tmux wrap pastes manually and that
-// session_context.py injects for cursor-agent/claude. Read from the deployed file
+// session_context.py injects for claude. Read from the deployed file
 // (single source of truth) on each turn it is re-injected: only after a compaction
 // forces a re-inject, since that event summarizes/drops the prior prefix.
 //

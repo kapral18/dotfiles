@@ -32,25 +32,6 @@
         "supported": false
       }
     },
-    "cursor": {
-      "catalog": {
-        "mode": "unknown",
-        "reason": "account catalog requires authentication unavailable in isolated static generation"
-      },
-      "identity": {
-        "binary": "cursor-agent",
-        "package": "Cursor Agent",
-        "version": "2026.07.09-a3815c0"
-      },
-      "live_probe": {
-        "adapter": "cursor-list-models",
-        "command": ["cursor-agent", "--list-models"],
-        "max_output_bytes": 4194304,
-        "network": "explicit",
-        "supported": true,
-        "timeout_seconds": 20
-      }
-    },
     "gemini": {
       "catalog": {
         "complete": true,

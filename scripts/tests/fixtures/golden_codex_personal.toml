@@ -17,21 +17,8 @@ approval_mode = "approve"
 [mcp_servers.public-tool.tools.write]
 approval_mode = "prompt"
 
-[mcp_servers.http-tool]
-command = ",mcp-token"
+[mcp_servers.plain-tool]
+command = "echo"
 args = [
-  "http-tool",
-  "--bridge",
-  "--url",
-  "https://mcp.example.com/mcp",
-]
-
-[mcp_servers.bridge-tool]
-command = ",mcp-token"
-args = [
-  "bridge-source",
-  "--bridge",
-  "--url",
-  "https://mcp.bridge.com/mcp",
-  "--retry-connect-timeouts",
+  "plain",
 ]

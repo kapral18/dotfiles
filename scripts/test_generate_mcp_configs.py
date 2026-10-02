@@ -31,129 +31,37 @@ class TestGenerateMcpConfigs(unittest.TestCase):
         expected = (FIXTURES / "golden_mcp_work.json").read_text()
         assert json.loads(actual) == json.loads(expected)
 
-    def _bridge_registry(self, root: Path, token_source: str, tool: str = "omp") -> Path:
-        registry = root / "mcp_servers.yaml"
-        registry.write_text(
-            f"""
+    def test_omp_transform_names_each_transport(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            registry = Path(temporary) / "mcp_servers.yaml"
+            registry.write_text(
+                """
 mcp_servers:
-  - name: first
+  - name: remote
     work_only: false
     type: http
     url: https://first.example/mcp
     oauth_by_tool:
-      {tool}:
-        tokenBridge: "{token_source}"
+      omp: {}
+  - name: local
+    work_only: false
+    command: echo
+    args:
+      - plain
 """.lstrip()
-        )
-        return registry
-
-    def test_pi_token_bridge_emits_stdio_bridge(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            registry = self._bridge_registry(Path(temporary), "bridge-source", tool="pi")
-            actual = json.loads(run_script(["generate_mcp_configs.py", str(registry), "false", "pi"]))
-
-        bridge = actual["mcpServers"]["first"]
-        # pi rides the shared ,mcp-token stdio bridge (fresh bearer per
-        # request) instead of running Slack's OAuth flow itself.
-        assert bridge == {
-            "command": ",mcp-token",
-            "args": ["bridge-source", "--bridge", "--url", "https://first.example/mcp"],
-        }
-
-    def test_token_bridge_rejects_invalid_token_source(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            registry = self._bridge_registry(Path(temporary), "bad source!")
-            result = subprocess.run(
-                [sys.executable, str(REPO / "scripts/generate_mcp_configs.py"), str(registry), "false", "omp"],
-                capture_output=True,
-                text=True,
-                cwd=str(REPO / "scripts"),
             )
-
-        assert result.returncode != 0
-        assert "invalid tokenBridge token source" in result.stderr
-
-    def test_token_bridge_does_not_retry_connect_timeouts_by_default(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            registry = self._bridge_registry(Path(temporary), "bridge-source")
             actual = json.loads(run_script(["generate_mcp_configs.py", str(registry), "false", "omp"]))
 
-        assert actual["mcpServers"]["first"]["args"] == [
-            "bridge-source",
-            "--bridge",
-            "--url",
-            "https://first.example/mcp",
-        ]
-
-    def test_cursor_token_bridge_emits_stdio_bridge_without_oauth_url(self):
-        actual = json.loads(
-            run_script(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false", "cursor"])
-        )
-        bridge = actual["mcpServers"]["bridge-tool"]
-        assert bridge == {
-            "command": ",mcp-token",
-            "args": [
-                "bridge-source",
-                "--bridge",
-                "--url",
-                "https://mcp.bridge.com/mcp",
-                "--retry-connect-timeouts",
-            ],
+        assert actual["mcpServers"] == {
+            "remote": {"type": "http", "url": "https://first.example/mcp"},
+            "local": {"type": "stdio", "command": "echo", "args": ["plain"]},
         }
-        assert "url" not in bridge
-        assert "oauth" not in bridge
-        assert "auth" not in bridge
-
-    def test_omp_token_bridge_emits_native_stdio_bridge(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            registry = self._bridge_registry(Path(temporary), "bridge-source", tool="omp")
-            actual = json.loads(run_script(["generate_mcp_configs.py", str(registry), "false", "omp"]))
-
-        assert actual == {
-            "$schema": "https://raw.githubusercontent.com/can1357/oh-my-pi/main/packages/coding-agent/src/config/mcp-schema.json",
-            "mcpServers": {
-                "first": {
-                    "type": "stdio",
-                    "command": ",mcp-token",
-                    "args": ["bridge-source", "--bridge", "--url", "https://first.example/mcp"],
-                }
-            },
-        }
-
-    def test_cursor_oauth_mint_keeps_http_oauth_and_strips_bridge(self):
-        actual = json.loads(
-            run_script(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false", "cursor-oauth-mint"])
-        )
-        assert "public-tool" not in actual["mcpServers"]
-        mint = actual["mcpServers"]["bridge-tool"]
-        assert mint["url"] == "https://mcp.bridge.com/mcp"
-        assert mint["auth"] == {"CLIENT_ID": "cursor-bridge-client"}
-        assert mint["oauth"]["clientId"] == "cursor-bridge-client"
-        assert mint["oauth"]["scopes"] == ["user"]
-        assert "tokenBridge" not in mint.get("oauth", {})
-        assert mint.get("command") != ",mcp-token"
 
     def test_gemini_transform_uses_antigravity_server_url(self):
         actual = json.loads(
             run_script(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false", "gemini"])
         )
         assert actual["mcpServers"]["http-tool"] == {"serverUrl": "https://mcp.example.com/mcp"}
-
-    def test_gemini_token_bridge_emits_stdio_bridge(self):
-        actual = json.loads(
-            run_script(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false", "gemini"])
-        )
-        bridge = actual["mcpServers"]["bridge-tool"]
-        assert bridge == {
-            "command": ",mcp-token",
-            "args": [
-                "bridge-source",
-                "--bridge",
-                "--url",
-                "https://mcp.bridge.com/mcp",
-                "--retry-connect-timeouts",
-            ],
-        }
 
 
 class TestMergeClaudeMcp(unittest.TestCase):

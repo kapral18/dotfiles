@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launch Claude Code or Cursor through the Codex subscription adapter."""
+"""Launch Claude Code through the Codex subscription adapter."""
 
 from __future__ import annotations
 
@@ -30,7 +30,6 @@ CLAUDE_DEFAULT_CONTEXT_WINDOW = 200_000
 # picks do not need it (they are 1M natively).
 CLAUDE_EXTENDED_CONTEXT_SUFFIX = "[1m]"
 EFFORTS = {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
-CURSOR_PINNED_OPTIONS = {"--base-url", "--local-agent-api-key", "--authless", "--model", "-m"}
 
 
 @dataclass(frozen=True)
@@ -67,7 +66,6 @@ Without --model, the wrapper reads model from the active Codex config.
 Without --effort, the harness-generated effort is preserved. Use -- before an
 underlying harness flag that has the same name as an adapter option.
 Managed Claude profiles carry the projected child lanes.
-The tested Cursor local frontend bypasses Task hooks; governed delegation is unsupported.
 Exact child routing and full leaf lifecycle remain uncertified. Native routes are separate.
 """
 
@@ -110,14 +108,6 @@ def parse_args(argv: list[str]) -> LaunchOptions:
     if model_id == "":
         raise ValueError("--model requires a non-empty value")
     return LaunchOptions(model_id, effort, forwarded, show_help)
-
-
-def validate_cursor_forwarded(argv: list[str]) -> None:
-    for argument in argv:
-        if argument in CURSOR_PINNED_OPTIONS or any(
-            argument.startswith(f"{option}=") for option in CURSOR_PINNED_OPTIONS
-        ):
-            raise ValueError(f"{argument} cannot override the Cursor loopback adapter")
 
 
 def default_config_path() -> Path:
@@ -257,22 +247,6 @@ def harness_binary(harness: str) -> str:
     raise RuntimeError(f"{harness} CLI is not installed")
 
 
-def cursor_binary() -> str:
-    cursor = shutil.which("cursor-agent")
-    if cursor is None:
-        raise RuntimeError("cursor-agent CLI is not installed")
-    version = subprocess.run([cursor, "--version"], check=True, capture_output=True, text=True).stdout.strip()
-    binary = Path.home() / ".local/share/cursor-agent-local/versions" / version / "cursor-agent-local"
-    if not binary.is_file() or not os.access(binary, os.X_OK):
-        installer = Path.home() / "lib/,cursor-agent-local/install.sh"
-        if not installer.is_file():
-            raise RuntimeError(f"Cursor local-agent installer was not found at {installer}")
-        subprocess.run(["bash", str(installer), version], check=True)
-    if binary.is_file() and os.access(binary, os.X_OK):
-        return str(binary)
-    raise RuntimeError("Cursor local-agent installation did not provide an executable")
-
-
 def codex_binary() -> str:
     binary = shutil.which("codex")
     if binary:
@@ -297,18 +271,6 @@ def child_command(
         "ANTHROPIC_API_KEY",
     ):
         env.pop(key, None)
-    if harness == "cursor":
-        for key in (
-            "CURSOR_LOCAL_AGENT_BASE_URL",
-            "CURSOR_LOCAL_AGENT_API_KEY",
-            "CURSOR_API_ENDPOINT",
-            "CURSOR_API_KEY",
-            "ANTHROPIC_BASE_URL",
-            "ANTHROPIC_AUTH_TOKEN",
-        ):
-            env.pop(key, None)
-        env.update({"CURSOR_LOCAL_AGENT_BASE_URL": f"{base_url}/v1", "CURSOR_LOCAL_AGENT_API_KEY": token})
-        return [binary, "--model", model, *forwarded], env
     for key in (
         "CLAUDE_CODE_USE_VERTEX",
         "CLAUDE_CODE_USE_BEDROCK",
@@ -363,8 +325,6 @@ def launch(harness: str, argv: list[str]) -> int:
         if options.help:
             print(usage(harness))
             return 0
-        if harness == "cursor":
-            validate_cursor_forwarded(options.forwarded)
         if harness == "claude":
             validate_claude_forwarded(options.forwarded)
         model = options.model_id or resolve_default_model()
@@ -391,7 +351,7 @@ def launch(harness: str, argv: list[str]) -> int:
                 min([budget.usable_input_tokens, *(item.usable_input_tokens for item in lane_budgets.values())]),
                 claude_auto_compact_token_limit,
             )
-        binary = cursor_binary() if harness == "cursor" else harness_binary(harness)
+        binary = harness_binary(harness)
         refresh_binary = codex_binary()
         credentials = CodexAuth(codex_binary=refresh_binary)
         credentials.get()
@@ -441,8 +401,8 @@ def launch(harness: str, argv: list[str]) -> int:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) < 1 or argv[0] not in {"claude", "cursor"}:
-        print("Usage: main.py {claude|cursor} [arguments]", file=sys.stderr)
+    if len(argv) < 1 or argv[0] != "claude":
+        print("Usage: main.py claude [arguments]", file=sys.stderr)
         return 2
     return launch(argv[0], argv[1:])
 

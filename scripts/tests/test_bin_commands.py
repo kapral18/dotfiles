@@ -7,12 +7,10 @@ import unittest
 
 from .test_artifact import *  # noqa: F401,F403
 from .test_codex import *  # noqa: F401,F403
-from .test_cursor import *  # noqa: F401,F403
-from .test_cursor_llama_cpp import *  # noqa: F401,F403
 from .test_format_md import *  # noqa: F401,F403
 from .test_install_pnpm_pkgs import *  # noqa: F401,F403
 from .test_kbn_stack import *  # noqa: F401,F403
-from .test_mcp_token import *  # noqa: F401,F403
+from .test_llama_cpp_wrappers import *  # noqa: F401,F403
 from .test_openrouter_wrappers import *  # noqa: F401,F403
 from .test_w_issue import *  # noqa: F401,F403
 

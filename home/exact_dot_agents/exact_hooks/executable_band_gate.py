@@ -50,10 +50,7 @@ def _pick(harness: str, agent: str) -> dict[str, Any] | None:
 
 
 def _valid_pick(pick: Any, harness: str) -> bool:
-    # Cursor Task ids cannot encode effort; the user's saved Cursor config supplies it.
-    # Backend-schema routes still require an explicit effort field.
-    keys = ("model",) if harness == "cursor" else ("model", "effort")
-    return isinstance(pick, dict) and all(isinstance(pick.get(key), str) and pick[key] for key in keys)
+    return isinstance(pick, dict) and all(isinstance(pick.get(key), str) and pick[key] for key in ("model", "effort"))
 
 
 def _generic_pick(harness: str, pick: dict[str, Any], tool_input: dict[str, Any]) -> dict[str, Any]:
@@ -71,8 +68,6 @@ def _generic_pick(harness: str, pick: dict[str, Any], tool_input: dict[str, Any]
         return pick
     if not all(_valid_pick(row, harness) for row in matches):
         raise ValueError("The requested model has incomplete lane data. Do not guess its effort.")
-    if harness == "cursor":
-        return matches[0]
     efforts = {row.get("effort") for row in matches}
     requested = tool_input.get("reasoning_effort")
     if len(efforts) == 1:
@@ -85,8 +80,6 @@ def _generic_pick(harness: str, pick: dict[str, Any], tool_input: dict[str, Any]
 
 
 def _deny(harness: str, reason: str) -> dict[str, Any]:
-    if harness == "cursor":
-        return {"permission": "deny", "user_message": reason}
     decision = {"permissionDecision": "deny", "permissionDecisionReason": reason}
     return {"hookSpecificOutput": {"hookEventName": "PreToolUse", **decision}}
 
@@ -207,12 +200,6 @@ def _claude(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str,
     }
 
 
-def _cursor(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]) -> dict[str, Any]:
-    # Cursor Task accepts base ids only; effort is not encodable in the id and comes from saved user config.
-    # updated_input replaces the whole object, so untouched keys must be echoed back.
-    return {"updated_input": dict(tool_input, model=pick["model"])}
-
-
 def _codex(payload: dict[str, Any], pick: dict[str, Any], tool_input: dict[str, Any]) -> dict[str, Any]:
     # Native routes admit forks the same way the subscription path did: deny unconditionally.
     if tool_input.get("fork_context") or tool_input.get("resume"):
@@ -271,24 +258,18 @@ def _codex_openrouter_pick(
 # frontmatter is what holds the band there.
 ADAPTERS = {
     "claude_code": _claude,
-    "cursor": _cursor,
     "codex": _codex,
 }
 
 # Each harness names the delegation tool and its agent-selecting argument differently. Codex's
-# spawn_agent takes agent_type (task_name is a label, not a role) while Cursor and Claude use
+# spawn_agent takes agent_type (task_name is a label, not a role) while Claude uses
 # subagent_type. Order matters only in that the first present key wins.
 AGENT_KEYS = ("subagent_type", "agent_type", "agent", "agent_name", "role", "subagent")
-# Cursor transcript exports label the delegation tool `Subagent` (2026-09-04) while the
-# cursor-agent bundle still names the call type `taskToolCall`; which of the two the preToolUse
-# payload carries as `tool_name` is unverified, so both are matched here and in the hooks.json
-# matcher.
 DELEGATION_TOOLS = {
     "Task",
     "Agent",
     "spawn_agent",
     "subagent",
-    "Subagent",
     "task",
     "invoke_subagent",
     "define_subagent",
@@ -388,11 +369,9 @@ def main() -> int:
         )
         return 0
 
-    # A generic subagent type binds to `implement` (Cursor `generalPurpose`, Codex `worker`,
-    # OMP `task`), and lanes whose profile is unreachable on a harness are launched through
-    # that same generic type carrying their registry pick as an explicit `model` — Cursor never
-    # scans ~/.cursor/agents, so the adversarial verifier, the cheap mechanical / k-agent-smol
-    # lanes, and the research and review lanes all arrive that way. Rewriting such a launch to
+    # A generic subagent type binds to `implement` (Codex `worker`, OMP `task`), and lanes whose
+    # profile is unreachable on a harness are launched through that same generic type carrying
+    # their registry pick as an explicit `model`. Rewriting such a launch to
     # the generic type's band would silently collapse the lane onto the implement model, so the
     # rule is category-aware: on an `implement`-bound type an exact registry model/effort pair
     # survives, while a model no lane asked for (or an omitted one) is rewritten to the
@@ -425,10 +404,6 @@ def main() -> int:
             return 0
     else:
         pick = _format_pick(pick, harness, schema_harness)
-    if harness == "cursor" and tool_input.get("model") == pick.get("model"):
-        # Cursor Task ids carry only the base model; effort comes from the user's saved config.
-        print("{}")
-        return 0
     print(json.dumps(adapter(payload, pick, tool_input) or {}, sort_keys=True))
     return 0
 

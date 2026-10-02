@@ -41,8 +41,6 @@ venv/
 .kube/cache/
 .rbenv/versions/
 work/kibana/es_data/
-.cursor/projects/
 .gemini/tmp/
-.config/cursor/chats/
 .bun/install/cache/
 .codex/sessions/

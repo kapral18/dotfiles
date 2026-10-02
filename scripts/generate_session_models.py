@@ -2,8 +2,7 @@
 """Reconcile repo-owned harness root configs from session_models in tiering.yaml.
 
 The session row is the root/main-session pick the user talks to. It is never a
-delegation target. Cursor's root model/effort live in Cursor saved user config,
-not in this repo, so this generator has no Cursor target.
+delegation target.
 
     generate_session_models.py check     exit 1 and print the divergence
     generate_session_models.py write     rewrite the source files in place

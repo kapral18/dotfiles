@@ -16,22 +16,17 @@ globals().update({name: value for name, value in vars(_support).items() if not n
 class TestCodexWrapper(unittest.TestCase):
     """WHEN launching Codex through the managed wrapper.
 
-    MCP auth needs no launch-time work: hosted OAuth servers run as
-    ",mcp-token --bridge" stdio entries in the rendered config, so the wrapper
+    The rendered config carries no hosted-OAuth MCP servers, so the wrapper
     only injects local llama.cpp model metadata and execs the real binary.
     """
 
-    def test_launches_without_token_machinery(self):
+    def test_launches_the_real_binary(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             home = root / "home"
             bindir = root / "bin"
             home.mkdir()
             bindir.mkdir()
-            token_log = root / "mcp-token.log"
-            token_helper = bindir / ",mcp-token"
-            token_helper.write_text('#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" >> "$MCP_TOKEN_LOG"\n')
-            token_helper.chmod(0o755)
             real_codex = bindir / "codex-real"
             real_codex.write_text("#!/usr/bin/env bash\necho REAL_CODEX_STARTED\nprintf 'ARGS=%s\\n' \"$*\"\n")
             real_codex.chmod(0o755)
@@ -45,14 +40,11 @@ class TestCodexWrapper(unittest.TestCase):
                     "HOME": str(home),
                     "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
                     "CODEX_REAL_BIN": str(real_codex),
-                    "MCP_TOKEN_LOG": str(token_log),
                 },
             )
-            token_calls = token_log.read_text().splitlines() if token_log.exists() else []
 
         assert result.returncode == 0, result.stderr
         assert "REAL_CODEX_STARTED" in result.stdout
-        assert token_calls == [], "launch must not touch ,mcp-token; the bridge owns auth per request"
 
     def test_local_models_inject_catalog_metadata(self):
         with tempfile.TemporaryDirectory() as tmp:

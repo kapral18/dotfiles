@@ -298,26 +298,17 @@ check_security() {
 check_editors_ai() {
   section "Editors & AI Tools"
 
-  local -a editor_checks=(
-    "cursor:Cursor"
-    "nvim:Neovim"
-  )
-  for entry in "${editor_checks[@]}"; do
-    local cmd="${entry%%:*}"
-    local label="${entry#*:}"
-    if has_cmd "$cmd"; then
-      pass "$label installed"
-    else
-      warn "$label not installed"
-    fi
-  done
+  if has_cmd nvim; then
+    pass "Neovim installed"
+  else
+    warn "Neovim not installed"
+  fi
 
   local -a ai_checks=(
     "claude:Claude Code"
     "codex:OpenAI Codex"
     "opencode:OpenCode"
     "agy:Antigravity CLI"
-    "cursor-agent:Cursor Agent"
   )
   for entry in "${ai_checks[@]}"; do
     local cmd="${entry%%:*}"
@@ -397,18 +388,6 @@ check_bin_wrappers() {
       fi
     fi
   done
-
-  # Cursor CLI bundles its own ripgrep; a missing binary makes agent file
-  # search (Glob/Grep) fail with spawn ENOENT.
-  if [ -d "$HOME/.local/share/cursor-agent/versions" ]; then
-    local cursor_rg
-    cursor_rg="$(ls -1 "$HOME"/.local/share/cursor-agent/versions/*/rg 2> /dev/null | tail -1 || true)"
-    if [ -n "$cursor_rg" ] && [ -x "$cursor_rg" ]; then
-      pass "cursor-cli bundled rg present"
-    else
-      warn "cursor-cli bundled rg missing (agent Glob/Grep may ENOENT)" "reinstall cursor-cli: curl https://cursor.com/install | bash"
-    fi
-  fi
 }
 
 check_worktrees() {
@@ -443,7 +422,6 @@ check_ai_configs() {
   section "AI Tool Configs"
 
   local -a config_checks=(
-    "$HOME/.cursor/mcp.json:cursor:Cursor MCP"
     "$HOME/.claude/settings.json:claude:Claude Code settings"
     "$HOME/.claude.json:claude:Claude Code MCP"
     "$HOME/.gemini/config/hooks.json:agy:Antigravity hooks"

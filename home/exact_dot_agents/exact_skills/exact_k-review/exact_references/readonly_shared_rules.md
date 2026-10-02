@@ -47,11 +47,9 @@ The root supplies scope pointers and MUST NOT run these source or history reads 
 ### Evidence selection
 
 Reuse the packet's relevant base evidence.
-Use scoped source/history for targeted questions and semantic search for substantial missing context when useful.
-If using semantic search, resolve the index through `list_indices` before querying and verify which snapshot it represents.
-Do not claim an index was checked when no tool ran. A missing index does not block usable local-source evidence.
-Do not run an unconditional multi-index preflight or query net when the relevant evidence is already available.
-Current branch/PR files and diff establish the changed behavior; index results are background evidence, not the reviewed candidate.
+Use scoped source/history for targeted questions.
+Do not run an unconditional query net when the relevant evidence is already available.
+Current branch/PR files and diff establish the changed behavior; base-ref reads are background evidence, not the reviewed candidate.
 
 ### Historical Archaeology & Provenance (History Dimension)
 
@@ -68,7 +66,7 @@ History encodes invariants, past bug fixes, edge cases, and architectural contex
 ### Base context reporting
 
 Identify the actual base/head scope and evidence source in the compact review receipt.
-State source/index unavailability precisely without inventing a completed preflight.
+State source unavailability precisely without inventing a completed preflight.
 This is assistant metadata, not GitHub comment-body content.
 
 ## Draft Style (Public-Ready)

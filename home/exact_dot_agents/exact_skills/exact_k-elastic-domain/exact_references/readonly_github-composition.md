@@ -21,7 +21,7 @@ Elastic org PR bodies:
 
 - Append `Assisted with <Tool> using <Model>` at the very end, after all other sections and a blank line.
 - Use the actual tool/model when known; if unknown, use a reasonable label and ask the user to confirm.
-- Known labels: Cursor, Claude Code, Copilot, OpenCode, pi-coding-agent.
+- Known labels: Claude Code, Copilot, OpenCode, pi-coding-agent.
 - Gather only verified evidence for summary, root cause/fix, and test plan.
 - Include `## Test Plan` only when applicable manual testing exists; otherwise omit the entire section, including empty headings and `N/A` placeholders.
 - Test Plan MUST NOT contain automated test commands, automated test results, or CI checklists, even when a person runs the commands manually.

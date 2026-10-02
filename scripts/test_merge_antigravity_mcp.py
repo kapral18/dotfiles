@@ -85,9 +85,6 @@ class TestMergeAntigravityMcp(unittest.TestCase):
         self.assertIn('python3 "$antigravity_merge"', hook)
         self.assertIn("--ownership-adapter json-declared", hook)
         self.assertIn("--consumer agy", hook)
-        self.assertIn('chezmoi_forget_checksum "$antigravity_target"', hook)
-        self.assertIn('chezmoi_forget_checksum "$HOME/.gemini/settings.json"', hook)
-        self.assertIn('chezmoi_forget_artifact "gemini-settings"', hook)
 
 
 if __name__ == "__main__":

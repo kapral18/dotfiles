@@ -37,7 +37,7 @@ Comment types are actionable categories (`issue`, `suggestion`, `question`, `nit
 Invoke `tuicr` directly — no wrapper:
 
 ```bash
-# 1. agent makes edits (claude / ,codex / opencode / cursor-agent / pi / agent)
+# 1. agent makes edits (claude / ,codex / opencode / pi)
 
 # 2. review and export to clipboard, then paste into the next agent prompt:
 tuicr
@@ -46,7 +46,6 @@ tuicr -r main..HEAD              # scope to a revision range (Git/JJ/Hg syntax)
 # or one-shot: export straight to stdout for piping:
 tuicr --stdout | claude --print
 tuicr --stdout | ,codex exec
-tuicr --stdout | cursor-agent
 tuicr --stdout > /tmp/review.md
 ```
 

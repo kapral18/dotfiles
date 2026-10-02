@@ -27,26 +27,10 @@ mcp_servers:
       claude:
         clientId: "$(echo resolved-client-id)"
         callbackPort: 3118
-      cursor:
-        clientId: "$(echo cursor-client-id)"
-      codex:
-        tokenBridge: "http-tool"
       gemini: {}
 
-  - name: bridge-tool
+  - name: plain-tool
     work_only: false
-    type: http
-    url: https://mcp.bridge.com/mcp
-    oauth_by_tool:
-      cursor:
-        ideClientId: "cursor-bridge-client"
-        clientId: "cursor-bridge-client"
-        scopes: "user"
-        tokenBridge: "bridge-source"
-        retryConnectTimeouts: true
-      codex:
-        tokenBridge: "bridge-source"
-        retryConnectTimeouts: true
-      gemini:
-        tokenBridge: "bridge-source"
-        retryConnectTimeouts: true
+    command: echo
+    args:
+      - plain

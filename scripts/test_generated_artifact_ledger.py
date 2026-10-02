@@ -80,7 +80,7 @@ class TestGeneratedArtifactLedger(unittest.TestCase):
         target.write_text('{"declared":1,"runtime":1}\n')
         return source, transform, target
 
-    def test_record_is_atomic_idempotent_and_forget_is_literal(self):
+    def test_record_is_atomic_and_idempotent(self):
         import generated_artifact_ledger as ledger_module
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -105,8 +105,7 @@ class TestGeneratedArtifactLedger(unittest.TestCase):
             self.assertEqual((before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns))
             self.assertEqual(stat.S_IMODE(ledger.stat().st_mode), 0o600)
             self.assertEqual(list(ledger.parent.glob("ledger.json.*")), [])
-            self.assertTrue(ledger_module.forget_artifact(ledger, "fixture"))
-            self.assertEqual(ledger_module.load_ledger(ledger)["artifacts"], {})
+            self.assertEqual(list(ledger_module.load_ledger(ledger)["artifacts"]), ["fixture"])
 
     def test_json_selectors_ignore_runtime_fields_and_detect_owned_drift(self):
         import generated_artifact_ledger as ledger_module

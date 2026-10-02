@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Run Codex with local llama.cpp model metadata injected when needed.
 
-MCP auth needs no launch-time work: hosted OAuth servers (slack, scsi-main)
-run as ",mcp-token <server> --bridge" stdio bridges declared in the
-chezmoi-rendered ~/.codex/config.toml, injecting a fresh bearer per request.
+MCP needs no launch-time work: the chezmoi-rendered ~/.codex/config.toml
+declares stdio servers only.
 """
 
 from __future__ import annotations

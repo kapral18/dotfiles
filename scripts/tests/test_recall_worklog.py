@@ -463,24 +463,18 @@ console.log(JSON.stringify({ first, second, third, staleProbes, freshProbes }));
         claude = (REPO / "home/dot_claude/settings.personal.json").read_text(encoding="utf-8")
         opencode = (REPO / "home/dot_config/opencode/plugins/agent-memory.ts").read_text(encoding="utf-8")
         pi = PI_EXTENSION.read_text(encoding="utf-8")
-        cursor = (REPO / "home/dot_cursor/hooks.json").read_text(encoding="utf-8")
         codex = (REPO / "home/dot_codex/hooks.json.tmpl").read_text(encoding="utf-8")
         antigravity = (REPO / "home/dot_gemini/config/readonly_hooks.json").read_text(encoding="utf-8")
 
-        for adapter in (claude, opencode, codex, cursor):
+        for adapter in (claude, opencode, codex):
             self.assertIn("perturn_recall.py", adapter)
-        for adapter in (claude, opencode, cursor, codex):
+        for adapter in (claude, opencode, codex):
             self.assertIn("worklog_dispatcher.sh", adapter)
         self.assertIn("session_context.py", antigravity)
         self.assertIn("worklog_dispatcher.sh", antigravity)
         self.assertIn("premise_nudge.py", antigravity)
         self.assertNotIn("perturn_recall.py", antigravity)
         self.assertIn("AI_AGENT_DEPTH", pi)
-        # Cursor >= 2026.07.16 injects additionalContext from beforeSubmitPrompt
-        # (verified from the installed bundle); the hook must ride that event and
-        # sessionStart must request the resident warm-up.
-        self.assertIn("beforeSubmitPrompt", cursor)
-        self.assertIn("AI_EMBED_WARM=1", cursor)
         # Codex spawns hook commands without a shell (verified against codex
         # 0.144.4: a literal `$HOME/...` command never expands and the hook
         # fails), so its adapter must use templated absolute paths.

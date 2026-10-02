@@ -376,22 +376,6 @@ def record_artifact(ledger: Path, spec: dict[str, Any]) -> bool:
     )
 
 
-def forget_artifact(ledger: Path, artifact_id: str) -> bool:
-    _validate_artifact_id(artifact_id)
-    payload = load_ledger(ledger)
-    artifacts = copy.deepcopy(payload["artifacts"])
-    if artifact_id not in artifacts:
-        return False
-    artifacts.pop(artifact_id)
-    return _write_if_changed(
-        ledger,
-        {
-            "schema_version": SCHEMA_VERSION,
-            "artifacts": dict(sorted(artifacts.items())),
-        },
-    )
-
-
 def _current_hash(path: str) -> str | None:
     target = Path(path)
     return _sha256_bytes(target.read_bytes()) if target.is_file() else None
@@ -577,9 +561,6 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--consumer", required=True)
     record.add_argument("--probe-arg", action="append", help="Repeat for probe arguments; defaults to --version")
 
-    forget = subcommands.add_parser("forget")
-    forget.add_argument("--id", required=True, dest="artifact_id")
-
     report = subcommands.add_parser("report")
     report.add_argument("--json", action="store_true")
     report.add_argument("--live", action="store_true")
@@ -611,9 +592,6 @@ def main(argv: list[str] | None = None) -> int:
                     "live_probe": {"kind": "command", "argv": [args.consumer, *(args.probe_arg or ["--version"])]},
                 },
             )
-            return 0
-        if args.command == "forget":
-            forget_artifact(args.ledger, args.artifact_id)
             return 0
         payload = report_payload(args.ledger, live=args.live)
     except (OSError, ValueError) as err:

@@ -72,7 +72,7 @@ What to focus on:
 
 - Learning to invoke terminal assistants (Pi, Antigravity CLI, OpenCode).
 - Understanding how SOPs dictate agent behavior.
-- Utilizing MCP tools (like Semantic Code Search) to give agents context.
+- Utilizing MCP tools to give agents context.
 
 Where to read:
 

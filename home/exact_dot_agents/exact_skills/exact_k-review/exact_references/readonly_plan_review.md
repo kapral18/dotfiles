@@ -28,10 +28,10 @@ A plan is a set of claims about the codebase plus a set of intended steps. Both 
 The review worker resolves the source claims below from the packet; the root passes the plan's claims and named symbols and MUST NOT read the named source itself before the packet returns.
 
 - Follow the Base-Branch Context Gate in `~/.agents/skills/k-review/references/shared_rules.md`, adapted for the missing diff:
-  generate the SCSI/local-source questions from the plan's claims and named symbols instead of a diff, and report the required line as `Base context: ..., base=<branch the plan targets>, diff=n/a (plan review)`.
+  generate the local-source questions from the plan's claims and named symbols instead of a diff, and report the required line as `Base context: ..., base=<branch the plan targets>, diff=n/a (plan review)`.
 - Resolve identity for every file, symbol, system, or behavior the plan names:
   it exists, and the plan's description of it matches the source.
-- A plan claim about current behavior is a hypothesis until anchored in a file read, SCSI result, or probe (Truth Validation Framework).
+- A plan claim about current behavior is a hypothesis until anchored in a file read or probe (Truth Validation Framework).
 
 ## Judge The Plan
 

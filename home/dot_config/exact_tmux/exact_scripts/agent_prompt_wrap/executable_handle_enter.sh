@@ -7,7 +7,7 @@
 # Per-press decision:
 #   1. If @agent-wrap is not "1": pass Alt-Enter through unchanged.
 #   2. If pane's foreground process is not an agent
-#      (claude/cursor-agent/pi):
+#      (claude/pi):
 #      pass Alt-Enter through unchanged.
 #   3. Otherwise: send Ctrl-A (cursor to start), bracketed-paste the prefix core,
 #      type the "User prompt follows:" pointer (correct here because the user's
@@ -16,8 +16,7 @@
 #      prefix.txt holds only the discipline core; this path owns the
 #      forward-pointing framing.
 #
-# Detection: pane_current_command alone is not sufficient (cursor-agent and pi
-# both show as `node`). We inspect the foreground processes on the pane's TTY
+# Detection: pane_current_command alone is not sufficient (pi shows as `node`). We inspect the foreground processes on the pane's TTY
 # via `ps`, filter to running foreground process groups, and match the command line.
 
 set -uo pipefail
@@ -42,12 +41,11 @@ tty_short="${pane_tty#/dev/}"
 # Match the executable or Node/Bun script, never an unrelated command's arguments.
 # Anchoring also excludes names such as `pip` and `pioneer`.
 #   - claude / claude.exe at end of a path component
-#   - cursor-agent at end of a path component
 #   - pi at end of a path component
 #   - pi-coding-agent npm script path (covers Node-launched pi forks)
 fg_cmd="$(ps -t "$tty_short" -o pgid=,tpgid=,stat=,command= -ww 2> /dev/null \
   | awk '$1 == $2 && $3 !~ /T/ { $1 = $2 = $3 = ""; sub(/^ +/, ""); print }' || true)"
-if ! printf '%s' "$fg_cmd" | grep -qE '^([^ ]*/)?(claude(\.exe)?|cursor-agent|pi)( |$)|^([^ ]*/)?(node|bun)( --(use-system-ca|enable-source-maps|no-warnings))* ([^ ]*/)?((claude(\.exe)?|cursor-agent|pi)( |$)|pi-coding-agent/[^ ]+( |$))'; then
+if ! printf '%s' "$fg_cmd" | grep -qE '^([^ ]*/)?(claude(\.exe)?|pi)( |$)|^([^ ]*/)?(node|bun)( --(use-system-ca|enable-source-maps|no-warnings))* ([^ ]*/)?((claude(\.exe)?|pi)( |$)|pi-coding-agent/[^ ]+( |$))'; then
   pass_through
 fi
 

@@ -50,19 +50,17 @@ Assistants are governed by a version-controlled SOP + skills layer, so behavior 
 
 The CLI assistants, in the order this setup leans on them:
 
-1. **Cursor CLI** (`cursor-agent`, aliased `agent`) — the primary interactive harness.
-2. **Codex** (`,codex`)
-3. **Pi** (`pi`)
-4. **Claude Code** (`claude`)
+1. **Codex** (`,codex`)
+2. **Pi** (`pi`)
+3. **Claude Code** (`claude`)
 
 ```bash
-agent      # Cursor CLI (primary)
 ,codex
 pi
 claude
 ```
 
-Per-tool configuration (auth, models, MCP, profile merging) lives in [Tool configs](../topics/ai-assistants/tool-configs/index.md). When you run `claude`, `cursor-agent`, or `pi` inside tmux, `Alt-Enter` prepends a calibrated verification scaffold and leaves the prompt editable (toggle with `prefix` + `W`); plain `Enter` is never touched.
+Per-tool configuration (auth, models, MCP, profile merging) lives in [Tool configs](../topics/ai-assistants/tool-configs/index.md). When you run `claude` or `pi` inside tmux, `Alt-Enter` prepends a calibrated verification scaffold and leaves the prompt editable (toggle with `prefix` + `W`); plain `Enter` is never touched.
 
 Across sessions, agents carry context through two memory layers: short-lived per-workspace hook memory (`/tmp/specs`) and a durable knowledge base (`,ai-kb`). See [Agent memory](../topics/ai-assistants/knowledge-base/index.md).
 

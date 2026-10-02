@@ -5,7 +5,7 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 
 // Agent-memory plugin — session-context warm-start + worklog recording,
-// bringing OpenCode to parity with the Claude/Cursor/Gemini hooks.
+// bringing OpenCode to parity with the Claude/Gemini hooks.
 //
 // Thin delegating plugin: all logic lives in the shared hook scripts
 // (~/.agents/hooks/session_context.py and worklog_dispatcher.sh, sourced from

@@ -25,7 +25,7 @@ import json
 import re
 import sys
 
-from mcp_registry import TOKEN_BRIDGE_COMMAND, load_servers, token_bridge_args
+from mcp_registry import load_servers
 
 MARKER = "# __MCP_SERVERS__"
 VALID_APPROVAL_MODES = {"approve", "auto", "prompt"}
@@ -283,19 +283,11 @@ def _render_codex_mcp_toml(
     for name, spec in servers.items():
         if spec.get("type") == "http":
             # Codex reads bearer_token_env_var once at launch and never
-            # reloads it, so header-auth sessions died with the captured
-            # token; hosted OAuth servers instead run as local stdio bridges
-            # (",mcp-token <source> --bridge --url <url>") that inject a
-            # freshly selected bearer per request.
-            oauth = spec.get("oauth", {})
-            token_source = oauth.get("tokenBridge")
-            if not token_source:
-                continue
-            command = TOKEN_BRIDGE_COMMAND
-            args = token_bridge_args(name, spec)
-        else:
-            command = spec["command"]
-            args = spec["args"]
+            # reloads it, so a header-auth session dies with the captured
+            # token. Hosted OAuth servers are therefore not rendered for Codex.
+            continue
+        command = spec["command"]
+        args = spec["args"]
         out_lines.append(f"[mcp_servers.{_toml_key(name)}]")
         out_lines.append(f"command = {_toml_string(str(command))}")
         out_lines.append("args = [")

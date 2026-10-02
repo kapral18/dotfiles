@@ -17,38 +17,16 @@ class TestAiModels(unittest.TestCase):
 
     def test_load_model_mirror_policy_sections(self):
         from ai_models import (
-            load_cursor_models,
             load_pi_extra_models,
             load_provider_models,
         )
 
         path = FIXTURES / "ai_models"
-        cursor = load_cursor_models(path)
         pi = load_pi_extra_models(path)
         providers = load_provider_models(path)
 
-        assert cursor == [
-            {"id": "cursor-model-a", "recommended": True},
-            {"id": "cursor-model-b"},
-        ]
         assert pi == [{"id": "openrouter/model-a", "recommended": True}]
         assert providers == [{"provider": "openrouter", "id": "provider-model-a", "recommended": True}]
-
-    def test_cursor_policy_fails_closed_when_missing_empty_or_unrecognized(self):
-        from ai_models import load_cursor_models
-
-        cases = {
-            "missing": "pi_extra_models:\n  - id: model-a\n",
-            "empty": "cursor_models:\npi_extra_models:\n",
-            "unrecognized": "cursor_models:\n  models: cursor-model-a\n",
-            "absent file": None,
-        }
-        for name, contents in cases.items():
-            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
-                if contents is not None:
-                    (Path(directory) / "harness-catalogs.yaml").write_text(contents)
-                with self.assertRaisesRegex(ValueError, "cursor_models"):
-                    load_cursor_models(directory)
 
     def test_load_session_models(self):
         from ai_models import load_session_models
@@ -297,8 +275,7 @@ class TestAiModels(unittest.TestCase):
         assert section_path("/registry", "category_models").name == "tiering.yaml"
         assert section_path("/registry", "pi_model_profiles").name == "tiering.yaml"
         assert section_path("/registry", "session_models").name == "tiering.yaml"
-        assert section_path("/registry", "cursor_models").name == "harness-catalogs.yaml"
-        assert section_path("/registry", "cursor_task_base_models").name == "harness-catalogs.yaml"
+        assert section_path("/registry", "pi_extra_models").name == "harness-catalogs.yaml"
         with self.assertRaisesRegex(ValueError, "unknown registry section"):
             section_path("/registry", "not_a_section")
         for name in SECTION_FILES.values():

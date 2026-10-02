@@ -3,7 +3,6 @@
 harnesses:
   - "claude"
   - "codex"
-  - "cursor"
   - "opencode"
   - "gemini"
   - "pi"
@@ -78,6 +77,9 @@ scenarios:
   - "sop.3.7.delegation-categories.positive"
   - "sop.3.7.delegation-categories.negative-control"
   - "sop.3.7.delegation-categories.malformed-input"
+  - "sop.3.7a.delegation-mechanics.positive"
+  - "sop.3.7a.delegation-mechanics.negative-control"
+  - "sop.3.7a.delegation-mechanics.malformed-input"
   - "sop.3.6.state-machine-verification.positive"
   - "sop.3.6.state-machine-verification.negative-control"
   - "sop.3.6.state-machine-verification.malformed-input"

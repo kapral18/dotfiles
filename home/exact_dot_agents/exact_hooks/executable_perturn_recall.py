@@ -311,10 +311,8 @@ def main() -> None:
 def _output(payload: dict, context: str) -> dict:
     # Echo the firing event name: Claude Code sends UserPromptSubmit, Gemini
     # CLI sends BeforeAgent — both expect it mirrored in hookSpecificOutput.
-    # Cursor reads the top-level snake key from beforeSubmitPrompt output
-    # (its hookSpecificOutput fallback expects the Claude-style event name,
-    # not the echoed cursor-native one), so emit both channels like
-    # session_context.py; the codex adapter strips to hookSpecificOutput via
+    # Emit both channels like session_context.py (the Pi/OMP extensions accept the
+    # top-level snake key); the codex adapter strips to hookSpecificOutput via
     # AGENT_HOOK_OUTPUT=hook_specific in emit().
     return {
         "additional_context": context,

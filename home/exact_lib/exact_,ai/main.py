@@ -17,7 +17,7 @@ from model_mirror_consumer import load_consumer_view
 DEPTH_VALUES = ("fast", "balanced", "deep")
 EXECUTION_VALUES = ("readonly", "supervised", "autonomous")
 CONNECTIVITY_VALUES = ("online", "offline")
-HARNESS_NAMES = ("cursor", "claude", "codex", "gemini", "opencode", "pi")
+HARNESS_NAMES = ("claude", "codex", "gemini", "opencode", "pi")
 DEFAULT_AXES = {
     "depth": "balanced",
     "execution": "supervised",
@@ -276,30 +276,6 @@ class HarnessCapability:
 
 
 CAPABILITIES = {
-    "cursor": HarnessCapability(
-        leaf=",cursor",
-        verified_version="2026.07.09-a3815c0",
-        depth_transport="cursor-model",
-        execution={
-            "readonly": ("--mode", "plan"),
-            "supervised": ("--auto-review",),
-            "autonomous": ("--yolo",),
-        },
-        connectivity={"online": (), "offline": None},
-        model_flag="--model",
-        provider_flag=None,
-        owned_options={
-            "--mode": "execution",
-            "--plan": "execution",
-            "--auto-review": "execution",
-            "-f": "execution",
-            "--force": "execution",
-            "--yolo": "execution",
-            "--sandbox": "execution",
-            "--model": "model selection",
-        },
-        sensitive_options=frozenset({"--api-key", "-H", "--header"}),
-    ),
     "claude": HarnessCapability(
         leaf="claude",
         verified_version="2.1.206",
@@ -602,22 +578,6 @@ def _validate_leaf_args(command: ParsedCommand, capability: HarnessCapability) -
         index += 1
 
 
-def _cursor_model_with_effort(model: str, effort: str) -> str:
-    if not model.endswith("]") or "[" not in model:
-        return f"{model}[effort={effort}]"
-    base, raw_parameters = model.rsplit("[", 1)
-    parameters = [item.strip() for item in raw_parameters[:-1].split(",") if item.strip()]
-    for parameter in parameters:
-        key, separator, value = parameter.partition("=")
-        if key.strip() != "effort":
-            continue
-        if not separator or value.strip() != effort:
-            raise PlanError(f"Cursor model effort={value.strip() or 'unknown'} contradicts depth effort={effort}")
-        return model
-    parameters.append(f"effort={effort}")
-    return f"{base}[{','.join(parameters)}]"
-
-
 def _validate_antigravity_model_effort(model: str | None, effort: str) -> None:
     match = ANTIGRAVITY_EFFORT_SUFFIX_RE.search(model or "")
     if match and match.group("effort") != effort:
@@ -633,12 +593,6 @@ def _depth_transport(
     if not field.explicit:
         return Transport("inherited", note="current harness depth/default remains in control"), selection.model
     effort = DEPTH_EFFORT[field.value]
-    if capability.depth_transport == "cursor-model":
-        if selection.model is None:
-            note = "Cursor depth is advisory until an explicit model or availability adapter supplies a model"
-            return Transport("advisory", note=note), None
-        model = _cursor_model_with_effort(selection.model, effort)
-        return Transport("applied", note=f"model parameter effort={effort}"), model
     if capability.depth_transport == "effort-flag":
         if command.harness == "gemini":
             _validate_antigravity_model_effort(selection.model, effort)

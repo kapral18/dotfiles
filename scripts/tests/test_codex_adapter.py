@@ -26,15 +26,11 @@ import auth  # noqa: E402
 import client  # noqa: E402
 import main  # noqa: E402
 from protocols import (  # noqa: E402
-    aggregate_responses,
     anthropic_to_responses,
-    chat_to_responses,
     collect_anthropic_message,
     iter_sse_json,
     load_lane_routes,
-    prepare_responses_request,
     responses_to_anthropic_events,
-    responses_to_chat_events,
 )
 from server import AdapterContext, start_server  # noqa: E402
 from state import OpaqueReasoningStore  # noqa: E402
@@ -93,20 +89,6 @@ def completed_text_events(text: str = "hello") -> list[dict[str, object]]:
 
 class TestLauncherOptions(unittest.TestCase):
     """The wrapper owns model/effort flags and preserves harness arguments."""
-
-    def test_SHOULD_preserve_explicit_chat_cache_keys_without_inventing_ttl(self):
-        base = {"model": "gpt-test", "messages": [{"role": "user", "content": "hello"}]}
-        for key in ("session-a", "", None):
-            with self.subTest(key=key):
-                body = {**base, "prompt_cache_key": key, "prompt_cache_retention": "24h"}
-                result = chat_to_responses(
-                    body, model_override=None, effort_override=None, store=OpaqueReasoningStore()
-                )
-                self.assertEqual(result["prompt_cache_key"], key)
-                self.assertNotIn("prompt_cache_retention", result)
-                self.assertEqual(body["messages"], base["messages"])
-        result = chat_to_responses(base, model_override=None, effort_override=None, store=OpaqueReasoningStore())
-        self.assertNotIn("prompt_cache_key", result)
 
     def test_SHOULD_parse_model_effort_aliases_and_passthrough_boundary(self) -> None:
         options = main.parse_args(
@@ -230,7 +212,7 @@ class TestLauncherOptions(unittest.TestCase):
                 main.ContextBudget(64_000, 60_800, 57_600),
             )
 
-    def test_SHOULD_isolate_real_credentials_and_configure_each_harness(self) -> None:
+    def test_SHOULD_isolate_real_credentials_and_configure_claude(self) -> None:
         inherited = {
             "PATH": "/usr/bin",
             "ANTHROPIC_API_KEY": "real-anthropic-key",
@@ -238,24 +220,11 @@ class TestLauncherOptions(unittest.TestCase):
             "ANTHROPIC_AUTH_TOKEN": "outside-token",
             "CLAUDE_CODE_USE_VERTEX": "1",
             "OPENAI_API_KEY": "real-openai-key",
-            "CURSOR_LOCAL_AGENT_BASE_URL": "https://outside.example",
-            "CURSOR_LOCAL_AGENT_API_KEY": "outside-key",
-            "CURSOR_API_ENDPOINT": "https://outside.example",
-            "CURSOR_API_KEY": "outside-key",
         }
         with mock.patch.dict(os.environ, inherited, clear=True):
             claude_command, claude_env = main.child_command(
                 "claude",
                 "/usr/bin/claude",
-                "http://127.0.0.1:3210",
-                "local-token",
-                "gpt-selected",
-                ["-p", "hello"],
-                main.ContextBudget(272_000, 258_400, 244_800),
-            )
-            cursor_command, cursor_env = main.child_command(
-                "cursor",
-                "/usr/bin/cursor-agent-local",
                 "http://127.0.0.1:3210",
                 "local-token",
                 "gpt-selected",
@@ -276,20 +245,6 @@ class TestLauncherOptions(unittest.TestCase):
         self.assertNotIn("CLAUDE_CODE_USE_VERTEX", claude_env)
         self.assertNotIn("OPENAI_API_KEY", claude_env)
 
-        self.assertEqual(cursor_command, ["/usr/bin/cursor-agent-local", "--model", "gpt-selected", "-p", "hello"])
-        self.assertEqual(cursor_env["CURSOR_LOCAL_AGENT_BASE_URL"], "http://127.0.0.1:3210/v1")
-        self.assertEqual(cursor_env["CURSOR_LOCAL_AGENT_API_KEY"], "local-token")
-        self.assertNotIn("ANTHROPIC_BASE_URL", cursor_env)
-        self.assertNotIn("ANTHROPIC_AUTH_TOKEN", cursor_env)
-        self.assertNotIn("CURSOR_API_ENDPOINT", cursor_env)
-        self.assertNotIn("CURSOR_API_KEY", cursor_env)
-
-    def test_SHOULD_reject_cursor_flags_that_can_bypass_loopback(self) -> None:
-        for option in ("--base-url", "--base-url=https://outside.example", "--model", "-m"):
-            with self.subTest(option=option):
-                with self.assertRaises(ValueError):
-                    main.validate_cursor_forwarded([option])
-
     def test_SHOULD_apply_launch_overrides_and_context_metadata(self) -> None:
         server = mock.Mock()
         server.server_port = 3210
@@ -298,18 +253,19 @@ class TestLauncherOptions(unittest.TestCase):
         auth_provider = mock.Mock(return_value=credentials)
         child = mock.Mock(
             return_value=(
-                ["/usr/bin/cursor-agent-local"],
+                ["/usr/bin/claude"],
                 {"PATH": "/usr/bin", "AGENT_BAND_MODEL_OVERRIDE": "stale", "AGENT_BAND_MODEL_FORMAT": "stale"},
             )
         )
 
         with (
             mock.patch("main.load_lane_routes", return_value={}),
+            mock.patch("main.claude_profiles", return_value=([], {"AGENT_BAND_CLAUDE_ROUTES": "{}"})),
             mock.patch(
                 "main.resolve_model_budget",
                 return_value=main.ContextBudget(272_000, 258_400, 244_800),
             ) as resolve_budget,
-            mock.patch("main.cursor_binary", return_value="/usr/bin/cursor-agent-local"),
+            mock.patch("main.harness_binary", return_value="/usr/bin/claude"),
             mock.patch("main.codex_binary", return_value="/usr/bin/codex"),
             mock.patch("main.CodexAuth", auth_provider),
             mock.patch("main.CodexClient"),
@@ -319,7 +275,7 @@ class TestLauncherOptions(unittest.TestCase):
             mock.patch("main.run_child", return_value=0) as run_child,
         ):
             result = main.launch(
-                "cursor",
+                "claude",
                 ["--model", "gpt-selected", "--effort", "high", "--", "-p", "hello"],
             )
 
@@ -331,14 +287,14 @@ class TestLauncherOptions(unittest.TestCase):
         self.assertNotIn("AGENT_BAND_MODEL_FORMAT", launched_env)
         resolve_budget.assert_called_once_with("gpt-selected")
         child.assert_called_once_with(
-            "cursor",
-            "/usr/bin/cursor-agent-local",
+            "claude",
+            "/usr/bin/claude",
             "http://127.0.0.1:3210",
             "local-token",
             "gpt-selected",
             ["-p", "hello"],
             main.ContextBudget(272_000, 258_400, 244_800),
-            None,
+            244_800,
         )
         server.shutdown.assert_called_once_with()
         server.server_close.assert_called_once_with()
@@ -566,52 +522,11 @@ class TestCodexAuthentication(unittest.TestCase):
 
 
 class TestResponsesProtocol(unittest.TestCase):
-    """A Responses client receives its requested shape over a stream-only backend."""
+    """The stream-only backend's SSE artifact parses into ordered Responses events."""
 
-    def test_SHOULD_force_streaming_and_apply_only_explicit_overrides(self) -> None:
-        original = {
-            "model": "harness-model",
-            "input": "hello",
-            "stream": False,
-            "max_output_tokens": 4096,
-            "reasoning": {"effort": "low", "summary": "auto"},
-            "include": ["file_search_call.results"],
-        }
-
-        overridden = prepare_responses_request(
-            original,
-            model_override="wrapper-model",
-            effort_override="xhigh",
-        )
-        preserved = prepare_responses_request(
-            original,
-            model_override=None,
-            effort_override=None,
-        )
-
-        self.assertTrue(overridden["stream"])
-        self.assertFalse(overridden["store"])
-        self.assertEqual(overridden["model"], "wrapper-model")
-        self.assertEqual(overridden["reasoning"]["effort"], "xhigh")
-        self.assertIn("reasoning.encrypted_content", overridden["include"])
-        self.assertNotIn("initiator", overridden)
-        self.assertNotIn("max_output_tokens", overridden)
-        self.assertEqual(preserved["model"], "harness-model")
-        self.assertEqual(preserved["reasoning"]["effort"], "low")
-        self.assertEqual(original["stream"], False)
-
-    def test_SHOULD_aggregate_completed_output_items_missing_from_final_event(self) -> None:
-        response = aggregate_responses(completed_text_events("assembled"))
-
-        self.assertEqual(response["status"], "completed")
-        self.assertEqual(response["output"][0]["content"][0]["text"], "assembled")
-        self.assertEqual(response["usage"]["total_tokens"], 11)
-
-    def test_SHOULD_parse_complete_SSE_artifact_and_reject_incomplete_stream(self) -> None:
+    def test_SHOULD_parse_complete_SSE_artifact(self) -> None:
         parsed = list(iter_sse_json(sse_response(*completed_text_events("parsed"))))
         self.assertEqual(parsed[-1]["type"], "response.completed")
-        with self.assertRaisesRegex(client.UpstreamError, "without response.completed"):
-            aggregate_responses(parsed[:-1])
 
 
 class TestAnthropicRequestTranslation(unittest.TestCase):
@@ -1062,8 +977,8 @@ class TestLoopbackServer(unittest.TestCase):
             with self.subTest(token=token):
                 with self.assertRaises(urllib.error.HTTPError) as raised:
                     self.request(
-                        "/v1/responses",
-                        {"model": "gpt-test", "input": "hello"},
+                        "/v1/messages",
+                        {"model": "gpt-test", "max_tokens": 200, "messages": [{"role": "user", "content": "hello"}]},
                         token=token,
                     )
                 self.assertEqual(raised.exception.code, 401)
@@ -1076,7 +991,7 @@ class TestLoopbackServer(unittest.TestCase):
             urllib.request.urlopen(request, timeout=5)
         self.assertEqual(raised.exception.code, 401)
 
-    def test_SHOULD_publish_only_the_selected_cursor_model_with_extended_capabilities(self) -> None:
+    def test_SHOULD_publish_only_the_selected_model_with_extended_capabilities(self) -> None:
         request = urllib.request.Request(
             self.base_url + "/v1/models",
             headers={"Authorization": "Bearer local-secret"},
@@ -1089,7 +1004,6 @@ class TestLoopbackServer(unittest.TestCase):
         self.assertEqual(len(payload["data"]), 1)
         model = payload["data"][0]
         self.assertEqual(model["id"], "gpt-test")
-        self.assertEqual(model["api_types"], ["responses", "chat_completions"])
         self.assertEqual(
             model["capabilities"],
             {
@@ -1115,22 +1029,7 @@ class TestLoopbackServer(unittest.TestCase):
         self.assertGreater(payload["input_tokens"], 0)
         self.fake_client.open.assert_not_called()
 
-    def test_SHOULD_aggregate_non_streaming_responses_request(self) -> None:
-        self.fake_client.open.return_value = sse_response(*completed_text_events("server"))
-
-        with self.request(
-            "/v1/responses",
-            {"model": "harness-model", "input": "hello", "stream": False},
-        ) as response:
-            payload = json.load(response)
-
-        self.assertEqual(payload["output"][0]["content"][0]["text"], "server")
-        sent = self.fake_client.open.call_args.args[0]
-        self.assertEqual(sent["model"], "gpt-test")
-        self.assertEqual(sent["reasoning"]["effort"], "high")
-        self.assertTrue(sent["stream"])
-
-    def test_SHOULD_keep_registered_lanes_and_root_controls_separate_in_every_protocol(self) -> None:
+    def test_SHOULD_keep_registered_lanes_and_root_controls_separate(self) -> None:
         self.context.lane_routes.update(
             {
                 "gpt-cheap@lane-low": {"model": "gpt-cheap", "effort": "low"},
@@ -1138,99 +1037,37 @@ class TestLoopbackServer(unittest.TestCase):
                 "gpt-test@lane-low": {"model": "gpt-test", "effort": "low"},
             }
         )
-        for path in ("/v1/responses", "/v1/messages", "/v1/chat/completions"):
-            for requested, expected, effort in (
-                ("gpt-cheap@lane-low", "gpt-cheap", "low"),
-                ("gpt-review@lane-xhigh", "gpt-review", "xhigh"),
-                ("gpt-test@lane-low", "gpt-test", "low"),
-                ("gpt-test", "gpt-test", "high"),
-                ("gpt-cheap", "gpt-test", "high"),
-                ("gpt-review", "gpt-test", "high"),
-            ):
-                with self.subTest(path=path, requested=requested):
-                    self.fake_client.reset_mock()
-                    self.fake_client.open.return_value = sse_response(*completed_text_events())
-                    body = {
-                        "model": requested,
-                        "input": "hello",
-                        "stream": False,
-                        "max_tokens": 200,
-                        "messages": [{"role": "user", "content": "hello"}],
-                    }
-                    with self.request(path, body) as response:
-                        response.read()
-                    self.fake_client.open.assert_called_once()
-                    sent = self.fake_client.open.call_args.args[0]
-                    self.assertEqual((sent["model"], sent["reasoning"]["effort"]), (expected, effort))
+        for requested, expected, effort in (
+            ("gpt-cheap@lane-low", "gpt-cheap", "low"),
+            ("gpt-review@lane-xhigh", "gpt-review", "xhigh"),
+            ("gpt-test@lane-low", "gpt-test", "low"),
+            ("gpt-test", "gpt-test", "high"),
+            ("gpt-cheap", "gpt-test", "high"),
+            ("gpt-review", "gpt-test", "high"),
+        ):
+            with self.subTest(requested=requested):
+                self.fake_client.reset_mock()
+                self.fake_client.open.return_value = sse_response(*completed_text_events())
+                body = {
+                    "model": requested,
+                    "stream": False,
+                    "max_tokens": 200,
+                    "messages": [{"role": "user", "content": "hello"}],
+                }
+                with self.request("/v1/messages", body) as response:
+                    response.read()
+                self.fake_client.open.assert_called_once()
+                sent = self.fake_client.open.call_args.args[0]
+                self.assertEqual((sent["model"], sent["reasoning"]["effort"]), (expected, effort))
 
     def test_SHOULD_reject_an_unregistered_lane_without_an_upstream_request(self) -> None:
         with self.assertRaises(urllib.error.HTTPError) as raised:
-            self.request("/v1/responses", {"model": "gpt-test@lane-ultra", "input": "hello"})
+            self.request(
+                "/v1/messages",
+                {"model": "gpt-test@lane-ultra", "max_tokens": 200, "messages": [{"role": "user", "content": "hello"}]},
+            )
         self.assertEqual(raised.exception.code, 400)
         self.fake_client.open.assert_not_called()
-
-    def test_SHOULD_aggregate_non_streaming_cursor_chat_request(self) -> None:
-        self.fake_client.open.return_value = sse_response(*completed_text_events("cursor"))
-
-        with self.request(
-            "/v1/chat/completions",
-            {"model": "harness-model", "messages": [{"role": "user", "content": "hello"}], "stream": False},
-        ) as response:
-            payload = json.load(response)
-
-        self.assertEqual(payload["choices"][0]["message"]["content"], "cursor")
-        sent = self.fake_client.open.call_args.args[0]
-        self.assertEqual(sent["input"][0]["role"], "user")
-        self.assertTrue(sent["stream"])
-
-    def test_SHOULD_restore_output_items_missing_from_a_streamed_terminal_event(self) -> None:
-        arguments = '{"command":"echo hi"}'
-        item = {
-            "id": "fc_1",
-            "type": "function_call",
-            "status": "completed",
-            "call_id": "call_1",
-            "name": "bash",
-            "arguments": arguments,
-        }
-        self.fake_client.open.return_value = sse_response(
-            {
-                "type": "response.created",
-                "response": {"id": "resp_1", "model": "gpt-test", "status": "in_progress", "output": []},
-            },
-            {
-                "type": "response.output_item.added",
-                "output_index": 0,
-                "item": {**item, "status": "in_progress", "arguments": ""},
-            },
-            {
-                "type": "response.function_call_arguments.delta",
-                "item_id": "fc_1",
-                "output_index": 0,
-                "delta": arguments,
-            },
-            {
-                "type": "response.function_call_arguments.done",
-                "item_id": "fc_1",
-                "output_index": 0,
-                "arguments": arguments,
-            },
-            {"type": "response.output_item.done", "output_index": 0, "item": item},
-            {
-                "type": "response.completed",
-                "response": {"id": "resp_1", "model": "gpt-test", "status": "completed", "output": []},
-            },
-        )
-
-        with self.request(
-            "/v1/responses",
-            {"model": "harness-model", "input": "hello", "stream": True},
-        ) as response:
-            streamed = response.read().decode()
-
-        events = [json.loads(line[len("data: ") :]) for line in streamed.splitlines() if line.startswith("data: ")]
-        terminal = [event for event in events if event["type"] == "response.completed"][-1]
-        self.assertEqual(terminal["response"]["output"], [item])
 
     def test_SHOULD_silently_ignore_broken_pipe_during_stream_and_error_handling(self) -> None:
         self.fake_client.open.return_value = sse_response(*completed_text_events("server"))
@@ -1238,8 +1075,13 @@ class TestLoopbackServer(unittest.TestCase):
         with mock.patch("server.AdapterHandler.end_headers", side_effect=BrokenPipeError("[Errno 32] Broken pipe")):
             with self.assertRaises((urllib.error.URLError, OSError)):
                 self.request(
-                    "/v1/responses",
-                    {"model": "gpt-test", "input": "hello", "stream": True},
+                    "/v1/messages",
+                    {
+                        "model": "gpt-test",
+                        "max_tokens": 200,
+                        "messages": [{"role": "user", "content": "hello"}],
+                        "stream": True,
+                    },
                 )
 
 
@@ -1282,19 +1124,6 @@ class CacheUsageTranslationTests(unittest.TestCase):
         self.assertEqual(message["usage"]["cache_read_input_tokens"], 90)
         self.assertEqual(message["usage"]["output_tokens"], 5)
 
-    def test_SHOULD_report_cached_tokens_inside_chat_prompt_tokens(self) -> None:
-        chunks = [
-            json.loads(line[len("data: ") :])
-            for raw in responses_to_chat_events(self.cached_events(), "wrapper-model", OpaqueReasoningStore())
-            for line in raw.decode().splitlines()
-            if line.startswith("data: ") and line != "data: [DONE]"
-        ]
-        usage = [chunk["usage"] for chunk in chunks if "usage" in chunk][-1]
-        self.assertEqual(usage["prompt_tokens"], 100)
-        self.assertEqual(usage["completion_tokens"], 5)
-        self.assertEqual(usage["total_tokens"], 105)
-        self.assertEqual(usage["prompt_tokens_details"], {"cached_tokens": 90, "cache_creation_tokens": 0})
-
     def test_SHOULD_read_the_responses_cache_write_spelling(self) -> None:
         # Live ChatGPT Codex backend shape (2026-09-06): cache_write_tokens, not cache_creation_tokens.
         events = completed_text_events("written")
@@ -1310,21 +1139,6 @@ class CacheUsageTranslationTests(unittest.TestCase):
             rendered[-2]["usage"],
             {"input_tokens": 15, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 2800, "output_tokens": 5},
         )
-
-    def test_SHOULD_keep_usage_shape_when_upstream_reports_no_cache_details(self) -> None:
-        rendered = list(
-            responses_to_anthropic_events(completed_text_events("plain"), "wrapper-model", OpaqueReasoningStore())
-        )
-        self.assertEqual(rendered[-2]["usage"]["input_tokens"], 9)
-        self.assertEqual(rendered[-2]["usage"]["cache_read_input_tokens"], 0)
-        chunks = [
-            json.loads(line[len("data: ") :])
-            for raw in responses_to_chat_events(completed_text_events("plain"), "wrapper-model", OpaqueReasoningStore())
-            for line in raw.decode().splitlines()
-            if line.startswith("data: ") and line != "data: [DONE]"
-        ]
-        usage = [chunk["usage"] for chunk in chunks if "usage" in chunk][-1]
-        self.assertEqual(usage, {"prompt_tokens": 9, "completion_tokens": 2, "total_tokens": 11})
 
 
 class PromptCacheKeyingTests(unittest.TestCase):

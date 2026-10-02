@@ -48,23 +48,19 @@ Update the source and then verify the rendered effect.
 
 ## Reference: do not edit these directly
 
-| Target                                       | Reason                                                               |
-| -------------------------------------------- | -------------------------------------------------------------------- |
-| `~/AGENTS.md`                                | rendered output from chezmoi                                         |
-| `~/CLAUDE.md`                                | native Claude `@AGENTS.md` import                                    |
-| `~/.claude/CLAUDE.md`                        | native global entrypoint linking `~/AGENTS.md`                       |
-| `~/.gemini/config/AGENTS.md`                 | symlink to `~/AGENTS.md`                                             |
-| `~/.cursor/AGENTS.md`                        | symlink to `~/AGENTS.md`                                             |
-| `~/.cursor/plugins/local/k-sop/rules/sop.md` | full SOP rendered from the canonical source with `alwaysApply: true` |
-| `~/.codex/config.toml`                       | root `developer_instructions` generated from the canonical SOP       |
-| `~/.config/opencode/AGENTS.md`               | symlink to `~/AGENTS.md`                                             |
-| `~/.agents/skills/*/SKILL.md`                | rendered from `home/exact_dot_agents/exact_skills/`                  |
+| Target                         | Reason                                                         |
+| ------------------------------ | -------------------------------------------------------------- |
+| `~/AGENTS.md`                  | rendered output from chezmoi                                   |
+| `~/CLAUDE.md`                  | native Claude `@AGENTS.md` import                              |
+| `~/.claude/CLAUDE.md`          | native global entrypoint linking `~/AGENTS.md`                 |
+| `~/.gemini/config/AGENTS.md`   | symlink to `~/AGENTS.md`                                       |
+| `~/.codex/config.toml`         | root `developer_instructions` generated from the canonical SOP |
+| `~/.config/opencode/AGENTS.md` | symlink to `~/AGENTS.md`                                       |
+| `~/.agents/skills/*/SKILL.md`  | rendered from `home/exact_dot_agents/exact_skills/`            |
 
-Claude resolves `@AGENTS.md` imports natively and deduplicates canonical paths. Its global `~/.claude/CLAUDE.md` symlink supplies the home SOP outside `$HOME` too; this repository’s `CLAUDE.md` imports its project `AGENTS.md`. The home import removes the second full body from Cursor’s ancestor-rule list.
+Claude resolves `@AGENTS.md` imports natively and deduplicates canonical paths. Its global `~/.claude/CLAUDE.md` symlink supplies the home SOP outside `$HOME` too; this repository’s `CLAUDE.md` imports its project `AGENTS.md`.
 
 Codex receives the SOP as the root `developer_instructions`, which `07-merge-codex-config` generates from `home/readonly_AGENTS.md` through `scripts/inject_codex_instructions.py`. A global `~/.codex/AGENTS.md` would reach every spawned subagent: codex 0.157.0 passes the parent’s user instructions to non-root agents unconditionally (`thread_manager.rs`). Each managed child role sets its own `developer_instructions`, which replaces the root value in its role layer. The read-only roles embed the leaf contract and the verbatim `leaf-rules.txt` excerpt. The implementation roles (`default`, `worker`, `k-agent-mechanical`) embed the full SOP, because they edit repositories. `.chezmoiremove` deletes the former `~/.codex/AGENTS.md` symlink. An A/B on 2026-09-25 compared the two placements. Read-only subagents started 26% smaller (33.8k to 25.2k tokens) and used 8% less input over 12 tasks, 3 repetitions each. Answer quality rose from 36/39 to 39/39: with the inherited SOP, the adversarial verifier refused its task 3 of 3 times. Root adherence probes passed 9/9 in both arms: no unrequested commit, a `Compatibility impact:` line, and the push rule.
-
-Cursor’s contained `k-sop` user-local plugin renders the complete canonical SOP into an always-applied native rule. Hosted and authenticated-local profiles load it outside `$HOME`; explicit authless/Bedrock-local profiles disable user-local plugins and retain only their existing ancestor route. With the plugin enabled, Cursor loads 2 SOP bodies inside `$HOME` (ancestor plus plugin, matching the original 2-body baseline) and 1 outside. Native merging deduplicates paths, not equal bodies. No `.cursorignore` hides the readable home SOP, and `~/.cursor/AGENTS.md` alone is not a verified global scanner entrypoint.
 
 Pi’s `runtime-parity.ts` appends the full canonical SOP through `before_agent_start` only when neither a realpath-equivalent native context file nor the complete SOP body is already present. It preserves the base prompt; explicit no-extension workflows bypass this extension. OMP already deduplicates canonical context aliases. Pi’s model-band adapter remains unconfigured, so per-call model clamping is not established there.
 
@@ -99,7 +95,7 @@ The shared leaf excerpt has a temporary 2048-byte allowance so packet-only conte
 
 Startup named-topic BM25 recall and per-turn retrieval stage complete candidates for `k-agent-smol` judgment. Only admitted judge results enter parent context or the seen-ID file. A pointer fires once per observed session-topic binding; later same-binding rows stage silently. The binding marker distinguishes a pending pointer from one already emitted, including transitions through an empty topic result. A topic-matched warm cache holds at most 3 startup rows so the next retrieval cannot overwrite that evidence before judgment; it does not accumulate previous prompt results.
 
-Pi/OMP context-disable flags and workspace/topic sentinels suppress startup, correction, and compaction injections, while worklog capture stays independent. Missing `,ai-kb` disables optional recall for that extension load; the remaining lifecycle callbacks still register. Review clean-room filtering recognizes plain and Markdown ATX conclusion headings. Cursor startup uses a 10,000 UTF-16-unit carrier budget: omit whole optional worklog, then spec/bucket blocks with read pointers; retain the judgment pointer and reminder. Required-only overflow fails rather than truncating instructions.
+Pi/OMP context-disable flags and workspace/topic sentinels suppress startup, correction, and compaction injections, while worklog capture stays independent. Missing `,ai-kb` disables optional recall for that extension load; the remaining lifecycle callbacks still register. Review clean-room filtering recognizes plain and Markdown ATX conclusion headings.
 
 Pi/OMP `k-agent-reviewer` profiles retain native model/task notes and dispatch through canonical `k-review` or explicitly invoked `k-deep-review` owners. Every delegated invocation remains a bounded leaf; profile names grant no root authority. Plan review returns feedback only, standard review does not auto-promote to deep, and deep intake does not preload the full standard router. Narrow Claude/OMP workers load their required role contracts and conditional lenses instead of eager unrelated controller bodies.
 

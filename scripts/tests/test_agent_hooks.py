@@ -211,7 +211,7 @@ def run_perturn_recall(tmp: str, payload: dict, env: dict) -> dict:
 
 
 class TestAgentHooks(unittest.TestCase):
-    """WHEN Cursor CLI lifecycle hooks run."""
+    """WHEN the shared agent lifecycle hooks run."""
 
     def make_git_workspace(self, branch: str) -> tempfile.TemporaryDirectory:
         tmp = tempfile.TemporaryDirectory()
@@ -301,7 +301,7 @@ class TestAgentHooks(unittest.TestCase):
             worklog = spec_dir / "current.worklog.jsonl"
             assert [entry["line"] for entry in worklog_entries(worklog)] == [2, 3, 4]
 
-    def test_session_context_emits_cursor_and_claude_context(self):
+    def test_session_context_emits_both_context_channels(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
             spec_dir = SPEC_ROOT / workspace.lstrip("/")
@@ -1359,71 +1359,6 @@ class TestAgentHooks(unittest.TestCase):
                 run_hook("executable_session_context.py", {**ctx, "session_id": "parent"}, env=root_env), {}
             )
 
-    def test_read_gate_cursor_events_use_store_db_history_and_stop_shrink(self):
-        import sqlite3
-
-        with tempfile.TemporaryDirectory() as tmp:
-            target = Path(tmp) / "c.txt"
-            target.write_text("line one\nline two\n")
-            config = Path(tmp) / "config"
-            store = config / "cursor" / "chats" / "ws-hash" / "conv-1" / "store.db"
-            store.parent.mkdir(parents=True)
-            env = {**hook_env(), "XDG_CONFIG_HOME": str(config), "AGENT_HOOK_HARNESS": "cursor"}
-            base = {"conversation_id": "conv-1", "workspace_roots": [tmp], "transcript_path": f"{tmp}/agent.jsonl"}
-            read = {
-                **base,
-                "hook_event_name": "beforeReadFile",
-                "file_path": str(target),
-                "content": target.read_text(),
-            }
-            # First delivery: allowed and recorded (beforeReadFile fires after the read succeeded).
-            self.assertEqual(self._gate(read, env=env), {"permission": "allow"})
-            # Second delivery with no store row yet: not verifiable, allowed.
-            self.assertEqual(self._gate(read, env=env), {"permission": "allow"})
-            conn = sqlite3.connect(store)
-            conn.execute("create table blobs (id text, data blob)")
-            row = {
-                "role": "tool",
-                "content": [
-                    {"type": "tool-result", "toolCallId": "x", "toolName": "Read", "result": target.read_text()}
-                ],
-                "id": "m1",
-            }
-            conn.execute("insert into blobs values (?, ?)", ("b1", json.dumps(row).encode()))
-            conn.execute("insert into blobs values (?, ?)", ("b2", b"\x12\x03protobuf-ish"))
-            conn.commit()
-            conn.close()
-            self._gate(read, env=env)  # re-record after the unverifiable pass dropped the entry
-            denied = self._gate(read, env=env)
-            self.assertEqual(denied["permission"], "deny")
-            self.assertIn("byte-identical", denied["user_message"])
-            # Shell path: cat is gated the same way; pipes are not.
-            shell = {**base, "hook_event_name": "beforeShellExecution", "command": f"cat {target}"}
-            self.assertEqual(self._gate(shell, env=env)["permission"], "deny")
-            self.assertEqual(
-                self._gate({**shell, "command": f"cat {target} | wc -l"}, env=env), {"permission": "allow"}
-            )
-            # `cd <dir> && cat <relative>` is the same whole read resolved against <dir>; other chains stay unmatched.
-            target_dir, target_name = os.path.split(target)
-            self.assertEqual(
-                self._gate({**shell, "command": f"cd {target_dir} && cat {target_name}"}, env=env)["permission"], "deny"
-            )
-            self.assertEqual(
-                self._gate({**shell, "command": f"cat {target}; echo; cat {target}"}, env=env), {"permission": "allow"}
-            )
-            # A token shrink reported by the stop hook reads as a compaction: the old read no longer blocks.
-            stop = {
-                **base,
-                "hook_event_name": "stop",
-                "status": "completed",
-                "input_tokens": 1000,
-                "cache_read_tokens": 90000,
-                "cache_write_tokens": 0,
-            }
-            self._gate(stop, env=env)
-            self._gate({**stop, "cache_read_tokens": 20000}, env=env)
-            self.assertEqual(self._gate(read, env=env), {"permission": "allow"})
-
     def test_read_gate_opencode_payloads_verify_the_part_store_and_unwrap_the_read_envelope(self):
         import sqlite3
 
@@ -1624,7 +1559,7 @@ class TestAgentHooks(unittest.TestCase):
             assert shrunk["hookSpecificOutput"]["additionalContext"].startswith("PREFIX_SENTINEL_REINFORCE")
 
     def test_perturn_reinforcement_never_injects_without_usage_or_force(self):
-        # Cursor payloads carry no transcript; without a shrink/compaction signal, repeated
+        # A payload that carries no transcript has no usage signal; without a shrink/compaction signal, repeated
         # prompts alone never trigger a re-injection (the prompt-count fallback is removed).
         # Only an explicit forced re-inject (SessionStart source=compact) still fires.
         with tempfile.TemporaryDirectory() as tmp:
@@ -1810,61 +1745,6 @@ class TestAgentHooks(unittest.TestCase):
             assert "candidates staged" in root_startup
             assert ",agent-memory note anti_pattern" in root_perturn_context
 
-    def test_cursor_startup_budget_omits_whole_artifacts_in_utf16_units(self):
-        for fill in ("x", "😀"):
-            with self.subTest(fill=fill), tempfile.TemporaryDirectory() as tmp:
-                workspace = str(Path(tmp).resolve())
-                spec_dir = SPEC_ROOT / workspace.lstrip("/")
-                spec_dir.mkdir(parents=True, exist_ok=True)
-                bind_session_topic(spec_dir, "cursor-cap", "maximal-topic")
-                spec_path = spec_dir / "maximal-topic.txt"
-                spec_body = "target: " + fill * 2492
-                spec_path.write_text(spec_body)
-                worklog_path = spec_dir / "maximal-topic.worklog.jsonl"
-                worklog_body = json.dumps({"body": fill * 2980}, ensure_ascii=False) + "\n"
-                worklog_path.write_text(worklog_body)
-                config = Path(tmp) / "config"
-                config.mkdir()
-                env = {**hook_env(), "AI_AGENT_DEPTH": "fast", "XDG_CONFIG_HOME": str(config)}
-                payload = {"session_id": "cursor-cap", "workspace_roots": [workspace], "warm_embedder": True}
-                original = run_hook(
-                    "executable_session_context.py", payload, env={**env, "AGENT_HOOK_HARNESS": "other"}
-                )["additional_context"]
-                bounded = run_hook(
-                    "executable_session_context.py", payload, env={**env, "AGENT_HOOK_HARNESS": "cursor"}
-                )["additional_context"]
-                lengths = subprocess.run(
-                    [
-                        "node",
-                        "-e",
-                        "const fs=require('fs'); console.log(JSON.stringify(JSON.parse(fs.readFileSync(0,'utf8')).map(s=>s.trim().length)))",
-                    ],
-                    input=json.dumps([original, bounded]),
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                )
-                original_units, bounded_units = json.loads(lengths.stdout)
-                self.assertLessEqual(bounded_units, 10000)
-                self.assertIn("Durable Memory (,ai-kb)", bounded)
-                self.assertEqual(worklog_path.read_text(), worklog_body)
-                if fill == "x":
-                    # Same character counts, one UTF-16 unit each: fits, nothing is omitted.
-                    self.assertLessEqual(original_units, 10000)
-                    self.assertEqual(bounded, original)
-                    self.assertIn(worklog_body.strip(), bounded)
-                else:
-                    # Two UTF-16 units per emoji: over the cap. Optional artifacts are omitted
-                    # in order until the context fits: the worklog goes first and, once the
-                    # remainder fits, the spec is retained whole (never sliced).
-                    self.assertGreater(original_units, 10000)
-                    self.assertIn(str(worklog_path), bounded)
-                    self.assertNotIn(worklog_body.strip(), bounded)
-                    self.assertIn(spec_body, bounded)
-                self.assertEqual(spec_path.read_text(), spec_body)
-                if fill == "x":
-                    self.assertIn(spec_body, bounded)
-
     def test_named_startup_fast_and_disable_status_do_not_search(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
@@ -2041,16 +1921,7 @@ class TestAgentHooks(unittest.TestCase):
             for name in ("collaborationspawn_agent", "spawn_agent"):
                 self.assertTrue(re.fullmatch(matcher, name) and re.search(matcher, name), (matcher, name))
 
-    def test_cursor_and_codex_perturn_recall_wiring(self):
-        # Cursor 2026.07.16+ supports additionalContext on beforeSubmitPrompt
-        # (10k cap, verified from the installed bundle); the hook rides that
-        # event and the sessionStart warm signal suppresses the Recall Notice.
-        cursor = json.loads((REPO / "home" / "dot_cursor" / "hooks.json").read_text())
-        before_submit = cursor["hooks"]["beforeSubmitPrompt"]
-        assert any("perturn_recall.py" in hook["command"] for hook in before_submit)
-        session_start = cursor["hooks"]["sessionStart"]
-        assert any("AI_EMBED_WARM=1" in hook["command"] for hook in session_start)
-
+    def test_codex_and_antigravity_perturn_recall_wiring(self):
         # Codex rejects unknown top-level output keys, so its perturn entry must
         # strip the dual-channel emit down to hookSpecificOutput.
         codex = (REPO / "home" / "dot_codex" / "hooks.json.tmpl").read_text()
@@ -2088,15 +1959,6 @@ class TestAgentHooks(unittest.TestCase):
         assert json.loads(result.stdout) == {}
 
     def test_pr_anchor_verification_is_instruction_only(self):
-        files_to_check = [
-            REPO / "home" / "dot_cursor" / "hooks.json",
-        ]
-
-        for file_path in files_to_check:
-            content = file_path.read_text()
-            assert "pr-anchor-gate" not in content
-            assert "pulls/.*/(reviews|comments)" not in content
-
         assert not (HOOKS / "executable_gemini-pr-anchor-gate.sh").exists()
 
     def test_perturn_recall_without_session_key_stages_nothing_and_injects_nothing(self):
@@ -2660,7 +2522,7 @@ await pi.handlers.session_start(
   { sessionManager: { getSessionId() { return sessionId; } } }
 );
 const result = await pi.handlers.before_agent_start(
-  { prompt: "cursor task band gate rewrites the subagent model param, how do I launch a pinned verifier lane?" },
+  { prompt: "task band gate rewrites the subagent model param, how do I launch a pinned verifier lane?" },
   {
     cwd: workspace,
     getContextUsage() { return null; },
@@ -2950,13 +2812,12 @@ console.log(JSON.stringify({ ok: true }));
         self.assertEqual(result.returncode, 0, result.stderr[-1500:])
         self.assertIn('{"ok":true}', result.stdout)
 
-    def test_review_cleanroom_and_utf16_context_state_table(self):
+    def test_review_cleanroom_state_table(self):
         script = r"""
 import json,sys,tempfile
 from pathlib import Path
 sys.path.insert(0,sys.argv[1])
-from executable_session_context import neutral_review_spec,context_for_harness
-import os
+from executable_session_context import neutral_review_spec
 with tempfile.TemporaryDirectory() as tmp:
     d=Path(tmp); a=d/'alpha.txt'; b=d/'beta.txt'
     # All supported ATX equivalents strip conclusions; ordinary mentions stay intact.
@@ -2966,18 +2827,7 @@ with tempfile.TemporaryDirectory() as tmp:
         assert 'target: PR 1' in out
     for heading in ['findings are expected', '####### Findings', '#Findings', 'verify findings before publishing']:
         assert 'PRESERVED' in neutral_review_spec(heading+'\nPRESERVED',a),heading
-os.environ['AGENT_HOOK_HARNESS']='cursor'
-assert context_for_harness(['😀'*5000],[])=='😀'*5000
-assert context_for_harness(['😀'*5000+'x'],[(0,'Read complete artifact at /tmp/example')])=='Read complete artifact at /tmp/example'
-try:
-    context_for_harness(['😀'*5000+'x'],[])
-except ValueError:
-    pass
-else:
-    raise AssertionError('oversized mandatory instructions were silently accepted')
-os.environ['AGENT_HOOK_HARNESS']='other'
-assert context_for_harness(['😀'*5000+'x'],[(0,'pointer')])=='😀'*5000+'x'
-print('clean-room/context table passed')
+print('clean-room table passed')
 """
         result = subprocess.run([sys.executable, "-c", script, str(HOOKS)], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -3249,7 +3099,7 @@ console.log(JSON.stringify({extension,cases}));
             assert not (spec_dir / ".recall-seen-warm-session.json").exists()
 
     def test_session_context_notices_harnesses_without_per_turn_recall(self):
-        """Adapters that never request embedder warm-up (Cursor) get the recall notice; warm adapters do not."""
+        """Adapters that never request embedder warm-up get the recall notice; warm adapters do not."""
         with tempfile.TemporaryDirectory() as tmp:
             payload = {"hook_event_name": "sessionStart", "workspace_roots": [tmp], "session_id": "notice-probe"}
             env = hook_env()
@@ -3992,7 +3842,7 @@ console.log(JSON.stringify({ first, second, seen, statusCalls }));
 import json,sys,tempfile
 from pathlib import Path
 sys.path.insert(0,sys.argv[1])
-from executable_session_context import stage_candidates,neutral_review_spec,context_for_harness
+from executable_session_context import stage_candidates,neutral_review_spec
 import os
 with tempfile.TemporaryDirectory() as tmp:
     d=Path(tmp); a=d/'alpha.txt'; b=d/'beta.txt'
@@ -4039,17 +3889,6 @@ with tempfile.TemporaryDirectory() as tmp:
         assert 'target: PR 1' in out
     for heading in ['findings are expected', '####### Findings', '#Findings', 'verify findings before publishing']:
         assert 'PRESERVED' in neutral_review_spec(heading+'\nPRESERVED',a),heading
-os.environ['AGENT_HOOK_HARNESS']='cursor'
-assert context_for_harness(['😀'*5000],[])=='😀'*5000
-assert context_for_harness(['😀'*5000+'x'],[(0,'Read complete artifact at /tmp/example')])=='Read complete artifact at /tmp/example'
-try:
-    context_for_harness(['😀'*5000+'x'],[])
-except ValueError:
-    pass
-else:
-    raise AssertionError('oversized mandatory instructions were silently accepted')
-os.environ['AGENT_HOOK_HARNESS']='other'
-assert context_for_harness(['😀'*5000+'x'],[(0,'pointer')])=='😀'*5000+'x'
 print('binding/warm-cache/clean-room table passed')
 """
         result = subprocess.run([sys.executable, "-c", script, str(HOOKS)], capture_output=True, text=True)
@@ -4238,7 +4077,6 @@ class BandGateTests(unittest.TestCase):
                     },
                 }
             },
-            "cursor": {"agents": {"bugbot": {"category": "review", "model": "claude-opus-5-high", "effort": "high"}}},
             "codex": {"agents": {"explorer": {"category": "research", "model": "gpt-5.4", "effort": "high"}}},
             "pi": {
                 "agents": {
@@ -4476,16 +4314,6 @@ class BandGateTests(unittest.TestCase):
         self.assertEqual(specific["updatedInput"]["model"], "gpt-5.4")
         self.assertEqual(specific["updatedInput"]["reasoning_effort"], "high")
         self.assertEqual(specific["updatedInput"]["message"], "go")
-
-    def test_cursor_echoes_the_whole_input_because_updated_input_replaces_it(self):
-        answer = self.gate(
-            "cursor",
-            {"tool_name": "Task", "tool_input": {"subagent_type": "bugbot", "prompt": "p", "model": "cheap-thing"}},
-        )
-        self.assertEqual(
-            answer["updated_input"],
-            {"subagent_type": "bugbot", "prompt": "p", "model": "claude-opus-5-high"},
-        )
 
     def test_claude_clamps_an_upward_alias_escape_to_the_band_alias(self):
         # Tier ladder: `fable` T1 (research / review / session) is above `opus` T2 (implement),
@@ -4846,57 +4674,8 @@ class BandGateTests(unittest.TestCase):
             )
             self.assertEqual((result.get("hookSpecificOutput") or result)["permissionDecision"], "deny")
 
-    def test_SHOULD_preserve_cursor_selector_only_lanes_without_weakening_backend_effort(self):
-        projection = {
-            "harnesses": {
-                "cursor": {
-                    "agents": {
-                        "generalPurpose": {"category": "implement", "model": "implement-high", "effort": "high"},
-                        "k-agent-mechanical": {"category": "mechanical", "model": "auto"},
-                        "k-agent-smol": {"category": "memory", "model": "auto"},
-                    }
-                },
-                "codex": {"agents": {"generalPurpose": {"category": "implement", "model": "backend"}}},
-                "pi": {"agents": {"generalPurpose": {"category": "implement", "model": "openrouter/backend"}}},
-            }
-        }
-        self.assertEqual(
-            self.gate(
-                "cursor",
-                {
-                    "tool_name": "Subagent",
-                    "tool_input": {"subagent_type": "generalPurpose", "model": "auto", "prompt": "packet"},
-                },
-                projection,
-            ),
-            {},
-        )
-        for role in ("k-agent-mechanical", "k-agent-smol"):
-            with self.subTest(role=role):
-                result = self.gate(
-                    "cursor",
-                    {
-                        "tool_name": "Task",
-                        "tool_input": {"subagent_type": role, "model": "expensive", "prompt": "packet"},
-                    },
-                    projection,
-                )
-                self.assertEqual(result["updated_input"], {"subagent_type": role, "model": "auto", "prompt": "packet"})
-        for backend in ("codex", "pi"):
-            with self.subTest(backend=backend):
-                result = self.gate(
-                    "cursor",
-                    {"tool_name": "Task", "tool_input": {"subagent_type": "generalPurpose", "model": "auto"}},
-                    projection,
-                    override={"AGENT_BAND_SCHEMA_HARNESS": backend},
-                )
-                self.assertEqual(result["permission"], "deny")
-
     def test_SHOULD_deny_unverified_subscription_delegation_transports(self):
-        cases = (
-            ("codex", "spawn_agent", "permissionDecision"),
-            ("cursor", "Task", "permission"),
-        )
+        cases = (("codex", "spawn_agent", "permissionDecision"),)
         for harness, tool, key in cases:
             with self.subTest(harness=harness):
                 result = self.gate(
@@ -4925,7 +4704,7 @@ class BandGateTests(unittest.TestCase):
         # Codex's spawn_agent carries both; task_name is a free-text label.
         answer = self.gate(
             "codex",
-            {"tool_name": "spawn_agent", "tool_input": {"task_name": "bugbot", "agent_type": "explorer"}},
+            {"tool_name": "spawn_agent", "tool_input": {"task_name": "triage", "agent_type": "explorer"}},
         )
         self.assertEqual(answer["hookSpecificOutput"]["updatedInput"]["model"], "gpt-5.4")
 

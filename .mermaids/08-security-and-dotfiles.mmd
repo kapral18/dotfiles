@@ -27,7 +27,7 @@ flowchart TB
     end
 
     subgraph PASS["Password stores"]
-        PM["hook 05-setup-pass-managers.fish.tmpl<br/>pass (default) + work store; wpass/ppass switch PASSWORD_STORE_DIR<br/>$(pass …) feeds MCP oauth + scsi keys (see 03)"]:::pass
+        PM["hook 05-setup-pass-managers.fish.tmpl<br/>pass (default) + work store; wpass/ppass switch PASSWORD_STORE_DIR<br/>$(pass …) feeds MCP oauth (see 03)"]:::pass
     end
     GPG --> PASS
 

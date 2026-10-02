@@ -13,7 +13,7 @@ Compaction signal, in order of preference:
    `transcript_path` in the hook payload (Claude Code JSONL `message.usage`, or a Codex
    rollout's `token_count` events) or a Codex rollout located by `session_id`. This is
    the proxy compaction reads for harnesses that summarize without an explicit event.
-3. No usage signal and no forced re-inject (e.g. Cursor payloads without a transcript):
+3. No usage signal and no forced re-inject (a payload without a transcript):
    no injection is due until a `SessionStart` compaction or session-start path sets it.
 
 State is one small JSON file per session next to the topic spec. Every failure path is

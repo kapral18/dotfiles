@@ -1,6 +1,5 @@
 Alfred.alfredpreferences
 app_icons/
-.cursor/mcp.json
 .config/opencode/opencode.jsonc
 
 .pi/agent/models.json

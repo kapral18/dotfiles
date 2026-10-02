@@ -12,17 +12,9 @@
           "model": "gemini-3.8-flash",
           "category": "research"
         },
-        "best-of-n-runner": {
-          "model": "gemini-3.8-flash",
-          "category": "implement"
-        },
         "browser_agent": {
           "model": "gemini-3.8-flash",
           "category": "implement"
-        },
-        "bugbot": {
-          "model": "gemini-3.8-flash",
-          "category": "review"
         },
         "claude": {
           "model": "gemini-3.8-flash",
@@ -44,10 +36,6 @@
           "model": "gemini-3.8-flash",
           "category": "research"
         },
-        "cursor-guide": {
-          "model": "gemini-3.8-flash",
-          "category": "research"
-        },
         "default": {
           "model": "gemini-3.8-flash",
           "category": "research"
@@ -61,10 +49,6 @@
           "category": "research"
         },
         "general-purpose": {
-          "model": "gemini-3.8-flash",
-          "category": "implement"
-        },
-        "generalPurpose": {
           "model": "gemini-3.8-flash",
           "category": "implement"
         },
@@ -207,23 +191,11 @@
           "effort": "high",
           "alias": "opus"
         },
-        "best-of-n-runner": {
-          "model": "claude-sonnet-5-5",
-          "category": "implement",
-          "effort": "xhigh",
-          "alias": "sonnet"
-        },
         "browser_agent": {
           "model": "claude-sonnet-5-5",
           "category": "implement",
           "effort": "xhigh",
           "alias": "sonnet"
-        },
-        "bugbot": {
-          "model": "claude-opus-5-5",
-          "category": "review",
-          "effort": "high",
-          "alias": "opus"
         },
         "claude": {
           "model": "claude-sonnet-5-5",
@@ -255,12 +227,6 @@
           "effort": "high",
           "alias": "opus"
         },
-        "cursor-guide": {
-          "model": "claude-opus-5-5",
-          "category": "research",
-          "effort": "high",
-          "alias": "opus"
-        },
         "default": {
           "model": "claude-opus-5-5",
           "category": "research",
@@ -280,12 +246,6 @@
           "alias": "opus"
         },
         "general-purpose": {
-          "model": "claude-sonnet-5-5",
-          "category": "implement",
-          "effort": "xhigh",
-          "alias": "sonnet"
-        },
-        "generalPurpose": {
           "model": "claude-sonnet-5-5",
           "category": "implement",
           "effort": "xhigh",
@@ -503,20 +463,10 @@
           "category": "research",
           "effort": "high"
         },
-        "best-of-n-runner": {
-          "model": "gpt-6.1-sol",
-          "category": "implement",
-          "effort": "medium"
-        },
         "browser_agent": {
           "model": "gpt-6.1-sol",
           "category": "implement",
           "effort": "medium"
-        },
-        "bugbot": {
-          "model": "gpt-6.1-sol",
-          "category": "review",
-          "effort": "high"
         },
         "claude": {
           "model": "gpt-6.1-sol",
@@ -543,11 +493,6 @@
           "category": "research",
           "effort": "high"
         },
-        "cursor-guide": {
-          "model": "gpt-6.1-sol",
-          "category": "research",
-          "effort": "high"
-        },
         "default": {
           "model": "gpt-6.1-sol",
           "category": "research",
@@ -564,11 +509,6 @@
           "effort": "high"
         },
         "general-purpose": {
-          "model": "gpt-6.1-sol",
-          "category": "implement",
-          "effort": "medium"
-        },
-        "generalPurpose": {
           "model": "gpt-6.1-sol",
           "category": "implement",
           "effort": "medium"
@@ -739,242 +679,6 @@
         "context": "short"
       }
     },
-    "cursor": {
-      "agents": {
-        "Explore": {
-          "model": "claude-opus-5-5",
-          "category": "research",
-          "effort": "high"
-        },
-        "Plan": {
-          "model": "claude-opus-5-5",
-          "category": "research",
-          "effort": "high"
-        },
-        "best-of-n-runner": {
-          "model": "muse-spark-1.3",
-          "category": "implement",
-          "effort": "high"
-        },
-        "browser_agent": {
-          "model": "muse-spark-1.3",
-          "category": "implement",
-          "effort": "high"
-        },
-        "bugbot": {
-          "model": "claude-opus-5-5",
-          "category": "review",
-          "effort": "high"
-        },
-        "claude": {
-          "model": "muse-spark-1.3",
-          "category": "implement",
-          "effort": "high"
-        },
-        "claude-code-guide": {
-          "model": "claude-opus-5-5",
-          "category": "research",
-          "effort": "high"
-        },
-        "cli_help": {
-          "model": "grok-4.6",
-          "category": "mechanical",
-          "effort": "medium"
-        },
-        "code-review": {
-          "model": "claude-opus-5-5",
-          "category": "review",
-          "effort": "high"
-        },
-        "codebase_investigator": {
-          "model": "claude-opus-5-5",
-          "category": "research",
-          "effort": "high"
-        },
-        "cursor-guide": {
-          "model": "claude-opus-5-5",
-          "category": "research",
-          "effort": "high"
-        },
-        "default": {
-          "model": "claude-opus-5-5",
-          "category": "research",
-          "effort": "high"
-        },
-        "explore": {
-          "model": "claude-opus-5-5",
-          "category": "research",
-          "effort": "high"
-        },
-        "explorer": {
-          "model": "claude-opus-5-5",
-          "category": "research",
-          "effort": "high"
-        },
-        "general-purpose": {
-          "model": "muse-spark-1.3",
-          "category": "implement",
-          "effort": "high"
-        },
-        "generalPurpose": {
-          "model": "muse-spark-1.3",
-          "category": "implement",
-          "effort": "high"
-        },
-        "generalist": {
-          "model": "muse-spark-1.3",
-          "category": "implement",
-          "effort": "high"
-        },
-        "k-agent-adversarial-verifier": {
-          "model": "muse-spark-1.3",
-          "category": "refute",
-          "effort": "max"
-        },
-        "k-agent-change-auditor": {
-          "model": "claude-opus-5-5",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-claim-verifier": {
-          "model": "muse-spark-1.3",
-          "category": "refute",
-          "effort": "max"
-        },
-        "k-agent-code-searcher": {
-          "model": "claude-opus-5-5",
-          "category": "research",
-          "effort": "high"
-        },
-        "k-agent-criteria-verifier": {
-          "model": "muse-spark-1.3",
-          "category": "refute",
-          "effort": "max"
-        },
-        "k-agent-findings-auditor": {
-          "model": "claude-opus-5-5",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-fresh-eyes": {
-          "model": "claude-opus-5-5",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-implementer": {
-          "model": "muse-spark-1.3",
-          "category": "implement",
-          "effort": "high"
-        },
-        "k-agent-live-ui-review": {
-          "model": "claude-opus-5-5",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-mechanical": {
-          "model": "grok-4.6",
-          "category": "mechanical",
-          "effort": "medium"
-        },
-        "k-agent-post-review": {
-          "model": "claude-opus-5-5",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-pr-necessity-auditor": {
-          "model": "claude-opus-5-5",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-public-sources": {
-          "model": "claude-opus-5-5",
-          "category": "research",
-          "effort": "high"
-        },
-        "k-agent-review-worker": {
-          "model": "claude-opus-5-5",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-reviewer": {
-          "model": "claude-opus-5-5",
-          "category": "review",
-          "effort": "high"
-        },
-        "k-agent-smol": {
-          "model": "grok-4.6",
-          "category": "memory",
-          "effort": "medium"
-        },
-        "rem-agent": {
-          "model": "claude-opus-5-5",
-          "category": "research",
-          "effort": "high"
-        },
-        "research": {
-          "model": "claude-opus-5-5",
-          "category": "research",
-          "effort": "high"
-        },
-        "reviewer": {
-          "model": "claude-opus-5-5",
-          "category": "review",
-          "effort": "high"
-        },
-        "rubber-duck": {
-          "model": "claude-opus-5-5",
-          "category": "research",
-          "effort": "high"
-        },
-        "scout": {
-          "model": "grok-4.6",
-          "category": "mechanical",
-          "effort": "medium"
-        },
-        "security-review": {
-          "model": "claude-opus-5-5",
-          "category": "review",
-          "effort": "high"
-        },
-        "security-reviewer": {
-          "model": "claude-opus-5-5",
-          "category": "review",
-          "effort": "high"
-        },
-        "sonic": {
-          "model": "grok-4.6",
-          "category": "mechanical",
-          "effort": "medium"
-        },
-        "task": {
-          "model": "muse-spark-1.3",
-          "category": "implement",
-          "effort": "high"
-        },
-        "worker": {
-          "model": "muse-spark-1.3",
-          "category": "implement",
-          "effort": "high"
-        }
-      },
-      "reachable_agents": [],
-      "counter_models": [
-        "muse-spark-1.3"
-      ],
-      "cheap_lane_models": [
-        "grok-4.6"
-      ],
-      "lane_models": [
-        "claude-opus-5-5",
-        "grok-4.6",
-        "muse-spark-1.3"
-      ],
-      "session": {
-        "model": "claude-opus-5-5",
-        "effort": "high",
-        "context": "long"
-      }
-    },
     "omp": {
       "agents": {
         "Explore": {
@@ -987,20 +691,10 @@
           "category": "research",
           "effort": "high"
         },
-        "best-of-n-runner": {
-          "model": "@task",
-          "category": "implement",
-          "effort": "medium"
-        },
         "browser_agent": {
           "model": "@task",
           "category": "implement",
           "effort": "medium"
-        },
-        "bugbot": {
-          "model": "@default",
-          "category": "review",
-          "effort": "high"
         },
         "claude": {
           "model": "@task",
@@ -1027,11 +721,6 @@
           "category": "research",
           "effort": "high"
         },
-        "cursor-guide": {
-          "model": "@default",
-          "category": "research",
-          "effort": "high"
-        },
         "default": {
           "model": "@default",
           "category": "research",
@@ -1048,11 +737,6 @@
           "effort": "high"
         },
         "general-purpose": {
-          "model": "@task",
-          "category": "implement",
-          "effort": "medium"
-        },
-        "generalPurpose": {
           "model": "@task",
           "category": "implement",
           "effort": "medium"
@@ -1242,20 +926,10 @@
           "category": "research",
           "effort": "high"
         },
-        "best-of-n-runner": {
-          "model": "openai-codex/gpt-6.1-sol",
-          "category": "implement",
-          "effort": "medium"
-        },
         "browser_agent": {
           "model": "openai-codex/gpt-6.1-sol",
           "category": "implement",
           "effort": "medium"
-        },
-        "bugbot": {
-          "model": "openai-codex/gpt-6.1-sol",
-          "category": "review",
-          "effort": "high"
         },
         "claude": {
           "model": "openai-codex/gpt-6.1-sol",
@@ -1282,11 +956,6 @@
           "category": "research",
           "effort": "high"
         },
-        "cursor-guide": {
-          "model": "openai-codex/gpt-6.1-sol",
-          "category": "research",
-          "effort": "high"
-        },
         "default": {
           "model": "openai-codex/gpt-6.1-sol",
           "category": "research",
@@ -1303,11 +972,6 @@
           "effort": "high"
         },
         "general-purpose": {
-          "model": "openai-codex/gpt-6.1-sol",
-          "category": "implement",
-          "effort": "medium"
-        },
-        "generalPurpose": {
           "model": "openai-codex/gpt-6.1-sol",
           "category": "implement",
           "effort": "medium"

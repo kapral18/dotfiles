@@ -66,10 +66,10 @@ This setup is intentionally declarative:
 
 ## Dynamic AI Context Merging
 
-Because AI tools (like OpenCode, Cursor, Antigravity, and Pi) often rewrite their config files during runtime, rendering templates directly into those files causes conflicts. Instead, this architecture uses **Profile-Based Merging**:
+Because AI tools (like OpenCode, Antigravity, and Pi) often rewrite their config files during runtime, rendering templates directly into those files causes conflicts. Instead, this architecture uses **Profile-Based Merging**:
 
 - MCP server definitions share a single canonical registry at [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml). Each entry declares a `work_only` flag so work-specific servers are filtered at generation time.
-- During `chezmoi apply`, the unified script `run_onchange_after_07-generate-mcp-configs.sh.tmpl` calls [`scripts/generate_mcp_configs.py`](../../scripts/generate_mcp_configs.py) once and writes the result to Cursor, Claude Code, Pi, and any other tool that consumes the standard `mcpServers` JSON shape.
+- During `chezmoi apply`, the unified script `run_onchange_after_07-generate-mcp-configs.sh.tmpl` calls [`scripts/generate_mcp_configs.py`](../../scripts/generate_mcp_configs.py) once and writes the result to Claude Code, Pi, and any other tool that consumes the standard `mcpServers` JSON shape.
 - Tools with different MCP schemas (OpenCode, Codex) still derive from the same registry via small inject scripts in `scripts/` that transform the canonical registry into the tool-specific config shape.
 - Antigravity keeps runtime-owned servers in `~/.gemini/config/mcp_config.json`; the apply hook merges registry-owned servers into that file without replacing the runtime-owned entries.
 - This creates a hard boundary between work contexts (which load work-specific MCP servers) and personal contexts.
@@ -86,9 +86,7 @@ All `run_onchange_after_07-merge-*` scripts source a shared shell library at [`s
 | `chezmoi_write_if_changed`   | Atomic string write, skip if content unchanged        |
 | `chezmoi_install_if_changed` | File copy via `install(1)`, skip if content unchanged |
 | `chezmoi_record_checksum`    | Record one literal target and sha256 in the manifest  |
-| `chezmoi_forget_checksum`    | Retire one literal target from the manifest           |
 | `chezmoi_record_artifact`    | Record one ownership-aware generated AI artifact      |
-| `chezmoi_forget_artifact`    | Retire one generated AI artifact id                   |
 
 Two independent runtime ledgers serve different questions:
 

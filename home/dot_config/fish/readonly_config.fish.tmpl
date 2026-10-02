@@ -181,12 +181,6 @@ if status --is-interactive
     ## Aliases
     alias cat=bat
     alias c=chezmoi
-    function agent --wraps cursor-agent --description "Launch cursor-agent through the managed ,cursor wrapper"
-        command ,cursor $argv
-    end
-    function cursor-agent --wraps cursor-agent --description "Launch cursor-agent through the managed ,cursor wrapper"
-        command ,cursor $argv
-    end
     function codex --wraps codex --description "Launch Codex CLI through the managed ,codex wrapper"
         command ,codex $argv
     end

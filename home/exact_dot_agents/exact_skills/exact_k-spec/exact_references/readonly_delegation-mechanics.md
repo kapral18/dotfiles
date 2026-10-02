@@ -11,7 +11,7 @@ Resolve model and, where the harness accepts it, effort from `category_models` i
 Keep research/orchestration/review/refutation strong; never a cheap model for unsettled judgment.
 Do not silently raise effort, substitute a costlier model, or change family outside the resolved category.
 
-- `orchestrate`: the root/main session itself, never a delegation target; `session_models.<harness>` declares its model/effort and generates every repo-owned root config (Cursor's root stays in Cursor user config); owns intent, decisions, packet dependencies, integration, stages, user conversation.
+- `orchestrate`: the root/main session itself, never a delegation target; `session_models.<harness>` declares its model/effort and generates every repo-owned root config; owns intent, decisions, packet dependencies, integration, stages, user conversation.
 - `research`: strong isolated search, investigation, exploration, discovery, diagnosis, and impact mapping when meaning or cause is unresolved, even on known paths; returns locations, conclusions, evidence pointers, uncertainty, affected interfaces.
   Named paths never downgrade such work to mechanical.
   Use `k-agent-code-searcher` or the harness research-bound explorer; external sources via `k-agent-public-sources`.

@@ -91,9 +91,7 @@ class TestOmpMigration(unittest.TestCase):
         return result.stdout
 
     def test_config_renders_one_profile_independent_model_roles_block(self):
-        provider_order = (
-            "modelProviderOrder:\n  - anthropic\n  - openai-codex\n  - openrouter\n  - cursor\n  - openai\n"
-        )
+        provider_order = "modelProviderOrder:\n  - anthropic\n  - openai-codex\n  - openrouter\n  - openai\n"
         # The role table is profile-independent and uses the subscription provider;
         # category and effort relationships are covered by the band invariants.
         expected_roles = {"default", "smol", "slow", "vision", "plan", "commit", "tiny", "task", "advisor", "web"}

@@ -37,11 +37,10 @@ The mental model is layered:
 | Single SOP source | [`home/readonly_AGENTS.md`](../../../../home/readonly_AGENTS.md)                                                                        | `~/AGENTS.md`                                        |
 | Claude            | [`home/readonly_CLAUDE.md`](../../../../home/readonly_CLAUDE.md)                                                                        | `~/CLAUDE.md`                                        |
 | Antigravity       | [`home/dot_gemini/config/symlink_AGENTS.md`](../../../../home/dot_gemini/config/symlink_AGENTS.md)                                      | `~/.gemini/config/AGENTS.md`                         |
-| Cursor            | [`home/dot_cursor/symlink_AGENTS.md`](../../../../home/dot_cursor/symlink_AGENTS.md)                                                    | `~/.cursor/AGENTS.md`                                |
 | Codex             | [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl) | `~/.codex/config.toml` root `developer_instructions` |
 | OpenCode          | [`home/dot_config/opencode/symlink_AGENTS.md`](../../../../home/dot_config/opencode/symlink_AGENTS.md)                                  | `~/.config/opencode/AGENTS.md`                       |
 
-Claude’s native global alias is `~/.claude/CLAUDE.md`; the home `CLAUDE.md` uses `@AGENTS.md`. See [source of truth](source-of-truth.md) for Pi and Cursor delivery adapters and native limitations.
+Claude’s native global alias is `~/.claude/CLAUDE.md`; the home `CLAUDE.md` uses `@AGENTS.md`. See [source of truth](source-of-truth.md) for the Pi delivery adapter and native limitations.
 
 ## Related
 

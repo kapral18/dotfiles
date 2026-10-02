@@ -13,10 +13,9 @@ See [The Agentic Operating System](../topics/ai-assistants/index.md) and [SOP so
 | Assistant core SOP     | [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md)                                       |
 | Assistant skills       | [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/)               |
 | Shared assistant hooks | [`home/exact_dot_agents/exact_hooks/`](../../home/exact_dot_agents/exact_hooks/)                 |
-| Cursor CLI hooks       | [`home/dot_cursor/hooks.json`](../../home/dot_cursor/hooks.json)                                 |
 | Antigravity hooks      | [`home/dot_gemini/config/readonly_hooks.json`](../../home/dot_gemini/config/readonly_hooks.json) |
 
-`~/CLAUDE.md` imports `@AGENTS.md`; `~/.claude/CLAUDE.md` links to `~/AGENTS.md` for Claude's global loader. `~/.gemini/config/AGENTS.md`, `~/.cursor/AGENTS.md`, and `~/.config/opencode/AGENTS.md` are symlinks to `~/AGENTS.md`. Codex gets the SOP as the root `developer_instructions` in `~/.codex/config.toml`, generated at apply time; each managed child role replaces it with its own.
+`~/CLAUDE.md` imports `@AGENTS.md`; `~/.claude/CLAUDE.md` links to `~/AGENTS.md` for Claude's global loader. `~/.gemini/config/AGENTS.md` and `~/.config/opencode/AGENTS.md` are symlinks to `~/AGENTS.md`. Codex gets the SOP as the root `developer_instructions` in `~/.codex/config.toml`, generated at apply time; each managed child role replaces it with its own.
 
 ## Harness configs
 
@@ -29,11 +28,10 @@ Per-tool config sources and the `run_onchange_after_07-*` hooks that render them
 | Antigravity | [`home/dot_gemini/`](../../home/dot_gemini/)                   | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)             |
 | OpenCode    | [`home/dot_config/opencode/`](../../home/dot_config/opencode/) | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl)           |
 | Pi          | [`home/dot_pi/agent/`](../../home/dot_pi/agent/)               | [`run_onchange_after_07-merge-pi-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl)                       |
-| Cursor      | [`home/dot_cursor/`](../../home/dot_cursor/)                   | settings tracked directly                                                                                                                         |
 
 ## Model registry
 
-Single source of truth for curated Cursor models, Pi extras, provider routes, category routing (`agent_categories` / `agent_bindings` / `category_models`), the alternate whole Pi pricings in `pi_model_profiles`, and review-lane model policy; per-tool model configs, the generated delegation-band projection, and the generated mirror all derive from it. See [Model registry & routing](../topics/ai-assistants/model-registry.md).
+Single source of truth for Pi extras, provider routes, category routing (`agent_categories` / `agent_bindings` / `category_models`), the alternate whole Pi pricings in `pi_model_profiles`, and review-lane model policy; per-tool model configs, the generated delegation-band projection, and the generated mirror all derive from it. See [Model registry & routing](../topics/ai-assistants/model-registry.md).
 
 | Component           | Source path                                                                                                                          |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |

@@ -181,11 +181,10 @@ Resolve an explicit or implicit issue from verified worktree, repository, and ob
 NEVER assume a branch number is the issue identity.
 For GitHub issue work, load `~/.agents/skills/k-github/SKILL.md` for Targeting and GitHub Context Intake + Reference Resolution, then read the complete primary issue body/comments and only the references that answer named material questions.
 Reading discussion establishes intent and claims; it does not prove technical claims.
-For nontrivial code work, establish relevant callers, consumers, and invariants;
-use `~/.agents/skills/k-semantic-code-search/SKILL.md` when applicable, then compare its base context with exact local state.
+For nontrivial code work, establish relevant callers, consumers, and invariants, then compare base-branch context with exact local state.
 Impact covers every consumed artifact, not only code: config, templates, generated outputs, docs, completions, and instruction text have readers, renderers, and generated targets too.
 Name what breaks if the artifact changes and its co-edit set (consumers, generated outputs, docs, diagrams, completions, tests).
-Impact mechanics, in order: SCSI when the repo is indexed; otherwise local `rg`/symbol lookup for callers and non-code consumers.
+Impact mechanics: local `rg`/symbol lookup for callers and non-code consumers.
 When interpretation, cause, or impact is unresolved, run that step as a `research` packet (`k-agent-code-searcher`) even on known paths;
 named files never downgrade it to mechanical. The root keeps reads of files it can already name.
 Skip the impact map only for a change proven light-path under §1.

@@ -347,7 +347,7 @@ class AiUsageReaderTests(unittest.TestCase):
         self.assertNotIn("$", text)
         payload = json.loads(self.core.to_json([row]))
         self.assertEqual(payload["sessions"][0]["hit_rate"], 0.9)
-        self.assertIn("cursor", payload["not_measured"])
+        self.assertIn("adapters", payload["not_measured"])
 
     def test_SHOULD_count_subagent_transcripts_tagged_with_their_agent_type(self) -> None:
         """WHEN a session delegates, its subagents' calls live in <session>/subagents/ and must be counted."""

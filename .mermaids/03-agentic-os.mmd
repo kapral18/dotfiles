@@ -10,10 +10,10 @@ flowchart TB
     classDef data fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
 
     subgraph GOV["1 · Governance (entrypoints, chezmoi-managed)"]
-        AG["readonly_AGENTS.md → ~/AGENTS.md (compiled core SOP)<br/>§3.1 shared assessment: intent intake, impact (code + non-code consumers, co-edit set; SCSI → rg), cause, release applicability<br/>§3.8 continuing authorization · §3.5 evidence-backed recovery; §3.4 no-progress stop"]:::gov
+        AG["readonly_AGENTS.md → ~/AGENTS.md (compiled core SOP)<br/>§3.1 shared assessment: intent intake, impact (code + non-code consumers, co-edit set; local rg), cause, release applicability<br/>§3.8 continuing authorization · §3.5 evidence-backed recovery; §3.4 no-progress stop"]:::gov
         CL["readonly_CLAUDE.md → ~/CLAUDE.md native @AGENTS.md import<br/>dot_claude/symlink_CLAUDE.md → ~/.claude/CLAUDE.md → ~/AGENTS.md<br/>repo CLAUDE.md → native project AGENTS.md import; canonical paths deduplicated"]:::gov
         GM["dot_gemini/config/symlink_AGENTS.md → ~/.gemini/config/AGENTS.md → ~/AGENTS.md"]:::gov
-        SK["home/exact_dot_agents/exact_skills/ → ~/.agents/skills/<br/>58 skill entrypoints, intent-routed (see 03b)"]:::gov
+        SK["home/exact_dot_agents/exact_skills/ → ~/.agents/skills/<br/>57 skill entrypoints, intent-routed (see 03b)"]:::gov
         AG -->|Use when… load once while unchanged in context; mechanics consume canonical authorization| SK
         DM["k-spec/references/delegation-mechanics.md<br/>category/model/lane and packet mechanics load only before delegated work;<br/>root/leaf/no-recursion gates and global handoff remain core"]:::gov
         AG -->|before delegated selection or dispatch| DM
@@ -22,27 +22,24 @@ flowchart TB
         REVIEW["k-github owns complete issue/PR intake and bounded material-question reference resolution<br/>k-review/pr_common.md consumes intake and owns proven CI exclusion from findings and approval<br/>k-github and k-google-workspace consume SOP authorization<br/>publication mechanics own transaction preflight and readback"]:::gov
         SK --> REVIEW
         CL --> SK
-        CG["dot_cursor/plugins/local/exact_k-sop/<br/>contained alwaysApply rule includes the canonical full SOP;<br/>hosted/authenticated local: 2 SOP bodies inside HOME (baseline 2), 1 outside;<br/>explicit authless/Bedrock local disables plugins; no .cursorignore"]:::gov
-        AG --> CG
         POLICY["compile_ai_policy.py + ai_policy_ir.py + operative capability snapshot<br/>explicit missing manifests and malformed/empty eval matrices fail;<br/>source description bytes distinguish all declarations from non-manual budget subset;<br/>eval scaffold cells remain blocked, not model-compliance evidence"]:::gov
         AG --> POLICY
     end
 
     subgraph CTX["2 · Context (single sources of truth)"]
-        REG[[".chezmoidata/mcp_servers.yaml<br/>generic registry; current work/domain servers:<br/>scsi-main(http sso) · scsi-local (ES stdio) · slack(http oauth)"]]:::data
-        MODELS[[".chezmoidata/ai_models/ split registry — harness-catalogs · provider-routes · tiering<br/>+ session_models + category_models.refute/verifier_status<br/>(review-model resolver → profile frontmatter)<br/>+ cursor_models · pi_extra_models · provider_models (model-mirror registry sources)"]]:::data
+        REG[[".chezmoidata/mcp_servers.yaml<br/>generic registry; current work/domain servers:<br/>slack(http oauth)"]]:::data
+        MODELS[[".chezmoidata/ai_models/ split registry — harness-catalogs · provider-routes · tiering<br/>+ session_models + category_models.refute/verifier_status<br/>(review-model resolver → profile frontmatter)<br/>+ pi_extra_models · provider_models (model-mirror registry sources)"]]:::data
         GEN["scripts/: mcp_registry.py · generate_mcp_configs.py<br/>resolve $(pass …) · filter by tool + work_only/isWork"]:::ctx
         REG --> GEN
     end
 
     subgraph EXECL["3 · Execution (per-tool, .work/.personal merged at apply)"]
-        CURSOR["Cursor (primary): dot_cursor/hooks.json + filtered MCP<br/>exact_agents/ final judgment leaves + scoped workers → ~/.cursor/agents/"]:::exec
         CLAUDE["Claude Code: dot_claude/settings.{work,personal}.json + settings.llama-cpp*.json.tmpl"]:::exec
         GEMINI["Antigravity: category key antigravity; deployed review/mirror harness gemini; config/symlink_AGENTS.md + symlink_skills + generated mcp_config.json"]:::exec
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (OpenRouter selectors)<br/>depth one + worker task deny; parentID root-only memory; terminal guards survive missing optional memory helpers"]:::exec
         CODEX["Codex: dot_codex/private_config.{work,personal}.toml<br/>managed/native fallback child roles disable collaboration<br/>+ ,codex bearer-token env wrapper for hosted MCP"]:::exec
         PI["Pi: dot_pi/agent/* (native root openai-codex/gpt-6.1-sol/high; separate model + thinking profile fields; per-lane picks: see tiering.yaml pi rows)<br/>runtime-parity before_agent_start appends canonical SOP iff absent;<br/>root user-scope fresh dispatch only; acceptance:false explicit; per-call model/skill overrides and composite/revival flows denied by the sole-registration subagent-contract adapter"]:::exec
-        OMP["OMP: dot_omp/private_agent/readonly_config.yml.tmpl<br/>native extendedContext:true gives the root long context; foreground Bash/Eval default + native-yield leaf async/hub/task guard<br/>one profile-independent modelRoles block: openai-codex GPT-6.1 Sol default:high (T1; research/review @default inherit the active parent), GPT-6.1 Sol slow/plan:max; vision GPT-6 Luna:high; task GPT-6.1 Sol:medium (T2 implement); smol GPT-6 Luna:high (T3 mechanical/memory); tiny/commit GPT-6 Luna:medium; web GPT-6 Luna (runtime-default effort); advisor GPT-6.1 Sol:high (same-family refute, degraded)<br/>+ generated ~/.omp/agent/mcp.json token bridges"]:::exec
+        OMP["OMP: dot_omp/private_agent/readonly_config.yml.tmpl<br/>native extendedContext:true gives the root long context; foreground Bash/Eval default + native-yield leaf async/hub/task guard<br/>one profile-independent modelRoles block: openai-codex GPT-6.1 Sol default:high (T1; research/review @default inherit the active parent), GPT-6.1 Sol slow/plan:max; vision GPT-6 Luna:high; task GPT-6.1 Sol:medium (T2 implement); smol GPT-6 Luna:high (T3 mechanical/memory); tiny/commit GPT-6 Luna:medium; web GPT-6 Luna (runtime-default effort); advisor GPT-6.1 Sol:high (same-family refute, degraded)<br/>+ generated ~/.omp/agent/mcp.json"]:::exec
         TUICR["tuicr: dot_config/tuicr/readonly_config.toml"]:::exec
         LGTM["lgtm: dot_config/lgtm/readonly_config.toml"]:::exec
         LOCAL["llama.cpp (local, opt-in)"]:::exec
@@ -50,10 +47,10 @@ flowchart TB
 
     GEN -->|07-generate-mcp-configs + 07-merge-* hooks| EXECL
     MODELS -->|generate_pi_models / merge_opencode_models| EXECL
-    SK -. symlinked or natively discovered by .-> CURSOR & CLAUDE & OPENCODE & CODEX & PI & OMP & GEMINI
+    SK -. symlinked or natively discovered by .-> CLAUDE & OPENCODE & CODEX & PI & OMP & GEMINI
 
     subgraph HOOKS["Shared lifecycle hooks — detail in 03b"]
-        H["Cursor + Antigravity session context and worklog adapters<br/>compact topic/worklog context + reinforcement; root-only automatic KB retrieval/staging; admission and final learning stay in the root"]:::ctx
+        H["Antigravity session context and worklog adapter<br/>compact topic/worklog context + reinforcement; root-only automatic KB retrieval/staging; admission and final learning stay in the root"]:::ctx
     end
     GOV -.supported by capability-specific.-> HOOKS
     MEM[("/tmp/specs/<pwd>/<topic>.* (ephemeral memory)<br/>,agent-memory → ~/lib/,agent-memory/ rendered from canonical Python sources;<br/>no runtime checkout/chezmoi dependency; persistent named-topic mirror")]:::data

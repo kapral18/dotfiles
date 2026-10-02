@@ -67,7 +67,7 @@ class TestReviewPolicyInvariants(unittest.TestCase):
                     seen_adapters.add(path.relative_to(REPO / "home").parts[0])
         self.assertEqual(
             seen_adapters,
-            {"dot_claude", "dot_codex", "dot_cursor", "dot_pi", "dot_omp"},
+            {"dot_claude", "dot_codex", "dot_pi", "dot_omp"},
         )
 
     def test_light_eligibility_remains_a_gate_not_a_small_diff_heuristic(self):
@@ -220,7 +220,6 @@ class TestReviewPolicyInvariants(unittest.TestCase):
     def test_explicit_pi_role_skills_are_preserved(self):
         expected = {
             "public-sources": ("k-public-sources",),
-            "code-searcher": ("k-semantic-code-search",),
             "live-ui-review": ("k-playwriter",),
         }
         for role, skills in expected.items():
@@ -364,23 +363,12 @@ class TestReviewPolicyInvariants(unittest.TestCase):
         self.assertNotIn("Do not load `k-github`", router)
 
     def test_assessment_skills_keep_classification_and_fallback_contracts(self):
-        scsi = self.read("home/exact_dot_agents/exact_skills/exact_k-semantic-code-search/readonly_SKILL.md")
-        for clause in (
-            "Use for nontrivial code-impact assessment, conceptual code search, "
-            "SCSI index selection, or review base context.",
-            "discovery=<checked|unavailable|skipped by request>; <reason>",
-            "NEVER claim a discovery check that did not run.",
-            "If the repo is unindexed, tools are unavailable, or the user opts out, "
-            "establish impact from local sources and record the reason.",
-            "NEVER run indexed `,sem` queries (`impact`, `context`, `find`, `callers`, `refs`, `grep`, `entities`) as this fallback unless the user explicitly asks",
-            "which repositories each server indexes is domain policy owned by the verified domain overlay",
-        ):
-            self.assertIn(clause, scsi)
-        self.assertNotIn("list_indices checked; <reason>", scsi)
-        self.assertNotIn("elastic", scsi.lower())
-        elastic = self.read("home/exact_dot_agents/exact_skills/exact_k-elastic-domain/readonly_SKILL.md")
-        self.assertIn("## Semantic code search scope", elastic)
-        self.assertIn("NEVER assume an Elastic index covers a non-Elastic repository.", elastic)
+        sem = self.read("home/exact_dot_agents/exact_skills/exact_k-sem/readonly_SKILL.md")
+        self.assertIn(
+            "NEVER run an indexed subcommand unless the user explicitly asks for it; "
+            "for impact and base context use local `rg`/symbol lookup.",
+            sem,
+        )
         bugs = self.read("home/exact_dot_agents/exact_skills/exact_k-diagnosing-bugs/readonly_SKILL.md")
         for clause in (
             "Classify the failure as product, test, infrastructure, mixed, or unresolved "

@@ -282,7 +282,7 @@ class TestPerturnRecallCorrectionInjection(unittest.TestCase):
         self.assertIn(",agent-memory note anti_pattern", context)
         self.assertNotIn("k-agent-smol", context)
         self.assertNotIn("Relevant Learnings", context)
-        # Cursor reads only the top-level snake key from beforeSubmitPrompt output.
+        # The Pi/OMP extensions and the Antigravity shape read the top-level snake key.
         self.assertEqual(result["additional_context"], context)
 
     def test_when_prompt_does_not_fire_and_recall_finds_nothing_should_emit_empty_result(self):

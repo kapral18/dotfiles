@@ -4,21 +4,20 @@ sidebar_position: 8
 
 # MCP Servers
 
-A single canonical registry defines every MCP server once. At `chezmoi apply` time, generators render per-tool configs for Cursor, Claude Code, Antigravity, Pi, OMP, Codex, and OpenCode, avoiding seven hand-maintained copies of the same server list.
+A single canonical registry defines every MCP server once. At `chezmoi apply` time, generators render per-tool configs for Claude Code, Antigravity, Pi, OMP, Codex, and OpenCode, avoiding six hand-maintained copies of the same server list.
 
 Use this page when adding, removing, or debugging an MCP server, or when tracing how a server reaches a given assistant.
 
 ## Mental model
 
-| Piece                                                                               | Role                                                                                      |
-| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| [`home/.chezmoidata/mcp_servers.yaml`](../../../home/.chezmoidata/mcp_servers.yaml) | Source of truth for server declarations                                                   |
-| [`scripts/mcp_registry.py`](../../../scripts/mcp_registry.py)                       | Normalizes registry entries and resolves `$(command)` strings through a login shell       |
-| [`scripts/generate_mcp_configs.py`](../../../scripts/generate_mcp_configs.py)       | Emits tool-specific `{ "mcpServers": { ... } }` documents                                 |
-| Tool injectors                                                                      | Preserve live runtime-owned config while replacing only the MCP section                   |
-| [`,mcp-token` bridge](../workflow/custom-commands/catalog.md)                       | Inject a fresh bearer per request when a tool cannot perform the hosted OAuth flow itself |
+| Piece                                                                               | Role                                                                                |
+| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| [`home/.chezmoidata/mcp_servers.yaml`](../../../home/.chezmoidata/mcp_servers.yaml) | Source of truth for server declarations                                             |
+| [`scripts/mcp_registry.py`](../../../scripts/mcp_registry.py)                       | Normalizes registry entries and resolves `$(command)` strings through a login shell |
+| [`scripts/generate_mcp_configs.py`](../../../scripts/generate_mcp_configs.py)       | Emits tool-specific `{ "mcpServers": { ... } }` documents                           |
+| Tool injectors                                                                      | Preserve live runtime-owned config while replacing only the MCP section             |
 
-The registry mechanics are generic. The currently declared server set is work-profile-only and Elastic-domain-specific.
+The registry mechanics are generic. The currently declared server set is work-profile-only.
 
 ## Registry: `mcp_servers.yaml`
 
@@ -31,27 +30,21 @@ Each entry is one of two shapes:
 
 `work_only: true` servers are emitted only when the `isWork` chezmoi variable is set. The personal profile currently emits no declared MCP servers.
 
-The work set includes `scsi-main`, `scsi-local`, and `slack`:
+The work set declares one server:
 
-| Server       | Current behavior                                                                                                                                                                                                                                          |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `scsi-main`  | Hosted Semantic Code Search server using Elastic SSO/OAuth. Claude and Pi keep tool-specific OAuth metadata. Antigravity, Cursor, OMP, and Codex use `,mcp-token --bridge` at runtime; Cursor keeps OAuth client metadata for a dedicated mint workspace. |
-| `scsi-local` | Local SCSI stdio backend emitted to every work-profile harness, including OMP and Codex.                                                                                                                                                                  |
-| `slack`      | Slack MCP server with per-tool OAuth metadata. Antigravity, Cursor, OMP, and Codex use the shared token bridge at runtime.                                                                                                                                |
+| Server  | Current behavior                                                                                      |
+| ------- | ----------------------------------------------------------------------------------------------------- |
+| `slack` | Hosted Slack MCP server. Only Claude Code carries OAuth client metadata, so only Claude Code gets it. |
 
-Antigravity, OMP, Codex, and Cursor get `scsi-local` as a stdio server and `scsi-main` plus `slack` as local `,mcp-token --bridge` stdio servers that forward to the hosted endpoints with per-request bearer injection. OpenCode gets `scsi-local` only: its injector intentionally emits command servers and skips every HTTP entry.
+An HTTP server reaches a harness only when `oauth_by_tool` names that harness; every other harness omits it. OpenCode and Codex emit command servers only and skip every HTTP entry.
 
-### Hosted OAuth exceptions
+### Hosted OAuth limits
 
 Slack's MCP authorization server offers no dynamic client registration and requires a client secret at the token endpoint: `grant_types = [authorization_code, refresh_token]`, `token_endpoint_auth_methods = [client_secret_post]`.
 
-Codex supports streamable HTTP MCP natively, but its OAuth callback settings are global: `mcp_oauth_callback_port` / `mcp_oauth_callback_url`. The hosted SCSI and Slack apps need different approved callback registrations, and its `bearer_token_env_var` support reads the env var once at launch, dying with that token.
+Codex supports streamable HTTP MCP natively, but its OAuth callback settings are global (`mcp_oauth_callback_port` / `mcp_oauth_callback_url`), and its `bearer_token_env_var` support reads the env var once at launch, dying with that token. Codex therefore gets no hosted server.
 
-Both `scsi-main` and `slack` therefore give their `codex` block the same `tokenBridge` value, so Codex spawns the identical per-request stdio bridge.
-
-Cursor can run the hosted OAuth flows, but its native HTTP MCP client has been observed mid-session as `enabled` with `0 tools` after token/session failure. The Cursor `tokenBridge` entries therefore match Codex for runtime transport. OAuth minting stays on a dedicated mint workspace at `~/.cache/mcp-token/oauth-mint/.cursor/mcp.json` (OAuth HTTP shapes only): `,mcp-token` silent rotate and browser login always use that cwd so project OAuth config wins over the user-level bridge (cursor-agent loads project then user MCP config; project wins).
-
-Pi can run Slack's OAuth flow via `pi-mcp-adapter`, but only against Slack's public MCP client (`1601185624273.8899143856786`), and that client is not approved for the `search:read.*` scopes for this user: consent fails with `Unapproved permissions requested: search:read`. Slack moved search to the granular `search:read.public/private/mpim/im/files/users` scopes (see `scopes_supported` in `https://mcp.slack.com/.well-known/oauth-authorization-server`); cursor-cli's IDE client is approved for them and its minted tokens carry them. The `slack` `pi` block therefore uses `tokenBridge: "slack"` like Codex/OMP, riding the rotating cursor-minted token instead of its own OAuth grant.
+Pi can run Slack's OAuth flow via `pi-mcp-adapter`, but only against Slack's public MCP client (`1601185624273.8899143856786`), and that client is not approved for the `search:read.*` scopes for this user: consent fails with `Unapproved permissions requested: search:read`. Slack moved search to the granular `search:read.public/private/mpim/im/files/users` scopes (see `scopes_supported` in `https://mcp.slack.com/.well-known/oauth-authorization-server`). Pi therefore carries no `slack` row.
 
 ## Using it
 
@@ -74,22 +67,10 @@ Verification:
 
 ```bash
 chezmoi apply
-python3 -m json.tool < ~/.cursor/mcp.json
+python3 -m json.tool < ~/.pi/agent/mcp.json
 python3 -c "import json; print(list(json.load(open('$HOME/.claude.json')).get('mcpServers', {})))"
-codex mcp list     # bridge servers appear as local command servers
+codex mcp list     # command servers only
 ```
-
-### Refresh a hosted token by hand
-
-To refresh manually, run:
-
-```bash
-,mcp-token <server> --login
-```
-
-Add `--quiet` when you do not want cursor-agent auth output in the terminal.
-
-You normally do not run this by hand. The `,mcp-token --bridge` stdio servers rotate behind the seam whenever a request finds the current token short, missing, or rejected.
 
 ## Generation pipeline
 
@@ -100,7 +81,7 @@ The common pipeline has two stages:
 | Normalize registry      | [`scripts/mcp_registry.py`](../../../scripts/mcp_registry.py)                 | Resolve `$(command)` strings through a login shell        |
 | Generate per-tool shape | [`scripts/generate_mcp_configs.py`](../../../scripts/generate_mcp_configs.py) | Emit a tool-specific `{ "mcpServers": { ... } }` document |
 
-Per-tool transforms handle schema differences, such as Cursor's `auth.CLIENT_ID` vs the standard `oauth` shape.
+Per-tool transforms handle schema differences, such as Antigravity's `serverUrl` vs the standard `url` field.
 
 Pi gets one extra block:
 
@@ -122,64 +103,12 @@ Tools whose config is not plain JSON get dedicated injectors with explicit owner
 
 | Tool        | Target file (`mcpServers`)          | Rendered by hook                                                                                                                           |
 | ----------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Cursor      | `~/.cursor/mcp.json`                | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
 | Claude Code | `~/.claude.json` (`mcpServers` key) | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
 | Pi          | `~/.pi/agent/mcp.json`              | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
 | OMP         | `~/.omp/agent/mcp.json`             | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
 | Antigravity | `~/.gemini/config/mcp_config.json`  | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
 | OpenCode    | `~/.config/opencode/opencode.jsonc` | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl) |
 | Codex       | `~/.codex/config.toml`              | [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl)       |
-
-### Per-request token bridge
-
-[`mcp-token`](../workflow/custom-commands/catalog.md) `--bridge --url <endpoint>` speaks stdio MCP to the agent and forwards each message as an HTTP POST with a freshly selected bearer. Antigravity, OMP, and Codex spawn it like any local MCP server, so their sessions no longer depend on any single token's lifetime.
-
-Per request, the bridge reads the freshest still-valid token from cursor-cli's per-project OAuth caches at `~/.cursor/projects/*/mcp-auth.json`. Cursor runs the `authorization_code` flow with its own approved clients (Slack workspace app / SCSI Elastic Okta) and refreshes the rotating token in place.
-
-| Bridge event                                         | Behavior                                                                                                                                                                 |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Token missing or below `BLOCKING_ROTATE_TTL_SECONDS` | Rotate synchronously through cursor's refresh grant; if the refresh chain fails, one lock owner opens browser OAuth while concurrent requests wait and reuse the result. |
-| `401` / `403` mid-session                            | Re-acquire (rotating), retry once, and only when the retry would use a different token.                                                                                  |
-| `404` after a session was established                | Re-play the cached `initialize` handshake (new `Mcp-Session-Id`, response suppressed) and retry, so server-side session expiry never kills the agent session.            |
-| SSE response                                         | Every `data:` event streams through in order (progress notifications before the response).                                                                               |
-| stdin EOF                                            | Best-effort `DELETE` of the server session, then exit.                                                                                                                   |
-
-SCSI tokens are JWTs, so `,mcp-token` uses their `exp`. Direct `--login` still guarantees runway.
-
-### Rotation rules
-
-`--login` rotates silently below `MIN_TTL_SECONDS`; `--login --no-proactive-rotation` (used by `,cursor`) keeps that proactive rotation off the critical path while the final `BLOCKING_ROTATE_TTL_SECONDS` window, expired tokens, and revoked tokens still rotate synchronously.
-
-The Cursor mode checks the current working workspace's own `mcp-auth.json` before the session starts. The wrapper includes authenticated HTTP servers carrying either cursor-cli's `oauth` block, Cursor IDE's `auth.CLIENT_ID` shape, or a `,mcp-token --bridge` command entry (tokenBridge runtime). It resolves Cursor's project directory from matching `.workspace-trusted` metadata, with Cursor's deterministic path slug as the fallback. A workspace with a missing access token or a JWT at/under `EXPIRY_SKEW_SECONDS` is first seeded by copying the newest verified cached chain into its cache — token chains are not workspace-bound, so cursor accepts the copy; opaque candidates must pass the liveness probe and JWTs are `exp`-checked before seeding, and only that server's entry is written. Only when no verifiable chain exists does `cursor-agent mcp login <server>` run (in the mint workspace when present); an existing refresh chain remains runtime-owned. This prevents a valid token in another project cache from masking an unauthenticated current workspace without adding a live MCP handshake to every launch, and without a browser login for every fresh worktree.
-
-Why cursor-agent cannot do this itself: hourly access-token expiry is already handled silently by cursor's own refresh grant, but the refresh grant needs an existing `refresh_token` as input, and cursor's per-project caches are its trust boundary — it never reads another project's chain. A brand-new worktree therefore has nothing to refresh, and cursor's only built-in recovery is the browser `authorization_code` flow. Seeding is the one row in the matrix where the wrapper and a bare `cursor-agent` launch genuinely differ; a browser login is only ever required again when the refresh chain itself dies (revocation, admin policy, long idle), not on any expiry schedule. Launching `cursor-agent` directly stays fine when a mid-session popup is acceptable — the wrapper's value is eliminating the guaranteed one-popup-per-server cost of each fresh worktree.
-
-Silent rotation relies on cursor running the provider's `refresh_token` grant whenever a stored access token stops working. Before rotation or browser login, `,mcp-token` runs Cursor's idempotent `mcp enable <server>` in the selected OAuth workspace because Cursor gates both auth paths on its local approved list. When the mint workspace exists, `,mcp-token` seeds/rotates that project's cache and runs `cursor-agent mcp list-tools <server>` there so list-tools hits OAuth HTTP config rather than the user-level bridge. Otherwise it invalidates the access token in the newest project cache that holds a `refresh_token` and whose `.workspace-trusted` records an existing workspace directory, runs the same bounded list-tools there, and cursor writes the freshly minted chain back in place with no browser and without revoking the in-flight token running sessions already hold.
-
-Concurrent rotations serialize through `~/.cache/mcp-token/rotation.lock` and recheck whether rotation remains due before touching the shared cache. Bridge recovery keeps the same lock through browser fallback, so multiple Codex sessions cannot open duplicate login tabs. Cursor's login output stays off the bridge's JSON-RPC stdout; the bridge announces the interactive recovery on stderr and resumes the blocked MCP request after authorization succeeds.
-
-### Opaque token liveness
-
-Opaque tokens such as Slack expose no expiry. The local refresh ledger under `~/.cache/mcp-token/` can pin a token the provider has since revoked, so ledger state and cache mtime alone do not prove an opaque token is live.
-
-`--login` validates the ledger-selected opaque token with a minimal MCP `initialize` probe against the server's URL from the mint-workspace OAuth config when present, otherwise from `~/.cursor/mcp.json` (including a bridge entry's `--url` argument):
-
-| Probe result                                    | Behavior                                                                                                                                                       |
-| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `2xx`                                           | Keep the token.                                                                                                                                                |
-| `401` / `403`                                   | Treat it as revoked, try a synchronous silent rotation first, then probe other cached opaque tokens newest-cache first and adopt a live one without a browser. |
-| No live candidate                               | Run the cursor browser flow.                                                                                                                                   |
-| Network errors, timeouts, `5xx`, or missing URL | Leave liveness unknown and preserve the existing ledger token rather than forcing a browser login.                                                             |
-
-Plain reads stay local and never probe.
-
-## Codex bridge wiring
-
-Codex's wired servers:
-
-- `slack` and `scsi-main` are emitted by [`scripts/inject_mcp_into_codex_toml.py`](../../../scripts/inject_mcp_into_codex_toml.py) as `,mcp-token --bridge` command servers. No bearer value or env-var contract is written to `~/.codex/config.toml`.
-- `,codex` performs no token work at launch; the bridge owns auth per request. The wrapper only injects local llama.cpp model catalog metadata when a local model is selected.
-- `scsi-local` is emitted as a normal stdio server in `~/.codex/config.toml`.
 
 LetsFG is intentionally not exposed through the shared MCP registry because its tools are irrelevant to most sessions. Agents load its skill on demand instead. See [Tool configs](tool-configs/index.md) for details.
 

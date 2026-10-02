@@ -1,5 +1,5 @@
 // Managed by chezmoi (source: home/dot_omp/private_agent/extensions/runtime-parity.ts).
-// OMP runtime defaults that mirror the shared Cursor contracts.
+// OMP runtime defaults that mirror the shared hook contracts.
 
 import { lstatSync, realpathSync, writeFileSync } from "node:fs"
 import { spawn } from "node:child_process"

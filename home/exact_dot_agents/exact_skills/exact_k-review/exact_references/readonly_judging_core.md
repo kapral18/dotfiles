@@ -1,8 +1,8 @@
 # Judging Core (Surface-Agnostic)
 
 - Mode files and `~/.agents/skills/k-review/references/shared_rules.md` reference this file; do not duplicate these sections elsewhere.
-- Delivery-agnostic: no GitHub, SCSI, or delivery rules.
-- Surfaces needing PR/SCSI/GitHub-delivery rules layer them via `~/.agents/skills/k-review/references/shared_rules.md`.
+- Delivery-agnostic: no GitHub or delivery rules.
+- Surfaces needing PR/GitHub-delivery rules layer them via `~/.agents/skills/k-review/references/shared_rules.md`.
 - Integrated coverage and hygiene criteria for the final Verify stage live in `~/.agents/skills/k-review/references/judging_pipeline.md`.
 
 ## Conditional Gate Loading
@@ -27,13 +27,13 @@ Use in every non-trivial review.
   Do not generate a mutation experiment for every rationale or repeat an experiment already represented in shared evidence.
 - A static read proves what source says, not what the system does; verify runtime behavior whenever candidate keep/drop depends on observed state.
 - **Diff-boundary tunnel vision is forbidden:** reviewing diff hunks in isolation without inspecting surrounding context, caller trees, and sibling consumers is never justified across any review tier (light, standard, or deep).
-  The diff is the source for what changed (delta) and commentability; full files and caller trees (via local `rg`, symbol lookup, or SCSI) give the ground truth for system behavior.
+  The diff is the source for what changed (delta) and commentability; full files and caller trees (via local `rg` or symbol lookup) give the ground truth for system behavior.
   This obligation belongs to the review worker; the root meets it by passing the full diff and file access in the packet and MUST NOT read hunks or file bodies itself before that packet returns.
 - For diffs not proven mechanical-only, reconstruct semantic delta: old/new rule, intended/preserved differences, evidence.
   Missing/extra/unproven rows are candidates until refuted.
   Prove mechanical-only with `,sem diff --format json` per `~/.agents/skills/k-sem/SKILL.md`:
   every change is `renamed`/`moved` or has `structuralChange: false`; a line diff alone does not prove it.
-- Establish base invariants first (SCSI when indexed; otherwise `git show <base>:<path>` + local `rg`), then validate PR/branch reality (diff + full file reads).
+- Establish base invariants first (`git show <base>:<path>` + local `rg`), then validate PR/branch reality (diff + full file reads).
 - Evaluate the diff as a state and contract boundary; simulate behavior across universal failure primitives:
   caller/callee contract asymmetry, test oracle/mock fidelity gaps, compositional fault cascades in batch/collection processing, temporal/async hazards, projection/mapping divergence, and silent error degradation.
   Select boundary and predicate counterexamples for the material risks; do not enumerate mutations for every changed condition.

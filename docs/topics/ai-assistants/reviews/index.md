@@ -13,7 +13,7 @@ Use these pages when continuing a review, addressing review threads, rechecking 
 | Navigation slice                                                        | Owns                                                                                    |
 | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | [Deep-review topology](deep-review-topology.md)                         | `/k-deep-review` phases, worker ownership, live UI handoff, controller responsibilities |
-| [Base context and truth validation](base-context-and-truth.md)          | SCSI/base-branch context, strict verification, PR intake, necessity audit               |
+| [Base context and truth validation](base-context-and-truth.md)          | Base-branch context, strict verification, PR intake, necessity audit                    |
 | [Post-review and light review](post-review-and-light-review.md)         | four-dimension hygiene lens and proportional self-review                                |
 | [Replies, publication, and history](replies-publication-and-history.md) | reply style, router behavior, human-visible gate, deletion/history safeguards           |
 

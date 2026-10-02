@@ -23,25 +23,12 @@ Pi is configured from pnpm-managed packages plus readonly chezmoi sources under 
 
 Pi globals are installed via pnpm from [`home/readonly_dot_default-pnpm-pkgs`](../../../../home/readonly_dot_default-pnpm-pkgs) to `~/.default-pnpm-pkgs`.
 
-| Package                           | Purpose                                                     |
-| --------------------------------- | ----------------------------------------------------------- |
-| `@earendil-works/pi-coding-agent` | Core Pi agent                                               |
-| `@earendil-works/pi-tui`          | Pi TUI (work profile)                                       |
-| `pi-mcp-adapter`                  | MCP adapter extension                                       |
-| `pi-subagents`                    | Subagent delegation extension (parallel, isolated context)  |
-| `@rahularya01/pi-cursor`          | Native `cursor` model provider (Cursor subscription models) |
-
-### Cursor provider
-
-`@rahularya01/pi-cursor` registers a `cursor` provider that speaks Cursor's own `agent.v1.AgentService/Run` Connect/protobuf stream over HTTP/2 and signs in through the same PKCE deep-link flow (`cursor.com/loginDeepControl` → `api2.cursor.sh/auth/poll`) that OMP's built-in `cursor` provider uses. OMP's provider is not reusable directly: it lives inside `@oh-my-pi/pi-ai` (`src/providers/cursor.ts`, `registry/oauth/cursor.ts`), depends on `@oh-my-pi/pi-catalog` protobuf codegen and `Bun.sleep`, and is not loadable by upstream Pi. The package credits oh-my-pi for the in-process bidirectional HTTP/2 pattern.
-
-| Aspect       | Behavior                                                                                                                                                                                                                                                                                                              |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Runtime      | Package docs say "Bun only", but that is the package's own toolchain: the published `dist/index.js` has no `Bun.*` calls, only `node:http2`, and it loads and registers under Pi's Node runtime (probed 2026-09-14 on Pi 0.85.1 / Node 24.6: `registerProvider cursor` with 42 catalog models, `api: cursor-native`). |
-| Credentials  | Cascade: `CURSOR_ACCESS_TOKEN` → Pi `~/.pi/agent/auth.json` (`/login cursor`) → Cursor CLI macOS Keychain (`cursor-access-token` / `cursor-refresh-token`) → Cursor IDE `state.vscdb`. Set `PI_CURSOR_SYSTEM_CREDENTIALS=0` to disable Keychain/IDE reuse.                                                            |
-| Availability | Pi hides a provider's models until it has a credential for that provider. The Keychain fallback feeds requests, but `/model` and `pi --list-models` show `cursor/*` only after `/login cursor` writes a `cursor` entry to `~/.pi/agent/auth.json`.                                                                    |
-| Models       | Live discovery via `GetUsableModels`, cached under `PI_CURSOR_CACHE_DIR`, bundled fallback catalog on first launch. Pi thinking levels map to Cursor effort variants; `/cursor.models`, `/cursor.usage`, `/cursor.doctor` are provided by the package.                                                                |
-| Tiering      | Adding the provider does not change any root or category model pick; `category_models` and Pi agent profiles are unchanged. Cursor ids in [`tiering.yaml`](../../../../home/.chezmoidata/ai_models/tiering.yaml) still describe the Cursor harness, not this Pi provider.                                             |
+| Package                           | Purpose                                                    |
+| --------------------------------- | ---------------------------------------------------------- |
+| `@earendil-works/pi-coding-agent` | Core Pi agent                                              |
+| `@earendil-works/pi-tui`          | Pi TUI (work profile)                                      |
+| `pi-mcp-adapter`                  | MCP adapter extension                                      |
+| `pi-subagents`                    | Subagent delegation extension (parallel, isolated context) |
 
 ### Profile defaults
 
@@ -71,7 +58,7 @@ A successful apply reaches new sessions and subagents, never the running one: Pi
 | Context compaction | Automatic context compaction uses a hybrid sliding window.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | Cache visibility   | Significant prompt-cache misses appear in the transcript; the footer and `/session` expose Pi's own cache accounting.                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Retries            | Exponential backoff retries.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| Extension loading  | Pi loads the chezmoi-managed runtime extensions plus `pi-mcp-adapter`, `pi-subagents`, and `@rahularya01/pi-cursor` from the stable `~/.local/share/pnpm-global-links/node_modules/` tree that `,install-pnpm-pkgs` rebuilds after every sync (pnpm 11+ global install paths are hashed and move on update).                                                                                                                                                                                                                                                    |
+| Extension loading  | Pi loads the chezmoi-managed runtime extensions plus `pi-mcp-adapter` and `pi-subagents` from the stable `~/.local/share/pnpm-global-links/node_modules/` tree that `,install-pnpm-pkgs` rebuilds after every sync (pnpm 11+ global install paths are hashed and move on update).                                                                                                                                                                                                                                                                               |
 | Model re-pin       | `model-pin.ts` appends a `model_change` after any turn whose assistant message echoes a different model id than the routed catalog id (GitHub Copilot returns `claude-fable-5-1` for `claude-fable-5.1`), so `pi -c` restores the real model instead of warning `Could not restore model`. Workaround for [earendil-works/pi#9243](https://github.com/earendil-works/pi/issues/9243); remove when the read side prefers `model_change`.                                                                                                                         |
 | Subagent config    | `pi-subagents` reads `~/.pi/agent/extensions/subagent/config.json`; chezmoi manages it as `exact_extensions/subagent/readonly_config.json` with `modelResponseAliases` mapping `github-copilot/claude-fable-5.1` to the `claude-fable-5-1` echo, so its parity check accepts the response id. The `subagent/` directory is not `exact_`, so package-owned `agents/` or instruction files under it survive apply; before this file was managed, `exact_extensions` pruned the directory on every apply and `chezmoi update` prompted on the recreated directory. |
 | Native tools       | `runtime-parity.ts` enables `grep`, `find`, and `ls` alongside Pi's default tools unless explicit CLI tool-selection flags override the defaults.                                                                                                                                                                                                                                                                                                                                                                                                               |
@@ -147,7 +134,7 @@ Managed Pi agent profiles keep model and thinking separate. `agent-model.partial
 
 ## Harness operating layer (`APPEND_SYSTEM.md`)
 
-Pi's built-in default prompt is minimal: persona, tools list, "be concise", and "show file paths". Cursor injects a thicker operating layer: tool policy, task/todo discipline, code citations, proactiveness, and edit-scope rules.
+Pi's built-in default prompt is minimal: persona, tools list, "be concise", and "show file paths". It lacks a thicker operating layer: tool policy, task/todo discipline, code citations, proactiveness, and edit-scope rules.
 
 `~/.pi/agent/APPEND_SYSTEM.md` closes that gap.
 
@@ -169,12 +156,6 @@ Why `APPEND_SYSTEM.md`, not `SYSTEM.md`:
 
 `runtime-parity.ts` supplies the full home SOP outside `$HOME` through `before_agent_start`. It preserves the existing system prompt and skips insertion when a canonical native context path or the complete SOP body is already present. Explicit no-extension workflows bypass this adapter. A missing SOP emits a diagnostic and preserves the base prompt.
 
-Ported mechanics are the set difference:
-
-```text
-Cursor built-in prompt - Pi built-in prompt
-```
-
 Included mechanics:
 
 - tone/style: no emojis, no colon before a tool call, backtick paths/symbols.
@@ -185,12 +166,12 @@ Included mechanics:
 - structured enumerated questions.
 - `file_path:line_number` citations.
 
-Excluded Cursor-only mechanics:
+Excluded mechanics that Pi has no surface for:
 
 - `@`-mentions and system-tag handling.
 - terminal-files convention.
 - Plan/Agent mode selection.
-- Cursor's `start:end:path` citation UI.
+- a `start:end:path` citation UI.
 - inline line-number disambiguation, because Pi's read tool returns raw text without `LINE|` prefixes.
 
 The read-tool detail was verified in `core/tools/read.ts`; there is no line-prefix stream for the inline-number rule to disambiguate.

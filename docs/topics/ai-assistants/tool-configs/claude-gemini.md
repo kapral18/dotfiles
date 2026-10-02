@@ -52,7 +52,7 @@ Playwriter remains a fallback for rendered UI checks or booking-adjacent flows t
 
 ### Antigravity settings
 
-Antigravity (`agy`) reads its global MCP servers from `~/.gemini/config/mcp_config.json`, generated directly from the shared [`mcp_servers.yaml`](../../../../home/.chezmoidata/mcp_servers.yaml) registry by `07-generate-mcp-configs`. Hosted servers (`scsi-main`, `slack`) run as `,mcp-token --bridge` stdio servers with per-request bearer token injection from cursor-cli's rotating OAuth caches.
+Antigravity (`agy`) reads its global MCP servers from `~/.gemini/config/mcp_config.json`, generated directly from the shared [`mcp_servers.yaml`](../../../../home/.chezmoidata/mcp_servers.yaml) registry by `07-generate-mcp-configs`. Hosted OAuth servers without an Antigravity row in `oauth_by_tool` are omitted.
 
 Instructions and skills live in Antigravity's global customization root: `~/.gemini/config/AGENTS.md` points to `~/AGENTS.md`, while `~/.gemini/config/skills` symlinks to `~/.agents/skills`. `~/.gemini/config/hooks.json` injects shared session context on the first `PreInvocation`, carries premise-check nudges from `PreToolUse` into the next invocation, and records `PostToolUse` events.
 

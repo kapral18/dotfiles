@@ -11,11 +11,6 @@ session_models:
     model: "gpt-6.1-sol"
     effort: "high"
     context: "short"
-  # session row is informational: Cursor's root model/effort live in Cursor saved user config, not in this repo
-  cursor:
-    model: "claude-opus-5-5"
-    effort: "high"
-    context: "long"
   antigravity:
     model: "gemini-3.8-flash"
     effort: "high"
@@ -87,10 +82,6 @@ agent_bindings:
   cli_help: "mechanical"
   generalist: "implement"
   browser_agent: "implement"
-  generalPurpose: "implement"
-  cursor-guide: "research"
-  bugbot: "review"
-  best-of-n-runner: "implement"
   sonic: "mechanical"
   scout: "mechanical"
   reviewer: "review"
@@ -107,9 +98,6 @@ binding_fallbacks:
   codex:
     generic: "worker"
     reason: "Cross-harness native names have no Codex role file; the spawn_agent hook carries the registry pick on the generic worker type."
-  cursor:
-    generic: "generalPurpose"
-    reason: "Cursor CLI never scans ~/.cursor/agents, so no profile is reachable by name; every lane rides the Task hook on the generic type. No leaf signal exists, so dispatch is attended only (SOP §3.7 row 4)."
   omp:
     generic: "task"
     reason: "The native-name task shim carries T2 implement; implementer lanes without OMP profiles resolve through the blocking native task type."
@@ -188,40 +176,6 @@ category_models:
     memory:
       model: "gpt-6.1-sol"
       effort: "high"
-      thinking: ""
-      context: "short"
-  # Cursor rows use Task-resolver base ids; effort rides user config, not the id. `-fast` ids are a price tier, never a pick.
-  cursor:
-    mechanical:
-      # because it's free on cursor
-      model: "grok-4.6"
-      effort: "medium"
-      thinking: ""
-      context: "long"
-    research:
-      model: "claude-opus-5-5"
-      effort: "high"
-      thinking: ""
-      context: "long"
-    implement:
-      model: "muse-spark-1.3"
-      effort: "high"
-      thinking: ""
-      context: "long"
-    review:
-      model: "claude-opus-5-5"
-      effort: "high"
-      thinking: ""
-      context: "long"
-    refute:
-      model: "muse-spark-1.3"
-      effort: "max"
-      thinking: ""
-      context: "long"
-      verifier_status: "cross_family"
-    memory:
-      model: "grok-4.6"
-      effort: "medium"
       thinking: ""
       context: "short"
   # Antigravity effort is informational: `invoke_subagent` accepts only abstract tiers, so the

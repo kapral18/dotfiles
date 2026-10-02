@@ -204,9 +204,6 @@ class TestFormatMdCommand(unittest.TestCase):
             "home/dot_claude/exact_agents/guide.md",
             ".claude/agents/guide.md",
             ".codex/skills/example/references/guide.md",
-            ".cursor/skills/example/references/guide.md",
-            ".cursor/agents/guide.md",
-            ".cursor/plugins/local/k-sop/rules/sop.md",
             ".gemini/config/skills/example/references/guide.md",
             ".omp/agent/skills/example/references/guide.md",
             ".omp/agent/agents/guide.md",
@@ -248,7 +245,7 @@ class TestFormatMdCommand(unittest.TestCase):
             ".agents/plans/guide.md",
             "docs/agents/guide.md",
             "docs/skills/guide.md",
-            ".cursor/skills-other/guide.md",
+            ".claude/skills-other/guide.md",
         ):
             with self.subTest(path=path):
                 self.assertFalse(format_md.preserves_hard_wraps(path))

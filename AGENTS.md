@@ -125,7 +125,7 @@ Do not add unprefixed repo-owned skill directories, frontmatter names, or skill 
 ## Updating Home SOP Files
 
 Home SOPs are installed into `$HOME` by chezmoi. `home/readonly_AGENTS.md` is the generated core SOP.
-Native global entrypoints link to it; `~/CLAUDE.md` uses Claude's native `@AGENTS.md` import to avoid a second full body in Cursor's ancestor scan.
+Native global entrypoints link to it; `~/CLAUDE.md` uses Claude's native `@AGENTS.md` import instead of a second full body.
 `~/.claude/CLAUDE.md` is Claude's global entrypoint. `CLAUDE.md` imports `AGENTS.md`.
 The compiled ownership model lives in `docs/topics/ai-assistants/system-prompt/source-of-truth.md`.
 
@@ -135,7 +135,6 @@ The compiled ownership model lives in `docs/topics/ai-assistants/system-prompt/s
 | `home/readonly_CLAUDE.md`                      | `~/CLAUDE.md`                  |
 | `home/dot_claude/symlink_CLAUDE.md`            | `~/.claude/CLAUDE.md`          |
 | `home/dot_gemini/config/symlink_AGENTS.md`     | `~/.gemini/config/AGENTS.md`   |
-| `home/dot_cursor/symlink_AGENTS.md`            | `~/.cursor/AGENTS.md`          |
 | `home/dot_config/opencode/symlink_AGENTS.md`   | `~/.config/opencode/AGENTS.md` |
 | `home/dot_omp/private_agent/symlink_AGENTS.md` | `~/.omp/agent/AGENTS.md`       |
 | `home/exact_dot_agents/exact_skills/`          | `~/.agents/skills/`            |

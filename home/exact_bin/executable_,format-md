@@ -8,7 +8,7 @@ continuations that fit the soft 140-character boundary are joined.
 Long lines split at sentence or strong clause boundaries when possible.
 Ambiguous markup retains its existing lines; the boundary is not a hard cap.
 AI paths include shared references, GitHub instructions, managed skills,
-agent profiles, and the Cursor SOP plugin rule.
+and agent profiles.
 
 Options:
   --check   Report AI Markdown needing formatting without modifying files (exit 1).
@@ -39,10 +39,6 @@ AI_INSTRUCTION_PATH_MARKERS = (
     "/.claude/skills/",
     "/.claude/agents/",
     "/.codex/skills/",
-    "/.cursor/skills/",
-    "/.cursor/skills-cursor/",
-    "/.cursor/agents/",
-    "/.cursor/plugins/local/k-sop/rules/",
     "/.gemini/config/skills/",
     "/.omp/agent/skills/",
     "/.omp/agent/agents/",

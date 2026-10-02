@@ -74,7 +74,7 @@ Repo/org-specific overlays:
   - For repo-specific CI/build links, do not fetch directly unless the verified overlay says it is safe.
     For Elastic Buildkite, load `k-elastic-domain`, then use the `k-buildkite` skill (`bk` CLI).
 - Read the **actual** diff hunks for the files you will feature — beats must contain real diff text, never paraphrased code.
-- If you need base-branch context (existing behavior, conventions, related call sites) and the repo is indexed, use the `k-semantic-code-search` skill as _supporting_ context only — validate against the local diff.
+- If you need base-branch context (existing behavior, conventions, related call sites) , read it from the base ref as _supporting_ context only — validate against the local diff.
 
 ### 2. Build the review model and classify every file
 

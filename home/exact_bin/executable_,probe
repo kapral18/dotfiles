@@ -54,7 +54,6 @@ done
 # per-turn hook reads. The session-key contract is whatever the host harness sets:
 #   - Claude Code: CLAUDE_SESSION_ID
 #   - Codex:       CODEX_SESSION_ID
-#   - Cursor:      CURSOR_SESSION_ID
 #   - Antigravity: no exported session-id variable; shell probes use the active-topic fallback
 #   - Pi/omp:      there is no standard env var; the harness writes to the spec via
 #                  its own internal hook pipeline, so an interactive `,probe` from
@@ -65,7 +64,7 @@ spec_dir=""
 session_key=""
 
 session_id=""
-for env_var in CLAUDE_SESSION_ID CODEX_SESSION_ID CURSOR_SESSION_ID; do
+for env_var in CLAUDE_SESSION_ID CODEX_SESSION_ID; do
   value="${!env_var:-}"
   if [[ -n "$value" ]]; then
     session_id="$value"

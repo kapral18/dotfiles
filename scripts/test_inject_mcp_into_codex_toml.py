@@ -56,9 +56,9 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                 'trusted_hash = "sha256:abc"',
                 "[tui.model_availability_nux]",
                 '"gpt-5.5" = 2',
-                "[mcp_servers.http-tool]",
+                "[mcp_servers.plain-tool]",
                 'default_tools_approval_mode = "prompt"',
-                "[mcp_servers.http-tool.tools.'search#dot.]']",
+                "[mcp_servers.plain-tool.tools.'search#dot.]']",
                 'approval_mode = "approve"',
             ]
         )
@@ -71,8 +71,10 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
         self.assertEqual(_table_body(actual, f"projects.{json.dumps(project)}"), 'trust_level = "trusted"')
         self.assertEqual(_table_body(actual, 'hooks.state."hook#dot.]"'), 'trusted_hash = "sha256:abc"')
         self.assertEqual(_table_body(actual, "tui.model_availability_nux"), '"gpt-5.5" = 2')
-        self.assertIn('default_tools_approval_mode = "prompt"', _table_body(actual, "mcp_servers.http-tool"))
-        self.assertEqual(_table_body(actual, 'mcp_servers.http-tool.tools."search#dot.]"'), 'approval_mode = "approve"')
+        self.assertIn('default_tools_approval_mode = "prompt"', _table_body(actual, "mcp_servers.plain-tool"))
+        self.assertEqual(
+            _table_body(actual, 'mcp_servers.plain-tool.tools."search#dot.]"'), 'approval_mode = "approve"'
+        )
 
     def test_SHOULD_reset_runtime_context_at_invalid_array_and_unowned_tables(self):
         for boundary in (
@@ -100,11 +102,11 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                         '"kept" = 1',
                         boundary,
                         '"leaked" = 2',
-                        "[mcp_servers.http-tool]",
+                        "[mcp_servers.plain-tool]",
                         'default_tools_approval_mode = "prompt"',
                         boundary,
                         'default_tools_approval_mode = "auto"',
-                        "[mcp_servers.http-tool.tools.search]",
+                        "[mcp_servers.plain-tool.tools.search]",
                         'approval_mode = "approve"',
                         boundary,
                         'approval_mode = "auto"',
@@ -114,8 +116,10 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                 self.assertEqual(_table_body(actual, 'projects."/tmp/repo"'), 'trust_level = "trusted"')
                 self.assertEqual(_table_body(actual, "hooks.state.startup"), 'trusted_hash = "sha256:good"')
                 self.assertEqual(_table_body(actual, "tui.model_availability_nux"), '"kept" = 1')
-                self.assertIn('default_tools_approval_mode = "prompt"', _table_body(actual, "mcp_servers.http-tool"))
-                self.assertEqual(_table_body(actual, "mcp_servers.http-tool.tools.search"), 'approval_mode = "approve"')
+                self.assertIn('default_tools_approval_mode = "prompt"', _table_body(actual, "mcp_servers.plain-tool"))
+                self.assertEqual(
+                    _table_body(actual, "mcp_servers.plain-tool.tools.search"), 'approval_mode = "approve"'
+                )
 
     def test_golden(self):
         actual = run_script(
@@ -139,19 +143,19 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                         "[mcp_servers.public-tool]",
                         'default_tools_approval_mode = "prompt"',
                         "",
-                        "[mcp_servers.http-tool]",
+                        "[mcp_servers.plain-tool]",
                         'default_tools_approval_mode = "prompt"',
                         "",
                         "[mcp_servers.public-tool.tools.search]",
                         'approval_mode = "approve"',
                         "",
-                        "[mcp_servers.http-tool.tools.list_indices]",
+                        "[mcp_servers.plain-tool.tools.search]",
                         'approval_mode = "approve"',
                         "",
                         "[mcp_servers.work-tool.tools.hidden]",
                         'approval_mode = "approve"',
                         "",
-                        "[mcp_servers.bridge-tool.tools.invalid]",
+                        "[mcp_servers.http-tool.tools.invalid]",
                         'approval_mode = "bogus"',
                         "",
                     ]
@@ -170,13 +174,13 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
             )
 
         assert 'default_tools_approval_mode = "approve"' in actual
-        assert '[mcp_servers.http-tool]\ncommand = ",mcp-token"' in actual
+        assert '[mcp_servers.plain-tool]\ncommand = "echo"' in actual
         assert 'default_tools_approval_mode = "prompt"' in actual
         assert "[mcp_servers.public-tool.tools.search]" in actual
-        assert "[mcp_servers.http-tool.tools.list_indices]" in actual
+        assert "[mcp_servers.plain-tool.tools.search]" in actual
         assert 'approval_mode = "approve"' in actual
         assert "work-tool.tools.hidden" not in actual
-        assert "bridge-tool.tools.invalid" not in actual
+        assert "http-tool.tools.invalid" not in actual
 
     def test_preserves_existing_hook_trust_state(self):
         with tempfile.TemporaryDirectory() as tmp:

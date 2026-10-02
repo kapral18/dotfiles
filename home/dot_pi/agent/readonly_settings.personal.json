@@ -20,8 +20,7 @@
       "extensions": [],
       "skills": [],
       "prompts": []
-    },
-    "~/.local/share/pnpm-global-links/node_modules/@rahularya01/pi-cursor"
+    }
   ],
   "subagents": {
     "disableBuiltins": true,

@@ -22,7 +22,6 @@ writable_roots = [
   "~/.local/state/agent-proof",
   "~/.local/state/agent-formal",
   "~/.local/state/chezmoi",
-  "~/.cache/mcp-token",
   "~/.local/state/llama-cpp/lifecycle",
   "~/bin",
   "~/lib",

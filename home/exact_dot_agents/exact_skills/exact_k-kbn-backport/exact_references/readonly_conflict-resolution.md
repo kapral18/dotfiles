@@ -45,10 +45,7 @@ Do not resolve from the conflict hunks alone.
 
 Especially when the original diff does not apply cleanly, learn how the affected areas work on the destination branch:
 
-- Use the `k-semantic-code-search` skill (`~/.agents/skills/k-semantic-code-search/SKILL.md`) against the `kibana-repo` index to learn how the affected modules, symbols, and call sites work on the destination branch.
-  Verify `kibana-repo` exists via `list_indices` first, then pass `index: kibana-repo` explicitly to the SCSI tools.
-- Treat semantic results as base context only; validate the actual destination-branch state against local file reads and `git` on the backport checkout.
-- If `kibana-repo` is missing from `list_indices` or SCSI is unavailable, fall back to local `rg`, file reads, and `git log`/`git blame` on the affected paths.
+- Learn how the affected modules, symbols, and call sites work on the destination branch from local `rg`, file reads, and `git log`/`git blame` on the affected paths of the backport checkout.
 
 ## Check For Missing Prerequisite Backports
 

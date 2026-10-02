@@ -1,5 +1,5 @@
 // Managed by chezmoi (source: home/dot_pi/agent/exact_extensions/runtime-parity.ts).
-// Pi runtime defaults that mirror the shared Cursor contracts.
+// Pi runtime defaults that mirror the shared hook contracts.
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { readFileSync, realpathSync } from "node:fs"

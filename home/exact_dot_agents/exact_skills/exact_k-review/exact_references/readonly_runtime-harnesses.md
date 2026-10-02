@@ -20,7 +20,7 @@ Only the active root/main session follows this section; a delegated leaf skips i
   Same-family runs keep refutation framing and report the reduced independence, never hidden).
   Named profiles carry their resolved model/effort controls; do not override those fields merely to repeat the profile.
   A supported generic fallback receives the resolved category controls through that harness's actual fields.
-  Codex uses model plus reasoning effort; Cursor uses its model selector. Do not invent fields on another harness.
+  Codex uses model plus reasoning effort. Do not invent fields on another harness.
 - Every resolved review-lane value is a concrete category id on every harness, Claude Code included; profiles never render `inherit`.
   Named profile pins satisfy that requirement without per-call overrides. Generic fallbacks must preserve the same category.
   Antigravity has no profile surface; its abstract tier is stated in the Antigravity section below.
@@ -72,45 +72,6 @@ Use `flash`: review, audit, refute, `k-agent-mechanical` procedures, `k-agent-sm
 Do NOT launch any lane on `inherit`; do not use `pro` unless the registry row changes to a Pro model.
 The model surface is Gemini-only, so report `families=same (degraded)` for adversarial verification.
 
-### Cursor
-
-- Transcript exports label the delegation tool `Subagent` (2026-09-04 export), while the cursor-agent 2026.09.02 bundle still names the call type `taskToolCall`; the `tool_name` the preToolUse hook receives is unverified.
-  The band gate therefore matches both `Task` and `Subagent`; a launch that passes a non-registry `model` is rewritten to the subagent type's band either way.
-- Generic adversarial-verifier launch: `subagent_type: generalPurpose` with `model:` set to the registry refute value.
-  The gate leaves a registry counter model untouched on a generic type, so the cross-family verifier survives the rewrite;
-  Other exact registry lane selectors also survive; unregistered selectors are clamped to the type's band.
-- `k-agent-mechanical` (procedures) and `k-agent-smol` (memory) are not user-discoverable.
-  `subagent_type: generalPurpose`, `model:` = mechanical/memory base id from `harnesses.cursor.agents` in `agent-bands.v1.json`.
-  The gate preserves registered cheap/counter models.
-  Effort comes from saved user config, not Task ids; do not add a reasoning-effort field.
-  The gate cannot distinguish shared cheap/implement ids; retain the profile/packet category.
-- Cursor source supports custom subagent types (`SubagentType.custom.name`) and loads **project-level** `.cursor/agents` profile files only;
-  user-level `~/.cursor/agents` is never scanned (probed 2026-08-30, cursor-agent 2026.08.28-a7f9513), so home-deployed profiles are unreachable.
-  Where a workspace carries `k-agent-review-worker`/`k-agent-adversarial-verifier` profiles, launch the review and refute packets through them;
-  both carry resolver-rendered `model` frontmatter.
-- Resolved `lanes` and `verifier` are Task base ids from `category_models.cursor` (`review` / `refute`);
-  read them from `harnesses.cursor.agents` in `agent-bands.v1.json`.
-  `category_models.cursor.refute` carries `verifier_status: cross_family`, so the adversarial verifier runs as a cross-family lane.
-  An omitted Cursor subagent model falls to Cursor's own default (`auto` router;
-  observed `composer-2.5-fast` in 2026-08 probes, unverified since).
-  Treat any omitted Cursor subagent model as a matrix bypass.
-- Same-name custom profiles do **not** shadow native Cursor enum agents (`explore`, `debug`, `cursor_guide`, `unspecified`):
-  custom profiles are carried as a separate `custom` oneof with a `name`, while native cases are distinct empty oneof variants.
-  Do not add same-name templates expecting them to override native Explore.
-- When the active Task schema exposes only generic subagent types, pass the same resolved values as explicit `model` arguments —
-  the resolver stays the single source either way.
-  Generic fresh-eyes launches pass the resolved lane model; never let Cursor `auto` choose the model for review workers.
-- Cursor's `readonly` flag is a hard tool restriction, not the `/k-deep-review` behavior-level read-only boundary.
-  Cursor source shows `readonly: true` blocks shell, write, delete, and MCP operations.
-  Keep Cursor profile frontmatter and Task launches at `readonly: false`; the worker contracts enforce no-mutation behavior.
-- If a Cursor worker reports Ask/read-only mode blocked shell/git/`gh`/Playwriter, report the blocked capability;
-  do not automatically relaunch a completed worker. Choose required permissions before launch.
-- If Cursor cannot await background subagent ids, do not loop blind sleeps.
-  Cursor source has a subagent await protocol, but the shell Await/AwaitShell path is for shell tasks and may reject subagent ids.
-  Background dispatch is optional, not a role requirement.
-  Use it only for independent ready root packets when the active Task schema exposes `run_in_background` and a native completion signal.
-  If no native completion signal is available, end the controller turn and wait for the completion notification, or do one transcript completion check; never loop fixed-interval sleeps.
-
 ### Subscription wrapper boundary
 
 Resolve the backend matrix, not the frontend catalog, on subscription wrappers.
@@ -119,10 +80,6 @@ The hook requires a fresh `AGENT_BAND_CLAUDE_ROUTES` role/pair map and removes t
 Do not delegate through a missing/unavailable profile, conflicting inherited controls, resume, or fork.
 The projected tools exclude `Agent`, `Task`, and `SendMessage`; this does not prove terminal-wakeup prevention by the root.
 
-Cursor `2026.09.08-6caf4ff` local-provider Task configuration (`nhe()`) hardcodes `enableExecuteHookExec:false`.
-Authenticated scripted-provider probes under the subscription environment returned child results without user/workspace gate calls.
-That route bypasses configured denial; exact role/model/effort routing and full lifecycle remain uncertified.
-MUST NOT assign unattended child work to `,cursor-codex` while those route-specific capabilities remain uncertified.
 Do not bypass a denial by dropping effort, using a raw backend model, invoking another harness, or substituting the root model.
 Report the limitation. Root sessions and native harness routes remain separate capabilities.
 

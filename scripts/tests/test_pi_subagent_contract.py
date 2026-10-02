@@ -501,7 +501,6 @@ class TestPiSubagentContractSource(unittest.TestCase):
                             "skills": [],
                             "prompts": [],
                         },
-                        "~/.local/share/pnpm-global-links/node_modules/@rahularya01/pi-cursor",
                     ],
                 )
                 self.assertTrue(settings["subagents"]["disableBuiltins"])
@@ -719,11 +718,9 @@ class TestPiSubagentContractNative(unittest.TestCase):
         adapter_entries = [e for e in resolve["extensions"] if e["path"].endswith("subagent-contract.ts")]
         self.assertEqual(len(adapter_entries), 1)
         self.assertTrue(adapter_entries[0]["enabled"])
-        for package in ("pi-mcp-adapter", "pi-cursor"):
-            with self.subTest(package=package):
-                package_entries = [e for e in resolve["extensions"] if package in e["path"]]
-                self.assertTrue(package_entries)
-                self.assertTrue(all(e["enabled"] for e in package_entries))
+        package_entries = [e for e in resolve["extensions"] if "pi-mcp-adapter" in e["path"]]
+        self.assertTrue(package_entries)
+        self.assertTrue(all(e["enabled"] for e in package_entries))
 
 
 if __name__ == "__main__":

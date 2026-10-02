@@ -351,18 +351,6 @@ def _codex_catalog(tier: str, model_ids: list[str], api_key: str) -> dict:
     return {"models": models}
 
 
-def _cursor_catalog(tier: str, wire_models: list[str], api_key: str) -> dict:
-    return {
-        wire_model: {
-            "context_length": budget.prompt_limit,
-            "max_output_tokens": budget.max_output_tokens,
-        }
-        for wire_model, budget in (
-            (wire_model, resolve_budget(wire_model, tier, api_key)) for wire_model in dict.fromkeys(wire_models)
-        )
-    }
-
-
 def _pi_openrouter_wire_models() -> list[str]:
     configured = os.environ.get("CHEZMOI_SOURCE_DIR")
     candidates = [Path(configured).expanduser()] if configured else []
@@ -458,18 +446,11 @@ def main(argv: list[str]) -> int:
             print(f"Error: OpenRouter context preflight failed: {error}", file=sys.stderr)
             return 1
         return 0
-    if len(argv) >= 4 and argv[0] == "--cursor-model-catalog":
-        try:
-            print(json.dumps(_cursor_catalog(argv[1], argv[2:], os.environ.get("OPENROUTER_API_KEY", "").strip())))
-        except PresetError as error:
-            print(f"Error: OpenRouter context preflight failed: {error}", file=sys.stderr)
-            return 1
-        return 0
     if len(argv) != 1:
         print(
             "Usage: openrouter_presets.py EFFORT | --pi-openrouter-wire-models | "
             "--context-window MODEL short|long | --session-budget-env short|long MODEL... | "
-            "--codex-model-catalog short|long MODEL... | --cursor-model-catalog short|long WIRE_MODEL...",
+            "--codex-model-catalog short|long MODEL...",
             file=sys.stderr,
         )
         return 2

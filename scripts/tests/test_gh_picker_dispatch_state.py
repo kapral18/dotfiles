@@ -261,7 +261,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
 
     def test_branch_agent_uses_glm_flash_max_effort(self):
         script = (TMUX_PICKERS / "github/executable_gh_batch_worktree.sh").read_text()
-        assert ('exec ,cursor-openrouter --model z-ai/glm-5.3-flash --effort high -- "$(cat "$1")"') in script
+        assert ('exec ,claude-openrouter --model z-ai/glm-5.3-flash --effort high -- "$(cat "$1")"') in script
 
     def test_foreground_issue_editor_exit_dispatches_every_worktree(self):
         script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"

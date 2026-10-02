@@ -13,7 +13,7 @@ import argparse
 import json
 from typing import Any
 
-from mcp_registry import TOKEN_BRIDGE_COMMAND, load_servers, token_bridge_args
+from mcp_registry import load_servers
 
 # Tool-specific HTTP server spec transformations.
 # The registry emits a normalised shape:
@@ -22,81 +22,13 @@ from mcp_registry import TOKEN_BRIDGE_COMMAND, load_servers, token_bridge_args
 _TOOL_TRANSFORMS: dict[str | None, Any] = {}
 
 
-def _cursor_oauth_http(spec: dict[str, Any]) -> dict[str, Any]:
-    """Emit Cursor's OAuth HTTP wire shape (IDE ``auth`` + CLI ``oauth``).
-
-    Used for the mint-workspace config and for any Cursor HTTP server that does
-    not opt into ``tokenBridge``.
-    """
-    out: dict[str, Any] = {"url": spec["url"]}
-    oauth = spec.get("oauth")
-    if oauth:
-        cursor_oauth = dict(oauth)
-        cursor_oauth.pop("tokenBridge", None)
-        cursor_oauth.pop("retryConnectTimeouts", None)
-
-        # 1. Output auth block for cursor-ide
-        if "ideClientId" in cursor_oauth:
-            out["auth"] = {"CLIENT_ID": cursor_oauth.pop("ideClientId")}
-        elif "clientId" in cursor_oauth:
-            out["auth"] = {"CLIENT_ID": cursor_oauth["clientId"]}
-
-        # 2. Output oauth block for cursor-cli
-        if "callbackPort" in cursor_oauth:
-            port = cursor_oauth.pop("callbackPort")
-            # cursor-cli expects http://localhost:port/callback but Slack forces https
-            cursor_oauth["redirectUri"] = f"https://localhost:{port}/callback"
-
-        if "scopes" in cursor_oauth and isinstance(cursor_oauth["scopes"], str):
-            cursor_oauth["scopes"] = [s.strip() for s in cursor_oauth["scopes"].split(",") if s.strip()]
-
-        # Only attach oauth if we have a clientId (some cases might only have ideClientId)
-        if "clientId" in cursor_oauth:
-            out["oauth"] = cursor_oauth
-
-    return out
-
-
-def _transform_cursor(spec: dict[str, Any]) -> dict[str, Any]:
-    """Cursor user ``~/.cursor/mcp.json`` runtime config.
-
-    ``tokenBridge`` servers become the shared ``,mcp-token --bridge`` stdio
-    transport (mid-session bearer refresh). OAuth HTTP shapes for those servers
-    are emitted separately as ``cursor-oauth-mint`` for the mint workspace.
-    """
-    oauth = spec.get("oauth")
-    if isinstance(oauth, dict) and oauth.get("tokenBridge"):
-        return {
-            "command": TOKEN_BRIDGE_COMMAND,
-            "args": token_bridge_args(str(spec.get("url")), spec),
-        }
-    return _cursor_oauth_http(spec)
-
-
-def _transform_cursor_oauth_mint(spec: dict[str, Any]) -> dict[str, Any]:
-    """OAuth-only Cursor shapes for the mint workspace (no bridges, no stdio)."""
-    return _cursor_oauth_http(spec)
-
-
-_TOOL_TRANSFORMS["cursor"] = _transform_cursor
-_TOOL_TRANSFORMS["cursor-oauth-mint"] = _transform_cursor_oauth_mint
-
-
 def _transform_omp(spec: dict[str, Any]) -> dict[str, Any]:
-    """Emit OMP-native stdio bridges for hosted tokenBridge servers."""
+    """Emit OMP's native MCP server shape, which names the transport explicitly."""
     if spec.get("type") != "http":
         return {
             "type": "stdio",
             "command": spec["command"],
             "args": spec.get("args", []),
-        }
-
-    oauth = spec.get("oauth")
-    if isinstance(oauth, dict) and oauth.get("tokenBridge"):
-        return {
-            "type": "stdio",
-            "command": TOKEN_BRIDGE_COMMAND,
-            "args": token_bridge_args(str(spec.get("url")), spec),
         }
     return {"type": "http", "url": spec["url"]}
 
@@ -105,18 +37,7 @@ _TOOL_TRANSFORMS["omp"] = _transform_omp
 
 
 def _transform_gemini(spec: dict[str, Any]) -> dict[str, Any]:
-    """Emit Antigravity's ``mcp_config.json`` server shape.
-
-    A server with ``tokenBridge`` becomes the shared ``,mcp-token --bridge``
-    stdio transport, which injects a freshly selected bearer per request.
-    Direct remote servers use Antigravity's ``serverUrl`` SSE field.
-    """
-    oauth = spec.get("oauth")
-    if isinstance(oauth, dict) and oauth.get("tokenBridge"):
-        return {
-            "command": TOKEN_BRIDGE_COMMAND,
-            "args": token_bridge_args(str(spec.get("url")), spec),
-        }
+    """Emit Antigravity's ``mcp_config.json`` shape: remote servers use the ``serverUrl`` SSE field."""
     return {"serverUrl": spec["url"]}
 
 
@@ -126,17 +47,8 @@ _TOOL_TRANSFORMS["gemini"] = _transform_gemini
 def _transform_pi(spec: dict[str, Any]) -> dict[str, Any]:
     """pi-mcp-adapter wants ``oauth`` with a singular space-separated ``scope``
     and explicit ``auth: "oauth"``.
-
-    A server may instead supply ``tokenBridge`` (a ,mcp-token token source);
-    it is then emitted as the shared ``,mcp-token --bridge`` stdio transport
-    that injects a freshly selected bearer per request.
     """
     oauth = spec.get("oauth")
-    if isinstance(oauth, dict) and oauth.get("tokenBridge"):
-        return {
-            "command": TOKEN_BRIDGE_COMMAND,
-            "args": token_bridge_args(str(spec.get("url")), spec),
-        }
     out: dict[str, Any] = {"url": spec["url"]}
     if oauth:
         pi_oauth = dict(oauth)
@@ -165,12 +77,8 @@ def _render_servers(servers: dict[str, dict[str, Any]], tool: str | None) -> dic
     if not transform:
         return servers
     transform_all = tool in _TRANSFORM_ALL_TYPES
-    # Mint workspace only needs OAuth HTTP servers (bridges are the user runtime).
-    http_only = tool == "cursor-oauth-mint"
     result: dict[str, dict[str, Any]] = {}
     for name, spec in servers.items():
-        if http_only and spec.get("type") != "http":
-            continue
         if spec.get("type") == "http" or transform_all:
             result[name] = transform(spec)
         else:
@@ -179,10 +87,7 @@ def _render_servers(servers: dict[str, dict[str, Any]], tool: str | None) -> dic
 
 
 def render_document(yaml_path: str, is_work: bool, tool: str | None) -> dict[str, Any]:
-    # cursor-oauth-mint reuses the cursor oauth_by_tool block (client ids, scopes)
-    # then strips tokenBridge in the transform.
-    load_tool = "cursor" if tool == "cursor-oauth-mint" else tool
-    servers = load_servers(yaml_path, is_work, tool=load_tool)
+    servers = load_servers(yaml_path, is_work, tool=tool)
     servers = _render_servers(servers, tool)
     document: dict[str, Any] = {"mcpServers": servers}
     if tool == "omp":

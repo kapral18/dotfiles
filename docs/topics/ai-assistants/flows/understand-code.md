@@ -25,14 +25,6 @@ figure out how playwriter's session isolation works
 
 The `k-public-sources` skill clones the public repo to `/tmp` and answers **from the actual source** — not from training memory, not from blog posts. Expect answers with paths into the clone (`src/relay/session.ts:42`). The clone stays cached in `/tmp` for follow-up questions.
 
-## Concept search in a big repo: describe what you're looking for
-
-```text
-where do we handle retry backoff for failed uploads?
-```
-
-Semantic code search (SCSI) finds code by meaning when you don't know the symbol names, then symbol analysis maps every caller and test of what it found. Works where grep can't — you describe behavior, it finds the implementation. (Availability depends on the repo being indexed; the agent tells you when it isn't and falls back to structural search.)
-
 ## Reading the answers
 
 Trust the shape: file:line anchors everywhere, `Unknown because …` for what couldn't be verified locally. An answer without anchors is the agent violating its contract — call it out.

@@ -183,14 +183,11 @@ TEST_RULES: tuple[TestRule, ...] = (
         tests=("tests/test_model_band_invariants.py",),
     ),
     TestRule(
-        prefixes=(
-            "home/dot_cursor/hooks.json",
-            "home/dot_gemini/config/readonly_hooks.json",
-        ),
+        prefixes=("home/dot_gemini/config/readonly_hooks.json",),
         tests=("tests/test_agent_skill_invariants.py",),
     ),
     TestRule(
-        prefixes=("home/readonly_AGENTS.md", "home/dot_cursor/plugins/local/exact_k-sop/"),
+        prefixes=("home/readonly_AGENTS.md",),
         tests=("tests/test_agent_skill_invariants.py",),
     ),
     TestRule(
@@ -263,12 +260,10 @@ TEST_RULES: tuple[TestRule, ...] = (
             "tests/test_w_issue.py",
             "tests/test_artifact.py",
             "tests/test_format_md.py",
-            "tests/test_mcp_token.py",
             "tests/test_openrouter_wrappers.py",
             "tests/test_install_pnpm_pkgs.py",
             "tests/test_codex.py",
-            "tests/test_cursor_llama_cpp.py",
-            "tests/test_cursor.py",
+            "tests/test_llama_cpp_wrappers.py",
             "tests/test_kbn_stack.py",
         ),
     ),
@@ -276,7 +271,6 @@ TEST_RULES: tuple[TestRule, ...] = (
         prefixes=(
             "home/exact_bin/executable_,claude-openrouter",
             "home/exact_bin/executable_,codex-openrouter",
-            "home/exact_bin/executable_,cursor-openrouter",
             "home/exact_lib/exact_shared/executable_openrouter_presets.py",
         ),
         tests=("tests/test_openrouter_wrappers.py",),
@@ -285,14 +279,12 @@ TEST_RULES: tuple[TestRule, ...] = (
         prefixes=(
             "home/exact_bin/executable_,claude-llama-cpp",
             "home/exact_bin/executable_,codex-llama-cpp",
-            "home/exact_bin/executable_,cursor-llama-cpp",
             "home/exact_bin/executable_,opencode-llama-cpp",
             "home/dot_config/fish/completions/readonly_,claude-llama-cpp.fish",
             "home/dot_config/fish/completions/readonly_,codex-llama-cpp.fish",
-            "home/dot_config/fish/completions/readonly_,cursor-llama-cpp.fish",
             "home/dot_config/fish/completions/readonly_,opencode-llama-cpp.fish",
         ),
-        tests=("tests/test_cursor_llama_cpp.py",),
+        tests=("tests/test_llama_cpp_wrappers.py",),
     ),
     TestRule(
         prefixes=(
@@ -419,14 +411,6 @@ TEST_RULES: tuple[TestRule, ...] = (
     TestRule(
         prefixes=("home/exact_lib/exact_shared/codex_lanes.py", "home/exact_lib/exact_shared/claude_lanes.py"),
         tests=("tests/test_codex_adapter.py", "tests/test_openrouter_wrappers.py"),
-    ),
-    TestRule(
-        prefixes=("home/exact_lib/exact_,cursor-agent-shim/",),
-        tests=(
-            "tests/test_cursor_agent_shim.py",
-            "tests/test_cursor_llama_cpp.py",
-            "tests/test_openrouter_wrappers.py",
-        ),
     ),
     TestRule(prefixes=("home/exact_lib/exact_,ai/", "home/exact_bin/executable_,ai"), tests=("test_ai_launcher.py",)),
     TestRule(prefixes=("home/dot_omp/",), tests=("test_omp_migration.py", "tests/test_invariants.py")),

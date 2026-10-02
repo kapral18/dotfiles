@@ -15,7 +15,7 @@ Shows what _entities_ changed (functions, classes, methods) instead of what line
 Index-free, use freely: `diff`, `log`, `blame`. They parse only the files git hands them and write nothing (Kibana 8.19: 0.1-2.5 s cold).
 Indexed, restricted: `impact`, `context`, `find`, `callers`, `refs`, `grep`, `entities`, `graph`.
 They build a per-worktree query index plus entity graph (Kibana 8.19: about 2m20s plus 2m45s and several GB under `~/.cache/sem`), they do not resolve bare package specifiers such as `@kbn/*` (cross-package results miss real consumers and add false ones), and `impact` stops at `--depth 2` by default.
-NEVER run an indexed subcommand unless the user explicitly asks for it; for impact and base context use `~/.agents/skills/k-semantic-code-search/SKILL.md` (SCSI, then `rg`).
+NEVER run an indexed subcommand unless the user explicitly asks for it; for impact and base context use local `rg`/symbol lookup.
 When the user does ask: stay inside one package, pass `--depth 0` across barrel chains, disambiguate with `--file`, and confirm every result with `rg`.
 
 Do not use:

@@ -1,7 +1,7 @@
 # Direct provider routes: completions reachable without the gateway.
 # One section of the model registry, split across .chezmoidata/ai_models/ for navigation only:
 # chezmoi merges every file under .chezmoidata/ (subdirectories included) into one flat data
-# namespace, so `.cursor_models` and `.category_models` still resolve the same in templates.
+# namespace, so `.provider_models` and `.category_models` still resolve the same in templates.
 # scripts/ai_models.py maps each section back to its file; add a section there when adding one here.
 
 # Provider-route completion policy. `azure-foundry` and `llama-cpp` are derived from their

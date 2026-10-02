@@ -44,11 +44,6 @@ except ImportError:  # pragma: no cover - deployed alongside; without it there i
     reinforcement = None
 
 DISABLE_ENV = "AGENT_READ_GATE"
-HARNESS_ENV = "AGENT_HOOK_HARNESS"
-# Cursor names its events after the moment, not the tool; beforeReadFile fires after the read
-# succeeded and gates delivery, so it is both the record and the decision point.
-CURSOR_EVENTS = {"beforeReadFile", "beforeShellExecution", "afterShellExecution", "stop"}
-COMPACTION_SHRINK_RATIO = 0.75
 DISABLE_VALUES = {"0", "false", "no", "off", "disabled"}
 READ_TOOLS = {"Read", "read", "view", "read_file", "view_file", "ReadFile"}
 TARGETED_READ_KEYS = ("offset", "limit", "view_range", "start_line", "end_line", "StartLine", "EndLine", "range")
@@ -202,7 +197,7 @@ _OPENCODE_TRAILER = re.compile(r"\n\n\((?:End of file|Showing lines|Output cappe
 
 
 def _strip_line_numbers(text: str) -> str:
-    """Undo read-tool decoration: Claude/Cursor `N\t`, `N→`, OMP/OpenCode `N:` line numbers (only
+    """Undo read-tool decoration: Claude `N\t`, `N→`, OMP/OpenCode `N:` line numbers (only
     when every non-empty line carries one, so real `10:30` content survives), OMP's `[path#hash]`
     header line, and OpenCode's <path>/<content> envelope with its trailer note."""
     text = _OMP_HEADER.sub("", text, count=1)
@@ -242,18 +237,6 @@ def response_reproduces_file(response: object, path: str) -> bool:
 
 def transcript_candidates(payload: dict[str, Any]) -> list[Path]:
     transcript = payload.get("transcript_path")
-    conversation = payload.get("conversation_id")
-    if (
-        isinstance(conversation, str)
-        and conversation
-        and not (isinstance(transcript, str) and transcript.endswith(".db"))
-    ):
-        # Cursor keeps tool results in a per-conversation sqlite store, not in the transcript
-        # jsonl it names (probed 2026-09-06 with a sentinel read).
-        config_home = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
-        stores = sorted(Path(config_home).glob(f"cursor/chats/*/{conversation}/store.db"))
-        if stores:
-            return stores + ([Path(transcript)] if isinstance(transcript, str) and transcript else [])
     if not isinstance(transcript, str) or not transcript:
         return []
     parent = Path(transcript)
@@ -390,10 +373,7 @@ def history_contains(payload: dict[str, Any], path: str, since: float) -> bool:
         return False
     for transcript in transcript_candidates(payload):
         if transcript.suffix == ".db":
-            if transcript.name == "opencode.db":
-                if _opencode_db_contains(transcript, needle, since):
-                    return True
-            elif _store_db_contains(transcript, needle):
+            if transcript.name == "opencode.db" and _opencode_db_contains(transcript, needle, since):
                 return True
             continue
         found = False
@@ -421,38 +401,6 @@ def history_contains(payload: dict[str, Any], path: str, since: float) -> bool:
 
 # Cheap pre-filter before JSON parsing: Claude, Codex, and Pi/OMP result rows.
 _RESULT_LINE_MARKERS = ("output", "toolUseResult", "toolResult")
-
-
-def _store_db_contains(path: Path, needle: str) -> bool:
-    """Cursor `store.db`: JSON blobs carry {role: "tool", content: [{type: "tool-result",
-    result: "<verbatim file>"}]}; the rest are protobuf, so raw bytes are the fallback."""
-    import sqlite3
-
-    raw = needle.encode("utf-8")
-    try:
-        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
-        try:
-            for (data,) in conn.execute("select data from blobs"):
-                if not isinstance(data, (bytes, bytearray)):
-                    continue
-                if data[:1] == b"{":
-                    try:
-                        obj = json.loads(data.decode("utf-8"))
-                    except (ValueError, UnicodeDecodeError):
-                        obj = None
-                    if isinstance(obj, dict) and obj.get("role") == "tool":
-                        for block in obj.get("content") or []:
-                            if isinstance(block, dict) and isinstance(block.get("result"), str):
-                                if needle in _strip_line_numbers(block["result"]):
-                                    return True
-                        continue
-                if raw in data:
-                    return True
-        finally:
-            conn.close()
-    except sqlite3.Error:
-        return False
-    return False
 
 
 def _opencode_part(db: Path, tool_use_id: str) -> tuple[bool, str | None, bool]:
@@ -633,56 +581,6 @@ def handle_post(payload: dict[str, Any]) -> dict[str, Any]:
     return {}
 
 
-def _cursor_shape(result: dict[str, Any]) -> dict[str, Any]:
-    """Cursor permission events answer with permission/user_message; deny text reaches the model."""
-    if result.get("decision") == "block":
-        return {"permission": "deny", "user_message": result.get("reason", "")}
-    return {"permission": "allow"}
-
-
-def observe_context_tokens(spec_dir: Path, key: str, tokens: int) -> None:
-    """Cursor's `stop` hook reports per-turn token counts; a large shrink is a compaction."""
-    if reinforcement is None or not key or tokens <= 0:
-        return
-    state = reinforcement.load_state(spec_dir, key)
-    last = state.get("last_tokens")
-    if isinstance(last, (int, float)) and tokens < last * COMPACTION_SHRINK_RATIO:
-        state["compactions"] = int(state.get("compactions", 0) or 0) + 1
-    state["last_tokens"] = int(tokens)
-    reinforcement.save_state(spec_dir, key, state)
-
-
-def handle_cursor(payload: dict[str, Any], event: str) -> dict[str, Any]:
-    _, _, spec_path, _ = topic_paths(payload)
-    if event == "stop":
-        tokens = sum(_int_field(payload, name) for name in ("input_tokens", "cache_read_tokens", "cache_write_tokens"))
-        observe_context_tokens(spec_path.parent, session_key(payload), tokens)
-        return {}
-    if event == "beforeReadFile":
-        path = payload.get("file_path")
-        if not isinstance(path, str) or not path:
-            return {"permission": "allow"}
-        probe = {**payload, "tool_name": "Read", "tool_input": {"file_path": path}}
-        verdict = handle_pre(probe, "PreToolUse")
-        if verdict.get("decision") == "block":
-            return _cursor_shape(verdict)
-        handle_post({**probe, "tool_response": payload.get("content")})
-        return {"permission": "allow"}
-    if event == "beforeShellExecution":
-        probe = {**payload, "tool_name": "Bash", "tool_input": {"command": payload.get("command", "")}}
-        return _cursor_shape(handle_pre(probe, "PreToolUse"))
-    if event == "afterShellExecution":
-        probe = {**payload, "tool_name": "Bash", "tool_input": {"command": payload.get("command", "")}}
-        handle_post({**probe, "tool_response": payload.get("output")})
-        return {}
-    return {}
-
-
-def _int_field(payload: dict[str, Any], name: str) -> int:
-    value = payload.get(name)
-    return int(value) if isinstance(value, (int, float)) else 0
-
-
 def main() -> int:
     try:
         payload = read_payload()
@@ -694,16 +592,14 @@ def main() -> int:
         return 0
     event = str(payload.get("hook_event_name") or os.environ.get("AGENT_HOOK_EVENT") or "PreToolUse")
     try:
-        if event in CURSOR_EVENTS or os.environ.get(HARNESS_ENV) == "cursor":
-            emit(handle_cursor(payload, event))
-        elif event.lower().startswith("pre"):
+        if event.lower().startswith("pre"):
             emit(handle_pre(payload, event))
         elif event.lower().startswith("post"):
             emit(handle_post(payload))
         else:
             emit({})
     except Exception:  # noqa: BLE001 - a wrong refusal is worse than a cached re-read
-        emit({"permission": "allow"} if event in CURSOR_EVENTS else {})
+        emit({})
     return 0
 
 

@@ -749,12 +749,11 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "The shared assessment is the four components below: intent intake, impact, cause classification, and release targets;\n"
             "apply each only when its trigger holds.",
             "Impact covers every consumed artifact, not only code:",
-            "Impact mechanics, in order: SCSI when the repo is indexed; otherwise local `rg`/symbol lookup",
+            "Impact mechanics: local `rg`/symbol lookup for callers and non-code consumers.",
             "Skip the impact map only for a change proven light-path under §1.",
             "NEVER assume a branch number is the issue identity.",
             "For GitHub issue work, load `~/.agents/skills/k-github/SKILL.md` for Targeting and GitHub Context Intake + Reference Resolution",
-            "invariants;\nuse `~/.agents/skills/k-semantic-code-search/SKILL.md` when applicable, "
-            "then compare its base context with exact local state.",
+            "invariants, then compare base-branch context with exact local state.",
             "Route failure work through `~/.agents/skills/k-diagnosing-bugs/SKILL.md` to classify the cause "
             "as product, test, infrastructure, mixed, or unresolved from source/reproduction evidence.",
             "NEVER infer authorization to publish or backport.",
@@ -765,7 +764,7 @@ class TestSopPolicyInvariants(unittest.TestCase):
         # Routing triggers live in each skill's `description` frontmatter (which harnesses
         # pass to the model); the model decides when to load. The SOP keeps fail-closed
         # gates, always-on behavior, and the §3.1 shared-assessment owner pointers
-        # (k-github intake, k-semantic-code-search, k-diagnosing-bugs); it does not carry
+        # (k-github intake, k-diagnosing-bugs); it does not carry
         # intent-matched "load skill X when Y" routing for the skills asserted below.
         self.assert_file_not_contains(
             "home/readonly_AGENTS.md",

@@ -286,7 +286,6 @@ def root_moves_violations(root: Path) -> list[str]:
 PROFILE_DIRS = (
     "home/dot_claude/exact_agents",
     "home/dot_codex/exact_agents",
-    "home/dot_cursor/exact_agents",
     "home/dot_omp/private_agent/exact_agents",
     "home/dot_pi/agent/exact_agents",
 )
@@ -339,21 +338,6 @@ def profile_launch_violations(root: Path) -> list[str]:
 
 
 class TestAgentSkillInvariants(unittest.TestCase):
-    def test_cursor_global_plugin_should_render_complete_sop_without_owning_other_plugins(self):
-        plugin = REPO / "home/dot_cursor/plugins/local/exact_k-sop"
-        manifest = json.loads((plugin / "dot_cursor-plugin/readonly_plugin.json").read_text())
-        self.assertEqual(manifest["name"], "k-sop")
-        self.assertEqual(manifest["rules"], "./rules")
-        for is_work in (False, True):
-            with self.subTest(is_work=is_work):
-                rendered = render_chezmoi_template(plugin / "rules/readonly_sop.md.tmpl", is_work=is_work)
-                self.assertEqual(
-                    rendered,
-                    "---\nalwaysApply: true\n---\n" + (REPO / "home/readonly_AGENTS.md").read_text(),
-                )
-        self.assertFalse((REPO / "home/dot_cursor/exact_plugins").exists())
-        self.assertFalse((REPO / "home/dot_cursor/plugins/exact_local").exists())
-
     def assert_file_contains(self, relative_path: str, *snippets: str) -> None:
         text = (REPO / relative_path).read_text(encoding="utf-8")
         for snippet in snippets:
@@ -391,20 +375,16 @@ class TestAgentSkillInvariants(unittest.TestCase):
         native_names = {
             "Explore",
             "Plan",
-            "best-of-n-runner",
             "browser_agent",
-            "bugbot",
             "claude",
             "claude-code-guide",
             "cli_help",
             "code-review",
             "codebase_investigator",
-            "cursor-guide",
             "default",
             "explore",
             "explorer",
             "general-purpose",
-            "generalPurpose",
             "generalist",
             "rem-agent",
             "research",
@@ -420,7 +400,6 @@ class TestAgentSkillInvariants(unittest.TestCase):
         profile_roots = (
             REPO / "home/dot_claude/exact_agents",
             REPO / "home/dot_codex/exact_agents",
-            REPO / "home/dot_cursor/exact_agents",
             REPO / "home/dot_omp/private_agent/exact_agents",
             REPO / "home/dot_pi/agent/exact_agents",
         )
@@ -486,7 +465,6 @@ class TestAgentSkillInvariants(unittest.TestCase):
         agents_dirs = {
             "claude": REPO / "home/dot_claude/exact_agents",
             "codex": REPO / "home/dot_codex/exact_agents",
-            "cursor": REPO / "home/dot_cursor/exact_agents",
             "omp": REPO / "home/dot_omp/private_agent/exact_agents",
             "pi": REPO / "home/dot_pi/agent/exact_agents",
         }
@@ -628,7 +606,6 @@ class TestAgentSkillInvariants(unittest.TestCase):
                     "skills": [],
                     "prompts": [],
                 },
-                "~/.local/share/pnpm-global-links/node_modules/@rahularya01/pi-cursor",
             ]
 
     def test_pi_extensions_directory_prunes_unmanaged_drops(self):
@@ -694,7 +671,6 @@ class TestAgentSkillInvariants(unittest.TestCase):
             "home/dot_claude/settings.llama-cpp.json.tmpl",
             "home/dot_claude/settings.llama-cpp.qwen3.6.json.tmpl",
             "home/dot_codex/hooks.json.tmpl",
-            "home/dot_cursor/hooks.json",
             "home/dot_gemini/config/readonly_hooks.json",
         )
         referenced = re.compile(r"\.agents/hooks/([A-Za-z0-9_.-]+\.(?:py|sh))")
@@ -775,7 +751,6 @@ class TestAgentSkillInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "docs/topics/ai-assistants/llama-cpp/launchers.md",
-            "Hosted MCP authentication is owned by the per-request stdio bridges",
             "CLAUDE_CODE_ATTRIBUTION_HEADER",
         )
         self.assert_file_not_contains(
@@ -785,8 +760,7 @@ class TestAgentSkillInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "docs/topics/ai-assistants/mcp.md",
-            "emitted to every work-profile harness, including OMP and Codex",
-            "OpenCode gets `scsi-local` only",
+            "An HTTP server reaches a harness only when `oauth_by_tool` names that harness",
             "HTTP entries are intentionally skipped",
         )
         self.assert_file_contains(

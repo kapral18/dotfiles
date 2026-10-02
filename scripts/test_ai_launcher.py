@@ -20,7 +20,6 @@ MODEL_MIRROR = REPO / "home" / "dot_config" / "ai" / "readonly_model-mirrors.v1.
 AGENT_BANDS = REPO / "home" / "dot_config" / "ai" / "readonly_agent-bands.v1.json"
 MODEL_MIRROR_CONSUMER = REPO / "scripts" / "model_mirror_consumer.py"
 LEAVES = {
-    "cursor": ",cursor",
     "claude": "claude",
     "codex": ",codex",
     "gemini": "agy",
@@ -121,7 +120,7 @@ class TestAiLauncher(unittest.TestCase):
 
     def test_when_an_explicit_value_matches_an_alias_it_wins_provenance(self) -> None:
         plan = self.dry_plan(
-            "cursor",
+            "gemini",
             "--alias",
             "audit",
             "--depth",
@@ -141,7 +140,7 @@ class TestAiLauncher(unittest.TestCase):
         )
 
     def test_when_alias_and_explicit_axis_conflict_resolution_fails_visibly(self) -> None:
-        result = self.run_ai("cursor", "--alias", "audit", "--execution", "autonomous", "--dry-run")
+        result = self.run_ai("gemini", "--alias", "audit", "--execution", "autonomous", "--dry-run")
 
         self.assertEqual(2, result.returncode)
         self.assertIn("contradictory execution selections", result.stderr)
@@ -155,21 +154,21 @@ class TestAiLauncher(unittest.TestCase):
 
     def test_when_leaf_args_bypass_an_owned_field_resolution_fails_visibly(self) -> None:
         result = self.run_ai(
-            "cursor",
+            "gemini",
             "--alias",
             "audit",
             "--dry-run",
             "--",
             "--mode",
             "plan",
-            "--yolo",
+            "--dangerously-skip-permissions",
         )
 
         self.assertEqual(2, result.returncode)
         self.assertIn("leaf argument --mode contradicts launcher-owned execution", result.stderr)
 
         result = self.run_ai(
-            "cursor",
+            "codex",
             "--execution",
             "supervised",
             "--dry-run",
@@ -202,7 +201,6 @@ class TestAiLauncher(unittest.TestCase):
 
     def test_when_supported_execution_is_explicit_each_harness_gets_exact_transport(self) -> None:
         cases = {
-            "cursor": ("readonly", ["--mode", "plan"]),
             "claude": ("supervised", ["--permission-mode", "manual"]),
             "codex": (
                 "autonomous",
@@ -228,7 +226,6 @@ class TestAiLauncher(unittest.TestCase):
             ("opencode", ["--execution", "readonly"], "execution=readonly"),
             ("pi", ["--execution", "supervised"], "execution=supervised"),
             ("claude", ["--connectivity", "offline"], "connectivity=offline"),
-            ("cursor", ["--connectivity", "offline"], "connectivity=offline"),
             ("codex", ["--connectivity", "offline"], "connectivity=offline"),
             ("gemini", ["--connectivity", "offline"], "connectivity=offline"),
             ("opencode", ["--connectivity", "offline"], "connectivity=offline"),
@@ -250,7 +247,6 @@ class TestAiLauncher(unittest.TestCase):
 
     def test_when_depth_is_explicit_supported_harnesses_apply_and_others_stay_soft(self) -> None:
         cases = {
-            "cursor": (["--model", "gpt-5.5"], "applied", "gpt-5.5[effort=low]"),
             "claude": ([], "applied", "--effort"),
             "codex": ([], "applied", 'model_reasoning_effort="low"'),
             "gemini": ([], "applied", "--effort"),
@@ -324,13 +320,6 @@ class TestAiLauncher(unittest.TestCase):
 
         self.assertEqual(2, result.returncode)
         self.assertIn("Antigravity model effort=high contradicts depth effort=low", result.stderr)
-
-    def test_when_cursor_depth_has_no_explicit_model_it_remains_soft_and_visible(self) -> None:
-        plan = self.dry_plan("cursor", "--depth", "deep")
-
-        self.assertEqual("advisory", plan["fields"]["depth"]["transport"]["status"])
-        self.assertIn("explicit model", plan["fields"]["depth"]["transport"]["note"])
-        self.assertNotIn("--model", plan["leaf"]["argv"])
 
     def test_when_pi_has_no_selection_it_inherits_the_native_default(self) -> None:
         plan = self.dry_plan("pi")
@@ -509,11 +498,11 @@ class TestAiLauncher(unittest.TestCase):
                 )
 
         adapter = FakeAvailability()
-        command = core.parse_cli(["cursor", "--depth", "deep", "--dry-run"])
+        command = core.parse_cli(["codex", "--depth", "deep", "--dry-run"])
         plan = core.resolve_plan(command, adapter)
 
-        self.assertEqual(("cursor", None, None), adapter.request)
-        self.assertIn("gpt-5.5[effort=high]", plan.actual_argv)
+        self.assertEqual(("codex", None, None), adapter.request)
+        self.assertIn("gpt-5.5", plan.actual_argv)
         self.assertEqual("fake-availability", plan.selection.model_provenance.source)
 
     def test_when_generated_launcher_view_is_used_the_plan_exposes_bounded_catalog_provenance(self) -> None:
@@ -551,21 +540,21 @@ class TestAiLauncher(unittest.TestCase):
 
     def test_when_secret_bearing_leaf_options_are_planned_values_are_redacted(self) -> None:
         result = self.run_ai(
-            "cursor",
+            "pi",
             "--dry-run",
             "--",
             "--api-key",
             "top-secret-key",
-            "--header=Authorization: Bearer top-secret-token",
+            "--api-key=top-secret-token",
             "review src",
             check=True,
         )
 
         self.assertNotIn("top-secret-key", result.stdout)
-        self.assertNotIn("Authorization: ******", result.stdout)
+        self.assertNotIn("top-secret-token", result.stdout)
         plan = json.loads(result.stdout)
         self.assertIn("<redacted>", plan["leaf"]["argv"])
-        self.assertIn("--header=<redacted>", plan["leaf"]["argv"])
+        self.assertIn("--api-key=<redacted>", plan["leaf"]["argv"])
         self.assertIn("review src", plan["leaf"]["argv"])
 
     def test_when_sensitive_option_shapes_vary_their_values_remain_redacted(self) -> None:

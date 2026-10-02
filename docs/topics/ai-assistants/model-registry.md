@@ -19,11 +19,10 @@ This is the model-side counterpart to the [MCP registry](mcp.md). Use it when ad
 
 ## Registry: `.chezmoidata/ai_models/`
 
-Source of truth: [`home/.chezmoidata/ai_models/`](../../../home/.chezmoidata/ai_models). The sections are split across three files for navigation only — chezmoi merges every file under `.chezmoidata/` (subdirectories included) into one flat data namespace, so templates still read `.cursor_models` and `.category_models` directly. [`scripts/ai_models.py`](../../../scripts/ai_models.py) holds the section → file map (`SECTION_FILES`) and takes the registry directory, never a single file.
+Source of truth: [`home/.chezmoidata/ai_models/`](../../../home/.chezmoidata/ai_models). The sections are split across three files for navigation only — chezmoi merges every file under `.chezmoidata/` (subdirectories included) into one flat data namespace, so templates still read `.pi_extra_models` and `.category_models` directly. [`scripts/ai_models.py`](../../../scripts/ai_models.py) holds the section → file map (`SECTION_FILES`) and takes the registry directory, never a single file.
 
 | Section             | File                    | Canonical policy                                                                                             |
 | ------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `cursor_models`     | `harness-catalogs.yaml` | Curated Cursor aliases; `recommended: true` is the narrower preferred set                                    |
 | `pi_extra_models`   | `harness-catalogs.yaml` | Pi's curated picker; every entry is provider-routed through Pi's built-in OpenRouter provider                |
 | `provider_models`   | `provider-routes.yaml`  | Static provider-route choices for shell completion; Vertex entries also own adapter wire/capability metadata |
 | `agent_categories`  | `tiering.yaml`          | Portable category → `{family, contract}`; the same table on every harness                                    |
@@ -32,8 +31,6 @@ Source of truth: [`home/.chezmoidata/ai_models/`](../../../home/.chezmoidata/ai_
 | `pi_model_profiles` | `tiering.yaml`          | Whole alternate Pi pricings selected per machine by `,pi-model-profile`; `default` is reserved, never a key  |
 
 Adding a section means adding it to `SECTION_FILES` as well: the parser resolves a section by name, so an unmapped section raises rather than being searched for across files.
-
-Recommended Cursor entries use `recommendation_rank` to preserve the deliberate TUI picker order independently of the broader curated registry order.
 
 ## Using it
 
@@ -55,7 +52,7 @@ Example adapter call:
 ```bash
 python3 scripts/model_mirrors.py adapt \
   --mirror home/dot_config/ai/readonly_model-mirrors.v1.json \
-  --consumer launcher --harness cursor --set available
+  --consumer launcher --harness pi --set available
 ```
 
 Live catalog access exists only behind the explicit `probe` subcommand:
@@ -63,7 +60,7 @@ Live catalog access exists only behind the explicit `probe` subcommand:
 ```bash
 python3 scripts/model_mirrors.py probe \
   --mirror home/dot_config/ai/readonly_model-mirrors.v1.json \
-  --target harness:cursor --target provider:openrouter
+  --target harness:pi --target provider:openrouter
 ```
 
 ## Generators
@@ -100,7 +97,7 @@ Provenance enumerates every contributing config or registry source. Registry ent
 
 The mirror also records exact installed harness identity/version evidence and consumer adapters.
 
-Generation fails closed when the canonical `cursor_models` section is missing, empty, unrecognized, duplicated, or contains an invalid ID. Curated catalogs must contain only recognized, non-duplicated IDs; generation cannot publish a known mirror with a stale fallback.
+Curated catalogs must contain only recognized, non-duplicated IDs; generation cannot publish a known mirror with a stale fallback.
 
 ### Launcher consumption
 
@@ -116,7 +113,7 @@ Command consumers keep policy in their own config and use the mirror only for bo
 
 ## Opt-in live drift
 
-Locally verified adapters cover Cursor (`cursor-agent --list-models`), Pi (`pi --offline --list-models`), OpenCode (`opencode models`), OpenRouter, Vertex, and llama.cpp.
+Locally verified adapters cover Pi (`pi --offline --list-models`), OpenCode (`opencode models`), OpenRouter, Vertex, and llama.cpp.
 
 Claude, Codex, and Antigravity remain explicitly unsupported until a complete local adapter is verified.
 
@@ -145,7 +142,7 @@ The same mirror/probe seam is available for non-mutating live catalog diagnostic
 
 Upstream provider routing is model-specific (user calls 2026-08-07; uptime-aware default load balancing 2026-08-17): every `moonshotai/kimi-k3` route sends `provider: { only: ["fireworks", "together", "baseten"], max_price: { completion: 16 } }`, while `z-ai/glm-5.3-flash` uses `provider: { quantizations: ["fp8", "fp16", "bf16", "fp32"], preferred_min_throughput: 24 }` except Pi's work profile, which sets `preferred_min_throughput: 35`; `z-ai/glm-5.2` carries the same FP8-or-higher, 24 t/s floor policy (GLM 5.3 Flash replaced `deepseek/deepseek-v4-flash-0731` on 2026-09-10, user call); `deepseek/deepseek-v4.1-flash` sends `provider: { preferred_min_throughput: 35, max_price: { completion: 1.2 } }` (user call 2026-09-11: the $1.20/M completion cap is a hard filter, the 35 t/s floor only deprioritizes, and there is no quantization filter because few DeepSeek endpoints declare one). None of these objects set `sort` or `order`: OpenRouter's default load balancer then skips providers with significant outages in the last 30 seconds and price-weights the rest. The GLM allowlist excludes INT4/INT8/FP4/FP6 providers; `preferred_min_throughput` deprioritizes endpoints below the configured floor rather than excluding them. See [Provider routing](https://openrouter.ai/docs/guides/routing/provider-selection).
 
-The policies have three carriers. Pi 0.84.0 sends each object through `modelOverrides.compat.openRouterRouting`, which its runtime copies as-is into the request's `provider` field. OMP 17.2.9's typed openrouter transport drops `modelOverrides…compat.extraBody.provider` from the wire (verified 2026-08-08: the merged catalog entry carries no extraBody and a live request with an impossible quantization succeeds), so OMP and OpenCode carry the policy in the model slug through workspace `*-lanes-*` presets. The eight `kimi-lanes*` presets preserve their effort-specific `reasoning.effort` values (including `none`, which disables reasoning) and carry the Kimi object; the eight `glm-lanes*` presets do the same for GLM, including the FP8-or-higher quantization allowlist. Those presets pin `z-ai/glm-5.2`, but the request model overrides the preset's model (live-probed 2026-09-10: `z-ai/glm-5.3-flash@preset/glm-lanes-high` answered as `z-ai/glm-5.3-flash` on an FP8 endpoint), so GLM 5.3 Flash rides the same slugs. The eight `deepseek-lanes*` presets carry the DeepSeek object (35 t/s preferred floor, $1.20/M completion cap, no quantization filter, no `sort`) and pin `deepseek/deepseek-v4.1-flash`; each got a new designated version on 2026-09-11 through `POST /presets/{slug}/chat/completions`, which keeps version history for rollback (the request model overrides the pin anyway, live-probed 2026-09-11: `deepseek/deepseek-v4.1-flash@preset/deepseek-lanes-max` answered as `deepseek/deepseek-v4.1-flash` on an FP8 endpoint). The four `*-openrouter` wrappers compose effort only: `<model>@preset/effort-<level>` for every `--model`. `,cursor-openrouter` reaches OpenRouter through Cursor's agent-cli-local flavor (`--base-url` OpenAI-compatible), which the regular cursor-agent build rejects; its provider config is baseUrl+apiKey only, so effort rides the `effort-<level>` slug. Every session runs through the loopback shim, which both strips `strict:true` from `openai/*` tool schemas (cursor-agent-local's reasoning predicate matches those ids and the bundled Shell schema's optional `debounce_ms` fails OpenAI strict validation; see [other harnesses](tool-configs/other-harnesses.md)) and enforces a wire-level model allowlist: the launcher exports the pinned wire id as `CURSOR_AGENT_ALLOWED_MODEL` and the shim returns 403 for any `/chat/completions` whose model differs, so no subagent or profile can route a different model on the session. The wrappers default to `z-ai/glm-5.3-flash@preset/effort-high` with long context; explicit `--context short` retains the pricing-limited route. Each wrapper first checks the active account for `effort-<level>` and creates it with only `reasoning.effort` when absent; existing presets are never rewritten. Inside an interactive session `/model` accepts a free-text id verbatim, so a typed `model@preset/effort-<level>` keeps the effort slug while a bare model does not.
+The policies have three carriers. Pi 0.84.0 sends each object through `modelOverrides.compat.openRouterRouting`, which its runtime copies as-is into the request's `provider` field. OMP 17.2.9's typed openrouter transport drops `modelOverrides…compat.extraBody.provider` from the wire (verified 2026-08-08: the merged catalog entry carries no extraBody and a live request with an impossible quantization succeeds), so OMP and OpenCode carry the policy in the model slug through workspace `*-lanes-*` presets. The eight `kimi-lanes*` presets preserve their effort-specific `reasoning.effort` values (including `none`, which disables reasoning) and carry the Kimi object; the eight `glm-lanes*` presets do the same for GLM, including the FP8-or-higher quantization allowlist. Those presets pin `z-ai/glm-5.2`, but the request model overrides the preset's model (live-probed 2026-09-10: `z-ai/glm-5.3-flash@preset/glm-lanes-high` answered as `z-ai/glm-5.3-flash` on an FP8 endpoint), so GLM 5.3 Flash rides the same slugs. The eight `deepseek-lanes*` presets carry the DeepSeek object (35 t/s preferred floor, $1.20/M completion cap, no quantization filter, no `sort`) and pin `deepseek/deepseek-v4.1-flash`; each got a new designated version on 2026-09-11 through `POST /presets/{slug}/chat/completions`, which keeps version history for rollback (the request model overrides the pin anyway, live-probed 2026-09-11: `deepseek/deepseek-v4.1-flash@preset/deepseek-lanes-max` answered as `deepseek/deepseek-v4.1-flash` on an FP8 endpoint). The `,claude-openrouter` and `,codex-openrouter` wrappers compose effort only: `<model>@preset/effort-<level>` for every `--model`. The wrappers default to `z-ai/glm-5.3-flash@preset/effort-high` with long context; explicit `--context short` retains the pricing-limited route. Each wrapper first checks the active account for `effort-<level>` and creates it with only `reasoning.effort` when absent; existing presets are never rewritten. Inside an interactive session `/model` accepts a free-text id verbatim, so a typed `model@preset/effort-<level>` keeps the effort slug while a bare model does not.
 
 - **OpenCode**: both profiles run `main`, every configured worker, and `small_model` on `openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high` at `high` effort. DeepSeek V4.1 Flash stays selectable through `openrouter/deepseek/deepseek-v4.1-flash@preset/deepseek-lanes-max`, Kimi through `openrouter/moonshotai/kimi-k3@preset/kimi-lanes`, and GLM-5.2 through `openrouter/z-ai/glm-5.2@preset/glm-lanes-max`.
 - **Pi**: both profiles default to `openai-codex/gpt-6.1-sol` with `defaultThinkingLevel: high` (user call 2026-09-30; it was OpenRouter Muse Spark at xhigh). Category rows store model and effort separately: mechanical uses `openai-codex/gpt-6-luna` at high, research/review/memory and the degraded same-family refute use `openai-codex/gpt-6.1-sol` at high, and implement uses the same Sol model at medium. `pi_extra_models` includes those catalog ids. Managed agent templates render `thinking:` from effort, so no `category_models.pi.*.model` contains a `:level` suffix. OpenRouter wrappers derive wire selectors only from the rows beginning with `openrouter/`; no default Pi category row qualifies now, so the default Pi route emits no OpenRouter wire models (an OpenRouter-backed Pi profile still does).

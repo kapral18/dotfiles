@@ -29,7 +29,7 @@ Contract:
   a concatenated bundle would be truncated by the strictest harness view tool, so there is none.
 - Load `~/.agents/skills/k-review/references/pr_context_audits.md` only when `~/.agents/skills/k-review/references/pr_common.md`'s conditional Ambient Topic Exploration or PR Necessity + Correctly-Open Audit gate triggers.
 - Reference and open skill files under `~/.agents/skills/` only.
-  `~/.cursor/skills` is a symlink to the same tree; opening a file under both paths is a duplicate read of the same bytes.
+  `~/.claude/skills` is a symlink to the same tree; opening a file under both paths is a duplicate read of the same bytes.
 - After a context summary, re-open only the files the active mode needs; the summary is not a substitute for them.
   Do not re-open a reference to re-check a rule the summary already records as satisfied;
   re-open it only when a pending gate still depends on its wording.
@@ -82,8 +82,6 @@ A child that timed out or exhausted its budget is re-sized (split, or ship mater
 ## Secondary Skill Escalation
 
 Do not load secondary skills until read/diff evidence proves the surface is in scope.
-
-- Load semantic code search only for base context after the selected mode requires base-branch context.
 
 ## Draft-PR Policy
 

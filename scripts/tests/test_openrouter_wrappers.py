@@ -71,9 +71,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
             "for a in sys.argv[1:] if a.startswith('agents.') and '.config_file=' in a}\n"
             "print(json.dumps({'env': dict(os.environ), 'argv': sys.argv[1:], 'profiles':profiles}))\n"
         )
-        local = home / ".local/share/cursor-agent-local/versions/fixture/cursor-agent-local"
-        for path in (local, *(bindir / name for name in ("claude", "codex"))):
-            path.parent.mkdir(parents=True, exist_ok=True)
+        for path in (bindir / name for name in ("claude", "codex")):
             path.write_text(capture)
             path.chmod(0o755)
         calls = home / "preset-calls"
@@ -84,7 +82,6 @@ class TestOpenRouterWrappers(unittest.TestCase):
             'if [ "$1" = "--session-budget-env" ]; then echo "CONTEXT_LIMIT=1048576"; echo "MAX_OUTPUT_TOKENS=131072"; echo "PROMPT_LIMIT=200000"; exit; fi\n'
             'if [ "$1" = "--codex-model-catalog" ]; then shift 2; '
             f'''exec "{sys.executable}" -c 'import json,sys;print(json.dumps({{"models":[{{"slug":m}} for m in sys.argv[1:]]}}))' "$@"; fi\n'''
-            'if [ "$1" = "--cursor-model-catalog" ]; then echo "{}"; exit; fi\n'
             'printf "%s\\n" "$1" >> "$PRESET_CALLS"\n'
         )
         agents = json.loads((home / ".config/ai/agent-bands.v1.json").read_text())["harnesses"]["pi"]["agents"]
@@ -101,7 +98,6 @@ class TestOpenRouterWrappers(unittest.TestCase):
             "HOME": str(home),
             "PATH": f"{bindir}:{os.environ['PATH']}",
             "OPENROUTER_API_KEY": "fixture-key",
-            "CURSOR_AGENT_LOCAL_VERSION": "fixture",
             "CODEX_WRAPPER_BIN": str(bindir / "codex"),
             "PRESET_CALLS": str(calls),
             "AGENT_BAND_SUBSCRIPTION": "codex",
@@ -110,7 +106,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
         }
         return calls, env
 
-    def _assert_openrouter_roles(self, harness, observed, band_gate, shim, projection):
+    def _assert_openrouter_roles(self, harness, observed, band_gate, projection):
         rows = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["pi"]
         gate_env = {**observed["env"], "AGENT_BAND_HARNESS": "claude_code" if harness == "claude" else harness}
         with mock.patch.dict(os.environ, gate_env, clear=True):
@@ -150,24 +146,14 @@ class TestOpenRouterWrappers(unittest.TestCase):
                     self.assertNotIn("Agent", definitions[role]["tools"])
                     model = definitions[role]["model"]
                 self.assertEqual(model, expected, (harness, role))
-                if harness == "cursor":
-                    allowed = observed["env"]["CURSOR_AGENT_ALLOWED_MODEL"]
-                    self.assertIsNone(shim.enforce_allowed_model({"model": model}, allowed))
-                    self.assertIsNotNone(shim.enforce_allowed_model({"model": "unregistered-model"}, allowed))
 
     def test_SHOULD_route_openrouter_pi_rows_and_prepare_each_required_effort_once(self):
         """WHEN a wrapper uses Pi routing, only OpenRouter rows become wire models."""
-        modules = []
-        for name, path in (
-            ("shim_contract", "home/exact_lib/exact_,cursor-agent-shim/shim.py"),
-            ("band_contract", "home/exact_dot_agents/exact_hooks/executable_band_gate.py"),
-        ):
-            modules.append(_load_hook_module(name, path))
-        shim, band_gate = modules
+        band_gate = _load_hook_module("band_contract", "home/exact_dot_agents/exact_hooks/executable_band_gate.py")
         band_gate.PROJECTION = REPO / "home/dot_config/ai/readonly_agent-bands.v1.json"
         projection = json.loads(band_gate.PROJECTION.read_text())
         calls, env = self._openrouter_route_fixture()
-        for harness in ("claude", "codex", "cursor"):
+        for harness in ("claude", "codex"):
             for effort in ("none", "high", "xhigh", "max"):
                 with self.subTest(harness=harness, effort=effort):
                     calls.write_text("")
@@ -175,7 +161,6 @@ class TestOpenRouterWrappers(unittest.TestCase):
                         [
                             modern_bash(),
                             str(REPO / f"home/exact_bin/executable_,{harness}-openrouter"),
-                            *(["--no-shim", "--context", "short"] if harness == "cursor" else []),
                             "--model",
                             "moonshotai/kimi-k3",
                             "--effort",
@@ -209,7 +194,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
                     self.assertCountEqual(calls.read_text().splitlines(), set((effort, "high", "max")))
                     wire = f"moonshotai/kimi-k3@preset/effort-{effort}"
                     self.assertTrue(wire in observed["argv"] or wire in observed["env"].values())
-                    self._assert_openrouter_roles(harness, observed, band_gate, shim, projection)
+                    self._assert_openrouter_roles(harness, observed, band_gate, projection)
 
     def test_SHOULD_create_only_a_missing_preset_in_the_active_account(self):
         module = _load_openrouter_presets_module()
@@ -500,7 +485,6 @@ class TestOpenRouterWrappers(unittest.TestCase):
         for relative in (
             "home/exact_bin/executable_,claude-openrouter",
             "home/exact_bin/executable_,codex-openrouter",
-            "home/exact_bin/executable_,cursor-openrouter",
         ):
             with self.subTest(command=relative):
                 source = (REPO / relative).read_text()
@@ -550,9 +534,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
         expectations = {
             "claude-openrouter": ("pi", "openrouter-preset"),
             "codex-openrouter": ("pi", "openrouter-preset"),
-            "cursor-openrouter": ("pi", "openrouter-preset"),
             "claude-codex": ("codex", None),
-            "cursor-codex": ("codex", None),
         }
         for command, (schema, model_format) in expectations.items():
             with self.subTest(command=command):
@@ -599,7 +581,6 @@ class TestOpenRouterWrappers(unittest.TestCase):
         for relative in (
             "home/exact_bin/executable_,claude-openrouter",
             "home/exact_bin/executable_,codex-openrouter",
-            "home/exact_bin/executable_,cursor-openrouter",
         ):
             with self.subTest(command=relative):
                 source = (REPO / relative).read_text()
@@ -654,21 +635,12 @@ class TestOpenRouterWrappers(unittest.TestCase):
         for relative in (
             "home/dot_config/fish/completions/readonly_,claude-openrouter.fish",
             "home/dot_config/fish/completions/readonly_,codex-openrouter.fish",
-            "home/dot_config/fish/completions/readonly_,cursor-openrouter.fish",
         ):
             with self.subTest(completion=relative):
                 text = (REPO / relative).read_text()
                 assert "functions/__openrouter_catalog.fish" in text
                 assert "(__openrouter_catalog_models)" in text
                 assert "(__openrouter_catalog_efforts)" in text
-
-    def test_SHOULD_complete_cursor_codex_from_the_live_codex_model_cache(self):
-        source = (REPO / "home/dot_config/fish/completions/readonly_,cursor-codex.fish").read_text()
-
-        assert 'cache "$HOME/.codex/models_cache.json"' in source
-        assert 'model.get("supported_reasoning_levels", [])' in source
-        assert "(__cursor_codex_models)" in source
-        assert "(__cursor_codex_efforts)" in source
 
     def test_SHOULD_hard_pin_claude_route_over_environment_values(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -788,100 +760,6 @@ printf 'schema=%s\\nformat=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
         # Effort rides the preset slug, not a Codex body field, so model_reasoning_effort is unset.
         assert "model_reasoning_effort" not in codex_result.stdout
 
-    def test_SHOULD_hard_pin_cursor_route_over_environment_values(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            bindir = Path(tmp) / "bin"
-            bindir.mkdir()
-            home = Path(tmp) / "home"
-            _install_shim_stub(home)
-            version = "2026.08.04-test"
-            local_bin = home / ".local" / "share" / "cursor-agent-local" / "versions" / version
-            local_bin.mkdir(parents=True)
-            cursor_agent = bindir / "cursor-agent"
-            cursor_agent.write_text(f'#!/usr/bin/env bash\necho "{version}"\n', encoding="utf-8")
-            cursor_agent.chmod(0o755)
-            local = local_bin / "cursor-agent-local"
-            local.write_text(
-                """#!/usr/bin/env bash
-printf 'base=%s\nkey=%s\nallowed=%s\nschema=%s\nformat=%s\nband-model=%s\nargs=%s\n' \\
-  "$CURSOR_LOCAL_AGENT_BASE_URL" "$CURSOR_LOCAL_AGENT_API_KEY" "$CURSOR_AGENT_ALLOWED_MODEL" \\
-  "$AGENT_BAND_SCHEMA_HARNESS" "$AGENT_BAND_MODEL_FORMAT" "${AGENT_BAND_MODEL_OVERRIDE-}" "$*"
-""",
-                encoding="utf-8",
-            )
-            local.chmod(0o755)
-            result = subprocess.run(
-                [modern_bash(), str(REPO / "home/exact_bin/executable_,cursor-openrouter"), "-p", "review"],
-                capture_output=True,
-                text=True,
-                env={
-                    **os.environ,
-                    "PATH": f"{bindir}:{os.environ['PATH']}",
-                    "HOME": str(home),
-                    "OPENROUTER_API_KEY": "fixture-key",
-                    "CURSOR_LOCAL_AGENT_BASE_URL": "https://evil.example/v1",
-                    "CURSOR_LOCAL_AGENT_API_KEY": "evil-key",
-                    "ANTHROPIC_BASE_URL": "https://evil.example",
-                    "ANTHROPIC_AUTH_TOKEN": "evil-key",
-                    "AGENT_BAND_MODEL_OVERRIDE": "other-model",
-                },
-            )
-
-        assert result.returncode == 0, result.stderr
-        assert result.stdout.splitlines() == [
-            "base=http://127.0.0.1:9876/api/v1",
-            "key=fixture-key",
-            "allowed=" + ",".join([OPENROUTER_WIRE_PIN, *_pi_openrouter_wires()]),
-            "schema=pi",
-            "format=openrouter-preset",
-            "band-model=",
-            f"args=--model {OPENROUTER_WIRE_PIN} -p review",
-        ]
-
-    def test_SHOULD_self_heal_a_missing_cursor_agent_local_flavor(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            bindir = Path(tmp) / "bin"
-            bindir.mkdir()
-            home = Path(tmp) / "home"
-            _install_shim_stub(home)
-            version = "2026.08.04-test"
-            cursor_agent = bindir / "cursor-agent"
-            cursor_agent.write_text(f'#!/usr/bin/env bash\necho "{version}"\n', encoding="utf-8")
-            cursor_agent.chmod(0o755)
-            installer = home / "lib" / ",cursor-agent-local"
-            installer.mkdir(parents=True)
-            marker = Path(tmp) / "installed"
-            install = installer / "install.sh"
-            install.write_text(
-                """#!/usr/bin/env bash
-set -euo pipefail
-dest="$HOME/.local/share/cursor-agent-local/versions/$1"
-mkdir -p "$dest"
-cat > "$dest/cursor-agent-local" <<'EOF'
-#!/usr/bin/env bash
-exit 0
-EOF
-chmod +x "$dest/cursor-agent-local"
-touch "%s"
-"""
-                % marker,
-                encoding="utf-8",
-            )
-            result = subprocess.run(
-                [modern_bash(), str(REPO / "home/exact_bin/executable_,cursor-openrouter")],
-                capture_output=True,
-                text=True,
-                env={
-                    **os.environ,
-                    "PATH": f"{bindir}:{os.environ['PATH']}",
-                    "HOME": str(home),
-                    "OPENROUTER_API_KEY": "fixture-key",
-                },
-            )
-
-            assert result.returncode == 0, result.stderr
-            assert marker.exists()
-
     def test_SHOULD_compose_wire_model_from_model_and_effort_flags(self):
         # Model and effort are selectable; the wire id composes the matching preset slug.
         cases = [
@@ -927,7 +805,7 @@ touch "%s"
                     assert result.returncode == 0, result.stderr
                     assert f"model={expected}" in result.stdout
 
-    def test_SHOULD_compose_wire_model_for_codex_and_cursor(self):
+    def test_SHOULD_compose_wire_model_for_codex(self):
         # The same model/effort -> preset-slug composition runs in every wrapper; only the
         # leaf delivery differs.
         cases = [
@@ -939,20 +817,8 @@ touch "%s"
             codex = bindir / "codex"
             codex.write_text('#!/usr/bin/env bash\necho "args=$*"\n', encoding="utf-8")
             codex.chmod(0o755)
-            home = Path(tmp) / "home"
-            _install_shim_stub(home)
-            version = "2026.08.04-test"
-            local_bin = home / ".local" / "share" / "cursor-agent-local" / "versions" / version
-            local_bin.mkdir(parents=True)
-            local = local_bin / "cursor-agent-local"
-            local.write_text('#!/usr/bin/env bash\necho "args=$*"\n', encoding="utf-8")
-            local.chmod(0o755)
-            cursor_agent = bindir / "cursor-agent"
-            cursor_agent.write_text(f'#!/usr/bin/env bash\necho "{version}"\n', encoding="utf-8")
-            cursor_agent.chmod(0o755)
             runners = {
                 "home/exact_bin/executable_,codex-openrouter": {"CODEX_WRAPPER_BIN": str(codex)},
-                "home/exact_bin/executable_,cursor-openrouter": {"HOME": str(home)},
             }
             for argv, expected in cases:
                 for relative, extra_env in runners.items():
@@ -1035,78 +901,6 @@ touch "%s"
                 self.assertEqual(actual["CLAUDE_CODE_AUTO_COMPACT_WINDOW"], str(prompt_limit))
                 self.assertEqual(actual["CLAUDE_CODE_MAX_OUTPUT_TOKENS"], str(output_limit))
 
-    def test_SHOULD_reject_cursor_long_context_without_the_metadata_shim(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            bindir = Path(tmp) / "bin"
-            bindir.mkdir()
-            home = Path(tmp) / "home"
-            _install_shim_stub(home)
-            version = "2026.08.04-test"
-            local_bin = home / ".local" / "share" / "cursor-agent-local" / "versions" / version
-            local_bin.mkdir(parents=True)
-            local = local_bin / "cursor-agent-local"
-            local.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
-            local.chmod(0o755)
-            cursor_agent = bindir / "cursor-agent"
-            cursor_agent.write_text(f'#!/usr/bin/env bash\necho "{version}"\n', encoding="utf-8")
-            cursor_agent.chmod(0o755)
-
-            result = subprocess.run(
-                [
-                    modern_bash(),
-                    str(REPO / "home/exact_bin/executable_,cursor-openrouter"),
-                    "--no-shim",
-                    "--context",
-                    "long",
-                ],
-                capture_output=True,
-                text=True,
-                env={
-                    **os.environ,
-                    "HOME": str(home),
-                    "PATH": f"{bindir}:{os.environ['PATH']}",
-                    "OPENROUTER_API_KEY": "fixture-key",
-                },
-            )
-            assert result.returncode == 2
-            assert "requires the shim to publish the selected model budget" in result.stderr
-
-    def test_SHOULD_allow_cursor_openrouter_models_with_shim_tool_adapters(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            bindir = Path(tmp) / "bin"
-            bindir.mkdir()
-            home = Path(tmp) / "home"
-            _install_shim_stub(home)
-            version = "2026.08.04-test"
-            local_bin = home / ".local" / "share" / "cursor-agent-local" / "versions" / version
-            local_bin.mkdir(parents=True)
-            local = local_bin / "cursor-agent-local"
-            local.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
-            local.chmod(0o755)
-            cursor_agent = bindir / "cursor-agent"
-            cursor_agent.write_text(f'#!/usr/bin/env bash\necho "{version}"\n', encoding="utf-8")
-            cursor_agent.chmod(0o755)
-
-            result = subprocess.run(
-                [
-                    modern_bash(),
-                    str(REPO / "home/exact_bin/executable_,cursor-openrouter"),
-                    "--model",
-                    "stealth/ox-alpha",
-                ],
-                capture_output=True,
-                text=True,
-                env={
-                    **os.environ,
-                    "HOME": str(home),
-                    "PATH": f"{bindir}:{os.environ['PATH']}",
-                    "OPENROUTER_API_KEY": "fixture-key",
-                },
-            )
-
-        assert result.returncode == 0, result.stderr
-        assert "empty tool-mode responses" not in result.stderr
-
     def test_SHOULD_reject_empty_or_missing_model_and_effort_values(self):
         # Empty --model=/--effort= would compose a garbage wire id that only fails at the
         # provider; a trailing --model must exit 2, not crash on set -u.
@@ -1117,21 +911,9 @@ touch "%s"
                 fake = bindir / command
                 fake.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
                 fake.chmod(0o755)
-            home = Path(tmp) / "home"
-            _install_shim_stub(home)
-            version = "2026.08.04-test"
-            local_bin = home / ".local" / "share" / "cursor-agent-local" / "versions" / version
-            local_bin.mkdir(parents=True)
-            local = local_bin / "cursor-agent-local"
-            local.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
-            local.chmod(0o755)
-            cursor_agent = bindir / "cursor-agent"
-            cursor_agent.write_text(f'#!/usr/bin/env bash\necho "{version}"\n', encoding="utf-8")
-            cursor_agent.chmod(0o755)
             runners = {
                 "home/exact_bin/executable_,claude-openrouter": {},
                 "home/exact_bin/executable_,codex-openrouter": {"CODEX_WRAPPER_BIN": str(bindir / "codex")},
-                "home/exact_bin/executable_,cursor-openrouter": {"HOME": str(home)},
             }
             for relative, extra_env in runners.items():
                 for argv in (["--model="], ["--effort="], ["--model"], ["--effort"]):
@@ -1161,23 +943,9 @@ touch "%s"
             codex = bindir / "codex"
             codex.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
             codex.chmod(0o755)
-            home = Path(tmp) / "home"
-            version = "2026.08.04-test"
-            local_bin = home / ".local" / "share" / "cursor-agent-local" / "versions" / version
-            local_bin.mkdir(parents=True)
-            local = local_bin / "cursor-agent-local"
-            local.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
-            local.chmod(0o755)
-            cursor_agent = bindir / "cursor-agent"
-            cursor_agent.write_text(f'#!/usr/bin/env bash\necho "{version}"\n', encoding="utf-8")
-            cursor_agent.chmod(0o755)
             cases = {
                 "home/exact_bin/executable_,claude-openrouter": ({}, ["--fallback-model", "other"]),
                 "home/exact_bin/executable_,codex-openrouter": ({"CODEX_WRAPPER_BIN": str(codex)}, ["-c", "model=x"]),
-                "home/exact_bin/executable_,cursor-openrouter": (
-                    {"HOME": str(home)},
-                    ["--base-url", "https://evil.example"],
-                ),
             }
             for relative, (extra_env, argv) in cases.items():
                 with self.subTest(command=relative):
@@ -1199,583 +967,11 @@ touch "%s"
         for relative in (
             "home/exact_bin/executable_,claude-openrouter",
             "home/exact_bin/executable_,codex-openrouter",
-            "home/exact_bin/executable_,cursor-openrouter",
         ):
             with self.subTest(command=relative):
                 source = (REPO / relative).read_text()
                 assert "pass show openrouter/api/token" in source
                 assert "Error: set OPENROUTER_API_KEY or pass entry openrouter/api/token." in source
-
-    def test_SHOULD_run_the_shim_for_every_pinned_route(self):
-        # The strict-flag rewrite exists because cursor-agent-local's reasoning
-        # predicate matches "openai/..." ids; DeepSeek/Kimi/GLM ids were never
-        # affected. But the shim is also the model guardrail, which applies to
-        # every model, so the launcher must keep the default route shimmed and
-        # only `--no-shim` (direct-OpenRouter opt-out) may skip it.
-        source = (REPO / "home/exact_bin/executable_,cursor-openrouter").read_text()
-        assert "needs_shim" in source
-        assert "needs_shim=1" in source
-        assert 'CURSOR_LOCAL_AGENT_BASE_URL="http://127.0.0.1:$shim_port/api/v1"' in source
-        assert "--no-shim" in source
-        assert "trap shim_cleanup EXIT" in source
-        # The guardrail is assembled only from the selected root and derived OpenRouter Pi rows.
-        assert 'export CURSOR_AGENT_ALLOWED_MODEL="$OPENROUTER_WIRE_MODEL$OPENROUTER_PI_ALLOWED_MODELS"' in source
-        assert "--pi-openrouter-wire-models" in source
-        assert "github-copilot/" not in source
-
-    def test_SHOULD_admit_every_pi_lane_wire_model_through_the_cursor_guardrail(self):
-        """WHEN the shim checks a delegated lane, every formatted Pi pick is inside the allowlist."""
-        modules = []
-        for name, path in (
-            ("shim_allowlist", "home/exact_lib/exact_,cursor-agent-shim/shim.py"),
-            ("band_gate_allowlist", "home/exact_dot_agents/exact_hooks/executable_band_gate.py"),
-        ):
-            modules.append(_load_hook_module(name, path))
-        shim, band_gate = modules
-        rows = {
-            category: row
-            for category, row in ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["pi"].items()
-            if row["model"].startswith("openrouter/")
-        }
-        _, env = self._openrouter_route_fixture()
-        result = subprocess.run(
-            [
-                modern_bash(),
-                str(REPO / "home/exact_bin/executable_,cursor-openrouter"),
-                "--no-shim",
-                "--context",
-                "short",
-                "-p",
-                "fixture",
-            ],
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-        exported = json.loads(result.stdout)["env"]
-        allowed = exported["CURSOR_AGENT_ALLOWED_MODEL"]
-        with mock.patch.dict(os.environ, {**exported, "AGENT_BAND_HARNESS": "cursor"}, clear=True):
-            wires = {
-                category: band_gate._format_pick(dict(row), "cursor", "pi")["model"] for category, row in rows.items()
-            }
-        for category, wire in wires.items():
-            with self.subTest(category=category):
-                self.assertIn(wire, allowed.split(","))
-                self.assertIsNone(shim.enforce_allowed_model({"model": wire}, allowed))
-        self.assertIsNotNone(shim.enforce_allowed_model({"model": "unregistered-model"}, allowed))
-
-    def test_SHOULD_strip_tool_strict_from_chat_completions(self):
-        # The shell schema shipped in cursor-agent-local/2026.08.04 declares
-        # debounce_ms optional but omits it from required; OpenAI strict mode
-        # rejects that with 400 invalid_function_parameters. The shim strips the
-        # strict flag, which is the verified workaround (live probe 2026-08-09).
-        shim_path = REPO / "home/exact_lib/exact_,cursor-agent-shim/shim.py"
-        assert shim_path.is_file()
-        loader = SourceFileLoader("cursor_agent_shim", str(shim_path))
-        spec = importlib.util.spec_from_loader("cursor_agent_shim", loader)
-        assert spec is not None and spec.loader is not None
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-
-        payload = {
-            "model": "openai/gpt-5.6-luna@preset/effort-xhigh",
-            "messages": [{"role": "user", "content": "hi"}],
-            "tools": [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "Shell",
-                        "description": "run",
-                        "parameters": {"type": "object", "properties": {"command": {"type": "string"}}},
-                        "strict": True,
-                    },
-                },
-                {"type": "function", "function": {"name": "Read", "parameters": {"type": "object"}, "strict": True}},
-            ],
-        }
-        rewritten = module.rewrite_chat_completions(payload)
-        for tool in rewritten["tools"]:
-            assert "strict" not in tool["function"]
-        # original payload untouched
-        assert payload["tools"][0]["function"]["strict"] is True
-
-        # non-tool requests pass through untouched (structure preserved, same object)
-        via = module.rewrite_chat_completions({"model": "x", "messages": [{"role": "user", "content": "hi"}]})
-        assert via == {"model": "x", "messages": [{"role": "user", "content": "hi"}]}
-
-    def test_SHOULD_strip_tools_for_ox_alpha_chat_completions(self):
-        module = self._load_shim_module()
-
-        payload = {
-            "model": "stealth/ox-alpha@preset/effort-max",
-            "messages": [{"role": "user", "content": "hi"}],
-            "tools": [
-                {
-                    "type": "function",
-                    "function": {"name": "Shell", "parameters": {"type": "object"}, "strict": True},
-                }
-            ],
-            "tool_choice": "auto",
-            "parallel_tool_calls": True,
-        }
-        rewritten = module.rewrite_chat_completions(payload)
-        assert "tools" not in rewritten
-        assert "tool_choice" not in rewritten
-        assert "parallel_tool_calls" not in rewritten
-        assert "tools" in payload
-
-        ordinary = dict(payload, model="z-ai/glm-5.3-flash@preset/effort-max")
-        ordinary_rewritten = module.rewrite_chat_completions(ordinary)
-        assert "tools" in ordinary_rewritten
-        assert "strict" not in ordinary_rewritten["tools"][0]["function"]
-
-    def test_SHOULD_reject_chat_completions_whose_model_is_not_the_pinned_session_model(self):
-        module = self._load_shim_module()
-
-        allowed = "z-ai/glm-5.3-flash@preset/glm-lanes-high"
-        assert module.enforce_allowed_model({"model": allowed, "messages": []}, allowed) is None
-        allowlist = f"{allowed},openai/gpt-5.6-sol@preset/effort-xhigh"
-        assert (
-            module.enforce_allowed_model(
-                {"model": "openai/gpt-5.6-sol@preset/effort-xhigh", "messages": []},
-                allowlist,
-            )
-            is None
-        )
-
-        violations = {
-            "claude-sonnet-4.6": "an unbound profile model must be rejected",
-            "claude-opus-4-8": "a costly family id must be rejected",
-            "openai/gpt-5.6-terra": "a different route id must be rejected",
-            # Same provider prefix but no preset suffix: not the pinned session model.
-            "z-ai/glm-5.3-flash": "a bare provider model must be rejected",
-        }
-        for model, reason in violations.items():
-            with self.subTest(model=model):
-                error = module.enforce_allowed_model({"model": model, "messages": []}, allowed)
-                assert error is not None, reason
-                assert "not in the pinned session allowlist" in error
-
-        # Missing/non-string model is a violation, not a pass-through.
-        for payload in ({}, {"model": 5}, {"model": ""}):
-            assert module.enforce_allowed_model(payload, allowed) is not None
-
-    def test_SHOULD_403_a_guardrail_violation_before_upstream_contact(self):
-        module = self._load_shim_module()
-
-        upstream_hit_count = 0
-
-        class _CountingHandler(http.server.BaseHTTPRequestHandler):
-            def log_message(self, _fmt, *_args):
-                return
-
-            def do_POST(self):
-                nonlocal upstream_hit_count
-                upstream_hit_count += 1
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                body = b'{"choices":[]}'
-                self.send_header("Content-Length", str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
-
-        fake_upstream = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _CountingHandler)
-        fake_upstream.daemon_threads = True
-        upstream_port = fake_upstream.server_address[1]
-        upstream_thread = threading.Thread(target=fake_upstream.serve_forever, daemon=True)
-        upstream_thread.start()
-
-        original_upstream = module.UPSTREAM
-        original_allowed = module.ALLOWED_MODEL
-        module.UPSTREAM = f"http://127.0.0.1:{upstream_port}"
-        module.API_KEY = "fixture-key"
-        module.ALLOWED_MODEL = "z-ai/glm-5.3-flash@preset/glm-lanes-high"
-
-        shim_server = module.ShimServer(("127.0.0.1", 0), module.ShimHandler)
-        shim_server.daemon_threads = True
-        shim_port = shim_server.server_address[1]
-        shim_thread = threading.Thread(target=shim_server.serve_forever, daemon=True)
-        shim_thread.start()
-
-        def _post(model: str):
-            body = json.dumps({"model": model, "messages": [{"role": "user", "content": "hi"}]}).encode()
-            req = Request(
-                f"http://127.0.0.1:{shim_port}/api/v1/chat/completions",
-                data=body,
-                headers={"Content-Type": "application/json", "Content-Length": str(len(body))},
-                method="POST",
-            )
-            try:
-                urlopen(req, timeout=5)
-                raise AssertionError(f"expected 403 for model {model!r}, got 200")
-            except Exception as exc:
-                code = getattr(exc, "code", None)
-                assert code == 403, f"expected 403 for model {model!r}, got {code}"
-
-        try:
-            # A subagent escape (Claude-family profile model) is blocked before upstream.
-            _post("claude-sonnet-4.6")
-            # A different pinned-route id (e.g. resume of another session) is blocked too.
-            _post("openai/gpt-5.6-terra@preset/terra-lanes-max")
-            assert upstream_hit_count == 0, f"fake upstream was contacted {upstream_hit_count} times"
-        finally:
-            module.UPSTREAM = original_upstream
-            module.ALLOWED_MODEL = original_allowed
-            shim_server.shutdown()
-            shim_server.server_close()
-            fake_upstream.shutdown()
-            fake_upstream.server_close()
-            shim_thread.join(timeout=5)
-            upstream_thread.join(timeout=5)
-
-    def test_SHOULD_let_the_pinned_model_through_the_guardrail(self):
-        module = self._load_shim_module()
-
-        upstream_models: list[str] = []
-
-        class _CaptureHandler(http.server.BaseHTTPRequestHandler):
-            def log_message(self, _fmt, *_args):
-                return
-
-            def do_POST(self):
-                length = int(self.headers.get("Content-Length", 0) or 0)
-                payload = json.loads(self.rfile.read(length))
-                upstream_models.append(payload.get("model", ""))
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                body = b'{"choices":[]}'
-                self.send_header("Content-Length", str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
-
-        fake_upstream = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _CaptureHandler)
-        fake_upstream.daemon_threads = True
-        upstream_port = fake_upstream.server_address[1]
-        upstream_thread = threading.Thread(target=fake_upstream.serve_forever, daemon=True)
-        upstream_thread.start()
-
-        original_upstream = module.UPSTREAM
-        original_allowed = module.ALLOWED_MODEL
-        module.UPSTREAM = f"http://127.0.0.1:{upstream_port}"
-        module.API_KEY = "fixture-key"
-        module.ALLOWED_MODEL = "z-ai/glm-5.3-flash@preset/glm-lanes-high"
-
-        shim_server = module.ShimServer(("127.0.0.1", 0), module.ShimHandler)
-        shim_server.daemon_threads = True
-        shim_port = shim_server.server_address[1]
-        shim_thread = threading.Thread(target=shim_server.serve_forever, daemon=True)
-        shim_thread.start()
-
-        body = json.dumps({"model": module.ALLOWED_MODEL, "messages": [{"role": "user", "content": "hi"}]}).encode()
-        req = Request(
-            f"http://127.0.0.1:{shim_port}/api/v1/chat/completions",
-            data=body,
-            headers={"Content-Type": "application/json", "Content-Length": str(len(body))},
-            method="POST",
-        )
-        try:
-            with urlopen(req, timeout=5) as resp:
-                resp.read()
-            assert upstream_models == [module.ALLOWED_MODEL]
-        finally:
-            module.UPSTREAM = original_upstream
-            module.ALLOWED_MODEL = original_allowed
-            shim_server.shutdown()
-            shim_server.server_close()
-            fake_upstream.shutdown()
-            fake_upstream.server_close()
-            shim_thread.join(timeout=5)
-            upstream_thread.join(timeout=5)
-
-    def test_SHOULD_export_api_key_as_env_var_not_positional_arg(self):
-        source = (REPO / "home/exact_bin/executable_,cursor-openrouter").read_text()
-        # Key is exported into the environment before the shim launch.
-        assert 'export OPENROUTER_API_KEY="$api_key"' in source
-        # Shim is invoked with only the port argument.
-        assert 'sys.argv[1:] = ["0"]' in source
-        # Old two-argument form must be absent.
-        assert 'sys.argv[1:] = ["0", sys.argv[1]]' not in source
-        # Key must not appear as a positional argument on the shim launch line.
-        assert '"$api_key" 3>' not in source
-        # Export must precede the shim launch (export line appears before the python3 -c line).
-        export_pos = source.index('export OPENROUTER_API_KEY="$api_key"')
-        launch_pos = source.index("python3")
-        assert export_pos < launch_pos
-
-    def _load_shim_module(self):
-        shim_path = REPO / "home/exact_lib/exact_,cursor-agent-shim/shim.py"
-        loader = SourceFileLoader("cursor_agent_shim_live", str(shim_path))
-        spec = importlib.util.spec_from_loader("cursor_agent_shim_live", loader)
-        assert spec is not None and spec.loader is not None
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
-
-    def test_SHOULD_return_400_for_non_dict_chat_completion_bodies_without_upstream_contact(self):
-        module = self._load_shim_module()
-
-        upstream_hit_count = 0
-
-        class _CountingHandler(http.server.BaseHTTPRequestHandler):
-            def log_message(self, _fmt, *_args):
-                return
-
-            def do_POST(self):
-                nonlocal upstream_hit_count
-                upstream_hit_count += 1
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                body = b'{"choices":[]}'
-                self.send_header("Content-Length", str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
-
-        fake_upstream = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _CountingHandler)
-        fake_upstream.daemon_threads = True
-        upstream_port = fake_upstream.server_address[1]
-        upstream_thread = threading.Thread(target=fake_upstream.serve_forever, daemon=True)
-        upstream_thread.start()
-
-        original_upstream = module.UPSTREAM
-        module.UPSTREAM = f"http://127.0.0.1:{upstream_port}"
-        module.API_KEY = "fixture-key"
-
-        shim_server = module.ShimServer(("127.0.0.1", 0), module.ShimHandler)
-        shim_server.daemon_threads = True
-        shim_port = shim_server.server_address[1]
-        shim_thread = threading.Thread(target=shim_server.serve_forever, daemon=True)
-        shim_thread.start()
-
-        invalid_bodies = [
-            b"[]",
-            b'["a","b"]',
-            b"1",
-            b'"just-a-string"',
-        ]
-        try:
-            for body in invalid_bodies:
-                req = Request(
-                    f"http://127.0.0.1:{shim_port}/api/v1/chat/completions",
-                    data=body,
-                    headers={"Content-Type": "application/json", "Content-Length": str(len(body))},
-                    method="POST",
-                )
-                try:
-                    urlopen(req, timeout=5)
-                    raise AssertionError(f"expected 400 for body {body!r}, got 200")
-                except Exception as exc:
-                    code = getattr(exc, "code", None)
-                    assert code == 400, f"expected 400 for body {body!r}, got {code}"
-            assert upstream_hit_count == 0, f"fake upstream was contacted {upstream_hit_count} times"
-        finally:
-            module.UPSTREAM = original_upstream
-            shim_server.shutdown()
-            shim_server.server_close()
-            fake_upstream.shutdown()
-            fake_upstream.server_close()
-            shim_thread.join(timeout=5)
-            upstream_thread.join(timeout=5)
-
-    def test_SHOULD_stream_response_and_forward_headers_and_propagate_http_errors(self):
-        module = self._load_shim_module()
-
-        _recorded_content_type: list[str] = []
-        _response_mode: list[str] = ["stream"]
-
-        STREAM_BODY = b"data: hello\n\ndata: world\n\n"
-        ERROR_BODY = b'{"error":{"message":"rate limited","code":429}}'
-
-        class _FakeUpstreamHandler(http.server.BaseHTTPRequestHandler):
-            def log_message(self, _fmt, *_args):
-                return
-
-            def do_POST(self):
-                length = int(self.headers.get("Content-Length", 0) or 0)
-                self.rfile.read(length)
-                _recorded_content_type.append(self.headers.get("Content-Type", ""))
-                if _response_mode[0] == "stream":
-                    self.send_response(200)
-                    self.send_header("Content-Type", "text/event-stream; charset=utf-8")
-                    self.send_header("Content-Length", str(len(STREAM_BODY)))
-                    self.end_headers()
-                    # Write in two chunks to exercise incremental forwarding.
-                    half = len(STREAM_BODY) // 2
-                    self.wfile.write(STREAM_BODY[:half])
-                    self.wfile.flush()
-                    self.wfile.write(STREAM_BODY[half:])
-                else:
-                    self.send_response(429)
-                    self.send_header("Content-Type", "application/json")
-                    self.send_header("Content-Length", str(len(ERROR_BODY)))
-                    self.end_headers()
-                    self.wfile.write(ERROR_BODY)
-
-        fake_upstream = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _FakeUpstreamHandler)
-        fake_upstream.daemon_threads = True
-        upstream_port = fake_upstream.server_address[1]
-        upstream_thread = threading.Thread(target=fake_upstream.serve_forever, daemon=True)
-        upstream_thread.start()
-
-        original_upstream = module.UPSTREAM
-        module.UPSTREAM = f"http://127.0.0.1:{upstream_port}"
-        module.API_KEY = "fixture-key"
-
-        shim_server = module.ShimServer(("127.0.0.1", 0), module.ShimHandler)
-        shim_server.daemon_threads = True
-        shim_port = shim_server.server_address[1]
-        shim_thread = threading.Thread(target=shim_server.serve_forever, daemon=True)
-        shim_thread.start()
-
-        post_body = json.dumps({"model": "openai/gpt-5.6-luna", "messages": []}).encode()
-
-        try:
-            # --- streaming path ---
-            req = Request(
-                f"http://127.0.0.1:{shim_port}/api/v1/chat/completions",
-                data=post_body,
-                headers={"Content-Type": "application/json", "Content-Length": str(len(post_body))},
-                method="POST",
-            )
-            with urlopen(req, timeout=5) as resp:
-                downstream_body = resp.read()
-                downstream_ct = resp.headers.get("Content-Type", "")
-                downstream_cl = resp.headers.get("Content-Length", "")
-
-            assert downstream_body == STREAM_BODY
-            assert "text/event-stream" in downstream_ct
-            # Inbound tool-name rewrite can change SSE byte length, so the shim
-            # omits Content-Length and closes the connection instead.
-            assert downstream_cl == ""
-            assert _recorded_content_type and _recorded_content_type[-1] == "application/json"
-
-            # --- HTTP error path ---
-            _response_mode[0] = "error"
-            req2 = Request(
-                f"http://127.0.0.1:{shim_port}/api/v1/chat/completions",
-                data=post_body,
-                headers={"Content-Type": "application/json", "Content-Length": str(len(post_body))},
-                method="POST",
-            )
-            try:
-                urlopen(req2, timeout=5)
-                raise AssertionError("expected HTTP error 429, got 200")
-            except Exception as exc:
-                assert getattr(exc, "code", None) == 429
-                error_ct = exc.headers.get("Content-Type", "")  # type: ignore[union-attr]
-                assert "application/json" in error_ct
-                error_body = exc.read()  # type: ignore[union-attr]
-                assert error_body == ERROR_BODY
-        finally:
-            module.UPSTREAM = original_upstream
-            shim_server.shutdown()
-            shim_server.server_close()
-            fake_upstream.shutdown()
-            fake_upstream.server_close()
-            shim_thread.join(timeout=5)
-            upstream_thread.join(timeout=5)
-
-    def test_SHOULD_preserve_empty_responses_and_never_infer_tool_incapability(self):
-        module = self._load_shim_module()
-
-        upstream_payloads: list[dict] = []
-        replies = [
-            (
-                200,
-                "text/event-stream",
-                b'data: {"choices":[{"delta":{"content":""},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
-            ),
-            (
-                200,
-                "application/json",
-                b'{"choices":[{"message":{"content":"","refusal":"declined"},"finish_reason":"stop"}]}',
-            ),
-            (200, "application/json", b'{"choices":[{"message":{"content":""},"finish_reason":"stop"}]}'),
-            (400, "application/json", b'{"error":{"message":"fixture failure"}}'),
-            (
-                200,
-                "text/event-stream",
-                b'data: {"choices":[{"delta":{"refusal":"declined"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
-            ),
-            (
-                200,
-                "text/event-stream",
-                b'data: {"choices":[{"delta":{"content":"OK"},"finish_reason":null}]}\n\ndata: [DONE]\n\n',
-            ),
-        ]
-
-        class _FallbackHandler(http.server.BaseHTTPRequestHandler):
-            def log_message(self, _fmt, *_args):
-                return
-
-            def do_POST(self):
-                length = int(self.headers.get("Content-Length", 0) or 0)
-                upstream_payloads.append(json.loads(self.rfile.read(length)))
-                status, content_type, body = replies[len(upstream_payloads) - 1]
-                self.send_response(status)
-                self.send_header("Content-Type", content_type)
-                self.send_header("Content-Length", str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
-
-        fake_upstream = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _FallbackHandler)
-        fake_upstream.daemon_threads = True
-        upstream_port = fake_upstream.server_address[1]
-        upstream_thread = threading.Thread(target=fake_upstream.serve_forever, daemon=True)
-        upstream_thread.start()
-
-        original_upstream = module.UPSTREAM
-        original_allowed = module.ALLOWED_MODEL
-        module.UPSTREAM = f"http://127.0.0.1:{upstream_port}"
-        module.API_KEY = "fixture-key"
-        module.ALLOWED_MODEL = "future/model@preset/effort-max"
-
-        shim_server = module.ShimServer(("127.0.0.1", 0), module.ShimHandler)
-        shim_server.daemon_threads = True
-        shim_port = shim_server.server_address[1]
-        shim_thread = threading.Thread(target=shim_server.serve_forever, daemon=True)
-        shim_thread.start()
-
-        body = json.dumps(
-            {
-                "model": module.ALLOWED_MODEL,
-                "messages": [{"role": "user", "content": "hi"}],
-                "tools": [{"type": "function", "function": {"name": "Shell", "parameters": {"type": "object"}}}],
-                "tool_choice": "auto",
-                "parallel_tool_calls": True,
-                "stream": True,
-            }
-        ).encode()
-        try:
-            req = Request(
-                f"http://127.0.0.1:{shim_port}/api/v1/chat/completions",
-                data=body,
-                headers={"Content-Type": "application/json", "Content-Length": str(len(body))},
-                method="POST",
-            )
-            for index, (status, _content_type, expected) in enumerate(replies):
-                with self.subTest(index=index):
-                    try:
-                        response = urlopen(req, timeout=5)
-                    except urllib.error.HTTPError as error:
-                        response = error
-                    with response:
-                        self.assertEqual(response.code, status)
-                        self.assertEqual(response.read(), expected)
-                    self.assertEqual(len(upstream_payloads), index + 1)
-            for payload in upstream_payloads:
-                self.assertEqual(payload["tools"], json.loads(body)["tools"])
-                self.assertEqual(payload["tool_choice"], "auto")
-                self.assertIs(payload["parallel_tool_calls"], True)
-        finally:
-            module.UPSTREAM = original_upstream
-            module.ALLOWED_MODEL = original_allowed
-            shim_server.shutdown()
-            shim_server.server_close()
-            fake_upstream.shutdown()
-            fake_upstream.server_close()
-            shim_thread.join(timeout=5)
-            upstream_thread.join(timeout=5)
 
 
 if __name__ == "__main__":

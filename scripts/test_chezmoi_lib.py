@@ -88,8 +88,14 @@ class TestChezmoiManagedConfigLedger(unittest.TestCase):
     def _call(self, operation: str, state_home: Path, target: str) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env.update({"XDG_STATE_HOME": str(state_home), "LIB": str(LIB), "TARGET": target})
+        # `,doctor` repairs stale rows by calling the helper's `forget` directly; the shell lib only records.
+        command = (
+            'source "$LIB"; chezmoi_record_checksum "$TARGET"'
+            if operation == "record"
+            else 'python3 "$(dirname "$LIB")/managed_config_manifest.py" forget "$XDG_STATE_HOME/chezmoi/managed_configs.tsv" "$TARGET"'
+        )
         return subprocess.run(
-            ["bash", "-c", f'source "$LIB"; chezmoi_{operation}_checksum "$TARGET"'],
+            ["bash", "-c", command],
             cwd=REPO,
             env=env,
             capture_output=True,

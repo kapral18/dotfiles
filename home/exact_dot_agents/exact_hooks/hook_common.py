@@ -27,8 +27,7 @@ def is_delegated_leaf(payload: dict[str, Any] | None = None) -> bool:
 
     Single owner for leaf identity (SOP §3.7 leaf contract): Claude/Codex child
     calls carry `agent_id`, and pi-subagents children carry
-    `PI_SUBAGENT_CHILD=1`. Cursor has no leaf signal: its children read as roots
-    and must run attended only.
+    `PI_SUBAGENT_CHILD=1`.
     """
     data = payload or {}
     agent_id = data.get("agent_id")
@@ -80,8 +79,8 @@ def read_payload() -> dict[str, Any]:
 def emit(data: dict[str, Any]) -> None:
     """Print the hook result, honoring the adapter's declared output shape.
 
-    Cursor ingests the top-level `additional_context` key and ignores
-    `hookSpecificOutput`; Claude-style consumers read `hookSpecificOutput`.
+    Claude-style consumers read `hookSpecificOutput`; the Pi/OMP extensions and the
+    Antigravity shape below also accept the top-level `additional_context` key.
     Codex strictly validates the result and rejects unknown top-level keys
     (verified against codex 0.144.4: emitting `additional_context` fails the
     hook), so its adapter sets `AGENT_HOOK_OUTPUT=hook_specific` to keep only

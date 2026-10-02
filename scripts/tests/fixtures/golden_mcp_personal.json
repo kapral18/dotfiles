@@ -4,6 +4,10 @@
       "command": "docker",
       "args": ["run", "--rm", "-i", "public/image"]
     },
+    "plain-tool": {
+      "command": "echo",
+      "args": ["plain"]
+    },
     "http-tool": {
       "type": "http",
       "url": "https://mcp.example.com/mcp",

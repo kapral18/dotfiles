@@ -13,8 +13,6 @@ from pathlib import Path
 from yaml_parser import parse_scalar
 
 SECTION_FILES = {
-    "cursor_models": "harness-catalogs.yaml",
-    "cursor_task_base_models": "harness-catalogs.yaml",
     "pi_extra_models": "harness-catalogs.yaml",
     "provider_models": "provider-routes.yaml",
     "session_models": "tiering.yaml",
@@ -45,14 +43,6 @@ def _section_lines(registry, section_key):
         return []
     with open(path, encoding="utf-8") as f:
         return f.readlines()
-
-
-def load_cursor_models(registry):
-    return _load_section(registry, "cursor_models", required=True)
-
-
-def load_cursor_task_base_models(registry):
-    return _load_section(registry, "cursor_task_base_models", required=True)
 
 
 def load_pi_extra_models(registry):

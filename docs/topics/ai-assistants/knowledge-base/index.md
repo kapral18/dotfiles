@@ -29,11 +29,10 @@ Two memory layers serve different jobs: **topic context** resumes current work, 
 
 ## Boundaries
 
-| System                      | Use for                               | Not for           |
-| --------------------------- | ------------------------------------- | ----------------- |
-| `,agent-memory`             | session topic, worklog/evidence trace | durable lessons   |
-| `,ai-kb`                    | verified facts, gotchas, recipes      | transient scratch |
-| SCSI / semantic-code-search | repository code                       | agent memory      |
+| System          | Use for                               | Not for           |
+| --------------- | ------------------------------------- | ----------------- |
+| `,agent-memory` | session topic, worklog/evidence trace | durable lessons   |
+| `,ai-kb`        | verified facts, gotchas, recipes      | transient scratch |
 
 Proof receipts are separate: `,proof` tracks criteria, evidence, assessments, and blockers in repo-external agent-proof state only for a requested, auditable, or named-handoff receipt.
 

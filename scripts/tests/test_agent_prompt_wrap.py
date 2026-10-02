@@ -56,7 +56,6 @@ class TestAgentPromptWrap(unittest.TestCase):
     def test_SHOULD_wrap_each_running_foreground_agent(self):
         for command in [
             "/bin/claude",
-            "/bin/cursor-agent",
             "/bin/pi",
             "pi",
             "claude",

@@ -275,8 +275,7 @@ class TestPremiseNudgeWireFormat(unittest.TestCase):
         )
         self.assertEqual(result["hookSpecificOutput"]["hookEventName"], "PostToolUse")
 
-    def test_when_payload_is_cursor_shaped_should_read_top_level_command(self):
-        # Cursor's shell events carry the command without naming a tool.
+    def test_when_payload_names_no_tool_should_read_top_level_command(self):
         result = run_hook({"command": "git push --force-with-lease"})
         self.assertIn("Premise check", context_of(result))
 

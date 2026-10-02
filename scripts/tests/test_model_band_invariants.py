@@ -37,7 +37,6 @@ class TestModelBandInvariants(unittest.TestCase):
         headings = {
             "Claude Code": "claude_code",
             "Codex": "codex",
-            "Cursor": "cursor",
             "Antigravity": "antigravity",
             "Pi": "pi",
         }
@@ -73,31 +72,6 @@ class TestModelBandInvariants(unittest.TestCase):
         text = (REPO / relative_path).read_text(encoding="utf-8")
         for snippet in snippets:
             assert snippet not in text, f"{relative_path} should not contain: {snippet}"
-
-    def test_cursor_category_matrix_uses_task_enum_models_with_requested_exceptions(self):
-        import ai_models
-
-        registry = REPO / "home/.chezmoidata/ai_models"
-        rows = ai_models.load_category_models(registry)["cursor"]
-        available = {row["name"] for row in ai_models.load_cursor_task_base_models(registry)}
-        expected = {
-            "mechanical": ("grok-4.6", "medium", "long"),
-            "research": ("claude-opus-5-5", "high", "long"),
-            "implement": ("muse-spark-1.3", "high", "long"),
-            "review": ("claude-opus-5-5", "high", "long"),
-            "refute": ("muse-spark-1.3", "max", "long"),
-            "memory": ("grok-4.6", "medium", "short"),
-        }
-        for category, (model, effort, context) in expected.items():
-            with self.subTest(category=category):
-                self.assertEqual(
-                    (model, effort, context),
-                    (rows[category]["model"], rows[category]["effort"], rows[category]["context"]),
-                )
-                self.assertIn(model, available)
-                self.assertTrue(effort)
-                self.assertNotIn("-fast", model)
-        self.assertEqual("cross_family", rows["refute"]["verifier_status"])
 
     def test_antigravity_categories_use_the_renamed_key_and_flash_policy(self):
         import ai_models
@@ -537,7 +511,6 @@ class TestModelBandInvariants(unittest.TestCase):
         assert tools, "band_gate.py no longer declares DELEGATION_TOOLS"
 
         for path, key in (
-            ("home/dot_cursor/hooks.json", "preToolUse"),
             ("home/dot_claude/settings.personal.json", "PreToolUse"),
             ("home/dot_claude/settings.work.json", "PreToolUse"),
         ):
@@ -549,96 +522,10 @@ class TestModelBandInvariants(unittest.TestCase):
                     continue
                 assert entry.get("matcher"), f"{path} {key} wires band_gate.py with no matcher"
 
-    def test_the_band_gate_rewrites_cursor_subagent_launches_but_keeps_registry_lane_picks(self) -> None:
-        # Cursor transcript exports label the delegation tool `Subagent` (2026-09-04) while the
-        # bundle still says `taskToolCall`; the hook payload name is unverified, so a matcher or
-        # DELEGATION_TOOLS that knows only one of them can let every Cursor lane run on whatever
-        # model the caller typed. The gate must also leave ANY registry lane pick alone on a
-        # generic subagent type — since schema 1.4.0 the pass-through set is `lane_models` (every
-        # bound agent's resolved pick), not just the counter and cheap lanes — or a cross-family
-        # verifier launched as `generalPurpose` is rewritten back onto the finder family.
+    def test_the_band_gate_clamps_claude_models_to_the_agent_band_alias(self) -> None:
         import subprocess
 
-        hooks = json.loads((REPO / "home/dot_cursor/hooks.json").read_text(encoding="utf-8"))
-        matchers = [e["matcher"] for e in hooks["hooks"]["preToolUse"] if "band_gate.py" in e.get("command", "")]
-        assert matchers and all(re.fullmatch(matchers[0], name) for name in ("Subagent", "Task")), matchers
-
         projection = REPO / "home/dot_config/ai/readonly_agent-bands.v1.json"
-        cursor = json.loads(projection.read_text(encoding="utf-8"))["harnesses"]["cursor"]
-        implement_model = cursor["agents"]["generalPurpose"]["model"]
-        refute_model = cursor["agents"]["k-agent-adversarial-verifier"]["model"]
-        assert refute_model in cursor["counter_models"]
-        # Since 2026-09-13 Cursor implement and refute share `muse-spark-1.3` (high vs max); Task ids
-        # carry no effort, so the gate sees one model and passes it either way. The escape probe below
-        # therefore uses a model no lane asked for, not the refute pick.
-
-        def gate(tool_name: str, model: str) -> dict:
-            payload = {
-                "tool_name": tool_name,
-                "tool_input": {"subagent_type": "generalPurpose", "model": model, "prompt": "x"},
-            }
-            env = root_gate_env({"AGENT_BAND_HARNESS": "cursor", "AGENT_BANDS_FILE": str(projection)})
-            result = subprocess.run(
-                [sys.executable, str(REPO / "home/exact_dot_agents/exact_hooks/executable_band_gate.py")],
-                input=json.dumps(payload),
-                capture_output=True,
-                text=True,
-                env=env,
-                check=True,
-            )
-            return json.loads(result.stdout)
-
-        # A captured base model that is not the band pick and that no registry lane asked for.
-        escape = "gpt-5.4"
-        assert escape != implement_model and escape not in cursor["lane_models"]
-        bypass = gate("Subagent", escape)
-        assert bypass["updated_input"]["model"] == implement_model, bypass
-        assert bypass["updated_input"]["prompt"] == "x", "Cursor updated_input must echo untouched keys"
-        assert gate("Task", escape)["updated_input"]["model"] == implement_model
-        assert gate("Subagent", refute_model) == {}, "registry refute pick must pass through untouched"
-        # Cursor never scans ~/.cursor/agents, so the mechanical lane is dispatched as the generic
-        # type carrying the registry mechanical pick; that pick must pass like any other lane pick.
-        mechanical_model = cursor["agents"]["k-agent-mechanical"]["model"]
-        assert set(cursor["cheap_lane_models"]) == {mechanical_model, cursor["agents"]["k-agent-smol"]["model"]}
-        # Since 2026-09-13 the Cursor cheap lanes and implement share `grok-4.6` at different efforts;
-        # the gate keys on model membership, so it cannot tell them apart and the shared pick passes.
-        assert gate("Subagent", mechanical_model) == {}, "registry mechanical pick must pass through untouched"
-        # Only the generic `implement` type may carry another lane's pick; a bound cheap-band or
-        # research-band profile asking for it is still an escape and gets its own band back.
-        smol_model = cursor["agents"]["k-agent-smol"]["model"]
-        assert cursor["agents"]["k-agent-smol"]["category"] == "memory"
-        smol = subprocess.run(
-            [sys.executable, str(REPO / "home/exact_dot_agents/exact_hooks/executable_band_gate.py")],
-            input=json.dumps(
-                {"tool_name": "Subagent", "tool_input": {"subagent_type": "k-agent-smol", "model": refute_model}}
-            ),
-            capture_output=True,
-            text=True,
-            env=root_gate_env({"AGENT_BAND_HARNESS": "cursor", "AGENT_BANDS_FILE": str(projection)}),
-            check=True,
-        )
-        assert json.loads(smol.stdout)["updated_input"]["model"] == smol_model, smol.stdout
-        assert gate("Shell", escape) == {}, "non-delegation tools stay no-ops"
-
-        # A BYOK route pins every band to one wire model; the counter pass-through must not
-        # let a registry id escape that route.
-        byok = subprocess.run(
-            [sys.executable, str(REPO / "home/exact_dot_agents/exact_hooks/executable_band_gate.py")],
-            input=json.dumps(
-                {"tool_name": "Subagent", "tool_input": {"subagent_type": "generalPurpose", "model": refute_model}}
-            ),
-            capture_output=True,
-            text=True,
-            env=root_gate_env(
-                {
-                    "AGENT_BAND_HARNESS": "cursor",
-                    "AGENT_BANDS_FILE": str(projection),
-                    "AGENT_BAND_MODEL_OVERRIDE": "byok/one-model",
-                }
-            ),
-            check=True,
-        )
-        assert json.loads(byok.stdout)["updated_input"]["model"] == "byok/one-model"
 
         # Claude's Agent tool takes family aliases only; a full registry id must still reach the
         # alias clamp instead of passing through as a "counter model".
@@ -722,8 +609,7 @@ class TestModelBandInvariants(unittest.TestCase):
         self.assertEqual([], uncovered)
 
     def test_the_band_gate_passes_any_explicit_lane_pick_on_a_generic_subagent_type(self) -> None:
-        # Most harnesses cannot reach the per-lane profiles at all (Cursor never scans
-        # ~/.cursor/agents), so a research or review launch arrives as the generic `implement`
+        # A lane whose profile is unreachable on a harness arrives as the generic `implement`
         # type carrying the lane's registry pick as an explicit `model`. A pass-through list
         # covering only the counter and cheap lanes silently collapses those launches onto the
         # implement band -- a T1 research spawn ends up on the T2 implement model. The rule is
@@ -760,34 +646,7 @@ class TestModelBandInvariants(unittest.TestCase):
                     return updated["model"]
             raise AssertionError(f"unrecognised gate output shape: {result.stdout}")
 
-        cursor = projection["harnesses"]["cursor"]
-        implement_model = cursor["agents"]["generalPurpose"]["model"]
-        research_model = cursor["agents"]["cursor-guide"]["model"]
-        assert cursor["agents"]["cursor-guide"]["category"] == "research"
-        assert research_model != implement_model, "probe needs the research and implement bands to differ"
-        assert {research_model, implement_model} <= set(cursor["lane_models"])
-
-        def cursor_launch(agent: str, model: str) -> str | None:
-            return gate_model(
-                {"tool_name": "Subagent", "tool_input": {"subagent_type": agent, "model": model, "prompt": "x"}},
-                "cursor",
-            )
-
-        # 1. The generic type carrying the research lane's pick: the launch a research spawn makes.
-        assert cursor_launch("generalPurpose", research_model) is None, (
-            "a research lane dispatched as generalPurpose must keep its registry pick"
-        )
-        # 2. The generic type carrying its own band pick: pass-through or an unchanged rewrite.
-        own = cursor_launch("generalPurpose", implement_model)
-        assert own in (None, implement_model), own
-        # 3. A captured base model no lane asked for is still rewritten to the generic type's band.
-        escape = "gpt-5.4"
-        assert escape not in cursor["lane_models"]
-        assert cursor_launch("generalPurpose", escape) == implement_model
-        # 4. A bound agent reaching for another lane's pick is clamped to its own band.
-        assert cursor_launch("cursor-guide", implement_model) == research_model
-
-        # 5. Codex exposes the generic implement type as `worker` through spawn_agent.
+        # Codex exposes the generic implement type as `worker` through spawn_agent.
         codex = projection["harnesses"]["codex"]
         codex_implement = codex["agents"]["worker"]["model"]
         assert codex["agents"]["worker"]["category"] == "implement"
@@ -939,7 +798,7 @@ class TestModelBandInvariants(unittest.TestCase):
 
         def wrong_version_spelling(model: str) -> bool:
             # Claude Code hyphenates point versions. Its own 404 troubleshooting text names
-            # `claude-sonnet-4.6` as the typo for `claude-sonnet-4-6`. Other harnesses (Cursor)
+            # `claude-sonnet-4.6` as the typo for `claude-sonnet-4-6`. Other providers
             # do use the dotted form, so this spelling is only wrong on this harness.
             return bool(re.search(r"claude-\w+-\d+\.\d+", model))
 
@@ -977,7 +836,6 @@ class TestModelBandInvariants(unittest.TestCase):
         short_rows = {
             "claude_code": {"memory"},
             "codex": set(category_models["codex"]),
-            "cursor": {"memory"},
             "antigravity": set(),
             # Pi defaults to the openai-codex provider, which only exposes short windows (user call 2026-09-30).
             "pi": set(category_models["pi"]),
@@ -1281,7 +1139,6 @@ class TestModelBandInvariants(unittest.TestCase):
         for relative in (
             "home/exact_bin/executable_,claude-openrouter",
             "home/exact_bin/executable_,codex-openrouter",
-            "home/exact_bin/executable_,cursor-openrouter",
         ):
             source = (REPO / relative).read_text()
             # Default route is GLM 5.3 Flash high; model/effort flags still compose other preset slugs.
@@ -1368,9 +1225,6 @@ class TestModelBandInvariants(unittest.TestCase):
         for agent in ("Explore", "explore", "explorer", "codebase_investigator", "k-agent-code-searcher"):
             assert bindings[agent] == "research", f"{agent} must stay research, got {bindings[agent]!r}"
 
-        for category, row in category_models["cursor"].items():
-            assert "-fast" not in row["model"], f"category_models.cursor.{category} uses the `-fast` price tier"
-
         # OMP resolves the cheap lane through the profile-independent role table.
         assert category_models["omp"]["mechanical"]["model"] == "@smol"
         assert self._omp_model_roles()["smol"].endswith(":high")
@@ -1388,21 +1242,6 @@ class TestModelBandInvariants(unittest.TestCase):
             cwd=str(REPO),
         )
         assert result.returncode == 0, result.stderr
-
-    def test_cursor_categories_stay_inside_the_captured_task_enum(self):
-        import ai_models
-
-        registry = REPO / "home/.chezmoidata/ai_models"
-        base_models = {row["name"] for row in ai_models.load_cursor_task_base_models(registry)}
-        category_models = ai_models.load_category_models(registry)["cursor"]
-        for category, row in category_models.items():
-            model = row["model"]
-            assert model in base_models, (
-                f"category_models.cursor.{category} is {model!r}, not a captured Cursor Task base name"
-            )
-            assert "-fast" not in model, f"category_models.cursor.{category} uses the `-fast` price tier"
-            if model != "default":
-                assert row["effort"], f"category_models.cursor.{category}.effort must record saved-config intent"
 
     def test_claude_settings_keep_thinking_disabled(self):
         # Every category_models.claude_code row is Sonnet 5.5 or Opus 5.5, and both reject disabled

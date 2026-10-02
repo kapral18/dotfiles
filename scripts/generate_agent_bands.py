@@ -38,12 +38,10 @@ EFFORTLESS_HARNESSES = frozenset({"antigravity"})
 
 # Where each harness keeps the profiles a delegation can reach by name: directory plus the
 # filename affixes that wrap the binding name. Antigravity has no entry on purpose: its lanes
-# are dynamic define_subagent/invoke_subagent calls, never files. Cursor templates exist on
-# disk but the CLI never scans ~/.cursor/agents, so cursor counts as profile-less too.
+# are dynamic define_subagent/invoke_subagent calls, never files.
 PROFILE_DIRS = {
     "claude_code": ("home/dot_claude/exact_agents", "", ".md.tmpl"),
     "codex": ("home/dot_codex/exact_agents", "readonly_", ".toml.tmpl"),
-    "cursor": None,
     "omp": ("home/dot_omp/private_agent/exact_agents", "", ".md.tmpl"),
     "pi": ("home/dot_pi/agent/exact_agents", "", ".md.tmpl"),
     "antigravity": None,
@@ -159,7 +157,7 @@ def build() -> dict:
             entry = {
                 "model": pick["model"],
                 # The gate's lane-pick pass-through applies only to `implement`-bound generic
-                # types (Cursor `generalPurpose`, Codex `worker`, OMP `task`, ...), never to a
+                # types (Codex `worker`, OMP `task`, ...), never to a
                 # bound profile asking for another lane's pick.
                 "category": bindings[agent],
             }
@@ -173,7 +171,7 @@ def build() -> dict:
         # Counter models: the refute picks. Cheap-lane models: mechanical and memory. Both lists stay in the projection
         # because docs and invariants read them by name. The gate matches complete `agents` rows,
         # not these model-only inventories. A lane whose profile is unreachable on a
-        # harness (Cursor never scans ~/.cursor/agents) is dispatched as the generic `implement` type
+        # harness (Antigravity has no profile files) is dispatched as the generic `implement` type
         # carrying its registry pick, and that holds for the research and review lanes too, not just
         # the counter and cheap ones — so the gate needs the whole set of lane rows to tell an
         # explicit registry choice from a model nobody in the matrix asked for.
