@@ -9,6 +9,20 @@ Subagent dispatch: criteria — loaded by whoever holds the packet; never dispat
 
 Use this for test and verification code. The SOP owns the single final Verify stage; writing tests does not expand implementation scope.
 
+## References
+
+- Before choosing which cases to write or judging a suite's coverage, load `~/.agents/skills/k-code-quality-tests/references/case-selection.md`.
+- Before writing or reviewing a test body (structure, setup, expectations, test data), load `~/.agents/skills/k-code-quality-tests/references/test-anatomy.md`.
+- Before adding or reviewing mocks, stubs, fakes, interaction verification, or tests of non-public code, load `~/.agents/skills/k-code-quality-tests/references/test-doubles.md`.
+
+## Before Writing
+
+- Search for an existing test file for the unit and read it in full; add cases there instead of creating a parallel file.
+- Without one, read two or three neighboring test files.
+- Reuse the project's assertion library, test-data factories, base fixtures, and setup style.
+- Add only behaviors the existing tests do not cover.
+- Read the types the unit takes, returns, and constructs, so test data uses the real constructors or factories, required fields, and allowed values.
+
 ## Test Shape
 
 - Write BDD-style tests when adding tests: `describe('WHEN ...')`, `it('SHOULD ...')`.

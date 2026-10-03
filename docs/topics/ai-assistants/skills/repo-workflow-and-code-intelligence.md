@@ -26,10 +26,11 @@ These skills operate on local repositories, code search, cleanup, external sourc
 
 ## `k-code-quality-tests`
 
-| Field    | Value                                                                                                      |
-| -------- | ---------------------------------------------------------------------------------------------------------- |
-| Use when | adding, editing, reviewing, or debugging tests, fixtures, mocks, snapshots, assertions, or coverage        |
-| Source   | [`exact_k-code-quality-tests`](../../../../home/exact_dot_agents/exact_skills/exact_k-code-quality-tests/) |
+| Field      | Value                                                                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Use when   | adding, editing, reviewing, or debugging tests, fixtures, mocks, snapshots, assertions, or coverage                                   |
+| Source     | [`exact_k-code-quality-tests`](../../../../home/exact_dot_agents/exact_skills/exact_k-code-quality-tests/)                            |
+| References | `case-selection` (which cases), `test-anatomy` (test body, setup, data), `test-doubles` (public surface, doubles, interaction checks) |
 
 ## `k-code-quality-web`
 

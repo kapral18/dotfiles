@@ -830,6 +830,26 @@ class TestSopPolicyInvariants(unittest.TestCase):
             "Use when adding, editing, reviewing, or debugging tests or test plans",
             "Write BDD-style tests when adding tests: `describe('WHEN ...')`, `it('SHOULD ...')`",
             "Write regression cases for the reported bug and preserved behavior",
+            "load `~/.agents/skills/k-code-quality-tests/references/case-selection.md`",
+            "load `~/.agents/skills/k-code-quality-tests/references/test-anatomy.md`",
+            "load `~/.agents/skills/k-code-quality-tests/references/test-doubles.md`",
+        )
+        tests_refs = "home/exact_dot_agents/exact_skills/exact_k-code-quality-tests/exact_references/"
+        self.assert_file_contains(
+            tests_refs + "readonly_case-selection.md",
+            "Each independent failure condition, even when several share one status code or error type.",
+            "A negative case must fail for exactly one reason.",
+        )
+        self.assert_file_contains(
+            tests_refs + "readonly_test-anatomy.md",
+            "Every value the assertion depends on is visible inside the test body.",
+            "Expected values are literals",
+        )
+        self.assert_file_contains(
+            tests_refs + "readonly_test-doubles.md",
+            "NEVER mock the unit under test.",
+            "Do not mock types you do not own.",
+            "Do not verify calls to query-only methods",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-code-quality-web/readonly_SKILL.md",
