@@ -111,6 +111,14 @@ class TestGenerateSessionModels(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no provider/model split"):
             generate_session_models.apply_pi(current, self.DRIFT | {"model": "no-slash"})
 
+    def test_apply_pi_keeps_codemode_in_default_tools_for_both_profiles(self):
+        row = {"model": "openrouter/meta/drift-9", "effort": "low", "context": "short"}
+        for name in ("readonly_settings.work.json", "readonly_settings.personal.json"):
+            current = (REPO / "home/dot_pi/agent" / name).read_text(encoding="utf-8")
+            self.assertEqual(["+codemode"], json.loads(current)["defaultTools"], name)
+            after = json.loads(generate_session_models.apply_pi(current, row))
+            self.assertEqual(["+codemode"], after["defaultTools"], name)
+
     def test_apply_omp_rewrites_only_model_roles_default_with_effort_suffix(self):
         current = (REPO / "home/dot_omp/private_agent/readonly_config.yml.tmpl").read_text(encoding="utf-8")
         after = generate_session_models.apply_omp(current, self.DRIFT)

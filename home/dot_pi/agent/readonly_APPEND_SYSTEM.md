@@ -11,6 +11,8 @@
 - Do not refer to tool names when speaking to the user; describe the action in plain language.
 - Prefer dedicated file tools for file operations over shell equivalents: use the read/edit/write tools rather than `cat`/`head`/`tail` to read, `sed`/`awk` to edit, or `echo`/heredoc redirection to create files. Reserve shell for actual system commands.
 - When several tool calls are independent (no call needs another's output), issue them in one batch instead of serially. Serialize only on a real data dependency.
+- When the `codemode` tool is available, use it for three or more independent read-only calls (reads, searches, MCP queries) and for filtering a large result before it reaches you: one script, calls in parallel, return only what is needed.
+- Do not use `codemode` for edits, writes, or other state-changing calls; a failed script does not undo the calls it already made.
 
 ## Making code changes
 

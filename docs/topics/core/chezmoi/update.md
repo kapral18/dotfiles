@@ -25,7 +25,7 @@ Categories: `dotfiles`, `brew`, `gh`, `mise`, `cargo`, `pnpm`, `gems`, `go`, `uv
 
 Each step's output is relayed through a prefixed indent. The relay flushes partial lines, so an interactive prompt that ends without a newline (for example chezmoi's `... has changed since chezmoi last wrote it [overwrite,all-overwrite,skip,quit]`) appears within about 0.2s and can be answered in place; the child keeps the terminal as stdin. Earlier the output went through `sed`, which held such prompts until a newline arrived, so the run looked stalled until Ctrl-C.
 
-When multiple package categories run in parallel, `,update` launches [mprocs](https://github.com/pvolok/mprocs) to give each step its own scrollable terminal pane. Press `q` to exit after reviewing the logs. If `mprocs` is not installed, steps run sequentially instead. Manual packages run after the parallel package phase so non-Homebrew apps and release assets converge after Homebrew cleanup.
+When multiple package categories run in parallel, `,update` opens the [dekit](https://github.com/pvolok/dekit) TUI with one job per category. Homebrew's `mprocs` formula installs the `dekit` executable. Each run uses its own temporary runner and a private copy of `dekit`, so Homebrew can upgrade dekit mid-run. Press `q` or `Q` after reviewing the logs: unfinished jobs are stopped and count as failed, finished ones keep their exit status. Without `dekit`, with a single category, or on a dry run, steps run sequentially without the TUI. Manual packages run after the parallel phase has shut down; a runner error skips them and an interruption ends the update.
 
 ## Manual Steps (if you prefer granular control)
 

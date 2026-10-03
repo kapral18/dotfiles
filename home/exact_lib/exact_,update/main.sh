@@ -195,7 +195,7 @@ run_timed() {
   return "$rc"
 }
 
-# ── Parallel execution via mprocs ─────────────────────────────────────────────
+# ── Parallel execution via native dekit ───────────────────────────────────────
 
 _tmpdir=""
 
@@ -226,7 +226,7 @@ run_parallel() {
 
   [ ${#active_funcs[@]} -eq 0 ] && return 0
 
-  if [ ${#active_funcs[@]} -eq 1 ] || ! has_cmd mprocs || [ "$dry_run" -eq 1 ]; then
+  if [ ${#active_funcs[@]} -eq 1 ] || ! has_cmd dekit || [ "$dry_run" -eq 1 ]; then
     for fn in "${active_funcs[@]}"; do
       "$fn"
     done
@@ -237,60 +237,46 @@ run_parallel() {
   local self
   self=$(realpath "$0")
 
-  local -a fwd_args=()
-  [ "$verbose" -eq 1 ] && fwd_args+=(--verbose)
+  local helper="${self%/*}/native_runner.py"
+  # Source-tree execution uses chezmoi's readonly_ filename.
+  [ -f "$helper" ] || helper="${self%/*}/readonly_native_runner.py"
+  local results="$_tmpdir/results"
+  local helper_pid rc=0 updated failed
+  local -a runner_args=(--script "$self" --results "$results")
+  [ "$verbose" -eq 1 ] && runner_args+=(--verbose)
 
-  # Write a wrapper script per process to avoid YAML escaping issues
-  for i in "${!active_funcs[@]}"; do
-    local cat="${active_labels[$i]}"
-    local wrapper="$_tmpdir/${cat}.sh"
-    local rcfile="$_tmpdir/${cat}.rc"
-    local cmd="bash $self"
-    [ ${#fwd_args[@]} -gt 0 ] && cmd="$cmd ${fwd_args[*]}"
-    cmd="$cmd --only $cat"
-    cat > "$wrapper" << WRAPPER
-#!/usr/bin/env bash
-$cmd
-echo \$? > "$rcfile"
-WRAPPER
-    chmod +x "$wrapper"
-  done
+  step_info "running ${#active_funcs[@]} steps in parallel (dekit TUI — q or Q closes updates)"
+  python3 "$helper" "${runner_args[@]}" "${active_labels[@]}" <&0 &
+  helper_pid=$!
+  trap '_parallel_signal INT 130' INT
+  trap '_parallel_signal TERM 143' TERM
+  wait "$helper_pid" || rc=$?
+  trap - INT TERM
 
-  # Build mprocs YAML config
-  local config="$_tmpdir/mprocs.yaml"
-  {
-    printf 'procs:\n'
-    for i in "${!active_funcs[@]}"; do
-      local cat="${active_labels[$i]}"
-      printf '  %s:\n' "$cat"
-      printf "    shell: 'bash %s'\n" "$_tmpdir/${cat}.sh"
-    done
-  } > "$config"
-
-  step_info "running ${#active_funcs[@]} steps in parallel (mprocs TUI — press q when done)"
-
-  mprocs -c "$config" --on-all-finished '{"c":"focus-procs"}' || true
-
-  # Collect results from .rc files
-  for i in "${!active_labels[@]}"; do
-    local cat="${active_labels[$i]}"
-    local rcfile="$_tmpdir/${cat}.rc"
-    if [ -f "$rcfile" ]; then
-      local rc
-      rc=$(< "$rcfile")
-      rc="${rc%%[^0-9]*}"
-      if [ "${rc:-1}" -eq 0 ]; then
-        total_updated=$((total_updated + 1))
-      else
-        total_failed=$((total_failed + 1))
-      fi
-    else
-      total_failed=$((total_failed + 1))
-    fi
-  done
+  if [ -f "$results" ] && read -r updated failed < "$results" \
+    && [[ "$updated" =~ ^[0-9]+$ ]] && [[ "$failed" =~ ^[0-9]+$ ]]; then
+    total_updated=$((total_updated + updated))
+    total_failed=$((total_failed + failed))
+  else
+    total_failed=$((total_failed + ${#active_labels[@]}))
+    [ "$rc" -ne 0 ] || rc=1
+  fi
+  if [ "$rc" -ge 128 ]; then
+    exit "$rc"
+  elif [ "$rc" -ne 0 ]; then
+    step_fail "native dekit lifecycle failed" "exit $rc; manual updates skipped"
+  fi
 
   rm -rf "$_tmpdir"
   _tmpdir=""
+  return "$rc"
+}
+
+_parallel_signal() {
+  trap '' INT TERM
+  kill -s "$1" "$helper_pid" 2> /dev/null || true
+  wait "$helper_pid" || true
+  exit "$2"
 }
 
 # ── Update steps ─────────────────────────────────────────────────────────────
@@ -488,12 +474,15 @@ overall_start=$(date +%s)
 update_dotfiles
 
 # Phase 2: package managers in parallel
+parallel_rc=0
 run_parallel update_brew update_gh update_mise update_uv \
-  update_cargo update_pnpm update_gems update_go || true
+  update_cargo update_pnpm update_gems update_go || parallel_rc=$?
 
 # Phase 3: manual packages run after Homebrew cleanup so non-Homebrew apps and
 # release assets converge after managed cask cleanup.
-update_manual
+if [ "$parallel_rc" -eq 0 ]; then
+  update_manual
+fi
 
 overall_end=$(date +%s)
 overall_elapsed=$((overall_end - overall_start))

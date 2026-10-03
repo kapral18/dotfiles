@@ -1,6 +1,6 @@
 %% ============================================================================
 %% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (74 thin commands)
-%% plus deployed internals in home/exact_lib/ (138 command/shared library files).
+%% plus deployed internals in home/exact_lib/ (139 command/shared library files).
 %% executable_,* → ~/bin/,* (comma-prefixed user commands); home/exact_lib/exact_,name/
 %% → ~/lib/,name/. verify-bin-surface keeps each command covered by fish
 %% completions, docs, catalog, and non-orphaned command libraries.
@@ -32,7 +32,7 @@ flowchart TB
     end
 
     subgraph PKGC["Package / brew / update"]
-        P[",update (orchestrator) · ,fuzzy-brew-search · ,search-brew-desc<br/>,install-pnpm-pkgs (Python; pnpm errors + link refresh after partial sync) · ,apply-app-icons.tmpl · ,parallel / ,sem (wrappers)"]:::sys
+        P[",update (orchestrator → native_runner.py: parallel dekit job TUI; sequential without dekit, for one category, or on dry run) · ,fuzzy-brew-search · ,search-brew-desc<br/>,install-pnpm-pkgs (Python; pnpm errors + link refresh after partial sync) · ,apply-app-icons.tmpl · ,parallel / ,sem (wrappers)"]:::sys
     end
 
     subgraph KBNC["Kibana dev"]

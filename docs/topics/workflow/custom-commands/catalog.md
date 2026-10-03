@@ -135,7 +135,7 @@ printf '%s' "$prompt" | ,q
 | `,image-codex`      | Codex subscription GPT Image 2 generate/edit; automatic settings; strips inputs         |
 | `,image-openai`     | Native GPT Image 2 generate/edit/mask with quality, size, and format controls           |
 | `,set-default-mic`  | Select the preferred external microphone, falling back to the MacBook microphone        |
-| `,update`           | Reconcile dotfiles and package-manager update categories                                |
+| `,update`           | Reconcile dotfiles and package-manager updates with a native dekit TUI                  |
 | `,parallel`         | Forward to GNU Parallel when both GNU Parallel and semantic-git are installed           |
 | `,sem`              | Forward to Ataraxy semantic-git's entity-level CLI (telemetry, update check, cloud off) |
 | `,format-md`        | Wrap AI prose around complete inline code; leave ordinary Markdown unchanged            |
