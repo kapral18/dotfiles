@@ -1,7 +1,4 @@
-# `,ai-kb` CLI contract (runner-facing)
-
-This is the interface for whoever actually runs the CLI: the `k-agent-smol` operator by default, the parent session only inside the k-ai-kb inline fallback that applies when delegation is forbidden or unavailable.
-Running these commands in a parent session outside that fallback breaks the isolation boundary the operator exists to hold.
+# `,ai-kb` CLI contract
 
 ## Read: search and get
 
@@ -70,8 +67,7 @@ Field selection (each affects retrieval — choose, do not default):
   `--title`/`--body` replace the stored text; every metadata flag you omit keeps the capsule's stored value. Non-existent ids error.
 - `--refs <id-or-ref>` (repeatable) for related capsules or anchors.
 
-Body structure for retrieval: the body is embedded (title+body) and BM25-indexed;
-per-turn recall stages candidates gated on cosine similarity to the user's prompt, and the `k-agent-smol` judge admits only what the session state needs.
+Body structure for retrieval: the body is embedded (title+body) and BM25-indexed.
 The body must contain the literal terms a future query would use — exact symbol names, file paths, error strings, flag names, version numbers — not a paraphrase.
 Front-load them; a body that describes the insight in generic prose will not match a specific future query.
 
@@ -82,7 +78,7 @@ On refusal, prefer `--supersedes <that-id>`; use `--force` only when the collisi
 A clamped `--confidence`, a defaulted `--source`, or a missing `--domain` prints a degraded-metadata warning —
 fix the metadata rather than ignoring it.
 
-Do not pollute the KB: skip transient, session-only, or unverified notes (those belong in `,agent-memory`).
+Do not pollute the KB: skip transient, session-only, or unverified notes (task progress belongs in `,handoff`).
 
 ## External truth
 

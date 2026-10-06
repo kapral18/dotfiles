@@ -104,23 +104,8 @@ fi
 export OPENROUTER_API_KEY="$api_key"
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
 readonly OPENROUTER_CLAUDE_MODEL="$OPENROUTER_WIRE_MODEL"
-mapfile -t OPENROUTER_LANE_WIRE_MODELS < <("$OPENROUTER_PRESET_HELPER" --lane-wire-models)
-if [[ "${#OPENROUTER_LANE_WIRE_MODELS[@]}" -eq 0 ]]; then
-  echo "Error: category_models.openrouter declares no lane models." >&2
-  exit 1
-fi
-readonly -a OPENROUTER_LANE_WIRE_MODELS
 "$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"
-prepared_efforts=" $OPENROUTER_EFFORT "
-for wire_model in "${OPENROUTER_LANE_WIRE_MODELS[@]}"; do
-  wire_effort="${wire_model##*@preset/effort-}"
-  if [[ "$prepared_efforts" != *" $wire_effort "* ]]; then
-    "$OPENROUTER_PRESET_HELPER" "$wire_effort"
-    prepared_efforts+="$wire_effort "
-  fi
-done
-session_budget="$("$OPENROUTER_PRESET_HELPER" --session-budget-env "$OPENROUTER_CONTEXT" \
-  "$OPENROUTER_MODEL" "${OPENROUTER_LANE_WIRE_MODELS[@]}")"
+session_budget="$("$OPENROUTER_PRESET_HELPER" --session-budget-env "$OPENROUTER_CONTEXT" "$OPENROUTER_MODEL")"
 while IFS='=' read -r budget_name budget_value; do
   case "$budget_name" in
   CONTEXT_LIMIT) OPENROUTER_CONTEXT_LIMIT="$budget_value" ;;
@@ -136,8 +121,7 @@ readonly OPENROUTER_CONTEXT_LIMIT OPENROUTER_MAX_OUTPUT_TOKENS OPENROUTER_PROMPT
 
 # Claude Code appends /v1/messages, so the base URL stops at /api. OpenRouter answers
 # that path with the Anthropic Messages schema, usage block included.
-# Managed --agents definitions carry exact `category_models.openrouter` model/effort selectors.
-# The gate removes call-level model overrides.
+# Every model alias maps to the selected model, so subagents run on it too.
 # The OpenRouter preset carries the real effort; the Claude client effort
 # mirrors it when supported, with low as the client gate for non-thinking presets.
 case "$OPENROUTER_EFFORT" in
@@ -156,12 +140,12 @@ readonly CLAUDE_EFFORT
 export ANTHROPIC_MODEL="$OPENROUTER_CLAUDE_MODEL"
 export ANTHROPIC_DEFAULT_FABLE_MODEL="$OPENROUTER_WIRE_MODEL"
 export ANTHROPIC_DEFAULT_OPUS_MODEL="$OPENROUTER_WIRE_MODEL"
-export ANTHROPIC_DEFAULT_SONNET_MODEL="${OPENROUTER_LANE_WIRE_MODELS[0]}"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="$OPENROUTER_WIRE_MODEL"
 export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OPENROUTER_WIRE_MODEL"
 unset CLAUDE_CODE_SUBAGENT_MODEL
 export CLAUDE_CODE_DISABLE_THINKING=1
 export CLAUDE_CODE_EFFORT_LEVEL="$CLAUDE_EFFORT"
-# Claude has one process-wide compaction threshold for the root and managed profile lanes.
+# Claude has one process-wide compaction threshold for the root and its subagents.
 # Its own consumer clamps AUTO_COMPACT to a small model's MAX_CONTEXT, so preserve
 # a sub-100k provider budget instead of inflating it to Claude's 100k default.
 unset CLAUDE_CODE_MAX_CONTEXT_TOKENS CLAUDE_CODE_AUTO_COMPACT_WINDOW
@@ -173,13 +157,9 @@ if ((CLAUDE_AUTO_COMPACT > 1000000)); then
 fi
 readonly CLAUDE_AUTO_COMPACT
 export CLAUDE_CODE_AUTO_COMPACT_WINDOW="$CLAUDE_AUTO_COMPACT"
-unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE
-unset AGENT_BAND_SUBSCRIPTION AGENT_BAND_CLAUDE_ROUTES AGENT_BAND_CODEX_ROUTES
-export AGENT_BAND_SCHEMA_HARNESS="openrouter"
-export AGENT_BAND_MODEL_FORMAT="openrouter-preset"
 export ANTHROPIC_BASE_URL="https://openrouter.ai/api"
 export ANTHROPIC_AUTH_TOKEN="$api_key"
 export ANTHROPIC_API_KEY=""
 unset ANTHROPIC_CUSTOM_HEADERS
 
-exec python3 "$HOME/lib/shared/claude_lanes.py" openrouter -- claude --model "$OPENROUTER_CLAUDE_MODEL" --effort "$CLAUDE_EFFORT" "${args[@]}"
+exec claude --model "$OPENROUTER_CLAUDE_MODEL" --effort "$CLAUDE_EFFORT" "${args[@]}"

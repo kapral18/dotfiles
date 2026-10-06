@@ -50,7 +50,6 @@ Current file map:
 - `41-pickers.conf`: URL/session picker bindings + picker-related tmux options
 - `42-gh-dash.conf`: GitHub picker popup (fzf-based, standalone config)
 - `43-repo-bootstrap.conf`: repo bootstrap popup (`owner/repo` → `,gh-tfork`)
-- `45-agent-prompt-wrap.conf`: agent prompt-wrap bindings (`Alt-Enter`, `prefix` + `W`)
 - `90-plugins.conf`: TPM plugin declarations + plugin options
 
 ## Cheat sheet (this config)

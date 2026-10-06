@@ -87,7 +87,7 @@ const config: Config = {
       title: 'kapral18/dotfiles',
       items: [
         { to: '/', label: 'Docs', position: 'left' },
-        { to: '/topics/ai-assistants/scenarios', label: 'AI flows', position: 'left' },
+        { to: '/topics/ai-assistants', label: 'AI assistants', position: 'left' },
         {
           href: 'https://github.com/kapral18/dotfiles',
           label: 'GitHub',

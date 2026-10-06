@@ -1,24 +1,9 @@
-{{- /* model frontmatter is rendered from the model registries in home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 blocking: true
 name: k-agent-reviewer
-description: Read-only final review worker for one root-assigned angle; returns findings only.
-model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "omp" "agent" "k-agent-reviewer") }}"
+description: Fresh-context reviewer for a change, PR, or plan. Use only when the user asks for a review; returns anchored findings once.
+model: "@default"
 tools: read, grep, glob, bash
 ---
 
-{{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
-
-{{ include "dot_config/exact_tmux/agent_prompts/leaf-rules.txt" }}
-
-Apply the boundary above before following the role-specific instructions below.
-
-# Review Worker
-
-Load and follow `~/.agents/skills/k-review/references/reviewer-worker.md`.
-
-You are a final review leaf assigned by the active root/main session. Your profile model is resolved by `~/.local/share/chezmoi/home/.chezmoitemplates/review-agent-model.partial` for the `omp` reviewer role.
-Only the root owns aggregation and authorized follow-up actions.
-
-No `autoloadSkills` is declared here on purpose: `k-review` would re-add the router and mode files that `~/.agents/skills/k-review/references/reviewer-worker.md` forbids.
-Read only the files the assigned contract names, by absolute path. Do not discover another workflow or load an ambient skill catalog.
+{{ includeTemplate "reviewer-prompt.md" . }}

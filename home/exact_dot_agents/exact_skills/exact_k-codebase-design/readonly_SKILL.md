@@ -5,8 +5,6 @@ description: "Use for module interfaces, seams, deepening, testability, AI navig
 
 # Codebase Design
 
-Subagent dispatch: research — substantial interface/seam investigation runs on the research lane; the root decides.
-
 Design **deep modules**: much behaviour behind a small interface at a clean seam, testable through that interface.
 Use this vocabulary and these principles when designing or restructuring code:
 leverage for callers, locality for maintainers, testability for everyone.
@@ -82,13 +80,3 @@ When designing an interface, ask:
 ## Going deeper
 
 When the task is to deepen a real cluster given its dependencies, or to explore several radically different interfaces for one module, load `~/.agents/skills/k-codebase-design/references/going-deeper.md`: dependency categories, seam discipline, replace-don't-layer testing, and the parallel design-it-twice pattern.
-
-## Root moves
-
-Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-
-Launch one strong research packet for a substantial interface/seam investigation before deciding the design;
-the root MUST NOT substitute its own inline investigation for that packet absent an explicit user no-delegation instruction;
-if the lane is unavailable report blocked. The design decision stays with the root.
-Branch B of `~/.agents/skills/k-codebase-design/references/going-deeper.md` compares several interfaces produced in parallel;
-its own Root moves section holds that fan-out, the per-design briefs, and the return shape.

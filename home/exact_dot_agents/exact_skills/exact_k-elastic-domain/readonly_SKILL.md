@@ -5,8 +5,6 @@ description: "Use when target is Elastic org, elastic/kibana, Buildkite, ownersh
 
 # Elastic Domain Overlay
 
-Subagent dispatch: criteria — domain overlay applied by whichever skill/packet it layers onto; never dispatched alone.
-
 This is a domain overlay: it adds Elastic/Kibana policy to a primary generic skill; it does not replace that skill.
 
 Use when:
@@ -43,7 +41,7 @@ Before preparing that text or its domain metadata, read and follow `~/.agents/sk
 
 ## Kibana planning fork checklist
 
-Apply with `k-spec` or any SOP §3.1 intent loop when the verified repo is `elastic/kibana`.
+Apply with `k-spec`, or whenever you plan a change, when the verified repo is `elastic/kibana`.
 Read `~/.agents/skills/k-elastic-domain/references/kibana-planning-forks.md` to seed forks:
 API versioning, Saved Objects/migrations, privileges, dependencies, feature flags, backports, test placement, alerting, instrumentation.
 Evidence-first: answer from issue/diff/codebase before asking; only genuine gaps become fork-closing questions.
@@ -64,11 +62,6 @@ Evidence-first: answer from issue/diff/codebase before asking; only genuine gaps
 
 Before preparing or creating an Elastic commit, read and follow `~/.agents/skills/k-elastic-domain/references/commit-attribution.md` in full for required tool attribution and its exceptions.
 
-## Formal verification adapters
-
-For `elastic/kibana` SOP `3.6` / `,formal replay` work, read and follow
-`~/.agents/skills/k-elastic-domain/references/kibana-formal-adapters.md` in full for the replay-adapter runner choice per surface.
-
 ## Live UI overlay
 
 For `elastic/kibana` live UI verification, load:
@@ -79,8 +72,8 @@ For `elastic/kibana` live UI verification, load:
 ```
 
 The first reference owns Kibana runtime targets, Elasticsearch endpoint mapping, data/setup ladder, Dev Tools Console fallback, and runtime-environment blocker rule.
-The companion owns safety boundary, screenshot handoff, live feedback overlay, and controller validation.
-Generic `/k-deep-review` runtime contracts should select and pass that overlay, not inline Kibana targets themselves.
+The companion owns safety boundary, screenshot handoff, live feedback overlay, and evidence validation.
+Generic live-UI contracts select this overlay; they do not inline Kibana targets themselves.
 
 ## Output
 

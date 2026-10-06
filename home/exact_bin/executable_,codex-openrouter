@@ -105,21 +105,7 @@ if [[ ! -x "$OPENROUTER_PRESET_HELPER" ]]; then
 fi
 export OPENROUTER_API_KEY="$api_key"
 readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"
-mapfile -t OPENROUTER_LANE_WIRE_MODELS < <("$OPENROUTER_PRESET_HELPER" --lane-wire-models)
-if [[ "${#OPENROUTER_LANE_WIRE_MODELS[@]}" -eq 0 ]]; then
-  echo "Error: category_models.openrouter declares no lane models." >&2
-  exit 1
-fi
-readonly -a OPENROUTER_LANE_WIRE_MODELS
 "$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"
-prepared_efforts=" $OPENROUTER_EFFORT "
-for wire_model in "${OPENROUTER_LANE_WIRE_MODELS[@]}"; do
-  wire_effort="${wire_model##*@preset/effort-}"
-  if [[ "$prepared_efforts" != *" $wire_effort "* ]]; then
-    "$OPENROUTER_PRESET_HELPER" "$wire_effort"
-    prepared_efforts+="$wire_effort "
-  fi
-done
 
 codex_catalog="$(mktemp -t ,codex-openrouter-model-catalog.XXXXXX)"
 codex_catalog_cleanup() {
@@ -127,7 +113,7 @@ codex_catalog_cleanup() {
 }
 trap codex_catalog_cleanup EXIT
 "$OPENROUTER_PRESET_HELPER" --codex-model-catalog "$OPENROUTER_CONTEXT" \
-  "$OPENROUTER_WIRE_MODEL" "${OPENROUTER_LANE_WIRE_MODELS[@]}" >"$codex_catalog"
+  "$OPENROUTER_WIRE_MODEL" >"$codex_catalog"
 
 # OpenRouter answers /api/v1/responses, and Codex 0.146.0 attaches its full built-in tool set
 # behind a provider-prefixed slug there, so no wire rewriting is needed on this route.
@@ -146,15 +132,4 @@ args=(
   --model "$OPENROUTER_WIRE_MODEL"
 )
 
-# spawn_agent emits in Codex's tool shape, but model choices come from the
-# `category_models.openrouter` matrix. The gate strips the `openrouter/` prefix and turns `:<level>` into
-# `@preset/effort-<level>`, which is the wire format this route serves.
-unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE
-unset AGENT_BAND_SUBSCRIPTION AGENT_BAND_CLAUDE_ROUTES AGENT_BAND_CODEX_ROUTES
-export AGENT_BAND_SCHEMA_HARNESS="openrouter"
-export AGENT_BAND_MODEL_FORMAT="openrouter-preset"
-
-# Native role settings apply after spawn arguments. Project model-free managed
-# leaves for this process so the exact OpenRouter lane survives that merge.
-python3 "$HOME/lib/shared/codex_lanes.py" "$codex_catalog" -- "$codex_bin" "${args[@]}" "${cli_args[@]}"
-exit $?
+"$codex_bin" "${args[@]}" "${cli_args[@]}"

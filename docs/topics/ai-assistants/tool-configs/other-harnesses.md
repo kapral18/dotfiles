@@ -5,205 +5,85 @@ title: Other harnesses
 
 # Other harnesses
 
-This page covers assistant-adjacent tools that do not have their own page in this section: Codex, OpenCode, Oh My Pi, Crush, tuicr, and lgtm. It stays at the configuration and rendering layer; [Cross-harness subagents](../subagents.md) owns runtime discovery, review fan-out hierarchy, source paths, and design notes.
-
-Use it to answer three questions: which repo source owns the deployed config, which wrapper runs before the native binary, and which runtime-owned fields are allowed to survive a merge.
-
-## Mental model
-
-| Area                    | Current rule                                                                                        |
-| ----------------------- | --------------------------------------------------------------------------------------------------- |
-| Codex and OpenCode      | profile merging plus MCP injection                                                                  |
-| Codex launcher          | interactive shells route `codex` through managed `~/bin/,codex`                                     |
-| Local provider adapters | per-wrapper loopback processes translate harness protocols while keeping upstream credentials local |
-| tuicr                   | single-sourced readonly review TUI config; labels are categories, not severity                      |
-| lgtm                    | single-sourced readonly live diff reviewer config; comments/snapshots stay repo-local               |
-| Crush                   | static `crushrc` injects the home SOP and pins the large OpenRouter model                           |
-| secrets                 | runtime API keys come from `pass`, not committed tool config files                                  |
+Codex, OpenCode, Oh My Pi, Crush, tuicr, and lgtm. Each keeps its install, a basic config, MCP servers, and the shared `~/AGENTS.md`; none has custom hooks, adapters, or model lanes.
 
 ## Codex and OpenCode
 
-### Config sources
+| Tool     | Config source                                                                                               | Merge                                                                                              |
+| -------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Codex    | [`home/dot_codex/private_config.{work,personal}.toml`](../../../../home/dot_codex/)                         | `run_onchange_after_07-merge-codex-config.sh.tmpl` injects MCP servers into `~/.codex/config.toml` |
+| OpenCode | [`home/dot_config/opencode/readonly_opencode.{work,personal}.jsonc`](../../../../home/dot_config/opencode/) | `run_onchange_after_07-merge-opencode-config.sh.tmpl`                                              |
 
-| Tool     | Config source                                                        |
-| -------- | -------------------------------------------------------------------- |
-| Codex    | [`home/dot_codex/`](../../../../home/dot_codex/)                     |
-| OpenCode | [`home/dot_config/opencode/`](../../../../home/dot_config/opencode/) |
+Interactive shells route `codex` through `~/bin/,codex`, which injects the local llama.cpp model catalog when needed and then runs the real binary.
 
-Codex and OpenCode use profile merging with MCP injection.
+### Codex settings
 
-The interactive `codex` command routes through the managed `~/bin/,codex` shim in interactive shells. The shim injects the local llama.cpp model catalog when needed and then falls through to the real Codex binary.
+Both profiles: `model = "gpt-6.1-sol"`, `model_reasoning_effort = "high"`, `tui.auto_recap = false`, `features.memories = false` (`,ai-kb` is the only durable store).
 
-### Codex profiles and approvals
+| Profile  | Policy                                                                                                     |
+| -------- | ---------------------------------------------------------------------------------------------------------- |
+| work     | `approval_policy = "on-request"`, `approvals_reviewer = "auto_review"`, `sandbox_mode = "workspace-write"` |
+| personal | `approval_policy = "never"`, `sandbox_mode = "danger-full-access"`                                         |
 
-Codex policy settings are profile-specific.
-
-Both profiles set `tui.auto_recap = false` to disable automatic conversation recaps. Manual `/recap` remains available: the [official schema](https://learn.chatgpt.com/docs/config-schema.json) states, “Disabling this leaves `/recap` available on demand.”
-
-Both profiles show the model with reasoning effort, current directory, and remaining context in `tui.status_line`. The removed `features.js_repl` option is no longer configured.
-
-| Profile              | Policy                                                                                                                                                                                  |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| work interactive     | managed-device requirements with `approval_policy = "on-request"`, `approvals_reviewer = "auto_review"`, and `sandbox_mode = "workspace-write"`; approval requests use automatic review |
-| personal interactive | `approval_policy = "never"` with `sandbox_mode = "danger-full-access"`                                                                                                                  |
-| child role profiles  | inherit parent permissions; disable `features.multi_agent`                                                                                                                              |
-
-The work profile declares the following `sandbox_workspace_write.writable_roots` for AI runtime storage and chezmoi deployment. The exceptions also apply to sandboxed subprocesses when Codex works in another repository.
-
-| Purpose                                                        | Writable directories                                                                      |
-| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Source and durable memory                                      | `~/.local/share/chezmoi`, `~/.local/share/ai-kb`                                          |
-| Topic backups, proof receipts, and formal-verification catalog | `~/.local/state/agent-specs`, `~/.local/state/agent-proof`, `~/.local/state/agent-formal` |
-| Generated-config ledger                                        | `~/.local/state/chezmoi`                                                                  |
-| Embedding runtime and artifacts                                | `~/.cache/ai-embed-runtime`, `~/.cache/agent-artifacts`                                   |
-| Local model-server lifecycle                                   | `~/.local/state/llama-cpp/lifecycle`                                                      |
-| Deployed commands and libraries                                | `~/bin`, `~/lib`                                                                          |
-| Shared agents and harness configuration                        | `~/.agents`, `~/.codex`, `~/.claude`                                                      |
-
-Workspace sandboxing and approval settings remain in effect. These exceptions grant directory write access; they do not cover every target of a full `chezmoi apply`. Other deployment paths still require approval. New sessions load the updated roots.
-
-Repeated exact-command approvals can be captured by Codex execpolicy `*.rules` files under `~/.codex/rules/`. Those rules should stay narrow because explicit allow rules also bypass sandboxing for the matched command prefix.
-
-Repeated MCP tool approvals live as `mcp_servers.<server>.tools.<tool>.approval_mode = "approve"` in `~/.codex/config.toml`. The Codex merge hook preserves those runtime-written approval overrides when it regenerates the managed MCP blocks.
-
-Both interactive profiles default to `gpt-6.1-sol` with `model_reasoning_effort = "high"`, generated from `session_models.codex` by `scripts/generate_session_models.py`. Native `default` binds to the `research` category. Research and review use `gpt-6.1-sol`/high, and refute uses the same `gpt-6.1-sol`/high; `k-agent-mechanical` uses `gpt-6-luna`/high and `k-agent-smol` (memory) uses `gpt-6.1-sol`/high, while implement workers use `gpt-6.1-sol`/medium. Every profile pins `service_tier = "default"`.
+The work profile's `sandbox_workspace_write.writable_roots` add `~/.local/share/{chezmoi,ai-kb,agent-handoffs}`, `~/.local/state/chezmoi`, `~/.local/state/llama-cpp/lifecycle`, `~/.cache/{ai-embed-runtime,agent-artifacts}`, `~/bin`, `~/lib`, `~/.agents`, `~/.codex`, and `~/.claude`.
+These grant directory writes only; other paths still need approval.
 
 ### Codex reconciliation
 
-Codex reconciliation rebuilds from the selected profile and generated MCP registry, then reattaches four explicitly runtime-owned buckets.
+The merge rebuilds `config.toml` from source plus the MCP registry and keeps these runtime-owned entries from the live file:
 
-| Runtime-owned bucket           | Rule                                           |
-| ------------------------------ | ---------------------------------------------- |
-| MCP approval overrides         | valid values only                              |
-| `[hooks.state.*].trusted_hash` | reattached                                     |
-| `projects.*.trust_level`       | reattached when it is `trusted` or `untrusted` |
-| `tui.model_availability_nux.*` | counters in `0..4294967295`                    |
+| Runtime-owned entry                               | Rule                        |
+| ------------------------------------------------- | --------------------------- |
+| `mcp_servers.<server>.tools.<tool>.approval_mode` | valid values only           |
+| `projects.*.trust_level`                          | `trusted` or `untrusted`    |
+| `hooks.state.*.trusted_hash`                      | reattached                  |
+| `tui.model_availability_nux.*`                    | counters in `0..4294967295` |
 
-All unrelated live tables and invalid values are discarded. Matching source tables remain authoritative. Hook trust hashes are not baked into `home/dot_codex/private_config.*.toml`.
+Everything else in the live file is replaced. Narrow exact-command approvals can live in `~/.codex/rules/*.rules`.
 
 ### Provider wrappers
 
-Other provider wrappers:
+| Wrapper                                                        | Backend                                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `,claude-openrouter`, `,codex-openrouter`                      | OpenRouter; default `xiaomi/mimo-v2.6-pro` at `high`               |
+| `,claude-llama-cpp`, `,codex-llama-cpp`, `,opencode-llama-cpp` | local llama.cpp router; see [launchers](../llama-cpp/launchers.md) |
 
-- `,codex-llama-cpp`
-- `,codex-openrouter`
-- `,opencode-llama-cpp`
-- `,claude-openrouter`
+The OpenRouter wrappers read `OPENROUTER_API_KEY`, falling back to `pass show openrouter/api/token`.
+`--model <id>` and `--effort <level>` (aliases `--reasoning-effort`, `--thinking`; `--no-thinking` = `minimal`) compose `<model>@preset/effort-<level>`.
+Before launch each wrapper ensures the `effort-<level>` preset exists in the active OpenRouter account (created with only `reasoning.effort`; an existing preset is used unchanged).
+`--context short|long` selects the working window.
 
-The `,claude-openrouter` and `,codex-openrouter` wrappers read `OPENROUTER_API_KEY`; both fall back to the active password store's `openrouter/api/token` entry when the environment is not already populated. Before launching, each wrapper checks the active account for its `effort-<level>` preset. A missing preset is created in that account with only `reasoning.effort`; an existing preset is used unchanged. No account discovery or cross-account synchronization occurs.
+- `,claude-openrouter` sets `ANTHROPIC_BASE_URL=https://openrouter.ai/api` (no `/v1`; the SDK appends `/v1/messages`) and maps every Claude alias to the selected wire id.
+- `,codex-openrouter` adds a per-run Responses provider (`wire_api="responses"`, `env_key="OPENROUTER_API_KEY"`) and leaves `model_reasoning_effort` unset so the preset is the only effort source.
 
-Before entering the native harness, both OpenRouter wrappers clear inherited `AGENT_BAND_SUBSCRIPTION`, `AGENT_BAND_CLAUDE_ROUTES`, and `AGENT_BAND_CODEX_ROUTES` along with model/effort overrides. The new OpenRouter selection therefore does not reuse a parent's subscription projection. Claude and Codex then install fresh role-to-wire maps for their own managed leaf profiles. Leaf identity and orchestration restrictions remain untouched.
-
-The `,claude-openrouter` and `,codex-openrouter` wrappers default the root session to `xiaomi/mimo-v2.6-pro` at `high` and compose `<model>@preset/effort-<level>`. The deployed `openrouter_presets.py` helper reads `category_models.openrouter` and emits wire selectors only for rows whose model begins with `openrouter/`: currently MiMo V2.6 Flash/high and MiMo V2.6 Pro/high and /medium. The wrappers set `AGENT_BAND_SCHEMA_HARNESS=openrouter` and `AGENT_BAND_MODEL_FORMAT=openrouter-preset`; unsupported backend families are not disguised as OpenRouter ids. Provider policy stays model-specific: Pi sends `modelOverrides.compat.openRouterRouting` for Kimi, GLM-5.2, and the `z-ai/glm-5.3-flash` route; OMP 17.2.9 and OpenCode carry the shared Kimi/GLM policies through workspace `*-lanes-*` preset slugs (the request model overrides the preset's pinned GLM-5.2 id, so GLM 5.3 Flash rides `glm-lanes-max`) (OMP drops `extraBody.provider` from its typed openrouter wire, so it pins the same preset-slug ids). Those policies keep FP8-or-higher plus a 24 t/s preferred floor on GLM (35 t/s for Pi's work-profile GLM 5.3 Flash override), Fireworks/Together/BaseTen-only Kimi under a $16/M completion cap, and no `sort`, so OpenRouter's default load balancer keeps uptime.
-
-Model and effort are selectable per launch. `--model <id>` and `--effort <level>` (aliases `--reasoning-effort`, `--thinking`; `--no-thinking` = minimal) compose `<model>@preset/effort-<level>` for every root model. Levels include `none` (disables reasoning via `reasoning.effort: "none"`) through `max`. The default resolves to `xiaomi/mimo-v2.6-pro@preset/effort-high`; delegated lanes can use only the `openrouter` matrix's preset wire ids. Both wrappers accept `--context short|long` and default to `long`; an explicit `short` keeps the prior pricing-limited selection. The shared helper resolves paired context/output limits from the live catalog; the prompt budget reserves output space, and `short` stays below the first pricing transition when one exists. Claude uses the smallest budget across the root and reachable delegated models because its overrides apply to the whole session. Codex receives a temporary per-model startup catalog. Claude sets both its custom-model maximum and auto-compaction window without changing the OpenRouter wire id. Inherited context overrides cannot enlarge the resolved budget. Some OpenRouter models reject `none` when reasoning is mandatory on their endpoint. Route-pinning flags (`--base-url`, config, `--fallback-model`, `-c`) stay rejected. Inside an interactive session, `/model` accepts a free-text id passed verbatim to OpenRouter, so a typed `model@preset/effort-<level>` keeps the effort slug while a bare model does not.
-
-Fish `--model`/`--effort` completions for `,claude-openrouter`, `,codex-openrouter`, and share `~/.config/fish/functions/__openrouter_catalog.fish` (cache `~/.cache/,openrouter/models.tsv`). The catalog is `GET /api/v1/models?supported_parameters=reasoning`. A model stays listed when `reasoning.supported_efforts` is missing (live: `inclusionai/ling-3.0-flash`). `--effort` lists that model's live efforts and always adds `none` (workspace `effort-none`); an empty efforts cell uses the full ladder. `,image-openrouter` keeps its own static ZDR image set.
-
-`,claude-openrouter` points `ANTHROPIC_BASE_URL` at `https://openrouter.ai/api` with no `/v1` suffix, because Claude's Anthropic SDK appends `/v1/messages`. It keeps the root model on the selected OpenRouter wire id. `~/lib/shared/claude_lanes.py` reads the managed Claude profiles and Pi category projection, then supplies native `--agents` definitions with exact backend model/effort selectors. The profile body and skill preloads remain unchanged; explicit tools retain their original restrictions and exclude `Agent`, `Task`, and `SendMessage`. The `readonly` frontmatter annotation is not a native permission control; it is not converted into an invented permission mode. The gate requires the fresh role-to-wire map and removes call-level model overrides so the projected definition wins. Missing or stale roles, conflicting controls, and resume/fork requests are denied. `CLAUDE_CODE_SUBAGENT_MODEL` is cleared. The wrapper passes the selected effort through Claude's client gate when Claude supports that level (`low` through `max`). OpenRouter `none`/`minimal` presets use Claude's `low` client gate while the model preset carries the real effort. For context, it keeps the model id bare and sets `CLAUDE_CODE_MAX_CONTEXT_TOKENS` and `CLAUDE_CODE_AUTO_COMPACT_WINDOW` from the resolved session budget. The wrapper sets `ANTHROPIC_AUTH_TOKEN` and clears `ANTHROPIC_API_KEY`.
-
-`,codex-openrouter` configures a per-invocation Responses provider (`model_providers.openrouter`, `wire_api="responses"`, `env_key="OPENROUTER_API_KEY"`) and pins `--model` to `<model>@preset/effort-<level>`. `model_reasoning_effort` is left unset so the preset is the single source of effort (a Codex body field would fight the preset). No loopback shim is involved: OpenRouter answers `/api/v1/responses` natively. Its startup catalog retains each exact `@preset/effort-<level>` selector, including different efforts for the same base model. The shared `~/lib/shared/codex_lanes.py` projects model-free managed leaf profiles for this route; their instructions and native no-nesting feature remain intact. The gate requires the fresh role/pair map and denies missing or stale projections, forks, conflicting controls, and child-originated spawns. Native role defaults can no longer replace an admitted OpenRouter selector. After exact-pair admission, the hook omits the redundant native reasoning field: effort stays in the preset selector, and the catalog does not claim unsupported native reasoning levels.
-
-Delegated lanes need their own backend schema. The Codex and Claude OpenRouter wrappers export `AGENT_BAND_SCHEMA_HARNESS=openrouter` and `AGENT_BAND_MODEL_FORMAT=openrouter-preset`, so [the band gate](../model-tiering.md) resolves every bound delegated agent through the `openrouter` category matrix and converts the result to the wrapper's preset wire format. Claude Code applies the same backend schema through alias defaults because its Agent tool accepts family aliases, not arbitrary OpenRouter ids.
-
-OpenCode's custom OpenRouter preset IDs declare context and output limits explicitly because they do not inherit metadata from the bare model ID. Pi's GLM-5.2 override and OMP's custom entries stay within the routed provider's capacity; existing smaller output allowances remain in place.
-
-### Cross-backend capability limits
-
-A shared adapter is not evidence of equal native frontend behavior or provider cache hits. This inventory separates configured mechanisms from remaining verification and policy gaps.
-
-| Wrappers                                                       | Delegation mechanism / gap                                                                                    | Cache and context boundary                                                                                           |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `,claude-codex`                                                | Exact managed Claude profiles; unavailable pairs denied                                                       | Session-wide minimum context budget; protocol-specific controls/accounting                                           |
-| `,codex-openrouter`                                            | Exact preset catalog plus session-projected managed leaves                                                    | Per-model prompt budgets; provider owns cache acceptance/hits                                                        |
-| `,claude-openrouter`                                           | Exact managed profiles carry all configured pairs, including refute xhigh                                     | Session-minimum budgets; no substitute effort allowed                                                                |
-| `,claude-llama-cpp`, `,codex-llama-cpp`, `,opencode-llama-cpp` | No approved local category matrix; native hosted profile defaults are not a capability-equivalent lane policy | Local KV cache is distinct from hosted prompt-cache billing; existing local budgets are not child-lane certification |
-
-Root tool interoperability does not certify successful governed delegation or a complete leaf lifecycle.
-Codex `0.154.0` natively supports reopening closed agents, so removing child collaboration tools does not seal terminal results against root revival. See the [coverage inventory](../subagents.md#coverage-inventory) and do not assign unattended child work to an uncertified route.
-
-Full parity requires a verified child selector/effort path, native no-nesting and terminal behavior, an approved backend category policy, and route-specific runtime evidence. Do not enable a missing route by dropping its effort or calling the root model an equivalent worker.
-
-### Repo-owned Codex subscription adapter
-
-`,claude-codex` starts one authenticated adapter on a random `127.0.0.1` port and stop it with the harness. The child receives only a random per-launch loopback token. The adapter reads the existing Codex ChatGPT OAuth state from `${CODEX_HOME:-~/.codex}/auth.json`; it never copies the upstream access token into the Claude environment.
-
-| Wrapper         | Harness protocol   | Codex backend adaptation                                                                                                     |
-| --------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| `,claude-codex` | Anthropic Messages | translates messages, images, tools/tool results, structured output, usage, and streaming events to and from OpenAI Responses |
-
-The adapter sends requests to the same ChatGPT Codex Responses backend used by the installed Codex CLI. It supports both Codex credential stores: legacy `${CODEX_HOME:-~/.codex}/auth.json` and current device authorization in the macOS Keychain, using Codex's account-key derivation and keeping the decoded bearer only in adapter memory. If the backend rejects the current bearer with `401`, the adapter asks `codex app-server` to run `account/read` with `refreshToken: true`, reloads the active store, and retries once. Other failures are not retried.
-
-The wrapper accepts `--model <id>` / `-m <id>` and `--effort <level>` / `--reasoning-effort <level>`. An explicit wrapper value selects the root model or effort. Only explicit child-lane selectors are intended to choose the backend matrix's model and effort; raw model IDs retain root controls. Claude managed profiles carry those exact pairs. Without `--model`, the wrapper reads the top-level `model` from the active Codex `config.toml`; without `--effort`, it preserves the harness-generated effort.
-
-The wrapper resolves the selected model's active `context_window` from `${CODEX_HOME:-~/.codex}/models_cache.json`. `max_context_window` is the ceiling for an explicit Codex configuration override, not the default. The adapter applies Codex's effective-context percentage and compaction threshold separately. Claude uses a conservative global budget across the root and its reachable managed profiles, with a custom-model maximum for small models and a frontend `[1m]` marker when the Codex window exceeds Claude Code's 200000 default, because Codex model ids are not in Claude Code's model registry (native Claude picks are 1M without it). Missing metadata requires an explicit configured context or a refreshed native Codex catalog instead of silently retaining an unrelated frontend default.
-
-Claude token counting is a local byte-based estimate because the Codex backend does not expose an Anthropic token-count endpoint. Claude's required `max_tokens` field is not forwarded because the installed Codex request schema has no output-token-cap field. Chat callers retain an explicit `prompt_cache_key` through Responses translation; absent keys still use the existing client default. Unsupported retention/TTL controls are not synthesized. Opaque encrypted reasoning attached to a tool turn stays in bounded process memory only, keyed by the following tool call ID, so it can be restored on the tool-result turn without writing prompts or credentials to disk.
-
-The Codex-subscription adapter also keys the prompt cache the way the Codex CLI does: one `session_id` header and matching `prompt_cache_key` per adapter process. In a live experiment on 2026-09-06, a repeated 2.8k-token prompt read 0 cached tokens without them and 2,688 of 2,823 with them. That sample does not establish hit rates on other routes. No `originator` impersonation is needed or sent.
-
-### Re-read gate coverage
-
-The hash-gated re-read refusal runs on Claude Code, Codex, OpenCode (via `~/.config/opencode/plugins/agent-memory.ts`, whose `tool.execute.before` throws the gate's reason as the tool error on `read`/`bash` and whose `tool.execute.after` records the result; the earlier copy is verified against the `part` rows of `~/.local/share/opencode/opencode.db`, and a copy cleared by OpenCode's prune counts as gone), and Pi (via `~/.pi/agent/extensions/read-gate.ts`, which feeds `tool_call`/`tool_result` into the shared `read_gate.py`). Pi also carries `~/.pi/agent/extensions/read-supersede.ts`, a port of OMP's read supersede: before each provider call, older results of a file that was read again are replaced with `[Superseded by a newer read of this file]` on the outgoing message list only, and only while the suffix after them is small or the session idled 90 minutes, so the prompt cache is not thrown away for a small saving. OpenCode carries the same port in `~/.config/opencode/plugins/read-supersede.ts` through `experimental.chat.messages.transform`, which runs on the message list OpenCode reloads from its store before every provider call, so the store keeps every original output. OpenCode's native `compaction.prune` stays off (its default): it clears every old tool output beyond a 40k-token tail, not only duplicate file copies. OMP is excluded on purpose: it supersedes the earlier read result in the session as soon as a re-read is attempted, so a block would strip the bytes from the model; OMP therefore dedups re-reads natively. Antigravity can deny on `PreToolUse`, but its transcript and `PostToolUse` result shapes are unverified, so it is not wired.
-
-The publication gate (`~/.agents/hooks/publish_gate.py`) runs on `PreToolUse` in Claude Code (matcher `Bash|mcp__slack__.*`) and Codex (`Bash|shell`). It denies `gh` PR/issue/release/gist mutations, non-GET `gh api` REST calls with a body, `gh api graphql` mutations, `gws` Gmail/Chat sends, and Slack MCP mutation tools from a delegated leaf (Claude Code child `agent_id`, pi child), and rides the SOP §3.8 checklist along with the root's call; `AGENT_PUBLISH_GATE_ROOT=ask` makes the root path a harness confirmation and `AGENT_PUBLISH_GATE=off` disables it. Pi, OMP, OpenCode, and Antigravity are not wired; the leaf contract and repo-authored Claude profiles' `disallowedTools` denial of the six Slack mutation tools remain the boundary there.
-
-### Codex hooks: tool names and trust
-
-Codex reports hook tool names in Claude's vocabulary: shell commands (the plain `exec_command` tool and the code-mode `exec` tool alike) arrive as `Bash`, and spawns as `collaborationspawn_agent`, so `hooks.json` matches `Bash|shell` and `.*spawn_agent` (probed 2026-09-06 with a catch-all dump hook on codex-cli 0.153.4). Codex also runs only hooks it has trusted: `~/.codex/config.toml` keeps a `[hooks.state.<file>:<event>:<index>]` `trusted_hash` per entry, written by the TUI's hooks review, and `chezmoi apply` only preserves those rows. After the repo adds or changes a hook entry, open interactive Codex once and accept the hooks review, or the new entry stays silently inert. `codex exec --dangerously-bypass-hook-trust` runs them without that step and is only for vetted automation such as probes.
+Fish completions for `--model`/`--effort` share `~/.config/fish/functions/__openrouter_catalog.fish` (cache `~/.cache/,openrouter/models.tsv`, from `GET /api/v1/models?supported_parameters=reasoning`).
 
 ## Oh My Pi
 
-The managed `context-mode.ts` extension adds [working-context selection](pi.md#working-context-selection):
-`/context-mode short`, `/context-mode long`, and `/context-mode status`.
-It stores overrides per provider/model in the active session, not in OMP's global `extendedContext` setting.
-Only models with a distinct short and long window are eligible; others keep their existing policy.
-OMP reapplies the selected mode before each prompt or an idle `/context-mode` command; native `/extended-context` remains a separate global control.
+| Surface      | Source                                                                                                                   | Target                     |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
+| Config       | [`home/dot_omp/private_agent/readonly_config.yml.tmpl`](../../../../home/dot_omp/private_agent/readonly_config.yml.tmpl) | `~/.omp/agent/config.yml`  |
+| Models       | `readonly_models.yml`                                                                                                    | `~/.omp/agent/models.yml`  |
+| MCP servers  | `mcp_servers.yaml` via `generate_mcp_configs.py omp`                                                                     | `~/.omp/agent/mcp.json`    |
+| Instructions | `symlink_AGENTS.md`, `readonly_APPEND_SYSTEM.md` (subagent overlay), `readonly_RULES.md`                                 | `~/.omp/agent/`            |
+| Skills       | `symlink_skills` → `~/.agents/skills`                                                                                    | `~/.omp/agent/skills`      |
+| Reviewer     | `exact_agents/k-agent-reviewer.md.tmpl`                                                                                  | `~/.omp/agent/agents/`     |
+| Extension    | `extensions/context-mode.ts.tmpl` ([working-context selection](pi.md#working-context-selection))                         | `~/.omp/agent/extensions/` |
+| Install      | `@oh-my-pi/pi-coding-agent` in [`home/readonly_dot_default-pnpm-pkgs`](../../../../home/readonly_dot_default-pnpm-pkgs)  | pnpm global, unpinned      |
 
-| Surface       | Source                                                                                                                   | Target                     |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
-| Agent config  | [`home/dot_omp/private_agent/readonly_config.yml.tmpl`](../../../../home/dot_omp/private_agent/readonly_config.yml.tmpl) | `~/.omp/agent/config.yml`  |
-| MCP servers   | `mcp_servers.yaml` via `generate_mcp_configs.py omp`                                                                     | `~/.omp/agent/mcp.json`    |
-| Shared skills | `symlink_skills` → `~/.agents/skills`                                                                                    | `~/.omp/agent/skills`      |
-| Runtime hooks | `extensions/`                                                                                                            | `~/.omp/agent/extensions/` |
-| Install       | [`home/readonly_dot_default-pnpm-pkgs`](../../../../home/readonly_dot_default-pnpm-pkgs) `@oh-my-pi/pi-coding-agent`     | pnpm global, unpinned      |
+Key settings (both profiles):
 
-### Managed configuration
+| Setting                                                | Value                                                                                                                                           |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `modelRoles.default`                                   | `openai-codex/gpt-6.1-sol:high`; `slow`/`plan` `:max`; `task` `:medium`; `smol`/`vision` `gpt-6-luna:high`; `tiny`/`commit` `gpt-6-luna:medium` |
+| `advisor.enabled`, `task.agentAdvisor.task`            | `false`, `"off"`                                                                                                                                |
+| `memory.backend`, `autolearn.enabled`, `recap.enabled` | `off`, `false`, `false`                                                                                                                         |
+| `task.maxRecursionDepth`                               | `1` (children cannot spawn)                                                                                                                     |
+| `task.disabledAgents`                                  | `reviewer`, `security-reviewer` (the repo `k-agent-reviewer` replaces them)                                                                     |
+| `extendedContext`, `defaultThinkingLevel`              | `true`, `high`                                                                                                                                  |
+| `dev.autoqaConsent`                                    | `granted`                                                                                                                                       |
 
-`readonly_config.yml.tmpl` is the complete declarative OMP contract. Native `extendedContext: true` gives the root its long context while every role pin remains unchanged. `modelRoles` is one profile-independent block placed before the `isWork` branch; only the web-search chains still fork per profile. Every built-in role is configured so nothing falls through to the harness default or the `@smol` fallback. The fresh root uses `openai-codex/gpt-6.1-sol:high`; `slow` and `plan` explicitly use `openai-codex/gpt-6.1-sol:max` (T1), `vision` uses `openai-codex/gpt-6-luna:high`, `task` uses `openai-codex/gpt-6.1-sol:medium` (T2), `smol` uses `openai-codex/gpt-6-luna:high` (T3), `tiny` and `commit` use `openai-codex/gpt-6-luna:medium`, `advisor` uses `openai-codex/gpt-6.1-sol:high`, and `web` uses `openai-codex/gpt-6-luna` with runtime-default effort. Research/review profiles carrying `@default` inherit the active parent's model (normally Sol for a fresh root), rather than hard-pinning a child model. Refute remains degraded because advisor and the primaries share the OpenAI family, not because their model IDs must be identical.
-
-| Setting                                                                                | Work value                                                                                                               | Personal value                                             |
-| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| `modelRoles.default`, `vision`, `slow`, `plan` (T1)                                    | `openai-codex/gpt-6.1-sol:high` default; `openai-codex/gpt-6.1-sol:max` slow/plan; `openai-codex/gpt-6-luna:high` vision | same (one profile-independent block)                       |
-| `modelRoles.task` (T2 implement: native `task` agent + implement workers)              | `openai-codex/gpt-6.1-sol:medium`                                                                                        | same (one profile-independent block)                       |
-| `modelRoles.smol`                                                                      | `openai-codex/gpt-6-luna:high`                                                                                           | same                                                       |
-| `modelRoles.tiny`                                                                      | `openai-codex/gpt-6-luna:medium`                                                                                         | same                                                       |
-| `modelRoles.commit`                                                                    | `openai-codex/gpt-6-luna:medium`                                                                                         | same                                                       |
-| `modelRoles.advisor`                                                                   | `openai-codex/gpt-6.1-sol:high`                                                                                          | same                                                       |
-| `modelRoles.web`                                                                       | `openai-codex/gpt-6-luna` (runtime-default effort)                                                                       | same                                                       |
-| `modelProviderOrder`                                                                   | `anthropic`, `openai-codex`, `openrouter`, `openai`                                                                      | same                                                       |
-| `advisor.enabled`                                                                      | `false` (subagents false; background advice disabled)                                                                    | same                                                       |
-| `defaultThinkingLevel`, `extendedContext`                                              | `high`, `true`                                                                                                           | same                                                       |
-| `memory.backend`                                                                       | `off`                                                                                                                    | `off`                                                      |
-| `autolearn.enabled`, `autolearn.autoContinue`                                          | `false`, `false`                                                                                                         | `false`, `false`                                           |
-| `recap.enabled`                                                                        | `false` (automatic idle recaps disabled)                                                                                 | same                                                       |
-| `dev.autoqaConsent`                                                                    | `granted`                                                                                                                | `granted`                                                  |
-| `skills.enabled`, `skills.enableSkillCommands`                                         | `true`, `true`                                                                                                           | `true`, `true`                                             |
-| `task.isolation.mode`, `task.enableEffort`, `task.enableLsp`, `task.maxRecursionDepth` | `auto`, `true`, `true`, `1` (children cannot spawn grandchildren); `task.agentAdvisor.task` `off`                        | same                                                       |
-| `retry.enabled`, `retry.maxRetries`                                                    | `true`, `3`                                                                                                              | `true`, `3`                                                |
-| `symbolPreset`, `theme.dark`, `setupVersion`                                           | `nerd`, `dark-catppuccin`, `2`                                                                                           | `nerd`, `dark-catppuccin`, `2`                             |
-| `providers.webSearchOrder`                                                             | `codex`, `gemini`, `google`, `duckduckgo`                                                                                | `codex`, then keyless scrapers in OMP built-in order       |
-| `providers.webSearchExclude`                                                           | every other OMP search id, including `perplexity`                                                                        | every keyed search id, including `perplexity` and `gemini` |
-
-`modelRoles` is also what prices OMP's categories: repo-managed agent profiles carry `@role` tokens (`@default`, `@smol`, `@task`, `@advisor`) that `category_models.omp` names, so the one profile-independent role table above decides what each category costs. See [Model tiering](../model-tiering.md).
-
-The background OMP advisor is disabled (`advisor.enabled: false`, `advisor.subagents: false`, and `task.agentAdvisor.task: "off"`). The `modelRoles.advisor` pin remains available to the explicit final refute lane; a model-role selector does not enable background advice. `syncBacklog` and `immuneTurns` do not create an advisor while it is disabled. Shared `,ai-kb` recall and learning remain active through the managed memory extension; OMP's separate native memory/autolearn settings stay off.
-
-AutoQA consent is source-managed as `granted`, so OMP records and uploads concise `xd://report_issue` tool-grievance reports without prompting again.
-
-`web_search` is profile-specific. Work walks Codex, then Gemini, then Google scrape, then DuckDuckGo. Personal walks Codex, then every keyless scraper in OMP's built-in relative order (`startpage`, `duckduckgo`, `ecosia`, `google`, `mojeek`, `public`). Listing `perplexity` is an explicit selection that calls OpenRouter `perplexity/sonar-pro` when an OpenRouter key is set, so both profiles exclude it. Unlisted providers stay in the fallback chain, so `providers.webSearchExclude` drops every id not in that profile's order. Bash `ddgr --noua` remains the SOP fallback if the tool fails.
-
-OMP receives a native `mcp.json` generated from the shared registry. Hosted OAuth servers without an OMP row in `oauth_by_tool` are omitted.
+`providers.webSearchOrder` differs per profile: work tries OpenRouter, Codex, Gemini, Google, then DuckDuckGo; personal tries Codex then the keyless scrapers. Every unused provider is listed in `webSearchExclude`, including `perplexity`.
 
 ## Crush
 
@@ -214,7 +94,7 @@ Crush auto-discovers project-local context files (such as `AGENTS.md`) from the 
 | Global config | [`home/dot_config/crush/readonly_crushrc`](../../../../home/dot_config/crush/readonly_crushrc) | `~/.config/crush/crushrc` |
 | Home SOP      | [`home/readonly_AGENTS.md`](../../../../home/readonly_AGENTS.md) → `~/AGENTS.md`               | global context path       |
 
-The `crushrc` sets `option global-context-path "$HOME/AGENTS.md"`, so Crush loads the compiled home SOP in every session regardless of cwd. It also runs `model large openrouter/z-ai/glm-5.3-flash --reasoning-effort high`, using Crush's native full model context. Project repos keep their own local `AGENTS.md`, which is discovered automatically; per the home SOP hierarchy, project-local instructions may add constraints but must not weaken the global SOP. Crush's runtime data JSON has higher precedence than `crushrc`, so deployment reconciles the saved selection separately.
+The `crushrc` sets `option global-context-path "$HOME/AGENTS.md"`, so Crush loads the home instructions in every session regardless of cwd. It also runs `model large openrouter/z-ai/glm-5.3-flash --reasoning-effort high`, using Crush's native full model context. Project repos keep their own local `AGENTS.md`, which is discovered automatically; project-local instructions may add constraints but must not weaken the global SOP. Crush's runtime data JSON has higher precedence than `crushrc`, so deployment reconciles the saved selection separately.
 
 ## tuicr (review TUI)
 
@@ -226,7 +106,7 @@ The `crushrc` sets `option global-context-path "$HOME/AGENTS.md"`, so Crush load
 
 The config defines the review **comment types** (`issue`, `suggestion`, `question`, `nit`, `praise`) that tuicr exports as `[LABEL]` prefixes in the markdown an agent consumes.
 
-These are actionable categories, not severity. Severity (`CRITICAL`/`HIGH`/`MEDIUM`/`LOW`) stays internal per the `~/AGENTS.md` review SOP and is intentionally not encoded here, so tuicr labels and the review skill's severity model do not collide.
+These are actionable categories, not severity. Severity (`CRITICAL`/`HIGH`/`MEDIUM`/`LOW`) stays in the `k-review` finding format and is intentionally not encoded here, so tuicr labels and the review skill's severity model do not collide.
 
 ## lgtm (live diff reviewer)
 

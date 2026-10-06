@@ -18,12 +18,12 @@ graph TB
 
     %% ---- C2 Canonical registries (single source per concern) ---------------
     C2{{"C2 · ONE REGISTRY PER CONCERN<br/>data is declared once, consumed many ways"}}:::concept
-    C2 --> I2["INVARIANT: MCP servers, AI models, packages each have<br/>exactly ONE declarative source; tool-specific configs are<br/>GENERATED, never hand-authored per tool."]:::inv
-    I2 --> R2[".chezmoidata/mcp_servers.yaml · ai_models/<br/>readonly_dot_default-* lists<br/>→ scripts/ generators fan out to every tool"]:::realize
+    C2 --> I2["INVARIANT: MCP servers and packages each have<br/>exactly ONE declarative source; tool-specific MCP configs are<br/>GENERATED, never hand-authored per tool. Models are set in each harness file."]:::inv
+    I2 --> R2[".chezmoidata/mcp_servers.yaml<br/>readonly_dot_default-* lists<br/>→ scripts/ generators fan out to every tool"]:::realize
 
     %% ---- C3 Work/Personal duality ------------------------------------------
     C3{{"C3 · isWork DUALITY<br/>one machine identity forks all behavior"}}:::concept
-    C3 --> I3["INVARIANT: a single init-time bool (.isWork) selects<br/>identity, keys, packages, model routes, MCP visibility.<br/>Every divergence is a .work/.personal pair or a .tmpl branch."]:::inv
+    C3 --> I3["INVARIANT: a single init-time bool (.isWork) selects<br/>identity, keys, packages, harness settings, MCP visibility.<br/>Every divergence is a .work/.personal pair or a .tmpl branch."]:::inv
     I3 --> R3["realized by: .chezmoi.toml.tmpl prompt · {{ .isWork }} in .tmpl<br/>chezmoi_pick_src() · work_only in mcp_servers.yaml<br/>settings.{work,personal}.* pairs · includeIf gitdir:~/work/"]:::realize
 
     %% ---- C4 Idempotent reconcile (hash-gate + manifest) --------------------
@@ -41,15 +41,15 @@ graph TB
     C6 --> I6["INVARIANT: .sh/.sh.tmpl only wire paths+programs;<br/>repo-side data transform/parsing lives in scripts/*.py;<br/>large deployed commands keep a thin ~/bin launcher and<br/>put internals in ~/lib/,name/ (stdlib only, tested)."]:::inv
     I6 --> R6["realized by: scripts/*.py + tests/fixtures/golden_*<br/>home/exact_lib/exact_,*/main.{py,sh,mjs}<br/>thin .chezmoiscripts and ~/bin launchers · yaml_parser/jsonc_dump"]:::realize
 
-    %% ---- C7 Intent-routed governance ---------------------------------------
-    C7{{"C7 · GOVERNED AGENTS<br/>one root lifecycle; bounded leaf work"}}:::concept
-    C7 --> I7["INVARIANT: agents load SOP entrypoints + intent-matched skills,<br/>keep generic workflows domain-neutral, only the active root/main session orchestrates agents or lanes,<br/>keep launch/sizing text in a skill's root-moves section that only the root follows, so a leaf contract carries none and a child profile preloads leaf contracts only,<br/>use detached orchestration only on an explicit user request, and pass fail-closed gates before human-visible side effects."]:::inv
-    I7 --> R7["realized by: home/readonly_AGENTS.md §§3.5–3.7 stages + categories + symlinked harness entrypoints<br/>exact_skills Use when routing + root-moves sections · domain overlays · exact_hooks fail-closed gates + [ROOT ONLY] delegation markers"]:::realize
+    %% ---- C7 Inline agents ---------------------------------------------------
+    C7{{"C7 · INLINE AGENTS<br/>one short instruction file; skills on demand"}}:::concept
+    C7 --> I7["INVARIANT: every harness loads the same ~/AGENTS.md and intent-matched skills;<br/>work stays inline; subagents only do broad read-only search or a requested review and cannot nest;<br/>generic skills stay domain-neutral; human-visible side effects need explicit approval."]:::inv
+    I7 --> R7["realized by: home/readonly_AGENTS.md + symlinked harness entrypoints<br/>exact_skills 'Use when' routing · domain overlays · k-agent-reviewer / k-agent-scout profiles"]:::realize
 
-    %% ---- C8 Evidence anchoring (SOP discipline) ----------------------------
+    %% ---- C8 Evidence anchoring ---------------------------------------------
     C8{{"C8 · EVIDENCE ANCHORING<br/>claims must be anchored or demoted"}}:::concept
     C8 --> I8["INVARIANT: each visible factual/runtime claim carries a hard<br/>anchor (path/cmd/probe) OR an explicit 'Unknown because…'."]:::inv
-    I8 --> R8["realized by: SOP External Truth / inline evidence anchoring by default<br/>+ narrowly gated sealed ,proof receipts for audit/handoff needs<br/>(~/CLAUDE.md §2.2, §2.6, §3.5) — instruction-enforced, not a hook"]:::realize
+    I8 --> R8["realized by: ~/AGENTS.md §2 truth and evidence — instruction-enforced, not a hook"]:::realize
 
     %% ---- C9 Stale-while-revalidate UX --------------------------------------
     C9{{"C9 · INSTANT-THEN-FRESH<br/>pickers never block on the network"}}:::concept
@@ -61,20 +61,20 @@ graph TB
     C10 --> I10["INVARIANT: picker handoffs use token-scoped files, not globals;<br/>successors consume+delete pins, and namespace cleanup is owner-checked."]:::inv
     I10 --> R10["realized by: pickers/lib/handoff_namespace.py<br/>handoff_to_{gh,sessions}.sh · pin_{gh,session}_first.sh<br/>TMUX_PICKER_HANDOFF_TOKEN injection"]:::realize
 
-    %% ---- C11 Diversity gate (adversarial review) ---------------------------
-    C11{{"C11 · ADVERSARIAL DIVERSITY<br/>a model prefers not to clear its own family"}}:::concept
-    C11 --> I11["INVARIANT: verifier/adversarial review lanes prefer a<br/>different model family at equal capability;<br/>capability outranks diversity."]:::inv
-    I11 --> R11["realized by: category_models.refute/verifier_status<br/>review-agent-model.partial · resolve_review_agent_model<br/>/k-deep-review adversarial/verifier lanes · /k-build criteria-verifier lane"]:::realize
+    %% ---- C11 Bounded verification ------------------------------------------
+    C11{{"C11 · BOUNDED VERIFICATION<br/>checks once; one review round"}}:::concept
+    C11 --> I11["INVARIANT: checks run once on the finished change;<br/>a requested independent review gets one reviewer run, one fix round,<br/>and a re-check of changed lines only; another round needs the user."]:::inv
+    I11 --> R11["realized by: k-review verify mode · review_fixes.md Fix Scope<br/>k-pr-fix-loop two-attempt stop · k-agent-reviewer profiles"]:::realize
 
     %% ---- C12 Resumable state machine ---------------------------------------
     C12{{"C12 · RESUMABLE STATE MACHINES<br/>death parks, relaunch continues"}}:::concept
     C12 --> I12["INVARIANT: long work advances through persisted queues/states;<br/>a crash leaves it restartable from saved state without losing side effects<br/>or replaying acknowledged work; terminal state is not complete until<br/>terminal cleanup is recorded."]:::inv
-    I12 --> R12["realized by: worklog_queue.py + spec/worklog queues<br/>hook dispatch state · SOP formal-verification policy (k-formal/,formal catalog)"]:::realize
+    I12 --> R12["realized by: gh picker dispatch state + lock · tmux handoff lifecycle<br/>,llama-cpp lifecycle leases"]:::realize
 
-    %% ---- C13 Persistent intent memory --------------------------------------
-    C13{{"C13 · INTENT MEMORY<br/>sessions rehydrate, don't restart cold"}}:::concept
-    C13 --> I13["INVARIANT: per-(workspace,topic) spec/worklog persists in<br/>/tmp/specs with named topics mirrored/restored via persistent state;<br/>sessionStart injects it bounded; review topics run clean-room;<br/>compact stage/decision/packet handoffs survive compaction;<br/>automatic filtered durable recall remains; root admission + final learning batch; never per-turn scribe or leaf orchestration;<br/>tool events enter a bounded crash-safe session queue off the critical path."]:::inv
-    I13 --> R13["realized by: session_context.py · perturn_recall.py<br/>spec_mirror.py · worklog_queue.py · ,agent-memory · ,ai-kb"]:::realize
+    %% ---- C13 Explicit handoffs ---------------------------------------------
+    C13{{"C13 · EXPLICIT HANDOFFS<br/>continue across sessions and harnesses on request"}}:::concept
+    C13 --> I13["INVARIANT: nothing is injected automatically; 'handoff X' writes a short note,<br/>'continue X' reads it in any harness and re-checks named files and git state;<br/>durable reusable gotchas go to ,ai-kb only on demand."]:::inv
+    I13 --> R13["realized by: ,handoff + k-handoff · ,ai-kb + k-ai-kb"]:::realize
 
     %% ---- how concepts compose ----------------------------------------------
     C1 -. "everything applies through" .-> C4
@@ -83,9 +83,8 @@ graph TB
     C2 -. "generators obey" .-> C6
     C5 -. "resolved during" .-> C4
     C7 -. "enforced by" .-> C8
-    C7 -. "remembers via" .-> C13
+    C7 -. "continues via" .-> C13
     C9 -. "cooperates via" .-> C10
-    C11 -. "runs inside" .-> C12
-    C12 -. "persists like" .-> C13
+    C7 -. "verifies via" .-> C11
 
     LEGEND["how to use: pick the concept your task touches → read its INVARIANT<br/>→ the 'realized by' files are your edit surface → confirm you didn't<br/>violate the invariant. Full file lists per concept: see SR-index.mmd."]:::realize

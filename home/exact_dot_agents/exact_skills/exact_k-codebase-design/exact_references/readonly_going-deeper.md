@@ -30,7 +30,7 @@ Classify a candidate's dependencies first; the category determines how the deepe
 - Write new tests at the deepened module's interface; the **interface is the test surface**.
 - Tests assert observable outcomes through the interface, not internal state, so they survive internal refactors.
 
-## Branch B — Design it twice (parallel interfaces)
+## Branch B — Design it twice (alternative interfaces)
 
 When the user wants alternative interfaces for a chosen deepening candidate.
 Based on Ousterhout's "design it twice" — your first idea is unlikely to be the best.
@@ -38,33 +38,23 @@ Based on Ousterhout's "design it twice" — your first idea is unlikely to be th
 ### 1. Frame the problem space
 
 Write a short user-facing explanation for the candidate: the constraints any new interface must satisfy, the dependencies and their category (Branch A), and a rough illustrative sketch to ground the constraints (not a proposal).
-Include it in the next user-visible message (mid-turn text may never reach the user), and do not wait on a reply before the parallel designs start.
+Include it in the next user-visible message (mid-turn text may never reach the user), and do not wait on a reply before drafting the designs.
 
 ### 2. Collect radically different interfaces
 
 Each design arrives as: the interface (types, methods, params, plus invariants/ordering/error modes), a caller usage example, what the implementation hides behind the seam, its dependency/adapter strategy, and trade-offs (where leverage is high, where thin).
-A design missing any of those parts is incomplete; report the missing input without automatically reopening its worker.
-The Root moves section owns how the parallel designs are produced; a delegated leaf produces one design for the brief its parent named and returns that design only.
-
-### 3. Present and compare
-
-Present designs sequentially so the user absorbs each, then contrast them by **depth** (leverage at the interface), **locality** (where change concentrates), and **seam placement**.
-Give your own recommendation — which is strongest and why; propose a hybrid if elements combine well.
-Be opinionated: the user wants a strong read, not a menu.
-
-## Root moves
-
-Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-
-**Branch B step 2 — send the parallel designs.**
-Send one strong research packet per selected constraint through the harness's existing research-bound mechanics, each producing a **radically different** interface for the deepened module.
-Give each a separate technical brief (target files, coupling, dependency category, what sits behind the seam) and a distinct constraint selected from this menu:
+A design missing any of those parts is incomplete.
+Draft each design under a different constraint, chosen from what the problem space needs:
 
 - "Minimise the interface — 1–3 entry points max. Maximise leverage per entry point."
 - "Maximise flexibility — support many use cases and extension."
 - "Optimise for the most common caller — make the default case trivial."
 - "Design around ports & adapters." (only where cross-seam deps exist)
 
-Every brief demands the return shape named in Branch B step 2 and forbids further spawning.
-The root selects the constraints the framed problem space needs and decides the count;
-the menu above names candidate briefs, not a fixed batch.
+Make the designs radically different; do not present variations of one idea.
+
+### 3. Present and compare
+
+Present designs sequentially so the user absorbs each, then contrast them by **depth** (leverage at the interface), **locality** (where change concentrates), and **seam placement**.
+Give your own recommendation — which is strongest and why; propose a hybrid if elements combine well.
+Be opinionated: the user wants a strong read, not a menu.

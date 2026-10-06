@@ -5,36 +5,29 @@ title: Claude and Antigravity
 
 # Claude and Antigravity
 
-Claude Code and Antigravity use config surfaces backed by the shared MCP registry. Claude keeps runtime-managed fields in `~/.claude.json`, while Antigravity receives native MCP configuration at `~/.gemini/config/mcp_config.json`.
+| Tool        | Source                                                                          | Target                                                                        | MCP servers                             |
+| ----------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------- |
+| Claude Code | [`home/dot_claude/settings.{work,personal}.json`](../../../../home/dot_claude/) | `~/.claude/settings.json` (whole file)                                        | `~/.claude.json` top-level `mcpServers` |
+| Antigravity | [`home/dot_gemini/`](../../../../home/dot_gemini/)                              | `~/.gemini/config/` + policy-merged `~/.gemini/antigravity-cli/settings.json` | `~/.gemini/config/mcp_config.json`      |
 
-## Mental model
+## Claude Code settings
 
-| Tool        | Source                                                                          | Target                                                                                       | Registry path                                                                                                                 |
-| ----------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Claude Code | [`home/dot_claude/settings.{work,personal}.json`](../../../../home/dot_claude/) | `~/.claude/settings.json`                                                                    | `~/.claude.json` top-level `mcpServers`                                                                                       |
-| Antigravity | [`home/dot_gemini/`](../../../../home/dot_gemini/)                              | `~/.gemini/config/mcp_config.json` + policy-merged `~/.gemini/antigravity-cli/settings.json` | shared [`mcp_servers.yaml`](../../../../home/.chezmoidata/mcp_servers.yaml) + `antigravity-cli/readonly_settings.policy.json` |
+| Area             | Value                                                                             |
+| ---------------- | --------------------------------------------------------------------------------- |
+| Model            | `claude-sonnet-5-5`, `effortLevel: high` (also pinned in `modelSettings`)         |
+| Thinking         | `alwaysThinkingEnabled: false`                                                    |
+| Permissions      | `defaultMode: bypassPermissions`; dangerous-mode prompt skipped                   |
+| Subagent nesting | `env.CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1`                                      |
+| Auto-compact     | `autoCompactWindow: 400000`: compaction near 366k instead of near 1M              |
+| Auto-memory      | `autoMemoryEnabled: false`; `,ai-kb` is the only durable memory                   |
+| Away recap       | `awaySummaryEnabled: false`                                                       |
+| Hooks            | none                                                                              |
+| Work auth        | native Claude enterprise auth; no `apiKeyHelper` or `ANTHROPIC_BASE_URL` override |
 
-## Using it
-
-### Claude Code settings
-
-Claude profile behavior:
-
-| Area                  | Behavior                                                                                                                                                                                                              |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Model and context     | `claude-sonnet-5-5`; natively 1M `session_models.claude_code` selector                                                                                                                                                |
-| Thinking and effort   | `alwaysThinkingEnabled: false`; `effortLevel: high` in both profiles                                                                                                                                                  |
-| Local llama.cpp       | model-scoped `high` effort with thinking off; local context windows stay unchanged                                                                                                                                    |
-| Dangerous-mode prompt | skipped in both profiles                                                                                                                                                                                              |
-| Subagent nesting      | `env.CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` in every settings profile (nesting off); every `exact_agents/` profile pins `tools:` without `Agent`                                                                     |
-| Auto-compact window   | `autoCompactWindow: 400000` in both profiles; root sessions and subagents compact near 366k instead of near 1M                                                                                                        |
-| Auto-memory           | `autoMemoryEnabled: false` in both profiles: Claude Code neither reads nor writes `~/.claude/projects/*/memory`, so `,ai-kb` is the only durable memory                                                               |
-| Away recap            | `awaySummaryEnabled: false` in both profiles: no session recap is generated when you return after 5+ minutes away (an internal setting in Claude Code 2.1.283; `CLAUDE_CODE_ENABLE_AWAY_SUMMARY=1` would override it) |
-| Work auth             | native Claude enterprise auth; no `apiKeyHelper` / `ANTHROPIC_BASE_URL` override                                                                                                                                      |
-| MCP storage           | `~/.claude.json` top-level `mcpServers`                                                                                                                                                                               |
-| Merge strategy        | selected profile plus canonical `session_models.claude_code` model and effort                                                                                                                                         |
-
-Interactive fish/bash/zsh sessions leave `claude` native. MCP wiring is handled only by the managed registry and apply-time config generation.
+Instructions come from `~/.claude/CLAUDE.md` (symlink to `~/AGENTS.md`); skills from `~/.claude/skills` → `~/.agents/skills`.
+The only custom agent is `exact_agents/k-agent-reviewer.md.tmpl` (see [Subagents](../subagents.md)); search uses the built-in `Explore`.
+The personal profile also keeps fullscreen mode and push notifications.
+`settings.llama-cpp*.json.tmpl` hold the settings `,claude-llama-cpp` passes for local models: model-scoped `high` effort, thinking off.
 
 ### LetsFG
 
@@ -54,12 +47,8 @@ Playwriter remains a fallback for rendered UI checks or booking-adjacent flows t
 
 Antigravity (`agy`) reads its global MCP servers from `~/.gemini/config/mcp_config.json`, generated directly from the shared [`mcp_servers.yaml`](../../../../home/.chezmoidata/mcp_servers.yaml) registry by `07-generate-mcp-configs`. Hosted OAuth servers without an Antigravity row in `oauth_by_tool` are omitted.
 
-Instructions and skills live in Antigravity's global customization root: `~/.gemini/config/AGENTS.md` points to `~/AGENTS.md`, while `~/.gemini/config/skills` symlinks to `~/.agents/skills`. `~/.gemini/config/hooks.json` injects shared session context on the first `PreInvocation`, carries premise-check nudges from `PreToolUse` into the next invocation, and records `PostToolUse` events.
+Instructions and skills live in Antigravity's global customization root: `~/.gemini/config/AGENTS.md` points to `~/AGENTS.md`, while `~/.gemini/config/skills` symlinks to `~/.agents/skills`. There are no Antigravity hooks.
 
-Paid Gemini API quota for Antigravity CLI is declared in [`home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json`](../../../../home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json) and merged into `~/.gemini/antigravity-cli/settings.json` by `07-merge-antigravity-cli-settings` (declared-over-live). Policy owns `modelProvider: "gemini"`, `model: "Gemini 3.8 Flash (High)"`, and `enableTelemetry: false`, and strips any top-level `gcp` pin. That Flash pin is the interactive-TUI default and matches `session_models.antigravity`, so `,ai gemini` passes `gemini-3.8-flash --effort high`. Every Antigravity category uses the Flash base model with its row-specific effort. Dynamic review subagents receive the abstract `flash` tier: `invoke_subagent` accepts only tiers, and every `category_models.antigravity` row is Gemini Flash. Runtime fields such as `trustedWorkspaces`, `permissions`, and `statusLine` survive. Fish still loads `GEMINI_API_KEY` from `pass google/gemini/api/token`; the key alone does not switch providers.
+Paid Gemini API quota for Antigravity CLI is declared in [`home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json`](../../../../home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json) and merged into `~/.gemini/antigravity-cli/settings.json` by `07-merge-antigravity-cli-settings` (declared-over-live). Policy owns `modelProvider: "gemini"`, `model: "Gemini 3.8 Flash (High)"`, and `enableTelemetry: false`, and strips any top-level `gcp` pin. That Flash pin is the interactive-TUI default. Runtime fields such as `trustedWorkspaces`, `permissions`, and `statusLine` survive. Fish still loads `GEMINI_API_KEY` from `pass google/gemini/api/token`; the key alone does not switch providers.
 
 Do not export `GOOGLE_GENAI_USE_VERTEXAI`, `GOOGLE_CLOUD_PROJECT`, or `GOOGLE_CLOUD_LOCATION` into interactive shells. Those force `authMethod=gcp` onto `aiplatform.googleapis.com` and burn shared Vertex quota instead. Corporate Google OAuth without the Gemini API key provider lands on Antigravity Starter product quota.
-
-An A/B on 2026-09-25 used 3 tests-first tasks rebuilt from past commits, with 2 repetitions per arm. It tested subagents and main sessions separately. Long implementation subagents cost $15.16 and $15.56 with the window, against $21.90 and $24.94 without it. All tasks passed in every run and no test file was edited. The one main session that compacted also passed every task, at $11.00 against $12.48 for its control run. The `,claude-llama-cpp` additive settings files and the env overrides of other wrappers take precedence over this value.
-
-The personal Claude profile keeps fullscreen mode and push notifications. Both profiles explicitly pin `modelSettings.claude-sonnet-5-5.effortLevel` to `high`, matching the canonical `session_models.claude_code` row.

@@ -85,7 +85,7 @@ Per-tool transforms handle schema differences, such as Antigravity's `serverUrl`
 
 Pi emits `{ url, oauth }` for HTTP servers, with `scope` normalised to space-separated tokens, as its built-in MCP expects. Other tools have their own config schemas.
 
-Pi's built-in MCP defaults a server's `exposure` to `codemode`: its tools are not declared to the model and are called from `codemode` scripts as `tools.mcp__<server>__<tool>`. The registry sets no `exposure`, so Pi's `slack` row follows that default, while Claude Code declares the tools directly. See [Pi coding agent settings](tool-configs/pi.md#shared-settings).
+Pi's built-in MCP defaults a server's `exposure` to `codemode`: its tools are not declared to the model and are called from `codemode` scripts as `tools.mcp__<server>__<tool>`. The registry sets no `exposure`, so Pi's `slack` row follows that default, while Claude Code declares the tools directly. See [Pi coding agent settings](tool-configs/pi.md#settings).
 
 Tools whose config is not plain JSON get dedicated injectors with explicit ownership rules:
 
@@ -111,5 +111,4 @@ LetsFG is intentionally not exposed through the shared MCP registry because its 
 ## Related
 
 - [Tool configs](tool-configs/index.md) — per-assistant settings and profile merging
-- [Model registry & routing](model-registry.md) — the parallel registry for model definitions
 - [The Agentic Operating System](index.md) — governance layer

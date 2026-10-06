@@ -120,75 +120,12 @@ GATES: tuple[Gate, ...] = (
         argv=("python3", "scripts/verify_agent_file_sizes.py"),
         prefixes=("home/exact_dot_agents/", "scripts/verify_agent_file_sizes.py"),
     ),
-    Gate(
-        name="verify-agent-policy",
-        argv=(
-            "python3",
-            "scripts/compile_ai_policy.py",
-            "audit-coverage",
-            "--legacy",
-            "home/readonly_AGENTS.md",
-            "--base-ref",
-            "origin/main",
-        ),
-        prefixes=(
-            "home/readonly_AGENTS.md",
-            "home/dot_config/ai/exact_policy-ir/",
-            "scripts/compile_ai_policy.py",
-            "scripts/ai_policy_ir.py",
-            "scripts/ai_harness_capabilities.py",
-            "scripts/eval_ai_policy.py",
-        ),
-    ),
-    Gate(
-        name="verify-agent-policy-budgets",
-        # Temporary permissive ceilings while the workflow architecture settles.
-        argv=(
-            "python3",
-            "scripts/compile_ai_policy.py",
-            "verify-budgets",
-            "--core-max-bytes",
-            "999999",
-            "--overlay-max-bytes",
-            "999999",
-            "--skill-max-bytes",
-            "999999",
-            "--description-total-max-bytes",
-            "999999",
-        ),
-        prefixes=(
-            "home/readonly_AGENTS.md",
-            "home/dot_config/ai/exact_policy-ir/",
-            "scripts/compile_ai_policy.py",
-            "scripts/ai_policy_ir.py",
-            "scripts/ai_harness_capabilities.py",
-        ),
-    ),
 )
 
 TEST_RULES: tuple[TestRule, ...] = (
     TestRule(
-        prefixes=(
-            "home/dot_config/exact_tmux/exact_scripts/agent_prompt_wrap/",
-            "home/dot_config/exact_tmux/exact_conf.d/readonly_45-agent-prompt-wrap.conf",
-        ),
-        tests=("tests/test_agent_prompt_wrap.py",),
-    ),
-    TestRule(
         prefixes=("scripts/merge_claude_mcp.py",),
         tests=("test_generate_mcp_configs.py",),
-    ),
-    TestRule(
-        prefixes=("docs/topics/ai-assistants/model-tiering.md",),
-        tests=("tests/test_model_band_invariants.py",),
-    ),
-    TestRule(
-        prefixes=("home/dot_gemini/config/readonly_hooks.json",),
-        tests=("tests/test_agent_skill_invariants.py",),
-    ),
-    TestRule(
-        prefixes=("home/readonly_AGENTS.md",),
-        tests=("tests/test_agent_skill_invariants.py",),
     ),
     TestRule(
         prefixes=("home/exact_dot_agents/exact_skills/exact_k-playwriter/",),
@@ -215,35 +152,6 @@ TEST_RULES: tuple[TestRule, ...] = (
             "tests/test_session_github_cache.py",
             "tests/test_plain_session_removal.py",
         ),
-    ),
-    TestRule(
-        prefixes=(
-            "home/exact_dot_agents/exact_hooks/executable_",
-            "home/exact_dot_agents/exact_hooks/hook_common.py",
-            "home/exact_dot_agents/exact_hooks/correction_detector.py",
-            "home/exact_dot_agents/exact_hooks/spec_mirror.py.tmpl",
-            "home/exact_dot_agents/exact_hooks/worklog_queue.py.tmpl",
-            "scripts/worklog_queue.py",
-            "scripts/session_context.py",
-            "scripts/perturn_recall.py",
-            "scripts/spec_mirror.py",
-        ),
-        tests=(
-            "tests/test_agent_hooks.py",
-            "tests/test_recall_worklog.py",
-            "tests/test_premise_nudge.py",
-            "tests/test_correction_detector.py",
-            "tests/test_model_band_invariants.py",
-            "tests/test_agent_skill_invariants.py",
-        ),
-    ),
-    TestRule(
-        prefixes=(
-            "home/exact_bin/executable_,agent-memory",
-            "home/exact_lib/exact_,agent-memory/",
-            "home/dot_config/fish/completions/readonly_,agent-memory.fish",
-        ),
-        tests=("test_agent_memory.py",),
     ),
     TestRule(prefixes=("home/dot_config/fish/completions/readonly_,q.fish",), tests=("tests/test_q.py",)),
     TestRule(
@@ -288,69 +196,17 @@ TEST_RULES: tuple[TestRule, ...] = (
     ),
     TestRule(
         prefixes=(
-            "home/.chezmoidata/ai_models/",
             "home/dot_config/llama.cpp/",
             "home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl",
             "home/dot_pi/agent/readonly_models.json",
             "home/dot_pi/agent/readonly_models.personal.json",
             "home/readonly_dot_default-llama-cpp-models.tmpl",
-            "scripts/ai_models.py",
-            "scripts/model_mirrors.py",
         ),
-        tests=(
-            "test_ai_launcher.py",
-            "test_ai_models.py",
-            "test_model_mirrors.py",
-            "tests/test_model_band_invariants.py",
-            "tests/test_invariants.py",
-        ),
-    ),
-    TestRule(
-        prefixes=(
-            "home/.chezmoitemplates/agent-effort.partial",
-            "home/.chezmoitemplates/pi-model-profile.partial",
-            "home/exact_bin/executable_,pi-model-profile",
-        ),
-        tests=("tests/test_model_band_invariants.py",),
-    ),
-    TestRule(
-        prefixes=(
-            "scripts/generate_session_models.py",
-            "home/dot_claude/settings.work.json",
-            "home/dot_claude/settings.personal.json",
-            "home/dot_codex/private_config.work.toml",
-            "home/dot_codex/private_config.personal.toml",
-            "home/dot_pi/agent/readonly_settings.work.json",
-            "home/dot_pi/agent/readonly_settings.personal.json",
-            "home/dot_omp/private_agent/readonly_config.yml.tmpl",
-            "home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json",
-        ),
-        tests=("test_generate_session_models.py", "tests/test_model_band_invariants.py"),
-    ),
-    TestRule(
-        prefixes=(
-            "home/dot_pi/agent/exact_extensions/subagent-contract.ts",
-            "home/dot_pi/agent/exact_extensions/runtime-parity.ts",
-            "home/dot_pi/agent/readonly_settings.work.json",
-            "home/dot_pi/agent/readonly_settings.personal.json",
-            "scripts/tests/test_pi_subagent_contract.py",
-        ),
-        tests=("tests/test_pi_subagent_contract.py", "tests/test_agent_hooks.py"),
-    ),
-    TestRule(
-        prefixes=(
-            "home/readonly_AGENTS.md",
-            "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
-            "home/dot_config/exact_tmux/agent_prompts/leaf-boundary.txt",
-            "home/dot_config/ai/exact_policy-ir/",
-            "docs/topics/ai-assistants/system-prompt/source-of-truth.md",
-        ),
-        tests=("tests/test_sop_policy_invariants.py", "test_ai_policy_compiler.py"),
+        tests=("tests/test_invariants.py",),
     ),
     TestRule(
         prefixes=(
             "home/exact_dot_agents/exact_skills/",
-            "home/exact_dot_agents/exact_references/",
             "home/dot_pi/",
             "home/dot_claude/",
             "home/dot_codex/",
@@ -359,12 +215,7 @@ TEST_RULES: tuple[TestRule, ...] = (
             "home/dot_config/exact_nvim/",
             "home/.chezmoiscripts/",
         ),
-        tests=(
-            "tests/test_agent_skill_invariants.py",
-            "tests/test_review_policy_invariants.py",
-            "tests/test_model_band_invariants.py",
-            "tests/test_invariants.py",
-        ),
+        tests=("tests/test_invariants.py",),
     ),
     TestRule(prefixes=(".githooks/pre-commit", "bin/fmt", "bin/check"), tests=("test_pre_commit.py",)),
     TestRule(
@@ -374,45 +225,7 @@ TEST_RULES: tuple[TestRule, ...] = (
         prefixes=("home/exact_lib/exact_,w/", "home/exact_bin/executable_,w"),
         tests=("tests/test_w_remove_detached.py", "tests/test_worktree_delete_boundaries.py"),
     ),
-    TestRule(prefixes=("home/exact_lib/exact_,proof/",), tests=("tests/test_proof_cli.py",)),
-    TestRule(
-        prefixes=(
-            "home/exact_lib/exact_,formal/",
-            "home/exact_bin/executable_,formal",
-            "home/dot_config/fish/completions/readonly_,formal.fish",
-            "scripts/tests/fixtures/formal/",
-            "scripts/tests/formal_support.py",
-        ),
-        tests=(
-            "tests/test_formal_anchors.py",
-            "tests/test_formal_audit.py",
-            "tests/test_formal_build_exe.py",
-            "tests/test_formal_catalog.py",
-            "tests/test_formal_cli.py",
-            "tests/test_formal_e2e.py",
-            "tests/test_formal_manifest.py",
-            "tests/test_formal_prove.py",
-            "tests/test_formal_replay.py",
-        ),
-    ),
-    TestRule(
-        prefixes=(
-            "home/exact_lib/exact_,ai-usage/",
-            "home/exact_bin/executable_,ai-usage",
-            "home/dot_config/fish/completions/readonly_,ai-usage.fish",
-        ),
-        tests=("tests/test_ai_usage.py",),
-    ),
     TestRule(prefixes=("home/exact_lib/exact_,wh/",), tests=("tests/test_wh.py",)),
-    TestRule(
-        prefixes=("home/exact_lib/exact_,codex-adapter/",),
-        tests=("tests/test_codex_adapter.py",),
-    ),
-    TestRule(
-        prefixes=("home/exact_lib/exact_shared/codex_lanes.py", "home/exact_lib/exact_shared/claude_lanes.py"),
-        tests=("tests/test_codex_adapter.py", "tests/test_openrouter_wrappers.py"),
-    ),
-    TestRule(prefixes=("home/exact_lib/exact_,ai/", "home/exact_bin/executable_,ai"), tests=("test_ai_launcher.py",)),
     TestRule(prefixes=("home/dot_omp/",), tests=("test_omp_migration.py", "tests/test_invariants.py")),
     TestRule(prefixes=("scripts/install_github_zip_bundle.py",), tests=("tests/test_install_github_zip_bundle.py",)),
     TestRule(
@@ -422,10 +235,6 @@ TEST_RULES: tuple[TestRule, ...] = (
             "home/.chezmoiscripts/run_onchange_after_07-sync-llama-cpp-models.sh.tmpl",
         ),
         tests=("tests/test_llama_cpp_lifecycle.py",),
-    ),
-    TestRule(
-        prefixes=("scripts/compile_ai_policy.py", "scripts/ai_policy_ir.py"),
-        tests=("tests/test_ai_policy_compiler.py",),
     ),
     TestRule(
         prefixes=(
@@ -447,22 +256,6 @@ EXTRA_TESTS: tuple[ExtraTest, ...] = (
             "home/exact_lib/exact_shared/context_mode.ts",
             "home/dot_pi/agent/exact_extensions/context-mode.ts.tmpl",
             "home/dot_omp/private_agent/extensions/context-mode.ts.tmpl",
-        ),
-    ),
-    ExtraTest(
-        name="pi-model-profile",
-        argv=("bun", "test", "scripts/tests/pi_model_profile.test.ts"),
-        prefixes=(
-            "scripts/tests/pi_model_profile.test.ts",
-            "home/dot_pi/agent/exact_extensions/pi-model-profile.ts",
-        ),
-    ),
-    ExtraTest(
-        name="omp-runtime-parity",
-        argv=("bun", "test", "scripts/tests/omp_runtime_parity.test.ts"),
-        prefixes=(
-            "scripts/tests/omp_runtime_parity.test.ts",
-            "home/dot_omp/private_agent/extensions/runtime-parity.ts",
         ),
     ),
     ExtraTest(

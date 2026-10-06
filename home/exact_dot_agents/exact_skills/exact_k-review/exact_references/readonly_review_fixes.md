@@ -1,28 +1,30 @@
 # Review Fixes
 
-Fix findings within the current packet's write scope and the approved semantic delta (see `~/.agents/skills/k-review/references/authorship.md` for resolving write scope); a final-Verify-stage packet stays read-only by category and reports instead.
-For `other`/`unknown` authorship, the artifact is not yours to write regardless of packet category —
-fixing still requires the user to explicitly say to fix it.
-Gather the known finding/thread batch in Understand, retaining source evidence and decisions.
-Use implementation-band workers for substantial settled edits during Produce; each returns artifacts without private checks.
-Do not broaden into missing features, unrelated hygiene, or another finder pass.
-Integrate tests, docs, generated outputs, and formatting before one final Verify stage over the complete fix batch.
-Run the planned checks once; the final judgment over the fix batch executes in the review mode's required isolated packet.
-The root applies SOP §3.5 to authorized recovery; this reference grants no repair authority or separate recheck loop.
-Commit, push, reply, resolve, and publish only under their existing explicit or bounded authority.
+Fix findings only within write scope (`~/.agents/skills/k-review/references/authorship.md`).
+For `other` or `unknown` authorship, fixing needs the user to explicitly say so.
 
 ## Fix Scope (Mandatory Boundary)
 
 A fix stays inside the behavior the reviewed diff already changes.
-It becomes a proposal instead — reported with the smallest change and left unapplied —
-when it would need a new user-visible state (loading, error, retry), a new prop or export on a component outside the diff's package, a file outside the packages the diff touches, or new translated strings beyond the changed component.
-A review that finds a defect it cannot fix inside that scope reports the defect; it does not build the feature.
+It becomes a proposal instead — reported with the smallest change and left unapplied — when it would need:
 
-This boundary exists because an out-of-scope fix grows into an unbounded feature build:
-redesigns, shared-component API changes, and repeated full-suite runs.
-The fix pass in this reference is one round: fix the in-scope findings, then one final judgment over the fix diff.
-A finding that judgment raises against the fix is ordinary SOP §3.5 recovery when it stays inside Fix Scope (repair, rerun the affected checks, stop under §3.4); outside Fix Scope it is a proposal for the user.
-Neither is a fresh refutation round.
+- a new user-visible state (loading, error, retry)
+- a new prop or export on a component outside the diff's package
+- a file outside the packages the diff touches
+- new translated strings beyond the changed component
 
-**`k-converge` is the only multi-round loop.**
-Its declared exit condition (`~/.agents/skills/k-converge/SKILL.md` Step 1) is the named exception to this bound and to SOP §3.5's "Only the active root/main session owns stage transitions; skills supply task mechanics and criteria, never nested lifecycles" — enter it only by explicit user invocation or the caller's authorized handoff under its workflow-handoff contract, never by re-running this reference's fix pass as a substitute for its refutation rounds.
+A defect that cannot be fixed inside this scope is reported, not built.
+Out-of-scope fixes grow into unbounded feature work: redesigns, shared API changes, and repeated full-suite runs.
+
+## One round
+
+1. Fix the in-scope findings together, with tests and docs.
+2. Run the affected checks once.
+3. Re-read the fix diff once.
+   A problem it reveals inside Fix Scope gets one more repair and a rerun of the affected checks;
+   outside Fix Scope it is a proposal for the user.
+4. Stop. Report what was fixed, what was proposed, and what remains.
+
+After two attempts at the same failure without new evidence, stop and report the blocker.
+NEVER start another finder or review pass on your own.
+Commit, push, reply, resolve, and publish only under their own explicit authority.

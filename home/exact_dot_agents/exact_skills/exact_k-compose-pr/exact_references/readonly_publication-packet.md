@@ -15,11 +15,7 @@ Load when building the required PR publication packet for `k-github`. The gate i
   For non-visual UI behavior bugs (clipboard, keyboard, focus, network), capture human-visible trigger/result states and record the non-visual assertion in the Test Plan.
   Captured proof includes folder/filename mapping; explicit skips include user approval evidence.
 - `test_plan`: reviewer-runnable steps, issue reproduction/expected/actual coverage, commands run, and observed results.
-  If a matching `,proof` ledger exists, select it with `,proof list --json` and inspect `,proof --topic <topic> status --json`.
-  Consume it as completion proof only when `allowed` is true, `finalized_at` is set, and `seal_status` is `ok`.
-  Run `,proof --topic <topic> report` and quote criteria, evidence IDs, and verdicts instead of raw logs.
-  If the ledger is failing, unfinalized, or has a broken seal, report that state;
-  presenting it as proof or finishing it retroactively during PR composition is off limits.
+  Quote the commands and their observed results from this session's actual check runs; never claim a check that did not run.
 - `metadata`: proposed labels/assignees/milestone/projects, source skill/rationale, and `status: none | not_applicable | approved_to_apply | applied | deferred | pending_approval`.
   Proposed-but-unapproved metadata is `pending_approval` unless the user explicitly defers it.
 - Keep PR reviewer fields unset; GitHub handles reviewer assignment automatically.
@@ -48,7 +44,7 @@ Completion criterion: the packet is complete, or composition is blocked with exa
 - For behavior/UI bugs, include portable local reproduction steps another reviewer can run from a normal checkout;
   do not replace repro with session-only validation notes.
 - Sanitize public PR text: no machine-specific hosts, ports, paths, temp files, workspace names, browser-session URLs, or local usernames.
-  Also no agentic-session artifacts (SOP references, skill/agent/packet names, `Compatibility impact:` lines, `/tmp/specs` paths, ledger references) per `~/.agents/skills/k-communication/SKILL.md`.
+  Also no agentic-session artifacts (SOP references, skill/agent/packet names, `Compatibility impact:` lines, scratch paths, handoff notes) per `~/.agents/skills/k-communication/SKILL.md`.
   Prefer portable wording such as `local app`, `http://localhost:<port>`, `a user with only <privilege>`, or setup steps.
 - Screenshots: when captured, add `## Screenshots` with bold caption + `user-attachments` URL per shot.
   Upload every image/video through `~/.agents/skills/k-github/references/attachments.md`; that flow is the only source of embed URLs —

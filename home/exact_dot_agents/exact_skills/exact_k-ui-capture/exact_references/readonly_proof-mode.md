@@ -1,7 +1,7 @@
 # Proof-Mode Contract (shared)
 
 The proof-mode live-UI contract: head-only verification that a built/changed UI matches its intended visual, state, or behavior, and capture of the proof set for a PR.
-Loaded by the `k-ui-capture` skill (direct entry), `/k-build`'s live-UI proof phase, and `k-compose-pr`'s publication packet;
+Loaded by the `k-ui-capture` skill (direct entry), `k-build`'s live-UI checks, and `k-compose-pr`'s publication packet;
 the caller owns routing and supplies the inputs below.
 
 Load `~/.agents/skills/k-review/references/live-ui-runtime.md` for the shared runtime contract:
@@ -9,7 +9,6 @@ mode boundary, terminology, target-packet resolution, Playwriter preflight, read
 This file adds only the proof-mode specifics: the head-only model, the intended UI state/behavior oracle, and the proof return shape.
 
 This contract runs **inline** in its caller, which already holds Playwriter and local/dev mutation permissions.
-It is not a `/k-deep-review` read-only reviewer lane and needs no isolated subagent profile;
 The shared runtime contract owns the exact Playwriter, local/dev setup, lifecycle, and environment-adapter exceptions;
 its read-only and approval constraints remain binding.
 

@@ -3,7 +3,7 @@
 A navigation cloud for this chezmoi dotfiles repo, in **two layers**:
 
 - **Semantic cloud** (`S0`, `S1`, `S3`, `SR`) — how the system _thinks_: the 13 concepts and invariants it is built on, the cross-cutting flows that wire subsystems together, and a reverse index from any file to its concept, blast radius, and co-edit set. **Read this first** — it makes the catalog legible.
-- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1507 files in the effective git file set, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
+- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1192 files in the effective git file set, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
 
 Together they let an agent understand the whole solution in one pass and then map straight down to any particle. They complement the prose in `docs/` and the rules in `AGENTS.md` / `CLAUDE.md`.
 
@@ -21,17 +21,17 @@ Each file is a standalone [Mermaid](https://mermaid.js.org/) diagram (`.mmd`), l
 1. [`00-overview.mmd`](00-overview.mmd) — master map (semantic + catalog) + file census; start here.
 2. [`01-chezmoi-pipeline.mmd`](01-chezmoi-pipeline.mmd) — `chezmoi apply` lifecycle; every `.chezmoiscripts/` hook (27) + data/external/ignore inputs.
 3. [`02-package-management.mmd`](02-package-management.mmd) — the "add X" ladder and every `default-*` package list + sync hook (incl. runtimes, local AI, system hooks).
-4. [`03-agentic-os.mmd`](03-agentic-os.mmd) — governance + context + execution layers (SOP entrypoints, MCP/model registries, per-tool generation).
-5. [`03b-agent-skills-hooks.mmd`](03b-agent-skills-hooks.mmd) — every file under `exact_dot_agents/` (57 skill entrypoints + hooks, references, and assets).
+4. [`03-agentic-os.mmd`](03-agentic-os.mmd) — instructions, MCP registry, per-tool config generation, subagents, and on-demand memory.
+5. [`03b-agent-skills-hooks.mmd`](03b-agent-skills-hooks.mmd) — every file under `exact_dot_agents/` (54 skill entrypoints + references and assets).
 6. [`05-tmux-pickers.mmd`](05-tmux-pickers.mmd) — tmux pickers, owner-scoped handoff pins, and popup lifecycle.
 7. [`06-worktree-workflow.mmd`](06-worktree-workflow.mmd) — `,w` subcommands, `,gh-tfork`, gh-dash, and 1Password identity switching.
 8. [`07-shell-editor-macos.mmd`](07-shell-editor-macos.mmd) — fish/zsh/bash, terminals, and macOS automation (Hammerspoon, Karabiner, Alfred, icons, osx defaults).
 9. [`07b-neovim.mmd`](07b-neovim.mmd) — every file under `exact_nvim/` (130): core, 57 plugin specs, local plugins (14 each), util, queries, syntax.
-10. [`07c-bin-commands.mmd`](07c-bin-commands.mmd) — every thin command in `exact_bin/` (74) grouped by purpose + deployed command/shared internals in `home/exact_lib/` (139 command/shared library files), spanning 36 command libraries plus shared helpers.
+10. [`07c-bin-commands.mmd`](07c-bin-commands.mmd) — every thin command in `exact_bin/` (67) grouped by purpose + deployed command/shared internals in `home/exact_lib/` (87 command/shared library files), spanning 30 command libraries plus shared helpers.
 11. [`08-security-and-dotfiles.mmd`](08-security-and-dotfiles.mmd) — SSH/GPG identity, 1Password agent, git signing, pass stores, and every shell/tool rc dotfile.
 12. [`09-repo-validation.mmd`](09-repo-validation.mmd) — `make check` / `make fmt`, hygiene gates, and every repo-side config/meta file.
 13. [`10-docs-and-repo-meta.mmd`](10-docs-and-repo-meta.mmd) — the Docusaurus site (`website/` + `docs/`) and GitHub Pages CI; every page named.
-14. [`11-scripts-helpers.mmd`](11-scripts-helpers.mmd) — every file in `scripts/` (166): shared parsers, reconcilers, MCP/model/mirror generators, AI KB, session/cache diagnostics, artifact ledger, tests.
+14. [`11-scripts-helpers.mmd`](11-scripts-helpers.mmd) — every file in `scripts/` (96): shared parsers, reconcilers, MCP generators, AI KB, artifact ledger, validators, tests.
 15. [`12-ai-tool-configs.mmd`](12-ai-tool-configs.mmd) — every per-tool AI config (Claude, Codex, Antigravity, OpenCode, Pi, tuicr, lgtm).
 16. [`13-app-configs.mmd`](13-app-configs.mmd) — app/runtime configs for Ghostty, Starship, local LLMs, and input/window management.
 
@@ -41,17 +41,17 @@ Each file is a standalone [Mermaid](https://mermaid.js.org/) diagram (`.mmd`), l
 | ---------------------------- | ------------------------------------------------------------------------------- | -------- |
 | C1 source vs output          | edit `home/**`, never `$HOME` targets                                           | 01       |
 | C2 one registry per concern  | declare once, generate per tool                                                 | 02,12    |
-| C3 `isWork` duality          | one bool forks identity/keys/models                                             | 01,12,13 |
+| C3 `isWork` duality          | one bool forks identity/keys/harness settings                                   | 01,12,13 |
 | C4 idempotent reconcile      | hash-gate + write-if-changed + manifest                                         | 01,02    |
 | C5 secrets at runtime        | configs reference, never store, secrets                                         | 08,12    |
 | C6 thin shell / typed core   | shell is glue; logic lives in `scripts/` or `home/exact_lib/` command internals | 11, 07c  |
-| C7 governed agents           | SOP + skills + fail-closed gates                                                | 03,03b   |
+| C7 inline agents             | one instruction file + on-demand skills; rare subagents                         | 03,03b   |
 | C8 evidence ledger           | claims anchored or demoted to Unknown                                           | 03b      |
 | C9 stale-while-revalidate    | cached first paint, bg refetch, no block                                        | 05       |
 | C10 owner-scoped handoff bus | cooperate via pin/sentinel slots in a per-owner token namespace                 | 05,06    |
-| C11 adversarial diversity    | prefer different family at equal capability; capability outranks diversity      | 03b      |
-| C12 resumable state machines | crash-safe hook/worklog queues preserve progress                                | 03b,12   |
-| C13 intent memory            | sessions rehydrate from `/tmp/specs`                                            | 03b      |
+| C11 bounded verification     | checks once; one review round, one fix round                                    | 03,03b   |
+| C12 resumable state machines | persisted picker/lifecycle state survives crashes                               | 05,07c   |
+| C13 explicit handoffs        | `,handoff` notes continue work across harnesses                                 | 03,03b   |
 
 ## Coverage map (where each top-level area lives)
 

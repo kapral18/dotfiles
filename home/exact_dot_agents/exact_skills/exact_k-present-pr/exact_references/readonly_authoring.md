@@ -13,7 +13,7 @@ It is the working map that keeps the page from becoming "the diff, but prettier"
 
 - **Thesis:** one sentence naming the reviewer-visible outcome.
 - **Audience:** the reviewer level and system context you are writing for.
-- **Evidence cache:** whether prior `/tmp/specs` or `/tmp/present-pr` evidence is being reused.
+- **Evidence cache:** whether prior `/tmp/present-pr` evidence is being reused.
   Include the PR/head SHA it matches and which sources were refreshed.
 - **Review-readiness map:** mental model, layered explanation, change topology, load-bearing line index, invariants/non-changes, risk-attention map, and GitHub handoff order.
 - **Introduced concepts inventory:** each business/domain concept or logic layer the PR adds or changes.

@@ -1,26 +1,23 @@
 # PR Snapshot, Drift, and File Truth
 
 Loaded by `~/.agents/skills/k-review/references/pr_common.md` for every PR mode.
-The controller runs this; workers read the resulting pack per `~/.agents/skills/k-review/references/context-pack.md`.
 
-## Snapshot (the context pack; one fetch per object)
+## Snapshot (one fetch per object)
 
-The PR snapshot is the review context pack owned by `~/.agents/skills/k-review/references/context-pack.md`:
-one producer, one layout, read by the controller and by every lane.
-Fetch each PR object once into the pack and read from it; a second API shape for the same object is a duplicate fetch, not more evidence.
+Fetch each PR object once into a snapshot directory and read from it; a second API shape for the same object is a duplicate fetch, not more evidence.
+The snapshot is a read-only cache: never edit files in it, and keep scratch notes outside it.
 
-Pack root: `/tmp/deep-review/<owner>-<repo>-pr<number>/` (the layout, `manifest.json` fields, and file inventory are in `~/.agents/skills/k-review/references/context-pack.md`).
+Snapshot root: `/tmp/k-review/<owner>-<repo>-pr<number>/`, holding `manifest.json` (`head_sha`, `base_sha`, `base_ref`, `snapshot_at`, `discussion_at`, changed `files[]`), `pr.json`, `body.md`, `threads.json`, `checks.json`, `diff.patch`, `files/<path>` (head content), `base/<path>` (base content), `media/`, and `refs/`.
 
 - Metadata and body: `gh pr view <n> --repo <owner/repo> --json number,url,title,body,author,state,isDraft,baseRefName,baseRefOid,headRefName,headRefOid,mergeable,mergeStateStatus,files,labels,closingIssuesReferences` → `pr.json` (body also as `body.md`).
 - Discussion: one GraphQL query → `threads.json`, paginated to completion, holding `reviews` (state, body, `submittedAt`, `updatedAt`, author `login` + `__typename`), `reviewThreads` (`isResolved`, `isOutdated`, `path`, `line`, and every comment with `databaseId`, `body`, `createdAt`, `updatedAt`, `isMinimized`, `minimizedReason`, author `login` + `__typename`), and issue `comments` (same fields).
   This is the only fetch for review and comment content; do not also call REST `pulls/<n>/reviews`, `pulls/<n>/comments`, or `issues/<n>/comments` for the same PR.
   Fetch the timeline only when an event (label, force-push, review request, close/reopen) is itself the question.
 - Checks: `gh pr checks <n> --json name,state,bucket,workflow,link` → `checks.json` (owned by the CI Coverage Gate).
-- Diff and files: `diff.patch`, `files/<path>`, `base/<path>` per `~/.agents/skills/k-review/references/context-pack.md`, scoped as in Diff scope below.
-- Media and references: every attachment and every linked PR/issue the intake gate reads goes into the pack too (`media/`, `refs/`), per the two subsections below.
-- Write `manifest.json` with `head_sha`, `base_sha`, `snapshot_at`, and `discussion_at`;
-  record the same four values plus `pack: <root>` in the review spec (`~/.agents/skills/k-review/references/shared_rules.md`, Review Persistence).
-- Read the pack with targeted reads.
+- Diff and files: `diff.patch`, `files/<path>`, `base/<path>`, scoped as in Diff scope below.
+- Media and references: every attachment and every linked PR/issue the intake gate reads goes into the snapshot too (`media/`, `refs/`), per the two subsections below.
+- Write `manifest.json`; record `head_sha`, `base_sha`, `snapshot_at`, and `discussion_at` in the review queue (`~/.agents/skills/k-review/references/shared_rules.md` Review Queue).
+- Read the snapshot with targeted reads. Do not re-fetch with `gh` or `git show <head>:<path>` what the snapshot already holds.
   The complete raw artifact is on disk, which satisfies the intake gate below without dumping JSON into context twice.
 
 ### Media
@@ -33,8 +30,8 @@ Pack root: `/tmp/deep-review/<owner>-<repo>-pr<number>/` (the layout, `manifest.
 - After every download, check the payload before trusting it: `file <path>` must report an image, video, or the expected document type, and `content_type` must not be `text/html`.
   A 200 with an HTML body is a failed download, not evidence; record it as `download_failed` in the manifest and do not "read" it as media.
 - An attachment URL is immutable per upload: never re-download a URL already in the manifest.
-  When a comment edit changes the URL, the new URL is a new media row; the old row stays until the pack is rebuilt.
-- Inspect media only from the pack path, view each file once, record its `media:` line in the review spec, and cite the manifest row when a finding depends on it.
+  When a comment edit changes the URL, the new URL is a new media row; the old row stays until the snapshot is rebuilt.
+- Inspect media only from the snapshot path, view each file once, note it in the review queue, and cite the manifest row when a finding depends on it.
 
 ### References
 
@@ -62,8 +59,8 @@ Pack root: `/tmp/deep-review/<owner>-<repo>-pr<number>/` (the layout, `manifest.
 
 ### Drift (one final freshness check)
 
-The pack records truth at `snapshot_at`, not a continuously refreshed view.
-In final Verify, the root checks head and discussion once against the frozen pack:
+The snapshot records truth at `snapshot_at`, not a continuously refreshed view.
+Before the final verdict or draft, check head and discussion once against it:
 
 1. Head: compare `gh pr view <n> --json headRefOid` with `manifest.head_sha`.
 2. Discussion: fetch the complete paginated discussion into a separate final evidence artifact.
@@ -71,16 +68,14 @@ In final Verify, the root checks head and discussion once against the frozen pac
    Include new, edited, deleted, and minimized comments and replies.
 
 Report `Drift: head=<same|old..new> discussion=<none|changed ids>`. If either changed, report stale evidence and the affected criteria.
-Do not certify the new snapshot before revalidation.
-The root may refresh evidence only under SOP §3.5 and existing authority; retain the prior snapshot evidence and revalidate affected criteria before mutation or certification.
+Revalidate the affected findings against the new head or discussion before relying on them.
 
 Immediately before an authorized anchored publication, check the exact target head and anchor preconditions required by `k-github`.
 This is a transaction safety check, not another semantic review. If they changed, withhold the write and report stale anchors.
-A failed publication precondition blocks the write; any necessary evidence recovery returns to the root under SOP §3.5 before another publication attempt.
+A failed publication precondition blocks the write until the evidence is refreshed.
 
 ### Lifetime
 
-The pack is a best-effort `/tmp` cache, not a durable record; task decisions and receipts stay in the topic spec.
-On continuation, resume the recorded stage and snapshot. Do not repeat completed freshness checks merely because a turn or session changed.
-A missing pack invokes root-owned recovery under SOP §3.5 when the authorized target is unchanged; otherwise it is a concrete blocker.
-Preserve prior evidence when a new snapshot is built.
+The snapshot is a best-effort `/tmp` cache; decisions and results live in the review queue.
+On continuation, resume from the queue. Do not repeat a completed freshness check merely because a turn or session changed.
+Rebuild a missing snapshot when the target is unchanged.

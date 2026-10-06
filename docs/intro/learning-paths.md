@@ -76,6 +76,6 @@ What to focus on:
 
 Where to read:
 
-- [AI & Assistants](../topics/ai-assistants/index.md) — the governance hub
-- [MCP servers](../topics/ai-assistants/mcp.md) and [Model registry & routing](../topics/ai-assistants/model-registry.md) — how tools get context and models
-- [Agent memory](../topics/ai-assistants/knowledge-base/index.md) — session memory and the durable knowledge base
+- [AI assistants](../topics/ai-assistants/index.md) — instructions, skills, subagents
+- [MCP servers](../topics/ai-assistants/mcp.md) and [Tool configs](../topics/ai-assistants/tool-configs/index.md) — how tools get context and models
+- [Memory and handoffs](../topics/ai-assistants/memory-and-handoffs.md) — `,ai-kb` and `,handoff`

@@ -5,7 +5,7 @@
 %%     (S0), cross-cutting flows (S1/S3), and a reverse index (SR) that maps
 %%     any file to its concept, blast radius, and co-edit set.
 %%   CATALOG (drill-down) — how the system is LAID OUT: 00-13 enumerate every
-%%     one of the 1507 files in the effective git file set by exact chezmoi source path.
+%%     one of the 1192 files in the effective git file set by exact chezmoi source path.
 %% `home/` is chezmoi source deployed to $HOME; scripts/tools/website/docs are
 %% repo-side (NOT deployed). Each node → a deeper .mmd.
 %% ============================================================================
@@ -33,8 +33,8 @@ graph TD
 
     CATHEAD --> CZ["01 · Chezmoi apply pipeline<br/>01-chezmoi-pipeline.mmd"]:::sys
     CATHEAD --> PKG["02 · Package management ladder<br/>02-package-management.mmd"]:::sys
-    CATHEAD --> AIOS["03 · Agentic OS (SOP+MCP+models)<br/>03-agentic-os.mmd"]:::ai
-    CATHEAD --> SKILLS["03b · Skills + hooks (every file)<br/>03b-agent-skills-hooks.mmd"]:::ai
+    CATHEAD --> AIOS["03 · AI layer (instructions+MCP+memory)<br/>03-agentic-os.mmd"]:::ai
+    CATHEAD --> SKILLS["03b · Skills (every file)<br/>03b-agent-skills-hooks.mmd"]:::ai
     CATHEAD --> TMUX["05 · Tmux config + pickers (every file)<br/>05-tmux-pickers.mmd"]:::sys
     CATHEAD --> WT["06 · Worktree / GitHub workflow<br/>06-worktree-workflow.mmd"]:::sys
     CATHEAD --> SEM["07 · Shell + terminals + macOS<br/>07-shell-editor-macos.mmd"]:::sys
@@ -51,6 +51,6 @@ graph TD
         K1["exact_=managed dir · dot_=leading '.' · readonly_=r--r--r--<br/>executable_=+x · private_=0600 · empty_=keep-if-empty<br/>symlink_=symlink · .tmpl=Go-template · .chezmoiignore=skip"]:::data
     end
 
-    subgraph COUNTS["file census (1507 total)"]
-    C1["nvim 130 · tmux 119 · Alfred 115 (86 png) · bin 74<br/>docs 164 · agents 183 + runtime profiles 70 · chezmoiscripts 28<br/>scripts 166 · fish 78 · command-lib 139 (36 command dirs + shared) · website 15 · home-root 34 · rest"]:::repo
+    subgraph COUNTS["file census (1192 total)"]
+    C1["nvim 130 · tmux 113 · Alfred 115 (86 png) · bin 67<br/>docs 126 · agents 128 + runtime profiles 70 · chezmoiscripts 28<br/>scripts 96 · fish 70 · command-lib 87 (30 command dirs + shared) · website 15 · home-root 34 · rest"]:::repo
     end

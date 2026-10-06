@@ -6,9 +6,6 @@ disable-model-invocation: true
 
 # PR presentation (scrollytelling HTML)
 
-Subagent dispatch: inline (implement for the HTML generation once the story is settled) —
-the story, images and opening the page stay with the root.
-
 Turn a PR or a local diff into one **self-contained HTML page** the reviewer can scroll to understand the change _before_ opening the diff —
 at lower cognitive cost. The page is a **review-readiness map**, not a review.
 It explicitly explains PR-introduced concepts, maps system layers and change topology, indexes load-bearing lines, and names risk areas without judging them.
@@ -53,7 +50,7 @@ Repo/org-specific overlays:
 
 ### 0. Fast path and token budget
 
-- If `/tmp/specs/<pwd>/` or `/tmp/present-pr/<repo>-<pr-or-branch>/` already contains evidence for the same PR/head SHA, reuse it after verifying the head SHA still matches.
+- If `/tmp/present-pr/<repo>-<pr-or-branch>/` already contains evidence for the same PR/head SHA, reuse it after verifying the head SHA still matches.
   Refresh only PR metadata/comments that may have changed.
 - When this turn names Nano Banana, Gemini image, or Google image gen/edit, the default diagram budget is **one generated image** for the Act I goal-level contrast.
   Add a second only when the preflight proves it carries a distinct flow/state idea.
@@ -174,10 +171,3 @@ Before opening for the user, verify with the `k-playwriter` skill:
 - Rewriting the template's CSS/JS, or hand-tuning rail label widths.
 - Paraphrased code instead of the real diff.
 - Opening the page without a clean browser verification first.
-
-## Root moves
-
-Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Launch one implement packet for generating the prepared HTML from the settled beat list;
-the root MUST NOT substitute its own inline generation for that packet absent an explicit user no-delegation instruction;
-if the lane is unavailable report blocked. The story, images, and opening the page stay with the root.

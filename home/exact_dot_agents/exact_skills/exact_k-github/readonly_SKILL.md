@@ -5,9 +5,6 @@ description: "Use for GitHub effects and GitHub issue context/targeting: PRs, is
 
 # GitHub + gh Skill
 
-Subagent dispatch: inline (research for substantial context intake) — mutations are root-gated;
-a large read-only intake may run as a research packet returning the intake ledger.
-
 Defaults:
 
 - Use `gh` CLI; set `GH_PAGER=cat` for non-interactive reliability.
@@ -33,7 +30,7 @@ Defaults:
 
 ## GitHub Context Intake + Reference Resolution
 
-Use this read-only intake during Understand for applicable issue diagnosis, implementation, or review work.
+Use this read-only intake before issue diagnosis, implementation, or review work.
 It does not require a PR or review workflow, and intake-only use MUST NOT start PR resolution, pending-review handling, mutation, or unrelated reference workflows.
 
 Read complete primary discussion before relying on it: an issue's full body and comments;
@@ -88,7 +85,7 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
 
 - Any GitHub side effect needs explicit approval unless the user instructed otherwise:
   create/edit PRs/issues, comments/reviews, metadata, merge, release, uploads.
-- SOP §3.8 owns authorization persistence, conditional authorization, and its hard boundaries.
+- `~/AGENTS.md` §5 owns publication approval.
   Reuse existing authorization only within its target, scope, and allowed effects; NEVER broaden it to a new target or effect.
 - A user-invoked `k-pr-fix-loop` approval packet is explicit approval for scoped PR body edits, needed PR media uploads, review-thread replies, and resolving addressed threads in that loop only.
 - Existing PR body/title edits follow `~/.agents/skills/k-github/references/pr-create.md`;
@@ -96,7 +93,7 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
 - Approval to "create a PR" authorizes the GitHub side effect, but not invented human-visible content.
   If title/body/labels were not provided, draft the full payload, show target repo/base/head, and get approval before `gh pr create`.
 - Before using a known-bot allowlist, verify/load the domain overlay; otherwise classify bots only from GitHub `user.type == "Bot"` or login ending `[bot]`.
-- Human-visible replies/resolves/comments are supervised: draft unapproved authored content, show exact payload + target, and wait only when SOP §3.8 authorization does not already cover it.
+- Human-visible replies/resolves/comments are supervised: draft unapproved authored content, show exact payload + target, and wait only when approval under `~/AGENTS.md` §5 does not already cover it.
   Only verified bot-authored threads may be auto-replied/auto-resolved inside an explicitly invoked flow;
   ambiguous/mixed threads fail safe to human.
   Verify author type via API, e.g. `gh api repos/OWNER/REPO/pulls/comments/COMMENT_ID --jq '{login:.user.login, type:.user.type}'`.
@@ -105,7 +102,7 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
 ## PR review side effects
 
 - Never include `event` in create-review payloads; `POST /reviews` without `event` creates a pending draft.
-  Publish only via a separate submit call after the applicable SOP §3.8 authorization.
+  Publish only via a separate submit call after the applicable approval (`~/AGENTS.md` §5).
 - Before create/append/delete-recreate/submit, reconcile current-account pending reviews with the new payload; do not fragment feedback.
   Append net-new comments to an existing pending review; delete/recreate only to change or drop existing ones.
 - UI-related review feedback needs screenshot handoff evidence outside the body, or a valid blocker/non-applicability reason.
@@ -133,12 +130,6 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
 
 - Before PR body edits, invoke `k-compose-pr`; before issue body edits, invoke `k-compose-issue`.
 - For repo-specific labels, ownership, reviewer targeting, or PR body rules, load the verified domain overlay first.
-
-## Root moves
-
-Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Launch one strong research packet for a substantial intake (many threads or references) with the intake ledger as return before composing context-dependent output; the root MUST NOT substitute its own inline intake for that packet absent an explicit user no-delegation instruction; if the lane is unavailable report blocked.
-Mutations MUST NOT be delegated.
 
 ## Output
 

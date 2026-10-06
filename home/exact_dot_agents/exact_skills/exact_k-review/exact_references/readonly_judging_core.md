@@ -3,7 +3,6 @@
 - Mode files and `~/.agents/skills/k-review/references/shared_rules.md` reference this file; do not duplicate these sections elsewhere.
 - Delivery-agnostic: no GitHub or delivery rules.
 - Surfaces needing PR/GitHub-delivery rules layer them via `~/.agents/skills/k-review/references/shared_rules.md`.
-- Integrated coverage and hygiene criteria for the final Verify stage live in `~/.agents/skills/k-review/references/judging_pipeline.md`.
 
 ## Conditional Gate Loading
 
@@ -23,12 +22,11 @@ Use in every non-trivial review.
 
 - Treat every claim as a hypothesis until verified.
 - A rationale is also a claim: verify actual runtime/code behavior, not explanations.
-- When irrelevance is a material acceptance claim, use existing evidence or a risk-selected perturbation in the root's final check plan.
+- When irrelevance is a material acceptance claim, use existing evidence or one risk-selected perturbation.
   Do not generate a mutation experiment for every rationale or repeat an experiment already represented in shared evidence.
 - A static read proves what source says, not what the system does; verify runtime behavior whenever candidate keep/drop depends on observed state.
 - **Diff-boundary tunnel vision is forbidden:** reviewing diff hunks in isolation without inspecting surrounding context, caller trees, and sibling consumers is never justified across any review tier (light, standard, or deep).
   The diff is the source for what changed (delta) and commentability; full files and caller trees (via local `rg` or symbol lookup) give the ground truth for system behavior.
-  This obligation belongs to the review worker; the root meets it by passing the full diff and file access in the packet and MUST NOT read hunks or file bodies itself before that packet returns.
 - For diffs not proven mechanical-only, reconstruct semantic delta: old/new rule, intended/preserved differences, evidence.
   Missing/extra/unproven rows are candidates until refuted.
   Prove mechanical-only with `,sem diff --format json` per `~/.agents/skills/k-sem/SKILL.md`:
@@ -38,14 +36,12 @@ Use in every non-trivial review.
   caller/callee contract asymmetry, test oracle/mock fidelity gaps, compositional fault cascades in batch/collection processing, temporal/async hazards, projection/mapping divergence, and silent error degradation.
   Select boundary and predicate counterexamples for the material risks; do not enumerate mutations for every changed condition.
 - When evaluating a proposed change: prefer smallest repro in `/tmp` or smallest safe experiment in worktree.
-- Consume the planned final quality-gate receipts.
-  Final review/refute workers MUST NOT rerun checks or start a repair cycle; the root applies SOP §3.5 when existing authority covers recovery.
+- Reuse existing check results for this snapshot; do not rerun passing checks.
 - Keep an evidence log per comment/thread: base behavior, semantic delta, tests run, observations.
 
 ## Candidate Refutation Ladder (Run Before Reporting Or Acting)
 
-Apply these lenses within the assigned final review/refutation packet, not as a second pass over another reviewer's work.
-The root assigns distinct review/adversarial questions within the same final stage and shares existing check evidence.
+Apply these lenses inside the review itself, not as a second pass over another reviewer's work.
 
 A candidate survives only when a genuine refutation attempt fails with evidence.
 Default to `undecidable`, not `keep`, when the deciding evidence is genuinely out of reach.
@@ -67,26 +63,25 @@ A separate family can improve final judgment independence, but does not justify 
 
 ## Check-Coverage Exemption (Run Before Drafting Findings On A Final Verdict Surface)
 
-Trigger: the output is a final verdict or finding set that checks also gate: PR review, deep review, plan review, and every final review, adversarial, or audit-lens packet.
+Trigger: the output is a final verdict or finding set that checks also gate: PR review, plan review, and an independent reviewer's findings.
 Not triggered: local iterate-and-fix review (`~/.agents/skills/k-review/references/local_changes.md`, `k-light-review`);
 there a covered-class finding is fixed in the same pass, so every class stays in scope.
 
-Evidence is the frozen snapshot's present checks: PR CI checks (`~/.agents/skills/k-review/references/pr_common.md` CI Coverage Gate owns `checks.json` and Buildkite mechanics) or complete local check receipts the root supplied (`make check`, pre-commit, lint, typecheck, test runs).
+Evidence is the snapshot's present checks: PR CI checks (`~/.agents/skills/k-review/references/pr_common.md` CI Coverage Gate owns `checks.json` and Buildkite mechanics) or complete local check results (`make check`, pre-commit, lint, typecheck, test runs).
 
 - Map each present check to the finding classes it actually runs; do not credit a check from its name alone.
 - Exempt a class only when a present check genuinely covers it: do not report, draft, or block on findings in that class.
 - Keep every other class in scope, including classes whose check is absent, loosened, failed to run, or unverifiable for this snapshot.
-- NEVER exempt a class from an assumed check, a check outside the frozen snapshot, or a packet without check evidence;
-  that packet reports `covered=[]`.
+- NEVER exempt a class from an assumed check, a check outside this snapshot, or a review with no check evidence;
+  that review reports `covered=[]`.
 - Plans: exempt only classes the repo's existing checks catch mechanically at implementation (formatting, lint, type errors);
   premise, design, feasibility, and gap findings stay in scope.
 - State one line before findings: `CI coverage: covered=[...] -> exempt; in-scope=[...]`.
 
 ## State-Machine Verification Gate
 
-Apply SOP `### 3.6 State-Machine Verification` to reviewed behavior that is stateful, parser-like, branch-heavy, or dependent on ordered conditions.
-Its executable oracle is `~/.agents/skills/k-formal/SKILL.md` (the `,formal` catalog) for stateful behavior.
-Pure input-to-output behavior uses a disposable oracle harness instead.
+Apply to reviewed behavior that is stateful, parser-like, branch-heavy, or dependent on ordered conditions:
+plan explicit transition cases, and compare pure input-to-output behavior against an independent table in a disposable oracle harness when tests cannot express the cases.
 
 Examples include parsers, tokenizers, formatters, routing/matching logic, retry/workflow loops, permission matrices, compatibility-sensitive branching, multi-flag control flow.
 

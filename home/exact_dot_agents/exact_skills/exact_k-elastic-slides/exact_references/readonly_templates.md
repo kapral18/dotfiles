@@ -17,14 +17,11 @@ CHARCOAL = {"red": 0.14, "green": 0.16, "blue": 0.18}
 CARD_BACKGROUND = {"red": 0.97, "green": 0.98, "blue": 0.99}
 CARD_BORDER = {"red": 0.82, "green": 0.84, "blue": 0.87}
 
-
 def inches(value: float) -> int:
     return int(round(value * EMU_PER_INCH))
 
-
 def rgb(color: dict[str, float]) -> dict:
     return {"opaqueColor": {"rgbColor": color}}
-
 
 def run_batch(presentation_id: str, requests: list[dict]) -> None:
     subprocess.run(

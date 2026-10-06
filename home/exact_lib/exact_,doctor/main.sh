@@ -424,7 +424,6 @@ check_ai_configs() {
   local -a config_checks=(
     "$HOME/.claude/settings.json:claude:Claude Code settings"
     "$HOME/.claude.json:claude:Claude Code MCP"
-    "$HOME/.gemini/config/hooks.json:agy:Antigravity hooks"
     "$HOME/.gemini/config/mcp_config.json:agy:Antigravity MCP"
     "$HOME/.config/opencode/opencode.jsonc:opencode:OpenCode config"
     "$HOME/.codex/config.toml:codex:Codex config"

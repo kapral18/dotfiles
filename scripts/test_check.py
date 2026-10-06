@@ -42,7 +42,6 @@ class TestCheckPlan(unittest.TestCase):
         )
         assert "tests/test_tmux_pickers.py" in plan.tests
         assert "tests/test_gh_picker_dispatch_state.py" in plan.tests
-        assert "tests/test_codex_adapter.py" not in plan.tests
         assert "tests/test_bin_commands.py" not in plan.tests
 
     def test_WHEN_tmpl_changes_SHOULD_run_verify_templates(self):
@@ -54,44 +53,6 @@ class TestCheckPlan(unittest.TestCase):
         )
         assert "verify-templates" in plan.gates
         assert "tests/test_invariants.py" in plan.tests
-
-    def test_WHEN_sop_changes_SHOULD_run_focused_sop_policy_shard(self):
-        plan = plan_check(REPO, full=False, changed=("home/readonly_AGENTS.md",), add_delete=False)
-        assert "tests/test_sop_policy_invariants.py" in plan.tests
-        assert "tests/test_invariants.py" not in plan.tests
-
-    def test_WHEN_agent_prompt_prefix_changes_SHOULD_not_run_slow_picker_shards(self):
-        for excerpt in ("prefix.txt", "leaf-boundary.txt"):
-            with self.subTest(excerpt=excerpt):
-                plan = plan_check(
-                    REPO,
-                    full=False,
-                    changed=(f"home/dot_config/exact_tmux/agent_prompts/{excerpt}",),
-                    add_delete=False,
-                )
-                assert "tests/test_sop_policy_invariants.py" in plan.tests
-                for shard in SLOW_SHARDS:
-                    assert shard not in plan.tests
-
-    def test_WHEN_hook_readme_changes_SHOULD_not_run_hook_runtime_shards(self):
-        plan = plan_check(
-            REPO,
-            full=False,
-            changed=("home/exact_dot_agents/exact_hooks/readonly_README.md",),
-            add_delete=False,
-        )
-        assert "tests/test_agent_hooks.py" not in plan.tests
-        assert "tests/test_agent_skill_invariants.py" not in plan.tests
-
-    def test_WHEN_hook_source_changes_SHOULD_run_hook_runtime_shards(self):
-        plan = plan_check(
-            REPO,
-            full=False,
-            changed=("home/exact_dot_agents/exact_hooks/executable_session_context.py",),
-            add_delete=False,
-        )
-        assert "tests/test_agent_hooks.py" in plan.tests
-        assert "tests/test_agent_skill_invariants.py" in plan.tests
 
     def test_WHEN_a_file_is_added_SHOULD_run_verify_mermaids(self):
         plan = plan_check(REPO, full=False, changed=("docs/topics/code-quality/formatting.md",), add_delete=True)
@@ -112,7 +73,6 @@ class TestCheckPlan(unittest.TestCase):
         assert "test_yaml_parser.py" in plan.tests
         assert "test_runner.py" not in plan.tests
         assert "verify-templates" in plan.gates
-        assert "verify-agent-policy" in plan.gates
         assert "fish-history-merge" in plan.extra
 
     def test_WHEN_q_fish_completion_changes_SHOULD_run_q_shard(self):
@@ -144,35 +104,12 @@ class TestCheckPlan(unittest.TestCase):
     def test_WHEN_yaml_parser_changes_SHOULD_run_direct_importer_tests(self):
         plan = plan_check(REPO, full=False, changed=("scripts/yaml_parser.py",), add_delete=False)
         assert "test_yaml_parser.py" in plan.tests
-        assert "test_ai_models.py" in plan.tests
         assert "test_mcp_registry.py" in plan.tests
         assert "tests/test_tmux_pickers.py" not in plan.tests
 
-    def test_WHEN_llama_model_sources_change_SHOULD_run_model_mirror_shard(self):
-        changed = (
-            "home/dot_config/llama.cpp/models.ini.tmpl",
-            "home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl",
-            "home/dot_pi/agent/readonly_models.json",
-            "home/dot_pi/agent/readonly_models.personal.json",
-            "home/readonly_dot_default-llama-cpp-models.tmpl",
-        )
-        for path in changed:
-            with self.subTest(path=path):
-                plan = plan_check(REPO, full=False, changed=(path,), add_delete=False)
-                assert "test_model_mirrors.py" in plan.tests
-                if path == "home/dot_config/llama.cpp/models.ini.tmpl":
-                    assert "tests/test_llama_cpp_lifecycle.py" in plan.tests
-
-    def test_WHEN_codex_adapter_changes_SHOULD_skip_bin_commands_and_pickers(self):
-        plan = plan_check(
-            REPO,
-            full=False,
-            changed=("home/exact_lib/exact_,codex-adapter/main.py",),
-            add_delete=False,
-        )
-        assert "tests/test_codex_adapter.py" in plan.tests
-        assert "tests/test_bin_commands.py" not in plan.tests
-        assert "tests/test_tmux_pickers.py" not in plan.tests
+    def test_WHEN_llama_model_catalog_changes_SHOULD_run_llama_lifecycle_shard(self):
+        plan = plan_check(REPO, full=False, changed=("home/dot_config/llama.cpp/models.ini.tmpl",), add_delete=False)
+        assert "tests/test_llama_cpp_lifecycle.py" in plan.tests
 
     def test_WHEN_test_support_changes_SHOULD_run_cheap_shards_not_slow_pickers(self):
         plan = plan_check(REPO, full=False, changed=("scripts/_test_support.py",), add_delete=False)
@@ -212,14 +149,13 @@ class TestCheckEntryPoints(unittest.TestCase):
 
     def test_WHEN_agents_md_SHOULD_forbid_the_full_suite(self):
         text = (REPO / "AGENTS.md").read_text(encoding="utf-8")
-        assert "Agents must not run `make check-full`" in text
+        assert "Never run `make check-full`" in text
         assert "Use `make check-full`" not in text
 
     def test_WHEN_agents_md_SHOULD_require_new_code_on_the_affected_map(self):
         text = (REPO / "AGENTS.md").read_text(encoding="utf-8")
-        assert "keep them on the affected map in the same change" in text
+        assert "New code needs a test that `scripts/check.py` maps to it" in text
         assert "add a `TEST_RULES` row" in text
-        assert "Do not leave a new shard reachable only by `make check-full`" in text
 
     def test_WHEN_pre_commit_hook_SHOULD_run_staged_check_not_full_suite(self):
         text = (REPO / ".githooks/pre-commit").read_text(encoding="utf-8")

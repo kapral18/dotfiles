@@ -483,10 +483,25 @@ def run(config: Config, command: list[str]) -> int:
     lease = acquire(config)
     child: subprocess.Popen[bytes] | None = None
 
+    caught: list[int] = []
+
     def terminate(signum: int, _frame: object) -> None:
+        # Only the first signal unwinds. A closing terminal sends several HUPs, and a repeat raised
+        # during the cleanup below would skip the child wait and escape as a traceback.
+        if caught:
+            if child is not None:
+                child.send_signal(signum)
+            return
+        caught.append(signum)
         raise Terminated(signum)
 
-    previous_term = signal.signal(signal.SIGTERM, terminate)
+    trapped = [signal.SIGTERM]
+    # SIGHUP arrives when the owning terminal closes (for example tmux kill-session); its default
+    # action would skip the finally below and leak the lease, keeping the router alive. An
+    # inherited ignore (nohup) stays in place so the command inherits it too.
+    if signal.getsignal(signal.SIGHUP) is not signal.SIG_IGN:
+        trapped.append(signal.SIGHUP)
+    previous = {signum: signal.signal(signum, terminate) for signum in trapped}
     try:
         try:
             child = subprocess.Popen(command)
@@ -504,8 +519,11 @@ def run(config: Config, command: list[str]) -> int:
                 child.wait()
             return 128 + termination.signum
     finally:
-        signal.signal(signal.SIGTERM, previous_term)
-        release(config, lease)
+        try:
+            release(config, lease)
+        finally:
+            for signum, handler in previous.items():
+                signal.signal(signum, handler)
 
 
 def main(argv: list[str]) -> int:

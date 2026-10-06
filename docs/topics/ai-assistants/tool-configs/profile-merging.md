@@ -55,9 +55,9 @@ The row carries:
 - consumer
 - local consumer probe (defaults to `--version`; `record --probe-arg` overrides its arguments)
 
-Claude settings provenance includes the selected settings file, model-tier registry, and the owning merge-hook template. Registry changes report `input-drift`; changes to the hook itself report `transform-drift`, even before target bytes change.
+Claude settings provenance includes the selected settings file and the owning merge-hook template. Settings-file changes report `input-drift`; changes to the hook itself report `transform-drift`, even before target bytes change.
 
-Claude MCP merging rejects malformed existing JSON before writing, preserves unrelated live keys, and creates a missing file even for an empty registry. Claude model-mirror defaults, curated models, recommendations, and provenance follow `session_models.claude_code`, the same owner used by the settings renderer.
+Claude MCP merging rejects malformed existing JSON before writing, preserves unrelated live keys, and creates a missing file even for an empty registry.
 
 ### `,doctor ai`
 

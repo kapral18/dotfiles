@@ -1,54 +1,35 @@
-# PR Fix Batch
+# Mode: PR Fix
 
-Use for an explicit request to address review feedback. Review alone remains read-only.
-Resolve PR identity, current head, authorship, and the user-authorized thread set before edits.
-`~/.agents/skills/k-review/references/pr_common.md` (complete context, pending-review reconciliation, publication mechanics) and `~/.agents/skills/k-review/references/pr_snapshot.md` (head/discussion drift) are loaded at the step that first needs them, once each; do not preload them here.
-Read complete relevant threads and referenced artifacts, not previews.
+Use for an explicit request to address review feedback. Review alone stays read-only.
+Resolve PR identity, current head, authorship (`~/.agents/skills/k-review/references/authorship.md`), and the set of threads the user authorized before any edit.
 
-## Understand
+## Understand the batch
 
-Collect the known batch: load `~/.agents/skills/k-review/references/pr_common.md` (GitHub Context Intake + Reference Resolution) and `~/.agents/skills/k-review/references/pr_snapshot.md` (head/discussion drift) here, once.
-For each thread, identify the concern, relevant source/base behavior, reachable consequence, and required decision.
-Treat comments as hypotheses; do not implement unsupported suggestions or widen into unrelated cleanup.
-Record reply-only, code-change, or ask with evidence. Ask once only for a material user-owned fork.
-For explicitly requested one-at-a-time work, the selected thread is the batch; do not silently drain others.
+Load `~/.agents/skills/k-review/references/pr_common.md` (GitHub Context Intake + Reference Resolution) and `~/.agents/skills/k-review/references/pr_snapshot.md` (head and discussion drift) once.
+Read complete threads and referenced artifacts, not previews.
 
-## Produce
+For each thread, identify the concern, the relevant source and base behavior, the reachable consequence, and the decision:
+reply only, code change, or ask.
+Treat reviewer comments as hypotheses; do not implement unsupported suggestions or widen into cleanup.
+Ask once only for a decision that is genuinely the user's.
+For one-at-a-time work, the selected thread is the batch; do not silently drain the others.
 
-Implement the authorized fixes on the implementation band with scoped ownership and intended/preserved differences.
-Create regression tests and docs; integrate all fixes and format before final verification.
-Workers return produced artifacts, not green checks, findings audits, or per-thread refutation results.
-Draft reply intents without claiming unverified outcomes or nonexistent commits.
+## Fix and verify
 
-## Verify and deliver
+1. Implement the authorized fixes inside `~/.agents/skills/k-review/references/review_fixes.md` Fix Scope, with regression tests and docs.
+2. Run the combined checks once on the finished batch. No per-thread test runs.
+3. Re-read the fix diff once against each thread's concern. Do not start another review round.
+4. Apply Existing Pending Review Reconciliation (`pr_common.md`) before drafting replies.
+5. Load `k-communication` for reply wording. Cite commit links only after an authorized commit exists; never claim an unverified outcome.
 
-Run the combined final check plan once for the frozen batch; delivery requires the batch's strong final review result.
-Do not run per-thread test suites, independent repair loops, or a Post-Review Stage.
-Failed criteria block dependent publication; the root applies SOP §3.5 when existing authority covers recovery.
-This batch does not create a per-thread repair loop.
-Apply Existing Pending Review Reconciliation before public-ready drafts: merge duplicate pending feedback and correct stale content without publishing competing versions.
-Load `k-communication` for external wording. Cite actual commit links only after an authorized commit exists.
-Return thread decisions, final evidence, unresolved failures, draft replies, and resolve/keep-open recommendations.
-For UI feedback retain screenshot handoff paths/descriptions outside GitHub bodies; missing supporting evidence remains explicit.
+Return: per-thread decision, check results, unresolved failures, draft replies, and resolve or keep-open recommendations.
+Keep UI screenshot paths outside GitHub bodies.
 
-## Publication authority
+## Publication
 
-Ordinary PR-fix work does not authorize commit/push, replies, or thread resolution.
-Apply SOP §3.8: show exact targets/payloads and wait only when existing authorization does not cover the target, payload, and effect.
-The explicitly invoked `k-pr-fix-loop` supplies a bounded packet for its scoped sequence; do not ask again within that authority.
-Classify authors from platform evidence or a verified domain allowlist, never display names. Ambiguous/mixed authorship is human-supervised.
-Verified bot replies/resolves may proceed only inside an explicitly authorized flow;
-human replies require supervision or an applicable user-approved bounded packet. Read back authorized writes to confirm they landed.
-Transaction readback does not restart quality verification.
-Later comments are new input, not a reason to reopen completed workers or run another batch without user authorization.
-
-## Root moves
-
-Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Keep the compact batch decisions and active/terminal packet IDs in the existing topic.
-Dispatch substantial implementation and research, not per-thread audit ladders.
-Launch one strong final review subagent using `~/.agents/skills/k-review/references/reviewer-worker.md` for the frozen batch before delivery; this is one batch review, not per-thread reviews.
-This mode and the router describe the same required packet, not additive launches.
-The root MUST NOT substitute its own inline review for that packet absent an explicit user no-delegation instruction.
-If the required lane or tool is unavailable, report blocked; do not silently fall back to an inline review.
-Await the terminal packet result before the verdict; no spawning from a child.
+PR-fix work does not authorize commit, push, replies, or thread resolution.
+Show exact targets and payloads and wait, unless existing approval covers that exact effect (`~/AGENTS.md` §5).
+The user-invoked `k-pr-fix-loop` approves its own scoped sequence; do not ask again inside it.
+Classify authors from platform evidence (`user.type == "Bot"`, a login ending `[bot]`, or a verified domain allowlist), never display names.
+Mixed or ambiguous authorship stays human-supervised. Read back every authorized write to confirm it landed.
+Comments that arrive later are new input, not a reason to rerun the batch without the user's request.

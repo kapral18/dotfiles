@@ -1,11 +1,5 @@
 # Mode: Plan Review
 
-Precondition:
-
-- You already loaded `~/.agents/skills/k-review/SKILL.md`.
-- `~/.agents/skills/k-review/references/judging_core.md` and `~/.agents/skills/k-review/references/shared_rules.md` are the reviewer worker's mechanics; pass them in the review packet.
-  The root does not preload them; when a step below names one of their gates, the root reads only that gate's section.
-
 Use when:
 
 - the user asks to review a plan, design document, implementation proposal, or RFC before (or during) implementation
@@ -25,7 +19,6 @@ Out of scope:
 ## Base Context (Mandatory)
 
 A plan is a set of claims about the codebase plus a set of intended steps. Both must be checked against codebase reality.
-The review worker resolves the source claims below from the packet; the root passes the plan's claims and named symbols and MUST NOT read the named source itself before the packet returns.
 
 - Follow the Base-Branch Context Gate in `~/.agents/skills/k-review/references/shared_rules.md`, adapted for the missing diff:
   generate the local-source questions from the plan's claims and named symbols instead of a diff, and report the required line as `Base context: ..., base=<branch the plan targets>, diff=n/a (plan review)`.
@@ -45,31 +38,19 @@ Walk the plan end-to-end, ordered by risk:
    Apply the Check-Coverage Exemption in `~/.agents/skills/k-review/references/judging_core.md` (plan clause):
    do not report formatting, lint, or type-error classes the repo's existing checks catch at implementation.
 5. **Gates by content:** planned removals get the Deletion-Safety Audit and Historical-Rationale Gate;
-   planned replacements the Replacement/Migration Parity Gate; a stateful/parser-like plan must name its State-Machine Verification step —
-   the `,formal` unit(s), tier (F1 pure-oracle or F2/F3 catalog), and the properties each unit will check; a design unit (`--design`)
-   before code exists is allowed;
+   planned replacements the Replacement/Migration Parity Gate; a stateful/parser-like plan must name how it will verify transitions
+   (explicit transition cases, or an independent oracle table in a disposable harness);
    cross-module/deploy plans the Systemic-Risk Checks; user-facing flows the Product-Flow Lens;
    alerting/monitoring work the Signal-Quality Gate.
 6. **Gaps:** missing steps, unowned risks, absent rollback/verification, and co-edit-set members the plan does not mention (docs, diagrams, configs).
-7. **Compatibility intent (SOP `2.1`):** the plan's compatibility posture is explicit and matches the request;
+7. **Compatibility intent:** the plan's compatibility posture is explicit and matches the request;
    flag unrequested shims/legacy paths.
 8. **Simplicity:** flag steps a simpler approach makes unnecessary; name the simpler path and its tradeoff.
 
-## Findings Audit And Adversarial Pass
+## Judge once
 
-Judge the complete plan and source evidence once in the final Verify stage.
-Use strong review or adversarial framing, not a sequence of finder/audit/refutation passes.
-Return unsupported assumptions and concrete gaps without rewriting the plan or restarting research automatically.
-
-## Root moves
-
-Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Launch one strong review subagent using `~/.agents/skills/k-review/references/reviewer-worker.md` before any final judgment;
-keep the packet scoped to the actual plan and relevant evidence with the copied selected criteria.
-This mode and the router describe the same required packet, not additive launches.
-The root MUST NOT substitute its own inline review for that packet absent an explicit user no-delegation instruction.
-If the required lane or tool is unavailable, report blocked; do not silently fall back to an inline review.
-Await the terminal packet result before the verdict; no spawning from a child. Do not launch another model to verify the returned review.
+Judge the complete plan and source evidence in one pass, with adversarial framing.
+Return unsupported assumptions and concrete gaps without rewriting the plan or restarting research.
 
 ## Output
 

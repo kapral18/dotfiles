@@ -32,7 +32,6 @@ Examples in this setup:
 
 - [`home/app_icons/`](../../home/app_icons/) is used by the `,apply-app-icons` script, but it is not installed into `$HOME`.
 - [`home/Alfred.alfredpreferences/`](../../home/Alfred.alfredpreferences/) is stored in the repo, but not automatically applied.
-- Compile-only AI policy IR under [`home/dot_config/ai/exact_policy-ir/`](../../home/dot_config/ai/exact_policy-ir/) is ignored (`.config/ai/policy-ir`); former flat `~/.config/ai/{harness-capabilities,policy-*}.v1.json` targets are purged via [`.chezmoiremove`](../../home/.chezmoiremove).
 
 ## Chezmoi Naming Conventions (How Source Maps To Installed Files)
 
@@ -74,7 +73,7 @@ Because AI tools (like OpenCode, Antigravity, and Pi) often rewrite their config
 - Antigravity keeps runtime-owned servers in `~/.gemini/config/mcp_config.json`; the apply hook merges registry-owned servers into that file without replacing the runtime-owned entries.
 - This creates a hard boundary between work contexts (which load work-specific MCP servers) and personal contexts.
 
-The same pattern applies to model definitions. For the full picture see [MCP servers](../topics/ai-assistants/mcp.md), [Model registry & routing](../topics/ai-assistants/model-registry.md), and [Tool configs](../topics/ai-assistants/tool-configs/index.md).
+Models are set directly in each harness config. For the full picture see [MCP servers](../topics/ai-assistants/mcp.md) and [Tool configs](../topics/ai-assistants/tool-configs/index.md).
 
 ### Shared Library (`scripts/chezmoi_lib.sh`)
 

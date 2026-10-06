@@ -8,11 +8,9 @@
 # Every built-in omp role is pinned explicitly (default/smol/slow/vision/plan/commit/
 # tiny/task/advisor/web per `omp config get modelRoles`); nothing falls through to the
 # harness default or the @smol fallback. The root uses GPT-6.1 Sol :high (user call 2026-09-30:
-# Sol/Luna only, no Astra). Research/review profiles use @default and inherit the active
-# parent's model (normally Sol for a fresh root), rather than pinning a separate child model.
-# - slow/plan: GPT-6.1 Sol :max; task (T2 implement): GPT-6.1 Sol :medium.
-# - advisor: GPT-6.1 Sol :high; refute remains degraded in the same OpenAI family
-#   as the primaries.
+# Sol/Luna only, no Astra). k-agent-reviewer uses @default.
+# - slow/plan: GPT-6.1 Sol :max; task: GPT-6.1 Sol :medium; advisor: GPT-6.1 Sol :high
+#   (the background advisor itself is disabled below).
 # - vision/smol: GPT-6 Luna :high; tiny/commit: GPT-6 Luna :medium.
 modelRoles:
   default: openai-codex/gpt-6.1-sol:high
@@ -32,7 +30,7 @@ modelProviderOrder:
   - openrouter
   - openai
 
-# Background advisor is disabled; the refute role remains available for final verification. omp migrates
+# Background advisor is disabled. omp migrates
 # `advisor.subagents` into `task.agentAdvisor.task` (settings.ts) and an explicit
 # agentAdvisor entry wins, so both knobs are pinned off below.
 advisor:
@@ -69,8 +67,7 @@ skills:
   enabled: true
   enableSkillCommands: true
 
-# maxRecursionDepth 1: root may spawn; children get no `task` tool (user call
-# 2026-09-07), making the SOP §3.7 leaf-worker boundary mechanical, not instruction-only.
+# maxRecursionDepth 1: root may spawn; children get no `task` tool.
 # Explicit root async remains available. Implicit backgrounding also affects
 # blocking children, so Bash/Eval must finish in the foreground by default.
 async:

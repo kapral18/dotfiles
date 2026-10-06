@@ -13,7 +13,7 @@ flowchart LR
 
     subgraph INPUT["INPUT · sources of truth (C1/C2)"]
         SRC["home/** source tree<br/>(name-prefixes encode mode/perms)"]:::in
-        DATA[".chezmoidata/*.yaml<br/>mcp_servers · ai_models · packages"]:::in
+        DATA[".chezmoidata/*.yaml<br/>mcp_servers · packages"]:::in
         INIT[".chezmoi.toml.tmpl prompt<br/>⇒ .isWork, email, keys (C3)"]:::in
     end
 
@@ -34,7 +34,7 @@ flowchart LR
 
     subgraph RUNTIME["RUNTIME · who consumes the build"]
         SH["shell/editor/tmux read rc + configs"]:::run
-        AG["AI tools read GENERATED configs + SOPs (C7)"]:::run
+        AG["AI tools read GENERATED configs + ~/AGENTS.md (C7)"]:::run
         PKG["declared packages installed/cleaned<br/>(brew bundle --cleanup = list is authoritative)"]:::run
     end
 

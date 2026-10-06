@@ -18,7 +18,7 @@ Flow:
 4. `tuicr` exports structured markdown.
 5. You paste that markdown back to the agent for a one-pass fix.
 
-This is the inverse of the [review workflow](reviews/index.md), where the agent reviews your diff.
+This is the inverse of the [`k-review` skill](skills.md), where the agent reviews your diff.
 
 Use after an agent has made edits, when you want to give structured feedback back to it.
 
@@ -30,7 +30,7 @@ Use after an agent has made edits, when you want to give structured feedback bac
 
 Theme + comment-type vocabulary: [`home/dot_config/tuicr/readonly_config.toml`](../../../home/dot_config/tuicr/readonly_config.toml) → `~/.config/tuicr/config.toml`.
 
-Comment types are actionable categories (`issue`, `suggestion`, `question`, `nit`, `praise`); severity (CRITICAL/HIGH/MEDIUM/LOW from the review SOP) stays internal and is intentionally not encoded as a comment type.
+Comment types are actionable categories (`issue`, `suggestion`, `question`, `nit`, `praise`); severity (critical/high/medium/low in `k-review` findings) stays internal and is intentionally not encoded as a comment type.
 
 ### Loop
 
@@ -94,5 +94,5 @@ Pane targeting: with exactly two panes `lgtm` infers the agent's pane and types 
 
 ## Related
 
-- [Review workflow](reviews/index.md) — the inverse loop (the agent reviewing your diff)
+- [`k-review` skill](skills.md) — the inverse loop (the agent reviewing your diff)
 - [The Agentic Operating System](index.md) — governance layer

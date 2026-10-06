@@ -5,8 +5,6 @@ description: "Use when editing, reviewing, or refactoring implementation code or
 
 # Code Quality
 
-Subagent dispatch: criteria — loaded by whoever holds the packet; never dispatched alone.
-
 Owns repository-artifact style, maintainability, edit scope, semantic dedupe, and artifact necessity at point of use.
 The SOP owns compatibility and verification.
 
@@ -41,7 +39,7 @@ Do not load React/web/test/design secondaries merely because they might become r
   Every changed line must trace to the request; remove any line that does not.
 - When the semantic delta changes one projection of a relationship, updating co-located sibling consumers (comparators, filters, predicates, serializers, renderers, generated outputs, persistence, or import/export paths) is required to preserve projection symmetry and traces to the change.
 - Non-code artifacts have consumers too: a config key, template variable, generated file, instruction sentence, completion file, or docs page is read by tooling, agents, renderers, or generators.
-  Identify those readers and generated/rendered outputs (the SOP §3.1 impact map) before editing such an artifact, and update them in the same change.
+  Identify those readers and generated/rendered outputs (the impact map) before editing such an artifact, and update them in the same change.
 
 ## Semantic Dedupe And Simplicity
 
@@ -75,4 +73,4 @@ Do not load React/web/test/design secondaries merely because they might become r
 - Prefer `async`/`await` over `.then()` chains.
 - Add JSDoc/TSDoc for complex functions.
 - Treat a behavioral claim in a comment, docstring, or commit message ("safe because", "always", "never", "cannot happen") as a claim to verify against the code and tests, not as evidence; do not preserve or add one you have not confirmed.
-- Plan the relevant tests/linters with the change; the SOP's single final Verify stage runs them and reports results or why a check was skipped.
+- Plan the relevant tests/linters with the change; run them once on the finished change and report results or why a check was skipped.

@@ -137,24 +137,17 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 | `merge_claude_mcp.py`               | Surgically update only `mcpServers` in `~/.claude.json`                                                                         |
 | `managed_config_manifest.py`        | Declared-key manifests shared by the config merge hooks                                                                         |
 | `generated_artifact_ledger.py`      | Record/evaluate generated artifacts for semantic drift (backs `,doctor ai`)                                                     |
-| `ai_models.py`                      | Parse the registry sections under `home/.chezmoidata/ai_models/`                                                                |
-| `model_mirrors.py`                  | Generate/verify the committed model-mirror JSON + Go artifacts from the registry sources                                        |
-| `model_mirror_consumer.py`          | Stdlib fail-closed consumer views of the model mirror for deployed commands such as `,ai`                                       |
-| `model_capabilities.v1.json`        | Hand-verified harness capability snapshot consumed by model-mirror generation                                                   |
-| `analyze_pi_session.py`             | Report privacy-safe token/cache/compaction/re-read metrics from one Pi v3 session                                               |
 | `ai_kb.py`                          | Local markdown + SQLite FTS5/vector knowledge base for agent runs                                                               |
 | `embed.py`                          | Stdlib embedding-service abstraction: one-shot `embed_runner.py` runs plus connect-only resident dispatch via `embed_client.py` |
 | `embed_runner.py`                   | Isolated PEP 723 `fastembed` runner (`BAAI/bge-small-en-v1.5`, 384-d)                                                           |
 | `embed_client.py`                   | Deadline-bounded unix-socket client for the resident embed worker (ensure/ping/embed)                                           |
 | `embed_worker.py`                   | PEP 723 resident `fastembed` worker serving embeddings over a private unix socket                                               |
 | `vec_runner.py`                     | Isolated PEP 723 `sqlite-vec` KNN/pairs runner for the KB                                                                       |
-| `agent_memory.py`                   | Inspect/wipe hook memory under `/tmp/specs` for the current workspace                                                           |
-| `worklog_queue.py`                  | Crash-safe bounded per-session worklog event queue flushed into `/tmp/specs` topic worklogs                                     |
 | `sync_llama_cpp_models.py`          | Download missing GGUF files declared in the llama.cpp manifest                                                                  |
 | `reconcile_golang_pkgs.py`          | Reconcile Go binaries against the manifest (hook 05-update-golang-pkgs)                                                         |
 | `reconcile_custom_packages.py`      | Reconcile source-installed custom package artifacts                                                                             |
 | `yt_search.py`                      | YouTube search backend (powers `,youtube-search`)                                                                               |
-| `tests/`                            | Python test suite (`test_scripts.py`, agent-hook tests)                                                                         |
+| `tests/`                            | Python test suite                                                                                                               |
 
 ## Maintenance / cleanup hooks
 

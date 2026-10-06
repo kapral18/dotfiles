@@ -32,7 +32,6 @@ from unittest import mock
 from urllib.request import Request, urlopen
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
-import ai_models
 from _test_support import (
     ARTIFACT_COMMAND,
     CODEX_COMMAND,
@@ -292,18 +291,6 @@ def _capture_stop_existing_serverless(kbn_stack, registry: dict, new_started_by:
     return blocked, stopped, saved
 
 
-def _lane_wires() -> list[str]:
-    """The live `--lane-wire-models` list, so preset stubs track the `category_models.openrouter` rows instead of a copy."""
-    module = _load_openrouter_presets_module()
-    with mock.patch.dict(os.environ, {"CHEZMOI_SOURCE_DIR": str(REPO)}):
-        return module._lane_wire_models()
-
-
-def _lane_wire_echo(indent: str = "") -> str:
-    """Shell `echo` lines that print the live OpenRouter lane wires, one per line."""
-    return "".join(f'{indent}echo "{wire}"\n' for wire in _lane_wires())
-
-
 def _install_openrouter_preset_stub(home: Path) -> None:
     preset_helper = home / "lib" / "shared" / "openrouter_presets.py"
     preset_helper.parent.mkdir(parents=True, exist_ok=True)
@@ -327,30 +314,8 @@ if [[ "$1" == "--codex-model-catalog" ]]; then
   echo '{"models":[]}'
   exit 0
 fi
-if [[ "$1" == "--lane-wire-models" ]]; then
-"""
-        + _lane_wire_echo("  ")
-        + """  exit 0
-fi
 exit 0
 """,
         encoding="utf-8",
     )
     preset_helper.chmod(0o755)
-    (preset_helper.parent / "codex_lanes.py").write_bytes(
-        (REPO / "home/exact_lib/exact_shared/codex_lanes.py").read_bytes()
-    )
-    bands = home / ".config/ai/agent-bands.v1.json"
-    bands.parent.mkdir(parents=True, exist_ok=True)
-    bands.write_bytes((REPO / "home/dot_config/ai/readonly_agent-bands.v1.json").read_bytes())
-    (preset_helper.parent / "claude_lanes.py").write_bytes(
-        (REPO / "home/exact_lib/exact_shared/claude_lanes.py").read_bytes()
-    )
-    for role in json.loads(bands.read_text())["harnesses"]["openrouter"]["agents"]:
-        profile = home / ".claude/agents" / f"{role}.md"
-        profile.parent.mkdir(parents=True, exist_ok=True)
-        if profile.exists():
-            continue
-        profile.write_text(
-            f"---\nname: {role}\ndescription: Fixture leaf\nmodel: inherit\ntools: Read, Agent\n---\nKeep this body.\n"
-        )

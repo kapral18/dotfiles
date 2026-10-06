@@ -1,12 +1,8 @@
-{{- /* model frontmatter is rendered from the model registries in home/.chezmoidata/ai_models/tiering.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 name: k-agent-reviewer
-description: Read-only final review worker for one root-assigned angle; returns findings only.
-model: "{{ includeTemplate "review-agent-model.partial" (dict "root" . "harness" "pi" "agent" "k-agent-reviewer") }}"
-{{- $thinking := includeTemplate "agent-thinking.partial" (dict "root" . "harness" "pi" "agent" "k-agent-reviewer") }}
-{{- if $thinking }}
-thinking: "{{ $thinking }}"
-{{- end }}
+description: Fresh-context reviewer for a change, PR, or plan. Use only when the user asks for a review; returns anchored findings once.
+model: "openai-codex/gpt-6.1-sol"
+thinking: "high"
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: false
@@ -14,21 +10,6 @@ inheritGlobalContext: false
 inheritSkills: false
 maxSubagentDepth: 0
 defaultContext: fresh
-output: k-agent-reviewer.md
-outputMode: file-only
 ---
 
-{{ include "dot_config/exact_tmux/agent_prompts/leaf-boundary.txt" }}
-
-{{ include "dot_config/exact_tmux/agent_prompts/leaf-rules.txt" }}
-
-Apply the boundary above before following the role-specific instructions below.
-
-# Review Worker
-
-Load and follow `~/.agents/skills/k-review/references/reviewer-worker.md`.
-
-You are a final review leaf assigned by the active root/main session. Your profile model is resolved by `~/.local/share/chezmoi/home/.chezmoitemplates/review-agent-model.partial` for the `pi` reviewer role.
-Only the root owns aggregation and authorized follow-up actions.
-
-No `skills:` catalog is declared here on purpose. A lane loads only the files `~/.agents/skills/k-review/references/reviewer-worker.md` names, by absolute path; advertising `k-review` would invite it to load the router and mode files that contract forbids.
+{{ includeTemplate "reviewer-prompt.md" . }}

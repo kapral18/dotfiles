@@ -12,31 +12,5 @@
     "qwen3.6-35b-a3b-instruct": {
       "effortLevel": "high"
     }
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.agents/hooks/premise_nudge.py",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.agents/hooks/premise_nudge.py",
-            "timeout": 10
-          }
-        ]
-      }
-    ]
   }
 }

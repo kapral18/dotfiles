@@ -1,3 +1,0 @@
-pi_extra_models:
-  - id: "openrouter/model-a"
-    recommended: true

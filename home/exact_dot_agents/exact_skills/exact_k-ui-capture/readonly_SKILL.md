@@ -5,16 +5,13 @@ description: "Use when proving UI visual/behavior, auditing a diff for capturabl
 
 # UI Capture
 
-Subagent dispatch: inline — proof capture runs inline with the root's intended-behavior oracle; upload is root-gated.
-
 The creation-side live-UI proof skill: verify a **built or changed** UI against its **intended visual, state, or behavior**, capture the before/after screenshots and videos that prove it, and (when asked) upload them to GitHub.
-This is the creation-side sibling of `~/.agents/skills/k-review/references/live-ui-review.md`: same runtime machinery, opposite direction.
-`k-agent-live-ui-review` compares PR/head against base to find regressions for `/k-deep-review` to judge;
+A review-side live-UI check (base vs head, during `k-review`) uses the same runtime machinery in the opposite direction;
 this skill proves the built runtime matches its intent.
 
 The mechanics live in one shared contract — load `~/.agents/skills/k-ui-capture/references/proof-mode.md` and follow it end to end:
 caller inputs, applicability, the head-only model, proof capture, and the exact return shape.
-`/k-build`'s live-UI proof phase and `k-compose-pr`'s publication packet load that reference directly;
+`k-build`'s live-UI checks and `k-compose-pr`'s publication packet load that reference directly;
 this entrypoint owns routing and the two direct entries below.
 
 ## Non-Skippable Publication Gate
@@ -37,7 +34,7 @@ Other shared cores, loaded when their step applies:
 ## Out of scope (use the named alternative)
 
 - reviewing an existing PR or someone else's changes, or hunting regressions:
-  `~/.agents/skills/k-review/SKILL.md` / `/k-deep-review` (which owns `k-agent-live-ui-review`)
+  `~/.agents/skills/k-review/SKILL.md`
 - a change with no UI/runtime surface: there is no UI proof to capture — skip
 - generic browser automation with no intended UI state/behavior to check against: `~/.agents/skills/k-playwriter/SKILL.md` directly
 

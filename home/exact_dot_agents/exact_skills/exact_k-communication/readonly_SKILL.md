@@ -5,8 +5,6 @@ description: "Use when drafting human-visible communication; apply canonical ton
 
 # Communication (Centralized Tone & Style)
 
-Subagent dispatch: criteria — wording contract loaded before any human-visible draft; never dispatched alone.
-
 Owns wording of human-directed communication produced on the user's behalf, on any surface and in either direction;
 examples below are non-exhaustive.
 
@@ -19,13 +17,14 @@ Scope boundaries:
 
 - This skill governs **wording of external human-visible content** only.
 - **Whether and how to publish** (approval, bot-vs-human carve-out, draft → show payload → wait) is the Human-Visible Publication Gate in the SOP (`~/AGENTS.md`); do not restate or weaken it here.
-- In-session chat/CLI responses stay SOP §5; this skill is for other humans.
+- In-session chat/CLI responses follow `~/AGENTS.md` §8; this skill is for other humans.
 - Load points: `k-compose-pr`, `k-compose-issue`, `k-git` (commit messages), `k-github`, `k-slack`, `k-google-workspace`, and `k-review` MUST load this skill before drafting.
   A draft that no side effect follows yet is still publication text; apply every rule to it.
 
 ## External register
 
-Apply every rule before drafting text another human will read. In-session SOP §5 shape rules do not override this skill's friendly register.
+Apply every rule before drafting text another human will read.
+In-session `~/AGENTS.md` §8 shape rules do not override this skill's friendly register.
 
 - Choose no reply when it would only restate the thread or add attribution trivia, or turn a casual exchange into an investigation report.
 - Match the surface's register; keep simple social replies in natural conversational phrasing, using lab-report phrasing only when requested.
@@ -43,7 +42,7 @@ Apply every rule before drafting text another human will read. In-session SOP §
   Write as the user would (e.g. not "my agent re-ran the `gh` call after a 422" — just make the point).
   It hides agentic plumbing; it does not withhold legitimate domain content like real API error codes the human needs.
   Exception: a verified domain overlay may mandate AI-attribution trailers; it overrides this rule for the surfaces it names.
-- Session artifacts MUST NOT appear in external text: SOP section numbers or rule names, skill/agent/lane/worker/packet names and IDs, `Compatibility impact:` lines, `Unknown because` markers, `/tmp/specs` topic or spec paths, `,proof`/`,agent-memory` ledger references, harness or model names, hook notes, and worker status reports.
+- Session artifacts MUST NOT appear in external text: SOP section numbers or rule names, skill/agent/lane/worker/packet names and IDs, `Compatibility impact:` lines, `Unknown because` markers, `,handoff` note paths or contents, harness or model names, hook notes, and worker status reports.
   Strip them from the draft before showing the payload; the in-session summary keeps them.
 
 ## Concision

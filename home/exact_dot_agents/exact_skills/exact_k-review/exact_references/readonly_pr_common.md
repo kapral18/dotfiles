@@ -13,8 +13,7 @@ All PR review modes load this file; do not duplicate these rules in mode files.
 
 ## PR Snapshot (blocking before diff analysis)
 
-Load and follow `~/.agents/skills/k-review/references/pr_snapshot.md`: it owns the one-fetch context pack production, media and reference capture, diff scope and file truth, the head + discussion Drift check, and the pack lifetime.
-The root produces the pack during Understand and checks freshness once in final Verify. Workers do not refresh it.
+Load and follow `~/.agents/skills/k-review/references/pr_snapshot.md`: it owns the one-fetch snapshot, media and reference capture, diff scope and file truth, the head + discussion Drift check, and the snapshot lifetime.
 
 ## Merge-Conflict Check (Do After PR Resolution)
 
@@ -46,7 +45,7 @@ Avoid redundant findings:
 - Drop findings CI will inevitably flag, but first verify the relevant check exists and covers that finding class.
 - Do not assume usual CI exists on every branch; backports may loosen or narrow CI.
 
-1. Read the complete `checks.json` snapshot. Fetch checks only if that artifact is missing during Understand.
+1. Read the complete `checks.json` snapshot. Fetch checks only if that artifact is missing.
 2. Map each present check to the Coverage-Checklist classes it actually catches.
    - lint -> style/format nits
    - typecheck -> type errors
@@ -63,14 +62,14 @@ Avoid redundant findings:
    Do not assume a class is covered just because CI usually covers it elsewhere.
 5. State one line before drafting: `CI coverage: covered=[...] -> exempt; in-scope=[...]`.
 
-An observed CI failure in an exactly excluded class is not a failed required acceptance criterion in this review attempt (§3.5).
+An observed CI failure in an exactly excluded class is not a failed required acceptance criterion in this review attempt.
 It does not create a finding or block an approval; approval is a review verdict, NEVER CI certification.
 The exclusion covers only the verified class, source, scope, and evidence above. It NEVER exempts all bugs or all CI failures.
 
 ## Verdict Gate (PR Mode Only)
 
-Recommend a verdict only in final Verify after reading the complete primary discussion, enumerated CI coverage, and platform-backed author classifications from the shared pack.
-Use GraphQL author `__typename` or API `user.type`; do not issue a second per-comment request when the pack already contains that evidence.
+Recommend a verdict only after reading the complete primary discussion, enumerated CI coverage, and platform-backed author classifications from the snapshot.
+Use GraphQL author `__typename` or API `user.type`; do not issue a second per-comment request when the snapshot already contains that evidence.
 Unresolved material claims are blocked or retracted, not assumed true.
 
 ## Pending Review Intake (blocking before diff analysis)
@@ -83,8 +82,8 @@ resolve login, list reviews, select `PENDING` reviews by that login, read their 
 Load `~/.agents/skills/k-github/SKILL.md` and follow its GitHub Context Intake + Reference Resolution section.
 It owns reusable complete-discussion, pagination, reference, media, Buildkite, visual-claim, visited-set, and intake-ledger rules;
 this forwarding entry keeps existing callers valid.
-For a PR, the existing `~/.agents/skills/k-review/references/pr_snapshot.md` pack supplies the complete primary body, discussion/review threads and replies, current-account pending drafts, and diff metadata.
-Do not begin diff analysis until that PR context is complete. Do not refetch an artifact already complete in the pack.
+For a PR, the existing `~/.agents/skills/k-review/references/pr_snapshot.md` snapshot supplies the complete primary body, discussion/review threads and replies, current-account pending drafts, and diff metadata.
+Do not begin diff analysis until that PR context is complete. Do not refetch an artifact already complete in the snapshot.
 This pointer does not run Ambient Topic Exploration, PR resolution, pending-review reconciliation, or any mutation.
 
 ## Ambient Topic Exploration (conditional — complete before judging contested context)
@@ -94,7 +93,7 @@ the discussion shows disagreement, conflicting claims, or unclear ownership/requ
 the user asks for deep context, history, "why", or precedent; a candidate finding depends on product intent, team convention, prior incidents, or decisions not proven by the directly referenced artifacts; or direct references are sparse, contradictory, or omit the rationale behind the current disagreement.
 Skip it for routine implementation reviews where the diff, base context, and direct references are enough.
 
-Before running it, append `ambient: trigger=<condition> evidence=<thread id, claim, or user request>` to the review spec;
+Before running it, append `ambient: trigger=<condition> evidence=<thread id, claim, or user request>` to the review queue;
 with no recordable trigger it does not run.
 It never runs under a correctness-only constraint, and a self-authored PR with no review threads and no contested claim has no trigger.
 
@@ -190,8 +189,7 @@ Where to comment:
 
 ## Local Verification
 
-- In the root-owned final Verify stage, consume existing check receipts and run only pending planned checks for the frozen candidate.
-- Research and production workers must not run tests or reproduce claims as a completion check.
+- Reuse existing check results; run only checks that a material finding depends on and nothing has run yet.
 - Plan a minimal behavioral reproduction in `/tmp` or the worktree when existing evidence cannot settle the acceptance condition.
 - UI repro hygiene (when verifying UI/editor behavior):
   - do one claim per repro run; reset state between runs (reload/new tab)

@@ -163,7 +163,7 @@ class TestOmpMigration(unittest.TestCase):
 
     def test_extensions_use_current_omp_package_import(self):
         extensions = REPO / "home/dot_omp/private_agent/extensions"
-        expected = ["ai-kb-recall.ts", "runtime-parity.ts"]
+        expected = ["context-mode.ts.tmpl"]
 
         for name in expected:
             text = (extensions / name).read_text()
@@ -172,28 +172,7 @@ class TestOmpMigration(unittest.TestCase):
 
     def test_selected_agents_use_omp_frontmatter_schema(self):
         agents = REPO / "home/dot_omp/private_agent/exact_agents"
-        required = {
-            "task",
-            "sonic",
-            "scout",
-            "k-agent-public-sources",
-            "k-agent-reviewer",
-            "k-agent-code-searcher",
-            "k-agent-change-auditor",
-            "k-agent-findings-auditor",
-            "k-agent-live-ui-review",
-            "k-agent-post-review",
-            "k-agent-pr-necessity-auditor",
-            "k-agent-adversarial-verifier",
-            "k-agent-fresh-eyes",
-            "k-agent-criteria-verifier",
-            # Retier additions (user call 2026-09-07): the T3 mechanical lane the §3.7 gate names,
-            # the public-claim refuter, and the ,ai-kb operator. OMP reaches named profiles, so a
-            # missing file here silently sends the lane to the generic `task` type on T2.
-            "k-agent-mechanical",
-            "k-agent-claim-verifier",
-            "k-agent-smol",
-        }
+        required = {"k-agent-reviewer"}
         seen = {p.name.removesuffix(".md.tmpl") for p in agents.glob("*.md.tmpl")}
 
         self.assertEqual(required - seen, set())
@@ -211,13 +190,7 @@ class TestOmpMigration(unittest.TestCase):
                 self.assertNotIn(marker, text, f"{path} has legacy frontmatter {marker}")
             self.assertIn("name:", text)
             self.assertIn("description:", text)
-            # Review roles and work-band roles both name the omp harness through their model
-            # partial. A Pi copy-paste is the failure this guards against.
-            self.assertTrue(
-                '"harness" "omp"' in text,
-                f"{path} does not resolve its model from an omp registry entry",
-            )
-            self.assertNotIn('"harness" "pi"', text)
+            self.assertIn("model:", text)
 
 
 if __name__ == "__main__":

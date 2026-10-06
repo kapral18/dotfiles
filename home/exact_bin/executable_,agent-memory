@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-exec python3 "$HOME/lib/,agent-memory/agent_memory.py" "$@"

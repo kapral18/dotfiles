@@ -22,15 +22,14 @@ flowchart TD
     VB["verify-bin-surface → scripts/verify_bin_surface.py<br/>(~/bin commands have Fish completions + docs/catalog tokens;<br/>home/exact_lib command libraries are not orphaned)"]:::tool
     VDN["verify-docs-navigation → scripts/verify_docs_navigation.py<br/>(docs/reference links and implementation coverage catalog rows stay live)"]:::tool
     VAF["verify-agent-file-sizes → scripts/verify_agent_file_sizes.py<br/>(exact_dot_agents reference .md stay under the 20480B harness view limit;<br/>SKILL.md exempt — skill loaders deliver it)"]:::tool
-    VAP["verify-agent-policy → compile_ai_policy.py audit-coverage + verify-budgets<br/>temporary permissive 999999-byte policy ceilings during rearchitecture; runtime/leaf boundaries retained"]:::tool
     TST["test → convention + one-hop scripts/*.py imports + TEST_RULES;<br/>slow picker shards only on tmux (or editing the shard); agents never --full"]:::tool
-    CHECK --> LINT & VT & VM & VB & VDN & VAF & VAP & TST
+    CHECK --> LINT & VT & VM & VB & VDN & VAF & TST
 
     CHECK -->|fail| STOP["report failure; no automatic repair/recheck"]:::gate
     CHECK -->|pass| APPLY["chezmoi diff → scoped chezmoi apply --no-tty <target> → rendered/runtime receipt"]:::mk
 
     subgraph CONFIG["Repo-side config / meta files"]
-        C1["Makefile (help/fmt/lint/test/check/check-full/verify-templates/verify-mermaids/verify-bin-surface/verify-docs-navigation/verify-agent-file-sizes/verify-agent-policy/docs*)<br/>package.json + pnpm-workspace.yaml (npm docs* shims via pnpm --dir website; verifyDepsBeforeRun off so no root lockfile/node_modules)<br/>bin/fmt (formatter orchestrator) · bin/check (affected-first; make check-full is human-only CHECK_FULL=1)"]:::cfg
+        C1["Makefile (help/fmt/lint/test/check/check-full/verify-templates/verify-mermaids/verify-bin-surface/verify-docs-navigation/verify-agent-file-sizes/docs*)<br/>package.json + pnpm-workspace.yaml (npm docs* shims via pnpm --dir website; verifyDepsBeforeRun off so no root lockfile/node_modules)<br/>bin/fmt (formatter orchestrator) · bin/check (affected-first; make check-full is human-only CHECK_FULL=1)"]:::cfg
         C2[".editorconfig · .prettierrc · .prettierignore · .stylua.toml<br/>ruff.toml · pyrightconfig.json · .python-version"]:::cfg
         C3[".chezmoiroot(home) · .gitignore · .githooks/pre-commit(staged-only bin/fmt, then bin/check --staged)<br/>.gitignore · LICENSE · README.md · AGENTS.md"]:::cfg
         C4[".github/workflows/deploy-docs.yml (Pages CI)<br/>check-docs.yml (PR: verify-docs-navigation + docs-build)"]:::cfg

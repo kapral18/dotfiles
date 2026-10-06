@@ -19,9 +19,9 @@ Reference for the `k-github` skill. Load when creating, reconciling, or submitti
 > 1. Read back the JSON payload you are about to send.
 > 2. Confirm the `event` key is **absent** from the create-review payload.
 > 3. If `event` is present in the create-review payload, **remove it** before sending.
-> 4. Only add `event` in a **separate** submit call after the applicable SOP §3.8
+> 4. Only add `event` in a **separate** submit call after the applicable `~/AGENTS.md` §5
 >    authorization.
-> 5. Before a submit not already covered by SOP §3.8 authorization, show the exact submit `event` and PR-level review
+> 5. Before a submit not already covered by approval under `~/AGENTS.md` §5, show the exact submit `event` and PR-level review
 >    `body` alongside the inline-comment payload; submit only the exact approved
 >    summary body, never an invented or revised one.
 >    The body is a short acknowledgement, not a second review; do not repeat,
@@ -34,7 +34,7 @@ Reference for the `k-github` skill. Load when creating, reconciling, or submitti
 >    `position` anchor is inside the intended diff hunk immediately before creating or submitting the review.
 >    Verify against the fresh diff, since full-file line numbers, stale patches, and memory drift out of sync.
 > 9. Read existing current-account pending reviews and reconcile them with the payload so review feedback stays consolidated, never fragmented.
-> 10. For UI-related review feedback drafted after `/k-deep-review` or `k-agent-live-ui-review`, verify the approved draft includes `ui_evidence_attachments` or a valid blocker/non-applicability reason.
+> 10. For UI-related review feedback, verify the approved draft includes `ui_evidence_attachments` or a valid blocker/non-applicability reason.
 >     Keep local screenshot paths out of `body` and inline comment bodies; show the handoff separately in the approval payload.
 
 - Definition: a "pending review" is a PR review whose API `state` is `PENDING`.
@@ -56,9 +56,10 @@ Reference for the `k-github` skill. Load when creating, reconciling, or submitti
 
 ## Approval boundary
 
-SOP §3.8 owns whether approval persists. Reuse authorization only for the exact PR target, effect, and approved payload; NEVER broaden it.
+`~/AGENTS.md` §5 owns whether approval persists.
+Reuse authorization only for the exact PR target, effect, and approved payload; NEVER broaden it.
 Approval to “approve PR” authorizes the standard short acknowledgement `Looks good.` when no different body is specified.
-It NEVER authorizes new substantive feedback. Unapproved authored content still needs its exact draft and approval under SOP §3.8.
+It NEVER authorizes new substantive feedback. Unapproved authored content still needs its exact draft and approval under `~/AGENTS.md` §5.
 
 ## Existing pending-review merge guard
 
@@ -67,17 +68,17 @@ It NEVER authorizes new substantive feedback. Unapproved authored content still 
   2. List reviews: `gh api --paginate repos/OWNER/REPO/pulls/NUM/reviews`.
   3. For each review with `state == "PENDING"` and `user.login` matching the current login, read draft comments:
      `gh api --paginate repos/OWNER/REPO/pulls/NUM/reviews/REVIEW_ID/comments`.
-  4. Compare the pending review body/comments against the approved draft from `k-review`/`k-deep-review` and its `Pending review reconciliation:` ledger.
-  5. If any approved review feedback is UI-related and drafted after `/k-deep-review` or `k-agent-live-ui-review`, compare it against the draft's `ui_evidence_attachments` ledger and block if screenshot evidence is missing without a valid blocker/non-applicability reason.
+  4. Compare the pending review body/comments against the approved draft from `k-review` and its `Pending review reconciliation:` ledger.
+  5. If any approved review feedback is UI-related and, compare it against the draft's `ui_evidence_attachments` ledger and block if screenshot evidence is missing without a valid blocker/non-applicability reason.
 - If no reconciliation ledger exists, run the review skill's Existing Pending Review Reconciliation before mutating GitHub.
 - If a pending review exists and the new payload is purely **additive** (net-new findings, no edits to existing draft comments):
   - do not create a second pending review, and do not delete/recreate
   - append the net-new threads via GraphQL `addPullRequestReviewThread` against the existing `pullRequestReviewId`
-  - show the exact pending review ID and the net-new comment bodies/anchors; wait for approval only when SOP §3.8 does not already cover this exact post
+  - show the exact pending review ID and the net-new comment bodies/anchors; wait for approval only when `~/AGENTS.md` §5 does not already cover this exact post
 - If the new payload must **change or drop** existing draft comments:
   - prepare one consolidated payload that keeps still-valid pending findings and adds net-new findings exactly once
   - show the exact old pending review ID, comments to keep/drop, new payload, and delete/recreate action;
-    wait for approval only when SOP §3.8 does not already cover this exact action
+    wait for approval only when `~/AGENTS.md` §5 does not already cover this exact action
 - If submitting an existing pending review:
   - fetch the pending review and comments immediately before the submit call
   - verify they match the approved reconciled payload and current head anchors
@@ -87,7 +88,7 @@ It NEVER authorizes new substantive feedback. Unapproved authored content still 
 
 ## Posting a batch as a draft (PENDING) review
 
-If explicitly asked to POST a batch as a draft (PENDING) review, or when SOP §3.8 already authorizes that exact draft:
+If explicitly asked to POST a batch as a draft (PENDING) review, or when `~/AGENTS.md` §5 already authorizes that exact draft:
 
 - Create a single PR review in `PENDING` state by omitting `event` when calling: `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews`
 - Include all inline comments in the `comments` array in that same request.

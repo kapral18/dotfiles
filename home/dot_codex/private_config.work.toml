@@ -15,12 +15,10 @@ service_tier = "default"
 [sandbox_workspace_write]
 writable_roots = [
   "~/.local/share/ai-kb",
+  "~/.local/share/agent-handoffs",
   "~/.local/share/chezmoi",
-  "~/.local/state/agent-specs",
   "~/.cache/ai-embed-runtime",
   "~/.cache/agent-artifacts",
-  "~/.local/state/agent-proof",
-  "~/.local/state/agent-formal",
   "~/.local/state/chezmoi",
   "~/.local/state/llama-cpp/lifecycle",
   "~/bin",
@@ -37,43 +35,7 @@ status_line = ["model-with-reasoning", "current-dir", "context-remaining"]
 [features]
 multi_agent = true
 prevent_idle_sleep = true
-# ai-kb is the sole durable semantic store (see docs/topics/ai-assistants/knowledge-base.md);
+# ai-kb is the sole durable semantic store (see docs/topics/ai-assistants/memory-and-handoffs.md);
 # pin codex's experimental auto-memory off so a default flip can't create a second one.
 memories = false
 
-# Role registry. Without an entry here the files under ~/.codex/agents/ are never read;
-# `spawn_agent` only sees roles named in this table. Descriptions and models live in the
-# role file itself, so each entry is just the pointer.
-[agents.k-agent-adversarial-verifier]
-config_file = "~/.codex/agents/k-agent-adversarial-verifier.toml"
-
-[agents.k-agent-criteria-verifier]
-config_file = "~/.codex/agents/k-agent-criteria-verifier.toml"
-
-[agents.k-agent-findings-auditor]
-config_file = "~/.codex/agents/k-agent-findings-auditor.toml"
-
-[agents.k-agent-live-ui-review]
-config_file = "~/.codex/agents/k-agent-live-ui-review.toml"
-
-[agents.k-agent-pr-necessity-auditor]
-config_file = "~/.codex/agents/k-agent-pr-necessity-auditor.toml"
-
-[agents.k-agent-review-worker]
-config_file = "~/.codex/agents/k-agent-review-worker.toml"
-
-[agents.k-agent-smol]
-config_file = "~/.codex/agents/k-agent-smol.toml"
-
-[agents.k-agent-mechanical]
-config_file = "~/.codex/agents/k-agent-mechanical.toml"
-
-# Native fallbacks must be leaves too; otherwise a generic worker can recurse.
-[agents.default]
-config_file = "~/.codex/agents/default.toml"
-
-[agents.worker]
-config_file = "~/.codex/agents/worker.toml"
-
-[agents.explorer]
-config_file = "~/.codex/agents/explorer.toml"

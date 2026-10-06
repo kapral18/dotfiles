@@ -5,8 +5,6 @@ description: "Use when entity history across file moves, per-entity blame, or en
 
 # ,sem
 
-Subagent dispatch: inline (mechanical for a settled large JSON extraction) — index-free commands run directly.
-
 Entity-level Git CLI (Ataraxy `sem-cli` from homebrew-core, launched through `~/bin/,sem`).
 Shows what _entities_ changed (functions, classes, methods) instead of what lines changed.
 
@@ -57,7 +55,7 @@ First actions:
 "$SEM_BIN" blame <path> --json
 ```
 
-## Mechanical-only proof (SOP §2.1)
+## Mechanical-only proof
 
 Run `"$SEM_BIN" diff --format json` on the exact change set (working tree, `--staged`, or `--from`/`--to`).
 The change is mechanical-only when every entry in `changes` is `renamed`/`moved` or has `structuralChange: false`, and `summary.total` matches the entries you accounted for.
@@ -83,10 +81,3 @@ Falls back to chunk-based diffing for unsupported file types.
 - Detects renames and moves via structural hashing (same AST structure, different name).
 - `diff --format json` buckets every change as `added`, `modified`, `deleted`, `moved`, `renamed`, or `reordered`, each with a `structuralChange` flag.
 - `--json` / `--format json` on any command produces machine-readable output.
-
-## Root moves
-
-Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Launch one mechanical packet for a settled large JSON extraction with a stated rule and return;
-the root MUST NOT substitute its own inline extraction for that packet absent an explicit user no-delegation instruction;
-if the lane is unavailable report blocked. Small index-free commands stay inline.

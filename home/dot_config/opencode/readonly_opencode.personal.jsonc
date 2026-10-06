@@ -12,32 +12,8 @@
     "skill": "allow",
     "external_directory": "allow",
     "doom_loop": "ask",
-    "task": "deny",
   },
-  "agent": {
-    "plan": {
-      "disable": true,
-    },
-    "build": {
-      "disable": true,
-    },
-    "explore": {
-      "disable": true,
-    },
-    "general": {
-      "disable": true,
-    },
-    "scout": {
-      "disable": true,
-    },
-    "main": {
-      "description": "Main workflow agent",
-      "mode": "primary",
-      "model": "openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high",
-      "reasoning_effort": "high",
-    },
-  },
-  "default_agent": "main",
+  "model": "openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high",
   "mcp": "__MCP_SERVERS__",
   "provider": {
     "openrouter": {

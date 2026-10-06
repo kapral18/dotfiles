@@ -132,11 +132,11 @@ A start's own stdout is the evidence; when it is redirected to a file, read that
 
 ## Teardown
 
-- Track which registry entries existed before the worker ran and which entries the worker created with `started_by: "agent"`.
+- Track which registry entries existed before you started and which entries you created with `started_by: "agent"`.
 - If this agent started a detached stack, stop it with `,kbn-stack --stop` from the same worktree when verification is done.
   On a shared-ES stack this is safe by construction: `--stop` kills only this worktree's Kibana and stops the shared ES only when no other worktree references it.
 - If the user already had a `started_by: "user"` stack, leave it running and report that it was reused.
-- If a pre-existing `started_by: "agent"` stack is reused, leave it running unless this worker explicitly replaced it;
+- If a pre-existing `started_by: "agent"` stack is reused, leave it running unless you explicitly replaced it;
   report that it was reused as an agent-owned stack.
 - Stop only stacks owned by this worktree. Never kill a shared ES process or its ports directly; teardown goes through `--stop` refcounting.
-- Use per-worktree `,kbn-stack --stop` from automated review or live-UI workers; `,kbn-stack --stop-all` is user-only cleanup.
+- Use per-worktree `,kbn-stack --stop` from automated review or live-UI checks; `,kbn-stack --stop-all` is user-only cleanup.

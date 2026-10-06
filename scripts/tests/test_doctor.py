@@ -110,7 +110,7 @@ class TestDoctor(unittest.TestCase):
                 text=True,
             )
 
-            self.assertIn("Antigravity hooks missing", result.stdout)
+            self.assertNotIn("Antigravity hooks", result.stdout)
             self.assertIn("Antigravity MCP missing", result.stdout)
 
     def test_stale_missing_entry_is_retired_silently(self) -> None:

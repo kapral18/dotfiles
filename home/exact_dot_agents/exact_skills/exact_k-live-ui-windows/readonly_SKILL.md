@@ -6,26 +6,25 @@ disable-model-invocation: true
 
 # Live UI Windows
 
-Subagent dispatch: inline — manual VirtualBox/CDP environment in the user's session.
-
 Connect Playwriter to the VirtualBox Windows guest browser through a host NAT port-forward over CDP.
 Apply the shared runtime contract's target resolution, readiness guard, screenshots/evidence, and data/setup ladder.
 
 ## Manual only — never automatic
 
-`/k-deep-review`, `k-agent-live-ui-review`, `/k-build`, and `k-ui-capture` default to local-browser verification.
+`k-review` live-UI checks, `k-build`, and `k-ui-capture` default to local-browser verification.
 Only this manually invoked skill adds Windows/VirtualBox coverage.
 
 Load this skill only when the user explicitly asks, this turn, for Windows/VirtualBox verification.
 Treat only that explicit request as the trigger: a PR/issue/spec hint is insufficient, and so is an unrelated/ambiguous mention of the word "Windows" (e.g. a UI panel or feature literally named "Windows").
-If the user wants Windows coverage alongside an in-flight `k-ui-capture` or `k-agent-live-ui-review` check, add this skill to that turn's work by hand; keep it out of either flow's default path.
+If the user wants Windows coverage alongside an in-flight `k-ui-capture` or `k-review` live-UI check, add this skill to that turn's work by hand; keep it out of either flow's default path.
 
 ## Load first
 
 Load `~/.agents/skills/k-review/references/live-ui-runtime.md` for target-packet resolution, Playwriter preflight, the readiness stability guard, screenshot & evidence capture, the data/setup ladder, and the hard runtime constraints.
 This skill adds only the guest-connection rung below, the URL translation lookup, and its own hard constraints.
 
-Resolve the target packet and required runtime config the same way `k-ui-capture`'s direct-verify entry does when no controller supplies them; the oracle (an intended visual/state to match, or a base-vs-head comparison) comes from whichever check the user asked for.
+Resolve the target packet and required runtime config the same way `k-ui-capture`'s direct-verify entry does when no caller supplies them;
+the oracle (an intended visual/state to match, or a base-vs-head comparison) comes from whichever check the user asked for.
 
 ## Local-also or Windows-only
 
@@ -70,7 +69,7 @@ Run this once per verification, before target-packet URL translation and before 
 If the resolved target packet's browser-navigation URL points at the host (e.g. `localhost`/`127.0.0.1`), the target packet owns the guest-reachable translation and any runtime config needed to accept non-loopback connections.
 Ask the packet for that translation; use only packet-supplied translations, never an invented one for an unfamiliar packet.
 If the packet supplies no translation, return `Blocked` instead of guessing a guest-facing hostname.
-Scope this to URLs the browser actually navigates to; backing/data endpoints the worker calls directly stay host-facing and untranslated.
+Scope this to URLs the browser actually navigates to; backing/data endpoints called directly from the host stay host-facing and untranslated.
 
 ## Hard constraints (adds to the loaded contract)
 
@@ -80,7 +79,7 @@ Scope this to URLs the browser actually navigates to; backing/data endpoints the
 
 ## Return exactly
 
-Whatever return shape the check you're running already uses (the proof-mode contract's per-criterion verdicts, or `k-agent-live-ui-review`'s comparison evidence), plus:
+Whatever return shape the check you're running already uses (the proof-mode contract's per-criterion verdicts, or a review check's base-vs-head comparison evidence), plus:
 
 - `environment`: `windows-vbox` (and `local` too when the user chose local-also), with VM name, VM state transition, the NAT/CDP host port used, and the connection result
 - the URL translation applied (source host-facing URL -> guest-facing URL) or the exact reason none was available

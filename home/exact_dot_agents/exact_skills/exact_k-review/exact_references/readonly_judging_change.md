@@ -14,7 +14,7 @@ Before calling a deletion safe, verify each item and report a one-line deletion 
   confirm zero live importers/callers.
 - **Public surface:** deleted exports are removed from barrels and not part of a published package entry point still consumed downstream.
 - **Behavior parity:**
-  - every deleted behavior is intentionally dropped (user-approved per SOP `2.1`) or demonstrably replaced; name each replacement
+  - every deleted behavior is intentionally dropped (user-approved) or demonstrably replaced; name each replacement
 - **Tests:** deleted tests were migrated, or removed only because the code they covered is gone;
   coverage still exists for behavior that remains after the diff.
 - **Base comparison:**
@@ -37,9 +37,8 @@ Before a candidate can become review feedback:
      absence-of-observation never substitutes for naming the replacement's contract.
    - A migration handing a property to the target component (e.g. local CSS replaced by a shared component default) is only `preserved_limitation`/`scope_expansion`/intended-replacement after citing the target's contract (static source proof) or verifying it live.
      Until then the candidate stays unclassified, not dropped.
-   - For a stateful replacement (lifecycle, retry, ordered/flag-dependent state), the root runs `,formal replay <unit> --against <base>`
-     in Verify (differential replay: the old implementation is the oracle); a leaf reviewer cites the root-provided per-trace comparison
-     evidence as parity evidence instead of a static read, and reports missing replay evidence as a gap rather than running it itself.
+   - For a stateful replacement (lifecycle, retry, ordered/flag-dependent state), run the same transition cases against base and head
+     (the old implementation is the oracle) when it runs locally and safely; otherwise report missing parity evidence as a gap.
 2. **Assign exactly one classification:**
    - `parity_gap`: old behavior or coverage existed and the replacement omits or weakens it.
    - `new_regression`: the replacement adds a failure mode the old implementation did not have.
@@ -51,8 +50,8 @@ Before a candidate can become review feedback:
    - Drop `preserved_limitation` from review feedback. Do not ask the author to fix it in this PR.
    - Drop `prose_drift` from code-review feedback.
      If it matters to reviewers, handle it as PR-level prose feedback, not as an implementation finding.
-4. **Verification rule:** consume planned final live-UI/runtime evidence when source-level evidence cannot decide keep/drop;
-   report a missing check to the root. Do not start a separate findings-audit pass or rerun an existing check.
+4. **Verification rule:** use live-UI or runtime evidence when source-level evidence cannot decide keep/drop;
+   report a missing check as a gap. Do not start a separate findings-audit pass or rerun an existing check.
    Skip extra runtime work for established `preserved_limitation` or `prose_drift`.
    - The live-UI skip only applies once step 1's evidence bar is met.
      Never drop a UI-visual candidate (spacing, alignment, layout, visual styling) on an unproven classification and then cite that drop as why live UI was unnecessary — that inverts cause/effect.

@@ -1,9 +1,9 @@
 # Kibana Planning Fork Checklist
 
 Domain-seeded fork inventory for planning work targeting `elastic/kibana`.
-Consult this list during the `k-spec` skill's fork-closing step (or any SOP §3.1 intent loop on a Kibana change) to surface forks the generic loop would rediscover late.
+Consult this list during the `k-spec` skill's fork-closing step (or any planning of a Kibana change) to surface forks that would otherwise be rediscovered late.
 Evidence-first still applies: answer each item from the issue, diff, or codebase before asking; only genuine gaps become user questions.
-Most items resolve to "not applicable" for small changes — skip silently; this is a fork detector, not a questionnaire to transcribe into the packet.
+Most items resolve to "not applicable" for small changes — skip silently; this is a fork detector, not a questionnaire to transcribe into the plan.
 
 Provenance: adapted from the `elicitation_questions` in `elastic/plan` `prompts/teams/elastic-kibana/*.yaml` (main @ f6aeec5, 2026-07).
 To refresh: re-read that directory in the upstream repo and fold in new/changed questions; keep this file curated, not mirrored.

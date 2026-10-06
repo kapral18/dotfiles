@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help fmt lint test check check-full verify-templates verify-mermaids verify-bin-surface verify-docs-navigation verify-agent-file-sizes verify-agent-policy docs docs-build docs-serve docs-clean
+.PHONY: help fmt lint test check check-full verify-templates verify-mermaids verify-bin-surface verify-docs-navigation verify-agent-file-sizes docs docs-build docs-serve docs-clean
 
 help: ## Show available targets
 	@grep -E '^[a-z][a-z_-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -26,10 +26,6 @@ verify-docs-navigation: ## Check docs/reference links and catalog coverage
 
 verify-agent-file-sizes: ## Check agent skill/hook markdown stays under the 20KB view limit
 	python3 scripts/verify_agent_file_sizes.py
-
-verify-agent-policy: ## Check compiled SOP/provenance with permissive architecture-stage text budgets
-	python3 scripts/compile_ai_policy.py audit-coverage --legacy home/readonly_AGENTS.md --manifest home/dot_config/ai/exact_policy-ir/readonly_policy-manifest.v1.json --base-ref origin/main
-	python3 scripts/compile_ai_policy.py verify-budgets --core-max-bytes 999999 --overlay-max-bytes 999999 --skill-max-bytes 999999 --description-total-max-bytes 999999
 
 test: ## Run the full Python unit test suite (file-sharded via scripts/test_runner.py)
 	python3 scripts/test_runner.py

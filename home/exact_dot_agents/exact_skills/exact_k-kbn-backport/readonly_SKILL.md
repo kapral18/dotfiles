@@ -6,15 +6,13 @@ disable-model-invocation: true
 
 # Kibana Backport End-To-End
 
-Subagent dispatch: inline — drives an interactive tmux tool that pushes branches and opens PRs.
-
 Use this skill only when explicitly invoked by name, typically as "run/resolve the backport for PR `<N>`".
 Compute targets, drive one interactive `node scripts/backport` run in a dedicated tmux window, faithfully resolve and stage every conflict, and let the tool push branches and open PRs.
 Stop only at the user-decision boundaries in Contract.
 
 This skill requires a source PR number. If none was provided, ask the user for it before doing anything else.
 
-## Publication Gate (SOP §3.8)
+## Publication Gate (`~/AGENTS.md` §5)
 
 The tool pushes branches and opens the backport PRs itself, so the launch is a human-visible publication action.
 Before launch, surface the exact payload each target PR gets: title from the source commit, `# Backport …` body, `backport` label, assignees/reviewers, and squash auto-merge on clean cherry-picks (`.backportrc.json`), alongside the computed target branches.

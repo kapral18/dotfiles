@@ -18,25 +18,7 @@ status_line = ["model-with-reasoning", "current-dir", "context-remaining"]
 [features]
 multi_agent = true
 prevent_idle_sleep = true
-# ai-kb is the sole durable semantic store (see docs/topics/ai-assistants/knowledge-base.md);
+# ai-kb is the sole durable semantic store (see docs/topics/ai-assistants/memory-and-handoffs.md);
 # pin codex's experimental auto-memory off so a default flip can't create a second one.
 memories = false
 
-# Role registry. Without an entry here the files under ~/.codex/agents/ are never read;
-# `spawn_agent` only sees roles named in this table. Review lanes stay work-only; k-agent-smol
-# (the ,ai-kb operator) and k-agent-mechanical (the cheap edit lane) are needed on every profile.
-[agents.k-agent-smol]
-config_file = "~/.codex/agents/k-agent-smol.toml"
-
-[agents.k-agent-mechanical]
-config_file = "~/.codex/agents/k-agent-mechanical.toml"
-
-# Native fallbacks must be leaves too; otherwise a generic worker can recurse.
-[agents.default]
-config_file = "~/.codex/agents/default.toml"
-
-[agents.worker]
-config_file = "~/.codex/agents/worker.toml"
-
-[agents.explorer]
-config_file = "~/.codex/agents/explorer.toml"

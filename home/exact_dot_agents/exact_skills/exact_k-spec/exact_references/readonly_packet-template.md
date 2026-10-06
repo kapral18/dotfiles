@@ -1,10 +1,10 @@
-# Spec Packet Template
+# Spec Plan Template
 
-The template used by `~/.agents/skills/k-spec/SKILL.md` and written to `/tmp/specs/<pwd>/<topic>.spec.md`.
+The template used by `~/.agents/skills/k-spec/SKILL.md`.
 Keep every section and every criterion's `check:`/`judgment:` tag; omit `External dependencies` only when there are none.
 
 ```markdown
-# Spec packet: <topic>
+# Spec: <topic>
 
 Goal: <one sentence — what exists after, that does not exist now>
 Context: <why now; links: issue/PR/thread/prototype verdict>
@@ -13,13 +13,13 @@ Semantic delta: <none | old rule; new rule; intended differences; preserved diff
 
 Shared contract: <applicable runtime versions; canonical schema/identity/order examples; compatibility decision; semantic dependencies; immutable input references; one integration owner | none, with applicability evidence>
 
-Impact map: <none (light-path proven) | affected callers/consumers; invariants; co-edit set (generated outputs, docs, diagrams, completions, tests); evidence>
+Impact map: <none (with evidence) | affected callers/consumers; invariants; co-edit set (generated outputs, docs, diagrams, completions, tests); evidence>
 
 In scope:
 
 - <...>
 
-Out of scope (binding for /k-build):
+Out of scope (binding for implementation):
 
 - <...>
 
@@ -27,11 +27,11 @@ Acceptance criteria:
 
 1. <observable statement>
    check: `<command>`            # run from repo root; pass = exit 0
-   now: planned                # execute once in the final Verify stage
+   now: planned                # run once on the finished change
 2. <observable statement>
    judgment: <what evidence settles it>
-3. <stateful-behavior statement, SOP `3.6`>
-   check: `,formal audit <unit>` # each model mutant killed by a named property; run once in final Verify
+3. <stateful-behavior statement>
+   check: `<command>`            # explicit transition cases: intended, preserved, malformed, terminal
    now: planned
 
 Risks / unknowns:

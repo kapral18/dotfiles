@@ -5,9 +5,7 @@ description: "Use when adding, editing, reviewing, or debugging tests or test pl
 
 # Test Code Quality
 
-Subagent dispatch: criteria — loaded by whoever holds the packet; never dispatched alone.
-
-Use this for test and verification code. The SOP owns the single final Verify stage; writing tests does not expand implementation scope.
+Use this for test and verification code. Writing tests does not expand implementation scope.
 
 ## References
 
@@ -26,7 +24,7 @@ Use this for test and verification code. The SOP owns the single final Verify st
 ## Test Shape
 
 - Write BDD-style tests when adding tests: `describe('WHEN ...')`, `it('SHOULD ...')`.
-- Write regression cases for the reported bug and preserved behavior; execute them in the integrated final Verify stage.
+- Write regression cases for the reported bug and preserved behavior; run them with the other checks on the finished change.
 - Keep tests focused on observable behavior, not implementation trivia.
 - Cover the boundary or regression that would fail without the change.
 - Prefer small fixtures that make the behavior obvious.
@@ -44,14 +42,14 @@ Use this for test and verification code. The SOP owns the single final Verify st
   Asserting a suggestion/definition list equals itself proves nothing about whether the suggested values are valid.
 - For artifact-producing changes (suggestion lists, codegen output, definitions, config), verify acceptance against the real consumer:
   probe it live when a safe runtime exists, otherwise cite the consumer's contract (spec/source) for every emitted form.
-- For stateful behavior (SOP `3.6`), a `,formal` catalog unit is an independent oracle; an admissible model counterexample trace
-  (one an existing seam expresses) becomes a regression test when the task owns the repo.
+- For stateful behavior, list the transitions explicitly (intended, preserved, malformed input, terminal) and test each through an existing seam;
+  a pure input-to-output rule can be checked against an independent table in a disposable harness.
 
 ## Validation
 
-Prepare focused cases with the change; execute each planned check once in final Verify, not inside production workers.
+Prepare focused cases with the change; run each planned check once on the finished change.
 Use an independent oracle and intended/preserved cases. Do not claim mutation coverage from a green run alone.
-Risk-selected final mutation experiments must establish the control, actual mutation, and restoration, without modifying unrelated work.
+Optional mutation experiments for high-risk criteria must establish the control, actual mutation, and restoration, without modifying unrelated work.
 Async tests should await the real completion signal rather than arbitrary tick counts. Name the actual worktree/snapshot under test.
-Report failed/skipped checks honestly; the root handles any authorized recovery under SOP §3.5.
+Report failed and skipped checks honestly.
 Do not add golden files that merely pin wording or generated data against itself.

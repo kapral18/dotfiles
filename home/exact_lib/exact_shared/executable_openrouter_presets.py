@@ -10,7 +10,6 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass
-from pathlib import Path
 from typing import Optional
 
 BASE_URL = "https://openrouter.ai/api/v1"
@@ -351,77 +350,7 @@ def _codex_catalog(tier: str, model_ids: list[str], api_key: str) -> dict:
     return {"models": models}
 
 
-def _lane_wire_models() -> list[str]:
-    configured = os.environ.get("CHEZMOI_SOURCE_DIR")
-    candidates = [Path(configured).expanduser()] if configured else []
-    candidates.extend((Path("~/.local/share/chezmoi").expanduser(), Path.cwd()))
-    tiering = next(
-        (
-            source / "home/.chezmoidata/ai_models/tiering.yaml"
-            for source in candidates
-            if (source / "home/.chezmoidata/ai_models/tiering.yaml").is_file()
-        ),
-        None,
-    )
-    if tiering is None:
-        raise PresetError("cannot locate home/.chezmoidata/ai_models/tiering.yaml")
-    lines = tiering.read_text(encoding="utf-8").splitlines()
-
-    # `session_models.openrouter` precedes `category_models.openrouter`; only the category block carries lane rows.
-    in_category_models = False
-    in_lanes = False
-    category = ""
-    rows: dict[str, dict[str, str]] = {}
-    for line in lines:
-        indent = len(line) - len(line.lstrip(" "))
-        stripped = line.strip()
-        if indent == 0 and stripped and not stripped.startswith("#"):
-            in_category_models = stripped == "category_models:"
-            in_lanes = False
-            continue
-        if not in_category_models:
-            continue
-        if stripped == "openrouter:" and indent == 2:
-            in_lanes = True
-            continue
-        if not in_lanes:
-            continue
-        if stripped and not stripped.startswith("#") and indent <= 2:
-            break
-        if not stripped or stripped.startswith("#"):
-            continue
-        if indent == 4 and stripped.endswith(":"):
-            category = stripped[:-1]
-            rows[category] = {}
-            continue
-        if indent == 6 and category and ":" in stripped:
-            key, value = stripped.split(":", 1)
-            rows[category][key] = value.strip().strip('"')
-
-    wires = []
-    for category, row in rows.items():
-        model = row.get("model", "")
-        if not model.startswith("openrouter/"):
-            continue
-        effort = row.get("effort", "")
-        if not effort:
-            raise PresetError(f"category_models.openrouter.{category}.effort must not be empty")
-        wire = f"{model.removeprefix('openrouter/')}@preset/effort-{effort}"
-        if wire not in wires:
-            wires.append(wire)
-    if not wires:
-        raise PresetError("category_models.openrouter has no OpenRouter rows")
-    return wires
-
-
 def main(argv: list[str]) -> int:
-    if argv == ["--lane-wire-models"]:
-        try:
-            print("\n".join(_lane_wire_models()))
-        except PresetError as error:
-            print(f"Error: OpenRouter lane projection failed: {error}", file=sys.stderr)
-            return 1
-        return 0
     if len(argv) == 3 and argv[0] == "--context-window":
         try:
             print(resolve_context_window(argv[1], argv[2], os.environ.get("OPENROUTER_API_KEY", "").strip()))
@@ -429,7 +358,7 @@ def main(argv: list[str]) -> int:
             print(f"Error: OpenRouter context preflight failed: {error}", file=sys.stderr)
             return 1
         return 0
-    if len(argv) >= 4 and argv[0] == "--session-budget-env":
+    if len(argv) >= 3 and argv[0] == "--session-budget-env":
         try:
             budget = resolve_session_budget(argv[2:], argv[1], os.environ.get("OPENROUTER_API_KEY", "").strip())
             for key, value in asdict(budget).items():
@@ -439,7 +368,7 @@ def main(argv: list[str]) -> int:
             print(f"Error: OpenRouter context preflight failed: {error}", file=sys.stderr)
             return 1
         return 0
-    if len(argv) >= 4 and argv[0] == "--codex-model-catalog":
+    if len(argv) >= 3 and argv[0] == "--codex-model-catalog":
         try:
             print(json.dumps(_codex_catalog(argv[1], argv[2:], os.environ.get("OPENROUTER_API_KEY", "").strip())))
         except PresetError as error:
@@ -448,7 +377,7 @@ def main(argv: list[str]) -> int:
         return 0
     if len(argv) != 1:
         print(
-            "Usage: openrouter_presets.py EFFORT | --lane-wire-models | "
+            "Usage: openrouter_presets.py EFFORT | "
             "--context-window MODEL short|long | --session-budget-env short|long MODEL... | "
             "--codex-model-catalog short|long MODEL...",
             file=sys.stderr,

@@ -1,7 +1,7 @@
 # Kibana Live UI Overlay
 
-Kibana live UI target packet for verified `elastic/kibana` `/k-deep-review`, `k-agent-live-ui-review`, `k-ui-capture`, and (when manually invoked) `k-live-ui-windows` flows.
-Use it when no explicit parent/user/repo target packet was supplied.
+Kibana live UI target packet for verified `elastic/kibana` live-UI checks in `k-review`, `k-ui-capture`, and (when manually invoked) `k-live-ui-windows`.
+Use it when no explicit user or repo target packet was supplied.
 The runtime targets, preflight, and data/setup ladder below are mode-neutral:
 review flows compare PR/head against base, and `k-ui-capture`'s proof-mode contract verifies the built runtime head-only against its intended visual.
 
@@ -31,14 +31,14 @@ if base/head both need serverless, verify them sequentially (start, verify, tear
 Return `Blocked` for the serverless single-instance constraint only when sequential verification is itself impossible.
 For example, block if the user's serverless stack must stay up; do not treat the constraint as a peer option to skip verification.
 
-The registry is keyed by absolute worktree path. Target identity is based on the reviewed code, not on where the controller happens to run:
+The registry is keyed by absolute worktree path. Target identity is based on the reviewed code, not on where the session happens to run:
 
-- `controller_cwd`: the checkout where the review controller is executing.
+- `session_cwd`: the checkout where the agent session is executing.
 - `reviewed_head_worktree`: the checkout for the PR/head branch or commit being reviewed.
 - `base_worktree`: optional comparison checkout for the base branch.
 
-For local-changes mode, `controller_cwd` may be `reviewed_head_worktree` when it contains the changed code.
-For an explicit PR/branch review launched from another checkout, especially a base/main checkout, `controller_cwd` is not a valid PR/head target unless it is checked out to the reviewed PR/head branch/sha.
+For local-changes mode, `session_cwd` may be `reviewed_head_worktree` when it contains the changed code.
+For an explicit PR/branch review launched from another checkout, especially a base/main checkout, `session_cwd` is not a valid PR/head target unless it is checked out to the reviewed PR/head branch/sha.
 Find or create a worktree for the reviewed PR/head branch before live UI, then compute the PR/head registry key from that worktree with `git rev-parse --show-toplevel`.
 If no reviewed-head worktree is available and the harness cannot create one, return `Blocked` with target-worktree setup instructions;
 never verify PR/head behavior against the base/main runtime.
@@ -50,7 +50,7 @@ Browser targets:
 - PR/head branch: the `kbn_url` of the registry entry for `reviewed_head_worktree`.
 - Base branch: optional comparison target.
   Use the `kbn_url` of the registry entry for the selected `base_worktree` only when base-vs-head comparison is required and `reviewed_head_worktree` is distinct.
-  If no parent/user packet selected a base worktree, use the local default base worktree (`~/work/kibana/main`) only as a fallback comparison target.
+  If no user-supplied packet selected a base worktree, use the local default base worktree (`~/work/kibana/main`) only as a fallback comparison target.
 
 Backing/data endpoints:
 
@@ -72,10 +72,10 @@ Include the exact `,kbn-stack --detach` command for each missing worktree for th
 Probe only registry-resolved targets, never arbitrary localhost ports.
 
 Teardown ownership: record the registry state before starting anything.
-If this worker created a stack with `,kbn-stack --detach`, it is marked `started_by: "agent"` and must be torn down with `,kbn-stack --stop` from that worktree once verification is done.
+If you created a stack with `,kbn-stack --detach`, it is marked `started_by: "agent"` and must be torn down with `,kbn-stack --stop` from that worktree once verification is done.
 Report that it was stopped. Do not stop a `started_by: "user"` stack; leave it running and report that it was reused, not started.
-If a pre-existing `started_by: "agent"` stack is reused, leave it running unless this worker explicitly replaced it;
-report that it was reused as an agent-owned stack. Never use `--stop-all` from a review worker; that is a user-only cleanup.
+If a pre-existing `started_by: "agent"` stack is reused, leave it running unless you explicitly replaced it;
+report that it was reused as an agent-owned stack. Never use `--stop-all` during verification; that is a user-only cleanup.
 
 ## Required runtime config
 
@@ -85,9 +85,8 @@ A default `,kbn-stack` start does not enable these, so a stack started or reused
 That would otherwise cost a reconfigure/restart round-trip mid-verification.
 
 `required_kbn_flags` is a list of `key=value` Kibana settings the change under review needs.
-The controller resolves it once before the first `k-agent-live-ui-review` launch and includes it in this packet;
-this worker uses the supplied value as-is.
-When the parent supplies none, treat it as the empty list and start/reuse stacks with default config.
+Resolve it once, before the first live-UI check, and use the same value for every check in the task.
+When nothing requires a flag, treat it as the empty list and start/reuse stacks with default config.
 
 This value flows straight into `,kbn-stack -K`: each `key=value` becomes one `-K key=value` at start time (Rung 0).
 The registry entry's `kbn_flags` records what a running stack was started with so a reused stack can be checked for parity.
@@ -101,7 +100,7 @@ Only applies when the manually-invoked `~/.agents/skills/k-live-ui-windows/SKILL
   Once `k-live-ui-windows`'s VirtualBox/CDP connection rung confirms the target VM's NIC1 is NAT-attached, rewrite `kbn_url`'s hostname to VirtualBox's NAT gateway alias `10.0.2.2`, keeping the same port and path — e.g. `http://localhost:5601` -> `http://10.0.2.2:5601`.
   This is the only URL the Windows guest browser ever navigates to.
 - Leave `es_url` untouched (still `localhost`/`127.0.0.1`).
-  The Data/setup ladder's direct-Elasticsearch-indexing step runs from the worker itself (the host/agent), never from inside the guest browser, so `es_url` needs no guest-facing translation — rewriting it would break that existing host-side data-setup path instead of fixing anything.
+  The Data/setup ladder's direct-Elasticsearch-indexing step runs from the host (the agent's shell), never from inside the guest browser, so `es_url` needs no guest-facing translation — rewriting it would break that existing host-side data-setup path instead of fixing anything.
 - A default `,kbn-stack` start binds Kibana to `localhost` only (Kibana's `server.host` default), which the NAT gateway cannot reach.
   Add `server.host=0.0.0.0` to `required_kbn_flags` for this run whenever `k-live-ui-windows` is used against this target, in addition to any flags already required by the change under review.
 - Apply the existing required-config parity rule (see Required preflight below) to this added flag exactly like any other entry in `required_kbn_flags`: a `ready:true` stack missing it is a parity gap, handled with the same `started_by`-aware Blocked/recreate rules — never a target blocker.
@@ -124,13 +123,13 @@ Only applies when the manually-invoked `~/.agents/skills/k-live-ui-windows/SKILL
 - Required-config precondition (do this when `required_kbn_flags` is non-empty, after resolving each ready target):
   compare the target's registry `kbn_flags` against `required_kbn_flags`.
   If a `ready:true` stack with `started_by: "user"` is missing a required flag, it cannot show the path under review and restarting it is user-only — return `Blocked` per Data/setup ladder Rung 6 with the exact `,kbn-stack --stop && ,kbn-stack --detach -K <flag> ...` the user must run, naming the affected target(s).
-  If a `ready:true` stack with `started_by: "agent"` is missing a required flag, the worker may stop and recreate it only when doing so will not conflict with another active task; record the replacement in the evidence.
-  A stack this worker just started via Rung 0 already carries the flags, so no parity check is needed for it.
+  If a `ready:true` stack with `started_by: "agent"` is missing a required flag, you may stop and recreate it only when doing so will not conflict with another active task; record the replacement in the evidence.
+  A stack you just started via Rung 0 already carries the flags, so no parity check is needed for it.
 - Load `~/.agents/skills/k-kbn-stack/SKILL.md` before starting, stopping, or reusing stack targets.
 - Read `~/.agents/skills/k-playwriter/SKILL.md` and complete its Documentation contract before checking targets.
-- Run in a fresh Playwriter session owned by this worker.
+- Run in a fresh Playwriter session that you own.
 - Store owned pages under distinct `state` keys for base and head; do not reuse an unrelated generic page.
-- Close only pages this worker created, or leave their URLs in the blocker/evidence.
+- Close only pages you created, or leave their URLs in the blocker/evidence.
 - Use Playwriter to check every selected exact browser target is reachable and Kibana-ready.
 - Verify branch identity with Playwriter evidence where possible.
 - First perform readiness only; do not compare UI until every selected target passes readiness.
@@ -178,7 +177,7 @@ The rungs below apply only once every selected required stack reports `ready:tru
 5. If direct local Kibana/Elasticsearch setup fails because of auth, headers, API shape, or transport issues, use Kibana Dev Tools Console.
    Use it on the matching verified target.
    Load `~/.agents/skills/k-kibana-console-monaco/SKILL.md` when automating Console editor interactions.
-6. If faithful setup requires reconfiguring or restarting an already-running ES/Kibana instance in a way this worker cannot safely apply, return `Blocked` instead of working around it with browser mocks.
+6. If faithful setup requires reconfiguring or restarting an already-running ES/Kibana instance in a way you cannot safely apply, return `Blocked` instead of working around it with browser mocks.
    This is not Rung 0, which starts a missing stack via `,kbn-stack --detach`. Include in the `Blocked` return:
    - affected target(s): base, PR/head, or both
    - exact runtime prerequisite and the evidence that it is required
@@ -193,5 +192,5 @@ The rungs below apply only once every selected required stack reports `ready:tru
 
 ## Evidence & conduct contract
 
-The safety boundary, screenshot handoff, live feedback overlay, and controller validation for this overlay live in `~/.agents/skills/k-elastic-domain/references/kibana-live-ui-evidence.md`.
+The safety boundary, screenshot handoff, live feedback overlay, and evidence validation for this overlay live in `~/.agents/skills/k-elastic-domain/references/kibana-live-ui-evidence.md`.
 Load it together with this packet before running or validating any Kibana live UI work.

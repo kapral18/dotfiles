@@ -11,65 +11,8 @@
     "skill": "allow",
     "external_directory": "allow",
     "doom_loop": "ask",
-    "task": "deny",
   },
-  "agent": {
-    "plan": {
-      "disable": true,
-    },
-    "build": {
-      "disable": true,
-    },
-    "explore": {
-      "disable": true,
-    },
-    "general": {
-      "disable": true,
-    },
-    "scout": {
-      "disable": true,
-    },
-    "main": {
-      "description": "Root workflow agent. Dispatch only ready implementation packets; own all stages and final verification.",
-      "mode": "primary",
-      "permission": { "task": { "*": "deny", "worker_*": "allow" } },
-      "model": "openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high",
-      "reasoning_effort": "high",
-    },
-    "worker_a": {
-      "description": "Implements tasks and reports concise results back to main agent",
-      "mode": "subagent",
-      "prompt": "{file:~/.config/tmux/agent_prompts/leaf-boundary.txt}",
-      "permission": { "task": "deny" },
-      "model": "openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high",
-      "reasoning_effort": "high",
-    },
-    "worker_b": {
-      "description": "Second implementer for parallel work, reports concise results back to main agent",
-      "mode": "subagent",
-      "prompt": "{file:~/.config/tmux/agent_prompts/leaf-boundary.txt}",
-      "permission": { "task": "deny" },
-      "model": "openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high",
-      "reasoning_effort": "high",
-    },
-    "worker_c": {
-      "description": "Third implementer for parallel work, reports concise results back to main agent",
-      "mode": "subagent",
-      "prompt": "{file:~/.config/tmux/agent_prompts/leaf-boundary.txt}",
-      "permission": { "task": "deny" },
-      "model": "openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high",
-      "reasoning_effort": "high",
-    },
-    "worker_d": {
-      "description": "Fourth implementer for parallel work, reports concise results back to main agent",
-      "mode": "subagent",
-      "prompt": "{file:~/.config/tmux/agent_prompts/leaf-boundary.txt}",
-      "permission": { "task": "deny" },
-      "model": "openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high",
-      "reasoning_effort": "high",
-    },
-  },
-  "default_agent": "main",
+  "model": "openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high",
   "mcp": "__MCP_SERVERS__",
   "provider": {
     "openrouter": {

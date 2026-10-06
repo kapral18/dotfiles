@@ -66,7 +66,7 @@ The four `*-llama-cpp` launchers use `,llama-cpp run -- <command>`. Each process
 2. An absent loopback router is started from the configured preset and recorded with its PID and process-start identity.
 3. The last consumer schedules that recorded process to stop after `LLAMA_CPP_GRACE_SECONDS` (default `600`). A new consumer during grace cancels the pending shutdown and reuses the loaded router; `0` restores immediate shutdown.
 
-Automatic startup is limited to loopback hosts. A missing non-loopback router fails closed because the launcher cannot safely start or own a remote process. Stale lease files left by an uncatchable process exit are pruned on the next lifecycle operation.
+Automatic startup is limited to loopback hosts. A missing non-loopback router fails closed because the launcher cannot safely start or own a remote process. `run` forwards SIGINT, SIGTERM, and SIGHUP (a closed terminal, for example `tmux kill-session`) to the command, waits for it, and still releases its lease; repeated signals are forwarded without interrupting that wait, and an inherited SIGHUP ignore (`nohup`) is left to the command. Stale lease files left by an uncatchable process exit are pruned on the next lifecycle operation.
 
 Use `,llama-cpp stop` to end a lifecycle-owned router during its grace period. It never stops a manually started router. If a harness still holds a lease, the command refuses to interrupt it; `,llama-cpp stop --force` is the explicit override and will break those active sessions.
 

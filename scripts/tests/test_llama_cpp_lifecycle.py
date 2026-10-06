@@ -6,6 +6,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import signal
 import socket
 import subprocess
 import sys
@@ -179,6 +180,76 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         self.assertEqual(23, result.returncode, result.stderr)
         self.assertEqual(2, len(self.server_log.read_text().splitlines()))
         self.assertFalse(_router_reachable(port))
+
+    def test_SHOULD_release_the_lease_and_stop_the_router_on_SIGHUP(self) -> None:
+        # A closed terminal (tmux kill-session) delivers SIGHUP; the lease must still be released.
+        port = _free_port()
+        ready = self.root / "consumer-ready"
+        consumer = (
+            "import pathlib, signal, sys, time\n"
+            "signal.signal(signal.SIGHUP, lambda *_: sys.exit(0))\n"
+            f"pathlib.Path({str(ready)!r}).write_text('ok')\n"
+            "time.sleep(30)\n"
+        )
+        process = subprocess.Popen(
+            self.lifecycle_command(port, sys.executable, "-c", consumer),
+            env=self.env(port),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        self.addCleanup(_stop_process, process)
+        _wait_for(ready.exists, "consumer did not start")
+        self.assertTrue(_router_reachable(port))
+
+        process.send_signal(signal.SIGHUP)
+        process.wait(timeout=10)
+
+        self.assertEqual(128 + signal.SIGHUP, process.returncode, process.stderr.read())
+        self.assertEqual(2, len(self.server_log.read_text().splitlines()))
+        self.assertFalse(_router_reachable(port))
+
+    def test_SHOULD_still_wait_and_release_when_the_terminal_sends_repeated_SIGHUPs(self) -> None:
+        port = _free_port()
+        ready = self.root / "consumer-ready"
+        consumer = (
+            "import pathlib, signal, sys, time\n"
+            "signal.signal(signal.SIGHUP, lambda *_: (time.sleep(0.5), sys.exit(0)))\n"
+            f"pathlib.Path({str(ready)!r}).write_text('ok')\n"
+            "time.sleep(30)\n"
+        )
+        process = subprocess.Popen(
+            self.lifecycle_command(port, sys.executable, "-c", consumer),
+            env=self.env(port),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        self.addCleanup(_stop_process, process)
+        _wait_for(ready.exists, "consumer did not start")
+
+        process.send_signal(signal.SIGHUP)
+        time.sleep(0.1)
+        process.send_signal(signal.SIGHUP)
+        _, stderr = process.communicate(timeout=10)
+
+        self.assertEqual(128 + signal.SIGHUP, process.returncode, stderr)
+        self.assertNotIn("Traceback", stderr)
+        self.assertFalse(_router_reachable(port))
+
+    def test_SHOULD_leave_an_inherited_SIGHUP_ignore_to_the_command(self) -> None:
+        port = _free_port()
+        result = subprocess.run(
+            self.lifecycle_command(
+                port, sys.executable, "-c", "import signal; print(signal.getsignal(signal.SIGHUP) is signal.SIG_IGN)"
+            ),
+            env=self.env(port),
+            capture_output=True,
+            text=True,
+            preexec_fn=lambda: signal.signal(signal.SIGHUP, signal.SIG_IGN),
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("True\n", result.stdout)
 
     def test_SHOULD_keep_an_owned_router_until_its_grace_period_expires(self) -> None:
         port = _free_port()

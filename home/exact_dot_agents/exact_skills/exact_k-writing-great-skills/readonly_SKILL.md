@@ -5,8 +5,6 @@ description: "Use when authoring/refactoring skills: invocation, triggers, refer
 
 # Writing Great Skills
 
-Subagent dispatch: criteria — skill-craft contract applied while authoring; never dispatched alone.
-
 A skill makes outcomes predictable.
 Match specificity to fragility: exact ordered steps where only one sequence is safe (destructive, auth, publication, interactive tooling);
 outcomes, constraints, and completion criteria where the work is judgment.

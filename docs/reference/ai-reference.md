@@ -4,18 +4,17 @@ sidebar_position: 4
 
 # AI reference
 
-## Governance + skills
+## Instructions + skills
 
-See [The Agentic Operating System](../topics/ai-assistants/index.md) and [SOP source of truth](../topics/ai-assistants/system-prompt/source-of-truth.md).
+See [AI assistants](../topics/ai-assistants/index.md) and [Instructions](../topics/ai-assistants/instructions.md).
 
-| Component              | Source path                                                                                      |
-| ---------------------- | ------------------------------------------------------------------------------------------------ |
-| Assistant core SOP     | [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md)                                       |
-| Assistant skills       | [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/)               |
-| Shared assistant hooks | [`home/exact_dot_agents/exact_hooks/`](../../home/exact_dot_agents/exact_hooks/)                 |
-| Antigravity hooks      | [`home/dot_gemini/config/readonly_hooks.json`](../../home/dot_gemini/config/readonly_hooks.json) |
+| Component              | Source path                                                                                    |
+| ---------------------- | ---------------------------------------------------------------------------------------------- |
+| Global instructions    | [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md)                                     |
+| Skills                 | [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/)             |
+| Shared reviewer prompt | [`home/.chezmoitemplates/reviewer-prompt.md`](../../home/.chezmoitemplates/reviewer-prompt.md) |
 
-`~/CLAUDE.md` imports `@AGENTS.md`; `~/.claude/CLAUDE.md` links to `~/AGENTS.md` for Claude's global loader. `~/.gemini/config/AGENTS.md` and `~/.config/opencode/AGENTS.md` are symlinks to `~/AGENTS.md`. Codex gets the SOP as the root `developer_instructions` in `~/.codex/config.toml`, generated at apply time; each managed child role replaces it with its own.
+`~/CLAUDE.md` imports `@AGENTS.md`; `~/.claude/CLAUDE.md` links to `~/AGENTS.md`. Pi, OMP, Codex, OpenCode, and Antigravity read `~/AGENTS.md` through `symlink_AGENTS.md` entries in their config dirs. There are no hooks.
 
 ## Harness configs
 
@@ -28,21 +27,6 @@ Per-tool config sources and the `run_onchange_after_07-*` hooks that render them
 | Antigravity | [`home/dot_gemini/`](../../home/dot_gemini/)                   | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)             |
 | OpenCode    | [`home/dot_config/opencode/`](../../home/dot_config/opencode/) | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl)           |
 | Pi          | [`home/dot_pi/agent/`](../../home/dot_pi/agent/)               | [`run_onchange_after_07-merge-pi-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl)                       |
-
-## Model registry
-
-Single source of truth for Pi extras, provider routes, category routing (`agent_categories` / `agent_bindings` / `category_models`), the alternate whole Pi pricings in `pi_model_profiles`, and review-lane model policy; per-tool model configs, the generated delegation-band projection, and the generated mirror all derive from it. See [Model registry & routing](../topics/ai-assistants/model-registry.md).
-
-| Component           | Source path                                                                                                                          |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Model definitions   | [`home/.chezmoidata/ai_models/`](../../home/.chezmoidata/ai_models)                                                                  |
-| YAML reader         | [`scripts/ai_models.py`](../../scripts/ai_models.py)                                                                                 |
-| Pi session analyzer | [`scripts/analyze_pi_session.py`](../../scripts/analyze_pi_session.py)                                                               |
-| Pi profile picker   | [`home/exact_bin/executable_,pi-model-profile`](../../home/exact_bin/executable_,pi-model-profile)                                   |
-| Band generator      | [`scripts/generate_agent_bands.py`](../../scripts/generate_agent_bands.py)                                                           |
-| Band projection     | [`home/dot_config/ai/readonly_agent-bands.v1.json`](../../home/dot_config/ai/readonly_agent-bands.v1.json)                           |
-| Delegation gate     | [`home/exact_dot_agents/exact_hooks/executable_band_gate.py`](../../home/exact_dot_agents/exact_hooks/executable_band_gate.py)       |
-| Publication gate    | [`home/exact_dot_agents/exact_hooks/executable_publish_gate.py`](../../home/exact_dot_agents/exact_hooks/executable_publish_gate.py) |
 
 ## MCP
 
@@ -58,17 +42,16 @@ Canonical MCP registry plus generator/injectors. See [MCP servers](../topics/ai-
 | Claude MCP merge  | [`scripts/merge_claude_mcp.py`](../../scripts/merge_claude_mcp.py)                                                                    |
 | Generate hook     | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl) |
 
-## Memory
+## Memory and handoffs
 
-Two distinct memory layers. See [Agent memory](../topics/ai-assistants/knowledge-base/index.md).
+On-demand CLIs only. See [Memory and handoffs](../topics/ai-assistants/memory-and-handoffs.md).
 
-| Component                     | Source path                                                                                                                                                      |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AI knowledge base (`,ai-kb`)  | [`home/exact_bin/executable_,ai-kb`](../../home/exact_bin/executable_,ai-kb), [`scripts/ai_kb.py`](../../scripts/ai_kb.py)                                       |
-| Proof ledger (`,proof`)       | [`home/exact_bin/executable_,proof`](../../home/exact_bin/executable_,proof), [`home/exact_lib/exact_,proof/main.py`](../../home/exact_lib/exact_,proof/main.py) |
-| Embedding service             | [`scripts/embed.py`](../../scripts/embed.py), [`scripts/embed_runner.py`](../../scripts/embed_runner.py)                                                         |
-| Vector retrieval              | [`scripts/vec_runner.py`](../../scripts/vec_runner.py)                                                                                                           |
-| Hook memory (`,agent-memory`) | [`home/exact_bin/executable_,agent-memory`](../../home/exact_bin/executable_,agent-memory), [`scripts/agent_memory.py`](../../scripts/agent_memory.py)           |
+| Component                     | Source path                                                                                                                |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Knowledge base (`,ai-kb`)     | [`home/exact_bin/executable_,ai-kb`](../../home/exact_bin/executable_,ai-kb), [`scripts/ai_kb.py`](../../scripts/ai_kb.py) |
+| Session handoffs (`,handoff`) | [`home/exact_bin/executable_,handoff`](../../home/exact_bin/executable_,handoff)                                           |
+| Embedding service             | [`scripts/embed.py`](../../scripts/embed.py), [`scripts/embed_runner.py`](../../scripts/embed_runner.py)                   |
+| Vector retrieval              | [`scripts/vec_runner.py`](../../scripts/vec_runner.py)                                                                     |
 
 ## Local inference
 

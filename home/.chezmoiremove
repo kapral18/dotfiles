@@ -29,13 +29,6 @@ lib/,palantir
 .agents/skills/ralph
 .agents/skills/k-palantir
 .local/bin/ralph-tui
-# Former flat ~/.config/ai deploy of compile-only policy IR (now repo-local under
-# home/dot_config/ai/exact_policy-ir/, ignored). Keep these so other machines purge.
-.config/ai/harness-capabilities.v1.json
-.config/ai/policy-manifest.v1.json
-.config/ai/policy-dispositions.v1.json
-.config/ai/policy-ablations.v1.json
-.config/ai/policy-rule-inventory.v1.json
 # Obsolete gemini-cli config & directories (superseded by antigravity)
 .gemini/GEMINI.md
 .gemini/settings.json
@@ -95,7 +88,6 @@ lib/,copilot-adapter
 .config/fish/completions/,cursor-copilot.fish
 
 # The SOP reaches Codex as root developer_instructions (07-merge-codex-config); a global AGENTS.md would be inherited by every subagent.
-.codex/AGENTS.md
 .cursor/agents
 .cursor/hooks.json
 .cursor/mcp.json
@@ -116,3 +108,24 @@ lib/,mcp-token
 .config/fish/completions/,cursor-openrouter.fish
 .config/fish/completions/,mcp-token.fish
 .agents/skills/k-semantic-code-search
+# AI setup rewrite (2026-10-06): custom agent flows (hooks, advisor, topic memory, policy IR,
+# model registry outputs, per-harness agent profiles and plugins) and retired commands.
+.agents/hooks
+.agents/references
+.codex/agents
+.codex/hooks.json
+.config/ai
+.gemini/config/hooks.json
+.config/fish/completions/,agent-memory.fish
+.config/fish/completions/,ai-usage.fish
+.config/fish/completions/,ai.fish
+.config/fish/completions/,claude-codex.fish
+.config/fish/completions/,formal.fish
+.config/fish/completions/,pi-model-profile.fish
+.config/fish/completions/,probe.fish
+.config/fish/completions/,proof.fish
+.config/fish/functions/__comma_provider_models.fish
+.omp/agent/extensions/ai-kb-recall.ts
+.omp/agent/extensions/runtime-parity.ts
+.config/opencode/plugins/agent-memory.ts
+.config/opencode/plugins/read-supersede.ts

@@ -1,45 +1,28 @@
 ---
 name: k-spec
-description: "Use when a request needs a compact implementation packet with explicit final acceptance criteria."
+description: "Use when a request needs a compact implementation plan with explicit acceptance criteria before coding."
 ---
 
 # Spec
 
-Subagent dispatch: inline (research for substantial questions) — decisions and packet assembly stay with the root.
+Turn the request into the smallest actionable plan.
 
-Develop the active intent topic into the smallest actionable packet. The SOP owns the session lifecycle and safety gates.
-
-1. Establish the actual problem and source evidence. Reuse existing research; do not create a separate necessity-review ceremony.
-   If the requested outcome already exists or is superseded, report the evidence instead of proposing redundant work.
-2. Resolve material forks from evidence; ask one direct question only for a user-owned decision.
-   Do not prototype or call advisors automatically.
-   When a verified domain overlay supplies a planning checklist, apply it to the fork inventory;
-   concrete domain defaults stay in that overlay.
+1. Establish the actual problem from source evidence. Reuse research already done.
+   If the requested outcome already exists or is superseded, report the evidence instead of planning redundant work.
+2. Resolve forks from evidence. Ask one direct question only for a decision that is genuinely the user's.
+   When a verified domain overlay supplies a planning checklist (for example `k-elastic-domain`), apply it to the fork list.
 3. Record the semantic delta: old rule, new rule, intended differences, preserved differences, and evidence.
-   Record the impact map from the SOP §3.1 shared assessment: affected callers/consumers, invariants, and the co-edit set with evidence;
-   `none` requires the §1 light-path proof.
-4. Define final acceptance conditions using `check:` commands or `judgment:` evidence.
+4. Record the impact map: affected callers and consumers, invariants, and the co-edit set (tests, docs, generated outputs, completions, diagrams) with evidence.
+5. Define acceptance criteria as `check:` commands or `judgment:` evidence.
    Read `~/.agents/skills/k-spec/references/check-strength.md` for check design.
-   Do not execute red/green or mutation probes merely to approve the packet; record unrun checks as planned, not passed.
-5. Use `~/.agents/skills/k-spec/references/packet-template.md`, persist the packet under the active `/tmp/specs/<pwd>/<topic>.spec.md`, and add its pointer to the compact topic handoff.
-   Do not overwrite an unresolved packet with a different scope; record its outcome or explicit supersession in the topic first.
+   Do not run checks merely to approve the plan; unrun checks are `planned`, not passed.
+6. Write the plan with `~/.agents/skills/k-spec/references/packet-template.md` and show it in chat.
+   When the user wants it kept or will continue in another session, include it in `,handoff save <topic>` (see `k-handoff`).
 
-Keep target, action, constraints, in/out scope, side effects, impact map, compatibility intent, and externally owned decisions explicit.
+Keep target, constraints, in and out of scope, side effects, compatibility intent, and decisions owned by others explicit.
 Criteria cover intended and preserved behavior when both exist; a test command alone is not proof of coverage.
-The packet is an artifact, not authority to commit, publish, or begin another workflow.
-If implementation is already approved, continue to Produce without asking again.
-Otherwise present the decision/packet requested by the user.
-
-## Root moves
-
-Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Before selecting or dispatching delegated work, load `~/.agents/skills/k-spec/references/delegation-mechanics.md`;
-keep those mechanics unloaded for explicitly inline work.
-Launch one strong research packet for a substantial context-heavy question before settling the packet;
-the root MUST NOT substitute its own inline investigation for that packet absent an explicit user no-delegation instruction;
-if the lane is unavailable report blocked. Decisions, fork questions to the user, and packet assembly stay with the root.
-Do not delegate each criterion, run a mechanical check agent, or invoke memory merely to satisfy a step.
+The plan is not authority to commit, publish, or start other work. If implementation is already approved, continue without asking again.
 
 ## Output
 
-The packet or concise decision plus packet pointer, planned final checks, and unresolved user-owned decisions.
+The plan, its planned checks, and the open user decisions.

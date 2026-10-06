@@ -1,29 +1,26 @@
 %% ============================================================================
-%% 11-scripts-helpers.mmd — Every file in scripts/ (166). Repo-side Python
+%% 11-scripts-helpers.mmd — Every file in scripts/ (96). Repo-side Python
 %% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
 %% Grouped by consumer. Shared parsers feed the generators/mergers.
 %% ============================================================================
 flowchart TB
     classDef shared fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
     classDef mcp fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
-    classDef model fill:#3a2b1b,stroke:#ffb74d,color:#fff3e0;
     classDef ai fill:#2c2c34,stroke:#b39ddb,color:#f3e5f5;
     classDef misc fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
 
     subgraph SHARED["Shared parsers / libs"]
         YP["yaml_parser.py (minimal YAML, parse_scalar)"]:::shared
-        AM["ai_models.py (parse .chezmoidata/ai_models/*.yaml via SECTION_FILES;<br/>resolve_agent_model joins agent_bindings → agent_categories → category_models per harness;<br/>load_session_models reads the root/main-session pick)"]:::shared
-        MC["model_mirror_consumer.py (consumer_view.v1<br/>shared by repo generators and deployed ,ai)"]:::shared
         MD["jsonc_dump.py (JSONC writer)"]:::shared
-        CL["chezmoi_lib.sh (thin hook interface; string writes compare desired plus one newline byte-for-byte;<br/>repairs requested modes without rewriting matching content)<br/>managed_config_manifest.py (generic literal checksum ledger)<br/>generated_artifact_ledger.py (AI ownership-aware effective state + ,doctor ai)"]:::shared
-        TS["_test_support.py (puts scripts/ on sys.path for direct script tests)<br/>test_runner.py (file-sharded parallel unittest runner for make test / bin/check;<br/>per-file AGENT_MEMORY_SPEC_ROOT isolation; not itself a unittest shard)"]:::shared
+        CL["chezmoi_lib.sh (thin hook interface; string writes compare desired plus one newline byte-for-byte;<br/>repairs requested modes without rewriting matching content)<br/>managed_config_manifest.py (generic literal checksum ledger)<br/>generated_artifact_ledger.py (generated-artifact ledger; backs ,doctor ai)"]:::shared
+        TS["_test_support.py (puts scripts/ on sys.path for direct script tests)<br/>test_runner.py (file-sharded parallel unittest runner for make test / bin/check; not itself a unittest shard)"]:::shared
     end
 
     subgraph MCPGEN["MCP config generation (hook 07-generate-mcp-configs)"]
         MR["mcp_registry.py (load mcp_servers.yaml, filter;<br/>default shell resolution)"]:::mcp
         GMC["generate_mcp_configs.py (per-tool MCP json)"]:::mcp
         MCM["merge_claude_mcp.py (surgical mcpServers in ~/.claude.json;<br/>malformed live JSON fails before write; missing file bootstraps even with empty registry)<br/>merge_antigravity_mcp.py (declared-over-live MCP with prior-owned retirement)"]:::mcp
-        ICT["inject_mcp_into_codex_toml.py (hook 07-merge-codex; runtime table comments preserve ownership)<br/>inject_codex_instructions.py (same hook: SOP → root developer_instructions, so Codex child roles do not inherit it)"]:::mcp
+        ICT["inject_mcp_into_codex_toml.py (hook 07-merge-codex; runtime table comments preserve ownership)"]:::mcp
         IOJ["inject_mcp_into_opencode_jsonc.py (hook 07-merge-opencode)"]:::mcp
     end
     YP --> MR --> GMC --> MCM & ICT & IOJ
@@ -32,52 +29,26 @@ flowchart TB
         MCS["merge_antigravity_cli_settings.py (declared-over-live;<br/>pins modelProvider+model; strips gcp)"]:::mcp
     end
 
-    subgraph BANDGEN["Category model tiering (band registry projections)"]
-        GAB["generate_agent_bands.py (flattens agent_bindings × agent_categories × category_models<br/>into gate-used picks in dot_config/ai/readonly_agent-bands.v1.json for the band_gate hook; check|write)"]:::model
-        GSESS["generate_session_models.py (writes every repo-owned root config from session_models;<br/>Claude/Codex/Pi/OMP/Antigravity; check|write)"]:::model
-    end
-    AM --> GAB & GSESS
-
-    subgraph MODELGEN["Model catalog generation"]
-        MM["model_mirrors.py + model_capabilities.v1.json<br/>deterministic v1 available/curated/recommended mirror;<br/>Claude defaults follow session_models.claude_code<br/>+ complete source provenance + fail-closed bounded live drift adapters"]:::model
-        APS["analyze_pi_session.py (offline Pi v3 active-branch aggregate:<br/>tokens/cache/compactions + structured post-compaction re-reads;<br/>privacy-safe JSON + optional failing thresholds)"]:::model
-        SCS["subagent_child_stats.py (reported per-profile child session telemetry over run-*/session.jsonl:<br/>msgs, compactions, reported peak context med/p90/max; descriptive only, not a window-exhaustion verdict)"]:::model
-    end
-    AM --> MM
-    MC --> MM
-
-    subgraph AIKB["AI knowledgebase + embeddings"]
-        KB["ai_kb.py (markdown + SQLite FTS5 store; deployed as ~/lib/,ai-kb/main.py;<br/>harvest flushes queued worklogs, then resolves worklog→remember candidates, read-only)"]:::ai
-        WQ["worklog_queue.py (fsynced session sequence queue;<br/>stable replay IDs · spec/target locks · chronological output · bounded errors/lifetime/cleanup;<br/>deployed to ~/.agents/hooks/ + ~/lib/,ai-kb/)<br/>spec_mirror.py (best-effort persistent mirror of named topics;<br/>sync at session/CLI checkpoints · restore-only-missing after /tmp loss;<br/>deployed to the same two homes)"]:::ai
-        EMB["embed.py dispatch<br/>embed_runner.py = one-shot default/manual/remember/reembed<br/>embed_client.py + embed_worker.py = generation-specific private resident;<br/>session-start ensure · per-turn connect-only (cold rows → detached ensure re-warm) · fail-open · 300s idle"]:::ai
+    subgraph AIKB["AI knowledgebase + embeddings (on demand)"]
+        KB["ai_kb.py (markdown + SQLite FTS5 store; deployed as ~/lib/,ai-kb/main.py)"]:::ai
+        EMB["embed.py dispatch<br/>embed_runner.py = one-shot embeddings<br/>embed_client.py + embed_worker.py = optional private resident worker"]:::ai
         VEC["vec_runner.py (vector retrieval subprocess)"]:::ai
-        AGM["agent_memory.py (/tmp/specs topic mgmt; ,agent-memory)"]:::ai
     end
-    KB --> AGM & EMB & VEC & WQ
+    KB --> EMB & VEC
 
     subgraph ORCH["Package ops + validators"]
         RCP["reconcile_custom_packages.py (hook 05-install-custom-packages)"]:::misc
         IZB["install_github_zip_bundle.py (hook 05 zip_opt → ~/.local/opt + PATH wrapper)"]:::misc
         RGP["reconcile_golang_pkgs.py (hook 05-update-golang-pkgs; binary reconcile + state ledger)"]:::misc
         SLC["sync_llama_cpp_models.py (hook 07-sync-llama-cpp-models)"]:::misc
-        CHK["check.py (bin/check / make check; convention + one-hop imports + TEST_RULES; make check-full is human-only CHECK_FULL=1)<br/>verify_templates.py (make verify-templates; pins chezmoi --source to current repo)<br/>verify_mermaids.py (make verify-mermaids; .mermaids census + overview anchors)<br/>verify_bin_surface.py (make verify-bin-surface; ~/bin completions/docs/catalog + exact token matching + home/exact_lib orphans)<br/>verify_docs_navigation.py (make verify-docs-navigation; docs/reference links + catalog rows)<br/>verify_agent_file_sizes.py (make verify-agent-file-sizes; exact_dot_agents reference .md under 20480B view limit, SKILL.md exempt)"]:::misc
+        CHK["check.py (bin/check / make check; convention + one-hop imports + TEST_RULES; make check-full is human-only CHECK_FULL=1)<br/>verify_templates.py · verify_mermaids.py · verify_docs_navigation.py · verify_bin_surface.py · verify_agent_file_sizes.py"]:::misc
         YT["yt_search.py (,youtube-search backend)"]:::misc
     end
 
-    subgraph POLICY["SOP policy compiler (make verify-agent-policy; Stage 1: byte-for-byte)"]
-        PIR["ai_policy_ir.py (Rule dataclass + split_legacy_sop/render;<br/>one opaque rule per numbered SOP heading;<br/>display number may alias to a stable inventory id)"]:::ai
-        PCAP["ai_harness_capabilities.py (HarnessCapability snapshot loader;<br/>ordered hook levels none &lt; advisory &lt; blocking &lt; mutation, mutation must name its scope;<br/>fails closed on unsupported hook/pinned-model claims)"]:::ai
-        PCOMP["compile_ai_policy.py (generate/verify/verify-budgets/audit-coverage/explain/measure;<br/>atomic write-if-changed; provenance manifest emission)"]:::ai
-        PEVAL["eval_ai_policy.py (plan emits cross-product cell count/cost estimate;<br/>verify-routing/verify-behavior report every cell blocked — no live requests)"]:::ai
-    end
-    PIR --> PCOMP
-    PCAP --> PCOMP
-
     subgraph TESTS["Tests + fixtures"]
-        TTOP["top-level tests: test_{ai_usage,agent_memory,ai_kb,ai_launcher,ai_models,analyze_pi_session,check,subagent_child_stats,chezmoi_lib,embed,<br/>generate_mcp_configs,generate_session_models,generated_artifact_ledger,inject_mcp_into_codex_toml,<br/>inject_mcp_into_opencode_jsonc,mcp_registry,merge_antigravity_cli_settings,merge_antigravity_mcp,<br/>model_mirrors,pre_commit,verify_agent_file_sizes,<br/>verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py<br/>test_omp_migration.py (OMP install/config/agents/extensions migration contract)"]:::shared
-        IT["scripts/tests/: __init__.py · test_inject_codex_instructions.py (SOP round-trips through a TOML parser as root developer_instructions) · context_mode.test.ts (shared Pi/OMP selector state + rendered adapters) · pi_model_profile.test.ts (/model-profile list/marker parsing, first-slash provider split, live-switch warning paths) · recall_worklog_state_machine.py<br/>bin_command_support.py · test_bin_commands.py (compat aggregator) · test_{artifact,codex,llama_cpp_wrappers,install_pnpm_pkgs,kbn_stack,openrouter_wrappers,format_md,w_issue,sem_launcher}.py<br/>test_formal_{anchors,audit,build_exe,catalog,cli,e2e,manifest,prove,replay}.py + formal_support.py (,formal CLI unit tests + shared test harness) · fixtures/formal/toy/ (toy catalog unit: Unit/, Proofs_ok.lean, Proofs_sorry.lean, Main.lean, adapter_ok.py, adapter_diverge.py, lakefile.toml, lean-toolchain, README.md, PROPERTIES.md, TRANSITIONS.md)<br/>test_{agent_hooks,agent_prompt_wrap,agent_skill_invariants,codex_adapter,correction_detector,doctor,recall_worklog,gh_picker_dispatch_state,gh_picker_lock,gh_picker_review_requests,invariants,model_band_invariants,review_policy_invariants,sop_policy_invariants,llama_cpp_lifecycle,nano_banana,image_local,image_openrouter,image_codex,image_openai,install_github_zip_bundle}.py<br/>test_pi_subagent_contract.py (Pi subagent-contract adapter: native loader/schema/guard probes)<br/>test_ai_policy_compiler.py (IR/capability/compiler offline contract tests)<br/>test_present_pr_template.py (fixed-code byte preservation, content edits, malformed markers, input/output separation)<br/>test_playwriter_skill_docs.py (complete doc partitions, required common guards, unknown-source full fallback, CLI errors)<br/>test_{plain_session_removal,proof_cli,q,session_github_cache,tmux_handoff_lifecycle,<br/>tmux_handoff_namespace,tmux_pickers,wh,worktree_delete_boundaries}.py"]:::shared
-        FX["fixtures/: ai_models/ + ai_models_with_claude/ (split registry dirs) · {mcp_servers,mcp_servers_exclude}.yaml<br/>codex_base.toml · golden_codex_personal.toml · golden_mcp_{personal,work}.json<br/>golden_opencode_{models,models_with_claude,personal}.jsonc · golden_pi_models.json<br/>model_probe_cases.json · opencode_{base,work_base}.jsonc<br/>ai_policy_eval/matrix.yaml (routing/behavioral scenario fixture, one triple per compiled rule)"]:::shared
+        TTOP["top-level tests: test_{ai_kb,check,chezmoi_lib,embed,generate_mcp_configs,generated_artifact_ledger,<br/>inject_mcp_into_codex_toml,inject_mcp_into_opencode_jsonc,mcp_registry,merge_antigravity_cli_settings,merge_antigravity_mcp,<br/>pre_commit,verify_agent_file_sizes,verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py<br/>test_omp_migration.py (OMP install/config/agents/extensions contract)"]:::shared
+        IT["scripts/tests/: __init__.py · bin_command_support.py · test_bin_commands.py (compat aggregator) · context_mode.test.ts (shared Pi/OMP selector)<br/>test_{artifact,codex,doctor,format_md,handoff,invariants,q,update,kbn_stack,sem_launcher,install_pnpm_pkgs}.py<br/>test_{llama_cpp_lifecycle,llama_cpp_wrappers,openrouter_wrappers}.py · test_{image_codex,image_local,image_openai,image_openrouter,nano_banana}.py<br/>test_{gh_picker_dispatch_state,gh_picker_lock,gh_picker_review_requests,session_github_cache,tmux_handoff_lifecycle,tmux_handoff_namespace,tmux_pickers}.py<br/>test_{install_github_zip_bundle,plain_session_removal,playwriter_skill_docs,present_pr_template,w_issue,w_remove_detached,wh,worktree_delete_boundaries}.py"]:::shared
+        FX["fixtures/: {mcp_servers,mcp_servers_exclude}.yaml · codex_base.toml · golden_codex_personal.toml<br/>golden_mcp_{personal,work}.json · golden_opencode_personal.jsonc · opencode_base.jsonc"]:::shared
     end
     MCPGEN -.verified by golden.-> TESTS
     RECON -.verified by focused tests.-> TESTS
-    MODELGEN -.verified by golden.-> TESTS

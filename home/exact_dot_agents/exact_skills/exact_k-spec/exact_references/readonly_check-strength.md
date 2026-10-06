@@ -1,13 +1,14 @@
-# Final Check Design
+# Check Design
 
-A check names an observable acceptance condition, its independent oracle, relevant target/input, and expected exit/result.
-Keep intended differences and preserved behavior distinguishable. Avoid tests that compare generated data only with itself.
-Design each check to distinguish the requested outcome from a plausible wrong implementation, including a no-op that only prints expected text.
-Invocation/coverage criteria target actual callers; ordered-output criteria compare the required full output, not a convenient substring.
-Judge those properties from the check and implementation in final Verify; missing discrimination evidence is not proof of coverage.
-Use actual repository commands and focused fixtures; retain full logs and command exit status when executed.
-Prepare checks during Produce and execute them once in final Verify. Unrun checks are `planned`, never red/green proof.
-A baseline reproduction in Understand answers a diagnostic question; it is not a required per-criterion rehearsal.
-Mutation discrimination is risk-selected final evidence, not a prerequisite for approving every packet.
-For stateful behavior (SOP `3.6`), a criterion's independent oracle is a `,formal` catalog unit: `check: ,formal audit <unit>`,
-with each model mutant killed by a named property; author and resolve/build the unit during Produce, run the audit once in final Verify.
+A check names an observable acceptance condition, its independent oracle, the relevant target or input, and the expected exit or result.
+
+- Keep intended differences and preserved behavior distinguishable.
+- Do not compare generated data only with itself.
+- Make each check distinguish the requested outcome from a plausible wrong implementation, including a no-op that only prints the expected text.
+- Invocation and coverage criteria target the actual callers.
+  Ordered-output criteria compare the full required output, not a convenient substring.
+- Use the repository's own commands and focused fixtures. Keep full logs and the real exit status when you run them.
+- Run the checks once, on the finished change. Unrun checks are `planned`, never red/green proof.
+- For stateful or parser-like behavior, list explicit transition cases (intended, preserved, malformed input, terminal actions).
+  When tests cannot express them, compare against an independent table in a disposable harness under `/tmp`.
+- Mutation testing is optional evidence for high-risk criteria, not a prerequisite for every plan.

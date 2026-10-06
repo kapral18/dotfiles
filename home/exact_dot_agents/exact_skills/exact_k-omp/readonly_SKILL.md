@@ -5,11 +5,9 @@ description: "Use in OMP to select native structured-read, code-intelligence, an
 
 # Oh My Pi Runtime Adapter
 
-Subagent dispatch: criteria — harness adapter loaded alongside the active skill; never dispatched alone.
-
 Use this skill only when the active harness is OMP.
 It realizes generic skill contracts with OMP-native tools; it does not change their workflow, evidence, or publication gates.
-OMP task dispatch mechanics live in `~/.agents/skills/k-review/references/runtime-harnesses-pi-omp.md` as a packet pointer.
+Subagents: the native `scout` agent for broad read-only search, and `k-agent-reviewer` only when the user asks for a review.
 
 ## Browser boundary
 

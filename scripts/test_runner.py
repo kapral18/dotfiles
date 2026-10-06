@@ -5,12 +5,7 @@ Each ``test_*.py`` file runs in its own subprocess (one per file, N workers),
 so files execute concurrently instead of in one serial ``unittest discover``
 process. ``make test`` calls this in place of ``unittest discover``.
 
-Isolation: every file subprocess gets an ``AGENT_MEMORY_SPEC_ROOT`` namespaced
-by the file stem (``agent-hook-specs-<stem>`` under TMPDIR), so parallel files
-never share the mutable spec root (queue dirs, worklogs) that the default
-``agent-hook-specs`` would force them into. Env (including
-``AI_KB_RECALL_TIMEOUT``) is inherited verbatim so load-sensitive timeouts keep
-their relaxing floor.
+Env is inherited verbatim.
 
 Usage:
     python3 scripts/test_runner.py            # run all shards, stream results
@@ -24,7 +19,6 @@ import argparse
 import os
 import subprocess
 import sys
-import tempfile
 import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -40,8 +34,6 @@ UNIT_SHARDED_FILES = frozenset(
         "tests/test_gh_picker_dispatch_state.py",
         "tests/test_llama_cpp_lifecycle.py",
         "tests/test_plain_session_removal.py",
-        "tests/test_proof_cli.py",
-        "tests/test_recall_worklog.py",
         "tests/test_session_github_cache.py",
         "tests/test_tmux_handoff_lifecycle.py",
         "tests/test_wh.py",
@@ -55,7 +47,6 @@ class Shard:
     path: Path
     target: str
     label: str
-    spec_stem: str
 
 
 def discover_files() -> list[Path]:
@@ -80,14 +71,6 @@ def module_name(path: Path) -> str:
     return ".".join(rel.parts)
 
 
-def _safe_stem(value: str) -> str:
-    return "".join(ch if ch.isalnum() or ch in "._-" else "-" for ch in value)[:120]
-
-
-def shard_spec_root(shard: Shard, tmpdir: str) -> str:
-    return str(Path(tmpdir) / f"agent-hook-specs-{_safe_stem(shard.spec_stem)}")
-
-
 def _flatten_suite(suite: unittest.TestSuite):
     for item in suite:
         if isinstance(item, unittest.TestSuite):
@@ -105,16 +88,15 @@ def expand_shards(files: list[Path]) -> list[Shard]:
             suite = unittest.defaultTestLoader.loadTestsFromName(module)
             for test in _flatten_suite(suite):
                 target = test.id()
-                shards.append(Shard(path=path, target=target, label=target, spec_stem=target))
+                shards.append(Shard(path=path, target=target, label=target))
         else:
-            shards.append(Shard(path=path, target=module, label=module, spec_stem=path.stem))
+            shards.append(Shard(path=path, target=module, label=module))
     return shards
 
 
-def run_shard(shard: Shard, tmpdir: str) -> tuple[Shard, int, float, str, str]:
+def run_shard(shard: Shard) -> tuple[Shard, int, float, str, str]:
     env = dict(os.environ)
     env["PYTHONPATH"] = str(SCRIPTS) + os.pathsep + env.get("PYTHONPATH", "")
-    env["AGENT_MEMORY_SPEC_ROOT"] = shard_spec_root(shard, tmpdir)
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     start = time.monotonic()
     proc = subprocess.run(
@@ -157,7 +139,6 @@ def main() -> int:
             print(shard.label)
         return 0
 
-    tmpdir = tempfile.gettempdir()
     total = 0
     failed: list[str] = []
     started = time.monotonic()
@@ -180,14 +161,14 @@ def main() -> int:
     lead = [shard for shard in shards if shard.path in lead_paths]
     parallel = [shard for shard in shards if shard.path not in lead_paths]
     for shard in lead:
-        _, rc, elapsed, out, err = run_shard(shard, tmpdir)
+        _, rc, elapsed, out, err = run_shard(shard)
         report(shard, rc, elapsed, out, err)
 
     # Threads (not processes) for the pool: each unit of work is itself a
     # subprocess, so the GIL is irrelevant and ThreadPoolExecutor avoids a
     # pickling boundary for the file payloads.
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        futures = {pool.submit(run_shard, shard, tmpdir): shard for shard in parallel}
+        futures = {pool.submit(run_shard, shard): shard for shard in parallel}
         for future in as_completed(futures):
             shard, rc, elapsed, out, err = future.result()
             report(shard, rc, elapsed, out, err)

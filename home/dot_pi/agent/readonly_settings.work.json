@@ -5,7 +5,10 @@
   "showCacheMissNotices": true,
   "theme": "dark",
   "defaultTools": [
-    "+codemode"
+    "+codemode",
+    "+find",
+    "+grep",
+    "+ls"
   ],
   "compaction": {
     "enabled": true,
@@ -19,7 +22,6 @@
   "packages": [
     {
       "source": "~/.local/share/pnpm-global-links/node_modules/pi-subagents",
-      "extensions": [],
       "skills": [],
       "prompts": []
     }

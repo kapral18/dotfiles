@@ -2,110 +2,39 @@
 sidebar_position: 1
 ---
 
-# The Agentic Operating System (AI & Assistants)
+# AI Assistants
 
-This setup treats assistant behavior as strict, version-controlled configuration installed alongside the rest of the dotfiles. The goal is deterministic, verifiable behavior instead of relying on unpredictable LLM defaults.
+The AI layer is a short global instruction file, a set of skills, a few read-only subagent profiles, and two small CLIs.
+Agents work inline by default. Nothing is injected per turn: no hooks, no automatic memory recall, no advisor.
 
-Start with [Choose your flow](scenarios.md) when you are asking "how do I do X?" It routes build, check, understand, and communicate scenarios to the right flow, then shows how to pivot between flows mid-work.
+## What is installed
 
-![Abstract layered AI operating system: dotfiles base, terminal tools, and coordinated agent workers](./assets/agentic-os-orchestration.jpg)
+| Piece               | Source                                                     | Deployed to                                                | Page                                          |
+| ------------------- | ---------------------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------- |
+| Global instructions | `home/readonly_AGENTS.md`                                  | `~/AGENTS.md`, linked into every harness                   | [Instructions](instructions.md)               |
+| Skills              | `home/exact_dot_agents/exact_skills/`                      | `~/.agents/skills/`                                        | [Skills](skills.md)                           |
+| Subagent profiles   | `k-agent-reviewer` (Claude, Pi, OMP), `k-agent-scout` (Pi) | each harness's agents dir                                  | [Subagents](subagents.md)                     |
+| Knowledge base      | `,ai-kb`                                                   | `~/bin/,ai-kb`, data in `~/.local/share/ai-kb`             | [Memory and handoffs](memory-and-handoffs.md) |
+| Session handoffs    | `,handoff`                                                 | `~/bin/,handoff`, notes in `~/.local/share/agent-handoffs` | [Memory and handoffs](memory-and-handoffs.md) |
+| MCP servers         | `home/.chezmoidata/mcp_servers.yaml`                       | rendered per harness                                       | [MCP servers](mcp.md)                         |
+| Harness configs     | per-harness files under `home/`                            | `~/.claude`, `~/.pi`, `~/.omp`, `~/.codex`, …              | [Tool configs](tool-configs/index.md)         |
+| Local inference     | llama.cpp router and launchers                             | `~/bin/,llama-cpp`, `,*-llama-cpp`                         | [llama.cpp](llama-cpp/index.md)               |
 
-At a high level, the AI layer is a set of governed routes, not a pile of prompts:
+## Harnesses
 
-![Agentic operating system governance route: request, SOP, skill, gates, optional subagent, evidence, and gated action](./assets/agentic-governance-flow.svg)
+| Harness                                | Default model                    | Notes                                                            |
+| -------------------------------------- | -------------------------------- | ---------------------------------------------------------------- |
+| Claude Code                            | `claude-sonnet-5-5`, effort high | `,claude-openrouter` and `,claude-llama-cpp` switch the backend  |
+| Pi                                     | `openai-codex/gpt-6.1-sol`       | `pi-subagents` with built-in agents disabled; repo profiles only |
+| OMP                                    | `openai-codex/gpt-6.1-sol:high`  | native `scout`; repo `k-agent-reviewer`                          |
+| Codex                                  | `gpt-6.1-sol`                    | `,codex`, `,codex-openrouter`, `,codex-llama-cpp`                |
+| OpenCode, Antigravity, Crush, freebuff | per-harness config               | basic config and MCP only; no custom flows                       |
 
-## Mental model
+## Principles
 
-| Layer      | What it owns                                                               | Where to read next                                                                                                                                           |
-| ---------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Governance | Always-on SOP entrypoints installed into `$HOME`                           | [System Prompt (SOP)](system-prompt/index.md)                                                                                                                |
-| Routing    | Skills under `~/.agents/skills/` that load by intent                       | [Skills](skills/index.md)                                                                                                                                    |
-| Memory     | Hook memory plus durable AI KB                                             | [Agent memory](knowledge-base/index.md)                                                                                                                      |
-| Tooling    | MCP servers, model routing, per-tool config rendering, and local inference | [MCP servers](mcp.md), [Model registry & routing](model-registry.md), [Tool configs](tool-configs/index.md), [llama.cpp local inference](llama-cpp/index.md) |
+- **Inline by default.** A subagent rebuilds context at full price, so subagents only do broad read-only searches or a review the user asked for.
+- **Bounded verification.** Checks run once on the finished change. A requested independent review gets one fix round and one re-check, then stops (`k-review` verify mode).
+- **On-demand memory.** `,ai-kb search` when it can help; `,ai-kb remember` only for verified, reusable gotchas.
+- **Explicit handoffs.** "handoff X" writes a short note with `,handoff`; "continue X" reads it in any harness.
 
-## Using this section
-
-Use the scenario router first when you know the job but not the subsystem:
-
-- [Choose your flow](scenarios.md) — scenario rows for build, check, understand, and communicate work.
-- [Reviewing agent diffs](reviewing-diffs.md) — staged-diff reading discipline when an agent produced the change and you are the reviewer.
-
-Use the subsystem pages when you already know the layer you are changing or debugging:
-
-| Subsystem                             | Page                                            |
-| ------------------------------------- | ----------------------------------------------- |
-| Scenario router (start here)          | [Choose your flow](scenarios.md)                |
-| System prompt / SOP                   | [System Prompt (SOP)](system-prompt/index.md)   |
-| Skills list and routing contract      | [Skills](skills/index.md)                       |
-| Subagent runtime profiles             | [Cross-harness subagents](subagents.md)         |
-| Review skill and deep-review topology | [Review workflow](reviews/index.md)             |
-| Spec packets and hands-free builds    | [Creation workflow](creation-workflow.md)       |
-| Hook memory + durable AI KB           | [Agent memory](knowledge-base/index.md)         |
-| Canonical MCP registry                | [MCP servers](mcp.md)                           |
-| Model registry and routing            | [Model registry & routing](model-registry.md)   |
-| Per-tool config rendering             | [Tool configs](tool-configs/index.md)           |
-| Local llama.cpp inference             | [llama.cpp local inference](llama-cpp/index.md) |
-| Reviewing agent diffs                 | [Reviewing agent diffs](reviewing-diffs.md)     |
-
-## Governance layer
-
-Entrypoints installed into `$HOME`:
-
-| Source                                                                                                                               | Target                         | Notes                                                                                     |
-| ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ | ----------------------------------------------------------------------------------------- |
-| [`home/readonly_AGENTS.md`](../../../home/readonly_AGENTS.md)                                                                        | `~/AGENTS.md`                  | Single SOP source                                                                         |
-| [`home/readonly_CLAUDE.md`](../../../home/readonly_CLAUDE.md)                                                                        | `~/CLAUDE.md`                  | Native `@AGENTS.md` import                                                                |
-| [`home/dot_gemini/config/symlink_AGENTS.md`](../../../home/dot_gemini/config/symlink_AGENTS.md)                                      | `~/.gemini/config/AGENTS.md`   | Global Antigravity rule symlink to `~/AGENTS.md`                                          |
-| [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl) | `~/.codex/config.toml`         | Root `developer_instructions` generated from `~/AGENTS.md`; child roles do not inherit it |
-| [`home/dot_config/opencode/symlink_AGENTS.md`](../../../home/dot_config/opencode/symlink_AGENTS.md)                                  | `~/.config/opencode/AGENTS.md` | Symlink to `~/AGENTS.md`                                                                  |
-
-There is one canonical SOP body. Harness-specific imports, aliases, and native loader adapters deliver it; see [source of truth](system-prompt/source-of-truth.md) for delivery paths and verified limitations. Claude also uses the native global `~/.claude/CLAUDE.md` alias outside `$HOME`.
-
-Skills live under `~/.agents/skills/`; the chezmoi source is [`home/exact_dot_agents/exact_skills/`](../../../home/exact_dot_agents/exact_skills/).
-Claude Code writes account-synced skills into the reserved `~/.agents/skills/synced/` bucket; [`home/.chezmoiignore`](../../../home/.chezmoiignore) excludes it so the exact skills directory never purges it.
-
-## Core workflow: change a skill
-
-1. Edit files under:
-
-   ```text
-   home/exact_dot_agents/exact_skills/
-   ```
-
-2. Apply and verify:
-
-   ```bash
-   chezmoi diff
-   chezmoi apply
-   ls -la ~/.agents/skills
-   ```
-
-## Safety boundaries
-
-- Keep assistant instructions declarative and repo-local.
-- Keep generic AI workflows, setup, skills, hooks, and subagent profiles domain-neutral.
-- Repo/org/product specifics live in verified domain overlays or dedicated domain skills.
-- Keep secrets in `pass` or local private config, not tracked markdown.
-- Validate generated automation commands before state-changing actions.
-
-## Verification and troubleshooting
-
-High-signal checks:
-
-```bash
-chezmoi diff
-chezmoi apply
-ls -la ~/.agents/skills
-```
-
-If behavior is not picking up expected instructions:
-
-- verify the correct entrypoint exists in `$HOME`;
-- verify skill files exist under `~/.agents/skills/`;
-- verify runtime secrets expected from `pass` are present.
-
-## Related
-
-- [Switching work/personal identity](../workflow/git-identity/switch-identity.md)
-- [Security and secrets](../security/security-and-secrets.md)
-- [Reference map](../../reference/reference-map.md)
+Related: [Reviewing agent diffs](reviewing-diffs.md), [Elastic and Kibana overlay](elastic-and-kibana.md).

@@ -14,18 +14,6 @@ except ImportError:  # direct execution from scripts/tests
 globals().update({name: value for name, value in vars(_support).items() if not name.startswith("__")})
 
 
-def _load_hook_module(name: str, path: str):
-    """Load a module by path; band_gate imports its sibling `hook_common`, so its dir leads sys.path."""
-    spec = importlib.util.spec_from_file_location(name, REPO / path)
-    module = importlib.util.module_from_spec(spec)
-    sys.path.insert(0, str((REPO / path).parent))
-    try:
-        spec.loader.exec_module(module)
-    finally:
-        sys.path.pop(0)
-    return module
-
-
 class TestOpenRouterWrappers(unittest.TestCase):
     """WHEN launching a harness through OpenRouter."""
 
@@ -38,7 +26,6 @@ class TestOpenRouterWrappers(unittest.TestCase):
             {
                 "HOME": str(wrapper_home),
                 "CODEX_HOME": str(wrapper_home / ".codex"),
-                "AGENT_BANDS_FILE": str(wrapper_home / ".config/ai/agent-bands.v1.json"),
             },
         )
         self.wrapper_home_environment.start()
@@ -66,10 +53,8 @@ class TestOpenRouterWrappers(unittest.TestCase):
         bindir = home / "bin"
         bindir.mkdir()
         capture = (
-            f"#!{sys.executable}\nimport json,os,sys,pathlib\n"
-            "profiles = {a.split('=',1)[0]:pathlib.Path(json.loads(a.split('=',1)[1])).read_text() "
-            "for a in sys.argv[1:] if a.startswith('agents.') and '.config_file=' in a}\n"
-            "print(json.dumps({'env': dict(os.environ), 'argv': sys.argv[1:], 'profiles':profiles}))\n"
+            f"#!{sys.executable}\nimport json,os,sys\n"
+            "print(json.dumps({'env': dict(os.environ), 'argv': sys.argv[1:]}))\n"
         )
         for path in (bindir / name for name in ("claude", "codex")):
             path.write_text(capture)
@@ -78,21 +63,11 @@ class TestOpenRouterWrappers(unittest.TestCase):
         helper = home / "lib/shared/openrouter_presets.py"
         helper.write_text(
             '#!/bin/sh\nif [ "$1" = "--context-window" ]; then echo 200000; exit; fi\n'
-            'if [ "$1" = "--lane-wire-models" ]; then\n' + _lane_wire_echo() + "exit; fi\n"
             'if [ "$1" = "--session-budget-env" ]; then echo "CONTEXT_LIMIT=1048576"; echo "MAX_OUTPUT_TOKENS=131072"; echo "PROMPT_LIMIT=200000"; exit; fi\n'
             'if [ "$1" = "--codex-model-catalog" ]; then shift 2; '
             f'''exec "{sys.executable}" -c 'import json,sys;print(json.dumps({{"models":[{{"slug":m}} for m in sys.argv[1:]]}}))' "$@"; fi\n'''
             'printf "%s\\n" "$1" >> "$PRESET_CALLS"\n'
         )
-        agents = json.loads((home / ".config/ai/agent-bands.v1.json").read_text())["harnesses"]["openrouter"]["agents"]
-        for role in agents:
-            path = home / ".codex/agents" / f"{role}.toml"
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(
-                f'name = "{role}"\nmodel = "native-root"\nmodel_reasoning_effort = "high"\n'
-                'service_tier = "default"\nfeatures = { multi_agent = false }\n'
-                'developer_instructions = """\nFixture leaf; do not delegate.\n"""\n'
-            )
         env = {
             **os.environ,
             "HOME": str(home),
@@ -100,58 +75,11 @@ class TestOpenRouterWrappers(unittest.TestCase):
             "OPENROUTER_API_KEY": "fixture-key",
             "CODEX_WRAPPER_BIN": str(bindir / "codex"),
             "PRESET_CALLS": str(calls),
-            "AGENT_BAND_SUBSCRIPTION": "codex",
-            "AGENT_BAND_CLAUDE_ROUTES": '{"stale@lane-high":"opus"}',
-            "AGENT_BAND_CODEX_ROUTES": '{"stale@lane-high":{"model":"stale","effort":"high"}}',
         }
         return calls, env
 
-    def _assert_openrouter_roles(self, harness, observed, band_gate, projection):
-        rows = ai_models.load_category_models(REPO / "home/.chezmoidata/ai_models")["openrouter"]
-        gate_env = {**observed["env"], "AGENT_BAND_HARNESS": "claude_code" if harness == "claude" else harness}
-        with mock.patch.dict(os.environ, gate_env, clear=True):
-            for role, pick in projection["harnesses"]["openrouter"]["agents"].items():
-                row = rows[pick["category"]]
-                if not row["model"].startswith("openrouter/"):
-                    continue
-                expected = f"{row['model'].removeprefix('openrouter/')}@preset/effort-{row['effort']}"
-                gate_input = json.dumps(
-                    {
-                        "tool_name": "Agent",
-                        "tool_input": {"subagent_type": role, "model": "unregistered-model", "prompt": "fixture"},
-                    }
-                )
-                gate_output = io.StringIO()
-                with (
-                    mock.patch.object(sys, "stdin", io.StringIO(gate_input)),
-                    mock.patch.object(sys, "stdout", gate_output),
-                ):
-                    self.assertEqual(band_gate.main(), 0)
-                output = json.loads(gate_output.getvalue())
-                if harness == "claude":
-                    definitions = json.loads(observed["argv"][observed["argv"].index("--agents") + 1])
-                    if role not in definitions:
-                        self.assertEqual(output["hookSpecificOutput"]["permissionDecision"], "deny")
-                        continue
-                updated = output.get(
-                    "updated_input",
-                    output.get("modifiedArgs", output.get("hookSpecificOutput", {}).get("updatedInput", {})),
-                )
-                model = updated.get("model")
-                if harness == "claude":
-                    self.assertNotIn("model", updated, (role, output))
-                    self.assertEqual(updated["prompt"], "fixture")
-                    definitions = json.loads(observed["argv"][observed["argv"].index("--agents") + 1])
-                    self.assertEqual(definitions[role]["prompt"], "Keep this body.\n")
-                    self.assertNotIn("Agent", definitions[role]["tools"])
-                    model = definitions[role]["model"]
-                self.assertEqual(model, expected, (harness, role))
-
-    def test_SHOULD_route_openrouter_lane_rows_and_prepare_each_required_effort_once(self):
-        """WHEN a wrapper routes lanes, only `category_models.openrouter` rows become wire models."""
-        band_gate = _load_hook_module("band_contract", "home/exact_dot_agents/exact_hooks/executable_band_gate.py")
-        band_gate.PROJECTION = REPO / "home/dot_config/ai/readonly_agent-bands.v1.json"
-        projection = json.loads(band_gate.PROJECTION.read_text())
+    def test_SHOULD_route_only_the_root_model_and_prepare_its_effort_once(self):
+        """WHEN a wrapper launches, only the selected model's preset is prepared and no agent definitions ride along."""
         calls, env = self._openrouter_route_fixture()
         for harness in ("claude", "codex"):
             for effort in ("none", "high", "xhigh", "max"):
@@ -174,27 +102,10 @@ class TestOpenRouterWrappers(unittest.TestCase):
                     )
                     self.assertEqual(result.returncode, 0, result.stderr)
                     observed = json.loads(result.stdout)
-                    self.assertNotIn("AGENT_BAND_SUBSCRIPTION", observed["env"])
-                    if harness != "claude":
-                        self.assertNotIn("AGENT_BAND_CLAUDE_ROUTES", observed["env"])
-                    else:
-                        self.assertNotEqual(
-                            observed["env"]["AGENT_BAND_CLAUDE_ROUTES"], env["AGENT_BAND_CLAUDE_ROUTES"]
-                        )
-                    if harness == "codex":
-                        self.assertNotEqual(observed["env"]["AGENT_BAND_CODEX_ROUTES"], env["AGENT_BAND_CODEX_ROUTES"])
-                        self.assertTrue(observed["profiles"])
-                        for profile in observed["profiles"].values():
-                            self.assertNotIn("native-root", profile)
-                            self.assertNotIn("model_reasoning_effort", profile)
-                            self.assertIn("multi_agent = false", profile)
-                            self.assertIn("Fixture leaf; do not delegate.", profile)
-                    else:
-                        self.assertNotIn("AGENT_BAND_CODEX_ROUTES", observed["env"])
-                    self.assertCountEqual(calls.read_text().splitlines(), set((effort, "high", "medium")))
+                    self.assertEqual(calls.read_text().splitlines(), [effort])
                     wire = f"moonshotai/kimi-k3@preset/effort-{effort}"
-                    self.assertTrue(wire in observed["argv"] or wire in observed["env"].values())
-                    self._assert_openrouter_roles(harness, observed, band_gate, projection)
+                    self.assertIn(wire, observed["argv"])
+                    self.assertNotIn("--agents", observed["argv"])
 
     def test_SHOULD_create_only_a_missing_preset_in_the_active_account(self):
         module = _load_openrouter_presets_module()
@@ -503,97 +414,11 @@ class TestOpenRouterWrappers(unittest.TestCase):
         assert "export CLAUDE_CODE_DISABLE_THINKING=1" in source
         assert 'export CLAUDE_CODE_EFFORT_LEVEL="$CLAUDE_EFFORT"' in source
 
-    def test_SHOULD_derive_the_wrapper_wires_from_the_live_openrouter_lane_rows(self):
-        module = _load_openrouter_presets_module()
-        with mock.patch.dict(os.environ, {"CHEZMOI_SOURCE_DIR": str(REPO)}):
-            wires = module._lane_wire_models()
-        # mechanical and memory share the flash wire; research, review and refute share pro at high, and
-        # implement is pro at medium, so each distinct model and effort is one wire. Order follows the rows.
-        self.assertEqual(
-            [
-                "xiaomi/mimo-v2.6-flash@preset/effort-high",
-                "xiaomi/mimo-v2.6-pro@preset/effort-high",
-                "xiaomi/mimo-v2.6-pro@preset/effort-medium",
-            ],
-            wires,
-        )
-
-    def test_SHOULD_dedupe_split_efforts_and_skip_non_openrouter_rows_in_the_lane_matrix(self):
-        module = _load_openrouter_presets_module()
-        tiering = (
-            "category_models:\n"
-            "  pi:\n"
-            "    mechanical:\n"
-            '      model: "openrouter/ignored/pi-row"\n'
-            '      effort: "high"\n'
-            "  openrouter:\n"
-            "    mechanical:\n"
-            '      model: "openrouter/z-ai/glm-5.3-flash"\n'
-            '      effort: "high"\n'
-            "    memory:\n"
-            '      model: "openrouter/z-ai/glm-5.3-flash"\n'
-            '      effort: "high"\n'
-            "    research:\n"
-            '      model: "openrouter/z-ai/glm-5.3"\n'
-            '      effort: "max"\n'
-            "    implement:\n"
-            '      model: "openrouter/z-ai/glm-5.3"\n'
-            '      effort: "high"\n'
-            "    review:\n"
-            '      model: "native/not-routed"\n'
-            '      effort: "high"\n'
-            "other_section:\n"
-            "  openrouter:\n"
-            "    mechanical:\n"
-            '      model: "openrouter/ignored/other-section"\n'
-            '      effort: "high"\n'
-        )
-        with tempfile.TemporaryDirectory() as tmp:
-            registry = Path(tmp) / "home/.chezmoidata/ai_models"
-            registry.mkdir(parents=True)
-            (registry / "tiering.yaml").write_text(tiering, encoding="utf-8")
-            with mock.patch.dict(os.environ, {"CHEZMOI_SOURCE_DIR": tmp}):
-                wires = module._lane_wire_models()
-                (registry / "tiering.yaml").write_text(
-                    tiering.replace("openrouter/z-ai", "native/z-ai"), encoding="utf-8"
-                )
-                with self.assertRaises(module.PresetError):
-                    module._lane_wire_models()
-        self.assertEqual(
-            [
-                "z-ai/glm-5.3-flash@preset/effort-high",
-                "z-ai/glm-5.3@preset/effort-max",
-                "z-ai/glm-5.3@preset/effort-high",
-            ],
-            wires,
-        )
-
-    def test_SHOULD_map_claude_tiers_to_the_openrouter_backend_schema(self):
+    def test_SHOULD_map_every_claude_alias_to_the_selected_wire(self):
         source = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()
-        assert "--lane-wire-models" in source
-        assert "readonly -a OPENROUTER_LANE_WIRE_MODELS" in source
-        assert 'export ANTHROPIC_DEFAULT_SONNET_MODEL="${OPENROUTER_LANE_WIRE_MODELS[0]}"' in source
+        for alias in ("FABLE", "OPUS", "SONNET", "HAIKU"):
+            assert f'export ANTHROPIC_DEFAULT_{alias}_MODEL="$OPENROUTER_WIRE_MODEL"' in source
         assert "unset CLAUDE_CODE_SUBAGENT_MODEL" in source
-        assert 'export AGENT_BAND_SCHEMA_HARNESS="openrouter"' in source
-        assert 'export AGENT_BAND_MODEL_FORMAT="openrouter-preset"' in source
-        assert "OPENROUTER_PI_T1_WIRE_MODEL" not in source
-
-    def test_SHOULD_mark_suffix_wrappers_with_their_backend_lane_schema(self):
-        expectations = {
-            "claude-openrouter": ("openrouter", "openrouter-preset"),
-            "codex-openrouter": ("openrouter", "openrouter-preset"),
-            "claude-codex": ("codex", None),
-        }
-        for command, (schema, model_format) in expectations.items():
-            with self.subTest(command=command):
-                source = (REPO / f"home/exact_bin/executable_,{command}").read_text()
-                assert "unset AGENT_BAND_MODEL_OVERRIDE AGENT_BAND_EFFORT_OVERRIDE" in source
-                assert f'export AGENT_BAND_SCHEMA_HARNESS="{schema}"' in source
-                if model_format is None:
-                    assert "AGENT_BAND_MODEL_FORMAT" in source
-                    assert f'export AGENT_BAND_MODEL_FORMAT="{model_format}"' not in source
-                else:
-                    assert f'export AGENT_BAND_MODEL_FORMAT="{model_format}"' in source
 
     def test_SHOULD_stop_the_claude_base_url_before_the_messages_path(self):
         # Claude Code appends /v1/messages, and OpenRouter answers that path with the
@@ -718,9 +543,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
         self.assertEqual(observed["env"]["ANTHROPIC_MODEL"], OPENROUTER_WIRE_PIN)
         self.assertEqual(observed["env"]["CLAUDE_CODE_EFFORT_LEVEL"], "high")
         self.assertNotIn("CLAUDE_CODE_SUBAGENT_MODEL", observed["env"])
-        self.assertEqual(observed["args"][0], "--agents")
-        self.assertTrue(json.loads(observed["args"][1]))
-        self.assertEqual(observed["args"][2:], ["--model", OPENROUTER_WIRE_PIN, "--effort", "high", "-p", "review"])
+        self.assertEqual(observed["args"], ["--model", OPENROUTER_WIRE_PIN, "--effort", "high", "-p", "review"])
 
     def test_SHOULD_pass_supported_openrouter_effort_to_claude_client(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -759,9 +582,8 @@ class TestOpenRouterWrappers(unittest.TestCase):
                 observed = json.loads(result.stdout)
                 self.assertEqual(observed["env"]["ANTHROPIC_MODEL"], expected_model)
                 self.assertEqual(observed["env"]["CLAUDE_CODE_EFFORT_LEVEL"], expected_client_effort)
-                self.assertEqual(observed["args"][0], "--agents")
                 self.assertEqual(
-                    observed["args"][2:],
+                    observed["args"],
                     ["--model", expected_model, "--effort", expected_client_effort, "-p", "review"],
                 )
 
@@ -771,9 +593,7 @@ class TestOpenRouterWrappers(unittest.TestCase):
             codex = bindir / "codex"
             codex.write_text(
                 """#!/usr/bin/env bash
-printf 'schema=%s\\nformat=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
-  "$AGENT_BAND_SCHEMA_HARNESS" "$AGENT_BAND_MODEL_FORMAT" \
-  "${AGENT_BAND_MODEL_OVERRIDE-}" "${AGENT_BAND_EFFORT_OVERRIDE-}" "$*"
+printf 'args=%s\\n' "$*"
 """,
                 encoding="utf-8",
             )
@@ -782,8 +602,6 @@ printf 'schema=%s\\nformat=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
                 **os.environ,
                 "PATH": f"{bindir}:{os.environ['PATH']}",
                 "OPENROUTER_API_KEY": "fixture-key",
-                "AGENT_BAND_MODEL_OVERRIDE": "other-model",
-                "AGENT_BAND_EFFORT_OVERRIDE": "low",
             }
             codex_result = subprocess.run(
                 [
@@ -798,12 +616,6 @@ printf 'schema=%s\\nformat=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
             )
 
         assert codex_result.returncode == 0, codex_result.stderr
-        assert codex_result.stdout.splitlines()[:4] == [
-            "schema=openrouter",
-            "format=openrouter-preset",
-            "band-model=",
-            "band-effort=",
-        ]
         assert f"--model {OPENROUTER_WIRE_PIN}" in codex_result.stdout
         # Effort rides the preset slug, not a Codex body field, so model_reasoning_effort is unset.
         assert "model_reasoning_effort" not in codex_result.stdout
@@ -930,8 +742,7 @@ printf 'schema=%s\\nformat=%s\\nband-model=%s\\nband-effort=%s\\nargs=%s\\n' \
             prompt_limit = 65536 - output_limit
             with self.subTest(output_limit=output_limit):
                 helper.write_text(
-                    '#!/bin/sh\nif [ "$1" = "--lane-wire-models" ]; then\n' + _lane_wire_echo() + "exit\nfi\n"
-                    'if [ "$1" = "--session-budget-env" ]; then\n'
+                    '#!/bin/sh\nif [ "$1" = "--session-budget-env" ]; then\n'
                     f'echo "CONTEXT_LIMIT=65536"\necho "MAX_OUTPUT_TOKENS={output_limit}"\n'
                     f'echo "PROMPT_LIMIT={prompt_limit}"\nfi\n'
                 )

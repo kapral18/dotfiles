@@ -22,15 +22,10 @@ A user crontab is installed (replacing the existing one) from a repo-managed fil
 
 Crontab behavior:
 
-| Piece           | Detail                                                   |
-| --------------- | -------------------------------------------------------- |
-| Install command | `crontab "$CHEZMOI_SOURCE_DIR/crontab"`                  |
-| Trigger         | hash-gated; re-installs only when `home/crontab` changes |
-| Shipped jobs    | weekly `,ai-kb curate`; daily `/tmp/specs` archive sync  |
-
-```cron
-17 9 * * 1 PATH="$HOME/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" "$HOME/bin/,ai-kb" curate >> "$HOME/.local/share/ai-kb/curate.log" 2>&1
-7 9 * * * /usr/bin/rsync -a /tmp/specs/ "$HOME/.local/share/agent-specs-archive/" >/dev/null 2>&1
-```
+| Piece           | Detail                                                     |
+| --------------- | ---------------------------------------------------------- |
+| Install command | `crontab "$CHEZMOI_SOURCE_DIR/crontab"`                    |
+| Trigger         | hash-gated; re-installs only when `home/crontab` changes   |
+| Shipped jobs    | none; the file is empty, so installing it clears the table |
 
 Edit [`home/crontab`](../../../home/crontab) and `chezmoi apply` to change the schedule, or run `crontab -l` to inspect the installed table. To opt out, remove the hook script and clear the table with `crontab -e`.

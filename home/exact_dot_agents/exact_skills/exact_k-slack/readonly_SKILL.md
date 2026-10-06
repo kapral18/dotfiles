@@ -5,10 +5,8 @@ description: "Use for Slack MCP effects: send/schedule messages, thread replies,
 
 # Slack (MCP Mechanics)
 
-Subagent dispatch: inline — Slack mutations are root-approved transactions; a leaf returns drafts and ids only.
-
 Owns the mechanics of Slack side effects through the Slack MCP tools available in the current runtime.
-Wording is owned by `~/.agents/skills/k-communication/SKILL.md`; whether to publish is the Human-Visible Publication Gate (SOP §3.8, `~/AGENTS.md`).
+Wording is owned by `~/.agents/skills/k-communication/SKILL.md`; whether to publish is the publication rules in `~/AGENTS.md` §5.
 This skill restates neither.
 
 Use when:
@@ -25,7 +23,7 @@ Do not use:
 ## Tool classes (names in this setup)
 
 - Read-only, no gate: `slack_search_channels`, `slack_search_users`, `slack_search_public`, `slack_search_public_and_private`, `slack_read_channel`, `slack_read_thread`, `slack_read_user_profile`, `slack_read_canvas`, `slack_read_file`, `slack_get_reactions`, `slack_search_emojis`, `slack_list_channel_members`.
-- Human-visible mutations, SOP §3.8 gated: `slack_send_message`, `slack_schedule_message`, `slack_add_reaction`, `slack_create_canvas`, `slack_update_canvas`.
+- Human-visible mutations, `~/AGENTS.md` §5 gated: `slack_send_message`, `slack_schedule_message`, `slack_add_reaction`, `slack_create_canvas`, `slack_update_canvas`.
 - User-only mutation: `slack_send_message_draft` writes into the user's own Slack Drafts.
   Use it only when the user asks for a draft in Slack; it never replaces showing the exact payload in session, and it strips link targets from markdown links.
 
@@ -37,7 +35,7 @@ Do not use:
    Never emit Slack's stored `<URL|label>` link form.
    Done when the text passes that skill's register, budget, and session-invisibility rules.
 3. Preflight: show target (channel or DM, `thread_ts` or top-level, `reply_broadcast`, `post_at` for schedules, canvas id and section ids), exact text, and effect.
-   Wait unless existing SOP §3.8 authorization covers this exact target, payload, and effect.
+   Wait unless existing approval (`~/AGENTS.md` §5) covers this exact target, payload, and effect.
    A harness tool-approval prompt does not replace this step.
 4. Send exactly once. On an ambiguous result, read back before any retry; NEVER re-send to recover.
 5. Read back: report the returned message or canvas link; when the link is missing, confirm with `slack_read_thread`.
@@ -52,7 +50,4 @@ Do not use:
 - Private channels and DMs: read only with the user's explicit consent for that source;
   NEVER republish DM permalinks or private-channel content on another surface.
 
-## Leaf boundary
-
-A delegated leaf MUST NOT call any mutation tool; it returns the draft and resolved ids to the root.
-`~/.agents/hooks/publish_gate.py` denies leaf publication calls where wired; the boundary holds without it.
+A subagent MUST NOT call any Slack mutation tool; it returns drafts and resolved ids instead.

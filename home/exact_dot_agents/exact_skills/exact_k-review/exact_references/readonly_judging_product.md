@@ -36,7 +36,7 @@ Domain specifics (syntax, mappings, scale limits) come from verified domain over
 
 - **Rolling-deploy coexistence:** old and new code run against the same data/API mid-deploy;
   verify both directions survive version boundaries.
-- **Rollout gating:** when conventions expect incremental rollout, verify proper gating (without adding unrequested flags per SOP `2.1`).
+- **Rollout gating:** when conventions expect incremental rollout, verify proper gating (without adding unrequested flags).
 - **Circular dependencies:** verify the change does not introduce package/module cycles.
 - **Blast radius:** state what breaks if wrong and pair each risk with concrete mitigation.
 

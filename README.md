@@ -6,16 +6,16 @@ Personal macOS development environment managed with Chezmoi. Keyboard-centric wo
 
 ## ✨ Key Features
 
-| Feature                | Description                                                   |
-| ---------------------- | ------------------------------------------------------------- |
-| 🤖 **Agent Memory**    | `/tmp/specs` hook memory (`,agent-memory`) + durable `,ai-kb` |
-| 🧠 **Local inference** | llama.cpp router + model sync (`,llama-cpp`)                  |
-| 🔐 **Secure Identity** | 1Password SSH agent with work/personal switching              |
-| 🌳 **Git Worktrees**   | Worktree management with PR integration                       |
-| 💎 **Neovim**          | Custom LSP, AI commits, refactoring tools                     |
-| 🐚 **Fish Shell**      | 40+ custom productivity commands in `~/bin`                   |
-| 📦 **Brewfile**        | 280+ formulas and casks (per-category partials)               |
-| ⚙️ **Mise**            | Version manager with automatic switching                      |
+| Feature                | Description                                                  |
+| ---------------------- | ------------------------------------------------------------ |
+| 🤖 **Agent Memory**    | on-demand `,ai-kb` knowledge base + `,handoff` session notes |
+| 🧠 **Local inference** | llama.cpp router + model sync (`,llama-cpp`)                 |
+| 🔐 **Secure Identity** | 1Password SSH agent with work/personal switching             |
+| 🌳 **Git Worktrees**   | Worktree management with PR integration                      |
+| 💎 **Neovim**          | Custom LSP, AI commits, refactoring tools                    |
+| 🐚 **Fish Shell**      | 40+ custom productivity commands in `~/bin`                  |
+| 📦 **Brewfile**        | 280+ formulas and casks (per-category partials)              |
+| ⚙️ **Mise**            | Version manager with automatic switching                     |
 
 ## 🛠️ Quick Start
 

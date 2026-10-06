@@ -58,7 +58,7 @@ It is part of other-authored PR review, not a user opt-in.
 
 Skip it for local changes and routine self-review.
 
-This audit does not approve, reject, close, or post. It produces evidence for draft feedback or controller judgment.
+This audit does not approve, reject, close, or post. It produces evidence for draft feedback or the review verdict.
 
 1. Reconstruct author intent:
    - Use the full GitHub Context Intake + Reference Resolution results.

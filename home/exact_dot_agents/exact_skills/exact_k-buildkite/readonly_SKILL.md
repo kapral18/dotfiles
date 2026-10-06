@@ -7,8 +7,6 @@ allowed-tools: Bash(bk build view:*), Bash(bk build list:*), Bash(bk build watch
 
 # Buildkite — CI/CD
 
-Subagent dispatch: inline (mechanical for bulk log/artifact extraction) — bk reads are small direct commands; mutations are root-gated.
-
 ## URL Intercept (Mandatory)
 
 Buildkite URLs (`buildkite.com/...`) require authentication and will return 403 if fetched directly via `WebFetch`, `curl`, or any HTTP client.
@@ -37,7 +35,7 @@ Build, job, artifact, pipeline, agent, auth/config, and the `bk api` escape hatc
 Load it whenever you need a command not shown in the Failure Debugging Workflow below.
 
 The pre-authorized `bk` commands do not mutate org state (downloads write local files only).
-Mutating commands (`bk build create`, `bk build rebuild`, `bk build cancel`, `bk job retry`, `bk job cancel`, `bk agent stop`, `bk agent pause`, `bk agent resume`, `bk pipeline create`) change org-visible CI state (SOP §3.8): run them when the user's request covers them ("rebuild it", "retry the job"); otherwise propose the exact command first.
+Mutating commands (`bk build create`, `bk build rebuild`, `bk build cancel`, `bk job retry`, `bk job cancel`, `bk agent stop`, `bk agent pause`, `bk agent resume`, `bk pipeline create`) change org-visible CI state (`~/AGENTS.md` §5): run them when the user's request covers them ("rebuild it", "retry the job"); otherwise propose the exact command first.
 One authorization covers the flow, not one ask per command.
 `bk api` is not pre-authorized: it can POST, so it goes through the normal permission prompt.
 
@@ -57,13 +55,6 @@ When a build fails, follow this sequence:
 5. List artifacts if available: `bk artifacts list BUILD_NUMBER -p SLUG`. Done when relevant artifacts are listed or confirmed absent.
 
 For detailed debugging patterns, load `~/.agents/skills/k-buildkite/references/build-debugging.md`.
-
-## Root moves
-
-Only the active root/main session follows this section; a delegated leaf skips it and returns findings to its parent.
-Launch one mechanical packet for a settled multi-build/multi-job log extraction with a stated rule and return before the debugging workflow;
-the root MUST NOT substitute its own inline extraction for that packet absent an explicit user no-delegation instruction;
-if the lane is unavailable report blocked. Small reads stay inline; mutations are root-gated and MUST NOT be delegated.
 
 ## Output Conventions
 

@@ -1,9 +1,9 @@
 # Live UI Runtime Contract (shared)
 
-Mode-neutral runtime machinery shared by the live-UI workers.
-Both the review-mode contract (`~/.agents/skills/k-review/references/live-ui-review.md`) and the proof-mode contract (`~/.agents/skills/k-ui-capture/references/proof-mode.md`) load this file.
+Runtime machinery for live-UI verification (`k-ui-capture`, `k-live-ui-windows`, and UI review findings).
 It owns target-packet resolution, Playwriter preflight, readiness, runtime start, data/setup, screenshot artifacts, and the runtime safety boundary.
-The loading mode file owns its oracle (what evidence is judged against), its caller inputs, its comparison model, and its return shape.
+Proof mode (`~/.agents/skills/k-ui-capture/references/proof-mode.md`) checks the head against its intended visual or behavior.
+Review mode checks a UI finding by comparing the PR/head runtime with the base runtime on the same flow, one claim per run, and reports the comparison evidence with screenshots.
 
 Throughout this file, "the runtime under verification" is the checkout/runtime that holds the code being verified:
 the reviewed PR/head worktree in review mode, or the built/changed worktree in proof mode.
@@ -18,21 +18,21 @@ the reviewed PR/head worktree in review mode, or the built/changed worktree in p
 - Starting a runtime the selected target packet documents how to start (in a shell-capable harness) is a setup step to perform, not a blocker.
   See the Data/setup ladder runtime-start rung.
 - Runtime environment prerequisites are not data setup and are not the runtime-start rung.
-  This covers prerequisites that require reconfiguring or restarting an already-running instance in a way this worker cannot safely apply.
+  This covers prerequisites that require reconfiguring or restarting an already-running instance in a way you cannot safely apply.
   If faithful verification requires them, return `Blocked` with setup instructions instead of falling back to mocks.
 
 ## Terminology
 
-- A target packet is the concrete runtime/preflight/data setup contract supplied to the worker.
+- A target packet is the concrete runtime/preflight/data setup contract for the run.
 - A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording.
-  An overlay may supply a target packet; the worker still follows the concrete packet.
+  An overlay may supply a target packet; follow the concrete packet.
 
 ## Target packet
 
 Use the caller-supplied runtime targets when present; do not invent them.
 
 - Treat the runtime under verification as the runtime that contains the code being verified.
-  The controller cwd is only execution context; it is not a target unless it is the same checkout and branch/sha as the code under verification.
+  The session cwd is only execution context; it is not a target unless it is the same checkout and branch/sha as the code under verification.
 - If the caller requests a specific PR/branch target but supplies only a base/main checkout as that target, return `Blocked` with a target-worktree blocker.
   Navigate, start, or validate a runtime as PR/head only when it actually holds the PR/head code;
   a base/main runtime stays a base/main runtime.
@@ -51,16 +51,16 @@ Use the caller-supplied runtime targets when present; do not invent them.
   The reachability/readiness and "blocker invalid unless every target is reported" rules below apply only after the runtime-start rung;
   never use them to skip starting a startable runtime.
 - Follow `~/.agents/skills/k-playwriter/SKILL.md` and complete its Documentation contract before checking targets.
-- Use a fresh Playwriter session owned by this worker.
+- Use a fresh Playwriter session that you own.
 - Store owned pages under distinct `state` keys (e.g. `state.headPage`, and `state.basePage` only when a base comparison is selected);
   do not use generic `page`.
 - Remember that Playwriter sessions isolate `state`, but browser pages are shared.
 - Do not reuse pages from other sessions or unrelated worktrees.
-- Close only pages this worker created, or report their URLs in the final evidence.
+- Close only pages you created, or report their URLs in the final evidence.
 - Use Playwriter to check every browser/runtime target in the selected target packet for reachability/readiness.
 - Verify target branch identity with Playwriter evidence where possible.
 - Before any UI observation, verify the target identity from the selected packet.
-  If the target URL resolves to the base/main worktree or to the controller cwd while the runtime under verification is elsewhere, return `Blocked`; do not continue with the wrong-runtime evidence.
+  If the target URL resolves to the base/main worktree or to the session cwd while the runtime under verification is elsewhere, return `Blocked`; do not continue with the wrong-runtime evidence.
 - If readiness or branch identity cannot be established, return `Blocked` with the missing evidence —
   except when the cause is a missing/un-started runtime the packet documents how to start:
   that routes to the runtime-start rung first (start it, then re-check), not to `Blocked`.
@@ -88,7 +88,7 @@ Run readiness before any UI observation.
 - Prefer selector state, URL, title, and focused DOM/accessibility observations before snapshots or screenshots.
   Do not capture full page snapshots/screenshots unless they are needed to decide or explain the finding or proof under capture.
 - Capture concrete evidence: URLs, steps, observed state, uncertainty, and screenshots/paths when required by the caller or useful.
-- UI-related review findings that may become drafted feedback after `/k-deep-review` or `k-agent-live-ui-review` need screenshot proof as supporting evidence.
+- UI-related review findings that may become drafted feedback need screenshot proof as supporting evidence.
   Capture the smallest useful screenshot set unless a valid blocker or non-applicability result prevents it.
 - Observable UI blockers and uncertainty states should include screenshot proof when it materially explains the blocker;
   pre-navigation blockers must record why no screenshot exists.
@@ -104,9 +104,9 @@ Run readiness before any UI observation.
   If two claimed moments or states are genuinely pixel-identical, keep one file, merge the captions, and state that explicitly.
   Re-capture immediately on any failure; after teardown, each artifact defect costs a full environment restart.
 - Numeric claims in your report, including timings and counts, must come from measured evidence such as file mtimes, logs, or explicit waits; never report numbers from impression.
-  The controller treats unmeasured numbers as unusable.
-- The screenshot handoff is for the controller's upload step only.
-  Never upload images or put local paths in GitHub review bodies/comments from this worker, and never add extra comments solely for image paths; when screenshots belong in a PR body, the controller uploads and embeds them via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md` behind explicit user approval.
+  Unmeasured numbers are unusable.
+- Screenshots are evidence for a later, separately approved upload step.
+  During verification, never upload images or put local paths in GitHub review bodies or comments, and never add comments solely for image paths; when screenshots belong in a PR body, upload and embed them via the browser-assisted flow in `~/.agents/skills/k-github/references/attachments.md` behind explicit user approval.
 - Bound observation to the focused flow that can verify the finding or acceptance criterion.
 - Do not wander outside that focused flow.
   After five UI actions for a single finding or criterion, continue only when the next action is specifically tied to it and still inside the selected local/dev safety boundary.
@@ -125,7 +125,7 @@ The data/setup ladder assumes the runtime is already up and only data is missing
   A startable runtime is a setup step to perform, not a reason to stop.
 - Only return `Blocked` for a missing runtime when the harness is read-only/Ask-mode, the target packet documents no start command, or the documented start fails.
   In that case the blocker MUST name the affected target(s) and the exact start command from the target packet for the user to run.
-- If this worker started a runtime, follow the target packet's teardown ownership rules before returning.
+- If you started a runtime, follow the target packet's teardown ownership rules before returning.
 
 ## Data/setup ladder
 
@@ -148,7 +148,7 @@ If an applicable flow reaches an empty state or lacks the data needed to exercis
    - Limit setup recovery to one direct setup path and one named fallback path unless the caller explicitly asks for deeper runtime debugging.
    - If both fail, return `Blocked` with the exact failing request/step, response/error, and the setup needed to resume.
      Do not start broad source searches to debug the runtime unless that source lookup is needed to state the resume instruction.
-6. If faithful setup requires changing the runtime environment in a way this worker cannot safely apply live, do not work around it with browser mocks.
+6. If faithful setup requires changing the runtime environment in a way you cannot safely apply live, do not work around it with browser mocks.
    Examples include changing how an instance is configured, started, or restarted. Return `Blocked` with:
    - affected target(s): base, the runtime under verification, or both
    - exact runtime prerequisite and the evidence that it is required
@@ -165,7 +165,7 @@ If an applicable flow reaches an empty state or lacks the data needed to exercis
 10. Only return `Blocked` for data after the allowed setup ladder is exhausted or unsafe.
     The ladder includes media/fixture inspection, existing-data checks, allowed local/dev runtime setup, selected-target-packet interactive fallback, and last-resort mock consideration.
     If the blocker is a runtime environment prerequisite, return it as soon as identified; do not continue to mocks.
-    Include the exact setup attempted, the runtime change that would still be required, and why it was not safe/possible in the worker.
+    Include the exact setup attempted, the runtime change that would still be required, and why it was not safe or possible.
 11. Only return `Not applicable` when the changed path/candidate/criterion is not UI/runtime-relevant or the functionality itself is absent from the target surface.
     Missing data is setup work or `Blocked`, not `Not applicable`.
 
