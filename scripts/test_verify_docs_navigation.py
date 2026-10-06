@@ -21,8 +21,7 @@ class VerifyDocsNavigationTest(unittest.TestCase):
 
         return verify_docs_navigation
 
-    def _write_reference_docs(self, root: Path, rows: tuple[str, ...] | None = None) -> None:
-        rows = self._module().EXPECTED_CATALOG_ROWS if rows is None else rows
+    def _write_reference_docs(self, root: Path) -> None:
         (root / "docs/reference").mkdir(parents=True)
         (root / "docs/topics/example").mkdir(parents=True)
         (root / "home").mkdir()
@@ -48,17 +47,6 @@ class VerifyDocsNavigationTest(unittest.TestCase):
                     "[external](https://example.com)",
                     "",
                     "## Local",
-                    "",
-                ]
-            ),
-            encoding="utf-8",
-        )
-        (root / "docs/reference/implementation-coverage.md").write_text(
-            "\n".join(
-                [
-                    "| Catalog | Docs |",
-                    "| ------- | ---- |",
-                    *[f"| `{row}` | [docs](../topics/example/index.md) |" for row in rows],
                     "",
                 ]
             ),
@@ -126,17 +114,6 @@ class VerifyDocsNavigationTest(unittest.TestCase):
             failures = m.check_links(root, doc_paths=(Path("docs/reference/reference-map.md"),))
 
         assert any("broken anchor target ../topics/example/index.md#missing-anchor" in failure for failure in failures)
-
-    def test_reports_missing_catalog_rows(self):
-        """SHOULD report when implementation coverage omits a catalog row."""
-        m = self._module()
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            self._write_reference_docs(root, tuple(row for row in m.EXPECTED_CATALOG_ROWS if row != "07c"))
-
-            failures = m.check_docs_navigation(root)
-
-        assert any("missing catalog row `07c`" in failure for failure in failures)
 
     def test_reports_missing_reference_map_script(self):
         """SHOULD report when the scripts table names a missing script."""

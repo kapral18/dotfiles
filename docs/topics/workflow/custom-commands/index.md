@@ -37,10 +37,9 @@ The fastest visual entry point is the tmux command palette: `prefix` + `r`. It i
 | Fish completions    | [`home/dot_config/fish/completions/`](../../../../home/dot_config/fish/completions/) |
 | Command internals   | [`home/exact_lib/exact_,<name>/`](../../../../home/exact_lib/)                       |
 | Shared command libs | [`home/exact_lib/exact_shared/`](../../../../home/exact_lib/exact_shared/)           |
-| Catalog diagram     | [`.mermaids/07c-bin-commands.mmd`](../../../../.mermaids/07c-bin-commands.mmd)       |
 | Surface verifier    | [`scripts/verify_bin_surface.py`](../../../../scripts/verify_bin_surface.py)         |
 
-New `~/bin` commands must have a Fish completion, docs coverage, and `.mermaids/07c-bin-commands.mmd` coverage. Large or multi-module commands should move internals to `home/exact_lib/exact_,<name>/`; shared helpers belong under `home/exact_lib/exact_shared/`. `make verify-bin-surface` checks that command-library directories are not orphaned.
+New `~/bin` commands must have a Fish completion and docs coverage. Large or multi-module commands should move internals to `home/exact_lib/exact_,<name>/`; shared helpers belong under `home/exact_lib/exact_shared/`. `make verify-bin-surface` checks that command-library directories are not orphaned.
 
 ## Related
 

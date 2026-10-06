@@ -101,7 +101,6 @@ Small single-purpose commands may stay directly in `home/exact_bin/`.
   A `~/bin/` command added or changed without its completion is incomplete.
 
 When adding a new `~/bin/` command or `home/exact_lib/exact_,<name>/` command library, also update its catalog row under `docs/topics/workflow/custom-commands/`.
-Also update the `.mermaids/07c-bin-commands.mmd` node, plus the relevant census count in `scripts/verify_mermaids.py` and the diagram/README anchors.
 This follows Documentation Hygiene.
 
 ## Homebrew Package Management

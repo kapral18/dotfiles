@@ -24,7 +24,6 @@ class TestCheckPlan(unittest.TestCase):
             REPO,
             full=False,
             changed=("home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_summarize-commit.lua",),
-            add_delete=False,
         )
         assert plan.mode == "affected"
         assert "tests/test_invariants.py" in plan.tests
@@ -38,7 +37,6 @@ class TestCheckPlan(unittest.TestCase):
             REPO,
             full=False,
             changed=("home/dot_config/exact_tmux/exact_scripts/pickers/github/executable_gh_picker.sh",),
-            add_delete=False,
         )
         assert "tests/test_tmux_pickers.py" in plan.tests
         assert "tests/test_gh_picker_dispatch_state.py" in plan.tests
@@ -49,25 +47,23 @@ class TestCheckPlan(unittest.TestCase):
             REPO,
             full=False,
             changed=("home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl",),
-            add_delete=False,
         )
         assert "verify-templates" in plan.gates
         assert "tests/test_invariants.py" in plan.tests
 
-    def test_WHEN_a_file_is_added_SHOULD_run_verify_mermaids(self):
-        plan = plan_check(REPO, full=False, changed=("docs/topics/code-quality/formatting.md",), add_delete=True)
-        assert "verify-mermaids" in plan.gates
+    def test_WHEN_docs_change_SHOULD_run_verify_docs_navigation(self):
+        plan = plan_check(REPO, full=False, changed=("docs/topics/code-quality/formatting.md",))
         assert "verify-docs-navigation" in plan.gates
 
     def test_WHEN_nothing_changed_SHOULD_select_no_work(self):
-        plan = plan_check(REPO, full=False, changed=(), add_delete=False)
+        plan = plan_check(REPO, full=False, changed=())
         assert plan.tests == ()
         assert plan.gates == ()
         assert plan.fmt_paths == ()
         assert plan.extra == ()
 
     def test_WHEN_full_SHOULD_include_every_live_shard_and_gate(self):
-        plan = plan_check(REPO, full=True, changed=(), add_delete=False)
+        plan = plan_check(REPO, full=True, changed=())
         assert plan.mode == "full"
         assert "tests/test_tmux_pickers.py" in plan.tests
         assert "test_yaml_parser.py" in plan.tests
@@ -80,39 +76,38 @@ class TestCheckPlan(unittest.TestCase):
             REPO,
             full=False,
             changed=("home/dot_config/fish/completions/readonly_,q.fish",),
-            add_delete=False,
         )
         assert plan.tests == ("tests/test_q.py",)
         assert plan.gates == ("verify-bin-surface",)
 
     def test_WHEN_check_py_changes_SHOULD_run_test_check(self):
-        plan = plan_check(REPO, full=False, changed=("scripts/check.py",), add_delete=False)
+        plan = plan_check(REPO, full=False, changed=("scripts/check.py",))
         assert "test_check.py" in plan.tests
         assert "test_runner.py" not in plan.tests
         assert "tests/test_tmux_pickers.py" not in plan.tests
 
     def test_WHEN_test_runner_changes_SHOULD_not_select_itself_as_a_shard(self):
-        plan = plan_check(REPO, full=False, changed=("scripts/test_runner.py",), add_delete=False)
+        plan = plan_check(REPO, full=False, changed=("scripts/test_runner.py",))
         assert "test_check.py" in plan.tests
         assert "test_runner.py" not in plan.tests
 
     def test_WHEN_chezmoi_lib_shell_changes_SHOULD_run_test_chezmoi_lib(self):
-        plan = plan_check(REPO, full=False, changed=("scripts/chezmoi_lib.sh",), add_delete=False)
+        plan = plan_check(REPO, full=False, changed=("scripts/chezmoi_lib.sh",))
         assert "test_chezmoi_lib.py" in plan.tests
         assert "tests/test_tmux_pickers.py" not in plan.tests
 
     def test_WHEN_yaml_parser_changes_SHOULD_run_direct_importer_tests(self):
-        plan = plan_check(REPO, full=False, changed=("scripts/yaml_parser.py",), add_delete=False)
+        plan = plan_check(REPO, full=False, changed=("scripts/yaml_parser.py",))
         assert "test_yaml_parser.py" in plan.tests
         assert "test_mcp_registry.py" in plan.tests
         assert "tests/test_tmux_pickers.py" not in plan.tests
 
     def test_WHEN_llama_model_catalog_changes_SHOULD_run_llama_lifecycle_shard(self):
-        plan = plan_check(REPO, full=False, changed=("home/dot_config/llama.cpp/models.ini.tmpl",), add_delete=False)
+        plan = plan_check(REPO, full=False, changed=("home/dot_config/llama.cpp/models.ini.tmpl",))
         assert "tests/test_llama_cpp_lifecycle.py" in plan.tests
 
     def test_WHEN_test_support_changes_SHOULD_run_cheap_shards_not_slow_pickers(self):
-        plan = plan_check(REPO, full=False, changed=("scripts/_test_support.py",), add_delete=False)
+        plan = plan_check(REPO, full=False, changed=("scripts/_test_support.py",))
         assert "test_yaml_parser.py" in plan.tests
         assert "test_check.py" in plan.tests
         for shard in SLOW_SHARDS:
@@ -121,7 +116,7 @@ class TestCheckPlan(unittest.TestCase):
     def test_WHEN_every_live_shard_SHOULD_be_reachable_from_a_production_path(self):
         selected: set[str] = set()
         for path in production_probe_paths(REPO):
-            selected.update(plan_check(REPO, full=False, changed=(path,), add_delete=False).tests)
+            selected.update(plan_check(REPO, full=False, changed=(path,)).tests)
         live = {path.relative_to(REPO / "scripts").as_posix() for path in discover_files()}
         assert sorted(live - selected) == []
 
@@ -201,15 +196,13 @@ class TestCollectChanged(unittest.TestCase):
             subprocess.run(["git", "commit", "-q", "-m", "base"], cwd=root, check=True)
             (root / "tracked.txt").write_text("b\n", encoding="utf-8")
             (root / "new.txt").write_text("n\n", encoding="utf-8")
-            names, add_delete = collect_changed(root, staged=False)
+            names = collect_changed(root, staged=False)
             assert "tracked.txt" in names
             assert "new.txt" in names
-            assert add_delete is True
 
             subprocess.run(["git", "add", "new.txt"], cwd=root, check=True)
-            staged, staged_add = collect_changed(root, staged=True)
+            staged = collect_changed(root, staged=True)
             assert staged == ("new.txt",)
-            assert staged_add is True
 
 
 class TestCheckCli(unittest.TestCase):

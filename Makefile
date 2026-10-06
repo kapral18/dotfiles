@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help fmt lint test check check-full verify-templates verify-mermaids verify-bin-surface verify-docs-navigation verify-agent-file-sizes docs docs-build docs-serve docs-clean
+.PHONY: help fmt lint test check check-full verify-templates verify-bin-surface verify-docs-navigation verify-agent-file-sizes docs docs-build docs-serve docs-clean
 
 help: ## Show available targets
 	@grep -E '^[a-z][a-z_-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -15,10 +15,7 @@ lint: ## Check formatting and lint (no writes)
 verify-templates: ## Render every chezmoi template to catch breakage before apply
 	python3 scripts/verify_templates.py
 
-verify-mermaids: ## Check .mermaids/ file-census counts against git ls-files
-	python3 scripts/verify_mermaids.py
-
-verify-bin-surface: ## Check ~/bin commands have completions, docs, and catalog coverage
+verify-bin-surface: ## Check ~/bin commands have completions and docs coverage
 	python3 scripts/verify_bin_surface.py
 
 verify-docs-navigation: ## Check docs/reference links and catalog coverage

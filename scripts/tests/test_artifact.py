@@ -30,7 +30,7 @@ class TestArtifactCommand(unittest.TestCase):
         theme = artifact_assets.detect_ambient_theme(REPO)
 
         assert theme["name"] == "dotfiles"
-        assert ".mermaids/" in theme["markers"]
+        assert ".chezmoiroot" in theme["markers"]
         assert "home/" in theme["markers"]
 
     def test_injects_ambient_theme_once(self):

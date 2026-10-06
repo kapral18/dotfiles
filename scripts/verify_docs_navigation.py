@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Verify the human-facing docs navigation layer stays wired to real targets.
 
-The Mermaid catalog is machine-checked by ``verify_mermaids.py`` and the comma
-command catalog is checked by ``verify_bin_surface.py``. The docs tree is the
-human-facing navigation layer for the repo, so this verifier keeps it from
-pointing at missing files, missing headings, or stale catalog coverage.
+The comma command catalog is checked by ``verify_bin_surface.py``. The docs tree
+is the human-facing navigation layer for the repo, so this verifier keeps it from
+pointing at missing files, missing headings, or stale script entries.
 
 Usage:
     verify_docs_navigation.py [REPO_ROOT]
@@ -14,7 +13,7 @@ Exit status is non-zero if:
 - no docs Markdown pages are found under ``docs/``
 - a relative Markdown link in any docs page points at a missing file/directory
 - a relative Markdown link in a docs page points at a missing Markdown heading
-- ``implementation-coverage.md`` omits one of the known catalog rows
+- the reference map's Scripts table names a missing script
 """
 
 from __future__ import annotations
@@ -25,24 +24,6 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
-
-EXPECTED_CATALOG_ROWS = (
-    "01",
-    "02",
-    "03",
-    "03b",
-    "05",
-    "06",
-    "07",
-    "07b",
-    "07c",
-    "08",
-    "09",
-    "10",
-    "11",
-    "12",
-    "13",
-)
 
 MARKDOWN_LINK_RE = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 CATALOG_ROW_RE = re.compile(r"^\|\s*`([^`]+)`\s*\|", re.MULTILINE)
@@ -197,25 +178,6 @@ def check_links(repo_root: Path, doc_paths: tuple[Path, ...] | None = None) -> l
     return failures
 
 
-def _catalog_rows(repo_root: Path) -> set[str]:
-    path = repo_root / "docs/reference/implementation-coverage.md"
-    if not path.is_file():
-        return set()
-    text = path.read_text(encoding="utf-8")
-    return set(CATALOG_ROW_RE.findall(text))
-
-
-def check_catalog_rows(repo_root: Path, expected: tuple[str, ...] = EXPECTED_CATALOG_ROWS) -> list[str]:
-    """Return failures for missing implementation-coverage catalog rows."""
-
-    actual = _catalog_rows(repo_root)
-    failures: list[str] = []
-    for row in expected:
-        if row not in actual:
-            failures.append(f"docs/reference/implementation-coverage.md: missing catalog row `{row}`")
-    return failures
-
-
 def _section_after_heading(text: str, heading: str) -> str:
     start = text.find(heading)
     if start == -1:
@@ -254,7 +216,6 @@ def check_docs_navigation(repo_root: Path) -> list[str]:
     return [
         *failures,
         *check_links(repo_root, discovered_docs),
-        *check_catalog_rows(repo_root),
         *check_reference_map_scripts(repo_root),
     ]
 
@@ -278,9 +239,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  ✗ {failure}", file=sys.stderr)
         return 1
 
-    print(
-        f"docs navigation verification passed ({len(discovered_docs)} pages, {len(EXPECTED_CATALOG_ROWS)} catalog rows)"
-    )
+    print(f"docs navigation verification passed ({len(discovered_docs)} pages)")
     return 0
 
 

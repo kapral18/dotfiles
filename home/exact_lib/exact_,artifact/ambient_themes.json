@@ -1,7 +1,7 @@
 {
   "dotfiles": {
     "label": "Dotfiles terminal",
-    "markers": [".mermaids/", "home/"],
+    "markers": [".chezmoiroot", "home/"],
     "tokens": {
       "bg": "#0f172a",
       "surface": "#111827",

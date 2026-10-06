@@ -65,7 +65,7 @@ def detect_ambient_theme(root: Path | None = None) -> dict[str, Any]:
             if isinstance(value, dict):
                 package_keys.update(value)
 
-    if (project_root / ".mermaids").is_dir() and (project_root / "home").is_dir():
+    if (project_root / ".chezmoiroot").is_file() and (project_root / "home").is_dir():
         return ambient_theme_from_catalog(catalog, "dotfiles", project_root)
     if (project_root / "docusaurus.config.js").exists() or (project_root / "website").is_dir():
         return ambient_theme_from_catalog(catalog, "docs", project_root)

@@ -55,17 +55,6 @@ def discover_files() -> list[Path]:
     return [path for path in files if path.name not in NOT_TEST_FILES]
 
 
-# Shard subprocesses run with PYTHONDONTWRITEBYTECODE from check.py, so tests
-# that inspect the working tree do not need a serial lead phase.
-LEAD_FILES = frozenset()
-
-
-def _split_lead(files: list[Path]) -> tuple[list[Path], list[Path]]:
-    lead = [f for f in files if f.name in LEAD_FILES]
-    shards = [f for f in files if f.name not in LEAD_FILES]
-    return lead, shards
-
-
 def module_name(path: Path) -> str:
     rel = path.relative_to(SCRIPTS).with_suffix("")
     return ".".join(rel.parts)
@@ -154,21 +143,11 @@ def main() -> int:
             sys.stdout.write(out)
             sys.stderr.write(err)
 
-    # Lead-phase files walk the working tree (git-status census) and must not
-    # race the __pycache__/.pyc files that sibling shard subprocesses create on
-    # import. Run them alone in the lead process before the parallel fan-out.
-    lead_paths, _ = _split_lead(files)
-    lead = [shard for shard in shards if shard.path in lead_paths]
-    parallel = [shard for shard in shards if shard.path not in lead_paths]
-    for shard in lead:
-        _, rc, elapsed, out, err = run_shard(shard)
-        report(shard, rc, elapsed, out, err)
-
     # Threads (not processes) for the pool: each unit of work is itself a
     # subprocess, so the GIL is irrelevant and ThreadPoolExecutor avoids a
     # pickling boundary for the file payloads.
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        futures = {pool.submit(run_shard, shard): shard for shard in parallel}
+        futures = {pool.submit(run_shard, shard): shard for shard in shards}
         for future in as_completed(futures):
             shard, rc, elapsed, out, err = future.result()
             report(shard, rc, elapsed, out, err)

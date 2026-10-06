@@ -19,7 +19,7 @@ make fmt
 
 `make check` runs [`bin/check`](bin/check): affected formatting lint, Python import lint, verify gates, and tests for paths dirty vs `HEAD` (plus untracked). Affected tests are the union of filename convention (`scripts/foo.sh` → `test_foo.py`), one-hop Python imports among `scripts/*.py`, and the prefix map in [`scripts/check.py`](scripts/check.py). Slow picker shards run only when tmux sources (or those shards) change. Humans may run the full suite with `make check-full` (`CHECK_FULL=1 bin/check --full`). Agents must not. Pre-commit never runs the full suite. `make test` is also human-only.
 
-Affected Python tests run file-sharded in parallel via [`scripts/test_runner.py`](scripts/test_runner.py) (one subprocess per selected `test_*.py` file, per-file `AGENT_MEMORY_SPEC_ROOT` isolation). `scripts/test_runner.py` itself is not a shard. Tests that snapshot the working tree (`test_verify_mermaids.py`) run in a lead phase so they cannot race shard `__pycache__` churn.
+Affected Python tests run file-sharded in parallel via [`scripts/test_runner.py`](scripts/test_runner.py) (one subprocess per selected `test_*.py` file). `scripts/test_runner.py` itself is not a shard.
 
 Details on formatters: [`docs/topics/code-quality/formatting.md`](docs/topics/code-quality/formatting.md).
 
@@ -35,6 +35,4 @@ On commit, the hook first runs `bin/fmt --check` only on staged paths. If those 
 
 ## Documentation
 
-If a change under `home/`, `scripts/`, or `tools/` affects behavior, commands, or workflows, update the matching page under [`docs/`](docs/). If a change alters flows shown in [`.mermaids/`](.mermaids/), update the affected diagram in the same change.
-
-Architecture map read order: [`.mermaids/README.md`](.mermaids/README.md).
+If a change under `home/`, `scripts/`, or `tools/` affects behavior, commands, or workflows, update the matching page under [`docs/`](docs/).

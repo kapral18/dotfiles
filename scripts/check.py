@@ -39,7 +39,6 @@ class Gate:
     argv: tuple[str, ...]
     prefixes: tuple[str, ...] = ()
     suffixes: tuple[str, ...] = ()
-    on_add_delete: bool = False
 
 
 @dataclass(frozen=True)
@@ -93,12 +92,6 @@ GATES: tuple[Gate, ...] = (
         suffixes=(".tmpl",),
     ),
     Gate(
-        name="verify-mermaids",
-        argv=("python3", "scripts/verify_mermaids.py"),
-        prefixes=(".mermaids/", "scripts/verify_mermaids.py"),
-        on_add_delete=True,
-    ),
-    Gate(
         name="verify-bin-surface",
         argv=("python3", "scripts/verify_bin_surface.py"),
         prefixes=(
@@ -106,7 +99,6 @@ GATES: tuple[Gate, ...] = (
             "home/exact_lib/",
             "home/dot_config/fish/completions/",
             "docs/topics/workflow/custom-commands/",
-            ".mermaids/07c-bin-commands.mmd",
             "scripts/verify_bin_surface.py",
         ),
     ),
@@ -292,20 +284,13 @@ def _matches(path: str, prefixes: tuple[str, ...], suffixes: tuple[str, ...] = (
     return any(path.endswith(suffix) for suffix in suffixes)
 
 
-def collect_changed(repo: Path, *, staged: bool) -> tuple[tuple[str, ...], bool]:
-    """Return (changed relative paths, had_add_or_delete)."""
+def collect_changed(repo: Path, *, staged: bool) -> tuple[str, ...]:
+    """Return changed relative paths."""
     if staged:
-        names = _git(repo, ["diff", "--cached", "--name-only", "--diff-filter=ACMRD"])
-        statuses = _git(repo, ["diff", "--cached", "--name-status", "--diff-filter=ACMRD"])
-    else:
-        names = _git(repo, ["diff", "--name-only", "HEAD"])
-        untracked = _git(repo, ["ls-files", "--others", "--exclude-standard"])
-        names = tuple(dict.fromkeys((*names, *untracked)))
-        statuses = _git(repo, ["diff", "--name-status", "HEAD"])
-        add_delete = any(line[:1] in {"A", "D", "R"} for line in statuses) or bool(untracked)
-        return names, add_delete
-    add_delete = any(line[:1] in {"A", "D", "R"} for line in statuses)
-    return names, add_delete
+        return _git(repo, ["diff", "--cached", "--name-only", "--diff-filter=ACMRD"])
+    names = _git(repo, ["diff", "--name-only", "HEAD"])
+    untracked = _git(repo, ["ls-files", "--others", "--exclude-standard"])
+    return tuple(dict.fromkeys((*names, *untracked)))
 
 
 def _git(repo: Path, args: list[str]) -> tuple[str, ...]:
@@ -444,7 +429,6 @@ def plan_check(
     *,
     full: bool,
     changed: tuple[str, ...],
-    add_delete: bool,
 ) -> CheckPlan:
     if full:
         tests = tuple(path.relative_to(repo / "scripts").as_posix() for path in _discover_tests(repo))
@@ -460,11 +444,7 @@ def plan_check(
 
     fmt_paths = tuple(path for path in changed if (repo / path).is_file())
     ruff_paths = tuple(path for path in fmt_paths if path.endswith(".py") and _matches(path, RUFF_PREFIXES))
-    gates = tuple(
-        gate.name
-        for gate in GATES
-        if (gate.on_add_delete and add_delete) or any(_matches(path, gate.prefixes, gate.suffixes) for path in changed)
-    )
+    gates = tuple(gate.name for gate in GATES if any(_matches(path, gate.prefixes, gate.suffixes) for path in changed))
     selected: list[str] = []
     for path in changed:
         selected.extend(_convention_tests(path, repo))
@@ -605,10 +585,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.full:
         changed: tuple[str, ...] = ()
-        add_delete = False
     else:
-        changed, add_delete = collect_changed(REPO, staged=args.staged)
-    plan = plan_check(REPO, full=args.full, changed=changed, add_delete=add_delete)
+        changed = collect_changed(REPO, staged=args.staged)
+    plan = plan_check(REPO, full=args.full, changed=changed)
     if args.print_plan:
         json.dump(plan.as_json(), sys.stdout, indent=2)
         sys.stdout.write("\n")

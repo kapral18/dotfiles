@@ -14,8 +14,7 @@ mprocs.log
 /home/dot_config/fish/config.local.fish
 /home/dot_config/fish/readonly_config.local.fish
 
-# Disposable fixtures scripts/test_pre_commit.py creates inside the repo (.tmp-pre-commit-*, .tmp-signing-home-*, .tmp-bin-fmt-*);
-# ignored so the mermaid census does not count them while the suite runs.
+# Disposable fixtures scripts/test_pre_commit.py creates inside the repo (.tmp-pre-commit-*, .tmp-signing-home-*, .tmp-bin-fmt-*).
 /.tmp-*/
-# Short socket-path scratch dir scripts/test_embed.py creates in the test cwd; same census reason.
+# Short socket-path scratch dir scripts/test_embed.py creates in the test cwd.
 .embed-test-tmp/

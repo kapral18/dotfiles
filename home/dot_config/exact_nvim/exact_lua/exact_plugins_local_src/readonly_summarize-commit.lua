@@ -369,9 +369,6 @@ local function is_docs_path(path)
   if normalized:match("^documentation/") or normalized:match("/documentation/") then
     return true
   end
-  if normalized:match("^%.mermaids/") then
-    return true
-  end
 
   return filename:match("^readme%.") ~= nil
     or filename:match("^changelog%.") ~= nil
