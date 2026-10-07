@@ -4,7 +4,7 @@ const bash = (command: string) => ({ tool: 'Bash', command, description: 'test' 
 
 test('refuses the reserved checks', async ($, on) => {
   on('tool.call', () => ({ result: {} as never }))
-  for (const command of ['make check-full', 'make test', 'make -C . test', 'make -C ${ROOT} test', 'cd x && make -j4 check-full', './bin/check --full', 'CHECK_FULL=1 python3 scripts/check.py --full', 'python3 scripts/test_runner.py', 'uv run scripts/test_runner.py']) {
+  for (const command of ['make check-full', 'make test', 'make -C . test', 'make -C ${ROOT} test', 'cd x && make -j4 check-full', './bin/check --full', 'CHECK_FULL=1 python3 scripts/check.py --full', 'python3 scripts/test_runner.py', 'uv run scripts/test_runner.py', 'uv run scripts/check.py --full', 'python3 -u scripts/check.py --full']) {
     expect((await $.tool.call(bash(command))).deny, command).toMatch(/reserves make check-full/)
   }
 })

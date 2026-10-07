@@ -18,6 +18,7 @@ If the scope is unclear, review the working-tree diff against its base branch.
   3. Coverage: is it already handled elsewhere, or caught by a check that ran? Do not report what a passing check covers.
   4. Fix: would the obvious fix work without breaking something else?
 - For each state-changing operation, check it against the other operations on the same object (both sides change it, remove then re-add, same name twice).
+- Check edge inputs (a deleted path, a symlink, a non-ASCII name, empty input), and whether a test fake hides the real command's behavior.
 - Question necessity: for each added piece, ask whether the stated intent needs it. Name the simplest design that meets the intent.
 - For instruction text (`~/AGENTS.md`, skills, agent prompts), check for rules that conflict, rules an agent cannot follow as written,
   terms with no clear test, and claims that do not match the code or tools they describe. A conflicting or unfollowable rule is at least medium.

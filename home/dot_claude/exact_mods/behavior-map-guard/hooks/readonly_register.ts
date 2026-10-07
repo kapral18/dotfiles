@@ -59,7 +59,7 @@ export const register: Register = on => {
           `${$.plugin.name}: ${unmapped} in ${repo} has no behavior-map area. ` +
           'Map it first: k-behavior-map skill, area init. ' +
           'For a file in the repo root or a shared directory, add it as a file anchor to the closest entry of an existing area instead. ' +
-          'If this edit is docs-only, test-only, or in a throwaway clone, retry it; this check stops a directory once per session.',
+          'Retry without a map only in a throwaway clone; this check stops a directory once per session.',
       }
     }
 

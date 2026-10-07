@@ -54,7 +54,8 @@ Both settings profiles load them all with `env.CLAUDE_CODE_PLUGIN_DIRS`. Pi, OMP
 | Edit in a repo with CODEOWNERS while the `team` option is empty                                                                                        | `~/AGENTS.md` §5 | once per repo per session; asks for the team                                                |
 
 This repo also has a project plugin, [`.claude/skills/dotfiles-guard/`](../../../../.claude/skills/dotfiles-guard/), which loads only in sessions started in this repo.
-It refuses `make check-full`, `make test`, `bin/check --full` (repo `AGENTS.md`), and `scripts/test_runner.py` (user request).
+It refuses `make check-full`, `make test`, `bin/check --full` (repo `AGENTS.md`), `scripts/test_runner.py`, and `scripts/check.py --full` (user request).
+A command inside a quoted string, such as `bash -c "make test"`, is not seen.
 It keeps a copy of `sop-guard`'s `shell.ts`, because a plugin cannot import outside its folder; `test_claude_mods.py` fails when the copies differ.
 
 The team is the `team` option (default `@elastic/kibana-management`), set under `pluginConfigs` in settings.
@@ -66,6 +67,9 @@ Its edit check does not see edits made through Bash; its Stop check reads `git d
 It can fire once on a read-only turn that ran Bash in a repo with older uncommitted code in an unmapped directory.
 When both Stop gates send a turn back, their messages are joined into one.
 `checked-gate` snapshots only the git repo of the session's working directory, so Bash changes in another repo are not seen.
+A turn whose only change is `git commit`, `stash`, or `reset` also changes the snapshot, so a commit-only reply is sent back once.
+`sop-guard` reads `$(...)` inside double quotes as data: `echo "$(pass show x)"` and a quoted `"$(curl https://buildkite.com/...)"` pass.
+Its chezmoi rule sees only managed files: a new file written into an `exact_` target directory passes, and the next `chezmoi apply` deletes it.
 Test a mod with `claude plugin test ~/.claude/mods/<mod>`; `claude plugin validate` checks what it hooks.
 The engine writes `.claude-plugin/types/` and `tsconfig.json` into each mod folder, so the mod folders are not `exact_`.
 

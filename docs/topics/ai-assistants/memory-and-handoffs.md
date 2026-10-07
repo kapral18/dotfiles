@@ -41,7 +41,7 @@ entries name at most three code entry points ("anchors"), and agents find intern
 ,behavior-map promote <branch>   # merge a merged branch's overlay into the base map
 ```
 
-Storage: `~/.local/share/k-ai-behavior-map/<repo>/` (override with `AGENT_BEHAVIOR_MAP_DIR`).
+Storage: `~/.local/share/k-ai-behavior-map/<repo>/` (override with `AGENT_BEHAVIOR_MAP_DIR`). `<repo>` is the main checkout's directory name; a checkout named `main`, `master`, or `trunk` (`~/work/<repo>/main`) uses its parent's name.
 
 | Layer                       | Path                         | Written from                                |
 | --------------------------- | ---------------------------- | ------------------------------------------- |

@@ -24,8 +24,8 @@ Out-of-scope fixes grow into unbounded feature work: redesigns, shared API chang
    A problem it reveals inside Fix Scope gets one more repair and a rerun of the affected checks;
    outside Fix Scope it is a proposal for the user.
 4. Stop. Report what was fixed, what was proposed, and what remains.
-   Exception: when this round came from a `~/AGENTS.md` §4 review and a fix adds a file or rewrites a function's body (not edits lines in it), §4 permits one review of the fix diff.
+   Exception: when this round came from verify mode, the `~/AGENTS.md` §3 step 6 fix loop reviews each fix diff until no supported medium or higher finding remains, the loop hits its cap, or the same cause comes back at the same place.
 
 After two attempts at the same failure without new evidence, stop and report the blocker.
-NEVER start another finder or review pass on your own, except that one fix-diff review.
+NEVER start another finder or review pass on your own, except the `~/AGENTS.md` §3 step 6 fix-diff reviews.
 Commit, push, reply, resolve, and publish only under their own explicit authority.

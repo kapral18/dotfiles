@@ -41,7 +41,8 @@ The body is at most 1200 bytes.
 - `show` prints a status line and an index; `show <area>` or `show <id>` prints full entries.
 - Entries are leads. Check flagged ones (`invalid`, `broken`, `stale`, `drift`, `conflict`, `unverified`) against the code first.
 - To write, edit the `show <id>` output, keep its `<!-- behavior-map ... -->` line, and pipe it to `,behavior-map save <id>`.
-  If `save` refuses because the entry changed, run `show <id>` again and merge. Use `--force` only for a new entry nobody else edits.
+  If `save` refuses because the entry changed, run `show <id>` again and merge. A new entry needs no header.
+  Use `--force` only to overwrite an entry you did not read.
 
 ## Modes
 
@@ -50,7 +51,7 @@ The body is at most 1200 bytes.
 - **area init**, without asking: when `affected` reports a planned code path as `unmapped`, map that area before you edit.
   Skip `/tmp` clones, and sessions that only read or review. Docs-only and test-only changes do not need an area.
   Name the area after the subsystem. Find its behaviors in its entry points, tests, docs, and recent `fix:` commits.
-  Keep at most 10, ranked by user impact. Verify each with the area's existing tests, then save.
+  Keep at most 10, ranked by user impact. Save each as `status: unverified`; update mode verifies it after the change.
   Claim each directory the area owns with a `dir/` anchor. Never claim a shared directory such as `bin/` or the repo root (`.`).
   A file in a shared directory that belongs to an existing area: add it as a file anchor to that area's closest entry.
   Start a new area only for a new subsystem. Before you start one, run `show --ids` so you do not duplicate an area.

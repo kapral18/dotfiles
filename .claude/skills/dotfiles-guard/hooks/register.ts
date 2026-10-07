@@ -10,7 +10,7 @@ const isReservedCheck = ([name, ...args]: string[]) => {
   const command = base(name)
   if (command === 'make') return args.some((arg, i) => (arg === 'test' || arg === 'check-full') && !MAKE_VALUE_FLAGS.has(args[i - 1] ?? ''))
   if ((name ?? '').endsWith('bin/check')) return args.includes('--full')
-  if (/^python3?$/.test(command) && args[0]?.endsWith('scripts/check.py')) return args.includes('--full')
+  if (/^(python3?|uv)$/.test(command) && args.some(arg => arg.endsWith('scripts/check.py'))) return args.includes('--full')
   if (command === 'test_runner.py') return true
   return /^(python3?|uv)$/.test(command) && args.some(arg => arg.endsWith('scripts/test_runner.py'))
 }

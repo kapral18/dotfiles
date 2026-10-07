@@ -13,10 +13,10 @@ Skills hold task mechanics only. They do not delegate work, keep their own lifec
 
 `k-review` reviews local changes, PRs, PR feedback, and plans inline. Its **verify mode** is the bounded replacement for multi-round review loops:
 
-1. One fresh `k-agent-reviewer` run on the frozen scope.
-2. The main session checks each finding against source and fixes the supported ones once.
-3. One re-check of the changed lines and affected checks.
-4. Stop and report what remains. Another round needs the user to ask.
+1. Two fresh `k-agent-reviewer` runs in parallel on the frozen scope: the whole task change with its map and memory writes. Their findings are merged.
+2. The main session checks each finding against source and fixes the supported ones, low ones too, without asking.
+3. A fix loop: one reviewer checks only the fix diff, and the session fixes its supported findings. It stops when no supported medium or higher finding remains, after three fix-diff reviews, or when the same cause comes back at the same place.
+4. Report what remains. Another full review needs the user to ask.
 
 `k-light-review` is the quick inline variant for small, self-authored, low-risk changes.
 `k-code-quality` and its children (`-tests`, `-web`, `-react`) set the writing standard, so most slop is avoided before review.
@@ -70,7 +70,7 @@ Skills hold task mechanics only. They do not delegate work, keep their own lifec
 | `k-present-pr`                  | Build and open a self-contained HTML walkthrough that makes a PR review-ready.                                                                                                                                                                                      | manual     |
 | `k-prototype`                   | Use when building a throwaway prototype to sanity-check logic/state or explore UI direction before committing.                                                                                                                                                      |            |
 | `k-public-sources`              | Use when inspecting external public source or synthesizing evidence across sources.                                                                                                                                                                                 |            |
-| `k-review`                      | Use to review local changes, a PR, review threads (PR fixes), or a plan, and for an independent capped verify pass (fresh reviewer, one fix round, one re-check).                                                                                                   |            |
+| `k-review`                      | Use to review local changes, a PR, review threads (PR fixes), or a plan, and for an independent capped verify pass (two fresh reviewers, then a bounded fix loop).                                                                                                  |            |
 | `k-sem`                         | Use when entity history across file moves, per-entity blame, or entity-level diff with rename/cosmetic classification needs ,sem; indexed structural queries only on explicit request.                                                                              |            |
 | `k-slack`                       | Use for Slack MCP effects: send/schedule messages, thread replies, reactions, canvas create/update, Slack drafts.                                                                                                                                                   |            |
 | `k-spec`                        | Use when a request needs a compact implementation plan with explicit acceptance criteria before coding.                                                                                                                                                             |            |

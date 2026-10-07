@@ -17,8 +17,8 @@ Everything else stays inline: implementation, verification, memory, and routine 
 
 ## Rules
 
-- A reviewer is read-only and returns at most 10 findings once. When the main session may edit the reviewed code, it fixes supported findings once and stops (`k-review` verify mode).
-- No review → fix → review loops. The one exception: a fix that adds a file or rewrites a function's body (not edits lines in it) gets one review of its diff only, and that review's findings stay open.
+- A reviewer is read-only and returns at most 10 findings once. Verify mode runs two reviewers in parallel on the whole task change (with its map and memory writes) and merges their findings. When the main session may edit the reviewed code, it fixes supported findings and runs the bounded fix loop (`k-review` verify mode).
+- One full review per change. After it, a bounded fix loop: one reviewer checks only each fix diff, until no supported medium or higher finding remains, at most three times, or until the same cause comes back at the same place. A wording-only fix (no rule, command, or behavior change) skips the review; findings of the last review are listed, not fixed, except wording-only lows.
 - The caller passes only scope, intent, check results, and known gaps. Reviewers report every severity; the medium threshold applies only to the agent's own report.
 - Children cannot start their own subagents: Claude `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1`, Pi `maxSubagentDepth: 0` in each profile, OMP `task.maxRecursionDepth: 1`.
 

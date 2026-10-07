@@ -18,7 +18,8 @@ For one-at-a-time work, the selected thread is the batch; do not silently drain 
 
 1. Implement the authorized fixes inside `~/.agents/skills/k-review/references/review_fixes.md` Fix Scope, with regression tests and docs.
 2. Run the combined checks once on the finished batch. No per-thread test runs.
-3. Re-read the fix diff once against each thread's concern. Do not start another review round.
+3. Re-read the fix diff once against each thread's concern.
+   Do not start another review round, except the `~/AGENTS.md` §3 steps 5–6 review that a risky fix needs.
 4. Apply Existing Pending Review Reconciliation (`pr_common.md`) before drafting replies.
 5. Load `k-communication` for reply wording. Cite commit links only after an authorized commit exists; never claim an unverified outcome.
 

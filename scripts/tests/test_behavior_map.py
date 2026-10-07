@@ -75,6 +75,16 @@ class TestBehaviorMap(unittest.TestCase):
         self.assertTrue((self.store / "proj/base/app/run.md").is_file())
         self.assertIn("app/run", self.ok("show", "--ids", cwd=self.feature))
 
+    def test_SHOULD_name_a_repo_checked_out_as_its_branch_by_the_parent_directory(self):
+        paths = []
+        for name in ("kibana", "libra"):
+            checkout = Path(self.tmp.name) / name / "main"
+            checkout.mkdir(parents=True)
+            self.git("init", "-q", "-b", "main", str(checkout), cwd=checkout)
+            paths.append(self.ok("path", cwd=checkout).strip())
+
+        self.assertEqual([Path(path).name for path in paths], ["kibana", "libra"])
+
     def test_SHOULD_reject_entries_that_break_the_format(self):
         bad = entry("app/run", "x").replace("Expect: x\n", "Notes: free text\n")
 

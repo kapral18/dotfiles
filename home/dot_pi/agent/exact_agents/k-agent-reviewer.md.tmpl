@@ -1,6 +1,6 @@
 ---
 name: k-agent-reviewer
-description: Fresh-context adversarial reviewer for a change, PR, or plan. Use once on a finished risky change (per ~/AGENTS.md §4) or when the user asks for a review; returns anchored findings once.
+description: Fresh-context adversarial reviewer for a change, PR, or plan. Use on a finished risky change and its fix diffs (per ~/AGENTS.md §3 steps 5–6) or when the user asks for a review; returns anchored findings once.
 model: "openai-codex/gpt-6.1-sol"
 thinking: "high"
 tools: read, grep, find, ls, bash

@@ -70,7 +70,9 @@ def ref_exists(ref: str) -> bool:
 def detect_repo() -> str:
     common = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir"))
     # A main checkout's common dir is `<repo>/.git`; a bare repo's is the repo itself.
-    name = (common.parent if common.name == ".git" else common).name
+    checkout = common.parent if common.name == ".git" else common
+    # `<repo>/main` (the ,gh-tfork layout) names the repo by its parent directory.
+    name = checkout.parent.name if checkout.name in ("main", "master", "trunk") else checkout.name
     return re.sub(r"[^a-z0-9._-]+", "-", name.lower()).strip("-.")[:64] or "repo"
 
 
