@@ -46,12 +46,13 @@ Canonical MCP registry plus generator/injectors. See [MCP servers](../topics/ai-
 
 On-demand CLIs only. See [Memory and handoffs](../topics/ai-assistants/memory-and-handoffs.md).
 
-| Component                     | Source path                                                                                                                |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Knowledge base (`,ai-kb`)     | [`home/exact_bin/executable_,ai-kb`](../../home/exact_bin/executable_,ai-kb), [`scripts/ai_kb.py`](../../scripts/ai_kb.py) |
-| Session handoffs (`,handoff`) | [`home/exact_bin/executable_,handoff`](../../home/exact_bin/executable_,handoff)                                           |
-| Embedding service             | [`scripts/embed.py`](../../scripts/embed.py), [`scripts/embed_runner.py`](../../scripts/embed_runner.py)                   |
-| Vector retrieval              | [`scripts/vec_runner.py`](../../scripts/vec_runner.py)                                                                     |
+| Component                       | Source path                                                                                                                |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Knowledge base (`,ai-kb`)       | [`home/exact_bin/executable_,ai-kb`](../../home/exact_bin/executable_,ai-kb), [`scripts/ai_kb.py`](../../scripts/ai_kb.py) |
+| Session handoffs (`,handoff`)   | [`home/exact_bin/executable_,handoff`](../../home/exact_bin/executable_,handoff)                                           |
+| Behavior maps (`,behavior-map`) | [`home/exact_lib/exact_,behavior-map/main.py`](../../home/exact_lib/exact_,behavior-map/main.py)                           |
+| Embedding service               | [`scripts/embed.py`](../../scripts/embed.py), [`scripts/embed_runner.py`](../../scripts/embed_runner.py)                   |
+| Vector retrieval                | [`scripts/vec_runner.py`](../../scripts/vec_runner.py)                                                                     |
 
 ## Local inference
 

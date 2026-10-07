@@ -19,7 +19,8 @@ Pick exactly one. If intent stays ambiguous after the checks in Disambiguation, 
 | PR fix        | address reviewer comments, reply to or resolve threads          | `~/.agents/skills/k-review/references/pr_fix.md`        |
 | Plan review   | a plan, design doc, RFC, issue body, or pasted text             | `~/.agents/skills/k-review/references/plan_review.md`   |
 
-A small, self-authored, local-only change with no risk trigger goes to `k-light-review` unless the user asked for a full review.
+A review that `~/AGENTS.md` §4 requires always uses Verify mode.
+Otherwise, a small, self-authored, local-only change with no risk trigger goes to `k-light-review` unless the user asked for a full review.
 Risk triggers: PR context, security/auth/crypto, persisted data, public API, deletion or replacement, stateful/parser/workflow behavior, or a needed base/runtime investigation.
 
 If the conversation is already in a mode, "continue" or "next" stays in it.
@@ -61,17 +62,21 @@ Each finding: `[critical|high|medium|low] file:line — trigger → consequence 
 
 ## Verify mode (independent review, capped)
 
-Use when the user asks for an independent, fresh, or second-opinion review, or asks to verify or de-slop a change.
+Use when `~/AGENTS.md` §4 requires a review of a finished change, or when the user asks for an independent, fresh, or second-opinion review, or to verify or de-slop a change.
 
 1. Fix the scope: base..head or the working tree, the intent in one line, and the checks already run with their results.
 2. Run one fresh reviewer: the `k-agent-reviewer` subagent where the harness has it (Claude Code, Pi, OMP).
-   Pass only the scope, intent, and check results. Without that profile, review inline with the same output format.
+   Pass only the scope, intent, check results, and known gaps.
+   Without that profile, review inline with the same output format.
 3. Check each returned finding against source yourself. Reject unsupported ones with a one-line reason.
 4. Fix the supported findings once, only when `authorship.md` gives you write scope and the fix stays inside `~/.agents/skills/k-review/references/review_fixes.md` Fix Scope.
-5. Re-check only what the fix changed: read the fix diff and rerun the checks it affects. Do not run the reviewer again.
+5. Re-check only what the fix changed: read the fix diff and rerun the checks it affects.
+   Do not run the reviewer again, except the one fix-diff review `~/AGENTS.md` §4 permits for a fix that adds a file or rewrites a function's body (not edits lines in it).
+   Report that review's findings under `Open:`; do not fix them or review again.
 6. Stop and report: fixed (with evidence), rejected (with reason), and remaining findings for the user.
 
-NEVER start a second review round on your own. Another round needs the user to ask for it.
+NEVER start a second review round on your own; the §4 fix-diff review covers only the fix diff and ends the chain.
+Another full round needs the user to ask for it.
 
 ## Posting
 

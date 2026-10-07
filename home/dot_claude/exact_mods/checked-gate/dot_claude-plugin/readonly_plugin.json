@@ -1,0 +1,8 @@
+{
+  "name": "checked-gate",
+  "version": "0.1.0",
+  "description": "When a turn changed files and the final message has no `Checked:` list, sends the model back once to add it.",
+  "author": {
+    "name": "kapral18"
+  }
+}

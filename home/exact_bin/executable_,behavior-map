@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Description: Per-repo behavior map for agents: base entries plus per-branch overlays.
+set -euo pipefail
+lib="$HOME/lib/,behavior-map/main.py"
+if [[ ! -f "$lib" ]]; then
+  echo "Error: ,behavior-map library not found at $lib. Run chezmoi apply --no-tty ~/lib/,behavior-map/main.py." >&2
+  exit 127
+fi
+exec python3 "$lib" "$@"

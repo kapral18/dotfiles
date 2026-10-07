@@ -30,7 +30,7 @@ Implement the approved `k-spec` plan inline.
   Windows coverage only when asked, through `k-live-ui-windows`.
 - On a failure, fix within scope and rerun the failed and affected checks.
   After two attempts without new evidence, stop and report the blocker.
-- For an independent check of high-risk work, use `k-review` verify mode only when the user asks for it.
+- Run the independent review that `~/AGENTS.md` §4 requires through `k-review` verify mode.
 
 ## Output
 

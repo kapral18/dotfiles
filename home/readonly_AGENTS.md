@@ -35,6 +35,21 @@ These rules apply to every session. Platform and system instructions stay author
   Do not run checks after every edit, and do not write new wrapper scripts for checks the project already has.
 - Long check output goes to a log file; read the exit status, counts, and failing names, not the whole log.
 - Report results faithfully: a failing check is reported with its output; a skipped step is named; a passing result is stated plainly.
+- Before the final report, run the change once on a realistic target. Examples: the command in a real repo, the page, the config.
+  If the run changes anything outside this machine or deletes or overwrites user data, use a copy instead.
+  If the change has no runnable target, or no copy works, skip the run and say why.
+- Test each operation your change adds or modifies against the other operations on the same object.
+  Examples: both sides change it, remove then re-add, the same name twice.
+- Do the run and the operation tests before the §4 review, and give the reviewer the results.
+- The report has a `Checked:` list. Each item is a claim from the report or from a subagent prompt, with its evidence.
+  Evidence is a command and its result, or a `file:line`. After a §4 fix round, update the items the fix touched.
+- Done means no known issue of medium or higher severity: a bug, a broken contract, a conflicting or unfollowable rule, or a risky gap.
+  List the remaining low issues (wording, polish) in a `Known gaps:` list.
+  If a medium or higher issue remains after the §4 fix round, say the change is not done.
+  List each one under `Open:` with what blocks the fix.
+  This threshold applies to your report, not to a reviewer's: reviewers report every severity.
+- When the user asks to verify again, run `k-review` verify mode once.
+  In your report, list and fix only the medium or higher issues that your earlier report did not list. If there are none, say so.
 - After two attempts at the same failure without new evidence, stop editing.
   Investigate read-only, then either fix with a concrete cause or report the blocker.
 - Before a destructive or state-changing command (delete, restart, config edit, force push), check that the evidence supports that exact action.
@@ -45,9 +60,16 @@ These rules apply to every session. Platform and system instructions stay author
 - Work inline by default. You already hold the context; a subagent must rebuild it at full price.
 - Use the search subagent (Claude `Explore`, OMP `scout`, Pi `k-agent-scout`) only for broad read-only searches whose raw output you do not need.
   Give it the question and the paths; take its answer as a lead.
-- Run the `k-agent-reviewer` subagent only when the user asks for a review.
-  If you may edit the reviewed code, fix its supported findings once; report the rest. Never loop review → fix → review.
-- Do not delegate implementation, checks, or memory work. The requested review above is the only delegated verification.
+- Run `k-agent-reviewer` once on a finished change that does one of these:
+  adds a command or module; changes persisted state, a parser, or concurrency;
+  or changes a rule or workflow step in `~/AGENTS.md`, a `~/.agents/skills` skill, or a `k-agent-*` profile.
+  Wording-only edits do not count.
+  Use `k-review` verify mode: if you may edit, fix supported findings once; report the rest. Never loop review → fix → review.
+  A fix that adds a file or rewrites a function's body (not edits lines in it) is new code:
+  review only its diff with one more reviewer, or list the finding under `Open:`.
+  Findings from that fix-diff review go under `Open:`; no further review.
+- When the user asks for a review, use `k-review` and let it pick the mode.
+- Do not delegate implementation, checks, or memory work. The reviews above are the only delegated verification.
 
 ## 5. Side effects and publication
 
@@ -75,6 +97,8 @@ These rules apply to every session. Platform and system instructions stay author
   Use it when you start on a subsystem you may have worked on before, or when you hit an unfamiliar error. Treat results as leads.
 - `,ai-kb remember` only for a verified, reusable gotcha or recipe with literal identifiers and a source.
   Not for task progress or session notes.
+- `,behavior-map` keeps the critical behaviors of each repo. Before and after you change code in a repo, use the `k-behavior-map` skill.
+  It checks your change against the map and maps an unmapped area first. Treat entries as leads.
 - Task progress that must survive a session or harness switch goes in `,handoff save <topic>`;
   `continue <topic>` starts with `,handoff show <topic>`. The `k-handoff` skill owns the note format.
 
@@ -87,6 +111,7 @@ Goal: the least reading for the user, with no lost facts. When rules below compe
 - Active voice. Common words, but keep exact technical names. One term per concept; one meaning per term. No idioms.
 - Line 1 answers, decides, or names the next action. No preamble, recap of steps, or closing pleasantries.
 - Length budgets: a direct answer ≤80 words; a comparison or audit ≤120 words plus one table or list; a multi-part investigation ≤200 words.
+  A change report: ≤200 words, plus its `Checked:` and `Known gaps:` lists.
   To meet a budget, cut words, never facts.
 - One idea per line; at most two sentences per paragraph.
   Prefer a table, a `file:line — finding` list, or a short decision block over prose.

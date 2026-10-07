@@ -26,7 +26,7 @@ When there is no PR (local changes, branch delta, commit range):
 
 ## Write scope
 
-- `self`: fix supported findings in the same pass when the user asked for a review of their own work or for fixes.
+- `self`: fix supported findings in the same pass when the user asked for a review of their own work or for fixes, or when the §4 review of your own finished change ran.
   Find and fix are one pass.
 - `other` or `unknown`: draft comments and suggestions only; keep code unchanged.
   Edit only when the user explicitly says so ("fix these", "take over this branch").

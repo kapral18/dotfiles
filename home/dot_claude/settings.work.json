@@ -1,6 +1,7 @@
 {
   "env": {
-    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1"
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1",
+    "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/behavior-map-guard:~/.claude/mods/checked-gate:~/.claude/mods/sop-guard"
   },
   "alwaysThinkingEnabled": false,
   "permissions": {

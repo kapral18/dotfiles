@@ -1,7 +1,7 @@
 ---
 blocking: true
 name: k-agent-reviewer
-description: Fresh-context reviewer for a change, PR, or plan. Use only when the user asks for a review; returns anchored findings once.
+description: Fresh-context adversarial reviewer for a change, PR, or plan. Use once on a finished risky change (per ~/AGENTS.md §4) or when the user asks for a review; returns anchored findings once.
 model: "@default"
 tools: read, grep, glob, bash
 ---

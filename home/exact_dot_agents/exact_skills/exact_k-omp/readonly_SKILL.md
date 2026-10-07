@@ -7,7 +7,7 @@ description: "Use in OMP to select native structured-read, code-intelligence, an
 
 Use this skill only when the active harness is OMP.
 It realizes generic skill contracts with OMP-native tools; it does not change their workflow, evidence, or publication gates.
-Subagents: the native `scout` agent for broad read-only search, and `k-agent-reviewer` only when the user asks for a review.
+Subagents: the native `scout` agent for broad read-only search, and `k-agent-reviewer` as `~/AGENTS.md` §4 says.
 
 ## Browser boundary
 

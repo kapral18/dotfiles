@@ -148,6 +148,15 @@ TEST_RULES: tuple[TestRule, ...] = (
     TestRule(prefixes=("home/dot_config/fish/completions/readonly_,q.fish",), tests=("tests/test_q.py",)),
     TestRule(
         prefixes=(
+            ".claude/skills/dotfiles-guard/",
+            "home/dot_claude/exact_mods/",
+            "home/dot_claude/settings.personal.json",
+            "home/dot_claude/settings.work.json",
+        ),
+        tests=("tests/test_claude_mods.py",),
+    ),
+    TestRule(
+        prefixes=(
             "home/exact_bin/executable_,sem",
             "home/dot_sem/",
             "home/exact_dot_agents/exact_skills/exact_k-sem/",

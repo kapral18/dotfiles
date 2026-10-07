@@ -1,0 +1,16 @@
+{
+  "name": "sop-guard",
+  "version": "0.1.0",
+  "description": "Refuses tool calls that break ~/AGENTS.md and skill hard rules: chezmoi-managed targets, CODEOWNERS outside the team, secret printing, default tmux server changes, and direct Buildkite fetches.",
+  "author": {
+    "name": "kapral18"
+  },
+  "userConfig": {
+    "team": {
+      "type": "string",
+      "title": "CODEOWNERS team",
+      "description": "The owner that may be edited without a stop, as CODEOWNERS spells it.",
+      "default": "@elastic/kibana-management"
+    }
+  }
+}
