@@ -13,7 +13,7 @@ Skills hold task mechanics only. They do not delegate work, keep their own lifec
 
 `k-review` reviews local changes, PRs, PR feedback, and plans inline. Its **verify mode** is the bounded replacement for multi-round review loops:
 
-1. Two fresh `k-agent-reviewer` runs in parallel on the frozen scope: the whole task change with its map and memory writes. Their findings are merged.
+1. Two fresh reviewers run in parallel using `k-review`'s [Reviewer launch procedure](subagents.md#profiles). The frozen scope covers the whole task change with its map and memory writes. Their findings are merged.
 2. The main session checks each finding against source and fixes the supported ones, low ones too, without asking.
 3. A fix loop: one reviewer checks only the fix diff, and the session fixes its supported findings. It stops when no supported medium or higher finding remains, after three fix-diff reviews, or when the same cause comes back at the same place.
 4. Report what remains. Another full review needs the user to ask.

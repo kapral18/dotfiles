@@ -55,7 +55,7 @@ Storage: `~/.local/share/k-ai-behavior-map/<repo>/` (override with `AGENT_BEHAVI
 - `promote` copies unchanged-base entries, three-way merges the rest with `git merge-file`, and keeps conflicts in `.merge.md` files until `resolve`.
 - An area owns the directories its entries claim with `dir/` anchors; a file anchor claims only that file. `affected` lists entries anchored to a changed file, whole areas that own one, and paths in no area.
 - The `k-behavior-map` skill owns the lifecycle. Before a code change it runs `affected` on the planned paths and maps an unmapped area first (area init, at most 10 entries, verified with the area's tests; skipped for `/tmp` clones and read-only sessions).
-  In Claude Code the `behavior-map-guard` mod backs this up: it refuses the first edit in an unmapped directory and sends a turn back once when it changed code there ([Claude mods](tool-configs/claude-gemini.md#mods)).
+  In Claude Code the `behavior-map-guard` mod refuses the first edit in an unmapped directory and notes mapped entries an edit touches. Bash-only edits rely on the SOP, not the mod ([Claude mods](tool-configs/claude-gemini.md#mods)).
   After the change the skill updates the listed entries. Repo-wide init, add, refresh, promote and resolve are the other modes.
 
 ## `,ai-kb` — durable, reusable knowledge

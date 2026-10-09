@@ -8,8 +8,8 @@ const root = resolve(import.meta.dir, "../..")
 const temp = mkdtempSync(join(tmpdir(), "context-mode-tests-"))
 afterAll(() => rmSync(temp, { recursive: true, force: true }))
 const adapters = [
-  ["pi", "home/dot_pi/agent/exact_extensions/context-mode.ts.tmpl", ["session_start", "session_tree", "model_select", "before_agent_start"]],
-  ["omp", "home/dot_omp/private_agent/extensions/context-mode.ts.tmpl", ["session_start", "session_switch", "session_tree", "before_agent_start"]],
+  ["pi", "home/dot_pi/agent/exact_extensions/context-mode.ts.tmpl"],
+  ["omp", "home/dot_omp/private_agent/extensions/context-mode.ts.tmpl"],
 ] as const
 // Bun caches directory entries during import resolution. Materialize the whole
 // fixture before the first import, as chezmoi does before runtime startup.
@@ -341,37 +341,200 @@ describe("WHEN the native active branch grows", () => {
   }
 })
 
-for (const [name, _source, expectedEvents] of adapters) {
-  describe(`WHEN ${name} loads the rendered extension`, () => {
-    it("SHOULD wire native lifecycle events and preserve explicit effort", async () => {
-      const h = harness()
-      const handlers = new Map<string, (_: unknown, ctx: typeof h.ctx) => Promise<void>>()
-      let command: { handler: typeof h.policy.command; getArgumentCompletions: (prefix: string) => unknown } | undefined
-      let effort = "high"
-      const api = {
-        setModel: async (next: Model) => { await h.select(next); effort = "low"; return true },
-        getThinkingLevel: () => effort,
-        setThinkingLevel: (value: string) => { effort = value },
-        appendEntry: h.append,
-        on: (event: string, handler: (_: unknown, ctx: typeof h.ctx) => Promise<void>) => handlers.set(event, handler),
-        registerCommand: (name: string, value: NonNullable<typeof command>) => {
-          expect(name).toBe("context-mode")
-          command = value
-        },
-      }
-      const path = join(temp, `${name}.ts`)
-      const { default: register } = await import(path)
-      register(api)
-      expect([...handlers.keys()]).toEqual(expectedEvents)
-      await handlers.get("session_start")!({}, h.ctx)
-      expect(h.current.contextWindow).toBe(272_000)
-      expect(effort).toBe("high")
-      await command!.handler("long", h.ctx)
-      expect(h.current.contextWindow).toBe(1_000_000)
-      expect(effort).toBe("high")
-      expect(command!.getArgumentCompletions("s")).toEqual([
+async function loadAdapter(name: "pi" | "omp") {
+  const h = harness()
+  const timers: (() => Promise<void>)[] = []
+  const waiters = new Set<() => void>()
+  const discoveryWork: Promise<void>[] = []
+  let discovered = false
+  let effort = "high"
+  let beforeSelect = async () => {}
+  const ctx = {
+    ...h.ctx,
+    get model() { return h.current },
+    modelRegistry: {
+      ...h.ctx.modelRegistry,
+      awaitInitialBackgroundRefresh(signal?: AbortSignal) {
+        if (discovered || signal?.aborted) return Promise.resolve()
+        const { promise, resolve } = Promise.withResolvers<void>()
+        const settle = () => {
+          signal?.removeEventListener("abort", settle)
+          waiters.delete(settle)
+          resolve()
+        }
+        waiters.add(settle)
+        signal?.addEventListener("abort", settle, { once: true })
+        discoveryWork.push(promise)
+        return promise
+      },
+    },
+    setTimeout: (callback: () => Promise<void>) => { timers.push(callback) },
+  }
+  type HandlerResult = void | { cancel: boolean }
+  const handlers = new Map<string, (_: unknown, context: typeof ctx) => HandlerResult | Promise<HandlerResult>>()
+  let command: { handler: typeof h.policy.command; getArgumentCompletions: (prefix: string) => unknown } | undefined
+  // The rendered module path is created at runtime, so a static import cannot load it.
+  const { default: register } = await import(join(temp, `${name}.ts`))
+  register({
+    setModel: async (next: Model) => { await beforeSelect(); await h.select(next); effort = "low"; return true },
+    getThinkingLevel: () => effort,
+    setThinkingLevel: (value: string) => { effort = value },
+    appendEntry: h.append,
+    on: (event: string, handler: (_: unknown, context: typeof ctx) => HandlerResult | Promise<HandlerResult>) => handlers.set(event, handler),
+    registerCommand: (_name: string, value: NonNullable<typeof command>) => { command = value },
+  })
+  return {
+    h,
+    set beforeSelect(callback: () => Promise<void>) { beforeSelect = callback },
+    get effort() { return effort },
+    emit: (event: string) => handlers.get(event)?.({}, ctx),
+    command: (args: string) => command!.handler(args, ctx),
+    complete: (prefix: string) => command!.getArgumentCompletions(prefix),
+    flushTimers: () => Promise.all(timers.splice(0).map(callback => callback())),
+    async finishDiscovery() {
+      discovered = true
+      for (const settle of waiters) settle()
+      await Promise.all(discoveryWork)
+    },
+  }
+}
+
+for (const [name] of adapters) {
+  describe(`WHEN ${name} changes the working context window`, () => {
+    it("SHOULD preserve explicit effort through short and long mode", async () => {
+      const adapter = await loadAdapter(name)
+      await adapter.emit("session_start")
+      expect(adapter.h.current.contextWindow).toBe(272_000)
+      expect(adapter.effort).toBe("high")
+      await adapter.command("long")
+      expect(adapter.h.current.contextWindow).toBe(1_000_000)
+      expect(adapter.effort).toBe("high")
+    })
+  })
+  describe(`WHEN ${name} completes a context-mode prefix`, () => {
+    it("SHOULD offer matching commands and exclude nonmatching commands", async () => {
+      const adapter = await loadAdapter(name)
+      expect(adapter.complete("s")).toEqual([
         { value: "short", label: "short" }, { value: "status", label: "status" },
       ])
     })
   })
 }
+
+describe("WHEN OMP finishes deferred model discovery", () => {
+  it("SHOULD restore short mode without blocking startup or mutating the catalog", async () => {
+    const adapter = await loadAdapter("omp")
+    await adapter.emit("session_start")
+    const refreshed = model("gpt-6-astra", "openrouter", 922_000)
+    adapter.h.switch(refreshed)
+
+    await adapter.finishDiscovery()
+    await adapter.flushTimers()
+
+    expect(adapter.h.current.contextWindow).toBe(272_000)
+    expect(refreshed.contextWindow).toBe(922_000)
+    expect(adapter.h.current.id).toBe("gpt-6-astra")
+    expect(adapter.effort).toBe("high")
+  })
+
+  it("SHOULD keep a long-mode choice made before discovery finishes", async () => {
+    const adapter = await loadAdapter("omp")
+    await adapter.emit("session_start")
+    await adapter.command("long")
+    adapter.h.switch(model("gpt-6-astra", "openrouter", 922_000))
+
+    await adapter.finishDiscovery()
+    await adapter.flushTimers()
+
+    expect(adapter.h.current.contextWindow).toBe(922_000)
+    expect(adapter.h.entries.at(-1)?.data).toEqual({
+      provider: "openrouter", model: "gpt-6-astra", mode: "long",
+    })
+  })
+
+  it("SHOULD use the current model rather than restoring the startup model", async () => {
+    const adapter = await loadAdapter("omp")
+    await adapter.emit("session_start")
+    adapter.h.switch(model("claude-fable-5.1", "anthropic", 500_000))
+
+    await adapter.finishDiscovery()
+    await adapter.flushTimers()
+
+    expect(adapter.h.current.id).toBe("claude-fable-5.1")
+    expect(adapter.h.current.contextWindow).toBe(500_000)
+  })
+
+  it("SHOULD leave a closed session unchanged when discovery finishes", async () => {
+    const adapter = await loadAdapter("omp")
+    await adapter.emit("session_start")
+    const background = adapter.flushTimers()
+    await adapter.emit("session_shutdown")
+    adapter.h.switch(model("gpt-6-astra", "openrouter", 922_000))
+
+    await adapter.finishDiscovery()
+    await background
+
+    expect(adapter.h.current.contextWindow).toBe(922_000)
+  })
+
+  it("SHOULD wait for an overlapping short-mode command to finish saving", async () => {
+    const adapter = await loadAdapter("omp")
+    await adapter.emit("session_start")
+    await adapter.command("long")
+    const background = adapter.flushTimers()
+    const entered = Promise.withResolvers<void>()
+    const release = Promise.withResolvers<void>()
+    adapter.h.onSelect = async () => { entered.resolve(); await release.promise }
+    const command = adapter.command("short")
+    await entered.promise
+    adapter.h.switch(model("gpt-6-astra", "openrouter", 922_000))
+
+    await adapter.finishDiscovery()
+    release.resolve()
+    await command
+    await background
+
+    expect(adapter.h.current.contextWindow).toBe(272_000)
+    expect(adapter.h.entries.at(-1)?.data).toEqual({
+      provider: "openrouter", model: "gpt-6-astra", mode: "short",
+    })
+  })
+
+  it.each(["session_before_switch", "session_before_branch", "session_before_tree"])(
+    "SHOULD refuse %s synchronously while a correction is awaiting authentication",
+    async (event) => {
+      const adapter = await loadAdapter("omp")
+      await adapter.emit("session_start")
+      const background = adapter.flushTimers()
+      const entered = Promise.withResolvers<void>()
+      const release = Promise.withResolvers<void>()
+      adapter.beforeSelect = async () => { entered.resolve(); await release.promise }
+      adapter.h.switch(model("gpt-6-astra", "openrouter", 922_000))
+      await adapter.finishDiscovery()
+      await entered.promise
+
+      // A synchronous cancel cannot be lost to the native async-handler timeout.
+      const blocked = adapter.emit(event)
+      release.resolve()
+      await background
+
+      expect(blocked).toEqual({ cancel: true })
+      expect(adapter.emit(event)).toBeUndefined()
+      expect(adapter.h.current.contextWindow).toBe(272_000)
+      expect(adapter.h.current.id).toBe("gpt-6-astra")
+    },
+  )
+
+  it("SHOULD refuse a transition until queued discovery work has finished", async () => {
+    const adapter = await loadAdapter("omp")
+    await adapter.emit("session_start")
+
+    const blocked = adapter.emit("session_before_switch")
+    await adapter.finishDiscovery()
+    await adapter.flushTimers()
+
+    expect(blocked).toEqual({ cancel: true })
+    expect(adapter.emit("session_before_switch")).toBeUndefined()
+    expect(adapter.h.current.contextWindow).toBe(272_000)
+  })
+})

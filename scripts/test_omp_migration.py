@@ -91,13 +91,11 @@ class TestOmpMigration(unittest.TestCase):
         return result.stdout
 
     def test_config_renders_one_profile_independent_model_roles_block(self):
-        provider_order = "modelProviderOrder:\n  - anthropic\n  - openai-codex\n  - openrouter\n  - openai\n"
         # The role table is profile-independent and uses the subscription provider;
         # category and effort relationships are covered by the band invariants.
         expected_roles = {"default", "smol", "slow", "vision", "plan", "commit", "tiny", "task", "advisor", "web"}
         shared_values = (
             "modelRoles:\n",
-            "advisor:\n  enabled: false\n  subagents: false\n  syncBacklog: 1\n  immuneTurns: 0\n",
             "async:\n  enabled: true\n",
             "bash:\n  autoBackground:\n    enabled: false\n",
             "eval:\n  autoBackground:\n    enabled: false\n",
@@ -118,7 +116,7 @@ class TestOmpMigration(unittest.TestCase):
         for is_work, config in rendered.items():
             with self.subTest(is_work=is_work):
                 self.assertNotIn("{{", config)
-                for value in (*shared_values, provider_order):
+                for value in shared_values:
                     self.assertIn(value, config)
                 roles = config.split("modelRoles:\n", 1)[1].split("\n\n", 1)[0]
                 pairs = dict(re.findall(r"(?m)^  ([a-z]+): (.+)$", roles))

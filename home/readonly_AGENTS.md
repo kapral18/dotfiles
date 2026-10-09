@@ -9,9 +9,10 @@ These rules apply to every session. Platform and system instructions stay author
 - Change only what the request needs. No unrelated cleanup, refactor, or reformat.
 - No compatibility shims, aliases, or deprecation paths unless the user asks. Replace means remove the old path.
 - Ask one direct question only for a decision that is the user's: goals, preferences, missing authority.
+  Put it last, under `Decision needed:`.
   Never ask for a fact you can check, or for approval of a fix whose correctness you checked against source.
-  If it is inside your write scope and `k-review` Fix Scope, apply it and report it.
-  Outside a review, Fix Scope measures against the current task change.
+  If it is inside your write scope and `k-review` Fix Scope, apply it and list it under `Assumptions:` in the report (a review report lists it as fixed).
+  Outside a review, apply the same boundary to the authorized task.
 - Finish an authorized task in the same turn when you can. A "next step" you could do now is unfinished work: do it.
 - Make a change only when it is a real improvement. Churn is a defect.
 
@@ -40,6 +41,7 @@ These rules hold at every step:
 Follow these steps in order for each change. Skip a step only when it does not apply, and say so.
 
 1. **Before.** Read the code, its callers, and consumers. Know what must change with it: tests, docs, generated files.
+   Separate your edits from pre-existing working-tree changes.
    In a repo, run the `k-behavior-map` skill: it checks the plan against the map and maps an unmapped area first.
 2. **Change.** Debug by weighing several hypotheses against logs and reproductions.
 3. **Check.** Run the project's own checks once, on the finished change.
@@ -57,21 +59,15 @@ Follow these steps in order for each change. Skip a step only when it does not a
 5. **Review.** Do this once when the change adds a command or module, or changes persisted state, a parser, or concurrency.
    Also do it when the change edits a rule or workflow step in `~/AGENTS.md`, a `~/.agents/skills` skill, or a `k-agent-*` profile.
    Wording-only edits (no rule, command, or behavior changes) do not count.
-   Run `k-review` verify mode: two `k-agent-reviewer`s in parallel.
+   Run `k-review` Verify mode: two fresh reviewers in parallel, using its Reviewer launch procedure.
    Their scope is the whole task change since the task started, with its map and memory writes.
    Give them the step 3 and 4 results. Reviewers report every severity.
-6. **Fix.** If you may edit, fix every supported finding, low ones too, when the fix stays inside `k-review` Fix Scope.
-   Rerun only the failed and affected checks, and the map update for entries the fix touched.
-   Before each fix, copy the files it will touch to a fresh scratch directory.
-   The fix diff is `diff -uN <copy> <file>` for each of them; `-N` shows a new file as added.
-   If the fix needs another existing file, copy it before you edit it.
-   One reviewer reviews only the fix diff. Skip that review when the fix is wording-only by the step 5 test.
-   Repeat fix → fix-diff review until a review returns no supported finding of medium or higher.
-   Stop after three fix-diff reviews, or when the same cause at the same place comes back.
-   From the last review, fix only wording-only lows. List the rest under `Open:` (medium or higher) or `Known gaps:` (low).
+6. **Fix.** Apply supported findings within write scope using `~/.agents/skills/k-review/references/review_fixes.md`.
+   That reference owns the fix procedure. Review only fix diffs; stop after three reviews or a repeated cause at the same place.
 7. **Report.** Name the review scope. Report results faithfully: a failing check with its output, a skipped step by name, a pass plainly.
    - `Checked:` each claim from the report or a subagent prompt, with a command and its result, or a `file:line`.
      After step 6, refresh the items the fix touched.
+   - `Assumptions:` each decision you made without asking, with its evidence.
    - `Known gaps:` the low issues (wording, polish).
    - `Open:` each medium or higher issue left, with its blocker. Then say the change is not done.
 
@@ -83,7 +79,8 @@ Report what you fixed. As new findings, list only the issues that your earlier r
 ## 4. Subagents
 
 - Work inline by default. A subagent rebuilds your context at full price.
-- Use the search subagent (Claude `Explore`, OMP `scout`, Pi `k-agent-scout`) only for broad read-only searches.
+- Use a search subagent only for broad read-only searches.
+  Use Claude `Explore`, OMP `scout`, Pi `k-agent-scout`, or a fresh Codex agent (`fork_turns: "none"`).
   Use it only when you do not need the raw output.
   Give it the question and the paths; its answer is a lead.
 - When the user asks for a review, use `k-review` and let it pick the mode.
@@ -101,8 +98,9 @@ Report what you fixed. As new findings, list only the issues that your earlier r
 
 ## 6. Tools and environment
 
-- Dotfiles are chezmoi-managed. Before editing a file under `$HOME`, resolve symlinks and run `chezmoi source-path <path>`.
-  Edit the source, then run `chezmoi apply --no-tty <target>`.
+- Before editing under `$HOME`, resolve symlinks and run `chezmoi source-path <resolved-path>`.
+  If managed, edit the source, then run `chezmoi apply --no-tty <target>`.
+  Otherwise edit the writable file directly; for a read-only file, find its source instead of changing permissions.
 - User commands are comma-prefixed (`~/bin/,*`); type the comma.
 - Shell commands run under zsh with `NOMATCH`: quote arguments that contain `[]()*?` literally.
 - Search narrowly: harness search tools first, then `rg` scoped by path or glob. Never a bare repo-root `rg` in a large repo.
@@ -126,7 +124,7 @@ Goal: the least reading for the user, with no lost facts. When rules below compe
 - Active voice. Common words, but exact technical names. One term per concept; one meaning per term. No idioms.
 - Line 1 answers, decides, or names the next action. No preamble, recap of steps, or closing pleasantries.
 - Length budgets: a direct answer ≤80 words; a comparison or audit ≤120 words plus one table or list; a multi-part investigation ≤200 words.
-  A change report: ≤200 words, plus its `Checked:`, `Known gaps:`, and `Open:` lists. Cut words, never facts.
+  A change report: ≤200 words, plus its `Checked:`, `Assumptions:`, `Known gaps:`, and `Open:` lists. Cut words, never facts.
 - One idea per line; at most two sentences per paragraph.
   Prefer a table, a `file:line — finding` list, or a short decision block over prose.
 - Keep evidence, paths, commands, numbers, and uncertainty. Backtick paths and symbols.

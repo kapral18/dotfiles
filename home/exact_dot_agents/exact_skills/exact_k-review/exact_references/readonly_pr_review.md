@@ -7,8 +7,7 @@ Load `~/.agents/skills/k-review/references/pr_common.md` at the first gate that 
 
 ## Authorship
 
-Resolve authorship per `~/.agents/skills/k-review/references/authorship.md`.
-Review stays read-only for every authorship unless the user explicitly asks for fixes.
+Resolve authorship and write scope per `~/.agents/skills/k-review/references/authorship.md`; that policy decides whether to fix findings.
 For `other` or `unknown`, establish PR intent and necessity with `~/.agents/skills/k-review/references/pr_context_audits.md`.
 
 ## First pass (complete before drafting)

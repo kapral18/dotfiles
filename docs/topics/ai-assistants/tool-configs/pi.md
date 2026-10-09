@@ -37,6 +37,8 @@ There are no hooks, advisors, or model-profile switchers; settings and models ar
 Pi loads packages from `~/.local/share/pnpm-global-links/node_modules/`, which `,install-pnpm-pkgs` rebuilds after each sync, because pnpm 11+ global paths are hashed.
 Pi discovers `~/.agents/skills/` natively.
 
+Pi 1.1.0 loads context by path, not symlink identity. Inside `$HOME`, it includes both `~/.pi/agent/AGENTS.md` and `~/AGENTS.md`. The global link remains necessary for repositories outside `$HOME`.
+
 ## Extensions
 
 | File                            | Purpose                                                                                                                                                                                 |

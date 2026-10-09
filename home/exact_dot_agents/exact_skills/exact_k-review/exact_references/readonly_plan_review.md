@@ -62,4 +62,4 @@ Feedback only. Do not edit the plan document or write code unless the user expli
 - Findings ordered by severity, each anchored to the plan section/step plus the code/probe evidence that supports it.
 - Assumption ledger: which plan claims were confirmed, which were refuted, and which remain `Unknown` because they are not locally verifiable.
 - Missing steps and unowned risks.
-- Recommendation: `proceed` / `revise` (name the blocking findings) / `needs clarification` (ask exactly one question first).
+- Recommendation: `proceed` / `revise` (name the blocking findings) / `needs clarification` (ask exactly one question, last, under `Decision needed:`).

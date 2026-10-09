@@ -5,7 +5,7 @@ title: Other harnesses
 
 # Other harnesses
 
-Codex, OpenCode, Oh My Pi, Crush, tuicr, and lgtm. Each keeps its install, a basic config, MCP servers, and the shared `~/AGENTS.md`; none has custom hooks, adapters, or model lanes.
+Codex, OpenCode, Oh My Pi, Crush, tuicr, and lgtm keep harness-native configuration. Shared agent instructions come from `~/AGENTS.md`; Claude's workflow mods are not ported here.
 
 ## Codex and OpenCode
 
@@ -19,13 +19,14 @@ Interactive shells route `codex` through `~/bin/,codex`, which injects the local
 ### Codex settings
 
 Both profiles: `model = "gpt-6.1-sol"`, `model_reasoning_effort = "high"`, `tui.auto_recap = false`, `features.memories = false` (`,ai-kb` is the only durable store).
+Codex discovers shared skills under `~/.agents/skills`. `k-review`'s Verify mode uses fresh native agents with the shared reviewer prompt; other modes stay inline. See [Subagents](../subagents.md).
 
 | Profile  | Policy                                                                                                     |
 | -------- | ---------------------------------------------------------------------------------------------------------- |
 | work     | `approval_policy = "on-request"`, `approvals_reviewer = "auto_review"`, `sandbox_mode = "workspace-write"` |
 | personal | `approval_policy = "never"`, `sandbox_mode = "danger-full-access"`                                         |
 
-The work profile's `sandbox_workspace_write.writable_roots` add `~/.local/share/{chezmoi,ai-kb,agent-handoffs}`, `~/.local/state/chezmoi`, `~/.local/state/llama-cpp/lifecycle`, `~/.cache/{ai-embed-runtime,agent-artifacts}`, `~/bin`, `~/lib`, `~/.agents`, `~/.codex`, and `~/.claude`.
+The work profile's `sandbox_workspace_write.writable_roots` add `~/.local/share/{chezmoi,ai-kb,agent-handoffs,k-ai-behavior-map}`, `~/.local/state/chezmoi`, `~/.local/state/llama-cpp/lifecycle`, `~/.cache/{ai-embed-runtime,agent-artifacts}`, `~/bin`, `~/lib`, `~/.agents`, `~/.codex`, and `~/.claude`.
 These grant directory writes only; other paths still need approval.
 
 ### Codex reconciliation
@@ -71,12 +72,17 @@ Fish completions for `--model`/`--effort` share `~/.config/fish/functions/__open
 | Extension    | `extensions/context-mode.ts.tmpl` ([working-context selection](pi.md#working-context-selection))                         | `~/.omp/agent/extensions/` |
 | Install      | `@oh-my-pi/pi-coding-agent` in [`home/readonly_dot_default-pnpm-pkgs`](../../../../home/readonly_dot_default-pnpm-pkgs)  | pnpm global, unpinned      |
 
+The context-mode extension reapplies the session's chosen window after initial model discovery.
+This keeps GPT's 272,000-token default from reverting to the catalog window without delaying the first interactive frame.
+An overlapping mode command finishes first. Session or branch changes are refused while discovery or a context update is pending; retry when it finishes.
+
 Key settings (both profiles):
 
 | Setting                                                | Value                                                                                                                                           |
 | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `modelRoles.default`                                   | `openai-codex/gpt-6.1-sol:high`; `slow`/`plan` `:max`; `task` `:medium`; `smol`/`vision` `gpt-6-luna:high`; `tiny`/`commit` `gpt-6-luna:medium` |
-| `advisor.enabled`, `task.agentAdvisor.task`            | `false`, `"off"`                                                                                                                                |
+| `advisor.enabled`                                      | `true`; main advisor uses `openai-codex/gpt-6.1-sol:high`                                                                                       |
+| `task.agentAdvisor.task`                               | `"off"`; child advisors stay disabled                                                                                                           |
 | `memory.backend`, `autolearn.enabled`, `recap.enabled` | `off`, `false`, `false`                                                                                                                         |
 | `task.maxRecursionDepth`                               | `1` (children cannot spawn)                                                                                                                     |
 | `task.disabledAgents`                                  | `reviewer`, `security-reviewer` (the repo `k-agent-reviewer` replaces them)                                                                     |

@@ -86,59 +86,16 @@ test('keeps the note for the next edit when an edit fails', async ($, on) => {
   expect((await $.tool.call(edit('/repo/src/a.ts'))).context?.join('\n')).toMatch(/touches auth\/login/)
 })
 
-// The engine beneath the Stop check: `changed` is the working tree's changed paths.
-const stopEngine = (on: On, changed: string, affected: string, below: { block?: string } = {}) => {
-  const argv: string[][] = []
+test('adds no Stop feedback when read-only Bash runs beside older unmapped code', async ($, on) => {
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
-  on('fs.exists', () => ({ value: true }))
-  on('process.run', ($, e) => {
-    argv.push([...e.argv])
-    if (e.argv[0] === 'git') return { value: ran('/repo\n') }
-    if (e.argv[0] === 'sh') return { value: ran(changed) }
-    return { value: ran(affected) }
-  })
+  on('process.run', ($, e) => ({
+    value: ran(e.argv[0] === 'git' ? '/repo\n' : e.argv[0] === 'sh' ? 'app/slug.py\n' : 'unmapped: app\n'),
+  }))
   on('tool.call', () => ({ result: {} as never }))
-  on('classic.Stop', () => below)
-  return argv
-}
-const bash = (command: string) => ({ tool: 'Bash', command, description: 'test' }) as const
-const stop = (stop_hook_active = false) => ({ stop_hook_active, last_assistant_message: 'Done.' })
-
-test('sends a turn back once when Bash changed code in an unmapped directory', async ($, on) => {
-  const argv = stopEngine(on, 'app/slug.py\napp/cli.py\nREADME.md\ntests/test_slug.py\n', 'unmapped: app\n2 files; 2 outside every mapped area\n')
-  await $.turn.start({ text: 'add slug', turnId: 't1' })
-  await $.tool.call(bash("cat > app/slug.py <<'EOF'\nx\nEOF"))
-  expect((await $.classic.Stop(stop())).block).toMatch(/changed code in app in \/repo, which has no behavior-map area/)
-  expect(argv.find(args => args[0] === ',behavior-map')).toEqual([',behavior-map', 'affected', 'app/slug.py', 'app/cli.py'])
-  expect((await $.classic.Stop(stop())).block).toBeUndefined()
-})
-
-test('passes a turn that ran no tool, a re-prompt, and docs or test changes', async ($, on) => {
-  stopEngine(on, 'README.md\ntests/test_a.py\n', 'unmapped: app\n')
-  await $.turn.start({ text: 'explain', turnId: 't1' })
-  expect((await $.classic.Stop(stop())).block).toBeUndefined()
-  await $.tool.call(bash('ls'))
-  expect((await $.classic.Stop(stop(true))).block).toBeUndefined()
-  expect((await $.classic.Stop(stop())).block).toBeUndefined()
-})
-
-test('passes when the changed code is mapped', async ($, on) => {
-  stopEngine(on, 'app/slug.py\n', 'area app: 2 entries, check them with `show app`; changed app/slug.py\n1 files; 0 outside every mapped area\n')
-  await $.turn.start({ text: 'add slug', turnId: 't1' })
-  await $.tool.call(bash('touch app/slug.py'))
-  expect((await $.classic.Stop(stop())).block).toBeUndefined()
-})
-
-test('adds its message to a block from below', async ($, on) => {
-  stopEngine(on, 'app/slug.py\n', 'unmapped: app\n', { block: 'other gate' })
-  await $.turn.start({ text: 'add slug', turnId: 't1' })
-  await $.tool.call(bash('touch app/slug.py'))
-  expect((await $.classic.Stop(stop())).block).toMatch(/^other gate\n\n.*no behavior-map area/s)
-})
-
-test('does not repeat a directory the edit check already stopped', async ($, on) => {
-  stopEngine(on, 'app/slug.py\n', 'unmapped: app\n')
-  await $.turn.start({ text: 'add slug', turnId: 't1' })
-  expect((await $.tool.call(edit('/repo/app/slug.py'))).deny).toMatch(/no behavior-map area/)
-  expect((await $.classic.Stop(stop())).block).toBeUndefined()
+  on('classic.Stop', () => ({}))
+  await $.turn.start({ text: 'check status without changing files', turnId: 't1' })
+  await $.tool.call({ tool: 'Bash', command: 'git status --short' })
+  const result = await $.classic.Stop({ stop_hook_active: false, last_assistant_message: 'The working tree has changes.' })
+  expect(result.block).toBeUndefined()
+  expect(result.additionalContext).toBeUndefined()
 })

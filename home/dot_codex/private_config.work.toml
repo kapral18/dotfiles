@@ -16,6 +16,7 @@ service_tier = "default"
 writable_roots = [
   "~/.local/share/ai-kb",
   "~/.local/share/agent-handoffs",
+  "~/.local/share/k-ai-behavior-map",
   "~/.local/share/chezmoi",
   "~/.cache/ai-embed-runtime",
   "~/.cache/agent-artifacts",

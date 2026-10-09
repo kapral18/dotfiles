@@ -10,7 +10,6 @@
 # harness default or the @smol fallback. The root uses GPT-6.1 Sol :high (user call 2026-09-30:
 # Sol/Luna only, no Astra). k-agent-reviewer uses @default.
 # - slow/plan: GPT-6.1 Sol :max; task: GPT-6.1 Sol :medium; advisor: GPT-6.1 Sol :high
-#   (the background advisor itself is disabled below).
 # - vision/smol: GPT-6 Luna :high; tiny/commit: GPT-6 Luna :medium.
 modelRoles:
   default: openai-codex/gpt-6.1-sol:high
@@ -25,16 +24,15 @@ modelRoles:
   web: openai-codex/gpt-6-luna
 
 modelProviderOrder:
-  - anthropic
   - openai-codex
+  - anthropic
   - openrouter
   - openai
 
-# Background advisor is disabled. omp migrates
-# `advisor.subagents` into `task.agentAdvisor.task` (settings.ts) and an explicit
-# agentAdvisor entry wins, so both knobs are pinned off below.
+# Enable the main advisor, but keep task advisors off.
+# Explicit task.agentAdvisor below takes precedence over migrated advisor.subagents.
 advisor:
-  enabled: false
+  enabled: true
   subagents: false
   syncBacklog: 1
   immuneTurns: 0

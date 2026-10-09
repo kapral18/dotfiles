@@ -1,5 +1,5 @@
 // Managed by chezmoi. Does not change OMP's global extendedContext setting.
-import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent"
+import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent"
 import { createContextMode } from "{{ .chezmoi.homeDir }}/lib/shared/context_mode.ts"
 
 export default function (pi: ExtensionAPI) {
@@ -11,15 +11,65 @@ export default function (pi: ExtensionAPI) {
     },
     (type, data) => pi.appendEntry(type, data),
   )
+  const pending = new Set<Promise<unknown>>()
+  let discovery: AbortController | undefined
+
+  async function track<T>(operation: Promise<T>): Promise<T> {
+    pending.add(operation)
+    try {
+      return await operation
+    } finally {
+      pending.delete(operation)
+    }
+  }
+
+  async function stopDiscovery() {
+    discovery?.abort()
+    while (pending.size) await Promise.allSettled(pending)
+  }
+
+  function beforeTransition(_event: unknown, ctx: ExtensionContext) {
+    // Native hook timeouts fail open, so never await work before refusing a busy transition.
+    if (discovery || pending.size) {
+      ctx.ui.notify("Context window update is still running. Retry the session change when it finishes.", "warning")
+      return { cancel: true }
+    }
+  }
+
+  async function applySessionMode(_event: unknown, ctx: ExtensionContext) {
+    discovery?.abort()
+    const controller = new AbortController()
+    discovery = controller
+    // Interactive discovery starts after the first frame; never await it in this hook.
+    ctx.setTimeout(async () => {
+      try {
+        await ctx.modelRegistry.awaitInitialBackgroundRefresh(controller.signal)
+        // Let an overlapping command finish saving its mode before restoring it.
+        while (!controller.signal.aborted && pending.size) await Promise.allSettled(pending)
+        if (!controller.signal.aborted) await track(context.apply(ctx))
+      } finally {
+        if (discovery === controller) discovery = undefined
+      }
+    }, 0)
+  }
+
   pi.registerCommand("context-mode", {
     description: "Context: short, long, or status (this model/session only)",
     getArgumentCompletions: (prefix) => ["short", "long", "status"]
       .filter((value) => value.startsWith(prefix)).map((value) => ({ value, label: value })),
-    handler: context.command,
+    handler: (args, ctx) => track(context.command(args, ctx)),
   })
-  pi.on("session_start", async (_event, ctx) => { await context.apply(ctx) })
-  pi.on("session_switch", async (_event, ctx) => { await context.apply(ctx) })
-  pi.on("session_tree", async (_event, ctx) => { await context.apply(ctx) })
+  pi.on("session_start", async (event, ctx) => {
+    await track(context.apply(ctx))
+    await applySessionMode(event, ctx)
+  })
+  pi.on("session_before_switch", beforeTransition)
+  pi.on("session_before_branch", beforeTransition)
+  pi.on("session_before_tree", beforeTransition)
+  pi.on("session_switch", applySessionMode)
+  pi.on("session_branch", applySessionMode)
+  pi.on("session_tree", applySessionMode)
+  pi.on("session_shutdown", stopDiscovery)
   // OMP has no extension-facing model_changed event. Reapply before each prompt.
-  pi.on("before_agent_start", async (_event, ctx) => { await context.apply(ctx) })
+  pi.on("before_agent_start", async (_event, ctx) => { await track(context.apply(ctx)) })
 }

@@ -30,7 +30,7 @@ Do not load React/web/test/design secondaries merely because they might become r
 - Preserve all existing behavior outside the explicit scope of the change.
 - Do not rewrite surrounding code, remove unrelated behavior, or clean up unrelated lines without explicit approval.
 - Dropping unrelated behavior, even if it looks like cleanup, requires explicit user approval.
-- For edits not proven mechanical-only, carry the SOP semantic delta into the edit:
+- For edits not proven mechanical-only, record the semantic delta:
   old rule, new rule, intended differences, preserved differences, and evidence for each.
   If an edit changes what inputs, states, events, persisted data, rendered output, errors, permissions, or generated artifacts mean or produce, treat the whole changed relationship as the unit of scope.
 - Use targeted edits, not full-file rewrites, unless the user asks for a rewrite.

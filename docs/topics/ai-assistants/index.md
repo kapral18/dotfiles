@@ -5,7 +5,8 @@ sidebar_position: 1
 # AI Assistants
 
 The AI layer is a short global instruction file, a set of skills, a few read-only subagent profiles, and two small CLIs.
-Agents work inline by default. Nothing is injected per turn: no hooks, no automatic memory recall, no advisor.
+Agents work inline by default. Memory recall is manual.
+OMP's native advisor adds main-session notes; child advisors stay off.
 
 ## What is installed
 

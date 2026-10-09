@@ -60,21 +60,31 @@ An explicitly requested draft review uses the same depth as a ready PR.
 
 Each finding: `[critical|high|medium|low] file:line — trigger → consequence — evidence — smallest fix`.
 
+## Reviewer launch
+
+Use this procedure for both full reviews and fix-diff reviews:
+
+- Claude Code, Pi, OMP: launch the `k-agent-reviewer` profile.
+- Codex: read `~/.agents/skills/k-review/references/reviewer_prompt.md`.
+  Call native `spawn_agent` with `fork_turns: "none"` for each reviewer; its default copies the author's conversation.
+  Put the shared reviewer prompt and review packet in `message`. Keep the parent's model and reasoning effort.
+- Without a reviewer profile or fresh native agent support, review inline once and report the lack of independent review.
+
 ## Verify mode (independent review, bounded fix loop)
 
 Use when `~/AGENTS.md` §3 step 5 requires a review of a finished change, or when the user asks for an independent, fresh, or second-opinion review, or to verify or de-slop a change.
 
-1. Fix the scope. For a §3 step 5 review, it is the whole task change: the diff from the task's start revision to the working tree,
-   plus the ids of behavior-map entries (`,behavior-map show <id>`) and memory notes it wrote. Otherwise, it is the change the user named.
-   Add the intent in one line and the checks already run with their results.
-2. Run two fresh reviewers in parallel: the `k-agent-reviewer` subagent where the harness has it (Claude Code, Pi, OMP).
-   Pass both only the same scope, intent, check results, and known gaps.
-   Without that profile, review inline once with the same output format.
-3. Merge the two reviewers' findings. Check each finding against source yourself. Reject unsupported ones with a one-line reason.
-4. Before fixing, copy the files the fix will touch to a fresh scratch directory (`~/AGENTS.md` §3 step 6).
-   Fix the supported findings, low ones too, only when `authorship.md` gives you write scope and the fix stays inside `~/.agents/skills/k-review/references/review_fixes.md` Fix Scope.
-5. If step 4 changed anything, run the `~/AGENTS.md` §3 step 6 fix loop. That step owns the fix diff, the cap, and the exits.
-6. Stop and report the review scope, then: fixed (with evidence), rejected (with reason), and what remains under `Open:` or `Known gaps:`.
+1. Fix the scope. For a §3 step 5 review, use the task-start working-tree state, not only its starting commit.
+   Exclude pre-existing hunks and untracked files unless the user included them.
+   Use saved originals or edit records to separate them; do not guess.
+   Include the task's behavior-map entry ids (`,behavior-map show <id>`) and memory writes. Otherwise, review the change the user named.
+   Add the user's request in their words, the intent in one line, the checks already run with their results, and your `Assumptions:`.
+2. Launch two fresh reviewers in parallel using Reviewer launch above.
+   Pass both only the same scope, request, intent, check results, assumptions, and known gaps.
+3. Merge the findings. Check each finding against source yourself. Reject unsupported ones with a one-line reason.
+4. Apply supported findings within write scope using `~/.agents/skills/k-review/references/review_fixes.md`.
+   Its bounded Verify procedure owns scratch copies, checks, fix-diff reviews, and stopping rules.
+5. Report the review scope, fixed findings with evidence, rejected findings with reasons, and remaining `Open:` or `Known gaps:`.
 
 NEVER start a second full review (two reviewers on the whole change) on your own; the fix loop reviews only fix diffs.
 Another full round needs the user to ask for it.

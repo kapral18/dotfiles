@@ -1,6 +1,6 @@
 # Mode: PR Fix
 
-Use for an explicit request to address review feedback. Review alone stays read-only.
+Use for an explicit request to address review feedback. Fix authority follows `~/.agents/skills/k-review/references/authorship.md`.
 Resolve PR identity, current head, authorship (`~/.agents/skills/k-review/references/authorship.md`), and the set of threads the user authorized before any edit.
 
 ## Understand the batch
