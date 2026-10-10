@@ -1,0 +1,8 @@
+{
+  "name": "stop-review",
+  "version": "0.1.0",
+  "description": "When a tool-using turn ends, asks the advisorModel to review the turn and its final answer, with the conversation as context, against ~/AGENTS.md, and sends the turn back once with its concerns.",
+  "author": {
+    "name": "kapral18"
+  }
+}

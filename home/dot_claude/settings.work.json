@@ -1,13 +1,14 @@
 {
   "env": {
     "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1",
-    "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/behavior-map-guard:~/.claude/mods/checked-gate:~/.claude/mods/sop-guard"
+    "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/stop-review:~/.claude/mods/behavior-map-guard:~/.claude/mods/checked-gate:~/.claude/mods/sop-guard"
   },
   "alwaysThinkingEnabled": false,
   "permissions": {
     "defaultMode": "bypassPermissions"
   },
   "model": "claude-sonnet-5-5",
+  "advisorModel": "claude-opus-5-5",
   "effortLevel": "high",
   "autoCompactWindow": 400000,
   "autoMemoryEnabled": false,

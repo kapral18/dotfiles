@@ -32,6 +32,9 @@ const MESSAGE =
   'Per ~/AGENTS.md §3, add it: each claim with its evidence (a command and its result, or a file:line). ' +
   'If the change is not done, say so and list what is open.'
 
+// The send-back's reply replaces the answer the user reads, so it must still answer the user.
+const FINAL = 'Your reply is the final message the user reads: open it with the full answer to their request, as if this feedback had not come, then address this feedback after it.'
+
 const QUESTION =
   'The final message ends with a question. Per ~/AGENTS.md §1, ask only for goals, preferences, or authority you lack, such as the §5 gates. ' +
   'If source and evidence decide it, decide, list the decision under `Assumptions:`, act on it if it is inside your write scope and `k-review` Fix Scope, and report. ' +
@@ -127,7 +130,7 @@ export const register: Register = on => {
     const fresh = [...messages].filter(([kind]) => !sent.has(kind))
     if (fresh.length === 0) return below
     for (const [kind] of fresh) sent.add(kind)
-    const block = fresh.map(([, text]) => text).join('\n\n')
+    const block = [...fresh.map(([, text]) => text), FINAL].join('\n\n')
     return { ...below, block: below.block ? `${below.block}\n\n${block}` : block }
   }).catch(($, e, next) => next(e))
 }

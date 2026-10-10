@@ -61,16 +61,17 @@ Fish completions for `--model`/`--effort` share `~/.config/fish/functions/__open
 
 ## Oh My Pi
 
-| Surface      | Source                                                                                                                   | Target                     |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
-| Config       | [`home/dot_omp/private_agent/readonly_config.yml.tmpl`](../../../../home/dot_omp/private_agent/readonly_config.yml.tmpl) | `~/.omp/agent/config.yml`  |
-| Models       | `readonly_models.yml`                                                                                                    | `~/.omp/agent/models.yml`  |
-| MCP servers  | `mcp_servers.yaml` via `generate_mcp_configs.py omp`                                                                     | `~/.omp/agent/mcp.json`    |
-| Instructions | `symlink_AGENTS.md`, `readonly_APPEND_SYSTEM.md` (subagent overlay), `readonly_RULES.md`                                 | `~/.omp/agent/`            |
-| Skills       | `symlink_skills` → `~/.agents/skills`                                                                                    | `~/.omp/agent/skills`      |
-| Reviewer     | `exact_agents/k-agent-reviewer.md.tmpl`                                                                                  | `~/.omp/agent/agents/`     |
-| Extension    | `extensions/context-mode.ts.tmpl` ([working-context selection](pi.md#working-context-selection))                         | `~/.omp/agent/extensions/` |
-| Install      | `@oh-my-pi/pi-coding-agent` in [`home/readonly_dot_default-pnpm-pkgs`](../../../../home/readonly_dot_default-pnpm-pkgs)  | pnpm global, unpinned      |
+| Surface      | Source                                                                                                                   | Target                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------ | --------------------------- |
+| Config       | [`home/dot_omp/private_agent/readonly_config.yml.tmpl`](../../../../home/dot_omp/private_agent/readonly_config.yml.tmpl) | `~/.omp/agent/config.yml`   |
+| Models       | `readonly_models.yml`                                                                                                    | `~/.omp/agent/models.yml`   |
+| MCP servers  | `mcp_servers.yaml` via `generate_mcp_configs.py omp`                                                                     | `~/.omp/agent/mcp.json`     |
+| Instructions | `symlink_AGENTS.md`, `readonly_APPEND_SYSTEM.md` (subagent overlay), `readonly_RULES.md`                                 | `~/.omp/agent/`             |
+| Skills       | `symlink_skills` → `~/.agents/skills`                                                                                    | `~/.omp/agent/skills`       |
+| Advisors     | `readonly_WATCHDOG.yml`                                                                                                  | `~/.omp/agent/WATCHDOG.yml` |
+| Reviewer     | `exact_agents/k-agent-reviewer.md.tmpl`                                                                                  | `~/.omp/agent/agents/`      |
+| Extension    | `extensions/context-mode.ts.tmpl` ([working-context selection](pi.md#working-context-selection))                         | `~/.omp/agent/extensions/`  |
+| Install      | `@oh-my-pi/pi-coding-agent` in [`home/readonly_dot_default-pnpm-pkgs`](../../../../home/readonly_dot_default-pnpm-pkgs)  | pnpm global, unpinned       |
 
 The context-mode extension reapplies the session's chosen window after initial model discovery.
 This keeps GPT's 272,000-token default from reverting to the catalog window without delaying the first interactive frame.
@@ -78,16 +79,23 @@ An overlapping mode command finishes first. Session or branch changes are refuse
 
 Key settings (both profiles):
 
-| Setting                                                | Value                                                                                                                                           |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `modelRoles.default`                                   | `openai-codex/gpt-6.1-sol:high`; `slow`/`plan` `:max`; `task` `:medium`; `smol`/`vision` `gpt-6-luna:high`; `tiny`/`commit` `gpt-6-luna:medium` |
-| `advisor.enabled`                                      | `true`; main advisor uses `openai-codex/gpt-6.1-sol:high`                                                                                       |
-| `task.agentAdvisor.task`                               | `"off"`; child advisors stay disabled                                                                                                           |
-| `memory.backend`, `autolearn.enabled`, `recap.enabled` | `off`, `false`, `false`                                                                                                                         |
-| `task.maxRecursionDepth`                               | `1` (children cannot spawn)                                                                                                                     |
-| `task.disabledAgents`                                  | `reviewer`, `security-reviewer` (the repo `k-agent-reviewer` replaces them)                                                                     |
-| `extendedContext`, `defaultThinkingLevel`              | `true`, `high`                                                                                                                                  |
-| `dev.autoqaConsent`                                    | `granted`                                                                                                                                       |
+| Setting                                                | Value                                                                                                                                                                                                                      |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `modelRoles.default`                                   | `anthropic/claude-opus-5-5:high` (Claude subscription); `slow`/`plan` `:max`; `task` `:medium`; `smol`/`vision` `claude-sonnet-5-5:high`; `tiny`/`commit` `claude-haiku-5-5:medium`; `web` stays `openai-codex/gpt-6-luna` |
+| `advisor.enabled`                                      | `true`; advisors use `openai-codex/gpt-6-astra:high`, a different model family from the root                                                                                                                               |
+| `task.agentAdvisor.task`                               | `"off"`; child advisors stay disabled                                                                                                                                                                                      |
+| `memory.backend`, `autolearn.enabled`, `recap.enabled` | `off`, `false`, `false`                                                                                                                                                                                                    |
+| `task.maxRecursionDepth`                               | `1` (children cannot spawn)                                                                                                                                                                                                |
+| `task.disabledAgents`                                  | `reviewer`, `security-reviewer` (the repo `k-agent-reviewer` replaces them)                                                                                                                                                |
+| `extendedContext`, `defaultThinkingLevel`              | `true`, `high`                                                                                                                                                                                                             |
+| `dev.autoqaConsent`                                    | `granted`                                                                                                                                                                                                                  |
+
+`WATCHDOG.yml` replaces OMP's default advisor with two advisors.
+`General` is the default advisor, kept by name; it reviews every turn.
+OMP shows a `General` concern about a finished answer only as a card, so the agent never acts on it; only a blocker or an `agent-end` concern starts another turn.
+`Gate` is the final-answer reviewer and extends Claude's `checked-gate` mod: `reviewMode: agent-end` and `syncBacklog: strict` make the root wait for its review.
+It sends a `concern` for a missing `Checked:` list or claim evidence, a claim from truncated output, a question not under `Decision needed:`, a done claim without passing check output, or a test that cannot fail, on top of OMP's base advisor review.
+OMP steers at most one continuation turn per final review.
 
 `providers.webSearchOrder` differs per profile: work tries OpenRouter, Codex, Gemini, Google, then DuckDuckGo; personal tries Codex then the keyless scrapers. Every unused provider is listed in `webSearchExclude`, including `perplexity`.
 

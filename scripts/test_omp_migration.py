@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import tempfile
@@ -91,7 +92,8 @@ class TestOmpMigration(unittest.TestCase):
         return result.stdout
 
     def test_config_renders_one_profile_independent_model_roles_block(self):
-        # The role table is profile-independent and uses the subscription provider;
+        # The role table is profile-independent: working roles use the Claude subscription,
+        # the advisor and web search stay on Codex;
         # category and effort relationships are covered by the band invariants.
         expected_roles = {"default", "smol", "slow", "vision", "plan", "commit", "tiny", "task", "advisor", "web"}
         shared_values = (
@@ -121,8 +123,10 @@ class TestOmpMigration(unittest.TestCase):
                 roles = config.split("modelRoles:\n", 1)[1].split("\n\n", 1)[0]
                 pairs = dict(re.findall(r"(?m)^  ([a-z]+): (.+)$", roles))
                 self.assertEqual(set(pairs), expected_roles)
+                self.assertEqual(pairs["advisor"], "openai-codex/gpt-6-astra:high")
                 self.assertEqual(pairs["web"], "openai-codex/gpt-6-luna")
-                self.assertTrue(all(value.startswith("openai-codex/") for value in pairs.values()))
+                working = {role: model for role, model in pairs.items() if role not in {"advisor", "web"}}
+                self.assertTrue(all(model.startswith("anthropic/claude-") for model in working.values()), working)
         self.assertEqual(
             rendered[True].split("modelRoles:\n", 1)[1].split("\n\n", 1)[0],
             rendered[False].split("modelRoles:\n", 1)[1].split("\n\n", 1)[0],
@@ -153,6 +157,30 @@ class TestOmpMigration(unittest.TestCase):
         self.assertTrue((agent_dir / "readonly_RULES.md").is_file())
         self.assertFalse((agent_dir / "readonly_SYSTEM.md").exists())
         self.assertFalse((agent_dir / "SYSTEM.md").exists())
+
+    def test_watchdog_keeps_default_advisor_and_adds_final_answer_gate(self):
+        path = REPO / "home/dot_omp/private_agent/readonly_WATCHDOG.yml"
+        # OMP parses WATCHDOG.yml with Bun's YAML parser.
+        result = subprocess.run(
+            [
+                "bun",
+                "-e",
+                "console.log(JSON.stringify(Bun.YAML.parse(await Bun.file(process.argv[1]).text())))",
+                str(path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        advisors = {entry["name"]: entry for entry in json.loads(result.stdout)["advisors"]}
+
+        self.assertEqual(advisors["General"], {"name": "General"})
+        gate = advisors["Gate"]
+        self.assertEqual((gate["reviewMode"], gate["syncBacklog"]), ("agent-end", "strict"))
+        self.assertNotIn("model", gate)
+        self.assertNotIn("tools", gate)
+        for rule in ("`Checked:`", "`Decision needed:`", "cannot fail"):
+            self.assertIn(rule, gate["instructions"])
 
     def test_skills_root_points_at_shared_skill_corpus(self):
         target = (REPO / "home/dot_omp/private_agent/symlink_skills").read_text().strip()

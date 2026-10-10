@@ -28,7 +28,7 @@ Work machine (`isWork=true`), no command-line, environment, or resumed-session o
 | `,codex-openrouter`   | Codex through OpenRouter's Responses endpoint                                       | `xiaomi/mimo-v2.6-pro`                                | high (preset)            | long    |
 | `,codex-llama-cpp`    | Codex against the local llama.cpp server                                            | `nemotron-3.5`                                        | client high; server auto | 262,144 |
 | `pi`                  | Pi                                                                                  | `openai-codex/gpt-6.1-sol`                            | high                     | short   |
-| `omp`                 | Oh My Pi                                                                            | `openai-codex/gpt-6.1-sol`                            | high                     | long    |
+| `omp`                 | Oh My Pi                                                                            | `anthropic/claude-opus-5-5`                           | high                     | long    |
 | `opencode`            | OpenCode                                                                            | `openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high` | high                     | long    |
 | `,opencode-llama-cpp` | OpenCode with the local llama.cpp provider                                          | `llama-cpp/nemotron-3.5`                              | server auto              | 262,144 |
 | `agy`                 | Antigravity CLI                                                                     | Gemini 3.8 Flash                                      | high                     | long    |

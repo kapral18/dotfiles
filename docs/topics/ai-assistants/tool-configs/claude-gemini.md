@@ -15,6 +15,7 @@ title: Claude and Antigravity
 | Area             | Value                                                                               |
 | ---------------- | ----------------------------------------------------------------------------------- |
 | Model            | `claude-sonnet-5-5`, `effortLevel: high` (also pinned in `modelSettings`)           |
+| Advisor          | `advisorModel: claude-opus-5-5` (server-side advisor tool)                          |
 | Thinking         | `alwaysThinkingEnabled: false`                                                      |
 | Permissions      | `defaultMode: bypassPermissions`; dangerous-mode prompt skipped                     |
 | Subagent nesting | `env.CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1`                                        |
@@ -40,6 +41,7 @@ Both settings profiles load them all with `env.CLAUDE_CODE_PLUGIN_DIRS`. Pi, OMP
 | `behavior-map-guard` | `tool.call` on Edit, Write, NotebookEdit; `session.end`  | Runs `,behavior-map affected <path>`. Refuses the first edit per session in an unmapped directory; adds a context note for touched entries.                                                                                                                                                                                                                                                                                         |
 | `checked-gate`       | `tool.call` (every tool); `turn.start`; `classic.Stop`   | Sends the turn back once when: files changed (edits, or Bash changed the git working tree) and the final message has no `Checked:` list; or a turn that used a tool ends with a question whose last prose paragraph (before any list or code block) does not start with `Decision needed:` and that is not an item under `Open:` or `Known gaps:` (those are open items; a decision for the user belongs under `Decision needed:`). |
 | `sop-guard`          | `tool.call` on Bash, WebFetch, Edit, Write, NotebookEdit | Refuses the hard-rule breaks listed below.                                                                                                                                                                                                                                                                                                                                                                                          |
+| `stop-review`        | `classic.Stop`                                           | When a turn that used tools ends, sends `advisorModel` (`claude-opus-5-5`) the transcript (earlier turns as context, then the turn's request, messages, and tool calls with cut inputs and results, and its final answer) and `~/AGENTS.md`. Sends the turn back once with up to 3 concerns; `PASS` adds nothing.                                                                                                                   |
 
 `sop-guard` rules:
 
@@ -67,9 +69,18 @@ Bash-only edits rely on the SOP's mapping rule, not this guard.
 `checked-gate` snapshots only the git repo of the session's working directory, so Bash changes in another repo are not seen.
 A turn whose only change is `git commit`, `stash`, or `reset` also changes the snapshot, so a commit-only reply is sent back once.
 Each check (missing `Checked:`, ending question) sends a turn back at most once per Stop chain (a continuation has `stop_hook_active` set), so a turn is sent back at most twice.
+Each send-back from `checked-gate` or `stop-review` ends by telling the model that its reply is the final message: it opens with the full answer to the user's request, then addresses the feedback.
 The question check stays quiet when the user's prompt asks to be asked ("ask me", "asking us"), unless a negation ("not", "never", …) comes up to three words before it ("don't even need to ask me"), or "stop", "quit", or "avoid" up to two words before it, not across "and", "then", or "to". "Don't hesitate to ask me" and a negation in a condition ("if not sure, ask me") stay invitations.
 Markdown blockquotes and fenced code are excluded from the question check, so quoted draft questions do not trigger it.
 A continuation after a send-back keeps the turn's state, so each check stays once per turn.
+`stop-review` is the Claude counterpart of OMP's `Gate` advisor: Claude's own advisor runs only when the model calls it.
+It reviews once per turn and skips a draft another gate sends back. It is listed first in `CLAUDE_CODE_PLUGIN_DIRS`, so its Stop hook runs outermost and sees those blocks.
+The turn opens at the `turn.start` prompt; for a turn with no typed prompt, at the task notice before its first `tool.call` id; else at that call, so a skill body or an idle task notice is not read as the request.
+The record holds about 360,000 characters plus the request and the final answer: the turn under review takes up to 180,000 first, and earlier messages and calls fill the rest, each message cut to 4,000. Past that, the oldest earlier parts drop in 90,000-character steps, so the record's start stays the same between steps and a review reads it from the cache. Each step can cost up to 90,000 characters of the oldest context, and a turn of 90,000 characters or more moves the step, so that review misses the cache.
+Each earlier user message opens a prompt-cache block; the mark on the last one lets a review within five minutes, the cache's lifetime, read that prefix from the cache.
+The reviewer sees only that record, not the files, so the block asks the model to reject a wrong concern with a reason.
+After a hot reload it waits for a new turn; a send-back's continuation does not count.
+It adds one model call per tool-using turn, stays off while `advisorModel` is unset, and logs a failed review.
 `sop-guard` reads `$(...)` inside double quotes as data: `echo "$(pass show x)"` and a quoted `"$(curl https://buildkite.com/...)"` pass.
 Its chezmoi rule sees only managed files: a new file written into an `exact_` target directory passes, and the next `chezmoi apply` deletes it.
 Test a mod with `claude plugin test ~/.claude/mods/<mod>`; `claude plugin validate` checks what it hooks.

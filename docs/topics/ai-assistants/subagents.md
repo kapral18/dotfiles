@@ -39,4 +39,4 @@ OMP disables its own `reviewer` and `security-reviewer` agents in `task.disabled
 
 Codex 0.161.0 exposes `spawn_agent` without a named-profile selector. `k-review` passes the shared prompt and review packet directly, keeping the parent's model and effort. Full reviews launch two fresh agents; fix-diff reviews launch one.
 
-Claude, Codex, Pi, and OMP share the SOP, skills, `,ai-kb`, `,handoff`, and `,behavior-map` workflow. Only Claude runs the SOP, checked-answer, and behavior-map mods; the other harnesses follow the written rules without those enforcement hooks.
+Claude, Codex, Pi, and OMP share the SOP, skills, `,ai-kb`, `,handoff`, and `,behavior-map` workflow. Only Claude runs the SOP, checked-answer, stop-review, and behavior-map mods. OMP's `Gate` advisor applies the checked-answer rules to the final answer ([Oh My Pi](tool-configs/other-harnesses.md#oh-my-pi)); the other harnesses follow the written rules without enforcement.

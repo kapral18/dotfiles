@@ -74,7 +74,11 @@ test('adds its message to a block from below', async ($, on) => {
   on('classic.Stop', () => ({ block: 'other gate' }))
   await $.turn.start({ text: 'fix', turnId: 't1' })
   await $.tool.call(edit('/repo/a.ts'))
-  expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/^other gate\n\nFiles changed this turn/)
+  const block = (await $.classic.Stop(stop('Done.'))).block
+  expect(block).toMatch(/^other gate\n\nFiles changed this turn/)
+  // One reminder to answer the user, last, after every message.
+  expect(block?.match(/Your reply is the final message/g)).toHaveLength(1)
+  expect(block).toMatch(/then address this feedback after it\.$/)
 })
 
 // The engine beneath the question checks: every tool call succeeds and the tree never changes.
