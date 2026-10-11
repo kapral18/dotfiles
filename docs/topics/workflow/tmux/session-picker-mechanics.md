@@ -40,14 +40,14 @@ When the command creates sessions, `action_send_command.sh` posts a reload to fz
 
 ### Scan and discovery
 
-| Option                              | Default                                                       | Purpose                                     |
-| ----------------------------------- | ------------------------------------------------------------- | ------------------------------------------- |
-| `@pick_session_worktree_scan_roots` | `~/work`,`~/code`,`~/.backport/repositories`,`~/.local/share` | Roots scanned for git repos                 |
-| `@pick_session_worktree_scan_depth` | `6`                                                           | Max `fd` depth for `.git` discovery         |
-| `@pick_session_dir_exclude_file`    | `~/.config/tmux/pick_session_dir_exclude.txt`                 | `fd --exclude` patterns                     |
-| `@pick_session_dir_include_hidden`  | `on`                                                          | Include hidden directories in home scan     |
-| `@pick_session_github_login`        | unset                                                         | Override first-party remote owner detection |
-| `@pick_session_mode`                | `directory`                                                   | Naming/discovery mode                       |
+| Option                              | Default                                       | Purpose                                     |
+| ----------------------------------- | --------------------------------------------- | ------------------------------------------- |
+| `@pick_session_worktree_scan_roots` | `~/code`,`~/.local/share`                     | Roots scanned for git repos                 |
+| `@pick_session_worktree_scan_depth` | `6`                                           | Max `fd` depth for `.git` discovery         |
+| `@pick_session_dir_exclude_file`    | `~/.config/tmux/pick_session_dir_exclude.txt` | `fd --exclude` patterns                     |
+| `@pick_session_dir_include_hidden`  | `on`                                          | Include hidden directories in home scan     |
+| `@pick_session_github_login`        | unset                                         | Override first-party remote owner detection |
+| `@pick_session_mode`                | `directory`                                   | Naming/discovery mode                       |
 
 ### Appearance
 
@@ -58,8 +58,8 @@ When the command creates sessions, `action_send_command.sh` posts a reload to fz
 | `@pick_session_fzf_color`            | unset       | Custom fzf colors                      |
 | `@pick_session_fzf_options`          | `--no-sort` | Extra fzf flags                        |
 | `@pick_session_auto_rename_sessions` | `off`       | Auto-rename sessions to expected names |
-| `@pick_session_filter_quick_1`       | `work`      | `alt-1` query, trailing slash appended |
-| `@pick_session_filter_quick_2`       | `code`      | `alt-2` query, trailing slash appended |
+| `@pick_session_filter_quick_1`       | `code`      | `alt-1` query, trailing slash appended |
+| `@pick_session_filter_quick_2`       | `share`     | `alt-2` query, trailing slash appended |
 
 ## Ordering
 
@@ -88,7 +88,7 @@ The GitHub picker uses `alt-r` for quote-reply; the session picker keeps `alt-r`
 
 ## Remove worktrees (`alt-x`)
 
-`alt-x` runs the remover synchronously from fzf so any dirty/unpushed confirmation opens inline in the existing picker context instead of trying to nest another tmux popup. Safe selected worktree rows still remove in the background and hide optimistically only after the `,w remove --preflight` check says the selection is safe; choosing Force in the inline prompt continues the same removal with `--force`, while cancel leaves rows visible and unmutated. Detached-HEAD worktrees are included for `--paths` removals (the picker uses that path). When a root worktree selection maps to a wrapper directory such as `~/work/kibana`, the remover deletes only the worktrees reported by that repo's `git worktree list`. Ordinary non-worktree leftovers under an otherwise removable wrapper are preserved under `.bag/pickers/session/` before the empty wrapper is removed. If the wrapper also contains an independent git repo or worktree root, the wrapper is kept in place and those sibling git roots are neither deleted nor moved into `.bag`.
+`alt-x` runs the remover synchronously from fzf so any dirty/unpushed confirmation opens inline in the existing picker context instead of trying to nest another tmux popup. Safe selected worktree rows still remove in the background and hide optimistically only after the `,w remove --preflight` check says the selection is safe; choosing Force in the inline prompt continues the same removal with `--force`, while cancel leaves rows visible and unmutated. Detached-HEAD worktrees are included for `--paths` removals (the picker uses that path). When a root worktree selection maps to a wrapper directory such as `~/code/repo`, the remover deletes only the worktrees reported by that repo's `git worktree list`. Ordinary non-worktree leftovers under an otherwise removable wrapper are preserved under `.bag/pickers/session/` before the empty wrapper is removed. If the wrapper also contains an independent git repo or worktree root, the wrapper is kept in place and those sibling git roots are neither deleted nor moved into `.bag`.
 
 Deletion is boundary-guarded: the background remover only `rm`s targets that resolve to a strict descendant of `$HOME` or a configured `@pick_session_worktree_scan_roots` entry (the scan roots are passed through from the picker, which still holds tmux context). The roots themselves, `/`, empty paths, and anything resolving outside every approved root are refused.
 

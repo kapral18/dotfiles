@@ -44,7 +44,6 @@ Repo/org-specific overlays:
 
 - A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording.
   It may add safe handling for repo-specific CI/build metadata.
-- Current concrete overlay: for Elastic Buildkite/CI links, load `~/.agents/skills/k-elastic-domain/SKILL.md`, then use the `k-buildkite` skill (`bk` CLI).
 
 ## Workflow
 
@@ -55,7 +54,7 @@ Repo/org-specific overlays:
 - When this turn names Nano Banana, Gemini image, or Google image gen/edit, the default diagram budget is **one generated image** for the Act I goal-level contrast.
   Add a second only when the preflight proves it carries a distinct flow/state idea.
   Do not generate images for exact labels, symbol lists, or code-line insights; use HTML flow nodes, cards, or diff beats instead.
-- For repo-specific CI/build links, load the verified overlay and fetch only the compact facts needed for the story.
+- For repo-specific CI/build links, load the verified overlay when one exists, and fetch only the compact facts needed for the story.
   Do not dump full build metadata unless CI is itself the presentation thesis.
 - Prefer deterministic HTML/CSS/code beats over generated images for label-heavy visuals.
   Generated diagrams often stutter labels; exact labels and exact source lines belong in the HTML.
@@ -69,7 +68,6 @@ Repo/org-specific overlays:
   - every review and inline review-thread comment (`gh api --paginate repos/OWNER/REPO/pulls/<n>/reviews` and `.../pulls/<n>/comments`),
   - every linked/closing issue and all of its comments (`gh issue view <m> --comments`), and any PR/issue referenced transitively in the body, comments, or reviews — recurse until no new reference adds context.
   - For repo-specific CI/build links, do not fetch directly unless the verified overlay says it is safe.
-    For Elastic Buildkite, load `k-elastic-domain`, then use the `k-buildkite` skill (`bk` CLI).
 - Read the **actual** diff hunks for the files you will feature — beats must contain real diff text, never paraphrased code.
 - If you need base-branch context (existing behavior, conventions, related call sites) , read it from the base ref as _supporting_ context only — validate against the local diff.
 

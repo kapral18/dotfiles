@@ -38,7 +38,6 @@ Preview
   ?           show this help in the preview panel
 
 Navigation
-  ctrl-s      switch work/home
   ctrl-r      refresh from GitHub
   alt-g       switch to sessions picker
   alt-0       show all sections

@@ -63,23 +63,23 @@
  *
  *   Basic usage:
  *   ,jest-test-title-report \
- *     --before ~/work/kibana/kbn-main \
- *     --after ~/work/kibana/kbn-feat \
+ *     --before ~/code/repo/main \
+ *     --after ~/code/repo/feat \
  *     --scope src/plugins/data \
  *     --out /tmp/data-tests.csv
  *
  *   With replacements for consolidated tests:
  *   ,jest-test-title-report \
- *     --before ~/work/kibana/kbn-main \
- *     --after ~/work/kibana/kbn-feat \
+ *     --before ~/code/repo/main \
+ *     --after ~/code/repo/feat \
  *     --scope src/core/server \
  *     --out /tmp/server-tests.csv \
  *     --replacements /tmp/replacements.json
  *
  *   Upload to gist for sharing:
  *   ,jest-test-title-report \
- *     --before ~/work/kibana/kbn-main \
- *     --after ~/work/kibana/kbn-feat \
+ *     --before ~/code/repo/main \
+ *     --after ~/code/repo/feat \
  *     --scope src/plugins/discover \
  *     --out /tmp/discover-tests.csv \
  *     --gist \
@@ -161,23 +161,23 @@ EXAMPLES:
 
   Basic usage:
   ,jest-test-title-report \\
-    --before ~/work/kibana/kbn-main \\
-    --after ~/work/kibana/kbn-feat \\
+    --before ~/code/repo/main \\
+    --after ~/code/repo/feat \\
     --scope src/plugins/data \\
     --out /tmp/data-tests.csv
 
   With replacements for consolidated tests:
   ,jest-test-title-report \\
-    --before ~/work/kibana/kbn-main \\
-    --after ~/work/kibana/kbn-feat \\
+    --before ~/code/repo/main \\
+    --after ~/code/repo/feat \\
     --scope src/core/server \\
     --out /tmp/server-tests.csv \\
     --replacements /tmp/replacements.json
 
   Upload to gist for sharing:
   ,jest-test-title-report \\
-    --before ~/work/kibana/kbn-main \\
-    --after ~/work/kibana/kbn-feat \\
+    --before ~/code/repo/main \\
+    --after ~/code/repo/feat \\
     --scope src/plugins/discover \\
     --out /tmp/discover-tests.csv \\
     --gist \\

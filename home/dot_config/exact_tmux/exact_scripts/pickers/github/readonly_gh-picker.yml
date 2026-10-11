@@ -52,6 +52,4 @@ issuesSections:
       -author:@me
 
 repoPaths:
-  elastic/kibana: ~/work/kibana
-  elastic/*: ~/work/*
   :owner/:repo: ~/code/:repo

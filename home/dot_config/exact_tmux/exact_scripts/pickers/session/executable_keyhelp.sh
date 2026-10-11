@@ -12,7 +12,7 @@ Navigation
 Filter / Refresh
   type            filter (sort auto-toggles when query contains '/')
   alt-s           toggle fzf sort manually
-  alt-1 / alt-2   quick filter to first/second scan root (e.g. work/ , code/)
+  alt-1 / alt-2   quick filter to first/second scan root (e.g. code/ , share/)
   alt-o           cycle view: all -> dirty only -> review-needed only -> all
   ctrl-r          refresh sessions sync; exact dirty icons update in background
                     query is preserved; cursor stays at the same row index

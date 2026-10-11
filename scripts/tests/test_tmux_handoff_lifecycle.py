@@ -334,7 +334,7 @@ POPUP_ACTOR_SCRIPT = textwrap.dedent(
 
     def main() -> int:
         record("inner-start", command=COMMAND, count=COUNT, token=TOKEN)
-        if COMMAND == "gh_dashboard.sh":
+        if COMMAND == "gh_picker.sh" and SCENARIO != "session-wrapper-roundtrip":
             if SCENARIO in {"gh-wrapper-roundtrip", "legacy-globals-unchanged"}:
                 if COUNT == 1:
                     write_slot("pick_session_pin", f"pr\towner/repo\t42\t{LABEL}\\n")
@@ -465,7 +465,6 @@ class HandoffLifecycleFixture:
                 self._copy_exec(CORE_SRC, self.lib_dir / "handoff_namespace.py")
 
         for path in (
-            self.github_dir / "gh_dashboard.sh",
             self.github_dir / "gh_picker.sh",
             self.session_dir / "pick_session.sh",
         ):
@@ -824,7 +823,7 @@ class TestRealWrapperLifecycle(unittest.TestCase):
             root=self.root / "gh-roundtrip",
         )
         self.assertEqual(observed["returncode"], 0, observed["stderr"])
-        self.assertEqual(observed["popup_commands"], ["gh_dashboard.sh", "pick_session.sh", "gh_dashboard.sh"])
+        self.assertEqual(observed["popup_commands"], ["gh_picker.sh", "pick_session.sh", "gh_picker.sh"])
         self.assertTrue(observed["stable_token"])
         self.assertEqual(observed["session_consumed_owner"], "A")
         self.assertEqual(observed["gh_return_consumed_owner"], "A")
@@ -859,7 +858,7 @@ class TestRealWrapperLifecycle(unittest.TestCase):
             root=self.root / "cleanup",
         )
         self.assertEqual(observed["returncode"], 0, observed["stderr"])
-        self.assertEqual(observed["popup_commands"], ["gh_dashboard.sh"])
+        self.assertEqual(observed["popup_commands"], ["gh_picker.sh"])
         self.assertTrue(observed["namespace_removed"])
 
     def test_should_leave_poisoned_legacy_global_files_byte_identical(self) -> None:

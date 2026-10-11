@@ -30,7 +30,6 @@ fi
 selection_file=""
 background=0
 branches_file=""
-dispatch_mode="${GH_PICKER_DISPATCH_MODE:-}"
 dispatch_scope="${GH_PICKER_DISPATCH_SCOPE:-}"
 dispatch_port="${GH_PICKER_DISPATCH_PORT:-}"
 dispatch_cache_file="${GH_PICKER_DISPATCH_CACHE_FILE:-}"
@@ -48,11 +47,6 @@ while [ $# -gt 0 ]; do
     --branches-file)
       [ $# -ge 2 ] || die "missing value for --branches-file"
       branches_file="$2"
-      shift 2
-      ;;
-    --dispatch-mode)
-      [ $# -ge 2 ] || die "missing value for --dispatch-mode"
-      dispatch_mode="$2"
       shift 2
       ;;
     --dispatch-scope)
@@ -84,9 +78,6 @@ done
 
 [ -n "$selection_file" ] && [ -f "$selection_file" ] || die "missing or invalid selection file"
 
-if [ -z "$dispatch_mode" ]; then
-  dispatch_mode="$(cat "${cache_dir}/gh_picker_mode" 2> /dev/null || echo work)"
-fi
 if [ -z "$dispatch_scope" ]; then
   dispatch_scope="$(cat "${cache_dir}/gh_picker_scope" 2> /dev/null || echo all)"
 fi
@@ -97,7 +88,7 @@ if [ -z "$dispatch_port" ]; then
   dispatch_port="$(cat "${cache_dir}/gh_picker_port" 2> /dev/null || true)"
 fi
 if [ -z "$dispatch_cache_file" ]; then
-  dispatch_cache_file="${cache_dir}/gh_picker_${dispatch_mode}.tsv"
+  dispatch_cache_file="${cache_dir}/gh_picker.tsv"
 fi
 
 # Background mode is the last consumer of `$selection_file` (a per-binding
@@ -158,7 +149,7 @@ if [ "$background" -eq 0 ]; then
       printf '# Branch names for issue worktrees\n'
       printf '# Format: <repo>#<number>|<branch-name>  (empty branch = skip)\n'
       printf '# Branch will be created as: <branch-name>-<number>\n'
-      printf '# Tip: do NOT include tmux/session prefixes like work/kibana|...; just use the branch name (e.g. chore/foo)\n'
+      printf '# Tip: do NOT include tmux/session prefixes like code/repo|...; just use the branch name (e.g. chore/foo)\n'
       printf '#\n'
       for i in "${!issues[@]}"; do
         printf '# %s\n' "${issue_titles[$i]}"
@@ -202,11 +193,11 @@ if [ "$background" -eq 0 ]; then
     trap 'rm -f "$tmpfile" "$branches_file" "$prompt_inst" "$agent_launcher" 2>/dev/null || true' EXIT
     cp "$tmpfile" "$branches_file" 2> /dev/null || die "failed to persist branches file"
 
-    _dispatch_background "$(printf %q "$0") $(printf %q "$selection_file") --background --branches-file $(printf %q "$branches_file") --dispatch-mode $(printf %q "$dispatch_mode") --dispatch-scope $(printf %q "$dispatch_scope") --dispatch-port $(printf %q "$dispatch_port") --dispatch-cache-file $(printf %q "$dispatch_cache_file")"
+    _dispatch_background "$(printf %q "$0") $(printf %q "$selection_file") --background --branches-file $(printf %q "$branches_file") --dispatch-scope $(printf %q "$dispatch_scope") --dispatch-port $(printf %q "$dispatch_port") --dispatch-cache-file $(printf %q "$dispatch_cache_file")"
     # Background mode owns `$branches_file` and `$selection_file` from here.
     trap 'rm -f "$tmpfile" "$prompt_inst" "$agent_launcher" 2>/dev/null || true' EXIT
   else
-    _dispatch_background "$(printf %q "$0") $(printf %q "$selection_file") --background --dispatch-mode $(printf %q "$dispatch_mode") --dispatch-scope $(printf %q "$dispatch_scope") --dispatch-port $(printf %q "$dispatch_port") --dispatch-cache-file $(printf %q "$dispatch_cache_file")"
+    _dispatch_background "$(printf %q "$0") $(printf %q "$selection_file") --background --dispatch-scope $(printf %q "$dispatch_scope") --dispatch-port $(printf %q "$dispatch_port") --dispatch-cache-file $(printf %q "$dispatch_cache_file")"
   fi
   exit 0
 fi
@@ -255,13 +246,12 @@ fi
 exec > /dev/null 2>&1
 
 _notify_fzf_reload() {
-  local mode scope port items_cmd cache_load_cmd
-  mode="$dispatch_mode"
+  local scope port items_cmd cache_load_cmd
   scope="$dispatch_scope"
   port="$dispatch_port"
   [ -n "$port" ] || return 0
   items_cmd="$HOME/.config/tmux/scripts/pickers/github/gh_items.sh"
-  cache_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --cache-only 2>/dev/null"
+  cache_load_cmd="GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --cache-only 2>/dev/null"
   # Use IPv4 explicitly; on macOS `localhost` may resolve to ::1 while fzf binds 127.0.0.1.
   # Fire-and-forget: backgrounded so the per-item progress feedback never adds
   # latency to the batch loop (curl roundtrip + 1s timeout for stale ports
@@ -291,8 +281,8 @@ _start_loading() {
   loading_pid=""
   if declare -F gh_row_loader_start_item > /dev/null 2>&1; then
     # Spinner frames must render the dispatch packet's cache, not whatever the
-    # shared global mode/scope files point at now.
-    gh_row_loader_start_item "$kind" "$repo" "$num" "$dispatch_mode" "$dispatch_scope" 9>&- > /dev/null 2>&1 || true
+    # shared global scope file points at now.
+    gh_row_loader_start_item "$kind" "$repo" "$num" "$dispatch_scope" 9>&- > /dev/null 2>&1 || true
     loading_pid="${gh_row_loader_last_pid:-}"
     return
   fi
@@ -303,7 +293,7 @@ _start_loading() {
 _stop_loading() {
   local pid="${1:-}"
   if declare -F gh_row_loader_stop_spinner > /dev/null 2>&1; then
-    gh_row_loader_stop_spinner "$pid" "$dispatch_mode" "$dispatch_scope" 9>&- 2> /dev/null || true
+    gh_row_loader_stop_spinner "$pid" "$dispatch_scope" 9>&- 2> /dev/null || true
   fi
 }
 

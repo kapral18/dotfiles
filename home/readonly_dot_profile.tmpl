@@ -72,15 +72,5 @@ export FZF_DEFAULT_COMMAND="git ls-files --cached --others --exclude-standard 2>
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 export FZF_ALT_C_COMMAND="fd --type d"
 
-# Conditional Configurations
-{{ if ne .isWork true -}}
-wpass() {
-  export PASSWORD_STORE_DIR="{{ joinPath .chezmoi.homeDir ".password-store-work" }}"
-}
-ppass() {
-  export PASSWORD_STORE_DIR="{{ joinPath .chezmoi.homeDir ".password-store" }}"
-}
-{{- end }}
-
 # Machine-local extras (not in git). Missing file is a no-op.
 [ -f ~/.profile.local ] && source ~/.profile.local

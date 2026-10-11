@@ -7,7 +7,7 @@ If you have not used `chezmoi` before, start at [Getting Started](../../../intro
 ## Source Layout
 
 - [`home/`](../../../../home/) contains files that will be written into `$HOME`.
-- Templates use `*.tmpl` and access `chezmoi` data (like `.isWork`).
+- Templates use `*.tmpl` and access `chezmoi` data (like `.primaryEmail`).
 - Hooks live in [`home/.chezmoiscripts/`](../../../../home/.chezmoiscripts/).
 - Externals live in [`home/.chezmoiexternal.toml`](../../../../home/.chezmoiexternal.toml).
 
@@ -19,7 +19,7 @@ Prompt definitions and computed values are defined in:
 
 - [`home/.chezmoi.toml.tmpl`](../../../../home/.chezmoi.toml.tmpl)
 
-This is where machine-specific values are decided (for example `isWork`, emails, `homebrewPrefix`, and cache TTL values).
+This is where machine-specific values are decided (for example emails, `homebrewPrefix`, and cache TTL values).
 
 If something renders differently than expected, start by inspecting this file.
 

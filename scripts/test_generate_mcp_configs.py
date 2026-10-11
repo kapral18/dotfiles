@@ -21,14 +21,9 @@ from _test_support import (
 class TestGenerateMcpConfigs(unittest.TestCase):
     """WHEN generating MCP JSON configs."""
 
-    def test_personal_golden(self):
-        actual = run_script(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false", "claude"])
-        expected = (FIXTURES / "golden_mcp_personal.json").read_text()
-        assert json.loads(actual) == json.loads(expected)
-
-    def test_work_golden(self):
-        actual = run_script(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "true", "claude"])
-        expected = (FIXTURES / "golden_mcp_work.json").read_text()
+    def test_golden(self):
+        actual = run_script(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "claude"])
+        expected = (FIXTURES / "golden_mcp.json").read_text()
         assert json.loads(actual) == json.loads(expected)
 
     def test_omp_transform_names_each_transport(self):
@@ -38,19 +33,17 @@ class TestGenerateMcpConfigs(unittest.TestCase):
                 """
 mcp_servers:
   - name: remote
-    work_only: false
     type: http
     url: https://first.example/mcp
     oauth_by_tool:
       omp: {}
   - name: local
-    work_only: false
     command: echo
     args:
       - plain
 """.lstrip()
             )
-            actual = json.loads(run_script(["generate_mcp_configs.py", str(registry), "false", "omp"]))
+            actual = json.loads(run_script(["generate_mcp_configs.py", str(registry), "omp"]))
 
         assert actual["mcpServers"] == {
             "remote": {"type": "http", "url": "https://first.example/mcp"},
@@ -64,7 +57,6 @@ mcp_servers:
                 """
 mcp_servers:
   - name: remote
-    work_only: false
     type: http
     url: https://first.example/mcp
     oauth_by_tool:
@@ -74,7 +66,7 @@ mcp_servers:
         scope: "read.a, read.b"
 """.lstrip()
             )
-            actual = json.loads(run_script(["generate_mcp_configs.py", str(registry), "false", "pi"]))
+            actual = json.loads(run_script(["generate_mcp_configs.py", str(registry), "pi"]))
 
         assert actual == {
             "mcpServers": {
@@ -86,9 +78,7 @@ mcp_servers:
         }
 
     def test_gemini_transform_uses_antigravity_server_url(self):
-        actual = json.loads(
-            run_script(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false", "gemini"])
-        )
+        actual = json.loads(run_script(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "gemini"]))
         assert actual["mcpServers"]["http-tool"] == {"serverUrl": "https://mcp.example.com/mcp"}
 
 

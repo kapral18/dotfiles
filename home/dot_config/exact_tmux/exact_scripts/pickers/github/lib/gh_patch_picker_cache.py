@@ -2,7 +2,7 @@
 """Patch gh_picker cache TSV item markers.
 
 The GitHub picker renders items from a cached TSV file:
-  ~/.cache/tmux/gh_picker_<mode>.tsv
+  ~/.cache/tmux/gh_picker.tsv
 
 The first column is an ANSI-colored display string laid out as:
 

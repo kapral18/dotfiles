@@ -8,23 +8,15 @@ This page holds the detailed behavior behind the [GitHub picker](github-picker.m
 
 ## Entry source
 
-Items come from standalone YAML configs:
+Items come from a standalone YAML config:
 
-- `~/.config/tmux/scripts/pickers/github/gh-picker-work.yml`
-- `~/.config/tmux/scripts/pickers/github/gh-picker-home.yml`
+- `~/.config/tmux/scripts/pickers/github/gh-picker.yml`
 
-Each file defines PR and issue sections using GitHub Search syntax. `lib/gh_items_main.py` parses the config, uses GraphQL review-request actors for direct and selected-team review queues, and formats rows as fzf TSV.
+The file defines PR and issue sections using GitHub Search syntax. `lib/gh_items_main.py` parses the config, uses GraphQL review-request actors for direct and selected-team review queues, and formats rows as fzf TSV.
 
 ## Scopes and sorting
 
-The dashboard has two navigation axes:
-
-| Axis  | Binding          | Values                    |
-| ----- | ---------------- | ------------------------- |
-| Mode  | `ctrl-s`         | `work`, `home`            |
-| Scope | `alt-0`..`alt-2` | `all`, `focus`, `explore` |
-
-Scopes are filtered views over the same cache:
+`alt-0`..`alt-2` switch the scope (`all`, `focus`, `explore`). Scopes are filtered views over the same cache:
 
 - `all`: every configured section.
 - `focus`: `Action:` + `Mine:` + `Maintenance:` sections.
@@ -41,7 +33,7 @@ Headers stay anchored; only rows between headers move.
 
 ## Header navigation
 
-`alt-n` and `alt-p` jump to next/previous section headers. The fetcher writes `~/.cache/tmux/gh_picker_offsets_{mode}_{scope}.json`; the bash jump helper reads that sidecar and emits fzf `pos(N)`.
+`alt-n` and `alt-p` jump to next/previous section headers. The fetcher writes `~/.cache/tmux/gh_picker_offsets_{scope}.json`; the bash jump helper reads that sidecar and emits fzf `pos(N)`.
 
 The helper is intentionally pure bash in the hot path. An older `cat + python3` implementation cost enough per keypress that held `alt-n`/`alt-p` queued faster than they drained.
 
@@ -64,7 +56,7 @@ Visual cues:
 | `├─` / `└─`            | Family child             |
 | `↳ #N` / `↳ closes #N` | Cross-linked PR or issue |
 
-The `Maintenance: Pending backports` section remains the source of truth for missing backports. It combines bot comments, current version labels, and title search for manually-created backports.
+A `Maintenance: Pending backports` section, when the config defines one, is the source of truth for missing backports. It combines bot comments, current version labels, and title search for manually-created backports.
 
 ## Inline badges
 
@@ -102,7 +94,7 @@ Local worktree markers come from git worktree state plus branch/metadata heurist
 
 Mutating actions are delegated to helper scripts and use the standard GitHub side-effect gates outside the read-only dashboard view.
 
-Batch worktree creation (`ctrl-t`) captures the launching picker's mode, scope, port, cache file, and tmux socket into an immutable dispatch packet, then detaches a `nohup` background job (not `tmux run-shell -b`) so closing the dashboard popup cannot cancel in-flight clones. Selected worktrees are created one at a time across detached batches because one Git checkout can already use every configured worker; a shared BSD `lockf` lock prevents overlapping full-repo checkouts from starving tmux or racing marker updates. Lock wait counts against the same total deadline as creation. An item failure before the batch deadline does not cancel later items or poison the next batch; once the hard deadline expires, unstarted items are not launched. Issue creation invokes the read-only `~/lib/,w/add.sh` and `open.sh` command libraries through `bash`, and detached creates carry the captured socket as `OUTER_TMUX_SOCKET` after `TMUX` is intentionally removed. Worktree session existence and focus use tmux's `=` exact-target form, so a longer session with the requested name as its prefix cannot suppress creation or receive the switch. Completion markers still target the popup that started the batch, even if another popup rewrites the shared mode/scope globals before the background work finishes.
+Batch worktree creation (`ctrl-t`) captures the launching picker's scope, port, cache file, and tmux socket into an immutable dispatch packet, then detaches a `nohup` background job (not `tmux run-shell -b`) so closing the dashboard popup cannot cancel in-flight clones. Selected worktrees are created one at a time across detached batches because one Git checkout can already use every configured worker; a shared BSD `lockf` lock prevents overlapping full-repo checkouts from starving tmux or racing marker updates. Lock wait counts against the same total deadline as creation. An item failure before the batch deadline does not cancel later items or poison the next batch; once the hard deadline expires, unstarted items are not launched. Issue creation invokes the read-only `~/lib/,w/add.sh` and `open.sh` command libraries through `bash`, and detached creates carry the captured socket as `OUTER_TMUX_SOCKET` after `TMUX` is intentionally removed. Worktree session existence and focus use tmux's `=` exact-target form, so a longer session with the requested name as its prefix cannot suppress creation or receive the switch. Completion markers still target the popup that started the batch, even if another popup rewrites the shared mode/scope globals before the background work finishes.
 
 Detached survival is bounded so hung clones cannot linger as rogue processes with stuck amber spinners: each `,gh-worktree` call runs under `timeout --kill-after=10s` (`GH_BATCH_ITEM_TIMEOUT_SECS`, default 600), the batch waits with a hard deadline (`GH_BATCH_TOTAL_TIMEOUT_SECS`, default 1800) that TERM/KILL-reaps remaining create trees, and a per-batch job ledger under `~/.cache/tmux/gh_batch_worktree_jobs/<batch-pid>.tsv` records create/spinner PIDs, process-start identities, and `(kind,repo,num)`. A create child retains the cross-batch lock through ledger publication and EXIT cleanup, while spinner, curl, and `,gh-worktree` descendants close that descriptor; the next batch therefore cannot pass an unrecorded orphan or reap a ledger during an active drop. On batch exit, unsettled ledger rows are killed and their loading markers cleared. A later lock holder treats every remaining ledger as stale, removes ledger-less lock directories left by an interrupted reap before a batch PID can reuse them, and signals a recorded process only when both its start identity and detached `gh_batch_worktree.sh --background` argv still match; reused ledger filenames and row PIDs cannot suppress cleanup or target unrelated processes. Ledger append, drop, and reap remain mkdir-lock serialized so cleanup cannot race publication or lose a row before finalization. Spinner subshells are started as direct children of their create subshell (no `$(...)` capture), so the tree kill reaps them even when a create is SIGKILLed before its EXIT trap.
 

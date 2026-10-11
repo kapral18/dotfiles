@@ -10,7 +10,7 @@ Turn the request into the smallest actionable plan.
 1. Establish the actual problem from source evidence. Reuse research already done.
    If the requested outcome already exists or is superseded, report the evidence instead of planning redundant work.
 2. Resolve forks from evidence. Ask one direct question only for a decision that is genuinely the user's.
-   When a verified domain overlay supplies a planning checklist (for example `k-elastic-domain`), apply it to the fork list.
+   When a verified domain overlay supplies a planning checklist, apply it to the fork list.
 3. Record the semantic delta: old rule, new rule, intended differences, preserved differences, and evidence.
 4. Record the impact map: affected callers and consumers, invariants, and the co-edit set (tests, docs, generated outputs, completions, diagrams) with evidence.
 5. Define acceptance criteria as `check:` commands or `judgment:` evidence.

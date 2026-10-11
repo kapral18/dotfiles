@@ -2,12 +2,8 @@ Alfred.alfredpreferences
 app_icons/
 .config/opencode/opencode.jsonc
 
-.pi/agent/models.json
-**/*.work.json
 **/*.personal.json
-**/*.work.jsonc
 **/*.personal.jsonc
-**/*.work.toml
 **/*.personal.toml
 .claude/settings.json
 .codex/config.toml

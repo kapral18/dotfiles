@@ -1,6 +1,5 @@
 mcp_servers:
   - name: shared-tool
-    work_only: false
     command: docker
     args:
       - run
@@ -8,7 +7,6 @@ mcp_servers:
       - shared/image
 
   - name: excluded-tool
-    work_only: false
     exclude_tools:
       - omp
     command: docker

@@ -96,7 +96,7 @@ fi
 scan_roots_raw=""
 scan_roots_raw="$(tmux_opt '@pick_session_worktree_scan_roots' '')"
 if [ -z "${scan_roots_raw:-}" ]; then
-  scan_roots_raw="$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share"
+  scan_roots_raw="$HOME/code,$HOME/.local/share"
 fi
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"

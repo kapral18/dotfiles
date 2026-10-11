@@ -18,10 +18,7 @@ selected=$(brew search --desc --eval-all "$query" |
     --header 'Tab: select, Ctrl+B: open homepage, Esc: cancel')
 
 if [ -n "$selected" ]; then
-  # gum choose to choose whether for "personal" "work" or "all" use
-  scope=$(gum choose "personal only" "work only" "both personal/work")
-
-  crush run "add $selected to .Brewfile for $scope scope. To avoid guessing wrong package always brew info that package to make sure it's the correct one. If ambiguous ask"
+  crush run "add $selected to .Brewfile. To avoid guessing wrong package always brew info that package to make sure it's the correct one. If ambiguous ask"
 else
   echo "No package selected"
 fi

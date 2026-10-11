@@ -31,9 +31,8 @@ cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 
 _mark_local_in_cache() {
   local k="$1" repo="$2" num="$3"
-  local mode cache_file patcher
-  mode="$(cat "${cache_dir}/gh_picker_mode" 2> /dev/null || echo work)"
-  cache_file="${cache_dir}/gh_picker_${mode}.tsv"
+  local cache_file patcher
+  cache_file="${cache_dir}/gh_picker.tsv"
   patcher="$(cd "$(dirname "$0")" && pwd)/lib/gh_patch_picker_cache.py"
   if [ -f "$patcher" ] && [ -f "$cache_file" ]; then
     python3 -u "$patcher" --cache-file "$cache_file" --kind "$k" --repo "$repo" --num "$num" 2> /dev/null || true

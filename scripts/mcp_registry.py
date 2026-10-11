@@ -44,7 +44,6 @@ def _resolve_shell(value: Any) -> Any:
 
 def load_servers(
     path: str,
-    is_work: bool,
     tool: str | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Load servers from the canonical YAML registry.
@@ -102,7 +101,7 @@ def load_servers(
             in_kv_map = False
             in_oauth_by_tool = False
             obt_tool_name = None
-            current = {"name": None, "work_only": False, "command": None, "args": []}
+            current = {"name": None, "command": None, "args": []}
             servers.append(current)
             key, val = new_entry.group(1), new_entry.group(2).strip()
             current[key] = parse_scalar(val)
@@ -192,9 +191,6 @@ def load_servers(
 
     result: dict[str, dict[str, Any]] = {}
     for s in servers:
-        if s.get("work_only") and not is_work:
-            continue
-
         if tool and "oauth_by_tool" in s and tool not in s["oauth_by_tool"]:
             continue
 

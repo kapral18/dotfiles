@@ -563,15 +563,13 @@ class TestWiredSourceContract(unittest.TestCase):
             )
             self.assertRegex(text, r"\bend --owner-pid", f"{picker.name} must end its standalone namespace")
 
-    def test_gh_create_keeps_five_args_and_namespaced_create_pin(self):
+    def test_gh_create_keeps_four_args_and_namespaced_create_pin(self):
         text = self.src[GH_CREATE]
-        # Five positional arguments preserved.
         for pos in (
             'kind="${1:-}"',
             'default_repo="${2:-}"',
-            'mode_file="${3:-}"',
-            'scope_file="${4:-}"',
-            'items_cmd="${5:-}"',
+            'scope_file="${3:-}"',
+            'items_cmd="${4:-}"',
         ):
             self.assertIn(pos, text)
         # Create pin resolves through the inherited token and fails closed.

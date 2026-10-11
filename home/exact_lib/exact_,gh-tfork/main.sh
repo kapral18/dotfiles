@@ -11,11 +11,7 @@ Usage:
 
 Behavior:
   - Forks <owner/repo> using GitHub CLI.
-  - Clones into:
-    - ~/work/<repo>/<default-branch> (when owner is "elastic")
-    - ~/code/<repo>/<default-branch> (otherwise)
-    - For elastic/kibana: uses fast bootstrap flags:
-      --shallow-since=2022-01-01 --no-tags
+  - Clones into ~/code/<repo>/<default-branch>.
   - Creates (or focuses) a tmux session named <wrapper/repo>|<default-branch>.
   - Session layout: 2 windows, each with 2 panes split vertically.
 EOF
@@ -50,13 +46,7 @@ command -v git > /dev/null 2>&1 || {
 repo_owner="${repo_spec%%/*}"
 repo_name="${repo_spec##*/}"
 
-parent_dir=""
-if [ "$repo_owner" = "elastic" ]; then
-  parent_dir="$HOME/work"
-else
-  parent_dir="$HOME/code"
-fi
-
+parent_dir="$HOME/code"
 mkdir -p "$parent_dir"
 cd "$parent_dir"
 
@@ -65,11 +55,6 @@ repo_wrapper_path="$(pwd -P)/${repo_name}"
 if [[ -e "$repo_wrapper_path" ]]; then
   echo "Error: repo directory already exists: $repo_wrapper_path" >&2
   exit 1
-fi
-
-declare -a clone_flags=()
-if [ "$repo_spec" = "elastic/kibana" ]; then
-  clone_flags=(--shallow-since=2022-01-01 --no-tags)
 fi
 
 gh_login="$(gh api user --jq '.login' 2> /dev/null || true)"
@@ -124,7 +109,7 @@ fi
 
 clone_repo="${clone_owner}/${repo_name}"
 clone_url="$(remote_url_for_repo "$clone_repo")"
-git clone ${clone_flags[@]+"${clone_flags[@]}"} "$clone_url" "$repo_name"
+git clone "$clone_url" "$repo_name"
 
 if [ "$clone_owner" != "$repo_owner" ]; then
   upstream_url="$(remote_url_for_repo "$repo_spec")"

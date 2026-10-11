@@ -9,11 +9,11 @@ Preferred pattern: base config contains a marker line:
 which is replaced with generated TOML sections.
 
 Usage:
-  inject_mcp_into_codex_toml.py <base_toml_path> <mcp_servers_yaml> <is_work> [tool] [existing_toml_path]
+  inject_mcp_into_codex_toml.py <base_toml_path> <mcp_servers_yaml> [tool] [existing_toml_path]
 
 When an existing config is supplied, only explicit Codex runtime-owned state is
 reattached: MCP approval modes, hook trust hashes, project trust levels, and
-TUI model-availability counters. The profile base and generated MCP transport
+TUI model-availability counters. The base config and generated MCP transport
 remain authoritative.
 
 Output: merged TOML to stdout.
@@ -273,11 +273,10 @@ def _append_preserved_mcp_approvals(
 
 def _render_codex_mcp_toml(
     mcp_yaml: str,
-    is_work: bool,
     tool: str | None = None,
     existing_toml_path: str | None = None,
 ) -> str:
-    servers = load_servers(mcp_yaml, is_work, tool=tool)
+    servers = load_servers(mcp_yaml, tool=tool)
     preserved_approvals = _load_preserved_mcp_approvals(existing_toml_path, set(servers.keys()))
     out_lines: list[str] = []
     for name, spec in servers.items():
@@ -349,22 +348,18 @@ def _with_preserved_runtime_state(config: str, existing_toml_path: str | None) -
 
 
 def main() -> None:
-    if len(sys.argv) not in (4, 5, 6):
-        sys.exit(
-            "Usage: inject_mcp_into_codex_toml.py <base_toml_path> <mcp_servers_yaml> <is_work> [tool] [existing_toml_path]"
-        )
+    if len(sys.argv) not in (3, 4, 5):
+        sys.exit("Usage: inject_mcp_into_codex_toml.py <base_toml_path> <mcp_servers_yaml> [tool] [existing_toml_path]")
 
-    base_path, mcp_yaml, is_work_raw = sys.argv[1], sys.argv[2], sys.argv[3]
-    is_work = is_work_raw == "true"
-    tool = sys.argv[4] if len(sys.argv) >= 5 else None
-    existing_toml_path = sys.argv[5] if len(sys.argv) == 6 else None
+    base_path, mcp_yaml = sys.argv[1], sys.argv[2]
+    tool = sys.argv[3] if len(sys.argv) >= 4 else None
+    existing_toml_path = sys.argv[4] if len(sys.argv) == 5 else None
 
     with open(base_path, "r") as f:
         base = f.read()
 
     snippet = _render_codex_mcp_toml(
         mcp_yaml,
-        is_work,
         tool=tool,
         existing_toml_path=existing_toml_path,
     )

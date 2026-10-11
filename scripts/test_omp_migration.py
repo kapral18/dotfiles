@@ -14,7 +14,7 @@ from _test_support import REPO
 
 # OMP 17.2.15 SEARCH_PROVIDER_ORDER. Listing perplexity in webSearchOrder makes
 # it explicit and routes through OpenRouter sonar-pro. Unlisted ids stay in the
-# fallback chain, so exclude must be every id not in the profile's order.
+# fallback chain, so exclude must be every id not in the order.
 OMP_SEARCH_PROVIDER_ORDER = (
     "perplexity",
     "gemini",
@@ -41,13 +41,7 @@ OMP_SEARCH_PROVIDER_ORDER = (
     "public",
 )
 OMP_KEYLESS_SEARCH_PROVIDERS = ("startpage", "duckduckgo", "ecosia", "google", "mojeek", "public")
-# Work leads with "openrouter", which OMP 18.1.22 does not define as a search provider id
-# (SEARCH_PROVIDER_OPTIONS in src/web/search/types.ts has no such value, and
-# config/provider-globals.ts applies `.filter(isSearchProviderId)`), so the runtime drops it and
-# the effective chain starts at codex. It is therefore absent from OMP_SEARCH_PROVIDER_ORDER and
-# never appears in the rendered exclude list.
-WORK_WEB_SEARCH_ORDER = ("openrouter", "codex", "gemini", "google", "duckduckgo")
-PERSONAL_WEB_SEARCH_ORDER = ("codex", *OMP_KEYLESS_SEARCH_PROVIDERS)
+WEB_SEARCH_ORDER = ("codex", *OMP_KEYLESS_SEARCH_PROVIDERS)
 
 YAML_LIST_RE = re.compile(
     r"(?m)^(?P<indent> *)(?P<key>webSearch(?:Order|Exclude)):\n(?P<body>(?:(?P=indent)  - .+\n)+)"
@@ -65,16 +59,16 @@ class TestOmpMigration(unittest.TestCase):
     """WHEN wiring OMP into the repo-owned AI workflow."""
 
     def test_omp_installs_via_unpinned_pnpm_not_brew(self):
-        brewfile = (REPO / "home/.chezmoitemplates/brews/shared/38-ai-large-language-models.brewfile").read_text()
+        brewfile = (REPO / "home/.chezmoitemplates/brews/38-ai-large-language-models.brewfile").read_text()
         pnpm_pkgs = (REPO / "home/readonly_dot_default-pnpm-pkgs").read_text()
 
         self.assertNotIn("can1357/tap/omp", brewfile)
         self.assertIn("@oh-my-pi/pi-coding-agent\n", pnpm_pkgs)
         self.assertNotIn("@oh-my-pi/pi-coding-agent@", pnpm_pkgs)
 
-    def render_omp_config(self, is_work: bool) -> str:
+    def render_omp_config(self) -> str:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".toml") as config:
-            config.write(f"[data]\nisWork = {str(is_work).lower()}\n")
+            config.write("[data]\n")
             config.flush()
             result = subprocess.run(
                 [
@@ -91,9 +85,8 @@ class TestOmpMigration(unittest.TestCase):
             )
         return result.stdout
 
-    def test_config_renders_one_profile_independent_model_roles_block(self):
-        # The role table is profile-independent: working roles use the Claude subscription,
-        # the advisor and web search stay on Codex;
+    def test_config_renders_the_model_roles_block(self):
+        # Working roles use the Claude subscription, the advisor and web search stay on Codex;
         # category and effort relationships are covered by the band invariants.
         expected_roles = {"default", "smol", "slow", "vision", "plan", "commit", "tiny", "task", "advisor", "web"}
         shared_values = (
@@ -114,41 +107,29 @@ class TestOmpMigration(unittest.TestCase):
             "setupVersion: 2\n",
         )
 
-        rendered = {is_work: self.render_omp_config(is_work) for is_work in (True, False)}
-        for is_work, config in rendered.items():
-            with self.subTest(is_work=is_work):
-                self.assertNotIn("{{", config)
-                for value in shared_values:
-                    self.assertIn(value, config)
-                roles = config.split("modelRoles:\n", 1)[1].split("\n\n", 1)[0]
-                pairs = dict(re.findall(r"(?m)^  ([a-z]+): (.+)$", roles))
-                self.assertEqual(set(pairs), expected_roles)
-                self.assertEqual(pairs["advisor"], "openai-codex/gpt-6-astra:high")
-                self.assertEqual(pairs["web"], "openai-codex/gpt-6-luna")
-                working = {role: model for role, model in pairs.items() if role not in {"advisor", "web"}}
-                self.assertTrue(all(model.startswith("anthropic/claude-") for model in working.values()), working)
-        self.assertEqual(
-            rendered[True].split("modelRoles:\n", 1)[1].split("\n\n", 1)[0],
-            rendered[False].split("modelRoles:\n", 1)[1].split("\n\n", 1)[0],
-        )
+        config = self.render_omp_config()
+        self.assertNotIn("{{", config)
+        for value in shared_values:
+            self.assertIn(value, config)
+        roles = config.split("modelRoles:\n", 1)[1].split("\n\n", 1)[0]
+        pairs = dict(re.findall(r"(?m)^  ([a-z]+): (.+)$", roles))
+        self.assertEqual(set(pairs), expected_roles)
+        self.assertEqual(pairs["advisor"], "openai-codex/gpt-6-astra:high")
+        self.assertEqual(pairs["web"], "openai-codex/gpt-6-luna")
+        working = {role: model for role, model in pairs.items() if role not in {"advisor", "web"}}
+        self.assertTrue(all(model.startswith("anthropic/claude-") for model in working.values()), working)
 
-    def test_web_search_uses_profile_specific_provider_chains(self):
-        expected = {
-            True: WORK_WEB_SEARCH_ORDER,
-            False: PERSONAL_WEB_SEARCH_ORDER,
-        }
-        for is_work, wanted_order in expected.items():
-            with self.subTest(is_work=is_work):
-                config = self.render_omp_config(is_work)
-                order = tuple(_yaml_string_list(config, "webSearchOrder"))
-                exclude = tuple(_yaml_string_list(config, "webSearchExclude"))
-                leftover = tuple(provider for provider in OMP_SEARCH_PROVIDER_ORDER if provider not in wanted_order)
+    def test_web_search_uses_codex_then_keyless_providers(self):
+        config = self.render_omp_config()
+        order = tuple(_yaml_string_list(config, "webSearchOrder"))
+        exclude = tuple(_yaml_string_list(config, "webSearchExclude"))
+        leftover = tuple(provider for provider in OMP_SEARCH_PROVIDER_ORDER if provider not in WEB_SEARCH_ORDER)
 
-                self.assertEqual(order, wanted_order)
-                self.assertEqual(exclude, leftover)
-                self.assertIn("perplexity", exclude)
-                self.assertNotIn("perplexity", order)
-                self.assertEqual(set(order) & set(exclude), set())
+        self.assertEqual(order, WEB_SEARCH_ORDER)
+        self.assertEqual(exclude, leftover)
+        self.assertIn("perplexity", exclude)
+        self.assertNotIn("perplexity", order)
+        self.assertEqual(set(order) & set(exclude), set())
 
     def test_system_policy_appends_without_replacing_omp_prompt(self):
         agent_dir = REPO / "home/dot_omp/private_agent"

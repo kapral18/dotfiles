@@ -92,8 +92,6 @@ Report what you fixed. As new findings, list only the issues that your earlier r
 - Anything a human will see (GitHub PRs, issues, comments, reviews, Slack, email):
   draft it, show the exact text and target, and wait for approval.
   Approval covers that target and text only; do not re-ask for it.
-- In a repo with a CODEOWNERS file, check `,codeowners --owner-of <path>` before an edit.
-  If the user's team does not own every path, stop and list the owners. If you do not know the team, ask once per session.
 - Handle secrets by reference. Never print, commit, or write plaintext credentials.
 
 ## 6. Tools and environment

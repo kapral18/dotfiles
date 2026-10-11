@@ -48,7 +48,7 @@ run_popup() {
 }
 
 while true; do
-  run_popup "$gh_h" "$gh_w" "$github_dir/gh_dashboard.sh"
+  run_popup "$gh_h" "$gh_w" "$github_dir/gh_picker.sh"
 
   if [ -f "$switch_sessions_file" ]; then
     rm -f "$switch_sessions_file" 2> /dev/null || true

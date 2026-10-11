@@ -12,7 +12,7 @@ sidebar_position: 2
 2. Truth and evidence — verify before claiming; local source first; treat model reports as leads.
 3. Work loop — read callers and separate task edits from existing work; check and run the finished change; review risky changes once; fix supported findings; report evidence and open issues. `k-review/references/review_fixes.md` owns the bounded fix procedure. The SOP keeps its triggers and caps.
 4. Subagents — inline by default; search subagent for broad read-only searches; a review the user asks for goes through `k-review`; the §3 reviews are the only delegated verification.
-5. Side effects — commit, push, or publish only when asked; human-visible text needs approval; CODEOWNERS check; secrets by reference.
+5. Side effects — commit, push, or publish only when asked; human-visible text needs approval; secrets by reference.
 6. Tools — edit chezmoi sources for managed targets, writable files directly otherwise; comma commands, zsh `NOMATCH`, narrow search.
 7. Memory and handoffs — `,ai-kb` on demand; `,behavior-map` checked before and updated after code changes, with unmapped areas mapped first; `,handoff` for task progress.
 8. Response shape — ASD-STE100-style writing (sentence limits, active voice, stable terms), line 1 answers, word budgets, tables over prose.

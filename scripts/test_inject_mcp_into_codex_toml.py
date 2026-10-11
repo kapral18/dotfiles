@@ -40,7 +40,6 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                     "inject_mcp_into_codex_toml.py",
                     str(FIXTURES / "codex_base.toml"),
                     str(FIXTURES / "mcp_servers.yaml"),
-                    "false",
                     "codex",
                     str(existing),
                 ]
@@ -127,11 +126,10 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                 "inject_mcp_into_codex_toml.py",
                 str(FIXTURES / "codex_base.toml"),
                 str(FIXTURES / "mcp_servers.yaml"),
-                "false",
                 "codex",
             ]
         )
-        expected = (FIXTURES / "golden_codex_personal.toml").read_text()
+        expected = (FIXTURES / "golden_codex.toml").read_text()
         assert actual == expected
 
     def test_preserves_existing_mcp_approval_overrides(self):
@@ -152,7 +150,7 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                         "[mcp_servers.plain-tool.tools.search]",
                         'approval_mode = "approve"',
                         "",
-                        "[mcp_servers.work-tool.tools.hidden]",
+                        "[mcp_servers.retired-tool.tools.hidden]",
                         'approval_mode = "approve"',
                         "",
                         "[mcp_servers.http-tool.tools.invalid]",
@@ -167,7 +165,6 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                     "inject_mcp_into_codex_toml.py",
                     str(FIXTURES / "codex_base.toml"),
                     str(FIXTURES / "mcp_servers.yaml"),
-                    "false",
                     "codex",
                     str(existing),
                 ]
@@ -179,7 +176,7 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
         assert "[mcp_servers.public-tool.tools.search]" in actual
         assert "[mcp_servers.plain-tool.tools.search]" in actual
         assert 'approval_mode = "approve"' in actual
-        assert "work-tool.tools.hidden" not in actual
+        assert "retired-tool.tools.hidden" not in actual
         assert "http-tool.tools.invalid" not in actual
 
     def test_preserves_existing_hook_trust_state(self):
@@ -203,7 +200,6 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                     "inject_mcp_into_codex_toml.py",
                     str(FIXTURES / "codex_base.toml"),
                     str(FIXTURES / "mcp_servers.yaml"),
-                    "false",
                     "codex",
                     str(existing),
                 ]
@@ -250,7 +246,6 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                     "inject_mcp_into_codex_toml.py",
                     str(FIXTURES / "codex_base.toml"),
                     str(FIXTURES / "mcp_servers.yaml"),
-                    "false",
                     "codex",
                     str(existing),
                 ]
@@ -315,7 +310,6 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                     "inject_mcp_into_codex_toml.py",
                     str(base),
                     str(FIXTURES / "mcp_servers.yaml"),
-                    "false",
                     "codex",
                     str(existing),
                 ]
@@ -350,7 +344,6 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                     "inject_mcp_into_codex_toml.py",
                     str(FIXTURES / "codex_base.toml"),
                     str(FIXTURES / "mcp_servers.yaml"),
-                    "false",
                     "codex",
                     str(existing),
                 ]

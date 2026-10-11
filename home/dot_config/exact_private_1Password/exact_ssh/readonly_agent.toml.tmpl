@@ -1,13 +1,3 @@
-{{ if .isWork -}}
-[[ssh-keys]]
-item = "work_ssh_keys"
-vault = "Work"
-{{ else -}}
 [[ssh-keys]]
 item = "personal_ssh_keys"
 vault = "Private"
-
-[[ssh-keys]]
-item = "work_ssh_keys"
-vault = "Work"
-{{ end -}}

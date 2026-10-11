@@ -5,10 +5,9 @@ title: Pi provider
 
 # Pi provider
 
-Pi settings and models are installed readonly, so the llama.cpp provider is declared in chezmoi source and installed as `~/.pi/agent/models.json` per profile:
+Pi settings and models are installed readonly, so the llama.cpp provider is declared in chezmoi source and installed as `~/.pi/agent/models.json`:
 
-- Work source: [`home/dot_pi/agent/readonly_models.json`](../../../../home/dot_pi/agent/readonly_models.json)
-- Personal source: [`home/dot_pi/agent/readonly_models.personal.json`](../../../../home/dot_pi/agent/readonly_models.personal.json) declares the same llama.cpp provider
+- Source: [`home/dot_pi/agent/readonly_models.personal.json`](../../../../home/dot_pi/agent/readonly_models.personal.json)
 
 ```bash
 ,llama-cpp serve

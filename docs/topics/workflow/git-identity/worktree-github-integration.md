@@ -11,10 +11,10 @@ The fzf-based GitHub picker (`prefix` + `G`) calls `,gh-worktree` for repo/boots
 Use `,gh-worktree` when you want the same repo/bootstrap behavior outside tmux pickers, including from agent sessions.
 
 ```bash
-,gh-worktree pr elastic/kibana 12345 --focus
-,gh-worktree issue elastic/kibana 12345 --focus
-,gh-worktree issue elastic/kibana 12345 --branch chore/fix-widget
-,gh-worktree pr elastic/kibana 12345 --create-bg --quiet
+,gh-worktree pr owner/repo 12345 --focus
+,gh-worktree issue owner/repo 12345 --focus
+,gh-worktree issue owner/repo 12345 --branch chore/fix-widget
+,gh-worktree pr owner/repo 12345 --create-bg --quiet
 ```
 
 Behavior:
@@ -49,12 +49,7 @@ Without `--branch`, issue creation may prompt for branch input.
 
 ## Bootstrap locations
 
-| Repo owner      | Destination     |
-| --------------- | --------------- |
-| `elastic/*`     | `~/work/<repo>` |
-| everything else | `~/code/<repo>` |
-
-If the repo does not exist locally, picker actions bootstrap it first with `,gh-tfork <owner/repo>`.
+Repos live under `~/code/<repo>`. If the repo does not exist locally, picker actions bootstrap it first with `,gh-tfork <owner/repo>`.
 
 ## Picker markers
 

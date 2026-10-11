@@ -256,9 +256,7 @@ def scan_roots_from_tmux():
         except Exception:
             roots_raw = ""
     if not roots_raw:
-        roots_raw = (
-            f"{Path.home()}/work,{Path.home()}/code,{Path.home()}/.backport/repositories,{Path.home()}/.local/share"
-        )
+        roots_raw = f"{Path.home()}/code,{Path.home()}/.local/share"
     roots = []
     for part in roots_raw.split(","):
         part = part.strip()

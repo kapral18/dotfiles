@@ -229,7 +229,7 @@ _comma_w_collect_team_review_filters() {
     return 0
   fi
 
-  # Parse strings like: team-review-requested:elastic/kibana-management.
+  # Parse strings like: team-review-requested:<org>/<team>.
   # Important: grep returns 1 when there are no matches; don't treat that as a fatal error.
   local matches=""
   matches="$(grep -Eo 'team-review-requested:[^ ]+' "$config_file" 2> /dev/null || true)"

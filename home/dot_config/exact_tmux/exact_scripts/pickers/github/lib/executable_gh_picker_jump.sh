@@ -2,7 +2,7 @@
 # Jump the GitHub picker cursor to the next or previous section header.
 # Called by fzf `transform` bindings (alt-n / alt-p); outputs an fzf action.
 #
-# Args: <mode_file> <scope_file> <direction>  where direction = next | prev
+# Args: <scope_file> <direction>  where direction = next | prev
 #
 # Hot path is pure bash with zero subprocess spawns. `transform` blocks fzf
 # input while it runs and fires once per keypress, so the previous `cat` +
@@ -12,26 +12,22 @@
 # script's own startup, so bursts stay real-time.
 set -euo pipefail
 
-mode_file="${1:-}"
-scope_file="${2:-}"
-direction="${3:-}"
+scope_file="${1:-}"
+direction="${2:-}"
 
-if [ -z "$mode_file" ] || [ -z "$scope_file" ] || [ -z "$direction" ]; then
+if [ -z "$scope_file" ] || [ -z "$direction" ]; then
   exit 0
 fi
 if [ "$direction" != "next" ] && [ "$direction" != "prev" ]; then
   exit 0
 fi
 
-mode="work"
 scope="all"
-[ -f "$mode_file" ] && IFS= read -r mode < "$mode_file" 2> /dev/null || true
 [ -f "$scope_file" ] && IFS= read -r scope < "$scope_file" 2> /dev/null || true
-[ -n "$mode" ] || mode="work"
 [ -n "$scope" ] || scope="all"
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
-offsets_file="${cache_dir}/gh_picker_offsets_${mode}_${scope}.json"
+offsets_file="${cache_dir}/gh_picker_offsets_${scope}.json"
 [ -f "$offsets_file" ] || exit 0
 
 cursor="${FZF_POS:-1}"

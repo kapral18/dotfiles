@@ -2,23 +2,10 @@
 # Single source of truth for every generated harness MCP config.
 #
 # Each entry:
-#   name        – server key in the mcpServers object
-#   work_only   – true = only included when isWork is set
-#   command     – executable to run
-#   args        – argument list passed to the command
+#   name           – server key in the mcpServers object
+#   command, args  – stdio server executable and argument list
+#   type, url      – `http` for a hosted server and its endpoint
+#   oauth_by_tool  – per-harness OAuth blocks; harnesses not listed omit the server
+#   exclude_tools  – harnesses that omit this server
 
 mcp_servers:
-  # Hosted OAuth servers reach only the harnesses named under oauth_by_tool.
-  - name: slack
-    work_only: true
-    type: http
-    url: https://mcp.slack.com/mcp
-    oauth_by_tool:
-      claude:
-        clientId: "1601185624273.8899143856786"
-        callbackPort: 3118
-      # Same public client; scopes are the granular `search:read.*` set from Slack's `scopes_supported`.
-      pi:
-        clientId: "1601185624273.8899143856786"
-        callbackUrl: "http://localhost:3118/callback"
-        scope: "search:read.public search:read.private search:read.mpim search:read.im search:read.files search:read.users"

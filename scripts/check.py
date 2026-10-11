@@ -151,7 +151,6 @@ TEST_RULES: tuple[TestRule, ...] = (
             ".claude/skills/dotfiles-guard/",
             "home/dot_claude/exact_mods/",
             "home/dot_claude/settings.personal.json",
-            "home/dot_claude/settings.work.json",
         ),
         tests=("tests/test_claude_mods.py",),
     ),
@@ -173,7 +172,6 @@ TEST_RULES: tuple[TestRule, ...] = (
             "tests/test_install_pnpm_pkgs.py",
             "tests/test_codex.py",
             "tests/test_llama_cpp_wrappers.py",
-            "tests/test_kbn_stack.py",
         ),
     ),
     TestRule(
@@ -199,7 +197,6 @@ TEST_RULES: tuple[TestRule, ...] = (
         prefixes=(
             "home/dot_config/llama.cpp/",
             "home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl",
-            "home/dot_pi/agent/readonly_models.json",
             "home/dot_pi/agent/readonly_models.personal.json",
             "home/readonly_dot_default-llama-cpp-models.tmpl",
         ),

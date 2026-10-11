@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Create an issue or epic from the GitHub picker (global, non-cursor action).
 #
-# Usage: gh_create.sh <issue|epic> <default_repo> <mode_file> <scope_file> <items_cmd>
+# Usage: gh_create.sh <issue|epic> <default_repo> <scope_file> <items_cmd>
 #
 # Wired to alt-i (issue) and alt-E (epic). Resolves a target repo (defaulting to
 # the cursor row's repo), composes title/body in $EDITOR, creates via
@@ -35,9 +35,8 @@ show_loader() {
 
 kind="${1:-}"
 default_repo="${2:-}"
-mode_file="${3:-}"
-scope_file="${4:-}"
-items_cmd="${5:-}"
+scope_file="${3:-}"
+items_cmd="${4:-}"
 
 case "$kind" in
   issue | epic) ;;
@@ -54,9 +53,8 @@ handoff_namespace="$HOME/.config/tmux/scripts/pickers/lib/handoff_namespace.py"
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 mkdir -p "$cache_dir" 2> /dev/null || true
 
-mode="$(cat "$mode_file" 2> /dev/null || echo work)"
 scope="$(cat "$scope_file" 2> /dev/null || echo all)"
-items_cache="${cache_dir}/gh_picker_${mode}.tsv"
+items_cache="${cache_dir}/gh_picker.tsv"
 
 repo_valid() {
   printf '%s' "$1" | grep -qE '^[^/[:space:]]+/[^/[:space:]]+$'
@@ -143,7 +141,7 @@ case "$answer" in
   *)
     # Refresh the dashboard so the new issue/epic appears; picker stays open.
     if [ -n "${FZF_PORT:-}" ]; then
-      reload_cmd="GH_PICKER_MODE=$(printf %q "$mode") GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --refresh"
+      reload_cmd="GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --refresh"
       curl -s --max-time 5 -XPOST "http://127.0.0.1:${FZF_PORT}" -d "reload(${reload_cmd})+track" > /dev/null 2>&1 || true
     fi
     ;;

@@ -84,7 +84,7 @@ chezmoi apply --no-tty ~/.local/bin/sd-cli ~/bin/,image-local ~/.config/sd-image
 ,image-local "a cat sitting on a windowsill" --width 1024 --height 1024
 ```
 
-Personal (64 GB) omits `--offload-to-cpu`. Work (36 GB) keeps it so the M3 Pro does not run out of memory. Same model and steps either way.
+The launcher sets `SD_IMAGE_OFFLOAD_TO_CPU=0`, so the 64 GB machine omits `--offload-to-cpu`. Unset, `,image-local` keeps the flag.
 
 1. Edit (only with `-i`; klein 9B, 4 steps, CFG 1.0, euler). Canvas always follows the input image. Do not pass `--width` / `--height`. A large photo stays that large, so the edit is slower:
 

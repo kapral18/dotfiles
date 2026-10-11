@@ -53,9 +53,7 @@ Avoid redundant findings:
    - SAST -> the vuln classes it scans
    - A check covers only what it actually runs.
    - Do not credit a check from its name alone.
-   - Buildkite job whose coverage is unclear: load and follow `~/.agents/skills/k-buildkite/SKILL.md` (`bk` CLI) to see what runs before crediting it with a class.
-     For Elastic repos, route through `k-elastic-domain` first when available, but do not skip Buildkite solely because the overlay cannot be loaded.
-     If Buildkite access is unavailable, keep the coverage class in scope instead of crediting the check.
+   - A job whose contents you cannot inspect: keep its coverage class in scope instead of crediting the check.
 3. Exempt a finding-class from review only when a present check genuinely covers it —
    CI will flag those, so do not build findings, draft comments, or withhold an approval for that exactly covered class.
 4. Keep every other class in scope, including ones whose check is absent or loosened on this branch.
@@ -80,7 +78,7 @@ resolve login, list reviews, select `PENDING` reviews by that login, read their 
 ## GitHub Context Intake + Reference Resolution (blocking — complete before diff analysis)
 
 Load `~/.agents/skills/k-github/SKILL.md` and follow its GitHub Context Intake + Reference Resolution section.
-It owns reusable complete-discussion, pagination, reference, media, Buildkite, visual-claim, visited-set, and intake-ledger rules;
+It owns reusable complete-discussion, pagination, reference, media, visual-claim, visited-set, and intake-ledger rules;
 this forwarding entry keeps existing callers valid.
 For a PR, the existing `~/.agents/skills/k-review/references/pr_snapshot.md` snapshot supplies the complete primary body, discussion/review threads and replies, current-account pending drafts, and diff metadata.
 Do not begin diff analysis until that PR context is complete. Do not refetch an artifact already complete in the snapshot.

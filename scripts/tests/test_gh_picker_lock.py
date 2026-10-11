@@ -65,13 +65,12 @@ class TestLockLoopEndToEnd(unittest.TestCase):
 
         The real script uses ``script_dir="$(cd "$(dirname "$0")" && pwd)"``,
         so copying it to a scratch directory relocates every relative path
-        (``lib/gh_items_main.py``, ``gh-picker-<mode>.yml``) automatically.
+        (``lib/gh_items_main.py``, ``gh-picker.yml``) automatically.
         """
         script_copy = base / "gh_items.sh"
         shutil.copy(SCRIPT, script_copy)
         script_copy.chmod(0o755)
-        (base / "gh-picker-work.yml").write_text("# stub config\n")
-        (base / "gh-picker-home.yml").write_text("# stub config\n")
+        (base / "gh-picker.yml").write_text("# stub config\n")
 
         lib = base / "lib"
         lib.mkdir()
@@ -91,7 +90,6 @@ class TestLockLoopEndToEnd(unittest.TestCase):
                 #   succeed.
                 import argparse, os, sys, time
                 p = argparse.ArgumentParser()
-                p.add_argument("--mode")
                 p.add_argument("--config")
                 p.add_argument("--cache-file")
                 p.add_argument("--scope")
@@ -135,11 +133,10 @@ class TestLockLoopEndToEnd(unittest.TestCase):
             **os.environ,
             "PATH": f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}",
             "XDG_CACHE_HOME": str(base / "cache"),
-            "GH_PICKER_MODE": "work",
         }
         env.pop("STUB_BLOCK", None)
 
-        cache_file = base / "cache" / "tmux" / "gh_picker_work.tsv"
+        cache_file = base / "cache" / "tmux" / "gh_picker.tsv"
         lock_dir = Path(f"{cache_file}.lock")
         return script_copy, env, counter_file, cache_file, lock_dir
 
@@ -152,7 +149,7 @@ class TestLockLoopEndToEnd(unittest.TestCase):
             base = Path(tmp)
             script, env, counter, cache_file, lock_dir = self._make_env(base)
             r = subprocess.run(
-                [modern_bash(), str(script), "--mode", "work"],
+                [modern_bash(), str(script)],
                 capture_output=True,
                 text=True,
                 env=env,
@@ -174,7 +171,7 @@ class TestLockLoopEndToEnd(unittest.TestCase):
             (lock_dir / "pid").write_text(f"{_find_dead_pid()}\n")
 
             r = subprocess.run(
-                [modern_bash(), str(script), "--mode", "work"],
+                [modern_bash(), str(script)],
                 capture_output=True,
                 text=True,
                 env=env,
@@ -197,7 +194,7 @@ class TestLockLoopEndToEnd(unittest.TestCase):
             os.utime(lock_dir, (past, past))
 
             r = subprocess.run(
-                [modern_bash(), str(script), "--mode", "work"],
+                [modern_bash(), str(script)],
                 capture_output=True,
                 text=True,
                 env=env,
@@ -218,7 +215,7 @@ class TestLockLoopEndToEnd(unittest.TestCase):
             env["STUB_BLOCK"] = str(block)
 
             owner = subprocess.Popen(
-                [modern_bash(), str(script), "--mode", "work"],
+                [modern_bash(), str(script)],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 env=env,
@@ -235,7 +232,7 @@ class TestLockLoopEndToEnd(unittest.TestCase):
                 waiter_env.pop("STUB_BLOCK", None)  # emit_cache path must not block
                 waiters = [
                     subprocess.Popen(
-                        [modern_bash(), str(script), "--mode", "work"],
+                        [modern_bash(), str(script)],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         env=waiter_env,
@@ -295,7 +292,7 @@ class TestLockLoopEndToEnd(unittest.TestCase):
             waiter = None
             try:
                 waiter = subprocess.Popen(
-                    [modern_bash(), str(script), "--mode", "work"],
+                    [modern_bash(), str(script)],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     env=env,

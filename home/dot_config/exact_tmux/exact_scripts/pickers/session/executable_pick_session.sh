@@ -273,14 +273,14 @@ rm_pending_snap="${cache_dir}/pick_session_rm_pending.$$.tsv"
 _pick_session_pid_scoped_files+=("$cmd_tmp" "$mode_flag" "$wt_mode_flag" "$wt_branch_tmp" "$only_mode_flag" "$rm_confirm_flag" "$rm_pending_snap")
 
 # alt-1/alt-2 quick filters jump to the first two scan-root segments via their
-# trailing-slash labels (e.g. `work/` surfaces `~/work/`). Overridable so the
+# trailing-slash labels (e.g. `code/` surfaces `~/code/`). Overridable so the
 # bindings can follow non-default `@pick_session_worktree_scan_roots`.
-filter_quick_1="$(tmux_opt '@pick_session_filter_quick_1' 'work')"
-filter_quick_2="$(tmux_opt '@pick_session_filter_quick_2' 'code')"
+filter_quick_1="$(tmux_opt '@pick_session_filter_quick_1' 'code')"
+filter_quick_2="$(tmux_opt '@pick_session_filter_quick_2' 'share')"
 
 fzf_args="$(tmux_opt '@pick_session_fzf_options' '')"
 fzf_prompt="$(tmux_opt '@pick_session_fzf_prompt' '󰍉  ')"
-fzf_ghost="$(tmux_opt '@pick_session_fzf_ghost' 'filter: kibana, code, work')"
+fzf_ghost="$(tmux_opt '@pick_session_fzf_ghost' 'filter: repo, branch, path')"
 fzf_color="$(tmux_opt '@pick_session_fzf_color' 'prompt:111,query:223,input-bg:-1,input-fg:252,ghost:240,header:244,spinner:110,info:244,pointer:81,marker:214')"
 fzf_ui_args=()
 [ -n "$fzf_prompt" ] && fzf_ui_args+=(--prompt "$fzf_prompt")
@@ -926,7 +926,7 @@ branch_from_wrapper_path() {
 
 scan_roots_list() {
   local roots_raw root
-  roots_raw="$(tmux_opt '@pick_session_worktree_scan_roots' "$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share")"
+  roots_raw="$(tmux_opt '@pick_session_worktree_scan_roots' "$HOME/code,$HOME/.local/share")"
   IFS=',' read -r -a roots <<< "$roots_raw"
   for root in "${roots[@]}"; do
     root="${root#"${root%%[![:space:]]*}"}"

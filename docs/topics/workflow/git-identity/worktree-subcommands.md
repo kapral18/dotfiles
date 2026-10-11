@@ -50,7 +50,7 @@ Login resolution order:
 ,w issue 12345
 ,w issue --focus 12345
 ,w issue --branch my-fix 12345
-,w issue https://github.com/elastic/kibana/issues/12345
+,w issue https://github.com/owner/repo/issues/12345
 ```
 
 - Reuses an existing issue worktree when metadata or branch heuristics match.
@@ -82,7 +82,7 @@ Login resolution order:
 
 ```bash
 ,w switch
-,w switch kibana
+,w switch repo
 ```
 
 - Opens an fzf picker over selectable worktrees.
@@ -103,7 +103,7 @@ Accepts a branch name or absolute path, creates a tmux session if needed, and sw
 ```bash
 ,w mv old-branch new-branch
 ,w mv --keep-path old-branch new-branch
-,w mv --path ~/work/repo/new-dir old-branch new-branch
+,w mv --path ~/code/repo/new-dir old-branch new-branch
 ,w mv --focus old-branch new-branch
 ```
 

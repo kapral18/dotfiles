@@ -67,7 +67,7 @@ Trigger: the output is a final verdict or finding set that checks also gate: PR 
 Not triggered: local iterate-and-fix review (`~/.agents/skills/k-review/references/local_changes.md`, `k-light-review`);
 there a covered-class finding is fixed in the same pass, so every class stays in scope.
 
-Evidence is the snapshot's present checks: PR CI checks (`~/.agents/skills/k-review/references/pr_common.md` CI Coverage Gate owns `checks.json` and Buildkite mechanics) or complete local check results (`make check`, pre-commit, lint, typecheck, test runs).
+Evidence is the snapshot's present checks: PR CI checks (`~/.agents/skills/k-review/references/pr_common.md` CI Coverage Gate owns `checks.json`) or complete local check results (`make check`, pre-commit, lint, typecheck, test runs).
 
 - Map each present check to the finding classes it actually runs; do not credit a check from its name alone.
 - Exempt a class only when a present check genuinely covers it: do not report, draft, or block on findings in that class.

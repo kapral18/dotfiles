@@ -14,7 +14,7 @@ Keep using your current IDE and terminal. Just let the new git defaults work for
 
 What you get immediately:
 
-- Git identity switching (work vs personal)
+- SSH commit signing
 - 1Password-backed SSH agent setup
 - Opinionated git defaults (rerere, autosquash, delta, etc.)
 

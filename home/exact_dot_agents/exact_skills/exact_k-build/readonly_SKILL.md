@@ -26,7 +26,7 @@ Implement the approved `k-spec` plan inline.
 
 - Run the planned checks once on the finished change, cheap prerequisites first. Keep full logs and the real exit status.
 - Run visual or runtime checks only for criteria that need them, with a verified target:
-  load `k-ui-capture` and the matching domain overlay.
+  load `k-ui-capture`, plus the matching domain overlay when one exists.
   Windows coverage only when asked, through `k-live-ui-windows`.
 - On a failure, fix within scope and rerun the failed and affected checks.
   After two attempts without new evidence, stop and report the blocker.

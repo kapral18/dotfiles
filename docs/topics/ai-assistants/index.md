@@ -40,4 +40,4 @@ OMP's native advisor adds main-session notes; child advisors stay off.
 - **Explicit handoffs.** "handoff X" writes a short note with `,handoff`; "continue X" reads it in any harness.
 - **Behavior maps, not diagrams.** Each repo keeps a short map of critical behaviors seen from the user side; agents update only the entries their diff touches.
 
-Related: [Reviewing agent diffs](reviewing-diffs.md), [Elastic and Kibana overlay](elastic-and-kibana.md).
+Related: [Reviewing agent diffs](reviewing-diffs.md).

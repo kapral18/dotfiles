@@ -29,7 +29,7 @@ Pipe-delimited, one model per line:
 - `hf-file` — GGUF filename in that repo.
 - `dest-basename` — optional on-disk name under `~/.llama.cpp/models/`. Use it when two Hugging Face files share a name (for example `mmproj-F16.gguf`). The helper stages that download in a temp directory and renames it so the Hugging Face name cannot overwrite a sibling.
 
-Lines starting with `#` and blank lines are ignored. Chezmoi template conditionals work natively if a future model should render only for a specific profile; the orchestrator pipes the manifest through `chezmoi execute-template`.
+Lines starting with `#` and blank lines are ignored. Chezmoi template conditionals work natively if a future model should render only on some machines; the orchestrator pipes the manifest through `chezmoi execute-template`.
 
 ## Steps
 
@@ -39,9 +39,9 @@ Lines starting with `#` and blank lines are ignored. Chezmoi template conditiona
 
 3. Fan the new router id out to every consumer in the same change:
 
-   - Pi: [`home/dot_pi/agent/readonly_models.json`](../../../../home/dot_pi/agent/readonly_models.json) and [`readonly_models.personal.json`](../../../../home/dot_pi/agent/readonly_models.personal.json)
+   - Pi: [`home/dot_pi/agent/readonly_models.personal.json`](../../../../home/dot_pi/agent/readonly_models.personal.json)
    - Codex: [`home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl`](../../../../home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl) and `LOCAL_MODELS` in [`home/exact_lib/exact_,codex/main.py`](../../../../home/exact_lib/exact_,codex/main.py)
-   - OpenCode: both [`readonly_opencode.work.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.work.jsonc) and [`readonly_opencode.personal.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.personal.jsonc)
+   - OpenCode: [`readonly_opencode.personal.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.personal.jsonc)
    - Fish completions for `,claude-llama-cpp`, `,codex-llama-cpp`, and `,opencode-llama-cpp`
    - `python3 scripts/model_mirrors.py generate`
    - llama.cpp docs under `docs/topics/ai-assistants/llama-cpp/`

@@ -12,26 +12,10 @@ from _test_support import FIXTURES
 class TestMcpRegistry(unittest.TestCase):
     """WHEN loading MCP servers from YAML."""
 
-    def test_personal_excludes_work_only(self):
-        from mcp_registry import load_servers
-
-        servers = load_servers(str(FIXTURES / "mcp_servers.yaml"), is_work=False)
-        assert "public-tool" in servers
-        assert "work-tool" not in servers
-        assert "http-tool" in servers
-
-    def test_work_includes_all(self):
-        from mcp_registry import load_servers
-
-        servers = load_servers(str(FIXTURES / "mcp_servers.yaml"), is_work=True)
-        assert "public-tool" in servers
-        assert "work-tool" in servers
-        assert "http-tool" in servers
-
     def test_http_server_shape_with_tool(self):
         from mcp_registry import load_servers
 
-        servers = load_servers(str(FIXTURES / "mcp_servers.yaml"), is_work=False, tool="claude")
+        servers = load_servers(str(FIXTURES / "mcp_servers.yaml"), tool="claude")
         http = servers["http-tool"]
         assert http["type"] == "http"
         assert http["url"] == "https://mcp.example.com/mcp"
@@ -41,7 +25,7 @@ class TestMcpRegistry(unittest.TestCase):
     def test_http_server_no_tool_no_oauth(self):
         from mcp_registry import load_servers
 
-        servers = load_servers(str(FIXTURES / "mcp_servers.yaml"), is_work=False)
+        servers = load_servers(str(FIXTURES / "mcp_servers.yaml"))
         http = servers["http-tool"]
         assert http["type"] == "http"
         assert http["url"] == "https://mcp.example.com/mcp"
@@ -50,7 +34,7 @@ class TestMcpRegistry(unittest.TestCase):
     def test_http_server_unknown_tool_omits_tool_specific_oauth_server(self):
         from mcp_registry import load_servers
 
-        servers = load_servers(str(FIXTURES / "mcp_servers.yaml"), is_work=False, tool="unknown")
+        servers = load_servers(str(FIXTURES / "mcp_servers.yaml"), tool="unknown")
         assert "http-tool" not in servers
 
     def test_exclude_tools_omits_server_for_listed_tool_only(self):
@@ -58,15 +42,15 @@ class TestMcpRegistry(unittest.TestCase):
 
         fixture = str(FIXTURES / "mcp_servers_exclude.yaml")
 
-        omp = load_servers(fixture, is_work=False, tool="omp")
+        omp = load_servers(fixture, tool="omp")
         assert "shared-tool" in omp
         assert "excluded-tool" not in omp
 
-        claude = load_servers(fixture, is_work=False, tool="claude")
+        claude = load_servers(fixture, tool="claude")
         assert "excluded-tool" in claude
         assert claude["excluded-tool"]["command"] == "docker"
 
-        no_tool = load_servers(fixture, is_work=False)
+        no_tool = load_servers(fixture)
         assert "excluded-tool" in no_tool
 
 

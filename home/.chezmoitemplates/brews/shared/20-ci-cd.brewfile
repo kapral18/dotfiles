@@ -1,5 +1,0 @@
-tap "buildkite/buildkite", trusted: true
-
-# Buildkite CLI — interact with builds, pipelines, and jobs
-# https://github.com/buildkite/cli
-brew "buildkite/buildkite/bk@3"

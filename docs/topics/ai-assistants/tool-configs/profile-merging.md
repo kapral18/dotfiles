@@ -1,40 +1,39 @@
 ---
 sidebar_position: 2
-title: Profile-based merging
+title: Config merging
 ---
 
-# Profile-based file merging
+# Config file merging
 
-Some assistant tools rewrite their config files at runtime, so chezmoi does not treat the deployed target as the source of truth. The repo keeps explicit profile sources, and `run_onchange` scripts render the selected profile into the live target only when content differs.
+Some assistant tools rewrite their config files at runtime, so chezmoi does not treat the deployed target as the source of truth. The repo keeps one source file per harness, and `run_onchange` scripts render it into the live target only when content differs.
 
-This avoids complex templates and comment filters. Work/personal differences live in `.work.*` and `.personal.*` files, while mixed-ownership targets pass through typed reconcilers that know which runtime fields may survive.
+This avoids complex templates and comment filters. Mixed-ownership targets pass through typed reconcilers that know which runtime fields may survive.
 
 ## Mental model
 
 | Step | What happens                                                                                                                                |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | The merge script checks the `.isWork` template variable.                                                                                    |
-| 2    | It picks the correct source file.                                                                                                           |
-| 3    | Mixed-ownership targets pass through a typed ownership-aware reconciler.                                                                    |
-| 4    | It writes the final destination only when content differs and updates both the generic checksum manifest and the AI effective-state ledger. |
-| 5    | Tool-specific formats stay decoupled.                                                                                                       |
+| 1    | The merge script reads its one source file.                                                                                                 |
+| 2    | Mixed-ownership targets pass through a typed ownership-aware reconciler.                                                                    |
+| 3    | It writes the final destination only when content differs and updates both the generic checksum manifest and the AI effective-state ledger. |
+| 4    | Tool-specific formats stay decoupled.                                                                                                       |
 
 All merge scripts live under [`home/.chezmoiscripts/`](../../../../home/.chezmoiscripts/) and source [`scripts/chezmoi_lib.sh`](../../../../scripts/chezmoi_lib.sh).
 
 ## Reference matrix
 
-| Tool                 | Source files                                                                                                                                                                                                                                                                 | Target                               | Merge script                                               |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------- |
-| Claude Code settings | [`home/dot_claude/settings.{work,personal}.json`](../../../../home/dot_claude/)                                                                                                                                                                                              | `~/.claude/settings.json`            | `run_onchange_after_07-merge-claude-code-settings.sh.tmpl` |
-| OpenCode config+MCP  | [`home/dot_config/opencode/readonly_opencode.{work,personal}.jsonc`](../../../../home/dot_config/opencode/)                                                                                                                                                                  | `~/.config/opencode/opencode.jsonc`  | `run_onchange_after_07-merge-opencode-config.sh.tmpl`      |
-| Codex config+MCP     | [`home/dot_codex/private_config.{work,personal}.toml`](../../../../home/dot_codex/)                                                                                                                                                                                          | `~/.codex/config.toml`               | `run_onchange_after_07-merge-codex-config.sh.tmpl`         |
-| Pi settings/models   | [`home/dot_pi/agent/readonly_settings.{work,personal}.json`](../../../../home/dot_pi/agent/) + [`readonly_models.json`](../../../../home/dot_pi/agent/readonly_models.json) / [`readonly_models.personal.json`](../../../../home/dot_pi/agent/readonly_models.personal.json) | `~/.pi/agent/{settings,models}.json` | `run_onchange_after_07-merge-pi-config.sh.tmpl`            |
+| Tool                 | Source files                                                                                                                                                                                                          | Target                               | Merge script                                               |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------- |
+| Claude Code settings | [`home/dot_claude/settings.personal.json`](../../../../home/dot_claude/settings.personal.json)                                                                                                                        | `~/.claude/settings.json`            | `run_onchange_after_07-merge-claude-code-settings.sh.tmpl` |
+| OpenCode config+MCP  | [`home/dot_config/opencode/readonly_opencode.personal.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.personal.jsonc)                                                                                  | `~/.config/opencode/opencode.jsonc`  | `run_onchange_after_07-merge-opencode-config.sh.tmpl`      |
+| Codex config+MCP     | [`home/dot_codex/private_config.personal.toml`](../../../../home/dot_codex/private_config.personal.toml)                                                                                                              | `~/.codex/config.toml`               | `run_onchange_after_07-merge-codex-config.sh.tmpl`         |
+| Pi settings/models   | [`home/dot_pi/agent/readonly_settings.personal.json`](../../../../home/dot_pi/agent/readonly_settings.personal.json) + [`readonly_models.personal.json`](../../../../home/dot_pi/agent/readonly_models.personal.json) | `~/.pi/agent/{settings,models}.json` | `run_onchange_after_07-merge-pi-config.sh.tmpl`            |
 
 ## Using it
 
 Pi targets are installed readonly. Both shared write helpers enforce the requested file mode even when content already matches, without rewriting matching bytes. The string helper compares the exact bytes it would write (`desired` plus one newline), so missing or extra trailing newlines are corrected.
 
-Codex rebuilds from its profile base and reattaches only MCP approvals, hook trust, valid project trust, and valid TUI counters. Trailing comments on TOML table headers preserve the same runtime state as equivalent uncommented headers.
+Codex rebuilds from its source base and reattaches only MCP approvals, hook trust, valid project trust, and valid TUI counters. Trailing comments on TOML table headers preserve the same runtime state as equivalent uncommented headers.
 
 MCP-server injection for each tool is covered in [MCP servers](../mcp.md).
 
@@ -47,7 +46,6 @@ Each successful 07-hook write records one schema-v1 artifact row under `~/.local
 The row carries:
 
 - producer
-- selected profile
 - complete repo-local input/transform hashes
 - target
 - ownership adapter

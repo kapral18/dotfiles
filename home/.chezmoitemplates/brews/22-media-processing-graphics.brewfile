@@ -39,3 +39,7 @@ brew "eddieantonio/eddieantonio/imgcat"
 # Media player based on MPlayer and mplayer2
 # https://mpv.io/
 brew "mpv"
+
+# Console music player
+# https://cmus.github.io/
+brew "cmus"

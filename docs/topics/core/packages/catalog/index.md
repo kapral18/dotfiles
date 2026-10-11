@@ -40,5 +40,4 @@ This is the human map of the tools this dotfiles repo controls across package ma
 | `brew` / `cask` / `tap`                    | Homebrew source                                |
 | `pnpm`, `uv`, `cargo`, `go`, `gem`, `mise` | language/runtime manager source                |
 | `custom`                                   | GitHub release, DMG, or source build installer |
-| `personal`                                 | gated to non-work machines                     |
 | `model`                                    | large local model asset                        |

@@ -12,7 +12,6 @@ source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh
 source "$source_dir/../scripts/chezmoi_lib.sh"
 
-profile="{{ if eq .isWork true }}work{{ else }}personal{{ end }}"
 settings_target="$HOME/.gemini/antigravity-cli/settings.json"
 policy_src="$source_dir/dot_gemini/private_antigravity-cli/readonly_settings.policy.json"
 settings_merge="$source_dir/../scripts/merge_antigravity_cli_settings.py"
@@ -25,7 +24,7 @@ settings_live="$settings_target"
 desired_settings="$(python3 "$settings_merge" "$settings_live" "$policy_src")"
 chezmoi_write_if_changed "$desired_settings" "$settings_target" 0600
 chezmoi_record_artifact --id antigravity-cli-settings \
-  --producer 07-merge-antigravity-cli-settings --profile "$profile" \
+  --producer 07-merge-antigravity-cli-settings \
   --target "$settings_target" --ownership-adapter json-declared \
   --baseline "$policy_src" \
   --input "$policy_src" \

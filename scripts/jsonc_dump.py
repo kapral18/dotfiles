@@ -30,7 +30,7 @@ def dump_jsonc(obj, *, indent: int = 2, _level: int = 0) -> str:
     newline; callers append one if needed.
 
     Output style (matches the goldens under
-    `scripts/tests/fixtures/golden_opencode_*.jsonc`):
+    `scripts/tests/fixtures/golden_opencode.jsonc`):
 
         {
           "key": "value",

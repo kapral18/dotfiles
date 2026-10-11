@@ -509,7 +509,7 @@ now_epoch="$(date +%s)"
 } >> "$mutation_file"
 
 if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
-  pick_session_scan_roots_raw="$(tmux_opt '@pick_session_worktree_scan_roots' "$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share")"
+  pick_session_scan_roots_raw="$(tmux_opt '@pick_session_worktree_scan_roots' "$HOME/code,$HOME/.local/share")"
 
   for root in "${!roots_selected[@]}"; do
     nohup env -u TMUX -u TMUX_PANE PICK_SESSION_CURRENT_SESSION="$current_session" PICK_SESSION_SCAN_ROOTS="$pick_session_scan_roots_raw" "$HOME/.config/tmux/scripts/pickers/session/remove_all_worktrees.sh" "$root" < /dev/null > /dev/null 2>&1 &

@@ -70,7 +70,6 @@ const sidebars: SidebarsConfig = {
         'topics/ai-assistants/skills',
         'topics/ai-assistants/subagents',
         'topics/ai-assistants/memory-and-handoffs',
-        'topics/ai-assistants/elastic-and-kibana',
         'topics/ai-assistants/mcp',
         {
           type: 'category',
@@ -105,7 +104,6 @@ const sidebars: SidebarsConfig = {
         'topics/workflow/git-identity/git-config',
         'topics/workflow/git-identity/identity-and-keys',
         'topics/workflow/git-identity/gh-extension',
-        'topics/workflow/git-identity/switch-identity',
         'topics/workflow/git-identity/worktrees',
         'topics/workflow/git-identity/worktree-subcommands',
         'topics/workflow/git-identity/worktree-github-integration',

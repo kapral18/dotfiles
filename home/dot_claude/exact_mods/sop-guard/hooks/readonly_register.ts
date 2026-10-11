@@ -7,7 +7,6 @@ const PRINTS = new Set(['cat', 'head', 'tail', 'less', 'more', 'grep', 'rg', 'se
 // `pass` subcommands that print no secret.
 const PASS_COMMANDS = new Set(['ls', 'list', 'find', 'search', 'grep', 'insert', 'add', 'edit', 'generate', 'rm', 'remove', 'delete', 'mv', 'rename', 'cp', 'copy', 'git', 'init', 'help', 'version'])
 const ENV_FILE = /^\.env(\.(?!(example|sample|template|dist)$)[\w-]+)*$/
-const BUILDKITE = /(^|\/\/|[.@])buildkite\.com\b/
 
 const TMUX_FLAG_ARGS = new Set(['-f', '-c', '-T'])
 const TMUX_MUTATIONS = new Set([
@@ -15,8 +14,6 @@ const TMUX_MUTATIONS = new Set([
   'display-popup', 'popup', 'switch-client', 'switchc', 'attach-session', 'attach', 'a', 'at',
   'detach-client', 'detach', 'send-keys', 'send',
 ])
-
-const parent = (path: string) => path.slice(0, Math.max(path.lastIndexOf('/'), 0)) || '/'
 
 const printsSecret = ([name, ...args]: string[]) => {
   switch (base(name)) {
@@ -78,8 +75,7 @@ const managedTargets = async ($: EngineInterface) => {
   return managed.targets
 }
 
-export const register: Register = (on, options) => {
-  const team = typeof options.team === 'string' ? options.team.trim() : ''
+export const register: Register = on => {
   // Stops that a retry may pass, per session.
   const stopped = new Set<string>()
   const stopOnce = (key: string) => (stopped.has(key) ? false : (stopped.add(key), true))
@@ -98,9 +94,6 @@ export const register: Register = (on, options) => {
       if (printsSecret(command.words) && !isConsumed(command)) {
         return { deny: `${name}: this command prints a secret into the transcript (~/AGENTS.md §5). Pass it by reference: $(...) into a variable or argument, a pipe into its consumer, or pass -c.` }
       }
-      if (/^(curl|wget|http|https|xh)$/.test(base(word)) && args.some(arg => BUILDKITE.test(arg))) {
-        return { deny: `${name}: never fetch buildkite.com directly; use bk (k-buildkite skill).` }
-      }
       if (base(word) !== 'tmux') continue
       for (const sub of tmuxSubcommands(args) ?? []) {
         if (sub === 'kill-server') {
@@ -112,11 +105,6 @@ export const register: Register = (on, options) => {
       }
     }
     return next(e)
-  }).catch(($, e, next) => next(e))
-
-  on('tool.call', { tool: 'WebFetch' }, ($, e, next) => {
-    const host = /^[a-z]+:\/\/([^/?#]+)/i.exec(e.url)?.[1] ?? ''
-    return BUILDKITE.test(`//${host}`) ? { deny: `${$.plugin.name}: never fetch buildkite.com directly; use bk (k-buildkite skill).` } : next(e)
   }).catch(($, e, next) => next(e))
 
   on('tool.call', { tool: ['Edit', 'Write', 'NotebookEdit'] }, async ($, e, next) => {
@@ -133,24 +121,6 @@ export const register: Register = (on, options) => {
         return { deny: `${name}: ${real} is managed by chezmoi (~/AGENTS.md §6). Edit ${source.stdout.trim() || 'its source'}, then run chezmoi apply --no-tty ${real}.` }
       }
     }
-
-    let dir = parent(path)
-    while (dir !== '/' && !(await $.fs.exists(dir))) dir = parent(dir)
-    const top = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { cwd: dir })
-    const repo = top.stdout.trim()
-    if (top.exitCode !== 0) return next(e)
-    // The places ,codeowners reads.
-    const files = ['.github/CODEOWNERS', 'CODEOWNERS', 'docs/CODEOWNERS'].map(file => `${repo}/${file}`)
-    if (!(await Promise.all(files.map(file => $.fs.exists(file)))).includes(true)) return next(e)
-    if (!team) {
-      return stopOnce(`team\0${repo}`)
-        ? { deny: `${name}: ${repo} has CODEOWNERS and no team is set (~/AGENTS.md §5). Ask the user for their team once, then retry.` }
-        : next(e)
-    }
-    const relative = path.startsWith(`${repo}/`) ? path.slice(repo.length + 1) : path
-    const owner = await $.process.run([',codeowners', '--owner-of', relative], { cwd: repo })
-    const owners = owner.stdout.trim().split(/\s{2,}/)[2] ?? '<unowned>'
-    if (owners.split(/\s+/).includes(team) || !stopOnce(`owners\0${repo}\0${owners}`)) return next(e)
-    return { deny: `${name}: ${relative} is owned by ${owners}, not ${team} (~/AGENTS.md §5). Stop and list the owners for the user. Retry only after the user approves.` }
+    return next(e)
   }).catch(($, e, next) => next(e))
 }

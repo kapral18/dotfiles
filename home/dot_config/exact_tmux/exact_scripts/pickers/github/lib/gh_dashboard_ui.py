@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Status line helper for the tmux GitHub picker.
 
-Only renders the cockpit header (mode/scope/counts/cache age + key actions).
+Only renders the cockpit header (scope/counts/cache age + key actions).
 The picker remains the action surface; this module exists so the bash glue
 stays free of TSV parsing logic.
 """
@@ -87,7 +87,7 @@ def cache_age(path: str) -> str:
     return f"{minutes // 60}h"
 
 
-def status_line(cache_file: str, mode: str, scope: str) -> str:
+def status_line(cache_file: str, scope: str) -> str:
     rows = read_rows(cache_file)
     sections = {row.section for row in rows if row.section}
     prs = sum(1 for row in rows if row.kind == "pr")
@@ -95,7 +95,7 @@ def status_line(cache_file: str, mode: str, scope: str) -> str:
     total = prs + issues
     age = cache_age(cache_file)
     return (
-        f"mode:{mode} scope:{scope} items:{total} prs:{prs} issues:{issues} "
+        f"scope:{scope} items:{total} prs:{prs} issues:{issues} "
         f"sections:{len(sections)} cache:{age} | "
         "enter checkout ctrl-r refresh ? help"
     )
@@ -107,12 +107,11 @@ def main() -> int:
 
     p_status = sub.add_parser("status")
     p_status.add_argument("--cache-file", required=True)
-    p_status.add_argument("--mode", required=True)
     p_status.add_argument("--scope", required=True)
 
     args = parser.parse_args()
     if args.cmd == "status":
-        print(status_line(args.cache_file, args.mode, args.scope))
+        print(status_line(args.cache_file, args.scope))
         return 0
     return 1
 

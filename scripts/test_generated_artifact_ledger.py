@@ -45,8 +45,6 @@ class TestGeneratedArtifactLedger(unittest.TestCase):
                             "fixture",
                             "--producer",
                             "hook",
-                            "--profile",
-                            "work",
                             "--target",
                             str(target),
                             "--input",
@@ -90,7 +88,6 @@ class TestGeneratedArtifactLedger(unittest.TestCase):
             spec = {
                 "artifact_id": "fixture",
                 "producer": "hook",
-                "profile": "work",
                 "target": str(target),
                 "inputs": [str(source)],
                 "transforms": [str(transform)],
@@ -117,7 +114,6 @@ class TestGeneratedArtifactLedger(unittest.TestCase):
             spec = {
                 "artifact_id": "fixture",
                 "producer": "hook",
-                "profile": "work",
                 "target": str(target),
                 "inputs": [str(source)],
                 "transforms": [str(transform)],
@@ -164,7 +160,6 @@ class TestGeneratedArtifactLedger(unittest.TestCase):
             spec = {
                 "artifact_id": "copilot-settings",
                 "producer": "hook",
-                "profile": "work",
                 "target": str(target),
                 "inputs": [str(baseline), str(source)],
                 "transforms": [str(transform)],
@@ -215,7 +210,6 @@ class TestGeneratedArtifactLedger(unittest.TestCase):
             spec = {
                 "artifact_id": "codex-config",
                 "producer": "hook",
-                "profile": "work",
                 "target": str(target),
                 "inputs": [str(source)],
                 "transforms": [str(transform)],
@@ -264,7 +258,6 @@ class TestGeneratedArtifactLedger(unittest.TestCase):
                     {
                         "artifact_id": artifact_id,
                         "producer": "hook",
-                        "profile": "work",
                         "target": str(target),
                         "inputs": [str(source)],
                         "transforms": [str(transform)],

@@ -42,7 +42,7 @@ Three terminal git clients are configured; pick whichever fits the task (the [gi
 - gitui — [`home/dot_config/exact_gitui/readonly_key_bindings.ron`](../../../home/dot_config/exact_gitui/readonly_key_bindings.ron), [`home/dot_config/exact_gitui/readonly_theme.ron`](../../../home/dot_config/exact_gitui/readonly_theme.ron)
 - tig — [`home/dot_config/exact_tig/readonly_config`](../../../home/dot_config/exact_tig/readonly_config)
 
-A PR-focused dashboard, gh-dash, is configured separately under [`home/dot_config/exact_gh-dash/`](../../../home/dot_config/exact_gh-dash/) (work/home/shared profiles).
+A PR-focused dashboard, gh-dash, is configured separately under [`home/dot_config/exact_gh-dash/`](../../../home/dot_config/exact_gh-dash/) (one config plus shared settings).
 
 ## System monitor (btop)
 

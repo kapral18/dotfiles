@@ -86,7 +86,7 @@ emit_sessions_worktrees_and_dirs() {
   export PICK_SESSION_GITHUB_LOGIN
   export PICK_SESSION_THREADS
 
-  PICK_SESSION_SCAN_ROOTS="$(tmux_opt '@pick_session_worktree_scan_roots' "$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share")"
+  PICK_SESSION_SCAN_ROOTS="$(tmux_opt '@pick_session_worktree_scan_roots' "$HOME/code,$HOME/.local/share")"
   PICK_SESSION_SCAN_DEPTH="$(tmux_opt '@pick_session_worktree_scan_depth' '6')"
   PICK_SESSION_IGNORE_FILE="$(pick_session_ignore_file)"
   PICK_SESSION_QUICK="$quick_mode"

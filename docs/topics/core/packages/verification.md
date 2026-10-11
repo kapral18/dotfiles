@@ -31,7 +31,6 @@ command -v <tool>
 | ------------------------------------------------- | ------------------------------------------------------------------- |
 | Is it declared in the right source list/template? | declarative cleanup removes undeclared packages                     |
 | Did the corresponding hook run?                   | `run_onchange` hashes decide whether a hook re-runs                 |
-| Is it scoped to the current `.isWork` profile?    | template branches can hide personal/work-only tools                 |
 | For Homebrew, is it in the assembled Brewfile?    | cleanup uses `~/.Brewfile`, not the partial you edited in isolation |
 | For Go, did this tooling install it?              | the state ledger prevents deleting hand-installed binaries          |
 

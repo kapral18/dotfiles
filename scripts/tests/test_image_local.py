@@ -223,19 +223,19 @@ class TestBuildEditArgv(unittest.TestCase):
 
 
 class TestOffloadToCpu(unittest.TestCase):
-    """WHEN work vs personal selects sd-cli --offload-to-cpu."""
+    """WHEN SD_IMAGE_OFFLOAD_TO_CPU selects sd-cli --offload-to-cpu."""
 
     def test_it_should_keep_offload_when_the_env_is_unset(self) -> None:
         env = {key: value for key, value in os.environ.items() if key != MOD.OFFLOAD_ENV}
         with mock.patch.dict(os.environ, env, clear=True):
             self.assertTrue(MOD.use_offload_to_cpu())
 
-    def test_it_should_skip_offload_on_personal_and_keep_it_on_work(self) -> None:
+    def test_it_should_follow_the_offload_env_switch(self) -> None:
         with mock.patch.dict(os.environ, {MOD.OFFLOAD_ENV: "0"}, clear=False):
             self.assertFalse(MOD.use_offload_to_cpu())
         with mock.patch.dict(os.environ, {MOD.OFFLOAD_ENV: "1"}, clear=False):
             self.assertTrue(MOD.use_offload_to_cpu())
-        personal = MOD.build_gen_argv(
+        no_offload = MOD.build_gen_argv(
             sd_cli="sd-cli",
             paths=GEN_PATHS,
             prompt="a cat",
@@ -247,7 +247,7 @@ class TestOffloadToCpu(unittest.TestCase):
             seed=None,
             offload=False,
         )
-        work = MOD.build_gen_argv(
+        offload = MOD.build_gen_argv(
             sd_cli="sd-cli",
             paths=GEN_PATHS,
             prompt="a cat",
@@ -259,13 +259,9 @@ class TestOffloadToCpu(unittest.TestCase):
             seed=None,
             offload=True,
         )
-        self.assertNotIn("--offload-to-cpu", personal)
-        self.assertIn("--diffusion-fa", personal)
-        self.assertIn("--offload-to-cpu", work)
-        launcher = (REPO / "home" / "exact_bin" / "executable_,image-local.tmpl").read_text(encoding="utf-8")
-        self.assertIn("eq .isWork true", launcher)
-        self.assertIn(f"{MOD.OFFLOAD_ENV}=1", launcher)
-        self.assertIn(f"{MOD.OFFLOAD_ENV}=0", launcher)
+        self.assertNotIn("--offload-to-cpu", no_offload)
+        self.assertIn("--diffusion-fa", no_offload)
+        self.assertIn("--offload-to-cpu", offload)
 
 
 class TestMissingSdCli(unittest.TestCase):

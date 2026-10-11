@@ -5,7 +5,6 @@
 #   source "$source_dir/../scripts/chezmoi_lib.sh"
 #
 # Provides:
-#   chezmoi_pick_src   – resolve work vs personal source file
 #   chezmoi_write_if_changed – string write, enforce mode without rewriting current bytes
 #   chezmoi_install_if_changed – file copy via install(1), enforce mode without recopying current bytes
 #   chezmoi_record_checksum – record a file's sha256 in the managed-configs manifest
@@ -18,20 +17,6 @@ _CHEZMOI_ARTIFACT_LEDGER="${CHEZMOI_ARTIFACT_LEDGER:-${XDG_STATE_HOME:-$HOME/.lo
 _CHEZMOI_LIB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 _CHEZMOI_MANIFEST_HELPER="$_CHEZMOI_LIB_DIR/managed_config_manifest.py"
 _CHEZMOI_ARTIFACT_HELPER="$_CHEZMOI_LIB_DIR/generated_artifact_ledger.py"
-
-# ── Source selection ──────────────────────────────────────────────────────────
-
-# Pick work or personal source path.
-#   chezmoi_pick_src <is_work> <source_dir> <work_relpath> <personal_relpath>
-# Prints the resolved absolute path to stdout.
-chezmoi_pick_src() {
-  local is_work="$1" source_dir="$2" work_rel="$3" personal_rel="$4"
-  if [ "$is_work" = "true" ]; then
-    printf '%s' "$source_dir/$work_rel"
-  else
-    printf '%s' "$source_dir/$personal_rel"
-  fi
-}
 
 # ── Manifest recording ───────────────────────────────────────────────────────
 

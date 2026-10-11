@@ -72,7 +72,6 @@ def _ledger_artifact(target: str, ownership: dict, expected: str, producer: str 
     return {
         "artifact_id": "fake-mcp",
         "producer": producer,
-        "profile": "work",
         "target": target,
         "inputs": [],
         "input_hashes": {},

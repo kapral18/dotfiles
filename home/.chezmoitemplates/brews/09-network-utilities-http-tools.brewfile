@@ -38,3 +38,7 @@ brew "whosthere"
 # https://github.com/diegoholiveira/localports
 tap "diegoholiveira/localports", trusted: true
 brew "diegoholiveira/localports/localports"
+
+# Command-line tool for Cloudflare Workers
+# https://github.com/cloudflare/workers-sdk
+brew "cloudflare-wrangler"

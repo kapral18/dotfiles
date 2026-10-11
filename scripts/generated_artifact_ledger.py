@@ -308,9 +308,6 @@ def _normalize_references(values: object) -> list[str]:
 def _normalize_spec(spec: dict[str, Any]) -> dict[str, Any]:
     artifact_id = str(spec.get("artifact_id", ""))
     _validate_artifact_id(artifact_id)
-    profile = spec.get("profile")
-    if profile not in {"work", "personal"}:
-        raise ValueError("profile must be work or personal")
     target = os.fspath(Path(str(spec.get("target", ""))).expanduser())
     if not target:
         raise ValueError("target path must not be empty")
@@ -336,7 +333,6 @@ def _normalize_spec(spec: dict[str, Any]) -> dict[str, Any]:
     return {
         "artifact_id": artifact_id,
         "producer": producer,
-        "profile": profile,
         "target": target,
         "inputs": _normalize_paths(spec.get("inputs"), "inputs"),
         "transforms": _normalize_paths(spec.get("transforms"), "transforms"),
@@ -438,7 +434,6 @@ def evaluate_artifact(row: dict[str, Any]) -> dict[str, Any]:
                 }
                 for path in row["transforms"]
             ],
-            "profile": row["profile"],
             "target": row["target"],
             "ownership": row["ownership"],
             "consumer": row["consumer"],
@@ -505,7 +500,6 @@ def _human_report(payload: dict[str, Any], *, quiet: bool, verbose: bool) -> str
             lines.append(
                 f"      declaration={len(row['trace']['declaration'])} "
                 f"transform={len(row['trace']['transform'])} "
-                f"profile={row['trace']['profile']} "
                 f"consumer={row['trace']['consumer']['id']}"
             )
             if row["reasons"]:
@@ -547,7 +541,6 @@ def build_parser() -> argparse.ArgumentParser:
     record = subcommands.add_parser("record")
     record.add_argument("--id", required=True, dest="artifact_id")
     record.add_argument("--producer", required=True)
-    record.add_argument("--profile", required=True, choices=("work", "personal"))
     record.add_argument("--target", required=True)
     record.add_argument("--input", action="append", required=True, dest="inputs")
     record.add_argument("--transform", action="append", required=True, dest="transforms")
@@ -582,7 +575,6 @@ def main(argv: list[str] | None = None) -> int:
                 {
                     "artifact_id": args.artifact_id,
                     "producer": args.producer,
-                    "profile": args.profile,
                     "target": args.target,
                     "inputs": args.inputs,
                     "transforms": args.transforms,

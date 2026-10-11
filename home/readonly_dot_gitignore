@@ -14,5 +14,3 @@ node_modules/
 .sass-cache/
 venv
 .crush
-.bk.yaml
-.buildkite-env

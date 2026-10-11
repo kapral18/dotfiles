@@ -16,13 +16,7 @@ Go-installed tools are managed via a list.
 1. Add the module path to:
    - [`home/readonly_dot_default-golang-pkgs.tmpl`](../../../../home/readonly_dot_default-golang-pkgs.tmpl)
 
-   This installs as `~/.default-golang-pkgs`. The file is a chezmoi template, so entries can be gated per profile, e.g. personal-only:
-
-   ```text
-   {{ if ne .isWork true }}
-   github.com/owner/personal-only-tool
-   {{ end -}}
-   ```
+   This installs as `~/.default-golang-pkgs`. The file is a chezmoi template, so entries can be gated on OS or architecture.
 
 2. Apply:
 

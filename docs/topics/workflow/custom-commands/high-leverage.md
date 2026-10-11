@@ -11,7 +11,7 @@ These are the commands most likely to change how you work day to day.
 - Source: [`home/exact_bin/executable_,doctor`](../../../../home/exact_bin/executable_,doctor)
 - Checks: chezmoi state, Homebrew, shell, tmux+TPM, git+signing, SSH agent, pass/GPG, editors, AI tools, key CLIs, `~/bin` wrapper integrity, and worktrees. Missing AI configs are reported only when their actual consumer command is installed, including `agy` for Antigravity.
 - Pi runtime: `~/lib/,doctor/pi_runtime.py` reads the `pi` pnpm shim's `cmd-shim-target`, warns when that install directory was pruned by a later `pnpm add -g` (the state that makes every pi-subagents background launch fail with "does not provide @earendil-works/pi-agent-core …"), and warns when the live install lacks a peer that pi-subagents aliases. The hint is the reinstall command plus a restart of running Pi sessions.
-- AI effective state: `,doctor ai` traces each generated AI config from source declaration and transforms through selected profile, owned target projection, runtime consumer, and an optional local liveness probe.
+- AI effective state: `,doctor ai` traces each generated AI config from source declaration and transforms through owned target projection, runtime consumer, and an optional local liveness probe.
 
 ```bash
 ,doctor
@@ -23,17 +23,6 @@ These are the commands most likely to change how you work day to day.
 ```
 
 `,doctor ai` is static by default and never applies configs, refreshes tokens, or contacts remote services. `--live` runs each distinct local harness `--version` probe once, even when several artifacts share that consumer.
-
-## PR readiness: `,kbn-pr-audit`
-
-- Source: [`home/exact_bin/executable_,kbn-pr-audit`](../../../../home/exact_bin/executable_,kbn-pr-audit)
-- Scope: read-only audit of an `elastic/kibana` PR before a reply/resolve/push cycle.
-- Checks: local `HEAD` vs PR head, unresolved review threads split human vs bot, deletions disclosed in the body, expected body sections, label consistency, backport target consistency, and Test Plan validation commands.
-
-```bash
-,kbn-pr-audit
-,kbn-pr-audit 271562
-```
 
 ## Worktrees: `,w`
 
@@ -64,10 +53,10 @@ Sources live under [`home/exact_bin/`](../../../../home/exact_bin/).
 ```bash
 ,gh-prw --url
 ,gh-issuew --number
-,gh-tfork elastic/integrations
+,gh-tfork owner/repo
 ```
 
-`,gh-tfork` clones to `~/work/<repo>/<default-branch>` for `elastic/*` and `~/code/<repo>/<default-branch>` otherwise. For `elastic/kibana`, it uses date-anchored shallow history (`--shallow-since=2022-01-01 --no-tags`).
+`,gh-tfork` clones to `~/code/<repo>/<default-branch>`.
 
 ## Patch, file, and clipboard transfer: `,wh`
 

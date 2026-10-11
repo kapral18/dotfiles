@@ -5,16 +5,6 @@ return {
   dir = fs_util.get_plugin_src_dir(),
   ft = "gitcommit",
   keys = {
-{{- if eq .isWork true }}
-    {
-      "<leader>aisc",
-      function()
-        sc.summarize_commit_gemini()
-      end,
-      ft = "gitcommit",
-      desc = "[Gemini] Summarize commit",
-    },
-{{- else }}
     {
       "<leader>aisc",
       function()
@@ -31,6 +21,5 @@ return {
       ft = "gitcommit",
       desc = "[Gemini] Summarize commit",
     },
-{{- end }}
   },
 }

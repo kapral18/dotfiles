@@ -10,7 +10,7 @@ Personal macOS development environment managed with Chezmoi. Keyboard-centric wo
 | ---------------------- | ------------------------------------------------------------ |
 | 🤖 **Agent Memory**    | on-demand `,ai-kb` knowledge base + `,handoff` session notes |
 | 🧠 **Local inference** | llama.cpp router + model sync (`,llama-cpp`)                 |
-| 🔐 **Secure Identity** | 1Password SSH agent with work/personal switching             |
+| 🔐 **Secure Identity** | 1Password SSH agent with SSH commit signing                  |
 | 🌳 **Git Worktrees**   | Worktree management with PR integration                      |
 | 💎 **Neovim**          | Custom LSP, AI commits, refactoring tools                    |
 | 🐚 **Fish Shell**      | 40+ custom productivity commands in `~/bin`                  |
@@ -33,7 +33,7 @@ Safer first run: preview with `chezmoi init kapral18 && chezmoi diff` before app
 
 ## 🏛️ How It Fits Together
 
-Chezmoi renders templates from [`home/`](home/) into `$HOME`. Hooks in [`home/.chezmoiscripts/`](home/.chezmoiscripts/) install and reconcile packages when lists change. The `.isWork` prompt forks identity, secrets, and some package lists between work and personal machines.
+Chezmoi renders templates from [`home/`](home/) into `$HOME`. Hooks in [`home/.chezmoiscripts/`](home/.chezmoiscripts/) install and reconcile packages when lists change.
 
 For the full layout (naming conventions, hook lifecycle, AI config merging, externals), see [Architecture](docs/intro/architecture.md).
 

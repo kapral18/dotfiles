@@ -24,7 +24,6 @@ Repo/org-specific overlays:
 
 - A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording.
   It layers repo-specific issue body policy onto this generic composer.
-- Current concrete overlay: for the `elastic` org / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.md`.
 - The overlay decides environment fields and repo-specific issue details. This skill stays the generic issue body composer.
 
 First actions:
@@ -41,10 +40,8 @@ First actions:
 7. If logs/screenshots are referenced, include only what materially helps and redact secrets.
 8. If issue creation is in scope, verify `gh issue create --help` support for `--type name`.
    If the target repo exposes GitHub issue types, read the actual type names before choosing one.
-9. If the repo belongs to the `elastic` org or is `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.md`.
-   Apply its issue composition section.
-10. Build the issue publication packet.
-    This is the single handoff gate to `k-github`; do not hand off while any required field is missing or `blocked`. Required fields:
+9. Build the issue publication packet.
+   This is the single handoff gate to `k-github`; do not hand off while any required field is missing or `blocked`. Required fields:
 
 - `issue_type`: exact GitHub issue type, source evidence, and `status: approved_to_apply | pending_approval | not_applicable | blocked`.
   When the target repo supports GitHub issue types, this field is required; labels do not satisfy it.

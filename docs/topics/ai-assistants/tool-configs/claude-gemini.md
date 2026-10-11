@@ -5,10 +5,10 @@ title: Claude and Antigravity
 
 # Claude and Antigravity
 
-| Tool        | Source                                                                          | Target                                                                        | MCP servers                             |
-| ----------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------- |
-| Claude Code | [`home/dot_claude/settings.{work,personal}.json`](../../../../home/dot_claude/) | `~/.claude/settings.json` (whole file)                                        | `~/.claude.json` top-level `mcpServers` |
-| Antigravity | [`home/dot_gemini/`](../../../../home/dot_gemini/)                              | `~/.gemini/config/` + policy-merged `~/.gemini/antigravity-cli/settings.json` | `~/.gemini/config/mcp_config.json`      |
+| Tool        | Source                                                                                         | Target                                                                        | MCP servers                             |
+| ----------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------- |
+| Claude Code | [`home/dot_claude/settings.personal.json`](../../../../home/dot_claude/settings.personal.json) | `~/.claude/settings.json` (whole file)                                        | `~/.claude.json` top-level `mcpServers` |
+| Antigravity | [`home/dot_gemini/`](../../../../home/dot_gemini/)                                             | `~/.gemini/config/` + policy-merged `~/.gemini/antigravity-cli/settings.json` | `~/.gemini/config/mcp_config.json`      |
 
 ## Claude Code settings
 
@@ -23,25 +23,25 @@ title: Claude and Antigravity
 | Auto-memory      | `autoMemoryEnabled: false`; `,ai-kb` is the only durable memory                     |
 | Away recap       | `awaySummaryEnabled: false`                                                         |
 | Hooks            | none in settings; the mods below load through `env.CLAUDE_CODE_PLUGIN_DIRS` (below) |
-| Work auth        | native Claude enterprise auth; no `apiKeyHelper` or `ANTHROPIC_BASE_URL` override   |
+| Auth             | native Claude account auth; no `apiKeyHelper` or `ANTHROPIC_BASE_URL` override      |
 
 Instructions come from `~/.claude/CLAUDE.md` (symlink to `~/AGENTS.md`); skills from `~/.claude/skills` → `~/.agents/skills`.
 The only custom agent is `exact_agents/k-agent-reviewer.md.tmpl` (see [Subagents](../subagents.md)); search uses the built-in `Explore`.
-The personal profile also keeps fullscreen mode and push notifications.
+Fullscreen mode and push notifications are on.
 `settings.llama-cpp*.json.tmpl` hold the settings `,claude-llama-cpp` passes for local models: model-scoped `high` effort, thinking off.
 
 ### Mods
 
 Claude Code mods are TypeScript function-hook plugins (early-access API).
 Sources live in [`home/dot_claude/exact_mods/`](../../../../home/dot_claude/exact_mods/) and deploy to `~/.claude/mods/`.
-Both settings profiles load them all with `env.CLAUDE_CODE_PLUGIN_DIRS`. Pi, OMP, and the other harnesses do not run them.
+`settings.personal.json` loads them all with `env.CLAUDE_CODE_PLUGIN_DIRS`. Pi, OMP, and the other harnesses do not run them.
 
-| Mod                  | Event                                                    | Behavior                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| -------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `behavior-map-guard` | `tool.call` on Edit, Write, NotebookEdit; `session.end`  | Runs `,behavior-map affected <path>`. Refuses the first edit per session in an unmapped directory; adds a context note for touched entries.                                                                                                                                                                                                                                                                                         |
-| `checked-gate`       | `tool.call` (every tool); `turn.start`; `classic.Stop`   | Sends the turn back once when: files changed (edits, or Bash changed the git working tree) and the final message has no `Checked:` list; or a turn that used a tool ends with a question whose last prose paragraph (before any list or code block) does not start with `Decision needed:` and that is not an item under `Open:` or `Known gaps:` (those are open items; a decision for the user belongs under `Decision needed:`). |
-| `sop-guard`          | `tool.call` on Bash, WebFetch, Edit, Write, NotebookEdit | Refuses the hard-rule breaks listed below.                                                                                                                                                                                                                                                                                                                                                                                          |
-| `stop-review`        | `classic.Stop`                                           | When a turn that used tools ends, sends `advisorModel` (`claude-opus-5-5`) the transcript (earlier turns as context, then the turn's request, messages, and tool calls with cut inputs and results, and its final answer) and `~/AGENTS.md`. Sends the turn back once with up to 3 concerns; `PASS` adds nothing.                                                                                                                   |
+| Mod                  | Event                                                   | Behavior                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `behavior-map-guard` | `tool.call` on Edit, Write, NotebookEdit; `session.end` | Runs `,behavior-map affected <path>`. Refuses the first edit per session in an unmapped directory; adds a context note for touched entries.                                                                                                                                                                                                                                                                                         |
+| `checked-gate`       | `tool.call` (every tool); `turn.start`; `classic.Stop`  | Sends the turn back once when: files changed (edits, or Bash changed the git working tree) and the final message has no `Checked:` list; or a turn that used a tool ends with a question whose last prose paragraph (before any list or code block) does not start with `Decision needed:` and that is not an item under `Open:` or `Known gaps:` (those are open items; a decision for the user belongs under `Decision needed:`). |
+| `sop-guard`          | `tool.call` on Bash, Edit, Write, NotebookEdit          | Refuses the hard-rule breaks listed below.                                                                                                                                                                                                                                                                                                                                                                                          |
+| `stop-review`        | `classic.Stop`                                          | When a turn that used tools ends, sends `advisorModel` (`claude-opus-5-5`) the transcript (earlier turns as context, then the turn's request, messages, and tool calls with cut inputs and results, and its final answer) and `~/AGENTS.md`. Sends the turn back once with up to 3 concerns; `PASS` adds nothing.                                                                                                                   |
 
 `sop-guard` rules:
 
@@ -51,16 +51,12 @@ Both settings profiles load them all with `env.CLAUDE_CODE_PLUGIN_DIRS`. Pi, OMP
 | A command that prints a secret: `pass show`, `security … -w`, `op read`, `gh auth token`, `cat .env` (quoted text, heredoc bodies, and `#` comments are not commands; a `#` inside `${…}` or after `(` in `[[ … ]]` is no comment) | `~/AGENTS.md` §5 | always, unless `$(...)`, a redirect, or a pipe into a non-printing command takes the output |
 | Bare `tmux kill-server`                                                                                                                                                                                                            | `k-tmux`         | always, unless `-S` or `-L`                                                                 |
 | A default-server tmux change (`send-keys`, `source-file`, `attach`, …)                                                                                                                                                             | `k-tmux`         | once per subcommand per session                                                             |
-| WebFetch or `curl`/`wget` of `buildkite.com`                                                                                                                                                                                       | `k-buildkite`    | always                                                                                      |
-| Edit of a path whose CODEOWNERS owners do not include the team                                                                                                                                                                     | `~/AGENTS.md` §5 | once per owner set per session                                                              |
-| Edit in a repo with CODEOWNERS while the `team` option is empty                                                                                                                                                                    | `~/AGENTS.md` §5 | once per repo per session; asks for the team                                                |
 
 This repo also has a project plugin, [`.claude/skills/dotfiles-guard/`](../../../../.claude/skills/dotfiles-guard/), which loads only in sessions started in this repo.
 It refuses `make check-full`, `make test`, `bin/check --full` (repo `AGENTS.md`), `scripts/test_runner.py`, and `scripts/check.py --full` (user request).
 A command inside a quoted string, such as `bash -c "make test"`, is not seen.
 It keeps a copy of `sop-guard`'s `shell.ts`, because a plugin cannot import outside its folder; `test_claude_mods.py` fails when the copies differ.
 
-The team is the `team` option (default `@elastic/kibana-management`), set under `pluginConfigs` in settings.
 A "once" refusal passes on retry: the model retries only when the condition in the refusal message holds.
 
 All of them fail open: a failed hook or a missing command lets the call through.
@@ -81,7 +77,7 @@ Each earlier user message opens a prompt-cache block; the mark on the last one l
 The reviewer sees only that record, not the files, so the block asks the model to reject a wrong concern with a reason.
 After a hot reload it waits for a new turn; a send-back's continuation does not count.
 It adds one model call per tool-using turn, stays off while `advisorModel` is unset, and logs a failed review.
-`sop-guard` reads `$(...)` inside double quotes as data: `echo "$(pass show x)"` and a quoted `"$(curl https://buildkite.com/...)"` pass.
+`sop-guard` reads `$(...)` inside double quotes as data: `echo "$(pass show x)"` passes.
 Its chezmoi rule sees only managed files: a new file written into an `exact_` target directory passes, and the next `chezmoi apply` deletes it.
 Test a mod with `claude plugin test ~/.claude/mods/<mod>`; `claude plugin validate` checks what it hooks.
 The engine writes `.claude-plugin/types/` and `tsconfig.json` into each mod folder, so the mod folders are not `exact_`.

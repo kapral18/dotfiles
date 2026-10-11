@@ -2,7 +2,7 @@
 # Toggle collapse state for a parent under the cursor, or globally.
 # Wired to `alt-z` (cursor toggle) and `alt-Z` (global toggle) in the picker.
 #
-# Args: <verb> <mode_file> <scope_file> <items_cmd>
+# Args: <verb> <scope_file> <items_cmd>
 #   verb: "toggle" or "global"
 #
 # Outputs fzf actions (transform binding). After updating the collapse state
@@ -21,18 +21,16 @@
 set -euo pipefail
 
 verb="${1:-}"
-mode_file="${2:-}"
-scope_file="${3:-}"
-items_cmd="${4:-}"
+scope_file="${2:-}"
+items_cmd="${3:-}"
 
-if [ -z "$verb" ] || [ -z "$mode_file" ] || [ -z "$scope_file" ] || [ -z "$items_cmd" ]; then
+if [ -z "$verb" ] || [ -z "$scope_file" ] || [ -z "$items_cmd" ]; then
   exit 0
 fi
 
-mode="$(cat "$mode_file" 2> /dev/null || echo work)"
 scope="$(cat "$scope_file" 2> /dev/null || echo all)"
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
-state_file="${cache_dir}/gh_picker_collapsed_${mode}"
+state_file="${cache_dir}/gh_picker_collapsed"
 mkdir -p "$cache_dir" 2> /dev/null || true
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
@@ -49,7 +47,7 @@ trap cleanup EXIT
 # bg fetch updating the cache mid-snapshot.
 rendered_tmp="$(mktemp -t gh_picker_collapse_view.XXXXXX 2> /dev/null || true)"
 if [ -n "$rendered_tmp" ]; then
-  GH_PICKER_MODE="$mode" GH_PICKER_SCOPE="$scope" "$items_cmd" --cache-only > "$rendered_tmp" 2> /dev/null || true
+  GH_PICKER_SCOPE="$scope" "$items_cmd" --cache-only > "$rendered_tmp" 2> /dev/null || true
 fi
 
 case "$verb" in
@@ -91,5 +89,5 @@ case "$verb" in
     ;;
 esac
 
-reload_cmd="GH_PICKER_MODE=$(printf %q "$mode") GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --cache-only 2>/dev/null"
+reload_cmd="GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --cache-only 2>/dev/null"
 printf 'reload(%s)+track' "$reload_cmd"

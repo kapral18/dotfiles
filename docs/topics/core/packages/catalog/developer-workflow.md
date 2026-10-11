@@ -18,7 +18,7 @@ This slice covers source control, review/readiness tooling, build/test utilities
 | [`git-delta`](https://dandavison.github.io/delta/), [`difftastic`](https://difftastic.wilfred.me.uk/)                                                       | `brew`             | readable diff renderers                              |
 | [`git-cal`](https://github.com/k4rthik/git-cal), [`git-extras`](https://github.com/tj/git-extras), [`git-redate`](https://github.com/PotatoLabs/git-redate) | `brew`             | history/statistics and branch maintenance utilities  |
 | [`git-brws`](https://crates.io/crates/git-brws)                                                                                                             | `cargo`            | open/browse git remotes from the terminal            |
-| [`bfg`](https://rtyley.github.io/bfg-repo-cleaner/)                                                                                                         | `brew personal`    | destructive repo cleanup tool, personal-only         |
+| [`bfg`](https://rtyley.github.io/bfg-repo-cleaner/)                                                                                                         | `brew`             | destructive repo cleanup tool                        |
 
 ## GitHub CLI extensions
 
@@ -48,7 +48,6 @@ This slice covers source control, review/readiness tooling, build/test utilities
 | Tool                                                                                                                                                                                                               | Source          | Why it is here                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- | --------------------------------- |
 | [`cmake`](https://www.cmake.org/), [`automake`](https://www.gnu.org/software/automake/), [`tcl-tk`](https://www.tcl-lang.org)                                                                                      | `brew`          | native build dependencies         |
-| [`buildkite/buildkite/bk@3`](https://github.com/buildkite/cli)                                                                                                                                                     | `brew` tap      | Buildkite CI CLI                  |
 | [`dive`](https://github.com/wagoodman/dive), [`colima`](https://colima.run), [`lazydocker`](https://github.com/jesseduffield/lazydocker), [`k9s`](https://k9scli.io/), [`minikube`](https://minikube.sigs.k8s.io/) | `brew`          | container and Kubernetes workflow |
 | [`sou`](https://github.com/knqyf263/sou), [`cek`](https://github.com/bschaatsbergen/cek)                                                                                                                           | `brew`          | container/devops utilities        |
 | [`docker-desktop`](https://www.docker.com/products/docker-desktop), [`gcloud-cli`](https://cloud.google.com/cli/), [`azure-cli`](https://docs.microsoft.com/cli/azure/overview)                                    | `cask` / `brew` | cloud/container desktop CLIs      |

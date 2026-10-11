@@ -1,6 +1,5 @@
 mcp_servers:
   - name: public-tool
-    work_only: false
     command: docker
     args:
       - run
@@ -12,15 +11,7 @@ mcp_servers:
       read: approve
       write: prompt
 
-  - name: work-tool
-    work_only: true
-    command: bash
-    args:
-      - "-lc"
-      - 'echo "hello from work"'
-
   - name: http-tool
-    work_only: false
     type: http
     url: https://mcp.example.com/mcp
     oauth_by_tool:
@@ -30,7 +21,6 @@ mcp_servers:
       gemini: {}
 
   - name: plain-tool
-    work_only: false
     command: echo
     args:
       - plain

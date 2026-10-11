@@ -18,8 +18,6 @@ source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh
 source "$source_dir/../scripts/chezmoi_lib.sh"
 
-is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
-profile="{{ if eq .isWork true }}work{{ else }}personal{{ end }}"
 yaml_src="$source_dir/.chezmoidata/mcp_servers.yaml"
 gen="$source_dir/../scripts/generate_mcp_configs.py"
 
@@ -28,11 +26,11 @@ antigravity_merged="$(mktemp)"
 trap 'rm -f "$tmp" "$antigravity_merged"' EXIT
 
 # Claude Code — merge mcpServers into existing .claude.json
-python3 "$gen" "$yaml_src" "$is_work" claude >"$tmp"
+python3 "$gen" "$yaml_src" claude >"$tmp"
 python3 "$source_dir/../scripts/merge_claude_mcp.py" "$tmp" "$HOME/.claude.json"
 chezmoi_record_checksum "$HOME/.claude.json"
 chezmoi_record_artifact --id claude-mcp \
-  --producer 07-generate-mcp-configs --profile "$profile" \
+  --producer 07-generate-mcp-configs \
   --target "$HOME/.claude.json" --ownership-adapter json-selectors \
   --selector mcpServers \
   --input "$yaml_src" \
@@ -44,10 +42,10 @@ chezmoi_record_artifact --id claude-mcp \
   --consumer claude
 
 # Pi — install with restricted permissions
-python3 "$gen" "$yaml_src" "$is_work" pi >"$tmp"
+python3 "$gen" "$yaml_src" pi >"$tmp"
 chezmoi_install_if_changed "$tmp" "$HOME/.pi/agent/mcp.json" 0444
 chezmoi_record_artifact --id pi-mcp \
-  --producer 07-generate-mcp-configs --profile "$profile" \
+  --producer 07-generate-mcp-configs \
   --target "$HOME/.pi/agent/mcp.json" --ownership-adapter whole-file \
   --input "$yaml_src" \
   --transform "$gen" \
@@ -57,10 +55,10 @@ chezmoi_record_artifact --id pi-mcp \
   --consumer pi
 
 # OMP — native MCP file.
-python3 "$gen" "$yaml_src" "$is_work" omp >"$tmp"
+python3 "$gen" "$yaml_src" omp >"$tmp"
 chezmoi_write_if_changed "$(cat "$tmp")" "$HOME/.omp/agent/mcp.json" 0600
 chezmoi_record_artifact --id omp-mcp \
-  --producer 07-generate-mcp-configs --profile "$profile" \
+  --producer 07-generate-mcp-configs \
   --target "$HOME/.omp/agent/mcp.json" --ownership-adapter whole-file \
   --input "$yaml_src" \
   --transform "$gen" \
@@ -71,7 +69,7 @@ chezmoi_record_artifact --id omp-mcp \
 
 # Antigravity (agy) — preserve runtime-managed servers while replacing the
 # previously declared registry-owned set.
-python3 "$gen" "$yaml_src" "$is_work" gemini >"$tmp"
+python3 "$gen" "$yaml_src" gemini >"$tmp"
 antigravity_target="$HOME/.gemini/config/mcp_config.json"
 antigravity_declared="${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi/antigravity_mcp_declared.json"
 antigravity_merge="$source_dir/../scripts/merge_antigravity_mcp.py"
@@ -79,7 +77,7 @@ python3 "$antigravity_merge" "$antigravity_target" "$tmp" "$antigravity_declared
 chezmoi_write_if_changed "$(cat "$antigravity_merged")" "$antigravity_target" 0600
 chezmoi_install_if_changed "$tmp" "$antigravity_declared" 0600
 chezmoi_record_artifact --id antigravity-mcp \
-  --producer 07-generate-mcp-configs --profile "$profile" \
+  --producer 07-generate-mcp-configs \
   --target "$antigravity_target" --ownership-adapter json-declared \
   --baseline "$antigravity_declared" \
   --input "$yaml_src" \

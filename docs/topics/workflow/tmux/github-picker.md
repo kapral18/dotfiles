@@ -14,7 +14,7 @@ Open it with `prefix` + `G`. Press `alt-g` to switch to the [session picker](ses
 
 | Area     | Meaning                                                                     |
 | -------- | --------------------------------------------------------------------------- |
-| Header   | mode, scope, counts, cache age, and primary actions                         |
+| Header   | scope, counts, cache age, and primary actions                               |
 | Sections | Intent groups: `Action:`, `Mine:`, `Watching:`, `Maintenance:`              |
 | Rows     | PRs/issues with review, CI, hierarchy, relation, and local-worktree signals |
 | Preview  | Dashboard summary plus PR/issue details, body, and activity                 |
@@ -28,7 +28,6 @@ The screenshot uses safe demo rows so the states are visible without exposing pr
 | --------------------------- | --------------------------------------------------- |
 | `enter`                     | Checkout worktree and focus it; batches marked rows |
 | `tab` / `alt-space`         | Mark/unmark item                                    |
-| `ctrl-s`                    | Switch `work` / `home` mode                         |
 | `alt-0` / `alt-1` / `alt-2` | Show all / focus / explore scopes                   |
 | `alt-n` / `alt-p`           | Jump to next / previous section header              |
 | `alt-S`                     | Cycle sort                                          |

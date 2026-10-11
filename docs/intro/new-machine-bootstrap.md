@@ -50,8 +50,6 @@ Secrets tooling setup can also run:
 
 - pass + password-store clone + PGP import: [`home/.chezmoiscripts/run_once_after_05-setup-pass-managers.fish.tmpl`](../../home/.chezmoiscripts/run_once_after_05-setup-pass-managers.fish.tmpl)
 
-On non-work machines, this script also attempts to clone a second password store into `~/.password-store-work` so `wpass` can switch.
-
 ## Verification
 
 ```bash

@@ -28,9 +28,7 @@ dmg|Jharu|riponcm/Jharu|latest|Jharu.app|.dmg
 # telegramtui (fork-first source install from your repo)
 # Clones to ~/code/telegramtui/main, pulls origin/main, builds with Maven, and
 # installs ~/.local/bin/telegramtui launcher.
-{{ if ne .isWork true }}
 git_maven_jar|telegramtui|kapral18/telegramtui|main|telegramtui
-{{ end }}
 
 # mdtt
 # https://github.com/szktkfm/mdtt
@@ -90,27 +88,25 @@ file|dug|unfrl/dug|{{ $dugTag }}|{{ $dugAsset }}|dug
 file|kitten|kovidgoyal/kitty|latest|{{ $kittenAsset }}|kitten
 {{ end }}
 
-# enola (non-work)
+# enola
 # https://github.com/TheYahya/enola
-{{ if ne .isWork true }}
-  {{ $enolaTag := "v0.4.0" }}
-  {{ $enolaAsset := "" }}
-  {{ if eq $os "darwin" }}
-    {{ if eq $arch "arm64" }}
-      {{ $enolaAsset = "enola_0.4.0_darwin_arm64.tar.gz" }}
-    {{ else }}
-      {{ $enolaAsset = "enola_0.4.0_darwin_amd64.tar.gz" }}
-    {{ end }}
-  {{ else if eq $os "linux" }}
-    {{ if eq $arch "arm64" }}
-      {{ $enolaAsset = "enola_0.4.0_linux_arm64.tar.gz" }}
-    {{ else }}
-      {{ $enolaAsset = "enola_0.4.0_linux_amd64.tar.gz" }}
-    {{ end }}
+{{ $enolaTag := "v0.4.0" }}
+{{ $enolaAsset := "" }}
+{{ if eq $os "darwin" }}
+  {{ if eq $arch "arm64" }}
+    {{ $enolaAsset = "enola_0.4.0_darwin_arm64.tar.gz" }}
+  {{ else }}
+    {{ $enolaAsset = "enola_0.4.0_darwin_amd64.tar.gz" }}
   {{ end }}
-  {{ if ne $enolaAsset "" }}
+{{ else if eq $os "linux" }}
+  {{ if eq $arch "arm64" }}
+    {{ $enolaAsset = "enola_0.4.0_linux_arm64.tar.gz" }}
+  {{ else }}
+    {{ $enolaAsset = "enola_0.4.0_linux_amd64.tar.gz" }}
+  {{ end }}
+{{ end }}
+{{ if ne $enolaAsset "" }}
 tar_gz_bin|enola|TheYahya/enola|{{ $enolaTag }}|{{ $enolaAsset }}|enola|enola
-  {{ end }}
 {{ end }}
 
 # sd-cli (stable-diffusion.cpp). Metal runner for ,image-local.

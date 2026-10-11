@@ -129,3 +129,12 @@ lib/,mcp-token
 .omp/agent/extensions/runtime-parity.ts
 .config/opencode/plugins/agent-memory.ts
 .config/opencode/plugins/read-supersede.ts
+# Work profile and Elastic/Kibana tooling retired (2026-10-11).
+work/.gitconfig
+.ssh/secondary_public_key.pub
+.config/fish/completions/,kbn-pr-audit.fish
+.config/fish/completions/,kbn-stack.fish
+.config/tmux/scripts/pickers/github/gh-picker-home.yml
+.config/tmux/scripts/pickers/github/gh-picker-work.yml
+.config/tmux/scripts/pickers/github/gh_dashboard.sh
+.config/tmux/scripts/pickers/github/lib/gh_picker_toggle.sh

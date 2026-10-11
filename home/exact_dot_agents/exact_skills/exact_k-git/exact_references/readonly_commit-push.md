@@ -36,4 +36,3 @@ Repo/org-specific commit attribution:
 - A domain overlay is a repo/org-specific skill selected from the verified repo/org, not guessed from wording.
   It layers repo-specific policy onto this generic git workflow skill.
 - If the verified repo/org has an overlay, load that overlay before committing and apply its commit-attribution rules.
-- For Elastic org repos, load `~/.agents/skills/k-elastic-domain/SKILL.md` and append the overlay's required `Co-authored-by` trailer with `git commit --trailer=...`.

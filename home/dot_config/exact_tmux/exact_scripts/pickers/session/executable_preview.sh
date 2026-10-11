@@ -97,7 +97,7 @@ gh_info_from_meta() {
             esac
             if [ -n "$repo" ]; then
               local title=""
-              title="$(awk -F $'\t' -v k="pr" -v r="$repo" -v n="$num" '$2==k && $3==r && $4==n {print $1; exit}' "$_gh_cache_dir/gh_picker_work.tsv" "$_gh_cache_dir/gh_picker_home.tsv" 2> /dev/null || true)"
+              title="$(awk -F $'\t' -v k="pr" -v r="$repo" -v n="$num" '$2==k && $3==r && $4==n {print $1; exit}' "$_gh_cache_dir/gh_picker.tsv" 2> /dev/null || true)"
               [ -n "$title" ] && printf '\n%s  %s' "${C_DIM}title${C_R}" "$title"
             fi
           fi
@@ -134,7 +134,7 @@ gh_info_from_meta() {
             esac
             if [ -n "$repo" ]; then
               local title=""
-              title="$(awk -F $'\t' -v k="issue" -v r="$repo" -v n="$num" '$2==k && $3==r && $4==n {print $1; exit}' "$_gh_cache_dir/gh_picker_work.tsv" "$_gh_cache_dir/gh_picker_home.tsv" 2> /dev/null || true)"
+              title="$(awk -F $'\t' -v k="issue" -v r="$repo" -v n="$num" '$2==k && $3==r && $4==n {print $1; exit}' "$_gh_cache_dir/gh_picker.tsv" 2> /dev/null || true)"
               [ -n "$title" ] && printf '\n%s  %s' "${C_DIM}title${C_R}" "$title"
             fi
           fi

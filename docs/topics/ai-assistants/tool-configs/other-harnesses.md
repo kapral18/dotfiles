@@ -9,25 +9,19 @@ Codex, OpenCode, Oh My Pi, Crush, tuicr, and lgtm keep harness-native configurat
 
 ## Codex and OpenCode
 
-| Tool     | Config source                                                                                               | Merge                                                                                              |
-| -------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Codex    | [`home/dot_codex/private_config.{work,personal}.toml`](../../../../home/dot_codex/)                         | `run_onchange_after_07-merge-codex-config.sh.tmpl` injects MCP servers into `~/.codex/config.toml` |
-| OpenCode | [`home/dot_config/opencode/readonly_opencode.{work,personal}.jsonc`](../../../../home/dot_config/opencode/) | `run_onchange_after_07-merge-opencode-config.sh.tmpl`                                              |
+| Tool     | Config source                                                                                                                        | Merge                                                                                              |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Codex    | [`home/dot_codex/private_config.personal.toml`](../../../../home/dot_codex/private_config.personal.toml)                             | `run_onchange_after_07-merge-codex-config.sh.tmpl` injects MCP servers into `~/.codex/config.toml` |
+| OpenCode | [`home/dot_config/opencode/readonly_opencode.personal.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.personal.jsonc) | `run_onchange_after_07-merge-opencode-config.sh.tmpl`                                              |
 
 Interactive shells route `codex` through `~/bin/,codex`, which injects the local llama.cpp model catalog when needed and then runs the real binary.
 
 ### Codex settings
 
-Both profiles: `model = "gpt-6.1-sol"`, `model_reasoning_effort = "high"`, `tui.auto_recap = false`, `features.memories = false` (`,ai-kb` is the only durable store).
+`model = "gpt-6.1-sol"`, `model_reasoning_effort = "high"`, `tui.auto_recap = false`, `features.memories = false` (`,ai-kb` is the only durable store).
 Codex discovers shared skills under `~/.agents/skills`. `k-review`'s Verify mode uses fresh native agents with the shared reviewer prompt; other modes stay inline. See [Subagents](../subagents.md).
 
-| Profile  | Policy                                                                                                     |
-| -------- | ---------------------------------------------------------------------------------------------------------- |
-| work     | `approval_policy = "on-request"`, `approvals_reviewer = "auto_review"`, `sandbox_mode = "workspace-write"` |
-| personal | `approval_policy = "never"`, `sandbox_mode = "danger-full-access"`                                         |
-
-The work profile's `sandbox_workspace_write.writable_roots` add `~/.local/share/{chezmoi,ai-kb,agent-handoffs,k-ai-behavior-map}`, `~/.local/state/chezmoi`, `~/.local/state/llama-cpp/lifecycle`, `~/.cache/{ai-embed-runtime,agent-artifacts}`, `~/bin`, `~/lib`, `~/.agents`, `~/.codex`, and `~/.claude`.
-These grant directory writes only; other paths still need approval.
+Policy: `approval_policy = "never"`, `sandbox_mode = "danger-full-access"`.
 
 ### Codex reconciliation
 
@@ -77,7 +71,7 @@ The context-mode extension reapplies the session's chosen window after initial m
 This keeps GPT's 272,000-token default from reverting to the catalog window without delaying the first interactive frame.
 An overlapping mode command finishes first. Session or branch changes are refused while discovery or a context update is pending; retry when it finishes.
 
-Key settings (both profiles):
+Key settings:
 
 | Setting                                                | Value                                                                                                                                                                                                                      |
 | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -97,7 +91,7 @@ OMP shows a `General` concern about a finished answer only as a card, so the age
 It sends a `concern` for a missing `Checked:` list or claim evidence, a claim from truncated output, a question not under `Decision needed:`, a done claim without passing check output, or a test that cannot fail, on top of OMP's base advisor review.
 OMP steers at most one continuation turn per final review.
 
-`providers.webSearchOrder` differs per profile: work tries OpenRouter, Codex, Gemini, Google, then DuckDuckGo; personal tries Codex then the keyless scrapers. Every unused provider is listed in `webSearchExclude`, including `perplexity`.
+`providers.webSearchOrder` tries Codex then the keyless scrapers. Every unused provider is listed in `webSearchExclude`, including `perplexity`.
 
 ## Crush
 

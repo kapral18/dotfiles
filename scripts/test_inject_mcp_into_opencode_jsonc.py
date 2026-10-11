@@ -18,10 +18,10 @@ class TestInjectMcpIntoOpencode(unittest.TestCase):
     def test_golden(self):
         base = (FIXTURES / "opencode_base.jsonc").read_text()
         actual = run_script(
-            ["inject_mcp_into_opencode_jsonc.py", str(FIXTURES / "mcp_servers.yaml"), "false"],
+            ["inject_mcp_into_opencode_jsonc.py", str(FIXTURES / "mcp_servers.yaml")],
             stdin=base,
         )
-        expected = (FIXTURES / "golden_opencode_personal.jsonc").read_text()
+        expected = (FIXTURES / "golden_opencode.jsonc").read_text()
         assert actual == expected
 
 

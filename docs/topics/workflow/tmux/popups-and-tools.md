@@ -44,15 +44,14 @@ Popup spawn temporarily overrides `default-shell` to `/bin/sh` via `command_pale
 ## GitHub picker popup
 
 - Binding: `prefix` then `G`
-- Switch work/home: `ctrl-s`
 - Switch to session picker: `alt-g`
 
-A standalone fzf-based PR/issue picker. It reads PR and issue sections from its own YAML configs (`~/.config/tmux/scripts/pickers/github/gh-picker-{work,home}.yml`) and displays them in `fzf` with rich preview, worktree markers, and review status badges. gh-dash is not a dependency.
+A standalone fzf-based PR/issue picker. It reads PR and issue sections from its own YAML config (`~/.config/tmux/scripts/pickers/github/gh-picker.yml`) and displays them in `fzf` with rich preview, worktree markers, and review status badges. gh-dash is not a dependency.
 
 Implementation notes:
 
 - Single `fzf` popup (no nested tmux server). Popup opens at 95%×95%.
-- Items are fetched by `gh_items.sh` / `lib/gh_items_main.py`, which parses the gh-picker config files and runs GitHub Search API queries.
+- Items are fetched by `gh_items.sh` / `lib/gh_items_main.py`, which parses the gh-picker config file and runs GitHub Search API queries.
 - `alt-g` closes the popup and reopens the session picker at its configured dimensions (and vice versa). The close-and-reopen loop lives in the outer wrapper scripts (`popup.sh` / `gh_popup.sh`).
 - Popup spawn temporarily overrides `default-shell` to `/bin/sh` to avoid heavy-shell initialization overhead (~1s with fish).
 
@@ -61,10 +60,8 @@ For full keybindings and details, see [Tmux GitHub picker](github-picker.md).
 ## Repo bootstrap popup (`owner/repo` -> `,gh-tfork`)
 
 - Binding: `prefix` then `B`
-- Prompts for a GitHub repo spec like `elastic/kibana`, then runs `,gh-tfork`.
-- `,gh-tfork` decides the destination:
-  - `~/work` for owner `elastic`
-  - `~/code` for everything else
+- Prompts for a GitHub repo spec like `owner/repo`, then runs `,gh-tfork`.
+- `,gh-tfork` clones under `~/code`.
 - Popup spawn temporarily overrides `default-shell` to `/bin/sh` to avoid heavy-shell initialization overhead (~1s with fish).
 
 ## Lowfi (music in tmux)

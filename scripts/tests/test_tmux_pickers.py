@@ -2065,14 +2065,14 @@ class TestGhRowLoaderSpinnerOrdering(unittest.TestCase):
         cache_dir.mkdir(parents=True)
         # One row whose marker cell is a plain space (no worktree): display is
         # state-icon + reset+space + marker-space + trailing text.
-        (cache_dir / "gh_picker_work.tsv").write_text(
+        (cache_dir / "gh_picker.tsv").write_text(
             "\x1b[32m●\x1b[0m  row-one\tpr\towner/repo\t1\thttps://example.test/1\n"
         )
 
         items_cmd = picker_dir / "gh_items.sh"
         items_cmd.write_text(
             "#!/usr/bin/env bash\n"
-            'cache_file="$XDG_CACHE_HOME/tmux/gh_picker_${GH_PICKER_MODE:-work}.tsv"\n'
+            'cache_file="$XDG_CACHE_HOME/tmux/gh_picker.tsv"\n'
             'if [ "${1:-}" = "--refresh" ]; then\n'
             "  printf '\\033[32m●\\033[0m  row-refreshed\\tpr\\towner/repo\\t1\\thttps://example.test/1\\n' > \"$cache_file\"\n"
             "fi\n"
@@ -2124,13 +2124,13 @@ class TestGhRowLoaderSpinnerOrdering(unittest.TestCase):
                 [
                     "set -euo pipefail",
                     f". {shlex.quote(str(lib))}",
-                    "gh_row_loader_start_item pr owner/repo 1 work all "
+                    "gh_row_loader_start_item pr owner/repo 1 all "
                     + shlex.quote(str(fixture["items_cmd"]))
                     + " >/dev/null",
                     'pid="$gh_row_loader_last_pid"',
                     # Stop while the first frame is still rendering (RENDER_SLEEP=0.12).
                     "sleep 0.06",
-                    (f'gh_row_loader_stop_spinner "$pid" work all {shlex.quote(str(fixture["items_cmd"]))}'),
+                    (f'gh_row_loader_stop_spinner "$pid" all {shlex.quote(str(fixture["items_cmd"]))}'),
                 ]
             )
             env = {
@@ -2164,13 +2164,11 @@ class TestGhRowLoaderSpinnerOrdering(unittest.TestCase):
         assert 'row_loader_pid=""' in comment
 
         assert palette.count("trap cleanup EXIT") == 1
-        assert (
-            'gh_row_loader_stop_spinner "$row_loader_pid" "${mode:-work}" "${scope:-all}" "${items_cmd:-}"' in palette
+        assert 'gh_row_loader_stop_spinner "$row_loader_pid" "${scope:-all}" "${items_cmd:-}"' in palette
+        assert 'gh_row_loader_stop_spinner "$row_loader_pid" "$scope" "$items_cmd"' in palette
+        assert palette.index('gh_row_loader_stop_spinner "$row_loader_pid" "$scope" "$items_cmd"') < palette.index(
+            'GH_PICKER_SCOPE="$scope" "$items_cmd" --refresh'
         )
-        assert 'gh_row_loader_stop_spinner "$row_loader_pid" "$mode" "$scope" "$items_cmd"' in palette
-        assert palette.index(
-            'gh_row_loader_stop_spinner "$row_loader_pid" "$mode" "$scope" "$items_cmd"'
-        ) < palette.index('GH_PICKER_MODE="$mode" GH_PICKER_SCOPE="$scope" "$items_cmd" --refresh')
 
 
 if __name__ == "__main__":

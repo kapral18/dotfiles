@@ -1550,7 +1550,6 @@ def _desc_key(value: str) -> str:
 
 def _write_offsets(
     cache_dir: str,
-    mode: str,
     scope: str,
     lines: list[str],
 ) -> None:
@@ -1581,20 +1580,19 @@ def _write_offsets(
 
     payload = {
         "version": 1,
-        "mode": mode,
         "scope": scope,
         "total_rows": len(lines),
         "headers": headers,
     }
-    out_path = cache_dir_path / f"gh_picker_offsets_{mode}_{scope}.json"
+    out_path = cache_dir_path / f"gh_picker_offsets_{scope}.json"
     try:
         _atomic_write_text(str(out_path), json.dumps(payload))
     except Exception:
         pass
 
 
-def _read_collapsed_set(cache_dir: str, mode: str) -> set[str]:
-    """Read the collapsed-parents state file for the given mode.
+def _read_collapsed_set(cache_dir: str) -> set[str]:
+    """Read the collapsed-parents state file.
 
     Returns an empty set on any read/parse error. Keys are
     `kind:repo:num` parent identities, one per line. Surrounding whitespace
@@ -1602,7 +1600,7 @@ def _read_collapsed_set(cache_dir: str, mode: str) -> set[str]:
     file can grow comments without breaking parsing.
     """
     try:
-        raw = (Path(cache_dir) / f"gh_picker_collapsed_{mode}").read_text(encoding="utf-8")
+        raw = (Path(cache_dir) / "gh_picker_collapsed").read_text(encoding="utf-8")
     except Exception:
         return set()
     out: set[str] = set()
@@ -3057,7 +3055,6 @@ def _atomic_write_text(path: str, text: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", default="work")
     parser.add_argument("--config", required=True)
     parser.add_argument("--cache-file", required=True)
     parser.add_argument("--refresh", action="store_true")
@@ -3069,7 +3066,7 @@ def main():
     cache_dir = str(Path(args.cache_file).parent)
     sort_key = _read_sort_key(cache_dir)
 
-    collapsed = _read_collapsed_set(cache_dir, args.mode)
+    collapsed = _read_collapsed_set(cache_dir)
 
     if args.filter_cache:
         # Cache-only render path (the instant `start:reload(cache-only)` open).
@@ -3100,7 +3097,7 @@ def main():
         filtered = _filter_lines_for_scope(lines, effective_scope, scope_map)
         sorted_lines = _sort_within_sections(filtered, sort_key)
         collapsed_lines = _apply_collapsed_state(sorted_lines, collapsed)
-        _write_offsets(cache_dir, args.mode, scope, collapsed_lines)
+        _write_offsets(cache_dir, scope, collapsed_lines)
         output = "\n".join(collapsed_lines)
         if output.strip():
             sys.stdout.write(output + "\n")
@@ -3372,7 +3369,7 @@ def main():
     filtered = _filter_lines_for_scope(all_lines, scope, scope_map)
     sorted_lines = _sort_within_sections(filtered, sort_key)
     collapsed_lines = _apply_collapsed_state(sorted_lines, collapsed)
-    _write_offsets(cache_dir, args.mode, scope, collapsed_lines)
+    _write_offsets(cache_dir, scope, collapsed_lines)
     output = "\n".join(collapsed_lines)
     sys.stdout.write(output + "\n")
     sys.stdout.flush()

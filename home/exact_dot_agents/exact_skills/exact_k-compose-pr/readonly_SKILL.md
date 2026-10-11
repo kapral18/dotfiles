@@ -24,7 +24,6 @@ Do not use:
 Repo/org-specific overlays:
 
 - A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording.
-- For `elastic` org / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.md`.
 - The overlay decides body sections (including Test Plan inclusion and content), footer, release-note, label, ownership, and environment additions.
   This skill stays generic.
 
@@ -39,10 +38,9 @@ First actions:
    Treat changed paths as scope clues only; do not turn them into PR body or Test Plan content unless they are part of a reviewer-runnable command or repro step.
    Verify each proposed Test Plan command or manual step from local source, CLI help, linked issue steps, or a safe probe before including it.
 6. If issue linkage or test evidence is missing after intake, keep placeholders instead of inventing details.
-7. If the repo is in `elastic`, load `~/.agents/skills/k-elastic-domain/SKILL.md` and apply its GitHub/PR composition section.
-8. Load `~/.agents/skills/k-compose-pr/references/publication-packet.md`, then build the PR publication packet.
+7. Load `~/.agents/skills/k-compose-pr/references/publication-packet.md`, then build the PR publication packet.
    Do not hand off while any required field is missing or `blocked`.
-9. Keep title/body sources, linked issue intake, and unresolved placeholders with the draft and publication packet for `k-github`.
+8. Keep title/body sources, linked issue intake, and unresolved placeholders with the draft and publication packet for `k-github`.
 
 Rules:
 

@@ -96,12 +96,6 @@
   # .gitconfig architecture. Basically you can use 1Password ssh key verification
   # from different .gitconfig files in different directories without need to create
   # a separate ssh alias for each repository or directory.
-  #
-  # Example:
-  #
-  # you can find the secondary ssh key in this repos in the home/dot_ssh/secondary_public_key.pub.tmpl file
-  # and it's used in home/work/private_dot_gitconfig.tmpl file
-  #
   sshCommand = ssh -o IdentitiesOnly=yes -o IdentityFile="~/.ssh/primary_public_key.pub"
   # Prevent line ending issues
   autocrlf = input
@@ -201,11 +195,6 @@
   email = {{ .primaryEmail }}
   signingkey = {{ .primaryPublicSshKey }}
   useConfigOnly = true
-
-{{ if ne .isWork true }}
-[includeIf "gitdir:~/work/"]
-  path = ~/work/.gitconfig
-{{ end }}
 
 [gpg]
   format = ssh

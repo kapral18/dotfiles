@@ -2,7 +2,7 @@
 # Fetch PRs and issues from GitHub using search sections defined in gh-picker config.
 # Outputs TSV rows for fzf consumption.
 #
-# Usage: gh_items.sh [--mode work|home] [--refresh]
+# Usage: gh_items.sh [--scope all|focus|explore] [--refresh] [--cache-only]
 set -euo pipefail
 
 # Classify the fetch lock so a waiter never reaps an owner that has just won
@@ -41,21 +41,12 @@ lock_owner_status() {
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 mkdir -p "$cache_dir" 2> /dev/null || true
 
-mode="${GH_PICKER_MODE:-work}"
 scope="${GH_PICKER_SCOPE:-all}"
 refresh=0
 cache_only=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --mode)
-      mode="$2"
-      shift 2
-      ;;
-    --mode=*)
-      mode="${1#--mode=}"
-      shift
-      ;;
     --scope)
       scope="$2"
       shift 2
@@ -77,19 +68,14 @@ while [ $# -gt 0 ]; do
 done
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
-config=""
-if [ "$mode" = "home" ]; then
-  config="$script_dir/gh-picker-home.yml"
-else
-  config="$script_dir/gh-picker-work.yml"
-fi
+config="$script_dir/gh-picker.yml"
 
 if [ ! -f "$config" ]; then
   printf 'Config not found: %s\n' "$config" >&2
   exit 1
 fi
 
-cache_file="${cache_dir}/gh_picker_${mode}.tsv"
+cache_file="${cache_dir}/gh_picker.tsv"
 cache_ttl=300
 
 emit_cache() {
@@ -99,7 +85,6 @@ emit_cache() {
   # collapse application which now both run after filter; the Python pass is
   # cheap (file read + filter + sort + collapse + emit + offsets sidecar).
   python3 -u "$script_dir/lib/gh_items_main.py" \
-    --mode "$mode" \
     --config "$config" \
     --cache-file "$cache_file" \
     --scope "$scope" \
@@ -202,9 +187,9 @@ done
 # child, bash defers signal handlers until the child exits — the orphan window
 # this opens is exactly the bug we are closing here.
 if [ "$refresh" -eq 1 ]; then
-  python3 -u "$script_dir/lib/gh_items_main.py" --mode "$mode" --config "$config" --cache-file "$cache_file" --scope "$scope" --refresh &
+  python3 -u "$script_dir/lib/gh_items_main.py" --config "$config" --cache-file "$cache_file" --scope "$scope" --refresh &
 else
-  python3 -u "$script_dir/lib/gh_items_main.py" --mode "$mode" --config "$config" --cache-file "$cache_file" --scope "$scope" &
+  python3 -u "$script_dir/lib/gh_items_main.py" --config "$config" --cache-file "$cache_file" --scope "$scope" &
 fi
 PYTHON_PID=$!
 set +e

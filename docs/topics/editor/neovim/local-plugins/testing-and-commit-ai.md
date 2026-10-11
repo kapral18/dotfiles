@@ -33,8 +33,8 @@ In a `gitcommit` buffer, generate a Conventional Commit message from the staged 
 
 Keymaps:
 
-- `leader-aisc` summarize via OpenRouter (personal) or Gemini (work)
-- `leader-aisg` summarize via Gemini (personal only)
+- `leader-aisc` summarize via OpenRouter
+- `leader-aisg` summarize via Gemini
 
 Output format notes:
 

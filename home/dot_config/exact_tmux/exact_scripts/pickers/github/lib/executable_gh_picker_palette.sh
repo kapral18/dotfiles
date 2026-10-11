@@ -2,7 +2,7 @@
 # Inline command palette for the GitHub picker.
 #
 # Wired to `alt-x`. Called as:
-#   gh_picker_palette.sh <items_file> <mode_file> <scope_file> <items_cmd>
+#   gh_picker_palette.sh <items_file> <scope_file> <items_cmd>
 #
 # Where <items_file> is fzf's `{+f}` — one tab-delimited line per selected or
 # cursor item. The orchestrator parses (kind, repo, num) per row, opens a
@@ -12,11 +12,10 @@
 set -euo pipefail
 
 items_file="${1:-}"
-mode_file="${2:-}"
-scope_file="${3:-}"
-items_cmd="${4:-}"
+scope_file="${2:-}"
+items_cmd="${3:-}"
 
-if [ -z "$items_file" ] || [ -z "$mode_file" ] || [ -z "$scope_file" ] || [ -z "$items_cmd" ]; then
+if [ -z "$items_file" ] || [ -z "$scope_file" ] || [ -z "$items_cmd" ]; then
   exit 0
 fi
 [ -f "$items_file" ] || exit 0
@@ -25,7 +24,7 @@ cleanup_files=()
 cleanup() {
   local f
   if [ -n "${row_loader_pid:-}" ] && declare -F gh_row_loader_stop_spinner > /dev/null 2>&1; then
-    gh_row_loader_stop_spinner "$row_loader_pid" "${mode:-work}" "${scope:-all}" "${items_cmd:-}" 2> /dev/null || true
+    gh_row_loader_stop_spinner "$row_loader_pid" "${scope:-all}" "${items_cmd:-}" 2> /dev/null || true
     row_loader_pid=""
   fi
   for f in "${cleanup_files[@]+"${cleanup_files[@]}"}"; do
@@ -43,7 +42,6 @@ if [ -f "$row_loader_lib" ]; then
   . "$row_loader_lib"
 fi
 
-mode="$(cat "$mode_file" 2> /dev/null || echo work)"
 scope="$(cat "$scope_file" 2> /dev/null || echo all)"
 row_loader_targets_file=""
 row_loader_pid=""
@@ -134,13 +132,13 @@ _mark_selection_loading() {
   for i in "${!kinds[@]}"; do
     printf '%s\t%s\t%s\n' "${kinds[i]}" "${repos[i]}" "${nums[i]}" >> "$row_loader_targets_file"
   done
-  gh_row_loader_start_file "$row_loader_targets_file" "$mode" "$scope" "$items_cmd" > /dev/null 2>&1 || true
+  gh_row_loader_start_file "$row_loader_targets_file" "$scope" "$items_cmd" > /dev/null 2>&1 || true
   row_loader_pid="${gh_row_loader_last_pid:-}"
 }
 
 _restore_selection_loading() {
   if declare -F gh_row_loader_stop_spinner > /dev/null 2>&1; then
-    gh_row_loader_stop_spinner "$row_loader_pid" "$mode" "$scope" "$items_cmd" 2> /dev/null || true
+    gh_row_loader_stop_spinner "$row_loader_pid" "$scope" "$items_cmd" 2> /dev/null || true
   fi
   row_loader_pid=""
 }
@@ -152,10 +150,10 @@ _refresh_after_mutation() {
   }
   if [ -n "$row_loader_pid" ] && declare -F gh_row_loader_stop_spinner > /dev/null 2>&1; then
     local targets_file="$row_loader_targets_file"
-    gh_row_loader_stop_spinner "$row_loader_pid" "$mode" "$scope" "$items_cmd" 2> /dev/null || true
+    gh_row_loader_stop_spinner "$row_loader_pid" "$scope" "$items_cmd" 2> /dev/null || true
     (
-      GH_PICKER_MODE="$mode" GH_PICKER_SCOPE="$scope" "$items_cmd" --refresh > /dev/null 2>&1 || true
-      gh_row_loader_notify "$mode" "$scope" "$items_cmd"
+      GH_PICKER_SCOPE="$scope" "$items_cmd" --refresh > /dev/null 2>&1 || true
+      gh_row_loader_notify "$scope" "$items_cmd"
       gh_row_loader_wait_posts
       rm -f "$targets_file" 2> /dev/null || true
     ) > /dev/null 2>&1 &
@@ -164,7 +162,7 @@ _refresh_after_mutation() {
     cleanup_files=()
     return 0
   fi
-  reload_cmd="GH_PICKER_MODE=$(printf %q "$mode") GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --refresh"
+  reload_cmd="GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --refresh"
   curl -s --max-time 5 -XPOST "http://127.0.0.1:${FZF_PORT}" -d "reload(${reload_cmd})+track" > /dev/null 2>&1 || true
 }
 
@@ -174,7 +172,7 @@ chosen="$(
       --delimiter='|' \
       --with-nth=2 \
       --prompt="  palette ($selection_summary) > " \
-      --header="enter:run · esc:cancel · mode=$mode scope=$scope" \
+      --header="enter:run · esc:cancel · scope=$scope" \
       --height=40% \
       --reverse \
       --no-multi \

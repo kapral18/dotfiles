@@ -27,7 +27,6 @@ FIXTURES = SCRIPTS / "tests" / "fixtures"
 TMUX_PICKERS = REPO / "home/dot_config/exact_tmux/exact_scripts/pickers"
 ARTIFACT_COMMAND = REPO / "home/exact_lib/exact_,artifact/main.py"
 CODEX_COMMAND = REPO / "home/exact_lib/exact_,codex/main.py"
-KBN_STACK_COMMAND = REPO / "home/exact_lib/exact_,kbn-stack/main.py"
 
 # Belt-and-suspenders: ensure scripts/ is importable even when a test file is run
 # directly (python3 scripts/test_x.py) rather than via discover.

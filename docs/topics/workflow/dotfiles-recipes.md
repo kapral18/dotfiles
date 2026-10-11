@@ -107,12 +107,10 @@ This follows Documentation Hygiene.
 
 When adding formulas or casks:
 
-- **Brewfile location**: per-category partials live under `home/.chezmoitemplates/brews/{shared,personal,work}/NN-<category>.brewfile`.
+- **Brewfile location**: per-category partials live under `home/.chezmoitemplates/brews/NN-<category>.brewfile`.
   `home/.chezmoitemplates/brews/_assemble.brewfile` assembles them into the single deployed `home/readonly_dot_Brewfile.tmpl`.
   Add the `brew`/`cask` line to the matching category file.
-  `shared/` = every machine, `personal/` = `.isWork` false, `work/` = `.isWork` true;
-  profile membership is the directory, not an inline `{{ if }}`.
-  Create the category file under the right profile dir if it does not exist yet and add a matching `includeTemplate` line in `home/.chezmoitemplates/brews/_assemble.brewfile`.
+  Create the category file if it does not exist yet and add a matching `includeTemplate` line in `home/.chezmoitemplates/brews/_assemble.brewfile`.
 - **Verify on GitHub first**: read the official repo's README, INSTALL, or releases to confirm Homebrew support and identify the correct formula/tap.
 - **Search GitHub**: look for official Homebrew taps such as `owner/homebrew-tap` when a tap is needed.
 - Verify locally with `brew info <formula>` or `brew info <owner/tap>/<formula>` before editing the Brewfile.
@@ -151,7 +149,7 @@ When a CLI tool is not available through higher-priority package managers and is
 1. **Verify CLI source**: Confirm the official GitHub repo and the binary/archive asset for the target OS and architecture.
 2. **Add registry entry**: Use `home/readonly_dot_default-custom-packages.tmpl`
 3. **Prefer release assets**: Use `file|...` (single binary), `tar_gz_bin|...` (archive with a binary), or `zip_opt|...` (zip that must keep sibling dylibs under `~/.local/opt`)
-4. **Template variables**: Use `{{- if ne .isWork true }}` blocks when needed
+4. **Template variables**: Use `$os` / `$arch` blocks to pick per-platform assets
 
 **Example entry**:
 

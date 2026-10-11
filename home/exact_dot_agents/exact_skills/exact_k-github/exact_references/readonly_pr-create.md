@@ -22,7 +22,6 @@ Load before `gh pr create` or PR body/title edits.
 
 Before `gh pr create` or PR body/title edit, require the `k-compose-pr` PR publication packet.
 Stop if the packet is missing, any required field is missing, or any required field is `blocked`.
-Exempt: backport PRs opened by the `k-kbn-backport` tool flow — that skill's upfront publication approval gates them instead.
 
 Approval handling:
 

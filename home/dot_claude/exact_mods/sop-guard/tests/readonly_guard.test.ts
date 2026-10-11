@@ -5,24 +5,18 @@ const ran = (stdout: string, exitCode = 0) => ({ exitCode, stdout, stderr: '', i
 const bash = (command: string) => ({ tool: 'Bash', command, description: 'test' }) as const
 const edit = (file_path: string) => ({ tool: 'Edit', file_path, old_string: 'a', new_string: 'b' }) as const
 
-type World = { managed?: string[]; links?: Record<string, string>; owners?: string; codeowners?: boolean }
+type World = { managed?: string[]; links?: Record<string, string> }
 
 // The engine beneath the plugin: HOME is /home/u, the dotfiles repo is /home/u/dots.
 const engine = (on: On, world: World = {}) => {
   on('env.get', () => ({ value: '/home/u' }))
   on('clock.now', () => ({ value: 0 }))
-  on('fs.exists', ($, e) => ({ value: e.path.endsWith('CODEOWNERS') ? world.codeowners === true : true }))
   on('fs.stat', ($, e) => ({ value: { kind: 'file', size: 1, mtimeMs: 0, isLink: false, realPath: world.links?.[e.path] ?? e.path } }))
   on('process.run', ($, e) => {
     const argv = e.argv.join(' ')
     if (argv.includes('chezmoi source-path') && argv.startsWith('sh')) return { value: ran('/home/u/dots\n') }
     if (argv.startsWith('chezmoi managed')) return { value: ran((world.managed ?? []).join('\n')) }
     if (argv.startsWith('chezmoi source-path')) return { value: ran(`/home/u/dots/home/src-of${e.argv[2]}\n`) }
-    if (argv === 'git rev-parse --show-toplevel') {
-      const repo = e.init?.cwd?.startsWith('/work/kibana') ? '/work/kibana' : undefined
-      return { value: repo ? ran(`${repo}\n`) : ran('', 128) }
-    }
-    if (argv.startsWith(',codeowners')) return { value: ran(`${e.argv[2]}  pattern  ${world.owners ?? '<unowned>'}\n`, world.owners ? 0 : 2) }
     return { value: ran('', 127) }
   })
   on('tool.call', () => ({ result: {} as never }))
@@ -140,42 +134,12 @@ test('stops a default-server mutation once and lets reads through', async ($, on
   expect(await denied($.tool.call(bash('rg "tmux kill-server" docs')))).toBeUndefined()
 })
 
-test('refuses direct Buildkite fetches', async ($, on) => {
-  engine(on)
-  expect(await denied($.tool.call({ tool: 'WebFetch', url: 'https://buildkite.com/elastic/kibana/builds/1', prompt: 'x' }))).toMatch(/use bk/)
-  expect(await denied($.tool.call(bash('curl -s https://api.buildkite.com/v2/builds')))).toMatch(/use bk/)
-  expect(await denied($.tool.call({ tool: 'WebFetch', url: 'https://notbuildkite.com.example.org/', prompt: 'x' }))).toBeUndefined()
-  expect(await denied($.tool.call(bash('bk build view 1')))).toBeUndefined()
-})
-
 test('refuses edits to chezmoi targets and names the source', async ($, on) => {
   engine(on, { managed: ['/home/u/.zshrc', '/home/u/AGENTS.md'], links: { '/home/u/.claude/CLAUDE.md': '/home/u/AGENTS.md' } })
   expect(await denied($.tool.call(edit('/home/u/.zshrc')))).toMatch(/\/home\/u\/\.zshrc is managed by chezmoi.*src-of\/home\/u\/\.zshrc/)
   expect(await denied($.tool.call(edit('/home/u/.claude/CLAUDE.md')))).toMatch(/\/home\/u\/AGENTS\.md is managed/)
   expect(await denied($.tool.call(edit('/home/u/notes.txt')))).toBeUndefined()
   expect(await denied($.tool.call(edit('/home/u/dots/home/dot_zshrc')))).toBeUndefined()
-})
-
-test('stops an edit outside the team once per owner set', async ($, on) => {
-  engine(on, { codeowners: true, owners: '@elastic/kibana-core' })
-  expect(await denied($.tool.call(edit('/work/kibana/src/core/a.ts')))).toMatch(/owned by @elastic\/kibana-core, not @elastic\/kibana-management/)
-  expect(await denied($.tool.call(edit('/work/kibana/src/core/b.ts')))).toBeUndefined()
-})
-
-test('lets team-owned edits through', async ($, on) => {
-  engine(on, { codeowners: true, owners: '@elastic/kibana-security @elastic/kibana-management' })
-  expect(await denied($.tool.call(edit('/work/kibana/src/console/a.ts')))).toBeUndefined()
-})
-
-test('passes repos without CODEOWNERS', async ($, on) => {
-  engine(on, { codeowners: false, owners: '@elastic/kibana-core' })
-  expect(await denied($.tool.call(edit('/work/kibana/src/core/a.ts')))).toBeUndefined()
-})
-
-test('asks for the team once when none is set', { options: { team: '' } }, async ($, on) => {
-  engine(on, { codeowners: true, owners: '@elastic/kibana-core' })
-  expect(await denied($.tool.call(edit('/work/kibana/src/core/a.ts')))).toMatch(/Ask the user for their team/)
-  expect(await denied($.tool.call(edit('/work/kibana/src/core/a.ts')))).toBeUndefined()
 })
 
 test('sees commands behind assignments, wrappers, keywords, and braces', async ($, on) => {
@@ -194,7 +158,6 @@ test('sees commands behind assignments, wrappers, keywords, and braces', async (
     expect(await denied($.tool.call(bash(command))), command).toMatch(/prints a secret/)
   }
   expect(await denied($.tool.call(bash('TMUX= tmux kill-server'))), 'tmux env').toMatch(/kill-server/)
-  expect(await denied($.tool.call(bash('TERM=xterm curl "https://buildkite.com/x"'))), 'bk env').toMatch(/use bk/)
   expect(await denied($.tool.call(bash(String.raw`tmux display -p x \; display-popup -E ls`)))).toMatch(/display-popup/)
 })
 

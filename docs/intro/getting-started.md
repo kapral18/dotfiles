@@ -64,12 +64,11 @@ This setup uses `chezmoi` hooks under [`home/.chezmoiscripts/`](../../home/.chez
 
 There are also hooks that manage language/tool versions and global packages (mise, cargo, go, gems, pnpm, uv) and some macOS preferences.
 
-## Work vs Personal Machines
+## Init Prompts
 
 During init/apply, `chezmoi` will prompt for values via [`home/.chezmoi.toml.tmpl`](../../home/.chezmoi.toml.tmpl):
 
-- `isWork` (drives conditional config)
-- emails / SSH public keys
+- email / SSH public key
 - PGP cache TTL
 
-Those values are used by templates (for example: git identity switching and conditional package lists).
+Those values are used by templates (for example: git identity and SSH signing).

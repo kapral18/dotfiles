@@ -31,8 +31,8 @@ The curated GGUF model list is a chezmoi-templated manifest: [`home/readonly_dot
 | Router id                  | Checkpoint                                                                                                              | Notes                                                                         |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | `nemotron-3.5`             | `unsloth/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF` `NVIDIA-Nemotron-3.5-Lightning-30B-A3B-UD-Q4_K_XL.gguf` (~25.5 GB) | Unsloth Dynamic quant; in-model NextN MTP + thinking sampling in `models.ini` |
-| `qwen3.6-35b-a3b`          | `unsloth/Qwen3.6-35B-A3B-GGUF` `Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf` plus dest `Qwen3.6-35B-A3B-mmproj-F16.gguf`            | Hybrid thinking; work profile caps router context at 131072                   |
-| `qwen3.6-35b-a3b-instruct` | same `Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf` weights (no extra download)                                                      | Non-thinking profile; same work-profile context budget                        |
+| `qwen3.6-35b-a3b`          | `unsloth/Qwen3.6-35B-A3B-GGUF` `Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf` plus dest `Qwen3.6-35B-A3B-mmproj-F16.gguf`            | Hybrid thinking                                                               |
+| `qwen3.6-35b-a3b-instruct` | same `Qwen3.6-35B-A3B-UD-Q5_K_XL.gguf` weights (no extra download)                                                      | Non-thinking profile                                                          |
 
 The router loads one preset at a time on demand. Weights stay on disk.
 

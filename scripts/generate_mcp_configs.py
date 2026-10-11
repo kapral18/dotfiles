@@ -2,7 +2,7 @@
 """Generate tool-specific MCP configs from the canonical mcp_servers.yaml.
 
 Usage:
-    generate_mcp_configs.py <mcp_servers_yaml> <is_work> [tool]
+    generate_mcp_configs.py <mcp_servers_yaml> [tool]
 
 Output: JSON with { "mcpServers": { ... } } on stdout.
 """
@@ -83,8 +83,8 @@ def _render_servers(servers: dict[str, dict[str, Any]], tool: str | None) -> dic
     return result
 
 
-def render_document(yaml_path: str, is_work: bool, tool: str | None) -> dict[str, Any]:
-    servers = load_servers(yaml_path, is_work, tool=tool)
+def render_document(yaml_path: str, tool: str | None) -> dict[str, Any]:
+    servers = load_servers(yaml_path, tool=tool)
     servers = _render_servers(servers, tool)
     document: dict[str, Any] = {"mcpServers": servers}
     if tool == "omp":
@@ -96,19 +96,17 @@ def render_document(yaml_path: str, is_work: bool, tool: str | None) -> dict[str
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        usage="generate_mcp_configs.py <mcp_servers_yaml> <is_work> [tool]",
+        usage="generate_mcp_configs.py <mcp_servers_yaml> [tool]",
         description=__doc__,
     )
     parser.add_argument("mcp_servers_yaml")
-    parser.add_argument("is_work")
     parser.add_argument("tool", nargs="?")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    is_work = args.is_work == "true"
-    document = render_document(args.mcp_servers_yaml, is_work, args.tool)
+    document = render_document(args.mcp_servers_yaml, args.tool)
     print(json.dumps(document, indent=2))
     return 0
 

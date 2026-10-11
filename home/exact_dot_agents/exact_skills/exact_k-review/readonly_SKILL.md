@@ -95,5 +95,5 @@ Review is read-only toward GitHub.
 Before drafting public-ready comments or a verdict, load `~/.agents/skills/k-review/references/review_delivery.md`.
 Post only when the user asks, through the `k-github` skill, under `~/AGENTS.md` §5 approval rules.
 
-Load `k-github` earlier only for read-only targeting and context intake. Load `k-buildkite` only when a CI job's contents matter.
+Load `k-github` earlier only for read-only targeting and context intake.
 Label, release-note, and version classification run only when the user asks for labels or a PR body.

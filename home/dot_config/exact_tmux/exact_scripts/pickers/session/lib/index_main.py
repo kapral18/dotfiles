@@ -730,45 +730,40 @@ if "--gh-cache-needs-author-refresh" in sys.argv:
 
 
 def _load_gh_picker_ci_index() -> dict[str, dict[int, tuple[str, str]]]:
-    """Read CI + review status from the gh picker TSV caches (work + home).
+    """Read CI + review status from the gh picker TSV cache.
 
     Returns {nwo: {pr_number: (review, ci)}} from the metadata column (col 7).
     TSV format: display\\tkind\\trepo\\tnumber\\turl\\tmatchkey\\treview,ci
     """
     index: dict[str, dict[int, tuple[str, str]]] = {}
     now = time.time()
-    for mode in ("work", "home"):
-        cache = GH_PICKER_CACHE_DIR / f"gh_picker_{mode}.tsv"
-        if not cache.is_file():
+    cache = GH_PICKER_CACHE_DIR / "gh_picker.tsv"
+    try:
+        age = now - cache.stat().st_mtime
+        if age < 0 or age > GH_PICKER_TTL:
+            return index
+        lines = cache.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:
+        return index
+    for line in lines:
+        parts = line.split("\t")
+        if len(parts) < 5:
             continue
+        kind = parts[1]
+        if kind != "pr":
+            continue
+        repo = parts[2]
         try:
-            age = now - cache.stat().st_mtime
-            if age < 0 or age > GH_PICKER_TTL:
-                continue
-        except Exception:
+            num = int(parts[3])
+        except (ValueError, IndexError):
             continue
-        try:
-            for line in cache.read_text(encoding="utf-8", errors="replace").splitlines():
-                parts = line.split("\t")
-                if len(parts) < 5:
-                    continue
-                kind = parts[1]
-                if kind != "pr":
-                    continue
-                repo = parts[2]
-                try:
-                    num = int(parts[3])
-                except (ValueError, IndexError):
-                    continue
-                review = ""
-                ci = ""
-                if len(parts) >= 7 and parts[6]:
-                    meta_parts = parts[6].split(",", 1)
-                    review = meta_parts[0] if meta_parts else ""
-                    ci = meta_parts[1] if len(meta_parts) > 1 else ""
-                index.setdefault(repo, {})[num] = (review, ci)
-        except Exception:
-            continue
+        review = ""
+        ci = ""
+        if len(parts) >= 7 and parts[6]:
+            meta_parts = parts[6].split(",", 1)
+            review = meta_parts[0] if meta_parts else ""
+            ci = meta_parts[1] if len(meta_parts) > 1 else ""
+        index.setdefault(repo, {})[num] = (review, ci)
     return index
 
 

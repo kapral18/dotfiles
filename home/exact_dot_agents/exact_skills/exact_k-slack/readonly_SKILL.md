@@ -17,7 +17,6 @@ Use when:
 Do not use:
 
 - read-only Slack research: call the read/search tools directly; no gate applies
-- standup composition: `~/.agents/skills/k-kbn-standup/SKILL.md` (it never sends)
 - GitHub effects: `~/.agents/skills/k-github/SKILL.md`; Gmail/Chat: `~/.agents/skills/k-google-workspace/SKILL.md`
 
 ## Tool classes (names in this setup)

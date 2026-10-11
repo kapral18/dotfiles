@@ -65,13 +65,12 @@ This setup is intentionally declarative:
 
 ## Dynamic AI Context Merging
 
-Because AI tools (like OpenCode, Antigravity, and Pi) often rewrite their config files during runtime, rendering templates directly into those files causes conflicts. Instead, this architecture uses **Profile-Based Merging**:
+Because AI tools (like OpenCode, Antigravity, and Pi) often rewrite their config files during runtime, rendering templates directly into those files causes conflicts. Instead, this architecture uses **Source-Based Merging**:
 
-- MCP server definitions share a single canonical registry at [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml). Each entry declares a `work_only` flag so work-specific servers are filtered at generation time.
+- MCP server definitions share a single canonical registry at [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml).
 - During `chezmoi apply`, the unified script `run_onchange_after_07-generate-mcp-configs.sh.tmpl` calls [`scripts/generate_mcp_configs.py`](../../scripts/generate_mcp_configs.py) once and writes the result to Claude Code, Pi, and any other tool that consumes the standard `mcpServers` JSON shape.
 - Tools with different MCP schemas (OpenCode, Codex) still derive from the same registry via small inject scripts in `scripts/` that transform the canonical registry into the tool-specific config shape.
 - Antigravity keeps runtime-owned servers in `~/.gemini/config/mcp_config.json`; the apply hook merges registry-owned servers into that file without replacing the runtime-owned entries.
-- This creates a hard boundary between work contexts (which load work-specific MCP servers) and personal contexts.
 
 Models are set directly in each harness config. For the full picture see [MCP servers](../topics/ai-assistants/mcp.md) and [Tool configs](../topics/ai-assistants/tool-configs/index.md).
 
@@ -81,7 +80,6 @@ All `run_onchange_after_07-merge-*` scripts source a shared shell library at [`s
 
 | Function                     | Purpose                                               |
 | ---------------------------- | ----------------------------------------------------- |
-| `chezmoi_pick_src`           | Resolve work vs personal source path                  |
 | `chezmoi_write_if_changed`   | Atomic string write, skip if content unchanged        |
 | `chezmoi_install_if_changed` | File copy via `install(1)`, skip if content unchanged |
 | `chezmoi_record_checksum`    | Record one literal target and sha256 in the manifest  |
@@ -90,11 +88,11 @@ All `run_onchange_after_07-merge-*` scripts source a shared shell library at [`s
 Two independent runtime ledgers serve different questions:
 
 - `~/.local/state/chezmoi/managed_configs.tsv` is the generic literal whole-file checksum manifest. [`scripts/managed_config_manifest.py`](../../scripts/managed_config_manifest.py) collapses exact duplicate rows and powers the `,doctor` Config Drift section, which joins each row with the artifact ledger below: rows with no artifact and no remaining producer in source retire silently, while artifact-covered rows compare ownership-projected state so app-owned churn stays silent.
-- `~/.local/state/chezmoi/generated_artifacts.v1.json` is the AI-specific effective-state ledger. [`scripts/generated_artifact_ledger.py`](../../scripts/generated_artifact_ledger.py) records source/transform hashes, selected profile, ownership projection, target, consumer, and local probe metadata. `,doctor ai` and the Config Drift section read it, so runtime-owned Codex fields do not create false drift.
+- `~/.local/state/chezmoi/generated_artifacts.v1.json` is the AI-specific effective-state ledger. [`scripts/generated_artifact_ledger.py`](../../scripts/generated_artifact_ledger.py) records source/transform hashes, ownership projection, target, consumer, and local probe metadata. `,doctor ai` and the Config Drift section read it, so runtime-owned Codex fields do not create false drift.
 
 Both ledgers are atomic and mode `0600`. The AI ledger stores paths and hashes only, never generated config contents or resolved secret values.
 
-To add a new AI tool config, create work/personal source files and a merge script that sources the library — typically 5–10 lines of tool-specific logic.
+To add a new AI tool config, create its source file and a merge script that sources the library — typically 5–10 lines of tool-specific logic.
 
 ## Hooks (Automation)
 
@@ -118,14 +116,6 @@ Examples in this repo:
 Many hooks embed `sha256sum` comments that reference template content. The AI/config `07` hooks include every directly or transitively executed local transform, so changing a shared parser, reconciler, or shell helper schedules the affected projection again.
 
 The [Reference map](../reference/reference-map.md) lists every hook and helper script and the file each one drives.
-
-## Work vs Personal Split
-
-The primary decision point is the `isWork` prompt in [`home/.chezmoi.toml.tmpl`](../../home/.chezmoi.toml.tmpl). It is used to:
-
-- conditionally include certain tools/plugins
-- choose which identity config is rendered
-- choose which secrets/setup steps run
 
 ## External Assets
 

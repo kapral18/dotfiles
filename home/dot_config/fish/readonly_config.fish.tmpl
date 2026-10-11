@@ -165,21 +165,6 @@ if type -q pass; and test -z "$TYPESAFE_API_KEY"
     and set -gx TYPESAFE_API_KEY $typesafe_token
 end
 
-{{ if ne .isWork true -}}
-# ------------------------------------
-# Conditional Configurations
-# ------------------------------------
-
-# Password Store Selection
-function wpass --description "Point PASSWORD_STORE_DIR to work"
-    set -gx PASSWORD_STORE_DIR {{ joinPath .chezmoi.homeDir ".password-store-work" }}
-end
-
-function ppass --description "Point PASSWORD_STORE_DIR to personal"
-    set -ge PASSWORD_STORE_DIR
-end
-{{- end }}
-
 # ------------------------------------
 # Interactive Session Configurations
 # ------------------------------------

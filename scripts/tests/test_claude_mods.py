@@ -12,7 +12,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 MODS = REPO / "home" / "dot_claude" / "exact_mods"
-PROFILES = [REPO / "home" / "dot_claude" / f"settings.{name}.json" for name in ("personal", "work")]
+SETTINGS = REPO / "home" / "dot_claude" / "settings.personal.json"
 # The repo-only plugin Claude loads from the project's .claude/skills folder.
 DOTFILES_GUARD = REPO / ".claude" / "skills" / "dotfiles-guard"
 SHELL_SOURCE = MODS / "sop-guard" / "hooks" / "readonly_shell.ts"
@@ -39,12 +39,11 @@ def render(mod: Path, into: Path) -> Path:
 class TestClaudeMods(unittest.TestCase):
     """WHEN the Claude Code mods deploy and load."""
 
-    def test_every_profile_loads_every_mod(self):
+    def test_settings_load_every_mod(self):
         mods = sorted(f"~/.claude/mods/{target_name(mod.name)}" for mod in MODS.iterdir() if mod.is_dir())
         self.assertTrue(mods)
-        for profile in PROFILES:
-            dirs = json.loads(profile.read_text())["env"]["CLAUDE_CODE_PLUGIN_DIRS"].split(":")
-            self.assertEqual(sorted(dirs), mods, profile.name)
+        dirs = json.loads(SETTINGS.read_text())["env"]["CLAUDE_CODE_PLUGIN_DIRS"].split(":")
+        self.assertEqual(sorted(dirs), mods)
 
     def test_mod_folders_are_not_exact(self):
         # The engine writes `.claude-plugin/types/` and `tsconfig.json` into each mod folder.

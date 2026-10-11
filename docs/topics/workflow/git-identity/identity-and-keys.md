@@ -29,18 +29,6 @@ Git uses public-key paths as identity selectors. The matching private keys stay 
 Templates:
 
 - [`home/private_dot_ssh/readonly_primary_public_key.pub.tmpl`](../../../../home/private_dot_ssh/readonly_primary_public_key.pub.tmpl)
-- [`home/private_dot_ssh/readonly_secondary_public_key.pub.tmpl`](../../../../home/private_dot_ssh/readonly_secondary_public_key.pub.tmpl)
-
-## Work vs personal switching
-
-The work/personal split combines:
-
-- `.isWork` at chezmoi init time.
-- git `includeIf` path rules.
-- separate public-key selectors.
-- pass store switching helpers.
-
-For the operational steps, see [Switching work vs personal identity](switch-identity.md).
 
 ## Troubleshooting
 
@@ -50,10 +38,7 @@ ssh-add -l
 git config --show-origin --get core.sshCommand
 ```
 
-If identity did not switch, verify the repo path first. The automatic work identity path is `~/work/...` on non-work machines.
-
 ## Related
 
 - [Git config](git-config.md)
 - [Security and secrets](../../security/security-and-secrets.md)
-- [Switching identity](switch-identity.md)

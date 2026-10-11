@@ -40,22 +40,9 @@ expand_tilde() {
   esac
 }
 
-conventional_parent_for_repo() {
-  local repo_nwo="$1"
-  local owner="${repo_nwo%%/*}"
-  if [ "$owner" = "elastic" ]; then
-    printf '%s\n' "$HOME/work"
-  else
-    printf '%s\n' "$HOME/code"
-  fi
-}
-
 conventional_repo_wrapper_path() {
   local repo_nwo="$1"
-  local parent repo
-  parent="$(conventional_parent_for_repo "$repo_nwo")"
-  repo="${repo_nwo##*/}"
-  printf '%s\n' "${parent}/${repo}"
+  printf '%s\n' "$HOME/code/${repo_nwo##*/}"
 }
 
 resolve_repo_worktree() {
@@ -107,7 +94,7 @@ bootstrap_repo_with_tfork() {
   local parent
 
   require_cmd ,gh-tfork
-  parent="$(conventional_parent_for_repo "$repo_nwo")"
+  parent="$HOME/code"
   mkdir -p "$parent"
   (
     cd "$parent"

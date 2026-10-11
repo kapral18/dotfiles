@@ -18,15 +18,6 @@ gh_row_loader_mk_restore_file() {
   mktemp "${_gh_row_loader_cache_dir}/gh_row_loader_${prefix}_XXXXXX"
 }
 
-gh_row_loader_mode_from_file() {
-  local mode_file="${1:-}"
-  if [ -n "$mode_file" ] && [ -f "$mode_file" ]; then
-    cat "$mode_file" 2> /dev/null || echo work
-  else
-    cat "${_gh_row_loader_cache_dir}/gh_picker_mode" 2> /dev/null || echo work
-  fi
-}
-
 gh_row_loader_scope_from_file() {
   local scope_file="${1:-}"
   if [ -n "$scope_file" ] && [ -f "$scope_file" ]; then
@@ -37,9 +28,9 @@ gh_row_loader_scope_from_file() {
 }
 
 gh_row_loader_notify() {
-  local mode="$1" scope="$2" items_cmd="${3:-${_gh_row_loader_picker_dir}/gh_items.sh}"
+  local scope="$1" items_cmd="${2:-${_gh_row_loader_picker_dir}/gh_items.sh}"
   local frame_file
-  frame_file="$(gh_row_loader_prepare_cache_file "$mode" "$scope" "$items_cmd" 2> /dev/null || true)"
+  frame_file="$(gh_row_loader_prepare_cache_file "$scope" "$items_cmd" 2> /dev/null || true)"
   [ -n "$frame_file" ] || return 0
   gh_row_loader_notify_file "$frame_file"
 }
@@ -92,8 +83,7 @@ gh_row_loader_frame_state() {
 
 gh_row_loader_patch() {
   local kind="$1" repo="$2" num="$3" state="$4" restore_file="${5:-}"
-  local mode="${6:-$(gh_row_loader_mode_from_file)}"
-  local cache_file="${_gh_row_loader_cache_dir}/gh_picker_${mode}.tsv"
+  local cache_file="${_gh_row_loader_cache_dir}/gh_picker.tsv"
   [ -f "$_gh_row_loader_patcher" ] && [ -f "$cache_file" ] || return 0
   if [ -n "$restore_file" ]; then
     python3 -u "$_gh_row_loader_patcher" \
@@ -119,11 +109,11 @@ gh_row_loader_patch_file() {
 }
 
 gh_row_loader_prepare_cache_file() {
-  local mode="$1" scope="$2" items_cmd="$3"
+  local scope="$1" items_cmd="$2"
   local tmp
   tmp="$(mktemp "${_gh_row_loader_cache_dir}/gh_row_loader_render_XXXXXX" 2> /dev/null || true)"
   [ -n "$tmp" ] || return 0
-  GH_PICKER_MODE="$mode" GH_PICKER_SCOPE="$scope" "$items_cmd" --cache-only > "$tmp" 2> /dev/null || true
+  GH_PICKER_SCOPE="$scope" "$items_cmd" --cache-only > "$tmp" 2> /dev/null || true
   if [ ! -s "$tmp" ]; then
     rm -f "$tmp" 2> /dev/null || true
     return 0
@@ -132,9 +122,9 @@ gh_row_loader_prepare_cache_file() {
 }
 
 gh_row_loader_prepare_render_file() {
-  local items_cmd="$1" mode="$2" scope="$3" target="$4" state="$5" a="${6:-}" b="${7:-}" c="${8:-}"
+  local items_cmd="$1" scope="$2" target="$3" state="$4" a="${5:-}" b="${6:-}" c="${7:-}"
   local tmp
-  tmp="$(gh_row_loader_prepare_cache_file "$mode" "$scope" "$items_cmd" 2> /dev/null || true)"
+  tmp="$(gh_row_loader_prepare_cache_file "$scope" "$items_cmd" 2> /dev/null || true)"
   [ -n "$tmp" ] || return 0
   case "$target" in
     all)
@@ -185,8 +175,8 @@ gh_row_loader_wait_posts() {
 
 gh_row_loader_start_item() {
   local kind="$1" repo="$2" num="$3"
-  local mode="${4:-$(gh_row_loader_mode_from_file)}" scope="${5:-$(gh_row_loader_scope_from_file)}"
-  local items_cmd="${6:-${_gh_row_loader_picker_dir}/gh_items.sh}"
+  local scope="${4:-$(gh_row_loader_scope_from_file)}"
+  local items_cmd="${5:-${_gh_row_loader_picker_dir}/gh_items.sh}"
   (
     local token i=0 state frame_file
     _gh_row_loader_post_pids=()
@@ -196,7 +186,7 @@ gh_row_loader_start_item() {
     trap 'exit 0' TERM INT
     while [ -f "$token" ]; do
       state="$(gh_row_loader_frame_state "$i")"
-      frame_file="$(gh_row_loader_prepare_render_file "$items_cmd" "$mode" "$scope" item "$state" "$kind" "$repo" "$num" 2> /dev/null || true)"
+      frame_file="$(gh_row_loader_prepare_render_file "$items_cmd" "$scope" item "$state" "$kind" "$repo" "$num" 2> /dev/null || true)"
       [ -f "$token" ] || {
         rm -f "$frame_file" 2> /dev/null || true
         break
@@ -214,8 +204,8 @@ gh_row_loader_start_item() {
 
 gh_row_loader_start_file() {
   local targets_file="$1"
-  local mode="${2:-$(gh_row_loader_mode_from_file)}" scope="${3:-$(gh_row_loader_scope_from_file)}"
-  local items_cmd="${4:-${_gh_row_loader_picker_dir}/gh_items.sh}"
+  local scope="${2:-$(gh_row_loader_scope_from_file)}"
+  local items_cmd="${3:-${_gh_row_loader_picker_dir}/gh_items.sh}"
   (
     local token i=0 state frame_file
     _gh_row_loader_post_pids=()
@@ -225,7 +215,7 @@ gh_row_loader_start_file() {
     trap 'exit 0' TERM INT
     while [ -f "$token" ]; do
       state="$(gh_row_loader_frame_state "$i")"
-      frame_file="$(gh_row_loader_prepare_render_file "$items_cmd" "$mode" "$scope" file "$state" "$targets_file" 2> /dev/null || true)"
+      frame_file="$(gh_row_loader_prepare_render_file "$items_cmd" "$scope" file "$state" "$targets_file" 2> /dev/null || true)"
       [ -f "$token" ] || {
         rm -f "$frame_file" 2> /dev/null || true
         break
@@ -240,7 +230,7 @@ gh_row_loader_start_file() {
 }
 
 gh_row_loader_start_all() {
-  local mode="$1" scope="$2" items_cmd="$3"
+  local scope="$1" items_cmd="$2"
   (
     local token i=0 state frame_file
     _gh_row_loader_post_pids=()
@@ -250,7 +240,7 @@ gh_row_loader_start_all() {
     trap 'exit 0' TERM INT
     while [ -f "$token" ]; do
       state="$(gh_row_loader_frame_state "$i")"
-      frame_file="$(gh_row_loader_prepare_render_file "$items_cmd" "$mode" "$scope" all "$state" 2> /dev/null || true)"
+      frame_file="$(gh_row_loader_prepare_render_file "$items_cmd" "$scope" all "$state" 2> /dev/null || true)"
       [ -f "$token" ] || {
         rm -f "$frame_file" 2> /dev/null || true
         break
@@ -265,36 +255,36 @@ gh_row_loader_start_all() {
 }
 
 gh_row_loader_stop_spinner() {
-  local pid="${1:-}" mode="${2:-$(gh_row_loader_mode_from_file)}" scope="${3:-$(gh_row_loader_scope_from_file)}"
-  local items_cmd="${4:-${_gh_row_loader_picker_dir}/gh_items.sh}"
+  local pid="${1:-}" scope="${2:-$(gh_row_loader_scope_from_file)}"
+  local items_cmd="${3:-${_gh_row_loader_picker_dir}/gh_items.sh}"
   if [ -n "$pid" ]; then
     rm -f "$(_gh_row_loader_spin_token "$pid")" 2> /dev/null || true
     kill "$pid" 2> /dev/null || true
     wait "$pid" 2> /dev/null || true
   fi
-  gh_row_loader_notify "$mode" "$scope" "$items_cmd"
+  gh_row_loader_notify "$scope" "$items_cmd"
   gh_row_loader_wait_posts
 }
 
 gh_row_loader_mark() {
   local kind="$1" repo="$2" num="$3" restore_file="$4"
-  local mode="${5:-$(gh_row_loader_mode_from_file)}" scope="${6:-$(gh_row_loader_scope_from_file)}"
-  local items_cmd="${7:-${_gh_row_loader_picker_dir}/gh_items.sh}"
-  gh_row_loader_patch "$kind" "$repo" "$num" loading "$restore_file" "$mode"
-  gh_row_loader_notify "$mode" "$scope" "$items_cmd"
+  local scope="${5:-$(gh_row_loader_scope_from_file)}"
+  local items_cmd="${6:-${_gh_row_loader_picker_dir}/gh_items.sh}"
+  gh_row_loader_patch "$kind" "$repo" "$num" loading "$restore_file"
+  gh_row_loader_notify "$scope" "$items_cmd"
 }
 
 gh_row_loader_restore() {
   local kind="$1" repo="$2" num="$3" restore_file="$4"
-  local mode="${5:-$(gh_row_loader_mode_from_file)}" scope="${6:-$(gh_row_loader_scope_from_file)}"
-  local items_cmd="${7:-${_gh_row_loader_picker_dir}/gh_items.sh}"
-  gh_row_loader_patch "$kind" "$repo" "$num" restore "$restore_file" "$mode"
-  gh_row_loader_notify "$mode" "$scope" "$items_cmd"
+  local scope="${5:-$(gh_row_loader_scope_from_file)}"
+  local items_cmd="${6:-${_gh_row_loader_picker_dir}/gh_items.sh}"
+  gh_row_loader_patch "$kind" "$repo" "$num" restore "$restore_file"
+  gh_row_loader_notify "$scope" "$items_cmd"
 }
 
 gh_row_loader_patch_all() {
-  local mode="$1" state="$2" restore_file="$3"
-  local cache_file="${_gh_row_loader_cache_dir}/gh_picker_${mode}.tsv"
+  local state="$1" restore_file="$2"
+  local cache_file="${_gh_row_loader_cache_dir}/gh_picker.tsv"
   [ -f "$_gh_row_loader_patcher" ] && [ -f "$cache_file" ] || return 0
   python3 -u "$_gh_row_loader_patcher" \
     --cache-file "$cache_file" --all --state "$state" \
@@ -302,28 +292,28 @@ gh_row_loader_patch_all() {
 }
 
 gh_row_loader_mark_all() {
-  local mode="$1" scope="$2" items_cmd="$3" restore_file="$4"
-  gh_row_loader_patch_all "$mode" loading "$restore_file"
-  gh_row_loader_notify "$mode" "$scope" "$items_cmd"
+  local scope="$1" items_cmd="$2" restore_file="$3"
+  gh_row_loader_patch_all loading "$restore_file"
+  gh_row_loader_notify "$scope" "$items_cmd"
 }
 
 gh_row_loader_restore_all() {
-  local mode="$1" scope="$2" items_cmd="$3" restore_file="$4"
-  gh_row_loader_patch_all "$mode" restore "$restore_file"
-  gh_row_loader_notify "$mode" "$scope" "$items_cmd"
+  local scope="$1" items_cmd="$2" restore_file="$3"
+  gh_row_loader_patch_all restore "$restore_file"
+  gh_row_loader_notify "$scope" "$items_cmd"
 }
 
 gh_row_loader_refresh_all() {
-  local items_cmd="$1" mode="$2" scope="$3"
+  local items_cmd="$1" scope="$2"
   local spinner_pid rc
   gh_row_loader_global_start
-  gh_row_loader_start_all "$mode" "$scope" "$items_cmd" > /dev/null 2>&1 || true
+  gh_row_loader_start_all "$scope" "$items_cmd" > /dev/null 2>&1 || true
   spinner_pid="${gh_row_loader_last_pid:-}"
   set +e
-  GH_PICKER_MODE="$mode" GH_PICKER_SCOPE="$scope" "$items_cmd" --refresh > /dev/null 2>&1
+  GH_PICKER_SCOPE="$scope" "$items_cmd" --refresh > /dev/null 2>&1
   rc=$?
   set -e
-  gh_row_loader_stop_spinner "$spinner_pid" "$mode" "$scope" "$items_cmd"
+  gh_row_loader_stop_spinner "$spinner_pid" "$scope" "$items_cmd"
   gh_row_loader_global_stop
   return "$rc"
 }
@@ -333,8 +323,8 @@ main() {
   case "$cmd" in
     refresh-all)
       shift
-      [ $# -ge 3 ] || exit 0
-      gh_row_loader_refresh_all "$1" "$2" "$3"
+      [ $# -ge 2 ] || exit 0
+      gh_row_loader_refresh_all "$1" "$2"
       ;;
     global-start)
       gh_row_loader_global_start
@@ -344,18 +334,18 @@ main() {
       ;;
     render-all)
       shift
-      [ $# -ge 4 ] || exit 0
-      gh_row_loader_render "$1" "$2" "$3" all "$4"
+      [ $# -ge 3 ] || exit 0
+      gh_row_loader_render "$1" "$2" all "$3"
       ;;
     render-item)
       shift
-      [ $# -ge 7 ] || exit 0
-      gh_row_loader_render "$1" "$2" "$3" item "$7" "$4" "$5" "$6"
+      [ $# -ge 6 ] || exit 0
+      gh_row_loader_render "$1" "$2" item "$6" "$3" "$4" "$5"
       ;;
     render-file)
       shift
-      [ $# -ge 5 ] || exit 0
-      gh_row_loader_render "$1" "$2" "$3" file "$5" "$4"
+      [ $# -ge 4 ] || exit 0
+      gh_row_loader_render "$1" "$2" file "$4" "$3"
       ;;
     *)
       exit 0

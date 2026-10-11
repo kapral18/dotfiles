@@ -32,7 +32,7 @@ Because it indexes worktrees on disk, the sessions you create with `,w` (or via 
 
 ## Work The GitHub Dashboard
 
-Open the GitHub picker (`prefix` + `G`) for a PR/issue dashboard with review/CI badges, hierarchy (epics, backport families), and inline actions. Switch scope with `alt-1` (Focus: work you own or must act on) and `alt-2` (Explore: team queues, mentions, radar), and toggle work/home with `ctrl-s`.
+Open the GitHub picker (`prefix` + `G`) for a PR/issue dashboard with review/CI badges, hierarchy (epics, backport families), and inline actions. Switch scope with `alt-1` (Focus: work you own or must act on) and `alt-2` (Explore: mentions and involvement).
 
 ![GitHub picker popup over the tmux workbench, with safe demo rows for own PRs, external reviews, issues, epics, and pending backports](../topics/workflow/tmux/assets/github-picker-full.png)
 
@@ -60,7 +60,7 @@ pi
 claude
 ```
 
-Per-tool configuration (auth, models, MCP, profile merging) lives in [Tool configs](../topics/ai-assistants/tool-configs/index.md).
+Per-tool configuration (auth, models, MCP, config merging) lives in [Tool configs](../topics/ai-assistants/tool-configs/index.md).
 
 To continue a task in another session or harness, ask for "handoff X" and later "continue X"; agents save and read notes with `,handoff`. Reusable gotchas go into `,ai-kb` on demand. See [Memory and handoffs](../topics/ai-assistants/memory-and-handoffs.md).
 

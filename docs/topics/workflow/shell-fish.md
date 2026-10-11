@@ -99,22 +99,6 @@ In fish, it's wired via:
 
 - `FD_DEFAULT_OPTS` in [`home/dot_config/fish/readonly_config.fish.tmpl`](../../../home/dot_config/fish/readonly_config.fish.tmpl)
 
-## Password-Store Switching (Non-Work Machines)
-
-Two helper functions are defined in fish:
-
-- `wpass`: points `PASSWORD_STORE_DIR` at `~/.password-store-work`
-- `ppass`: unsets `PASSWORD_STORE_DIR` (back to default store)
-
-Verification:
-
-```bash
-wpass
-echo "$PASSWORD_STORE_DIR"
-ppass
-echo "$PASSWORD_STORE_DIR"
-```
-
 ## Fish Plugins
 
 Fish plugins are managed with Fisher:
@@ -130,8 +114,6 @@ Fish plugins are managed with Fisher:
 - Missing API keys:
   - verify `pass` is installed and unlocked
   - verify the expected secret paths exist in your password store
-- Wrong password store selected:
-  - run `ppass` to clear `PASSWORD_STORE_DIR`
 
 ## Making Fish Your Login Shell
 
@@ -141,6 +123,6 @@ The setup script installs fish and will attempt to set it as your main shell:
 
 ## Related
 
-- [Switching identity](git-identity/switch-identity.md)
+- [Identity and keys](git-identity/identity-and-keys.md)
 - [Packages](../core/packages/index.md)
 - [Security and secrets](../security/security-and-secrets.md)

@@ -11,3 +11,7 @@ brew "guumaster/tap/hostctl"
 # https://github.com/PotatoLabs/git-redate
 tap "potatolabs/git-redate", trusted: true
 brew "potatolabs/git-redate/git-redate"
+
+# Remove large files or passwords from Git history like git-filter-branch
+# https://rtyley.github.io/bfg-repo-cleaner/
+brew "bfg"

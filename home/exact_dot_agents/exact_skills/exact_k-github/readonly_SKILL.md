@@ -49,7 +49,6 @@ Do not recursively crawl every reachable or potentially relevant reference.
 - For a selected comment/thread, read the complete thread with author, order, resolution, and outdated state.
 - For selected media, use `~/.agents/skills/k-review/references/pr_snapshot.md` → Media, inspect the actual file, and retain the manifest evidence.
   For video/GIF claims, inspect the relevant transition plus surrounding states and audio/captions when material.
-- For selected Buildkite evidence, use `k-buildkite`; verified overlays own repo-specific routing.
 - If a claim depends on visuals and visuals are missing, inaccessible, or unclear, stop and ask for visuals or better access before making that claim.
 - Stop reference expansion when the named question is answered or the required source is inaccessible.
   Do not create new questions solely from incidental links. Report material unresolved questions as blocked.
@@ -67,7 +66,6 @@ User output contains only decision-relevant conclusions and evidence pointers, n
 ## Domain overlays
 
 A domain overlay is selected from verified repo/org evidence, not guessed from wording.
-For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.md`.
 
 ## First actions
 

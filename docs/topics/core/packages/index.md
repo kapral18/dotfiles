@@ -7,7 +7,7 @@ This setup treats package installation as declarative: edit a source list, run `
 | Slice                                               | Owns                                                                     |
 | --------------------------------------------------- | ------------------------------------------------------------------------ |
 | [Package catalog](catalog/index.md)                 | what the managed tools are for, grouped across package managers          |
-| [Sources and scope](sources-and-scope.md)           | every package registry, list file, hook, and `.isWork` scoping rule      |
+| [Sources and scope](sources-and-scope.md)           | every package registry, list file, and hook                              |
 | [Reconcile behavior](reconcile-behavior.md)         | what each hook installs, updates, removes, or intentionally leaves alone |
 | [Verification and troubleshooting](verification.md) | high-signal checks and common failure modes                              |
 

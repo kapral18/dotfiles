@@ -36,11 +36,12 @@ venv/
 .local/share/yarn/
 .local/share/pnpm/
 .local/share/pnpm-global-links/
-.elastic/snapshots/
 .local/share/mise/installs/
 .kube/cache/
 .rbenv/versions/
-work/kibana/es_data/
 .gemini/tmp/
 .bun/install/cache/
 .codex/sessions/
+# Leftover Elasticsearch dev data from the retired Kibana setup.
+.elastic/snapshots/
+work/kibana/es_data/

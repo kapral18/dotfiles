@@ -4,6 +4,6 @@
   "link": {
     "type": "generated-index",
     "title": "Security",
-    "description": "Identity, secrets, and signed git: 1Password SSH agent, pass/password-store, and the work/personal identity split."
+    "description": "Identity, secrets, and signed git: 1Password SSH agent, pass/password-store."
   }
 }
