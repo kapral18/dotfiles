@@ -2,8 +2,8 @@ import type { EngineInterface, Register } from 'claude-code'
 
 // Edits here are not part of the user's change.
 const IGNORED = /^(\/private)?\/(tmp|var\/folders)\/|\/\.claude\/(plans|projects)\//
-// A `Checked:` list header: `Checked:`, `**Checked:**`, or `## Checked:`.
-const CHECKED = /^[\s>*_#-]*Checked(\*\*)?:/m
+// A `Checked` header line, bold or not, with or without a colon. A sentence that starts with "Checked" is not one.
+const CHECKED = /^[\s>*_#-]*Checked(?:\*\*|__)?(?:[ \t]*\([^)\n]*\))?(?::|[ \t]*$)/m
 const ASK_ME = /\bask(?:ing)? (?:me|us)\b/gi
 // What ends the text before "ask me" when it refuses: a negation up to three words back ("don't even need to ask me"),
 // or stop/quit/avoid up to two words back, not across and/then/to/but/or/just/instead.
@@ -33,12 +33,12 @@ const MESSAGE =
   'If the change is not done, say so and list what is open.'
 
 // The send-back's reply replaces the answer the user reads, so it must still answer the user.
-const FINAL = 'Your reply is the final message the user reads: open it with the full answer to their request, as if this feedback had not come, then address this feedback after it.'
+const FINAL = 'Your reply is the final message the user reads: open it with the full answer to their request within the ~/AGENTS.md §8 length budget, as if this feedback had not come, then address this feedback after it.'
 
 const QUESTION =
-  'The final message ends with a question. Per ~/AGENTS.md §1, ask only for goals, preferences, or authority you lack, such as the §5 gates. ' +
-  'If source and evidence decide it, decide, list the decision under `Assumptions:`, act on it if it is inside your write scope and `k-review` Fix Scope, and report. ' +
-  'If the decision is the user\'s, or the user asked you to ask, keep the question under `Decision needed:`.'
+  'The final message ends with a question. Per ~/AGENTS.md §1, ask only for goals, preferences evidence cannot settle, or authority you lack, such as the §5 gates. ' +
+  'If source and evidence decide it, decide, list the decision under `Assumptions:`, act on it if it is reversible, local, and inside the request\'s scope (in a review: your write scope and `k-review` Fix Scope), and report. ' +
+  'If the decision is the user\'s, or the user asked you to ask, keep the question under `Decision needed:` with your pick. Never offer an option you argued against.'
 
 const snapshot = async ($: EngineInterface) => {
   const run = await $.process.run(['sh', '-c', SNAPSHOT], { timeoutMs: 20000 })

@@ -160,7 +160,7 @@ class TestOmpMigration(unittest.TestCase):
         self.assertEqual((gate["reviewMode"], gate["syncBacklog"]), ("agent-end", "strict"))
         self.assertNotIn("model", gate)
         self.assertNotIn("tools", gate)
-        for rule in ("`Checked:`", "`Decision needed:`", "cannot fail"):
+        for rule in ("`Checked:`", "label does not exempt it", "partial pass", "cannot fail"):
             self.assertIn(rule, gate["instructions"])
 
     def test_skills_root_points_at_shared_skill_corpus(self):

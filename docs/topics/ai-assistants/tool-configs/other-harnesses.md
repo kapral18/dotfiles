@@ -88,7 +88,7 @@ Key settings:
 `General` is the default advisor, kept by name; it reviews every turn.
 OMP shows a `General` concern about a finished answer only as a card, so the agent never acts on it; only a blocker or an `agent-end` concern starts another turn.
 `Gate` is the final-answer reviewer and extends Claude's `checked-gate` mod: `reviewMode: agent-end` and `syncBacklog: strict` make the root wait for its review.
-It sends a `concern` for a missing `Checked:` list or claim evidence, a claim from truncated output, a question not under `Decision needed:`, a done claim without passing check output, or a test that cannot fail, on top of OMP's base advisor review.
+It sends a `concern` for a missing `Checked:` list or claim evidence, a claim from truncated output, a decidable question (a `Decision needed:` label does not exempt it), a partial pass of an all-of-it request, a subagent's report listed as a check, a done claim without passing check output, or a test that cannot fail, on top of OMP's base advisor review.
 OMP steers at most one continuation turn per final review.
 
 `providers.webSearchOrder` tries Codex then the keyless scrapers. Every unused provider is listed in `webSearchExclude`, including `perplexity`.

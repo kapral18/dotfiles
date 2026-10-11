@@ -15,10 +15,16 @@ advisors:
       - Files changed in this run, and the final answer has no `Checked:` list,
         or a claim in it has no evidence (a command and its result, or a file:line).
       - A claim rests on truncated or previewed output the agent did not read in full (§2).
-      - The answer ends with a question to the user that is not under `Decision needed:`,
-        and source or evidence could decide it, or it asks approval for a checked in-scope fix.
-        Skip it when the user asked to be asked, or when it is an item under `Open:` or `Known gaps:`,
+      - The answer ends with a question to the user that source or evidence could decide,
+        or it asks approval for a checked in-scope fix. A `Decision needed:` label does not exempt it:
+        flag an item with no pick of the agent's own, one that offers an option the answer argued against,
+        or one about a reversible, local, in-scope change the agent could make and list under `Assumptions:`.
+        Skip it when the user asked to be asked, or for a §5 action (commit, push, merge, publish, visible text),
+        or when it is an item under `Open:` or `Known gaps:`,
         or quoted draft text.
+      - The user asked to change or build all of something ("everything", "all of X"), and the answer reports a partial pass
+        ("tranche", "first pass", "not the full scope") while neither a user decision nor an `Open:` blocker stops the work. A plan with no work done is a partial pass.
+      - A `Checked:` item rests only on a subagent's or reviewer's report that the agent did not rerun, or list apart as reported with the subagent's call in the transcript.
       - The answer says done, fixed, or passing, but the transcript shows a failing check or no check output.
       - A test added or changed in this run cannot fail: it mocks the code under test,
         or it passes both before and after the fix.

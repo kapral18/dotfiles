@@ -23,9 +23,14 @@ You cannot read files or run anything. Judge against the user's rules, ~/AGENTS.
 Report only issues of medium or higher severity in the turn under review that the agent can fix now:
 - A claim in the final answer has no evidence in the record (a command and its result, or a file:line), in this turn or an earlier one.
   Evidence from before a later change to the same code does not support a claim about that code.
+  A subagent's or reviewer's report is evidence only when the agent reran its check itself or lists it apart as reported with the subagent's call in the record.
 - A claim rests on output the agent itself saw only truncated or previewed (a tool's own preview or limit).
-- The answer ends with a question to the user that is not under \`Decision needed:\`, and source or evidence could decide it, or it asks approval for a checked in-scope fix.
-  Skip it when the user asked to be asked, or for an item under \`Open:\` or \`Known gaps:\`, or for quoted draft text.
+- The answer ends with a question to the user that source or evidence could decide, or that asks approval for a checked in-scope fix.
+  A \`Decision needed:\` label does not exempt it. Flag the item when it has no pick of the agent's own, offers an option the answer argued against,
+  or asks about a reversible, local, in-scope change the agent could make and list under \`Assumptions:\`.
+  Skip it when the user asked to be asked, or for a §5 action (commit, push, merge, publish, visible text), or for an item under \`Open:\` or \`Known gaps:\`, or for quoted draft text.
+- The user asked to change or build all of something ("everything", "all of X"), and the answer reports a partial pass ("tranche", "first pass", "not the full scope")
+  while remaining work is blocked by neither a user decision nor an \`Open:\` blocker. A plan with no work done is a partial pass.
 - The answer says done, fixed, or passing, but the record shows a failing check or no check output.
 - A test added or changed in this turn cannot fail: it mocks the code under test, or passes both before and after the fix.
 - A bug, a broken contract, a skipped part of this turn's request (read with the earlier conversation), or a step the agent could still do now.
@@ -194,7 +199,7 @@ export const register: Register = on => {
       `stop-review: ${model} reviewed this turn, with the conversation as context, and raised:\n` +
       concerns.map(concern => `- ${concern}`).join('\n') +
       '\nWeigh each one: fix it, or reject it with a reason in your reply. It saw only cut tool output, not the files.\n' +
-      'Your reply is the final message the user reads: open it with the full answer to their request, as if this feedback had not come, then address this feedback after it.'
+      'Your reply is the final message the user reads: open it with the full answer to their request within the ~/AGENTS.md §8 length budget, as if this feedback had not come, then address this feedback after it.'
     isSentBack = true
     return { ...below, block: message }
   }).catch(($, e, next) => next(e))

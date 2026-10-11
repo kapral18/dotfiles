@@ -25,6 +25,17 @@ test('sends a turn that edited files back once when Checked: is missing', async 
   expect((await $.classic.Stop(stop('Done.\n\n**Checked:**\n- tests pass'))).block).toBeUndefined()
 })
 
+test('accepts a bold Checked header without a colon, but not a sentence that starts with Checked', async ($, on) => {
+  engine(on)
+  await $.turn.start({ text: 'fix it', turnId: 't1' })
+  await $.tool.call(edit('/repo/a.ts'))
+  expect((await $.classic.Stop(stop('Done.\n\n**Checked**\n- tests pass'))).block).toBeUndefined()
+  expect((await $.classic.Stop(stop('Done.\n\n**Checked** (3 items):\n- tests pass'))).block).toBeUndefined()
+  await $.turn.start({ text: 'again', turnId: 't2' })
+  await $.tool.call(edit('/repo/a.ts'))
+  expect((await $.classic.Stop(stop('Done.\n\nChecked it by hand.'))).block).toMatch(/no `Checked:` list/)
+})
+
 test('passes a turn without changes, or with only scratch, plan, or refused edits', async ($, on) => {
   engine(on)
   await $.turn.start({ text: 'explain', turnId: 't1' })
@@ -119,7 +130,10 @@ test('sends a tool-using turn back once when the reply ends with a question', as
   await $.turn.start({ text: 'look', turnId: 't1' })
   expect((await $.classic.Stop(stop('Which file do you mean?'))).block).toBeUndefined()
   await $.tool.call(bash('ls'))
-  expect((await $.classic.Stop(stop('I found two options.\n\nShould I apply the fix?'))).block).toMatch(/ends with a question/)
+  const sentBack = (await $.classic.Stop(stop('I found two options.\n\nShould I apply the fix?'))).block
+  expect(sentBack).toMatch(/ends with a question/)
+  expect(sentBack).toMatch(/under `Decision needed:` with your pick\. Never offer an option you argued against/)
+  expect(sentBack).toMatch(/full answer to their request within the ~\/AGENTS\.md §8 length budget/)
   expect((await $.classic.Stop(stop('Should I apply the fix?', true))).block).toBeUndefined()
   await $.turn.start({ text: 'look again', turnId: 't2' })
   await $.tool.call(bash('ls'))

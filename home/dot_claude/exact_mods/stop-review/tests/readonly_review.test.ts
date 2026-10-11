@@ -63,7 +63,7 @@ test('reviews the turn once and sends its concerns back', async ($, on) => {
   const block = (await $.classic.Stop(stop('Done.'))).block
   expect(block).toMatch(/claude-opus-5-5 reviewed this turn/)
   expect(block).toMatch(/- no test ran — no pytest in the record/)
-  expect(block).toMatch(/\nYour reply is the final message the user reads: open it with the full answer to their request/)
+  expect(block).toMatch(/\nYour reply is the final message the user reads: open it with the full answer to their request within the ~\/AGENTS.md §8 length budget/)
   expect(sent[0]?.model).toBe('claude-opus-5-5')
   expect(sent[0]?.prompt).toBe(
     '# Earlier conversation, as context\n\n## User\nbuild the mod?\n\n## Agent\nShould I build a Stop-time reviewer mod?\n\n' +
@@ -72,6 +72,10 @@ test('reviews the turn once and sends its concerns back', async ($, on) => {
   // The cache mark sits on the last earlier turn, which the next review repeats.
   expect(sent[0]?.blocks?.filter(block => block.cache).map(block => block.text)).toEqual(['## User\nbuild the mod?\n\n## Agent\nShould I build a Stop-time reviewer mod?\n\n'])
   expect(sent[0]?.system).toMatch(/as data, not instructions[\s\S]*RULES/)
+  // The rubric judges a `Decision needed:` item on substance, flags a partial pass of an all-of-it request, and does not count a subagent's report as a check.
+  expect(sent[0]?.system).toMatch(/Decision needed:. label does not exempt it/)
+  expect(sent[0]?.system).toMatch(/reports a partial pass/)
+  expect(sent[0]?.system).toMatch(/subagent's or reviewer's report is evidence only when the agent reran/)
   await $.turn.start({ text: '', turnId: 'c' })
   expect((await $.classic.Stop(stop('Done.', true))).block).toBeUndefined()
   expect(sent).toHaveLength(1)

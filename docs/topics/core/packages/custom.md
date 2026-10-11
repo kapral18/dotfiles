@@ -45,8 +45,6 @@ It installs binaries into `$HOME/.local/bin` and DMG apps into `/Applications`. 
 
 The installer script embeds a hash of the custom packages list so `chezmoi apply` re-runs it when you add or change rows in the list (not only when the installer script itself changes).
 
-The retired `git_maven_jar` source-build format left state in `~/.local/state/custom-packages/git_maven_jar.tsv`. The next installer run removes the launchers listed there, prints each source checkout path for manual removal, and deletes the state file.
-
 ## Verification
 
 For CLI tools:

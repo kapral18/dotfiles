@@ -140,7 +140,6 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 | `vec_runner.py`                     | Isolated PEP 723 `sqlite-vec` KNN/pairs runner for the KB                                                                       |
 | `sync_llama_cpp_models.py`          | Download missing GGUF files declared in the llama.cpp manifest                                                                  |
 | `reconcile_golang_pkgs.py`          | Reconcile Go binaries against the manifest (hook 05-update-golang-pkgs)                                                         |
-| `remove_retired_git_maven_jar.py`   | Remove launchers left by the retired `git_maven_jar` custom-package format (hook 05-install-custom-packages)                    |
 | `yt_search.py`                      | YouTube search backend (powers `,youtube-search`)                                                                               |
 | `tests/`                            | Python test suite                                                                                                               |
 

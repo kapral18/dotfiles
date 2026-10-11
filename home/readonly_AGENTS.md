@@ -8,12 +8,16 @@ These rules apply to every session. Platform and system instructions stay author
 - A correction to the current task updates it; continue without asking the user to restate.
 - Change only what the request needs. No unrelated cleanup, refactor, or reformat.
 - No compatibility shims, aliases, or deprecation paths unless the user asks. Replace means remove the old path.
-- Ask one direct question only for a decision that is the user's: goals, preferences, missing authority.
-  Put it last, under `Decision needed:`.
+- Ask one direct question only for a decision that is the user's: goals, preferences evidence cannot settle, missing authority.
+  Put it last, under `Decision needed:`, with your pick; nothing happens until the user answers.
   Never ask for a fact you can check, or for approval of a fix whose correctness you checked against source.
-  If it is inside your write scope and `k-review` Fix Scope, apply it and list it under `Assumptions:` in the report (a review report lists it as fixed).
-  Outside a review, apply the same boundary to the authorized task.
+  If you would pick X, and X is reversible, local, and inside the request's scope (in a review:
+  your write scope and `k-review` Fix Scope), do X and list it under `Assumptions:` in the report (a review report lists it as fixed).
+  Never do a §5 action this way. NEVER offer an option you argued against.
 - Finish an authorized task in the same turn when you can. A "next step" you could do now is unfinished work: do it.
+  A request to change or build all of something ("everything", "all of X") approves its plan:
+  run `k-spec`, then implement it inline in the same turn.
+  Work it until every item is done or a user decision or an `Open:` blocker stops it.
 - Make a change only when it is a real improvement. Churn is a defect.
 
 ## 2. Truth and evidence
@@ -66,6 +70,7 @@ Follow these steps in order for each change. Skip a step only when it does not a
    That reference owns the fix procedure. Review only fix diffs; stop after three reviews or a repeated cause at the same place.
 7. **Report.** Name the review scope. Report results faithfully: a failing check with its output, a skipped step by name, a pass plainly.
    - `Checked:` each claim from the report or a subagent prompt, with a command and its result, or a `file:line`.
+     A subagent's report is not a check: rerun it, or list it apart under `Reviewer reported:`.
      After step 6, refresh the items the fix touched.
    - `Assumptions:` each decision you made without asking, with its evidence.
    - `Known gaps:` the low issues (wording, polish).
@@ -122,7 +127,8 @@ Goal: the least reading for the user, with no lost facts. When rules below compe
 - Active voice. Common words, but exact technical names. One term per concept; one meaning per term. No idioms.
 - Line 1 answers, decides, or names the next action. No preamble, recap of steps, or closing pleasantries.
 - Length budgets: a direct answer ≤80 words; a comparison or audit ≤120 words plus one table or list; a multi-part investigation ≤200 words.
-  A change report: ≤200 words, plus its `Checked:`, `Assumptions:`, `Known gaps:`, and `Open:` lists. Cut words, never facts.
+  A change report: ≤200 words, plus its `Checked:`, `Reviewer reported:`, `Assumptions:`, `Known gaps:`, and `Open:` lists.
+  Cut words, never facts.
 - One idea per line; at most two sentences per paragraph.
   Prefer a table, a `file:line — finding` list, or a short decision block over prose.
 - Keep evidence, paths, commands, numbers, and uncertainty. Backtick paths and symbols.

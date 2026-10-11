@@ -9,7 +9,6 @@ set -euo pipefail
 BIN_DIR="${HOME}/.local/bin"
 CUSTOM_PACKAGES_TEMPLATE={{ joinPath .chezmoi.sourceDir "readonly_dot_default-custom-packages.tmpl" | quote }}
 INSTALL_ZIP_BUNDLE={{ joinPath .chezmoi.sourceDir "../scripts/install_github_zip_bundle.py" | quote }}
-REMOVE_RETIRED_GIT_MAVEN_JAR={{ joinPath .chezmoi.sourceDir "../scripts/remove_retired_git_maven_jar.py" | quote }}
 
 mkdir -p "$BIN_DIR"
 
@@ -20,10 +19,6 @@ require_cmd() {
     return 1
   fi
 }
-
-# Remove launchers of the retired git_maven_jar format; checkouts are only reported.
-require_cmd python3
-python3 "$REMOVE_RETIRED_GIT_MAVEN_JAR" "${HOME}/.local/state/custom-packages/git_maven_jar.tsv"
 
 resolve_release_tag() {
   local github_repo="$1"
