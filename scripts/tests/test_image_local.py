@@ -9,24 +9,12 @@ from pathlib import Path
 from unittest import mock
 
 import _test_support  # noqa: F401
-from _test_support import REPO
+from _test_support import REPO, load_module
 
 CLI = REPO / "home" / "exact_lib" / "exact_,image-local" / "main.py"
 
 
-def _load():
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location("sd_image_local_under_test", CLI)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"could not load {CLI}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-MOD = _load()
+MOD = load_module("sd_image_local_under_test", CLI)
 
 SAMPLE_MANIFEST = """\
 # comment

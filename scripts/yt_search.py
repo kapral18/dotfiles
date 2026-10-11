@@ -336,9 +336,6 @@ def parse_query(raw_query):
     sp = None
     active_filter = None
 
-    # Check if we should apply a sort filter in addition to duration
-    sort_sp = None
-
     for f in flags:
         if f.startswith("dur:"):
             active_filter = f
@@ -350,8 +347,7 @@ def parse_query(raw_query):
                 if max_s <= 240:
                     sp = SP_FILTERS["short"]
                 elif min_s >= 1200:
-                    # If looking for very long videos, sort by duration to find them faster
-                    sp = "EgIQAQ%3D%3D"  # Sort by Duration (longest first)
+                    sp = "EgIQAQ%3D%3D"  # type=video filter; the client-side bounds pick the long ones
                 elif min_s >= 240 and max_s <= 1200:
                     sp = SP_FILTERS["medium"]
             except:

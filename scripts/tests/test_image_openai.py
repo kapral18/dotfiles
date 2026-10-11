@@ -5,50 +5,20 @@ import io
 import json
 import os
 import shutil
-import struct
 import subprocess
 import sys
 import tempfile
 import unittest
 import urllib.error
 import urllib.request
-import zlib
 from pathlib import Path
 from unittest import mock
 
 import _test_support  # noqa: F401
-from _test_support import REPO
+from _test_support import REPO, load_module, png_with_metadata
 
 CLI = REPO / "home" / "exact_lib" / "exact_,image-openai" / "main.py"
 COMPLETION = REPO / "home" / "dot_config" / "fish" / "completions" / "readonly_,image-openai.fish"
-
-
-def _load():
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location("image_openai_under_test", CLI)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"could not load {CLI}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-def _png_with_metadata(secret: str) -> bytes:
-    def chunk(kind: bytes, data: bytes) -> bytes:
-        checksum = zlib.crc32(kind + data) & 0xFFFFFFFF
-        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", checksum)
-
-    header = struct.pack(">IIBBBBB", 2, 1, 8, 2, 0, 0, 0)
-    pixels = zlib.compress(b"\x00\xff\x00\x00\x00\xff\x00")
-    return (
-        b"\x89PNG\r\n\x1a\n"
-        + chunk(b"IHDR", header)
-        + chunk(b"tEXt", b"Comment\x00" + secret.encode("utf-8"))
-        + chunk(b"IDAT", pixels)
-        + chunk(b"IEND", b"")
-    )
 
 
 class _Response(io.BytesIO):
@@ -113,7 +83,7 @@ class TestInputPreparation(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             source = root / "family.png"
-            original = _png_with_metadata(secret)
+            original = png_with_metadata(secret)
             source.write_bytes(original)
             prepared, mask = MOD.prepare_uploads([source], None, root / "prepared")
             uploaded = prepared[0].read_bytes()
@@ -270,7 +240,7 @@ class TestCredentialsAndMain(unittest.TestCase):
             self.assertEqual(stdout.getvalue().strip(), str(output.resolve()))
 
 
-MOD = _load()
+MOD = load_module("image_openai_under_test", CLI)
 
 
 if __name__ == "__main__":

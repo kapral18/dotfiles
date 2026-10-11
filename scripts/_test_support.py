@@ -13,11 +13,14 @@ puts ``scripts/`` on ``sys.path``, so both ``import _test_support`` and
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import shutil
+import struct
 import subprocess
 import sys
 import unittest
+import zlib
 from pathlib import Path
 
 # _test_support.py lives in scripts/, so SCRIPTS is its parent directory.
@@ -82,3 +85,32 @@ def run_bash(script: str, *, env: dict[str, str] | None = None) -> str:
     if result.returncode != 0:
         raise AssertionError(f"bash helper script failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}")
     return result.stdout
+
+
+def load_module(name: str, path: Path):
+    """Import a script that is not on sys.path (for example a ``,command/main.py``) under ``name``."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"could not load {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def png_with_metadata(secret: str) -> bytes:
+    """Build a tiny PNG whose tEXt chunk carries ``secret``, to prove metadata stripping."""
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        checksum = zlib.crc32(kind + data) & 0xFFFFFFFF
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", checksum)
+
+    header = struct.pack(">IIBBBBB", 2, 1, 8, 2, 0, 0, 0)
+    pixels = zlib.compress(b"\x00\xff\x00\x00\x00\xff\x00")
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", header)
+        + chunk(b"tEXt", b"Comment\x00" + secret.encode("utf-8"))
+        + chunk(b"IDAT", pixels)
+        + chunk(b"IEND", b"")
+    )

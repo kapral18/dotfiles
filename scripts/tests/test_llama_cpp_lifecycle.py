@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import os
 import signal
@@ -18,22 +17,12 @@ from pathlib import Path
 from unittest import mock
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
-from _test_support import REPO
+from _test_support import REPO, load_module
 
 LIFECYCLE = REPO / "home/exact_lib/exact_,llama-cpp/lifecycle.py"
 
 
-def _load_lifecycle_module():
-    spec = importlib.util.spec_from_file_location("llama_cpp_lifecycle_under_test", LIFECYCLE)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"could not load {LIFECYCLE}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-LIFECYCLE_MODULE = _load_lifecycle_module()
+LIFECYCLE_MODULE = load_module("llama_cpp_lifecycle_under_test", LIFECYCLE)
 
 
 def _free_port() -> int:

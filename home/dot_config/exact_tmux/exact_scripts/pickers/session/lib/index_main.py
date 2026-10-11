@@ -14,6 +14,9 @@ import time
 from pathlib import Path
 from typing import Any, Literal
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
+from gh_ci_state import extract_ci_state  # noqa: E402
+
 # If the consumer (fzf) exits early, don't spam tracebacks.
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
@@ -199,17 +202,6 @@ def origin_url_for_root(root: str) -> str:
     except Exception:
         pass
     return ""
-
-
-def repo_name_from_url(url: str) -> str:
-    url = (url or "").strip().rstrip("/")
-    if not url:
-        return ""
-    tail = url.split("/")[-1]
-    tail = tail.split(":")[-1]
-    if tail.endswith(".git"):
-        tail = tail[: -len(".git")]
-    return tail.strip()
 
 
 def nwo_from_url(url: str) -> str:
@@ -705,30 +697,6 @@ def _gh_json_query(
     return GH_LOOKUP_SUCCESS, payload
 
 
-def gh_cache_needs_author_refresh() -> bool:
-    """True when legacy PR cache rows lack the author field used for highlighting."""
-    try:
-        data = json.loads(GH_CACHE_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return False
-    entries = data.get("entries") if isinstance(data, dict) else None
-    if not isinstance(entries, dict):
-        return False
-    for entry in entries.values():
-        if not isinstance(entry, dict):
-            continue
-        pr = entry.get("pr")
-        if not isinstance(pr, dict) or not pr.get("number"):
-            continue
-        if "author" not in pr:
-            return True
-    return False
-
-
-if "--gh-cache-needs-author-refresh" in sys.argv:
-    sys.exit(0 if gh_cache_needs_author_refresh() else 1)
-
-
 def _load_gh_picker_ci_index() -> dict[str, dict[int, tuple[str, str]]]:
     """Read CI + review status from the gh picker TSV cache.
 
@@ -960,145 +928,6 @@ def _closing_issue_from_pr(pr_data: dict[str, Any] | None) -> dict[str, Any] | N
     return None
 
 
-_TRIVIAL_STATUS_RE = re.compile(
-    r"^(CLA|prbot:|renovate/|license/|security/|buildkite/docs)",
-    re.IGNORECASE,
-)
-_TRIVIAL_CHECK_RE = re.compile(
-    r"^(Analyze new dependencies|docs-preview)",
-    re.IGNORECASE,
-)
-
-
-def _is_trivial_ctx(ctx: dict[str, Any]) -> bool:
-    """True if a rollup context is a non-CI/bot check we ignore for badge state.
-
-    Trivial contexts (CLA, prbot:*, renovate, license, docs previews, etc.) can
-    fail without the PR's real CI being red. They must be excluded both from the
-    aggregate fallback AND from the early "rollup is failing" short-circuit;
-    otherwise a single failing trivial check (e.g. `prbot:outdated`) masks a
-    green canonical CI context and the picker shows a false failure badge.
-    """
-    typename = ctx.get("__typename", "")
-    name = ctx.get("context", "") or ctx.get("name", "")
-    if typename == "StatusContext" and _TRIVIAL_STATUS_RE.search(name):
-        return True
-    if typename == "CheckRun" and _TRIVIAL_CHECK_RE.search(name):
-        return True
-    return False
-
-
-def _ctx_is_failing(ctx: dict[str, Any]) -> bool:
-    """True if a single rollup context is in a failing terminal state."""
-    if ctx.get("__typename") == "StatusContext":
-        return (ctx.get("state") or "").upper() in ("FAILURE", "ERROR")
-    if ctx.get("__typename") == "CheckRun":
-        return (ctx.get("conclusion") or "").upper() in ("FAILURE", "TIMED_OUT", "CANCELLED")
-    return False
-
-
-def _extract_ci_state(commit_node: dict[str, Any], repo_name: str) -> str:
-    """Extract meaningful CI state from status check contexts.
-
-    Priority:
-    1. StatusContext named '{repo_name}-ci' (e.g. 'kibana-ci')
-    2. Buildkite StatusContext for the repo (excluding docs)
-    3. CheckRun whose name contains the repo name (excluding docs)
-    4. Aggregate state of non-trivial checks (excludes bots/CLA/docs/snyk)
-    5. Empty string if only trivial contexts exist (no real CI ran)
-    """
-    try:
-        rollup = commit_node["statusCheckRollup"]
-    except (KeyError, TypeError):
-        return ""
-    if rollup is None:
-        return ""
-
-    contexts = []
-    try:
-        contexts = (rollup.get("contexts") or {}).get("nodes") or []
-    except (AttributeError, TypeError):
-        pass
-
-    overall_state = (rollup.get("state") or "").upper()
-    if not contexts:
-        # No per-context detail to reason about; trust the aggregate, but don't
-        # invent a failure from a state we can't attribute to a real check.
-        return overall_state if overall_state != "ERROR" else "FAILURE"
-
-    # Never show green when a *real* (non-trivial) check is failing. This still
-    # prevents a single canonical success context (e.g. kibana-ci) from masking
-    # other failing required checks, but a failing trivial context (CLA,
-    # prbot:*, renovate, docs preview) no longer fabricates a red badge.
-    if overall_state in ("FAILURE", "ERROR") and any(
-        _ctx_is_failing(ctx) and not _is_trivial_ctx(ctx) for ctx in contexts
-    ):
-        return "FAILURE"
-
-    canonical = f"{repo_name}-ci"
-    for ctx in contexts:
-        if ctx.get("__typename") == "StatusContext" and ctx.get("context") == canonical:
-            return ctx.get("state", "")
-
-    for ctx in contexts:
-        if ctx.get("__typename") != "StatusContext":
-            continue
-        name = ctx.get("context", "")
-        if name.startswith("buildkite/") and repo_name in name and "docs" not in name:
-            return ctx.get("state", "")
-
-    for ctx in contexts:
-        if ctx.get("__typename") != "CheckRun":
-            continue
-        name = ctx.get("name", "")
-        if repo_name in name.lower() and "docs" not in name.lower():
-            conclusion = ctx.get("conclusion", "")
-            status = ctx.get("status", "")
-            if conclusion == "SUCCESS":
-                return "SUCCESS"
-            if conclusion in ("FAILURE", "TIMED_OUT", "CANCELLED"):
-                return "FAILURE"
-            if status in ("IN_PROGRESS", "QUEUED", "WAITING"):
-                return "PENDING"
-
-    has_failure = False
-    has_pending = False
-    has_success = False
-    real_count = 0
-    for ctx in contexts:
-        typename = ctx.get("__typename", "")
-        if _is_trivial_ctx(ctx):
-            continue
-        real_count += 1
-        if typename == "StatusContext":
-            st = (ctx.get("state") or "").upper()
-            if st == "FAILURE":
-                has_failure = True
-            elif st == "PENDING":
-                has_pending = True
-            elif st == "SUCCESS":
-                has_success = True
-        elif typename == "CheckRun":
-            conclusion = (ctx.get("conclusion") or "").upper()
-            status = (ctx.get("status") or "").upper()
-            if conclusion in ("FAILURE", "TIMED_OUT", "CANCELLED"):
-                has_failure = True
-            elif conclusion == "SUCCESS":
-                has_success = True
-            elif status in ("IN_PROGRESS", "QUEUED", "WAITING"):
-                has_pending = True
-
-    if real_count == 0:
-        return ""
-    if has_failure:
-        return "FAILURE"
-    if has_pending:
-        return "PENDING"
-    if has_success:
-        return "SUCCESS"
-    return ""
-
-
 def _batch_ci_graphql(pr_numbers: dict[str, set[int]]) -> dict[str, dict[int, tuple[str, str]]]:
     """Single batched GraphQL call for reviewDecision + CI status.
 
@@ -1148,7 +977,7 @@ def _batch_ci_graphql(pr_numbers: dict[str, set[int]]) -> dict[str, dict[int, tu
         ci_state = ""
         try:
             commit = node["commits"]["nodes"][0]["commit"]
-            ci_state = _extract_ci_state(commit, repo_name)
+            ci_state = extract_ci_state(commit, repo_name)
         except (KeyError, IndexError, TypeError):
             pass
         out.setdefault(nwo, {})[num] = (review, ci_state)

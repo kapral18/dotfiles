@@ -144,36 +144,6 @@ def _model_catalog_entry(model_id: str, api_key: str) -> dict:
     raise PresetError(f"OpenRouter model {model_id!r} was not found in /models")
 
 
-def _endpoint_context_window(model_id: str, api_key: str) -> int | None:
-    model_id = _base_model_id(model_id)
-    endpoint_path = f"/models/{urllib.parse.quote(model_id, safe='/')}/endpoints"
-    try:
-        with _request("GET", endpoint_path, api_key) as response:
-            payload = _read_json_object(response, "GET", endpoint_path)
-    except urllib.error.HTTPError as error:
-        if error.code == 404:
-            return None
-        raise PresetError(f"GET {endpoint_path} returned HTTP {error.code}") from error
-    except urllib.error.URLError as error:
-        raise PresetError(f"GET {endpoint_path} failed: {error.reason}") from error
-    except OSError as error:
-        raise PresetError(f"GET {endpoint_path} request failed") from error
-
-    data = payload.get("data")
-    if not isinstance(data, dict):
-        raise PresetError(f"GET {endpoint_path} returned an unexpected JSON shape")
-    candidates = [_positive_int(data.get("context_length"))]
-    top_provider = data.get("top_provider")
-    if isinstance(top_provider, dict):
-        candidates.append(_positive_int(top_provider.get("context_length")))
-    endpoints = data.get("endpoints")
-    if isinstance(endpoints, list):
-        candidates.extend(
-            _positive_int(endpoint.get("context_length")) for endpoint in endpoints if isinstance(endpoint, dict)
-        )
-    return max((candidate for candidate in candidates if candidate is not None), default=None)
-
-
 @dataclass(frozen=True)
 class ModelBudget:
     """A provider's paired context, completion, and usable-prompt limits."""
@@ -181,7 +151,6 @@ class ModelBudget:
     context_limit: int
     max_output_tokens: int
     prompt_limit: int
-    pricing_threshold: int | None = None
 
 
 def _paired_capacity(source: dict) -> tuple[int, int] | None:
@@ -283,7 +252,7 @@ def resolve_budget(model_id: str, tier: str, api_key: str) -> ModelBudget:
             )
     else:
         prompt_limit = long_prompt_limit
-    return ModelBudget(context_limit, max_output_tokens, prompt_limit, threshold)
+    return ModelBudget(context_limit, max_output_tokens, prompt_limit)
 
 
 def resolve_context_window(model_id: str, tier: str, api_key: str) -> int:

@@ -12,7 +12,7 @@ Items come from a standalone YAML config:
 
 - `~/.config/tmux/scripts/pickers/github/gh-picker.yml`
 
-The file defines PR and issue sections using GitHub Search syntax. `lib/gh_items_main.py` parses the config, uses GraphQL review-request actors for direct and selected-team review queues, and formats rows as fzf TSV.
+The file defines PR and issue sections using GitHub Search syntax. `lib/gh_items_main.py` parses the config, uses GraphQL review-request actors for direct and selected-team review queues, and formats rows as fzf TSV. It reduces each PR's status-check rollup to a CI badge through `pickers/lib/gh_ci_state.py`, which the session picker's `lib/index_main.py` shares.
 
 ## Scopes and sorting
 

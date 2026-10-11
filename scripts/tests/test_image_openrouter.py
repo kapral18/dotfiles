@@ -11,46 +11,17 @@ import sys
 import tempfile
 import unittest
 import urllib.request
-import zlib
 from pathlib import Path
 from unittest import mock
 
 import _test_support  # noqa: F401
-from _test_support import REPO
+from _test_support import REPO, load_module, png_with_metadata
 
 CLI = REPO / "home" / "exact_lib" / "exact_,image-openrouter" / "main.py"
 COMPLETION = REPO / "home" / "dot_config" / "fish" / "completions" / "readonly_,image-openrouter.fish"
 
 
-def _load():
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location("image_openrouter_under_test", CLI)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"could not load {CLI}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-MOD = _load()
-
-
-def _png_with_metadata(secret: str) -> bytes:
-    def chunk(kind: bytes, data: bytes) -> bytes:
-        checksum = zlib.crc32(kind + data) & 0xFFFFFFFF
-        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", checksum)
-
-    header = struct.pack(">IIBBBBB", 2, 1, 8, 2, 0, 0, 0)
-    pixels = zlib.compress(b"\x00\xff\x00\x00\x00\xff\x00")
-    return (
-        b"\x89PNG\r\n\x1a\n"
-        + chunk(b"IHDR", header)
-        + chunk(b"tEXt", b"Comment\x00" + secret.encode("utf-8"))
-        + chunk(b"IDAT", pixels)
-        + chunk(b"IEND", b"")
-    )
+MOD = load_module("image_openrouter_under_test", CLI)
 
 
 class _Response(io.BytesIO):
@@ -153,7 +124,7 @@ class TestInputPrivacy(unittest.TestCase):
     @unittest.skipUnless(shutil.which("magick"), "ImageMagick is not installed")
     def test_it_should_strip_metadata_without_modifying_the_source_pixels_or_file(self) -> None:
         secret = "secret-location-metadata"
-        original = _png_with_metadata(secret)
+        original = png_with_metadata(secret)
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "family.png"
             source.write_bytes(original)
@@ -167,7 +138,7 @@ class TestInputPrivacy(unittest.TestCase):
     def test_it_should_fail_closed_when_imagemagick_is_unavailable_or_rejects_the_input(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "family.png"
-            source.write_bytes(_png_with_metadata("secret"))
+            source.write_bytes(png_with_metadata("secret"))
             with mock.patch.object(MOD.shutil, "which", return_value=None):
                 with self.assertRaisesRegex(RuntimeError, "ImageMagick is required"):
                     MOD.input_reference(source)
@@ -268,7 +239,7 @@ class TestMain(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             source = root / "photo.png"
-            source.write_bytes(_png_with_metadata("fixture"))
+            source.write_bytes(png_with_metadata("fixture"))
             previous = Path.cwd()
             os.chdir(root)
             try:

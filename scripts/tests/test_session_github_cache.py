@@ -22,6 +22,8 @@ import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import REPO, TMUX_PICKERS
 
 INDEX_MAIN = TMUX_PICKERS / "session/lib/index_main.py"
+# The loader below copies index_main.py's imports but not its sys.path.insert, so add that dir here.
+sys.path.insert(0, str(TMUX_PICKERS / "lib"))
 
 
 def _load_session_cache_symbols() -> dict[str, object]:
