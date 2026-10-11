@@ -29,7 +29,7 @@ lib/,palantir
 .agents/skills/ralph
 .agents/skills/k-palantir
 .local/bin/ralph-tui
-# Obsolete gemini-cli config & directories (superseded by antigravity)
+# Retired Gemini CLI and Antigravity config & directories
 .gemini/GEMINI.md
 .gemini/settings.json
 .gemini/settings.json.bak-premise-nudge
@@ -46,6 +46,12 @@ lib/,palantir
 .gemini/tmp
 .gemini/extensions
 .gemini/.env
+.gemini/config/AGENTS.md
+.gemini/config/skills
+.gemini/config/mcp_config.json
+.gemini/antigravity-cli/settings.json
+.gemini/antigravity-cli/settings.policy.json
+.local/state/chezmoi/antigravity_mcp_declared.json
 # Retired Vertex harness adapter + wrappers
 bin/,claude-vertex
 bin/,codex-vertex

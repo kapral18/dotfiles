@@ -9,18 +9,17 @@ The AI package set spans casks, Homebrew formulae, pnpm globals, uv tools, custo
 
 ## Coding agents and harnesses
 
-| Tool                                                                                   | Source | Why it is here                                                                                                                                                    |
-| -------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`@openai/codex`](https://github.com/openai/codex)                                     | `pnpm` | Codex CLI; an `@install-priority-exception` keeps it on pnpm because the Homebrew cask lags upstream releases                                                     |
-| [`codex-app`](https://chatgpt.com/codex?app-landing-page=true)                         | `cask` | Codex desktop app (`Codex.app`); Homebrew marks the standalone cask deprecated, while `codex app` is the supported CLI installer                                  |
-| [`claude`](https://claude.com/download)                                                | `cask` | Anthropic Claude desktop app (`Claude.app`)                                                                                                                       |
-| [`opencode`](https://opencode.ai)                                                      | `brew` | OpenCode CLI/TUI with config merge and MCP wiring                                                                                                                 |
-| [`antigravity-cli`](https://github.com/google-antigravity/antigravity-cli)             | `cask` | Google Antigravity terminal coding-agent harness, launched as `agy`; the Brew hook clears a prior standalone binary and partial cask receipt before first install |
-| [`@anthropic-ai/claude-code`](https://www.npmjs.com/package/@anthropic-ai/claude-code) | `pnpm` | Claude Code CLI outside Homebrew cask management                                                                                                                  |
-| [`@earendil-works/pi-coding-agent`](https://pi.dev/)                                   | `pnpm` | Pi coding agent CLI                                                                                                                                               |
-| [`@earendil-works/pi-tui`](https://pi.dev/)                                            | `pnpm` | Pi terminal UI package                                                                                                                                            |
-| [`playwriter`](https://github.com/remorses/playwriter)                                 | `pnpm` | browser-control/code-generation agent package                                                                                                                     |
-| [`freebuff`](https://freebuff.com/get-started)                                         | `pnpm` | free coding agent CLI                                                                                                                                             |
+| Tool                                                                                   | Source | Why it is here                                                                                                                   |
+| -------------------------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| [`@openai/codex`](https://github.com/openai/codex)                                     | `pnpm` | Codex CLI; an `@install-priority-exception` keeps it on pnpm because the Homebrew cask lags upstream releases                    |
+| [`codex-app`](https://chatgpt.com/codex?app-landing-page=true)                         | `cask` | Codex desktop app (`Codex.app`); Homebrew marks the standalone cask deprecated, while `codex app` is the supported CLI installer |
+| [`claude`](https://claude.com/download)                                                | `cask` | Anthropic Claude desktop app (`Claude.app`)                                                                                      |
+| [`opencode`](https://opencode.ai)                                                      | `brew` | OpenCode CLI/TUI with config merge and MCP wiring                                                                                |
+| [`@anthropic-ai/claude-code`](https://www.npmjs.com/package/@anthropic-ai/claude-code) | `pnpm` | Claude Code CLI outside Homebrew cask management                                                                                 |
+| [`@earendil-works/pi-coding-agent`](https://pi.dev/)                                   | `pnpm` | Pi coding agent CLI                                                                                                              |
+| [`@earendil-works/pi-tui`](https://pi.dev/)                                            | `pnpm` | Pi terminal UI package                                                                                                           |
+| [`playwriter`](https://github.com/remorses/playwriter)                                 | `pnpm` | browser-control/code-generation agent package                                                                                    |
+| [`freebuff`](https://freebuff.com/get-started)                                         | `pnpm` | free coding agent CLI                                                                                                            |
 
 ## Agent extensions and support packages
 

@@ -2,10 +2,6 @@
 # https://github.com/sst/opencode
 brew "opencode"
 
-# Google Antigravity terminal coding agent (`agy`)
-# https://github.com/google-antigravity/antigravity-cli
-cask "antigravity-cli"
-
 # OpenAI Codex desktop app (`Codex.app`); the cask is deprecated upstream and
 # the Codex CLI can also install the app with `codex app`
 # https://chatgpt.com/codex?app-landing-page=true

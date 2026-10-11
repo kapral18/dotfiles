@@ -29,7 +29,6 @@ Fix scope includes omitted requirements and necessary consumers of the authorize
 | OMP         | `~/.omp/agent/AGENTS.md` symlink, plus `APPEND_SYSTEM.md` for the subagent overlay       |
 | Codex       | `~/.codex/AGENTS.md` symlink                                                             |
 | OpenCode    | `~/.config/opencode/AGENTS.md` symlink                                                   |
-| Antigravity | `~/.gemini/config/AGENTS.md` symlink                                                     |
 
 The repo's own `AGENTS.md` adds dotfiles rules: chezmoi source of truth, `make fmt` / `make check`, docs updates, and skill naming.
 Package, comma-command, and shell-helper changes follow [Dotfiles agent recipes](../workflow/dotfiles-recipes.md).

@@ -36,14 +36,6 @@ def _transform_omp(spec: dict[str, Any]) -> dict[str, Any]:
 _TOOL_TRANSFORMS["omp"] = _transform_omp
 
 
-def _transform_gemini(spec: dict[str, Any]) -> dict[str, Any]:
-    """Emit Antigravity's ``mcp_config.json`` shape: remote servers use the ``serverUrl`` SSE field."""
-    return {"serverUrl": spec["url"]}
-
-
-_TOOL_TRANSFORMS["gemini"] = _transform_gemini
-
-
 def _transform_pi(spec: dict[str, Any]) -> dict[str, Any]:
     """Pi's built-in MCP wants ``oauth`` with a singular space-separated ``scope``."""
     oauth = spec.get("oauth")

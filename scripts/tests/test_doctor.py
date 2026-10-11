@@ -87,14 +87,14 @@ def _ledger_artifact(target: str, ownership: dict, expected: str, producer: str 
 
 
 class TestDoctor(unittest.TestCase):
-    def test_missing_antigravity_configs_are_reported_when_agy_is_installed(self) -> None:
+    def test_missing_config_is_reported_when_its_consumer_is_installed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)
             bindir = home / "bin"
             bindir.mkdir()
-            agy = bindir / "agy"
-            agy.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-            agy.chmod(0o755)
+            codex = bindir / "codex"
+            codex.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            codex.chmod(0o755)
 
             result = subprocess.run(
                 ["bash", str(DOCTOR), "--quiet"],
@@ -109,8 +109,7 @@ class TestDoctor(unittest.TestCase):
                 text=True,
             )
 
-            self.assertNotIn("Antigravity hooks", result.stdout)
-            self.assertIn("Antigravity MCP missing", result.stdout)
+            self.assertIn("Codex config missing", result.stdout)
 
     def test_stale_missing_entry_is_retired_silently(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -140,6 +139,25 @@ class TestDoctor(unittest.TestCase):
             result = _run_doctor(home, "--quiet", env_extra={"CHEZMOI_SOURCE_DIR": str(src)})
 
             self.assertNotIn("was managed", result.stdout)
+            self.assertNotIn(target, manifest.read_text(encoding="utf-8"))
+
+    def test_removed_upstream_entry_with_ledger_row_is_retired(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            home.mkdir()
+            src = _make_source(root)
+            _install_ai_py(home)
+            (src / ".chezmoiremove").write_text(".fake-tool/settings.json\n", encoding="utf-8")
+            ownership = {"adapter": "whole-file"}
+            target = str(home / ".fake-tool/settings.json")
+            expected = generated_artifact_ledger.semantic_hash(b"{}", ownership)
+            _write_ledger(home, _ledger_artifact(target, ownership, expected))
+            manifest = _write_manifest(home, [(target, "0" * 64)])
+
+            result = _run_doctor(home, "--quiet", env_extra={"CHEZMOI_SOURCE_DIR": str(src)})
+
+            self.assertNotIn("missing (managed by", result.stdout)
             self.assertNotIn(target, manifest.read_text(encoding="utf-8"))
 
     def test_missing_produced_entry_warns_with_rerun_hint(self) -> None:

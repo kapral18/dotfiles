@@ -4,7 +4,7 @@ sidebar_position: 8
 
 # MCP Servers
 
-A single canonical registry defines every MCP server once. At `chezmoi apply` time, generators render per-tool configs for Claude Code, Antigravity, Pi, OMP, Codex, and OpenCode, avoiding six hand-maintained copies of the same server list.
+A single canonical registry defines every MCP server once. At `chezmoi apply` time, generators render per-tool configs for Claude Code, Pi, OMP, Codex, and OpenCode, avoiding five hand-maintained copies of the same server list.
 
 Use this page when adding, removing, or debugging an MCP server, or when tracing how a server reaches a given assistant.
 
@@ -73,7 +73,7 @@ The common pipeline has two stages:
 | Normalize registry      | [`scripts/mcp_registry.py`](../../../scripts/mcp_registry.py)                 | Resolve `$(command)` strings through a login shell        |
 | Generate per-tool shape | [`scripts/generate_mcp_configs.py`](../../../scripts/generate_mcp_configs.py) | Emit a tool-specific `{ "mcpServers": { ... } }` document |
 
-Per-tool transforms handle schema differences, such as Antigravity's `serverUrl` vs the standard `url` field.
+Per-tool transforms handle schema differences between tools.
 
 Pi emits `{ url, oauth }` for HTTP servers, with `scope` normalised to space-separated tokens, as its built-in MCP expects. Other tools have their own config schemas.
 
@@ -94,7 +94,6 @@ Tools whose config is not plain JSON get dedicated injectors with explicit owner
 | Claude Code | `~/.claude.json` (`mcpServers` key) | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
 | Pi          | `~/.pi/agent/mcp.json`              | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
 | OMP         | `~/.omp/agent/mcp.json`             | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
-| Antigravity | `~/.gemini/config/mcp_config.json`  | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
 | OpenCode    | `~/.config/opencode/opencode.jsonc` | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl) |
 | Codex       | `~/.codex/config.toml`              | [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl)       |
 

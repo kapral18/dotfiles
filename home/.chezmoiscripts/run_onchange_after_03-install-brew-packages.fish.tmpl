@@ -5,11 +5,6 @@ echo "brew install from Brewfile: applying..."
 echo "---------------------------------------"
 
 # Brewfile hash: {{ includeTemplate "brews/_assemble.brewfile" . | sha256sum }}
-set -l agy_target (brew --prefix)/bin/agy
-if test -f "$agy_target"; and not test -L "$agy_target"
-    brew uninstall --cask --force antigravity-cli >/dev/null 2>&1; or true
-    rm -f "$agy_target"
-end
 
 # cleanup --force resets brew trust to the Brewfile before it untaps, so a tap that
 # still has installed formulae fails as untrusted. Trust and untap retired taps first.

@@ -1391,7 +1391,7 @@ exit 1
 
         assert ranked == [session_strong, session_weak, session_nonmatch, worktree, directory]
 
-    def test_session_preview_classifies_antigravity_as_agent_activity(self):
+    def test_session_preview_classifies_coding_agent_as_agent_activity(self):
         preview = TMUX_PICKERS / "session/executable_preview.sh"
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -1401,7 +1401,7 @@ exit 1
             tmux.write_text(
                 "#!/bin/sh\n"
                 'case "$1" in\n'
-                "  display-message) printf 'agy\\t%s\\t1\\n' \"$HOME\" ;;\n"
+                "  display-message) printf 'codex\\t%s\\t1\\n' \"$HOME\" ;;\n"
                 "  capture-pane) exit 0 ;;\n"
                 "esac\n"
             )
@@ -1413,7 +1413,7 @@ exit 1
                     str(preview),
                     "--kind=session",
                     f"--path={tmp_path}",
-                    "--target=antigravity",
+                    "--target=agent",
                 ],
                 capture_output=True,
                 text=True,
@@ -1422,8 +1422,8 @@ exit 1
 
             assert result.returncode == 0, result.stderr
             plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
-            assert "status  agent (agy)" in plain
-            assert "busy (agy)" not in plain
+            assert "status  agent (codex)" in plain
+            assert "busy (codex)" not in plain
 
     def test_pick_url_strip_cr_preserves_osc8_target_and_cleans_noise(self):
         strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"

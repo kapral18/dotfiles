@@ -70,7 +70,7 @@ Once the terminal feels like home, you can begin leveraging the AI integrations 
 
 What to focus on:
 
-- Learning to invoke terminal assistants (Pi, Antigravity CLI, OpenCode).
+- Learning to invoke terminal assistants (Pi, OpenCode).
 - Understanding how SOPs dictate agent behavior.
 - Utilizing MCP tools to give agents context.
 

@@ -14,7 +14,7 @@ See [AI assistants](../topics/ai-assistants/index.md) and [Instructions](../topi
 | Skills                 | [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/)             |
 | Shared reviewer prompt | [`home/.chezmoitemplates/reviewer-prompt.md`](../../home/.chezmoitemplates/reviewer-prompt.md) |
 
-`~/CLAUDE.md` imports `@AGENTS.md`; `~/.claude/CLAUDE.md` links to `~/AGENTS.md`. Pi, OMP, Codex, OpenCode, and Antigravity read `~/AGENTS.md` through `symlink_AGENTS.md` entries in their config dirs. There are no hooks.
+`~/CLAUDE.md` imports `@AGENTS.md`; `~/.claude/CLAUDE.md` links to `~/AGENTS.md`. Pi, OMP, Codex, and OpenCode read `~/AGENTS.md` through `symlink_AGENTS.md` entries in their config dirs. There are no hooks.
 
 ## Harness configs
 
@@ -24,7 +24,6 @@ Per-tool config sources and the `run_onchange_after_07-*` hooks that render them
 | ----------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Claude Code | [`home/dot_claude/`](../../home/dot_claude/)                   | [`run_onchange_after_07-merge-claude-code-settings.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-claude-code-settings.sh.tmpl) |
 | Codex       | [`home/dot_codex/`](../../home/dot_codex/)                     | [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl)                 |
-| Antigravity | [`home/dot_gemini/`](../../home/dot_gemini/)                   | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)             |
 | OpenCode    | [`home/dot_config/opencode/`](../../home/dot_config/opencode/) | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl)           |
 | Pi          | [`home/dot_pi/agent/`](../../home/dot_pi/agent/)               | [`run_onchange_after_07-merge-pi-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl)                       |
 

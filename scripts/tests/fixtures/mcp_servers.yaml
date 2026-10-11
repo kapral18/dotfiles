@@ -18,7 +18,6 @@ mcp_servers:
       claude:
         clientId: "$(echo resolved-client-id)"
         callbackPort: 3118
-      gemini: {}
 
   - name: plain-tool
     command: echo

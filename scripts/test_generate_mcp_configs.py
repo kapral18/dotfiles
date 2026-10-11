@@ -77,10 +77,6 @@ mcp_servers:
             }
         }
 
-    def test_gemini_transform_uses_antigravity_server_url(self):
-        actual = json.loads(run_script(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "gemini"]))
-        assert actual["mcpServers"]["http-tool"] == {"serverUrl": "https://mcp.example.com/mcp"}
-
 
 class TestMergeClaudeMcp(unittest.TestCase):
     """WHEN replacing declared MCP servers in a runtime-owned Claude config."""

@@ -204,7 +204,6 @@ class TestFormatMdCommand(unittest.TestCase):
             "home/dot_claude/exact_agents/guide.md",
             ".claude/agents/guide.md",
             ".codex/skills/example/references/guide.md",
-            ".gemini/config/skills/example/references/guide.md",
             ".omp/agent/skills/example/references/guide.md",
             ".omp/agent/agents/guide.md",
             ".pi/agent/agents/guide.md",

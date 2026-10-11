@@ -77,7 +77,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'doc', id: 'topics/ai-assistants/tool-configs/index' },
           items: [
             'topics/ai-assistants/tool-configs/profile-merging',
-            'topics/ai-assistants/tool-configs/claude-gemini',
+            'topics/ai-assistants/tool-configs/claude',
             'topics/ai-assistants/tool-configs/pi',
             'topics/ai-assistants/tool-configs/other-harnesses',
           ],

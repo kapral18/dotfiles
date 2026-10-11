@@ -39,7 +39,6 @@ venv/
 .local/share/mise/installs/
 .kube/cache/
 .rbenv/versions/
-.gemini/tmp/
 .bun/install/cache/
 .codex/sessions/
 # Leftover Elasticsearch dev data from the retired Kibana setup.

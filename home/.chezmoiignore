@@ -6,7 +6,6 @@ app_icons/
 .codex/config.toml
 .pi/agent/settings.json
 .pi/agent/models.json
-.gemini/antigravity-cli/settings.json
 .config/gh-dash/gh-dash-shared.yml
 crontab
 **/__pycache__/**

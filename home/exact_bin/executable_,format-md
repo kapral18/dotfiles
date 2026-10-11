@@ -39,7 +39,6 @@ AI_INSTRUCTION_PATH_MARKERS = (
     "/.claude/skills/",
     "/.claude/agents/",
     "/.codex/skills/",
-    "/.gemini/config/skills/",
     "/.omp/agent/skills/",
     "/.omp/agent/agents/",
     "/.pi/agent/agents/",

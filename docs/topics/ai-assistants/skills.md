@@ -5,7 +5,7 @@ sidebar_position: 3
 # Skills
 
 Skills live in `home/exact_dot_agents/exact_skills/exact_k-<name>/` and deploy to `~/.agents/skills/k-<name>/SKILL.md`.
-Claude Code, Pi, OMP, Codex, OpenCode, and Antigravity read the same tree. A skill loads when its description matches the request; "manual" skills load only when invoked by name.
+Claude Code, Pi, OMP, Codex, and OpenCode read the same tree. A skill loads when its description matches the request; "manual" skills load only when invoked by name.
 
 Skills hold task mechanics only. They do not delegate work, keep their own lifecycle, or write memory automatically.
 

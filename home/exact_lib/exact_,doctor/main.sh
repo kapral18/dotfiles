@@ -308,7 +308,6 @@ check_editors_ai() {
     "claude:Claude Code"
     "codex:OpenAI Codex"
     "opencode:OpenCode"
-    "agy:Antigravity CLI"
   )
   for entry in "${ai_checks[@]}"; do
     local cmd="${entry%%:*}"
@@ -421,7 +420,6 @@ check_ai_configs() {
   local -a config_checks=(
     "$HOME/.claude/settings.json:claude:Claude Code settings"
     "$HOME/.claude.json:claude:Claude Code MCP"
-    "$HOME/.gemini/config/mcp_config.json:agy:Antigravity MCP"
     "$HOME/.config/opencode/opencode.jsonc:opencode:OpenCode config"
     "$HOME/.codex/config.toml:codex:Codex config"
     "$HOME/.pi/agent/settings.json:pi:Pi settings"
@@ -715,10 +713,7 @@ check_config_drift() {
     fi
 
     if [ ! -f "$target" ]; then
-      if [ "$ledger_hit" -eq 1 ]; then
-        warn "$name missing (managed by ${producer:-unknown producer})" "$(_doctor_rerun_hint_for_producer "$source_dir" "$producer")"
-        drifted=$((drifted + 1))
-      elif _doctor_removed_upstream "$source_dir" "$target"; then
+      if _doctor_removed_upstream "$source_dir" "$target"; then
         if [ -n "$source_dir" ] && _doctor_forget_row "$source_dir" "$manifest" "$target"; then
           retired=$((retired + 1))
           [ "$verbose" -eq 1 ] && pass "$name retired (intentionally removed upstream)"
@@ -726,6 +721,9 @@ check_config_drift() {
           warn "$name missing (was managed)" "chezmoi apply"
           drifted=$((drifted + 1))
         fi
+      elif [ "$ledger_hit" -eq 1 ]; then
+        warn "$name missing (managed by ${producer:-unknown producer})" "$(_doctor_rerun_hint_for_producer "$source_dir" "$producer")"
+        drifted=$((drifted + 1))
       elif ref="$(_doctor_first_reference "$source_dir" "$target" || true)" && [ -n "$ref" ]; then
         script="$(_doctor_script_for_reference "$source_dir" "$ref" || true)"
         warn "$name missing (was managed)" "$(_doctor_rerun_hint "$script")"

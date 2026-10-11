@@ -7,12 +7,12 @@ title: Tool Configs
 Each harness keeps a basic config set directly in its own files: model, effort, permissions, and MCP servers.
 MCP servers are single-sourced in [MCP servers](../mcp.md); models are set per harness, with no shared registry.
 
-| Page                                       | Owns                                                            |
-| ------------------------------------------ | --------------------------------------------------------------- |
-| [Config merging](profile-merging.md)       | harness config sources and `run_onchange` merge scripts         |
-| [Claude and Antigravity](claude-gemini.md) | Claude Code settings and subagent profile; Antigravity settings |
-| [Pi coding agent](pi.md)                   | Pi packages, settings, models, extensions, `APPEND_SYSTEM.md`   |
-| [Other harnesses](other-harnesses.md)      | Codex, OpenCode, OMP, Crush, tuicr, lgtm, secrets               |
+| Page                                  | Owns                                                          |
+| ------------------------------------- | ------------------------------------------------------------- |
+| [Config merging](profile-merging.md)  | harness config sources and `run_onchange` merge scripts       |
+| [Claude Code](claude.md)              | Claude Code settings and subagent profile                     |
+| [Pi coding agent](pi.md)              | Pi packages, settings, models, extensions, `APPEND_SYSTEM.md` |
+| [Other harnesses](other-harnesses.md) | Codex, OpenCode, OMP, Crush, tuicr, lgtm, secrets             |
 
 ## Launcher defaults
 
@@ -31,7 +31,6 @@ No command-line, environment, or resumed-session overrides.
 | `omp`                 | Oh My Pi                                                                            | `anthropic/claude-opus-5-5`                           | high                     | long    |
 | `opencode`            | OpenCode                                                                            | `openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high` | high                     | long    |
 | `,opencode-llama-cpp` | OpenCode with the local llama.cpp provider                                          | `llama-cpp/nemotron-3.5`                              | server auto              | 262,144 |
-| `agy`                 | Antigravity CLI                                                                     | Gemini 3.8 Flash                                      | high                     | long    |
 | `crush`               | Crush                                                                               | `openrouter/z-ai/glm-5.3-flash`                       | high                     | long    |
 | `freebuff`            | Freebuff                                                                            | not exposed by CLI                                    | —                        | —       |
 | `,q`                  | one-shot Pi with tools and a short system prompt                                    | `openrouter/deepseek/deepseek-v4.1-flash`             | high                     | long    |

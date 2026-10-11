@@ -1,14 +1,13 @@
 ---
 sidebar_position: 3
-title: Claude and Antigravity
+title: Claude Code
 ---
 
-# Claude and Antigravity
+# Claude Code
 
-| Tool        | Source                                                                       | Target                                                                        | MCP servers                             |
-| ----------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------- |
-| Claude Code | [`home/dot_claude/settings.json`](../../../../home/dot_claude/settings.json) | `~/.claude/settings.json` (whole file)                                        | `~/.claude.json` top-level `mcpServers` |
-| Antigravity | [`home/dot_gemini/`](../../../../home/dot_gemini/)                           | `~/.gemini/config/` + policy-merged `~/.gemini/antigravity-cli/settings.json` | `~/.gemini/config/mcp_config.json`      |
+| Tool        | Source                                                                       | Target                                 | MCP servers                             |
+| ----------- | ---------------------------------------------------------------------------- | -------------------------------------- | --------------------------------------- |
+| Claude Code | [`home/dot_claude/settings.json`](../../../../home/dot_claude/settings.json) | `~/.claude/settings.json` (whole file) | `~/.claude.json` top-level `mcpServers` |
 
 ## Claude Code settings
 
@@ -96,13 +95,3 @@ The engine writes `.claude-plugin/types/` and `tsconfig.json` into each mod fold
 | browser connectors     | explicit opt-in                                                                                                                             |
 
 Playwriter remains a fallback for rendered UI checks or booking-adjacent flows that need explicit user confirmation.
-
-### Antigravity settings
-
-Antigravity (`agy`) reads its global MCP servers from `~/.gemini/config/mcp_config.json`, generated directly from the shared [`mcp_servers.yaml`](../../../../home/.chezmoidata/mcp_servers.yaml) registry by `07-generate-mcp-configs`. Hosted OAuth servers without an Antigravity row in `oauth_by_tool` are omitted.
-
-Instructions and skills live in Antigravity's global customization root: `~/.gemini/config/AGENTS.md` points to `~/AGENTS.md`, while `~/.gemini/config/skills` symlinks to `~/.agents/skills`. There are no Antigravity hooks.
-
-Paid Gemini API quota for Antigravity CLI is declared in [`home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json`](../../../../home/dot_gemini/private_antigravity-cli/readonly_settings.policy.json) and merged into `~/.gemini/antigravity-cli/settings.json` by `07-merge-antigravity-cli-settings` (declared-over-live). Policy owns `modelProvider: "gemini"`, `model: "Gemini 3.8 Flash (High)"`, and `enableTelemetry: false`, and strips any top-level `gcp` pin. That Flash pin is the interactive-TUI default. Runtime fields such as `trustedWorkspaces`, `permissions`, and `statusLine` survive. Fish still loads `GEMINI_API_KEY` from `pass google/gemini/api/token`; the key alone does not switch providers.
-
-Do not export `GOOGLE_GENAI_USE_VERTEXAI`, `GOOGLE_CLOUD_PROJECT`, or `GOOGLE_CLOUD_LOCATION` into interactive shells. Those force `authMethod=gcp` onto `aiplatform.googleapis.com` and burn shared Vertex quota instead. Corporate Google OAuth without the Gemini API key provider lands on Antigravity Starter product quota.

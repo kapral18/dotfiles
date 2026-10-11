@@ -26,13 +26,13 @@ Everything else stays inline: implementation, verification, memory, and routine 
 
 The reviewer body is shared: `home/.chezmoitemplates/reviewer-prompt.md` (scope in; adversarial method: refute each finding, test state-changing operations against each other, question whether each added piece is needed; `file:line` findings with evidence; read-only).
 
-| Harness               | Reviewer                                                                                                                     | Search                                                                |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Claude Code           | `home/dot_claude/exact_agents/k-agent-reviewer.md.tmpl` (`model: opus`, no CLAUDE.md)                                        | built-in `Explore`                                                    |
-| Pi                    | `home/dot_pi/agent/exact_agents/k-agent-reviewer.md.tmpl` (`gpt-6.1-sol`, high)                                              | `home/dot_pi/agent/exact_agents/k-agent-scout.md` (`gpt-6-luna`, low) |
-| OMP                   | `home/dot_omp/private_agent/exact_agents/k-agent-reviewer.md.tmpl`                                                           | native `scout`; overlay in `APPEND_SYSTEM.md`                         |
-| Codex                 | native `spawn_agent` with `fork_turns: "none"`; shared prompt from `~/.agents/skills/k-review/references/reviewer_prompt.md` | fresh native agent for broad read-only searches                       |
-| OpenCode, Antigravity | none; review inline with the same output format                                                                              | native tools                                                          |
+| Harness     | Reviewer                                                                                                                     | Search                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Claude Code | `home/dot_claude/exact_agents/k-agent-reviewer.md.tmpl` (`model: opus`, no CLAUDE.md)                                        | built-in `Explore`                                                    |
+| Pi          | `home/dot_pi/agent/exact_agents/k-agent-reviewer.md.tmpl` (`gpt-6.1-sol`, high)                                              | `home/dot_pi/agent/exact_agents/k-agent-scout.md` (`gpt-6-luna`, low) |
+| OMP         | `home/dot_omp/private_agent/exact_agents/k-agent-reviewer.md.tmpl`                                                           | native `scout`; overlay in `APPEND_SYSTEM.md`                         |
+| Codex       | native `spawn_agent` with `fork_turns: "none"`; shared prompt from `~/.agents/skills/k-review/references/reviewer_prompt.md` | fresh native agent for broad read-only searches                       |
+| OpenCode    | none; review inline with the same output format                                                                              | native tools                                                          |
 
 Pi's `pi-subagents` built-in agents stay disabled (`subagents.disableBuiltins`), so only these profiles exist there.
 OMP disables its own `reviewer` and `security-reviewer` agents in `task.disabledAgents`.
