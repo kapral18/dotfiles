@@ -12,6 +12,7 @@
   "effortLevel": "high",
   "autoCompactWindow": 400000,
   "autoMemoryEnabled": false,
+  "subagentPromptCacheTtl": "1h",
   "awaySummaryEnabled": false,
   "disableClaudeAiConnectors": true,
   "agentPushNotifEnabled": true,

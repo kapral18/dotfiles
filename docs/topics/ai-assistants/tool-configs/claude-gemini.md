@@ -12,18 +12,19 @@ title: Claude and Antigravity
 
 ## Claude Code settings
 
-| Area             | Value                                                                               |
-| ---------------- | ----------------------------------------------------------------------------------- |
-| Model            | `claude-sonnet-5-5`, `effortLevel: high` (also pinned in `modelSettings`)           |
-| Advisor          | `advisorModel: claude-opus-5-5` (server-side advisor tool)                          |
-| Thinking         | `alwaysThinkingEnabled: false`                                                      |
-| Permissions      | `defaultMode: bypassPermissions`; dangerous-mode prompt skipped                     |
-| Subagent nesting | `env.CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1`                                        |
-| Auto-compact     | `autoCompactWindow: 400000`: compaction near 366k instead of near 1M                |
-| Auto-memory      | `autoMemoryEnabled: false`; `,ai-kb` is the only durable memory                     |
-| Away recap       | `awaySummaryEnabled: false`                                                         |
-| Hooks            | none in settings; the mods below load through `env.CLAUDE_CODE_PLUGIN_DIRS` (below) |
-| Auth             | native Claude account auth; no `apiKeyHelper` or `ANTHROPIC_BASE_URL` override      |
+| Area             | Value                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------ |
+| Model            | `claude-sonnet-5-5`, `effortLevel: high` (also pinned in `modelSettings`)                  |
+| Advisor          | `advisorModel: claude-opus-5-5` (server-side advisor tool)                                 |
+| Thinking         | `alwaysThinkingEnabled: false`                                                             |
+| Permissions      | `defaultMode: bypassPermissions`; dangerous-mode prompt skipped                            |
+| Subagent nesting | `env.CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1`                                               |
+| Auto-compact     | `autoCompactWindow: 400000`: compaction near 366k instead of near 1M                       |
+| Auto-memory      | `autoMemoryEnabled: false`; `,ai-kb` is the only durable memory                            |
+| Away recap       | `awaySummaryEnabled: false`                                                                |
+| Subagent cache   | `subagentPromptCacheTtl: "1h"`: prompt cache for subagents and helpers, not the 5m default |
+| Hooks            | none in settings; the mods below load through `env.CLAUDE_CODE_PLUGIN_DIRS` (below)        |
+| Auth             | native Claude account auth; no `apiKeyHelper` or `ANTHROPIC_BASE_URL` override             |
 
 Instructions come from `~/.claude/CLAUDE.md` (symlink to `~/AGENTS.md`); skills from `~/.claude/skills` → `~/.agents/skills`.
 The only custom agent is `exact_agents/k-agent-reviewer.md.tmpl` (see [Subagents](../subagents.md)); search uses the built-in `Explore`.
