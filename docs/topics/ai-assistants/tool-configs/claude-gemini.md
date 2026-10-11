@@ -5,10 +5,10 @@ title: Claude and Antigravity
 
 # Claude and Antigravity
 
-| Tool        | Source                                                                                         | Target                                                                        | MCP servers                             |
-| ----------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------- |
-| Claude Code | [`home/dot_claude/settings.personal.json`](../../../../home/dot_claude/settings.personal.json) | `~/.claude/settings.json` (whole file)                                        | `~/.claude.json` top-level `mcpServers` |
-| Antigravity | [`home/dot_gemini/`](../../../../home/dot_gemini/)                                             | `~/.gemini/config/` + policy-merged `~/.gemini/antigravity-cli/settings.json` | `~/.gemini/config/mcp_config.json`      |
+| Tool        | Source                                                                       | Target                                                                        | MCP servers                             |
+| ----------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------- |
+| Claude Code | [`home/dot_claude/settings.json`](../../../../home/dot_claude/settings.json) | `~/.claude/settings.json` (whole file)                                        | `~/.claude.json` top-level `mcpServers` |
+| Antigravity | [`home/dot_gemini/`](../../../../home/dot_gemini/)                           | `~/.gemini/config/` + policy-merged `~/.gemini/antigravity-cli/settings.json` | `~/.gemini/config/mcp_config.json`      |
 
 ## Claude Code settings
 
@@ -34,7 +34,7 @@ Fullscreen mode and push notifications are on.
 
 Claude Code mods are TypeScript function-hook plugins (early-access API).
 Sources live in [`home/dot_claude/exact_mods/`](../../../../home/dot_claude/exact_mods/) and deploy to `~/.claude/mods/`.
-`settings.personal.json` loads them all with `env.CLAUDE_CODE_PLUGIN_DIRS`. Pi, OMP, and the other harnesses do not run them.
+`settings.json` loads them all with `env.CLAUDE_CODE_PLUGIN_DIRS`. Pi, OMP, and the other harnesses do not run them.
 
 | Mod                  | Event                                                   | Behavior                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | -------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

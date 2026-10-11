@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-# claude code settings desired hash: {{ include "dot_claude/settings.personal.json" | sha256sum }}
+# claude code settings desired hash: {{ include "dot_claude/settings.json" | sha256sum }}
 # chezmoi_lib.sh hash: {{ include "../scripts/chezmoi_lib.sh" | sha256sum }}
 # managed_config_manifest.py hash: {{ include "../scripts/managed_config_manifest.py" | sha256sum }}
 # generated_artifact_ledger.py hash: {{ include "../scripts/generated_artifact_ledger.py" | sha256sum }}
@@ -11,7 +11,7 @@ source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh
 source "$source_dir/../scripts/chezmoi_lib.sh"
 
-src="$source_dir/dot_claude/settings.personal.json"
+src="$source_dir/dot_claude/settings.json"
 
 chezmoi_install_if_changed "$src" "$HOME/.claude/settings.json"
 chezmoi_record_artifact --id claude-settings \

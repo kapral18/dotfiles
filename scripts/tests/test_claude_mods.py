@@ -12,7 +12,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 MODS = REPO / "home" / "dot_claude" / "exact_mods"
-SETTINGS = REPO / "home" / "dot_claude" / "settings.personal.json"
+SETTINGS = REPO / "home" / "dot_claude" / "settings.json"
 # The repo-only plugin Claude loads from the project's .claude/skills folder.
 DOTFILES_GUARD = REPO / ".claude" / "skills" / "dotfiles-guard"
 SHELL_SOURCE = MODS / "sop-guard" / "hooks" / "readonly_shell.ts"

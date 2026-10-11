@@ -39,9 +39,9 @@ Lines starting with `#` and blank lines are ignored. Chezmoi template conditiona
 
 3. Fan the new router id out to every consumer in the same change:
 
-   - Pi: [`home/dot_pi/agent/readonly_models.personal.json`](../../../../home/dot_pi/agent/readonly_models.personal.json)
+   - Pi: [`home/dot_pi/agent/readonly_models.json`](../../../../home/dot_pi/agent/readonly_models.json)
    - Codex: [`home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl`](../../../../home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl) and `LOCAL_MODELS` in [`home/exact_lib/exact_,codex/main.py`](../../../../home/exact_lib/exact_,codex/main.py)
-   - OpenCode: [`readonly_opencode.personal.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.personal.jsonc)
+   - OpenCode: [`readonly_opencode.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.jsonc)
    - Fish completions for `,claude-llama-cpp`, `,codex-llama-cpp`, and `,opencode-llama-cpp`
    - `python3 scripts/model_mirrors.py generate`
    - llama.cpp docs under `docs/topics/ai-assistants/llama-cpp/`

@@ -9,10 +9,10 @@ Codex, OpenCode, Oh My Pi, Crush, tuicr, and lgtm keep harness-native configurat
 
 ## Codex and OpenCode
 
-| Tool     | Config source                                                                                                                        | Merge                                                                                              |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| Codex    | [`home/dot_codex/private_config.personal.toml`](../../../../home/dot_codex/private_config.personal.toml)                             | `run_onchange_after_07-merge-codex-config.sh.tmpl` injects MCP servers into `~/.codex/config.toml` |
-| OpenCode | [`home/dot_config/opencode/readonly_opencode.personal.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.personal.jsonc) | `run_onchange_after_07-merge-opencode-config.sh.tmpl`                                              |
+| Tool     | Config source                                                                                                      | Merge                                                                                              |
+| -------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Codex    | [`home/dot_codex/private_config.toml`](../../../../home/dot_codex/private_config.toml)                             | `run_onchange_after_07-merge-codex-config.sh.tmpl` injects MCP servers into `~/.codex/config.toml` |
+| OpenCode | [`home/dot_config/opencode/readonly_opencode.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.jsonc) | `run_onchange_after_07-merge-opencode-config.sh.tmpl`                                              |
 
 Interactive shells route `codex` through `~/bin/,codex`, which injects the local llama.cpp model catalog when needed and then runs the real binary.
 

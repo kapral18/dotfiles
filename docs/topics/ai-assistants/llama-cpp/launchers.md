@@ -90,7 +90,7 @@ The wrapper adds its default `--model $CODEX_LLAMA_CPP_MODEL` only when you did 
 
 OpenCode reads providers from `~/.config/opencode/opencode.jsonc`; there is no per-invocation provider override.
 
-The `llama-cpp` provider is declared in `readonly_opencode.personal.jsonc` and flows through the merge hook unchanged:
+The `llama-cpp` provider is declared in `readonly_opencode.jsonc` and flows through the merge hook unchanged:
 
 | Field       | Value                      |
 | ----------- | -------------------------- |
@@ -117,7 +117,7 @@ Claude Code compacts conversation history at `autoCompactWindow` tokens.
 
 | Context                   | Desired value                                                        |
 | ------------------------- | -------------------------------------------------------------------- |
-| Cloud `claude-sonnet-5-5` | `400000` from `settings.personal.json`                               |
+| Cloud `claude-sonnet-5-5` | `400000` from `settings.json`                                        |
 | Local llama.cpp           | compact below server context so llama.cpp does not reject the prompt |
 
 Those needs conflict on a single global setting.
@@ -165,7 +165,7 @@ Cloud Claude sessions are unaffected — plain `claude ...` still reads only `~/
 - [`home/exact_lib/exact_,codex/main.py`](../../../../home/exact_lib/exact_,codex/main.py) → `~/lib/,codex/main.py`
 - [`home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl`](../../../../home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl) → `~/.codex/llama-cpp-model-catalog.json` (defines the local llama.cpp router ids and context metadata)
 - [`home/exact_bin/executable_,codex-llama-cpp`](../../../../home/exact_bin/executable_,codex-llama-cpp) → `~/bin/,codex-llama-cpp`
-- [`home/dot_config/opencode/readonly_opencode.personal.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.personal.jsonc) — declares the `llama-cpp` provider
+- [`home/dot_config/opencode/readonly_opencode.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.jsonc) — declares the `llama-cpp` provider
 - [`home/exact_bin/executable_,opencode-llama-cpp`](../../../../home/exact_bin/executable_,opencode-llama-cpp) → `~/bin/,opencode-llama-cpp`
 - [`home/dot_claude/settings.llama-cpp.json.tmpl`](../../../../home/dot_claude/settings.llama-cpp.json.tmpl) → `~/.claude/settings.llama-cpp.json` (base local `autoCompactWindow` and `CLAUDE_CODE_ATTRIBUTION_HEADER=0`)
 - [`home/dot_claude/settings.llama-cpp.qwen3.6.json.tmpl`](../../../../home/dot_claude/settings.llama-cpp.qwen3.6.json.tmpl) → `~/.claude/settings.llama-cpp.qwen3.6.json` (Qwen3.6 `autoCompactWindow` and `CLAUDE_CODE_ATTRIBUTION_HEADER=0`)

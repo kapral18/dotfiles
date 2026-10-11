@@ -11,4 +11,4 @@ home/dot_config/exact_nvim/
 *.conf
 *.toml
 *.toml.tmpl
-home/dot_pi/agent/readonly_settings.personal.json
+home/dot_pi/agent/readonly_settings.json
