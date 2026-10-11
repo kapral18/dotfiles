@@ -1,3 +1,7 @@
 # Google Workspace CLI
 # https://github.com/googleworkspace/cli
 brew "googleworkspace-cli"
+
+# Keyboard-first Telegram client for the terminal (launched via ,tg)
+# https://github.com/sorokin-vladimir/tele
+brew "tele"

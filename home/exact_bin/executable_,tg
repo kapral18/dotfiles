@@ -1,39 +1,28 @@
 #!/usr/bin/env bash
-# Description: Run telegramtui with optional pass-backed API config.
+# Description: Run tele with an optional pass-backed Telegram app key.
 
 set -euo pipefail
 
 readonly PASS_APP_ID_PATH="telegram/apps/tuilegram/app_id"
 readonly PASS_API_HASH_PATH="telegram/apps/tuilegram/api_hash"
-readonly TELEGRAMTUI_CONFIG_DIR="$HOME/.telegramtui"
-readonly TELEGRAMTUI_CONFIG_FILE="$TELEGRAMTUI_CONFIG_DIR/config.properties"
-readonly TELEGRAMTUI_TDLIB_LIB="/opt/homebrew/opt/tdlib/lib"
-readonly TELEGRAMTUI_REPO_DIR_DEFAULT="$HOME/code/telegramtui/main"
-readonly TELEGRAMTUI_REPO_BRANCH_DEFAULT="main"
+# tele's default config path; it does not follow XDG_CONFIG_HOME.
+readonly TELE_DEFAULT_CONFIG_FILE="$HOME/.config/tele/config.yml"
 
 usage() {
   cat <<'EOF'
-Usage: ,tg [command [args...]]
-       ,tg --sync [args...]
-       ,tg --build
-       ,tg -- [command [args...]]
+Usage: ,tg [tele args...]
 
-Runs telegramtui by default.
-If pass entries exist, writes ~/.telegramtui/config.properties with:
-  api.id=<value>
-  api.hash=<value>
-before launching telegramtui.
-
-Defaults:
-  - no command: runs "telegramtui"
-  - leading flags (e.g. --help): treated as telegramtui flags
-  - prefers a locally built jar from your fork repo
+Runs tele with the given args.
+If pass entries telegram/apps/tuilegram/app_id and api_hash exist, first sets
+telegram.api_id and telegram.api_hash in the config file tele will read:
+the -config/--config value, or ~/.config/tele/config.yml.
+Other settings and comments in that file stay; yq may normalize blank lines.
 
 Examples:
   ,tg
-  ,tg --sync
-  ,tg --build
-  ,tg --help
+  ,tg -e          # tele debug logging
+  ,tg --version
+Run "tele -h" for tele flags.
 EOF
 }
 
@@ -45,53 +34,60 @@ read_pass_value_if_exists() {
   pass show "$key" 2>/dev/null | awk 'NR==1{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0); if (length($0)) print; exit}'
 }
 
-run_telegramtui() {
-  local repo_dir="${TELEGRAMTUI_REPO_DIR:-$TELEGRAMTUI_REPO_DIR_DEFAULT}"
-  local repo_jar
-  repo_jar="$(find_repo_jar "$repo_dir")"
-
-  if [ -n "$repo_jar" ] && command -v java >/dev/null 2>&1; then
-    exec java -Djna.library.path="$TELEGRAMTUI_TDLIB_LIB" -jar "$repo_jar" "$@"
+# Print the config path tele reads for these args. Mirrors Go flag parsing:
+# flags end at "--" or the first non-flag arg; tele expands a leading "~/".
+tele_config_path() {
+  local path="$TELE_DEFAULT_CONFIG_FILE"
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --) break ;;
+    -config=* | --config=*) path="${1#*=}" ;;
+    -config | --config)
+      [ "$#" -ge 2 ] || break
+      path="$2"
+      shift
+      ;;
+    -?*) ;;
+    *) break ;;
+    esac
+    shift
+  done
+  # shellcheck disable=SC2088 # match a literal "~/" prefix, as tele does
+  if [[ "$path" == "~/"* ]]; then
+    path="$HOME/${path#\~/}"
   fi
-  exec telegramtui "$@"
+  printf '%s\n' "$path"
 }
 
-find_repo_jar() {
-  local repo_dir="$1"
-  local jar_glob=("$repo_dir"/target/telegramtui-*.jar)
-  if [ ${#jar_glob[@]} -gt 0 ] && [ -f "${jar_glob[0]}" ]; then
-    printf '%s\n' "${jar_glob[0]}"
+set_app_key() {
+  local config_file="$1"
+  local app_id="$2"
+  local api_hash="$3"
+
+  if ! [[ "$app_id" =~ ^[0-9]+$ ]]; then
+    echo "pass entry $PASS_APP_ID_PATH is not a number" >&2
+    return 1
+  fi
+  if ! command -v yq >/dev/null 2>&1; then
+    echo "yq not found; it is needed to set the app key in $config_file" >&2
+    return 1
+  fi
+
+  if [ ! -f "$config_file" ]; then
+    # tele writes its full default config, then exits after the theme report.
+    tele -config "$config_file" -theme-check >/dev/null
+  fi
+
+  local current_id current_hash
+  current_id="$(yq '.telegram.api_id // ""' "$config_file")"
+  current_hash="$(yq '.telegram.api_hash // ""' "$config_file")"
+  if [ "$current_id" = "$app_id" ] && [ "$current_hash" = "$api_hash" ]; then
     return 0
   fi
-  return 1
-}
 
-build_repo_jar() {
-  local repo_dir="${TELEGRAMTUI_REPO_DIR:-$TELEGRAMTUI_REPO_DIR_DEFAULT}"
-  if [ ! -d "$repo_dir/.git" ]; then
-    echo "Repo not found: $repo_dir" >&2
-    echo "Set TELEGRAMTUI_REPO_DIR or clone your fork to $repo_dir." >&2
-    return 1
-  fi
-  if ! command -v mvn >/dev/null 2>&1; then
-    echo "mvn not found. Install maven first." >&2
-    return 1
-  fi
-  (cd "$repo_dir" && mvn -q -DskipTests package)
-}
-
-sync_repo() {
-  local repo_dir="${TELEGRAMTUI_REPO_DIR:-$TELEGRAMTUI_REPO_DIR_DEFAULT}"
-  local repo_branch="${TELEGRAMTUI_REPO_BRANCH:-$TELEGRAMTUI_REPO_BRANCH_DEFAULT}"
-  if [ ! -d "$repo_dir/.git" ]; then
-    echo "Repo not found: $repo_dir" >&2
-    echo "Set TELEGRAMTUI_REPO_DIR or clone your fork to $repo_dir." >&2
-    return 1
-  fi
-
-  git -C "$repo_dir" fetch origin "$repo_branch"
-  git -C "$repo_dir" switch "$repo_branch"
-  git -C "$repo_dir" pull --ff-only origin "$repo_branch"
+  TG_APP_ID="$app_id" TG_API_HASH="$api_hash" \
+    yq -i '.telegram.api_id = env(TG_APP_ID) | .telegram.api_hash = strenv(TG_API_HASH)' "$config_file"
+  chmod 600 "$config_file"
 }
 
 if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
@@ -99,47 +95,11 @@ if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
   exit 0
 fi
 
-if [ "${1:-}" = "--" ]; then
-  shift
-fi
-
-if [ "${1:-}" = "--sync" ]; then
-  shift
-  sync_repo
-  build_repo_jar
-  if [ "$#" -eq 0 ]; then
-    set -- telegramtui
-  elif [[ "$1" == -* ]]; then
-    set -- telegramtui "$@"
-  fi
-fi
-
-if [ "${1:-}" = "--build" ]; then
-  build_repo_jar
-  exit 0
-fi
-
-if [ "$#" -eq 0 ]; then
-  set -- telegramtui
-elif [[ "$1" == -* ]]; then
-  set -- telegramtui "$@"
-fi
-
 app_id="$(read_pass_value_if_exists "$PASS_APP_ID_PATH" || true)"
 api_hash="$(read_pass_value_if_exists "$PASS_API_HASH_PATH" || true)"
 
-if [ "$(basename "$1")" = "telegramtui" ] && [ -n "$app_id" ] && [ -n "$api_hash" ]; then
-  mkdir -p "$TELEGRAMTUI_CONFIG_DIR"
-  umask 077
-  {
-    echo "api.id=$app_id"
-    echo "api.hash=$api_hash"
-  } >"$TELEGRAMTUI_CONFIG_FILE"
+if [ -n "$app_id" ] && [ -n "$api_hash" ]; then
+  set_app_key "$(tele_config_path "$@")" "$app_id" "$api_hash"
 fi
 
-if [ "$(basename "$1")" = "telegramtui" ]; then
-  shift
-  run_telegramtui "$@"
-fi
-
-exec "$@"
+exec tele "$@"

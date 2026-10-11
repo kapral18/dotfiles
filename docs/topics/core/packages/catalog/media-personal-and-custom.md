@@ -5,7 +5,7 @@ title: Media, personal tools, and custom releases
 
 # Media, personal tools, and custom releases
 
-This slice covers media processing, personal tools, and tools installed from GitHub releases or source builds because they do not fit a higher-priority package manager.
+This slice covers media processing, personal tools, and tools installed from GitHub releases because they do not fit a higher-priority package manager.
 
 ## Audio, video, and image tools
 
@@ -28,22 +28,21 @@ This slice covers media processing, personal tools, and tools installed from Git
 | [`youplot`](https://github.com/red-data-tools/YouPlot/)                                                                                                                                                                                                                                    | `brew`                     | quick terminal plots                                          |
 | [`terminaltexteffects`](https://github.com/ChrisBuilds/terminaltexteffects)                                                                                                                                                                                                                | `uv`                       | animated terminal text output                                 |
 
-## Custom GitHub releases and source builds
+## Custom GitHub releases
 
-| Tool/app                                                 | Source                 | Why it is here                        |
-| -------------------------------------------------------- | ---------------------- | ------------------------------------- |
-| [FluidVoice](https://github.com/altic-dev/FluidVoice)    | `custom dmg`           | macOS app from GitHub releases        |
-| [Squirrel Disk](https://github.com/adileo/squirreldisk)  | `custom dmg`           | disk utility app from GitHub releases |
-| [`telegramtui`](https://github.com/kapral18/telegramtui) | `custom git_maven_jar` | fork-first Telegram TUI source build  |
-| [`mdtt`](https://github.com/szktkfm/mdtt)                | `custom tar_gz_bin`    | release binary archive                |
-| [`dug`](https://github.com/unfrl/dug)                    | `custom file`          | release binary                        |
-| [`kitten`](https://github.com/kovidgoyal/kitty)          | `custom file`          | kitty CLI for image preview support   |
-| [`enola`](https://github.com/TheYahya/enola)             | `custom tar_gz_bin`    | terminal utility release binary       |
-| [sd-cli](https://github.com/leejet/stable-diffusion.cpp) | `custom zip_opt`       | Metal runner for `,image-local`       |
+| Tool/app                                                 | Source              | Why it is here                        |
+| -------------------------------------------------------- | ------------------- | ------------------------------------- |
+| [FluidVoice](https://github.com/altic-dev/FluidVoice)    | `custom dmg`        | macOS app from GitHub releases        |
+| [Squirrel Disk](https://github.com/adileo/squirreldisk)  | `custom dmg`        | disk utility app from GitHub releases |
+| [`mdtt`](https://github.com/szktkfm/mdtt)                | `custom tar_gz_bin` | release binary archive                |
+| [`dug`](https://github.com/unfrl/dug)                    | `custom file`       | release binary                        |
+| [`kitten`](https://github.com/kovidgoyal/kitty)          | `custom file`       | kitty CLI for image preview support   |
+| [`enola`](https://github.com/TheYahya/enola)             | `custom tar_gz_bin` | terminal utility release binary       |
+| [sd-cli](https://github.com/leejet/stable-diffusion.cpp) | `custom zip_opt`    | Metal runner for `,image-local`       |
 
 ## Other apps and tools
 
-| Tool                                                                                                                                                            | Source        | Why it is here        |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | --------------------- |
-| Telegram TUI stack ([`tdlib`](https://core.telegram.org/tdlib), [`maven`](https://maven.apache.org/), [`telegramtui`](https://github.com/kapral18/telegramtui)) | `brew/custom` | personal chat tooling |
-| [`kanban-tui`](https://github.com/Zaloog/kanban-tui)                                                                                                            | `uv`          | terminal task board   |
+| Tool                                                 | Source | Why it is here                            |
+| ---------------------------------------------------- | ------ | ----------------------------------------- |
+| [`tele`](https://github.com/sorokin-vladimir/tele)   | `brew` | personal Telegram TUI, launched via `,tg` |
+| [`kanban-tui`](https://github.com/Zaloog/kanban-tui) | `uv`   | terminal task board                       |

@@ -93,14 +93,15 @@ cmd | ,wh send -         # send piped stdin
 ## Telegram TUI launcher: `,tg`
 
 - Source: [`home/exact_bin/executable_,tg`](../../../../home/exact_bin/executable_,tg)
-- Prefers a locally built jar from `~/code/telegramtui/main/target/telegramtui-*.jar`.
-- Falls back to `telegramtui` on `PATH`.
-- Optionally writes `~/.telegramtui/config.properties` from pass entries `telegram/apps/tuilegram/app_id` and `telegram/apps/tuilegram/api_hash`.
+- Runs [`tele`](https://github.com/sorokin-vladimir/tele) from Homebrew and forwards all args except a leading `-h`/`--help`.
+- When pass entries `telegram/apps/tuilegram/app_id` and `telegram/apps/tuilegram/api_hash` exist, first sets `telegram.api_id` and `telegram.api_hash` with `yq` in the config tele will read: the `-config`/`--config` value, or `~/.config/tele/config.yml`.
+- Keeps other settings and comments in that file. A missing file gets tele's default config first (`tele -config <path> -theme-check`).
 
 ```bash
 ,tg
-,tg --sync
-,tg --build
+,tg -e
+,tg --version
+,tg -config ~/.config/tele/work.yml
 ,tg --help
 ```
 

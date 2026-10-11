@@ -9,29 +9,29 @@ Each package source has a different convergence model. The important question is
 
 ## Manager behavior
 
-| Manager         | Installs / updates                                                   | Removes when deleted from list?                 | Notes                                                                                    |
-| --------------- | -------------------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Homebrew        | `brew bundle --global --no-upgrade`                                  | Yes, via `brew bundle cleanup --global --force` | assembled Brewfile is authoritative; installs missing only (upgrades owned by `,update`) |
-| mise            | `mise install --yes`, then `mise reshim`                             | No cleanup of old runtimes by this hook         | respects project `.tool-versions`; Node reads `.nvmrc`                                   |
-| Cargo           | installs missing crates                                              | Yes                                             | hook uninstalls crates no longer listed                                                  |
-| Go              | installs missing module binaries                                     | Yes, but only binaries this tooling installed   | state ledger at `~/.cache/chezmoi/golang-pkgs-state` protects hand-installed binaries    |
-| Ruby gems       | installs listed gems                                                 | No                                              | hook does not uninstall gems removed from the list                                       |
-| pnpm            | installs missing globals, uninstalls absent globals, upgrades latest | Yes                                             | keeps unpinned globals on the newest release; rebuilds the stable link tree              |
-| uv Python       | installs listed managed Python versions                              | Yes                                             | hook uninstalls managed Python versions absent from `home/readonly_dot_python-version`   |
-| uv tools        | installs listed global tools                                         | managed by uv tool hook                         | tool source is `home/readonly_dot_default-uv-tools.tmpl`                                 |
-| gh extensions   | installs managed extensions                                          | Yes                                             | hook prunes extensions no longer listed                                                  |
-| Custom packages | downloads GitHub release assets, DMGs, or source builds              | Partial                                         | stale launchers/repos are cleaned when safe; dirty source repos are preserved            |
+| Manager         | Installs / updates                                                   | Removes when deleted from list?                 | Notes                                                                                                           |
+| --------------- | -------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Homebrew        | `brew bundle --global --no-upgrade`                                  | Yes, via `brew bundle cleanup --global --force` | assembled Brewfile is authoritative; installs missing only (upgrades owned by `,update`)                        |
+| mise            | `mise install --yes`, then `mise reshim`                             | No cleanup of old runtimes by this hook         | respects project `.tool-versions`; Node reads `.nvmrc`                                                          |
+| Cargo           | installs missing crates                                              | Yes                                             | hook uninstalls crates no longer listed                                                                         |
+| Go              | installs missing module binaries                                     | Yes, but only binaries this tooling installed   | state ledger at `~/.cache/chezmoi/golang-pkgs-state` protects hand-installed binaries                           |
+| Ruby gems       | installs listed gems                                                 | No                                              | hook does not uninstall gems removed from the list                                                              |
+| pnpm            | installs missing globals, uninstalls absent globals, upgrades latest | Yes                                             | keeps unpinned globals on the newest release; rebuilds the stable link tree                                     |
+| uv Python       | installs listed managed Python versions                              | Yes                                             | hook uninstalls managed Python versions absent from `home/readonly_dot_python-version`                          |
+| uv tools        | installs listed global tools                                         | managed by uv tool hook                         | tool source is `home/readonly_dot_default-uv-tools.tmpl`                                                        |
+| gh extensions   | installs managed extensions                                          | Yes                                             | hook prunes extensions no longer listed                                                                         |
+| Custom packages | downloads GitHub release assets and DMGs                             | No                                              | residual binaries/apps are removed manually; launchers from the retired `git_maven_jar` format are removed once |
 
 ## Notable package decisions
 
-| Decision                                            | Reason                                                                                                                     |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Homebrew `link: false` for colliding `sem` binaries | GNU `parallel` and Ataraxy semantic-git both expose `sem`; wrappers expose the intended `,parallel` and `,sem` commands    |
-| Pi globals live in pnpm                             | `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`, and `pi-subagents` are kept together in the managed pnpm list |
-| Custom installer includes `ytsurf`                  | installed outside standard package managers in this setup                                                                  |
-| `git_maven_jar` rows are declarative                | add/update rows clone/build/install; removed clean repos are deleted; dirty stale repos are preserved                      |
-| `zip_opt` keeps sibling dylibs                      | zip extracts to `~/.local/opt/<name>/`; removing the row does not delete that directory                                    |
-| FLUX.2 klein weights are command-only               | `,image-local sync` downloads ~15 GB; `chezmoi apply` never pulls them (not gated on `downloadLlamaCppModels`)             |
+| Decision                                            | Reason                                                                                                                                |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Homebrew `link: false` for colliding `sem` binaries | GNU `parallel` and Ataraxy semantic-git both expose `sem`; wrappers expose the intended `,parallel` and `,sem` commands               |
+| Pi globals live in pnpm                             | `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`, and `pi-subagents` are kept together in the managed pnpm list            |
+| Custom installer includes `ytsurf`                  | installed outside standard package managers in this setup                                                                             |
+| Retired `git_maven_jar` leftovers                   | launchers are removed once; checkouts under `~/code/<repo>/<branch>` may hold unpushed work, so the installer only prints their paths |
+| `zip_opt` keeps sibling dylibs                      | zip extracts to `~/.local/opt/<name>/`; removing the row does not delete that directory                                               |
+| FLUX.2 klein weights are command-only               | `,image-local sync` downloads ~15 GB; `chezmoi apply` never pulls them (not gated on `downloadLlamaCppModels`)                        |
 
 ## Where to make changes
 

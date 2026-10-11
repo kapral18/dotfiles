@@ -17,7 +17,7 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
 4. **Gems** (`home/readonly_dot_default-gems`) — Ruby packages
 5. **pnpm** (`home/readonly_dot_default-pnpm-pkgs`) — Node.js/JavaScript packages
 6. **uv** (`home/readonly_dot_default-uv-tools.tmpl`) — Python tools/packages
-7. **Custom packages** (`home/readonly_dot_default-custom-packages.tmpl`) — DMGs + GitHub release CLI tools + source builds.
+7. **Custom packages** (`home/readonly_dot_default-custom-packages.tmpl`) — DMGs + GitHub release CLI tools.
    Installed by `home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl`.
 
 **Interpretation of the priority:**
