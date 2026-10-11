@@ -13,7 +13,7 @@ title: Claude Code
 
 | Area             | Value                                                                                      |
 | ---------------- | ------------------------------------------------------------------------------------------ |
-| Model            | `claude-sonnet-5-5`, `effortLevel: high` (also pinned in `modelSettings`)                  |
+| Model            | `claude-opus-5-5`, `effortLevel: high` (also pinned in `modelSettings`)                    |
 | Advisor          | `advisorModel: claude-opus-5-5` (server-side advisor tool)                                 |
 | Thinking         | `alwaysThinkingEnabled: false`                                                             |
 | Permissions      | `defaultMode: bypassPermissions`; dangerous-mode prompt skipped                            |

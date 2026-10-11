@@ -21,7 +21,7 @@ No command-line, environment, or resumed-session overrides.
 
 | Launcher              | What it does                                                                        | Default model                                         | Effort                   | Context |
 | --------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------ | ------- |
-| `claude`              | Claude Code                                                                         | `claude-sonnet-5-5`                                   | high                     | long    |
+| `claude`              | Claude Code                                                                         | `claude-opus-5-5`                                     | high                     | long    |
 | `,claude-openrouter`  | Claude Code through OpenRouter's Messages endpoint                                  | `xiaomi/mimo-v2.6-pro`                                | high (preset)            | long    |
 | `,claude-llama-cpp`   | Claude Code against the local llama.cpp server                                      | `nemotron-3.5`                                        | client high; server auto | 262,144 |
 | `codex` / `,codex`    | Codex; interactive `codex` routes through `,codex`, which adds local-model metadata | `gpt-6-astra`                                         | high                     | short   |

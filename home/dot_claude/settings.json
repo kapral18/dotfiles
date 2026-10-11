@@ -7,7 +7,7 @@
   "permissions": {
     "defaultMode": "bypassPermissions"
   },
-  "model": "claude-sonnet-5-5",
+  "model": "claude-opus-5-5",
   "advisorModel": "claude-opus-5-5",
   "effortLevel": "high",
   "autoCompactWindow": 400000,
@@ -18,7 +18,7 @@
   "agentPushNotifEnabled": true,
   "tui": "fullscreen",
   "modelSettings": {
-    "claude-sonnet-5-5": {
+    "claude-opus-5-5": {
       "effortLevel": "high"
     }
   },
