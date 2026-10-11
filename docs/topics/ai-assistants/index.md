@@ -27,9 +27,9 @@ OMP's native advisor adds main-session notes; child advisors stay off.
 | Harness                   | Default model                    | Notes                                                            |
 | ------------------------- | -------------------------------- | ---------------------------------------------------------------- |
 | Claude Code               | `claude-sonnet-5-5`, effort high | `,claude-openrouter` and `,claude-llama-cpp` switch the backend  |
-| Pi                        | `openai-codex/gpt-6.1-sol`       | `pi-subagents` with built-in agents disabled; repo profiles only |
+| Pi                        | `openai-codex/gpt-6-astra`       | `pi-subagents` with built-in agents disabled; repo profiles only |
 | OMP                       | `anthropic/claude-opus-5-5:high` | native `scout`; repo `k-agent-reviewer`                          |
-| Codex                     | `gpt-6.1-sol`                    | `,codex`, `,codex-openrouter`, `,codex-llama-cpp`                |
+| Codex                     | `gpt-6-astra`                    | `,codex`, `,codex-openrouter`, `,codex-llama-cpp`                |
 | OpenCode, Crush, freebuff | per-harness config               | basic config and MCP only; no custom flows                       |
 
 ## Principles

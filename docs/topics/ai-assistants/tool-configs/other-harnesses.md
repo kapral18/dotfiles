@@ -18,7 +18,7 @@ Interactive shells route `codex` through `~/bin/,codex`, which injects the local
 
 ### Codex settings
 
-`model = "gpt-6.1-sol"`, `model_reasoning_effort = "high"`, `tui.auto_recap = false`, `features.memories = false` (`,ai-kb` is the only durable store).
+`model = "gpt-6-astra"`, `model_reasoning_effort = "high"`, `tui.auto_recap = false`, `features.memories = false` (`,ai-kb` is the only durable store).
 Codex discovers shared skills under `~/.agents/skills`. `k-review`'s Verify mode uses fresh native agents with the shared reviewer prompt; other modes stay inline. See [Subagents](../subagents.md).
 
 Policy: `approval_policy = "never"`, `sandbox_mode = "danger-full-access"`.
