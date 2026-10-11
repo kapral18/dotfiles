@@ -116,6 +116,13 @@ GATES: tuple[Gate, ...] = (
 
 TEST_RULES: tuple[TestRule, ...] = (
     TestRule(
+        prefixes=(
+            "home/readonly_dot_default-custom-packages.tmpl",
+            "home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl",
+        ),
+        tests=("tests/test_install_custom_packages.py",),
+    ),
+    TestRule(
         prefixes=("scripts/merge_claude_mcp.py",),
         tests=("test_generate_mcp_configs.py",),
     ),

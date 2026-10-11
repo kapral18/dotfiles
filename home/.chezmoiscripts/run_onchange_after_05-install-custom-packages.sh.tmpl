@@ -61,12 +61,12 @@ find_single_file() {
 }
 
 # -----------------------------------------------
-# Function to download and install DMG-based macOS apps from GitHub releases
+# Function to download and install DMG-based macOS apps
 # -----------------------------------------------
 
-# Usage: install_dmg_app "AppName" "owner/repo" "release-tag|latest" "app.bundle.name" [asset-pattern]
-# Example: install_dmg_app "FluidVoice" "altic-dev/FluidVoice" "FluidVoice.app"
-install_dmg_app() {
+# Usage: install_dmg_app "AppName" "owner/repo|https://..." "release-tag|latest" "App.app" [asset-pattern]
+# HTTPS sources use latest and .dmg for the release tag and asset pattern.
+install_dmg_app() (
   local app_name="$1"
   local github_repo="$2"
   local release_tag="$3"
@@ -80,8 +80,7 @@ install_dmg_app() {
     return 0
   fi
 
-  require_cmd gh
-  require_cmd hdiutil
+  require_cmd hdiutil || return 1
 
   echo "Installing $app_name..."
   local temp_dir
@@ -91,16 +90,19 @@ install_dmg_app() {
 
   local mounted=0
   cleanup_dmg_install() {
-    trap - RETURN
     if ((mounted == 1)); then
       hdiutil detach "$mount_dir" -quiet 2>/dev/null || true
     fi
     rm -rf "$temp_dir"
   }
-  trap cleanup_dmg_install RETURN
+  trap cleanup_dmg_install EXIT
 
-  # Download latest release asset using gh CLI (handles auth automatically)
-  if [[ "$release_tag" != "latest" && -n "$release_tag" ]]; then
+  if [[ "$github_repo" == https://* ]]; then
+    if ! curl --fail --location --show-error --output "$temp_dir/download.dmg" "$github_repo"; then
+      echo "Error: Could not download $app_name from $github_repo" >&2
+      return 1
+    fi
+  elif [[ "$release_tag" != "latest" && -n "$release_tag" ]]; then
     if ! gh release download "$release_tag" --repo "$github_repo" --pattern "*$asset_pattern" --dir "$temp_dir"; then
       echo "Error: Could not download $app_name from $github_repo" >&2
       return 1
@@ -117,7 +119,7 @@ install_dmg_app() {
   dmg_file=$(find_single_file "$temp_dir" "-name '*$asset_pattern'" "DMG")
 
   # Mount DMG and copy app
-  hdiutil attach "$dmg_file" -quiet -nobrowse -mountpoint "$mount_dir"
+  hdiutil attach "$dmg_file" -quiet -nobrowse -mountpoint "$mount_dir" || return 1
   mounted=1
 
   if [[ ! -d "$mount_dir/$app_bundle" ]]; then
@@ -125,10 +127,10 @@ install_dmg_app() {
     return 1
   fi
 
-  cp -r "$mount_dir/$app_bundle" /Applications/
+  cp -r "$mount_dir/$app_bundle" /Applications/ || return 1
 
   echo "$app_name installed successfully"
-}
+)
 
 # -----------------------------------------------
 # Function to download and install GitHub release CLI binaries (no eget)

@@ -4,12 +4,13 @@ sidebar_position: 17
 
 # Custom Packages Registry
 
-"Custom packages" are tools/apps installed outside standard package managers using a managed chezmoi list. This registry supports GitHub-release assets.
+"Custom packages" are tools/apps installed outside standard package managers using a managed chezmoi list. This registry supports GitHub-release assets and direct HTTPS DMGs.
 
 ## Preconditions
 
 - The tool/app is not available in higher-priority package managers for this repo, or the higher-priority package is known to be unsafe for this app's update model.
 - For GitHub-release formats, you identified the official GitHub repository and release asset naming.
+- For direct DMGs, you verified the HTTPS download URL on the publisher's site and inspected the app bundle.
 - You know which format applies: `dmg`, `file`, `tar_gz_bin`, or `zip_opt`.
 
 ## Where The List Lives
@@ -20,10 +21,13 @@ sidebar_position: 17
 
 The list is pipe-delimited. The template itself documents the schema:
 
-- DMG apps: `dmg|App Name|owner/repo|release-tag|AppBundle.app|asset-pattern`
+- GitHub DMG apps: `dmg|App Name|owner/repo|release-tag|AppBundle.app|asset-pattern`
+- Direct DMG apps: `dmg|App Name|https://.../app.dmg|latest|AppBundle.app|.dmg`
 - Single binaries: `file|tool-name|owner/repo|release-tag|asset-pattern|output-binary-name`
 - Tarballs with a binary: `tar_gz_bin|tool-name|owner/repo|release-tag|asset-pattern|bin-in-archive|output-binary-name`
 - Zip bundles that must keep sibling dylibs: `zip_opt|tool-name|owner/repo|release-tag|asset-pattern|bin-in-archive|output-binary-name`
+
+Direct DMGs use `latest` as a placeholder and `.dmg` as the asset pattern. Existing app directories are skipped, not upgraded.
 
 ## Steps
 

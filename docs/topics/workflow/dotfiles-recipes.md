@@ -122,9 +122,10 @@ When adding formulas or casks:
 
 When a macOS app is not available via Homebrew but provides a .dmg release:
 
-1. **Verify DMG source**: Confirm the official GitHub repo and `.dmg` release asset.
+1. **Verify DMG source**: Confirm the official GitHub release asset or an HTTPS DMG linked by the publisher.
 2. **Add registry entry**: Use `home/readonly_dot_default-custom-packages.tmpl`.
 3. **Use DMG format**: `dmg|App Name|owner/repo|release-tag|AppName.app|asset-pattern`.
+   For direct downloads: `dmg|App Name|https://.../app.dmg|latest|AppName.app|.dmg`.
 4. **Installer handles**:
    - Latest release download from GitHub API
    - DMG mounting and app copy to /Applications
