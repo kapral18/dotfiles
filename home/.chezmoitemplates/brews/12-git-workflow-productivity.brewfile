@@ -5,10 +5,6 @@
 # parallel's `sem` helper if either formula is linked into /opt/homebrew/bin.
 brew "sem-cli", link: false
 
-# Blazing fast terminal-ui for git
-# https://github.com/extrawurst/gitui
-brew "gitui"
-
 # Simple terminal UI for git commands
 # https://github.com/jesseduffield/lazygit
 brew "lazygit"

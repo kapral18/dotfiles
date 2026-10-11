@@ -7,10 +7,6 @@ brew "knqyf263/sou/sou"
 # https://github.com/wagoodman/dive
 brew "dive"
 
-# Container runtimes on MacOS (and Linux) with minimal setup
-# https://github.com/abiosoft/colima/blob/main/README.md
-brew "colima"
-
 # Explore the (overlay) filesystem and layers of OCI container images
 # https://github.com/bschaatsbergen/cek
 brew "cek"
@@ -18,12 +14,3 @@ brew "cek"
 # Simple terminal UI for both docker and docker-compose
 # https://github.com/jesseduffield/lazydocker
 brew "lazydocker"
-
-# Kubernetes CLI To Manage Your Clusters In Style!
-# https://k9scli.io/
-tap "derailed/k9s", trusted: true
-brew "derailed/k9s/k9s"
-
-# Run a Kubernetes cluster locally
-# https://minikube.sigs.k8s.io/
-brew "minikube"

@@ -19,19 +19,6 @@ brew "ijq"
 # Dependency of tmux github dashboard
 brew "yq"
 
-# Like jq, but for binary formats
-# https://github.com/wader/fq
-tap "wader/tap", trusted: true
-brew "wader/tap/fq"
-
-# Convert command output to JSON
-# https://github.com/kellyjonbrazil/jc
-brew "jc"
-
-# Like jq, but for HTML
-# https://github.com/mgdm/htmlq
-brew "htmlq"
-
 # Command-line CSV processor
 # https://github.com/medialab/xan
 brew "xan"

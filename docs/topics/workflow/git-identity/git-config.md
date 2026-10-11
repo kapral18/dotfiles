@@ -6,11 +6,11 @@ sidebar_position: 1
 
 Git configuration is managed from chezmoi source and installed into `$HOME`.
 
-| Concern                  | Source                                                                                                                                                                                                                             |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Main git config template | [`home/private_readonly_dot_gitconfig.tmpl`](../../../../home/private_readonly_dot_gitconfig.tmpl)                                                                                                                                 |
-| Allowed signers          | [`home/private_dot_ssh/private_executable_allowed_signers.tmpl`](../../../../home/private_dot_ssh/private_executable_allowed_signers.tmpl)                                                                                         |
-| Git TUIs                 | [`home/dot_config/exact_lazygit/`](../../../../home/dot_config/exact_lazygit/), [`home/dot_config/exact_gitui/`](../../../../home/dot_config/exact_gitui/), [`home/dot_config/exact_tig/`](../../../../home/dot_config/exact_tig/) |
+| Concern                  | Source                                                                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Main git config template | [`home/private_readonly_dot_gitconfig.tmpl`](../../../../home/private_readonly_dot_gitconfig.tmpl)                                                     |
+| Allowed signers          | [`home/private_dot_ssh/private_executable_allowed_signers.tmpl`](../../../../home/private_dot_ssh/private_executable_allowed_signers.tmpl)             |
+| Git TUIs                 | [`home/dot_config/exact_lazygit/`](../../../../home/dot_config/exact_lazygit/), [`home/dot_config/exact_tig/`](../../../../home/dot_config/exact_tig/) |
 
 ## Identity
 

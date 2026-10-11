@@ -1,3 +1,0 @@
-# Command-line benchmarking tool
-# https://github.com/sharkdp/hyperfine
-brew "hyperfine"

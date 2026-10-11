@@ -2,10 +2,6 @@
 # https://github.com/ayoisaiah/f2
 brew "f2"
 
-# Identify and delete duplicate files
-# https://github.com/adrianlopezroche/fdupes
-brew "fdupes"
-
 # Efficient duplicate file finder with hashing and parallelism
 # https://github.com/pkolaczk/fclones
 brew "fclones"

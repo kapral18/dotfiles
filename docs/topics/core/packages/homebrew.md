@@ -28,7 +28,7 @@ brew info <formula-or-cask>
 
 2. Add the entry (`brew "<formula>"` or `cask "<cask>"`, with its comment/URL) to that file.
 
-   Non-official taps are declared as `tap "<owner>/<tap>", trusted: true` next to the entry that needs them. `brew bundle` writes that into Homebrew's trust store (`~/.config/homebrew/trust.json`) before loading any formula, so no `brew trust` run and no `HOMEBREW_NO_REQUIRE_TAP_TRUST` override is needed.
+   Non-official taps are declared as `tap "<owner>/<tap>", trusted: true` next to the entry that needs them. `brew bundle` writes that into Homebrew's trust store (`~/.config/homebrew/trust.json`) before loading any formula, so no `brew trust` run and no `HOMEBREW_NO_REQUIRE_TAP_TRUST` override is needed for declared taps. The apply hook trusts only retired taps, so it can untap them.
 
    If the category file does not exist yet:
 
@@ -47,7 +47,7 @@ The brew hook is:
 
 - [`home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl)
 
-It runs `brew bundle cleanup --global --force` and `brew bundle --global --no-upgrade`, so the assembled Brewfile is the source-of-truth (anything not listed is uninstalled). Its `run_onchange` hash is computed from the rendered assembler, so editing any partial re-triggers the hook.
+It first trusts and force-untaps every tap that `brew bundle cleanup --global` reports as "Would untap" (cleanup resets brew trust before it untaps, so a tap with installed formulae would fail as untrusted). `brew untap --force` also uninstalls every formula and cask installed from that tap, including ones with keepme refs; the later `brew bundle` reinstalls listed names from core. It then runs `brew bundle cleanup --global --force` and `brew bundle --global --no-upgrade`, so the assembled Brewfile is the source-of-truth (anything not listed is uninstalled). Its `run_onchange` hash is computed from the rendered assembler, so editing any partial re-triggers the hook.
 
 ## Verification
 

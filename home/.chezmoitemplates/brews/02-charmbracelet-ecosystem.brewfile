@@ -15,16 +15,3 @@ brew "glow"
 # Tool for glamorous shell scripts
 # https://github.com/charmbracelet/gum
 brew "gum"
-
-# Personal readme generator
-# https://github.com/charmbracelet/markscribe
-brew "charmbracelet/tap/markscribe"
-
-# Human-readable ANSI sequences
-# https://github.com/charmbracelet/sequin
-brew "sequin"
-
-# Terminal Recording
-# Your CLI home video recorder
-# https://github.com/charmbracelet/vhs
-brew "vhs"

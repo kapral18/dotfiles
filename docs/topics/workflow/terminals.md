@@ -36,10 +36,9 @@ Tombi reads the inline `$schema` entries in the rendered Yazi TOML files, so TOM
 
 ## Git TUIs
 
-Three terminal git clients are configured; pick whichever fits the task (the [git identity](git-identity/index.md) and [git skill](../ai-assistants/index.md) cover the underlying workflow):
+Two terminal git clients are configured; pick whichever fits the task (the [git identity](git-identity/index.md) and [git skill](../ai-assistants/index.md) cover the underlying workflow):
 
 - lazygit — [`home/dot_config/exact_lazygit/config.yml`](../../../home/dot_config/exact_lazygit/config.yml)
-- gitui — [`home/dot_config/exact_gitui/readonly_key_bindings.ron`](../../../home/dot_config/exact_gitui/readonly_key_bindings.ron), [`home/dot_config/exact_gitui/readonly_theme.ron`](../../../home/dot_config/exact_gitui/readonly_theme.ron)
 - tig — [`home/dot_config/exact_tig/readonly_config`](../../../home/dot_config/exact_tig/readonly_config)
 
 A PR-focused dashboard, gh-dash, is configured separately under [`home/dot_config/exact_gh-dash/`](../../../home/dot_config/exact_gh-dash/) (one config plus shared settings).

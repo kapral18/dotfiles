@@ -6,12 +6,6 @@
 # ==============================================================================
 
 # ==============================================================================
-# CORE DEPENDENCIES
-# System libraries and dependencies required by other packages
-# ==============================================================================
-{{ includeTemplate "brews/01-core-dependencies.brewfile" . -}}
-
-# ==============================================================================
 # CHARMBRACELET ECOSYSTEM
 # Beautiful command-line tools from Charm
 # ==============================================================================
@@ -150,12 +144,6 @@
 {{ includeTemplate "brews/25-binary-analysis-debugging.brewfile" . -}}
 
 # ==============================================================================
-# PERFORMANCE MEASUREMENT & BENCHMARKING
-# Tools for measuring and benchmarking performance
-# ==============================================================================
-{{ includeTemplate "brews/26-performance-measurement-benchmarking.brewfile" . -}}
-
-# ==============================================================================
 # TASK AUTOMATION & SCHEDULING
 # Tools for automating tasks and monitoring changes
 # ==============================================================================
@@ -172,12 +160,6 @@
 # Tools for transferring files between systems
 # ==============================================================================
 {{ includeTemplate "brews/29-file-transfer-sharing.brewfile" . -}}
-
-# ==============================================================================
-# SSH & REMOTE ACCESS
-# Tools for managing SSH connections
-# ==============================================================================
-{{ includeTemplate "brews/30-ssh-remote-access.brewfile" . -}}
 
 # ==============================================================================
 # PRESENTATION & CONTENT CREATION

@@ -6,10 +6,6 @@ cask "thebrowsercompany-dia"
 # https://brave.com/
 cask "brave-browser"
 
-# Graphically shows disk usage within a file system
-# https://grandperspectiv.sourceforge.io/
-cask "grandperspective"
-
 # Multimedia player
 # https://www.videolan.org/vlc/
 cask "vlc"
@@ -62,10 +58,6 @@ cask "oversight"
 # https://objective-see.org/products/reikey.html
 cask "reikey"
 
-# Convert potentially dangerous PDFs or Office documents into safe PDFs
-# https://dangerzone.rocks/
-cask "dangerzone"
-
 # App to build and share containerised applications and microservices
 # https://www.docker.com/products/docker-desktop
 cask "docker-desktop"
@@ -73,13 +65,6 @@ cask "docker-desktop"
 # Set of tools to manage resources and applications hosted on Google Cloud
 # https://cloud.google.com/cli/
 cask "gcloud-cli"
-
-# Microsoft Azure CLI
-# https://learn.microsoft.com/cli/azure/
-brew "azure-cli"
-
-# Interactive HTTPS proxy
-# https://mitmproxy.org/
 
 # All-in-one bookmark manager
 # https://raindrop.io/
@@ -109,14 +94,6 @@ cask "anydesk"
 # https://www.google.com/chrome/
 cask "google-chrome"
 
-# Web browser
-# https://www.google.com/chrome/canary/
-cask "google-chrome@canary"
-
-# Automated testing of webapps for Google Chrome
-# https://chromedriver.chromium.org/
-cask "chromedriver"
-
 # VPN client
 # https://mullvad.net/
 cask "mullvad-vpn"
@@ -140,5 +117,3 @@ cask "google-drive"
 # Task management application
 # https://www.rememberthemilk.com/
 cask "remember-the-milk"
-
-cask "mitmproxy"

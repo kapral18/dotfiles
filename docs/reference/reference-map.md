@@ -91,7 +91,6 @@ Each registry has a declarative list plus the hook that converges it. See [Packa
 | bat             | [`home/dot_config/exact_bat/readonly_config`](../../home/dot_config/exact_bat/readonly_config)         |
 | Yazi (file mgr) | [`home/dot_config/yazi/`](../../home/dot_config/yazi/)                                                 |
 | lazygit         | [`home/dot_config/exact_lazygit/config.yml`](../../home/dot_config/exact_lazygit/config.yml)           |
-| gitui           | [`home/dot_config/exact_gitui/`](../../home/dot_config/exact_gitui/)                                   |
 | tig             | [`home/dot_config/exact_tig/readonly_config`](../../home/dot_config/exact_tig/readonly_config)         |
 | btop            | [`home/dot_config/exact_btop/btop.conf`](../../home/dot_config/exact_btop/btop.conf)                   |
 | gh-dash         | [`home/dot_config/exact_gh-dash/`](../../home/dot_config/exact_gh-dash/)                               |

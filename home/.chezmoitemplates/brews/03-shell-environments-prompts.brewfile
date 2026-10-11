@@ -6,10 +6,6 @@ brew "bash"
 # https://fishshell.com/
 brew "fish"
 
-# Modern shell for the GitHub era
-# https://www.nushell.sh/
-brew "nushell"
-
 # Language server for Fish shell
 # https://github.com/ndonfris/fish-lsp
 brew "fish-lsp"

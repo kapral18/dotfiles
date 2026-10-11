@@ -1,3 +1,0 @@
-# Terminal UI to manage SSH hosts
-# https://github.com/quantumsheep/sshs
-brew "sshs"

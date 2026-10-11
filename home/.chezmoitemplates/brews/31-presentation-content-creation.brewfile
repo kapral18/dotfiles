@@ -1,7 +1,3 @@
-# Terminal slideshow tool
-# https://github.com/mfontanini/presenterm
-brew "presenterm"
-
 # Cast text to speech
 # https://github.com/piqoni/cast-text
 tap "piqoni/cast-text", trusted: true

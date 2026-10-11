@@ -11,6 +11,13 @@ if test -f "$agy_target"; and not test -L "$agy_target"
     rm -f "$agy_target"
 end
 
+# cleanup --force resets brew trust to the Brewfile before it untaps, so a tap that
+# still has installed formulae fails as untrusted. Trust and untap retired taps first.
+# This grants trust to any undeclared tap and uninstalls everything installed from it.
+for tap in (brew bundle cleanup --global 2>/dev/null | awk '/^Would untap:/ {on=1; next} /^$|^Run |^Would / {on=0} on')
+    brew trust --tap $tap; and brew untap --force $tap
+end
+
 brew bundle cleanup --global --force
 brew bundle --global --no-upgrade
 

@@ -53,7 +53,3 @@ brew "bats-core"
 # Program that displays statistics about your code
 # https://github.com/XAMPPRocky/tokei
 brew "tokei"
-
-# Tool Command Language
-# https://www.tcl-lang.org/
-brew "tcl-tk"

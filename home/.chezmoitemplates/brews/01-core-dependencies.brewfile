@@ -1,3 +1,0 @@
-# C/C++ and Java libraries for Unicode and globalization
-# https://icu.unicode.org/home
-brew "icu4c"

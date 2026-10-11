@@ -6,11 +6,6 @@ brew "tealdeer"
 # https://github.com/bensadeh/circumflex
 brew "circumflex"
 
-# Hacker News in the terminal
-# https://github.com/ggerganov/hnterm
-tap "ggerganov/ggerganov", trusted: true
-brew "ggerganov/ggerganov/hnterm"
-
 # Reddit, refined for the terminal
 # https://github.com/ck-zhang/reddix
 brew "reddix"
@@ -30,15 +25,3 @@ brew "pandoc"
 # Fast link checker for websites and docs
 # https://github.com/lycheeverse/lychee
 brew "lychee"
-
-# Terminal document viewer for .docx files
-# https://github.com/bgreenwell/doxx
-brew "doxx"
-
-# Terminal Excel viewer with an interactive TUI (.xlsx/.xls/.ods)
-# https://github.com/bgreenwell/xleak
-brew "xleak"
-
-# Small tool to convert Djvu files to PDF files
-# https://0x2a.at/site/projects/djvu2pdf/
-brew "djvu2pdf"

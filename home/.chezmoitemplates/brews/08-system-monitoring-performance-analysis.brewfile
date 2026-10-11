@@ -3,10 +3,6 @@
 # https://github.com/aristocratos/btop
 brew "btop"
 
-# Improved top
-# https://htop.dev/
-brew "htop"
-
 # Show running processes as a tree
 # http://www.thp.uni-duisburg.de/pstree/
 brew "pstree"
@@ -27,10 +23,3 @@ brew "killport"
 # https://github.com/cesarferreira/rip
 tap "cesarferreira/tap", trusted: true
 brew "cesarferreira/tap/rip"
-
-# Cross-platform application to monitor your network traffic
-# https://sniffnet.net/
-brew "sniffnet"
-# List USB buses and devices on macOS
-# https://github.com/tuna-f1sh/cyme
-brew "cyme"

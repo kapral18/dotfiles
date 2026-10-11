@@ -350,9 +350,6 @@ check_tools() {
     "rg:ripgrep"
     "jq:jq"
     "yq:yq"
-    "htop:htop"
-    "hyperfine:hyperfine"
-    "watchexec:watchexec"
     ",parallel:parallel"
   )
 

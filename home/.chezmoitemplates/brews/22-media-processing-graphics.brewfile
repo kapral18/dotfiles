@@ -23,10 +23,6 @@ brew "lazycut"
 # https://github.com/deweller/switchaudio-osx
 brew "switchaudio-osx"
 
-# Image processing tools collection
-# http://www.graphicsmagick.org/
-brew "graphicsmagick"
-
 # Terminal graphics for the 21st century
 # https://hpjansson.org/chafa/
 brew "chafa"

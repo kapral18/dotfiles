@@ -138,3 +138,5 @@ work/.gitconfig
 .config/tmux/scripts/pickers/github/gh-picker-work.yml
 .config/tmux/scripts/pickers/github/gh_dashboard.sh
 .config/tmux/scripts/pickers/github/lib/gh_picker_toggle.sh
+# Retired gitui config
+.config/gitui
