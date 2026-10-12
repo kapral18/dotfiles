@@ -41,7 +41,7 @@ Conventions:
 
 Current file map:
 
-- `00-base.conf`: tmux defaults / terminal features / mouse / indexing / env
+- `00-base.conf`: tmux defaults / terminal features / mouse / indexing / env / popup style
 - `10-prefix-and-global-keys.conf`: prefix, global key behavior, swap key-table, reload popup
 - `11-pane-and-window-nav.conf`: pane/window navigation, resize, split, and path-aware new-window
 - `20-copy.conf`: copy-mode (vi) + mouse copy overrides
