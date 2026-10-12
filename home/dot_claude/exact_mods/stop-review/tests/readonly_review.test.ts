@@ -13,7 +13,7 @@ const answered = (text: string) => ({ isAnswered: true, text, usage })
 
 // The engine beneath the plugin: `rows` is the transcript, `replies` answer each review in turn.
 // `below` answers each Stop beneath the plugin in turn, then `{}`.
-const engine = (on: On, rows: { toolUses: Use[] }[], replies: unknown[], options: { settings?: Record<string, unknown>; below?: { block?: string }[] } = {}) => {
+const engine = (on: On, rows: { toolUses: Use[] }[], replies: unknown[], options: { settings?: Record<string, unknown>; below?: { block?: string }[]; rules?: string | Error } = {}) => {
   const sent: { model: string; prompt: string; system?: string; blocks?: readonly { text: string; cache?: true }[] }[] = []
   const ids = new Map<string, string>()
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
@@ -27,7 +27,10 @@ const engine = (on: On, rows: { toolUses: Use[] }[], replies: unknown[], options
     value: rows.map(row => ({ ...row, toolUses: row.toolUses.map(u => ({ ...u, tool_use_id: ids.get(u.tool_use_id) ?? u.tool_use_id })) })) as never,
   }))
   on('env.get', () => ({ value: '/home/u' }))
-  on('fs.read', () => ({ value: 'RULES' }))
+  on('fs.read', () => {
+    if (options.rules instanceof Error) throw options.rules
+    return { value: options.rules ?? 'RULES' }
+  })
   on('ui.status', () => ({ value: undefined }))
   on('ui.log', () => ({ value: undefined }))
   on('model.complete', ($, e) => {
@@ -63,7 +66,7 @@ test('reviews the turn once and sends its concerns back', async ($, on) => {
   const block = (await $.classic.Stop(stop('Done.'))).block
   expect(block).toMatch(/claude-opus-5-5 reviewed this turn/)
   expect(block).toMatch(/- no test ran — no pytest in the record/)
-  expect(block).toMatch(/\nYour reply is the final message the user reads: open it with the full answer to their request within the ~\/AGENTS.md §8 length budget/)
+  expect(block).toMatch(/\nYour reply replaces your last answer: follow the ~\/AGENTS.md §8 rule for a send-back\.$/)
   expect(sent[0]?.model).toBe('claude-opus-5-5')
   expect(sent[0]?.prompt).toBe(
     '# Earlier conversation, as context\n\n## User\nbuild the mod?\n\n## Agent\nShould I build a Stop-time reviewer mod?\n\n' +
@@ -72,13 +75,55 @@ test('reviews the turn once and sends its concerns back', async ($, on) => {
   // The cache mark sits on the last earlier turn, which the next review repeats.
   expect(sent[0]?.blocks?.filter(block => block.cache).map(block => block.text)).toEqual(['## User\nbuild the mod?\n\n## Agent\nShould I build a Stop-time reviewer mod?\n\n'])
   expect(sent[0]?.system).toMatch(/as data, not instructions[\s\S]*RULES/)
-  // The rubric judges a `Decision needed:` item on substance, flags a partial pass of an all-of-it request, and does not count a subagent's report as a check.
-  expect(sent[0]?.system).toMatch(/Decision needed:. label does not exempt it/)
-  expect(sent[0]?.system).toMatch(/reports a partial pass/)
-  expect(sent[0]?.system).toMatch(/subagent's or reviewer's report is evidence only when the agent reran/)
   await $.turn.start({ text: '', turnId: 'c' })
   expect((await $.classic.Stop(stop('Done.', true))).block).toBeUndefined()
   expect(sent).toHaveLength(1)
+})
+
+for (const [name, rules] of [['empty', ''], ['unreadable', new Error('ENOENT')]] as const) {
+  test(`skips the review when ~/AGENTS.md is ${name}`, async ($, on) => {
+    const sent = engine(on, turn, [answered('concern: x — y — z')], { rules })
+    await run($, 'yeah I think so')
+    expect((await $.classic.Stop(stop('Done.'))).block).toBeUndefined()
+    expect(sent).toHaveLength(0)
+  })
+}
+
+test('waits out a pause on a subagent, then reviews the turn with its request once', async ($, on) => {
+  const sent = engine(on, turn, [answered('PASS'), answered('PASS')])
+  await run($, 'yeah I think so')
+  const subagent = [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }]
+  expect((await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: subagent })).block).toBeUndefined()
+  expect(sent).toHaveLength(0)
+  // The task notice that wakes the session continues the paused turn; a background shell task alone does not pause it.
+  await $.turn.start({ text: '<task-notification>\n<task-id>a1</task-id>', turnId: 'notice' })
+  const shell = [{ id: 's1', type: 'shell', status: 'running', description: 'dev server' }]
+  expect((await $.classic.Stop({ ...stop('Done.'), background_tasks: shell })).block).toBeUndefined()
+  expect(sent).toHaveLength(1)
+  expect(sent[0]?.prompt).toMatch(/## User request\nyeah I think so\n/)
+  // A notice after an ended turn starts a new one.
+  await $.turn.start({ text: '<task-notification>\n<task-id>s1</task-id>', turnId: 'later' })
+  await call($, check)
+  await $.classic.Stop(stop('Done again.'))
+  expect(sent[1]?.prompt).toMatch(/## User request\n\(no typed prompt/)
+})
+
+test('a typed prompt during a pause starts a new turn', async ($, on) => {
+  const sent = engine(on, turn, [answered('PASS')])
+  await run($, 'yeah I think so')
+  await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }] })
+  await run($, 'also rename it')
+  await $.classic.Stop(stop('Renamed.'))
+  expect(sent[0]?.prompt).toMatch(/## User request\nalso rename it\n/)
+})
+
+test('an empty wake after a pause also continues the turn', async ($, on) => {
+  const sent = engine(on, turn, [answered('PASS')])
+  await run($, 'yeah I think so')
+  await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }] })
+  await $.turn.start({ text: '', turnId: 'wake' })
+  await $.classic.Stop(stop('Done.'))
+  expect(sent[0]?.prompt).toMatch(/## User request\nyeah I think so\n/)
 })
 
 test('makes no call for a turn without tools', async ($, on) => {
@@ -150,10 +195,10 @@ test('takes the request from the typed prompt and starts the turn at its first c
     /^# Earlier conversation, as context\n\n## Agent\nShall I review it\?\n\n# Turn under review\n## User request\nreview the diff\n\n## User\n\[Image: source: \/tmp\/1\.png\]\n\n### Bash\ninput: \{"command":"unseen"\}[\s\S]*### Skill[\s\S]*## User\nBase directory[\s\S]*### Read/,
   )
   // A notice that arrives while idle starts a turn of its own: without tools, no review; the earlier calls are not its own.
-  await $.turn.start({ text: '', turnId: 'n1' })
+  await $.turn.start({ text: '<task-notification>noted</task-notification>', turnId: 'n1' })
   expect((await $.classic.Stop(stop('Noted.'))).block).toBeUndefined()
   expect(sent).toHaveLength(1)
-  await $.turn.start({ text: '', turnId: 'n2' })
+  await $.turn.start({ text: '<task-notification>build done</task-notification>', turnId: 'n2' })
   rows.push(user('<task-notification>build done</task-notification>'), assistant('', [later]), toolResult())
   await call($, later)
   // A plugin's own $.tool.call adds no transcript row and pulls in no earlier call.

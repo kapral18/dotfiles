@@ -24,7 +24,7 @@ Use a lowercase topic slug (`auth-fix`, `ai-setup-rewrite`). Keep the note under
 - **Goal**: the user's request and success criteria, in their terms.
 - **Decisions**: each settled decision with its reason. Include user corrections verbatim.
 - **State**: what is done, what is changed but unverified, and the last check result with its command.
-- **Open**: remaining work in order, plus blockers and questions for the user.
+- **Remaining**: remaining work in order, plus blockers and questions for the user.
 - **Files**: the paths that matter, one per line.
 - **Verify**: the commands that prove the work is done.
 
@@ -36,5 +36,5 @@ Mark anything not verified as `Unknown`; do not state guesses as facts.
 
 1. Run `,handoff show <topic>`. If the topic is unknown, run `,handoff list` (or `--all`) and ask which one.
 2. Treat the note as a starting point, not as proof. Check the git state and files it names before you rely on them.
-3. Continue the first open item. Do not redo work the note marks as done and verified unless the evidence contradicts it.
+3. Continue the first remaining item. Do not redo work the note marks as done and verified unless the evidence contradicts it.
 4. Save an updated note when the user asks for a handoff again or the work changes direction.

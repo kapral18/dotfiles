@@ -99,3 +99,112 @@ test('adds no Stop feedback when read-only Bash runs beside older unmapped code'
   expect(result.block).toBeUndefined()
   expect(result.additionalContext).toBeUndefined()
 })
+
+// The engine for Bash: the marker, `git status -z` output, the files `find` reports newer than the marker, and a fixed `affected` answer.
+const bash = (on: On, status: string, newer: string, affected: string, top = '/repo\n') => {
+  const argv: string[][] = []
+  on('fs.exists', () => ({ value: true }))
+  on('process.run', ($, e) => {
+    argv.push([...e.argv])
+    const [command, first] = e.argv
+    if (command === 'sh') return { value: ran('/tmp/marker\n') }
+    if (command === 'git') return { value: ran(first === 'rev-parse' ? top : status) }
+    if (command === 'find') return { value: ran(newer, 1) }
+    return { value: ran(command === 'rm' ? '' : affected) }
+  })
+  on('tool.call', () => ({ result: {} as never }))
+  return argv
+}
+
+test('notes once per directory when a Bash command changes code in an unmapped directory', async ($, on) => {
+  const argv = bash(on, ' M src/a.ts\0?? src/b.ts\0', './src/a.ts\n./src/b.ts\n', 'unmapped: src\n2 files; 2 outside every mapped area\n')
+  const first = await $.tool.call({ tool: 'Bash', command: "python3 - <<'EOF'\nopen('src/a.ts', 'w')\nEOF" })
+  expect(first.deny).toBeUndefined()
+  expect(first.context?.join('\n')).toMatch(/changed code in src in \/repo, which has no behavior-map area\. Map it now/)
+  expect(argv.find(args => args[0] === ',behavior-map')).toEqual([',behavior-map', 'affected', 'src/a.ts', 'src/b.ts'])
+  const second = await $.tool.call({ tool: 'Bash', command: "sed -i '' s/a/b/ src/b.ts" })
+  expect(second.context ?? []).toEqual([])
+  // Each writing command gets its own marker, removed after its scan.
+  expect(argv.filter(args => args[0] === 'sh')).toHaveLength(2)
+  expect(argv.filter(args => args[0] === 'rm')).toHaveLength(2)
+})
+
+test('gives overlapping Bash calls their own markers', async ($, on) => {
+  let made = 0
+  let release = () => {}
+  const gate = new Promise<void>(resolve => {
+    release = resolve
+  })
+  const argv: string[][] = []
+  on('process.run', ($, e) => {
+    argv.push([...e.argv])
+    const [command, first] = e.argv
+    if (command === 'sh') return { value: ran(`/tmp/m${++made}\n`) }
+    if (command === 'git') return { value: ran(first === 'rev-parse' ? '/repo\n' : ' M src/a.ts\0') }
+    if (command === 'find') return { value: ran('./src/a.ts\n', 1) }
+    return { value: ran('') }
+  })
+  on('tool.call', async ($, e) => {
+    if ('command' in e && e.command.includes('slow')) await gate
+    return { result: {} as never }
+  })
+  // The slow command starts first; the fast one starts and ends while it runs.
+  const slow = $.tool.call({ tool: 'Bash', command: 'echo slow > src/a.ts' })
+  await $.tool.call({ tool: 'Bash', command: 'echo fast > src/b.ts' })
+  release()
+  await slow
+  expect(argv.filter(args => args[0] === 'find').map(args => args[args.indexOf('-cnewer') + 1])).toEqual(['/tmp/m2', '/tmp/m1'])
+  expect(argv.filter(args => args[0] === 'rm').map(args => args.at(-1))).toEqual(['/tmp/m2', '/tmp/m1'])
+})
+
+test('a Bash note leaves the first Edit in that directory refused', async ($, on) => {
+  bash(on, ' M src/a.ts\0', './src/a.ts\n', 'unmapped: src\n1 files; 1 outside every mapped area\n')
+  expect((await $.tool.call({ tool: 'Bash', command: 'echo x > src/a.ts' })).context?.join('\n')).toMatch(/changed code in src/)
+  expect((await $.tool.call(edit('/repo/src/b.ts'))).deny).toMatch(/src in \/repo has no behavior-map area/)
+})
+
+test('reads a rename by its new path and skips the old one', async ($, on) => {
+  // An index rename (`R `), then a worktree rename of an intent-to-add file (` R`), then an untracked file.
+  const argv = bash(on, 'R  src/new.ts\0old/gone.ts\0 R src/b.ts\0README.md\0?? -dash.ts\0', './src/new.ts\n', 'unmapped: src\n')
+  await $.tool.call({ tool: 'Bash', command: 'git mv old/gone.ts src/new.ts' })
+  const find = argv.find(args => args[0] === 'find') ?? []
+  expect(find.slice(1, find.indexOf('-maxdepth'))).toEqual(['./src/new.ts', './src/b.ts', './-dash.ts'])
+  expect(argv.find(args => args[0] === ',behavior-map')).toEqual([',behavior-map', 'affected', 'src/new.ts'])
+})
+
+test('runs nothing for a read-only or a subagent Bash command', async ($, on) => {
+  const argv = bash(on, ' M src/a.ts\0', './src/a.ts\n', 'unmapped: src\n')
+  for (const command of ['git status --short', 'rg -n foo src 2>/dev/null', 'cat a.ts >&2', 'git pull --rebase']) {
+    expect((await $.tool.call({ tool: 'Bash', command })).context ?? []).toEqual([])
+  }
+  expect((await $.tool.call({ tool: 'Bash', command: 'echo x > src/a.ts', agentId: 'a1' } as never)).context ?? []).toEqual([])
+  expect(argv).toEqual([])
+})
+
+test('checks bundled and long in-place flags', async ($, on) => {
+  const argv = bash(on, '', '', '')
+  for (const command of ['perl -0pi -e s/a/b/ src/a.ts', 'sed --in-place s/a/b/ src/a.ts', 'sed -i.bak s/a/b/ src/a.ts']) await $.tool.call({ tool: 'Bash', command })
+  expect(argv.filter(args => args[0] === 'sh')).toHaveLength(3)
+})
+
+test('does not ask for an area when a Bash command changes only docs or tests there', async ($, on) => {
+  bash(on, ' M docs/a.md\0?? src/a.test.ts\0', './docs/a.md\n./src/a.test.ts\n', 'unmapped: docs, src\n2 files; 2 outside every mapped area\n')
+  expect((await $.tool.call({ tool: 'Bash', command: 'echo x > docs/a.md' })).context ?? []).toEqual([])
+})
+
+test('names the entries a Bash command touched', async ($, on) => {
+  bash(on, ' M src/a.ts\0', './src/a.ts\n', 'entry auth/login: src/a.ts\n1 files; 0 outside every mapped area\n')
+  expect((await $.tool.call({ tool: 'Bash', command: 'perl -pi -e s/a/b/ src/a.ts' })).context?.join('\n')).toMatch(/touches auth\/login\./)
+})
+
+test('adds nothing when a writing Bash command changed no file', async ($, on) => {
+  const argv = bash(on, ' M src/a.ts\0', '', 'entry auth/login: src/a.ts\n')
+  expect((await $.tool.call({ tool: 'Bash', command: 'touch /tmp/x' })).context ?? []).toEqual([])
+  expect(argv.some(args => args[0] === ',behavior-map')).toBe(false)
+})
+
+test('adds nothing for a Bash change in a scratch repo', async ($, on) => {
+  const argv = bash(on, ' M src/a.ts\0', './src/a.ts\n', 'unmapped: src\n', '/private/tmp/clone\n')
+  expect((await $.tool.call({ tool: 'Bash', command: 'echo x > src/a.ts' })).context ?? []).toEqual([])
+  expect(argv.some(args => args[0] === ',behavior-map')).toBe(false)
+})

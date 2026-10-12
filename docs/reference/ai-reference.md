@@ -14,7 +14,7 @@ See [AI assistants](../topics/ai-assistants/index.md) and [Instructions](../topi
 | Skills                 | [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/)             |
 | Shared reviewer prompt | [`home/.chezmoitemplates/reviewer-prompt.md`](../../home/.chezmoitemplates/reviewer-prompt.md) |
 
-`~/CLAUDE.md` imports `@AGENTS.md`; `~/.claude/CLAUDE.md` links to `~/AGENTS.md`. Pi, OMP, Codex, and OpenCode read `~/AGENTS.md` through `symlink_AGENTS.md` entries in their config dirs. There are no hooks.
+`~/CLAUDE.md` and `~/.claude/CLAUDE.md` both link to `~/AGENTS.md`; Claude Code loads it once. The repo's own `CLAUDE.md` links to the repo `AGENTS.md`. Pi, OMP, Codex, and OpenCode read `~/AGENTS.md` through `symlink_AGENTS.md` entries in their config dirs. There are no hooks.
 
 ## Harness configs
 

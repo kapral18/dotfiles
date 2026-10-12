@@ -412,6 +412,26 @@ class TestBinFmtClassification(unittest.TestCase):
             "ruff format --check python-tool",
         ]
 
+    def test_WHEN_a_symlink_is_passed_or_tracked_SHOULD_format_only_the_target(self):
+        """SHOULD skip the symlink, which prettier refuses as an explicit path, in both file sources."""
+        self._write_formatter_stubs()
+        (self.root / "shell-tool").write_text("#!/usr/bin/env bash\nprintf ok\n", encoding="utf-8")
+        (self.root / "shell-link").symlink_to("shell-tool")
+        run(["git", "init", "-q"], cwd=self.root, env=self.env)
+
+        for files in (["shell-tool", "shell-link"], []):
+            self.log_path.unlink(missing_ok=True)
+            result = run(
+                [modern_bash(), str(self.root / "bin/fmt"), "--check", "--type", "sh", *files],
+                cwd=self.root,
+                env=self.env,
+                check=False,
+            )
+
+            assert result.returncode == 0, result.stderr
+            logged = self.log_path.read_text(encoding="utf-8")
+            assert "shell-tool" in logged and "shell-link" not in logged, (files, logged)
+
     def test_WHEN_path_bash_is_legacy_and_brew_is_missing_SHOULD_exit_promptly_with_error(self):
         """SHOULD fail fast instead of recursively execing /bin/bash."""
         install_legacy_bash_path(self.bin_dir, brew_prefix=None)

@@ -595,13 +595,19 @@ def _repo_paths(ctx: Context, raw: list[str]) -> set[str]:
     top = ctx.toplevel.resolve()
     paths: set[str] = set()
     for item in raw:
-        path = Path(item)
-        full = (path if path.is_absolute() else Path.cwd() / path).resolve()
-        try:
-            rel = full.relative_to(top).as_posix()
-        except ValueError:
-            raise MapError(f"{item} is outside the repo") from None
-        paths.add(f"{rel}/" if full.is_dir() and rel != "." else rel)
+        absolute = Path.cwd() / item
+        # A symlink counts by its own path and, inside the repo, by its target's.
+        own = absolute.resolve() if absolute.name in ("", "..") else absolute.parent.resolve() / absolute.name
+        found = False
+        for full in dict.fromkeys((own, absolute.resolve())):
+            try:
+                rel = full.relative_to(top).as_posix()
+            except ValueError:
+                continue
+            found = True
+            paths.add(f"{rel}/" if full.is_dir() and not full.is_symlink() and rel != "." else rel)
+        if not found:
+            raise MapError(f"{item} is outside the repo")
     return paths
 
 

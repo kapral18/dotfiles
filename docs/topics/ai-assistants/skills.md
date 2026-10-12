@@ -15,7 +15,7 @@ Skills hold task mechanics only. They do not delegate work, keep their own lifec
 
 1. Two fresh reviewers run in parallel using `k-review`'s [Reviewer launch procedure](subagents.md#profiles). The frozen scope covers the whole task change with its map and memory writes. Their findings are merged.
 2. The main session checks each finding against source and fixes the supported ones, low ones too, without asking.
-3. A fix loop: one reviewer checks only the fix diff, and the session fixes its supported findings. It stops when no supported medium or higher finding remains, after three fix-diff reviews, or when the same cause comes back at the same place.
+3. A fix loop: one reviewer checks only the fix diff, and the session fixes its supported findings. A round that fixes only lows, or only wording, gets no review. Reviews repeat while a supported medium or higher finding remains, for at most three fix-diff reviews, or until the same cause comes back at the same place; findings of the last review are still fixed, except a repeated cause, which goes under `Open:`.
 4. Report what remains. Another full review needs the user to ask.
 
 `k-light-review` is the quick inline variant for small, self-authored, low-risk changes.

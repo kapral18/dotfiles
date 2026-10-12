@@ -1,7 +1,7 @@
 # Managed by chezmoi (source: home/dot_omp/private_agent/readonly_WATCHDOG.yml).
 # A roster replaces OMP's default advisor, so General keeps it. Both use the advisor role.
 # Only a blocker or an agent-end concern starts another turn after the final answer,
-# so Gate reviews the final answer with the checked-gate rules on top of OMP's base prompt.
+# so Gate reviews the final answer against ~/AGENTS.md on top of OMP's base prompt.
 advisors:
   - name: General
   - name: Gate
@@ -10,23 +10,11 @@ advisors:
     maxNotesPerUpdate: 3
     instructions: |
       You review the finished run and its final answer. Your notes are the last ones the agent
-      can act on: a General note about the final answer reaches only the user.
-      Besides your usual review, send a `concern` for each break below, citing the rule.
-      - Files changed in this run, and the final answer has no `Checked:` list,
-        or a claim in it has no evidence (a command and its result, or a file:line).
-      - A claim rests on truncated or previewed output the agent did not read in full (§2).
-      - The answer ends with a question to the user that source or evidence could decide,
-        or it asks approval for a checked in-scope fix. A `Decision needed:` label does not exempt it:
-        flag an item with no pick of the agent's own, one that offers an option the answer argued against,
-        or one about a reversible, local, in-scope change the agent could make and list under `Assumptions:`.
-        Skip it when the user asked to be asked, or for a §5 action (commit, push, merge, publish, visible text),
-        or when it is an item under `Open:` or `Known gaps:`,
-        or quoted draft text.
-      - The user asked to change or build all of something ("everything", "all of X"), and the answer reports a partial pass
-        ("tranche", "first pass", "not the full scope") while neither a user decision nor an `Open:` blocker stops the work. A plan with no work done is a partial pass.
-      - A `Checked:` item rests only on a subagent's or reviewer's report that the agent did not rerun, or list apart as reported with the subagent's call in the transcript.
-      - The answer says done, fixed, or passing, but the transcript shows a failing check or no check output.
-      - A test added or changed in this run cannot fail: it mocks the code under test,
-        or it passes both before and after the fix.
+      can act on: a General note about the final answer reaches the agent only together with yours.
+      Judge the run against the agent's rules in ~/AGENTS.md, which you have as a context file.
+      Send a `concern` for each break the agent can fix now, citing the section. If there are more than 3, send the 3 most severe.
+      Skip preferences: a finding with no trigger and consequence (§3 step 8).
+      Look first at claims and their evidence (§2), questions and unfinished work (§1),
+      tests and the report lists (§3 steps 3 and 8), and side effects (§5).
       A workflow step owned by a skill follows that skill: read skill://<name> before you cite it.
-      Send nothing for style or polish. Do not repeat a note the agent already addressed or rejected with a reason.
+      Do not repeat a note the agent already addressed or rejected with a reason.

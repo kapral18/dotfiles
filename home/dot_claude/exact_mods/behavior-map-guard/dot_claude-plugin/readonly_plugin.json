@@ -1,7 +1,7 @@
 {
   "name": "behavior-map-guard",
   "version": "0.1.0",
-  "description": "Before an edit in a git repo, runs ,behavior-map affected: stops the first edit in an unmapped directory and points the model at the entries an edit touches.",
+  "description": "Before an edit in a git repo, runs ,behavior-map affected: stops the first edit in an unmapped directory and points the model at the entries an edit touches. After a Bash command that may write, adds the same notes for the files it changed.",
   "author": {
     "name": "kapral18"
   }

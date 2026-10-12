@@ -55,17 +55,17 @@ Fish completions for `--model`/`--effort` share `~/.config/fish/functions/__open
 
 ## Oh My Pi
 
-| Surface      | Source                                                                                                                   | Target                      |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------ | --------------------------- |
-| Config       | [`home/dot_omp/private_agent/readonly_config.yml.tmpl`](../../../../home/dot_omp/private_agent/readonly_config.yml.tmpl) | `~/.omp/agent/config.yml`   |
-| Models       | `readonly_models.yml`                                                                                                    | `~/.omp/agent/models.yml`   |
-| MCP servers  | `mcp_servers.yaml` via `generate_mcp_configs.py omp`                                                                     | `~/.omp/agent/mcp.json`     |
-| Instructions | `symlink_AGENTS.md`, `readonly_APPEND_SYSTEM.md` (subagent overlay), `readonly_RULES.md`                                 | `~/.omp/agent/`             |
-| Skills       | `symlink_skills` → `~/.agents/skills`                                                                                    | `~/.omp/agent/skills`       |
-| Advisors     | `readonly_WATCHDOG.yml`                                                                                                  | `~/.omp/agent/WATCHDOG.yml` |
-| Reviewer     | `exact_agents/k-agent-reviewer.md.tmpl`                                                                                  | `~/.omp/agent/agents/`      |
-| Extension    | `extensions/context-mode.ts.tmpl` ([working-context selection](pi.md#working-context-selection))                         | `~/.omp/agent/extensions/`  |
-| Install      | `@oh-my-pi/pi-coding-agent` in [`home/readonly_dot_default-pnpm-pkgs`](../../../../home/readonly_dot_default-pnpm-pkgs)  | pnpm global, unpinned       |
+| Surface      | Source                                                                                                                                                                                                                                                                                              | Target                      |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| Config       | [`home/dot_omp/private_agent/readonly_config.yml.tmpl`](../../../../home/dot_omp/private_agent/readonly_config.yml.tmpl)                                                                                                                                                                            | `~/.omp/agent/config.yml`   |
+| Models       | `readonly_models.yml`                                                                                                                                                                                                                                                                               | `~/.omp/agent/models.yml`   |
+| MCP servers  | `mcp_servers.yaml` via `generate_mcp_configs.py omp`                                                                                                                                                                                                                                                | `~/.omp/agent/mcp.json`     |
+| Instructions | `symlink_AGENTS.md`, `readonly_APPEND_SYSTEM.md` (workflow overlay: inline work, scout, reviewer use), `readonly_RULES.md` (sticky copy of the §2 and §5 hard rules); `readonly_config.yml.tmpl` sets `personality: none` and `tui.reactions: false`, so OMP's prompt adds no tone rules of its own | `~/.omp/agent/`             |
+| Skills       | `symlink_skills` → `~/.agents/skills`                                                                                                                                                                                                                                                               | `~/.omp/agent/skills`       |
+| Advisors     | `readonly_WATCHDOG.yml`                                                                                                                                                                                                                                                                             | `~/.omp/agent/WATCHDOG.yml` |
+| Reviewer     | `exact_agents/k-agent-reviewer.md.tmpl`                                                                                                                                                                                                                                                             | `~/.omp/agent/agents/`      |
+| Extension    | `extensions/context-mode.ts.tmpl` ([working-context selection](pi.md#working-context-selection))                                                                                                                                                                                                    | `~/.omp/agent/extensions/`  |
+| Install      | `@oh-my-pi/pi-coding-agent` in [`home/readonly_dot_default-pnpm-pkgs`](../../../../home/readonly_dot_default-pnpm-pkgs)                                                                                                                                                                             | pnpm global, unpinned       |
 
 The context-mode extension reapplies the session's chosen window after initial model discovery.
 This keeps GPT's 272,000-token default from reverting to the catalog window without delaying the first interactive frame.
@@ -86,9 +86,9 @@ Key settings:
 
 `WATCHDOG.yml` replaces OMP's default advisor with two advisors.
 `General` is the default advisor, kept by name; it reviews every turn.
-OMP shows a `General` concern about a finished answer only as a card, so the agent never acts on it; only a blocker or an `agent-end` concern starts another turn.
-`Gate` is the final-answer reviewer and extends Claude's `checked-gate` mod: `reviewMode: agent-end` and `syncBacklog: strict` make the root wait for its review.
-It sends a `concern` for a missing `Checked:` list or claim evidence, a claim from truncated output, a decidable question (a `Decision needed:` label does not exempt it), a partial pass of an all-of-it request, a subagent's report listed as a check, a done claim without passing check output, or a test that cannot fail, on top of OMP's base advisor review.
+OMP merges the notes of one finished run into one message. It steers the agent only when that message holds a blocker or an `agent-end` concern; otherwise the user sees it as a card. So a `General` note about the final answer reaches the agent only together with a `Gate` concern.
+`Gate` is the final-answer reviewer: `reviewMode: agent-end` and `syncBacklog: strict` make the root wait for its review.
+Like `stop-review`, it holds no rules of its own: it judges against `~/AGENTS.md` (an advisor context file), sends a `concern` for every break the agent can fix now (the 3 most severe if more), skips preferences, and checks §2, §1, §3 steps 3 and 8, and §5 first.
 OMP steers at most one continuation turn per final review.
 
 `providers.webSearchOrder` tries Codex then the keyless scrapers. Every unused provider is listed in `webSearchExclude`, including `perplexity`.

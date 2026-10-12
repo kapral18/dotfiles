@@ -18,11 +18,13 @@ New behavior, redesigns, or unrelated cleanup outside the request are proposals:
 4. Outside Verify mode, read the fix diff once. Repair an in-scope problem it reveals and rerun affected checks, then stop.
 5. In Verify mode, form the fix diff with `diff -uN <copy> <file>` for each touched file; `-N` includes new files.
    Launch one reviewer using the Reviewer launch procedure in `~/.agents/skills/k-review/SKILL.md`; it reviews only this fix diff.
-   Give it the findings being fixed, rerun checks, known gaps, and rejected findings.
-   Skip this review for wording-only fixes: no rule, command, or behavior change.
-6. Repeat the Verify fix round until no supported medium or higher finding remains.
-   Stop after three fix-diff reviews, or when the same cause at the same place returns.
-   After the last review, fix only wording-only lows. Report the rest under `Open:` (medium or higher) or `Known gaps:` (low).
+   Give it the findings being fixed, rerun checks, `Open:` items, and rejected findings.
+   Skip this review for wording-only fixes (no rule, command, or behavior change), or when every finding this round fixes is low.
+6. Repeat the reviewed fix round while a supported medium or higher finding remains; fix lows in the same round without another review.
+   Stop reviewing after three fix-diff reviews, or when the same cause at the same place returns.
+   Still fix every supported finding of the last review with steps 2 and 3, except a cause that returned at the same place:
+   list it under `Open:` with the failed attempts as its blocker.
+   Mark each fix after the last review that is not wording-only "(unreviewed)" in `Checked:`, and list any finding you could not fix under `Open:` with its blocker.
 7. Report what was fixed, rejected, proposed, and left open. No second full review without a new user request.
 
 After two attempts at the same failure without new evidence, stop editing and investigate read-only or report the blocker.

@@ -64,7 +64,9 @@ Each finding: `[critical|high|medium|low] file:line — trigger → consequence 
 
 Use this procedure for both full reviews and fix-diff reviews:
 
-- Claude Code, Pi, OMP: launch the `k-agent-reviewer` profile.
+- Claude Code: launch the `k-agent-reviewer` profile with `run_in_background: false`.
+  Put a round's reviewer calls in one message: they run in parallel, and the turn waits for their results.
+- Pi, OMP: launch the `k-agent-reviewer` profile.
 - Codex: read `~/.agents/skills/k-review/references/reviewer_prompt.md`.
   Call native `spawn_agent` with `fork_turns: "none"` for each reviewer; its default copies the author's conversation.
   Put the shared reviewer prompt and review packet in `message`. Keep the parent's model and reasoning effort.
@@ -80,11 +82,11 @@ Use when `~/AGENTS.md` §3 step 5 requires a review of a finished change, or whe
    Include the task's behavior-map entry ids (`,behavior-map show <id>`) and memory writes. Otherwise, review the change the user named.
    Add the user's request in their words, the intent in one line, the checks already run with their results, and your `Assumptions:`.
 2. Launch two fresh reviewers in parallel using Reviewer launch above.
-   Pass both only the same scope, request, intent, check results, assumptions, and known gaps.
+   Pass both only the same scope, request, intent, check results, assumptions, and `Open:` items.
 3. Merge the findings. Check each finding against source yourself. Reject unsupported ones with a one-line reason.
 4. Apply supported findings within write scope using `~/.agents/skills/k-review/references/review_fixes.md`.
    Its bounded Verify procedure owns scratch copies, checks, fix-diff reviews, and stopping rules.
-5. Report the review scope, fixed findings with evidence, rejected findings with reasons, and remaining `Open:` or `Known gaps:`.
+5. Report the review scope, fixed findings with evidence, rejected findings with reasons, `Open:` items with their blockers, and `Proposed:` out-of-scope changes.
 
 NEVER start a second full review (two reviewers on the whole change) on your own; the fix loop reviews only fix diffs.
 Another full round needs the user to ask for it.

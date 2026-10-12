@@ -123,17 +123,19 @@ is_lua_file() { [[ "$1" == *.lua ]]; }
 is_fish_file() { [[ "$1" == *.fish ]]; }
 is_go_file() { [[ "$1" == *.go ]]; }
 
+# Skip symlinks: prettier refuses an explicit symlink path, and a tracked target is formatted on its own.
 collect_by_func() {
   local func="$1"
   if [[ ${#files[@]} -gt 0 ]]; then
     for f in "${files[@]}"; do
+      [[ -L "$f" ]] && continue
       if "$func" "$f"; then
         is_ignored "$f" || echo "$f"
       fi
     done
   else
     while IFS= read -r f; do
-      [[ -e "$f" ]] || continue
+      [[ -e "$f" && ! -L "$f" ]] || continue
       if "$func" "$f"; then
         is_ignored "$f" || echo "$f"
       fi

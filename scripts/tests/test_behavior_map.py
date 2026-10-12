@@ -282,6 +282,30 @@ class TestBehaviorMap(unittest.TestCase):
         self.assertIn("0 outside every mapped area", owned)
         self.assertIn("unmapped: .", unowned)
 
+    def test_SHOULD_match_a_symlink_by_its_own_path_and_its_target(self):
+        (self.main / "CLAUDE.md").symlink_to("app.py")
+        (self.main / "lib").mkdir()
+        (self.main / "lib-link").symlink_to("lib")
+        (self.main / "a/b/c").mkdir(parents=True)
+        (self.main / "deep-link").symlink_to("a/b/c")
+        (Path(self.tmp.name) / "repo-link").symlink_to(self.main)
+        self.ok("save", "docs/claude", stdin=entry("docs/claude", "loads.", anchor="CLAUDE.md"))
+        self.ok("save", "app/run", stdin=entry("app/run", "returns 1."))
+        self.ok("save", "lib/link", stdin=entry("lib/link", "links.", anchor="lib-link"))
+
+        out = self.ok("affected", "CLAUDE.md")
+        linked_dir = self.ok("affected", "lib-link")
+        root = self.ok("affected", str(Path(self.tmp.name) / "repo-link"))
+        through_link = self.ok("affected", "deep-link/../x")
+
+        self.assertIn("entry docs/claude: CLAUDE.md", out)
+        self.assertIn("entry app/run: app.py", out)
+        self.assertIn("2 files; 0 outside every mapped area", out)
+        self.assertIn("entry lib/link: lib-link", linked_dir)
+        self.assertIn("unmapped: lib", linked_dir)
+        self.assertIn("unmapped: .", root)
+        self.assertIn("unmapped: a/b", through_link)
+
     def test_SHOULD_flag_a_directory_anchor_missing_its_slash_as_broken(self):
         (self.main / "src").mkdir()
         (self.main / "src/app.py").write_text("x = 1\n")

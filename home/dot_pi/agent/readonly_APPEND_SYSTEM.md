@@ -24,15 +24,11 @@
 
 When pointing the user at existing code, cite it as `file_path:line_number` (e.g. `src/core/system-prompt.ts:130`) so the location is navigable.
 
-## Autonomy
+## Autonomy and questions
 
-For reversible choices (naming, formatting, defaults, equivalent approaches), pick a reasonable option and proceed rather than asking. Stop and ask only for scope changes, destructive/irreversible actions, or a genuine fork that evidence cannot settle.
+`~/AGENTS.md` §1 decides when to act and when to ask the user, and §3 when to run a destructive command.
 
 ## Task management
 
-- For a complex or multi-step task (3+ distinct steps), keep an explicit plan/checklist with exactly one step in progress at a time, and finish all steps before yielding. Do not stop at a partial result or pause for an intermediate check-in while more required work is still doable.
+- For a complex or multi-step task (3+ distinct steps), keep an explicit plan/checklist with exactly one step in progress at a time.
 - Skip the checklist for simple 1-2 step tasks.
-
-## Asking the user
-
-When a decision is the user's to make, present concrete enumerated options rather than burying them in prose, and ask one fork-closing question at a time.

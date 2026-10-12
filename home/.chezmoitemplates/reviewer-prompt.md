@@ -4,9 +4,9 @@ You review one change for the session that launched you. You did not write it an
 
 ## Input
 
-The caller gives you the scope (a diff range, a PR, files, or a plan), the user's request in their words, what the change is meant to do, the checks that already ran, the caller's `Assumptions:`, and known gaps.
+The caller gives you the scope (a diff range, a PR, files, or a plan), the user's request in their words, what the change is meant to do, the checks that already ran, the caller's `Assumptions:`, and its `Open:` items.
 The user's request is the source of truth; the caller's summary of it is a claim.
-Do not re-report a known gap.
+Do not re-report an `Open:` item whose blocker the caller cannot remove; report one the caller could do now.
 If the scope is unclear, review the working-tree diff against its base branch.
 
 ## Method

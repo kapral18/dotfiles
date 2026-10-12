@@ -18,8 +18,17 @@ const asksToAsk = (prompt: string) => [...prompt.matchAll(ASK_ME)].some(match =>
 const DECISION = /^[\s>*_#-]*Decision needed(\*\*)?:/
 const LIST_ITEM = /^\s*(?:[-*+]|\d+[.)])\s/m
 // A question under these report lists is an open item, not a question to the user.
-const REPORT_LIST = /^[\s>*_#-]*(?:\*\*)?(?:Open|Known gaps)(\*\*)?:/
+const REPORT_LIST = /^[\s>*_#-]*(?:\*\*)?(?:Open|Proposed)(\*\*)?:/
 const LIST_ONLY = /^\s*(?:[-*+]|\d+[.)])\s.*(?:\n(?:\s*(?:[-*+]|\d+[.)])\s|[ \t]+\S).*)*\s*$/
+// A heading the §3 report has no slot for, under which doable work gets parked: "Known gaps:", "Next steps:", "Unverified:".
+// Only a heading line counts (plain, `#`, or bold), not a bullet. A one-word label (Next, Remaining, Pending) counts only alone on its line.
+// A heading whose whole list is "none", "n/a", or "nothing" passes.
+const DEFERRED =
+  /^[ \t]*(?:#{1,6}[ \t]+)?(?:\*\*|__)?(?:(?:Known gaps|Not done|Not yet done|(?:Still|Left) to do|Remaining (?:work|steps|items)|(?:Suggested |Recommended |Possible )?(?:Next steps?|Follow[- ]?ups?)|TODOs?|Unverified|Not verified|Deferred)(?:[ \t]*\([^)\n]*\))?(?:\*\*|__)?(?::(?:\*\*|__)?|[ \t]*$)|(?:Next|Remaining|Pending)(?:\*\*|__)?:(?:\*\*|__)?[ \t]*$)(?![*_ \t—–-]*(?:\n\s*(?:(?:[-*+]|\d+[.)])[ \t]+)?)?[*_]*(?:none|n\/a|nothing)[*_.]*[ \t]*$(?!\n[ \t]*\S))/im
+// The user asked for such a list: "what's left?", "list the next steps", "show me the gaps", a handoff,
+// or a prompt that names the heading itself (`a "Known gaps:" list`, `"Next steps" section`).
+const LIST_WANTED =
+  /(?:^|[.?!;:]\s*|\b(?:please|and|then|also|just|can you|could you)\s+)(?:list|show(?: me)?|give me|tell me)\b[^.?!\n]{0,30}\b(?:next steps?|gaps|remaining|left|to-?dos?|follow[- ]?ups?)\b|\bwhat(?:['’]s| is| are)\s+(?:next|left|remaining|missing)\b|\bwhat remains\b|\bhand[- ]?off\b|(?:["'“‘`]\s*(?:\*\*)?(?:known gaps|not done|not yet done|(?:still|left) to do|remaining(?: work| steps| items)?|next(?: steps?)?|follow[- ]?ups?|to-?dos?|unverified|not verified|pending|deferred)\b|\b(?:known gaps|next steps?|follow[- ]?ups?|to-?dos?|unverified|not verified|deferred)[:"'”’`*]*\s+(?:list|section|heading|block)\b)/i
 // The working tree's state: changed paths, a hash of the tracked diff, and a hash of untracked contents.
 const SNAPSHOT =
   'git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 3\n' +
@@ -27,18 +36,16 @@ const SNAPSHOT =
   'git diff HEAD --no-ext-diff --binary 2>/dev/null | git hash-object --stdin\n' +
   'git ls-files --others --exclude-standard | git hash-object --stdin-paths | git hash-object --stdin'
 
-const MESSAGE =
-  'Files changed this turn, but the final message has no `Checked:` list. ' +
-  'Per ~/AGENTS.md §3, add it: each claim with its evidence (a command and its result, or a file:line). ' +
-  'If the change is not done, say so and list what is open.'
+// Each message states what the hook found and points at the ~/AGENTS.md rule; the rule text lives only there.
+const MESSAGE = 'Files changed this turn, and the final message has no `Checked:` list (~/AGENTS.md §3 step 8).'
 
-// The send-back's reply replaces the answer the user reads, so it must still answer the user.
-const FINAL = 'Your reply is the final message the user reads: open it with the full answer to their request within the ~/AGENTS.md §8 length budget, as if this feedback had not come, then address this feedback after it.'
+// The send-back's reply replaces the answer the user reads, so it must be the whole current answer.
+const FINAL = 'Your reply replaces your last answer: follow the ~/AGENTS.md §8 rule for a send-back.'
 
-const QUESTION =
-  'The final message ends with a question. Per ~/AGENTS.md §1, ask only for goals, preferences evidence cannot settle, or authority you lack, such as the §5 gates. ' +
-  'If source and evidence decide it, decide, list the decision under `Assumptions:`, act on it if it is reversible, local, and inside the request\'s scope (in a review: your write scope and `k-review` Fix Scope), and report. ' +
-  'If the decision is the user\'s, or the user asked you to ask, keep the question under `Decision needed:` with your pick. Never offer an option you argued against.'
+const QUESTION = 'The final message ends with a question outside `Decision needed:`. Apply the ~/AGENTS.md §1 rule on questions.'
+
+const deferral = (heading: string) =>
+  `The final message lists work under \`${heading}\`; the ~/AGENTS.md §3 step 8 report has no such list. Apply step 8 to each item.`
 
 const snapshot = async ($: EngineInterface) => {
   const run = await $.process.run(['sh', '-c', SNAPSHOT], { timeoutMs: 20000 })
@@ -79,17 +86,24 @@ export const register: Register = on => {
   let isEdited = false
   let isActive = false
   let isAskWanted = false
+  let isListWanted = false
   // Each check sends a turn back at most once per Stop chain: a send-back's continuation has stop_hook_active set.
   let sent = new Set<string>()
   // undefined: no Bash call yet this turn; null: the snapshot failed.
   let baseline: string | null | undefined
+  // The last Stop paused on a subagent or workflow still in flight.
+  let isPaused = false
 
   on('turn.start', ($, e, next) => {
-    // A continuation after a send-back starts with empty text and keeps the turn's state.
-    if (e.text === '') return next(e)
+    // A continuation after a send-back starts with empty text, and the task notice that wakes a paused turn starts with its tag;
+    // both keep the turn's state. A typed prompt starts a new turn.
+    const isContinuation = e.text === '' || (isPaused && e.text.startsWith('<task-notification>'))
+    isPaused = false
+    if (isContinuation) return next(e)
     isEdited = false
     isActive = false
     isAskWanted = asksToAsk(e.text)
+    isListWanted = LIST_WANTED.test(e.text)
     baseline = undefined
     return next(e)
   })
@@ -116,6 +130,10 @@ export const register: Register = on => {
     const message = e.last_assistant_message ?? ''
     const below = await next(e)
     if (!e.stop_hook_active) sent = new Set()
+    // A subagent or workflow still in flight wakes the session when it ends, so this Stop pauses the turn and does not end it.
+    // A background shell task does not count: a server never ends, and it would switch the checks off for the session.
+    isPaused = (e.background_tasks ?? []).some(task => task.type === 'subagent' || task.type === 'workflow')
+    if (isPaused) return below
     const messages = new Map<string, string>()
     if (!CHECKED.test(message) && !sent.has('checked')) {
       let isChanged = isEdited
@@ -125,6 +143,8 @@ export const register: Register = on => {
       }
       if (isChanged) messages.set('checked', MESSAGE)
     }
+    const deferred = isActive && !isListWanted ? DEFERRED.exec(prose(message)) : null
+    if (deferred) messages.set('deferred', deferral(deferred[0].trim()))
     const isOpenItem = REPORT_LIST.test(listHeader(message) ?? '')
     if (isActive && !isAskWanted && !marksDecision(message) && !isOpenItem && endsWithQuestion(message)) messages.set('question', QUESTION)
     const fresh = [...messages].filter(([kind]) => !sent.has(kind))

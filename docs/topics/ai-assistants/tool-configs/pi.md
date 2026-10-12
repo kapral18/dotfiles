@@ -68,7 +68,7 @@ Both set `maxSubagentDepth: 0`, so they cannot start other agents.
 
 ## `APPEND_SYSTEM.md`
 
-Pi's default prompt is minimal. `APPEND_SYSTEM.md` adds tone, tool-calling, codemode, edit, citation, autonomy, and task-list rules.
-Order: Pi default → `APPEND_SYSTEM.md` → project context (`AGENTS.md`). Where they overlap, `AGENTS.md` wins.
+Pi's default prompt is minimal. `APPEND_SYSTEM.md` adds tone, tool-calling, codemode, edit, citation, and task-list rules; for autonomy and questions it points to `AGENTS.md` §1 and §3.
+Order: Pi default → `APPEND_SYSTEM.md` → project context (`AGENTS.md`). The system prompt and overlay stay authoritative; `AGENTS.md` §8 sets tone and format where they leave it open.
 It is additive rather than `SYSTEM.md` so Pi keeps its default tool list and self-doc pointers.
 `,q` skips it by passing a short `--system-prompt` and an empty `--append-system-prompt`.
