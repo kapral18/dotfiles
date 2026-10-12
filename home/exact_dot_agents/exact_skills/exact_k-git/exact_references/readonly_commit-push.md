@@ -2,19 +2,27 @@
 
 Push policy (mandatory):
 
-- Interpret a user request to "push" as explicit approval for `git push --force-with-lease`.
-- A user-invoked `k-pr-fix-loop` approval packet is an explicit force-with-lease push request for the current PR branch only.
-- Prefer explicit remote/branch in the restated command (example: `git push --force-with-lease origin <branch>`).
-- If upstream is missing, `git push --force-with-lease -u <remote> <branch>` is allowed.
-- Never run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, or `git merge <remote>/<branch>` automatically before pushing.
-- If push is rejected for divergence, non-fast-forward, lease failure, or diverged history, stop and ask how to proceed.
-- Do not reconcile branch history unless the user explicitly asks for that exact action.
+- A push request approves plain `git push <remote> <branch>` for that branch, and later fast-forward pushes of it in the same task (`~/AGENTS.md` §5).
+  Use `--force-with-lease` only under a request that covers rewriting pushed history ("force push", "amend and push").
+- A user-invoked `k-pr-fix-loop` approval packet approves only that batch's plain push of the current PR branch;
+  it is not a standing push request and never a force push. If that push is rejected, stop and report.
+- Prefer an explicit remote and branch (example: `git push origin <branch>`).
+- If upstream is missing, `git push -u <remote> <branch>` is allowed.
+- Do not run `git pull`, `git rebase <remote>/<branch>`, or `git merge <remote>/<branch>` of the branch you push before a first push attempt.
+- If a plain push under a push request (not a `k-pr-fix-loop` packet) is rejected because someone else pushed to that branch:
+  fetch, rebase only your unpushed commits onto the remote branch, rerun the affected checks, push without force, and report their commits.
+  When your unpushed commits include a merge commit, run `git merge <remote>/<branch>` instead of a rebase.
+  Stop and ask when the rebase or merge conflicts, or your own pushed commits are no longer on the remote branch.
+- When a force-with-lease push is rejected, stop and ask.
+- Merging the base branch into a PR branch (for example `upstream/main`) is local git work under `~/AGENTS.md` §5.
+  Rebasing pushed commits rewrites pushed history and needs its own request.
 
 Amend policy (mandatory):
 
 - when the user explicitly says "amend", use `git commit --amend`
 - do not second-guess amend requests by inspecting the commit author; the git author field reflects git config, not whether the agent created the commit
-- if the amended commit was already pushed, the subsequent push will need `--force-with-lease` (covered by push policy above)
+- if the amended commit was already pushed, pushing it rewrites pushed history:
+  that push needs its own request, such as "amend and push" (`~/AGENTS.md` §5)
 
 Commit quality:
 

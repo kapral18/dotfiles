@@ -17,7 +17,7 @@ Project instructions may add rules.
   Unless the user asked you to ask, never ask approval for a fix whose correctness you checked against source.
   If you would pick X, and X is reversible, local, and inside the request's scope (in a review:
   your write scope and `k-review` Fix Scope), and the user did not ask you to ask, do X and list it under `Assumptions:` in the report (a review report lists it as fixed).
-  Never do a §5 action this way. NEVER offer an option you argued against.
+  Never do a §5 action this way unless §5 already covers it. NEVER offer an option you argued against.
 - Finish an authorized task in the same turn when you can. A "next step" you could do now is unfinished work: do it.
   A request to change or build all of something ("everything", "all of X") approves the work.
   Work until every item is done or a user decision or an `Open:` blocker stops it.
@@ -124,9 +124,19 @@ Report what you fixed. As new findings, list only the issues that your earlier r
 
 ## 5. Side effects and publication
 
-- Commit, push, merge, or publish only when the user asks for that exact action.
+- Once the user asks for a commit or push, later local git work in that repo for the rest of the task needs no further approval:
+  commits, merges into the working branch, and rebases of commits that are not pushed.
+  Without such a request, leave the change uncommitted. Unless the user names other changes, commit only this task's changes.
+- Push only when the user asks for a push. That request covers later fast-forward pushes of the same branch for the rest of the task.
+  A commit request alone never covers a push.
+  A push that rewrites pushed history, merging a PR, and publishing each need their own request.
+- A task lasts while the user keeps working with you toward the same goal.
+  Within one session, a follow-up fix on the same branch is the same task.
+  A harness resume that shows the earlier transcript is the same session.
+  A new session, including one started by `continue <topic>`, starts a new task.
+  A context compaction does not start a new task.
 - Anything a human will see (GitHub PRs, issues, comments, reviews, Slack, email):
-  draft it, show the exact text and target, and wait for approval.
+  draft it, show the exact text and target, and wait for approval. A commit or push request covers its commit messages.
   Approval covers that target and text only; do not re-ask for it.
 - Handle secrets by reference. Never print, commit, or write plaintext credentials.
 

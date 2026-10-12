@@ -49,13 +49,10 @@ Safety protocol:
 
 Approvals:
 
-- Never run `git commit` unless the user explicitly requested a commit in the current conversation.
-- Content approval is not commit authorization: "make it generic", "fix it", "do it", or approval of file edits authorizes the edits, not a commit.
-- When a task would conventionally end with a commit, stop at the working tree and report the change set;
-  the user commits or asks for one explicitly.
-- A user-invoked `k-pr-fix-loop` approval packet is an explicit commit request for scoped PR-fix commits on the current PR branch.
-- An explicit push request covers committing the changes it describes; absent that, leave the tree uncommitted.
-- Do not push without an explicit push request.
+- Commit and push authority follows `~/AGENTS.md` §5: which request covers which later commits, merges, and pushes.
+- Content approval is not a commit request: "make it generic", "fix it", or approval of file edits authorizes the edits only.
+  Without a commit or push request in the task, stop at the working tree and report the change set.
+- A user-invoked `k-pr-fix-loop` approval packet authorizes only that batch's commits and push; it is not a standing §5 request.
 
 Commit and push procedure (mandatory):
 
@@ -69,7 +66,7 @@ Branching:
 
 Merge policy:
 
-- never merge into the base branch via CLI; merges happen via the GitHub UI
+- never merge a PR into the base branch via CLI; PR merges happen via the GitHub UI
 
 Output:
 

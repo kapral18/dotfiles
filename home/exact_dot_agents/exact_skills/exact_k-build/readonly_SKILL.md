@@ -35,4 +35,4 @@ Implement the approved `k-spec` plan inline.
 ## Output
 
 The change summary, each criterion as passed, failed, or blocked with evidence, open decisions, and compatibility impact.
-Nothing is committed, pushed, or published without its own request.
+Commit, push, and publish only as `~/AGENTS.md` §5 allows.

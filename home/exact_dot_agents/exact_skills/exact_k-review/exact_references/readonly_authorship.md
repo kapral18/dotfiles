@@ -32,4 +32,4 @@ When there is no PR (local changes, branch delta, commit range):
   Edit only when the user explicitly says so ("fix these", "take over this branch").
 - A reviewer subagent is read-only regardless of authorship; it reports findings and never edits.
 
-Write scope on a file never grants commit, push, reply, resolve, or publication authority; those need their own explicit request.
+Write scope on a file never grants commit, push, reply, resolve, or publication authority; `~/AGENTS.md` §5 decides it.

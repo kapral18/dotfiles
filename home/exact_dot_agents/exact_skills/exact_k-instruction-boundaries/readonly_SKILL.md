@@ -16,8 +16,8 @@ Apply this whenever writing or editing AI-facing guidance text: SOPs, skills, pr
 1. **Default to hard boundaries for forbidden behavior.**
    Use `MUST NOT`, `NEVER`, `do not`, `only when`, and `stop` when the behavior is banned, gated, or authorized only by an explicit condition.
    Do not soften a ban into a preference, implication, or positive-only sentence.
-   - Weak: "Commit after user approval."
-   - Strong: "NEVER commit unless the user explicitly requests a commit in the current conversation."
+   - Weak: "Delete branches after user approval."
+   - Strong: "NEVER delete a branch unless the user explicitly asks to delete that branch."
 2. **Preserve standalone prohibitions when the forbidden set is clearer than the allowed set.**
    Some rules are complete as a ban because the negative behavior is broader than any useful affirmative rewrite.
    - Strong: "Do not build further reasoning on unverified external behavior."

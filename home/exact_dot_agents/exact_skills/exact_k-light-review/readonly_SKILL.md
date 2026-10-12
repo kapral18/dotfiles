@@ -23,7 +23,7 @@ Resolve the diff and authorship (`~/.agents/skills/k-review/references/authorshi
 - Fix supported findings in the same pass when authorship gives write scope; otherwise report them.
 - If a risk trigger appears while reading, stop and switch to `k-review` local changes mode.
 
-Do not commit, push, or publish without an explicit request.
+Commit, push, and publish only as `~/AGENTS.md` §5 allows.
 
 ## Output
 

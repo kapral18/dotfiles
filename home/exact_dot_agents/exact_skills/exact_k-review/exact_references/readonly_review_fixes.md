@@ -28,4 +28,4 @@ New behavior, redesigns, or unrelated cleanup outside the request are proposals:
 7. Report what was fixed, rejected, proposed, and left open. No second full review without a new user request.
 
 After two attempts at the same failure without new evidence, stop editing and investigate read-only or report the blocker.
-Commit, push, reply, resolve, and publish only under their own explicit authority.
+Commit, push, reply, resolve, and publish only as `~/AGENTS.md` §5 allows.
