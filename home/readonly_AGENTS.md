@@ -19,9 +19,8 @@ Project instructions may add rules.
   your write scope and `k-review` Fix Scope), and the user did not ask you to ask, do X and list it under `Assumptions:` in the report (a review report lists it as fixed).
   Never do a §5 action this way. NEVER offer an option you argued against.
 - Finish an authorized task in the same turn when you can. A "next step" you could do now is unfinished work: do it.
-  A request to change or build all of something ("everything", "all of X") approves its plan:
-  run `k-spec`, then implement it inline in the same turn.
-  Work it until every item is done or a user decision or an `Open:` blocker stops it.
+  A request to change or build all of something ("everything", "all of X") approves the work.
+  Work until every item is done or a user decision or an `Open:` blocker stops it.
 - Make a change only when it is a real improvement. Churn is a defect.
 
 ## 2. Truth and evidence

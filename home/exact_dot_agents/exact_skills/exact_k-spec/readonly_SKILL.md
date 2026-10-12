@@ -1,6 +1,6 @@
 ---
 name: k-spec
-description: "Use when a request needs a compact implementation plan with explicit acceptance criteria before coding."
+description: "Use when a request needs a written implementation plan with acceptance criteria before coding."
 ---
 
 # Spec
