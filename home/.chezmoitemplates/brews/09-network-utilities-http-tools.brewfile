@@ -2,6 +2,10 @@
 # https://github.com/orf/gping
 brew "gping"
 
+# Global DNS propagation checker
+# https://github.com/unfrl/dug
+brew "dug"
+
 # DuckDuckGo search from the command-line
 # https://github.com/jarun/ddgr
 brew "ddgr"

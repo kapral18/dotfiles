@@ -34,7 +34,6 @@ This slice covers media processing, personal tools, and tools installed from Git
 | [FluidVoice](https://github.com/altic-dev/FluidVoice)    | `custom dmg`        | macOS app from GitHub releases        |
 | [Squirrel Disk](https://github.com/adileo/squirreldisk)  | `custom dmg`        | disk utility app from GitHub releases |
 | [`mdtt`](https://github.com/szktkfm/mdtt)                | `custom tar_gz_bin` | release binary archive                |
-| [`dug`](https://github.com/unfrl/dug)                    | `custom file`       | release binary                        |
 | [`kitten`](https://github.com/kovidgoyal/kitty)          | `custom file`       | kitty CLI for image preview support   |
 | [`enola`](https://github.com/TheYahya/enola)             | `custom tar_gz_bin` | terminal utility release binary       |
 | [sd-cli](https://github.com/leejet/stable-diffusion.cpp) | `custom zip_opt`    | Metal runner for `,image-local`       |

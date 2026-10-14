@@ -146,3 +146,5 @@ work/.gitconfig
 .config/tmux/scripts/pickers/github/lib/gh_picker_toggle.sh
 # Retired gitui config
 .config/gitui
+# dug moved from a custom release binary to Homebrew; the old copy shadows it in PATH
+.local/bin/dug

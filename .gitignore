@@ -14,6 +14,9 @@ mprocs.log
 /home/dot_config/fish/config.local.fish
 /home/dot_config/fish/readonly_config.local.fish
 
+# Accidental chezmoi-source copies of the private redtab subscription list
+/home/dot_config/redtab/*subscriptions*
+
 # Disposable fixtures scripts/test_pre_commit.py creates inside the repo (.tmp-pre-commit-*, .tmp-signing-home-*, .tmp-bin-fmt-*).
 /.tmp-*/
 # Short socket-path scratch dir scripts/test_embed.py creates in the test cwd.

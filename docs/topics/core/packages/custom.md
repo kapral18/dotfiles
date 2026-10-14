@@ -47,16 +47,27 @@ The installer is:
 
 It installs binaries into `$HOME/.local/bin` and DMG apps into `/Applications`. `zip_opt` also extracts the zip into `$HOME/.local/opt/<tool-name>/` and writes a PATH wrapper so sibling dylibs resolve.
 
+`file` and `tar_gz_bin` rows keep a record in `$HOME/.local/state/custom-packages/<output-binary-name>.release` with the resolved tag, repo, asset pattern, and archive member. A later run skips the row when the binary exists and the record matches; `latest` resolves to the current tag first, and a changed asset pattern or archive member (for example switching arch) reinstalls. The installer never runs a binary to read its version. `zip_opt` keeps its tag in `$HOME/.local/opt/<tool-name>/.release-tag`.
+
 The installer script embeds a hash of the custom packages list so `chezmoi apply` re-runs it when you add or change rows in the list (not only when the installer script itself changes).
 
 ## Verification
 
-For CLI tools:
+For `file` and `tar_gz_bin` tools:
 
 ```bash
 command -v <binary-name>
-<binary-name> --version
+cat "$HOME/.local/state/custom-packages/<binary-name>.release"
 ```
+
+For `zip_opt` tools:
+
+```bash
+command -v <binary-name>
+cat "$HOME/.local/opt/<tool-name>/.release-tag"
+```
+
+The record shows what the installer wrote, not that the binary runs. Run the tool once by hand, with a flag its `--help` lists, to confirm it starts.
 
 For DMG apps:
 
@@ -76,5 +87,5 @@ chezmoi apply
 1. If needed, manually remove residual app/binary:
 
 - `/Applications/<AppName>.app`
-- `$HOME/.local/bin/<binary-name>`
+- `$HOME/.local/bin/<binary-name>` and `$HOME/.local/state/custom-packages/<binary-name>.release`
 - `$HOME/.local/opt/<tool-name>/` (for `zip_opt`)

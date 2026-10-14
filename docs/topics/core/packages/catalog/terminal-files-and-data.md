@@ -32,20 +32,21 @@ This slice is the day-to-day terminal toolbox: shells, tmux, file navigation, fu
 
 ## Structured data and databases
 
-| Tool                                                                                                                           | Source   | Why it is here                                   |
-| ------------------------------------------------------------------------------------------------------------------------------ | -------- | ------------------------------------------------ |
-| [`jq`](https://jqlang.github.io/jq/), [`yq`](https://github.com/mikefarah/yq), [`ijq`](https://codeberg.org/gpanders/ijq)      | `brew`   | JSON/YAML query and TUI exploration              |
-| [`xan`](https://github.com/medialab/xan), [`sheets`](https://github.com/maaslalani/sheets)                                     | `brew`   | CSV/spreadsheet workflows                        |
-| [`rainfrog`](https://github.com/achristmascarl/rainfrog), [`lazysql`](https://github.com/jorgerojas26/lazysql)                 | `brew`   | database TUIs                                    |
-| [`igrep`](https://github.com/konradsz/igrep), [`nless`](https://github.com/mpryor/nothing-less)                                | `brew`   | interactive grep/less-style data exploration     |
-| [`mdtt`](https://github.com/szktkfm/mdtt), [`dug`](https://github.com/unfrl/dug), [`enola`](https://github.com/TheYahya/enola) | `custom` | release-installed terminal data/search utilities |
+| Tool                                                                                                                      | Source   | Why it is here                                   |
+| ------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------ |
+| [`jq`](https://jqlang.github.io/jq/), [`yq`](https://github.com/mikefarah/yq), [`ijq`](https://codeberg.org/gpanders/ijq) | `brew`   | JSON/YAML query and TUI exploration              |
+| [`xan`](https://github.com/medialab/xan), [`sheets`](https://github.com/maaslalani/sheets)                                | `brew`   | CSV/spreadsheet workflows                        |
+| [`rainfrog`](https://github.com/achristmascarl/rainfrog), [`lazysql`](https://github.com/jorgerojas26/lazysql)            | `brew`   | database TUIs                                    |
+| [`igrep`](https://github.com/konradsz/igrep), [`nless`](https://github.com/mpryor/nothing-less)                           | `brew`   | interactive grep/less-style data exploration     |
+| [`mdtt`](https://github.com/szktkfm/mdtt), [`enola`](https://github.com/TheYahya/enola)                                   | `custom` | release-installed terminal data/search utilities |
 
 ## Docs and knowledge in the terminal
 
-| Tool                                                                                                                                | Source | Why it is here                               |
-| ----------------------------------------------------------------------------------------------------------------------------------- | ------ | -------------------------------------------- |
-| [`tealdeer`](https://tealdeer-rs.github.io/tealdeer/)                                                                               | `brew` | tldr pages                                   |
-| [`circumflex`](https://github.com/bensadeh/circumflex), [`reddix`](https://github.com/ck-zhang/reddix)                              | `brew` | Hacker News / Reddit terminal readers        |
-| [`mandown`](https://github.com/Titor8115/mandown), [`treemd`](https://github.com/epistates/treemd), [`pandoc`](https://pandoc.org/) | `brew` | markdown/docs conversion and viewing         |
-| [`lychee`](https://lychee.cli.rs/)                                                                                                  | `brew` | link checking and leak detection around docs |
-| [`toolong`](https://github.com/Textualize/toolong), [`logmerger`](https://github.com/ptmcg/logmerger)                               | `uv`   | log viewing/merging TUIs                     |
+| Tool                                                                                                                                | Source   | Why it is here                                                                                                                                        |
+| ----------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`tealdeer`](https://tealdeer-rs.github.io/tealdeer/)                                                                               | `brew`   | tldr pages                                                                                                                                            |
+| [`circumflex`](https://github.com/bensadeh/circumflex)                                                                              | `brew`   | Hacker News terminal reader                                                                                                                           |
+| [`redtab`](https://github.com/kapral18/redtab)                                                                                      | `script` | Reddit terminal reader with tabs, built from a private repo and reading a local Redlib container ([setup](../sources-and-scope.md#redtab-and-redlib)) |
+| [`mandown`](https://github.com/Titor8115/mandown), [`treemd`](https://github.com/epistates/treemd), [`pandoc`](https://pandoc.org/) | `brew`   | markdown/docs conversion and viewing                                                                                                                  |
+| [`lychee`](https://lychee.cli.rs/)                                                                                                  | `brew`   | link checking and leak detection around docs                                                                                                          |
+| [`toolong`](https://github.com/Textualize/toolong), [`logmerger`](https://github.com/ptmcg/logmerger)                               | `uv`     | log viewing/merging TUIs                                                                                                                              |

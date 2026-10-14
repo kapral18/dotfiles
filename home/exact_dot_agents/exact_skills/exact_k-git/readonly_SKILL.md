@@ -49,14 +49,15 @@ Safety protocol:
 
 Approvals:
 
-- Commit and push authority follows `~/AGENTS.md` §5: which request covers which later commits, merges, and pushes.
+- Commit and push authority follows the Approval scope in `references/commit-push.md`:
+  which request covers which later commits, merges, and pushes.
 - Content approval is not a commit request: "make it generic", "fix it", or approval of file edits authorizes the edits only.
   Without a commit or push request in the task, stop at the working tree and report the change set.
-- A user-invoked `k-pr-fix-loop` approval packet authorizes only that batch's commits and push; it is not a standing §5 request.
+- A user-invoked `k-pr-fix-loop` approval packet authorizes only that batch's commits and push; it is not a standing approval.
 
 Commit and push procedure (mandatory):
 
-Before composing a commit message or running commit, amend, or push commands, MUST load and follow `~/.agents/skills/k-git/references/commit-push.md`.
+Before composing a commit message or running commit, amend, merge, rebase, or push commands, MUST load and follow `~/.agents/skills/k-git/references/commit-push.md`.
 Do not execute those commands until its push, amend, commit-quality, and attribution rules have been applied.
 
 Branching:

@@ -46,23 +46,6 @@ dmg|Jharu|riponcm/Jharu|latest|Jharu.app|.dmg
 tar_gz_bin|mdtt|szktkfm/mdtt|{{ $mdttTag }}|{{ $mdttAsset }}|mdtt|mdtt
 {{ end }}
 
-# dug
-# https://github.com/unfrl/dug
-{{ $dugTag := "0.0.94" }}
-{{ $dugAsset := "" }}
-{{ if eq $os "darwin" }}
-  {{ $dugAsset = "dug-osx-x64" }}
-{{ else if eq $os "linux" }}
-  {{ if eq $arch "arm64" }}
-    {{ $dugAsset = "dug-linux-arm64" }}
-  {{ else }}
-    {{ $dugAsset = "dug-linux-x64" }}
-  {{ end }}
-{{ end }}
-{{ if ne $dugAsset "" }}
-file|dug|unfrl/dug|{{ $dugTag }}|{{ $dugAsset }}|dug
-{{ end }}
-
 # kitten (kitty CLI — used for image preview in fzf via unicode-placeholder protocol)
 # https://github.com/kovidgoyal/kitty
 {{ $kittenAsset := "" }}

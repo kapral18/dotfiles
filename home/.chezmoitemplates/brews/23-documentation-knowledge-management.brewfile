@@ -6,10 +6,6 @@ brew "tealdeer"
 # https://github.com/bensadeh/circumflex
 brew "circumflex"
 
-# Reddit, refined for the terminal
-# https://github.com/ck-zhang/reddix
-brew "reddix"
-
 # Man-page inspired Markdown viewer
 # https://github.com/Titor8115/mandown
 brew "mandown"

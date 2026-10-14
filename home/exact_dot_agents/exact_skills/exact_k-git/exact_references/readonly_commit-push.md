@@ -1,8 +1,18 @@
 # Commit And Push Procedure
 
+Approval scope (mandatory; `~/AGENTS.md` §5 points here):
+
+- Once the user asks for a commit or push, later local git work in that repo for the rest of the task needs no further approval:
+  commits, merges into the working branch, and rebases of commits that are not pushed.
+  Without such a request, leave the change uncommitted. Unless the user names other changes, commit only this task's changes.
+- Push only when the user asks for a push. That request covers later fast-forward pushes of the same branch for the rest of the task.
+  A commit request alone never covers a push.
+  A push that rewrites pushed history, merging a PR, and publishing each need their own request.
+- A task is defined in `~/AGENTS.md` §5.
+
 Push policy (mandatory):
 
-- A push request approves plain `git push <remote> <branch>` for that branch, and later fast-forward pushes of it in the same task (`~/AGENTS.md` §5).
+- A push request approves plain `git push <remote> <branch>` for that branch, and later fast-forward pushes of it in the same task (Approval scope above).
   Use `--force-with-lease` only under a request that covers rewriting pushed history ("force push", "amend and push").
 - A user-invoked `k-pr-fix-loop` approval packet approves only that batch's plain push of the current PR branch;
   it is not a standing push request and never a force push. If that push is rejected, stop and report.
@@ -14,7 +24,7 @@ Push policy (mandatory):
   When your unpushed commits include a merge commit, run `git merge <remote>/<branch>` instead of a rebase.
   Stop and ask when the rebase or merge conflicts, or your own pushed commits are no longer on the remote branch.
 - When a force-with-lease push is rejected, stop and ask.
-- Merging the base branch into a PR branch (for example `upstream/main`) is local git work under `~/AGENTS.md` §5.
+- Merging the base branch into a PR branch (for example `upstream/main`) is local git work under the Approval scope above.
   Rebasing pushed commits rewrites pushed history and needs its own request.
 
 Amend policy (mandatory):
@@ -22,7 +32,7 @@ Amend policy (mandatory):
 - when the user explicitly says "amend", use `git commit --amend`
 - do not second-guess amend requests by inspecting the commit author; the git author field reflects git config, not whether the agent created the commit
 - if the amended commit was already pushed, pushing it rewrites pushed history:
-  that push needs its own request, such as "amend and push" (`~/AGENTS.md` §5)
+  that push needs its own request, such as "amend and push" (Approval scope above)
 
 Commit quality:
 

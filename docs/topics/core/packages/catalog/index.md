@@ -30,6 +30,7 @@ This is the human map of the tools this dotfiles repo controls across package ma
 | [uv](https://docs.astral.sh/uv/) Python/tools                                                          | [`home/readonly_dot_python-version`](../../../../../home/readonly_dot_python-version), [`home/readonly_dot_default-uv-tools.tmpl`](../../../../../home/readonly_dot_default-uv-tools.tmpl) |
 | [GitHub CLI](https://cli.github.com/) extensions                                                       | [`run_onchange_after_05-install-gh-extensions.fish.tmpl`](../../../../../home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl)                                       |
 | [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases) | [`home/readonly_dot_default-custom-packages.tmpl`](../../../../../home/readonly_dot_default-custom-packages.tmpl)                                                                          |
+| [redtab](https://github.com/kapral18/redtab) (private) build + Redlib                                  | [`run_onchange_after_09-install-redtab.sh.tmpl`](../../../../../home/.chezmoiscripts/run_onchange_after_09-install-redtab.sh.tmpl)                                                         |
 | [llama.cpp](https://llama.app) model assets                                                            | [`home/readonly_dot_default-llama-cpp-models.tmpl`](../../../../../home/readonly_dot_default-llama-cpp-models.tmpl)                                                                        |
 | FLUX.2 klein 9B weights                                                                                | [`home/dot_config/sd-image/readonly_models.txt`](../../../../../home/dot_config/sd-image/readonly_models.txt)                                                                              |
 
@@ -41,3 +42,4 @@ This is the human map of the tools this dotfiles repo controls across package ma
 | `pnpm`, `uv`, `cargo`, `go`, `gem`, `mise` | language/runtime manager source |
 | `custom`                                   | GitHub release or DMG installer |
 | `model`                                    | large local model asset         |
+| `script`                                   | dedicated chezmoi install hook  |

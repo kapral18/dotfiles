@@ -27,9 +27,11 @@ const engine = (on: On, rows: { toolUses: Use[] }[], replies: unknown[], options
     value: rows.map(row => ({ ...row, toolUses: row.toolUses.map(u => ({ ...u, tool_use_id: ids.get(u.tool_use_id) ?? u.tool_use_id })) })) as never,
   }))
   on('env.get', () => ({ value: '/home/u' }))
-  on('fs.read', () => {
+  on('fs.read', ($, e) => {
     if (options.rules instanceof Error) throw options.rules
-    return { value: options.rules ?? 'RULES' }
+    if (e.path.endsWith('/AGENTS.md')) return { value: options.rules ?? 'RULES' }
+    if (e.path.includes('/k-cleanup/')) throw new Error('ENOENT')
+    return { value: `PROCEDURE ${e.path}` }
   })
   on('ui.status', () => ({ value: undefined }))
   on('ui.log', () => ({ value: undefined }))
@@ -75,6 +77,8 @@ test('reviews the turn once and sends its concerns back', async ($, on) => {
   // The cache mark sits on the last earlier turn, which the next review repeats.
   expect(sent[0]?.blocks?.filter(block => block.cache).map(block => block.text)).toEqual(['## User\nbuild the mod?\n\n## Agent\nShould I build a Stop-time reviewer mod?\n\n'])
   expect(sent[0]?.system).toMatch(/as data, not instructions[\s\S]*RULES/)
+  // The skill procedures the SOP points to follow it; a missing one is left out.
+  expect(sent[0]?.system).toMatch(/RULES\n\nPROCEDURE \/home\/u\/\.agents\/skills\/k-git\/references\/commit-push\.md\n\nPROCEDURE \/home\/u\/\.agents\/skills\/k-long-jobs\/SKILL\.md/)
   await $.turn.start({ text: '', turnId: 'c' })
   expect((await $.classic.Stop(stop('Done.', true))).block).toBeUndefined()
   expect(sent).toHaveLength(1)

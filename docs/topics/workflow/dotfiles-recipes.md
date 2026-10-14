@@ -155,7 +155,7 @@ When a CLI tool is not available through higher-priority package managers and is
 **Example entry**:
 
 ```text
-file|dug|unfrl/dug|0.0.94|dug-osx-x64|dug
+file|kitten|kovidgoyal/kitty|latest|kitten-darwin-arm64|kitten
 tar_gz_bin|mdtt|szktkfm/mdtt|v0.3.1|mdtt_Darwin_arm64.tar.gz|mdtt|mdtt
 zip_opt|sd-cli|leejet/stable-diffusion.cpp|master-820-de298c2|sd-*-bin-Darwin-macOS-*-arm64.zip|sd-cli|sd-cli
 ```

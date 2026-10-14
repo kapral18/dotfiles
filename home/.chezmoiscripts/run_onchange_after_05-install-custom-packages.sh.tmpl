@@ -7,6 +7,7 @@ set -euo pipefail
 # zip bundle helper hash: {{ output "sh" "-c" (printf "shasum -a 256 %q | cut -d' ' -f1" (joinPath .chezmoi.sourceDir "../scripts/install_github_zip_bundle.py")) | trim }}
 
 BIN_DIR="${HOME}/.local/bin"
+RELEASE_RECORD_DIR="${HOME}/.local/state/custom-packages"
 CUSTOM_PACKAGES_TEMPLATE={{ joinPath .chezmoi.sourceDir "readonly_dot_default-custom-packages.tmpl" | quote }}
 INSTALL_ZIP_BUNDLE={{ joinPath .chezmoi.sourceDir "../scripts/install_github_zip_bundle.py" | quote }}
 
@@ -136,68 +137,45 @@ install_dmg_app() (
 # Function to download and install GitHub release CLI binaries (no eget)
 # -----------------------------------------------
 
-download_latest_release_asset() {
+download_release_asset() {
   local github_repo="$1"
   local release_tag="$2"
   local pattern="$3"
   local out_dir="$4"
 
-  require_cmd gh
-
-  if [[ -n "$release_tag" ]]; then
-    gh release download "$release_tag" --repo "$github_repo" --pattern "$pattern" --dir "$out_dir" --clobber
-    return 0
-  fi
-
-  gh release download --repo "$github_repo" --pattern "$pattern" --dir "$out_dir" --clobber
+  require_cmd gh || return 1
+  gh release download "$release_tag" --repo "$github_repo" --pattern "$pattern" --dir "$out_dir" --clobber
 }
 
-normalize_version() {
-  local tag="$1"
-  printf '%s' "$tag" | sed 's/^v//'
+# Each installed file/tar_gz_bin binary has a record keyed by output name that
+# holds `<resolved-tag>|<repo>|<asset-pattern>|<bin-in-archive>`. Many release
+# binaries have no version command, so this record is the idempotency gate;
+# running a binary to guess its version can start a TUI or a real action.
+# A changed asset pattern or archive member (e.g. switching arch) reinstalls.
+release_record_path() {
+  printf '%s/%s.release' "$RELEASE_RECORD_DIR" "$1"
 }
 
-escape_ere() {
-  # Escape string for use inside an ERE (grep -E).
-  printf '%s' "$1" | sed 's/[][(){}.^$*+?|\\]/\\&/g'
-}
-
-run_with_timeout() {
-  local timeout_sec="$1"
-  shift
-  perl -e 'my $t=shift; my $p=fork(); if(!defined $p){exit 1;} if($p==0){exec(@ARGV); exit 1;} else{local $SIG{ALRM}=sub{kill 9,$p; exit 1;}; alarm $t; waitpid($p,0); exit($? >> 8);}' "$timeout_sec" "$@"
-}
-
-binary_matches_release_tag() {
+release_is_installed() {
   local dest_path="$1"
-  local release_tag="$2"
+  local output_name="$2"
+  local release_id="$3"
 
-  [[ -x "$dest_path" ]] || return 1
-  [[ -n "$release_tag" ]] || return 0
-
-  local want
-  want=$(normalize_version "$release_tag")
-  local release_tag_esc want_esc
-  release_tag_esc=$(escape_ere "$release_tag")
-  want_esc=$(escape_ere "$want")
-
-  local out=""
-  # Use perl alarm to prevent commands from hanging if they don't support version flags
-  if out=$(LC_ALL=C run_with_timeout 2 "$dest_path" --version 2>/dev/null); then
-    :
-  elif out=$(LC_ALL=C run_with_timeout 2 "$dest_path" version 2>/dev/null); then
-    :
-  elif out=$(LC_ALL=C run_with_timeout 2 "$dest_path" -v 2>/dev/null); then
-    :
-  elif out=$(LC_ALL=C run_with_timeout 2 "$dest_path" -V 2>/dev/null); then
-    :
-  else
-    return 1
-  fi
-
-  printf '%s' "$out" | grep -Eq "(^|[^0-9A-Za-z])(${release_tag_esc}|${want_esc})([^0-9A-Za-z]|$)"
+  local record_path
+  record_path=$(release_record_path "$output_name")
+  [[ -x "$dest_path" && -f "$record_path" ]] || return 1
+  [[ "$(<"$record_path")" == "$release_id" ]]
 }
 
+record_release() {
+  local output_name="$1"
+  local release_id="$2"
+
+  mkdir -p "$RELEASE_RECORD_DIR" || return 1
+  printf '%s\n' "$release_id" >"$(release_record_path "$output_name")"
+}
+
+# Callers run under `if !`, which disables errexit, so every step returns on failure.
 install_release_file() {
   local tool_name="$1"
   local github_repo="$2"
@@ -206,24 +184,29 @@ install_release_file() {
   local output_name="$5"
 
   local resolved_tag
-  resolved_tag=$(resolve_release_tag "$github_repo" "$release_tag")
+  resolved_tag=$(resolve_release_tag "$github_repo" "$release_tag") && [[ -n "$resolved_tag" ]] || {
+    echo "Error: Could not resolve release tag for $tool_name" >&2
+    return 1
+  }
 
   local dest_path="$BIN_DIR/$output_name"
-  if binary_matches_release_tag "$dest_path" "$resolved_tag"; then
+  local release_id="$resolved_tag|$github_repo|$pattern|"
+  if release_is_installed "$dest_path" "$output_name" "$release_id"; then
     echo "$tool_name is up to date ($resolved_tag)"
     return 0
   fi
 
   local temp_dir
-  temp_dir=$(mktemp -d)
+  temp_dir=$(mktemp -d) || return 1
   trap 'rm -rf "$temp_dir"; trap - RETURN' RETURN
 
-  download_latest_release_asset "$github_repo" "$resolved_tag" "$pattern" "$temp_dir"
+  download_release_asset "$github_repo" "$resolved_tag" "$pattern" "$temp_dir" || return 1
 
   local asset_path
-  asset_path=$(find_single_file "$temp_dir" "" "asset")
+  asset_path=$(find_single_file "$temp_dir" "" "asset") || return 1
 
-  install -m 0755 "$asset_path" "$dest_path"
+  install -m 0755 "$asset_path" "$dest_path" || return 1
+  record_release "$output_name" "$release_id" || return 1
   echo "$tool_name installed ($resolved_tag)"
 }
 
@@ -236,25 +219,30 @@ install_release_tar_gz_bin() {
   local output_name="$6"
 
   local resolved_tag
-  resolved_tag=$(resolve_release_tag "$github_repo" "$release_tag")
+  resolved_tag=$(resolve_release_tag "$github_repo" "$release_tag") && [[ -n "$resolved_tag" ]] || {
+    echo "Error: Could not resolve release tag for $tool_name" >&2
+    return 1
+  }
 
   local dest_path="$BIN_DIR/$output_name"
-  if binary_matches_release_tag "$dest_path" "$resolved_tag"; then
+  local release_id="$resolved_tag|$github_repo|$pattern|$bin_in_archive"
+  if release_is_installed "$dest_path" "$output_name" "$release_id"; then
     echo "$tool_name is up to date ($resolved_tag)"
     return 0
   fi
 
   local temp_dir
-  temp_dir=$(mktemp -d)
+  temp_dir=$(mktemp -d) || return 1
   trap 'rm -rf "$temp_dir"; trap - RETURN' RETURN
 
-  download_latest_release_asset "$github_repo" "$resolved_tag" "$pattern" "$temp_dir"
+  download_release_asset "$github_repo" "$resolved_tag" "$pattern" "$temp_dir" || return 1
 
   local archive_path
-  archive_path=$(find_single_file "$temp_dir" "-name '*.tar.gz'" ".tar.gz")
+  archive_path=$(find_single_file "$temp_dir" "-name '*.tar.gz'" ".tar.gz") || return 1
 
-  tar -xzf "$archive_path" -C "$temp_dir" "$bin_in_archive"
-  install -m 0755 "$temp_dir/$bin_in_archive" "$dest_path"
+  tar -xzf "$archive_path" -C "$temp_dir" "$bin_in_archive" || return 1
+  install -m 0755 "$temp_dir/$bin_in_archive" "$dest_path" || return 1
+  record_release "$output_name" "$release_id" || return 1
   echo "$tool_name installed ($resolved_tag)"
 }
 
@@ -329,8 +317,10 @@ if ! custom_rendered="$(chezmoi execute-template <"$CUSTOM_PACKAGES_TEMPLATE")";
 fi
 
 status=0
+# Rows get /dev/null as stdin: any child that reads stdin would otherwise eat
+# the remaining rows (as `mdtt version` did under the old version probe).
 while IFS= read -r line || [[ -n "$line" ]]; do
-  if ! process_custom_package_line "$line"; then
+  if ! process_custom_package_line "$line" </dev/null; then
     status=1
   fi
 done <<<"$custom_rendered"

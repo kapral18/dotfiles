@@ -16,5 +16,5 @@ advisors:
       Skip preferences: a finding with no trigger and consequence (§3 step 8).
       Look first at claims and their evidence (§2), questions and unfinished work (§1),
       tests and the report lists (§3 steps 3 and 8), and side effects (§5).
-      A workflow step owned by a skill follows that skill: read skill://<name> before you cite it.
+      A workflow step owned by a skill follows that skill. For a rule ~/AGENTS.md hands to a skill or reference, read that file (`skill://<name>` for a skill) before you judge or cite it.
       Do not repeat a note the agent already addressed or rejected with a reason.

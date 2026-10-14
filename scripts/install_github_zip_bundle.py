@@ -10,7 +10,7 @@ DYLD_FALLBACK_LIBRARY_PATH / LD_LIBRARY_PATH set to opt_dir.
 
 Skip when opt_dir/.release-tag already matches <tag> and the wrapper plus binary
 exist. sd-cli --version does not print the GitHub release tag, so this file is
-the idempotency gate (not binary_matches_release_tag).
+the idempotency gate.
 """
 
 from __future__ import annotations

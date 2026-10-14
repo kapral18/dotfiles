@@ -123,6 +123,14 @@ TEST_RULES: tuple[TestRule, ...] = (
         tests=("tests/test_install_custom_packages.py",),
     ),
     TestRule(
+        prefixes=(
+            "home/.chezmoiscripts/run_onchange_after_09-install-redtab.sh.tmpl",
+            "home/dot_config/redtab/",
+        ),
+        # test_invariants guards the private subscription list under home/dot_config/redtab/.
+        tests=("tests/test_install_redtab.py", "tests/test_invariants.py"),
+    ),
+    TestRule(
         prefixes=("scripts/merge_claude_mcp.py",),
         tests=("test_generate_mcp_configs.py",),
     ),

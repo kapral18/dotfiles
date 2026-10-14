@@ -45,9 +45,7 @@ These rules hold at every step:
 - Before a destructive or state-changing command (delete, restart, config edit, force push), check that the evidence supports that exact action.
 - After two attempts at the same failure without new evidence, stop editing.
   Investigate read-only, then fix with a concrete cause or report the blocker.
-- Run a command that can take minutes under a time limit the task allows, such as `timeout 300`, and raise the tool's own timeout to match.
-  A job that can outlast the tool's maximum timeout runs in the background under `timeout <limit>`, with the tool's background timeout set above that limit.
-  If your answer needs its result, wait for it in the same turn: OMP `wait`; Claude Code, a foreground command that blocks until the job's output shows it ended, under the tool's maximum timeout, repeated while it runs.
+- Run a command that can take minutes with the `k-long-jobs` skill: a time limit, and its result awaited in the same turn when your answer needs it.
   Past the limit, find the cause and report it.
 - Experiments and scratch files go in `/tmp` or the harness scratch directory.
 
@@ -79,16 +77,10 @@ Follow these steps in order for each change. Skip a step only when it does not a
    Give them the step 3 and 4 results. Reviewers report every severity.
 6. **Fix.** Apply supported findings within write scope using `~/.agents/skills/k-review/references/review_fixes.md`.
    That reference owns the fix procedure. Review only fix diffs; stop reviewing after three reviews or a repeated cause at the same place.
-7. **Clean up.**
-   Handle what the task left on this machine: new or newly exposed files outside the change, stale ignored files at paths the change removed or moved, stashes, branches, worktrees, and processes.
-   Files the request asked for are the change, not leftovers.
-   Delete scratch files (not worktrees) this task created that no later step or turn reads, and stop processes it started that the request does not need.
-   Delete an exposed or stale file only if a tool regenerates it (build output, caches, virtualenvs) and the change removed or moved the path it belongs to.
-   Keep any other file in place. Keep branches and worktrees, including scratch ones.
-   Never run `git stash drop`. Restore a stash this task created with `git stash pop stash@{N}`, where N is its index in `git stash list`.
-   If the pop fails or conflicts, keep the stash, leave the conflicted files as they are, never run `git reset --hard` to make it apply, and list both under `Open:`.
-   List what you removed and kept under `Assumptions:`, except scratch files under `/tmp` or the harness scratch directory.
-   Mark each kept file that git would now commit (`git status --porcelain`).
+7. **Clean up.** Before reporting, handle what the task left on this machine with the `k-cleanup` skill.
+   When cleaning up, never delete a branch or a worktree, including scratch ones.
+   When cleaning up, never delete a file this task did not create unless a tool regenerates it and the change removed or moved its path.
+   Never run `git stash drop`, and never run `git reset --hard` to clean up.
 8. **Report.**
    First do every step in the request's scope that needs no §5 approval and that you can still do now:
    a check, a run, a fix, a cleanup, a map update.
@@ -124,12 +116,11 @@ Report what you fixed. As new findings, list only the issues that your earlier r
 
 ## 5. Side effects and publication
 
-- Once the user asks for a commit or push, later local git work in that repo for the rest of the task needs no further approval:
-  commits, merges into the working branch, and rebases of commits that are not pushed.
-  Without such a request, leave the change uncommitted. Unless the user names other changes, commit only this task's changes.
-- Push only when the user asks for a push. That request covers later fast-forward pushes of the same branch for the rest of the task.
-  A commit request alone never covers a push.
-  A push that rewrites pushed history, merging a PR, and publishing each need their own request.
+- Commit only after the user asks for a commit or push in the task; without one, leave the change uncommitted.
+  Unless the user names other changes, commit only this task's changes.
+  Push only after the user asks for a push. A push that rewrites pushed history, merging a PR, and publishing each need their own request.
+  Before any commit, merge, rebase, or push, read the Approval scope in `~/.agents/skills/k-git/references/commit-push.md`:
+  it says which later commits, merges, and pushes a request covers.
 - A task lasts while the user keeps working with you toward the same goal.
   Within one session, a follow-up fix on the same branch is the same task.
   A harness resume that shows the earlier transcript is the same session.

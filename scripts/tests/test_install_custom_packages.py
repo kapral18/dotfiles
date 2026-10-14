@@ -10,8 +10,10 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 INSTALLER = REPO / "home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl"
 
-# The DMG integration owns these external download/mount boundaries. Keep file
-# discovery, copying, registry dispatch, and cleanup real inside a scratch root.
+# These fakes own the external download/mount boundaries for DMG and release
+# binary rows. File discovery, copying, extraction, registry dispatch, and
+# cleanup stay real inside a scratch root. A failed `gh` download leaves a
+# partial file behind, as an interrupted transfer can.
 DEPENDENCIES = r"""
 curl() {
   printf 'curl %s\n' "$*" >> "$CALLS"
@@ -21,9 +23,25 @@ curl() {
 }
 gh() {
   printf 'gh %s\n' "$*" >> "$CALLS"
-  [[ "${DOWNLOAD_FAIL:-0}" == 0 ]] || return 1
-  while [[ "$1" != --dir ]]; do shift; done
-  printf dmg > "$2/release.dmg"
+  [[ "${GH_READS_STDIN:-0}" == 0 ]] || cat >/dev/null
+  if [[ "$1 $2" == "release view" ]]; then printf 'v9\n'; return; fi
+  local pattern="" dir=""
+  while (($#)); do
+    case "$1" in
+    --pattern) pattern="$2"; shift ;;
+    --dir) dir="$2"; shift ;;
+    esac
+    shift
+  done
+  if [[ "${DOWNLOAD_FAIL:-0}" != 0 ]]; then printf partial > "$dir/partial"; return 1; fi
+  case "$pattern" in
+  *.dmg) printf dmg > "$dir/release.dmg" ;;
+  *.tar.gz)
+    mkdir "$dir/src" && printf payload > "$dir/src/tool"
+    tar -czf "$dir/$pattern" -C "$dir/src" tool && rm -r "$dir/src"
+    ;;
+  *) printf payload > "$dir/$pattern" ;;
+  esac
 }
 hdiutil() {
   printf 'hdiutil %s\n' "$*" >> "$CALLS"
@@ -49,12 +67,14 @@ def render(template: str) -> str:
 
 
 class TestInstallCustomPackages(unittest.TestCase):
-    """WHEN the custom registry installs a DMG from HTTPS or GitHub."""
+    """WHEN the custom registry installs a DMG or a GitHub release binary."""
 
     @classmethod
     def setUpClass(cls):
         rendered = render(INSTALLER.read_text())
         cls.functions = rendered.split('if [[ ! -f "$CUSTOM_PACKAGES_TEMPLATE" ]]')[0]
+        # Through the registry loop and its status exit; the tail fetches unrelated tools.
+        cls.registry_run = rendered.split("# Install command-line tools")[0]
 
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
@@ -70,7 +90,11 @@ class TestInstallCustomPackages(unittest.TestCase):
     def run_row(
         self, source: str, *, tag: str = "latest", fail: bool = False, bundle: str = "Notes.app", fail_stage: str = ""
     ):
-        row = f"dmg|Meeting Notes|{source}|{tag}|{bundle}|.dmg"
+        return self.run_line(
+            f"dmg|Meeting Notes|{source}|{tag}|{bundle}|.dmg", fail=fail, bundle=bundle, fail_stage=fail_stage
+        )
+
+    def run_line(self, row: str, *, fail: bool = False, bundle: str = "Notes.app", fail_stage: str = ""):
         functions = self.functions.replace("/Applications/", f"{self.apps}/")
         script = functions + DEPENDENCIES + f"\nif ! process_custom_package_line {shlex.quote(row)}; then exit 1; fi\n"
         return subprocess.run(
@@ -152,6 +176,116 @@ class TestInstallCustomPackages(unittest.TestCase):
                 self.assertEqual((self.apps / f"{tag}.app/content").read_text(), "payload")
                 self.assertIn(expected, self.calls.read_text())
                 self.assertNotIn("curl ", self.calls.read_text())
+
+    def install_release_binary(self, tag: str = "v1.2", *, fail: bool = False):
+        return self.run_line(f"file|Tool|owner/tool|{tag}|tool-darwin|tool", fail=fail)
+
+    @staticmethod
+    def file_record(tag: str, pattern: str = "tool-darwin") -> str:
+        return f"{tag}|owner/tool|{pattern}|"
+
+    @property
+    def binary(self) -> Path:
+        return self.root / ".local/bin/tool"
+
+    @property
+    def record(self) -> Path:
+        return self.root / ".local/state/custom-packages/tool.release"
+
+    def existing_install(self, record: str | None):
+        """An installed binary that leaves a marker if the installer ever executes it."""
+        self.binary.parent.mkdir(parents=True, exist_ok=True)
+        self.binary.write_text(f'#!/bin/sh\ntouch "{self.root}/executed"\n')
+        self.binary.chmod(0o755)
+        self.record.unlink(missing_ok=True)
+        if record is not None:
+            self.record.parent.mkdir(parents=True, exist_ok=True)
+            self.record.write_text(record + "\n")
+
+    def test_SHOULD_skip_release_binary_when_record_matches(self):
+        self.existing_install(self.file_record("v1.2"))
+
+        actual = self.install_release_binary()
+
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+        self.assertIn("Tool is up to date (v1.2)", actual.stdout)
+        self.assertEqual(self.calls.read_text(), "")
+        self.assertFalse((self.root / "executed").exists())
+
+    def test_SHOULD_reinstall_release_binary_without_running_it(self):
+        cases = (
+            ("tag differs", self.file_record("v1.1")),
+            ("asset differs", self.file_record("v1.2", "tool-darwin-x64")),
+            ("no record", None),
+        )
+        for case, record in cases:
+            with self.subTest(case=case):
+                self.existing_install(record)
+
+                actual = self.install_release_binary()
+
+                self.assertEqual(actual.returncode, 0, actual.stderr)
+                self.assertEqual(self.binary.read_text(), "payload")
+                self.assertEqual(self.record.read_text(), self.file_record("v1.2") + "\n")
+                self.assertFalse((self.root / "executed").exists())
+
+    def test_SHOULD_reinstall_missing_binary_despite_record(self):
+        self.record.parent.mkdir(parents=True)
+        self.record.write_text(self.file_record("v1.2") + "\n")
+
+        actual = self.install_release_binary()
+
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+        self.assertEqual(self.binary.read_text(), "payload")
+        self.assertIn("gh release download v1.2 --repo owner/tool", self.calls.read_text())
+
+    def test_SHOULD_keep_old_install_when_release_download_fails_midway(self):
+        self.existing_install(self.file_record("v1.1"))
+
+        actual = self.install_release_binary(fail=True)
+
+        self.assertEqual(actual.returncode, 1)
+        self.assertNotIn("installed", actual.stdout)
+        self.assertIn("executed", self.binary.read_text())
+        self.assertEqual(self.record.read_text(), self.file_record("v1.1") + "\n")
+
+    def test_SHOULD_install_latest_archive_binary_once(self):
+        row = "tar_gz_bin|Tool|owner/tool|latest|tool.tar.gz|tool|tool"
+
+        first = self.run_line(row)
+        second = self.run_line(row)
+
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertIn("Tool installed (v9)", first.stdout)
+        self.assertEqual(self.binary.read_text(), "payload")
+        self.assertEqual(self.record.read_text(), "v9|owner/tool|tool.tar.gz|tool\n")
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertIn("Tool is up to date (v9)", second.stdout)
+        self.assertEqual(self.calls.read_text().count("gh release download"), 1)
+
+    def test_SHOULD_install_every_row_when_a_row_child_reads_stdin(self):
+        rows = "file|Tool A|owner/a|v1|a-darwin|a\nfile|Tool B|owner/b|v1|b-darwin|b"
+        fakes = DEPENDENCIES + 'chezmoi() { cat >/dev/null; printf "%s\\n" "$ROWS"; }\n'
+
+        actual = subprocess.run(
+            ["bash", "-c", fakes + self.registry_run],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "HOME": str(self.root),
+                "TMPDIR": str(self.downloads),
+                "CALLS": str(self.calls),
+                "ROWS": rows,
+                "GH_READS_STDIN": "1",
+            },
+        )
+
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+        self.assertIn("Tool A installed (v1)", actual.stdout)
+        self.assertIn("Tool B installed (v1)", actual.stdout)
+        self.assertEqual((self.root / ".local/bin/b").read_text(), "payload")
 
 
 if __name__ == "__main__":
