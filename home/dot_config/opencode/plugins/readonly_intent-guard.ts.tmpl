@@ -1,0 +1,94 @@
+// Managed by chezmoi. Keeps the session on the user's goal through `,task` (~/AGENTS.md §3 step 0). OpenCode 2.x plugin API.
+import { Plugin } from "@opencode/plugin"
+import { createIntentGuard, isShellTool, type Exec } from "{{ .chezmoi.homeDir }}/lib/shared/intent_guard.ts"
+
+const exec: Exec = async (command, args, options) => {
+  const child = Bun.spawn([`${process.env.HOME}/bin/${command}`, ...args], { cwd: options?.cwd, stdout: "pipe", stderr: "ignore" })
+  const timer = setTimeout(() => child.kill(), options?.timeout ?? 15_000)
+  const [stdout, code] = await Promise.all([new Response(child.stdout).text(), child.exited]).finally(() => clearTimeout(timer))
+  return { stdout, code }
+}
+
+// A follow-up this plugin sends carries this marker, so its prompt does not reset the stop check's loop guard.
+const FOLLOW_UP = "intentGuardFollowUp"
+
+export default Plugin.define({
+  id: "local.intent-guard",
+  setup: async (ctx) => {
+    const guard = createIntentGuard("opencode", exec)
+    const task = (event: string, input: Record<string, unknown>, sessionID: string) =>
+      guard(event, input, { cwd: ctx.location.directory, sessionManager: { getSessionId: () => sessionID } })
+    // The card from the last typed prompt, pinned as a system part on each request of that turn.
+    const pinned = new Map<string, string>()
+    // A subagent runs in a child session; only top-level sessions keep a card.
+    const children = new Map<string, Promise<boolean>>()
+    const isChild = (sessionID: string) => {
+      let known = children.get(sessionID)
+      if (!known) {
+        known = ctx.session
+          .get({ sessionID } as never)
+          .then((info) => Boolean((info as { parentID?: string } | undefined)?.parentID))
+          .catch(() => false)
+        children.set(sessionID, known)
+      }
+      return known
+    }
+
+    await ctx.session.hook("prompt", async (event) => {
+      if (event.metadata?.[FOLLOW_UP] || (await isChild(event.sessionID))) return
+      const { context } = await task("prompt", { text: event.prompt.text }, event.sessionID)
+      if (context) pinned.set(event.sessionID, context)
+      else pinned.delete(event.sessionID)
+    })
+
+    await ctx.session.hook("context", (event) => {
+      const context = pinned.get(event.sessionID)
+      if (context) event.system.push({ type: "text", text: context })
+    })
+
+    await ctx.session.hook("compaction", async (event) => {
+      if (await isChild(event.sessionID)) return
+      const { instructions } = await task("compact", {}, event.sessionID)
+      if (instructions) event.system.push({ type: "text", text: instructions })
+    })
+
+    // The first file edit without a card is refused once: a thrown error is the tool's failure.
+    await ctx.tool.hook("execute.before", async (event) => {
+      const write = ["edit", "write", "patch"].includes(event.tool)
+      if ((!write && !isShellTool(event.tool)) || (await isChild(event.sessionID))) return
+      const input = (event.input ?? {}) as Record<string, unknown>
+      const paths = typeof input.path === "string" ? [input.path] : []
+      const patch = typeof input.patchText === "string" ? input.patchText : undefined
+      const { deny } = await task("tool", { tool: event.tool, paths, patch, write, phase: "before", call_id: event.id }, event.sessionID)
+      if (deny) throw new Error(deny)
+    })
+
+    // Scope and zoom-out notes follow the result the model reads.
+    await ctx.tool.hook("execute.after", async (event) => {
+      if (await isChild(event.sessionID)) return
+      if (event.status !== "completed" && !isShellTool(event.tool)) return
+      const input = (event.input ?? {}) as Record<string, unknown>
+      const write = ["edit", "write", "patch"].includes(event.tool)
+      const paths = write && typeof input.path === "string" ? [input.path] : []
+      const patch = write && typeof input.patchText === "string" ? input.patchText : undefined
+      const { note } = await task("tool", { tool: event.tool, paths, patch, write, phase: "after", call_id: event.id }, event.sessionID)
+      if (!note || event.status !== "completed") return
+      const content = event.result.content
+      const before = content === undefined ? [] : typeof content === "string" ? [{ type: "text" as const, text: content }] : [...content]
+      event.result = { ...event.result, content: [...before, { type: "text" as const, text: note }] }
+    })
+
+    // OpenCode has no blocking stop hook: when a run ends with an item open, the plugin sends one follow-up prompt.
+    const stop = new AbortController()
+    void (async () => {
+      for await (const event of ctx.event.subscribe({ signal: stop.signal })) {
+        if (event.type !== "session.execution.succeeded") continue
+        const sessionID = (event.data as { sessionID: string }).sessionID
+        if (await isChild(sessionID)) continue
+        const { block } = await task("stop", {}, sessionID)
+        if (block) await ctx.session.prompt({ sessionID, text: block, metadata: { [FOLLOW_UP]: true } }).catch(() => undefined)
+      }
+    })().catch(() => undefined)
+    return () => stop.abort()
+  },
+})

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Description: Keep session intent cards and check scope, progress, and completion against them.
+set -euo pipefail
+exec python3 "$HOME/lib/,task/main.py" "$@"

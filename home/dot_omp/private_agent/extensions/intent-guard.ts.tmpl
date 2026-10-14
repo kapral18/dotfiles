@@ -1,0 +1,74 @@
+// Managed by chezmoi. Keeps the session on the user's goal through `,task` (~/AGENTS.md §3 step 0).
+import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent"
+import { createIntentGuard, isShellTool, messageText, writePaths } from "{{ .chezmoi.homeDir }}/lib/shared/intent_guard.ts"
+
+// OMP rebinds extensions to every subagent and advisor (`ctx.agent.kind === "sub"`); only the main session keeps the card.
+export default function (pi: ExtensionAPI) {
+  const task = createIntentGuard("omp", (command, args, options) => pi.exec(command, args, options))
+  // OMP sends a stop continuation through before_agent_start; its prompt must not reset the stop check's loop guard.
+  const continuations = new Set<string>()
+  let completions = Promise.resolve()
+
+  // Background Bash/Eval return before writing; their terminal updates keep the original call ID.
+  pi.on("tool_execution_update", (event, ctx) => {
+    if (ctx.agent.kind === "sub" || !isShellTool(event.toolName)) return
+    const state = (event.partialResult as { details?: { async?: { state?: string } } } | undefined)?.details?.async?.state
+    if (!state || !["completed", "failed", "cancelled"].includes(state)) return
+    completions = completions.then(async () => {
+      const { note } = await task("tool", { tool: event.toolName, call_id: event.toolCallId, phase: "complete" }, ctx)
+      if (note) pi.sendMessage({ customType: "intent-guard", content: note, display: false }, { triggerTurn: false })
+    }).catch(() => undefined)
+    return completions
+  })
+
+  // The card, preferences, and correction notes ride with each prompt; Gate reads the card from here.
+  pi.on("before_agent_start", async (event, ctx) => {
+    if (ctx.agent.kind === "sub") return
+    const own = [...continuations].find((block) => event.prompt.includes(block))
+    if (own !== undefined) {
+      continuations.delete(own)
+      return
+    }
+    const { context } = await task("prompt", { text: event.prompt }, ctx)
+    if (context) return { message: { customType: "intent-guard", content: context, display: false } }
+  })
+
+  // The first file edit without a card is refused once; the step is counted after the call.
+  pi.on("tool_call", async (event, ctx) => {
+    if (ctx.agent.kind === "sub") return
+    const input = event.input as Record<string, unknown>
+    const paths = writePaths(event.toolName, input)
+    if (!paths && !isShellTool(event.toolName)) return
+    const patch = typeof input.input === "string" ? input.input : undefined
+    const { deny } = await task("tool", { tool: event.toolName, paths: paths ?? [], patch, write: paths !== undefined, phase: "before", call_id: event.toolCallId }, ctx)
+    if (deny) return { block: true, reason: deny }
+  })
+
+  // Scope and zoom-out notes reach the next request as trusted context.
+  pi.on("tool_result", async (event, ctx) => {
+    if (ctx.agent.kind === "sub") return
+    await completions
+    const paths = writePaths(event.toolName, event.input)
+    const patch = typeof event.input.input === "string" ? event.input.input : undefined
+    const background = (event.details as { async?: { state?: string } } | undefined)?.async?.state === "running"
+    const { note } = await task("tool", { tool: event.toolName, paths: paths ?? [], patch, write: paths !== undefined, phase: "after", call_id: event.toolCallId, background }, ctx)
+    if (note) return { additionalContext: note }
+  })
+
+  // The summary keeps the card verbatim, its statuses, and the user's corrections.
+  pi.on("session.compacting", async (event, ctx) => {
+    if (ctx.agent.kind === "sub") return
+    const { instructions } = await task("compact", {}, ctx, event.sessionId)
+    if (instructions) return { context: [instructions] }
+  })
+
+  // One continuation per open check, while the CLI's loop guard allows it.
+  pi.on("session_stop", async (event, ctx) => {
+    if (ctx.agent.kind === "sub") return
+    await completions
+    const { block } = await task("stop", { answer: messageText(event.last_assistant_message) }, ctx, event.session_id)
+    if (!block) return
+    continuations.add(block)
+    return { continue: true, additionalContext: block }
+  })
+}

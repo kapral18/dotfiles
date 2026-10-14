@@ -13,7 +13,7 @@ const answered = (text: string) => ({ isAnswered: true, text, usage })
 
 // The engine beneath the plugin: `rows` is the transcript, `replies` answer each review in turn.
 // `below` answers each Stop beneath the plugin in turn, then `{}`.
-const engine = (on: On, rows: { toolUses: Use[] }[], replies: unknown[], options: { settings?: Record<string, unknown>; below?: { block?: string }[]; rules?: string | Error; messages?: Error } = {}) => {
+const engine = (on: On, rows: { toolUses: Use[] }[], replies: unknown[], options: { settings?: Record<string, unknown>; below?: { block?: string }[]; rules?: string | Error; messages?: Error; card?: string } = {}) => {
   const sent: { model: string; prompt: string; system?: string; blocks?: readonly { text: string; cache?: true }[] }[] = []
   const ids = new Map<string, string>()
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
@@ -24,7 +24,13 @@ const engine = (on: On, rows: { toolUses: Use[] }[], replies: unknown[], options
   on('classic.Stop', () => options.below?.shift() ?? {})
   on('settings.read', () => ({ value: options.settings ?? { advisorModel: 'claude-opus-5-5' } }))
   // The format checks' working-tree snapshot never changes.
-  on('process.run', () => ({ value: { exitCode: 0, stdout: 'same', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
+  // `,task card show` prints the intent card when the options hold one, else fails as with no card.
+  on('process.run', ($, e) =>
+    e.argv[0] === ',task'
+      ? { value: { exitCode: options.card === undefined ? 1 : 0, stdout: options.card ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+      : { value: { exitCode: 0, stdout: 'same', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } },
+  )
+  on('session.id', () => ({ value: 's1' }))
   on('session.messages', () => {
     if (options.messages) throw options.messages
     return {
@@ -417,4 +423,12 @@ test('an engine nudge after a paused Stop, such as a /goal check-in, is no send-
   await $.turn.start({ text: '<task-notification>done</task-notification>', turnId: 'wake' })
   expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/^stop-review: /)
   expect(sent).toHaveLength(1)
+})
+
+test('gives the reviewer the intent card last, when this session wrote one', async ($, on) => {
+  const sent = engine(on, turn, [answered('PASS')], { card: 'Goal: build the reviewer mod\nDone when:\n- [ ] D1: it reviews the turn\n' })
+  await run($, 'yeah I think so')
+  await $.classic.Stop(stop('Done.'))
+  expect(sent[0]?.prompt).toMatch(/# Final answer\nDone\.\n\n# Intent card\nGoal: build the reviewer mod\nDone when:\n- \[ \] D1: it reviews the turn$/)
+  expect(sent[0]?.system).toMatch(/judge first whether the final answer achieves its Goal/)
 })

@@ -272,6 +272,17 @@ EXTRA_TESTS: tuple[ExtraTest, ...] = (
         ),
     ),
     ExtraTest(
+        name="intent-guard",
+        argv=("bun", "test", "scripts/tests/intent_guard.test.ts"),
+        prefixes=(
+            "scripts/tests/intent_guard.test.ts",
+            "home/exact_lib/exact_shared/intent_guard.ts",
+            "home/dot_pi/agent/exact_extensions/intent-guard.ts.tmpl",
+            "home/dot_omp/private_agent/extensions/intent-guard.ts.tmpl",
+            "home/dot_config/opencode/plugins/readonly_intent-guard.ts.tmpl",
+        ),
+    ),
+    ExtraTest(
         name="fish-history-merge",
         argv=("python3", "home/exact_lib/exact_,history-sync/fish-history-merge.test.py", "-v"),
         prefixes=("home/exact_lib/exact_,history-sync/",),

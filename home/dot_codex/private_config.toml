@@ -22,3 +22,37 @@ prevent_idle_sleep = true
 # pin codex's experimental auto-memory off so a default flip can't create a second one.
 memories = false
 
+
+# intent-guard: the shared `,task` core keeps the session on the user's goal (~/AGENTS.md §3 step 0).
+# Codex runs a config hook only after it is trusted once in `/hooks`.
+[[hooks.UserPromptSubmit]]
+[[hooks.UserPromptSubmit.hooks]]
+type = "command"
+command = '"$HOME/bin/,task" hook codex'
+timeout = 15
+
+[[hooks.SessionStart]]
+matcher = "^compact$"
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = '"$HOME/bin/,task" hook codex'
+timeout = 15
+
+[[hooks.PreToolUse]]
+matcher = "apply_patch|Write|Edit|Bash"
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = '"$HOME/bin/,task" hook codex'
+timeout = 15
+
+[[hooks.PostToolUse]]
+[[hooks.PostToolUse.hooks]]
+type = "command"
+command = '"$HOME/bin/,task" hook codex'
+timeout = 15
+
+[[hooks.Stop]]
+[[hooks.Stop.hooks]]
+type = "command"
+command = '"$HOME/bin/,task" hook codex'
+timeout = 15

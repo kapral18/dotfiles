@@ -1,0 +1,45 @@
+// Managed by chezmoi. Keeps the session on the user's goal through `,task` (~/AGENTS.md §3 step 0).
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
+import { createIntentGuard, isShellTool, lastAnswer, writePaths } from "{{ .chezmoi.homeDir }}/lib/shared/intent_guard.ts"
+
+export default function (pi: ExtensionAPI) {
+  const task = createIntentGuard("pi", (command, args, options) => pi.exec(command, args, options))
+
+  // The card, preferences, and correction notes ride with each typed prompt.
+  pi.on("before_agent_start", async (event, ctx) => {
+    if (event.messageType !== "user") return
+    const { context } = await task("prompt", { text: event.prompt }, ctx)
+    if (context) return { message: { customType: "intent-guard", content: context, display: false } }
+  })
+
+  // The first file edit without a card is refused once; the step is counted after the call.
+  pi.on("tool_call", async (event, ctx) => {
+    const paths = writePaths(event.toolName, event.input as Record<string, unknown>)
+    if (!paths && !isShellTool(event.toolName)) return
+    const { deny } = await task("tool", { tool: event.toolName, paths: paths ?? [], write: paths !== undefined, phase: "before", call_id: event.toolCallId }, ctx)
+    if (deny) return { block: true, reason: deny }
+  })
+
+  // Scope and zoom-out notes follow the result the model reads.
+  pi.on("tool_result", async (event, ctx) => {
+    const paths = writePaths(event.toolName, event.input)
+    const { note } = await task("tool", { tool: event.toolName, paths: paths ?? [], write: paths !== undefined, phase: "after", call_id: event.toolCallId }, ctx)
+    if (note) return { content: [...event.content, { type: "text" as const, text: note }] }
+  })
+
+  // Pi's compaction takes no extra instructions: the flag makes the next tool call show the card again.
+  pi.on("session_before_compact", async (_event, ctx) => {
+    await task("compact", {}, ctx)
+  })
+
+  // One continuation per open check, while the CLI's loop guard allows it. The appended message is what lets the run continue.
+  pi.on("agent_before_settle", async (event, ctx) => {
+    if (event.outcome !== "completed") return
+    const { block } = await task("stop", { answer: lastAnswer(event.context.contextMessages) }, ctx)
+    if (!block) return
+    return {
+      entries: [...event.entries, { type: "custom_message" as const, customType: "intent-guard", content: block, display: true }],
+      continue: true,
+    }
+  })
+}

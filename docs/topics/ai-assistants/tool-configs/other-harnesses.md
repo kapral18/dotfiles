@@ -14,6 +14,8 @@ Codex, OpenCode, Oh My Pi, Crush, tuicr, and lgtm keep harness-native configurat
 | Codex    | [`home/dot_codex/private_config.toml`](../../../../home/dot_codex/private_config.toml)                             | `run_onchange_after_07-merge-codex-config.sh.tmpl` injects MCP servers into `~/.codex/config.toml` |
 | OpenCode | [`home/dot_config/opencode/readonly_opencode.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.jsonc) | `run_onchange_after_07-merge-opencode-config.sh.tmpl`                                              |
 
+OpenCode loads [`plugins/readonly_intent-guard.ts.tmpl`](../../../../home/dot_config/opencode/plugins/readonly_intent-guard.ts.tmpl), the intent card adapter ([Staying on the goal](../staying-on-goal.md)).
+
 Interactive shells route `codex` through `~/bin/,codex`, which injects the local llama.cpp model catalog when needed and then runs the real binary.
 
 ### Codex settings
@@ -22,6 +24,8 @@ Interactive shells route `codex` through `~/bin/,codex`, which injects the local
 Codex discovers shared skills under `~/.agents/skills`. `k-review`'s Verify mode uses fresh native agents with the shared reviewer prompt; other modes stay inline. See [Subagents](../subagents.md).
 
 Policy: `approval_policy = "never"`, `sandbox_mode = "danger-full-access"`.
+
+Hooks: `[[hooks.*]]` entries run `,task hook codex` on `UserPromptSubmit`, `SessionStart` (`compact`), `PreToolUse` (`apply_patch|Write|Edit|Bash`), `PostToolUse`, and `Stop` ([Staying on the goal](../staying-on-goal.md)). Codex runs a config hook only after it is trusted once in `/hooks`; the merge keeps the trust hashes.
 
 ### Codex reconciliation
 
@@ -64,7 +68,7 @@ Fish completions for `--model`/`--effort` share `~/.config/fish/functions/__open
 | Skills       | `symlink_skills` → `~/.agents/skills`                                                                                                                                                                                                                                                                                                                        | `~/.omp/agent/skills`       |
 | Advisors     | `readonly_WATCHDOG.yml`                                                                                                                                                                                                                                                                                                                                      | `~/.omp/agent/WATCHDOG.yml` |
 | Reviewer     | `exact_agents/k-agent-reviewer.md.tmpl`                                                                                                                                                                                                                                                                                                                      | `~/.omp/agent/agents/`      |
-| Extension    | `extensions/context-mode.ts.tmpl` ([working-context selection](pi.md#working-context-selection))                                                                                                                                                                                                                                                             | `~/.omp/agent/extensions/`  |
+| Extension    | `extensions/context-mode.ts.tmpl` ([working-context selection](pi.md#working-context-selection)), `extensions/intent-guard.ts.tmpl` ([intent card](../staying-on-goal.md))                                                                                                                                                                                   | `~/.omp/agent/extensions/`  |
 | Install      | `@oh-my-pi/pi-coding-agent` in [`home/readonly_dot_default-pnpm-pkgs`](../../../../home/readonly_dot_default-pnpm-pkgs)                                                                                                                                                                                                                                      | pnpm global, unpinned       |
 
 The context-mode extension reapplies the session's chosen window after initial model discovery.
@@ -89,7 +93,7 @@ The default advisor made the root wait for it every turn and could steer mid-run
 OMP keeps one interrupt cooldown (`advisor.immuneTurns`) for all advisors, so a cooldown to quiet it would also mute `Gate`'s final concern.
 OMP steers the agent after the final answer only for a blocker or an `agent-end` concern; otherwise the user sees the notes as a card.
 `Gate` is the final-answer reviewer: `reviewMode: agent-end` and `syncBacklog: strict` make the root wait for its review.
-Like `stop-review`, it holds no rules of its own: it judges against `~/AGENTS.md` (an advisor context file), sends a `concern` for every break the agent can fix now (the 3 most severe if more), skips preferences, and checks §2, §1, §3 steps 3 and 8, and §5 first.
+Like `stop-review`, it holds no rules of its own: it judges against `~/AGENTS.md` (an advisor context file), sends a `concern` for every break the agent can fix now (the 3 most severe if more), skips preferences, judges the answer against the intent card first when the intent-guard extension added one to the prompt, and checks §2, §1, §3 steps 3 and 8, and §5 first.
 It sends every concern in its first review of a run, so the run goes back once with all of them; a later review of the same run sends only a break the agent's last change introduced or a concern held back for the 3-note cap.
 OMP steers at most one continuation turn per final review.
 

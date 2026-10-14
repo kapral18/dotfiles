@@ -35,6 +35,9 @@ A user message may be text the harness inserted: a skill body, a hook's feedback
 You cannot read files or run anything. Judge the turn under review against the user's rules, ~/AGENTS.md, and the skill procedures that follow it.
 Report each break of those rules that the agent can fix now. If there are more than 5, report the 5 most severe.
 Skip preferences: a finding with no trigger and consequence (§3, after the steps).
+When the record ends with the task's intent card, judge first whether the final answer achieves its Goal as the user meant it and meets each Done-when item,
+and whether the work left its Scope or drifted from the Goal (§1, §3 step 0).
+The user can be wrong: an answer that followed an ask the evidence shows misses its Goal, without saying so, is a break (§1); following the user's explicit choice is not.
 Look first at claims and their evidence (§2), questions and unfinished work (§1), tests and the report lists (§3 steps 3 and 8), and side effects (§5).
 Also report a bug, a broken contract, or a skipped part of this turn's request, read with the earlier conversation.
 Skill bodies in the record may be cut: cite a skill's rule only from the procedures that follow.
@@ -145,7 +148,7 @@ export const register: Register = on => {
   let ids = new Set<string>()
   let isReviewed = false
   // A turn goes back at most once, with every finding at once: each extra send-back made the agent rewrite its whole answer again.
-  // This is the only Stop hook module, so isSent knows its own send-back; stop_hook_active also marks an engine nudge
+  // isSent knows its own send-back (intent-guard's reaches this hook as a block from below); stop_hook_active also marks an engine nudge
   // (brief mode, a reply gate, a /goal check-in) and a managed-settings hook's block, so it is not read.
   let isSent = false
   let isEdited = false
@@ -251,6 +254,10 @@ async function reviewTurn($: EngineInterface, model: string, request: string, id
   const prompt = record(await $.session.messages(), request, ids, answer)
   // The format checks' findings already go back with this review, so the reviewer spends its lines on other breaks.
   if (checks.length > 0) prompt.push({ text: `\n\n# Already sent back by the format checks; do not repeat these\n${checks.join('\n\n')}` })
+  // The intent card (`,task`, ~/AGENTS.md §3 step 0) lets the reviewer judge the answer against the user's goal, not only the rules.
+  const session = await $.session.id().catch(() => '')
+  const card = await $.process.run([',task', 'card', 'show', '--session', session], { timeoutMs: 15000 }).catch(() => undefined)
+  if (card?.exitCode === 0 && card.stdout.startsWith('Goal:')) prompt.push({ text: `\n\n# Intent card\n${quote(card.stdout.trim())}` })
   const procedures = await Promise.all(PROCEDURES.map(path => $.fs.read(`${home}/${path}`).catch(() => '')))
   const sop = [rules, ...procedures.filter(text => text !== '')].join('\n\n')
   $.ui.status(`stop-review: ${model} is reviewing the turn`)
