@@ -56,14 +56,17 @@ export const register: Register = on => {
     if (map.exitCode !== 0) return next(e)
     const lines = map.stdout.split('\n')
 
-    const unmapped = lines.find(line => line.startsWith('unmapped: '))?.slice('unmapped: '.length)
-    if (unmapped && !DOCS_OR_TESTS.test(relative) && !seen.has(`${repo}\0dir\0${unmapped}`)) {
-      seen.add(`${repo}\0dir\0${unmapped}`)
+    // A path through a symlink can list two directories; each is keyed alone, as on the Bash path.
+    const unmapped = DOCS_OR_TESTS.test(relative)
+      ? []
+      : (lines.find(line => line.startsWith('unmapped: '))?.slice('unmapped: '.length).split(', ') ?? []).filter(dir => !seen.has(`${repo}\0dir\0${dir}`))
+    if (unmapped.length > 0) {
+      for (const dir of unmapped) seen.add(`${repo}\0dir\0${dir}`)
       return {
         deny:
-          `${$.plugin.name}: ${unmapped} in ${repo} has no behavior-map area. ` +
+          `${$.plugin.name}: ${unmapped.join(', ')} in ${repo} has no behavior-map area. ` +
           'Map it first: k-behavior-map skill, area init. ' +
-          'For a file in the repo root or a shared directory, add it as a file anchor to the closest entry of an existing area instead. ' +
+          'For a file in the repo root or a shared directory, add it as a file anchor to the closest entry of an existing area instead; with no area yet, map the subsystem it serves first. ' +
           'Retry without a map only in a throwaway clone; this check stops a directory once per session.',
       }
     }
@@ -125,7 +128,7 @@ export const register: Register = on => {
         notes.push(
           `${$.plugin.name}: this command changed code in ${unmapped.join(', ')} in ${repo}, which has no behavior-map area. ` +
             'Map it now: k-behavior-map skill, area init. ' +
-            'For a file in the repo root or a shared directory, add it as a file anchor to the closest entry of an existing area instead.',
+            'For a file in the repo root or a shared directory, add it as a file anchor to the closest entry of an existing area instead; with no area yet, map the subsystem it serves first.',
         )
       }
       const note = touched(repo, lines)

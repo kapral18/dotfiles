@@ -14,6 +14,7 @@ Use it when you stop in one harness and continue in another, or before a long br
 ,handoff save auth-fix <<'NOTE'
 Goal: …
 Decisions: …
+Approvals: …
 State: …
 Remaining: …
 Files: …
@@ -26,7 +27,7 @@ NOTE
 - Notes live in `~/.local/share/agent-handoffs/<repo>/<topic>.md` (override with `AGENT_HANDOFF_DIR`).
 - `<repo>` is the main checkout's directory name, so all worktrees of a repo share one namespace; outside git it is `global`.
 - Saving keeps the previous version as `<topic>.prev.md`. Notes over 4 KB save with a warning.
-- The `k-handoff` skill tells agents what to write on "handoff X" and how to resume on "continue X": treat the note as a starting point and re-check the files and git state it names.
+- The `k-handoff` skill tells agents what to write on "handoff X" and how to resume on "continue X": treat the note as a starting point and re-check the files and git state it names. Only the commit, push, and PR requests under the note's `Approvals:` carry into the new session, and its `State:` names the task's starting commit, the paths already changed when it started, and the path of any `k-review` Verify baseline, so a later review and commit still separate the task's changes from the user's.
 
 ## `,behavior-map` — critical behaviors per repo
 
@@ -54,7 +55,7 @@ Storage: `~/.local/share/k-ai-behavior-map/<repo>/` (override with `AGENT_BEHAVI
 - `show` on a branch merges base and overlay. `drift` means the base entry changed after the branch started; `stale` means the anchored content changed since the entry was saved; `broken` means an anchor no longer resolves.
 - `promote` copies unchanged-base entries, three-way merges the rest with `git merge-file`, and keeps conflicts in `.merge.md` files until `resolve`.
 - An area owns the directories its entries claim with `dir/` anchors; a file anchor claims only that file. `affected` lists entries anchored to a changed file, whole areas that own one, and paths in no area.
-- The `k-behavior-map` skill owns the lifecycle. Before a code change it runs `affected` on the planned paths and maps an unmapped area first (area init, at most 10 entries, verified with the area's tests; skipped for `/tmp` clones and read-only sessions).
+- The `k-behavior-map` skill owns the lifecycle. Before a code change it runs `affected` on the planned paths and maps an unmapped area first (area init, at most 10 entries, saved unverified and verified by the update after the change; skipped for `/tmp` clones and read-only sessions).
   In Claude Code the `behavior-map-guard` mod refuses the first edit in an unmapped directory and notes mapped entries an edit touches. After a Bash command that may write, it adds the same notes for the files the command changed ([Claude mods](tool-configs/claude.md#mods)).
   After the change the skill updates the listed entries. Repo-wide init, add, refresh, promote and resolve are the other modes.
 

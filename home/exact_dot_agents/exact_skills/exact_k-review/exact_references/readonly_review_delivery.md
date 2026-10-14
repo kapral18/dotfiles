@@ -92,4 +92,5 @@ Submitting the verdict needs approval under `~/AGENTS.md` §5; a recommendation 
   - then invoke the `k-github` skill via the Skill tool
   - confirm explicit approval unless existing approval already covers the exact target, payload, and effect (`~/AGENTS.md` §5)
 - Any human-visible target needs explicit approval, or the scoped approval of a flow the user invoked (`k-pr-fix-loop`, see `~/.agents/skills/k-review/references/pr_fix.md`); do not infer new carve-outs.
+  Standing exceptions are only those in `~/AGENTS.md` §5: the title and body of a PR the user asked for, and replies and comments on a PR you opened in this task.
   - bot-authored threads may be auto-replied/auto-resolved only inside a flow the user already invoked

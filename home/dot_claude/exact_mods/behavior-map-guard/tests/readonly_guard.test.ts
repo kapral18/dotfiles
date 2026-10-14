@@ -100,6 +100,16 @@ test('adds no Stop feedback when read-only Bash runs beside older unmapped code'
   expect(result.additionalContext).toBeUndefined()
 })
 
+test('keys each directory of a two-directory unmapped line on its own', async ($, on) => {
+  // A path through a symlink lists both directories; a later edit lists one of them.
+  const answers = ['unmapped: src, lib\n', 'unmapped: lib\n']
+  on('fs.exists', () => ({ value: true }))
+  on('process.run', ($, e) => ({ value: ran(e.argv[0] === 'git' ? '/repo\n' : (answers.shift() ?? '')) }))
+  on('tool.call', () => ({ result: {} as never }))
+  expect((await $.tool.call(edit('/repo/src/a.ts'))).deny).toMatch(/src, lib in \/repo has no behavior-map area/)
+  expect((await $.tool.call(edit('/repo/lib/b.ts'))).deny).toBeUndefined()
+})
+
 // The engine for Bash: the marker, `git status -z` output, the files `find` reports newer than the marker, and a fixed `affected` answer.
 const bash = (on: On, status: string, newer: string, affected: string, top = '/repo\n') => {
   const argv: string[][] = []

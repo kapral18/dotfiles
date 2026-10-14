@@ -11,6 +11,7 @@ Handle what the task left on this machine: new or newly exposed files outside th
 Files the request asked for are the change, not leftovers.
 
 - Delete scratch files (not worktrees) this task created that no later step or turn reads, and stop processes it started that the request does not need.
+  Keep a `k-review` Verify baseline until the task ends.
 - Delete an exposed or stale file only if a tool regenerates it (build output, caches, virtualenvs) and the change removed or moved the path it belongs to.
 - Keep any other file in place. Keep branches and worktrees, including scratch ones.
 - Never run `git stash drop`. Restore a stash this task created with `git stash pop stash@{N}`, where N is its index in `git stash list`.

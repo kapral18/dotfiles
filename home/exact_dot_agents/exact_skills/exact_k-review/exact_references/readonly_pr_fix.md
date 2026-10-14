@@ -19,7 +19,7 @@ For one-at-a-time work, the selected thread is the batch; do not silently drain 
 1. Implement the authorized fixes inside `~/.agents/skills/k-review/references/review_fixes.md` Fix Scope, with regression tests and docs.
 2. Run the combined checks once on the finished batch. No per-thread test runs.
 3. Re-read the fix diff once against each thread's concern.
-   Do not start another review round, except the `~/AGENTS.md` §3 steps 5–6 review that a risky fix needs.
+   Do not start another review round, except the `~/AGENTS.md` §3 steps 5–6 review that step 5 requires for the fix.
 4. Apply Existing Pending Review Reconciliation (`pr_common.md`) before drafting replies.
 5. Load `k-communication` for reply wording. Cite commit links only after an authorized commit exists; never claim an unverified outcome.
 
@@ -29,8 +29,10 @@ Keep UI screenshot paths outside GitHub bodies.
 ## Publication
 
 PR-fix work does not authorize commit, push, replies, or thread resolution.
-Show exact targets and payloads and wait, unless existing approval covers that exact effect (`~/AGENTS.md` §5).
+Show exact targets and payloads and wait, unless existing approval covers that exact effect or §5 exempts it:
+replies and comments on a PR you opened in this task need no approval (`~/AGENTS.md` §5).
 The user-invoked `k-pr-fix-loop` approves its own scoped sequence; do not ask again inside it.
 Classify authors from platform evidence (`user.type == "Bot"`, a login ending `[bot]`, or a verified domain allowlist), never display names.
-Mixed or ambiguous authorship stays human-supervised. Read back every authorized write to confirm it landed.
+Mixed or ambiguous authorship stays human-supervised, except replies on a PR you opened in this task (`~/AGENTS.md` §5).
+Read back every authorized write to confirm it landed.
 Comments that arrive later are new input, not a reason to rerun the batch without the user's request.

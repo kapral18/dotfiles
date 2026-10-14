@@ -139,7 +139,7 @@ class TestOmpMigration(unittest.TestCase):
         self.assertFalse((agent_dir / "readonly_SYSTEM.md").exists())
         self.assertFalse((agent_dir / "SYSTEM.md").exists())
 
-    def test_watchdog_keeps_default_advisor_and_adds_final_answer_gate(self):
+    def test_watchdog_replaces_default_advisor_with_final_answer_gate(self):
         path = REPO / "home/dot_omp/private_agent/readonly_WATCHDOG.yml"
         # OMP parses WATCHDOG.yml with Bun's YAML parser.
         result = subprocess.run(
@@ -155,7 +155,8 @@ class TestOmpMigration(unittest.TestCase):
         )
         advisors = {entry["name"]: entry for entry in json.loads(result.stdout)["advisors"]}
 
-        self.assertEqual(advisors["General"], {"name": "General"})
+        # A per-turn advisor would steer mid-run and share Gate's interrupt cooldown.
+        self.assertEqual(list(advisors), ["Gate"])
         gate = advisors["Gate"]
         self.assertEqual((gate["reviewMode"], gate["syncBacklog"]), ("agent-end", "strict"))
         self.assertNotIn("model", gate)

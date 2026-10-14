@@ -45,8 +45,8 @@ Snapshot root: `/tmp/k-review/<owner>-<repo>-pr<number>/`, holding `manifest.jso
   Never diff `main...HEAD` or `<base-branch>...HEAD`: local `main` and local `HEAD` both drift from the PR, and the stat then carries unrelated commits.
 - Verify both SHAs exist locally before diffing: `git cat-file -e <sha>^{commit}`.
   - `head_sha` missing: working-tree files are stale for this review.
-    Read head content from `gh api repos/<o>/<r>/pulls/<n>/files` patches or `gh pr diff <n>`, or ask the user to fetch the PR head (`git fetch origin pull/<n>/head`); say which you used.
-  - `base_sha` missing: use `gh api repos/<o>/<r>/compare/<base_sha>...<head_sha>` for the file list and patches, or ask to fetch base.
+    Read head content from `gh api repos/<o>/<r>/pulls/<n>/files` patches or `gh pr diff <n>`, or run `git fetch origin pull/<n>/head` yourself; say which you used.
+  - `base_sha` missing: use `gh api repos/<o>/<r>/compare/<base_sha>...<head_sha>` for the file list and patches, or fetch base yourself.
 - Local checkout state, checked once with `git rev-parse HEAD` and `git status --porcelain`:
   - `HEAD == head_sha` and clean: working-tree reads are head reads.
   - `HEAD != head_sha` (unpushed local commits, another branch, a stale checkout) or a dirty tree:

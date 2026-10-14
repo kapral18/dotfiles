@@ -20,9 +20,10 @@ Select the scope:
 
 - Staged or unstaged changes exist: review those first; they are the ground truth.
 - The user named a commit range ("last 3 commits", "since `<ref>`"): `git diff <ref>...HEAD` and `git log --oneline <ref>..HEAD`.
-  Ask one question if the ref is ambiguous.
+  If the ref is ambiguous, pick the likeliest one and list it under `Assumptions:`.
 - Clean tree and no range: resolve base with `git symbolic-ref --short refs/remotes/origin/HEAD`, then review `git diff <base>...HEAD`.
-  Ask for the base if it cannot be resolved.
+  If that fails, use the merge-base with the upstream or `main`/`master`, and list it under `Assumptions:`.
+  Ask only when no candidate exists.
 - No diff at all: say so and stop.
 
 ## Review

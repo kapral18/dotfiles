@@ -13,7 +13,7 @@ const answered = (text: string) => ({ isAnswered: true, text, usage })
 
 // The engine beneath the plugin: `rows` is the transcript, `replies` answer each review in turn.
 // `below` answers each Stop beneath the plugin in turn, then `{}`.
-const engine = (on: On, rows: { toolUses: Use[] }[], replies: unknown[], options: { settings?: Record<string, unknown>; below?: { block?: string }[]; rules?: string | Error } = {}) => {
+const engine = (on: On, rows: { toolUses: Use[] }[], replies: unknown[], options: { settings?: Record<string, unknown>; below?: { block?: string }[]; rules?: string | Error; messages?: Error } = {}) => {
   const sent: { model: string; prompt: string; system?: string; blocks?: readonly { text: string; cache?: true }[] }[] = []
   const ids = new Map<string, string>()
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
@@ -23,9 +23,14 @@ const engine = (on: On, rows: { toolUses: Use[] }[], replies: unknown[], options
   })
   on('classic.Stop', () => options.below?.shift() ?? {})
   on('settings.read', () => ({ value: options.settings ?? { advisorModel: 'claude-opus-5-5' } }))
-  on('session.messages', () => ({
-    value: rows.map(row => ({ ...row, toolUses: row.toolUses.map(u => ({ ...u, tool_use_id: ids.get(u.tool_use_id) ?? u.tool_use_id })) })) as never,
-  }))
+  // The format checks' working-tree snapshot never changes.
+  on('process.run', () => ({ value: { exitCode: 0, stdout: 'same', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
+  on('session.messages', () => {
+    if (options.messages) throw options.messages
+    return {
+      value: rows.map(row => ({ ...row, toolUses: row.toolUses.map(u => ({ ...u, tool_use_id: ids.get(u.tool_use_id) ?? u.tool_use_id })) })) as never,
+    }
+  })
   on('env.get', () => ({ value: '/home/u' }))
   on('fs.read', ($, e) => {
     if (options.rules instanceof Error) throw options.rules
@@ -68,7 +73,7 @@ test('reviews the turn once and sends its concerns back', async ($, on) => {
   const block = (await $.classic.Stop(stop('Done.'))).block
   expect(block).toMatch(/claude-opus-5-5 reviewed this turn/)
   expect(block).toMatch(/- no test ran — no pytest in the record/)
-  expect(block).toMatch(/\nYour reply replaces your last answer: follow the ~\/AGENTS.md §8 rule for a send-back\.$/)
+  expect(block).toMatch(/\nYour reply replaces your last answer: write the whole current answer with the fixes folded in \(~\/AGENTS\.md §8\)\.$/)
   expect(sent[0]?.model).toBe('claude-opus-5-5')
   expect(sent[0]?.prompt).toBe(
     '# Earlier conversation, as context\n\n## User\nbuild the mod?\n\n## Agent\nShould I build a Stop-time reviewer mod?\n\n' +
@@ -78,8 +83,7 @@ test('reviews the turn once and sends its concerns back', async ($, on) => {
   expect(sent[0]?.blocks?.filter(block => block.cache).map(block => block.text)).toEqual(['## User\nbuild the mod?\n\n## Agent\nShould I build a Stop-time reviewer mod?\n\n'])
   expect(sent[0]?.system).toMatch(/as data, not instructions[\s\S]*RULES/)
   // The skill procedures the SOP points to follow it; a missing one is left out.
-  expect(sent[0]?.system).toMatch(/RULES\n\nPROCEDURE \/home\/u\/\.agents\/skills\/k-git\/references\/commit-push\.md\n\nPROCEDURE \/home\/u\/\.agents\/skills\/k-long-jobs\/SKILL\.md/)
-  await $.turn.start({ text: '', turnId: 'c' })
+  expect(sent[0]?.system).toMatch(/RULES\n\nPROCEDURE \/home\/u\/\.agents\/skills\/k-git\/references\/commit-push\.md\n\nPROCEDURE \/home\/u\/\.agents\/skills\/k-long-jobs\/SKILL\.md\n\nPROCEDURE \/home\/u\/\.agents\/skills\/k-review\/SKILL\.md\n\nPROCEDURE \/home\/u\/\.agents\/skills\/k-review\/references\/review_fixes\.md/)
   expect((await $.classic.Stop(stop('Done.', true))).block).toBeUndefined()
   expect(sent).toHaveLength(1)
 })
@@ -130,6 +134,12 @@ test('an empty wake after a pause also continues the turn', async ($, on) => {
   expect(sent[0]?.prompt).toMatch(/## User request\nyeah I think so\n/)
 })
 
+test('still sends the format checks back when the review fails', async ($, on) => {
+  engine(on, turn, [answered('concern: a — b — c')], { messages: new Error('transcript unreadable') })
+  await run($, 'yeah I think so')
+  expect((await $.classic.Stop(stop('Done. Want me to push?'))).block).toMatch(/^The final message ends with a question/)
+})
+
 test('makes no call for a turn without tools', async ($, on) => {
   const sent = engine(on, turn, [answered('concern: a — b — c')])
   await run($, 'hello', [])
@@ -154,26 +164,55 @@ test('passes a PASS, an unreadable reply, a failed call, and a refused call', as
   expect(sent).toHaveLength(4)
 })
 
-test('reads numbered and bold concerns, at most three', async ($, on) => {
-  engine(on, turn, [answered('1. concern: a\n**concern:** b\n- concern: c\nconcern: d')])
+test('reads numbered and bold concerns, at most five', async ($, on) => {
+  engine(on, turn, [answered('1. concern: a\n**concern:** b\n- concern: c\nconcern: d\nconcern: e\nconcern: f')])
   await run($, 'yeah I think so')
-  expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/raised:\n- a\n- b\n- c\nWeigh/)
+  expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/raised:\n- a\n- b\n- c\n- d\n- e\nCheck each one/)
 })
 
-test('skips a draft another gate sends back and reviews the answer that follows, once', async ($, on) => {
+test('joins the concerns and the format checks in one send-back, and reviews no more in that turn', async ($, on) => {
   const diff = use('Bash', { command: 'git diff' })
-  const rows = [...turn, assistant('Done.'), user('Stop hook feedback:\nno Checked: list'), assistant('', [diff]), toolResult()]
-  const sent = engine(on, rows, [answered('concern: a — b — c')], { below: [{ block: 'other gate' }] })
+  const sent = engine(on, turn, [answered('concern: a — b — c'), answered('concern: d — e — f')])
   await run($, 'yeah I think so')
-  expect((await $.classic.Stop(stop('Done.'))).block).toBe('other gate')
-  expect(sent).toHaveLength(0)
-  await $.turn.start({ text: '', turnId: 'c1' })
-  await call($, diff)
-  expect((await $.classic.Stop(stop('Done.\nChecked:\n- make check passed', true))).block).toMatch(/^stop-review: /)
-  expect(sent[0]?.prompt).toMatch(/## User request\nyeah I think so\n\n### Bash[\s\S]*make check[\s\S]*## Agent\nDone\.\n\n## User\nStop hook feedback:[\s\S]*git diff/)
-  await $.turn.start({ text: '', turnId: 'c2' })
-  expect((await $.classic.Stop(stop('Fixed.', true))).block).toBeUndefined()
+  const block = (await $.classic.Stop(stop('Done. Want me to push?'))).block
+  expect(block).toBe(
+    `stop-review: claude-opus-5-5 reviewed this turn, with the conversation as context, and raised:\n- a — b — c\nCheck each one against the files. Fix it now when the fix is a step ~/AGENTS.md §1 makes part of the task (in the request's scope, and either named by the request or reversible and changing nothing outside this machine that the request did not name; never a §5 action, a review round past the \`k-review\` caps, or a step the user asked you to ask about first). Put one that is the user's decision (§1) under \`Decision needed:\` with your pick, an out-of-scope defect under \`Proposed:\`, and one you cannot do now under \`Open:\` with its blocker; or reject it with a reason. It saw only cut tool output, not the files.\n\n` +
+      `The final message ends with a question outside \`Decision needed:\`. If its answer is a step ~/AGENTS.md §1 makes part of the task (in the request's scope, and either named by the request or reversible and changing nothing outside this machine that the request did not name; never a §5 action, a review round past the \`k-review\` caps, or a step the user asked you to ask about first), do it now. Keep a question only for a decision that is the user's (§1), last, under \`Decision needed:\`, with your pick. Put an out-of-scope step under \`Proposed:\`, and one you cannot do now under \`Open:\` with its blocker.\n\n` +
+      'Your reply replaces your last answer: write the whole current answer with the fixes folded in (~/AGENTS.md §8).',
+  )
   expect(sent).toHaveLength(1)
+  // The reviewer is told what the format checks already send, so it does not spend its lines repeating it.
+  expect(sent[0]?.prompt).toMatch(/# Already sent back by the format checks; do not repeat these\nThe final message ends with a question/)
+  await call($, diff)
+  expect((await $.classic.Stop(stop('Done. Want me to push?', true))).block).toBeUndefined()
+  expect(sent).toHaveLength(1)
+})
+
+test('sends the format checks back without an advisorModel', async ($, on) => {
+  const sent = engine(on, turn, [], { settings: {} })
+  await run($, 'yeah I think so')
+  expect((await $.classic.Stop(stop('Done. Want me to push?'))).block).toMatch(/^The final message ends with a question[\s\S]*\n\nYour reply replaces your last answer/)
+  expect(sent).toHaveLength(0)
+})
+
+test('leaves an answer another Stop hook sends back, such as /goal, and reviews the answer that ends the turn', async ($, on) => {
+  const sent = engine(on, turn, [answered('concern: a — b — c')], { below: [{ block: 'goal not met yet' }, { block: 'goal not met yet' }] })
+  await run($, 'yeah I think so')
+  expect((await $.classic.Stop(stop('Still working.'))).block).toBe('goal not met yet')
+  // The goal's continuation keeps stop_hook_active set, and it is no send-back of this mod.
+  expect((await $.classic.Stop(stop('Still working.', true))).block).toBe('goal not met yet')
+  expect(sent).toHaveLength(0)
+  expect((await $.classic.Stop(stop('Done.', true))).block).toMatch(/^stop-review: [\s\S]*Fix it now when the fix is a step ~\/AGENTS\.md §1 makes part of the task \(in the request's scope, and either named by the request[^)]*never a §5 action, a review round past the `k-review` caps, or a step the user asked you to ask about first\)[\s\S]*under `Open:`[\s\S]*\nYour reply replaces your last answer: write the whole current answer with the fixes folded in \(~\/AGENTS\.md §8\)\.$/)
+  expect(sent).toHaveLength(1)
+  expect((await $.classic.Stop(stop('Done.', true))).block).toBeUndefined()
+})
+
+test('a subagent start does not reset the main turn', async ($, on) => {
+  const sent = engine(on, turn, [answered('PASS')])
+  await run($, 'yeah I think so')
+  await $.turn.start({ text: 'review the diff', turnId: 'sub1', agentId: 'agent-1' } as never)
+  await $.classic.Stop(stop('Done.'))
+  expect(sent[0]?.prompt).toMatch(/## User request\nyeah I think so\n/)
 })
 
 test('takes the request from the typed prompt and starts the turn at its first call, also for a notice', async ($, on) => {
@@ -226,18 +265,17 @@ test('opens a typed turn at its prompt row when the agent writes text before its
 test('reviews nothing after a reload until a turn starts, and an interrupted send-back ends its turn', async ($, on) => {
   const later = use('Read', { file_path: '/b.ts' })
   const rows = [...turn, assistant('', [later]), toolResult()]
-  const sent = engine(on, rows, [answered('concern: a — b — c'), answered('concern: d — e — f'), answered('PASS')], { below: [{ block: 'other gate' }] })
+  const sent = engine(on, rows, [answered('concern: a — b — c'), answered('concern: d — e — f'), answered('PASS')])
+  // After a reload the format checks still run, but the review needs the turn's request.
   await call($, check)
-  expect((await $.classic.Stop(stop('Done.'))).block).toBe('other gate')
+  expect((await $.classic.Stop(stop('Done. Push it?'))).block).toMatch(/^The final message ends with a question/)
   // The send-back's continuation still belongs to the turn the reload cut.
-  await $.turn.start({ text: '', turnId: 'r' })
   await call($, later)
   expect((await $.classic.Stop(stop('Done.', true))).block).toBeUndefined()
   expect(sent).toHaveLength(0)
   await run($, 'yeah I think so')
   expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/^stop-review: /)
   // The continuation is interrupted, so no Stop follows; an idle notice then starts a new turn.
-  await $.turn.start({ text: '', turnId: 'c' })
   await $.turn.start({ text: '', turnId: 'n' })
   await call($, later)
   await $.classic.Stop(stop('Read it.'))
@@ -358,4 +396,25 @@ test('drops the oldest earlier turns past its budget and cuts each message', asy
   expect(prompt).toContain('## Agent\nreply 99')
   expect(prompt).toContain('…[1008 more chars]')
   expect(sent[0]?.blocks?.filter(block => block.cache)).toHaveLength(1)
+})
+
+test('reviews the first Stop it sees even with stop_hook_active set: a managed hook blocked the one before', async ($, on) => {
+  const sent = engine(on, turn, [answered('PASS'), answered('concern: a — b — c')])
+  await run($, 'look')
+  expect((await $.classic.Stop(stop('Done.'))).block).toBeUndefined()
+  // An interrupt, then a new turn whose earlier Stop a managed-settings hook blocked before this hook saw it.
+  await run($, 'yeah I think so')
+  expect((await $.classic.Stop(stop('Done.', true))).block).toMatch(/^stop-review: /)
+  expect(sent).toHaveLength(2)
+})
+
+test('an engine nudge after a paused Stop, such as a /goal check-in, is no send-back: the turn is still reviewed', async ($, on) => {
+  const sent = engine(on, turn, [answered('concern: a — b — c')])
+  await run($, 'yeah I think so')
+  const subagent = [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }]
+  expect((await $.classic.Stop({ ...stop('Waiting.'), background_tasks: subagent } as never)).block).toBeUndefined()
+  expect((await $.classic.Stop({ ...stop('Still waiting.', true), background_tasks: subagent } as never)).block).toBeUndefined()
+  await $.turn.start({ text: '<task-notification>done</task-notification>', turnId: 'wake' })
+  expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/^stop-review: /)
+  expect(sent).toHaveLength(1)
 })

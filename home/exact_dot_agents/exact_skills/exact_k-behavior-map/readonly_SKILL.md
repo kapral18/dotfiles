@@ -54,6 +54,7 @@ The body is at most 1200 bytes.
   Keep at most 10, ranked by user impact. Save each as `status: unverified`; update mode verifies it after the change.
   Claim each directory the area owns with a `dir/` anchor. Never claim a shared directory such as `bin/` or the repo root (`.`).
   A file in a shared directory that belongs to an existing area: add it as a file anchor to that area's closest entry.
+  If no area exists yet, map the subsystem the file serves, then anchor the file to that area's closest entry.
   Start a new area only for a new subsystem. Before you start one, run `show --ids` so you do not duplicate an area.
 - **repo init**, when the user asks: area init for each main subsystem, at most 30 entries in total. Report what you left out.
 - **update**, after the change: run `,behavior-map affected` (`--since <rev>` after a commit).

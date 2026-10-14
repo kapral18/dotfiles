@@ -1,20 +1,19 @@
 # Managed by chezmoi (source: home/dot_omp/private_agent/readonly_WATCHDOG.yml).
-# A roster replaces OMP's default advisor, so General keeps it. Both use the advisor role.
-# Only a blocker or an agent-end concern starts another turn after the final answer,
-# so Gate reviews the final answer against ~/AGENTS.md on top of OMP's base prompt.
+# A roster replaces OMP's default advisor, which reviewed every turn, so only Gate runs. It uses the advisor role.
+# Gate reviews the finished run and its final answer against ~/AGENTS.md on top of OMP's base prompt.
 advisors:
-  - name: General
   - name: Gate
     reviewMode: agent-end
     syncBacklog: strict
     maxNotesPerUpdate: 3
     instructions: |
-      You review the finished run and its final answer. Your notes are the last ones the agent
-      can act on: a General note about the final answer reaches the agent only together with yours.
+      You review the finished run and its final answer. Your notes are the last ones the agent can act on.
       Judge the run against the agent's rules in ~/AGENTS.md, which you have as a context file.
       Send a `concern` for each break the agent can fix now, citing the section. If there are more than 3, send the 3 most severe.
-      Skip preferences: a finding with no trigger and consequence (§3 step 8).
+      Skip preferences: a finding with no trigger and consequence (§3, after the steps).
       Look first at claims and their evidence (§2), questions and unfinished work (§1),
       tests and the report lists (§3 steps 3 and 8), and side effects (§5).
       A workflow step owned by a skill follows that skill. For a rule ~/AGENTS.md hands to a skill or reference, read that file (`skill://<name>` for a skill) before you judge or cite it.
       Do not repeat a note the agent already addressed or rejected with a reason.
+      Send every concern in your first review of a run, so the run goes back once with all of them.
+      In a later review of the same run, send only a break that the agent's last change introduced or a concern you held back for the 3-note cap.

@@ -1,6 +1,6 @@
 ---
 name: k-review
-description: "Use to review local changes, a PR, review threads (PR fixes), or a plan, and for an independent capped verify pass (two fresh reviewers, then a bounded fix loop)."
+description: "Use to review local changes, a PR, review threads (PR fixes), or a plan, and for independent verify rounds (two fresh reviewers and a bounded fix loop, repeated until a round is clean or a cap)."
 ---
 
 # Review
@@ -10,7 +10,7 @@ Load `~/.agents/skills/k-review/references/authorship.md` once before any mode; 
 
 ## Modes
 
-Pick exactly one. If intent stays ambiguous after the checks in Disambiguation, ask one question and state a default.
+Pick exactly one. If intent stays ambiguous after the checks in Disambiguation, pick the likeliest mode and say which.
 
 | Mode          | Use when                                                        | Open                                                    |
 | ------------- | --------------------------------------------------------------- | ------------------------------------------------------- |
@@ -21,7 +21,8 @@ Pick exactly one. If intent stays ambiguous after the checks in Disambiguation, 
 
 A review that `~/AGENTS.md` §3 step 5 requires always uses Verify mode.
 Otherwise, a small, self-authored, local-only change with no risk trigger goes to `k-light-review` unless the user asked for a full review.
-Risk triggers: PR context, security/auth/crypto, persisted data, public API, deletion or replacement, stateful/parser/workflow behavior, or a needed base/runtime investigation.
+Risk triggers: PR context, a change on the `~/AGENTS.md` §3 step 5 list, deletion or replacement, stateful or workflow behavior,
+or a needed base/runtime investigation.
 
 If the conversation is already in a mode, "continue" or "next" stays in it.
 
@@ -40,7 +41,7 @@ An explicitly requested draft review uses the same depth as a ready PR.
 ## Disambiguation
 
 - A document, issue body, or pasted text: plan review.
-- Outside a git repo: ask whether this is a PR (URL/number), local changes, or a plan.
+- Outside a git repo with no PR named: plan review of what the user gave you.
 - Inside a git repo, run `git status --porcelain=v1 -b` and `,gh-prw --number`:
   - local changes exist (with or without a PR): local changes mode; mention the PR so the user can switch.
   - only a PR: PR review.
@@ -72,24 +73,34 @@ Use this procedure for both full reviews and fix-diff reviews:
   Put the shared reviewer prompt and review packet in `message`. Keep the parent's model and reasoning effort.
 - Without a reviewer profile or fresh native agent support, review inline once and report the lack of independent review.
 
-## Verify mode (independent review, bounded fix loop)
+## Verify mode (independent review rounds, bounded fix loop)
 
 Use when `~/AGENTS.md` §3 step 5 requires a review of a finished change, or when the user asks for an independent, fresh, or second-opinion review, or to verify or de-slop a change.
 
 1. Fix the scope. For a §3 step 5 review, use the task-start working-tree state, not only its starting commit.
+   After `continue <topic>`, take it from the handoff note's State; if the note lacks it, use this session's start and say so.
+   For a §3 step 5 review of a later change in the same task, review only the diff against the baseline the last Verify review saved.
+   For a file missing from the baseline, diff against its task-start original, unless the baseline's `.k-review-deleted.txt` lists it and it is still absent.
+   If the baseline is gone (deleted, or lost to a reboot), review the whole task change from its starting commit and say so.
    Exclude pre-existing hunks and untracked files unless the user included them.
    Use saved originals or edit records to separate them; do not guess.
    Include the task's behavior-map entry ids (`,behavior-map show <id>`) and memory writes. Otherwise, review the change the user named.
    Add the user's request in their words, the intent in one line, the checks already run with their results, and your `Assumptions:`.
 2. Launch two fresh reviewers in parallel using Reviewer launch above.
-   Pass both only the same scope, request, intent, check results, assumptions, and `Open:` items.
+   Pass both only the same scope, request, intent, check results, assumptions, and `Open:` items;
+   a later full round, or a verify-again run, also gets every finding fixed, rejected, or proposed so far.
 3. Merge the findings. Check each finding against source yourself. Reject unsupported ones with a one-line reason.
 4. Apply supported findings within write scope using `~/.agents/skills/k-review/references/review_fixes.md`.
-   Its bounded Verify procedure owns scratch copies, checks, fix-diff reviews, and stopping rules.
-5. Report the review scope, fixed findings with evidence, rejected findings with reasons, `Open:` items with their blockers, and `Proposed:` out-of-scope changes.
+   Its Fix procedure (the Verify-mode steps) owns scratch copies, checks, fix-diff reviews, further full rounds, and stopping rules.
+5. Copy every file in the reviewed scope, as it stands after the fixes, into the baseline, even when nothing was fixed:
+   a fresh scratch directory for the task's first Verify review, the existing baseline after that.
+   For a file with a fix marked "(unreviewed)", copy that round's pre-fix copy instead, so the next review still covers the fix.
+   List each reviewed path the task deleted in the baseline's `.k-review-deleted.txt`.
+   That copy is the baseline for a later §3 step 5 review in the same task. Keep it until the task ends; `k-cleanup` does not delete it.
+   A handoff note records its path.
+6. Report the review scope, fixed findings with evidence, rejected findings with reasons, `Open:` items with their blockers, and `Proposed:` out-of-scope changes.
 
-NEVER start a second full review (two reviewers on the whole change) on your own; the fix loop reviews only fix diffs.
-Another full round needs the user to ask for it.
+Run full rounds without asking until `review_fixes.md` says to stop. A round past its caps needs the user to ask for it.
 
 ## Posting
 

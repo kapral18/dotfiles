@@ -59,10 +59,10 @@ Switching to short is refused when history already exceeds the short window; run
 
 Only the repo profiles exist; see [Subagents](../subagents.md).
 
-| Profile            | Model                                                                   | Use                                                     |
-| ------------------ | ----------------------------------------------------------------------- | ------------------------------------------------------- |
-| `k-agent-scout`    | `openai-codex/gpt-6-luna`, thinking low, read-only tools, fresh context | broad read-only search                                  |
-| `k-agent-reviewer` | `gpt-6-astra`, high                                                     | a risky finished change, or a review the user asked for |
+| Profile            | Model                                                                   | Use                                                                                                                                |
+| ------------------ | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `k-agent-scout`    | `openai-codex/gpt-6-luna`, thinking low, read-only tools, fresh context | broad read-only search                                                                                                             |
+| `k-agent-reviewer` | `gpt-6-astra`, high                                                     | a finished change that `~/AGENTS.md` §3 step 5 lists (risky code or a rule edit) and its fix diffs, or a review the user asked for |
 
 Both set `maxSubagentDepth: 0`, so they cannot start other agents.
 

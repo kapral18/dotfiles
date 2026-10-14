@@ -35,7 +35,8 @@ If it exists: reuse it and update it.
   - current/latest behavior: use the upstream default branch
   - version/tag/release question: use that exact tag or release branch
   - branch- or commit-specific question: use that exact branch or commit
-- If the user did not specify a ref and the answer depends on a non-default target, ask the user which ref to use instead of assuming.
+- If the user did not specify a ref, use the locally installed version's ref when the question is about local behavior, otherwise the default branch;
+  say which, and name the other ref that could change the answer.
 
 If the target is the default branch:
 

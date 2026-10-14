@@ -81,18 +81,20 @@ A domain overlay is selected from verified repo/org evidence, not guessed from w
 
 ## Approvals
 
-- Any GitHub side effect needs explicit approval unless the user instructed otherwise:
+- A GitHub side effect needs explicit approval unless the user instructed otherwise or `~/AGENTS.md` §5 exempts it:
   create/edit PRs/issues, comments/reviews, metadata, merge, release, uploads.
 - `~/AGENTS.md` §5 owns publication approval.
   Reuse existing authorization only within its target, scope, and allowed effects; NEVER broaden it to a new target or effect.
 - A user-invoked `k-pr-fix-loop` approval packet is explicit approval for scoped PR body edits, needed PR media uploads, review-thread replies, and resolving addressed threads in that loop only.
 - Existing PR body/title edits follow `~/.agents/skills/k-github/references/pr-create.md`;
   that packet decides whether the user's approval for the current PR workflow covers the edit or whether a draft must be surfaced first.
-- Approval to "create a PR" authorizes the GitHub side effect, but not invented human-visible content.
-  If title/body/labels were not provided, draft the full payload, show target repo/base/head, and get approval before `gh pr create`.
+- A request to "create a PR" covers the title and body you draft from the `k-compose-pr` packet (`~/AGENTS.md` §5);
+  see pr-create.md Approval handling.
+  It does not cover labels or other metadata, which the request does not name: list those under `Proposed:`.
 - Before using a known-bot allowlist, verify/load the domain overlay; otherwise classify bots only from GitHub `user.type == "Bot"` or login ending `[bot]`.
 - Human-visible replies/resolves/comments are supervised: draft unapproved authored content, show exact payload + target, and wait only when approval under `~/AGENTS.md` §5 does not already cover it.
-  Only verified bot-authored threads may be auto-replied/auto-resolved inside an explicitly invoked flow;
+  On a PR you opened in this task, replies and comments need no approval (`~/AGENTS.md` §5); resolving a human reviewer's thread still does.
+  Elsewhere, only verified bot-authored threads may be auto-replied/auto-resolved inside an explicitly invoked flow;
   ambiguous/mixed threads fail safe to human.
   Verify author type via API, e.g. `gh api repos/OWNER/REPO/pulls/comments/COMMENT_ID --jq '{login:.user.login, type:.user.type}'`.
 - Human-visible wording (PR/issue bodies, comments, replies, review summaries, release notes) follows `~/.agents/skills/k-communication/SKILL.md`; this skill owns mechanics only.

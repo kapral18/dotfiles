@@ -19,7 +19,8 @@ A local or plan report with no public-ready draft does not need it.
 - Never create or switch worktrees proactively.
 - Never infer commit, push, reply, resolve, or label authority from review ownership.
 - Publication follows `~/AGENTS.md` §5: reuse approval only for its exact target, payload, and effect.
-- Verified bot threads may use the authority of a flow the user invoked; human, mixed, or ambiguous threads stay supervised.
+- Verified bot threads may use the authority of a flow the user invoked; human, mixed, or ambiguous threads stay supervised,
+  except replies and comments on a PR you opened in this task (`~/AGENTS.md` §5).
 
 ## Base-Branch Context Gate (Mandatory)
 

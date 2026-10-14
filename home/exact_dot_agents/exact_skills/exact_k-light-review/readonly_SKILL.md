@@ -9,7 +9,8 @@ description: "Use for one quick inline review of a small, low-risk, self-authore
 
 All conditions must hold: local-only diff, verified self-authorship, reversible change, focused observable check, and semantically simple behavior.
 Unknown is not eligible.
-PR context, explicit full/deep review, security/auth/crypto, persisted data, public API, deletion/replacement, stateful/parser/workflow behavior, or required base/runtime investigation excludes the light path.
+PR context, explicit full/deep review, a `~/AGENTS.md` §3 step 5 trigger, deletion or replacement, stateful or workflow behavior,
+or required base/runtime investigation excludes the light path.
 Do not treat a small diff or the absence of test failures as low-risk proof.
 
 ## Review
@@ -21,7 +22,8 @@ Resolve the diff and authorship (`~/.agents/skills/k-review/references/authorshi
 - Judge correctness, preserved behavior, and completeness with the Truth Validation Framework and Candidate Refutation Ladder in `~/.agents/skills/k-review/references/judging_core.md`.
 - Reuse check results already run; do not repeat them.
 - Fix supported findings in the same pass when authorship gives write scope; otherwise report them.
-- If a risk trigger appears while reading, stop and switch to `k-review` local changes mode.
+- If an excluding trigger appears while reading, stop and switch: a `~/AGENTS.md` §3 step 5 trigger to `k-review` Verify mode,
+  any other to `k-review` local changes mode.
 
 Commit, push, and publish only as `~/AGENTS.md` §5 allows.
 

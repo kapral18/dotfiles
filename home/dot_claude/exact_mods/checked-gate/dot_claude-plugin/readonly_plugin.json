@@ -1,8 +1,0 @@
-{
-  "name": "checked-gate",
-  "version": "0.1.0",
-  "description": "Sends a turn back once when files changed and the final message has no `Checked:` list, or when a tool-using turn ends with a question not marked `Decision needed:`.",
-  "author": {
-    "name": "kapral18"
-  }
-}

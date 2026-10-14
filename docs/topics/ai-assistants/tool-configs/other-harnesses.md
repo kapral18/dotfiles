@@ -84,11 +84,13 @@ Key settings:
 | `extendedContext`, `defaultThinkingLevel`              | `true`, `high`                                                                                                                                                                                                             |
 | `dev.autoqaConsent`                                    | `granted`                                                                                                                                                                                                                  |
 
-`WATCHDOG.yml` replaces OMP's default advisor with two advisors.
-`General` is the default advisor, kept by name; it reviews every turn.
-OMP merges the notes of one finished run into one message. It steers the agent only when that message holds a blocker or an `agent-end` concern; otherwise the user sees it as a card. So a `General` note about the final answer reaches the agent only together with a `Gate` concern.
+`WATCHDOG.yml` replaces OMP's default advisor, which reviewed every turn, with one advisor, `Gate`.
+The default advisor made the root wait for it every turn and could steer mid-run every turn.
+OMP keeps one interrupt cooldown (`advisor.immuneTurns`) for all advisors, so a cooldown to quiet it would also mute `Gate`'s final concern.
+OMP steers the agent after the final answer only for a blocker or an `agent-end` concern; otherwise the user sees the notes as a card.
 `Gate` is the final-answer reviewer: `reviewMode: agent-end` and `syncBacklog: strict` make the root wait for its review.
 Like `stop-review`, it holds no rules of its own: it judges against `~/AGENTS.md` (an advisor context file), sends a `concern` for every break the agent can fix now (the 3 most severe if more), skips preferences, and checks §2, §1, §3 steps 3 and 8, and §5 first.
+It sends every concern in its first review of a run, so the run goes back once with all of them; a later review of the same run sends only a break the agent's last change introduced or a concern held back for the 3-note cap.
 OMP steers at most one continuation turn per final review.
 
 `providers.webSearchOrder` tries Codex then the keyless scrapers. Every unused provider is listed in `webSearchExclude`, including `perplexity`.

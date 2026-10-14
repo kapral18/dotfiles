@@ -6,7 +6,7 @@ Approval scope (mandatory; `~/AGENTS.md` §5 points here):
   commits, merges into the working branch, and rebases of commits that are not pushed.
   Without such a request, leave the change uncommitted. Unless the user names other changes, commit only this task's changes.
 - Push only when the user asks for a push. That request covers later fast-forward pushes of the same branch for the rest of the task.
-  A commit request alone never covers a push.
+  A commit request alone never covers a push. A request to open a PR is a commit and push request for its branch.
   A push that rewrites pushed history, merging a PR, and publishing each need their own request.
 - A task is defined in `~/AGENTS.md` §5.
 

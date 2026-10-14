@@ -11,6 +11,7 @@ const engine = (on: On, tree: string[] = []) => {
   on('process.run', () => ({ value: tree[0] === 'fail' ? ran('', 3) : ran(tree.shift() ?? 'same') }))
   on('tool.call', ($, e) => (e.tool === 'Edit' && e.file_path.endsWith('denied.ts') ? { deny: 'no' } : { result: {} as never }))
   on('classic.Stop', () => ({}))
+  on('settings.read', () => ({ value: {} }))
 }
 
 test('sends a turn that edited files back once when Checked: is missing', async ($, on) => {
@@ -102,18 +103,25 @@ test('does not guess when the snapshot fails outside a git repo', async ($, on) 
   expect((await $.classic.Stop(stop('Done.'))).block).toBeUndefined()
 })
 
-test('adds its message to a block from below', async ($, on) => {
+test('leaves an answer another Stop hook sends back, such as /goal, and checks the answer that ends the turn', async ($, on) => {
+  let isGoalMet = false
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
   on('process.run', () => ({ value: ran('same') }))
   on('tool.call', () => ({ result: {} as never }))
-  on('classic.Stop', () => ({ block: 'other gate' }))
+  on('classic.Stop', () => (isGoalMet ? {} : { block: 'goal not met yet' }))
+  on('settings.read', () => ({ value: {} }))
   await $.turn.start({ text: 'fix', turnId: 't1' })
   await $.tool.call(edit('/repo/a.ts'))
-  const block = (await $.classic.Stop(stop('Done.'))).block
-  expect(block).toMatch(/^other gate\n\nFiles changed this turn/)
+  expect((await $.classic.Stop(stop('Still working.'))).block).toBe('goal not met yet')
+  // The goal's continuation keeps stop_hook_active set, and it is no send-back of this mod.
+  expect((await $.classic.Stop(stop('Still working.', true))).block).toBe('goal not met yet')
+  isGoalMet = true
+  const block = (await $.classic.Stop(stop('Fixed it. Want me to push?', true))).block
+  expect(block).toMatch(/no `Checked:` list[\s\S]*ends with a question/)
   // One reminder to answer the user, last, after every message.
   expect(block?.match(/Your reply replaces your last answer/g)).toHaveLength(1)
   expect(block).toMatch(/Your reply replaces your last answer[^\n]*$/)
+  expect((await $.classic.Stop(stop('Fixed it. Want me to push?', true))).block).toBeUndefined()
 })
 
 // The engine beneath the question checks: every tool call succeeds and the tree never changes.
@@ -122,6 +130,7 @@ const toolEngine = (on: On) => {
   on('process.run', () => ({ value: ran('same') }))
   on('tool.call', () => ({ result: {} as never }))
   on('classic.Stop', () => ({}))
+  on('settings.read', () => ({ value: {} }))
 }
 const bash = (command: string) => ({ tool: 'Bash', command, description: 'test' }) as const
 
@@ -138,13 +147,12 @@ test('a continuation after a send-back keeps the turn and its once-only checks',
   await $.turn.start({ text: 'fix it', turnId: 't1' })
   await $.tool.call(bash('ls'))
   expect((await $.classic.Stop(stop('Apply?'))).block).toMatch(/ends with a question/)
-  await $.turn.start({ text: '', turnId: 't1-continue' })
+  // A send-back continues inside the turn with no turn.start; its Stop carries stop_hook_active.
   await $.tool.call(bash('ls'))
   expect((await $.classic.Stop(stop('Apply?', true))).block).toBeUndefined()
   await $.turn.start({ text: 'fix it, and ask me before you push', turnId: 't2' })
   await $.tool.call(edit('/repo/a.ts'))
   expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/no `Checked:` list/)
-  await $.turn.start({ text: '', turnId: 't2-continue' })
   await $.tool.call(bash('ls'))
   expect((await $.classic.Stop(stop('Checked:\n- a.ts:1 holds it\n\nPush it?', true))).block).toBeUndefined()
 })
@@ -239,16 +247,6 @@ test('still sends back a question that follows quoted content', async ($, on) =>
   expect((await $.classic.Stop(stop('> Decision needed: add a regression test?\n\nShould I apply the fix?'))).block).toMatch(/ends with a question/)
 })
 
-test('sends a check once per Stop chain even when the continuation starts a turn with text', async ($, on) => {
-  toolEngine(on)
-  await $.turn.start({ text: 'fix it', turnId: 't1' })
-  await $.tool.call(bash('ls'))
-  expect((await $.classic.Stop(stop('Apply?'))).block).toMatch(/ends with a question/)
-  await $.turn.start({ text: 'Stop hook feedback: …', turnId: 't1-continue' })
-  await $.tool.call(bash('ls'))
-  expect((await $.classic.Stop(stop('Apply?', true))).block).toBeUndefined()
-})
-
 test('leaves an open item phrased as a question alone', async ($, on) => {
   toolEngine(on)
   await $.turn.start({ text: 'fix it', turnId: 't1' })
@@ -259,14 +257,21 @@ test('leaves an open item phrased as a question alone', async ($, on) => {
   expect((await $.classic.Stop(stop('Done.\n\nNext:\n- want me to push?'))).block).toMatch(/ends with a question/)
 })
 
-test('sends back work parked under a heading the report has no slot for, once', async ($, on) => {
+test('sends back work parked under a heading the report has no slot for, once per turn', async ($, on) => {
   toolEngine(on)
-  await $.turn.start({ text: 'fix it', turnId: 't1' })
+  let n = 0
+  // Each case is its own turn, since a turn goes back at most once.
+  const fresh = async (text = 'fix it') => {
+    await $.turn.start({ text, turnId: `t${n++}` })
+    await $.tool.call(bash('ls'))
+  }
+  await $.turn.start({ text: 'fix it', turnId: 'quiet' })
   expect((await $.classic.Stop(stop('Done.\n\nKnown gaps:\n- did not rerun make check'))).block).toBeUndefined()
-  await $.tool.call(bash('ls'))
   for (const header of ['Known gaps:', '**Known gaps**', '**Known gaps:**', '## Next steps', 'Next step:', 'Next:', '**Next:**', 'Follow-ups (later):', 'TODOs:', 'Unverified:', 'Suggested next steps:']) {
+    await fresh()
     const block = (await $.classic.Stop(stop(`Done.\n\n${header}\n- rerun make check`))).block
     expect(block, header).toMatch(new RegExp('lists work under `' + header.replace(/[*()]/g, '\\$&') + '`'))
+    expect(block, header).toMatch(/Do each item that is a step ~\/AGENTS\.md §1 makes part of the task[^)]*\) now\. Put an item that is the user's decision \(§1\) under `Decision needed:`/)
   }
   for (const message of [
     'Known gaps: none, but make check was not rerun',
@@ -274,10 +279,11 @@ test('sends back work parked under a heading the report has no slot for, once', 
     'Known gaps: nothing was rerun on Linux',
     'Next steps:\n- None of these block, but rerun make check',
     'Known gaps:\n- none\n- rerun make check',
-  ]) expect((await $.classic.Stop(stop(message))).block, message).toMatch(/lists work under/)
+  ]) {
+    await fresh()
+    expect((await $.classic.Stop(stop(message))).block, message).toMatch(/lists work under/)
+  }
   expect((await $.classic.Stop(stop('Done.\n\nKnown gaps:\n- rerun make check', true))).block).toBeUndefined()
-  await $.turn.start({ text: 'fix it', turnId: 't2' })
-  await $.tool.call(bash('ls'))
   for (const message of [
     'Done.\n\nOpen:\n- commit: needs your request (§5)',
     'Done.\n\nProposed:\n- split the parser',
@@ -294,7 +300,10 @@ test('sends back work parked under a heading the report has no slot for, once', 
     'Next: I ran make check and it passed.',
     'Draft:\n\n> Known gaps:\n> - none',
     'Done.\n\n```md\nNext steps:\n```',
-  ]) expect((await $.classic.Stop(stop(message))).block, message).toBeUndefined()
+  ]) {
+    await fresh()
+    expect((await $.classic.Stop(stop(message))).block, message).toBeUndefined()
+  }
   for (const text of [
     "what's left on this PR? list the next steps",
     'what’s left?',
@@ -302,13 +311,147 @@ test('sends back work parked under a heading the report has no slot for, once', 
     'Fix the bug in calc.py so add returns the sum. End your answer with a "Known gaps:" list that says you did not run python3 -c "from calc import add; print(add(2,3))".',
     'Add a Next steps section for the reviewer.',
   ]) {
-    await $.turn.start({ text, turnId: text })
-    await $.tool.call(bash('ls'))
+    await fresh(text)
     expect((await $.classic.Stop(stop('Next steps:\n- rebase onto main'))).block, text).toBeUndefined()
   }
   for (const text of ['fix the remaining tests', 'fix the bug which left the tests failing', 'update the list so nothing is left out']) {
-    await $.turn.start({ text, turnId: text })
-    await $.tool.call(bash('ls'))
+    await fresh(text)
     expect((await $.classic.Stop(stop('Done.\n\nNext steps:\n- rerun make check'))).block, text).toMatch(/lists work under/)
   }
+})
+
+test('sends every finding in one send-back, then none for the rest of the turn', async ($, on) => {
+  toolEngine(on)
+  await $.turn.start({ text: 'fix it', turnId: 't1' })
+  await $.tool.call(edit('/repo/a.ts'))
+  const block = (await $.classic.Stop(stop('Done.\n\nNext steps:\n- rerun make check\n\nShould I push it?'))).block ?? ''
+  expect(block).toMatch(/no `Checked:` list[\s\S]*lists work under `Next steps:`[\s\S]*ends with a question[\s\S]*Your reply replaces your last answer[^\n]*$/)
+  // Both action messages keep the limits of the rule they apply.
+  expect(block.match(/a step ~\/AGENTS\.md §1 makes part of the task \(in the request's scope, and either named by the request or reversible and changing nothing outside this machine that the request did not name; never a §5 action, a review round past the `k-review` caps, or a step the user asked you to ask about first\)/g)).toHaveLength(2)
+  // A later Stop in the same turn, even one that starts a new Stop chain, goes through.
+  expect((await $.classic.Stop(stop('Done.\n\nKnown gaps:\n- x'))).block).toBeUndefined()
+  await $.turn.start({ text: 'next request', turnId: 't2' })
+  await $.tool.call(bash('ls'))
+  expect((await $.classic.Stop(stop('Want me to push?'))).block).toMatch(/ends with a question/)
+})
+
+test('a continuation after a send-back keeps the turn and sends it back only once', async ($, on) => {
+  toolEngine(on)
+  await $.turn.start({ text: 'fix it', turnId: 't1' })
+  await $.tool.call(edit('/repo/a.ts'))
+  expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/no `Checked:` list/)
+  await $.tool.call(bash('ls'))
+  expect((await $.classic.Stop(stop('Done.', true))).block).toBeUndefined()
+})
+
+test('an empty-text turn.start after a pause keeps the turn\'s edits', async ($, on) => {
+  toolEngine(on)
+  await $.turn.start({ text: 'fix it', turnId: 't1' })
+  await $.tool.call(edit('/repo/a.ts'))
+  const subagent = [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }]
+  expect((await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: subagent })).block).toBeUndefined()
+  await $.turn.start({ text: '', turnId: 'resume' })
+  expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/no `Checked:` list/)
+})
+
+test('checks the next answer after an engine nudge that follows a passed Stop', async ($, on) => {
+  toolEngine(on)
+  await $.turn.start({ text: 'fix it again', turnId: 't2' })
+  await $.tool.call(bash('ls'))
+  expect((await $.classic.Stop(stop('Done.'))).block).toBeUndefined()
+  // A nudge (brief mode, a reply gate, a /goal check-in) continues the turn with stop_hook_active; no send-back came before it.
+  await $.tool.call(edit('/repo/a.ts'))
+  expect((await $.classic.Stop(stop('Fixed it. Want me to push?', true))).block).toMatch(/no `Checked:` list[\s\S]*ends with a question/)
+  expect((await $.classic.Stop(stop('Fixed it. Want me to push?', true))).block).toBeUndefined()
+})
+
+test('an empty-text turn that follows no pause is a new turn, also after an interrupted send-back', async ($, on) => {
+  toolEngine(on)
+  await $.turn.start({ text: 'fix it', turnId: 't1' })
+  await $.tool.call(edit('/repo/a.ts'))
+  expect((await $.classic.Stop(stop('Done.\n\nChecked:\n- a.ts:1'))).block).toBeUndefined()
+  // A notice with no typed prompt: the last turn's edit does not carry over.
+  await $.turn.start({ text: '', turnId: 'n1' })
+  expect((await $.classic.Stop(stop('Noted.'))).block).toBeUndefined()
+  // The previous turn's send-back does not silence the next one.
+  await $.turn.start({ text: 'fix it', turnId: 't2' })
+  await $.tool.call(edit('/repo/a.ts'))
+  expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/no `Checked:` list/)
+  // The continuation is interrupted, so no Stop follows; an idle notice then starts a new turn with its own checks.
+  await $.turn.start({ text: '', turnId: 'n2' })
+  await $.tool.call(edit('/repo/c.ts'))
+  expect((await $.classic.Stop(stop('Edited. Push it?'))).block).toMatch(/no `Checked:` list[\s\S]*ends with a question/)
+})
+
+test('a subagent start does not reset the main turn', async ($, on) => {
+  toolEngine(on)
+  await $.turn.start({ text: 'fix it', turnId: 't1' })
+  await $.tool.call(edit('/repo/a.ts'))
+  await $.turn.start({ text: 'review the diff', turnId: 'sub1', agentId: 'agent-1' } as never)
+  expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/no `Checked:` list/)
+})
+
+test('compares against the tree before the turn\'s first Bash call', async ($, on) => {
+  engine(on, ['before', 'after', 'after'])
+  await $.turn.start({ text: 'sed it', turnId: 't1' })
+  await $.tool.call({ tool: 'Bash', command: "sed -i '' s/a/b/ a.ts" })
+  await $.tool.call({ tool: 'Bash', command: 'git diff --stat' })
+  expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/no `Checked:` list/)
+})
+
+test('does not count a failed edit as a change', async ($, on) => {
+  on('turn.start', ($, e) => ({ turnId: e.turnId }))
+  on('process.run', () => ({ value: ran('same') }))
+  on('tool.call', () => ({ result: {} as never, isError: true as const }))
+  on('classic.Stop', () => ({}))
+  on('settings.read', () => ({ value: {} }))
+  await $.turn.start({ text: 'fix it', turnId: 't1' })
+  await $.tool.call(edit('/repo/a.ts'))
+  expect((await $.classic.Stop(stop('Could not edit it.'))).block).toBeUndefined()
+})
+
+test('checks the first Stop it sees even with stop_hook_active set: a managed hook blocked the one before', async ($, on) => {
+  toolEngine(on)
+  // A Stop that passes, then an interrupt: the next turn starts fresh.
+  await $.turn.start({ text: 'look', turnId: 't1' })
+  await $.tool.call(bash('ls'))
+  expect((await $.classic.Stop(stop('Looked.'))).block).toBeUndefined()
+  await $.turn.start({ text: 'fix it', turnId: 't2' })
+  await $.tool.call(edit('/repo/a.ts'))
+  // A managed-settings Stop hook blocked an earlier Stop, so this mod never saw it.
+  expect((await $.classic.Stop(stop('Fixed it.', true))).block).toMatch(/no `Checked:` list/)
+  expect((await $.classic.Stop(stop('Fixed it.', true))).block).toBeUndefined()
+})
+
+test('an engine nudge after a paused Stop, such as a /goal check-in, is no send-back: the turn is still checked', async ($, on) => {
+  toolEngine(on)
+  const subagent = [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }]
+  await $.turn.start({ text: 'fix it', turnId: 't1' })
+  await $.tool.call(edit('/repo/a.ts'))
+  expect((await $.classic.Stop({ ...stop('Waiting.'), background_tasks: subagent })).block).toBeUndefined()
+  expect((await $.classic.Stop({ ...stop('Still waiting.', true), background_tasks: subagent })).block).toBeUndefined()
+  await $.turn.start({ text: '<task-notification>done</task-notification>', turnId: 'wake' })
+  expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/no `Checked:` list/)
+})
+
+test('after an answer passes, a later Stop in the turn needs Checked: only for later changes', async ($, on) => {
+  engine(on, ['before', 'before', 'before', 'after'])
+  await $.turn.start({ text: 'fix it', turnId: 't1' })
+  await $.tool.call(edit('/repo/a.ts'))
+  expect((await $.classic.Stop(stop('Done.\n\nChecked:\n- make check passed'))).block).toBeUndefined()
+  // A re-delivery nudge (brief mode, a reply gate) sends the answer through a tool and ends with no text.
+  await $.tool.call({ tool: 'Bash', command: 'git status' })
+  expect((await $.classic.Stop(stop('', true))).block).toBeUndefined()
+  // Work after the passed answer changes the tree, so its answer needs Checked: again.
+  await $.tool.call({ tool: 'Bash', command: "sed -i '' s/a/b/ a.ts" })
+  expect((await $.classic.Stop(stop('Fixed the rest.', true))).block).toMatch(/no `Checked:` list/)
+})
+
+test('after an answer passes, a background job\'s later write still counts as a change', async ($, on) => {
+  engine(on, ['before', 'before', 'written'])
+  await $.turn.start({ text: 'start the build', turnId: 't1' })
+  await $.tool.call({ tool: 'Bash', command: 'make build &' })
+  expect((await $.classic.Stop(stop('Started.\n\nChecked:\n- make build is running'))).block).toBeUndefined()
+  // A /goal check-in continues the turn after the job wrote its output.
+  expect((await $.classic.Stop(stop('The build finished.', true))).block).toMatch(/no `Checked:` list/)
 })
