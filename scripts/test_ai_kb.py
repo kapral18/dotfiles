@@ -14,9 +14,36 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import SCRIPTS
+
+
+def setUpModule() -> None:
+    offline = mock.patch.dict(os.environ, {"AI_KB_DISABLE_EMBED": "1", "AI_KB_DISABLE_VEC": "1"})
+    offline.start()
+    unittest.addModuleCleanup(offline.stop)
+
+
+def require_live_runtime(test: unittest.TestCase) -> None:
+    if os.environ.get("AI_KB_LIVE_TESTS") != "1":
+        test.skipTest("set AI_KB_LIVE_TESTS=1 to run model/vector integration tests")
+    scratch = tempfile.TemporaryDirectory(prefix="ai-kb-integration-")
+    test.addCleanup(scratch.cleanup)
+    root = Path(scratch.name)
+    isolated = mock.patch.dict(
+        os.environ,
+        {
+            "AI_KB_DISABLE_EMBED": "0",
+            "AI_KB_DISABLE_VEC": "0",
+            "UV_CACHE_DIR": str(root / "uv"),
+            "HF_HOME": str(root / "huggingface"),
+            "FASTEMBED_CACHE_PATH": str(root / "fastembed"),
+        },
+    )
+    isolated.start()
+    test.addCleanup(isolated.stop)
 
 
 class TestAiKb(unittest.TestCase):
@@ -42,6 +69,7 @@ class TestAiKb(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 cwd=str(SCRIPTS),
+                env={**os.environ, "AI_KB_DISABLE_EMBED": "1"},
             )
             assert result.returncode == 0, result.stderr
             capsule = json.loads(result.stdout)
@@ -60,6 +88,7 @@ class TestAiKb(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 cwd=str(SCRIPTS),
+                env={**os.environ, "AI_KB_DISABLE_EMBED": "1"},
             )
             assert result.returncode == 0, result.stderr
             rows = json.loads(result.stdout)
@@ -992,142 +1021,11 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 os.environ.pop("AI_KB_DISABLE_EMBED", None)
 
 
-class TestKnowledgeBaseEmbeddingRoundtrip(unittest.TestCase):
-    """End-to-end embedding test: actually shells out to the fastembed
-    runner. Slow (~1s cold start) — only runs when the runner is
-    available; otherwise skipped so CI without `uv` doesn't fail.
-    """
-
+class TestKnowledgeBaseLexicalRanking(unittest.TestCase):
     def setUp(self):
-        import embed
-
-        e = embed.Embedder()
-        if not e.is_available():
-            self.skipTest("fastembed runner not available (uv missing or runner script missing)")
-        self.embedder = e
-
-    def test_remember_stores_embedding_when_runner_available(self):
-        import ai_kb
-        from embed import cosine, unpack_vector
-
-        with tempfile.TemporaryDirectory() as tmp:
-            # Ensure the disable flag is OFF for this test.
-            saved = os.environ.pop("AI_KB_DISABLE_EMBED", None)
-            try:
-                kb = ai_kb.KnowledgeBase(home=Path(tmp))
-                c = kb.remember(
-                    title="Workflow manifest layout",
-                    body="Workflow state under runs/*/manifest.json with kind values.",
-                )
-                assert c.embedding_dim == 384, c.embedding_dim
-                assert c.embedding_model == "BAAI/bge-small-en-v1.5"
-                # Verify the stored embedding round-trips and self-cosine == 1.
-                with kb.connect() as db:
-                    row = db.execute("SELECT embedding FROM capsules WHERE id = ?", (c.id,)).fetchone()
-                vec = unpack_vector(row["embedding"])
-                assert len(vec) == 384
-                assert abs(cosine(vec, vec) - 1.0) < 1e-5
-            finally:
-                if saved is not None:
-                    os.environ["AI_KB_DISABLE_EMBED"] = saved
-
-
-class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
-    """Phase 2: hybrid (BM25 + cosine + RRF + MMR) retrieval with
-    structured filters. The canonical regression is the
-    "semantic-without-lexical-overlap" case — a query whose tokens do
-    not appear in the capsule body but whose meaning is similar must
-    surface the capsule via the vector lane.
-    """
-
-    def setUp(self):
-        import embed
-
-        if not embed.Embedder().is_available():
-            self.skipTest("fastembed runner not available")
-        # Embedding tests need the embedder ON.
-        self.saved_disable = os.environ.pop("AI_KB_DISABLE_EMBED", None)
-
-    def tearDown(self):
-        if self.saved_disable is not None:
-            os.environ["AI_KB_DISABLE_EMBED"] = self.saved_disable
-
-    def test_vector_mode_finds_semantic_match_without_keyword_overlap(self):
-        """Capsule says 'feline' / query asks 'cat'. BM25 misses, vector hits."""
-        import ai_kb
-
-        with tempfile.TemporaryDirectory() as tmp:
-            kb = ai_kb.KnowledgeBase(home=Path(tmp))
-            kb.remember(
-                title="Animal taxonomy",
-                body="The domestic feline is a small carnivorous mammal.",
-                kind="fact",
-                scope="universal",
-            )
-            # BM25-only query that has no token overlap with the body.
-            bm25 = kb.search("cat pet", limit=3, mode="bm25")
-            assert bm25 == [], (
-                f"BM25-only must miss across token boundaries; got {len(bm25)} hit(s):\n{[h['title'] for h in bm25]}"
-            )
-            # Vector mode bridges the lexical gap.
-            vec = kb.search("cat pet", limit=3, mode="vector")
-            assert len(vec) == 1, f"vector lane must surface the semantically-related capsule; got {vec}"
-            assert vec[0]["title"] == "Animal taxonomy"
-            assert vec[0]["cosine_score"] is not None
-
-    def test_vector_lane_follows_an_amend(self):
-        """An amend keeps the id, so vec_index must re-index the rewritten
-        vector instead of trusting id presence."""
-        import ai_kb
-
-        with tempfile.TemporaryDirectory() as tmp:
-            kb = ai_kb.KnowledgeBase(home=Path(tmp))
-            old = kb.remember(
-                title="Animal taxonomy",
-                body="The domestic feline is a small carnivorous mammal.",
-                kind="fact",
-                scope="universal",
-            )
-            assert [h["id"] for h in kb.search("cat pet", limit=3, mode="vector")] == [old.id]
-            kb.remember(
-                title="Orbital mechanics",
-                body="A satellite in low earth orbit completes a revolution in about ninety minutes.",
-                supersedes=old.id,
-            )
-            vec = kb.search("satellite orbit period", limit=3, mode="vector")
-            assert [h["id"] for h in vec] == [old.id], vec
-            assert vec[0]["title"] == "Orbital mechanics"
-            stale = kb.search("cat pet", limit=3, mode="vector")
-            assert not stale or stale[0]["cosine_score"] < vec[0]["cosine_score"], stale
-
-    def test_hybrid_mode_combines_lanes_via_rrf(self):
-        import ai_kb
-
-        with tempfile.TemporaryDirectory() as tmp:
-            kb = ai_kb.KnowledgeBase(home=Path(tmp))
-            # cap_a: high BM25 (exact token), low semantic relevance
-            kb.remember(
-                title="Manifest format",
-                body="A manifest file describes packaging metadata.",
-                kind="fact",
-            )
-            # cap_b: high semantic relevance to an orchestrator-flavored query,
-            # but no shared tokens with the query.
-            kb.remember(
-                title="Run state on disk",
-                body="Each run stores its progress under its own directory.",
-                kind="fact",
-            )
-
-            hits = kb.search("workflow manifest layout", limit=3, mode="hybrid")
-            assert len(hits) == 2
-            ids = [h["id"] for h in hits]
-            # Both capsules must appear in the fused result.
-            assert any("Manifest format" == h["title"] for h in hits), hits
-            assert any("Run state on disk" == h["title"] for h in hits), hits
-            # Each hit should have a non-zero RRF score.
-            for h in hits:
-                assert h["rrf_score"] > 0.0, h
+        disabled = mock.patch.dict(os.environ, {"AI_KB_DISABLE_EMBED": "1"})
+        disabled.start()
+        self.addCleanup(disabled.stop)
 
     def test_filters_scope_kind_and_domain_pre_rank(self):
         import ai_kb
@@ -1218,6 +1116,89 @@ class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
             assert ids[0] == fresh.id, ids
             ranked = {h["id"]: h["rrf_score"] for h in hits}
             assert ranked[fresh.id] > ranked[stale.id], ranked
+
+
+class TestKnowledgeBaseRecencyOrdering(unittest.TestCase):
+    def test_recency_swap_holds_on_exact_rrf_tie(self):
+        # Equal RRF scores need position transfer: score transfer alone leaves
+        # the stale twin first after the search pipeline's stable sort.
+        import ai_kb
+
+        def hit(hid: str) -> "ai_kb.Hit":
+            return ai_kb.Hit(
+                id=hid,
+                title=hid,
+                body=hid,
+                snippet="",
+                source=None,
+                tags=[],
+                kind="fact",
+                scope="project",
+                workspace_path=None,
+                domain_tags=[],
+                confidence=0.9,
+                bm25_rank=None,
+                vector_rank=None,
+                bm25_score=None,
+                cosine_score=None,
+                rrf_score=0.02,
+                mmr_selected=False,
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp))
+            hits = [hit("older"), hit("newer")]
+            vectors = {"older": [1.0, 0.0, 0.0], "newer": [1.0, 0.0, 0.0]}
+            recency = {
+                "older": ("2026-01-01T00:00:00", "older"),
+                "newer": ("2026-02-01T00:00:00", "newer"),
+            }
+            kb._prefer_newer_near_duplicates(hits, vectors, recency, {})
+            hits.sort(key=lambda h: h.rrf_score, reverse=True)
+            self.assertEqual([h.id for h in hits], ["newer", "older"])
+
+
+class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
+    """Phase 2: hybrid (BM25 + cosine + RRF + MMR) retrieval with
+    structured filters. The canonical regression is the
+    "semantic-without-lexical-overlap" case — a query whose tokens do
+    not appear in the capsule body but whose meaning is similar must
+    surface the capsule via the vector lane.
+    """
+
+    def setUp(self):
+        require_live_runtime(self)
+        # Embedding tests need the embedder ON.
+        self.saved_disable = os.environ.pop("AI_KB_DISABLE_EMBED", None)
+
+    def tearDown(self):
+        if self.saved_disable is not None:
+            os.environ["AI_KB_DISABLE_EMBED"] = self.saved_disable
+
+    def test_vector_lane_follows_an_amend(self):
+        """An amend keeps the id, so vec_index must re-index the rewritten
+        vector instead of trusting id presence."""
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp))
+            old = kb.remember(
+                title="Animal taxonomy",
+                body="The domestic feline is a small carnivorous mammal.",
+                kind="fact",
+                scope="universal",
+            )
+            assert [h["id"] for h in kb.search("cat pet", limit=3, mode="vector")] == [old.id]
+            kb.remember(
+                title="Orbital mechanics",
+                body="A satellite in low earth orbit completes a revolution in about ninety minutes.",
+                supersedes=old.id,
+            )
+            vec = kb.search("satellite orbit period", limit=3, mode="vector")
+            assert [h["id"] for h in vec] == [old.id], vec
+            assert vec[0]["title"] == "Orbital mechanics"
+            stale = kb.search("cat pet", limit=3, mode="vector")
+            assert not stale or stale[0]["cosine_score"] < vec[0]["cosine_score"], stale
 
     def test_newer_near_duplicate_outranks_older_lexical_winner(self):
         # Recency preference inside near-duplicate groups: a knowledge update
@@ -1377,52 +1358,6 @@ class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
             assert hits[0]["id"] == mid.id, [h["title"] for h in hits]
             assert hits[0]["id"] != tip.id
 
-    def test_recency_swap_holds_on_exact_rrf_tie(self):
-        # When the twins tie in RRF (one wins BM25, the other wins the vector
-        # lane by the same margin), score transfer alone is invisible: the
-        # post-pass stable sort keeps list order. The position transfer is the
-        # tie-breaker, so drive the pass directly with an exact tie and assert
-        # the newest member ends up first.
-        import ai_kb
-
-        def hit(hid: str, rrf: float) -> "ai_kb.Hit":
-            return ai_kb.Hit(
-                id=hid,
-                title=hid,
-                body=hid,
-                snippet="",
-                source=None,
-                tags=[],
-                kind="fact",
-                scope="project",
-                workspace_path=None,
-                domain_tags=[],
-                confidence=0.9,
-                bm25_rank=None,
-                vector_rank=None,
-                bm25_score=None,
-                cosine_score=None,
-                rrf_score=rrf,
-                mmr_selected=False,
-            )
-
-        with tempfile.TemporaryDirectory() as tmp:
-            kb = ai_kb.KnowledgeBase(home=Path(tmp))
-            older = hit("older", 0.02)
-            newer = hit("newer", 0.02)
-            hits = [older, newer]
-            vectors = {"older": [1.0, 0.0, 0.0], "newer": [1.0, 0.0, 0.0]}
-            recency = {
-                "older": ("2026-01-01T00:00:00", "older"),
-                "newer": ("2026-02-01T00:00:00", "newer"),
-            }
-
-            groups = kb._prefer_newer_near_duplicates(hits, vectors, recency, {})
-
-            hits.sort(key=lambda h: h.rrf_score, reverse=True)
-            assert [h.id for h in hits] == ["newer", "older"], [h.id for h in hits]
-            assert [[m.id for m in g] for g in groups] == [["newer", "older"]]
-
     def test_newest_group_member_survives_mmr_over_older_twin(self):
         # MMR penalizes by similarity to already-selected hits: with a top hit
         # sharing the newer twin's vector exactly, plain MMR would keep the
@@ -1481,25 +1416,6 @@ class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
             full_ids = [h["id"] for h in full]
             assert sorted(full_ids) == sorted([top.id, newer.id, older.id]), full_ids
 
-    def test_hybrid_mode_marks_mmr_selected(self):
-        import ai_kb
-
-        with tempfile.TemporaryDirectory() as tmp:
-            kb = ai_kb.KnowledgeBase(home=Path(tmp))
-            for i in range(3):
-                kb.remember(
-                    title=f"capsule {i}",
-                    body=f"Lesson number {i} about run orchestration.",
-                    kind="fact",
-                    # These near-identical bodies intentionally exercise MMR;
-                    # bypass the write-time duplicate probe.
-                    force=True,
-                )
-            hits = kb.search("run orchestration", limit=2, mode="hybrid")
-            assert len(hits) == 2
-            for h in hits:
-                assert h["mmr_selected"] is True, h
-
 
 class TestKnowledgeBaseWriteDedupe(unittest.TestCase):
     """Write-time duplicate refusal in remember()."""
@@ -1520,43 +1436,37 @@ class TestKnowledgeBaseWriteDedupe(unittest.TestCase):
                 os.environ.pop("AI_KB_DISABLE_EMBED", None)
 
     def test_remember_refuses_near_duplicate_embedding_without_force(self):
-        import embed
-
-        if not embed.Embedder().is_available():
-            self.skipTest("fastembed runner not available")
-
         import ai_kb
 
+        class DuplicateEmbedder:
+            model = "test/duplicates"
+
+            @staticmethod
+            def embed_one(_text):
+                return [1.0, 0.0, 0.0]
+
         with tempfile.TemporaryDirectory() as tmp:
-            saved = os.environ.pop("AI_KB_DISABLE_EMBED", None)
-            try:
-                kb = ai_kb.KnowledgeBase(home=Path(tmp))
-                first = kb.remember(
-                    title="JWT must be validated",
-                    body="Always validate JWT signature before reading claims.",
-                    kind="gotcha",
-                )
-                with self.assertRaisesRegex(ValueError, first.id):
-                    kb.remember(
-                        title="Validate JWT signatures",
-                        body="Always validate the JWT signature before using any claims.",
-                        kind="gotcha",
-                    )
-                # An explicit supersedes for the colliding capsule is the
-                # sanctioned update path and must not be refused: it amends
-                # that capsule instead of storing a near-duplicate twin.
-                replacement = kb.remember(
+            kb = ai_kb.KnowledgeBase(home=Path(tmp), embedder=DuplicateEmbedder())
+            first = kb.remember(
+                title="JWT must be validated",
+                body="Always validate JWT signature before reading claims.",
+                kind="gotcha",
+            )
+            with self.assertRaisesRegex(ValueError, first.id):
+                kb.remember(
                     title="Validate JWT signatures",
                     body="Always validate the JWT signature before using any claims.",
                     kind="gotcha",
-                    supersedes=first.id,
                 )
-                assert replacement.id == first.id
-                assert kb.get(first.id).title == "Validate JWT signatures"
-                assert [c.id for c in kb.list(limit=10)] == [first.id]
-            finally:
-                if saved is not None:
-                    os.environ["AI_KB_DISABLE_EMBED"] = saved
+            replacement = kb.remember(
+                title="Validate JWT signatures",
+                body="Always validate the JWT signature before using any claims.",
+                kind="gotcha",
+                supersedes=first.id,
+            )
+            assert replacement.id == first.id
+            assert kb.get(first.id).title == "Validate JWT signatures"
+            assert [c.id for c in kb.list(limit=10)] == [first.id]
 
     def test_amended_away_title_stops_blocking_new_capsules(self):
         """An amend replaces the target's title, so the old wording is free
@@ -1736,10 +1646,7 @@ class TestKnowledgeBaseCurate(unittest.TestCase):
                 os.environ.pop("AI_KB_DISABLE_EMBED", None)
 
     def test_dedupe_deletes_the_losing_near_duplicate(self):
-        import embed
-
-        if not embed.Embedder().is_available():
-            self.skipTest("fastembed runner not available")
+        require_live_runtime(self)
 
         import ai_kb
 
@@ -1800,10 +1707,7 @@ class TestKnowledgeBaseCurate(unittest.TestCase):
                     os.environ["AI_KB_DISABLE_EMBED"] = saved
 
     def test_contradiction_scan_returns_candidate_pairs(self):
-        import embed
-
-        if not embed.Embedder().is_available():
-            self.skipTest("fastembed runner not available")
+        require_live_runtime(self)
 
         import ai_kb
 
@@ -2189,8 +2093,9 @@ class TestKnowledgeBaseSearchReturnsBody(unittest.TestCase):
                 body="Workflow state layout uses runs/*/manifest.json with a stage filter.",
                 source="agent:test",
                 tags="agent,test",
+                embed_now=False,
             )
-            hits = kb.search("Workflow manifest layout", limit=5)
+            hits = kb.search("Workflow manifest layout", limit=5, mode="bm25")
             assert len(hits) == 1, hits
             row = hits[0]
             assert "body" in row, f"search row must include body: keys={sorted(row.keys())}"

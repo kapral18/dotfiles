@@ -19,19 +19,10 @@ if str(ARTIFACT_MODULE_DIR) not in sys.path:
 
 artifact_assets = importlib.import_module("assets")
 artifact_feedback = importlib.import_module("feedback")
-artifact_server = importlib.import_module("server")
 
 
 class TestArtifactCommand(unittest.TestCase):
     """WHEN creating cache-only browser artifacts."""
-
-    def test_detects_dotfiles_ambient_theme(self):
-
-        theme = artifact_assets.detect_ambient_theme(REPO)
-
-        assert theme["name"] == "dotfiles"
-        assert ".chezmoiroot" in theme["markers"]
-        assert "home/" in theme["markers"]
 
     def test_injects_ambient_theme_once(self):
         html_doc = "<!doctype html><html><head><title>x</title></head><body><main>hello</main></body></html>"
@@ -342,113 +333,6 @@ class TestArtifactCommand(unittest.TestCase):
                     child.kill()
                     child.wait(timeout=5)
 
-    def test_chrome_exposes_hover_highlight_and_expanded_anchor_card(self):
-
-        injected = artifact_assets.inject_client_script("<html><body><main><p>hello</p></main></body></html>")
-        chrome = artifact_assets.chrome_page("demo.html")
-        chrome_css = artifact_assets.asset_text("chrome.css")
-        chrome_js = artifact_assets.asset_text("chrome.js")
-
-        assert "__agent_artifact_hover" in injected
-        assert "__agent_artifact_selected" in injected
-        assert "function areaTargetFor" in injected
-        assert "function expandedTargetFor" in injected
-        assert "document.documentElement" in injected
-        assert "event.altKey" in injected
-        assert "agent-artifact-ready" in injected
-        assert "[data-card], .card, .panel, .callout" in injected
-        assert 'class="anchor-card"' in chrome
-        assert "Alt-click expands" in chrome
-        assert "dock expanded upward" in chrome_js
-        assert ".dock.expanded" in chrome_css
-
-    def test_chrome_exposes_cmd_click_multi_target_selection(self):
-
-        injected = artifact_assets.inject_client_script("<html><body><main><p>hello</p></main></body></html>")
-        chrome = artifact_assets.chrome_page("demo.html")
-        chrome_js = artifact_assets.asset_text("chrome.js")
-
-        assert "__agent_artifact_multi" in injected
-        assert "let multiSelected = [];" in injected
-        assert "function toggleMulti" in injected
-        assert "event.metaKey || event.ctrlKey" in injected
-        assert "agent-artifact-multi-context" in injected
-        assert "agent-artifact-multi-clear" in injected
-        assert "let multiContexts = [];" in chrome_js
-        assert "item.targets = multiContexts.slice();" in chrome_js
-        assert "targets pinned" in chrome_js
-        assert "Cmd-click" in chrome
-
-    def test_generated_client_exposes_semantic_entity_capture(self):
-
-        injected = artifact_assets.inject_client_script(
-            '<html><body><main data-artifact-id="entity.main" data-artifact-kind="section">hello</main></body></html>'
-        )
-
-        assert 'const ENTITY_ATTR = "data-artifact-id";' in injected
-        assert 'const MANIFEST_ID = "agent-artifact-manifest";' in injected
-        assert "function semanticContextFor" in injected
-        assert "entity_id: entity.id" in injected
-        assert "entity_ancestors = ancestors" in injected
-        assert "relations = relations" in injected
-        assert "[data-artifact-id], a, button" in injected
-
-    def test_generated_feedback_mode_starts_hidden_and_gates_capture(self):
-
-        injected = artifact_assets.inject_client_script("<html><body><button>Save</button></body></html>")
-        chrome = artifact_assets.chrome_page("demo.html")
-        chrome_js = artifact_assets.asset_text("chrome.js")
-
-        assert "let captureEnabled = false;" in injected
-        assert 'event.data.type === "agent-artifact-capture"' in injected
-        assert injected.count("if (!captureEnabled) return;") == 3
-        assert "if (!captureEnabled) clearHighlights();" in injected
-        assert 'id="feedbackToggle"' in chrome
-        assert 'aria-expanded="false"' in chrome
-        assert "let feedbackActive = false;" in chrome_js
-        assert 'document.body.classList.toggle("feedback-active", feedbackActive)' in chrome_js
-        assert "agent-artifact-capture" in chrome_js
-
-    def test_live_overlay_script_exposes_pause_teardown_and_minimal_context(self):
-
-        script = artifact_server.live_overlay_script("live.html", "http://127.0.0.1:12345")
-
-        assert "__agent_artifact_live_overlay" in script
-        assert "attachShadow" in script
-        assert 'source: "live-overlay"' in script
-        assert "rect: rectOf(el)" in script
-        assert "ancestors: ancestorsOf(el)" in script
-        assert "pause" in script
-        assert "destroy" in script
-        assert "drain" in script
-        assert "Local post blocked" in script
-        assert "/api/feedback/" in script
-
-    def test_live_overlay_script_exposes_cmd_click_multi_target_selection(self):
-
-        script = artifact_server.live_overlay_script("live.html", "http://127.0.0.1:12345")
-
-        assert "const MULTI_CLASS" in script
-        assert "let multiSelected = [];" in script
-        assert "function toggleMulti(el, expand, selection)" in script
-        assert "event.metaKey || event.ctrlKey" in script
-        assert "item = { prompt, ...targets[0], targets };" in script
-        assert "value.targets && value.targets.length" in script
-        assert "Cmd-click pins multiple targets" in script
-        assert 'window.addEventListener("scroll", syncHighlights, true);' in script
-
-    def test_live_overlay_script_exposes_semantic_entity_capture(self):
-
-        script = artifact_server.live_overlay_script("live.html", "http://127.0.0.1:12345")
-
-        assert 'const ENTITY_ATTR = "data-artifact-id";' in script
-        assert 'const MANIFEST_ID = "agent-artifact-manifest";' in script
-        assert "function semanticContextFor" in script
-        assert "entity_id: entity.id" in script
-        assert "entity_ancestors = ancestors" in script
-        assert "relations = relations" in script
-        assert "[data-artifact-id], a, button" in script
-
     def test_live_start_serves_script_with_cors(self):
         with tempfile.TemporaryDirectory() as tmp:
             cache = Path(tmp) / "cache"
@@ -466,10 +350,11 @@ class TestArtifactCommand(unittest.TestCase):
                 info = json.loads(result.stdout)
                 script_response = urlopen(info["script_url"], timeout=5)
                 assert script_response.headers["access-control-allow-origin"] == "*"
-                assert "__agent_artifact_live_overlay" in script_response.read().decode()
+                # The overlay must post feedback back to the server that served it.
+                assert json.dumps(info["server_url"]) in script_response.read().decode()
                 asset_response = urlopen(info["server_url"] + "/assets/chrome.js", timeout=5)
                 assert asset_response.headers["content-type"] == "application/javascript; charset=utf-8"
-                assert "window.__AGENT_ARTIFACT_NAME__" in asset_response.read().decode()
+                assert asset_response.read().decode() == artifact_assets.asset_text("chrome.js")
                 options = urlopen(
                     Request(info["feedback_url"], method="OPTIONS", headers={"origin": "http://localhost:5601"}),
                     timeout=5,

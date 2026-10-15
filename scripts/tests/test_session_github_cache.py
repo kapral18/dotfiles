@@ -6,7 +6,6 @@ from __future__ import annotations
 import ast
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -19,7 +18,7 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
-from _test_support import REPO, TMUX_PICKERS
+from _test_support import TMUX_PICKERS
 
 INDEX_MAIN = TMUX_PICKERS / "session/lib/index_main.py"
 # The loader below copies index_main.py's imports but not its sys.path.insert, so add that dir here.
@@ -79,10 +78,9 @@ class TestSessionGitHubCache(unittest.TestCase):
         self.lookup_success = self.ns["GH_LOOKUP_SUCCESS"]
         self.lookup_absent = self.ns["GH_LOOKUP_ABSENT"]
         self.lookup_failure = self.ns["GH_LOOKUP_FAILURE"]
-        self.scratch = REPO / ".test-artifacts" / f"session-github-cache-{self._testMethodName}"
-        shutil.rmtree(self.scratch, ignore_errors=True)
-        self.scratch.mkdir(parents=True, exist_ok=True)
-        self.addCleanup(lambda: shutil.rmtree(self.scratch, ignore_errors=True))
+        scratch = tempfile.TemporaryDirectory(prefix="session-github-cache-")
+        self.addCleanup(scratch.cleanup)
+        self.scratch = Path(scratch.name)
 
     def _base_entry(self) -> dict:
         return {
@@ -365,6 +363,7 @@ class TestSessionPickerPrStyling(unittest.TestCase):
             env = {
                 **os.environ,
                 "HOME": str(home),
+                "XDG_CACHE_HOME": str(root / "cache"),
                 "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
                 "PICK_SESSION_SCAN_ROOTS": str(home / "work"),
                 "PICK_SESSION_TEST_WORKTREE": str(worktree),

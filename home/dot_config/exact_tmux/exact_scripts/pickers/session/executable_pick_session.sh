@@ -270,7 +270,9 @@ wt_branch_tmp="${cache_dir}/pick_session_wt_branch.$$.txt"
 only_mode_flag="${cache_dir}/pick_session_only_mode.$$"
 rm_confirm_flag="${cache_dir}/pick_session_rm_confirm.$$"
 rm_pending_snap="${cache_dir}/pick_session_rm_pending.$$.tsv"
-_pick_session_pid_scoped_files+=("$cmd_tmp" "$mode_flag" "$wt_mode_flag" "$wt_branch_tmp" "$only_mode_flag" "$rm_confirm_flag" "$rm_pending_snap")
+# fzf SIGKILLs a still-running alt-x helper on exit, skipping its trap, so its
+# markers are cleaned here too; a stale .busy would block alt-x and the modes.
+_pick_session_pid_scoped_files+=("$cmd_tmp" "$mode_flag" "$wt_mode_flag" "$wt_branch_tmp" "$only_mode_flag" "$rm_confirm_flag" "${rm_confirm_flag}.busy" "${rm_confirm_flag}.run" "$rm_pending_snap")
 
 # alt-1/alt-2 quick filters jump to the first two scan-root segments via their
 # trailing-slash labels (e.g. `code/` surfaces `~/code/`). Overridable so the
@@ -375,10 +377,16 @@ send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+
 # - FORCE confirmed: same instant hide + visual restore. esc in either state
 #   clears the confirm flag and the transform's run marker (aborting an
 #   in-flight check) via the shared esc binding and restores standard visuals.
+#   esc stays unbound outside modals: `start` unbinds it once, so reloads
+#   (live refresh, re-sorting, ctrl-r) never touch it. The alt-x cue and the
+#   force prompt rebind it, and every alt-x outcome (safe, force, restore)
+#   unbinds it again. Without that, esc does nothing at the force prompt and
+#   the next alt-x forces the pending blocked selection.
 _altx_pending_q="$(printf %q "$rm_pending_snap")"
 altx_src_q="$(printf %q "$sort_source_file")"
-altx_visual_restore="change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header($_modal_header)"
-altx_check_cue="change-prompt(⏳ removing…)"
+altx_visual_restore="change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header($_modal_header)+unbind(esc)"
+altx_check_prompt='⏳ removing…'
+altx_check_cue="change-prompt($altx_check_prompt)+rebind(esc)"
 # fzf --ansi hands {+f} snapshots back color-stripped while the row source
 # keeps its SGR codes, so the hide matches each source row's plain projection
 # against the snapshot and prints survivors unchanged — rows keep their colors.
@@ -388,7 +396,7 @@ _altx_hide_awk='FILENAME==ARGV[1]{t=$0;gsub(/\033\[[0-9;]*m/,"",t);p[t]=1;next}{
 _altx_hide_matcher="LC_ALL=C awk $(printf %q "${_altx_hide_awk}")"
 _altx_hide_reload="$(snapshot_reload_command "${_altx_hide_matcher} ${_altx_pending_q} ${altx_src_q}")"
 altx_safe_actions="reload(${_altx_hide_reload})+deselect-all+${altx_visual_restore}"
-altx_confirm_actions="change-prompt(❯ force: )+change-ghost(alt-x again = force  esc = cancel)+change-header(BLOCKED: dirty or unpushed work in selected worktree(s))"
+altx_confirm_actions="change-prompt(❯ force: )+change-ghost(alt-x again = force  esc = cancel)+change-header(BLOCKED: dirty or unpushed work in selected worktree(s))+rebind(esc)"
 altx_force_actions="reload(${_altx_hide_reload})+deselect-all+${altx_visual_restore}"
 export ALTX_SAFE_ACTIONS="$altx_safe_actions"
 export ALTX_CONFIRM_ACTIONS="$altx_confirm_actions"
@@ -402,6 +410,12 @@ send_mode="execute-silent(touch $mode_flag)+disable-search+change-prompt(❯ sen
 # tell the two apart).
 wt_mode="execute-silent(touch $wt_mode_flag)+disable-search+change-prompt(❯ new branch: )+change-ghost(branch off selected repo)+change-header(enter=create worktree  esc=cancel)+clear-query+unbind($_modal_rebind)+rebind(esc)"
 
+# A late alt-x outcome (safe, confirm, restore) would clobber a mode opened over
+# it, and leaving a mode unbinds esc with a force prompt still armed. So send and
+# new-branch modes open only while no alt-x check runs and no force is pending.
+# The cue's prompt covers keys typed before the helper creates its .busy marker.
+altx_pending="[ \"\$FZF_PROMPT\" = $(printf %q "$altx_check_prompt") ] || [ -e $(printf %q "${rm_confirm_flag}.busy") ] || [ -e $(printf %q "$rm_confirm_flag") ]"
+
 # enter:transform routes by active modal flag: send-mode dispatches the typed
 # command; wt-mode creates a worktree off the selected repo; otherwise accept.
 enter_transform="enter:transform:if [ -f $mode_flag ]; then printf '%s' {q} > $cmd_tmp; $dispatch_async_cmd $send_cmd {+f} $cmd_tmp >/dev/null 2>&1; echo 'execute-silent(rm -f $mode_flag)+$send_restore'; elif [ -f $wt_mode_flag ]; then printf '%s' {q} > $wt_branch_tmp; $dispatch_async_cmd $create_wt_cmd {f} $wt_branch_tmp >/dev/null 2>&1; echo 'execute-silent(rm -f $wt_mode_flag)+$send_restore'; else echo 'execute-silent(cp {f} $primary_tmp)+accept'; fi"
@@ -409,7 +423,7 @@ enter_transform="enter:transform:if [ -f $mode_flag ]; then printf '%s' {q} > $c
 # Shared fzf bindings/options for both invocation branches (pinned vs not).
 # Maintaining a single array avoids the two copies drifting as bindings grow.
 fzf_common_binds=(
-  --bind "start:execute-silent($live_refresh_cmd >/dev/null 2>&1 &)"
+  --bind "start:execute-silent($live_refresh_cmd >/dev/null 2>&1 &)+unbind(esc)"
   --bind "ctrl-r:reload($ctrl_r_reload)+track"
   --bind "alt-r:reload($alt_r_reload)+track"
   --bind "alt-j:half-page-down"
@@ -424,9 +438,8 @@ fzf_common_binds=(
   --bind "?:execute-silent(if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); else touch $(printf %q "$help_flag"); fi)+refresh-preview"
   --bind "change:first"
   --bind "alt-s:toggle-sort+first"
-  --bind "load:unbind(esc)"
   --bind "$enter_transform"
-  --bind "ctrl-s:$send_mode"
+  --bind "ctrl-s:transform:$altx_pending || printf '%s' $(printf %q "$send_mode")"
   --bind "esc:execute-silent(rm -f $mode_flag $wt_mode_flag $rm_confirm_flag ${rm_confirm_flag}.run)+$send_restore"
   --bind "ctrl-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$kill_cmd") {+f})+reload($kill_reload)+deselect-all"
   --bind "alt-x:${altx_check_cue}+bg-transform($(printf %q "$altx_cmd") $(printf %q "$rm_confirm_flag") $(printf %q "$rm_cmd") {+f} $(printf %q "$rm_pending_snap"))"
@@ -435,7 +448,7 @@ fzf_common_binds=(
   --bind "alt-1:change-query(${filter_quick_1}/)"
   --bind "alt-2:change-query(${filter_quick_2}/)"
   --bind "alt-o:transform($(printf %q "$only_cycle_cmd") $(printf %q "$only_mode_flag") $(printf %q "$filter_cmd"))"
-  --bind "alt-c:$wt_mode"
+  --bind "alt-c:transform:$altx_pending || printf '%s' $(printf %q "$wt_mode")"
   --bind "alt-p:execute-silent($open_gh_cmd pr {f})"
   --bind "alt-i:execute-silent($open_gh_cmd issue {f})"
   --bind "alt-g:execute-silent($(printf %q "$handoff_to_gh_cmd") {4} $(printf %q "$gh_pin_file") 2>/dev/null || true; touch $(printf %q "$switch_to_gh_file"))+abort"

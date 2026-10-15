@@ -8,7 +8,6 @@ import unittest
 from pathlib import Path
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
-from _test_support import REPO
 
 
 class VerifyAgentFileSizesTest(unittest.TestCase):
@@ -18,14 +17,6 @@ class VerifyAgentFileSizesTest(unittest.TestCase):
         import verify_agent_file_sizes
 
         return verify_agent_file_sizes
-
-    def test_real_agent_tree_passes(self):
-        """SHOULD pass for the committed skill/hook tree (no oversized references)."""
-        m = self._module()
-        offenders = m.oversized_files(REPO)
-        assert offenders == [], "oversized agent references: " + "; ".join(
-            f"{path} ({size}B)" for path, size in offenders
-        )
 
     def test_oversized_reference_is_reported(self):
         """SHOULD flag a reference markdown file at or over 20480 bytes."""

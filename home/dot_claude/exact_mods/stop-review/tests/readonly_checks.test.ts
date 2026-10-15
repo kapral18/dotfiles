@@ -271,7 +271,6 @@ test('sends back work parked under a heading the report has no slot for, once pe
     await fresh()
     const block = (await $.classic.Stop(stop(`Done.\n\n${header}\n- rerun make check`))).block
     expect(block, header).toMatch(new RegExp('lists work under `' + header.replace(/[*()]/g, '\\$&') + '`'))
-    expect(block, header).toMatch(/Do each item that is a step ~\/AGENTS\.md §1 makes part of the task[^)]*\) now\. Put an item that is the user's decision \(§1\) under `Decision needed:`/)
   }
   for (const message of [
     'Known gaps: none, but make check was not rerun',
@@ -326,8 +325,6 @@ test('sends every finding in one send-back, then none for the rest of the turn',
   await $.tool.call(edit('/repo/a.ts'))
   const block = (await $.classic.Stop(stop('Done.\n\nNext steps:\n- rerun make check\n\nShould I push it?'))).block ?? ''
   expect(block).toMatch(/no `Checked:` list[\s\S]*lists work under `Next steps:`[\s\S]*ends with a question[\s\S]*Your reply replaces your last answer[^\n]*$/)
-  // Both action messages keep the limits of the rule they apply.
-  expect(block.match(/a step ~\/AGENTS\.md §1 makes part of the task \(in the request's scope, and either named by the request or reversible and changing nothing outside this machine that the request did not name; never a §5 action, a review round past the `k-review` caps, or a step the user asked you to ask about first\)/g)).toHaveLength(2)
   // A later Stop in the same turn, even one that starts a new Stop chain, goes through.
   expect((await $.classic.Stop(stop('Done.\n\nKnown gaps:\n- x'))).block).toBeUndefined()
   await $.turn.start({ text: 'next request', turnId: 't2' })

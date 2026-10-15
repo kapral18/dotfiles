@@ -63,11 +63,14 @@ def modern_bash() -> str:
         if not candidate or candidate in seen:
             continue
         seen.add(candidate)
-        result = subprocess.run(
-            [candidate, "-c", '[ "${BASH_VERSINFO[0]:-0}" -ge 4 ]'],
-            capture_output=True,
-            text=True,
-        )
+        try:
+            result = subprocess.run(
+                [candidate, "-c", '[ "${BASH_VERSINFO[0]:-0}" -ge 4 ]'],
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError:
+            continue
         if result.returncode == 0:
             return candidate
     raise unittest.SkipTest("bash 4+ is required for tmux picker shell helper tests")
@@ -76,7 +79,7 @@ def modern_bash() -> str:
 def run_bash(script: str, *, env: dict[str, str] | None = None) -> str:
     """Run a bash snippet with a modern bash, cwd=REPO; raise on failure."""
     result = subprocess.run(
-        [modern_bash(), "-lc", script],
+        [modern_bash(), "-c", script],
         capture_output=True,
         text=True,
         cwd=str(REPO),

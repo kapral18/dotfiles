@@ -84,7 +84,7 @@ The GitHub picker uses `alt-r` for quote-reply; the session picker keeps `alt-r`
 
 ### Create worktree (`alt-c`)
 
-`alt-c` enters a modal branch-name prompt. `enter` runs `,w add <branch>` at the selected repo root; `esc` cancels.
+`alt-c` enters a modal branch-name prompt. `enter` runs `,w add <branch>` at the selected repo root; `esc` cancels. Like send mode (`ctrl-s`), it does not open while an `alt-x` check is running or a force prompt is pending; press `esc` first.
 
 ## Remove worktrees (`alt-x`)
 

@@ -13,10 +13,8 @@ decision, each test generates an INSTRUMENTED temporary copy of the real
 script: it splices a probe (``safe_rm_rf "$2"`` → print allow/refuse, then
 exit) immediately before the script's main ``cd "$root_wt_dir"`` marker, so the
 probe runs against the script's own resolved functions and populated
-``approved_roots`` with nothing patched but the entrypoint. A negative control
-swaps in the pre-hardening blocklist ``safe_rm_rf`` to prove the tests detect
-the behavior change, and one end-to-end test drives the real script over real
-git worktrees.
+``approved_roots`` with nothing patched but the entrypoint. End-to-end tests
+drive the real script over real git worktrees.
 
 Runnable both via ``make test`` (unittest discovery) and directly via
 ``python3 -m unittest scripts.tests.test_worktree_delete_boundaries``.
@@ -25,7 +23,6 @@ Runnable both via ``make test`` (unittest discovery) and directly via
 from __future__ import annotations
 
 import os
-import re
 import shlex
 import shutil
 import subprocess
@@ -55,24 +52,6 @@ _MARKER = 'cd "$root_wt_dir" 2> /dev/null || exit 0'
 # only on allow), report the decision, and exit before the destructive flow.
 _PROBE = "if safe_rm_rf \"$2\"; then\n  printf 'allow\\n'\nelse\n  printf 'refuse\\n'\nfi\nexit 0\n\n"
 
-# Verbatim pre-hardening blocklist policy (refused only ""/"/"/HOME). Used as a
-# negative control so an accepted-outside-target regression is observable.
-_OLD_SAFE_RM_RF = (
-    "safe_rm_rf() {\n"
-    '  local target="$1"\n'
-    '  target="$(realpath_or_self "$target")"\n'
-    '  case "$target" in\n'
-    '    "" | "/") return 1 ;;\n'
-    "  esac\n"
-    '  if [ -n "${HOME:-}" ] && [ "$target" = "$(realpath_or_self "$HOME")" ]; then\n'
-    "    return 1\n"
-    "  fi\n"
-    '  rm -rf "$target"\n'
-    "}\n"
-)
-
-_SAFE_RM_RF_RE = re.compile(r"safe_rm_rf\(\) \{\n.*?\n\}\n", re.DOTALL)
-
 
 def _wait_for(predicate, *, timeout=5.0, interval=0.05):
     """Poll until predicate() is truthy (background remover launches are async)."""
@@ -84,15 +63,8 @@ def _wait_for(predicate, *, timeout=5.0, interval=0.05):
     return predicate()
 
 
-def _instrument(text: str, *, old_policy: bool = False) -> str:
-    """Return the script text with a boundary probe spliced before the marker.
-
-    When ``old_policy`` is set, the hardened ``safe_rm_rf`` is first replaced by
-    the pre-hardening blocklist implementation.
-    """
-    if old_policy:
-        text, n = _SAFE_RM_RF_RE.subn(lambda _m: _OLD_SAFE_RM_RF, text, count=1)
-        assert n == 1, "expected exactly one safe_rm_rf definition to swap"
+def _instrument(text: str) -> str:
+    """Return the script with a boundary probe before its main entrypoint."""
     assert text.count(_MARKER) == 1, "expected exactly one cd marker"
     return text.replace(_MARKER, _PROBE + _MARKER, 1)
 
@@ -135,7 +107,6 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
         tmp: Path,
         home: Path,
         scan_roots: list[Path] | None = None,
-        old_policy: bool = False,
     ) -> tuple[str, list[str]]:
         """Run one boundary decision via an instrumented copy of the script.
 
@@ -143,7 +114,7 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
         and rm_calls is the list of ``rm`` argument-lines the probe produced.
         """
         copy = tmp / "remove_all_worktrees_instrumented.sh"
-        copy.write_text(_instrument(REMOVE_SCRIPT.read_text(), old_policy=old_policy))
+        copy.write_text(_instrument(REMOVE_SCRIPT.read_text()))
         bin_dir = tmp / "binshim"
         rm_log = tmp / "rm.log"
         if rm_log.exists():
@@ -358,27 +329,6 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
             )
             shutil.rmtree(cache_dir, ignore_errors=True)
 
-    def test_old_blocklist_policy_accepts_outside_target(self):
-        """Negative control: the pre-hardening policy deletes an outside path.
-
-        The same outside target the allowlist refuses (no rm) is accepted by
-        the old blocklist (rm called), proving these tests detect the change.
-        """
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp = Path(tmp).resolve()
-            home = tmp / "home"
-            home.mkdir()
-            outside = tmp / "outside" / "repo"
-            outside.mkdir(parents=True)
-
-            new_decision, new_rm = self._probe(str(outside), tmp=tmp, home=home)
-            old_decision, old_rm = self._probe(str(outside), tmp=tmp, home=home, old_policy=True)
-
-            assert new_decision == "refuse"
-            assert new_rm == []
-            assert old_decision == "allow"
-            assert any(str(outside.resolve()) in call for call in old_rm), old_rm
-
     def test_outside_git_worktree_is_refused_but_home_worktree_deleted(self):
         """End-to-end on the real script: outside worktree survives.
 
@@ -407,6 +357,9 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
             shim = bin_dir / "rm"
             shim.write_text(f'#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" >> {rm_log}\nexec /bin/rm "$@"\n')
             shim.chmod(0o755)
+            tmux = bin_dir / "tmux"
+            tmux.write_text("#!/bin/sh\nexit 1\n")
+            tmux.chmod(0o755)
 
             result = subprocess.run(
                 [modern_bash(), str(REMOVE_SCRIPT), str(root)],

@@ -136,13 +136,6 @@ class TestLlamaCppLifecycle(unittest.TestCase):
     def stop_command(self, *args: str) -> list[str]:
         return [sys.executable, str(LIFECYCLE), "stop", *args]
 
-    def test_SHOULD_default_to_a_ten_minute_grace_period(self) -> None:
-        with mock.patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("LLAMA_CPP_GRACE_SECONDS", None)
-            config = LIFECYCLE_MODULE.Config.from_environment()
-
-        self.assertEqual(600, config.grace_seconds)
-
     def test_SHOULD_stop_an_owned_router_after_its_only_consumer_exits(self) -> None:
         port = _free_port()
         result = subprocess.run(

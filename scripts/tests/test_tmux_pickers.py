@@ -3,13 +3,21 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
+import pty
 import re
 import runpy
+import select
 import shlex
+import shutil
+import signal
+import struct
 import subprocess
+import sys
 import tempfile
+import termios
 import time
 import unittest
 from pathlib import Path
@@ -20,6 +28,14 @@ from _test_support import (
     modern_bash,
     run_bash,
 )
+
+
+def stop_process_group(process: subprocess.Popen) -> None:
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    process.communicate(timeout=5)
 
 
 class TestTmuxPickerShellHelpers(unittest.TestCase):
@@ -99,65 +115,6 @@ class TestTmuxPickerShellHelpers(unittest.TestCase):
             assert result.returncode == 0, result.stderr
             logged = tmux_log.read_text()
             assert "FZF_SOCK=/tmp/fzf.sock" in logged
-
-    def test_pick_session_alt_x_uses_inline_bgtransform_confirmation(self):
-        script = TMUX_PICKERS / "session/executable_pick_session.sh"
-        text = script.read_text()
-
-        assert (
-            '--bind "alt-x:${altx_check_cue}+bg-transform($(printf %q "$altx_cmd") $(printf %q "$rm_confirm_flag") $(printf %q "$rm_cmd") {+f} $(printf %q "$rm_pending_snap"))"'
-            in text
-        )
-        assert '--bind "alt-x:execute(' not in text
-        # esc must clear the confirm flag and the transform's run marker so a
-        # cancelled flow can never turn a later alt-x into an accidental force.
-        assert "esc:execute-silent(rm -f $mode_flag $wt_mode_flag $rm_confirm_flag ${rm_confirm_flag}.run)" in text
-
-    def test_pick_session_alt_x_composes_instant_feedback_and_fast_hide(self):
-        script = TMUX_PICKERS / "session/executable_pick_session.sh"
-        text = script.read_text()
-
-        # In-progress feedback comes from the binding's own prompt swap applied
-        # at keypress time, never from a picker takeover or a helper-painted UI.
-        assert "ALTX_CHECK_ACTIONS" not in text
-        assert 'altx_check_cue="change-prompt(⏳ removing…)"' in text
-        # Cancelled checks hand the cue back via this export.
-        assert 'export ALTX_RESTORE_ACTIONS="$altx_visual_restore"' in text
-        # The optimistic hide reloads the live row-set source file filtered by
-        # the checked snapshot (no items rescan), then restores the visuals.
-        assert (
-            '_altx_hide_reload="$(snapshot_reload_command "${_altx_hide_matcher} ${_altx_pending_q} ${altx_src_q}")"'
-            in text
-        )
-        for var in ("altx_safe_actions", "altx_force_actions"):
-            assert f'{var}="reload(${{_altx_hide_reload}})+deselect-all+${{altx_visual_restore}}"' in text
-        # The items-rescan hide path that replaced the alt-x keypress latency.
-        assert "remove_reload=" not in text
-
-    def test_altx_hide_matches_plain_projections_and_display_keeps_ansi(self):
-        # fzf hands {+f} snapshots back --ansi-stripped while the item stream
-        # keeps its SGR codes, so the hide compares plain projections at the
-        # one comparison site and prints survivors unchanged. Display paths
-        # must never strip — that bleaches every row's colors.
-        pick = (TMUX_PICKERS / "session/executable_pick_session.sh").read_text()
-        assert (
-            '_altx_hide_awk=\'FILENAME==ARGV[1]{t=$0;gsub(/\\033\\[[0-9;]*m/,"",t);p[t]=1;next}'
-            '{t=$0;gsub(/\\033\\[[0-9;]*m/,"",t);if(!(t in p))print}\'' in pick
-        )
-        assert (
-            '_altx_hide_reload="$(snapshot_reload_command "${_altx_hide_matcher} ${_altx_pending_q} ${altx_src_q}")"'
-            in pick
-        )
-        assert "_ansi_strip_cmd" not in pick
-        assert '| tee "$sort_source_file" | SHELL="$fzf_shell" fzf' in pick
-        for name in (
-            "executable_live_refresh.sh",
-            "executable_fzf_reload.sh",
-            "executable_action_only_cycle.sh",
-        ):
-            text = (TMUX_PICKERS / f"session/{name}").read_text()
-            assert "gsub(" not in text, f"{name} must not strip ANSI from display rows"
-            assert r"\033" not in text, f"{name} must not strip ANSI from display rows"
 
     def test_altx_transform_safe_selection_emits_hide_without_touching_confirm_flag(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -300,6 +257,229 @@ class TestTmuxPickerShellHelpers(unittest.TestCase):
             assert str(pending_snap) in dispatched
             assert str(live_selection) not in dispatched
 
+    @unittest.skipUnless(shutil.which("fzf"), "fzf is not installed")
+    def test_esc_cancels_blocked_altx_in_the_real_picker_bindings(self):
+        fzf = shutil.which("fzf") or "fzf"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            pickers = home / ".config/tmux/scripts/pickers"
+            for source in TMUX_PICKERS.rglob("*"):
+                if not source.is_file() or "__pycache__" in source.parts:
+                    continue
+                relative = source.relative_to(TMUX_PICKERS)
+                name = relative.name.removeprefix("executable_").removeprefix("readonly_")
+                target = pickers / relative.parent / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(source.read_bytes())
+                target.chmod(0o755 if relative.name.startswith("executable_") else 0o644)
+            # Removal boundary: checks report blocked unless the passing marker exists and wait while
+            # the hold marker exists; any removal is only logged.
+            calls = root / "calls.log"
+            hold = root / "check-hold"
+            passing = root / "check-passes"
+            (pickers / "session/action_remove_worktrees.sh").write_text(
+                '#!/bin/sh\nif [ "$1" = --check ]; then\n'
+                '  while [ -f "$CHECK_HOLD_FILE" ]; do sleep 0.02; done\n'
+                '  [ -f "$CHECK_PASSES_FILE" ] && exit 0\n  exit 3\nfi\n'
+                'printf "%s\\n" "$*" >> "$CALLS_LOG"\n'
+            )
+            (pickers / "lib/dispatch_async.sh").write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$CALLS_LOG"\n')
+            (pickers / "session/live_refresh.sh").write_text("#!/bin/sh\nexit 0\n")
+            fake_bin = root / "bin"
+            fake_bin.mkdir()
+            (fake_bin / "python3").symlink_to(sys.executable)
+            (fake_bin / "bash").symlink_to(modern_bash())
+            fakes = {
+                "tmux": '#!/bin/sh\n[ "$1" = has-session ] && exit 1\nexit 0\n',
+                # Records the picker's real fzf arguments and exported action strings, then aborts.
+                "fzf": '#!/bin/sh\nfor arg do printf "%s\\0" "$arg"; done > "$FZF_ARGS"\n'
+                'printf "%s\\0" "$ALTX_SAFE_ACTIONS" "$ALTX_CONFIRM_ACTIONS" "$ALTX_FORCE_ACTIONS" '
+                '"$ALTX_RESTORE_ACTIONS" "$PICK_SESSION_SORT_SOURCE_FILE" > "$FZF_ENV"\ncat > /dev/null\nexit 130\n',
+            }
+            for name, body in fakes.items():
+                (fake_bin / name).write_text(body)
+                (fake_bin / name).chmod(0o755)
+            env = {
+                "HOME": str(home),
+                "XDG_CACHE_HOME": str(root / "cache"),
+                "PATH": f"{fake_bin}:{os.defpath}",
+                "TMUX": "fixture,1,0",
+                "FZF_ARGS": str(root / "fzf.args"),
+                "FZF_ENV": str(root / "fzf.env"),
+                "CALLS_LOG": str(calls),
+                "CHECK_HOLD_FILE": str(hold),
+                "CHECK_PASSES_FILE": str(passing),
+            }
+            picker = subprocess.run(
+                [modern_bash(), str(pickers / "session/pick_session.sh")],
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            self.assertEqual(picker.returncode, 0, picker.stderr)
+            args = (root / "fzf.args").read_bytes().decode().split("\0")[:-1]
+            binds = {arg.split(":", 1)[0]: arg for arg in (args[i + 1] for i, a in enumerate(args) if a == "--bind")}
+            shell = args[args.index("--with-shell") + 1]
+            safe, confirm, force, restore, source_rows = (root / "fzf.env").read_bytes().decode().split("\0")[:-1]
+            remove = re.search(r"bg-transform\((.+)\)$", binds["alt-x"])
+            assert remove
+            flag = Path(shlex.split(remove.group(1))[1])
+            busy = Path(f"{flag}.busy")
+            modes = re.match(r"esc:execute-silent\(rm -f (\S+) (\S+) ", binds["esc"])
+            assert modes
+            send_flag, branch_flag = Path(modes.group(1)), Path(modes.group(2))
+            rows = "dirty\tworktree\t/tmp/dirty\twt:|repo=r\t/tmp/root\nother\tworktree\t/tmp/other\twt:|repo=r\t/tmp/root\n"
+            Path(source_rows).write_text(rows)
+            (root / "rows.tsv").write_text(rows)
+            fzf_env = {
+                **env,
+                "TERM": "xterm-256color",
+                "FZF_DEFAULT_COMMAND": f"cat {shlex.quote(str(root / 'rows.tsv'))}",
+                "ALTX_SAFE_ACTIONS": safe,
+                "ALTX_CONFIRM_ACTIONS": confirm,
+                "ALTX_FORCE_ACTIONS": force,
+                # Test hook: mark when a cancelled check's RESTORE actions have been applied.
+                "ALTX_RESTORE_ACTIONS": f"{restore}+execute-silent(touch {shlex.quote(str(root / 'restored'))})",
+                "PICK_SESSION_SORT_SOURCE_FILE": source_rows,
+            }
+            loaded = root / "loaded"
+            argv = [fzf, "--with-shell", shell]
+            for event in ("start", "load", "esc", "alt-x", "ctrl-s", "alt-c"):
+                if event in binds:
+                    argv += ["--bind", binds[event]]
+            # Test-only hooks: a reload trigger (live refresh and re-sorting reload at any time)
+            # and a marker appended after any load action the picker defines.
+            assert "ctrl-t" not in binds
+            argv += [
+                "--bind",
+                f"ctrl-t:reload(cat {shlex.quote(str(root / 'rows.tsv'))})",
+                "--bind",
+                f"load:+execute-silent(touch {shlex.quote(str(loaded))})",
+            ]
+            pid, terminal = pty.fork()
+            if pid == 0:
+                try:
+                    fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 120, 0, 0))
+                    attrs = termios.tcgetattr(0)
+                    attrs[0] &= ~termios.IXON  # ctrl-s is a picker key, not flow control
+                    termios.tcsetattr(0, termios.TCSANOW, attrs)
+                    os.chdir(root)
+                    os.execve(fzf, argv, fzf_env)
+                finally:
+                    os._exit(127)
+            screen = bytearray()
+
+            def pump_until(condition, timeout: float = 5.0) -> bool:
+                deadline = time.monotonic() + timeout
+                while not condition() and time.monotonic() < deadline:
+                    if select.select([terminal], [], [], 0.05)[0]:
+                        try:
+                            screen.extend(os.read(terminal, 65536))
+                        except OSError:
+                            break
+                return condition()
+
+            def forced() -> bool:
+                return calls.exists() and "--force" in calls.read_text()
+
+            def reload() -> None:
+                loaded.unlink(missing_ok=True)
+                os.write(terminal, b"\x14")
+                self.assertTrue(pump_until(loaded.exists), "test reload never finished")
+
+            try:
+                self.assertTrue(pump_until(lambda: b"other" in screen), screen[-400:])
+                os.write(terminal, b"\x1bx")
+                self.assertTrue(pump_until(flag.exists), "alt-x on a blocked row never asked to confirm")
+                # fzf applies a bg-transform's actions only after the helper exits.
+                self.assertTrue(pump_until(lambda: not busy.exists()))
+                os.write(terminal, b"\x1b")
+                self.assertTrue(pump_until(lambda: not flag.exists()), "esc left the force confirmation armed")
+                os.write(terminal, b"\x1bx")
+                self.assertTrue(pump_until(lambda: flag.exists() or forced()))
+                self.assertFalse(forced(), "alt-x after esc forced the earlier blocked selection")
+                self.assertTrue(pump_until(lambda: not busy.exists()))
+                os.write(terminal, b"\x1b")
+                self.assertTrue(pump_until(lambda: not flag.exists()))
+
+                os.write(terminal, b"\x1bx")
+                self.assertTrue(pump_until(flag.exists))
+                self.assertTrue(pump_until(lambda: not busy.exists()))
+                reload()
+                os.write(terminal, b"\x1b")
+                self.assertTrue(pump_until(lambda: not flag.exists()), "a reload at the force prompt disabled esc")
+
+                run_marker = Path(f"{flag}.run")
+                restored = root / "restored"
+
+                def cancel_running_check(alt_x=b"\x1bx", before_esc=None, after_esc=None) -> None:
+                    hold.touch()
+                    restored.unlink(missing_ok=True)
+                    os.write(terminal, alt_x)
+                    self.assertTrue(pump_until(busy.exists), "alt-x never started its check")
+                    if before_esc:
+                        before_esc()
+                    os.write(terminal, b"\x1b")
+                    self.assertTrue(pump_until(lambda: not run_marker.exists()), "esc did not cancel the running check")
+                    if after_esc:
+                        after_esc()
+                    hold.unlink()
+                    self.assertTrue(pump_until(restored.exists, timeout=10), "the cancelled check never restored")
+                    self.assertFalse(flag.exists(), "a cancelled check armed force mode")
+
+                def send_mode_stays_closed() -> None:
+                    os.write(terminal, b"\x13")
+                    reload()  # fzf handles keys in order, so ctrl-s has been handled
+                    self.assertFalse(send_flag.exists(), "send mode opened over a pending alt-x check")
+
+                def typed_ahead_send_stays_closed() -> None:
+                    reload()
+                    self.assertFalse(send_flag.exists(), "ctrl-s typed right after alt-x opened over its check")
+
+                cancel_running_check()
+                cancel_running_check(before_esc=reload)
+                # A late alt-x outcome would clobber a mode opened over it, so modes wait for it.
+                cancel_running_check(after_esc=send_mode_stays_closed)
+                cancel_running_check(alt_x=b"\x1bx\x13", before_esc=typed_ahead_send_stays_closed)
+
+                os.write(terminal, b"\x1bx")
+                self.assertTrue(pump_until(flag.exists))
+                self.assertTrue(pump_until(lambda: not busy.exists()))
+                os.write(terminal, b"\x13\x1bc")
+                reload()
+                self.assertFalse(send_flag.exists() or branch_flag.exists(), "a mode opened over the force prompt")
+                os.write(terminal, b"\x1b")
+                self.assertTrue(pump_until(lambda: not flag.exists()))
+                for key, mode in ((b"\x13", send_flag), (b"\x1bc", branch_flag)):
+                    os.write(terminal, key)
+                    self.assertTrue(pump_until(mode.exists), f"{mode.name} never opened: {bytes(screen[-300:])!r}")
+                    os.write(terminal, b"\x1b")
+                    self.assertTrue(pump_until(lambda: not mode.exists()))
+
+                passing.touch()
+                cancel_running_check()
+                self.assertFalse(calls.exists(), "esc during a passing check still removed the selection")
+            finally:
+                hold.unlink(missing_ok=True)
+                try:
+                    os.write(terminal, b"\x03")
+                except OSError:
+                    pass
+                deadline = time.monotonic() + 5
+                while os.waitpid(pid, os.WNOHANG) == (0, 0):
+                    if time.monotonic() > deadline:
+                        os.kill(pid, signal.SIGKILL)
+                        os.waitpid(pid, 0)
+                        break
+                    pump_until(lambda: False, timeout=0.05)
+                os.close(terminal)
+                # A cancelled check may still be finishing; let it leave the temp tree first.
+                deadline = time.monotonic() + 5
+                while busy.exists() and time.monotonic() < deadline:
+                    time.sleep(0.05)
+
     def test_altx_transform_collapses_rapid_presses_with_busy_marker(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -330,7 +510,9 @@ class TestTmuxPickerShellHelpers(unittest.TestCase):
                 stderr=subprocess.PIPE,
                 text=True,
                 env={**os.environ, "ALTX_SAFE_ACTIONS": "FIRST"},
+                start_new_session=True,
             )
+            self.addCleanup(stop_process_group, first)
             # Wait until the busy marker exists, then fire the second press.
             busy = Path(f"{confirm_flag}.busy")
             deadline = time.time() + 10
@@ -353,44 +535,6 @@ class TestTmuxPickerShellHelpers(unittest.TestCase):
 
             assert second.returncode == 0, second.stderr
             assert second.stdout.strip() == ""  # second press swallowed while busy
-
-    def test_altx_transform_flashes_status_message_during_check(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            cache_dir = root / "cache/tmux"
-            picker_dir = root / ".config/tmux/scripts/pickers/session"
-            picker_dir.mkdir(parents=True)
-            cache_dir.mkdir(parents=True)
-            check_rm = picker_dir / "check_rm.sh"
-            check_rm.write_text('#!/usr/bin/env bash\nsleep 0.3\n[ "${1:-}" = --check ] && exit 3\nexit 0\n')
-            check_rm.chmod(0o755)
-            selection = root / "selection.tsv"
-            selection.write_text("ctx\tworktree\t/tmp/wt\twt:|repo=r\t/tmp/root\n")
-            pending_snap = cache_dir / "pending.tsv"
-            confirm_flag = cache_dir / "confirm.flag"
-
-            result = subprocess.run(
-                [
-                    modern_bash(),
-                    str(TMUX_PICKERS / "session/executable_altx_remove_transform.sh"),
-                    str(confirm_flag),
-                    str(check_rm),
-                    str(selection),
-                    str(pending_snap),
-                ],
-                capture_output=True,
-                text=True,
-                env={
-                    **os.environ,
-                    "ALTX_CONFIRM_ACTIONS": "CONFIRM+SWAP",
-                },
-            )
-
-            assert result.returncode == 0, result.stderr
-            assert result.stdout.strip() == "CONFIRM+SWAP"
-            # Progress never depends on a tmux status message or any external
-            # painter: the helper emits actions only.
-            assert "display-message" not in (TMUX_PICKERS / "session/executable_altx_remove_transform.sh").read_text()
 
     def test_altx_transform_cancelled_check_does_not_enter_confirm_mode(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -567,6 +711,11 @@ exit 1
             sibling.mkdir(parents=True)
             notes.mkdir()
             (notes / "keep.txt").write_text("keep\n")
+            mock_bin = home / "bin"
+            mock_bin.mkdir()
+            tmux = mock_bin / "tmux"
+            tmux.write_text("#!/bin/sh\nexit 1\n")
+            tmux.chmod(0o755)
 
             subprocess.run(["git", "init", str(root)], check=True, capture_output=True, text=True)
             subprocess.run(
@@ -586,6 +735,7 @@ exit 1
                     **os.environ,
                     "HOME": str(home),
                     "XDG_CACHE_HOME": str(home / ".cache"),
+                    "PATH": f"{mock_bin}:{os.environ['PATH']}",
                 },
             )
 
@@ -603,6 +753,11 @@ exit 1
             root.mkdir(parents=True)
             notes.mkdir()
             (notes / "keep.txt").write_text("keep\n")
+            mock_bin = home / "bin"
+            mock_bin.mkdir()
+            tmux = mock_bin / "tmux"
+            tmux.write_text("#!/bin/sh\nexit 1\n")
+            tmux.chmod(0o755)
 
             subprocess.run(["git", "init", str(root)], check=True, capture_output=True, text=True)
             subprocess.run(
@@ -621,6 +776,7 @@ exit 1
                     **os.environ,
                     "HOME": str(home),
                     "XDG_CACHE_HOME": str(home / ".cache"),
+                    "PATH": f"{mock_bin}:{os.environ['PATH']}",
                 },
             )
 
@@ -960,6 +1116,9 @@ exit 1
             cache_dir.mkdir(parents=True)
             repo.mkdir(parents=True)
             subprocess.run(["git", "init", str(repo)], check=True, capture_output=True, text=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test User"], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@example.invalid"], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "commit.gpgsign", "false"], check=True)
             subprocess.run(
                 ["git", "-C", str(repo), "commit", "--allow-empty", "-m", "init"],
                 check=True,
@@ -1012,25 +1171,6 @@ exit 1
             rm_log = (cache_dir / "pick_session_remove_worktrees.log").read_text()
             assert f",w remove --force --paths {worktree.resolve()}" in rm_log
             assert ",w remove --paths --force" not in rm_log
-
-    def test_send_command_passes_cache_target_to_shared_naming(self):
-        action = TMUX_PICKERS / "session/executable_action_send_command.sh"
-        text = action.read_text()
-
-        assert 'read -r kind path meta target <<< "$_entry"' in text
-        assert 'session_name_for_entry "$kind" "$path" "$meta" "$target"' in text
-
-    def test_when_tmux_restore_finishes_should_schedule_full_session_picker_reindex(self):
-        plugins_conf = _test_support.REPO / "home/dot_config/exact_tmux/exact_conf.d/readonly_90-plugins.conf"
-        text = plugins_conf.read_text()
-        hook_line = next(line for line in text.splitlines() if "@resurrect-hook-post-restore-all" in line)
-        fast_scan = "index_update.sh --force --quiet --skip-dirty --skip-gh"
-
-        assert hook_line.startswith("set -g @resurrect-hook-post-restore-all ")
-        assert "tmux run-shell -b" in hook_line
-        assert hook_line.index("sleep 1;") < hook_line.index(fast_scan)
-        assert hook_line.index(fast_scan) < hook_line.index("PICK_SESSION_THREADS=1")
-        assert "--quick-only" not in hook_line
 
     def test_when_tmux_session_enumeration_fails_should_preserve_existing_cache(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1133,13 +1273,6 @@ exit 1
             assert "worktree" in kinds
             assert "dir" in kinds
             assert "session" in kinds
-
-    def test_when_session_create_hook_runs_should_defer_if_updater_busy(self):
-        hook = TMUX_PICKERS / "session/executable_index_update_hook.sh"
-        text = hook.read_text()
-        assert "--quick-only" in text
-        assert "--defer-if-busy" in text
-        assert "--force" in text
 
     def test_when_open_items_writes_ordered_meta_should_use_numeric_mtime_under_gnubin_stat(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1303,7 +1436,9 @@ exit 1
                     "--quiet",
                 ],
                 env=env,
+                start_new_session=True,
             )
+            self.addCleanup(stop_process_group, updater)
             deadline = time.monotonic() + 2
             while not started.exists() and time.monotonic() < deadline:
                 time.sleep(0.005)
@@ -2021,35 +2156,11 @@ exit 1
             "https://other.example/path",
         ]
 
-    def test_gh_picker_uses_stable_identity_for_multi_selection_reload_sync(self):
-        """WHEN display text changes, SHOULD key multi-selection by kind/repo/num."""
-        picker = TMUX_PICKERS / "github/executable_gh_picker.sh"
-        text = picker.read_text()
-        assert "--id-nth=2,3,4" in text
-        assert re.search(r"--multi\b", text)
-
 
 class TestGhRowLoaderSpinnerOrdering(unittest.TestCase):
     """WHEN a row-loader spinner is stopped mid-render."""
 
     SPINNER_GLYPHS = ("◐", "◓", "◑", "◒")
-
-    def test_each_spinner_waits_for_its_direct_post_children(self):
-        source = (TMUX_PICKERS / "github/lib/executable_gh_row_loader.sh").read_text()
-        assert source.count("trap '_gh_row_loader_spinner_cleanup \"$token\"' EXIT") == 3
-        assert source.count("trap 'exit 0' TERM INT") == 3
-        assert 'wait "$post_pid" 2> /dev/null || true' in source
-        assert '(curl -s --max-time 1 -XPOST "http://127.0.0.1:${port}"' not in source
-        callers = "\n".join(
-            (TMUX_PICKERS / path).read_text()
-            for path in (
-                "github/executable_gh_batch_worktree.sh",
-                "github/executable_gh_comment.sh",
-                "github/lib/executable_gh_picker_palette.sh",
-                "github/lib/executable_gh_row_loader.sh",
-            )
-        )
-        assert '="$(gh_row_loader_start_' not in callers
 
     def _setup_fixture(self, tmp_path: Path) -> dict[str, Path]:
         picker_dir = tmp_path / "pickers/github"
@@ -2154,21 +2265,6 @@ class TestGhRowLoaderSpinnerOrdering(unittest.TestCase):
             last = posts[-1]
             assert "row-one" in last
             assert not any(glyph in last for glyph in self.SPINNER_GLYPHS), posts
-
-    def test_direct_spinner_callers_stop_children_from_exit_cleanup(self):
-        comment = (TMUX_PICKERS / "github/executable_gh_comment.sh").read_text()
-        palette = (TMUX_PICKERS / "github/lib/executable_gh_picker_palette.sh").read_text()
-
-        assert comment.count("trap cleanup EXIT") == 1
-        assert 'gh_row_loader_stop_spinner "$row_loader_pid"' in comment
-        assert 'row_loader_pid=""' in comment
-
-        assert palette.count("trap cleanup EXIT") == 1
-        assert 'gh_row_loader_stop_spinner "$row_loader_pid" "${scope:-all}" "${items_cmd:-}"' in palette
-        assert 'gh_row_loader_stop_spinner "$row_loader_pid" "$scope" "$items_cmd"' in palette
-        assert palette.index('gh_row_loader_stop_spinner "$row_loader_pid" "$scope" "$items_cmd"') < palette.index(
-            'GH_PICKER_SCOPE="$scope" "$items_cmd" --refresh'
-        )
 
 
 if __name__ == "__main__":

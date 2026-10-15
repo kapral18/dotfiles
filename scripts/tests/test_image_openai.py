@@ -32,18 +32,14 @@ class _Response(io.BytesIO):
 class TestCommandIdentity(unittest.TestCase):
     """WHEN the native OpenAI image command surface is inspected."""
 
-    def test_it_should_use_the_openai_command_and_library_names(self) -> None:
-        self.assertEqual(MOD.build_parser().prog, ",image-openai")
-        launcher = (REPO / "home" / "exact_bin" / "executable_,image-openai").read_text(encoding="utf-8")
-        self.assertIn("lib/,image-openai/main.py", launcher)
-
     @unittest.skipUnless(shutil.which("fish"), "fish is not installed")
     def test_it_should_complete_all_native_output_and_mask_controls(self) -> None:
         result = subprocess.run(
             [
                 shutil.which("fish") or "fish",
+                "--no-config",
                 "-c",
-                "source $argv[1]; complete -C ',image-openai -'",
+                "set -g fish_complete_path; source $argv[1]; complete -C ',image-openai -'",
                 str(COMPLETION),
             ],
             check=True,

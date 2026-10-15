@@ -37,6 +37,8 @@ Selection / Actions
                     session first (same name as enter would), then sends
                     list auto-refreshes after spawning (no ctrl-r needed);
                     cursor stays at the same row index across the reload
+                    waits (like alt-c) while an alt-x check runs or a
+                    force prompt is pending; esc cancels that first
 
 GitHub
   alt-p           open PR in browser (if branch has a PR)

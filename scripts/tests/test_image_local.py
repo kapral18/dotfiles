@@ -30,16 +30,6 @@ GEN_PATHS = {
 }
 
 
-class TestCommandIdentity(unittest.TestCase):
-    """WHEN the local image command surface is inspected."""
-
-    def test_it_should_use_only_the_image_local_command_and_library_names(self) -> None:
-        self.assertEqual(MOD.build_parser().prog, ",image-local")
-        launcher = (REPO / "home" / "exact_bin" / "executable_,image-local.tmpl").read_text(encoding="utf-8")
-        self.assertIn("lib/,image-local/main.py", launcher)
-        self.assertNotIn("lib/,image/main.py", launcher)
-
-
 def _fake_png(width: int, height: int) -> bytes:
     import struct
 

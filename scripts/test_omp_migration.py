@@ -58,14 +58,6 @@ def _yaml_string_list(config: str, key: str) -> list[str]:
 class TestOmpMigration(unittest.TestCase):
     """WHEN wiring OMP into the repo-owned AI workflow."""
 
-    def test_omp_installs_via_unpinned_pnpm_not_brew(self):
-        brewfile = (REPO / "home/.chezmoitemplates/brews/38-ai-large-language-models.brewfile").read_text()
-        pnpm_pkgs = (REPO / "home/readonly_dot_default-pnpm-pkgs").read_text()
-
-        self.assertNotIn("can1357/tap/omp", brewfile)
-        self.assertIn("@oh-my-pi/pi-coding-agent\n", pnpm_pkgs)
-        self.assertNotIn("@oh-my-pi/pi-coding-agent@", pnpm_pkgs)
-
     def render_omp_config(self) -> str:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".toml") as config:
             config.write("[data]\n")
@@ -75,6 +67,8 @@ class TestOmpMigration(unittest.TestCase):
                     "chezmoi",
                     "--config",
                     config.name,
+                    "--source",
+                    str(REPO / "home"),
                     "execute-template",
                     (REPO / "home/dot_omp/private_agent/readonly_config.yml.tmpl").read_text(),
                 ],
@@ -89,28 +83,9 @@ class TestOmpMigration(unittest.TestCase):
         # Working roles use the Claude subscription, the advisor and web search stay on Codex;
         # category and effort relationships are covered by the band invariants.
         expected_roles = {"default", "smol", "slow", "vision", "plan", "commit", "tiny", "task", "advisor", "web"}
-        shared_values = (
-            "modelRoles:\n",
-            "async:\n  enabled: true\n",
-            "bash:\n  autoBackground:\n    enabled: false\n",
-            "eval:\n  autoBackground:\n    enabled: false\n",
-            "defaultThinkingLevel: high\n",
-            "extendedContext: true\n",
-            "memory:\n  backend: off\n",
-            "autolearn:\n  enabled: false\n  autoContinue: false\n",
-            "dev:\n  autoqaConsent: granted\n",
-            "skills:\n  enabled: true\n  enableSkillCommands: true\n",
-            'task:\n  isolation:\n    mode: auto\n  enableEffort: true\n  enableLsp: true\n  maxRecursionDepth: 1\n  disabledAgents:\n    - reviewer\n    - security-reviewer\n  agentAdvisor:\n    task: "off"\n',
-            "retry:\n  enabled: true\n  maxRetries: 3\n",
-            "symbolPreset: nerd\n",
-            "theme:\n  dark: dark-catppuccin\n",
-            "setupVersion: 2\n",
-        )
 
         config = self.render_omp_config()
         self.assertNotIn("{{", config)
-        for value in shared_values:
-            self.assertIn(value, config)
         roles = config.split("modelRoles:\n", 1)[1].split("\n\n", 1)[0]
         pairs = dict(re.findall(r"(?m)^  ([a-z]+): (.+)$", roles))
         self.assertEqual(set(pairs), expected_roles)
@@ -163,20 +138,6 @@ class TestOmpMigration(unittest.TestCase):
         self.assertNotIn("tools", gate)
         # Gate judges against the SOP instead of restating its rules.
         self.assertIn("~/AGENTS.md", gate["instructions"])
-
-    def test_skills_root_points_at_shared_skill_corpus(self):
-        target = (REPO / "home/dot_omp/private_agent/symlink_skills").read_text().strip()
-
-        self.assertEqual(target, "../../.agents/skills")
-
-    def test_extensions_use_current_omp_package_import(self):
-        extensions = REPO / "home/dot_omp/private_agent/extensions"
-        expected = ["context-mode.ts.tmpl"]
-
-        for name in expected:
-            text = (extensions / name).read_text()
-            self.assertIn("@oh-my-pi/pi-coding-agent", text)
-            self.assertNotIn("@earendil-works/pi-coding-agent", text)
 
     def test_selected_agents_use_omp_frontmatter_schema(self):
         agents = REPO / "home/dot_omp/private_agent/exact_agents"

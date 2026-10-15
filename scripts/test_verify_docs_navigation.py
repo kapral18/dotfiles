@@ -3,14 +3,11 @@
 
 from __future__ import annotations
 
-import contextlib
-import io
 import tempfile
 import unittest
 from pathlib import Path
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
-from _test_support import REPO
 
 
 class VerifyDocsNavigationTest(unittest.TestCase):
@@ -52,14 +49,6 @@ class VerifyDocsNavigationTest(unittest.TestCase):
             ),
             encoding="utf-8",
         )
-
-    def test_real_docs_navigation_matches_repo(self):
-        """SHOULD pass for the committed reference docs."""
-        m = self._module()
-
-        failures = m.check_docs_navigation(REPO)
-
-        assert failures == [], "stale docs navigation: " + "; ".join(failures)
 
     def test_reports_broken_relative_links(self):
         """SHOULD report a checked reference link whose target is missing."""
@@ -129,14 +118,6 @@ class VerifyDocsNavigationTest(unittest.TestCase):
             failures = m.check_docs_navigation(root)
 
         assert any("missing scripts/missing.py" in failure for failure in failures)
-
-    def test_main_passes_on_repo(self):
-        """SHOULD exit 0 when run against the repo root."""
-        m = self._module()
-        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            rc = m.main([str(REPO)])
-
-        assert rc == 0
 
 
 if __name__ == "__main__":

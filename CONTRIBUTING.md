@@ -13,13 +13,32 @@ This file is for people **editing this git repository** — not for day-to-day u
 Before opening a PR (or after any substantive change), run:
 
 ```bash
-make check
 make fmt
+make check
 ```
 
 `make check` runs [`bin/check`](bin/check): affected formatting lint, Python import lint, verify gates, and tests for paths dirty vs `HEAD` (plus untracked). Affected tests are the union of filename convention (`scripts/foo.sh` → `test_foo.py`), one-hop Python imports among `scripts/*.py`, and the prefix map in [`scripts/check.py`](scripts/check.py). Slow picker shards run only when tmux sources (or those shards) change. Humans may run the full suite with `make check-full` (`CHECK_FULL=1 bin/check --full`). Agents must not. Pre-commit never runs the full suite. `make test` is also human-only.
 
-Affected Python tests run file-sharded in parallel via [`scripts/test_runner.py`](scripts/test_runner.py) (one subprocess per selected `test_*.py` file). `scripts/test_runner.py` itself is not a shard.
+Affected Python tests run in parallel via [`scripts/test_runner.py`](scripts/test_runner.py), usually one subprocess per selected file; the runner splits a few slow files into individual cases. Each shard gets disposable working, home, XDG, temporary, and tmux socket directories. Only `PATH`, locale variables, `TERM`, and the explicit integration-test opt-in pass through from the shell—not credentials, Git selectors, or tmux state. `scripts/test_runner.py` itself is not a shard.
+
+### Test quality and isolation
+
+- Keep tests that catch a consumer-visible regression: wrong results, lost data, unsafe side effects, broken transitions, or errors. Fewer useful cases beat more assertions.
+- Do not pin prose, source snippets, helper names, or mock responses against themselves. Exercise the real implementation and assert returned values or resulting state. Validate declarative configuration against its consumer's contract, not incidental spelling.
+- Create fixtures outside the checkout with `TemporaryDirectory` or the runtime's equivalent. Treat source files as read-only; copy them into a disposable repository before testing writers, generators, formatting, hooks, or deletion.
+- Give subprocesses temporary `HOME` and XDG paths. Clear inherited Git repository selectors. Use a private tmux socket and stop it in cleanup; never address the user's default server.
+- Stub external side effects at the boundary. Default checks must not deploy dotfiles, install software, contact live services, or mutate the user's files.
+- Register cleanup as soon as resources are created, including failed setup and failed assertions. Avoid fixed temporary names, sleeps as synchronization, and shared mutable fixtures.
+
+The Python runner's environment isolation is not a security sandbox. Tests can still reach explicit paths and executables. Direct unittest runs and non-Python suites must provide their own isolation.
+
+The AI-KB model/vector integrations are separate from default checks. To run them explicitly:
+
+```bash
+AI_KB_LIVE_TESTS=1 python3 scripts/test_runner.py test_ai_kb.py
+```
+
+This opt-in may download Python dependencies and model weights into disposable caches. Normal checks skip those integrations; storage, lexical ranking, duplicate refusal, and CLI tests run offline.
 
 Details on formatters: [`docs/topics/code-quality/formatting.md`](docs/topics/code-quality/formatting.md).
 

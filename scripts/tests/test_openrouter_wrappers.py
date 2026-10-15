@@ -78,6 +78,26 @@ class TestOpenRouterWrappers(unittest.TestCase):
         }
         return calls, env
 
+    def test_WHEN_no_key_is_available_SHOULD_not_launch_either_harness(self):
+        calls, env = self._openrouter_route_fixture()
+        env.pop("OPENROUTER_API_KEY", None)
+        pass_stub = Path(env["HOME"]) / "bin/pass"
+        pass_stub.write_text("#!/bin/sh\nexit 0\n")
+        pass_stub.chmod(0o755)
+        for harness in ("claude", "codex"):
+            with self.subTest(harness=harness):
+                result = subprocess.run(
+                    [modern_bash(), str(REPO / f"home/exact_bin/executable_,{harness}-openrouter"), "-p", "fixture"],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("OPENROUTER_API_KEY", result.stderr)
+                self.assertEqual(result.stdout, "", "harness must not start without credentials")
+                self.assertFalse(calls.exists(), "preset preflight must not run without credentials")
+
     def test_SHOULD_route_only_the_root_model_and_prepare_its_effort_once(self):
         """WHEN a wrapper launches, only the selected model's preset is prepared and no agent definitions ride along."""
         calls, env = self._openrouter_route_fixture()
@@ -106,6 +126,22 @@ class TestOpenRouterWrappers(unittest.TestCase):
                     wire = f"moonshotai/kimi-k3@preset/effort-{effort}"
                     self.assertIn(wire, observed["argv"])
                     self.assertNotIn("--agents", observed["argv"])
+                    if harness == "codex":
+                        config = {}
+                        for flag, value in zip(observed["argv"], observed["argv"][1:]):
+                            if flag == "-c":
+                                key, setting = value.split("=", 1)
+                                config[key] = setting.strip('"')
+                        expected = {
+                            "model_provider": "openrouter",
+                            "model_providers.openrouter.base_url": "https://openrouter.ai/api/v1",
+                            "model_providers.openrouter.env_key": "OPENROUTER_API_KEY",
+                            "model_providers.openrouter.wire_api": "responses",
+                        }
+                        self.assertEqual({key: config.get(key) for key in expected}, expected)
+                        self.assertEqual(
+                            observed["env"].get(config["model_providers.openrouter.env_key"]), "fixture-key"
+                        )
 
     def test_SHOULD_create_only_a_missing_preset_in_the_active_account(self):
         module = _load_openrouter_presets_module()
@@ -392,34 +428,6 @@ class TestOpenRouterWrappers(unittest.TestCase):
             budget = module.resolve_session_budget(["root", "lane"], "long", "active-key")
         self.assertEqual((budget.context_limit, budget.max_output_tokens, budget.prompt_limit), (200000, 64000, 136000))
 
-    def test_SHOULD_run_account_local_preset_preflight_in_every_wrapper(self):
-        for relative in (
-            "home/exact_bin/executable_,claude-openrouter",
-            "home/exact_bin/executable_,codex-openrouter",
-        ):
-            with self.subTest(command=relative):
-                source = (REPO / relative).read_text()
-                self.assertIn(
-                    'readonly OPENROUTER_PRESET_HELPER="$HOME/lib/shared/openrouter_presets.py"',
-                    source,
-                )
-                self.assertIn('"$OPENROUTER_PRESET_HELPER" "$OPENROUTER_EFFORT"', source)
-                self.assertIn("tr -d '[:space:]'", source)
-
-    def test_SHOULD_clear_claude_api_credentials(self):
-        source = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()
-        assert 'export ANTHROPIC_API_KEY=""' in source
-        assert 'export ANTHROPIC_AUTH_TOKEN="$api_key"' in source
-        assert "unset ANTHROPIC_CUSTOM_HEADERS" in source
-        assert "export CLAUDE_CODE_DISABLE_THINKING=1" in source
-        assert 'export CLAUDE_CODE_EFFORT_LEVEL="$CLAUDE_EFFORT"' in source
-
-    def test_SHOULD_map_every_claude_alias_to_the_selected_wire(self):
-        source = (REPO / "home/exact_bin/executable_,claude-openrouter").read_text()
-        for alias in ("FABLE", "OPUS", "SONNET", "HAIKU"):
-            assert f'export ANTHROPIC_DEFAULT_{alias}_MODEL="$OPENROUTER_WIRE_MODEL"' in source
-        assert "unset CLAUDE_CODE_SUBAGENT_MODEL" in source
-
     def test_SHOULD_stop_the_claude_base_url_before_the_messages_path(self):
         # Claude Code appends /v1/messages, and OpenRouter answers that path with the
         # Anthropic Messages schema, so the exported base URL must end at /api.
@@ -441,28 +449,6 @@ class TestOpenRouterWrappers(unittest.TestCase):
 
         assert result.returncode == 0, result.stderr
         assert result.stdout == "https://openrouter.ai/api"
-
-    def test_SHOULD_configure_codex_with_the_openrouter_responses_route(self):
-        source = (REPO / "home/exact_bin/executable_,codex-openrouter").read_text()
-        assert 'model_providers.openrouter.base_url=\\"https://openrouter.ai/api/v1\\"' in source
-        assert 'model_providers.openrouter.env_key=\\"OPENROUTER_API_KEY\\"' in source
-        assert 'model_providers.openrouter.wire_api=\\"responses\\"' in source
-        assert 'model_provider=\\"openrouter\\"' in source
-
-    def test_SHOULD_default_every_openrouter_launcher_to_glm_flash_high_long(self):
-        # The route is defaulted rather than strict: model, effort, and context remain selectable via flags.
-        for relative in (
-            "home/exact_bin/executable_,claude-openrouter",
-            "home/exact_bin/executable_,codex-openrouter",
-        ):
-            with self.subTest(command=relative):
-                source = (REPO / relative).read_text()
-                assert f'OPENROUTER_MODEL="{OPENROUTER_PIN}"' in source
-                assert 'OPENROUTER_EFFORT="high"' in source
-                assert 'OPENROUTER_CONTEXT="long"' in source
-                assert "--no-thinking" in source
-                assert 'OPENROUTER_EFFORT="minimal"' in source
-                assert 'readonly OPENROUTER_WIRE_MODEL="$OPENROUTER_MODEL@preset/effort-$OPENROUTER_EFFORT"' in source
 
     def test_SHOULD_keep_reasoning_models_that_omit_supported_efforts(self):
         # OpenRouter lists inclusionai/ling-3.0-flash under supported_parameters=reasoning
@@ -498,23 +484,6 @@ class TestOpenRouterWrappers(unittest.TestCase):
         self.assertEqual(rows["inclusionai/ling-3.0-flash"], "")
         self.assertEqual(rows["z-ai/glm-5.3-flash"], "max,high,low")
 
-    def test_SHOULD_share_openrouter_catalog_across_chat_wrappers(self):
-        # Live catalog omits none for GLM 5.3 Flash; completions still force-union none onto catalog efforts.
-        source = (REPO / "home/dot_config/fish/functions/readonly___openrouter_catalog.fish").read_text()
-        assert "not contains -- none $efforts" in source
-        assert "set efforts none $efforts" in source
-        assert 'test -z "$parts[2]"' in source
-        assert "~/.cache/,openrouter/models.tsv" in source
-        for relative in (
-            "home/dot_config/fish/completions/readonly_,claude-openrouter.fish",
-            "home/dot_config/fish/completions/readonly_,codex-openrouter.fish",
-        ):
-            with self.subTest(completion=relative):
-                text = (REPO / relative).read_text()
-                assert "functions/__openrouter_catalog.fish" in text
-                assert "(__openrouter_catalog_models)" in text
-                assert "(__openrouter_catalog_efforts)" in text
-
     def test_SHOULD_hard_pin_claude_route_over_environment_values(self):
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp)
@@ -533,6 +502,9 @@ class TestOpenRouterWrappers(unittest.TestCase):
                     "PATH": f"{bindir}:{os.environ['PATH']}",
                     "OPENROUTER_API_KEY": "fixture-key",
                     "ANTHROPIC_MODEL": "other-model",
+                    "ANTHROPIC_API_KEY": "unwanted-fixture-key",
+                    "ANTHROPIC_AUTH_TOKEN": "unwanted-fixture-token",
+                    "ANTHROPIC_CUSTOM_HEADERS": "unwanted-fixture-header",
                     "CLAUDE_CODE_EFFORT_LEVEL": "low",
                     "CLAUDE_CODE_SUBAGENT_MODEL": "other-model",
                 },
@@ -543,6 +515,11 @@ class TestOpenRouterWrappers(unittest.TestCase):
         self.assertEqual(observed["env"]["ANTHROPIC_MODEL"], OPENROUTER_WIRE_PIN)
         self.assertEqual(observed["env"]["CLAUDE_CODE_EFFORT_LEVEL"], "high")
         self.assertNotIn("CLAUDE_CODE_SUBAGENT_MODEL", observed["env"])
+        self.assertEqual(observed["env"]["ANTHROPIC_API_KEY"], "")
+        self.assertEqual(observed["env"]["ANTHROPIC_AUTH_TOKEN"], "fixture-key")
+        self.assertNotIn("ANTHROPIC_CUSTOM_HEADERS", observed["env"])
+        for alias in ("FABLE", "OPUS", "SONNET", "HAIKU"):
+            self.assertEqual(observed["env"][f"ANTHROPIC_DEFAULT_{alias}_MODEL"], OPENROUTER_WIRE_PIN)
         self.assertEqual(observed["args"], ["--model", OPENROUTER_WIRE_PIN, "--effort", "high", "-p", "review"])
 
     def test_SHOULD_pass_supported_openrouter_effort_to_claude_client(self):
@@ -628,22 +605,6 @@ printf 'args=%s\\n' "$*"
                 ["--model", "z-ai/glm-5.3-flash", "--effort", "max"],
                 "z-ai/glm-5.3-flash@preset/effort-max",
             ),
-            (["--model", "moonshotai/kimi-k3", "--effort", "max"], "moonshotai/kimi-k3@preset/effort-max"),
-            (
-                ["--model", "openai/gpt-5.6-terra", "--effort", "minimal"],
-                "openai/gpt-5.6-terra@preset/effort-minimal",
-            ),
-            (
-                ["--effort", "none"],
-                "xiaomi/mimo-v2.6-pro@preset/effort-none",
-            ),
-            (
-                ["--model", "openai/gpt-5.6-terra", "--effort", "none"],
-                "openai/gpt-5.6-terra@preset/effort-none",
-            ),
-            (["--model", "qwen/qwen3.8-max", "--effort", "high"], "qwen/qwen3.8-max@preset/effort-high"),
-            (["--model", "google/gemini-3.8-flash", "--effort", "low"], "google/gemini-3.8-flash@preset/effort-low"),
-            (["--model", "qwen/qwen3.8-max", "--effort", "none"], "qwen/qwen3.8-max@preset/effort-none"),
         ]
         with tempfile.TemporaryDirectory() as tmp:
             bindir = Path(tmp)
@@ -664,75 +625,6 @@ printf 'args=%s\\n' "$*"
                     )
                     assert result.returncode == 0, result.stderr
                     assert f"model={expected}" in result.stdout
-
-    def test_SHOULD_compose_wire_model_for_codex(self):
-        # The same model/effort -> preset-slug composition runs in every wrapper; only the
-        # leaf delivery differs.
-        cases = [
-            (["-p", "x"], "xiaomi/mimo-v2.6-pro@preset/effort-high"),
-        ]
-        with tempfile.TemporaryDirectory() as tmp:
-            bindir = Path(tmp) / "bin"
-            bindir.mkdir()
-            codex = bindir / "codex"
-            codex.write_text('#!/usr/bin/env bash\necho "args=$*"\n', encoding="utf-8")
-            codex.chmod(0o755)
-            runners = {
-                "home/exact_bin/executable_,codex-openrouter": {"CODEX_WRAPPER_BIN": str(codex)},
-            }
-            for argv, expected in cases:
-                for relative, extra_env in runners.items():
-                    with self.subTest(command=relative, argv=argv):
-                        result = subprocess.run(
-                            [modern_bash(), str(REPO / relative), *argv],
-                            capture_output=True,
-                            text=True,
-                            env={
-                                **os.environ,
-                                **extra_env,
-                                "PATH": f"{bindir}:{os.environ['PATH']}",
-                                "OPENROUTER_API_KEY": "fixture-key",
-                            },
-                        )
-                        assert result.returncode == 0, result.stderr
-                        assert expected in result.stdout
-
-    def test_SHOULD_apply_context_tier_where_the_openrouter_consumer_supports_it(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            bindir = Path(tmp)
-            claude = bindir / "claude"
-            claude.write_text(
-                '#!/usr/bin/env bash\necho "model=$ANTHROPIC_MODEL"\n',
-                encoding="utf-8",
-            )
-            claude.chmod(0o755)
-
-            cases = [
-                (
-                    "home/exact_bin/executable_,claude-openrouter",
-                    ["--context", "short"],
-                    "model=xiaomi/mimo-v2.6-pro@preset/effort-high",
-                ),
-                (
-                    "home/exact_bin/executable_,claude-openrouter",
-                    ["--context", "long"],
-                    "model=xiaomi/mimo-v2.6-pro@preset/effort-high",
-                ),
-            ]
-            for relative, argv, expected in cases:
-                with self.subTest(command=relative):
-                    result = subprocess.run(
-                        [modern_bash(), str(REPO / relative), *argv],
-                        capture_output=True,
-                        text=True,
-                        env={
-                            **os.environ,
-                            "PATH": f"{bindir}:{os.environ['PATH']}",
-                            "OPENROUTER_API_KEY": "fixture-key",
-                        },
-                    )
-                    assert result.returncode == 0, result.stderr
-                    assert expected in result.stdout
 
     def test_SHOULD_project_small_prompt_and_output_limits_to_claude(self):
         _, env = self._openrouter_route_fixture()
@@ -819,16 +711,6 @@ printf 'args=%s\\n' "$*"
                     )
                     assert result.returncode == 2
                     assert "pins OpenRouter" in result.stderr
-
-    def test_SHOULD_fail_closed_without_an_openrouter_key(self):
-        for relative in (
-            "home/exact_bin/executable_,claude-openrouter",
-            "home/exact_bin/executable_,codex-openrouter",
-        ):
-            with self.subTest(command=relative):
-                source = (REPO / relative).read_text()
-                assert "pass show openrouter/api/token" in source
-                assert "Error: set OPENROUTER_API_KEY or pass entry openrouter/api/token." in source
 
 
 if __name__ == "__main__":

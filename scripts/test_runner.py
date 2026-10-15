@@ -5,7 +5,8 @@ Each ``test_*.py`` file runs in its own subprocess (one per file, N workers),
 so files execute concurrently instead of in one serial ``unittest discover``
 process. ``make test`` calls this in place of ``unittest discover``.
 
-Env is inherited verbatim.
+Each shard gets disposable working, home, XDG, temporary and tmux socket directories.
+Git and tmux selectors from the invoking shell are not passed to tests.
 
 Usage:
     python3 scripts/test_runner.py            # run all shards, stream results
@@ -19,6 +20,7 @@ import argparse
 import os
 import subprocess
 import sys
+import tempfile
 import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -27,7 +29,7 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
 # The runner matches test_*.py but is not a unittest module.
-NOT_TEST_FILES = frozenset({"test_runner.py", "test_bin_commands.py"})
+NOT_TEST_FILES = frozenset({"test_runner.py"})
 UNIT_SHARDED_FILES = frozenset(
     {
         "test_ai_kb.py",
@@ -84,17 +86,38 @@ def expand_shards(files: list[Path]) -> list[Shard]:
 
 
 def run_shard(shard: Shard) -> tuple[Shard, int, float, str, str]:
-    env = dict(os.environ)
-    env["PYTHONPATH"] = str(SCRIPTS) + os.pathsep + env.get("PYTHONPATH", "")
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key in {"PATH", "LANG", "TERM", "AI_KB_LIVE_TESTS"} or key.startswith("LC_")
+    }
+    env["PYTHONPATH"] = str(SCRIPTS)
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     start = time.monotonic()
-    proc = subprocess.run(
-        [sys.executable, "-m", "unittest", "-v", shard.target],
-        cwd=str(SCRIPTS),
-        env=env,
-        capture_output=True,
-        text=True,
-    )
+    with tempfile.TemporaryDirectory(prefix="test-shard-") as tmp:
+        root = Path(tmp)
+        for key, name in (
+            ("HOME", "home"),
+            ("TMPDIR", "tmp"),
+            ("XDG_CONFIG_HOME", "config"),
+            ("XDG_CACHE_HOME", "cache"),
+            ("XDG_DATA_HOME", "data"),
+            ("XDG_STATE_HOME", "state"),
+            ("XDG_RUNTIME_DIR", "run"),
+            ("TMUX_TMPDIR", "tmux"),
+        ):
+            path = root / name
+            path.mkdir(mode=0o700)
+            env[key] = str(path)
+        work = root / "work"
+        work.mkdir()
+        proc = subprocess.run(
+            [sys.executable, "-m", "unittest", "-v", shard.target],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
     elapsed = time.monotonic() - start
     return shard, proc.returncode, elapsed, proc.stdout, proc.stderr
 
@@ -121,6 +144,8 @@ def main() -> int:
     parser.add_argument("files", nargs="*", help="test files relative to scripts/ (default: all shards)")
     args = parser.parse_args()
 
+    sys.dont_write_bytecode = True
+
     files = resolve_files(args.files)
     shards = expand_shards(files)
     if args.list:
@@ -141,6 +166,8 @@ def main() -> int:
         if rc != 0:
             failed.append(shard.label)
             sys.stdout.write(out)
+            sys.stderr.write(err)
+        elif "skipped=" in err:
             sys.stderr.write(err)
 
     # Threads (not processes) for the pool: each unit of work is itself a

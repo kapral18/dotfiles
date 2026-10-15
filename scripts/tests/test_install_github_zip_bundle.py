@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import os
+import subprocess
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
 
-import _test_support  # noqa: F401
+from _test_support import modern_bash
 from install_github_zip_bundle import (
     InstallError,
     already_installed,
@@ -20,7 +22,10 @@ def _make_zip(tmp: Path, *, nested: bool = False) -> Path:
     root = bundle / "nested" if nested else bundle
     root.mkdir(parents=True)
     binary = root / "sd-cli"
-    binary.write_text("#!/bin/sh\necho fake-sd\n", encoding="utf-8")
+    binary.write_text(
+        f'#!{modern_bash()}\nprintf "%s\\n" "$DYLD_FALLBACK_LIBRARY_PATH" "$LD_LIBRARY_PATH"\n',
+        encoding="utf-8",
+    )
     binary.chmod(0o755)
     (root / "libstable-diffusion.dylib").write_bytes(b"dylib")
     zip_path = tmp / "sd.zip"
@@ -61,10 +66,15 @@ class TestInstallGithubZipBundle(unittest.TestCase):
             self.assertTrue((opt_dir / "sd-cli").is_file())
             self.assertTrue((opt_dir / "libstable-diffusion.dylib").is_file())
             self.assertEqual((opt_dir / ".release-tag").read_text(encoding="utf-8").strip(), "master-820-de298c2")
-            body = wrapper.read_text(encoding="utf-8")
-            self.assertIn("DYLD_FALLBACK_LIBRARY_PATH", body)
-            self.assertIn('exec "$ROOT/sd-cli"', body)
-            self.assertTrue(wrapper.stat().st_mode & 0o111)
+            run = subprocess.run(
+                [str(wrapper)],
+                env={**os.environ, "DYLD_FALLBACK_LIBRARY_PATH": "", "LD_LIBRARY_PATH": ""},
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertEqual(run.stdout.splitlines(), [str(opt_dir.resolve()), str(opt_dir.resolve())])
 
     def test_it_should_skip_when_release_tag_matches(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

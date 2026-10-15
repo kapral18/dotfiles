@@ -268,7 +268,6 @@ EXTRA_TESTS: tuple[ExtraTest, ...] = (
             "scripts/tests/context_mode.test.ts",
             "home/exact_lib/exact_shared/context_mode.ts",
             "home/dot_pi/agent/exact_extensions/context-mode.ts.tmpl",
-            "home/dot_omp/private_agent/extensions/context-mode.ts.tmpl",
         ),
     ),
     ExtraTest(
@@ -290,7 +289,7 @@ EXTRA_TESTS: tuple[ExtraTest, ...] = (
 )
 
 RUFF_PREFIXES = ("scripts/", "home/exact_lib/")
-NOT_TEST_SHARDS = frozenset({"test_runner.py", "test_bin_commands.py"})
+NOT_TEST_SHARDS = frozenset({"test_runner.py"})
 FULL_ALLOW_ENV = "CHECK_FULL"
 # These shards dominate wall-clock (fzf listen / long batch waits). They run
 # only from TEST_RULES or from editing the shard itself, never from fan-out.
@@ -598,6 +597,7 @@ def run_plan(repo: Path, plan: CheckPlan) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    sys.dont_write_bytecode = True
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--full",

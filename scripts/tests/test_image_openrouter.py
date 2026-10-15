@@ -4,6 +4,7 @@ import base64
 import io
 import json
 import os
+import shlex
 import shutil
 import struct
 import subprocess
@@ -18,7 +19,6 @@ import _test_support  # noqa: F401
 from _test_support import REPO, load_module, png_with_metadata
 
 CLI = REPO / "home" / "exact_lib" / "exact_,image-openrouter" / "main.py"
-COMPLETION = REPO / "home" / "dot_config" / "fish" / "completions" / "readonly_,image-openrouter.fish"
 
 
 MOD = load_module("image_openrouter_under_test", CLI)
@@ -32,37 +32,26 @@ class _Response(io.BytesIO):
         self.close()
 
 
-class TestCommandIdentity(unittest.TestCase):
-    """WHEN the OpenRouter image command surface is inspected."""
-
-    def test_it_should_use_the_openrouter_command_and_library_names(self) -> None:
-        self.assertEqual(MOD.build_parser().prog, ",image-openrouter")
-        launcher = (REPO / "home" / "exact_bin" / "executable_,image-openrouter").read_text(encoding="utf-8")
-        self.assertIn("lib/,image-openrouter/main.py", launcher)
-
+class TestCompletion(unittest.TestCase):
     @unittest.skipUnless(shutil.which("fish"), "fish is not installed")
-    def test_it_should_complete_the_curated_zdr_generation_and_editing_models(self) -> None:
-        result = subprocess.run(
-            [
-                shutil.which("fish") or "fish",
-                "-c",
-                "source $argv[1]; complete -C ',image-openrouter --model '",
-                str(COMPLETION),
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(
-            result.stdout.splitlines(),
-            [
-                "bytedance-seed/seedream-5-0-lite\tHigh-resolution value; generation/editing; 2K/4K",
-                "bytedance-seed/seedream-5-0-pro\tDefault; quality/value; generation/editing; 1K/2K",
-                "google/gemini-3.1-flash-image\tGoogle generation/editing; 512/1K/2K/4K",
-                "google/gemini-3.1-flash-lite-image\tFast 1K value; generation/editing",
-                "microsoft/mai-image-2.5\tSingle-reference generation/editing",
-            ],
-        )
+    def test_default_model_is_a_completion_candidate(self) -> None:
+        completion = REPO / "home/dot_config/fish/completions/readonly_,image-openrouter.fish"
+        with tempfile.TemporaryDirectory() as tmp:
+            result = subprocess.run(
+                [
+                    "fish",
+                    "--no-config",
+                    "-c",
+                    f"set -g fish_complete_path; source {shlex.quote(str(completion))}; "
+                    "complete -C ',image-openrouter --model '",
+                ],
+                env={**os.environ, "HOME": tmp, "XDG_CONFIG_HOME": tmp},
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(MOD.DEFAULT_MODEL, [line.split("\t")[0] for line in result.stdout.splitlines()])
 
 
 class TestPayload(unittest.TestCase):

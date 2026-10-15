@@ -26,6 +26,7 @@ class WRemoveDetachedTests(unittest.TestCase):
 
     def setUp(self) -> None:
         self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
         self.root = Path(self.tempdir.name)
         self.lib = self.root / "lib"
         self.w_dir = self.lib / ",w"
@@ -36,6 +37,11 @@ class WRemoveDetachedTests(unittest.TestCase):
         for name in ("bash_utils_lib.sh", "worktree_lib.sh"):
             shutil.copy2(SHARED_SRC / name, self.shared / name)
         self.remove_sh = self.w_dir / "remove.sh"
+        self.bin_dir = self.root / "bin"
+        self.bin_dir.mkdir()
+        tmux = self.bin_dir / "tmux"
+        tmux.write_text("#!/bin/sh\nexit 1\n")
+        tmux.chmod(0o755)
 
         self.main = self.root / "main"
         self.detached = self.root / "detached"
@@ -52,9 +58,6 @@ class WRemoveDetachedTests(unittest.TestCase):
         self.git(self.main, "commit", "-qm", "next")
         self.git(self.main, "worktree", "add", "--detach", str(self.detached), "HEAD~1")
 
-    def tearDown(self) -> None:
-        self.tempdir.cleanup()
-
     def git(self, cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             ["git", *args],
@@ -68,6 +71,7 @@ class WRemoveDetachedTests(unittest.TestCase):
         env = os.environ.copy()
         env["HOME"] = str(self.root / "home")
         Path(env["HOME"]).mkdir(exist_ok=True)
+        env["PATH"] = f"{self.bin_dir}{os.pathsep}{os.environ['PATH']}"
         return subprocess.run(
             ["bash", str(self.remove_sh), "--paths", str(self.detached), *extra],
             cwd=self.main,

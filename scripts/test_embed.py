@@ -51,16 +51,9 @@ raise SystemExit(main())
 
 @contextlib.contextmanager
 def short_runtime_directory():
-    root = Path(".embed-test-tmp")
-    root.mkdir(exist_ok=True)
-    try:
-        with tempfile.TemporaryDirectory(dir=root) as tmp:
-            yield tmp
-    finally:
-        try:
-            root.rmdir()
-        except OSError:
-            pass
+    # AF_UNIX paths have a small platform limit; macOS's default TMPDIR is long.
+    with tempfile.TemporaryDirectory(prefix="embed-", dir="/tmp") as tmp:
+        yield tmp
 
 
 class TestEmbedModuleHelpers(unittest.TestCase):
@@ -464,7 +457,7 @@ class TestResidentEmbedRuntime(unittest.TestCase):
 
         self.assertLessEqual(elapsed, 0.15)
 
-    def test_embedder_selects_resident_only_for_explicit_connect_only_mode(self):
+    def test_connect_only_embedder_never_starts_a_subprocess(self):
         import embed
         import embed_client
 
@@ -473,23 +466,17 @@ class TestResidentEmbedRuntime(unittest.TestCase):
             "generation": "test",
             "model": embed.DEFAULT_MODEL,
             "dim": embed.DEFAULT_DIM,
-            "vectors": [[0.0] * embed.DEFAULT_DIM],
+            "vectors": [[1.0] * embed.DEFAULT_DIM],
         }
-        with mock.patch.dict(os.environ, {"AI_EMBED_CONNECT_ONLY": "1"}, clear=False):
-            with (
-                mock.patch.object(
-                    embed_client,
-                    "discover_ready_spec",
-                    return_value=SimpleNamespace(),
-                ) as discover,
-                mock.patch.object(embed_client, "embed", return_value=response) as resident,
-            ):
-                embedder = embed.Embedder()
-                self.assertTrue(embedder.is_available())
-                vector = embedder.embed_one("resident prompt")
-        self.assertEqual(len(vector), embed.DEFAULT_DIM)
-        discover.assert_called_once_with(model=embed.DEFAULT_MODEL)
-        resident.assert_called_once()
+        with (
+            mock.patch.dict(os.environ, {"AI_EMBED_CONNECT_ONLY": "1"}, clear=False),
+            mock.patch.object(embed_client, "discover_ready_spec", return_value=SimpleNamespace()),
+            mock.patch.object(embed_client, "embed", return_value=response) as resident,
+            mock.patch("subprocess.run", side_effect=AssertionError("connect-only must not start a process")),
+        ):
+            embedder = embed.Embedder()
+            self.assertTrue(embedder.is_available())
+            self.assertEqual(embedder.embed_one("resident prompt"), response["vectors"][0])
         self.assertTrue(resident.call_args.kwargs["connect_only"])
 
     def test_discovery_uses_one_absolute_hot_path_deadline(self):

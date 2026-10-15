@@ -181,14 +181,6 @@ esac
             assert "has-session -t =repo|fix" in log
             assert "switch-client -c fixture-client -t =repo|fix" in log
 
-    def test_should_invoke_pr_migration_helper_through_bash(self):
-        source = (REPO / "home/exact_lib/exact_,w/prs.sh").read_text()
-        assert 'bash "$(dirname "$0")/mv.sh"' in source
-        assert (
-            '_add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$existing_path"\n'
-            '    if [ "$focus_mode" -eq 1 ]; then'
-        ) in source
-
     def test_pr_retry_repairs_session_after_new_session_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -203,6 +195,8 @@ esac
 
             shutil.copyfile(REPO / "home/exact_lib/exact_,w/prs.sh", w_dir / "prs.sh")
             (w_dir / "prs.sh").chmod(0o444)
+            shutil.copyfile(REPO / "home/exact_lib/exact_,w/mv.sh", w_dir / "mv.sh")
+            (w_dir / "mv.sh").chmod(0o444)
             for name in ("bash_utils_lib.sh", "worktree_lib.sh"):
                 shutil.copyfile(REPO / "home/exact_lib/exact_shared" / name, shared_dir / name)
                 (shared_dir / name).chmod(0o444)
@@ -289,6 +283,39 @@ esac
             )
             assert retry.returncode == 0, retry.stderr
             assert tmux_session.exists(), "existing PR worktree did not retry session creation"
+
+            original_worktrees = subprocess.check_output(
+                ["git", "worktree", "list", "--porcelain"], cwd=repo, text=True
+            )
+            feature = next(
+                Path(block.splitlines()[0].removeprefix("worktree "))
+                for block in original_worktrees.strip().split("\n\n")
+                if "branch refs/heads/feature/pr" in block.splitlines()
+            )
+            (feature / "keep-local-change").write_text("uncommitted work\n")
+            legacy = root / "pr-123"
+            subprocess.run(["git", "-C", str(feature), "branch", "-m", "pr-123"], check=True, capture_output=True)
+            subprocess.run(
+                ["git", "worktree", "move", str(feature), str(legacy)], cwd=repo, check=True, capture_output=True
+            )
+            tmux_session.unlink()
+
+            migrated = subprocess.run(
+                [modern_bash(), str(w_dir / "prs.sh"), "-q", "123"],
+                cwd=repo,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            self.assertEqual(migrated.returncode, 0, migrated.stderr)
+            self.assertFalse(legacy.exists())
+            self.assertEqual((feature / "keep-local-change").read_text(), "uncommitted work\n")
+            self.assertEqual(
+                subprocess.check_output(["git", "worktree", "list", "--porcelain"], cwd=repo, text=True),
+                original_worktrees,
+            )
+            self.assertTrue(tmux_session.exists())
 
 
 if __name__ == "__main__":

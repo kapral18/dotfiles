@@ -60,9 +60,17 @@ cp() {
 
 
 def render(template: str) -> str:
-    result = subprocess.run(
-        ["chezmoi", "execute-template"], input=template, capture_output=True, text=True, check=True, cwd=REPO
-    )
+    with tempfile.TemporaryDirectory() as tmp:
+        config = Path(tmp) / "chezmoi.toml"
+        config.touch()
+        result = subprocess.run(
+            ["chezmoi", "--config", str(config), "--source", str(REPO / "home"), "execute-template"],
+            input=template,
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=tmp,
+        )
     return result.stdout
 
 

@@ -85,7 +85,7 @@ class PreCommitFixture:
     """Disposable repo for exercising the real hook in isolation."""
 
     def __init__(self) -> None:
-        self._tmp = tempfile.TemporaryDirectory(dir=REPO, prefix=".tmp-pre-commit-")
+        self._tmp = tempfile.TemporaryDirectory(prefix="pre-commit-")
         self.root = Path(self._tmp.name)
         self.log_path = self.root / "hook.log"
         self.bin_dir = self.root / "test-bin"
@@ -290,38 +290,12 @@ class TestPreCommitHook(unittest.TestCase):
         assert "refusing to auto-format with unstaged changes in: partial.txt" in result.stderr
         assert self.fixture.read_log() == []
 
-    def test_WHEN_global_commit_signing_is_enabled_SHOULD_disable_it_in_fixture_repo(self):
-        """SHOULD keep fixture commits local-only even when HOME forces signing."""
-        signing_home = tempfile.TemporaryDirectory(dir=REPO, prefix=".tmp-signing-home-")
-        self.addCleanup(signing_home.cleanup)
-        home = Path(signing_home.name)
-        (home / ".gitconfig").write_text(
-            textwrap.dedent(
-                """
-                [commit]
-                    gpgsign = true
-                [gpg]
-                    program = /no/such/gpg
-                """
-            ).lstrip("\n"),
-            encoding="utf-8",
-        )
-        env = {**self.env, "HOME": str(home)}
-        signed = self.fixture.root / "signed.txt"
-        signed.write_text("ok\n", encoding="utf-8")
-
-        local_sign = run(["git", "config", "--local", "--get", "commit.gpgsign"], cwd=self.fixture.root).stdout.strip()
-        run(["git", "add", "signed.txt"], cwd=self.fixture.root, env=env)
-        run(["git", "commit", "-q", "-m", "signed"], cwd=self.fixture.root, env=env)
-
-        assert local_sign == "false"
-
 
 class TestBinFmtClassification(unittest.TestCase):
     """WHEN bin/fmt classifies extensionless files."""
 
     def setUp(self) -> None:
-        self._tmp = tempfile.TemporaryDirectory(dir=REPO, prefix=".tmp-bin-fmt-")
+        self._tmp = tempfile.TemporaryDirectory(prefix="bin-fmt-")
         self.addCleanup(self._tmp.cleanup)
         self.root = Path(self._tmp.name)
         (self.root / "bin").mkdir(parents=True, exist_ok=True)

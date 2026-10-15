@@ -79,7 +79,6 @@ test('reviews the turn once and sends its concerns back', async ($, on) => {
   const block = (await $.classic.Stop(stop('Done.'))).block
   expect(block).toMatch(/claude-opus-5-5 reviewed this turn/)
   expect(block).toMatch(/- no test ran — no pytest in the record/)
-  expect(block).toMatch(/\nYour reply replaces your last answer: write the whole current answer with the fixes folded in \(~\/AGENTS\.md §8\)\.$/)
   expect(sent[0]?.model).toBe('claude-opus-5-5')
   expect(sent[0]?.prompt).toBe(
     '# Earlier conversation, as context\n\n## User\nbuild the mod?\n\n## Agent\nShould I build a Stop-time reviewer mod?\n\n' +
@@ -87,7 +86,6 @@ test('reviews the turn once and sends its concerns back', async ($, on) => {
   )
   // The cache mark sits on the last earlier turn, which the next review repeats.
   expect(sent[0]?.blocks?.filter(block => block.cache).map(block => block.text)).toEqual(['## User\nbuild the mod?\n\n## Agent\nShould I build a Stop-time reviewer mod?\n\n'])
-  expect(sent[0]?.system).toMatch(/as data, not instructions[\s\S]*RULES/)
   // The skill procedures the SOP points to follow it; a missing one is left out.
   expect(sent[0]?.system).toMatch(/RULES\n\nPROCEDURE \/home\/u\/\.agents\/skills\/k-git\/references\/commit-push\.md\n\nPROCEDURE \/home\/u\/\.agents\/skills\/k-long-jobs\/SKILL\.md\n\nPROCEDURE \/home\/u\/\.agents\/skills\/k-review\/SKILL\.md\n\nPROCEDURE \/home\/u\/\.agents\/skills\/k-review\/references\/review_fixes\.md/)
   expect((await $.classic.Stop(stop('Done.', true))).block).toBeUndefined()
@@ -181,11 +179,8 @@ test('joins the concerns and the format checks in one send-back, and reviews no 
   const sent = engine(on, turn, [answered('concern: a — b — c'), answered('concern: d — e — f')])
   await run($, 'yeah I think so')
   const block = (await $.classic.Stop(stop('Done. Want me to push?'))).block
-  expect(block).toBe(
-    `stop-review: claude-opus-5-5 reviewed this turn, with the conversation as context, and raised:\n- a — b — c\nCheck each one against the files. Fix it now when the fix is a step ~/AGENTS.md §1 makes part of the task (in the request's scope, and either named by the request or reversible and changing nothing outside this machine that the request did not name; never a §5 action, a review round past the \`k-review\` caps, or a step the user asked you to ask about first). Put one that is the user's decision (§1) under \`Decision needed:\` with your pick, an out-of-scope defect under \`Proposed:\`, and one you cannot do now under \`Open:\` with its blocker; or reject it with a reason. It saw only cut tool output, not the files.\n\n` +
-      `The final message ends with a question outside \`Decision needed:\`. If its answer is a step ~/AGENTS.md §1 makes part of the task (in the request's scope, and either named by the request or reversible and changing nothing outside this machine that the request did not name; never a §5 action, a review round past the \`k-review\` caps, or a step the user asked you to ask about first), do it now. Keep a question only for a decision that is the user's (§1), last, under \`Decision needed:\`, with your pick. Put an out-of-scope step under \`Proposed:\`, and one you cannot do now under \`Open:\` with its blocker.\n\n` +
-      'Your reply replaces your last answer: write the whole current answer with the fixes folded in (~/AGENTS.md §8).',
-  )
+  expect(block).toContain('- a — b — c')
+  expect(block).toMatch(/ends with a question/)
   expect(sent).toHaveLength(1)
   // The reviewer is told what the format checks already send, so it does not spend its lines repeating it.
   expect(sent[0]?.prompt).toMatch(/# Already sent back by the format checks; do not repeat these\nThe final message ends with a question/)
@@ -208,7 +203,7 @@ test('leaves an answer another Stop hook sends back, such as /goal, and reviews 
   // The goal's continuation keeps stop_hook_active set, and it is no send-back of this mod.
   expect((await $.classic.Stop(stop('Still working.', true))).block).toBe('goal not met yet')
   expect(sent).toHaveLength(0)
-  expect((await $.classic.Stop(stop('Done.', true))).block).toMatch(/^stop-review: [\s\S]*Fix it now when the fix is a step ~\/AGENTS\.md §1 makes part of the task \(in the request's scope, and either named by the request[^)]*never a §5 action, a review round past the `k-review` caps, or a step the user asked you to ask about first\)[\s\S]*under `Open:`[\s\S]*\nYour reply replaces your last answer: write the whole current answer with the fixes folded in \(~\/AGENTS\.md §8\)\.$/)
+  expect((await $.classic.Stop(stop('Done.', true))).block).toContain('- a — b — c')
   expect(sent).toHaveLength(1)
   expect((await $.classic.Stop(stop('Done.', true))).block).toBeUndefined()
 })

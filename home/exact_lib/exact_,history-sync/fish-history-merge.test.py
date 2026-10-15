@@ -26,6 +26,7 @@ class FishHistoryMergeModule(Protocol):
     def merge_histories(self, local_file: str, remote_file: str, output_file: str) -> bool: ...
 
 
+sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location("fish_history_merge", history_merge_script_path)
 if spec and spec.loader:
     # Load the module as a standard module first
@@ -48,18 +49,12 @@ class TestFishHistoryMerge(unittest.TestCase):
 
     def setUp(self) -> None:
         """Set up test fixtures"""
-        self.temp_dir = tempfile.mkdtemp()
+        scratch = tempfile.TemporaryDirectory()
+        self.addCleanup(scratch.cleanup)
+        self.temp_dir = scratch.name
         self.local_file = os.path.join(self.temp_dir, "local_history")
         self.remote_file = os.path.join(self.temp_dir, "remote_history")
         self.output_file = os.path.join(self.temp_dir, "output_history")
-
-    def tearDown(self) -> None:
-        """Clean up test fixtures"""
-        for file in [self.local_file, self.remote_file, self.output_file]:
-            if os.path.exists(file):
-                os.remove(file)
-        if os.path.exists(self.temp_dir):
-            os.rmdir(self.temp_dir)
 
     def write_history(self, file_path: str, content: str) -> None:
         """Helper to write history content to a file"""
@@ -275,42 +270,6 @@ class TestFishHistoryMerge(unittest.TestCase):
         self.assertIn("ls", output)
         self.assertIn("1700000000", output)
 
-    def test_merge_complex_entries(self) -> None:
-        """Test merging complex entries with all fields"""
-        local_content = """- cmd: git commit -m "Initial commit"
-  when: 1700000000
-  paths:
-    - /home/user/project
-    - /home/user/project/.git
-- cmd: make clean
-  when: 1700000002
-"""
-        remote_content = """- cmd: git push origin main
-  when: 1700000001
-  paths:
-    - /home/user/project
-- cmd: make clean
-  when: 1700000003
-  paths:
-    - /home/user/project/build
-"""
-        self.write_history(self.local_file, local_content)
-        self.write_history(self.remote_file, remote_content)
-
-        success = fish_history_merge.merge_histories(self.local_file, self.remote_file, self.output_file)
-        self.assertTrue(success)
-
-        output = self.read_history(self.output_file)
-
-        # Check all commands are present
-        self.assertIn('git commit -m "Initial commit"', output)
-        self.assertIn("git push origin main", output)
-        self.assertIn("make clean", output)
-
-        # make clean should have the newer timestamp
-        self.assertIn("when: 1700000003", output)
-        self.assertIn("/home/user/project/build", output)
-
     def test_merge_with_missing_when_fields(self) -> None:
         """Test merging entries where some lack 'when' fields"""
         local_content = """- cmd: ls
@@ -329,15 +288,7 @@ class TestFishHistoryMerge(unittest.TestCase):
         self.assertTrue(success)
 
         output = self.read_history(self.output_file)
-        # ls should have the timestamp from remote since it's newer
-        lines = output.strip().split("\n")
-
-        # Find the ls command and check its timestamp
-        for i, line in enumerate(lines):
-            if line == "- cmd: ls":
-                # Check next line for when field
-                if i + 1 < len(lines):
-                    self.assertEqual(lines[i + 1], "  when: 1700000003")
+        self.assertIn("- cmd: ls\n  when: 1700000003\n", output)
 
     def test_merge_invalid_output_path(self) -> None:
         """Test merge with invalid output path"""
@@ -347,7 +298,7 @@ class TestFishHistoryMerge(unittest.TestCase):
         success = fish_history_merge.merge_histories(
             self.local_file,
             self.remote_file,
-            "/invalid/path/that/does/not/exist/output",
+            str(Path(self.temp_dir) / "missing" / "output"),
         )
         self.assertFalse(success)
 

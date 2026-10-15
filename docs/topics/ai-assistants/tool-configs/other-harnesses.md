@@ -68,12 +68,14 @@ Fish completions for `--model`/`--effort` share `~/.config/fish/functions/__open
 | Skills       | `symlink_skills` → `~/.agents/skills`                                                                                                                                                                                                                                                                                                                        | `~/.omp/agent/skills`       |
 | Advisors     | `readonly_WATCHDOG.yml`                                                                                                                                                                                                                                                                                                                                      | `~/.omp/agent/WATCHDOG.yml` |
 | Reviewer     | `exact_agents/k-agent-reviewer.md.tmpl`                                                                                                                                                                                                                                                                                                                      | `~/.omp/agent/agents/`      |
-| Extension    | `extensions/context-mode.ts.tmpl` ([working-context selection](pi.md#working-context-selection)), `extensions/intent-guard.ts.tmpl` ([intent card](../staying-on-goal.md))                                                                                                                                                                                   | `~/.omp/agent/extensions/`  |
+| Extension    | `extensions/intent-guard.ts.tmpl` ([intent card](../staying-on-goal.md))                                                                                                                                                                                                                                                                                     | `~/.omp/agent/extensions/`  |
 | Install      | `@oh-my-pi/pi-coding-agent` in [`home/readonly_dot_default-pnpm-pkgs`](../../../../home/readonly_dot_default-pnpm-pkgs)                                                                                                                                                                                                                                      | pnpm global, unpinned       |
 
-The context-mode extension reapplies the session's chosen window after initial model discovery.
-This keeps GPT's 272,000-token default from reverting to the catalog window without delaying the first interactive frame.
-An overlapping mode command finishes first. Session or branch changes are refused while discovery or a context update is pending; retry when it finishes.
+OMP uses native `/extended-context on|off|status` and per-model compaction limits (`/models` → Roles → `k`).
+The managed default is off; these are local context budgets, not billing or server-capacity guarantees.
+The former `/context-mode` extension is retired: OMP's native policy could override its requested window while its status still reported success.
+Restart the OMP process after applying the removal; reloading the session or extension dashboard does not unload the already-imported extension. Old transcript mode entries no longer control OMP after restart.
+Pi retains its own [working-context selection](pi.md#working-context-selection).
 
 Key settings:
 
@@ -85,7 +87,7 @@ Key settings:
 | `memory.backend`, `autolearn.enabled`, `recap.enabled` | `off`, `false`, `false`                                                                                                                                                                                                    |
 | `task.maxRecursionDepth`                               | `1` (children cannot spawn)                                                                                                                                                                                                |
 | `task.disabledAgents`                                  | `reviewer`, `security-reviewer` (the repo `k-agent-reviewer` replaces them)                                                                                                                                                |
-| `extendedContext`, `defaultThinkingLevel`              | `true`, `high`                                                                                                                                                                                                             |
+| `extendedContext`, `defaultThinkingLevel`              | `false`, `high`                                                                                                                                                                                                            |
 | `dev.autoqaConsent`                                    | `granted`                                                                                                                                                                                                                  |
 
 `WATCHDOG.yml` replaces OMP's default advisor, which reviewed every turn, with one advisor, `Gate`.

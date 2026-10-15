@@ -86,6 +86,8 @@ bin/fmt --check
 
 Exit 0 means all files are formatted. Exit 1 lists unformatted files.
 
+Use `make check` for affected formatting checks, verification gates, and tests without formatting repairs. Python test shards use disposable working, home, XDG, temporary, and tmux socket directories. Tests of formatters and hooks copy their inputs into temporary repositories outside the checkout; they must not format the source tree. See [test quality and isolation](../../../CONTRIBUTING.md#test-quality-and-isolation) for fixture requirements and the limits of runner isolation.
+
 ## Related
 
 - [Contributing](../../../CONTRIBUTING.md) — repo validation, pre-commit hook, docs hygiene

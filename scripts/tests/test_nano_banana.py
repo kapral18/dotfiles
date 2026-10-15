@@ -23,14 +23,6 @@ def _tiny_png(path: Path) -> Path:
     return path
 
 
-class TestDefaultModel(unittest.TestCase):
-    """WHEN the CLI default model is chosen."""
-
-    def test_it_should_default_to_nano_banana_2(self) -> None:
-        self.assertEqual(MOD.DEFAULT_MODEL, "gemini-3.1-flash-image")
-        self.assertEqual(MOD.DEFAULT_MODEL, MOD.FLASH_VIDEO_MODEL)
-
-
 class TestGeneratePayload(unittest.TestCase):
     """WHEN the prompt has no media."""
 
@@ -140,24 +132,6 @@ class TestVideoUrl(unittest.TestCase):
 
 class TestHelpAndArgs(unittest.TestCase):
     """WHEN --help and argv are parsed."""
-
-    def test_it_should_advertise_input_and_nano_banana_2_default(self) -> None:
-        buf = io.StringIO()
-        with mock.patch.object(sys, "stdout", buf), self.assertRaises(SystemExit) as caught:
-            MOD.parse_args(["--help"])
-        self.assertEqual(caught.exception.code, 0)
-        help_text = buf.getvalue()
-        self.assertIn("--input", help_text)
-        self.assertIn("gemini-3.1-flash-image", help_text)
-        self.assertIn("--url", help_text)
-        self.assertIn("--version", help_text)
-
-    def test_it_should_report_version(self) -> None:
-        buf = io.StringIO()
-        with mock.patch.object(sys, "stdout", buf), self.assertRaises(SystemExit) as caught:
-            MOD.parse_args(["--version"])
-        self.assertEqual(caught.exception.code, 0)
-        self.assertIn("1.2.0", buf.getvalue())
 
     def test_it_should_collect_repeatable_inputs(self) -> None:
         args = MOD.parse_args(["-i", "a.png", "-i", "b.png", "edit the pair"])

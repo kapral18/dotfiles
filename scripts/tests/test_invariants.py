@@ -6,8 +6,13 @@ from __future__ import annotations
 import ast
 import hashlib
 import json
+import os
 import re
+import shlex
+import shutil
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -55,16 +60,63 @@ def _transform_closure(paths: set[Path]) -> set[Path]:
     return result
 
 
-class TestUvToolsHook(unittest.TestCase):
-    """WHEN reconciling uv tool package specs."""
-
-    def test_reapplies_complex_specs_instead_of_key_only_skip(self):
-        hook = (REPO / "home/.chezmoiscripts/run_onchange_after_06-update-uv-tools.sh.tmpl").read_text()
-
-        assert "uv_spec_requires_reapply()" in hook
-        assert '[[ "$spec" != "$key" ]]' in hook
-        assert "install_args+=(--force)" in hook
-        assert "reapplying declared spec" in hook
+class TestUvToolReconciliation(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("chezmoi"), "chezmoi is not installed")
+    def test_installed_complex_specs_are_reapplied_but_bare_names_are_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source"
+            source.mkdir()
+            (source / "readonly_dot_python-version").write_text("3.13\n")
+            specs = ["ruff", "black==25.1.0", "git+https://example.invalid/tools/lexy.git"]
+            (source / "readonly_dot_default-uv-tools.tmpl").write_text("\n".join(specs) + "\n")
+            config = root / "chezmoi.toml"
+            config.touch()
+            bindir = root / "bin"
+            bindir.mkdir()
+            chezmoi = bindir / "chezmoi"
+            chezmoi.write_text(
+                "#!/bin/sh\nexec "
+                + shlex.join([shutil.which("chezmoi"), "--config", str(config), "--source", str(source)])
+                + ' "$@"\n'
+            )
+            chezmoi.chmod(0o755)
+            calls = root / "uv-calls"
+            uv = bindir / "uv"
+            uv.write_text(
+                f"#!{sys.executable}\nimport json, os, sys\n"
+                "if sys.argv[1:] == ['tool', 'list']:\n"
+                "    print('ruff v1\\nblack v1\\nlexy v1')\n"
+                "else:\n"
+                "    with open(os.environ['UV_CALLS'], 'a') as log:\n"
+                "        log.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+                "    sys.exit(0 if sys.argv[1:3] == ['tool', 'install'] else 3)\n"
+            )
+            uv.chmod(0o755)
+            env = {"HOME": str(root), "PATH": f"{bindir}:{os.defpath}", "TMPDIR": str(root), "UV_CALLS": str(calls)}
+            template = REPO / "home/.chezmoiscripts/run_onchange_after_06-update-uv-tools.sh.tmpl"
+            rendered = subprocess.run(
+                [str(chezmoi), "execute-template"],
+                input=template.read_text(),
+                cwd=root,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=10,
+            )
+            result = subprocess.run(
+                ["/bin/bash"],
+                input=rendered.stdout,
+                cwd=root,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            actual = [json.loads(line) for line in calls.read_text().splitlines()] if calls.exists() else []
+            self.assertEqual(actual, [["tool", "install", "--force", spec] for spec in specs[1:]])
 
 
 class TestOnchangeHookHashClosure(unittest.TestCase):

@@ -133,6 +133,8 @@ lib/,mcp-token
 .config/fish/functions/__comma_provider_models.fish
 .omp/agent/extensions/ai-kb-recall.ts
 .omp/agent/extensions/runtime-parity.ts
+# OMP's native context controls replace the personal /context-mode extension.
+.omp/agent/extensions/context-mode.ts
 .config/opencode/plugins/agent-memory.ts
 .config/opencode/plugins/read-supersede.ts
 # Work profile and Elastic/Kibana tooling retired (2026-10-11).

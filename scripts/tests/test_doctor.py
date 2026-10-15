@@ -8,6 +8,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,7 +21,16 @@ DOCTOR = REPO / "home/exact_lib/exact_,doctor/main.sh"
 
 
 def _run_doctor(home: Path, *args: str, env_extra: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
-    env = {**os.environ, "HOME": str(home), "XDG_STATE_HOME": str(home / ".local/state")}
+    tools = home / ".test-bin"
+    tools.mkdir(exist_ok=True)
+    python = tools / "python3"
+    if not python.exists():
+        python.symlink_to(sys.executable)
+    env = {
+        "HOME": str(home),
+        "PATH": os.pathsep.join((str(home / "bin"), str(tools), os.defpath)),
+        "XDG_STATE_HOME": str(home / ".local/state"),
+    }
     if env_extra:
         env.update(env_extra)
     return subprocess.run(
@@ -96,18 +106,7 @@ class TestDoctor(unittest.TestCase):
             codex.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             codex.chmod(0o755)
 
-            result = subprocess.run(
-                ["bash", str(DOCTOR), "--quiet"],
-                cwd=home,
-                env={
-                    **os.environ,
-                    "HOME": str(home),
-                    "PATH": os.pathsep.join((str(bindir), os.environ["PATH"])),
-                    "XDG_STATE_HOME": str(home / ".local/state"),
-                },
-                capture_output=True,
-                text=True,
-            )
+            result = _run_doctor(home, "--quiet")
 
             self.assertIn("Codex config missing", result.stdout)
 
@@ -378,11 +377,9 @@ class TestPiRuntimeProbe(unittest.TestCase):
             (home / "lib" / ",doctor").mkdir(parents=True)
             shutil.copy(PI_RUNTIME, home / "lib/,doctor/pi_runtime.py")
             cli = _pi_store(root, "a3ab-18d5073542a15678-0", self.PEERS)
-            shim = _pi_shim(home, cli)
+            _pi_shim(home, cli)
             shutil.rmtree(root / "pnpm/global/v11/a3ab-18d5073542a15678-0")
-            result = _run_doctor(
-                home, "--quiet", env_extra={"PATH": os.pathsep.join((str(shim.parent), os.environ["PATH"]))}
-            )
+            result = _run_doctor(home, "--quiet")
             self.assertIn("Pi runtime: pi shim targets a removed install", result.stdout)
 
 

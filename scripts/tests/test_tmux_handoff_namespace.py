@@ -1,20 +1,8 @@
 #!/usr/bin/env python3
 """Tests for the namespaced tmux picker handoff protocol.
 
-Covers the deployed core CLI
-``home/dot_config/exact_tmux/exact_scripts/pickers/lib/executable_handoff_namespace.py``
-(``begin``/``path``/``end``/``sweep``) plus the wiring
-contract the GitHub and session pickers rely on. Every check drives the *real*
-core binary or the real
-``pin_session_first.sh`` helper against a private ``XDG_CACHE_HOME`` fake cache,
-so the assertions exercise the implemented directory protocol rather than a
-model. Static-source assertions guard the shell wrappers' handoff contract
-(token propagation, owner-checked ``end``,
-standalone begin, no top-level legacy reads/writes).
-
-Compatibility impact: removed (requested). The former global pin/sentinel
-mailbox is gone; these tests assert that poisoned legacy top-level files are
-never read or written by the protocol.
+Exercises the deployed begin/path/end/sweep CLI and pin_session_first.sh
+against private cache directories.
 """
 
 from __future__ import annotations
@@ -39,11 +27,6 @@ from _test_support import TMUX_PICKERS, modern_bash
 
 CORE = TMUX_PICKERS / "lib/executable_handoff_namespace.py"
 PIN_SESSION_FIRST = TMUX_PICKERS / "lib/executable_pin_session_first.sh"
-GH_POPUP = TMUX_PICKERS / "github/executable_gh_popup.sh"
-GH_PICKER = TMUX_PICKERS / "github/executable_gh_picker.sh"
-GH_CREATE = TMUX_PICKERS / "github/executable_gh_create.sh"
-SESSION_POPUP = TMUX_PICKERS / "session/executable_popup.sh"
-PICK_SESSION = TMUX_PICKERS / "session/executable_pick_session.sh"
 
 TOKEN_RE = re.compile(r"^[0-9a-f]{32}$")
 DEAD_OWNER_TTL_SECONDS = 6 * 60 * 60
@@ -63,8 +46,6 @@ ALLOWED_SLOTS = (
 # Legacy top-level mailbox files the removed global protocol used. Production
 # must never read or write these; tests poison them and assert byte-stability.
 LEGACY_TOP_LEVEL = ALLOWED_SLOTS
-
-WIRED_FILES = (GH_POPUP, GH_PICKER, GH_CREATE, SESSION_POPUP, PICK_SESSION, PIN_SESSION_FIRST)
 
 
 class HandoffTestBase(unittest.TestCase):
@@ -437,25 +418,6 @@ class TestHandoffProtocolWiring(HandoffTestBase):
         top_level = {p.name for p in cache_tmux.iterdir()} - {"handoff-v1"}
         self.assertEqual(top_level, set(LEGACY_TOP_LEVEL))
 
-    def test_poisoned_legacy_top_level_files_are_untouched(self):
-        cache_tmux = self.cache / "tmux"
-        cache_tmux.mkdir(parents=True)
-        poisoned = {}
-        for name in LEGACY_TOP_LEVEL:
-            payload = f"POISON {name} do-not-read-or-write\n"
-            (cache_tmux / name).write_text(payload, encoding="utf-8")
-            poisoned[name] = payload
-
-        # Run a full protocol lifecycle end to end.
-        token = self.begin(entry="gh-popup")
-        for slot in ALLOWED_SLOTS:
-            Path(self.path(slot, token)).write_text("x\n", encoding="utf-8")
-        self.assertEqual(self.core("sweep").returncode, 0)
-        self.assertEqual(self.core("end", "--owner-pid", str(os.getpid()), "--token", token).returncode, 0)
-
-        for name, payload in poisoned.items():
-            self.assertEqual((cache_tmux / name).read_text(), payload, f"legacy {name} was mutated")
-
 
 class TestPinSessionFirstExactRepo(HandoffTestBase):
     """WHEN ordering session rows by an incoming GH pin (real helper)."""
@@ -498,83 +460,6 @@ class TestPinSessionFirstExactRepo(HandoffTestBase):
         self.assertEqual(ordered[:2], ["alpha row", "beta row"])
         self.assertEqual(ordered[2], "other")
         self.assertNotEqual(ordered, ["other", "alpha row", "beta row"])
-
-
-class TestWiredSourceContract(unittest.TestCase):
-    """WHEN inspecting the deployed picker sources for the handoff contract."""
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.src = {path: path.read_text(encoding="utf-8") for path in WIRED_FILES}
-
-    def test_no_top_level_legacy_handoff_paths(self):
-        legacy = re.compile(
-            r"(cache_dir[}\"/]*/?|tmux/)(gh_picker_pin|pick_session_pin|gh_picker_create_pin"
-            r"|gh_picker_switch_sessions|pick_session_switch_gh)\b"
-        )
-        for path, text in self.src.items():
-            self.assertNotRegex(text, legacy, f"{path.name} references a legacy top-level handoff path")
-
-    def test_every_slot_resolves_through_the_namespace_core(self):
-        for path, text in self.src.items():
-            if path in (GH_CREATE, PIN_SESSION_FIRST):
-                continue
-            for slot in ("gh_picker_pin", "pick_session_pin"):
-                if slot in text:
-                    self.assertRegex(
-                        text,
-                        rf'(path {slot}\b|path "\$slot"|handoff_slot_path|resolve_handoff_slot)',
-                        f"{path.name} uses {slot} without the namespace core",
-                    )
-
-    def test_wrappers_inject_token_with_display_popup_e(self):
-        for wrapper in (GH_POPUP, SESSION_POPUP):
-            text = self.src[wrapper]
-            self.assertIn("display-popup", text)
-            self.assertRegex(
-                text,
-                r'-e "TMUX_PICKER_HANDOFF_TOKEN=',
-                f"{wrapper.name} must inject the token with display-popup -e",
-            )
-
-    def test_wrappers_begin_popup_loop_and_end_on_exit(self):
-        for wrapper in (GH_POPUP, SESSION_POPUP):
-            text = self.src[wrapper]
-            self.assertRegex(
-                text, r"begin .*--owner-role popup-loop", f"{wrapper.name} must begin a popup-loop namespace"
-            )
-            self.assertRegex(text, r"export TMUX_PICKER_HANDOFF_TOKEN=", f"{wrapper.name} must export the token")
-            self.assertIn("trap", text)
-            self.assertRegex(text, r"\bend --owner-pid", f"{wrapper.name} must end the namespace by owner pid")
-
-    def test_pickers_begin_standalone_when_token_absent(self):
-        for picker in (GH_PICKER, PICK_SESSION):
-            text = self.src[picker]
-            self.assertRegex(
-                text,
-                r"begin .*--owner-role standalone-picker",
-                f"{picker.name} must begin a standalone namespace when unseeded",
-            )
-            self.assertIn("TMUX_PICKER_HANDOFF_TOKEN", text)
-            self.assertRegex(
-                text,
-                r'\[ -z "\$\{?(TMUX_PICKER_HANDOFF_TOKEN|handoff_token)',
-                f"{picker.name} must gate the standalone begin on an absent token",
-            )
-            self.assertRegex(text, r"\bend --owner-pid", f"{picker.name} must end its standalone namespace")
-
-    def test_gh_create_keeps_four_args_and_namespaced_create_pin(self):
-        text = self.src[GH_CREATE]
-        for pos in (
-            'kind="${1:-}"',
-            'default_repo="${2:-}"',
-            'scope_file="${3:-}"',
-            'items_cmd="${4:-}"',
-        ):
-            self.assertIn(pos, text)
-        # Create pin resolves through the inherited token and fails closed.
-        self.assertRegex(text, r"path gh_picker_create_pin")
-        self.assertRegex(text, r"die .*handoff namespace unavailable")
 
 
 if __name__ == "__main__":

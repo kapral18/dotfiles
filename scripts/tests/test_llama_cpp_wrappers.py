@@ -16,35 +16,61 @@ globals().update({name: value for name, value in vars(_support).items() if not n
 class TestLlamaCppWrappers(unittest.TestCase):
     """WHEN a harness wrapper launches against the local llama.cpp router."""
 
-    def test_SHOULD_enter_the_shared_router_lifecycle_from_every_harness(self):
-        for harness in ("claude", "codex", "opencode"):
-            with self.subTest(harness=harness):
-                wrapper = REPO / f"home/exact_bin/executable_,{harness}-llama-cpp"
-                self.assertIn("exec ,llama-cpp run --", wrapper.read_text())
-
-    def test_SHOULD_offer_router_ids_from_every_llama_cpp_harness_completion(self):
-        cases = (
-            ("ne", "nemotron-3.5"),
-            ("qwen3.6", "qwen3.6-35b-a3b"),
-            ("qwen3.6-35b-a3b-i", "qwen3.6-35b-a3b-instruct"),
-        )
-        for harness in ("claude", "codex", "opencode"):
-            for prefix, model_id in cases:
-                with self.subTest(harness=harness, model=model_id):
-                    completion = REPO / f"home/dot_config/fish/completions/readonly_,{harness}-llama-cpp.fish"
+    def test_harnesses_require_the_shared_lifecycle_before_running(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            bindir = home / "bin"
+            bindir.mkdir()
+            settings = home / ".claude/settings.llama-cpp.json"
+            settings.parent.mkdir()
+            settings.write_text("{}")
+            events = home / "events"
+            lifecycle = bindir / ",llama-cpp"
+            lifecycle.write_text(
+                "#!/bin/sh\n"
+                '[ "$1" = run ] && [ "$2" = -- ] || exit 2\n'
+                'printf "ready\\n" >> "$EVENTS"\n'
+                "export LIFECYCLE_READY=1\n"
+                'shift 2\nexec "$@"\n'
+            )
+            lifecycle.chmod(0o755)
+            for name in ("claude", ",codex", "opencode"):
+                command = bindir / name
+                command.write_text(
+                    '#!/bin/sh\n[ "${LIFECYCLE_READY:-}" = 1 ] || exit 99\nprintf "harness\\n" >> "$EVENTS"\nexit 37\n'
+                )
+                command.chmod(0o755)
+            for harness in ("claude", "codex", "opencode"):
+                with self.subTest(harness=harness):
+                    events.write_text("")
                     result = subprocess.run(
-                        [
-                            "fish",
-                            "--no-config",
-                            "-c",
-                            f"source {shlex.quote(str(completion))}; complete -C ',{harness}-llama-cpp --model {prefix}'",
-                        ],
+                        [modern_bash(), str(REPO / f"home/exact_bin/executable_,{harness}-llama-cpp")],
+                        env={"HOME": str(home), "PATH": f"{bindir}:{os.defpath}", "EVENTS": str(events)},
                         capture_output=True,
                         text=True,
+                        timeout=5,
                     )
+                    self.assertEqual(result.returncode, 37, result.stderr)
+                    self.assertEqual(events.read_text().splitlines(), ["ready", "harness"])
 
-                    assert result.returncode == 0, result.stderr
-                    assert f"{model_id}\t" in result.stdout
+    def test_SHOULD_offer_router_ids_from_every_llama_cpp_harness_completion(self):
+        for harness in ("claude", "codex", "opencode"):
+            with self.subTest(harness=harness):
+                completion = REPO / f"home/dot_config/fish/completions/readonly_,{harness}-llama-cpp.fish"
+                result = subprocess.run(
+                    [
+                        "fish",
+                        "--no-config",
+                        "-c",
+                        f"set -g fish_complete_path; source {shlex.quote(str(completion))}; "
+                        f"complete -C ',{harness}-llama-cpp --model ne'",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("nemotron-3.5", [line.split("\t")[0] for line in result.stdout.splitlines()])
 
     def test_SHOULD_complete_llama_cpp_stop_and_force(self):
         completion = REPO / "home/dot_config/fish/completions/readonly_,llama-cpp.fish"

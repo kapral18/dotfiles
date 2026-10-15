@@ -1,4 +1,4 @@
-/** Session-local short/long working-context selection shared by Pi and OMP. */
+/** Session-local short/long working-context selection for Pi. */
 
 const ENTRY_TYPE = "gpt-context-mode"
 // Astra's standard-price input boundary. For GPT catalogs without tier metadata,

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -57,16 +58,25 @@ class TestClaudeMods(unittest.TestCase):
     @unittest.skipUnless(shutil.which("claude"), "claude is not installed")
     def test_mods_validate_and_pass_their_tests(self):
         with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            home.mkdir()
+            env = {**os.environ, "HOME": str(home), "CLAUDE_CONFIG_DIR": str(home / ".claude")}
             for mod in sorted(path for path in MODS.iterdir() if path.is_dir()):
-                folder = render(mod, Path(tmp))
-                self.check_plugin(folder)
-            self.check_plugin(DOTFILES_GUARD)
+                folder = render(mod, root)
+                self.check_plugin(folder, env)
+            self.check_plugin(render(DOTFILES_GUARD, root), env)
 
-    def check_plugin(self, folder: Path):
+    def check_plugin(self, folder: Path, env: dict[str, str]):
         for action in ("validate", "test"):
             with self.subTest(mod=folder.name, action=action):
                 run = subprocess.run(
-                    ["claude", "plugin", action, str(folder)], capture_output=True, text=True, timeout=120
+                    ["claude", "plugin", action, str(folder)],
+                    cwd=folder,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
                 )
                 self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
 

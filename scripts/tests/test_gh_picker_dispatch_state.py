@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import os
 import shlex
+import signal
 import subprocess
 import sys
 import tempfile
@@ -38,6 +39,36 @@ class TestGhPickerDispatchState(unittest.TestCase):
             text=True,
             env=env,
         )
+
+    def _run_batch_and_its_reloads(
+        self, script: Path, selection_file: Path, env: dict[str, str]
+    ) -> subprocess.CompletedProcess[str]:
+        # Reloads are detached background curls in the batch's process group, so they can
+        # land after the script exits; wait until the whole group is gone before reading them.
+        proc = subprocess.Popen(
+            [modern_bash(), str(script), str(selection_file), "--background"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=env,
+            start_new_session=True,
+        )
+        try:
+            stdout, stderr = proc.communicate(timeout=30)
+        except subprocess.TimeoutExpired:
+            os.killpg(proc.pid, signal.SIGKILL)
+            proc.communicate()
+            raise
+        deadline = time.monotonic() + 5
+        while True:
+            try:
+                os.killpg(proc.pid, 0)
+            except ProcessLookupError:
+                return subprocess.CompletedProcess(proc.args, proc.returncode, stdout, stderr)
+            if time.monotonic() > deadline:
+                os.killpg(proc.pid, signal.SIGKILL)
+                self.fail("background reloads never finished")
+            time.sleep(0.02)
 
     def _setup_fixture(self, tmp_path: Path) -> dict[str, Path]:
         home = tmp_path / "home"
@@ -127,7 +158,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
             }
 
-            result = self._run_background_batch(script, fixture["selection_file"], env)
+            result = self._run_batch_and_its_reloads(script, fixture["selection_file"], env)
             assert result.returncode == 0, result.stderr
 
             patch_log = fixture["patch_log"].read_text()
@@ -168,7 +199,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
             ):
                 env.pop(key, None)
 
-            result = self._run_background_batch(script, fixture["selection_file"], env)
+            result = self._run_batch_and_its_reloads(script, fixture["selection_file"], env)
             assert result.returncode == 0, result.stderr
 
             patch_log = fixture["patch_log"].read_text()
@@ -178,13 +209,6 @@ class TestGhPickerDispatchState(unittest.TestCase):
             curl_log = fixture["curl_log"].read_text()
             assert "127.0.0.1:5151" in curl_log
             assert "GH_PICKER_SCOPE=focus" in curl_log
-
-    def test_foreground_dispatch_uses_nohup_not_run_shell_b(self):
-        script = (TMUX_PICKERS / "github/executable_gh_batch_worktree.sh").read_text()
-        assert "_dispatch_background" in script
-        assert "nohup env -u TMUX -u TMUX_PANE" in script
-        # Detached batch must not rely on pane-scoped run-shell -b (dies on popup close).
-        assert 'tmux run-shell -b "$(printf %q "$0")' not in script
 
     def test_foreground_dispatch_preserves_current_tmux_socket(self):
         script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
@@ -251,10 +275,6 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 time.sleep(0.02)
             assert nohup_log.exists(), "foreground dispatch never invoked nohup"
             assert "OUTER_TMUX_SOCKET=/private/tmp/outer/default" in nohup_log.read_text()
-
-    def test_branch_agent_uses_mimo_flash_high_effort(self):
-        script = (TMUX_PICKERS / "github/executable_gh_batch_worktree.sh").read_text()
-        assert ('exec ,claude-openrouter --model xiaomi/mimo-v2.6-flash --effort high -- "$(cat "$1")"') in script
 
     def test_foreground_issue_editor_exit_dispatches_every_worktree(self):
         script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
@@ -337,23 +357,6 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 ("owner/repo-b", "1"),
             ], calls
             assert not selection.exists(), "detached batch never consumed the picker snapshot"
-
-    def test_detached_batch_has_timeout_and_ledger_recovery(self):
-        script = (TMUX_PICKERS / "github/executable_gh_batch_worktree.sh").read_text()
-        assert "GH_BATCH_ITEM_TIMEOUT_SECS" in script
-        assert "GH_BATCH_TOTAL_TIMEOUT_SECS" in script
-        assert "--kill-after=10s" in script
-        assert "gh_batch_worktree_jobs" in script
-        assert "_reap_stale_batch_jobs" in script
-        assert "_finalize_batch_jobs" in script
-        assert "_wait_for_creates" in script
-        assert 'for i in "${!prs[@]}"; do\n  _batch_can_launch || break' in script
-        assert (
-            'for entry in "${issue_branches[@]+"${issue_branches[@]}"}"; do\n  _batch_can_launch || break'
-        ) in script
-        reap_source = script.split("_reap_ledger_file() {", 1)[1].split("\n}", 1)[0]
-        assert '_ledger_lock_acquire "$ledger"' in reap_source
-        assert '_ledger_lock_release "$ledger"' in reap_source
 
     def test_background_serializes_worktree_creates(self):
         script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
@@ -1118,14 +1121,6 @@ printf 'survived\n'
             assert clear_nums == ["2"], patch_log
             ledger_dir = fixture["cache_dir"] / "gh_batch_worktree_jobs"
             assert not list(ledger_dir.glob("*.tsv")), list(ledger_dir.glob("*.tsv"))
-
-    def test_item_timeout_clears_loading_marker_and_exits(self):
-        script = (TMUX_PICKERS / "github/executable_gh_batch_worktree.sh").read_text()
-        assert 'ITEM_TIMEOUT_SECS="${GH_BATCH_ITEM_TIMEOUT_SECS:-600}"' in script
-        assert '"$_TIMEOUT_BIN" --kill-after=10s "${ITEM_TIMEOUT_SECS}s" "$@"' in script
-        assert '_patch_cache_entry "pr" "$repo" "$num" clear' in script
-        assert '_patch_cache_entry "issue" "$repo" "$num" clear' in script
-        assert "_finalize_batch_jobs" in script
 
     def test_stale_job_ledger_reaped_when_batch_pid_dead(self):
         script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"

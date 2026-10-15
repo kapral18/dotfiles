@@ -5,15 +5,17 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import REPO
 from check import SLOW_SHARDS, collect_changed, plan_check, production_probe_paths
-from test_runner import NOT_TEST_FILES, discover_files, resolve_files
+from test_runner import discover_files, resolve_files
 
 
 class TestCheckPlan(unittest.TestCase):
@@ -28,7 +30,6 @@ class TestCheckPlan(unittest.TestCase):
         assert plan.mode == "affected"
         assert "tests/test_invariants.py" in plan.tests
         assert "tests/test_tmux_pickers.py" not in plan.tests
-        assert "tests/test_bin_commands.py" not in plan.tests
         assert "verify-templates" not in plan.gates
         assert plan.fmt_paths[-1].endswith("readonly_summarize-commit.lua")
 
@@ -40,7 +41,6 @@ class TestCheckPlan(unittest.TestCase):
         )
         assert "tests/test_tmux_pickers.py" in plan.tests
         assert "tests/test_gh_picker_dispatch_state.py" in plan.tests
-        assert "tests/test_bin_commands.py" not in plan.tests
 
     def test_WHEN_tmpl_changes_SHOULD_run_verify_templates(self):
         plan = plan_check(
@@ -121,64 +121,118 @@ class TestCheckPlan(unittest.TestCase):
         assert sorted(live - selected) == []
 
 
-class TestCheckEntryPoints(unittest.TestCase):
-    """WHEN invoking make check or pre-commit."""
-
-    def test_WHEN_makefile_check_SHOULD_stay_affected_and_check_full_uses_full(self):
-        text = (REPO / "Makefile").read_text(encoding="utf-8")
-        recipes: dict[str, list[str]] = {}
-        current = None
-        for line in text.splitlines():
-            if line.startswith("\t"):
-                if current is not None:
-                    recipes.setdefault(current, []).append(line[1:])
-                continue
-            if line[:1] in {"", "#", "."}:
-                current = None
-                continue
-            if ":" in line:
-                current = line.split(":", 1)[0]
-        assert recipes.get("check") == ["bin/check"]
-        assert recipes.get("check-full") == ["CHECK_FULL=1 bin/check --full"]
-        assert "check: lint " not in text
-
-    def test_WHEN_agents_md_SHOULD_forbid_the_full_suite(self):
-        text = (REPO / "AGENTS.md").read_text(encoding="utf-8")
-        assert "Never run `make check-full`" in text
-        assert "Use `make check-full`" not in text
-
-    def test_WHEN_agents_md_SHOULD_require_new_code_on_the_affected_map(self):
-        text = (REPO / "AGENTS.md").read_text(encoding="utf-8")
-        assert "New code needs a test that `scripts/check.py` maps to it" in text
-        assert "add a `TEST_RULES` row" in text
-
-    def test_WHEN_pre_commit_hook_SHOULD_run_staged_check_not_full_suite(self):
-        text = (REPO / ".githooks/pre-commit").read_text(encoding="utf-8")
-        lines = [line.strip() for line in text.splitlines()]
-        assert "bin/check --staged" in lines
-        assert "bin/check --full" not in lines
-        assert "make -s check" not in text
-
-
 class TestTestRunnerDiscovery(unittest.TestCase):
     """WHEN listing unittest shards."""
 
     def test_WHEN_discovering_shards_SHOULD_omit_the_runner_module(self):
         names = {path.name for path in discover_files()}
         assert "test_runner.py" not in names
-        assert "test_runner.py" in NOT_TEST_FILES
         assert (REPO / "scripts" / "test_yaml_parser.py").name in names
-
-    def test_WHEN_every_discovered_shard_SHOULD_define_a_TestCase(self):
-        missing = []
-        for path in discover_files():
-            text = path.read_text(encoding="utf-8")
-            if "unittest.TestCase" not in text and "(unittest.TestCase)" not in text:
-                missing.append(path.name)
-        assert missing == []
 
     def test_WHEN_resolving_the_runner_path_SHOULD_drop_it(self):
         assert resolve_files(["test_runner.py"]) == []
+
+
+class TestTestRunnerIsolation(unittest.TestCase):
+    """WHEN shards run, ambient state and the source tree stay untouched."""
+
+    def _run_fixture(self, *, fail: bool) -> tuple[subprocess.CompletedProcess[str], list[dict]]:
+        scratch = tempfile.TemporaryDirectory(prefix="runner-contract-")
+        self.addCleanup(scratch.cleanup)
+        root = Path(scratch.name)
+        scripts = root / "scripts"
+        scripts.mkdir()
+        shutil.copy2(REPO / "scripts/test_runner.py", scripts / "test_runner.py")
+        ambient = root / "ambient"
+        ambient.mkdir()
+        reports = root / "reports"
+        reports.mkdir()
+        source = textwrap.dedent("""
+            import json
+            import os
+            import tempfile
+            import unittest
+            from pathlib import Path
+
+            class Probe(unittest.TestCase):
+                def test_state(self):
+                    paths = {
+                        "cwd": str(Path.cwd()),
+                        "home": str(Path.home()),
+                        "tmp": tempfile.gettempdir(),
+                        **{key: os.environ[key] for key in (
+                            "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME",
+                            "XDG_STATE_HOME", "XDG_RUNTIME_DIR", "TMUX_TMPDIR",
+                        )},
+                    }
+                    for value in paths.values():
+                        Path(value, "probe").write_text(__name__)
+                    report = {
+                        "paths": paths,
+                        "selectors": sorted(key for key in os.environ
+                                            if key.startswith("GIT_") or key in ("TMUX", "TMUX_PANE", "LEAK_SENTINEL")),
+                    }
+                    Path(REPORTS, __name__ + ".json").write_text(json.dumps(report))
+                    self.assertFalse(FAIL, "deliberate shard failure")
+        """)
+        source = f"REPORTS = {str(reports)!r}\nFAIL = {fail!r}\n" + source
+        for name in ("test_ai_kb.py", "test_second.py"):
+            (scripts / name).write_text(source)
+        env = {
+            **os.environ,
+            "HOME": str(ambient),
+            "TMPDIR": str(ambient),
+            "GIT_DIR": str(ambient / ".git"),
+            "GIT_WORK_TREE": str(ambient),
+            "GIT_INDEX_FILE": str(ambient / "index"),
+            "TMUX": "live-session",
+            "TMUX_PANE": "%1",
+            "LEAK_SENTINEL": "private-fixture-value",
+        }
+        for key in (
+            "XDG_CONFIG_HOME",
+            "XDG_CACHE_HOME",
+            "XDG_DATA_HOME",
+            "XDG_STATE_HOME",
+            "XDG_RUNTIME_DIR",
+            "TMUX_TMPDIR",
+        ):
+            env[key] = str(ambient)
+        env.pop("PYTHONDONTWRITEBYTECODE", None)
+        result = subprocess.run(
+            ["python3", str(scripts / "test_runner.py"), "--workers", "2", "test_ai_kb.py", "test_second.py"],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        self.assertEqual(
+            sorted(p.name for p in scripts.iterdir()), ["test_ai_kb.py", "test_runner.py", "test_second.py"]
+        )
+        self.assertEqual(list(ambient.iterdir()), [])
+        actual = [json.loads((reports / name).read_text()) for name in ("test_ai_kb.json", "test_second.json")]
+        return result, actual
+
+    def test_WHEN_parallel_shards_write_default_paths_SHOULD_isolate_and_remove_their_state(self):
+        result, reports = self._run_fixture(fail=False)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        first, second = reports
+        self.assertEqual(first["selectors"], [])
+        self.assertEqual(second["selectors"], [])
+        self.assertTrue(set(first["paths"].values()).isdisjoint(second["paths"].values()), reports)
+        for report in reports:
+            for path in report["paths"].values():
+                self.assertFalse(Path(path).exists(), path)
+
+    def test_WHEN_a_shard_fails_SHOULD_report_failure_and_remove_its_state(self):
+        result, reports = self._run_fixture(fail=True)
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("deliberate shard failure", result.stderr)
+        for report in reports:
+            for path in report["paths"].values():
+                self.assertFalse(Path(path).exists(), path)
 
 
 class TestCollectChanged(unittest.TestCase):
@@ -209,20 +263,30 @@ class TestCheckCli(unittest.TestCase):
     """WHEN invoking scripts/check.py."""
 
     def test_WHEN_print_plan_with_full_SHOULD_emit_json_mode_full(self):
-        env = os.environ.copy()
-        env.pop("CHECK_FULL", None)
-        result = subprocess.run(
-            ["python3", "scripts/check.py", "--full", "--print-plan"],
-            cwd=str(REPO),
-            env=env,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        payload = json.loads(result.stdout)
-        assert payload["mode"] == "full"
-        assert "test_yaml_parser.py" in payload["tests"]
-        assert "test_runner.py" not in payload["tests"]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scripts = root / "scripts"
+            scripts.mkdir()
+            for name in ("check.py", "test_runner.py", "test_yaml_parser.py"):
+                shutil.copy2(REPO / "scripts" / name, scripts / name)
+            before = sorted(path.relative_to(root) for path in root.rglob("*"))
+            env = os.environ.copy()
+            for key in ("CHECK_FULL", "PYTHONDONTWRITEBYTECODE", "PYTHONPYCACHEPREFIX"):
+                env.pop(key, None)
+            result = subprocess.run(
+                ["python3", str(scripts / "check.py"), "--full", "--print-plan"],
+                cwd=root,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=10,
+            )
+            payload = json.loads(result.stdout)
+            assert payload["mode"] == "full"
+            assert "test_yaml_parser.py" in payload["tests"]
+            assert "test_runner.py" not in payload["tests"]
+            self.assertEqual(sorted(path.relative_to(root) for path in root.rglob("*")), before)
 
     def test_WHEN_full_run_without_CHECK_FULL_SHOULD_refuse(self):
         env = os.environ.copy()

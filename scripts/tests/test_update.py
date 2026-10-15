@@ -73,19 +73,58 @@ def _run_on_pty(script: str, timeout: float = 5.0) -> tuple[list[tuple[float, by
 
 class RelayOutputTests(unittest.TestCase):
     def test_partial_prompt_is_visible_before_child_finishes(self) -> None:
-        script = (
-            "( printf 'x has changed since chezmoi last wrote it [overwrite,skip,quit]? '; sleep 1.2; echo done )"
-            " | _relay_output"
-        )
-        chunks, rc = _run_on_pty(script)
-        self.assertEqual(rc, 0)
-        prompt_at = next((t for t, data in chunks if b"[overwrite,skip,quit]? " in data), None)
-        self.assertIsNotNone(prompt_at, f"prompt never surfaced; chunks={chunks!r}")
-        self.assertLess(prompt_at, 1.0, "prompt was held back until the child finished")
-        output = b"".join(data for _, data in chunks)
-        self.assertIn(
-            "    │ x has changed since chezmoi last wrote it [overwrite,skip,quit]? done\r\n".encode(), output
-        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            main = root / "main.sh"
+            shutil.copyfile(MAIN_SH, main)
+            bindir = root / "bin"
+            bindir.mkdir()
+            gh = bindir / "gh"
+            gh.write_text(
+                "#!/bin/sh\nprintf 'Continue? '\n"
+                'IFS= read -r answer || exit 9\n[ "$answer" = yes ] || exit 10\n'
+                "printf 'done\\n'\n"
+            )
+            gh.chmod(0o755)
+            master, slave = pty.openpty()
+            with subprocess.Popen(
+                [shutil.which("bash") or "/bin/bash", str(main), "--only", "gh"],
+                env={"HOME": str(root), "PATH": f"{bindir}:{os.defpath}"},
+                cwd=root,
+                stdin=subprocess.PIPE,
+                stdout=slave,
+                stderr=slave,
+                start_new_session=True,
+            ) as proc:
+                os.close(slave)
+                output = bytearray()
+                try:
+                    deadline = time.monotonic() + 5
+                    while b"Continue? " not in output and time.monotonic() < deadline:
+                        ready, _, _ = select.select([master], [], [], 0.1)
+                        if ready:
+                            output.extend(os.read(master, 4096))
+                    self.assertIn(b"Continue? ", output, "prompt must appear before the child gets its answer")
+                    self.assertIsNone(proc.poll(), "child must still be waiting for its answer")
+                    assert proc.stdin is not None
+                    proc.stdin.write(b"yes\n")
+                    proc.stdin.flush()
+                    while time.monotonic() < deadline:
+                        ready, _, _ = select.select([master], [], [], 0.1)
+                        if ready:
+                            try:
+                                chunk = os.read(master, 4096)
+                            except OSError:
+                                break
+                            if not chunk:
+                                break
+                            output.extend(chunk)
+                    self.assertEqual(proc.wait(timeout=2), 0)
+                    self.assertIn(b"Continue? done", output)
+                finally:
+                    if proc.poll() is None:
+                        os.killpg(proc.pid, signal.SIGKILL)
+                    os.close(master)
 
     def test_prefix_on_every_line_and_child_status_forwarded(self) -> None:
         script = (
@@ -103,11 +142,6 @@ class RelayOutputTests(unittest.TestCase):
         output = b"".join(data for _, data in chunks)
         self.assertEqual(rc, 0)
         self.assertIn("    │ no newline\r\nNEXT\r\n".encode(), output)
-
-    def test_run_timed_uses_relay_not_sed(self) -> None:
-        text = MAIN_SH.read_text(encoding="utf-8")
-        self.assertIn('"$@" 2>&1 | _relay_output', text)
-        self.assertNotIn('| sed "s/^/', text)
 
 
 NATIVE_RUNNER = MAIN_SH.with_name("readonly_native_runner.py")
