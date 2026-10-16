@@ -77,8 +77,10 @@ Translation calls OpenRouter's chat API directly with
 tools, so the text being translated cannot steer an agent. `tr <target> <text>`
 lets the model infer the source; `tr <source>><target> <text>` states it. Only
 these codes are offered: `en`, `ru`, `nl`, `es`, `fr`, `hy`, `de`, `it`, `tr`,
-`az`, `zh` (Simplified), `zh-Hant` (Traditional), `ja`, `ko`; others are
-rejected without a request. Text is sent to OpenRouter and its upstream provider.
+`az`, `zh` (Simplified), `zh-Hant` (Traditional), `ja`, `ko`, `la` (Latin), `pt`,
+`ar`, `hi`, `uk`, `pl`, `fa` (Persian), `ka` (Georgian), `el` (Greek), `he`, `sv`,
+`id`, `vi`; others are rejected without a request. Text is sent to OpenRouter
+and its upstream provider.
 
 The API key comes from `pass show openrouter/api/token` on the first translation
 and stays only in Hammerspoon's memory until reload; a 401 response drops it so
@@ -89,8 +91,10 @@ are ignored. If the GPG passphrase is not cached, the first lookup opens
 pinentry, which takes focus and closes the panel; reopen it and retry once the
 passphrase is entered. In the final native check, all 13 non-English codes and
 Armenian/Azerbaijani→English were correct; the first translation (including the
-`pass` read) took about 1.6 s, later ones about 0.8 s median. A typical
-translation costs about $0.00001.
+`pass` read) took about 1.6 s, later ones about 0.8 s median. Requests ask
+OpenRouter to route by throughput: in 72 measured requests that stayed under
+1 s (0.44 s median), while default and latency-sorted routing each produced
+~10 s outliers. A typical translation costs about $0.00004.
 
 The gesture accepts either Command key and uses the system double-click interval.
 Both presses must be short, with no intervening typing, other modifiers, mouse

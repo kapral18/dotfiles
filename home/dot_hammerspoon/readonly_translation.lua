@@ -3,22 +3,36 @@ local M = { title = "Translation", hint = "tr <target> <text> — or tr <source>
 local MODEL = "deepseek/deepseek-v4.1-flash"
 local ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 local LANGUAGES = {
-  en = "English",
-  ru = "Russian",
-  nl = "Dutch",
-  es = "Spanish",
-  fr = "French",
-  hy = "Armenian",
-  de = "German",
-  it = "Italian",
-  tr = "Turkish",
+  ar = "Arabic",
   az = "Azerbaijani",
+  de = "German",
+  el = "Greek",
+  en = "English",
+  es = "Spanish",
+  fa = "Persian",
+  fr = "French",
+  he = "Hebrew",
+  hi = "Hindi",
+  hy = "Armenian",
+  id = "Indonesian",
+  it = "Italian",
+  ja = "Japanese",
+  ka = "Georgian",
+  ko = "Korean",
+  la = "Latin",
+  nl = "Dutch",
+  pl = "Polish",
+  pt = "Portuguese",
+  ru = "Russian",
+  sv = "Swedish",
+  tr = "Turkish",
+  uk = "Ukrainian",
+  vi = "Vietnamese",
   zh = "Simplified Chinese",
   ["zh-hant"] = "Traditional Chinese",
-  ja = "Japanese",
-  ko = "Korean",
 }
-local OFFERED = "en, ru, nl, es, fr, hy, de, it, tr, az, zh, zh-Hant, ja, ko"
+local OFFERED =
+  "ar, az, de, el, en, es, fa, fr, he, hi, hy, id, it, ja, ka, ko, la, nl, pl, pt, ru, sv, tr, uk, vi, zh, zh-Hant"
 local key -- OpenRouter key, held in memory only
 local key_task
 local waiting -- newest request queued behind the key lookup
@@ -48,6 +62,9 @@ local function send(request)
     temperature = 0,
     max_tokens = 2048,
     reasoning = { enabled = false },
+    -- Measured over 72 requests: default and latency routing each hit ~10 s outliers;
+    -- throughput routing stayed under 1 s (0.44 s median) at ~2x a still-negligible price.
+    provider = { sort = "throughput" },
     messages = {
       { role = "system", content = prompt(request) },
       { role = "user", content = request.text },
