@@ -116,6 +116,17 @@ GATES: tuple[Gate, ...] = (
 
 TEST_RULES: tuple[TestRule, ...] = (
     TestRule(
+        prefixes=("home/dot_hammerspoon/",),
+        tests=("tests/test_hammerspoon_search.py",),
+    ),
+    TestRule(
+        prefixes=(
+            "home/.osx.core",
+            "home/.chezmoiscripts/run_onchange_after_05-osx.core.sh.tmpl",
+        ),
+        tests=("tests/test_macos_preferences.py",),
+    ),
+    TestRule(
         prefixes=(
             "home/readonly_dot_default-custom-packages.tmpl",
             "home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl",

@@ -62,8 +62,13 @@ sudo chflags nohidden "/Volumes" || echo "WARN: Failed to unhide /Volumes"
 # ==============================================
 echo "Setting NSGlobalDomain preferences..."
 
-# "Application Downloaded from Internet" popup will not display
-defaults write com.apple.LaunchServices LSQuarantine -bool "false"
+# Restore quarantine handling instead of suppressing downloaded-app warnings.
+if defaults read com.apple.LaunchServices LSQuarantine >/dev/null 2>&1; then
+  defaults delete com.apple.LaunchServices LSQuarantine
+fi
+
+# Enable the application firewall without changing existing app exceptions.
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
 
 # --- Interface ---
 # Interface style: Dark (Options: Light, Dark, Auto)
@@ -87,6 +92,7 @@ defaults write -g AppleTemperatureUnit -string "Celsius"
 defaults write -g AppleFirstWeekday -dict gregorian -int 2 # Set to Monday
 # 24-Hour Time
 defaults write -g AppleICUForce12HourTime -bool false # Use 24-hour clock
+defaults write -g AppleICUForce24HourTime -bool true
 
 # --- Text & Input ---
 # Live Text (Select text in images)
@@ -129,9 +135,12 @@ defaults write -g AppleActionOnDoubleClick -string "Maximize" # 'Maximize' is Zo
 defaults write -g AppleScrollAnimationEnabled -bool true
 
 # Don't restore windows when quitting or re-opening apps
-defaults write com.apple.systempreferences NSQuitAlwaysKeepsWindows -bool false # For System Settings/Prefs itself
-defaults write -g PMPrintingExpandedStateForPrint -bool true                    # Expand print dialog by default
-defaults write -g NSNavPanelExpandedStateForSaveMode -bool true                 # Expand save panel by default
+defaults write -g NSQuitAlwaysKeepsWindows -bool false
+if defaults read com.apple.systempreferences NSQuitAlwaysKeepsWindows >/dev/null 2>&1; then
+  defaults delete com.apple.systempreferences NSQuitAlwaysKeepsWindows
+fi
+defaults write -g PMPrintingExpandedStateForPrint -bool true    # Expand print dialog by default
+defaults write -g NSNavPanelExpandedStateForSaveMode -bool true # Expand save panel by default
 defaults write -g NSNavPanelExpandedStateForSaveMode2 -bool true
 
 # Don't reopen windows when logging back in
@@ -159,11 +168,13 @@ defaults write -g NSCloseAlwaysConfirmsChanges -bool true
 # Don't default to saving new documents to iCloud Drive
 defaults write -g NSDocumentSaveNewDocumentsToCloud -bool false
 
-# Disable App Nap system-wide (Can improve responsiveness for background apps, may use more energy)
-defaults write -g NSAppSleepDisabled -bool true
-
-# Disable automatic termination of inactive apps (Similar to App Nap effect)
-defaults write -g NSDisableAutomaticTermination -bool true
+# Restore macOS energy management; handle any problematic app individually.
+if defaults read -g NSAppSleepDisabled >/dev/null 2>&1; then
+  defaults delete -g NSAppSleepDisabled
+fi
+if defaults read -g NSDisableAutomaticTermination >/dev/null 2>&1; then
+  defaults delete -g NSDisableAutomaticTermination
+fi
 
 # Show fast user switching menu as: Icon (2), Full Name (1), Account Name (0)
 defaults write -g userMenuExtraStyle -int 2
@@ -185,8 +196,8 @@ defaults write -g NSToolbarTitleViewRolloverDelay -float 0
 # ==============================================
 echo "Setting Sound preferences..."
 
-# Disable the startup chime (Requires sudo)
-sudo nvram SystemAudioVolume="%00" || echo "WARN: Failed to set SystemAudioVolume (requires sudo/SIP config?)"
+# Disable the startup chime on current Macs.
+sudo nvram StartupMute="%01"
 
 # Enable feedback sound when changing volume
 defaults write -g com.apple.sound.beep.feedback -bool true
@@ -242,8 +253,7 @@ defaults write com.apple.screencapture disable-shadow -bool true
 # ==============================================
 echo "Setting Display preferences..."
 
-# Enable subpixel font rendering on non-Apple LCDs (May improve text clarity)
-# Level 1: Light, 2: Medium, 3: Strong
+# Font smoothing weight; this does not restore removed subpixel antialiasing.
 defaults write -g AppleFontSmoothing -int 1
 
 # Enable HiDPI display modes (requires restart) - Useful for non-Apple 4K+ displays
@@ -337,8 +347,11 @@ defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false
 # Show hidden files (files starting with .)
 defaults write com.apple.finder AppleShowAllFiles -bool true
 
-# Show the ~/Library folder (redundant with chflags earlier, but safe)
-defaults write com.apple.finder ShowSidebarHardDrivesOnDesktop -bool false # Example: Hide HDDs on Desktop
+# Hide internal hard drives on the Desktop.
+defaults write com.apple.finder ShowHardDrivesOnDesktop -bool false
+if defaults read com.apple.finder ShowSidebarHardDrivesOnDesktop >/dev/null 2>&1; then
+  defaults delete com.apple.finder ShowSidebarHardDrivesOnDesktop
+fi
 
 # Allow text selection in Quick Look previews
 defaults write com.apple.finder QLEnableTextSelection -bool true
@@ -372,32 +385,10 @@ defaults write com.apple.finder FXInfoPanesExpanded -dict \
 # Finder: disable window animations and Get Info animations (Subtle speedup)
 defaults write com.apple.finder DisableAllAnimations -bool true
 
-# --- Icon View Settings (Example using PlistBuddy) ---
-# These apply to Desktop and Finder windows in Icon View mode
+# --- Icon View Settings ---
+# Merge nested preferences through defaults, including missing dictionaries.
 echo "Setting Finder icon view preferences..."
-FINDER_PLIST="${HOME}/Library/Preferences/com.apple.finder.plist"
-
-# Enable snap-to-grid
-/usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:arrangeBy grid" "$FINDER_PLIST" || true
-/usr/libexec/PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:arrangeBy grid" "$FINDER_PLIST" || true
-/usr/libexec/PlistBuddy -c "Set :StandardViewSettings:IconViewSettings:arrangeBy grid" "$FINDER_PLIST" || true
-
-# Set grid spacing (points)
-/usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:gridSpacing 54" "$FINDER_PLIST" || true
-/usr/libexec/PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:gridSpacing 54" "$FINDER_PLIST" || true
-/usr/libexec/PlistBuddy -c "Set :StandardViewSettings:IconViewSettings:gridSpacing 54" "$FINDER_PLIST" || true
-
-# Set icon size (pixels)
-/usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:iconSize 64" "$FINDER_PLIST" || true
-/usr/libexec/PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:iconSize 64" "$FINDER_PLIST" || true
-/usr/libexec/PlistBuddy -c "Set :StandardViewSettings:IconViewSettings:iconSize 64" "$FINDER_PLIST" || true
-
-# Show item info (e.g., file count for folders) below icons
-/usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:showItemInfo true" "$FINDER_PLIST" || true
-/usr/libexec/PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:showItemInfo true" "$FINDER_PLIST" || true
-/usr/libexec/PlistBuddy -c "Set :StandardViewSettings:IconViewSettings:showItemInfo true" "$FINDER_PLIST" || true
-# Ensure labels are below icons (default)
-/usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:labelOnBottom true" "$FINDER_PLIST" || true
+python3 "$(dirname -- "${BASH_SOURCE[0]}")/../scripts/macos_preferences.py" com.apple.finder
 
 # --- Dock ---
 echo "Setting Dock preferences..."
@@ -452,6 +443,12 @@ defaults write com.apple.dock expose-group-by-app -bool false
 
 # Don’t automatically rearrange Spaces based on most recent use
 defaults write com.apple.dock mru-spaces -bool false
+
+# Keep Hammerspoon in charge of tiling; preserve this machine's existing choices.
+defaults write com.apple.WindowManager EnableTilingByEdgeDrag -bool false
+defaults write com.apple.WindowManager EnableTopTilingByEdgeDrag -bool false
+defaults write com.apple.WindowManager EnableTilingOptionAccelerator -bool false
+defaults write com.apple.WindowManager EnableTiledWindowMargins -bool false
 
 # Disable the multi-display swoosh animation when switching spaces
 defaults write com.apple.dock workspaces-swoosh-animation-off -bool true # Corrected: true disables it

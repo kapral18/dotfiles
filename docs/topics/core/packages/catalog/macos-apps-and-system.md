@@ -18,15 +18,14 @@ This slice covers GUI apps, desktop security tools, macOS automation, networking
 
 ## macOS automation and app control
 
-| Tool                                                                                                                                                                            | Source        | Why it is here                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ----------------------------------------------------------------- |
-| [`hammerspoon`](https://www.hammerspoon.org/)                                                                                                                                   | `cask`        | desktop automation and Hyper-key workflows                        |
-| [`karabiner-elements`](https://karabiner-elements.pqrs.org/)                                                                                                                    | `cask`        | keyboard remapping                                                |
-| [`alfred`](https://www.alfredapp.com/)                                                                                                                                          | `cask`        | launcher/workflow app; repo keeps preferences as backup/reference |
-| [`jordanbaird-ice`](https://icemenubar.app/)                                                                                                                                    | `cask`        | menu bar management                                               |
-| [`shottr`](https://shottr.cc/)                                                                                                                                                  | `cask`        | screenshots                                                       |
-| [`fileicon`](https://github.com/mklement0/fileicon), [`duti`](https://github.com/moretension/duti/)                                                                             | `brew`        | custom app icons and file associations                            |
-| [`blueutil`](https://github.com/toy/blueutil), [`blueutil-tui`](https://github.com/Zaloog/blueutil-tui), [`humble-explorer`](https://github.com/koenvervloesem/humble-explorer) | `brew` / `uv` | Bluetooth control/exploration                                     |
+| Tool                                                                                                                                                                            | Source        | Why it is here                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------ |
+| [`hammerspoon`](https://www.hammerspoon.org/)                                                                                                                                   | `cask`        | desktop automation and Hyper-key workflows |
+| [`karabiner-elements`](https://karabiner-elements.pqrs.org/)                                                                                                                    | `cask`        | keyboard remapping                         |
+| [`jordanbaird-ice`](https://icemenubar.app/)                                                                                                                                    | `cask`        | menu bar management                        |
+| [`shottr`](https://shottr.cc/)                                                                                                                                                  | `cask`        | screenshots                                |
+| [`fileicon`](https://github.com/mklement0/fileicon), [`duti`](https://github.com/moretension/duti/)                                                                             | `brew`        | custom app icons and file associations     |
+| [`blueutil`](https://github.com/toy/blueutil), [`blueutil-tui`](https://github.com/Zaloog/blueutil-tui), [`humble-explorer`](https://github.com/koenvervloesem/humble-explorer) | `brew` / `uv` | Bluetooth control/exploration              |
 
 ## Desktop security and inspection
 

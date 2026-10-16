@@ -31,7 +31,6 @@ Ignore rules live in:
 Examples in this setup:
 
 - [`home/app_icons/`](../../home/app_icons/) is used by the `,apply-app-icons` script, but it is not installed into `$HOME`.
-- [`home/Alfred.alfredpreferences/`](../../home/Alfred.alfredpreferences/) is stored in the repo, but not automatically applied.
 
 ## Chezmoi Naming Conventions (How Source Maps To Installed Files)
 

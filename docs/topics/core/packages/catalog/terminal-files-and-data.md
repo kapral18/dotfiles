@@ -15,7 +15,7 @@ This slice is the day-to-day terminal toolbox: shells, tmux, file navigation, fu
 | [`fish-lsp`](https://www.fish-lsp.dev)                                        | `brew` | language server for fish configs/completions |
 | [`starship`](https://starship.rs/)                                            | `brew` | prompt                                       |
 | [`tmux`](https://tmux.github.io/)                                             | `brew` | terminal workbench and popup surface         |
-| [`mprocs`](https://github.com/pvolok/mprocs)                                  | `brew` | multi-process terminal runner                |
+| [`dekit`](https://github.com/pvolok/dekit)                                    | `brew` | multi-process terminal runner                |
 | [`ghostty`](https://ghostty.org/)                                             | `cask` | terminal app                                 |
 
 ## File navigation, search, and cleanup

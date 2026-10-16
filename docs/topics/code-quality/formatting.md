@@ -72,9 +72,8 @@ Extensionless shell and Python scripts are detected from a shebang only after a 
 
 ## Ignored paths
 
-Vendored/third-party code is excluded from formatting:
+Formatter-specific exclusions:
 
-- `home/Alfred.alfredpreferences/` — vendored Alfred workflows
 - chezmoi `symlink_*` sources (e.g. `symlink_AGENTS.md`) hold a symlink target path rather than content, so they are skipped by the markdown linters
 - Prettier has its own ignore list in [`.prettierignore`](../../../.prettierignore)
 

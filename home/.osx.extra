@@ -10,25 +10,6 @@ set -o pipefail
 # set -x
 
 # ==============================================
-# Kill affected applications
-# ==============================================
-function killallApps() {
-  appsToKill=(
-    "Alfred"
-    "AppCleaner"
-    "Bartender"
-  )
-
-  for app in "${appsToKill[@]}"; do
-    killall "${app}" >/dev/null 2>&1 && echo "Killed ${app}"
-  done
-
-  echo "Note that some of these changes require a logout/restart to take effect."
-}
-
-killallApps
-
-# ==============================================
 # .osx.extra
 # ==============================================
 
@@ -39,5 +20,9 @@ killallApps
 defaults write net.freemacsoft.AppCleaner SUAutomaticallyUpdate -bool true
 defaults write net.freemacsoft.AppCleaner SUEnableAutomaticChecks -bool true
 defaults write net.freemacsoft.AppCleaner SUSendProfileInfo -bool false
+
+# Only AppCleaner preferences changed; leave Alfred and Bartender running.
+killall "AppCleaner" >/dev/null 2>&1 || true
+echo "AppCleaner preferences applied; reopen AppCleaner if it was running."
 
 exit 0

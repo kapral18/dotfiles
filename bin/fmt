@@ -70,18 +70,6 @@ need_cmd() {
 
 ok=true
 
-IGNORE_PATTERNS=(
-  "home/Alfred.alfredpreferences/"
-)
-
-is_ignored() {
-  local f="$1"
-  for pat in "${IGNORE_PATTERNS[@]}"; do
-    [[ "$f" == "$pat"* ]] && return 0
-  done
-  return 1
-}
-
 read_text_shebang() {
   local f="$1"
   [[ -f "$f" ]] || return 1
@@ -130,14 +118,14 @@ collect_by_func() {
     for f in "${files[@]}"; do
       [[ -L "$f" ]] && continue
       if "$func" "$f"; then
-        is_ignored "$f" || echo "$f"
+        echo "$f"
       fi
     done
   else
     while IFS= read -r f; do
       [[ -e "$f" && ! -L "$f" ]] || continue
       if "$func" "$f"; then
-        is_ignored "$f" || echo "$f"
+        echo "$f"
       fi
     done < <(git ls-files --cached --others --exclude-standard 2>/dev/null || true)
   fi
