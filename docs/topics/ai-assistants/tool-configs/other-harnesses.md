@@ -20,7 +20,7 @@ Interactive shells route `codex` through `~/bin/,codex`, which injects the local
 
 ### Codex settings
 
-`model = "gpt-6-astra"`, `model_reasoning_effort = "high"`, `tui.auto_recap = false`, `features.memories = false` (`,ai-kb` is the only durable store).
+`model = "gpt-6.1-sol"`, `model_reasoning_effort = "high"`, `tui.auto_recap = false`, `features.memories = false` (`,ai-kb` is the only durable store).
 Codex discovers shared skills under `~/.agents/skills`. `k-review`'s Verify mode uses fresh native agents with the shared reviewer prompt; other modes stay inline. See [Subagents](../subagents.md).
 
 Policy: `approval_policy = "never"`, `sandbox_mode = "danger-full-access"`.
@@ -72,23 +72,25 @@ Fish completions for `--model`/`--effort` share `~/.config/fish/functions/__open
 | Install      | `@oh-my-pi/pi-coding-agent` in [`home/readonly_dot_default-pnpm-pkgs`](../../../../home/readonly_dot_default-pnpm-pkgs)                                                                                                                                                                                                                                      | pnpm global, unpinned       |
 
 OMP uses native `/extended-context on|off|status` and per-model compaction limits (`/models` → Roles → `k`).
-The managed default is off; these are local context budgets, not billing or server-capacity guarantees.
+The managed default is off, so OMP uses each model's native default window: `openai-codex/gpt-6.1-sol` is 500,000 tokens; Astra and Luna are 272,000. Codex's own catalog advertises those same defaults. There is no provider-wide 272K default or custom GPT context override.
+Native extended context opens 922,000 input tokens for Sol and Astra where supported. These are local context budgets, not billing or server-capacity guarantees.
 The former `/context-mode` extension is retired: OMP's native policy could override its requested window while its status still reported success.
 Restart the OMP process after applying the removal; reloading the session or extension dashboard does not unload the already-imported extension. Old transcript mode entries no longer control OMP after restart.
 Pi retains its own [working-context selection](pi.md#working-context-selection).
 
 Key settings:
 
-| Setting                                                | Value                                                                                                                                                                                                                      |
-| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `modelRoles.default`                                   | `anthropic/claude-opus-5-5:high` (Claude subscription); `slow`/`plan` `:max`; `task` `:medium`; `smol`/`vision` `claude-sonnet-5-5:high`; `tiny`/`commit` `claude-haiku-5-5:medium`; `web` stays `openai-codex/gpt-6-luna` |
-| `advisor.enabled`                                      | `true`; advisors use `openai-codex/gpt-6-astra:high`, a different model family from the root                                                                                                                               |
-| `task.agentAdvisor.task`                               | `"off"`; child advisors stay disabled                                                                                                                                                                                      |
-| `memory.backend`, `autolearn.enabled`, `recap.enabled` | `off`, `false`, `false`                                                                                                                                                                                                    |
-| `task.maxRecursionDepth`                               | `1` (children cannot spawn)                                                                                                                                                                                                |
-| `task.disabledAgents`                                  | `reviewer`, `security-reviewer` (the repo `k-agent-reviewer` replaces them)                                                                                                                                                |
-| `extendedContext`, `defaultThinkingLevel`              | `false`, `high`                                                                                                                                                                                                            |
-| `dev.autoqaConsent`                                    | `granted`                                                                                                                                                                                                                  |
+| Setting                                                | Value                                                                                                                                                                                                                                                                             |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `modelRoles`                                           | `default`/`slow`: `openai-codex/gpt-6.1-sol:high`; `task`: Sol `:medium`; `plan`/`advisor`: `anthropic/claude-opus-5-5:high`; `smol`/`vision`: `anthropic/claude-sonnet-5-5:high`; `tiny`/`commit`: `anthropic/claude-haiku-5-5:medium`; `web`: `anthropic/claude-haiku-5-5:high` |
+| `modelProviderOrder`                                   | `openai-codex`, `anthropic`, `openrouter`, `openai`                                                                                                                                                                                                                               |
+| `advisor.enabled`                                      | `true`; the Opus advisor uses a different model family from the Sol root                                                                                                                                                                                                          |
+| `task.agentAdvisor.task`                               | `"off"`; child advisors stay disabled                                                                                                                                                                                                                                             |
+| `memory.backend`, `autolearn.enabled`, `recap.enabled` | `off`, `false`, `false`                                                                                                                                                                                                                                                           |
+| `task.maxRecursionDepth`                               | `1` (children cannot spawn)                                                                                                                                                                                                                                                       |
+| `task.disabledAgents`                                  | `reviewer`, `security-reviewer` (the repo `k-agent-reviewer` replaces them)                                                                                                                                                                                                       |
+| `extendedContext`, `defaultThinkingLevel`              | `false`, `high`                                                                                                                                                                                                                                                                   |
+| `dev.autoqaConsent`                                    | `granted`                                                                                                                                                                                                                                                                         |
 
 `WATCHDOG.yml` replaces OMP's default advisor, which reviewed every turn, with one advisor, `Gate`.
 The default advisor made the root wait for it every turn and could steer mid-run every turn.
@@ -99,7 +101,7 @@ Like `stop-review`, it holds no rules of its own: it judges against `~/AGENTS.md
 It sends every concern in its first review of a run, so the run goes back once with all of them; a later review of the same run sends only a break the agent's last change introduced or a concern held back for the 3-note cap.
 OMP steers at most one continuation turn per final review.
 
-`providers.webSearchOrder` tries Codex then the keyless scrapers. Every unused provider is listed in `webSearchExclude`, including `perplexity`.
+Web search uses `modelRoles.web` (Haiku) as its primary. OMP 18.11.1 migrates the legacy `providers.webSearchOrder` into `retry.fallbackChains.web`, replacing its leading Codex selector with the explicit Haiku role. The effective fallbacks are `web/startpage`, `web/duckduckgo`, `web/ecosia`, `web/google`, `web/mojeek`, `web/public`, then `web/hosted`. Perplexity remains excluded.
 
 ## Crush
 

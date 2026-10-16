@@ -3,28 +3,27 @@
 #
 # Every built-in omp role is pinned explicitly (default/smol/slow/vision/plan/commit/
 # tiny/task/advisor/web per `omp config get modelRoles`); nothing falls through to the
-# harness default or the @smol fallback. Working roles use the Claude subscription
-# (anthropic provider, user call 2026-10-10; was openai-codex since 2026-09-23).
+# harness default or the @smol fallback. Root, slow, and task use the Codex subscription.
 # k-agent-reviewer uses @default.
-# - default: Claude Opus 5.5 :high; slow/plan: Opus 5.5 :max; task: Opus 5.5 :medium
+# - default/slow: GPT-6.1 Sol :high; task: GPT-6.1 Sol :medium
+# - plan/advisor: Claude Opus 5.5 :high, so the advisor uses another model family
 # - vision/smol: Claude Sonnet 5.5 :high; tiny/commit: Claude Haiku 5.5 :medium
-# - advisor: GPT-6 Astra :high, a reviewer from another model family (user call 2026-10-09).
-# - web: GPT-6 Luna, so web search keeps the Codex provider chain below.
+# - web: Claude Haiku 5.5 :high as primary; legacy provider settings below supply fallbacks.
 modelRoles:
-  default: anthropic/claude-opus-5-5:high
+  default: openai-codex/gpt-6.1-sol:high
   smol: anthropic/claude-sonnet-5-5:high
-  slow: anthropic/claude-opus-5-5:max
+  slow: openai-codex/gpt-6.1-sol:high
   vision: anthropic/claude-sonnet-5-5:high
-  plan: anthropic/claude-opus-5-5:max
+  plan: anthropic/claude-opus-5-5:high
   commit: anthropic/claude-haiku-5-5:medium
   tiny: anthropic/claude-haiku-5-5:medium
-  task: anthropic/claude-opus-5-5:medium
-  advisor: openai-codex/gpt-6-astra:high
-  web: openai-codex/gpt-6-luna
+  task: openai-codex/gpt-6.1-sol:medium
+  advisor: anthropic/claude-opus-5-5:high
+  web: anthropic/claude-haiku-5-5:high
 
 modelProviderOrder:
-  - anthropic
   - openai-codex
+  - anthropic
   - openrouter
   - openai
 
@@ -103,10 +102,10 @@ symbolPreset: nerd
 theme:
   dark: dark-catppuccin
 setupVersion: 2
-# web_search: unlisted ids stay in the fallback chain, so every unused provider
-# is excluded. Listing perplexity is an OpenRouter sonar-pro opt-in. Keyless
-# scrapers are duckduckgo/startpage/ecosia/google/mojeek/public; they follow
-# Codex in OMP's built-in relative order.
+# OMP 18.11.1 migrates this legacy order into the web role's fallback chain.
+# The explicit Haiku web role replaces the leading Codex selector; keyless
+# scrapers follow, then OMP's hosted fallback. Keep Perplexity excluded:
+# listing it would opt into OpenRouter sonar-pro.
 providers:
   webSearchOrder:
     - codex
