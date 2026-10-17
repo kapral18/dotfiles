@@ -105,6 +105,23 @@ class NativeRunner:
                 updated += 1
         Path(self.args.results).write_text(f"{updated} {len(self.args.categories) - updated}\n", encoding="utf-8")
 
+    def stop(self) -> bool:
+        command = [self.dekit, "-C", str(self.root), "runner"]
+        result = subprocess.run([*command, "stop"], env=self.env, capture_output=True)
+        if result.returncode == 0:
+            return True
+        status = subprocess.run([*command, "status", "--json"], env=self.env, capture_output=True)
+        try:
+            state = json.loads(status.stdout)
+        except ValueError:
+            state = None
+        if status.returncode == 0 and isinstance(state, dict) and state.get("status") == "absent":
+            return True
+        for output in (result.stdout, result.stderr, status.stderr):
+            if output:
+                sys.stderr.buffer.write(output)
+        return False
+
     def run(self) -> int:
         rc = 0
         stopped = False
@@ -124,7 +141,7 @@ class NativeRunner:
             self.cleaning = True
             if self.cleanup_needed:
                 try:
-                    stopped = self.command("runner", "stop", capture=True) == 0
+                    stopped = self.stop()
                 except OSError as error:
                     print(f"native dekit stop: {error}", file=sys.stderr)
                 if not stopped:

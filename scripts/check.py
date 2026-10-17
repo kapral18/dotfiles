@@ -293,6 +293,14 @@ EXTRA_TESTS: tuple[ExtraTest, ...] = (
         ),
     ),
     ExtraTest(
+        name="advisor-followup",
+        argv=("bun", "test", "scripts/tests/advisor_followup.test.ts"),
+        prefixes=(
+            "scripts/tests/advisor_followup.test.ts",
+            "home/dot_omp/private_agent/extensions/advisor-followup.ts",
+        ),
+    ),
+    ExtraTest(
         name="fish-history-merge",
         argv=("python3", "home/exact_lib/exact_,history-sync/fish-history-merge.test.py", "-v"),
         prefixes=("home/exact_lib/exact_,history-sync/",),

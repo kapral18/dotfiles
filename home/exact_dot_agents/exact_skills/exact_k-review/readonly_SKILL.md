@@ -1,6 +1,6 @@
 ---
 name: k-review
-description: "Use to review local changes, a PR, review threads (PR fixes), or a plan, and for independent verify rounds (two fresh reviewers and a bounded fix loop, repeated until a round is clean or a cap)."
+description: "Use to review local changes, a PR, review threads (PR fixes), or a plan, and for independent verify rounds (two fresh reviewers and a fix loop, repeated until a round is clean)."
 ---
 
 # Review
@@ -73,7 +73,7 @@ Use this procedure for both full reviews and fix-diff reviews:
   Put the shared reviewer prompt and review packet in `message`. Keep the parent's model and reasoning effort.
 - Without a reviewer profile or fresh native agent support, review inline once and report the lack of independent review.
 
-## Verify mode (independent review rounds, bounded fix loop)
+## Verify mode (independent review rounds, fix loop until clean)
 
 Use when `~/AGENTS.md` §3 step 5 requires a review of a finished change, or when the user asks for an independent, fresh, or second-opinion review, or to verify or de-slop a change.
 
@@ -100,7 +100,7 @@ Use when `~/AGENTS.md` §3 step 5 requires a review of a finished change, or whe
    A handoff note records its path.
 6. Report the review scope, fixed findings with evidence, rejected findings with reasons, `Open:` items with their blockers, and `Proposed:` out-of-scope changes.
 
-Run full rounds without asking until `review_fixes.md` says to stop. A round past its caps needs the user to ask for it.
+Run full rounds without asking until `review_fixes.md` says to stop.
 
 ## Posting
 

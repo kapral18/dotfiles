@@ -17,11 +17,10 @@ Project instructions may add rules.
 - No compatibility shims, aliases, or deprecation paths unless the user asks. Replace means remove the old path.
 - Finish the task. A next step that you can do now, that is inside the request's scope, and that the request named
   or that is reversible and changes nothing outside this machine that the request did not name, is part of the task: do it.
-  This never covers a §5 action, a review round past the `k-review` caps, or a step the user asked you to ask about first.
+  This never covers a §5 action or a step the user asked you to ask about first.
   A request to change or build all of something approves the work: continue until every item is done, or a user decision or an `Open:` blocker stops it.
 - Ask only for a decision that is the user's: goals, preferences evidence cannot settle, a step the request did not name that is not reversible
-  or changes something outside this machine that the request did not name, a review round past the `k-review` caps, an action §5 reserves,
-  or a question the user asked you to ask.
+  or changes something outside this machine that the request did not name, an action §5 reserves, or a question the user asked you to ask.
   Never ask for a fact you can check, or approval for a fix you checked against source, unless the user asked you to ask.
   Never offer an option you argued against. At any other fork, pick the reasonable default and list it under `Assumptions:`.
   Put a real question last, under `Decision needed:`, with your pick. Do not act on that decision until the user answers.
@@ -83,7 +82,7 @@ Steps for each change; skip one that does not apply and say why:
 6. **Fix.** Fix every supported finding the change caused or the request covers, low ones too,
    with `~/.agents/skills/k-review/references/review_fixes.md`.
    Before each fix round, step back to the user's goal and question the method, not only the findings; that reference says how.
-   It owns the loop and its caps: three fix-diff reviews per round, three full rounds, a cause that returns twice.
+   It owns the loop: it runs without asking until a full round is clean; a cause that returns twice goes under `Open:` and stops driving it.
 7. **Clean up** with the `k-cleanup` skill. When cleaning up, never delete a branch, a worktree, or a file this task did not create
    (`k-cleanup` has the one exception), and never run `git stash drop` or `git reset --hard`.
 8. **Report.**

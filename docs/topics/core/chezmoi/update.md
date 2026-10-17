@@ -27,6 +27,8 @@ Each step's output is relayed through a prefixed indent. The relay flushes parti
 
 When multiple package categories run in parallel, `,update` opens the [dekit](https://github.com/pvolok/dekit) TUI with one job per category. Homebrew's `dekit` formula installs the `dekit` executable. Each run uses its own temporary runner and a private copy of `dekit`, so Homebrew can upgrade dekit mid-run. Press `q` or `Q` after reviewing the logs: unfinished jobs are stopped and count as failed, finished ones keep their exit status. Without `dekit`, with a single category, or on a dry run, steps run sequentially without the TUI. Manual packages run after the parallel phase has shut down; a runner error skips them and an interruption ends the update.
 
+If quitting dekit already stopped the runner, cleanup confirms that it is absent and continues to manual packages without reporting a lifecycle failure. A failed stop with an unconfirmed shutdown still retains the temporary runner directory and prints a recovery command. To rerun only a skipped manual phase, use `,update --only manual`.
+
 ## Manual Steps (if you prefer granular control)
 
 ### Update Dotfiles From GitHub (Chezmoi)

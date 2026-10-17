@@ -42,8 +42,8 @@ const SNAPSHOT =
 // The ~/AGENTS.md §1 limits on acting without asking, kept whole so a send-back never pushes past them.
 export const STEP =
   'a step ~/AGENTS.md §1 makes part of the task (in the request\'s scope, and either named by the request or reversible and ' +
-  'changing nothing outside this machine that the request did not name; never a §5 action, a review round past the ' +
-  '`k-review` caps, or a step the user asked you to ask about first)'
+  'changing nothing outside this machine that the request did not name; never a §5 action or a step the user asked you to ' +
+  'ask about first)'
 
 // Each message states what the check found, what to do now, and the ~/AGENTS.md rule it follows, with the limits that rule sets on acting,
 // so the one send-back ends with the work done rather than reworded.

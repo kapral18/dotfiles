@@ -188,7 +188,19 @@ elif command == ["attach", "--no-start"]:
             signal.pause()
 elif command == ["runner", "stop"]:
     if mode == "stop_failure":
-        sys.exit(29)
+        print("Error: Runner is not running.", file=sys.stderr)
+        sys.exit(1)
+elif command == ["runner", "status", "--json"]:
+    status = os.environ.get("UPDATE_TEST_RUNNER_STATUS", "running")
+    if status == "query_failure":
+        print('{"status":"absent"}')
+        sys.exit(31)
+    if status == "malformed":
+        print("{")
+    elif status == "wrong_shape":
+        print("[]")
+    else:
+        print(json.dumps({"status": status}))
 else:
     sys.exit(42)
 """
@@ -370,17 +382,40 @@ exit "${{UPDATE_TEST_{category.upper()}_RC:-0}}"
                 self.assertEqual(calls[-1]["command"], ["runner", "stop"])
                 self.assertFalse(Path(calls[0]["root"]).exists())
 
-    def test_when_stop_fails_should_retain_exact_root_and_report_recovery(self) -> None:
+    def test_when_runner_already_stopped_should_finish_cleanup_and_run_manual(self) -> None:
+        marker = self.prepare_manual()
         self.env["UPDATE_TEST_MODE"] = "stop_failure"
-        result = self.run_update()
-        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.env["UPDATE_TEST_RUNNER_STATUS"] = "absent"
+
+        result = self.run_update(["--only", "gh,uv,manual"])
         root = Path(self.invocations()[0]["root"])
-        self.addCleanup(shutil.rmtree, root)
-        self.assertTrue(root.exists())
-        self.assertTrue(os.access(root / "dekit", os.X_OK))
-        self.assertIn(str(root), result.stderr)
-        self.assertIn("Recovery:", result.stderr)
-        self.assertIn("runner stop", result.stderr)
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(marker.exists(), "verified shutdown must allow the manual phase")
+        self.assertFalse(root.exists())
+        self.assertNotIn("Runner is not running", result.stderr)
+        self.assertNotIn("native dekit lifecycle failed", result.stdout)
+
+    def test_when_runner_absence_is_unverified_should_retain_root_and_skip_manual(self) -> None:
+        marker = self.prepare_manual()
+        for status in ("running", "unknown", "query_failure", "malformed", "wrong_shape"):
+            with self.subTest(status=status):
+                self.calls.unlink(missing_ok=True)
+                self.env["UPDATE_TEST_MODE"] = "stop_failure"
+                self.env["UPDATE_TEST_RUNNER_STATUS"] = status
+
+                result = self.run_update(["--only", "gh,uv,manual"])
+
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertFalse(marker.exists())
+                root = Path(self.invocations()[0]["root"])
+                self.addCleanup(shutil.rmtree, root)
+                self.assertTrue(root.exists())
+                self.assertTrue(os.access(root / "dekit", os.X_OK))
+                self.assertIn(str(root), result.stderr)
+                self.assertIn("Recovery:", result.stderr)
+                self.assertIn("runner stop", result.stderr)
 
     def test_when_parent_receives_signal_should_wait_for_cleanup_and_skip_manual(self) -> None:
         marker = self.prepare_manual()
