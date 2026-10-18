@@ -12,6 +12,7 @@ Cwd/git root and tmux session are identity metadata only. Never store artifacts 
 
 ## Generated artifacts
 
+When authoring generated content, load `~/.agents/skills/k-anti-slop/SKILL.md` and select references for the prose, UI, or data displays actually in scope; reuse existing loads.
 Before authoring, writing, opening, or updating a generated artifact, MUST load and follow `~/.agents/skills/k-artifact/references/generated-artifacts.md`.
 It owns generated feedback behavior, semantic metadata, ambient theming, and the generated-artifact workflow.
 

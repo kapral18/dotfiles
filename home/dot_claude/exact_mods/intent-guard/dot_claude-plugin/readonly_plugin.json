@@ -1,4 +1,5 @@
 {
+  "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "intent-guard",
   "version": "0.1.0",
   "description": "Keeps the session on the user's goal through ,task: shows the intent card each prompt, refuses the first edit without one, flags edits outside its Scope, asks for a zoom-out every 25 tool calls and after compaction, keeps the card through compaction, and sends a stop back while a Done-when item is open.",

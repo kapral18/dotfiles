@@ -5,6 +5,48 @@ title: LSP and source jumps
 
 # LSP and source jumps
 
+## Configuration schemas
+
+JSON/JSONC (`jsonls`), YAML (`yamlls`), and TOML (`tombi`) use schemas for option completion, `K` hover documentation, and validation. Schema references live in the configuration files: a top-level `$schema` field for JSON/JSONC, a `# yaml-language-server: $schema=URL` comment for YAML, or a `#:schema URL` header followed by a blank line for TOML. Chezmoi preserves these references when it deploys the files, so hints work while editing either copy without a registry of source filenames.
+
+JSON and YAML use the installed SchemaStore catalog for standard filenames; Tombi retains its standard catalog. YAML keeps the existing custom associations and Kubernetes detection. Schema-companion's LSP source remains available for manual selection, but automatic LSP matching is disabled: yamlls already applies its own associations, and reapplying them through schema-companion replaces shared filename patterns with one buffer URI.
+
+| Configuration family in this repo                                                                                                         | Schema coverage                                                                               |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Claude settings and llama.cpp settings templates                                                                                          | Claude Code Settings, via `$schema` in settings and templates                                 |
+| Claude plugin manifests                                                                                                                   | Claude Code Plugin Manifest, via `$schema` in each manifest                                   |
+| Pi settings and model definitions                                                                                                         | Pi's published `settings.schema.json` and `models.schema.json`, for source and deployed files |
+| OpenCode                                                                                                                                  | OpenCode's config schema; its existing `$schema` also applies                                 |
+| Markdownlint                                                                                                                              | Markdownlint schema via `$schema`                                                             |
+| GitHub CLI config and hosts, lazygit, gh-dash                                                                                             | Each application's schema, including gh-dash's shared YAML fragment and config template       |
+| Codex                                                                                                                                     | Codex config schema via its existing `#:schema` header                                        |
+| Chezmoi config, mise, Starship, StyLua                                                                                                    | Their published schemas, including renamed source files and config templates                  |
+| Yazi config and theme                                                                                                                     | Separate official Yazi and theme schemas for source and deployed files                        |
+| `package.json`, `tsconfig.json`, `pyrightconfig.json`, `.prettierrc`, `pnpm-workspace.yaml`, GitHub workflows, skill `agents/openai.yaml` | Standard filenames already match SchemaStore; YAML now loads these catalog associations too   |
+| `ruff.toml`, `.stylua.toml` and other standard TOML configs                                                                               | Tombi's standard catalog                                                                      |
+
+Pi publishes its schemas with the coding-agent package; Yazi publishes [configuration schemas](https://yazi-rs.github.io/docs/configuration/overview/). [Tombi's schema support](https://tombi-toml.github.io/tombi/docs/configuration/) accepts per-file headers and project-specific schemas. Published schemas can lag an installed application's options. The language servers fetch schema documents and need network access when a document is not cached.
+
+Chezmoi JSON, JSONC, YAML, and TOML templates retain their compound `*.chezmoitmpl` filetypes and now attach the corresponding language server. Automatic formatting skips those raw templates. The server still parses the source as the underlying language: standalone `{{ if ... }}` blocks can produce syntax diagnostics or limit completion near the directive. Schemas do not evaluate templates. Comment-wrapped directives that already retain a native filetype keep their existing behavior.
+
+The remaining files have syntax support or native language tooling, but no verified matching option schema is configured:
+
+| Configuration family                                                                                                                                             | Current boundary                                                                                                     |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| OMP `config.yml.tmpl`, `models.yml`, `WATCHDOG.yml`                                                                                                              | Runtime definitions exist, but no matching published JSON Schema was found in the installed package                  |
+| 1Password SSH agent                                                                                                                                              | SchemaStore lists a schema, but its published URL returned HTTP 404 on 2026-10-19; no schema reference is added      |
+| Karabiner, lgtm, tuicr, redtab                                                                                                                                   | No matching published schema was verified; JSON/TOML syntax tooling remains available                                |
+| pnpm global `config.yaml.tmpl`                                                                                                                                   | This is a different configuration surface from `pnpm-workspace.yaml`; the workspace schema is not assigned to it     |
+| `.chezmoiexternal.toml`                                                                                                                                          | External-source declarations have a different format from chezmoi's own config                                       |
+| Neovim `.neoconf.json`                                                                                                                                           | Neoconf generates schemas at runtime; that plugin is not active in this config                                       |
+| Claude `hooks.json` with `modules`, Codex model catalogs, Pi subagent extension config, sem telemetry                                                            | Custom or internal formats; their parent application's settings schema does not describe them                        |
+| MCP registry, app-icon mapping, tmux GitHub picker YAML, artifact theme JSON, Docusaurus `_category_.json`                                                       | Repo-specific data or metadata without a verified schema association                                                 |
+| Lockfiles                                                                                                                                                        | Generated data; no settings schema is applied                                                                        |
+| Lua, TypeScript/JavaScript, Python, shell/Fish, Ruby/Brewfiles                                                                                                   | Existing language tooling; application APIs depend on the types or annotations available to that tooling             |
+| INI, `.editorconfig`, llama.cpp model presets, tmux/Ghostty/btop/bat/tig configs, SSH/GPG/Git/readline/curl/ripgrep configs, `.gemrc`, package lists and crontab | Application-specific syntax or plain text, without an option schema integration                                      |
+| Crush `crushrc`                                                                                                                                                  | Shell-like configuration DSL, not a JSON config                                                                      |
+| KDL and XML                                                                                                                                                      | Existing syntax tooling; XML's LemMinX can use a declared schema, but no additional repo-specific schema is assigned |
+
 ## LSP code actions
 
 `<leader>ca` and `<leader>cA` show code actions with `fzf-lua`, not Neovim's default `vim.ui.select`.

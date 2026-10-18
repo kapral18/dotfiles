@@ -116,6 +116,20 @@ GATES: tuple[Gate, ...] = (
 
 TEST_RULES: tuple[TestRule, ...] = (
     TestRule(
+        prefixes=(
+            "home/dot_config/exact_nvim/exact_lua/exact_util/readonly_format.lua",
+            "home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_json.lua",
+            "home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_yaml.lua",
+            "home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_rust.lua",
+            "scripts/tests/neovim_config_schemas.lua",
+        ),
+        tests=("tests/test_neovim_config_schemas.py",),
+    ),
+    TestRule(
+        prefixes=("home/exact_dot_agents/exact_skills/exact_k-anti-slop/exact_scripts/",),
+        tests=("tests/test_anti_slop_contrast.py",),
+    ),
+    TestRule(
         prefixes=("home/dot_hammerspoon/",),
         tests=("tests/test_hammerspoon_search.py",),
     ),

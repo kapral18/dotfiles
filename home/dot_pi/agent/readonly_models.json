@@ -1,4 +1,5 @@
 {
+  "$schema": "https://pi.dev/schemas/models.schema.json",
   "providers": {
     "github-copilot": {
       "modelOverrides": {
@@ -8,6 +9,50 @@
       }
     },
     "openrouter": {
+      "models": [
+        {
+          "id": "deepseek/deepseek-v4.1-flash-1017",
+          "name": "DeepSeek V4.1 Flash 1017",
+          "api": "openai-completions",
+          "baseUrl": "https://openrouter.ai/api/v1",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": "none",
+            "minimal": null,
+            "low": "low",
+            "medium": null,
+            "high": "high",
+            "xhigh": null,
+            "max": "max"
+          },
+          "input": ["text", "image"],
+          "cost": {
+            "input": 0.15,
+            "output": 0.6,
+            "cacheRead": 0.003,
+            "cacheWrite": 0
+          },
+          "contextWindow": 1048576,
+          "maxTokens": 393216,
+          "compat": {
+            "supportsDeveloperRole": false,
+            "thinkingFormat": "openrouter",
+            "supportsStrictMode": true,
+            "sendSessionAffinityHeaders": true,
+            "requiresReasoningContentOnAssistantMessages": true
+          },
+          "inputLimits": {
+            "images": {
+              "resize": {
+                "maxWidth": 2000,
+                "maxHeight": 2000,
+                "maxBytes": 4718592,
+                "jpegQuality": 80
+              }
+            }
+          }
+        }
+      ],
       "modelOverrides": {
         "moonshotai/kimi-k3": {
           "compat": {
@@ -26,7 +71,7 @@
             }
           }
         },
-        "deepseek/deepseek-v4.1-flash": {
+        "deepseek/deepseek-v4.1-flash-1017": {
           "compat": {
             "openRouterRouting": {
               "preferred_min_throughput": 35,

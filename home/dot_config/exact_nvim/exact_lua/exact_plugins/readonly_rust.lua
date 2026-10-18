@@ -103,7 +103,12 @@ return {
     opts = {
       servers = {
         taplo = { enabled = false },
-        tombi = {},
+        tombi = {
+          filetypes = { "toml", "toml.chezmoitmpl" },
+          get_language_id = function(_, filetype)
+            return filetype:match("^[^.]+")
+          end,
+        },
       },
     },
   },

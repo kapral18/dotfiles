@@ -27,6 +27,16 @@ function M.format(opts)
   opts = opts or {}
   local buf = opts.buf or vim.api.nvim_get_current_buf()
 
+  -- Native formatters do not understand raw chezmoi template directives.
+  local template_ft = vim.bo[buf].filetype:match("^(.-)%.chezmoitmpl$")
+  if
+    not opts.force
+    and template_ft
+    and vim.tbl_contains({ "json", "jsonc", "yaml", "yaml.docker-compose", "toml" }, template_ft)
+  then
+    return
+  end
+
   if vim.g.autoformat == false and not opts.force then
     return
   end

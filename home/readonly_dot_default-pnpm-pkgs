@@ -23,6 +23,9 @@ playwriter
 # Description: Find unused dependencies, exports, and files in JS/TS projects
 # URL: https://knip.dev/
 knip
+# Description: Local README quality checks used by k-readme; pin matches the skill's audited CLI
+# URL: https://github.com/princejain756/readmeroast
+readmeroast@1.0.0
 # Description: Coding agent (OMP). Unpinned; apply upgrades to latest.
 # URL: https://omp.sh
 @oh-my-pi/pi-coding-agent

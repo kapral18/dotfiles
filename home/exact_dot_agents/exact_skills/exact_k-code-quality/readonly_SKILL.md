@@ -23,6 +23,10 @@ Do not load React/web/test/design secondaries merely because they might become r
 - Load `~/.agents/skills/k-code-quality-tests/SKILL.md` when changed/read files are tests, fixtures, mocks, assertions, or test plans.
 - Load `~/.agents/skills/k-code-quality-web/SKILL.md` when changed/read files touch browser-rendered HTML, CSS, layout, visual states, accessibility, or focus behavior.
 - Load `~/.agents/skills/k-codebase-design/SKILL.md` when the task designs a module interface, decides where a seam goes, or aims to make code more testable.
+- Load `~/.agents/skills/k-readme/SKILL.md` before creating, editing, or reviewing a README file.
+- Load `~/.agents/skills/k-anti-slop/SKILL.md` for prose, documentation, data displays, localization, or code comments in scope;
+  select its matching references.
+  Reuse an existing load from another route.
 
 ## Minimal Edit Scope
 

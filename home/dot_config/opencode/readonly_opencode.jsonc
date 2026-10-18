@@ -35,8 +35,8 @@
           },
         },
         // deepseek lanes carry a 35 t/s preferred floor under a $1.20/M completion cap (no quantization filter, no sort; presets re-versioned 2026-09-11)
-        // on the still-selectable DeepSeek V4.1 Flash via `deepseek-lanes-max`.
-        "deepseek/deepseek-v4.1-flash@preset/deepseek-lanes-max": {
+        // on the still-selectable DeepSeek V4.1 Flash 1017 via `deepseek-lanes-max`.
+        "deepseek/deepseek-v4.1-flash-1017@preset/deepseek-lanes-max": {
           "limit": { "context": 1048576, "output": 384000 },
           "options": {
             "reasoningEffort": "max",

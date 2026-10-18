@@ -1,4 +1,5 @@
 {
+  "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "sop-guard",
   "version": "0.1.0",
   "description": "Refuses tool calls that break ~/AGENTS.md and skill hard rules: chezmoi-managed targets, secret printing, and default tmux server changes.",

@@ -21,6 +21,10 @@ return {
     opts = function(_, opts)
       opts.servers = opts.servers or {}
       opts.servers.jsonls = vim.tbl_deep_extend("force", {
+        filetypes = { "json", "jsonc", "json.chezmoitmpl", "jsonc.chezmoitmpl" },
+        get_language_id = function(_, filetype)
+          return filetype:match("^[^.]+")
+        end,
         settings = {
           json = {
             schemas = require("schemastore").json.schemas(),

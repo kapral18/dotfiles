@@ -33,7 +33,7 @@ No command-line, environment, or resumed-session overrides.
 | `,opencode-llama-cpp` | OpenCode with the local llama.cpp provider                                          | `llama-cpp/nemotron-3.5`                              | server auto              | 262,144        |
 | `crush`               | Crush                                                                               | `openrouter/z-ai/glm-5.3-flash`                       | high                     | long           |
 | `freebuff`            | Freebuff                                                                            | not exposed by CLI                                    | —                        | —              |
-| `,q`                  | one-shot Pi with tools and a short system prompt                                    | `openrouter/deepseek/deepseek-v4.1-flash`             | high                     | long           |
+| `,q`                  | one-shot Pi with tools and a short system prompt                                    | `openrouter/deepseek/deepseek-v4.1-flash-1017`        | high                     | long           |
 
 - `command codex` bypasses the fish function that routes `codex` to `,codex`.
 - OpenRouter wrappers append `@preset/effort-<level>`; `--context short` keeps the cheaper context tier.

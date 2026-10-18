@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Sequence, TextIO
 
 OPENROUTER_PROVIDER = "openrouter"
-Q_MODEL = "deepseek/deepseek-v4.1-flash"
+Q_MODEL = "deepseek/deepseek-v4.1-flash-1017"
 # Non-empty: Pi treats "" as missing and rebuilds the coding-assistant default.
 # Empty append skips ~/.pi/agent/APPEND_SYSTEM.md discovery. Pi still appends cwd.
 Q_SYSTEM_PROMPT = "Be brief. Use tools when the question needs them."
@@ -43,7 +43,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = LauncherArgumentParser(
         prog=",q",
         description=(
-            "One-shot OpenRouter Pi agent with tools. Uses DeepSeek V4.1 Flash at high effort and its native full context, "
+            "One-shot OpenRouter Pi agent with tools. Uses DeepSeek V4.1 Flash 1017 at high effort and its native full context, "
             "adds a short system prompt, and skips APPEND_SYSTEM.md, skills, context files, extensions, "
             "themes, and discovered prompt templates. Prompt text is passed literally."
         ),

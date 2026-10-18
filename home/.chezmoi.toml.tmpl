@@ -1,3 +1,5 @@
+#:schema https://www.schemastore.org/chezmoi.json
+
 {{ $is1PasswordReady := promptBool "Is 1Password ready? y/N" -}}
 
 {{ if not $is1PasswordReady -}}

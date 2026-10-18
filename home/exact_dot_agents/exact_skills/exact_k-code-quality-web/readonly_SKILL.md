@@ -11,6 +11,8 @@ Use this for browser-rendered markup and styling.
 
 Do not load secondary skills until read/diff evidence proves the surface is in scope.
 
+- Load `~/.agents/skills/k-anti-slop/SKILL.md` and select the references for the concrete visual, accessibility, responsive, copy, data-display, or localization surface being changed or reviewed.
+  Reuse references already loaded for this invocation.
 - If the concrete web surface is React/JSX/TSX, load `~/.agents/skills/k-code-quality-react/SKILL.md` unless its full text is already loaded for this active invocation.
   Reuse that load through reciprocal references; read fresh on a new invocation or after its text changes or is pruned.
 

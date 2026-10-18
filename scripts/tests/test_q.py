@@ -60,14 +60,14 @@ class TestQ(unittest.TestCase):
         core = load_core()
 
         self.assertTrue(payload["q"])
-        self.assertEqual("deepseek/deepseek-v4.1-flash", payload["model"])
+        self.assertEqual("deepseek/deepseek-v4.1-flash-1017", payload["model"])
         self.assertEqual("pi", argv[0])
         self.assertEqual(
             [
                 "--provider",
                 "openrouter",
                 "--model",
-                "deepseek/deepseek-v4.1-flash",
+                "deepseek/deepseek-v4.1-flash-1017",
                 "--system-prompt",
                 core.Q_SYSTEM_PROMPT,
                 "--append-system-prompt",
@@ -195,7 +195,7 @@ console.log(JSON.stringify(rows));
                     {
                         "diagnostics": [],
                         "fileArgs": [],
-                        "model": "deepseek/deepseek-v4.1-flash",
+                        "model": "deepseek/deepseek-v4.1-flash-1017",
                         "provider": "openrouter",
                         "print": True,
                         "systemPrompt": "Be brief. Use tools when the question needs them.",

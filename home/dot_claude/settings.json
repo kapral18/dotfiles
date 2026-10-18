@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
     "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1",
     "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/stop-review:~/.claude/mods/intent-guard:~/.claude/mods/behavior-map-guard:~/.claude/mods/sop-guard"
@@ -8,7 +9,7 @@
     "defaultMode": "bypassPermissions"
   },
   "model": "claude-opus-5-5",
-  "advisorModel": "claude-opus-5-5",
+  "advisorModel": "opus",
   "effortLevel": "high",
   "autoCompactWindow": 400000,
   "autoMemoryEnabled": false,

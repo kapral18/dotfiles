@@ -11,6 +11,11 @@ title: Claude Code
 
 ## Claude Code settings
 
+`settings.json` declares the [Claude settings schema](https://json.schemastore.org/claude-code-settings.json) with `$schema`.
+Neovim's `jsonls` uses it for option and value completion, `K` hover descriptions, and validation, including when editing `home/dot_claude/settings.json`.
+The explicit reference covers the chezmoi source path, which SchemaStore's `.claude/settings.json` pattern does not match.
+The schema can lag behind newly released options.
+
 | Area             | Value                                                                                      |
 | ---------------- | ------------------------------------------------------------------------------------------ |
 | Model            | `claude-opus-5-5`, `effortLevel: high` (also pinned in `modelSettings`)                    |

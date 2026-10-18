@@ -42,6 +42,7 @@ This slice covers source control, review/readiness tooling, build/test utilities
 | [`bats-core`](https://github.com/bats-core/bats-core)                                                             | `brew` | shell tests                            |
 | [`tokei`](https://github.com/XAMPPRocky/tokei)                                                                    | `brew` | code statistics                        |
 | [`feluda`](https://github.com/anistark/feluda)                                                                    | `brew` | code/search analysis utility           |
+| [`readmeroast`](https://github.com/princejain756/readmeroast)                                                     | `pnpm` | README checks for `k-readme`           |
 
 ## Build, CI, containers, and VMs
 

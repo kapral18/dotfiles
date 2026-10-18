@@ -68,6 +68,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'topics/ai-assistants/instructions',
         'topics/ai-assistants/skills',
+        'topics/ai-assistants/anti-slop',
         'topics/ai-assistants/subagents',
         'topics/ai-assistants/memory-and-handoffs',
         'topics/ai-assistants/mcp',

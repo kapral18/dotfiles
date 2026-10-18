@@ -25,6 +25,8 @@ Scope boundaries:
 
 Apply every rule before drafting text another human will read.
 In-session `~/AGENTS.md` §8 shape rules do not override this skill's friendly register.
+Load `~/.agents/skills/k-anti-slop/SKILL.md` and its prose reference for the wording filter;
+reuse them if already loaded for this invocation.
 
 - Choose no reply when it would only restate the thread or add attribution trivia, or turn a casual exchange into an investigation report.
 - Match the surface's register; keep simple social replies in natural conversational phrasing, using lab-report phrasing only when requested.

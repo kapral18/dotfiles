@@ -73,7 +73,7 @@ aliases such as `emoji -1` remain literal. Names and queries share the app searc
 Unicode case/diacritic folding.
 
 Translation calls OpenRouter's chat API directly with
-`deepseek/deepseek-v4.1-flash`, the model `,q` uses, with reasoning off and no
+`deepseek/deepseek-v4.1-flash-1017`, the model `,q` uses, with reasoning off and no
 tools, so the text being translated cannot steer an agent. `tr <target> <text>`
 lets the model infer the source; `tr <source>><target> <text>` states it. Only
 these codes are offered: `en`, `ru`, `nl`, `es`, `fr`, `hy`, `de`, `it`, `tr`,

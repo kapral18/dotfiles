@@ -1,6 +1,6 @@
 local M = { title = "Translation", hint = "tr <target> <text> — or tr <source>><target> <text>" }
 -- Same model as ,q; called directly without tools so translated text cannot steer an agent.
-local MODEL = "deepseek/deepseek-v4.1-flash"
+local MODEL = "deepseek/deepseek-v4.1-flash-1017"
 local ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 local LANGUAGES = {
   ar = "Arabic",

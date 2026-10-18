@@ -9,6 +9,23 @@ Claude Code, Pi, OMP, Codex, and OpenCode read the same tree. A skill loads when
 
 Skills hold task mechanics only. They do not delegate work, keep their own lifecycle, or write memory automatically.
 
+## README writing
+
+`k-readme` is model-invoked for README creation, edits, and reviews. `k-code-quality` also loads it when a repository task touches a README.
+It applies [ReadmeRoast](https://github.com/princejain756/readmeroast) to an existing local file after drafting, then checks each finding against the project and the requested scope.
+Scores are advisory: factual accuracy and useful examples matter more than reaching 100. Curated lists and internal READMEs do not need artificial install or screenshot sections.
+
+The CLI is pinned in the [pnpm package list](../../../home/readonly_dot_default-pnpm-pkgs) and installed through the [pnpm package workflow](../core/packages/pnpm.md).
+The skill checks that the file exists before invoking the CLI, preventing an already-missing path from reaching its GitHub mode.
+External URLs and heading anchors are outside the CLI's link check. If the binary is unavailable, the skill uses its rubric without claiming a score.
+
+## Anti-slop writing and UI
+
+`k-anti-slop` covers all six [antislop](https://github.com/miqdadbadjuber/anti-slop) domains and adds local guidance for technical documentation, interface copy, data displays, and localization.
+Its nine references load by the requested change; a narrow edit does not load every category present in the surrounding artifact.
+`k-code-quality`, `k-code-quality-web`, `k-communication`, `k-readme`, and generated-content work in `k-artifact` route matching work to it. It preserves facts, intended voice, and design direction; existing SOP verification and approval rules remain authoritative.
+The bundled Python contrast calculator runs locally without an MCP server. See the [inspection, coverage, and adoption decisions](anti-slop.md).
+
 ## Review and verification
 
 `k-review` reviews local changes, PRs, PR feedback, and plans inline. Its **verify mode** runs review rounds until one comes back clean:
@@ -27,6 +44,7 @@ Skills hold task mechanics only. They do not delegate work, keep their own lifec
 | Skill                      | Use                                                                                                                                                                                                                                                                                                 | Invocation |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
 | `k-ai-kb`                  | Use to search past-session knowledge with ,ai-kb before working on a subsystem or unfamiliar error, or to store a verified reusable gotcha or recipe.                                                                                                                                               |            |
+| `k-anti-slop`              | Use when writing or reviewing prose, technical docs, UI, accessibility, responsive or localized content, data displays, or code comments.                                                                                                                                                           |            |
 | `k-artifact`               | Use for cache-only HTML artifacts, visual reports/diagrams, or live-page overlays without worktree writes.                                                                                                                                                                                          |            |
 | `k-behavior-map`           | Use before and after changing code in a git repo: collects the change's impact (what it can break, and what new behavior must fit), checks it against the per-repo behavior map with ,behavior-map, maps unmapped areas, and maintains entries (area init, update, add, refresh, promote, resolve). |            |
 | `k-build`                  | Manual-only recipe to implement an approved spec inline, with tests and docs, and one check run on the finished change.                                                                                                                                                                             | manual     |
@@ -64,6 +82,7 @@ Skills hold task mechanics only. They do not delegate work, keep their own lifec
 | `k-present-pr`             | Build and open a self-contained HTML walkthrough that makes a PR review-ready.                                                                                                                                                                                                                      | manual     |
 | `k-prototype`              | Use when building a throwaway prototype to sanity-check logic/state or explore UI direction before committing.                                                                                                                                                                                      |            |
 | `k-public-sources`         | Use when inspecting external public source or synthesizing evidence across sources.                                                                                                                                                                                                                 |            |
+| `k-readme`                 | Use when creating, editing, or reviewing README files; apply ReadmeRoast checks to the project's actual audience and scope.                                                                                                                                                                         |            |
 | `k-review`                 | Use to review local changes, a PR, review threads (PR fixes), or a plan, and for independent verify rounds (two fresh reviewers and a fix loop, repeated until a whole-scope round is clean).                                                                                                       |            |
 | `k-sem`                    | Use when entity history across file moves, per-entity blame, or entity-level diff with rename/cosmetic classification needs ,sem; indexed structural queries only on explicit request.                                                                                                              |            |
 | `k-slack`                  | Use for Slack MCP effects: send/schedule messages, thread replies, reactions, canvas create/update, Slack drafts.                                                                                                                                                                                   |            |
