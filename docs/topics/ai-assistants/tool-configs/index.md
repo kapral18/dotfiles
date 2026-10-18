@@ -19,21 +19,21 @@ MCP servers are single-sourced in [MCP servers](../mcp.md); models are set per h
 No command-line, environment, or resumed-session overrides.
 `—` means no explicit context override; numbers are context tokens.
 
-| Launcher              | What it does                                                                        | Default model                                         | Effort                   | Context               |
-| --------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------ | --------------------- |
-| `claude`              | Claude Code                                                                         | `claude-opus-5-5`                                     | high                     | long                  |
-| `,claude-openrouter`  | Claude Code through OpenRouter's Messages endpoint                                  | `xiaomi/mimo-v2.6-pro`                                | high (preset)            | long                  |
-| `,claude-llama-cpp`   | Claude Code against the local llama.cpp server                                      | `nemotron-3.5`                                        | client high; server auto | 262,144               |
-| `codex` / `,codex`    | Codex; interactive `codex` routes through `,codex`, which adds local-model metadata | `gpt-6.1-sol`                                         | high                     | short                 |
-| `,codex-openrouter`   | Codex through OpenRouter's Responses endpoint                                       | `xiaomi/mimo-v2.6-pro`                                | high (preset)            | long                  |
-| `,codex-llama-cpp`    | Codex against the local llama.cpp server                                            | `nemotron-3.5`                                        | client high; server auto | 262,144               |
-| `pi`                  | Pi                                                                                  | `openai-codex/gpt-6.1-sol`                            | high                     | short                 |
-| `omp`                 | Oh My Pi                                                                            | `openai-codex/gpt-6.1-sol`                            | high                     | native default (500K) |
-| `opencode`            | OpenCode                                                                            | `openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high` | high                     | long                  |
-| `,opencode-llama-cpp` | OpenCode with the local llama.cpp provider                                          | `llama-cpp/nemotron-3.5`                              | server auto              | 262,144               |
-| `crush`               | Crush                                                                               | `openrouter/z-ai/glm-5.3-flash`                       | high                     | long                  |
-| `freebuff`            | Freebuff                                                                            | not exposed by CLI                                    | —                        | —                     |
-| `,q`                  | one-shot Pi with tools and a short system prompt                                    | `openrouter/deepseek/deepseek-v4.1-flash`             | high                     | long                  |
+| Launcher              | What it does                                                                        | Default model                                         | Effort                   | Context        |
+| --------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------ | -------------- |
+| `claude`              | Claude Code                                                                         | `claude-opus-5-5`                                     | high                     | long           |
+| `,claude-openrouter`  | Claude Code through OpenRouter's Messages endpoint                                  | `xiaomi/mimo-v2.6-pro`                                | high (preset)            | long           |
+| `,claude-llama-cpp`   | Claude Code against the local llama.cpp server                                      | `nemotron-3.5`                                        | client high; server auto | 262,144        |
+| `codex` / `,codex`    | Codex; interactive `codex` routes through `,codex`, which adds local-model metadata | `gpt-6-astra`                                         | high                     | short          |
+| `,codex-openrouter`   | Codex through OpenRouter's Responses endpoint                                       | `xiaomi/mimo-v2.6-pro`                                | high (preset)            | long           |
+| `,codex-llama-cpp`    | Codex against the local llama.cpp server                                            | `nemotron-3.5`                                        | client high; server auto | 262,144        |
+| `pi`                  | Pi                                                                                  | `anthropic/claude-opus-5-5`                           | high                     | native default |
+| `omp`                 | Oh My Pi                                                                            | `anthropic/claude-opus-5-5`                           | auto                     | native default |
+| `opencode`            | OpenCode                                                                            | `openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high` | high                     | long           |
+| `,opencode-llama-cpp` | OpenCode with the local llama.cpp provider                                          | `llama-cpp/nemotron-3.5`                              | server auto              | 262,144        |
+| `crush`               | Crush                                                                               | `openrouter/z-ai/glm-5.3-flash`                       | high                     | long           |
+| `freebuff`            | Freebuff                                                                            | not exposed by CLI                                    | —                        | —              |
+| `,q`                  | one-shot Pi with tools and a short system prompt                                    | `openrouter/deepseek/deepseek-v4.1-flash`             | high                     | long           |
 
 - `command codex` bypasses the fish function that routes `codex` to `,codex`.
 - OpenRouter wrappers append `@preset/effort-<level>`; `--context short` keeps the cheaper context tier.

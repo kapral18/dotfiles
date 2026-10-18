@@ -7,7 +7,10 @@ A check names an observable acceptance condition, its independent oracle, the re
 - Make each check distinguish the requested outcome from a plausible wrong implementation, including a no-op that only prints the expected text.
 - Invocation and coverage criteria target the actual callers.
   Ordered-output criteria compare the full required output, not a convenient substring.
-- Use the repository's own commands and focused fixtures. Keep full logs and the real exit status when you run them.
+- Plan static checks (`~/AGENTS.md` §3 step 4): the repository's own unit and static commands and focused fixtures, each under a time limit;
+  a project command that step 4 makes a live check is planned only as below.
+  Plan a live check as its own `check:` with a hard time limit only when the user asks for one.
+  Keep full logs and the real exit status when you run them.
 - Run the checks once, on the finished change. Unrun checks are `planned`, never red/green proof.
 - For stateful or parser-like behavior, list explicit transition cases (intended, preserved, malformed input, terminal actions).
   When tests cannot express them, compare against an independent table in a disposable harness under `/tmp`.

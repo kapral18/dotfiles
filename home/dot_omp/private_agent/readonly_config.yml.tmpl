@@ -4,27 +4,27 @@
 #
 # Every built-in omp role is pinned explicitly (default/smol/slow/vision/plan/commit/
 # tiny/task/advisor/web per `omp config get modelRoles`); nothing falls through to the
-# harness default or the @smol fallback. Root, slow, and task use the Codex subscription.
+# harness default or the @smol fallback. Root, slow, plan, and task use Anthropic; the advisor uses the Codex subscription.
 # k-agent-reviewer uses @default.
-# - default/slow: GPT-6.1 Sol :high; task: GPT-6.1 Sol :medium
-# - plan/advisor: Claude Opus 5.5 :high, so the advisor uses another model family
-# - vision/smol: Claude Sonnet 5.5 :high; tiny/commit: Claude Haiku 5.5 :medium
-# - web: Claude Haiku 5.5 :high as primary; legacy provider settings below supply fallbacks.
+# - default/slow/plan: Claude Opus 5.5 :auto; task: Claude Sonnet 5.5 :auto
+# - advisor: GPT-6 Astra :max, so the advisor uses another model family than the root
+# - vision/smol: Claude Sonnet 5.5 :auto; tiny/commit: Claude Haiku 5.5 :auto
+# - web: Claude Haiku 5.5 :auto as primary; legacy provider settings below supply fallbacks.
 modelRoles:
-  default: openai-codex/gpt-6.1-sol:high
-  smol: anthropic/claude-sonnet-5-5:high
-  slow: openai-codex/gpt-6.1-sol:high
-  vision: anthropic/claude-sonnet-5-5:high
-  plan: anthropic/claude-opus-5-5:high
-  commit: anthropic/claude-haiku-5-5:medium
-  tiny: anthropic/claude-haiku-5-5:medium
-  task: openai-codex/gpt-6.1-sol:medium
-  advisor: anthropic/claude-opus-5-5:high
-  web: anthropic/claude-haiku-5-5:high
+  default: anthropic/claude-opus-5-5:auto
+  smol: anthropic/claude-sonnet-5-5:auto
+  slow: anthropic/claude-opus-5-5:auto
+  vision: anthropic/claude-sonnet-5-5:auto
+  plan: anthropic/claude-opus-5-5:auto
+  commit: anthropic/claude-haiku-5-5:auto
+  tiny: anthropic/claude-haiku-5-5:auto
+  task: anthropic/claude-sonnet-5-5:auto
+  advisor: openai-codex/gpt-6-astra:max
+  web: anthropic/claude-haiku-5-5:auto
 
 modelProviderOrder:
-  - openai-codex
   - anthropic
+  - openai-codex
   - openrouter
   - openai
 
@@ -33,11 +33,17 @@ modelProviderOrder:
 advisor:
   enabled: true
   subagents: false
-  syncBacklog: 1
+  # OMP's global enum takes strings only ("off", "1", "3", "5", "strict"); a bare number reads as "off".
+  syncBacklog: "1"
   immuneTurns: 0
 
 defaultThinkingLevel: high
 extendedContext: false
+
+# Snapcompact first: it archives history locally as image frames (no model
+# call); provider-native remote, then a soft summary, are fallbacks.
+compaction:
+  methodOrder: [snapcompact, remote, soft]
 
 # omp installs via the unpinned pnpm package in ~/.default-pnpm-pkgs.
 # Apply runs pnpm update -g --latest. Startup update check stays off so

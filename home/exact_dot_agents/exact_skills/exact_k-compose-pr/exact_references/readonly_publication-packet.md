@@ -6,13 +6,14 @@ Load when building the required PR publication packet for `k-github`. The gate i
 
 - `template`: selected template, selection reason, required-section checklist, and `status: satisfied | blocked`.
   If an overlay provides templates, load the actual template file and draft against one selected template.
-- `screenshots`: `captured | not_applicable | blocked | explicitly_skipped`.
-  Visual proof is required when the diff touches UI/runtime behavior, linked context includes screenshots/media, or the Test Plan includes manual UI steps.
-  Load and follow `~/.agents/skills/k-ui-capture/references/proof-mode.md` in full:
+- `screenshots`: `captured | not_requested | not_applicable | blocked | explicitly_skipped`.
+  Capture visual proof only when the user asks for UI proof or capture (`~/AGENTS.md` §3 step 4); a PR request alone is not that request.
+  Otherwise record `not_requested` and put portable manual UI steps in the Test Plan when the diff touches UI/runtime behavior.
+  When capture is requested, load and follow `~/.agents/skills/k-ui-capture/references/proof-mode.md` in full:
   build its Behavior inventory first, apply its coverage plan and comparison frames, run its Existing published proof gate before capturing for an existing PR, and complete its Claim map before embedding.
-  Required proof means reuse a `/k-build` live-UI proof manifest, or run that proof-mode contract head-only.
+  Requested proof means reuse a `/k-build` live-UI proof manifest, or run that proof-mode contract head-only.
   Body Screenshots/Videos carry `baseline` pairs; mid-change tip↔tip pairs go in a separate comment when requested.
-  For non-visual UI behavior bugs (clipboard, keyboard, focus, network), capture human-visible trigger/result states and record the non-visual assertion in the Test Plan.
+  When capture is requested, for non-visual UI behavior bugs (clipboard, keyboard, focus, network), capture human-visible trigger/result states and record the non-visual assertion in the Test Plan.
   Captured proof includes folder/filename mapping; explicit skips include user approval evidence.
 - `test_plan`: reviewer-runnable steps, issue reproduction/expected/actual coverage, commands run, and observed results.
   Quote the commands and their observed results from this session's actual check runs; never claim a check that did not run.
@@ -46,11 +47,11 @@ Completion criterion: the packet is complete, or composition is blocked with exa
 - Sanitize public PR text: no machine-specific hosts, ports, paths, temp files, workspace names, browser-session URLs, or local usernames.
   Also no agentic-session artifacts (SOP references, skill/agent/packet names, `Compatibility impact:` lines, scratch paths, handoff notes) per `~/.agents/skills/k-communication/SKILL.md`.
   Prefer portable wording such as `local app`, `http://localhost:<port>`, `a user with only <privilege>`, or setup steps.
-- Screenshots: when captured, add `## Screenshots` with bold caption + `user-attachments` URL per shot.
+- Screenshots: only when `captured`, add `## Screenshots` with bold caption + `user-attachments` URL per shot.
   Upload every image/video through `~/.agents/skills/k-github/references/attachments.md`; that flow is the only source of embed URLs —
   `attach:` placeholders, fabricated URLs, and asking the user to drag files are all off limits.
   Uploading is a GitHub side effect and needs explicit approval. Keep local folder/filename mapping outside the body for upload resolution.
-  Omit screenshots only for `not_applicable` or `explicitly_skipped`; not for `required` or `blocked`.
+  Omit the section for `not_requested`, `not_applicable`, and `explicitly_skipped`; `blocked` stops publication.
 - Videos: embed each as a bare `user-attachments` URL alone in its own paragraph — GitHub renders a video player only then;
   players do not render inside markdown table cells or link/`<img>` syntax (verified: table cells degrade to text links).
   Per pair, stack it under a bold caption naming the covered behavior(s): a `Before:` line, blank line, before-video URL;
@@ -75,7 +76,7 @@ Closes #X | Addresses #X
 
 ## Screenshots
 
-<!-- UI-facing changes only; omit otherwise. One titled block per captured shot, uploaded via the browser-assisted flow and embedded by URL. -->
+<!-- Captured proof only; omit otherwise. One titled block per captured shot, uploaded via the browser-assisted flow and embedded by URL. -->
 
 **<caption — static visual change>:**
 

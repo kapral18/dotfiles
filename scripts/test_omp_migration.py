@@ -11,6 +11,17 @@ import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import REPO
 
 
+def bun_yaml(path):
+    """Parse a YAML file the way OMP does, with Bun's YAML parser."""
+    result = subprocess.run(
+        ["bun", "-e", "console.log(JSON.stringify(Bun.YAML.parse(await Bun.file(process.argv[1]).text())))", str(path)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(result.stdout)
+
+
 class TestOmpMigration(unittest.TestCase):
     """WHEN wiring OMP into the repo-owned AI workflow."""
 
@@ -24,28 +35,22 @@ class TestOmpMigration(unittest.TestCase):
 
     def test_watchdog_replaces_default_advisor_with_final_answer_gate(self):
         path = REPO / "home/dot_omp/private_agent/readonly_WATCHDOG.yml"
-        # OMP parses WATCHDOG.yml with Bun's YAML parser.
-        result = subprocess.run(
-            [
-                "bun",
-                "-e",
-                "console.log(JSON.stringify(Bun.YAML.parse(await Bun.file(process.argv[1]).text())))",
-                str(path),
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        advisors = {entry["name"]: entry for entry in json.loads(result.stdout)["advisors"]}
+        advisors = {entry["name"]: entry for entry in bun_yaml(path)["advisors"]}
 
         # A per-turn advisor would steer mid-run and share Gate's interrupt cooldown.
         self.assertEqual(list(advisors), ["Gate"])
         gate = advisors["Gate"]
-        self.assertEqual((gate["reviewMode"], gate["syncBacklog"]), ("agent-end", "strict"))
+        # A 30 s cap (numeric), not `strict`, which blocks the root with no limit.
+        self.assertEqual((gate["reviewMode"], gate["syncBacklog"]), ("agent-end", 1))
         self.assertNotIn("model", gate)
         self.assertNotIn("tools", gate)
         # Gate judges against the SOP instead of restating its rules.
         self.assertIn("~/AGENTS.md", gate["instructions"])
+
+    def test_global_advisor_sync_backlog_is_a_value_omp_accepts(self):
+        # OMP's global `advisor.syncBacklog` enum takes strings only; a bare number falls back to "off" silently.
+        advisor = bun_yaml(REPO / "home/dot_omp/private_agent/readonly_config.yml.tmpl")["advisor"]
+        self.assertEqual(advisor["syncBacklog"], "1")
 
     def test_selected_agents_use_omp_frontmatter_schema(self):
         agents = REPO / "home/dot_omp/private_agent/exact_agents"

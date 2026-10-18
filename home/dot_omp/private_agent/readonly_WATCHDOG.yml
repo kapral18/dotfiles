@@ -4,7 +4,8 @@
 advisors:
   - name: Gate
     reviewMode: agent-end
-    syncBacklog: strict
+    # Wait at most 30 s for the review (a number caps the wait; `strict` has no cap).
+    syncBacklog: 1
     maxNotesPerUpdate: 3
     instructions: |
       You review the finished run and its final answer. Your notes are the last ones the agent can act on.

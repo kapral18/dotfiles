@@ -26,7 +26,7 @@ When pointing the user at existing code, cite it as `file_path:line_number` (e.g
 
 ## Autonomy and questions
 
-`~/AGENTS.md` §1 decides when to act and when to ask the user, and §3 when to run a destructive command.
+`~/AGENTS.md` §1 decides when to act and when to ask the user, §3 when to run a destructive command, and §3 step 4 how to verify (statically).
 
 ## Task management
 

@@ -25,8 +25,8 @@ Implement the approved `k-spec` plan inline.
 ## Verify
 
 - Run the planned checks once on the finished change, cheap prerequisites first. Keep full logs and the real exit status.
-- Run visual or runtime checks only for criteria that need them, with a verified target:
-  load `k-ui-capture`, plus the matching domain overlay when one exists.
+- Run a live check (`~/AGENTS.md` §3 step 4) only when the user asks for it, with a verified target and a hard time limit;
+  for a visual or runtime one, load `k-ui-capture`, plus the matching domain overlay when one exists.
   Windows coverage only when asked, through `k-live-ui-windows`.
 - On a failure, fix within scope and rerun the failed and affected checks.
   After two attempts without new evidence, stop and report the blocker.
@@ -34,5 +34,6 @@ Implement the approved `k-spec` plan inline.
 
 ## Output
 
-The change summary, each criterion as passed, failed, or blocked with evidence, open decisions, and compatibility impact.
+The change summary, each criterion as passed, failed, blocked, or unverified (only a live check would settle it;
+`~/AGENTS.md` §3 step 8) with evidence, open decisions, and compatibility impact.
 Commit, push, and publish only as `~/AGENTS.md` §5 allows.

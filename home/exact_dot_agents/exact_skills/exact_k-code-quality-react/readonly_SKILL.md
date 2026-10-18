@@ -35,4 +35,5 @@ Do not load secondary skills until read/diff evidence proves the surface is in s
 
 - Preserve keyboard and focus behavior when changing interactive components.
 - In tables, lists, and collections, ensure presentation, sorting comparators, and filter predicates share identical projection logic for item attributes.
-- Verify user-visible behavior with the smallest practical rendered check when the change affects interaction or layout.
+- Verify user-visible behavior with a unit render test or from the component contract when the change affects interaction or layout;
+  an interactive browser session is a live check (`~/AGENTS.md` §3 step 4).

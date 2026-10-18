@@ -30,5 +30,6 @@ Do not load secondary skills until read/diff evidence proves the surface is in s
 
 ## Verification
 
-- For user-visible UI changes, verify the rendered state with the smallest practical browser or screenshot check.
-- When visual verification is not possible, state the gap and the static evidence checked instead.
+- For user-visible UI changes, verify the rendered state from the styles, props, and component contract;
+  an interactive browser session is a live check (`~/AGENTS.md` §3 step 4).
+- State the gap that only a live check could close as an "(unverified: …)" `Checked:` item (`~/AGENTS.md` §3 step 8), with the static evidence checked instead.

@@ -1,6 +1,6 @@
 ---
 name: k-review
-description: "Use to review local changes, a PR, review threads (PR fixes), or a plan, and for independent verify rounds (two fresh reviewers and a fix loop, repeated until a round is clean)."
+description: "Use to review local changes, a PR, review threads (PR fixes), or a plan, and for independent verify rounds (two fresh reviewers and a fix loop, repeated until a whole-scope round is clean)."
 ---
 
 # Review
@@ -89,6 +89,7 @@ Use when `~/AGENTS.md` §3 step 5 requires a review of a finished change, or whe
 2. Launch two fresh reviewers in parallel using Reviewer launch above.
    Pass both only the same scope, request, intent, check results, assumptions, and `Open:` items;
    a later full round, or a verify-again run, also gets every finding fixed, rejected, or proposed so far.
+   Tell the reviewers of a narrowed later round (`review_fixes.md` step 7) that it is narrowed and which files it covers.
 3. Merge the findings. Check each finding against source yourself. Reject unsupported ones with a one-line reason.
 4. Apply supported findings within write scope using `~/.agents/skills/k-review/references/review_fixes.md`.
    Its Fix procedure (the Verify-mode steps) owns scratch copies, checks, fix-diff reviews, further full rounds, and stopping rules.
@@ -98,7 +99,7 @@ Use when `~/AGENTS.md` §3 step 5 requires a review of a finished change, or whe
    List each reviewed path the task deleted in the baseline's `.k-review-deleted.txt`.
    That copy is the baseline for a later §3 step 5 review in the same task. Keep it until the task ends; `k-cleanup` does not delete it.
    A handoff note records its path.
-6. Report the review scope, fixed findings with evidence, rejected findings with reasons, `Open:` items with their blockers, and `Proposed:` out-of-scope changes.
+6. Report the review scope, fixed findings with evidence, rejected findings with reasons, `Open:` items with their blockers, `Proposed:` out-of-scope changes, and the rounds trend (`review_fixes.md` step 8).
 
 Run full rounds without asking until `review_fixes.md` says to stop.
 

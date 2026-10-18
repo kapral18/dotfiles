@@ -27,6 +27,7 @@ Snapshot root: `/tmp/k-review/<owner>-<repo>-pr<number>/`, holding `manifest.jso
   A token is not a browser session. Inspect the payload; do not treat an org sign-in page as the requested attachment.
 - Private-repo assets return 404 to an unauthenticated GET and need a logged-in browser session:
   fetch them through `~/.agents/skills/k-playwriter/SKILL.md` (open the asset URL in the authenticated browser and save the response), or ask the user to attach the file.
+  This fetches review input; it does not verify anything (`~/AGENTS.md` §3 step 4).
 - After every download, check the payload before trusting it: `file <path>` must report an image, video, or the expected document type, and `content_type` must not be `text/html`.
   A 200 with an HTML body is a failed download, not evidence; record it as `download_failed` in the manifest and do not "read" it as media.
 - An attachment URL is immutable per upload: never re-download a URL already in the manifest.

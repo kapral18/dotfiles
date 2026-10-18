@@ -25,7 +25,7 @@ There are no hooks, advisors, or model-profile switchers; settings and models ar
 
 | Area            | Value                                                                                                                            |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Default model   | `openai-codex` / `gpt-6.1-sol`, thinking `high`                                                                                  |
+| Default model   | `anthropic` / `claude-opus-5-5`, thinking `high`                                                                                 |
 | Extra providers | `openrouter` and `llama-cpp` in `models.json`; see [llama.cpp](../llama-cpp/index.md)                                            |
 | Tools           | `defaultTools: ["+codemode", "+find", "+grep", "+ls"]`                                                                           |
 | Compaction      | `reserveTokens` 16384, `keepRecentTokens` 80000 (raised from Pi's 20000 to keep more recent context verbatim)                    |
@@ -64,13 +64,13 @@ Only the repo profiles exist; see [Subagents](../subagents.md).
 | Profile            | Model                                                                   | Use                                                                                                                                |
 | ------------------ | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `k-agent-scout`    | `openai-codex/gpt-6-luna`, thinking low, read-only tools, fresh context | broad read-only search                                                                                                             |
-| `k-agent-reviewer` | `gpt-6.1-sol`, high                                                     | a finished change that `~/AGENTS.md` §3 step 5 lists (risky code or a rule edit) and its fix diffs, or a review the user asked for |
+| `k-agent-reviewer` | `anthropic/claude-opus-5-5`, high                                       | a finished change that `~/AGENTS.md` §3 step 5 lists (risky code or a rule edit) and its fix diffs, or a review the user asked for |
 
 Both set `maxSubagentDepth: 0`, so they cannot start other agents.
 
 ## `APPEND_SYSTEM.md`
 
-Pi's default prompt is minimal. `APPEND_SYSTEM.md` adds tone, tool-calling, codemode, edit, citation, and task-list rules; for autonomy and questions it points to `AGENTS.md` §1 and §3.
+Pi's default prompt is minimal and has no verification defaults. `APPEND_SYSTEM.md` adds tone, tool-calling, codemode, edit, citation, and task-list rules; for autonomy, questions, and static verification it points to `AGENTS.md` §1 and §3.
 Order: Pi default → `APPEND_SYSTEM.md` → project context (`AGENTS.md`). The system prompt and overlay stay authoritative; `AGENTS.md` §8 sets tone and format where they leave it open.
 It is additive rather than `SYSTEM.md` so Pi keeps its default tool list and self-doc pointers.
 `,q` skips it by passing a short `--system-prompt` and an empty `--append-system-prompt`.

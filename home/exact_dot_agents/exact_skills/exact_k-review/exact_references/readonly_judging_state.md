@@ -25,7 +25,8 @@ A settled-value-only analysis is incomplete: such values pass through intermedia
    Verify each consumer tolerates each transition, not just each settled state.
    An identity-sensitive consumer (a callback listed in a dependency array) treats a value flip as a new input even when the boolean meaning looks stable.
 2. **Transition probe:** a static read cannot clear behavior that depends on such a value _changing_.
-   Before a clean verdict on an affected surface, verify the transition by executing or simulating it (disposable test or probe), or report the surface as unverified instead of cleared.
+   Before a clean verdict on an affected surface, verify the transition in a local run that ends on its own (a disposable test or a mocked probe;
+   `~/AGENTS.md` §3 step 4), or report the surface as unverified instead of cleared.
    Green suites do not substitute: tests that set the source to its settled value synchronously never exercise the transition.
 3. **Failure vs empty:** for gates fed by fetched collections or remote state, discovery failure and confirmed-empty are distinct inputs;
    a gate mapping both to one outcome silently converts an outage into a valid-empty result.

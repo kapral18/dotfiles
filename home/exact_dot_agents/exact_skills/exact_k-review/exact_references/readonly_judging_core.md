@@ -24,7 +24,7 @@ Use in every non-trivial review.
 - A rationale is also a claim: verify actual runtime/code behavior, not explanations.
 - When irrelevance is a material acceptance claim, use existing evidence or one risk-selected perturbation.
   Do not generate a mutation experiment for every rationale or repeat an experiment already represented in shared evidence.
-- A static read proves what source says, not what the system does; verify runtime behavior whenever candidate keep/drop depends on observed state.
+- A static read proves what source says; when keep/drop depends on runtime behavior, decide it from the source of every system involved, contracts, and a local run that ends on its own (`~/AGENTS.md` §3 step 4), or report the candidate unverified.
 - **Diff-boundary tunnel vision is forbidden:** reviewing diff hunks in isolation without inspecting surrounding context, caller trees, and sibling consumers is never justified across any review tier (light, standard, or deep).
   The diff is the source for what changed (delta) and commentability; full files and caller trees (via local `rg` or symbol lookup) give the ground truth for system behavior.
 - For diffs not proven mechanical-only, reconstruct semantic delta: old/new rule, intended/preserved differences, evidence.

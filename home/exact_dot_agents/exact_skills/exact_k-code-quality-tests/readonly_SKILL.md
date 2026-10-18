@@ -40,8 +40,8 @@ Use this for test and verification code. Writing tests does not expand implement
 - Derive expectations from an oracle independent of the code under test: the consuming system, the upstream spec, or a fixed contract.
 - A test that restates generated/spec-derived data as its own expectation only pins current content; it cannot catch invalid content.
   Asserting a suggestion/definition list equals itself proves nothing about whether the suggested values are valid.
-- For artifact-producing changes (suggestion lists, codegen output, definitions, config), verify acceptance against the real consumer:
-  probe it live when a safe runtime exists, otherwise cite the consumer's contract (spec/source) for every emitted form.
+- For artifact-producing changes (suggestion lists, codegen output, definitions, config), verify acceptance against the real consumer's source or contract:
+  cite the code or spec that accepts each emitted form (`~/AGENTS.md` §3 step 4).
 - For stateful behavior, list the transitions explicitly (intended, preserved, malformed input, terminal) and test each through an existing seam;
   a pure input-to-output rule can be checked against an independent table in a disposable harness.
 

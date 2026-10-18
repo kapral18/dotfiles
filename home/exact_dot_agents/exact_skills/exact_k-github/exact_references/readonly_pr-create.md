@@ -35,7 +35,7 @@ Approval handling:
 
 Packet requirements:
 
-- UI-facing changes and linked screenshots/media: screenshot status and captured proof folder/filename mapping.
+- UI-facing changes and linked screenshots/media: screenshot status; captured proof folder/filename mapping when `captured`.
 - PR templates: selected template and required-section checklist.
 - Metadata: `approved_to_apply`, `applied`, `deferred`, or `pending_approval`.
 - Do not treat `pending_approval` as no; surface it in approval or immediately after creation/readback.

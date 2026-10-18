@@ -134,6 +134,9 @@ Complete the readiness map, introduced-concepts inventory, what/how/why explanat
 
 ### 6. Verify in a real browser (mandatory)
 
+Invoking this manual skill is the user's request for this one browser check (`~/AGENTS.md` §3 step 4);
+give it a hard time limit of 5 minutes, counted from the `k-playwriter` doc read through stopping the server.
+On hitting the limit: stop the server by its PID, report which assertions ran and which did not, and open the page only with that caveat.
 A broken render is the default failure mode (unescaped code, a bad token, a missing image).
 Before opening for the user, verify with the `k-playwriter` skill:
 
@@ -168,4 +171,4 @@ Before opening for the user, verify with the `k-playwriter` skill:
 - Broad placeholder grep patterns that match CSS/JS braces.
 - Rewriting the template's CSS/JS, or hand-tuning rail label widths.
 - Paraphrased code instead of the real diff.
-- Opening the page without a clean browser verification first.
+- Opening the page without a clean browser verification first, unless step 6 hit its time limit and you report which assertions did not run.

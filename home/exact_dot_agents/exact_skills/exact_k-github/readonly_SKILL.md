@@ -105,14 +105,14 @@ A domain overlay is selected from verified repo/org evidence, not guessed from w
   Publish only via a separate submit call after the applicable approval (`~/AGENTS.md` §5).
 - Before create/append/delete-recreate/submit, reconcile current-account pending reviews with the new payload; do not fragment feedback.
   Append net-new comments to an existing pending review; delete/recreate only to change or drop existing ones.
-- UI-related review feedback needs screenshot handoff evidence outside the body, or a valid blocker/non-applicability reason.
+- UI-related review feedback needs screenshot handoff evidence outside the body, a source-settled note (styles, props, component contract), or a valid blocker/non-applicability reason.
 - Full mechanics live in `~/.agents/skills/k-github/references/pr-reviews.md`.
 
 ## PR review comments
 
 - Use bash/zsh `$'...'` so `\n` becomes real line breaks; never send literal `\n`.
 - Commit references must be clickable full GitHub URLs.
-- UI-related comments/replies/PR-level feedback need screenshot handoff evidence outside the body; never include local screenshot paths.
+- UI-related comments/replies/PR-level feedback need screenshot handoff evidence outside the body, a source-settled note (styles, props, component contract), or a valid blocker/non-applicability reason; never include local screenshot paths.
 - Follow `~/.agents/skills/k-review/references/pr_review.md` or `~/.agents/skills/k-review/references/pr_fix.md` for anchoring/placement.
 - Comment examples live in `~/.agents/skills/k-github/references/pr-comments.md`.
 

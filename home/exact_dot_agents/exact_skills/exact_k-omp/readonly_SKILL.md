@@ -25,7 +25,8 @@ Use `read` before shell readers when its source kind applies:
 - notebooks: editable cell text, or `:raw` for notebook JSON;
 - images and web URLs: inline inspection or reader-mode text, with `:raw` for original response content.
 
-`read` does not replace browser evidence for rendered UI, video/GIF frame inspection, or live GitHub/API truth required before a mutation.
+When browser evidence is requested, `read` does not replace it for rendered UI or video/GIF frame inspection;
+nor does it replace live GitHub/API truth required before a mutation.
 
 ## Code intelligence
 

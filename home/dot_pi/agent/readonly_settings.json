@@ -1,6 +1,6 @@
 {
-  "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-6.1-sol",
+  "defaultProvider": "anthropic",
+  "defaultModel": "claude-opus-5-5",
   "defaultThinkingLevel": "high",
   "showCacheMissNotices": true,
   "theme": "dark",

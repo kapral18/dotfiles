@@ -6,7 +6,9 @@ Diagnosis alone reports the cause and evidence; implement only when the user ask
   Load `~/.agents/skills/k-code-quality-tests/SKILL.md` for the regression cases.
 - Do not expand into sibling cleanup or a redesign.
 - Remove temporary instrumentation; keep required observability and unrelated user changes.
-- Run the checks once on the finished fix: the original reported scenario, the regression case, preserved behavior, and any needed performance comparison.
+- Run the checks once on the finished fix: the regression case, preserved behavior, and the reported scenario as a local run that ends on its own (`~/AGENTS.md` §3 step 4).
+  For slowness, rerun the diagnosis micro-benchmark once against the fix.
   One check may cover several criteria; do not repeat a scenario under different names.
 - On a failure, fix within scope and rerun the affected checks. After two attempts without new evidence, stop and report.
-- Missing runtime access is a blocked check, never a pass inferred from source.
+- A runtime criterion that neither source nor such a local run settles is reported as an "(unverified:
+  …)" `Checked:` item (`~/AGENTS.md` §3 step 8), never passed.

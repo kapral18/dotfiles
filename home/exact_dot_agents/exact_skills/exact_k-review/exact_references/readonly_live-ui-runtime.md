@@ -1,9 +1,10 @@
 # Live UI Runtime Contract (shared)
 
-Runtime machinery for live-UI verification (`k-ui-capture`, `k-live-ui-windows`, and UI review findings).
+Runtime machinery for live-UI verification (`k-ui-capture`, `k-live-ui-windows`, and a UI review check the user asked for).
 It owns target-packet resolution, Playwriter preflight, readiness, runtime start, data/setup, screenshot artifacts, and the runtime safety boundary.
+It runs only on the user's request, as its own invocation with a hard time limit (`~/AGENTS.md` §3 step 4).
 Proof mode (`~/.agents/skills/k-ui-capture/references/proof-mode.md`) checks the head against its intended visual or behavior.
-Review mode checks a UI finding by comparing the PR/head runtime with the base runtime on the same flow, one claim per run, and reports the comparison evidence with screenshots.
+Review mode, when the user asks for it, checks a UI finding by comparing the PR/head runtime with the base runtime on the same flow, one claim per run, and reports the comparison evidence with screenshots.
 
 Throughout this file, "the runtime under verification" is the checkout/runtime that holds the code being verified:
 the reviewed PR/head worktree in review mode, or the built/changed worktree in proof mode.

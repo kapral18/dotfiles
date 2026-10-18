@@ -126,14 +126,14 @@ transform_request = {
 4. For text replacement, use `deleteText`, `insertText`, `updateTextStyle`, then `updateParagraphStyle`.
 5. Submit with `gws slides presentations batchUpdate`.
 6. Re-read the presentation and verify the expected objects, text, links, and transforms.
-7. Open the slide in a browser only for visual QA that the API response cannot prove.
+7. Open the slide in a browser only when the user asks for visual QA that the API response cannot prove.
 
 For speaker notes, read `slideProperties.notesPage.pageElements` and target the page element with a `BODY` placeholder.
 Use `insertText` against that notes page element object ID.
 
 ## Visual QA Checklist
 
-Use browser verification for rendered layout after API checks pass:
+When the user asks for visual QA, use browser verification for rendered layout after API checks pass:
 
 - Images keep their aspect ratio.
 - Text stays inside its intended container.

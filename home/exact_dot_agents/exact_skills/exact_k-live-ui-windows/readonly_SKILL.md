@@ -11,7 +11,7 @@ Apply the shared runtime contract's target resolution, readiness guard, screensh
 
 ## Manual only — never automatic
 
-`k-review` live-UI checks, `k-build`, and `k-ui-capture` default to local-browser verification.
+When the user asks for a live-UI check, `k-review`, `k-build`, and `k-ui-capture` use a local browser.
 Only this manually invoked skill adds Windows/VirtualBox coverage.
 
 Load this skill only when the user explicitly asks, this turn, for Windows/VirtualBox verification.

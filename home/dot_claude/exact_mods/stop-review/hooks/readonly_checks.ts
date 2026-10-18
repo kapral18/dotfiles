@@ -42,14 +42,15 @@ const SNAPSHOT =
 // The ~/AGENTS.md §1 limits on acting without asking, kept whole so a send-back never pushes past them.
 export const STEP =
   'a step ~/AGENTS.md §1 makes part of the task (in the request\'s scope, and either named by the request or reversible and ' +
-  'changing nothing outside this machine that the request did not name; never a §5 action or a step the user asked you to ' +
-  'ask about first)'
+  'changing nothing outside this machine that the request did not name, or a §3 step 7 cleanup k-cleanup allows; never a §5 action, ' +
+  'a live check §3 step 4 keeps for the user\'s ask, or a step the user asked you to ask about first)'
 
 // Each message states what the check found, what to do now, and the ~/AGENTS.md rule it follows, with the limits that rule sets on acting,
 // so the one send-back ends with the work done rather than reworded.
 const MESSAGE =
-  'Files changed this turn, and the final message has no `Checked:` list. Run any check the change still needs, ' +
-  'then list each claim under `Checked:` with its command and result, or a `file:line` (~/AGENTS.md §3 step 8).'
+  'Files changed this turn, and the final message has no `Checked:` list. Run any check §3 steps 3-4 call for that the change still needs, ' +
+  'then list each claim under `Checked:` with its command and result, or a `file:line`, ' +
+  'marking a claim only a live check could settle `(unverified: …)` (~/AGENTS.md §3 step 8).'
 
 const QUESTION =
   `The final message ends with a question outside \`Decision needed:\`. If its answer is ${STEP}, do it now. ` +
@@ -60,7 +61,8 @@ const deferral = (heading: string) =>
   `The final message lists work under \`${heading}\`, which the ~/AGENTS.md §3 step 8 report has no slot for. ` +
   `Do each item that is ${STEP} now. ` +
   'Put an item that is the user\'s decision (§1) under `Decision needed:` with your pick, an out-of-scope item under `Proposed:`, ' +
-  'and an item you cannot do now under `Open:` with its blocker. Steps for the user to run belong in the answer itself, under no such heading.'
+  'and an item you cannot do now under `Open:` with its blocker. Steps for the user to run belong in the answer itself, under no such heading; ' +
+  'cleanup is never one of them (§3 step 7).'
 
 // A function declaration: the engine follows $ past an import only into one.
 export async function snapshot($: EngineInterface) {

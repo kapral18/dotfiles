@@ -17,7 +17,8 @@ this reference grants no additional permission.
 - Skip redundant "Ref:" links when the comment is already attached to the exact line.
 - Keep anchoring/tooling limitations out of the comment body ("can't anchor inline", "not in diff hunks").
 - For UI-related comments, replies, or PR-level feedback, keep screenshots outside the body as UI evidence attachments.
-  If required screenshot evidence is missing, report that criterion as blocked instead of drafting unsupported UI feedback.
+  A UI finding settled from source (styles, props, component contract) needs no screenshot.
+  When a criterion needs screenshot evidence the user did not ask to capture, report it as unverified instead of drafting unsupported UI feedback.
   Never put local screenshot paths in GitHub comment, reply, review, or PR-level bodies.
 - In review comment bodies, whenever you reference code, use a clickable source link to the exact location on the PR head SHA.
 - Code references include:

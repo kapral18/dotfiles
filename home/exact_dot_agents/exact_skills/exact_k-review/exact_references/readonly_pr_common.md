@@ -187,9 +187,9 @@ Where to comment:
 
 ## Local Verification
 
-- Reuse existing check results; run only checks that a material finding depends on and nothing has run yet.
-- Plan a minimal behavioral reproduction in `/tmp` or the worktree when existing evidence cannot settle the acceptance condition.
-- UI repro hygiene (when verifying UI/editor behavior):
+- Reuse existing check results; run only the checks (unit, static, or a local run that ends on its own) that a material finding depends on and nothing has run yet (`~/AGENTS.md` §3 step 4).
+- Plan a minimal behavioral reproduction as a local run that ends on its own in `/tmp` (fakes, a tiny fixture) when existing evidence cannot settle the acceptance condition.
+- UI repro hygiene applies only to a live UI repro the user asked for (`~/.agents/skills/k-review/references/live-ui-runtime.md`):
   - do one claim per repro run; reset state between runs (reload/new tab)
   - clear inputs deterministically before typing
   - for rich editors, do not assume the accessible textarea reflects the full editor model; verify what is actually rendered

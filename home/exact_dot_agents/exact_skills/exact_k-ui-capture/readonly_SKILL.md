@@ -1,13 +1,13 @@
 ---
 name: k-ui-capture
-description: "Use when proving UI visual/behavior, auditing a diff for capturable changes, or capturing/uploading pre/post PR screenshots/videos."
+description: "Use when the user asks to prove UI visual/behavior, audit a diff for capturable changes, or capture/upload pre/post PR screenshots/videos."
 ---
 
 # UI Capture
 
 The creation-side live-UI proof skill: verify a **built or changed** UI against its **intended visual, state, or behavior**, capture the before/after screenshots and videos that prove it, and (when asked) upload them to GitHub.
-A review-side live-UI check (base vs head, during `k-review`) uses the same runtime machinery in the opposite direction;
-this skill proves the built runtime matches its intent.
+A review-side live-UI check (base vs head, during `k-review`, only when the user asks) uses the same runtime machinery in the opposite direction;
+this skill proves the built runtime matches its intent. It runs only when the user asks for UI proof or capture.
 
 The mechanics live in one shared contract — load `~/.agents/skills/k-ui-capture/references/proof-mode.md` and follow it end to end:
 caller inputs, applicability, the head-only model, proof capture, and the exact return shape.

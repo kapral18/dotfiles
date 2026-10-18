@@ -1,13 +1,14 @@
 ---
 name: k-playwriter
-description: "Use for real browser: browsing, UI checks, screenshots, automation, verification, visual QA."
+description: "Use for real-browser browsing and automation, and for UI checks, screenshots, and visual QA the user asks for."
 tool_version: playwriter 0.5.0
 ---
 
 # Playwriter
 
 Use Playwriter for real browser work.
-Fire without waiting for the user to name `playwriter` explicitly whenever the task needs a real browser.
+Fire without waiting for the user to name `playwriter` explicitly whenever the user's task needs a real browser;
+a Playwriter browser is never the default way to verify a change (`~/AGENTS.md` §3 step 4).
 
 ## Viewport sizing
 

@@ -35,10 +35,11 @@ Before a candidate can become review feedback:
    - For every explicitly set behavior/style/spacing/layout property, name where the replacement re-establishes it (component, prop, or default) or prove it is intentionally dropped.
      "I did not observe a regression" is not evidence the property is preserved;
      absence-of-observation never substitutes for naming the replacement's contract.
-   - A migration handing a property to the target component (e.g. local CSS replaced by a shared component default) is only `preserved_limitation`/`scope_expansion`/intended-replacement after citing the target's contract (static source proof) or verifying it live.
+   - A migration handing a property to the target component (e.g. local CSS replaced by a shared component default) is only `preserved_limitation`/`scope_expansion`/intended-replacement after citing the target's contract (static source proof).
      Until then the candidate stays unclassified, not dropped.
-   - For a stateful replacement (lifecycle, retry, ordered/flag-dependent state), run the same transition cases against base and head
-     (the old implementation is the oracle) when it runs locally and safely; otherwise report missing parity evidence as a gap.
+   - For a stateful replacement (lifecycle, retry, ordered/flag-dependent state), run the same transition cases against base and head code in a local run that ends on its own
+     (unit tests or a disposable harness; the old implementation is the oracle; `~/AGENTS.md` §3 step 4);
+     otherwise report missing parity evidence as a gap.
 2. **Assign exactly one classification:**
    - `parity_gap`: old behavior or coverage existed and the replacement omits or weakens it.
    - `new_regression`: the replacement adds a failure mode the old implementation did not have.
@@ -50,12 +51,14 @@ Before a candidate can become review feedback:
    - Drop `preserved_limitation` from review feedback. Do not ask the author to fix it in this PR.
    - Drop `prose_drift` from code-review feedback.
      If it matters to reviewers, handle it as PR-level prose feedback, not as an implementation finding.
-4. **Verification rule:** use live-UI or runtime evidence when source-level evidence cannot decide keep/drop;
-   report a missing check as a gap. Do not start a separate findings-audit pass or rerun an existing check.
-   Skip extra runtime work for established `preserved_limitation` or `prose_drift`.
-   - The live-UI skip only applies once step 1's evidence bar is met.
-     Never drop a UI-visual candidate (spacing, alignment, layout, visual styling) on an unproven classification and then cite that drop as why live UI was unnecessary — that inverts cause/effect.
-     If classification rests on a UI-visual property you have neither traced to the replacement's contract nor verified live, the candidate is unproven: settle with static proof or live UI before classifying; do not skip because it was dropped.
+4. **Verification rule:** decide keep/drop from source-level evidence (the replacement's code and contract, rendered styles, component props) or a local run that ends on its own;
+   when neither decides, report the candidate unverified, naming the live check that would settle it;
+   that check (`~/AGENTS.md` §3 step 4) waits for the user's ask.
+   Do not start a separate findings-audit pass or rerun an existing check.
+   Skip extra work for established `preserved_limitation` or `prose_drift`.
+   - Never drop a UI-visual candidate (spacing, alignment, layout, visual styling) on an unproven classification.
+     If classification rests on a UI-visual property you have not traced to the replacement's contract, the candidate is unproven:
+     settle it with static proof or a local run that ends on its own, or report it unverified.
 
 ## Historical Archaeology Gate (Code Provenance & Evolution)
 

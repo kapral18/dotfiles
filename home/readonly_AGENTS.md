@@ -1,7 +1,8 @@
 # Operating Rules
 
 These rules apply to every session.
-Platform and system instructions stay authoritative. Where they leave tone and format open, §8 sets them.
+Platform and system instructions stay authoritative, except the verification defaults §3 step 4 replaces.
+Where they leave tone and format open, §8 sets them.
 Project instructions may add rules.
 
 ## 1. Intent and scope
@@ -17,10 +18,12 @@ Project instructions may add rules.
 - No compatibility shims, aliases, or deprecation paths unless the user asks. Replace means remove the old path.
 - Finish the task. A next step that you can do now, that is inside the request's scope, and that the request named
   or that is reversible and changes nothing outside this machine that the request did not name, is part of the task: do it.
-  This never covers a §5 action or a step the user asked you to ask about first.
+  So is a §3 step 7 cleanup `k-cleanup` allows.
+  This never covers a §5 action, a live check §3 step 4 keeps for the user's ask, or a step the user asked you to ask about first.
   A request to change or build all of something approves the work: continue until every item is done, or a user decision or an `Open:` blocker stops it.
 - Ask only for a decision that is the user's: goals, preferences evidence cannot settle, a step the request did not name that is not reversible
-  or changes something outside this machine that the request did not name, an action §5 reserves, or a question the user asked you to ask.
+  (other than a §3 step 7 cleanup `k-cleanup` allows) or changes something outside this machine that the request did not name,
+  an action §5 reserves, a live check §3 step 4 keeps for the user's ask, or a question the user asked you to ask.
   Never ask for a fact you can check, or approval for a fix you checked against source, unless the user asked you to ask.
   Never offer an option you argued against. At any other fork, pick the reasonable default and list it under `Assumptions:`.
   Put a real question last, under `Decision needed:`, with your pick. Do not act on that decision until the user answers.
@@ -28,6 +31,7 @@ Project instructions may add rules.
 ## 2. Truth and evidence
 
 - Verify before you claim: a file read, command output, probe, or primary doc.
+  A probe is a check you control (§3 step 4): a source read, a static check, or a local run that ends on its own.
   Otherwise say `Unknown because …`, and only after you tried the tools you have: read the file, list the folder, run the probe.
 - Sources in order: local (repo, installed packages, `node_modules`, `--help`, `--version`), the canonical public repo (clone to `/tmp`), web search.
 - Check the exact identity first: binary, package version, config file, endpoint.
@@ -43,7 +47,7 @@ Project instructions may add rules.
 - After two attempts at the same failure without new evidence, stop editing.
   Investigate read-only, then fix with a concrete cause or report the blocker.
 - Run a command that can take minutes with the `k-long-jobs` skill: a time limit, and its result awaited in the same turn when your answer needs it.
-  Past the limit, find the cause and report it.
+  Past the limit, find the cause and report it; an optional probe that hits its limit follows §3 step 4 instead.
 - Experiments and scratch files go in `/tmp` or the harness scratch directory.
 
 Steps for each change; skip one that does not apply and say why:
@@ -60,20 +64,35 @@ Steps for each change; skip one that does not apply and say why:
    a correction of fact or method that the evidence contradicts gets one line with that evidence.
    When a hook asks you to zoom out, say in one line whether the work still serves the Goal; if it drifted, change course.
 1. **Before.** Read the code, its callers, and consumers. Know what must change with it: tests, docs, generated files.
+   Collect the impact both ways: what the change can break, and for new or changed behavior, every domain and scope it must fit.
    Separate your edits from pre-existing working-tree changes.
-   In a repo, run the `k-behavior-map` skill: it checks the plan against the map and maps an unmapped area first.
+   In a repo, run the `k-behavior-map` skill (before a change): it lists that impact, checks it against the map, and maps an unmapped area you will edit in first.
 2. **Change.** Debug against logs and reproductions, not guesses.
-3. **Check.** Run the project's checks once on the finished change; after a fix, rerun only failed and affected checks.
+3. **Check.**
+   Run the project's unit and static checks for what the change touches once on the finished change, each under a time limit (step 4);
+   one that step 4 makes a live check waits for the user's ask (step 4).
+   After a fix, rerun only failed and affected checks.
    A test you add for new or changed behavior must fail without the change: show that once.
    A test that mocks the code under test proves nothing.
-4. **Run.** Run the change once on a realistic target: the command in a real repo, the page, the config.
+4. **Verify statically.** Keep verification and review short, so feedback reaches the user and any orchestrating agent quickly.
+   Prefer evidence you control: read the source (the change, its callers, and each system it relies on), run static checks,
+   and run local code that ends on its own (unit tests, the change's own command on a temp copy, a fake for an external command), scoped to what the change touches.
    Test each operation it adds or changes against the others on the same object:
    both sides change it, remove then re-add, the same name twice.
    Test edge inputs: a deleted path, a symlink, a non-ASCII name, empty input.
-   Where a test fake replaces an external command, run the real one, on a copy.
-   Use a copy when a run would change anything outside this machine or delete or overwrite user data.
-   With no runnable target or no usable copy, skip the run and say why.
-   In a repo, run `k-behavior-map` update for the entries the change touched, even when you skipped the run.
+   Where a fake replaces an external command, check the fake against that command's source or docs.
+   A live check waits on something outside this machine: the network, an external service, a model or agent session,
+   or an interactive browser session (for example an e2e or smoke run against a deployed system).
+   Self-contained local code that ends on its own is not one, even when it starts a local server or headless browser or waits on timers;
+   its time limit bounds it. Code that also reaches any of those outside things is live. Reading a source, web docs included, is never one.
+   Settle a claim that would need a live check from the source; mark one the source cannot settle as step 8 says.
+   Run a live check only when the user asks, as its own invocation with a hard time limit, on a copy when it would change anything outside this machine or delete or overwrite user data.
+   Run every check command under a time limit set above its normal run time (`timeout <seconds> <command>`).
+   An optional probe that hits it settles nothing: pick cheaper evidence instead of retrying.
+   A required step 3 check that hits it: find the cause and report it.
+   Never repeat a check without new information. A step the task itself needs, such as fetching a file it works on, is not a check.
+   This replaces any harness default to run or demo a change before reporting.
+   In a repo, run `k-behavior-map` update for the entries the change touched.
 5. **Review.** Do this once per change when it adds a command or module, or changes persisted data, a parser, concurrency,
    auth/secrets/crypto, a public API, or code that deletes user data or files.
    Also do it when the change edits a rule or workflow step in `~/AGENTS.md`, a `~/.agents/skills` skill, a `k-agent-*` profile, the shared reviewer prompt, or a hook or advisor prompt that judges against these rules.
@@ -82,13 +101,16 @@ Steps for each change; skip one that does not apply and say why:
 6. **Fix.** Fix every supported finding the change caused or the request covers, low ones too,
    with `~/.agents/skills/k-review/references/review_fixes.md`.
    Before each fix round, step back to the user's goal and question the method, not only the findings; that reference says how.
-   It owns the loop: it runs without asking until a full round is clean; a cause that returns twice goes under `Open:` and stops driving it.
-7. **Clean up** with the `k-cleanup` skill. When cleaning up, never delete a branch, a worktree, or a file this task did not create
-   (`k-cleanup` has the one exception), and never run `git stash drop` or `git reset --hard`.
+   It owns the loop: it runs without asking until a full round on the whole scope is clean;
+   a cause that returns twice goes under `Open:` and stops driving it.
+7. **Clean up** with the `k-cleanup` skill, yourself; never leave the user a cleanup step.
+   When cleaning up, never delete a branch, a worktree, or a file this task did not create
+   (`k-cleanup` lists the exceptions), and never run `git stash drop` or `git reset --hard`.
 8. **Report.**
    First do every next step §1 makes part of the task that you can still do now.
    - `Checked:` each claim, with a command and its result, or a `file:line`.
      Mark each fix after the last review "(unreviewed)" unless it is wording-only.
+     Mark a claim only a live check could settle `(unverified: only <that check> shows …)`, and offer that check under `Decision needed:`.
    - `Assumptions:` each decision you made without asking.
    - `Proposed:` defects or actions outside the request's scope, left unapplied.
    - `Open:` only what you cannot do now, each with its blocker. A step you could do now is never a blocker.
@@ -139,7 +161,7 @@ Report with the step 8 lists. As new findings, list only the issues your earlier
 ## 7. Memory and handoffs
 
 - `,ai-kb search "<literal identifiers or error text>"` finds notes from earlier sessions. Results are leads.
-- `,ai-kb remember` only a verified, reusable gotcha or recipe with literal identifiers and a source.
+- `,ai-kb remember` only a verified, reusable gotcha or recipe with literal identifiers and a source, or `--supersedes` a stale capsule.
 - `,behavior-map` keeps each repo's critical behaviors (§3 steps 1 and 4). Entries are leads.
 - Task progress that must survive a session goes in `,handoff save <topic>`; `continue <topic>` starts with `,handoff show <topic>`.
 - A lasting preference the user states ("we never …", "from now on …") goes in `,task pref add "<their words>"`; new sessions load it.

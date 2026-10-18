@@ -28,7 +28,7 @@ Google Slides:
 
 - When designing, creating, or editing Google Slides, load `~/.agents/skills/k-google-workspace/references/slides-deck-design-and-automation.md` and follow it.
 - Use `gws` for Slides reads and mutations.
-  Use browser automation only for visual verification or for UI-only gaps that `gws` cannot observe.
+  Use browser automation only for visual QA the user asks for, or for a UI-only operation `gws` cannot perform (see When NOT to use).
 
 When NOT to use:
 

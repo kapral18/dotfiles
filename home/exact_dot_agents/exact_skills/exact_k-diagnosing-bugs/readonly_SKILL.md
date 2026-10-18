@@ -11,7 +11,7 @@ Find the cause with evidence before changing code.
 
 - obvious local errors that need only a direct explanation or an already-authorized small fix
 - setup questions ("is X configured correctly") rather than "why is X broken";
-  trace config source → rendered config → consumer → live probe instead
+  trace config source → rendered config → consumer source instead
 
 ## Capture the failure
 
@@ -22,8 +22,8 @@ Do not treat a plausible explanation, a nearby symptom, or an unrelated green su
 
 When existing evidence cannot distinguish the reported failure, choose the smallest safe reproduction that can:
 
-- A focused existing test, CLI/API fixture, or captured-trace replay.
-- A browser probe through k-playwriter when the symptom requires the real UI.
+- A focused existing unit test, CLI/API fixture, or captured-trace replay; a live check only when the user asks (`~/AGENTS.md` §3 step 4).
+- For UI behavior, read the UI code and its event flow; a browser repro the user asks for goes through k-playwriter.
 - A disposable harness when no existing seam expresses the failure.
 - For stateful behavior, the shortest sequence of transitions from the initial state to the bad state, run against the real code.
 - Bisection, differential comparison, or a seeded stress/fuzz experiment for a history-dependent or intermittent failure.
@@ -56,7 +56,7 @@ Do not expand an experiment indefinitely because the result remains uncertain.
 Prefer a debugger/REPL or narrowly tagged instrumentation over broad log dumps.
 Change the variable needed for the prediction; keep other conditions stable unless the experiment explicitly tests their interaction.
 Tag temporary logs with a unique prefix so the fix can remove them.
-For slowness, gather a relevant baseline measurement or profile and compare the repaired behavior against it once.
+For slowness, find the cost in the source (per-item work in loops, repeated subprocesses, unbounded reads) and measure only a seconds-long micro-benchmark of the suspect unit.
 
 Done when evidence settles the material cause and affected interfaces, or a specific unresolved dependency prevents that conclusion.
 

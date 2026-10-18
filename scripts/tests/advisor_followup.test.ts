@@ -19,14 +19,18 @@ function load() {
   // The extension uses only `on`, `sendMessage`, and `pi.isUserAuthoredMessage` of OMP's much larger ExtensionAPI.
   followup(host as unknown as Parameters<typeof followup>[0])
   const state = { idle: false, kind: "main" }
-  const ctx = () => ({ agent: { kind: state.kind }, isIdle: () => state.idle, hasPendingMessages: () => false })
+  // Spinner labels the extension set; `undefined` restores OMP's default.
+  const labels: (string | undefined)[] = []
+  const ui = { setWorkingMessage: (message?: string) => { labels.push(message) } }
+  const ctx = () => ({ agent: { kind: state.kind }, ui, isIdle: () => state.idle, hasPendingMessages: () => false })
   const answer = (stopReason = "stop") => handlers.get("message_end")!({ message: { role: "assistant", stopReason } }, ctx())
   const note = () => handlers.get("message_end")!({ message: { role: "custom", customType: "advisor" } }, ctx())
   const end = (willContinue?: boolean) => handlers.get("agent_end")!({ messages: [], willContinue }, ctx())
+  const turn = () => handlers.get("turn_start")!({}, ctx())
   const send = (message: object) => handlers.get("message_end")!({ message }, ctx())
   const prompt = () => send({ role: "user" })
   const skill = () => send({ role: "custom", customType: "skill-prompt", attribution: "user" })
-  return { sent, state, answer, note, end, prompt, skill, send }
+  return { sent, state, labels, answer, note, end, turn, prompt, skill, send }
 }
 
 describe("advisor follow-up", () => {
@@ -115,5 +119,24 @@ describe("advisor follow-up", () => {
     host.note()
     host.end()
     expect(host.sent).toEqual([])
+  })
+
+  it("labels the spinner while the advisor reviews a final answer, and resets it when the run or a turn starts over", () => {
+    const host = load()
+    host.answer("toolUse")
+    host.answer("aborted")
+    expect(host.labels).toEqual([])
+    host.turn()
+    expect(host.labels).toEqual([])
+    host.answer()
+    host.end()
+    host.turn()
+    // One reset: the label is restored once, and a later turn keeps OMP's own tool labels.
+    expect(host.labels).toEqual(["Advisor reviewing the final answer", undefined])
+    host.state.kind = "sub"
+    host.answer()
+    host.end()
+    host.turn()
+    expect(host.labels).toHaveLength(2)
   })
 })

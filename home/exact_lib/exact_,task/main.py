@@ -563,7 +563,11 @@ def hook_stop(task: Task, data: dict, harness: str) -> dict:
         lines.append("Open `Done when` items:")
         lines += [f"- {item['id']}: {item['text']}" for item in unmet]
         lines.append(
-            "Do each one that is in the request's scope and reversible (~/AGENTS.md §1), then mark it with "
+            "Do each one that is a step ~/AGENTS.md §1 makes part of the task (in the request's scope, and either named "
+            "by the request or reversible and changing nothing outside this machine that the request did not name, or a "
+            "§3 step 7 cleanup k-cleanup allows; never a §5 action, a live check §3 step 4 keeps for the user's ask, "
+            "or a step the user "
+            "asked you to ask about first), then mark it with "
             '`,task check <id> --evidence "<command and result>"`. '
             "For one you cannot do now (it waits on a user decision or a blocker), "
             'run `,task block <id> --reason "..."` and list it under `Open:` or `Decision needed:` with that id.'
@@ -572,7 +576,7 @@ def hook_stop(task: Task, data: dict, harness: str) -> dict:
         lines.append("Changed files outside the card's `Scope:`: " + ", ".join(outside[:20]))
         lines.append(
             'For each one you changed, record why the Goal needs it with `,task scope add <path> --reason "..."`, '
-            "or undo your change. Leave a change the user made alone."
+            "or undo your change; a k-cleanup deletion (§3 step 7) gets the reason, not an undo. Leave a change the user made alone."
         )
     lines.append("Then write the whole final answer again; it replaces your last one.")
     return {"block": "\n".join(lines)}

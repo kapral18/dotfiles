@@ -29,7 +29,8 @@ Judge the signal, not just the code:
 - **Statistical soundness:** valid comparisons, right rate denominators, sparse percentile handling, aligned time buckets.
 - **Actionability:** fired signal gives triage context; correlated signals do not storm from one root cause.
 
-Prefer executing queries against representative data in safe runtimes; otherwise label analysis a hypothesis.
+Check queries against the schema, mappings, and a small fixture in a local run that ends on its own (`~/AGENTS.md` §3 step 4);
+otherwise label the analysis a hypothesis.
 Domain specifics (syntax, mappings, scale limits) come from verified domain overlays.
 
 ## Systemic-Risk Checks (Run When The Diff Crosses Module Or Deploy Boundaries)
