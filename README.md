@@ -1,27 +1,27 @@
-# 🚀 kapral18/dotfiles
+# kapral18/dotfiles
 
-Personal macOS development environment managed with Chezmoi. Keyboard-centric workflow with extensive automation and tool integration.
+Personal macOS dotfiles managed with Chezmoi: Fish, tmux, Neovim, CLI assistants, and package installation.
 
-**Start here:** published docs at <https://kapral18.github.io/dotfiles/> (source: [`docs/intro/index.md`](docs/intro/index.md)). The README is an orientation page; recipes, command catalogs, and subsystem detail live in `docs/`.
+Read the [documentation](https://kapral18.github.io/dotfiles/) for setup, command references, and configuration recipes (source: [`docs/`](docs/intro/index.md)).
 
-## ✨ Key Features
+## Included
 
-| Feature                | Description                                                  |
-| ---------------------- | ------------------------------------------------------------ |
-| 🤖 **Agent Memory**    | on-demand `,ai-kb` knowledge base + `,handoff` session notes |
-| 🧠 **Local inference** | llama.cpp router + model sync (`,llama-cpp`)                 |
-| 🔐 **Secure Identity** | 1Password SSH agent with SSH commit signing                  |
-| 🌳 **Git Worktrees**   | Worktree management with PR integration                      |
-| 💎 **Neovim**          | Custom LSP, AI commits, refactoring tools                    |
-| 🐚 **Fish Shell**      | 40+ custom productivity commands in `~/bin`                  |
-| 📦 **Brewfile**        | 280+ formulas and casks (per-category partials)              |
-| ⚙️ **Mise**            | Version manager with automatic switching                     |
+| Feature         | Description                                           |
+| --------------- | ----------------------------------------------------- |
+| Agent memory    | `,ai-kb` knowledge base and `,handoff` session notes  |
+| Local inference | llama.cpp router and model sync (`,llama-cpp`)        |
+| Git identity    | 1Password SSH agent and SSH commit signing            |
+| Git worktrees   | Worktree management with PR integration               |
+| Neovim          | LSP, commit-message assistance, and refactoring tools |
+| Fish            | Comma-prefixed commands in `~/bin`                    |
+| Packages        | Homebrew lists by category and mise-managed runtimes  |
 
-## 🛠️ Quick Start
+## Setup
 
 ### Prerequisites
 
-1. **1Password** installed and signed in (SSH agent + secrets).
+Use macOS with **1Password** installed and signed in for SSH keys and secrets.
+Applying this setup installs packages, changes shell and macOS settings, and can remove Homebrew packages absent from its Brewfile. Review [Getting Started](docs/intro/getting-started.md) and [New machine bootstrap](docs/intro/new-machine-bootstrap.md) before applying it to an existing machine.
 
 ### Bootstrap
 
@@ -29,15 +29,15 @@ Personal macOS development environment managed with Chezmoi. Keyboard-centric wo
 sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
 ```
 
-Safer first run: preview with `chezmoi init kapral18 && chezmoi diff` before applying. See [Getting Started](docs/intro/getting-started.md) and [New machine bootstrap](docs/intro/new-machine-bootstrap.md) for the full first-run story (prompts, hooks, and what gets installed).
+If Chezmoi is already installed, preview with `chezmoi init kapral18 && chezmoi diff` before running `chezmoi apply`.
 
-## 🏛️ How It Fits Together
+## Source and deployment
 
 Chezmoi renders templates from [`home/`](home/) into `$HOME`. Hooks in [`home/.chezmoiscripts/`](home/.chezmoiscripts/) install and reconcile packages when lists change.
 
 For the full layout (naming conventions, hook lifecycle, AI config merging, externals), see [Architecture](docs/intro/architecture.md).
 
-## 📚 Subsystems (read the docs)
+## Configuration reference
 
 | Area                                    | Doc                                                         | Source-of-truth (edit here)                                                                              |
 | --------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
@@ -50,11 +50,11 @@ For the full layout (naming conventions, hook lifecycle, AI config merging, exte
 | macOS automation                        | [macOS](docs/topics/macos/index.md)                         | [`home/dot_hammerspoon/`](home/dot_hammerspoon/), [`home/.osx.core`](home/.osx.core)                     |
 | Reference map (where to change X)       | [Reference map](docs/reference/reference-map.md)            | —                                                                                                        |
 
-## 🔄 Day-to-Day
+## Daily use
 
 1. Tmux sessions auto-restore (`tmux-resurrect` / `continuum`).
 2. `,w add …` or the GitHub picker (`prefix + G`) for branch/PR worktrees.
-3. Neovim for editing; `,update` or `chezmoi apply` to converge package/config drift.
+3. Neovim for editing; `,update` to update tools or `chezmoi apply` to apply the declared configuration and package lists.
 
 See [A day in the life](docs/intro/day-in-the-life.md) for a fuller walkthrough.
 
@@ -64,3 +64,4 @@ See [A day in the life](docs/intro/day-in-the-life.md) for a fuller walkthrough.
 - Contributing (repo development): [`CONTRIBUTING.md`](CONTRIBUTING.md)
 - Agent instructions: [`AGENTS.md`](AGENTS.md)
 - Chezmoi data prompts: [`home/.chezmoi.toml.tmpl`](home/.chezmoi.toml.tmpl)
+- License: [MIT](LICENSE)

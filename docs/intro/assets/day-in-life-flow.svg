@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1320" height="390" viewBox="0 0 1320 390" role="img" aria-labelledby="title desc">
   <title id="title">Daily tmux and agent workflow</title>
+  <desc id="desc">Open the session picker, select a PR or issue in the GitHub dashboard, enter its worktree, run an assistant, and review the changes.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#fbbf24"/></marker>
     <style>
@@ -14,7 +15,7 @@
   <path class="line" d="M470 188 H530"/>
   <rect class="box" x="530" y="135" width="185" height="105"/><text class="text" x="562" y="176">Worktree</text><text class="small" x="562" y="206">enter on PR/issue</text>
   <path class="line" d="M715 188 H775"/>
-  <rect class="box" x="775" y="135" width="185" height="105"/><text class="text" x="807" y="176">Agent task</text><text class="small" x="807" y="206">agent, codex, pi</text>
+  <rect class="box" x="775" y="135" width="185" height="105"/><text class="text" x="807" y="176">Agent task</text><text class="small" x="807" y="206">,codex, pi, claude</text>
   <path class="line" d="M960 188 H1020"/>
   <rect class="box" x="1020" y="135" width="185" height="105"/><text class="text" x="1052" y="176">Review</text><text class="small" x="1052" y="206">k-review or tuicr</text>
   <path class="line" d="M1112 240 V300 H138 V240"/>

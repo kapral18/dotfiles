@@ -18,7 +18,6 @@ import shutil
 import socket
 import stat
 import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -223,7 +222,7 @@ def _active_start_pid(spec: RuntimeSpec) -> int | None:
         if len(raw) > 256:
             raise RuntimeError("startup marker is too large")
         payload = json.loads(raw)
-    except (OSError, ValueError, json.JSONDecodeError) as err:
+    except (OSError, ValueError, json.JSONDecodeError):
         _unlink_unchanged(spec.start_marker_path, info)
         return None
     pid = payload.get("pid") if isinstance(payload, dict) else None

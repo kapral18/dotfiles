@@ -287,6 +287,17 @@ TEST_RULES: tuple[TestRule, ...] = (
 
 EXTRA_TESTS: tuple[ExtraTest, ...] = (
     ExtraTest(
+        name="website-search",
+        argv=("node", "--test", "scripts/tests/website_search.test.cjs"),
+        prefixes=(
+            "scripts/tests/website_search.test.cjs",
+            "website/src/theme/SearchBar/",
+            "website/src/plugins/local-search/",
+            "website/package.json",
+            "website/pnpm-lock.yaml",
+        ),
+    ),
+    ExtraTest(
         name="context-mode",
         argv=("bun", "test", "scripts/tests/context_mode.test.ts"),
         prefixes=(

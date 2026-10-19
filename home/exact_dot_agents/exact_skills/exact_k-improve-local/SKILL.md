@@ -1,12 +1,12 @@
 ---
 name: k-improve-local
-description: Manual-only workflow for proposing one evidence-backed, high-leverage improvement to the local changes.
+description: "Manual-only: propose one evidence-backed improvement to the local changes."
 disable-model-invocation: true
 ---
 
 # Improve Local
 
-Propose the single most compelling, high-leverage addition to the local changes.
+Recommend the improvement with the clearest benefit for its cost.
 
 Use when:
 
@@ -30,7 +30,7 @@ First actions:
 Selection rules:
 
 - Prefer changes that strengthen the current diff's purpose: sharper validation, clearer behavior, safer edge handling, better docs, or more complete tests.
-- Scope the recommendation to the real opportunity: small when small is enough, broad when breadth is where the leverage lives.
+- Choose a small or broad change according to its benefit within the requested scope.
 - Recommend unrelated cleanup, package churn, or speculative abstractions only when the local diff makes the payoff unusually clear.
 - Treat "suggest" literally: present the recommendation first. Edit files only after the user explicitly approves implementation.
 

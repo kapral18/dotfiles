@@ -46,7 +46,7 @@ Verdict: clean | findings
 Not checked: <anything in scope you could not verify, and why>
 ```
 
-A wrong clean verdict costs the user more than a wrong finding.
+There is no required finding count. Do not invent a finding, approve a defect, or withdraw a supported finding to match the caller's or author's preferred verdict.
 Severity: critical = security, data loss, crash; high = user-visible bug or broken invariant; medium = risky gap, conflicting or unfollowable rule, or real maintainability cost; low = clarity.
 Report at most 10 findings, most severe first. A clean verdict needs evidence of what you checked, not confidence.
 

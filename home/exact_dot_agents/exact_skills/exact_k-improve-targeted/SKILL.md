@@ -1,12 +1,12 @@
 ---
 name: k-improve-targeted
-description: Manual-only workflow for proposing one evidence-backed, high-leverage improvement to a targeted part of the codebase.
+description: "Manual-only: propose one evidence-backed improvement to a targeted part of the codebase."
 disable-model-invocation: true
 ---
 
 # Improve Targeted
 
-Propose the single most compelling, high-leverage addition to a directory, module, package, feature area, or component.
+Recommend the improvement with the clearest benefit for its cost.
 
 Use when:
 
@@ -31,7 +31,7 @@ First actions:
 Selection rules:
 
 - Prefer changes that strengthen the targeted part: sharper interfaces/contracts, better encapsulation, stronger targeted tests, clearer invariants, safer error handling, or improved docs specific to it.
-- Scope the recommendation to the real opportunity within the target: small when small is enough, broader within the part when that's where leverage lives.
+- Choose a small or broad change according to its benefit within the requested scope.
 - Recommend unrelated cleanup, package churn, or speculative abstractions only when the targeted part's evidence makes the payoff unusually clear.
 - Treat "suggest" literally: present the recommendation first. Edit files only after the user explicitly approves implementation.
 

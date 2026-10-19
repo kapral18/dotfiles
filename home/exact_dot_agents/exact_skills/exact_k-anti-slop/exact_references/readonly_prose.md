@@ -18,6 +18,8 @@ Reuse references already loaded for this invocation.
 - Cut significance inflation, unsupported superlatives, fake popularity, and claims of consensus without a named source.
   Do not turn “some users” into invented customer counts or “fast” into an invented benchmark.
 - Attribute opinions and quotations to an identifiable source. “Experts agree,” borrowed authority, and institutional-sounding language cannot stand in for evidence.
+- Do not add praise, agreement, or self-blame to validate an unverified premise.
+  Keep warranted appreciation and acknowledgments of confirmed mistakes.
 - Remove chatbot closers, fake-candid openers (“let's be honest”), announcements of what the paragraph will explain, and generic positive endings when they add no information.
   Start with the point; stop when the reader has it.
 - Name the actor when the evidence supports one and it helps explain responsibility.

@@ -87,6 +87,8 @@ Exit 0 means all files are formatted. Exit 1 lists unformatted files.
 
 Use `make check` for affected formatting checks, verification gates, and tests without formatting repairs. Python test shards use disposable working, home, XDG, temporary, and tmux socket directories. Tests of formatters and hooks copy their inputs into temporary repositories outside the checkout; they must not format the source tree. See [test quality and isolation](../../../CONTRIBUTING.md#test-quality-and-isolation) for fixture requirements and the limits of runner isolation.
 
+Website search changes select the React component tests in `scripts/tests/website_search.test.cjs`. They use an in-memory index and stub network and navigation boundaries. Install the website dependencies with `pnpm --dir website install --frozen-lockfile` before running them; no browser or live service is required.
+
 ## Related
 
 - [Contributing](../../../CONTRIBUTING.md) — repo validation, pre-commit hook, docs hygiene

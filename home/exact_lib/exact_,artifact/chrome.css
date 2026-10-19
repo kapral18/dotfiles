@@ -75,13 +75,15 @@ iframe {
   bottom: 16px;
   transform: translateX(-50%);
   width: min(760px, calc(100vw - 28px));
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
   border: 1px solid rgba(196, 181, 253, 0.3);
   border-radius: 20px;
   background: rgba(15, 23, 42, 0.82);
   color: #eef2ff;
   backdrop-filter: blur(24px) saturate(1.15);
   box-shadow: 0 22px 58px rgba(2, 6, 23, 0.38);
-  overflow: hidden;
+  overflow: auto;
   transition:
     width 180ms ease,
     border-color 180ms ease,

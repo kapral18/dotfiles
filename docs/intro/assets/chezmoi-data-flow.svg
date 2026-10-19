@@ -8,7 +8,7 @@
     </style>
   </defs>
   <rect class="bg" width="1280" height="360" rx="24"/>
-  <text class="text" x="48" y="54">Declarative source converges the runtime</text>
+  <text class="text" x="48" y="54">Chezmoi renders source files into home-directory configuration</text>
   <rect class="box" x="50" y="130" width="170" height="100"/><text class="text" x="82" y="172">Repo</text><text class="small" x="82" y="202">home/**</text>
   <path class="line" d="M220 180 H280"/>
   <rect class="box" x="280" y="130" width="185" height="100"/><text class="text" x="312" y="172">Data</text><text class="small" x="312" y="202">prompts, registries</text>

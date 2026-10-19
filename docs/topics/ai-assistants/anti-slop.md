@@ -6,11 +6,12 @@ The upstream core's purpose test, evidence requirements, and design-direction co
 
 The adoption is a maintained derivative, not an upstream plugin install or automatic mirror.
 It preserves the useful capabilities while adapting workflow and style rules to the existing SOP.
-The [skill](../../../home/exact_dot_agents/exact_skills/exact_k-anti-slop/readonly_SKILL.md) and references contain 4,502 whitespace-delimited words, including metadata, against 24,477 across upstream's six skills: about 82% less text with additional categories covered.
+The [skill](../../../home/exact_dot_agents/exact_skills/exact_k-anti-slop/readonly_SKILL.md) and references contain 4,562 whitespace-delimited words, including metadata, against 24,477 across upstream's six skills: about 81% less text with additional categories covered.
 These are word counts, not token measurements or evidence of equal model performance.
 Only matching references load; this report and the inspection inventory are not part of routine skill loading.
 Checks do not prescribe output length: keep already-clear text and add detail only for a concrete gap in meaning or use.
 Necessary qualifiers, accessibility requirements, and code contracts still take precedence over brevity.
+Calling a pattern "slop" does not establish a defect. The entry point requires checking its purpose and consumers before removal; the prose reference rejects agreement or self-blame that validates an unverified premise. The [SOP's disagreement rule](instructions.md#disagreement-and-correction) remains authoritative, including explicit user preferences.
 
 ## Source and inspection boundary
 

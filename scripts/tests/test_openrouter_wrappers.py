@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import unittest
-import urllib.error
 
 try:
     from . import bin_command_support as _support

@@ -4,13 +4,13 @@ sidebar_position: 5
 
 # Learning Paths
 
-This setup is an all-or-nothing installation. When you run `chezmoi apply`, it installs the entire ecosystem. However, you do **not** need to learn or use all of it on day one.
+An unrestricted `chezmoi apply` applies the configured files and install hooks. You can keep using your IDE while learning the installed terminal tools one at a time.
 
-If you are coming from VSCode/JetBrains, jumping straight into "tmux + fish + nvim" can be overwhelming. Here is a recommended path for incrementally learning the workflow while still getting your job done.
+If you use VSCode or JetBrains, start with Git and Fish in the integrated terminal, then try tmux and Neovim.
 
-## Phase 1: Git + Identity (Low Friction)
+## 1. Git and identity
 
-Keep using your current IDE and terminal. Just let the new git defaults work for you.
+Keep using your current IDE and terminal.
 
 What you get immediately:
 
@@ -22,7 +22,7 @@ Where to read:
 
 - [Git and identity](../topics/workflow/git-identity/index.md)
 
-## Phase 2: Fish Shell (Medium Friction)
+## 2. Fish
 
 Start using Fish as your default shell inside your IDE's integrated terminal.
 
@@ -35,7 +35,7 @@ Where to read:
 
 - [Shell: Fish](../topics/workflow/shell-fish.md)
 
-## Phase 3: Tmux + Custom CLI Tools (High Friction)
+## 3. Tmux and CLI tools
 
 Move out of the IDE's integrated terminal and into a dedicated terminal app (like Ghostty, Alacritty, or iTerm) running `tmux`.
 
@@ -51,9 +51,9 @@ Where to read:
 - [Tmux](../topics/workflow/tmux/index.md)
 - [Custom commands](../topics/workflow/custom-commands/index.md)
 
-## Phase 4: Neovim Editor Workflow (Optional)
+## 4. Neovim (optional)
 
-Once you are comfortable living in `tmux`, you can try swapping your IDE for Neovim. This is entirely optional.
+Try Neovim in a tmux pane when you want to explore its editing workflow.
 
 What to focus on:
 
@@ -64,15 +64,15 @@ Where to read:
 
 - [Editor: Neovim](../topics/editor/neovim/index.md)
 
-## Phase 5: The Agentic Operating System (AI)
+## 5. CLI assistants
 
-Once the terminal feels like home, you can begin leveraging the AI integrations that turn this environment into an Agentic OS.
+Run assistants alongside your editor and use the shared instructions, skills, and handoff notes to manage their work.
 
 What to focus on:
 
-- Learning to invoke terminal assistants (Pi, OpenCode).
-- Understanding how SOPs dictate agent behavior.
-- Utilizing MCP tools to give agents context.
+- Start a terminal assistant, such as Pi or OpenCode.
+- Read the shared operating rules and each repository's instructions.
+- Configure MCP tools for the context the task needs.
 
 Where to read:
 

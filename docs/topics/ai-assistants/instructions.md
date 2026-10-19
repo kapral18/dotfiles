@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Instructions
 
-`home/readonly_AGENTS.md` is the one global instruction file (about 10 KB). It loads into every session, so every line must earn its place. Hook messages and advisor prompts point to its sections instead of restating its rules; a hook message that tells the agent to act also names the limits on acting. Procedures that apply only in some turns live word for word in skills; the SOP keeps a short trigger and the safety limits each needs without the skill: `k-long-jobs`, `k-cleanup` (§3 step 7), and the Approval scope in `k-git/references/commit-push.md` (§5).
+`home/readonly_AGENTS.md` is the one global instruction file. It loads into every session, so every line must earn its place. Hook messages and advisor prompts point to its sections instead of restating its rules; a hook message that tells the agent to act also names the limits on acting. Procedures that apply only in some turns live word for word in skills; the SOP keeps a short trigger and the safety limits each needs without the skill: `k-long-jobs`, `k-cleanup` (§3 step 7), and the Approval scope in `k-git/references/commit-push.md` (§5).
 
 Checks run automatically, so the user never has to nudge the agent to review again or finish the work. In Claude Code, Pi, OMP, and Codex, a risky change or a rule edit gets review rounds of two fresh reviewers each, with a fix loop, repeated without asking until a full round on the whole scope finds no new medium or higher issue; a cause that returns twice goes under `Open:` and stops driving the loop. In Claude Code (with `advisorModel` set) and OMP, a model also reviews the final answer; Claude Code's `stop-review` adds format checks that need no model. Pi, Codex, and OpenCode have no model review of the final answer. In Claude Code a turn goes back at most once, with the review's concerns and the format checks' findings in that one send-back, on the answer that would end the turn (an answer another Stop hook such as `/goal` sends back is left to it), because each extra send-back made the agent rewrite its whole answer again; the rewritten answer is not checked again. OMP's `Gate` sends all its concerns in its first review of a run, and later ones only for a break the agent's fix introduced or a concern held back for its 3-note cap. In every harness the intent-guard hooks also check each iteration against the task's intent card: the card rides with each prompt, an edit outside its scope gets a note, a zoom-out comes every 25 tool calls, and a stop goes back while a `Done when` item is open ([Staying on the goal](staying-on-goal.md)).
 
@@ -21,6 +21,12 @@ Checks run automatically, so the user never has to nudge the agent to review aga
 
 Review fix authority follows `k-review/references/authorship.md` in every mode.
 Fix scope includes omitted requirements and necessary consumers of the authorized request, not only files already present in its diff.
+
+## Disagreement and correction
+
+[SOP §2](../../../home/readonly_AGENTS.md#2-truth-and-evidence) forbids pandering: criticism prompts a check, not an automatic concession or promise to edit. The agent explains supported reasoning, names uncertainty, and corrects confirmed mistakes. Changed goals or preferences can change a recommendation without making the earlier factual claim false.
+
+Deslop applies this rule before removing a criticized pattern. External replies distinguish confirmed, refuted, and unsettled findings before choosing acknowledgment or disagreement. The shared reviewer prompt requires evidence for either verdict and has no finding quota. These are written instructions; static checks verify their routing and deployment, not future model adherence.
 
 ## Where each harness reads it
 

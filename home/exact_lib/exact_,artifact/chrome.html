@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="/assets/chrome.css">
 </head>
 <body>
-<iframe id="artifact" src="/artifact/__ARTIFACT_PATH__" sandbox="allow-scripts allow-forms allow-popups allow-downloads"></iframe>
+<iframe id="artifact" title="__ARTIFACT_TITLE__" src="/artifact/__ARTIFACT_PATH__" sandbox="allow-scripts allow-forms allow-popups allow-downloads"></iframe>
 <button class="feedback-toggle" id="feedbackToggle" type="button" aria-expanded="false" aria-controls="dock">Feedback</button>
 <div class="topbar">
   <div class="badge"><span class="dot"></span><span>Cache review</span><code>__ARTIFACT_TITLE__</code></div>
@@ -22,7 +22,8 @@
       <code id="anchorSelector"></code>
       <p id="anchorText"></p>
     </div>
-    <textarea id="prompt" placeholder="Write feedback for the current anchor. Cmd+Enter adds to tray."></textarea>
+    <label for="prompt">Feedback for the selection</label>
+    <textarea id="prompt" placeholder="Cmd+Enter adds feedback to the tray."></textarea>
     <div class="tray" id="tray" aria-label="Queued feedback items"></div>
     <div class="actions">
       <div class="chips">
@@ -37,7 +38,7 @@
         <button class="primary" id="send" type="button">Send batch</button>
       </div>
     </div>
-    <div class="hint" id="status">Click to pin, select text to promote to its parent area, Cmd-click to pin multiple targets for one prompt, Alt-click repeatedly to expand toward the full page.</div>
+    <div class="hint" id="status" role="status">Click to pin, select text to promote to its parent area, Cmd-click to pin multiple targets for one prompt, Alt-click repeatedly to expand toward the full page.</div>
   </div>
 </section>
 <script>

@@ -1,10 +1,8 @@
 local fs_util = require("util.fs")
 local ocs = require("plugins_local_src.owner-code-search")
 
--- Setup the plugin with any custom config
 ocs.setup()
 
--- Create user commands with proper argument handling
 vim.api.nvim_create_user_command("OwnerCodeGrep", function(opts)
   local args = vim.split(opts.args, " ", { trimempty = true })
   if #args < 2 then

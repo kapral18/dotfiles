@@ -41,7 +41,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -1373,7 +1373,6 @@ class KnowledgeBase:
         else:
             raise ValueError(f"unsupported ingest target: {target} (need .md file or dir)")
 
-        domain_csv = csv_join(domain_tags or [])
         seen = 0
         ingested = 0
         skipped = 0

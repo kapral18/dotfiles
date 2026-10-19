@@ -135,16 +135,8 @@ should_run() {
   [[ -z "$type_filter" || "$type_filter" == "$1" ]]
 }
 
-# --- formatter groups ---
-# Each group is a self-contained function that prints its own progress, mutates
-# files (or checks them), and returns non-zero on failure. Groups operate on
-# disjoint file sets, so they are launched concurrently (see runner below). The
-# only ordering constraint lives *inside* the md group: ,format-md -> markdownlint
-# -> prettier all touch the same markdown files and must stay sequential.
-
-# md group: ,format-md -> markdownlint --fix -> prettier (md + json + yaml).
-# json/yaml have no ordering dependency, but bundling them into prettier keeps it
-# a single bulk invocation (the original behavior) and they ride along harmlessly.
+# Groups format disjoint file sets concurrently. Markdown's three formatters
+# must run in order because they edit the same files; JSON/YAML share its prettier call.
 fmt_md() {
   local rc=0
   if should_run md; then
@@ -297,10 +289,7 @@ fmt_py() {
   return $rc
 }
 
-# go: Go (any .go under repo root)
-# We deliberately use the same tools that Neovim's conform.nvim uses
-# (goimports then gofumpt) so that `bin/fmt --type go` and editor save
-# never fight. Falls back to plain gofmt only if the modern pair is absent.
+# Match Neovim's goimports -> gofumpt order; use gofmt when either is unavailable.
 fmt_go() {
   should_run go || return 0
   local rc=0
@@ -342,10 +331,7 @@ fmt_go() {
   return $rc
 }
 
-# --- concurrent runner ---
-# Launch each independent group in the background, buffering its combined output
-# to a temp file. After all finish, flush the buffers in a deterministic order
-# so output stays readable, and OR the exit statuses into `ok`.
+# Buffer concurrent output and print it in group order.
 groups=(md sh lua fish py go)
 tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/binfmt.XXXXXX")"
 trap 'rm -rf "$tmpdir"' EXIT
@@ -363,7 +349,6 @@ for i in "${!groups[@]}"; do
   cat "$tmpdir/${groups[$i]}.out"
 done
 
-# --- summary ---
 if $check_mode; then
   if $ok; then
     printf '\nAll files formatted correctly.\n'

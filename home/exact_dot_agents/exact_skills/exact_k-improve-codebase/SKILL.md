@@ -1,12 +1,12 @@
 ---
 name: k-improve-codebase
-description: Manual-only workflow for proposing one evidence-backed, high-leverage improvement to the current codebase.
+description: "Manual-only: propose one evidence-backed improvement to the current codebase."
 disable-model-invocation: true
 ---
 
 # Improve Codebase
 
-Propose the single most compelling, high-leverage addition to the current codebase.
+Recommend the improvement with the clearest benefit for its cost.
 
 Use when:
 
@@ -30,7 +30,7 @@ First actions:
 Selection rules:
 
 - Prefer changes that compound future work: sharper automation, better verification, safer generated config, or clearer agent/tool workflows.
-- Scope the recommendation to the real opportunity: small when small is enough, broad when breadth is where the leverage lives.
+- Choose a small or broad change according to its benefit within the requested scope.
 - Recommend package churn, stylistic cleanup, or speculative abstractions only when the repo evidence makes the payoff unusually clear.
 - Treat "suggest" literally: present the recommendation first. Edit files only after the user explicitly approves implementation.
 

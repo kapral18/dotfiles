@@ -1,12 +1,12 @@
 ---
 name: k-improve-branch
-description: Manual-only workflow for proposing one evidence-backed, high-leverage improvement to the current branch, PR, or issue goal.
+description: "Manual-only: propose one evidence-backed improvement to the current branch, PR, or issue goal."
 disable-model-invocation: true
 ---
 
 # Improve Branch
 
-Propose the single most compelling, high-leverage addition to the current branch goal, including its PR/issue when present.
+Recommend the improvement with the clearest benefit for its cost.
 
 Use when:
 
@@ -30,7 +30,7 @@ First actions:
 Selection rules:
 
 - Prefer changes that advance the branch goal: stronger acceptance coverage, cleaner integration, sharper UX/API behavior, clearer migration path, or reduced review risk.
-- Scope the recommendation to the real opportunity: small when small is enough, broad when breadth is where the leverage lives.
+- Choose a small or broad change according to its benefit within the requested scope.
 - Recommend unrelated cleanup, package churn, or speculative abstractions only when the branch context makes the payoff unusually clear.
 - Treat "suggest" literally: present the recommendation first. Edit files only after the user explicitly approves implementation.
 

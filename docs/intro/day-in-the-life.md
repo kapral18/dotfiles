@@ -19,7 +19,7 @@ Open the session picker (`prefix` + `T`). It lists your tmux sessions, git workt
 
 ## Navigate, Create, Switch, And Kill Sessions
 
-The session picker is the daily driver — not raw `,w` commands:
+The session picker provides these actions:
 
 - `enter` — switch to a session, or create one for a worktree/directory row (it derives a canonical session name and attaches automatically)
 - `tab` — multi-select rows for batch actions
@@ -36,6 +36,8 @@ Open the GitHub picker (`prefix` + `G`) for a PR/issue dashboard with review/CI 
 
 ![GitHub picker popup over the tmux workbench, with safe demo rows for own PRs, external reviews, issues, epics, and pending backports](../topics/workflow/tmux/assets/github-picker-full.png)
 
+This demo shows an earlier picker layout. Use the current scopes and bindings described here; labels and shortcuts in the image may differ.
+
 From the dashboard, without leaving tmux:
 
 - **Create tickets** — `alt-i` opens `$EDITOR` to file a new issue; `alt-E` files an epic (parent + sub-issues).
@@ -44,11 +46,11 @@ From the dashboard, without leaving tmux:
 
 `alt-g` switches between this dashboard and the session picker in place. See [GitHub picker](../topics/workflow/tmux/github-picker.md).
 
-## Agentic Tasks: Offload Work To Assistants
+## Work with assistants
 
-Assistants are governed by a version-controlled SOP + skills layer, so behavior is consistent across tools and respects each repo's rules. See [The Agentic Operating System](../topics/ai-assistants/index.md).
+Assistants load shared operating rules and skills alongside each repository's instructions. See [AI assistants](../topics/ai-assistants/index.md) for the configuration and checks used by each tool.
 
-The CLI assistants, in the order this setup leans on them:
+The main CLI assistants are:
 
 1. **Codex** (`,codex`)
 2. **Pi** (`pi`)

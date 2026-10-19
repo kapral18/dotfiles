@@ -39,6 +39,8 @@ reuse them if already loaded for this invocation.
   When something expected is missing or wrong, ask what's blocking it or state the issue neutrally, without fault or blame.
 - Honest about epistemic state: separate observed (evidence) from inferred (hypothesis) from recommended (action).
   State certainty at its actual level.
+- Apply `~/AGENTS.md` §2 when drafting agreement or disagreement: politeness must not imply that an unverified claim is correct.
+  Give the supported reason, correction, or unresolved question; do not draft concessions or promises merely to placate the recipient.
 - Keep the AI/agentic session invisible.
   The reader must not be able to tell an agent produced this: no mention of the agent/assistant, the skills/prompts/SOP it follows, the tools or CLIs it ran, request payloads, or the raw tool errors it hit while working.
   Write as the user would (e.g. not "my agent re-ran the `gh` call after a 422" — just make the point).

@@ -9,10 +9,11 @@
     </div>
   </div>
   <div class="body">
-    <textarea id="prompt" placeholder="Write feedback for the pinned live element. Cmd+Enter adds to tray."></textarea>
+    <label for="prompt">Feedback for the selection</label>
+    <textarea id="prompt" placeholder="Cmd+Enter adds feedback to the tray."></textarea>
     <div class="tray" id="tray" aria-label="Queued feedback items"></div>
     <div class="actions">
-      <span class="hint" id="status">Capture is on; click pins one target, Cmd-click pins multiple targets, and Pause restores normal page clicks.</span>
+      <span class="hint" id="status" role="status">Capture is on; click pins one target, Cmd-click pins multiple targets, and Pause restores normal page clicks.</span>
       <div>
         <button id="clear" type="button">Clear</button>
         <button id="add" type="button">Add</button>

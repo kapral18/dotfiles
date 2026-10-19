@@ -10,18 +10,17 @@ This setup is managed with `chezmoi`. The basic loop is:
 2. Review the changes `chezmoi` wants to apply
 3. Apply them (which can trigger install hooks)
 
-If you are coming from VSCode/JetBrains and do not live in a terminal: think of `chezmoi` like "dotfiles as code" with a build step.
+Chezmoi renders the source files under `home/` into your home directory.
 
 ## Preconditions
 
-**⚠️ Important:** This setup has a hard dependency on 1Password.
-
-- **1Password app** must be installed and signed in. This setup assumes 1Password is the source of truth for SSH keys and many secrets. If you don't use 1Password, you will need to heavily modify the templates.
-- Willingness to let the bootstrap scripts install system tooling.
+- Use macOS with **1Password** installed and signed in for SSH keys and secrets. Using another secret manager requires template changes.
+- Install `chezmoi` before using the preview commands below; the [bootstrap command](#one-liner-bootstrap-what-the-readme-uses) also installs it.
+- Applying the setup installs tools, changes your login shell and macOS preferences, and can remove Homebrew packages not listed in the Brewfile. Inspect the hooks before applying it to an existing machine.
 
 ## Safe Preview Flow
 
-The safest way to approach any dotfiles setup is to preview what would change before applying.
+Review the file changes before applying:
 
 ```bash
 chezmoi init kapral18
@@ -48,7 +47,7 @@ The repo root `README.md` uses the upstream `chezmoi` installer + init in one li
 sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
 ```
 
-Use this once you're comfortable with what the scripts do. The preview flow is still recommended for first-time adopters.
+This command applies the setup immediately. Use the preview flow first if you need to inspect changes.
 
 ## What `chezmoi apply` Can Trigger Here
 

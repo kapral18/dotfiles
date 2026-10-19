@@ -1,18 +1,7 @@
 /**
- * Local-search plugin: walks the markdown sources under `../docs/`, splits
- * each file into per-H2 sections, builds a MiniSearch index with one document
- * per section, and writes it to `static/search-index.json` so the swizzled
- * SearchBar component can lazy-fetch it from `/<baseUrl>/search-index.json`.
- *
- * Per-section indexing means a search for "1password" surfaces the exact
- * `## 1Password` section (linked with `#1password` anchor) instead of just the
- * page that happens to mention it. Anchor slugs are produced by
- * `github-slugger`, the same algorithm Docusaurus uses for heading IDs, so the
- * generated URLs scroll the user to the right spot on click.
- *
- * Runs once on plugin load (i.e. once per `pnpm start` and once per
- * `pnpm build`). In dev mode the index does NOT auto-refresh on doc edits;
- * restart the dev server to reindex.
+ * Index each H2 section under docs/ so search can link directly to it.
+ * SearchBar fetches static/search-index.json on demand.
+ * Runs once per start/build; restart the dev server to index doc edits.
  */
 
 import path from 'path'
@@ -111,12 +100,8 @@ async function listMarkdownFiles(dir: string): Promise<string[]> {
 }
 
 /**
- * Split markdown into the page intro + one chunk per `##` heading. Headings
- * inside fenced code blocks are ignored so a `## comment` line in a Bash
- * snippet doesn't produce a phantom section. H1 lines are skipped — the page
- * title is computed separately and there's no anchor for them anyway. H3+ are
- * left inside their parent section's body so they remain searchable but don't
- * each spawn their own document (which would 3-5x the index size).
+ * Split at H2 headings outside triple-backtick fences. The intro omits H1
+ * because pageTitle already stores it; H3+ stay searchable within their section.
  */
 function splitSections(content: string): Section[] {
   const sections: Section[] = []
@@ -189,11 +174,8 @@ function extractHeadings(content: string): string[] {
 }
 
 /**
- * Strip the noisiest markdown so MiniSearch's tokenizer sees mostly prose.
- * Not perfect — we intentionally keep this small and dependency-free rather
- * than pulling in a full markdown AST. Code blocks become a single space so
- * they don't inflate the index, and inline punctuation is replaced with
- * spaces to keep word boundaries.
+ * Remove code and markup before tokenizing prose. Use spaces to preserve word
+ * boundaries; this handles common Markdown syntax without a full parser.
  */
 function stripMarkdown(content: string): string {
   return content

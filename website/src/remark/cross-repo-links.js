@@ -1,28 +1,7 @@
 /**
- * Remark plugin: rewrite relative markdown/image links that escape the docs/
- * tree (i.e. point at files elsewhere in the repo such as `home/...`,
- * `tools/...`, the root `README.md`, root dotfiles like `.prettierrc`, etc.)
- * into absolute GitHub URLs at build time.
- *
- * Why this exists:
- *   - The docs deliberately reference scripts/configs under `home/` and other
- *     repo-root paths, which are outside the Docusaurus content tree.
- *   - Docusaurus's default link resolver either warns (broken link) or fails
- *     the build (when it tries to bundle a non-`.md` target as a webpack
- *     module — e.g. a directory like `home/Alfred.alfredpreferences/`).
- *   - Keeping the source markdown using repo-relative paths means agents
- *     reading `docs/` directly (via the AGENTS.md "reflect changes in `docs/`"
- *     rule) still get working links.
- *
- * Algorithm (per link/image node):
- *   1. Skip absolute, protocol, anchor-only, and empty URLs.
- *   2. Resolve the URL against the source file's directory using `path.resolve`.
- *   3. If the resolved path is inside `docs/`, leave the link alone — Docusaurus
- *      handles intra-docs routing natively.
- *   4. Otherwise compute the path relative to the repo root and rewrite to:
- *        - links  → `https://github.com/<owner>/<repo>/blob|tree/main/<path>`
- *        - images → `https://raw.githubusercontent.com/<owner>/<repo>/main/<path>`
- *      Trailing slash or absence of a file-like name → `tree/main`, else `blob/main`.
+ * Keep repo-relative source links usable outside the Docusaurus content tree.
+ * Links leaving docs/ become GitHub URLs; images use raw.githubusercontent.com.
+ * Run before Docusaurus's link resolver, which cannot bundle those sources.
  */
 
 const path = require('path')
@@ -55,9 +34,7 @@ function looksLikeFile(basename, hasTrailingSlash) {
   if (hasTrailingSlash) return false
   // Dotfiles like `.prettierrc`, `.gitignore`, `.editorconfig`.
   if (basename.startsWith('.') && !basename.includes('/')) return true
-  // Anything with a recognizable extension. Note: this misclassifies the
-  // Alfred bundle (`Alfred.alfredpreferences`), but the source markdown
-  // always renders that with a trailing slash, which is handled above.
+  // A directory whose name contains a dot needs a trailing slash.
   return /\.[a-zA-Z0-9]+$/.test(basename)
 }
 

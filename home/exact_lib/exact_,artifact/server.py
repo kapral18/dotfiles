@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from assets import ASSET_TYPES, asset_text, chrome_page, inject_client_script, render_asset
-from feedback import clear_ended, ended_path, normalize_feedback_batch
+from feedback import clear_ended, normalize_feedback_batch
 from paths import APP, HOST, ensure_session, sanitize_asset_name, sanitize_name, session_dir
 
 ENTRYPOINT = Path(__file__).resolve().with_name("main.py")

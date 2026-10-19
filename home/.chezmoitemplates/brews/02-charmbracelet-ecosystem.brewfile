@@ -1,6 +1,6 @@
 tap "charmbracelet/tap", trusted: true
 
-# A powerful terminal-based AI assistant for developers
+# Terminal AI assistant
 # https://charm.sh/crush
 brew "crush"
 
@@ -12,6 +12,6 @@ brew "charmbracelet/tap/freeze"
 # https://github.com/charmbracelet/glow
 brew "glow"
 
-# Tool for glamorous shell scripts
+# Interactive prompts for shell scripts
 # https://github.com/charmbracelet/gum
 brew "gum"

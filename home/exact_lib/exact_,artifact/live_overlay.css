@@ -25,6 +25,8 @@
   left: 50%;
   bottom: 16px;
   width: min(780px, calc(100vw - 28px));
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
   transform: translateX(-50%);
   border: 1px solid rgba(196, 181, 253, 0.34);
   border-radius: 20px;
@@ -32,14 +34,21 @@
   color: #eef2ff;
   box-shadow: 0 24px 70px rgba(2, 6, 23, 0.42);
   font: 13px/1.4 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  overflow: hidden;
+  overflow: auto;
 }
 .head,
 .actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+.head > div:last-child,
+.actions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .head {
   padding: 10px 12px 8px 14px;

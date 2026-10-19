@@ -6,9 +6,9 @@ hide_table_of_contents: true
 
 # kapral18/dotfiles
 
-These docs are for people who want to read, learn from, or adopt pieces of this setup — IDE-first folks moving toward terminals, anyone after a repeatable macOS dev environment, or anyone using this repo as inspiration for their own.
+These docs cover a macOS development environment built around Fish, tmux, Neovim, and CLI assistants. Use them to install the setup, learn its workflow, or adapt individual pieces.
 
-The real workflow is a tmux workbench: Neovim stays inline, assistants run in neighboring panes, and popups appear only when a workflow asks for them.
+Neovim and assistants run in neighboring tmux panes. Popups hold pickers and other temporary tools.
 
 ## Where to start
 
@@ -30,9 +30,8 @@ The real workflow is a tmux workbench: Neovim stays inline, assistants run in ne
 
 ## How these docs are organised
 
-These docs put the story first and the reference one click away:
-
 - **Introduction** — what this is, how to install it safely, and what the workflow feels like.
+- **Topics** — configuration and commands by subsystem.
 - **Reference** — lookup tables, FAQ, and troubleshooting.
 
-When you change something under `home/`, reflect it in the matching topic page so the next reader (human or AI agent) finds it. The agent SOPs in `~/AGENTS.md` and `~/CLAUDE.md` enforce that rule at edit time.
+When a change under `home/` affects behavior, update the matching topic page. The repository's [`AGENTS.md`](../../AGENTS.md) requires this for agent edits.

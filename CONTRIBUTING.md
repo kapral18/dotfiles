@@ -19,6 +19,8 @@ make check
 
 `make check` runs [`bin/check`](bin/check): affected formatting lint, Python import lint, verify gates, and tests for paths dirty vs `HEAD` (plus untracked). Affected tests are the union of filename convention (`scripts/foo.sh` → `test_foo.py`), one-hop Python imports among `scripts/*.py`, and the prefix map in [`scripts/check.py`](scripts/check.py). Slow picker shards run only when tmux sources (or those shards) change. Humans may run the full suite with `make check-full` (`CHECK_FULL=1 bin/check --full`). Agents must not. Pre-commit never runs the full suite. `make test` is also human-only.
 
+Website search changes also run isolated React component tests. Install their dependencies with `pnpm --dir website install --frozen-lockfile`; `make docs` installs the same dependencies.
+
 Affected Python tests run in parallel via [`scripts/test_runner.py`](scripts/test_runner.py), usually one subprocess per selected file; the runner splits a few slow files into individual cases. Each shard gets disposable working, home, XDG, temporary, and tmux socket directories. Only `PATH`, locale variables, `TERM`, and the explicit integration-test opt-in pass through from the shell—not credentials, Git selectors, or tmux state. `scripts/test_runner.py` itself is not a shard.
 
 ### Test quality and isolation

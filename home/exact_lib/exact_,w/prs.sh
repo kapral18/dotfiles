@@ -14,40 +14,6 @@ require_cmd() {
   fi
 }
 
-parse_owner_repo_from_remote_url() {
-  local url="$1"
-  local path=""
-
-  url="${url%.git}"
-  case "$url" in
-    git@*:*/*)
-      # git@<host>:owner/repo
-      path="${url#git@*:}"
-      ;;
-    ssh://git@*/*/*)
-      # ssh://git@<host>/owner/repo
-      path="${url#ssh://git@*/}"
-      ;;
-    https://*/*/*)
-      # https://<host>/owner/repo
-      path="${url#https://*/}"
-      ;;
-    http://*/*/*)
-      # http://<host>/owner/repo
-      path="${url#http://*/}"
-      ;;
-    *)
-      return 1
-      ;;
-  esac
-
-  if [[ "$path" != */* ]]; then
-    return 1
-  fi
-
-  printf '%s\t%s\n' "${path%%/*}" "${path#*/}"
-}
-
 get_remote_owner_and_name() {
   local remote="$1"
   local remote_url parsed
@@ -56,7 +22,7 @@ get_remote_owner_and_name() {
   if [ -z "$remote_url" ]; then
     return 1
   fi
-  if parsed="$(parse_owner_repo_from_remote_url "$remote_url")"; then
+  if parsed="$(_comma_w_parse_owner_repo_from_remote_url "$remote_url")"; then
     printf '%s\n' "$parsed"
     return 0
   fi
@@ -77,7 +43,7 @@ get_base_repo_owner_and_name() {
     return 1
   fi
 
-  if parsed="$(parse_owner_repo_from_remote_url "$remote_url")"; then
+  if parsed="$(_comma_w_parse_owner_repo_from_remote_url "$remote_url")"; then
     printf '%s\n' "$parsed"
     return 0
   fi
@@ -147,7 +113,7 @@ Examples:
 
 Notes:
   - Automatically adds contributor forks as remotes when needed
-  - If the PR head repo matches an existing $(origin)/$(upstream) remote, uses that remote (no new remote created)
+  - If the PR head repo matches an existing origin/upstream remote, uses that remote (no new remote created)
   - Default behavior creates a stable local branch name based on PR head: <remote>__<branch>
   - Worktrees are created under <remote>/<branch> to keep paths readable
   - If no arguments provided, opens interactive fzf search

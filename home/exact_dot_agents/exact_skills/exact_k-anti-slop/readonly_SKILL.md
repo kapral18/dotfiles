@@ -18,6 +18,9 @@ It covers authored artifacts; in-session responses follow `~/AGENTS.md`.
    Apply every relevant check. Add detail only for a concrete gap in meaning or use.
 3. Remove a pattern when it obscures meaning, fabricates evidence, breaks use, or substitutes a template for the actual content.
    A font, layout, punctuation mark, or word alone proves neither poor quality nor AI authorship.
+   Calling something "slop" is a claim to investigate. Check its purpose and consumers before agreeing or removing it;
+   explain a justified choice when challenged.
+   Do not invent a defect or reverse a supported assessment to appease criticism (`~/AGENTS.md` §2).
    Preserve explicit user direction and useful established conventions; do not impose an aesthetic blacklist.
 4. Finish when the requested work is complete and each supported finding is fixed within scope or accounted for under the SOP.
    Use the existing verification and reporting workflow.

@@ -4,13 +4,13 @@ sidebar_position: 4
 
 # Tmux: GitHub picker
 
-The GitHub picker is a PR/issue cockpit. It runs as a 95%×95% tmux popup, reads PR and issue sections from its own YAML configs, and renders them in fzf with preview, hierarchy, local worktree markers, review status, and CI state.
+The GitHub picker lists PRs and issues in a 95%×95% tmux popup. It reads sections from YAML configs and renders them in fzf with previews, hierarchy, local worktree markers, review status, and CI state.
 
 Open it with `prefix` + `G`. Press `alt-g` to switch to the [session picker](session-picker.md).
 
 ![GitHub picker popup over the natural tmux workbench, with safe demo rows for own PRs, external reviews, issues, epics, pending backports, and a populated preview pane](assets/github-picker-full.png)
 
-## Reading the cockpit
+## Reading the picker
 
 | Area     | Meaning                                                                     |
 | -------- | --------------------------------------------------------------------------- |
@@ -20,7 +20,7 @@ Open it with `prefix` + `G`. Press `alt-g` to switch to the [session picker](ses
 | Preview  | Dashboard summary plus PR/issue details, body, and activity                 |
 | Query    | Search visible labels and hidden status/relation tokens                     |
 
-The screenshot uses safe demo rows so the states are visible without exposing private GitHub data. The UI itself is the real picker launched with `prefix` + `G`.
+The screenshot shows an earlier picker layout with demo rows. Use the scopes and bindings below; labels and shortcuts in the image may differ.
 
 ## Important bindings
 

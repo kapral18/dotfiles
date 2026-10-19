@@ -26,6 +26,7 @@ Everything else stays inline: implementation, verification, memory, and routine 
 ## Profiles
 
 The reviewer body is shared: `home/.chezmoitemplates/reviewer-prompt.md` (scope in; adversarial method: refute each finding, test state-changing operations against each other, question whether each added piece is needed; `file:line` findings with evidence; read-only).
+Its verdict follows the evidence: there is no finding quota, and the caller's or author's preferred outcome does not justify inventing, suppressing, or withdrawing a finding.
 
 | Harness     | Reviewer                                                                                                                                                                   | Search                                                                |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |

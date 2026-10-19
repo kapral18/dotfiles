@@ -34,6 +34,7 @@ Detailed reference for the `,w` command family.
 - `--focus` switches/attaches to the created worktree's tmux session.
 - `--awaiting` lists PRs awaiting your review; `COMMA_W_AWAITING_DAYS` tunes the lookback.
 - Contributor forks are added as remotes when needed.
+- Existing remotes are resolved through the shared worktree parser, which accepts `git@host:owner/repo`, `ssh://git@host/owner/repo`, and HTTP(S) URLs, with or without a `.git` suffix.
 - First-party PRs use plain branch names; third-party forks use `<remote>__<branch>` and write per-worktree push routing.
 - Upstream tracking prefers canonical refs (`origin/<branch>`, then `upstream/<branch>`).
 - The tmux session picker highlights PR-review worktree rows in standout magenta when the PR author is not your configured/authenticated GitHub login. If login cannot be resolved, review coloring is skipped rather than mislabeling.

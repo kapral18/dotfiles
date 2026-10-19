@@ -2,9 +2,6 @@ import { themes as prismThemes } from 'prism-react-renderer'
 import type { Config } from '@docusaurus/types'
 import type * as Preset from '@docusaurus/preset-classic'
 
-// CommonJS plugin — rewrites cross-repo relative links (../home/..., ../../README.md)
-// into absolute GitHub URLs at build time. Keeps the docs source canonical for
-// agents reading the repo while the website serves working external links.
 import rewriteCrossRepoLinks from './src/remark/cross-repo-links.js'
 import localSearchPlugin from './src/plugins/local-search'
 
@@ -20,14 +17,10 @@ const config: Config = {
   projectName: 'dotfiles',
   trailingSlash: false,
 
-  // Existing markdown was authored without MDX in mind (uses literals like
-  // `<branch>` or `{ key: value }` in prose) so we serve it as plain markdown.
-  // The MDX parser would otherwise treat those as expressions and fail.
+  // Examples such as <branch> and { key: value } must stay literal, not MDX.
   markdown: {
     format: 'md',
     hooks: {
-      // `onBrokenMarkdownLinks` moved here in 3.10; keep the docs build
-      // fail-closed once the repo-side verifier has validated the source tree.
       onBrokenMarkdownLinks: 'throw',
     },
   },
@@ -42,9 +35,6 @@ const config: Config = {
   },
 
   plugins: [
-    // Local-search plugin: builds a MiniSearch index from `../docs/` markdown
-    // sources and writes it to `static/search-index.json`. The swizzled
-    // SearchBar (src/theme/SearchBar) lazy-fetches it on first cmd+k.
     localSearchPlugin,
   ],
 
@@ -53,10 +43,7 @@ const config: Config = {
       'classic',
       {
         docs: {
-          // Markdown source-of-truth lives at the repo root in `docs/`. We
-          // intentionally do NOT move it under `website/` — the AGENTS.md
-          // SOP rule "reflect changes in `docs/`" stays literal, and AI
-          // agents reading the repo continue to find docs where they expect.
+          // Share the repository's source docs instead of maintaining a site copy.
           path: '../docs',
           routeBasePath: '/',
           sidebarPath: './sidebars.ts',

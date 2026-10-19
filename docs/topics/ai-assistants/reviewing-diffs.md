@@ -95,4 +95,4 @@ Pane targeting: with exactly two panes `lgtm` infers the agent's pane and types 
 ## Related
 
 - [`k-review` skill](skills.md) — the inverse loop (the agent reviewing your diff)
-- [The Agentic Operating System](index.md) — governance layer
+- [AI assistants](index.md) — shared instructions and configuration

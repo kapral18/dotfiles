@@ -6,8 +6,12 @@ Reply mechanics (in addition to `~/.agents/skills/k-communication/SKILL.md`):
 
 - Reply directly; quote at most the minimum fragment needed (one short blockquote), then reply.
   Skip email-style interleaved quoting and whole-message quotes.
-- Replying to a reviewer's finding on the user's work: acknowledge, state what changed (link the fix commit), name the verification done, ask for re-review.
-  They found the issue — reply to the finding itself and skip explaining the reviewer's own domain or the flagged system's mechanism back at them, unless they ask.
+- Before replying to a review finding, check its premise against the current code and requirements.
+  If confirmed and fixed, acknowledge it, link the fix, name the verification, and ask for re-review.
+  If confirmed but unresolved, state its status without claiming a fix.
+  For a confirmed finding, skip explaining the reviewer's domain back to them unless asked.
+  If refuted, explain the evidence and why the implementation stands. If unsettled, name the uncertainty and the evidence needed to decide.
+  A preference may justify a change without establishing a defect; do not present it as a confirmed bug.
 - Match the existing register.
   For Slack or casual threads, write conversationally rather than like a report:
   prefer "I had a quick look" (or no reply) over phrases such as "I checked the history around the hypothesis".

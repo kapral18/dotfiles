@@ -1,19 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import MiniSearch from 'minisearch'
+import MiniSearch, { type SearchResult } from 'minisearch'
 import Link from '@docusaurus/Link'
 import useBaseUrl from '@docusaurus/useBaseUrl'
 import BrowserOnly from '@docusaurus/BrowserOnly'
 import { useHistory } from '@docusaurus/router'
 import styles from './styles.module.css'
 
-interface Hit {
+interface Hit extends SearchResult {
   id: string
   title: string
   pageTitle: string
   url: string
-  score: number
-  match: Record<string, string[]>
 }
 
 const MINI_SEARCH_OPTIONS = {
@@ -24,48 +22,63 @@ const MINI_SEARCH_OPTIONS = {
     fuzzy: 0.15,
     prefix: true,
   },
-} as const
+}
 
 function isMac(): boolean {
   if (typeof navigator === 'undefined') return false
   return /Mac|iPhone|iPad|iPod/i.test(navigator.platform)
 }
 
-function SearchBarImpl(): JSX.Element {
+function SearchBarImpl(): React.JSX.Element {
   const indexUrl = useBaseUrl('/search-index.json')
   const history = useHistory()
   const [ open, setOpen ] = useState(false)
   const [ query, setQuery ] = useState('')
-  const [ hits, setHits ] = useState<Hit[]>([])
   const [ activeIdx, setActiveIdx ] = useState(0)
   const [ search, setSearch ] = useState<MiniSearch | null>(null)
   const [ loading, setLoading ] = useState(false)
+  const [ failed, setFailed ] = useState(false)
+  const dialogRef = useRef<HTMLDialogElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
   const mac = useMemo(isMac, [])
+  const hits = useMemo(() => search && query.trim()
+    ? search.search(query).slice(0, 20) as Hit[]
+    : [], [ query, search ])
+  let status = 'Type to search documentation.'
+  if (failed) status = 'Search index unavailable. Close and reopen search to retry.'
+  else if (loading) status = 'Loading search index…'
+  else if (search && query.trim()) {
+    status = hits.length === 0 ? `No results for "${query}".`
+      : `${hits.length} ${hits.length === 1 ? 'result' : 'results'}`
+  }
+
+  const show = useCallback(() => {
+    setFailed(false)
+    setOpen(true)
+  }, [])
 
   const close = useCallback(() => {
     setOpen(false)
     setQuery('')
-    setHits([])
     setActiveIdx(0)
   }, [])
 
   const loadIndex = useCallback(async () => {
-    if (search || loading) return
+    if (search || loading || failed) return
     setLoading(true)
     try {
       const res = await fetch(indexUrl)
+      if (!res.ok) throw new Error(`Search index HTTP ${res.status}`)
       const json = await res.text()
       setSearch(MiniSearch.loadJSON(json, MINI_SEARCH_OPTIONS))
     } catch (err) {
-      // Index missing (likely dev mode without a build) — leave search null.
-      // The user will see an empty result list, which is the most honest UX.
+      setFailed(true)
       console.error('[search] failed to load index:', err)
     } finally {
       setLoading(false)
     }
-  }, [ indexUrl, search, loading ])
+  }, [ indexUrl, search, loading, failed ])
 
   useEffect(() => {
     if (open) loadIndex()
@@ -77,38 +90,31 @@ function SearchBarImpl(): JSX.Element {
       const isSlash = e.key === '/' && !isInputElement(e.target)
       if (isHotkey || isSlash) {
         e.preventDefault()
-        setOpen((prev) => !prev)
-      } else if (e.key === 'Escape' && open) {
-        e.preventDefault()
-        close()
+        if (open) close()
+        else show()
       }
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [ open, close ])
+  }, [ open, close, show ])
 
   useEffect(() => {
-    if (open) {
-      // Microtask so the input exists before we focus.
-      queueMicrotask(() => inputRef.current?.focus())
-    }
+    const dialog = dialogRef.current
+    if (!dialog) return
+    if (open && !dialog.open) {
+      dialog.showModal()
+      inputRef.current?.focus()
+    } else if (!open && dialog.open) dialog.close()
   }, [ open ])
 
   useEffect(() => {
-    if (!search || !query.trim()) {
-      setHits([])
-      setActiveIdx(0)
-      return
-    }
-    const results = search.search(query) as unknown as Hit[]
-    setHits(results.slice(0, 20))
-    setActiveIdx(0)
-  }, [ query, search ])
+    listRef.current?.children[activeIdx]?.scrollIntoView({ block: 'nearest' })
+  }, [ activeIdx, hits ])
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setActiveIdx((i) => Math.min(i + 1, hits.length - 1))
+      setActiveIdx((i) => Math.max(0, Math.min(i + 1, hits.length - 1)))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setActiveIdx((i) => Math.max(i - 1, 0))
@@ -126,75 +132,79 @@ function SearchBarImpl(): JSX.Element {
         type="button"
         className={styles.trigger}
         aria-label="Search docs"
-        onClick={() => setOpen(true)}
+        onClick={show}
       >
         <SearchIcon />
         <span className={styles.placeholder}>Search</span>
         <kbd className={styles.kbd}>{mac ? '⌘' : 'Ctrl'} K</kbd>
       </button>
-      {open && createPortal(
-        <div
-          className={styles.backdrop}
-          role="dialog"
-          aria-modal="true"
+      {createPortal(
+        <dialog
+          ref={dialogRef}
+          className={styles.modal}
           aria-label="Search documentation"
-          onClick={close}
+          onCancel={close}
+          onClick={(e) => { if (e.target === e.currentTarget) close() }}
         >
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.inputRow}>
-              <SearchIcon />
-              <input
-                ref={inputRef}
-                type="search"
-                className={styles.input}
-                placeholder="Search docs..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={onKeyDown}
-                aria-controls="local-search-results"
-                aria-activedescendant={hits[activeIdx] ? `local-search-hit-${activeIdx}` : undefined}
-                autoComplete="off"
-                spellCheck={false}
-              />
-              <kbd className={styles.kbd}>Esc</kbd>
-            </div>
-            <ul
-              id="local-search-results"
-              ref={listRef}
-              className={styles.results}
-              role="listbox"
-            >
-              {hits.length === 0 && query.trim() !== '' && !loading && (
-                <li className={styles.empty}>No results for "{query}".</li>
-              )}
-              {loading && hits.length === 0 && (
-                <li className={styles.empty}>Loading index…</li>
-              )}
-              {hits.map((hit, idx) => (
-                <li
-                  key={hit.id}
-                  id={`local-search-hit-${idx}`}
-                  role="option"
-                  aria-selected={idx === activeIdx}
-                  className={idx === activeIdx ? styles.active : undefined}
-                  onMouseEnter={() => setActiveIdx(idx)}
-                >
-                  <Link
-                    to={hit.url}
-                    onClick={close}
-                    className={styles.hitLink}
-                  >
-                    <span className={styles.hitTitle}>{hit.title}</span>
-                    {hit.pageTitle !== hit.title && (
-                      <span className={styles.hitBreadcrumb}>{hit.pageTitle}</span>
-                    )}
-                    <span className={styles.hitUrl}>{hit.url}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+          <div className={styles.inputRow}>
+            <SearchIcon />
+            <input
+              ref={inputRef}
+              type="search"
+              role="combobox"
+              aria-label="Search documentation"
+              aria-autocomplete="list"
+              aria-expanded={hits.length > 0}
+              className={styles.input}
+              placeholder="Search docs..."
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                setActiveIdx(0)
+              }}
+              onKeyDown={onKeyDown}
+              aria-controls="local-search-results"
+              aria-activedescendant={hits[activeIdx] ? `local-search-hit-${activeIdx}` : undefined}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <button type="button" className={styles.close} onClick={close}>Close</button>
           </div>
-        </div>,
+          <div role="status" className={styles.status}>
+            {status}
+          </div>
+          <ul
+            id="local-search-results"
+            ref={listRef}
+            className={styles.results}
+            role="listbox"
+            aria-label="Search results"
+          >
+            {hits.map((hit, idx) => (
+              <li
+                key={hit.id}
+                id={`local-search-hit-${idx}`}
+                role="option"
+                aria-selected={idx === activeIdx}
+                className={idx === activeIdx ? styles.active : undefined}
+                onMouseEnter={() => setActiveIdx(idx)}
+              >
+                <Link
+                  to={hit.url}
+                  onClick={close}
+                  className={styles.hitLink}
+                  tabIndex={-1}
+                >
+                  <span className={styles.hitTitle}>{hit.title}</span>
+                  {hit.pageTitle !== hit.title && (
+                    <span className={styles.hitBreadcrumb}>{hit.pageTitle}</span>
+                  )}
+                  <span className={styles.hitUrl}>{hit.url}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </dialog>,
         document.body,
       )}
     </>
@@ -228,13 +238,8 @@ function SearchIcon() {
   )
 }
 
-/**
- * SSR fallback: same visual as the real trigger so there's no layout shift on
- * hydration. Non-interactive — the live SearchBarImpl takes over on the
- * client. We default to the Ctrl hint on the server because reading
- * `navigator.platform` during SSR would cause a hydration mismatch on Mac.
- */
-function SearchBarFallback(): JSX.Element {
+// Keep the navbar's space during SSR; platform detection runs only on the client.
+function SearchBarFallback(): React.JSX.Element {
   return (
     <div className={styles.trigger} aria-hidden="true">
       <SearchIcon />
@@ -244,7 +249,7 @@ function SearchBarFallback(): JSX.Element {
   )
 }
 
-export default function SearchBar(): JSX.Element {
+export default function SearchBar(): React.JSX.Element {
   return (
     <BrowserOnly fallback={<SearchBarFallback />}>
       {() => <SearchBarImpl />}

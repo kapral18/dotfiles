@@ -1,223 +1,110 @@
-# ==============================================================================
-# Homebrew packages -- assembled from home/.chezmoitemplates/brews/
-# Source layout (explore here, NOT this rendered file):
-#   brews/NN-<category>.brewfile -- one file per category, ordinal+slug
-# To add a package: drop a brew/cask line in the matching category file.
-# ==============================================================================
+# Homebrew packages, assembled from home/.chezmoitemplates/brews/.
+# Edit the matching brews/NN-<category>.brewfile partial to add a package.
 
-# ==============================================================================
 # CHARMBRACELET ECOSYSTEM
-# Beautiful command-line tools from Charm
-# ==============================================================================
 {{ includeTemplate "brews/02-charmbracelet-ecosystem.brewfile" . -}}
 
-# ==============================================================================
 # SHELL ENVIRONMENTS & PROMPTS
-# Command-line shells and prompt customization
-# ==============================================================================
 {{ includeTemplate "brews/03-shell-environments-prompts.brewfile" . -}}
 
-# ==============================================================================
 # TERMINAL MULTIPLEXERS & SESSION MANAGEMENT
-# Tools for managing multiple terminal sessions
-# ==============================================================================
 {{ includeTemplate "brews/04-terminal-multiplexers-session-management.brewfile" . -}}
 
-# ==============================================================================
 # FILE SYSTEM NAVIGATION & VISUALIZATION
-# Tools for exploring and visualizing file systems
-# ==============================================================================
 {{ includeTemplate "brews/05-file-system-navigation-visualization.brewfile" . -}}
 
-# ==============================================================================
 # FILE SEARCH & PATTERN MATCHING
-# Tools for finding files and searching content
-# ==============================================================================
 {{ includeTemplate "brews/06-file-search-pattern-matching.brewfile" . -}}
 
-# ==============================================================================
 # FILE OPERATIONS & MANIPULATION
-# Tools for renaming, deduplicating, and managing files
-# ==============================================================================
 {{ includeTemplate "brews/07-file-operations-manipulation.brewfile" . -}}
 
-# ==============================================================================
 # SYSTEM MONITORING & PERFORMANCE ANALYSIS
-# Tools for monitoring system resources and performance
-# ==============================================================================
 {{ includeTemplate "brews/08-system-monitoring-performance-analysis.brewfile" . -}}
 
-# ==============================================================================
 # NETWORK UTILITIES & HTTP TOOLS
-# Networking utilities and HTTP clients
-# ==============================================================================
 {{ includeTemplate "brews/09-network-utilities-http-tools.brewfile" . -}}
 
-# ==============================================================================
 # DATA PROCESSING & STRUCTURED DATA
-# Tools for processing JSON, YAML, XML, and other structured data
-# ==============================================================================
 {{ includeTemplate "brews/10-data-processing-structured-data.brewfile" . -}}
 
-# ==============================================================================
 # GIT CORE & HOSTING INTEGRATION
-# Essential Git tools and platform integration
-# ==============================================================================
 {{ includeTemplate "brews/11-git-core-hosting-integration.brewfile" . -}}
 
-# ==============================================================================
 # GIT WORKFLOW & PRODUCTIVITY
-# Tools for improving Git workflow and productivity
-# ==============================================================================
 {{ includeTemplate "brews/12-git-workflow-productivity.brewfile" . -}}
 
-# ==============================================================================
 # GIT ANALYSIS & STATISTICS
-# Tools for analyzing Git repositories and history
-# ==============================================================================
 {{ includeTemplate "brews/13-git-analysis-statistics.brewfile" . -}}
 
-# ==============================================================================
 # GIT UTILITIES & EXTENSIONS
-# Additional Git tools and utilities
-# ==============================================================================
 {{ includeTemplate "brews/14-git-utilities-extensions.brewfile" . -}}
 
-# ==============================================================================
 # SECURITY & SECRET DETECTION
-# Tools for detecting secrets and security issues in code
-# ==============================================================================
 {{ includeTemplate "brews/15-security-secret-detection.brewfile" . -}}
 
-# ==============================================================================
 # CRYPTOGRAPHY & PASSWORD MANAGEMENT
-# Encryption tools and password managers
-# ==============================================================================
 {{ includeTemplate "brews/16-cryptography-password-management.brewfile" . -}}
 
-# ==============================================================================
 # PROGRAMMING LANGUAGE MANAGEMENT
-# Tools for managing multiple programming language versions
-# ==============================================================================
 {{ includeTemplate "brews/17-programming-language-management.brewfile" . -}}
 
-# ==============================================================================
 # CODE QUALITY & ANALYSIS
-# Linters, duplicate detectors, and code review tools
-# ==============================================================================
 {{ includeTemplate "brews/18-code-quality-analysis.brewfile" . -}}
 
-# ==============================================================================
 # BUILD SYSTEMS & DEVELOPMENT TOOLS
-# Tools for building and compiling software
-# ==============================================================================
 {{ includeTemplate "brews/19-build-systems-development-tools.brewfile" . -}}
 
-# ==============================================================================
 # CONTAINERIZATION & ORCHESTRATION
-# Docker and container management tools
-# ==============================================================================
 {{ includeTemplate "brews/21-containerization-orchestration.brewfile" . -}}
 
-# ==============================================================================
 # MEDIA PROCESSING & GRAPHICS
-# Tools for processing images, audio, and video
-# ==============================================================================
 {{ includeTemplate "brews/22-media-processing-graphics.brewfile" . -}}
 
-# ==============================================================================
 # DOCUMENTATION & KNOWLEDGE MANAGEMENT
-# Tools for documentation and learning
-# ==============================================================================
 {{ includeTemplate "brews/23-documentation-knowledge-management.brewfile" . -}}
 
-# ==============================================================================
 # SYSTEM UTILITIES & CORE TOOLS
-# Essential system utilities and GNU replacements
-# ==============================================================================
 {{ includeTemplate "brews/24-system-utilities-core-tools.brewfile" . -}}
 
-# ==============================================================================
 # BINARY ANALYSIS & DEBUGGING
-# Tools for analyzing binary files and debugging
-# ==============================================================================
 {{ includeTemplate "brews/25-binary-analysis-debugging.brewfile" . -}}
 
-# ==============================================================================
 # TASK AUTOMATION & SCHEDULING
-# Tools for automating tasks and monitoring changes
-# ==============================================================================
 {{ includeTemplate "brews/27-task-automation-scheduling.brewfile" . -}}
 
-# ==============================================================================
 # DATA VISUALIZATION & PLOTTING
-# Tools for creating charts and visualizations
-# ==============================================================================
 {{ includeTemplate "brews/28-data-visualization-plotting.brewfile" . -}}
 
-# ==============================================================================
 # FILE TRANSFER & SHARING
-# Tools for transferring files between systems
-# ==============================================================================
 {{ includeTemplate "brews/29-file-transfer-sharing.brewfile" . -}}
 
-# ==============================================================================
 # PRESENTATION & CONTENT CREATION
-# Tools for creating presentations and content
-# ==============================================================================
 {{ includeTemplate "brews/31-presentation-content-creation.brewfile" . -}}
 
-# ==============================================================================
 # MEDIA & ENTERTAINMENT
-# Tools for browsing and managing media content
-# ==============================================================================
 {{ includeTemplate "brews/32-media-entertainment.brewfile" . -}}
 
-# ==============================================================================
 # PERSONAL PRODUCTIVITY & JOURNALING
-# Tools for personal organization and note-taking
-# ==============================================================================
 {{ includeTemplate "brews/33-personal-productivity-journaling.brewfile" . -}}
 
-# ==============================================================================
 # COMMAND LINE ENHANCEMENT
-# Tools for improving command-line experience
-# ==============================================================================
 {{ includeTemplate "brews/34-command-line-enhancement.brewfile" . -}}
 
-# ==============================================================================
 # PACKAGE MANAGEMENT UTILITIES
-# Tools for managing package managers
-# ==============================================================================
 {{ includeTemplate "brews/35-package-management-utilities.brewfile" . -}}
 
-# ==============================================================================
 # TEXT SEARCH & REPLACEMENT
-# Tools for searching and replacing text
-# ==============================================================================
 {{ includeTemplate "brews/36-text-search-replacement.brewfile" . -}}
 
-# ==============================================================================
 # CRYPTOGRAPHY & SSL
-# Cryptographic libraries and SSL tools
-# ==============================================================================
 {{ includeTemplate "brews/37-cryptography-ssl.brewfile" . -}}
 
-# ==============================================================================
 # AI & LARGE LANGUAGE MODELS
-# Command-line AI tools and LLM clients
-# ==============================================================================
 {{ includeTemplate "brews/38-ai-large-language-models.brewfile" . -}}
 
-# ==============================================================================
 # APPLICATIONS (CASKS)
-# GUI applications and desktop software
-# ==============================================================================
 {{ includeTemplate "brews/39-applications-casks.brewfile" . -}}
 
-# ==============================================================================
 # FONTS & TYPOGRAPHY
-# Programming fonts and typography tools
-# ==============================================================================
 {{ includeTemplate "brews/40-fonts-typography.brewfile" . -}}
-
