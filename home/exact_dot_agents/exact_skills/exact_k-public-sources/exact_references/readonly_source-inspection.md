@@ -55,13 +55,14 @@ If the target is a specific tag/branch/commit:
 
 #### 4) Search locally
 
-If the user pointed at specific files/directories, start there inside the local checkout, then expand outward as needed.
+If the user pointed at specific files/directories, start there (as `<dir>`) inside the local checkout, then expand outward as needed.
+Otherwise list the top-level layout first (`ls`, or `git -c core.quotePath=false ls-files | cut -d/ -f1-2 | sort -u`), pick the source directory as `<dir>`, and widen to sibling source directories when it has no hit.
 
-Prefer fast, mechanical tools:
+Use the harness search tool scoped to `<dir>` first; the shell `rg` equivalents are:
 
-- `rg -n "<symbol|keyword>" .`
-- `rg -n "functionName\\(" .`
-- `rg -n "type .*<Name>|interface <Name>|class <Name>" .`
+- `rg -n "<symbol|keyword>" <dir>`
+- `rg -n "functionName\\(" <dir>`
+- `rg -n "type .*<Name>|interface <Name>|class <Name>" <dir>`
 
 Use `git log -S` to find semantic changes:
 

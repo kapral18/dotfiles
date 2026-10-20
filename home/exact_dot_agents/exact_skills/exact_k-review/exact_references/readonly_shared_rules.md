@@ -9,8 +9,6 @@ A local or plan report with no public-ready draft does not need it.
 - Start read-only investigation immediately; do not ask before read-only `git`/`gh` checks.
 - In large repositories, bound first-pass git probes: `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false` for status, diff names, upstream, and log.
   If a plain git probe prints nothing after one short wait, stop it and rerun the bounded form.
-- Keep searches narrow: path scopes, file globs, or exact symbols. Prefer the harness's native search tools for first-pass searches.
-  Use shell `rg` only after narrowing; never run a bare repo-root `rg <pattern>` in a large repository.
 - When saved or truncated output matters for a decision over every item, read the complete artifact.
 
 ## Hard Constraints

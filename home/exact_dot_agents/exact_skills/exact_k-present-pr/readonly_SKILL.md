@@ -118,7 +118,7 @@ Complete the readiness map, introduced-concepts inventory, what/how/why explanat
   After further content edits, render again. Do not open or verify the unassembled `.content.html` as the presentation.
 - Run cheap static checks on the rendered presentation before browser verification:
   - placeholder check must target real template tokens only, e.g. `\{\{[A-Z0-9_]+\}\}`;
-    grep for that token shape rather than generic braces, because the template contains normal CSS/JS braces.
+    search the rendered file for that token shape (harness search, or `rg -n '\{\{[A-Z0-9_]+\}\}' <output>/<slug>-presentation.html`) rather than generic braces, because the template contains normal CSS/JS braces.
   - every changed file/group appears exactly once in the ledger,
   - every introduced concept appears once in the concept primer and once in the left sidebar,
   - every readiness section appears once and its links/anchors are reachable,

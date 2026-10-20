@@ -10,7 +10,7 @@ Signals include: `git diff --diff-filter=D --stat`, removed `export`s, deleted f
 
 Before calling a deletion safe, verify each item and report a one-line deletion ledger:
 
-- **No live references:** `rg` the deleted symbol/file/path across the repo and public barrels/index files;
+- **No live references:** search every tracked file for the deleted symbol/file/path with a literal `git -c core.quotePath=false grep -nF --recurse-submodules -e '<symbol>'` from the repo root (it covers hidden, extensionless, non-ASCII, and force-added files, and public barrels/index files); for local changes, also run `git -c core.quotePath=false grep -nF --untracked -e '<symbol>'` to reach new files not yet added;
   confirm zero live importers/callers.
 - **Public surface:** deleted exports are removed from barrels and not part of a published package entry point still consumed downstream.
 - **Behavior parity:**
