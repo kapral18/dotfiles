@@ -160,7 +160,8 @@ Report with the step 8 lists. As new findings, list only the issues your earlier
   Otherwise edit the writable file directly; for a read-only file, find its source instead of changing permissions.
 - User commands are comma-prefixed (`~/bin/,*`); type the comma.
 - Shell commands run under zsh with `NOMATCH`: quote arguments that contain `[]()*?` literally.
-- Search narrowly: harness search tools first, then `rg` scoped by path or glob. Never a bare repo-root `rg` in a large repo.
+- Search narrowly: harness search tools first, then `rg` scoped by path or glob, never shell `grep` on files.
+  Never a bare repo-root `rg` in a large repo.
 - GitHub: use `gh`. Web search: harness tool, fallback `ddgr --noua`.
 
 ## 7. Memory and handoffs

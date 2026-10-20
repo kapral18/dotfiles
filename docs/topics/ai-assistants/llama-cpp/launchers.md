@@ -15,7 +15,7 @@ Codex has two layers. The transparent `,codex` wrapper supplies catalog metadata
 
 OpenCode reads providers from `~/.config/opencode/opencode.jsonc`, so its launcher only normalizes model selection and passes the rest through.
 
-Claude Code has one global `autoCompactWindow`, but cloud `claude-opus-5-5` and 262144-token local models need different values. The llama.cpp launcher picks a model-scoped additive settings file: base local models and Qwen3.6 use `200000`. Plain cloud Claude sessions and their subagents use the `400000` from the user settings. Those additive files keep thinking off and pin each local model to `high`, matching the native cloud root's effort without changing local context windows.
+Claude Code has one global `autoCompactWindow`, but cloud `claude-opus-5-5` and 262144-token local models need different values. The llama.cpp launcher picks a model-scoped additive settings file: base local models and Qwen3.6 use `200000`. Plain cloud Claude sessions and their subagents use the `600000` from the user settings. Those additive files keep thinking off and pin each local model to `high` without changing local context windows.
 
 ## Using it
 
@@ -117,7 +117,7 @@ Claude Code compacts conversation history at `autoCompactWindow` tokens.
 
 | Context                 | Desired value                                                        |
 | ----------------------- | -------------------------------------------------------------------- |
-| Cloud `claude-opus-5-5` | `400000` from `settings.json`                                        |
+| Cloud `claude-opus-5-5` | `600000` from `settings.json`                                        |
 | Local llama.cpp         | compact below server context so llama.cpp does not reject the prompt |
 
 Those needs conflict on a single global setting.
@@ -155,7 +155,7 @@ The wrapper clears inherited `CLAUDE_CODE_AUTO_COMPACT_WINDOW` and `CLAUDE_CODE_
 ,claude-llama-cpp -p "summarize README.md"  # one-shot prompt
 ```
 
-Cloud Claude sessions are unaffected — plain `claude ...` still reads only `~/.claude/settings.json`, where `autoCompactWindow` is `400000`.
+Cloud Claude sessions are unaffected — plain `claude ...` still reads only `~/.claude/settings.json`, where `autoCompactWindow` is `600000`.
 
 ## Sources and verification
 

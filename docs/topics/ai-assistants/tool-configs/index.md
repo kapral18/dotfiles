@@ -21,14 +21,14 @@ No command-line, environment, or resumed-session overrides.
 
 | Launcher              | What it does                                                                        | Default model                                         | Effort                   | Context        |
 | --------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------ | -------------- |
-| `claude`              | Claude Code                                                                         | `claude-opus-5-5`                                     | high                     | long           |
+| `claude`              | Claude Code                                                                         | `claude-opus-5-5`                                     | medium                   | long           |
 | `,claude-openrouter`  | Claude Code through OpenRouter's Messages endpoint                                  | `xiaomi/mimo-v2.6-pro`                                | high (preset)            | long           |
 | `,claude-llama-cpp`   | Claude Code against the local llama.cpp server                                      | `nemotron-3.5`                                        | client high; server auto | 262,144        |
-| `codex` / `,codex`    | Codex; interactive `codex` routes through `,codex`, which adds local-model metadata | `gpt-6-astra`                                         | high                     | short          |
+| `codex` / `,codex`    | Codex; interactive `codex` routes through `,codex`, which adds local-model metadata | `gpt-6-astra`                                         | xhigh                    | short          |
 | `,codex-openrouter`   | Codex through OpenRouter's Responses endpoint                                       | `xiaomi/mimo-v2.6-pro`                                | high (preset)            | long           |
 | `,codex-llama-cpp`    | Codex against the local llama.cpp server                                            | `nemotron-3.5`                                        | client high; server auto | 262,144        |
-| `pi`                  | Pi                                                                                  | `anthropic/claude-opus-5-5`                           | high                     | native default |
-| `omp`                 | Oh My Pi                                                                            | `anthropic/claude-opus-5-5`                           | auto                     | native default |
+| `pi`                  | Pi                                                                                  | `openai-codex/gpt-6-astra`                            | xhigh                    | native default |
+| `omp`                 | Oh My Pi                                                                            | `anthropic/claude-opus-5-5`                           | medium                   | native default |
 | `opencode`            | OpenCode                                                                            | `openrouter/z-ai/glm-5.3-flash@preset/glm-lanes-high` | high                     | long           |
 | `,opencode-llama-cpp` | OpenCode with the local llama.cpp provider                                          | `llama-cpp/nemotron-3.5`                              | server auto              | 262,144        |
 | `crush`               | Crush                                                                               | `openrouter/z-ai/glm-5.3-flash`                       | high                     | long           |

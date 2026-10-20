@@ -9,21 +9,21 @@ This slice shows the language/runtime packages this repo controls directly.
 
 ## Runtime managers and versions
 
-| Tool/version                                            | Source                                                                                | Why it is here                            |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------- |
-| [`mise`](https://mise.jdx.dev/)                         | `brew` + [`config.toml.tmpl`](../../../../../home/dot_config/mise/config.toml.tmpl)   | central runtime manager                   |
-| [`uv`](https://docs.astral.sh/uv/)                      | `brew`                                                                                | Python runtime/tool manager               |
-| [Python `3.13`, `3.11`, `3.9`](https://www.python.org/) | [`home/readonly_dot_python-version`](../../../../../home/readonly_dot_python-version) | managed uv Python versions                |
-| [Bun `1.2.20`](https://bun.com/)                        | mise config                                                                           | JavaScript runtime/tooling                |
-| [Go `1.25.0`](https://go.dev/)                          | mise config                                                                           | Go compiler/toolchain                     |
-| [Java `openjdk-21`](https://openjdk.org/)               | mise config                                                                           | JVM tooling                               |
-| [Neovim `0.12.2`](https://neovim.io/)                   | mise config                                                                           | editor runtime                            |
-| [Node `24.6.0`](https://nodejs.org/)                    | mise config                                                                           | JavaScript runtime for pnpm globals       |
-| [Ruby `3.2.9`](https://www.ruby-lang.org/)              | mise config                                                                           | Ruby runtime and gem tooling              |
-| [Rust `1.95.0`](https://www.rust-lang.org/)             | mise config                                                                           | Rust compiler/toolchain                   |
-| [pnpm `12.3.4`](https://pnpm.io/)                       | mise config                                                                           | global packages and website builds        |
-| [Yarn `1.22.22`](https://yarnpkg.com/)                  | mise config                                                                           | Yarn Classic for projects that require it |
-| [Lua `5.1.5`, `5.4.7`](https://www.lua.org/)            | mise config                                                                           | Lua runtimes                              |
+| Tool/version                                            | Source                                                                                | Why it is here                                                               |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [`mise`](https://mise.jdx.dev/)                         | `brew` + [`config.toml.tmpl`](../../../../../home/dot_config/mise/config.toml.tmpl)   | central runtime manager                                                      |
+| [`uv`](https://docs.astral.sh/uv/)                      | `brew`                                                                                | Python runtime/tool manager                                                  |
+| [Python `3.13`, `3.11`, `3.9`](https://www.python.org/) | [`home/readonly_dot_python-version`](../../../../../home/readonly_dot_python-version) | managed uv Python versions                                                   |
+| [Bun `1.2.20`](https://bun.com/)                        | mise config                                                                           | JavaScript runtime/tooling                                                   |
+| [Go `1.25.0`](https://go.dev/)                          | mise config                                                                           | Go compiler/toolchain                                                        |
+| [Java `openjdk-21`](https://openjdk.org/)               | mise config                                                                           | JVM tooling                                                                  |
+| [Neovim `0.12.2`](https://neovim.io/)                   | mise config                                                                           | editor runtime                                                               |
+| [Node `24.6.0`](https://nodejs.org/)                    | mise config                                                                           | JavaScript runtime for pnpm globals                                          |
+| [Ruby `3.2.9`](https://www.ruby-lang.org/)              | mise config                                                                           | Ruby runtime and gem tooling                                                 |
+| [Rust `1.95.0`](https://www.rust-lang.org/)             | mise config                                                                           | Rust toolchain + `rust-analyzer` component (Claude Code `rust-analyzer-lsp`) |
+| [pnpm `12.3.4`](https://pnpm.io/)                       | mise config                                                                           | global packages and website builds                                           |
+| [Yarn `1.22.22`](https://yarnpkg.com/)                  | mise config                                                                           | Yarn Classic for projects that require it                                    |
+| [Lua `5.1.5`, `5.4.7`](https://www.lua.org/)            | mise config                                                                           | Lua runtimes                                                                 |
 
 ## Language-specific global CLIs
 

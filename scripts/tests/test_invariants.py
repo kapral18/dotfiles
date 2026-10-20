@@ -148,17 +148,6 @@ class TestOnchangeHookHashClosure(unittest.TestCase):
         self.assertTrue(any(HASH_EXPRESSION_RE.search(line) for line in helper_hash_lines))
 
 
-class TestHookOrder(unittest.TestCase):
-    """WHEN chezmoi runs after-hooks in target-name order and stops at a failed one."""
-
-    def test_SHOULD_run_the_docker_dependent_redtab_hook_last(self):
-        # It fails while Docker Desktop is stopped; any hook after it would be skipped.
-        hooks = (REPO / "home/.chezmoiscripts").glob("run_*after_*")
-        target_names = sorted(path.name.split("after_", 1)[1] for path in hooks)
-
-        self.assertEqual(target_names[-1], "09-install-redtab.sh.tmpl")
-
-
 class TestMachineLocalShellExtras(unittest.TestCase):
     """WHEN shell profiles need a git-unmanaged extra source."""
 
@@ -205,15 +194,6 @@ class TestMachineLocalShellExtras(unittest.TestCase):
         )
         present = [str(path.relative_to(REPO)) for path in forbidden if path.exists()]
         self.assertEqual(present, [])
-
-
-class TestPrivateRedditSubscriptions(unittest.TestCase):
-    """WHEN the personal redtab subscription list stays machine-local in a public repo."""
-
-    def test_SHOULD_keep_the_list_out_of_source_under_any_attribute_prefix(self):
-        copies = [str(path.relative_to(REPO)) for path in (REPO / "home/dot_config/redtab").glob("*subscriptions*")]
-
-        self.assertEqual(copies, [])
 
 
 if __name__ == "__main__":

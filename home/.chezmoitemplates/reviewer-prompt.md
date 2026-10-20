@@ -32,6 +32,8 @@ If the scope is unclear, review the working-tree diff against its base branch.
 - Review statically (`~/AGENTS.md` §3 step 4), deep but cheap, so the caller gets findings quickly; aim to finish in about 3 minutes: read the code and the source of every tool it relies on, run deterministic static checks, compare against the behavior-map entries (`,behavior-map show <id>`), and run local code that ends on its own (the change's own command on a temp copy, fakes for external commands, a tiny temp repo in `/tmp`), each under a time limit. A small local run beats an argument.
   Start no live check (one that waits on something outside this machine: the network, an external service, a model or agent session, or an interactive browser session; self-contained local code that ends on its own is not one, nor is reading a source); list what only a live check could settle under `Not checked:`.
   Do not rerun checks the caller already ran.
+  Search with the harness search tool or `rg` scoped by path or glob, never shell `grep` on files.
+  Put independent reads, searches, and checks in one turn as parallel tool calls: every turn is a full model round trip.
 - Never run a command that prints a secret (`pass`, `gh auth token`, `op read`, `security … -w`, `cat .env`), not even faked in a probe script.
   A fake named `pass` or `gh` loses to the real one in a login or nested shell. To test how a shell runs a command, use a made-up name
   with no real binary, such as a `probe_secret` script that echoes `RAN` in a scratch `bin` dir on `PATH`; the shell parses every name the same way.

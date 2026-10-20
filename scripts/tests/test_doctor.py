@@ -69,18 +69,20 @@ def _install_ai_py(home: Path) -> None:
     shutil.copy(REPO / "scripts/generated_artifact_ledger.py", lib / "ai.py")
 
 
-def _write_ledger(home: Path, artifact: dict) -> None:
+def _write_ledger(home: Path, *artifacts: dict) -> None:
     state = home / ".local/state/chezmoi"
     state.mkdir(parents=True, exist_ok=True)
     (state / "generated_artifacts.v1.json").write_text(
-        json.dumps({"schema_version": 1, "artifacts": {artifact["artifact_id"]: artifact}}),
+        json.dumps({"schema_version": 1, "artifacts": {artifact["artifact_id"]: artifact for artifact in artifacts}}),
         encoding="utf-8",
     )
 
 
-def _ledger_artifact(target: str, ownership: dict, expected: str, producer: str = "07-fake") -> dict:
+def _ledger_artifact(
+    target: str, ownership: dict, expected: str, producer: str = "07-fake", artifact_id: str = "fake-mcp"
+) -> dict:
     return {
-        "artifact_id": "fake-mcp",
+        "artifact_id": artifact_id,
         "producer": producer,
         "target": target,
         "inputs": [],
@@ -230,6 +232,50 @@ class TestDoctor(unittest.TestCase):
                 'chezmoi state delete --bucket=entryState --key="$HOME/.chezmoiscripts/07-fake.sh"',
                 result.stdout,
             )
+
+    def test_artifacts_sharing_a_target_hint_the_hook_owning_the_drifted_keys(self) -> None:
+        # ~/.claude.json carries two json-selectors artifacts: MCP servers and declared global-config keys.
+        recorded = {"mcpServers": {"a": {"url": "https://a.invalid"}}, "diffSidebarOpen": False}
+        artifacts = (
+            ("claude-global-config", "07-merge-claude-global-config", "diffSidebarOpen"),
+            ("claude-mcp", "07-generate-mcp-configs", "mcpServers"),
+        )
+        cases = (
+            (("07-merge-claude-global-config",), {**recorded, "diffSidebarOpen": True}),
+            (("07-generate-mcp-configs",), {**recorded, "mcpServers": {}}),
+            (("07-merge-claude-global-config", "07-generate-mcp-configs"), {"mcpServers": {}, "diffSidebarOpen": True}),
+            ((), {**recorded, "appState": {"n": 1}}),
+        )
+        for drifted_hooks, live in cases:
+            with self.subTest(drifted_hooks=drifted_hooks), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                home = root / "home"
+                home.mkdir()
+                src = _make_source(root)
+                _install_ai_py(home)
+                for _, producer, _ in artifacts:
+                    (src / ".chezmoiscripts" / f"run_onchange_after_{producer}.sh").write_text("#!/bin/sh\n")
+                target = home / ".claude.json"
+                target.write_text(json.dumps(live), encoding="utf-8")
+                recorded_bytes = json.dumps(recorded).encode()
+                rows = []
+                for artifact_id, producer, selector in artifacts:
+                    ownership = {"adapter": "json-selectors", "selectors": [selector]}
+                    expected = generated_artifact_ledger.semantic_hash(recorded_bytes, ownership)
+                    rows.append(_ledger_artifact(str(target), ownership, expected, producer, artifact_id))
+                _write_ledger(home, *rows)
+                _write_manifest(home, [(str(target), hashlib.sha256(recorded_bytes).hexdigest())])
+
+                result = _run_doctor(home, "--quiet", env_extra={"CHEZMOI_SOURCE_DIR": str(src)})
+
+                if not drifted_hooks:
+                    self.assertNotIn("~/.claude.json", result.stdout)
+                    continue
+                self.assertIn("~/.claude.json changed outside chezmoi", result.stdout)
+                for _, producer, _ in artifacts:
+                    hint = f'--key="$HOME/.chezmoiscripts/{producer}.sh"'
+                    (self.assertIn if producer in drifted_hooks else self.assertNotIn)(hint, result.stdout)
+                self.assertIn('.sh" && chezmoi apply', result.stdout)
 
     def test_whole_file_drift_without_artifact_warns(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

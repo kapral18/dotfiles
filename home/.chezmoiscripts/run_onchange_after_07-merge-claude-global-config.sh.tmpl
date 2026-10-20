@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Declared top-level keys in ~/.claude.json, which Claude Code also writes runtime state into.
+# claude global config hash: {{ include ".chezmoidata/claude_global_config.json" | sha256sum }}
+# merge_claude_global_config.py hash: {{ include "../scripts/merge_claude_global_config.py" | sha256sum }}
+# chezmoi_lib.sh hash: {{ include "../scripts/chezmoi_lib.sh" | sha256sum }}
+# managed_config_manifest.py hash: {{ include "../scripts/managed_config_manifest.py" | sha256sum }}
+# generated_artifact_ledger.py hash: {{ include "../scripts/generated_artifact_ledger.py" | sha256sum }}
+
+source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
+# shellcheck source=../../../scripts/chezmoi_lib.sh
+source "$source_dir/../scripts/chezmoi_lib.sh"
+
+src="$source_dir/.chezmoidata/claude_global_config.json"
+merge="$source_dir/../scripts/merge_claude_global_config.py"
+
+# The helper rejects non-identifier keys, so it runs before the keys are pasted into the array.
+python3 "$merge" "$src" "$HOME/.claude.json"
+selectors=({{ range $key, $_ := .claude_global_config }}--selector {{ $key }} {{ end }})
+chezmoi_record_checksum "$HOME/.claude.json"
+chezmoi_record_artifact --id claude-global-config \
+  --producer 07-merge-claude-global-config \
+  --target "$HOME/.claude.json" --ownership-adapter json-selectors "${selectors[@]}" \
+  --input "$src" \
+  --transform "$merge" \
+  --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --consumer claude

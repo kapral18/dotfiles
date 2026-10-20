@@ -46,14 +46,6 @@ The manual packages installer also relies on `gh release download`:
 
 - [`home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl)
 
-## redtab Hook: Docker Is Not Running
-
-`chezmoi apply` prints `Error: Docker is not running; start Docker Desktop and re-run chezmoi apply to install redtab and Redlib`, then `chezmoi: .chezmoiscripts/09-install-redtab.sh: exit status 1`, when Docker Desktop is stopped:
-
-- [`home/.chezmoiscripts/run_onchange_after_09-install-redtab.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_09-install-redtab.sh.tmpl)
-
-The hook runs last, so every other hook has already applied. Start Docker Desktop and run `chezmoi apply` again. Details: [redtab and Redlib](../topics/core/packages/sources-and-scope.md#redtab-and-redlib).
-
 ## Password Store Setup
 
 If you see missing API keys or tools failing to authenticate, check whether `pass` is set up and your password store repo is present.

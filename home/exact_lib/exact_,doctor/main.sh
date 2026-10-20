@@ -485,8 +485,12 @@ _doctor_source_dir() {
   return 0
 }
 
-# Ledger evaluation cache: TSV rows "target<TAB>reasons<TAB>producer", one per
+# Ledger evaluation cache: TSV rows "target<TAB>reasons<TAB>producers", one per
 # artifact target plus one per json-declared baseline path (reasons "baseline").
+# Artifacts sharing a target (json-selectors on ~/.claude.json) collapse into
+# one row: their reasons joined ("ok" when none), and the comma-joined
+# producers of the artifacts whose owned state needs a re-run (else the first
+# artifact's), so the hint names every hook that restores the drifted keys.
 # Built from a single `ai.py report --json` pass joined with the raw ledger.
 # Empty when the ledger tooling is unavailable; callers then fall back to
 # whole-file comparison.
@@ -506,25 +510,34 @@ except (ValueError, OSError, KeyError, TypeError, AttributeError):
     sys.exit(1)
 producers = {}
 baselines = {}
-for entry in raw.get("artifacts", {}).values():
-    target = str(entry.get("target", ""))
-    producers[target] = str(entry.get("producer", ""))
+for artifact_id, entry in raw.get("artifacts", {}).items():
+    producers[artifact_id] = str(entry.get("producer", ""))
     baseline = (entry.get("ownership") or {}).get("baseline_path")
     if baseline:
-        baselines[str(baseline)] = producers[target]
-seen = set()
+        baselines[str(baseline)] = producers[artifact_id]
+by_target = {}
 for row in rows:
-    target = row["trace"]["target"]
-    seen.add(target)
-    print("%s\t%s\t%s" % (target, ",".join(row["reasons"]), producers.get(target, "")))
+    by_target.setdefault(row["trace"]["target"], []).append(row)
+rerun = {"target-missing", "owned-drift", "target-invalid"}
+for target, target_rows in by_target.items():
+    reasons = []
+    for row in target_rows:
+        reasons += [reason for reason in row["reasons"] if reason not in reasons]
+    owners = [row for row in target_rows if rerun & set(row["reasons"])] or target_rows[:1]
+    owner_producers = []
+    for row in owners:
+        producer = producers.get(row["artifact_id"], "")
+        if producer and producer not in owner_producers:
+            owner_producers.append(producer)
+    print("%s\t%s\t%s" % (target, ",".join(reasons) or "ok", ",".join(owner_producers)))
 for baseline, producer in sorted(baselines.items()):
-    if baseline not in seen:
+    if baseline not in by_target:
         print("%s\tbaseline\t%s" % (baseline, producer))
 ' "$ledger" 2> /dev/null || true
   return 0
 }
 
-# Print "reasons<TAB>producer" for a manifest target, or fail when the target
+# Print "reasons<TAB>producers" for a manifest target, or fail when the target
 # has no ledger row.
 _doctor_ledger_lookup() {
   local eval_cache="$1" target="$2"
@@ -634,15 +647,19 @@ _doctor_script_entry_key() {
   printf '$HOME/.chezmoiscripts/%s' "$base"
 }
 
-# Print the command that forces a producer script to re-run on next apply:
-# delete its entryState row (idempotent no-op when already absent), then
-# apply. Prints nothing when the producer script is unknown — no hint beats
-# a wrong one.
+# Print the command that forces producer scripts to re-run on next apply:
+# delete each one's entryState row (idempotent no-op when already absent),
+# then apply. Prints nothing when any producer script is unknown — no hint
+# beats a wrong one.
 _doctor_rerun_hint() {
-  local entry_key
-  entry_key="$(_doctor_script_entry_key "${1:-}" || true)"
-  [ -n "$entry_key" ] || return 0
-  printf 'chezmoi state delete --bucket=entryState --key="%s" && chezmoi apply' "$entry_key"
+  local script entry_key deletes=""
+  for script in "$@"; do
+    entry_key="$(_doctor_script_entry_key "$script" || true)"
+    [ -n "$entry_key" ] || return 0
+    deletes="${deletes}chezmoi state delete --bucket=entryState --key=\"$entry_key\" && "
+  done
+  [ -n "$deletes" ] || return 0
+  printf '%schezmoi apply' "$deletes"
 }
 
 # Resolve a referencing source file to its producer run_* script: directly
@@ -673,14 +690,18 @@ _doctor_script_for_reference() {
   esac
 }
 
-# Print the entryState-based re-run command for a ledger producer stem.
+# Print the entryState-based re-run command for comma-separated ledger
+# producer stems.
 _doctor_rerun_hint_for_producer() {
-  local source_dir="$1" producer="$2"
-  local script=""
-  if [ -n "$source_dir" ] && [ -n "$producer" ]; then
-    script="$(_doctor_find_producer_script "$source_dir" "$producer" || true)"
+  local source_dir="$1" producers="$2"
+  local producer list=() scripts=()
+  if [ -n "$source_dir" ] && [ -n "$producers" ]; then
+    IFS=',' read -r -a list <<< "$producers"
+    for producer in "${list[@]}"; do
+      scripts+=("$(_doctor_find_producer_script "$source_dir" "$producer" || true)")
+    done
   fi
-  _doctor_rerun_hint "$script"
+  _doctor_rerun_hint "${scripts[@]:-}"
 }
 
 check_config_drift() {

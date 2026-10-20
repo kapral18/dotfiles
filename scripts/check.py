@@ -27,7 +27,7 @@ import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 SCRIPTS = Path(__file__).resolve().parent
 REPO = SCRIPTS.parent
@@ -45,6 +45,8 @@ class Gate:
 class TestRule:
     prefixes: tuple[str, ...]
     tests: tuple[str, ...]
+    # Absolute POSIX globs match from the repository root.
+    globs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -148,16 +150,13 @@ TEST_RULES: tuple[TestRule, ...] = (
         tests=("tests/test_install_custom_packages.py",),
     ),
     TestRule(
-        prefixes=(
-            "home/.chezmoiscripts/run_onchange_after_09-install-redtab.sh.tmpl",
-            "home/dot_config/redtab/",
-        ),
-        # test_invariants guards the private subscription list under home/dot_config/redtab/.
-        tests=("tests/test_install_redtab.py", "tests/test_invariants.py"),
-    ),
-    TestRule(
         prefixes=("scripts/merge_claude_mcp.py",),
         tests=("test_generate_mcp_configs.py",),
+    ),
+    TestRule(
+        # The declared keys feed merge_claude_global_config.py; its test merges the real file.
+        prefixes=("home/.chezmoidata/claude_global_config.json",),
+        tests=("tests/test_merge_claude_global_config.py",),
     ),
     TestRule(
         prefixes=("home/exact_dot_agents/exact_skills/exact_k-playwriter/",),
@@ -526,7 +525,9 @@ def plan_check(
         selected.extend(_import_tests(path, repo))
         selected.extend(_shared_infra_tests(path, repo))
         for rule in TEST_RULES:
-            if _matches(path, rule.prefixes):
+            if _matches(path, rule.prefixes) or any(
+                PurePosixPath("/" + _rel(path)).match(pattern) for pattern in rule.globs
+            ):
                 selected.extend(rule.tests)
     tests = _existing_tests(repo, tuple(selected))
     extra = tuple(item.name for item in EXTRA_TESTS if any(_matches(path, item.prefixes) for path in changed))

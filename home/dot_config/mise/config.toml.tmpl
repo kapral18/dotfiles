@@ -14,7 +14,8 @@ node = "24.6.0"
 # Global pnpm tracks the latest release; a project pins its own via a local mise config.
 pnpm = "12.3.4"
 ruby = "3.2.9"
-rust = "1.95.0"
+# rust-analyzer: Claude Code rust-analyzer-lsp plugin.
+rust = { version = "1.95.0", components = "rust-analyzer" }
 # Yarn Classic for projects still on yarn.
 yarn = "1.22.22"
 lua = ["5.1.5", "5.4.7"]

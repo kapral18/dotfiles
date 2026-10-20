@@ -20,10 +20,10 @@ Interactive shells route `codex` through `~/bin/,codex`, which injects the local
 
 ### Codex settings
 
-`model = "gpt-6-astra"`, `model_reasoning_effort = "high"`, `tui.auto_recap = false`, `features.memories = false` (`,ai-kb` is the only durable store).
+`model = "gpt-6-astra"`, `model_reasoning_effort = "xhigh"`, `tui.auto_recap = false`, `features.memories = false` (`,ai-kb` is the only durable store).
 Codex discovers shared skills under `~/.agents/skills`. `k-review`'s Verify mode uses fresh native agents with the shared reviewer prompt; other modes stay inline. See [Subagents](../subagents.md).
 
-Policy: `approval_policy = "never"`, `sandbox_mode = "danger-full-access"`.
+Policy: `approval_policy = "on-request"`, `sandbox_mode = "danger-full-access"`.
 
 Hooks: `[[hooks.*]]` entries run `,task hook codex` on `UserPromptSubmit`, `SessionStart` (`compact`), `PreToolUse` (`apply_patch|Write|Edit|Bash`), `PostToolUse`, and `Stop` ([Staying on the goal](../staying-on-goal.md)). Codex runs a config hook only after it is trusted once in `/hooks`; the merge keeps the trust hashes.
 
@@ -80,18 +80,18 @@ Pi retains its own [working-context selection](pi.md#working-context-selection).
 
 Key settings:
 
-| Setting                                                | Value                                                                                                                                                                                                                      |
-| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `modelRoles`                                           | `default`/`slow`/`plan`: `anthropic/claude-opus-5-5:auto`; `task`/`smol`/`vision`: `anthropic/claude-sonnet-5-5:auto`; `tiny`/`commit`/`web`: `anthropic/claude-haiku-5-5:auto`; `advisor`: `openai-codex/gpt-6-astra:max` |
-| `modelProviderOrder`                                   | `anthropic`, `openai-codex`, `openrouter`, `openai`                                                                                                                                                                        |
-| `advisor.enabled`                                      | `true`; the Astra advisor uses a different model family from the Opus root; `advisor.syncBacklog: "1"` (a string; a bare number reads as `off`)                                                                            |
-| `task.agentAdvisor.task`                               | `"off"`; child advisors stay disabled                                                                                                                                                                                      |
-| `memory.backend`, `autolearn.enabled`, `recap.enabled` | `off`, `false`, `false`                                                                                                                                                                                                    |
-| `task.maxRecursionDepth`                               | `1` (children cannot spawn)                                                                                                                                                                                                |
-| `task.disabledAgents`                                  | `reviewer`, `security-reviewer` (the repo `k-agent-reviewer` replaces them)                                                                                                                                                |
-| `extendedContext`, `defaultThinkingLevel`              | `false`, `high`                                                                                                                                                                                                            |
-| `compaction.methodOrder`                               | `snapcompact`, `remote`, `soft`: local image-frame archive first (models with image input only), then provider-native compaction, then a summary                                                                           |
-| `dev.autoqaConsent`                                    | `granted`                                                                                                                                                                                                                  |
+| Setting                                                | Value                                                                                                                                                                                                                              |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `modelRoles`                                           | `default`/`slow`/`plan`: `anthropic/claude-opus-5-5:medium`; `task`/`smol`/`vision`: `anthropic/claude-sonnet-5-5:medium`; `tiny`/`commit`/`web`: `anthropic/claude-haiku-5-5:medium`; `advisor`: `openai-codex/gpt-6-astra:xhigh` |
+| `modelProviderOrder`                                   | `anthropic`, `openai-codex`, `openrouter`, `openai`                                                                                                                                                                                |
+| `advisor.enabled`                                      | `true`; the Astra advisor uses a different model family from the Opus root; `advisor.syncBacklog: "1"` (a string; a bare number reads as `off`)                                                                                    |
+| `task.agentAdvisor.task`                               | `"off"`; child advisors stay disabled                                                                                                                                                                                              |
+| `memory.backend`, `autolearn.enabled`, `recap.enabled` | `off`, `false`, `false`                                                                                                                                                                                                            |
+| `task.maxRecursionDepth`                               | `1` (children cannot spawn)                                                                                                                                                                                                        |
+| `task.disabledAgents`                                  | `reviewer`, `security-reviewer` (the repo `k-agent-reviewer` replaces them)                                                                                                                                                        |
+| `extendedContext`, `defaultThinkingLevel`              | `false`, `medium`                                                                                                                                                                                                                  |
+| `compaction.methodOrder`                               | `snapcompact`, `remote`, `soft`: local image-frame archive first (models with image input only), then provider-native compaction, then a summary                                                                                   |
+| `dev.autoqaConsent`                                    | `granted`                                                                                                                                                                                                                          |
 
 `WATCHDOG.yml` replaces OMP's default advisor, which reviewed every turn, with one advisor, `Gate`.
 The default advisor made the root wait for it every turn and could steer mid-run every turn.

@@ -6,21 +6,21 @@
 # tiny/task/advisor/web per `omp config get modelRoles`); nothing falls through to the
 # harness default or the @smol fallback. Root, slow, plan, and task use Anthropic; the advisor uses the Codex subscription.
 # k-agent-reviewer uses @default.
-# - default/slow/plan: Claude Opus 5.5 :auto; task: Claude Sonnet 5.5 :auto
-# - advisor: GPT-6 Astra :max, so the advisor uses another model family than the root
-# - vision/smol: Claude Sonnet 5.5 :auto; tiny/commit: Claude Haiku 5.5 :auto
-# - web: Claude Haiku 5.5 :auto as primary; legacy provider settings below supply fallbacks.
+# - default/slow/plan: Claude Opus 5.5 :medium; task: Claude Sonnet 5.5 :medium
+# - advisor: GPT-6 Astra :xhigh, so the advisor uses another model family than the root
+# - vision/smol: Claude Sonnet 5.5 :medium; tiny/commit: Claude Haiku 5.5 :medium
+# - web: Claude Haiku 5.5 :medium as primary; legacy provider settings below supply fallbacks.
 modelRoles:
-  default: anthropic/claude-opus-5-5:auto
-  smol: anthropic/claude-sonnet-5-5:auto
-  slow: anthropic/claude-opus-5-5:auto
-  vision: anthropic/claude-sonnet-5-5:auto
-  plan: anthropic/claude-opus-5-5:auto
-  commit: anthropic/claude-haiku-5-5:auto
-  tiny: anthropic/claude-haiku-5-5:auto
-  task: anthropic/claude-sonnet-5-5:auto
-  advisor: openai-codex/gpt-6-astra:max
-  web: anthropic/claude-haiku-5-5:auto
+  default: anthropic/claude-opus-5-5:medium
+  smol: anthropic/claude-sonnet-5-5:medium
+  slow: anthropic/claude-opus-5-5:medium
+  vision: anthropic/claude-sonnet-5-5:medium
+  plan: anthropic/claude-opus-5-5:medium
+  commit: anthropic/claude-haiku-5-5:medium
+  tiny: anthropic/claude-haiku-5-5:medium
+  task: anthropic/claude-sonnet-5-5:medium
+  advisor: openai-codex/gpt-6-astra:xhigh
+  web: anthropic/claude-haiku-5-5:medium
 
 modelProviderOrder:
   - anthropic
@@ -37,7 +37,7 @@ advisor:
   syncBacklog: "1"
   immuneTurns: 0
 
-defaultThinkingLevel: high
+defaultThinkingLevel: medium
 extendedContext: false
 
 # Snapcompact first: it archives history locally as image frames (no model

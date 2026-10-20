@@ -25,6 +25,7 @@ All merge scripts live under [`home/.chezmoiscripts/`](../../../../home/.chezmoi
 | Tool                 | Source files                                                                                                                                                                      | Target                               | Merge script                                               |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------- |
 | Claude Code settings | [`home/dot_claude/settings.json`](../../../../home/dot_claude/settings.json)                                                                                                      | `~/.claude/settings.json`            | `run_onchange_after_07-merge-claude-code-settings.sh.tmpl` |
+| Claude global config | [`home/.chezmoidata/claude_global_config.json`](../../../../home/.chezmoidata/claude_global_config.json)                                                                          | `~/.claude.json` (declared keys)     | `run_onchange_after_07-merge-claude-global-config.sh.tmpl` |
 | OpenCode config+MCP  | [`home/dot_config/opencode/readonly_opencode.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.jsonc)                                                                | `~/.config/opencode/opencode.jsonc`  | `run_onchange_after_07-merge-opencode-config.sh.tmpl`      |
 | Codex config+MCP     | [`home/dot_codex/private_config.toml`](../../../../home/dot_codex/private_config.toml)                                                                                            | `~/.codex/config.toml`               | `run_onchange_after_07-merge-codex-config.sh.tmpl`         |
 | Pi settings/models   | [`home/dot_pi/agent/readonly_settings.json`](../../../../home/dot_pi/agent/readonly_settings.json) + [`readonly_models.json`](../../../../home/dot_pi/agent/readonly_models.json) | `~/.pi/agent/{settings,models}.json` | `run_onchange_after_07-merge-pi-config.sh.tmpl`            |
@@ -57,6 +58,9 @@ Claude settings provenance includes the selected settings file and the owning me
 
 Claude MCP merging rejects malformed existing JSON before writing, preserves unrelated live keys, and creates a missing file even for an empty registry.
 
+Claude global-config merging sets each key under `claude_global_config` in `~/.claude.json`.
+It rejects malformed JSON, an empty key set, and keys that are not plain identifiers before writing, keeps every other live key and the file mode, writes through a symlinked path, and leaves a file that already matches untouched.
+
 ### `,doctor ai`
 
 `,doctor ai` evaluates generated artifact rows without changing anything.
@@ -65,6 +69,7 @@ Claude MCP merging rejects malformed existing JSON before writing, preserves unr
 | ------------------------ | ----------------------------------------------------- |
 | whole-file outputs       | compare exact bytes                                   |
 | Claude MCP               | compare only `mcpServers`                             |
+| Claude global config     | compare only the declared `claude_global_config` keys |
 | Codex                    | ignore only its four explicit runtime-owned buckets   |
 | source/transform changes | report stale state until the matching hook runs again |
 

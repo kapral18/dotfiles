@@ -1,9 +1,3 @@
-# redtab reads Reddit through the local Redlib container that
-# home/.chezmoiscripts/run_onchange_after_09-install-redtab.sh.tmpl starts on
-# the host:port below; the hook reads this value. Keep host 127.0.0.1.
-redlib_url = "http://127.0.0.1:8085"
-# Offered as `S` when Redlib is not answering.
-redlib_start_command = ["docker", "start", "redtab-redlib"]
-# Subscriptions live in the unmanaged ~/.config/redtab/subscriptions (one
-# subreddit per line, `#` comments), so the personal list stays out of this
-# public repo.
+# Subscriptions live in the unmanaged $XDG_STATE_HOME/redtab/subscriptions
+# (default ~/.local/state/redtab/subscriptions; one subreddit per line, `#`
+# comments), so the personal list stays out of this public repo.

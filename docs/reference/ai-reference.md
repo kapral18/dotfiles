@@ -20,12 +20,13 @@ See [AI assistants](../topics/ai-assistants/index.md) and [Instructions](../topi
 
 Per-tool config sources and the `run_onchange_after_07-*` hooks that render them. See [Tool configs](../topics/ai-assistants/tool-configs/index.md).
 
-| Tool        | Source                                                         | Merge hook                                                                                                                                        |
-| ----------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Claude Code | [`home/dot_claude/`](../../home/dot_claude/)                   | [`run_onchange_after_07-merge-claude-code-settings.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-claude-code-settings.sh.tmpl) |
-| Codex       | [`home/dot_codex/`](../../home/dot_codex/)                     | [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl)                 |
-| OpenCode    | [`home/dot_config/opencode/`](../../home/dot_config/opencode/) | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl)           |
-| Pi          | [`home/dot_pi/agent/`](../../home/dot_pi/agent/)               | [`run_onchange_after_07-merge-pi-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl)                       |
+| Tool                                | Source                                                                                             | Merge hook                                                                                                                                        |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Claude Code                         | [`home/dot_claude/`](../../home/dot_claude/)                                                       | [`run_onchange_after_07-merge-claude-code-settings.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-claude-code-settings.sh.tmpl) |
+| Claude Code (`~/.claude.json` keys) | [`home/.chezmoidata/claude_global_config.json`](../../home/.chezmoidata/claude_global_config.json) | [`run_onchange_after_07-merge-claude-global-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-claude-global-config.sh.tmpl) |
+| Codex                               | [`home/dot_codex/`](../../home/dot_codex/)                                                         | [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl)                 |
+| OpenCode                            | [`home/dot_config/opencode/`](../../home/dot_config/opencode/)                                     | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl)           |
+| Pi                                  | [`home/dot_pi/agent/`](../../home/dot_pi/agent/)                                                   | [`run_onchange_after_07-merge-pi-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl)                       |
 
 ## MCP
 

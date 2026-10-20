@@ -1,8 +1,8 @@
 {
   "$schema": "https://pi.dev/schemas/settings.schema.json",
-  "defaultProvider": "anthropic",
-  "defaultModel": "claude-opus-5-5",
-  "defaultThinkingLevel": "high",
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-6-astra",
+  "defaultThinkingLevel": "xhigh",
   "showCacheMissNotices": true,
   "theme": "dark",
   "defaultTools": [

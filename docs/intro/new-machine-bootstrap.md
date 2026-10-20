@@ -45,7 +45,6 @@ There are additional "converge" scripts for:
 - language tooling (cargo/go/gems/pnpm/uv)
 - GitHub CLI extensions
 - macOS defaults (`.osx.core` / `.osx.extra`)
-- redtab build + local Redlib container, last of all: [`home/.chezmoiscripts/run_onchange_after_09-install-redtab.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_09-install-redtab.sh.tmpl). It needs Docker Desktop running and `gh` signed in to an account that can read the private `kapral18/redtab` repo. On a new machine Docker Desktop is installed but not started, so the first apply ends with `Docker is not running`; start Docker Desktop and run `chezmoi apply` again.
 
 Secrets tooling setup can also run:
 
