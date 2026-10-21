@@ -2,7 +2,7 @@
   "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
   "name": "stop-review",
   "version": "0.1.0",
-  "description": "When a turn ends, checks the final answer's format (a `Checked:` list after a change, no work parked under a heading the report has no list for, no question outside `Decision needed:`), asks the advisorModel to review a tool-using turn against ~/AGENTS.md and the skill procedures appended after it, and sends the turn back once with every finding; an answer another Stop hook sends back, such as /goal, waits for the answer that ends the turn.",
+  "description": "When a turn ends, checks the final answer's format (a `Checked:` list after a change, no work parked under a heading the report has no list for, no question outside `Decision needed:`), asks the advisorModel to review a turn that used tools or asks the user something (a question or `Decision needed:`) against ~/AGENTS.md and the skill procedures appended after it, and sends the turn back once with every finding (again after the wake from a pause on a subagent or workflow; a paused answer that asks gets the review alone); an answer another Stop hook sends back, such as /goal, waits for the answer that ends the turn.",
   "author": {
     "name": "kapral18"
   }

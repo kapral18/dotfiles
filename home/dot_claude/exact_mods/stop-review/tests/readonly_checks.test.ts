@@ -4,6 +4,8 @@ import { expect, test } from 'claude-code/testing'
 const ran = (stdout: string, exitCode = 0) => ({ exitCode, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false })
 const edit = (file_path: string) => ({ tool: 'Edit', file_path, old_string: 'a', new_string: 'b' }) as const
 const stop = (last_assistant_message: string, stop_hook_active = false) => ({ stop_hook_active, last_assistant_message })
+// A subagent still in flight at Stop, which pauses the turn.
+const running = [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }]
 
 // The engine beneath the plugin; `tree` is what each working-tree snapshot reads.
 const engine = (on: On, tree: string[] = []) => {
@@ -69,8 +71,7 @@ test('waits out a pause on a subagent, then checks the answer that ends the turn
   engine(on)
   await $.turn.start({ text: 'fix it', turnId: 't1' })
   await $.tool.call(edit('/repo/a.ts'))
-  const subagent = [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }]
-  expect((await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: subagent })).block).toBeUndefined()
+  expect((await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: running })).block).toBeUndefined()
   // The task notice continues the turn; a background shell task alone does not pause it.
   await $.turn.start({ text: '<task-notification>\n<task-id>a1</task-id>', turnId: 'notice' })
   const shell = [{ id: 's1', type: 'shell', status: 'running', description: 'dev server' }]
@@ -84,7 +85,7 @@ test('a typed prompt during a pause starts a new turn', async ($, on) => {
   engine(on)
   await $.turn.start({ text: 'fix it', turnId: 't1' })
   await $.tool.call(edit('/repo/a.ts'))
-  await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }] })
+  await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: running })
   await $.turn.start({ text: 'what is left?', turnId: 't2' })
   expect((await $.classic.Stop(stop('Nothing.'))).block).toBeUndefined()
 })
@@ -345,8 +346,7 @@ test('an empty-text turn.start after a pause keeps the turn\'s edits', async ($,
   toolEngine(on)
   await $.turn.start({ text: 'fix it', turnId: 't1' })
   await $.tool.call(edit('/repo/a.ts'))
-  const subagent = [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }]
-  expect((await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: subagent })).block).toBeUndefined()
+  expect((await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: running })).block).toBeUndefined()
   await $.turn.start({ text: '', turnId: 'resume' })
   expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/no `Checked:` list/)
 })
@@ -422,11 +422,10 @@ test('checks the first Stop it sees even with stop_hook_active set: a managed ho
 
 test('an engine nudge after a paused Stop, such as a /goal check-in, is no send-back: the turn is still checked', async ($, on) => {
   toolEngine(on)
-  const subagent = [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }]
   await $.turn.start({ text: 'fix it', turnId: 't1' })
   await $.tool.call(edit('/repo/a.ts'))
-  expect((await $.classic.Stop({ ...stop('Waiting.'), background_tasks: subagent })).block).toBeUndefined()
-  expect((await $.classic.Stop({ ...stop('Still waiting.', true), background_tasks: subagent })).block).toBeUndefined()
+  expect((await $.classic.Stop({ ...stop('Waiting.'), background_tasks: running })).block).toBeUndefined()
+  expect((await $.classic.Stop({ ...stop('Still waiting.', true), background_tasks: running })).block).toBeUndefined()
   await $.turn.start({ text: '<task-notification>done</task-notification>', turnId: 'wake' })
   expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/no `Checked:` list/)
 })

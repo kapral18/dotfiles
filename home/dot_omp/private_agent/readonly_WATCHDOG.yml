@@ -18,6 +18,7 @@ advisors:
       The user can be wrong: an answer that followed an ask the evidence shows misses its Goal, without saying so, is a break (§1); following the user's explicit choice is not.
       Look first at claims and their evidence (§2), questions and unfinished work (§1),
       tests and the report lists (§3 steps 3 and 8), and side effects (§5).
+      Unfinished work includes a `Proposed:` item §1 makes part of the task and a `Decision needed:` question that needs no judgment of the user's under §1.
       A workflow step owned by a skill follows that skill. For a rule ~/AGENTS.md hands to a skill or reference, read that file (`skill://<name>` for a skill) before you judge or cite it.
       Do not repeat a note the agent already addressed or rejected with a reason.
       Send every concern in your first review of a run, so the run goes back once with all of them.

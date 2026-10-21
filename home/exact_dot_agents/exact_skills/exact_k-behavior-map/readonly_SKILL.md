@@ -1,6 +1,6 @@
 ---
 name: k-behavior-map
-description: "Use before and after changing code in a git repo: collects the change's impact (what it can break, and what new behavior must fit), checks it against the per-repo behavior map with ,behavior-map, maps unmapped areas, and maintains entries (area init, update, add, refresh, promote, resolve)."
+description: "Use before and after changing code in a git repo: collects the change's impact list (what it can break, and what new behavior must fit), checks it against the per-repo behavior map with ,behavior-map, maps unmapped areas, and maintains entries (area init, update, add, refresh, promote, resolve)."
 ---
 
 # Behavior map
@@ -46,7 +46,7 @@ The body is at most 1200 bytes.
 
 ## Modes
 
-- **before a change**: collect its impact from the source before the first edit. Two sides:
+- **before a change**: collect its impact list from the source before the first edit. Two sides:
   - **What it can break.** For each symbol, file, key, or behavior you will change, find every place that depends on it:
     direct and instance callers (`obj.name(`), importers, subclasses and implementations, string keys (config keys, event names, routes, CLI flags, env vars),
     serialized or persisted forms, the tests that cover it, the docs and completions that describe it,
@@ -56,7 +56,7 @@ The body is at most 1200 bytes.
     sibling implementations of the same concern (other harnesses, platforms, languages, entry points), config and install paths,
     auth and permissions, persisted data and migrations, error and empty states, docs, completions, tests;
     read how the existing pieces do it, so the new piece follows their pattern and lands everywhere it must.
-  - Write the result as a short list before editing (file or scope → why it is in the impact → what you will do), read each file on it where it touches the change,
+  - Write the result as a short list before editing (file or scope → why it is on the list → what you will do), read each file on it where it touches the change,
     and add what you learn while editing. Nothing on it is "probably fine" until you read it.
     Then run `,behavior-map affected <the repo paths on that list>`; read every listed entry, and every listed area with `show <area>`.
     Keep those behaviors, or change them on purpose. An `unmapped` directory needs area init only when you will edit or create a file in it.

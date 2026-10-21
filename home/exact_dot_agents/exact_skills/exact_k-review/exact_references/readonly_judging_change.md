@@ -49,6 +49,7 @@ Before a candidate can become review feedback:
 3. **Keep/drop rule:**
    - Keep `parity_gap`, `new_regression`, and `scope_expansion` as review findings when evidence supports them.
    - Drop `preserved_limitation` from review feedback. Do not ask the author to fix it in this PR.
+     For a change within write scope (`authorship.md`), keep one that is a defect in the change's impact (`~/AGENTS.md` §3 step 1) as a `pre-existing` finding.
    - Drop `prose_drift` from code-review feedback.
      If it matters to reviewers, handle it as PR-level prose feedback, not as an implementation finding.
 4. **Verification rule:** decide keep/drop from source-level evidence (the replacement's code and contract, rendered styles, component props) or a local run that ends on its own;

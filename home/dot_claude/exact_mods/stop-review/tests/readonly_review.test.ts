@@ -65,6 +65,10 @@ const run = async ($: Engine, text: string, uses: Use[] = [check]) => {
   for (const u of uses) await call($, u)
 }
 
+// A subagent still in flight at Stop, which pauses the turn.
+const running = [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }]
+const signOff = answered('concern: sign-off question — the answer is an obvious yes — §1')
+
 const turn = [
   user('build the mod?'),
   assistant('Should I build a Stop-time reviewer mod?'),
@@ -104,8 +108,7 @@ for (const [name, rules] of [['empty', ''], ['unreadable', new Error('ENOENT')]]
 test('waits out a pause on a subagent, then reviews the turn with its request once', async ($, on) => {
   const sent = engine(on, turn, [answered('PASS'), answered('PASS')])
   await run($, 'yeah I think so')
-  const subagent = [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }]
-  expect((await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: subagent })).block).toBeUndefined()
+  expect((await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: running })).block).toBeUndefined()
   expect(sent).toHaveLength(0)
   // The task notice that wakes the session continues the paused turn; a background shell task alone does not pause it.
   await $.turn.start({ text: '<task-notification>\n<task-id>a1</task-id>', turnId: 'notice' })
@@ -120,10 +123,52 @@ test('waits out a pause on a subagent, then reviews the turn with its request on
   expect(sent[1]?.prompt).toMatch(/## User request\n\(no typed prompt/)
 })
 
+test('checks the answer after a wake again when the turn was sent back before the pause', async ($, on) => {
+  const sent = engine(on, turn, [answered('PASS'), signOff])
+  await run($, 'yeah I think so')
+  expect((await $.classic.Stop(stop('Done.\n\nNext steps: review.'))).block).toMatch(/Next steps/)
+  await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: running })
+  await $.turn.start({ text: '<task-notification>\n<task-id>a1</task-id>', turnId: 'notice' })
+  expect((await $.classic.Stop(stop('Six findings.\n\nDecision needed: fix all six?'))).block).toMatch(/- sign-off question/)
+  expect(sent).toHaveLength(2)
+})
+
+test('checks a paused answer that asks the user, once', async ($, on) => {
+  const sent = engine(on, turn, [signOff])
+  await run($, 'yeah I think so')
+  const block = (await $.classic.Stop({ ...stop('Six findings.\n\nNext steps: wait.\n\nDecision needed: fix all six?'), background_tasks: running })).block
+  expect(block).toMatch(/- sign-off question/)
+  // The report's format checks wait for the wake; the reviewer learns the answer is not final.
+  expect(block).not.toMatch(/Next steps/)
+  expect(sent[0]?.prompt).toMatch(/# Paused\n/)
+  expect((await $.classic.Stop({ ...stop('Fixing all six.\n\nDecision needed: also #7?'), background_tasks: running })).block).toBeUndefined()
+  expect(sent).toHaveLength(1)
+})
+
+test('still checks and reviews the rewrite of a paused send-back once the pause ends', async ($, on) => {
+  const sent = engine(on, turn, [signOff, answered('PASS')])
+  await run($, 'yeah I think so')
+  await $.classic.Stop({ ...stop('Six findings.\n\nDecision needed: fix all six?'), background_tasks: running })
+  expect((await $.classic.Stop(stop('Fixed six.\n\nNext steps: review the rest.'))).block).toMatch(/Next steps/)
+  expect(sent).toHaveLength(2)
+})
+
+test('reviews a paused answer that asks even after the turn was sent back', async ($, on) => {
+  const sent = engine(on, turn, [answered('concern: a — b — c'), signOff, answered('PASS')])
+  await run($, 'yeah I think so')
+  await $.classic.Stop(stop('Done.'))
+  expect((await $.classic.Stop({ ...stop('Reviewers started.\n\nDecision needed: fix all six?'), background_tasks: running })).block).toMatch(/- sign-off question/)
+  expect(sent).toHaveLength(2)
+  // The paused send-back starts a new stretch: the next answer that is not paused is checked and reviewed again, then capped.
+  expect((await $.classic.Stop(stop('Stopped them.\n\nNext steps: review.'))).block).toMatch(/Next steps/)
+  expect(sent).toHaveLength(3)
+  expect((await $.classic.Stop(stop('Done.\n\nNext steps: review.'))).block).toBeUndefined()
+})
+
 test('a typed prompt during a pause starts a new turn', async ($, on) => {
   const sent = engine(on, turn, [answered('PASS')])
   await run($, 'yeah I think so')
-  await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }] })
+  await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: running })
   await run($, 'also rename it')
   await $.classic.Stop(stop('Renamed.'))
   expect(sent[0]?.prompt).toMatch(/## User request\nalso rename it\n/)
@@ -132,7 +177,7 @@ test('a typed prompt during a pause starts a new turn', async ($, on) => {
 test('an empty wake after a pause also continues the turn', async ($, on) => {
   const sent = engine(on, turn, [answered('PASS')])
   await run($, 'yeah I think so')
-  await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }] })
+  await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: running })
   await $.turn.start({ text: '', turnId: 'wake' })
   await $.classic.Stop(stop('Done.'))
   expect(sent[0]?.prompt).toMatch(/## User request\nyeah I think so\n/)
@@ -144,11 +189,43 @@ test('still sends the format checks back when the review fails', async ($, on) =
   expect((await $.classic.Stop(stop('Done. Want me to push?'))).block).toMatch(/^The final message ends with a question/)
 })
 
-test('makes no call for a turn without tools', async ($, on) => {
+test('makes no call for a turn without tools or a question', async ($, on) => {
   const sent = engine(on, turn, [answered('concern: a — b — c')])
   await run($, 'hello', [])
   expect((await $.classic.Stop(stop('Hi.'))).block).toBeUndefined()
   expect(sent).toHaveLength(0)
+})
+
+test('reviews a turn without tools that asks under Decision needed, with its pick after, and not one that only links', async ($, on) => {
+  const sent = engine(on, [user('<task-notification>\n<task-id>a1</task-id>')], [answered('PASS')])
+  await $.turn.start({ text: '<task-notification>\n<task-id>a1</task-id>', turnId: 'notice' })
+  await $.classic.Stop(stop('Six findings, see https://x.dev/a?b=1.\n\nDecision needed: fix all six, or only #1.\n\nMy pick is all six.'))
+  expect(sent).toHaveLength(1)
+  expect(sent[0]?.prompt).toMatch(/## User request\n\(no typed prompt[\s\S]*# Final answer\nSix findings,/)
+  await run($, 'where are the docs', [])
+  await $.classic.Stop(stop('At https://x.dev/a?b=1.'))
+  expect(sent).toHaveLength(1)
+})
+
+test('checks a turn an empty start woke even without tools or a Decision needed marker', async ($, on) => {
+  const sent = engine(on, [user('')], [answered('PASS')])
+  await $.turn.start({ text: '', turnId: 'wake' })
+  expect((await $.classic.Stop(stop('Six findings. Should I fix all six?'))).block).toMatch(/^The final message ends with a question/)
+  expect(sent).toHaveLength(1)
+})
+
+test('reviews a woken turn that asks mid-paragraph, and ignores ask and list words in the notice', async ($, on) => {
+  const notice = '<task-notification>\n<result>Ask me before you push. Please list the next steps.</result>'
+  const sent = engine(on, [user(notice)], [answered('PASS'), answered('PASS')])
+  await $.turn.start({ text: notice, turnId: 'notice' })
+  const block = (await $.classic.Stop(stop('Next steps: fix #1.\n\nSix findings. Should I fix all six?'))).block
+  expect(block).toMatch(/Next steps/)
+  expect(block).toMatch(/ends with a question/)
+  expect(sent).toHaveLength(1)
+  // The middle of a paragraph is enough to start the review.
+  await $.turn.start({ text: notice, turnId: 'notice2' })
+  await $.classic.Stop(stop('Six findings. Should I fix all six? My pick is yes.'))
+  expect(sent).toHaveLength(2)
 })
 
 test('makes no call without an advisorModel', async ($, on) => {
@@ -386,6 +463,79 @@ test('shows the final answer once', async ($, on) => {
   expect(sent[0]?.prompt.match(/All done\./g)).toHaveLength(1)
 })
 
+test('opens a slash command turn without tools at its command row', async ($, on) => {
+  const rows = [user('earlier q'), assistant('earlier a'), user('<command-name>/review</command-name>'), assistant('Final. Should I fix it?')]
+  const sent = engine(on, rows, [answered('PASS')])
+  await run($, '/review', [])
+  await $.classic.Stop(stop('Final. Should I fix it?'))
+  expect(sent[0]?.prompt.match(/Final\. Should I fix it\?/g)).toHaveLength(1)
+  expect(sent[0]?.prompt).toMatch(/# Turn under review\n## User request\n\/review\n\n## User\n<command-name>/)
+})
+
+test('opens a woken turn without tools or a row of its own after the earlier turn', async ($, on) => {
+  const rows = [user('go'), assistant('', [check]), toolResult(), assistant('Done.'), assistant('Should I fix it?')]
+  const sent = engine(on, rows, [answered('PASS'), answered('PASS')])
+  await run($, 'go')
+  await $.classic.Stop(stop('Done.'))
+  await $.turn.start({ text: '', turnId: 'wake' })
+  await $.classic.Stop(stop('Should I fix it?'))
+  expect(sent[1]?.prompt).toMatch(/make check[\s\S]*# Turn under review/)
+  expect(sent[1]?.prompt).not.toMatch(/# Turn under review[\s\S]*make check/)
+  expect(sent[1]?.prompt.match(/Should I fix it\?/g)).toHaveLength(1)
+})
+
+for (const [label, uses] of [['without', []], ['with', [check]]] as const) {
+  test(`keeps an earlier turn without tools out of a woken turn ${label} tools`, async ($, on) => {
+    const rows = [user('old ask'), assistant('Hello.'), ...(uses.length ? [assistant('', uses), toolResult()] : []), assistant('Should I fix it?')]
+    const sent = engine(on, rows, [answered('PASS'), answered('PASS')])
+    await run($, 'old ask', [])
+    await $.classic.Stop(stop('Hello.'))
+    await $.turn.start({ text: '', turnId: 'wake' })
+    for (const u of uses) await call($, u)
+    await $.classic.Stop(stop('Should I fix it?'))
+    // The earlier turn neither used tools nor asked, so only the wake is reviewed.
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.prompt).not.toMatch(/# Turn under review[\s\S]*old ask/)
+  })
+}
+
+test('keeps an earlier typed turn out of a wake after a reload', async ($, on) => {
+  const sent = engine(on, [user('old ask'), assistant('Hello.'), assistant('Should I fix it?')], [answered('PASS')])
+  await $.turn.start({ text: '', turnId: 'wake' })
+  await $.classic.Stop(stop('Should I fix it?'))
+  expect(sent).toHaveLength(1)
+  expect(sent[0]?.prompt).not.toMatch(/# Turn under review[\s\S]*old ask/)
+})
+
+test('keeps an earlier notice turn with tools out of a wake after a reload', async ($, on) => {
+  const rows = [user('<task-notification>zeta</task-notification>'), assistant('', [check]), toolResult(), assistant('Done.'), assistant('Should I fix it?')]
+  const sent = engine(on, rows, [answered('PASS')])
+  await $.turn.start({ text: '', turnId: 'wake' })
+  await $.classic.Stop(stop('Should I fix it?'))
+  expect(sent).toHaveLength(1)
+  expect(sent[0]?.prompt).not.toMatch(/# Turn under review[\s\S]*zeta/)
+})
+
+test('keeps an earlier woken turn out of a later wake without a row of its own', async ($, on) => {
+  const rows = [user('<task-notification>n1</task-notification>'), assistant('Ack n1.'), assistant('Should I fix it?')]
+  const sent = engine(on, rows, [answered('PASS')])
+  await $.turn.start({ text: '<task-notification>n1</task-notification>', turnId: 'n1' })
+  await $.classic.Stop(stop('Ack n1.'))
+  await $.turn.start({ text: '', turnId: 'wake' })
+  await $.classic.Stop(stop('Should I fix it?'))
+  expect(sent).toHaveLength(1)
+  expect(sent[0]?.prompt).not.toMatch(/# Turn under review[\s\S]*Ack n1/)
+})
+
+test('opens a slash command turn at its command row, not at later hook feedback', async ($, on) => {
+  const rows = [user('<command-name>/x</command-name>\n<command-args>a b</command-args>'), assistant('First.'), user('Stop hook feedback: goal'), assistant('Should I?')]
+  const sent = engine(on, rows, [answered('PASS')], { below: [{ block: 'goal' }] })
+  await run($, '/x a b', [])
+  await $.classic.Stop(stop('First.'))
+  await $.classic.Stop(stop('Should I?'))
+  expect(sent[0]?.prompt).toMatch(/# Turn under review[\s\S]*First\./)
+})
+
 test('drops the oldest earlier turns past its budget and cuts each message', async ($, on) => {
   const earlier = Array.from({ length: 100 }, (_, n) => [user(`turn ${n} ${'u'.repeat(5000)}`), assistant(`reply ${n}`)]).flat()
   const sent = engine(on, [...earlier, user('go'), assistant('', [check]), toolResult()], [answered('PASS')])
@@ -412,9 +562,8 @@ test('reviews the first Stop it sees even with stop_hook_active set: a managed h
 test('an engine nudge after a paused Stop, such as a /goal check-in, is no send-back: the turn is still reviewed', async ($, on) => {
   const sent = engine(on, turn, [answered('concern: a — b — c')])
   await run($, 'yeah I think so')
-  const subagent = [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }]
-  expect((await $.classic.Stop({ ...stop('Waiting.'), background_tasks: subagent } as never)).block).toBeUndefined()
-  expect((await $.classic.Stop({ ...stop('Still waiting.', true), background_tasks: subagent } as never)).block).toBeUndefined()
+  expect((await $.classic.Stop({ ...stop('Waiting.'), background_tasks: running } as never)).block).toBeUndefined()
+  expect((await $.classic.Stop({ ...stop('Still waiting.', true), background_tasks: running } as never)).block).toBeUndefined()
   await $.turn.start({ text: '<task-notification>done</task-notification>', turnId: 'wake' })
   expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/^stop-review: /)
   expect(sent).toHaveLength(1)

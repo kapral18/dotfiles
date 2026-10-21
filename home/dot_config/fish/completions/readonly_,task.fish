@@ -24,7 +24,7 @@ complete -c ,task -n '__fish_seen_subcommand_from check' -l evidence -x -d 'Comm
 complete -c ,task -n '__fish_seen_subcommand_from block' -l reason -x -d 'What blocks it'
 complete -c ,task -n '__fish_seen_subcommand_from scope; and not __fish_seen_subcommand_from add check' -a 'add check'
 complete -c ,task -n '__fish_seen_subcommand_from scope; and __fish_seen_subcommand_from add check' -F
-complete -c ,task -n '__fish_seen_subcommand_from scope; and __fish_seen_subcommand_from add' -l reason -x -d 'Why the goal needs it'
+complete -c ,task -n '__fish_seen_subcommand_from scope; and __fish_seen_subcommand_from add' -l reason -x -d "Why the goal or a defect in the change's impact needs it"
 complete -c ,task -n '__fish_seen_subcommand_from correct' -l harness -x -d 'Harness name'
 complete -c ,task -n '__fish_seen_subcommand_from pref; and not __fish_seen_subcommand_from add list' -a 'add list'
 complete -c ,task -n '__fish_seen_subcommand_from pref; and __fish_seen_subcommand_from add' -l global -d 'Apply in every repo'

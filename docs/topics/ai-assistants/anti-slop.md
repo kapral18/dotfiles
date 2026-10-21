@@ -63,15 +63,16 @@ This establishes discovery paths and routing instructions, not a guarantee that 
 ## Engagement and operation
 
 The [skill catalog](skills.md) advertises `k-anti-slop` for automatic selection.
-These existing skills also route to it when the concrete surface is in scope:
+These entry points also load it:
 
-| Entry point          | Selected content                                                                                                            |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `k-code-quality`     | Prose, documentation, data displays, localization, and code comments; existing web and README routes stay intact.           |
-| `k-code-quality-web` | Visual, accessibility, responsive, copy, data displays, or localization references matching the change.                     |
-| `k-communication`    | Prose filter, while retaining its own external register and publication rules.                                              |
-| `k-readme`           | Prose filter alongside the ReadmeRoast first-use check.                                                                     |
-| `k-artifact`         | Matching guidance for authored generated content; cache, feedback, and live-overlay mechanics stay with the artifact skill. |
+| Entry point            | Selected content                                                                                                            |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `k-code-quality`       | References matching the surfaces in scope, on every edit or review (De-slop section).                                       |
+| `k-code-quality-web`   | Visual, accessibility, responsive, copy, data displays, or localization references matching the change.                     |
+| `k-communication`      | Prose filter, while retaining its own external register and publication rules.                                              |
+| `k-readme`             | Prose filter alongside the ReadmeRoast first-use check.                                                                     |
+| `k-artifact`           | Matching guidance for authored generated content; cache, feedback, and live-overlay mechanics stay with the artifact skill. |
+| Shared reviewer prompt | The same as `k-code-quality`, on every review.                                                                              |
 
 Direct invocation of `k-anti-slop` also works as a request to apply the filter.
 Reciprocal pointers reuse already loaded skills and references for the active invocation.

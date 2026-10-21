@@ -25,16 +25,19 @@ Not doing: PDF export, column picker
 Each session retains its own card and turn state, even when several sessions share a worktree. Storage updates hold a worktree lock across reading and writing.
 Card commands, `check`, `block`, `reopen`, `status`, `scope`, and `correct` select `--session <id>`, then `AGENT_TASK_SESSION`, then the only recently active session. With several active sessions they require an explicit selection; hooks name the id in their notes. `card clear` removes only the selected card and turn state.
 Subagents are left alone: OMP subagents and advisors, OpenCode child sessions, and Claude subagent tool calls never touch the card.
-Rewriting the card keeps the status of items whose text did not change and records the old goal.
+Rewriting the card under the same goal keeps the status of items whose text did not change; a new goal reopens every item, records the old goal, and the card shows only the latest earlier goal.
+Hooks inject the latest five scope changes and count the rest; `card show` and scope checks use them all.
+A new goal archives the old goal's scope changes as a record (`card show --json`); `card set` lists the archived paths so the agent re-adds the ones the new goal still needs.
+`card set` warns when the agent-written part (Goal, Reading, Done when, Scope, Not doing) passes 2048 bytes; the card is saved anyway, and evidence notes and history lines do not count.
 Scope entries preserve spaces and resolve symlinks. Use one path per line when a path contains a comma or semicolon.
-The agent marks items with `,task check D1 --evidence "<command and result>"` or `,task block D2 --reason "..."`, and records a path the goal needs beyond the scope with `,task scope add <path> --reason "..."`.
+The agent marks items with `,task check D1 --evidence "<command and result>"` or `,task block D2 --reason "..."`, and records a path the goal or a defect in the change's impact needs beyond the scope with `,task scope add <path> --reason "..."`.
 
 ## When the user is wrong
 
 The user can misword an ask, miss context, or pick a weaker option, so the card holds the goal behind the words, not the words.
 What the user wants is theirs to say; facts and methods are settled by evidence (`~/AGENTS.md` §1).
 When the ask misses its goal or conflicts with the evidence, the agent notes it in `Reading:` and says so with the evidence before it acts.
-It takes a better path itself only when that is reversible, keeps the goal, and overrides no explicit choice; anything else becomes a question.
+Whether it then acts, asks, or proposes follows §1.
 A correction of what the user wants updates the card; one of fact or method that the evidence contradicts gets one line with that evidence.
 A zoom-out also asks whether the goal itself still looks right, and both reviewers count an answer that followed a flawed ask without saying so as a miss.
 

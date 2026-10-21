@@ -38,6 +38,7 @@ CLAIM_WINDOW = 3600
 MAX_CORRECTIONS = 5
 MAX_CONTINUES = 3
 CARD_SOFT_LIMIT = 2048
+SCOPE_CHANGES_SHOWN = 5
 SHELL_TOOLS = frozenset({"bash", "shell", "exec_command", "write_stdin", "python", "powershell", "eval"})
 WRITE_TOOLS = frozenset({"edit", "write", "multiedit", "notebookedit", "apply_patch", "applypatch", "patch"})
 SECTIONS = {
@@ -250,22 +251,27 @@ def validate(card: dict) -> list[str]:
     return problems
 
 
-def render(card: dict, *, full: bool = True) -> str:
+def render(card: dict, *, full: bool = True, notes: bool = True, all_changes: bool = False) -> str:
     lines = [f"Goal: {card['goal']}"]
     if card.get("reading"):
         lines.append(f"Reading: {card['reading']}")
     lines.append("Done when:")
     for item in card["done"]:
         mark = {"checked": "x", "blocked": "!"}.get(item["status"], " ")
-        note = f" — {item['note']}" if item.get("note") else ""
+        note = f" — {item['note']}" if notes and item.get("note") else ""
         lines.append(f"- [{mark}] {item['id']}: {item['text']}{note}")
     lines.append("Scope: " + ", ".join(card["scope"]))
     if card.get("not_doing"):
         lines.append("Not doing: " + "; ".join(card["not_doing"]))
     if full:
-        for change in card.get("scope_changes", []):
+        changes = card.get("scope_changes", [])
+        # Hooks inject the latest few, so the card stays short each turn; `card show` and scope checks use them all.
+        if not all_changes and len(changes) > SCOPE_CHANGES_SHOWN:
+            lines.append(f"Scope changes: {len(changes) - SCOPE_CHANGES_SHOWN} older ones, listed by `,task card show`")
+        for change in changes if all_changes else changes[-SCOPE_CHANGES_SHOWN:]:
             lines.append(f"Scope change: {change['path']} — {change['reason']}")
-        for old in card.get("goal_history", []):
+        # Only the latest earlier goal: the rest stay in the store, so the card injected each turn does not grow.
+        for old in card.get("goal_history", [])[-1:]:
             lines.append(f"Earlier goal: {old}")
         for text in card.get("corrections", []):
             lines.append(f"User correction (verbatim): {text}")
@@ -486,7 +492,7 @@ def hook_tool(task: Task, data: dict, harness: str) -> dict:
         if outside:
             notes.append(
                 "intent-guard: " + ", ".join(outside[:20]) + " is outside the card's `Scope:`. "
-                'If the Goal needs it, record why with `,task scope add <path> --reason "..."`; if not, undo your change.'
+                'If the Goal or a defect in the change\'s impact (§3 step 1) needs it, record why with `,task scope add <path> --reason "..."`; if not, undo your change.'
             )
     steps = int(turn.get("steps", 0)) + (0 if before or complete else 1)
     if card and not before and not complete and (steps >= ZOOM_EVERY or turn.get("compacted")):
@@ -562,12 +568,14 @@ def hook_stop(task: Task, data: dict, harness: str) -> dict:
     if unmet:
         lines.append("Open `Done when` items:")
         lines += [f"- {item['id']}: {item['text']}" for item in unmet]
+        # The §1 limits, worded as STEP in the stop-review mod (home/dot_claude/exact_mods/stop-review/hooks/readonly_checks.ts).
         lines.append(
-            "Do each one that is a step ~/AGENTS.md §1 makes part of the task (in the request's scope, and either named "
-            "by the request or reversible and changing nothing outside this machine that the request did not name, or a "
-            "§3 step 7 cleanup k-cleanup allows; never a §5 action, a live check §3 step 4 keeps for the user's ask, "
-            "or a step the user "
-            "asked you to ask about first), then mark it with "
+            "Do each one that is a step ~/AGENTS.md §1 makes part of the task "
+            "(named by the request, or reversible and changing nothing outside this machine the request did not name, "
+            "when it is in the request's scope (fixes from a review the request ran on the user's own work count) "
+            "or fixes a defect in the change's impact (§3 step 1); or a §3 step 7 cleanup k-cleanup allows; "
+            "never a §5 action §5 does not allow, a live check §3 step 4 keeps for the user's ask, "
+            "or a step the user asked you to ask about first), then mark it with "
             '`,task check <id> --evidence "<command and result>"`. '
             "For one you cannot do now (it waits on a user decision or a blocker), "
             'run `,task block <id> --reason "..."` and list it under `Open:` or `Decision needed:` with that id.'
@@ -575,7 +583,7 @@ def hook_stop(task: Task, data: dict, harness: str) -> dict:
     if outside:
         lines.append("Changed files outside the card's `Scope:`: " + ", ".join(outside[:20]))
         lines.append(
-            'For each one you changed, record why the Goal needs it with `,task scope add <path> --reason "..."`, '
+            'For each one you changed, record why the Goal or a defect in the change\'s impact (§3 step 1) needs it with `,task scope add <path> --reason "..."`, '
             "or undo your change; a k-cleanup deletion (§3 step 7) gets the reason, not an undo. Leave a change the user made alone."
         )
     lines.append("Then write the whole final answer again; it replaces your last one.")
@@ -683,13 +691,16 @@ def cmd_card_set(args: argparse.Namespace) -> int:
     session = task.session(args.session)
     old = task.card_for(session)
     done = [{"id": f"D{i}", "text": text, "status": "open"} for i, text in enumerate(parsed["done"], 1)]
-    if old:
-        # Keep the status of items that survive a rewrite of the card.
+    goal_changed = bool(old) and old["goal"] != parsed["goal"]
+    if old and not goal_changed:
+        # Keep the status of items that survive a rewrite of the card; a new goal needs its own evidence.
         by_text = {item["text"]: item for item in old["done"]}
         for item in done:
             prior = by_text.get(item["text"])
             if prior:
                 item.update(status=prior["status"], note=prior.get("note", ""))
+    # A new goal archives the old goal's scope changes as a record; the new goal records its own.
+    archived = old.get("scope_changes", []) if goal_changed else []
     card = {
         "session": session,
         "created": old["created"] if old else now(),
@@ -699,20 +710,31 @@ def cmd_card_set(args: argparse.Namespace) -> int:
         "done": done,
         "scope": parsed["scope"],
         "not_doing": parsed["not_doing"],
-        "scope_changes": old.get("scope_changes", []) if old else [],
+        "scope_changes": old.get("scope_changes", []) if old and not goal_changed else [],
+        "earlier_scope_changes": (old.get("earlier_scope_changes", []) if old else []) + archived,
         "corrections": old.get("corrections", []) if old else [],
-        "goal_history": (old.get("goal_history", []) + ([old["goal"]] if old["goal"] != parsed["goal"] else []))
-        if old
-        else [],
+        "goal_history": (old.get("goal_history", []) if old else []) + ([old["goal"]] if goal_changed else []),
     }
+    if archived:
+        print(
+            ",task: the new goal archived these scope changes: "
+            + ", ".join(change["path"] for change in archived)
+            + '. Run `,task scope add <path> --reason "..."` for each one the new goal still needs.',
+            file=sys.stderr,
+        )
     task.card = card
     task.save_card()
     task.turn(session).update(continues=0, last_unmet=None, steps=0)
     task.save_state()
-    text = render(card)
-    if len(text.encode()) > CARD_SOFT_LIMIT:
-        print(f",task: card is {len(text.encode())} bytes; keep it under {CARD_SOFT_LIMIT}", file=sys.stderr)
-    print(text)
+    # The limit counts only what the agent wrote: no evidence notes, scope changes, or earlier goals.
+    size = len(render(card, full=False, notes=False).encode())
+    if size > CARD_SOFT_LIMIT:
+        print(
+            f",task: card saved; its Goal, Reading, Done when, Scope, and Not doing take {size} bytes (limit {CARD_SOFT_LIMIT}). "
+            "Shorten the longest of them in the next `card set`.",
+            file=sys.stderr,
+        )
+    print(render(card))
     return 0
 
 
@@ -727,7 +749,7 @@ def require_card(task: Task, session: str | None = None) -> dict:
 def cmd_card_show(args: argparse.Namespace) -> int:
     task = Task(Path.cwd(), getattr(args, "session", None))
     card = require_card(task, args.session)
-    print(json.dumps(card, indent=2, ensure_ascii=False) if args.json else render(card))
+    print(json.dumps(card, indent=2, ensure_ascii=False) if args.json else render(card, all_changes=True))
     return 0
 
 
@@ -886,7 +908,9 @@ def build_parser() -> argparse.ArgumentParser:
     status.set_defaults(func=cmd_status)
 
     scope = sub.add_parser("scope", help="extend or check the card's scope").add_subparsers(dest="scope", required=True)
-    scope_add = scope.add_parser("add", help="record a path the goal needs beyond the original scope")
+    scope_add = scope.add_parser(
+        "add", help="record a path the goal or a defect in the change's impact needs beyond the original scope"
+    )
     scope_add.add_argument("path")
     scope_add.add_argument("--reason", required=True)
     scope_add.add_argument("--session", help=SESSION_HELP)

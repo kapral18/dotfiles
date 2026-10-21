@@ -17,7 +17,7 @@ const CONDITION = /^\s*(?:if|unless|when|whenever)\b/i
 const isRefused = (before: string) => NEGATED.test(before) && !CONDITION.test(before.split(/[.!?;,\n]/).pop() ?? '')
 // The user's prompt asks to be asked, so the question check stays quiet.
 export const asksToAsk = (prompt: string) => [...prompt.matchAll(ASK_ME)].some(match => !isRefused(prompt.slice(0, match.index)))
-// The user's question, kept on purpose: the last prose paragraph, before any list, starts with this marker.
+// The line that opens the user's question, kept on purpose.
 const DECISION = /^[\s>*_#-]*Decision needed(\*\*)?:/
 const LIST_ITEM = /^\s*(?:[-*+]|\d+[.)])\s/m
 // A question under these report lists is an open item, not a question to the user.
@@ -39,11 +39,19 @@ const SNAPSHOT =
   'git diff HEAD --no-ext-diff --binary 2>/dev/null | git hash-object --stdin\n' +
   'git ls-files --others --exclude-standard | git hash-object --stdin-paths | git hash-object --stdin'
 
-// The ~/AGENTS.md §1 limits on acting without asking, kept whole so a send-back never pushes past them.
+// The ~/AGENTS.md §1 limits on acting without asking, kept whole so a send-back never pushes past them; ,task's hook_stop words them the same.
 export const STEP =
-  'a step ~/AGENTS.md §1 makes part of the task (in the request\'s scope, and either named by the request or reversible and ' +
-  'changing nothing outside this machine that the request did not name, or a §3 step 7 cleanup k-cleanup allows; never a §5 action, ' +
+  'a step ~/AGENTS.md §1 makes part of the task (named by the request, or reversible and changing nothing outside this machine the request did not name, ' +
+  'when it is in the request\'s scope (fixes from a review the request ran on the user\'s own work count) or fixes a defect in the change\'s impact (§3 step 1); ' +
+  'or a §3 step 7 cleanup k-cleanup allows; never a §5 action §5 does not allow, ' +
   'a live check §3 step 4 keeps for the user\'s ask, or a step the user asked you to ask about first)'
+
+// What ~/AGENTS.md §3 step 8 puts under `Proposed:`, one wording for every send-back.
+export const PROPOSED =
+  'an item outside the request\'s scope that fixes no defect in the change\'s impact (§3 steps 1 and 8) under `Proposed:`'
+
+// Where ~/AGENTS.md §3 step 8 puts a live check it does not let the agent offer.
+const UNVERIFIED = 'a live check §3 step 8 does not let you offer as an `(unverified: …)` mark under `Checked:`'
 
 // Each message states what the check found, what to do now, and the ~/AGENTS.md rule it follows, with the limits that rule sets on acting,
 // so the one send-back ends with the work done rather than reworded.
@@ -54,13 +62,13 @@ const MESSAGE =
 
 const QUESTION =
   `The final message ends with a question outside \`Decision needed:\`. If its answer is ${STEP}, do it now. ` +
-  'Keep a question only for a decision that is the user\'s (§1), last, under `Decision needed:`, with your pick. ' +
-  'Put an out-of-scope step under `Proposed:`, and one you cannot do now under `Open:` with its blocker.'
+  'Keep a question only for what needs the user\'s judgment (§1), last, under `Decision needed:`, with your pick. ' +
+  `Put ${PROPOSED}, ${UNVERIFIED}, and one you cannot do now under \`Open:\` with its blocker.`
 
 const deferral = (heading: string) =>
   `The final message lists work under \`${heading}\`, which the ~/AGENTS.md §3 step 8 report has no slot for. ` +
   `Do each item that is ${STEP} now. ` +
-  'Put an item that is the user\'s decision (§1) under `Decision needed:` with your pick, an out-of-scope item under `Proposed:`, ' +
+  `Put an item that needs the user's judgment (§1) under \`Decision needed:\` with your pick, ${PROPOSED}, ${UNVERIFIED}, ` +
   'and an item you cannot do now under `Open:` with its blocker. Steps for the user to run belong in the answer itself, under no such heading; ' +
   'cleanup is never one of them (§3 step 7).'
 
@@ -100,8 +108,14 @@ const marksDecision = (message: string) => {
   return DECISION.test(last) && (!isListDropped || /:[*_\s]*$/.test(last) || LIST_ITEM.test(last))
 }
 
+// The answer may put a question to the user: its prose, outside inline code and URLs, holds a `?` or opens a line with the `Decision needed:` marker.
+export const asksUser = (message: string) => {
+  const text = prose(message).replace(/`[^`\n]*`|\bhttps?:\/\/\S+/g, '')
+  return text.includes('?') || text.split('\n').some(line => DECISION.test(line))
+}
+
 export type Turn = {
-  // A main-agent tool ran this turn.
+  // A main-agent tool ran this turn, or a task notice started it.
   isActive: boolean
   isAskWanted: boolean
   isListWanted: boolean

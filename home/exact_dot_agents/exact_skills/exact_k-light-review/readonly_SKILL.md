@@ -20,6 +20,8 @@ Resolve the diff and authorship (`~/.agents/skills/k-review/references/authorshi
 
 - Read the full diff and the enclosing files; check callers when a changed signature or contract has them.
 - Judge correctness, preserved behavior, and completeness with the Truth Validation Framework and Candidate Refutation Ladder in `~/.agents/skills/k-review/references/judging_core.md`.
+- De-slop the change: load `~/.agents/skills/k-code-quality/SKILL.md` and apply its De-slop section.
+- Also report defects in the change's impact (`~/AGENTS.md` §3 step 1), collecting its impact list with `k-behavior-map` (before a change) when none exists.
 - Reuse check results already run; do not repeat them.
 - Fix supported findings in the same pass when authorship gives write scope; otherwise report them.
 - If an excluding trigger appears while reading, stop and switch: a `~/AGENTS.md` §3 step 5 trigger to `k-review` Verify mode,

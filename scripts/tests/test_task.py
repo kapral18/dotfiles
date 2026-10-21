@@ -173,9 +173,60 @@ class TestTask(unittest.TestCase):
     def test_SHOULD_keep_item_status_when_the_card_is_rewritten(self):
         self.set_card()
         self.run_task("check", "D1", "--evidence", "clicked it")
-        rewritten = self.run_task("card", "set", stdin=CARD.replace("Add the export button", "Add CSV and XLSX export"))
+        rewritten = self.run_task("card", "set", stdin=CARD.replace("on the report page", "on the summary page"))
         self.assertIn("- [x] D1: the button downloads a CSV — clicked it", rewritten.stdout)
-        self.assertIn("Earlier goal: Add the export button", rewritten.stdout)
+
+    def test_SHOULD_reopen_items_when_the_goal_changes(self):
+        self.set_card()
+        self.run_task("check", "D1", "--evidence", "clicked it")
+        # Evidence for one goal does not prove another.
+        moved = self.run_task("card", "set", stdin=CARD.replace("Add the export button", "Add CSV and XLSX export"))
+        self.assertIn("- [ ] D1: the button downloads a CSV", moved.stdout)
+        self.assertIn("Earlier goal: Add the export button", moved.stdout)
+
+    def add_scope_changes(self, count: int) -> None:
+        for i in range(count):
+            self.run_task(
+                "scope", "add", f"docs/page{i}.md", "--reason", "the export needs a documented link on this page"
+            )
+
+    def test_SHOULD_show_the_latest_five_scope_changes_and_keep_all_for_show_and_scope_checks(self):
+        self.set_card()
+        self.add_scope_changes(30)
+        rewritten = self.run_task("card", "set", stdin=CARD)
+        self.assertIn("Scope changes: 25 older ones", rewritten.stdout)
+        self.assertEqual(rewritten.stdout.count("Scope change: "), 5)
+        self.assertEqual(self.hook("tool", tool="Edit", paths=["docs/page0.md"]), {})
+        self.assertEqual(self.run_task("card", "show").stdout.count("Scope change: "), 30)
+
+    def test_SHOULD_measure_the_size_limit_on_the_agent_text_and_say_the_card_saved(self):
+        self.set_card()
+        self.add_scope_changes(30)
+        for item in ("D1", "D2"):
+            self.run_task("check", item, "--evidence", "ran the export and opened the file " * 40)
+        rewritten = self.run_task("card", "set", stdin=CARD)
+        self.assertEqual(rewritten.returncode, 0, rewritten.stderr)
+        self.assertNotIn("bytes", rewritten.stderr)
+
+        long = CARD.replace(
+            "Reading: The user wants CSV export on the report page.", "Reading: " + "the report page needs it " * 100
+        )
+        warned = self.run_task("card", "set", stdin=long)
+        self.assertEqual(warned.returncode, 0)
+        self.assertIn("card saved", warned.stderr)
+        self.assertIn("Goal: Add the export button", self.run_task("card", "show").stdout)
+
+    def test_SHOULD_archive_scope_changes_and_keep_one_earlier_goal_when_the_goal_changes(self):
+        self.set_card()
+        self.run_task("scope", "add", "docs/x.md", "--reason", "the button needs a doc link")
+        moved = self.run_task("card", "set", stdin=CARD.replace("Add the export button", "Add CSV export"))
+        self.assertIn("archived these scope changes: docs/x.md", moved.stderr)
+        shown = self.run_task("card", "set", stdin=CARD.replace("Add the export button", "Add XLSX export")).stdout
+        self.assertNotIn("Scope change: docs/x.md", shown)
+        self.assertNotIn("Earlier goal: Add the export button", shown)
+        self.assertIn("Earlier goal: Add CSV export", shown)
+        # An archived scope change is a record only: the new goal records its own.
+        self.assertIn("docs/x.md is outside", self.hook("tool", tool="Edit", paths=["docs/x.md"])["note"])
 
     def test_SHOULD_hide_another_sessions_card(self):
         self.set_card()

@@ -117,6 +117,7 @@ When triggered, load and follow `~/.agents/skills/k-review/references/pr_context
   - `new`: not already covered and verified against the current implementation/diff; eligible for draft feedback.
     - For replacements and test migrations, apply the Replacement/Migration Parity Gate in `~/.agents/skills/k-review/references/judging_core.md` first.
       Only `parity_gap`, `new_regression`, and `scope_expansion` can be `new`; `preserved_limitation` and `prose_drift` cannot be `new`.
+      Within write scope, a `preserved_limitation` that is a defect in the change's impact is fixed, not drafted (`judging_change.md` step 3).
   - `incorrect`: prior clarification/comment conflicts with the current implementation/diff;
     add one correction with evidence (do not echo the incorrect claim).
 

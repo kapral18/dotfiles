@@ -1,17 +1,28 @@
 ---
 name: k-code-quality
-description: "Use when editing, reviewing, or refactoring implementation code or any repository artifact."
+description: "Use when editing, reviewing, refactoring, or de-slopping implementation code or any repository artifact."
 ---
 
 # Code Quality
 
-Owns repository-artifact style, maintainability, edit scope, semantic dedupe, and artifact necessity at point of use.
+Owns de-slop, repository-artifact style, maintainability, edit scope, semantic dedupe, and artifact necessity at point of use.
 The SOP owns compatibility and verification.
 
 ## First Actions
 
 - Match local style, structure, terminology, formatting, and contract strength.
 - Follow `.editorconfig` and existing project conventions.
+
+## De-slop
+
+De-slop everything you write or review, in any file type: cut or report what does not earn its place, whether or not a rule here or in a secondary skill names the pattern.
+Examples: dead code, duplicated logic, needless abstraction, comments that restate code, unrequested scope, misleading names, tests that cannot fail, padded or templated prose.
+Minimal Edit Scope, Semantic Dedupe And Simplicity, and Artifact Necessity below are specific cases.
+Always load `~/.agents/skills/k-anti-slop/SKILL.md`, whatever Secondary Skill Escalation says, and select its references by the surfaces in scope;
+reuse an existing load from another route.
+In the change's impact (`~/AGENTS.md` §3 step 1), fix slop that is a defect there and mention the rest;
+mention slop elsewhere instead of deleting it.
+When reviewing, report slop in the change and defects in the change's impact the caller gives.
 
 ## Secondary Skill Escalation
 
@@ -24,26 +35,23 @@ Do not load React/web/test/design secondaries merely because they might become r
 - Load `~/.agents/skills/k-code-quality-web/SKILL.md` when changed/read files touch browser-rendered HTML, CSS, layout, visual states, accessibility, or focus behavior.
 - Load `~/.agents/skills/k-codebase-design/SKILL.md` when the task designs a module interface, decides where a seam goes, or aims to make code more testable.
 - Load `~/.agents/skills/k-readme/SKILL.md` before creating, editing, or reviewing a README file.
-- Load `~/.agents/skills/k-anti-slop/SKILL.md` for prose, documentation, data displays, localization, or code comments in scope;
-  select its matching references.
-  Reuse an existing load from another route.
 
 ## Minimal Edit Scope
 
-- Change only what the request requires.
-- Preserve all existing behavior outside the explicit scope of the change.
-- Do not rewrite surrounding code, remove unrelated behavior, or clean up unrelated lines without explicit approval.
-- Dropping unrelated behavior, even if it looks like cleanup, requires explicit user approval.
+- Change only what the request requires, plus defects in the change's impact (`~/AGENTS.md` §3 step 1).
+- Outside the request and the change's impact, preserve all existing behavior:
+  do not rewrite surrounding code, remove behavior, or clean up lines without explicit approval, even when it looks like cleanup.
 - For edits not proven mechanical-only, record the semantic delta:
   old rule, new rule, intended differences, preserved differences, and evidence for each.
   If an edit changes what inputs, states, events, persisted data, rendered output, errors, permissions, or generated artifacts mean or produce, treat the whole changed relationship as the unit of scope.
 - Use targeted edits, not full-file rewrites, unless the user asks for a rewrite.
 - If a full rewrite is necessary, diff against the original and verify no unrelated behavior was dropped.
-- Remove only dead imports, variables, or functions introduced by your changes; mention pre-existing dead code instead of deleting it.
-  Every changed line must trace to the request; remove any line that does not.
+- Remove dead imports, variables, or functions your change introduced or left dead, or that sit in the change's impact (`~/AGENTS.md` §3 step 1);
+  mention other pre-existing dead code instead of deleting it.
+  Every changed line must trace to the request or a defect in the change's impact; remove any line that does not.
 - When the semantic delta changes one projection of a relationship, updating co-located sibling consumers (comparators, filters, predicates, serializers, renderers, generated outputs, persistence, or import/export paths) is required to preserve projection symmetry and traces to the change.
 - Non-code artifacts have consumers too: a config key, template variable, generated file, instruction sentence, completion file, or docs page is read by tooling, agents, renderers, or generators.
-  Identify those readers and generated/rendered outputs (the impact map) before editing such an artifact, and update them in the same change.
+  Identify those readers and generated/rendered outputs (the impact list) before editing such an artifact, and update them in the same change.
 
 ## Semantic Dedupe And Simplicity
 

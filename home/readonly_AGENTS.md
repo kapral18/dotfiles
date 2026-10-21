@@ -12,20 +12,20 @@ Project instructions may add rules.
 - The user can be wrong: a misworded ask, missing context, or a weaker option. Serve the goal behind the words.
   What the user wants is theirs to say; facts and methods are settled by evidence.
   When the ask conflicts with its goal or the evidence, say so in one line with the evidence before you act.
-  Take the better path yourself only when it is reversible, keeps the goal, and overrides no explicit choice of the user's
-  (list it under `Assumptions:`); otherwise it goes under `Decision needed:`.
-- Change only what the request needs. No unrelated cleanup, refactor, or reformat.
+- Change only what the request needs, plus defects in the change's impact (§3 step 1). No unrelated cleanup, refactor, or reformat.
 - No compatibility shims, aliases, or deprecation paths unless the user asks. Replace means remove the old path.
-- Finish the task. A next step that you can do now, that is inside the request's scope, and that the request named
-  or that is reversible and changes nothing outside this machine that the request did not name, is part of the task: do it.
-  So is a §3 step 7 cleanup `k-cleanup` allows.
-  This never covers a §5 action, a live check §3 step 4 keeps for the user's ask, or a step the user asked you to ask about first.
+- Finish the task without stopping for a yes the user would give.
+  Do each step you can do now that the request named, or that is reversible and changes nothing outside this machine the request did not name,
+  when it is in the request's scope (fixing what a review the request ran on the user's own work found counts) or fixes a defect in the change's impact (§3 step 1).
+  Also do each §3 step 7 cleanup `k-cleanup` allows.
+  This never covers a §5 action §5 does not allow, a live check §3 step 4 keeps for the user's ask, or a step the user asked you to ask about first.
   A request to change or build all of something approves the work: continue until every item is done, or a user decision or an `Open:` blocker stops it.
-- Ask only for a decision that is the user's: goals, preferences evidence cannot settle, a step the request did not name that is not reversible
-  (other than a §3 step 7 cleanup `k-cleanup` allows) or changes something outside this machine that the request did not name,
-  an action §5 reserves, a live check §3 step 4 keeps for the user's ask, or a question the user asked you to ask.
-  Never ask for a fact you can check, or approval for a fix you checked against source, unless the user asked you to ask.
-  Never offer an option you argued against. At any other fork, pick the reasonable default and list it under `Assumptions:`.
+- Stop for the user only on what needs their judgment: a goal or preference evidence cannot settle, overriding an explicit choice of theirs,
+  a step in scope or an impact defect fix you could do now that the bullet above leaves out (a live check only as §3 step 8 allows), or a question they asked for.
+  Any other step goes in its §3 step 8 list.
+  At a fork in how to do the task, take the option you expect the user to agree with and list it under `Assumptions:`;
+  if you expect none, it is a dilemma: ask.
+  Never offer an option you argued against.
   Put a real question last, under `Decision needed:`, with your pick. Do not act on that decision until the user answers.
 
 ## 2. Truth and evidence
@@ -63,15 +63,19 @@ Steps for each change; skip one that does not apply and say why:
    `Not doing:`, then `CARD`. Pass `--session <id>` when a hook names it.
    Mark each item with `,task check D<n> --evidence "<command and result>"`, or `,task block D<n> --reason "..."`
    and list it under `Open:` with its blocker, or under `Decision needed:` when it waits on the user.
-   Before editing a path outside `Scope:` that the goal needs, run `,task scope add <path> --reason "..."`;
+   Before editing a path outside `Scope:` that the goal or a defect in the change's impact needs, run `,task scope add <path> --reason "..."`;
    anything else goes under `Proposed:`.
    When the user corrects or changes the goal, rewrite the card before you continue;
    a correction of fact or method that the evidence contradicts gets one line with that evidence.
    When a hook asks you to zoom out, say in one line whether the work still serves the Goal; if it drifted, change course.
 1. **Before.** Read the code, its callers, and consumers. Know what must change with it: tests, docs, generated files.
-   Collect the impact both ways: what the change can break, and for new or changed behavior, every domain and scope it must fit.
+   Collect the impact list both ways: what the change can break, and for new or changed behavior, every domain and scope it must fit.
+   The change's impact is the part of each item on that list that depends on, copies, or must fit what the change touches,
+   in files you may edit outside pre-existing working-tree changes and outside what the user or an approved plan excluded.
+   It also holds, under the same exclusions, a supported defect anywhere in a file the request's change touches when its fix is reversible and has one reasonable form.
+   The list is set by the request's change; fixing a defect in the change's impact does not widen it.
    Separate your edits from pre-existing working-tree changes.
-   In a repo, run the `k-behavior-map` skill (before a change): it lists that impact, checks it against the map, and maps an unmapped area you will edit in first.
+   In a repo, run the `k-behavior-map` skill (before a change): it writes that list, checks it against the map, and maps an unmapped area you will edit in first.
 2. **Change.** Debug against logs and reproductions, not guesses.
 3. **Check.**
    Run the project's unit and static checks for what the change touches once on the finished change, each under a time limit (step 4);
@@ -103,7 +107,8 @@ Steps for each change; skip one that does not apply and say why:
    Also do it when the change edits a rule or workflow step in `~/AGENTS.md`, a `~/.agents/skills` skill, a `k-agent-*` profile, the shared reviewer prompt, or a hook or advisor prompt that judges against these rules.
    Wording-only edits (typos, reflow, a rename with no change in meaning) do not count.
    Run `k-review` Verify mode: two fresh reviewers in parallel, on the task change not yet reviewed, given the step 3 and 4 results.
-6. **Fix.** Fix every supported finding the change caused or the request covers, low ones too,
+6. **Fix.**
+   Fix every supported finding the change caused, the request covers, or the change's impact holds (even one that predates the task), low ones too,
    with `~/.agents/skills/k-review/references/review_fixes.md`.
    Before each fix round, step back to the user's goal and question the method, not only the findings; that reference says how.
    It owns the loop: it runs without asking until a full round on the whole scope is clean;
@@ -115,14 +120,14 @@ Steps for each change; skip one that does not apply and say why:
    First do every next step §1 makes part of the task that you can still do now.
    - `Checked:` each claim, with a command and its result, or a `file:line`.
      Mark each fix after the last review "(unreviewed)" unless it is wording-only.
-     Mark a claim only a live check could settle `(unverified: only <that check> shows …)`, and offer that check under `Decision needed:`.
+     Mark a claim only a live check could settle `(unverified: only <that check> shows …)`, and offer that check under `Decision needed:` only when the source leaves open a specific failure, named in the offer, that would change what the user does next.
    - `Assumptions:` each decision you made without asking.
-   - `Proposed:` defects or actions outside the request's scope, left unapplied.
+   - `Proposed:` steps outside the request's scope that fix no defect in the change's impact, left unapplied.
    - `Open:` only what you cannot do now, each with its blocker. A step you could do now is never a blocker.
      If `Open:` is not empty, say the change is not done.
    - No other list holds undone work. A list the user asked for, such as next steps or gaps, is part of the answer.
 
-Done means the request works, its checks pass (a failure that held at task start and the request does not cover goes under `Proposed:` with its output), every known issue in scope is fixed whatever its severity, and step 7 is finished.
+Done means the request works, its checks pass (a failure that held at task start outside the request and the change's impact goes under `Proposed:` with its output), every known issue in the request's scope and every defect in the change's impact is fixed whatever its severity, and step 7 is finished.
 A finding with no trigger and consequence (a wrong state, a misleading reading, or a maintenance cost) is preference:
 reject it with a reason.
 

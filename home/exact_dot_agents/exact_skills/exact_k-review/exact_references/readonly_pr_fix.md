@@ -12,7 +12,7 @@ For each thread, identify the concern, the relevant source and base behavior, th
 reply only, code change, or ask.
 Treat reviewer comments as hypotheses; do not implement unsupported suggestions or widen into cleanup.
 Ask once only for a decision that is genuinely the user's.
-For one-at-a-time work, the selected thread is the batch; do not silently drain the others.
+For one-at-a-time work, the selected thread is the batch; do not silently drain the others (a defect another open thread reports stays with that thread).
 
 ## Fix and verify
 
@@ -23,7 +23,7 @@ For one-at-a-time work, the selected thread is the batch; do not silently drain 
 4. Apply Existing Pending Review Reconciliation (`pr_common.md`) before drafting replies.
 5. Load `k-communication` for reply wording. Cite commit links only after an authorized commit exists; never claim an unverified outcome.
 
-Return: per-thread decision, check results, unresolved failures, draft replies, and resolve or keep-open recommendations.
+Return: per-thread decision, impact-defect fixes, check results, unresolved failures, draft replies, and resolve or keep-open recommendations.
 Keep UI screenshot paths outside GitHub bodies.
 
 ## Publication

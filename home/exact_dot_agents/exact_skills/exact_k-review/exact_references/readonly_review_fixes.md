@@ -7,7 +7,9 @@ For `other` or `unknown` authorship, fixing needs the user to explicitly say so.
 
 A fix stays within the authorized request and the behavior under review, including omitted requirements and their necessary callers, tests, and docs.
 An incomplete diff does not narrow that scope: a requested error state or a required caller in another package is still in scope.
-New behavior, redesigns, or unrelated cleanup outside the request are proposals: report the smallest change and leave it unapplied.
+It also covers defects in the change's impact (`~/AGENTS.md` §3 step 1), even ones that predate the task.
+New behavior, redesigns, or unrelated cleanup outside the request and that impact are proposals:
+report the smallest change and leave it unapplied.
 
 ## Step back first
 
@@ -15,9 +17,9 @@ Before each fix round, check the work as its orchestrator, not as the next findi
 This adds no stop; the Fix procedure owns the stopping rule.
 
 - Restate the user's goal in their words. Check each finding, and each planned fix, against that goal.
-- Fix a finding the task change caused or the request covers.
-  List one that held at the task-start state and the request does not cover under `Proposed:`.
-- Before editing, collect the impact of the planned fixes (`k-behavior-map`, before a change):
+- Fix a finding the task change caused, the request covers, or the change's impact holds.
+  List one that held at the task-start state outside all three under `Proposed:`.
+- Before editing, collect the impact list of the planned fixes (`k-behavior-map`, before a change):
   every consumer and copy of each rule or function they touch, and every trigger earlier rounds raised on that rule or function.
   Read those files first, and check each fix against all of them before the next review.
 - When a fix would add another special case, or the last fixes caused the new findings, prefer a simpler fix within the request (one that removes text rather than adding a clause):
@@ -32,7 +34,7 @@ This adds no stop; the Fix procedure owns the stopping rule.
    and remove copies when one source can serve; a copy outside Fix Scope goes under `Proposed:`.
 3. Rerun only failed and affected checks, exercise changed behavior in a local run that ends on its own (`~/AGENTS.md` §3 step 4),
    and update touched behavior-map entries.
-4. Outside Verify mode, read the fix diff once. Repair an in-scope problem it reveals and rerun affected checks, then stop.
+4. Outside Verify mode, read the fix diff once. Repair a problem it reveals within Fix Scope and rerun affected checks, then stop.
 5. In Verify mode, form the fix diff with `diff -uN <copy> <file>` for each touched file; `-N` includes new files.
    Launch one reviewer using the Reviewer launch procedure in `~/.agents/skills/k-review/SKILL.md`; it reviews only this fix diff.
    Give it the user's request in their words, the findings being fixed, rerun checks, `Open:` items, and rejected and proposed findings.

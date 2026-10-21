@@ -1,6 +1,6 @@
 import type { EngineInterface, ModelTextBlock, Register, SessionMessage, ToolUseSummary } from 'claude-code'
 
-import { asksToAsk, findings, IGNORED, LIST_WANTED, snapshot, STEP } from './checks'
+import { asksToAsk, asksUser, findings, IGNORED, LIST_WANTED, PROPOSED, snapshot, STEP } from './checks'
 
 // Per call: how much of a tool's input and result the reviewer reads. Edit and Write keep more, the code is there.
 const INPUT_CHARS = 600
@@ -39,6 +39,7 @@ When the record ends with the task's intent card, judge first whether the final 
 and whether the work left its Scope or drifted from the Goal (§1, §3 step 0).
 The user can be wrong: an answer that followed an ask the evidence shows misses its Goal, without saying so, is a break (§1); following the user's explicit choice is not.
 Look first at claims and their evidence (§2), questions and unfinished work (§1), tests and the report lists (§3 steps 3 and 8), and side effects (§5).
+Unfinished work includes a \`Proposed:\` item §1 makes part of the task and a \`Decision needed:\` question that needs no judgment of the user's under §1.
 Also report a bug, a broken contract, or a skipped part of this turn's request, read with the earlier conversation.
 Skill bodies in the record may be cut: cite a skill's rule only from the procedures that follow.
 This record cuts long text and marks each cut with …[N more chars]; the agent saw what the tool returned, not this cut. The oldest parts may be omitted.
@@ -105,23 +106,34 @@ const stepped = (items: readonly Part[], limit: number) => {
   return { kept: items.slice(index), omitted: index }
 }
 
-// `typed` is the turn's typed prompt, '' for none. The turn opens at that prompt's row, else at the task notice before its first tool call,
-// else at that call, found by the ids `tool.call` carried; the rows before it are the earlier conversation.
+// `typed` is the turn's typed prompt, '' for none. A typed turn opens at its prompt's row; a woken turn at its task notice after `previous`,
+// the earlier turn's final answer, and the earlier turns' last tool call. Otherwise it opens at its first tool call, found by the ids `tool.call` carried;
+// a typed turn with neither opens at its command's row. A turn with none of these holds only its final answer.
+// The rows before it are the earlier conversation.
 // Each earlier user message opens a block, and the cache mark sits on the last one,
 // so a review within five minutes, the prompt cache's lifetime, reads that prefix from the cache.
-const record = (rows: readonly SessionMessage[], typed: string, ids: ReadonlySet<string>, answer: string): ModelTextBlock[] => {
-  const first = rows.findIndex(row => row.toolUses.some(use => ids.has(use.tool_use_id)))
-  const call = first < 0 ? rows.length : first
-  // A notice matches any text, so only rows after the earlier turns' last tool call can open its turn.
-  const after = typed === '' ? rows.slice(0, call).findLastIndex(row => row.toolUses.length > 0) + 1 : 0
-  const isOpening = (row: SessionMessage) => row.role === 'user' && !row.toolResults?.length && row.text !== '' && (typed === '' || row.text.trim() === typed.trim())
-  const found = rows.slice(after, call).findLastIndex(isOpening)
-  const at = found < 0 ? -1 : after + found
-  const start = at < 0 ? call : at
+const record = (rows: readonly SessionMessage[], typed: string, ids: ReadonlySet<string>, answer: string, previous: string): ModelTextBlock[] => {
   // The final answer has its own section.
   const last = rows.at(-1)
   const end = last?.role === 'assistant' && last.toolUses.length === 0 && last.text.trim() === answer.trim() ? rows.length - 1 : rows.length
-  const turn = newest(rows.slice(at >= 0 && typed !== '' ? at + 1 : start, end).flatMap(parts), TURN_CHARS)
+  const first = rows.findIndex(row => row.toolUses.some(use => ids.has(use.tool_use_id)))
+  const call = first < 0 ? end : first
+  const isUser = (row: SessionMessage) => row.role === 'user' && !row.toolResults?.length
+  const before = rows.slice(0, call)
+  const opening = () => {
+    if (typed !== '') return before.findLastIndex(row => isUser(row) && row.text.trim() === typed.trim())
+    // A woken turn opens only at a notice after the earlier turns' last tool call and the previous turn's final answer.
+    const ended = previous === '' ? -1 : before.findLastIndex(row => row.role === 'assistant' && row.text.trim() === previous.trim())
+    const after = Math.max(before.findLastIndex(row => row.toolUses.length > 0), ended) + 1
+    const found = rows.slice(after, call).findLastIndex(row => isUser(row) && row.text.trimStart().startsWith('<task-notification>'))
+    return found < 0 ? -1 : after + found
+  }
+  const at = opening()
+  // A command row keeps the name and its arguments in separate tags, so a slash command without a tool call matches on the name.
+  const command = `<command-name>${typed.trim().split(/\s/)[0]}</command-name>`
+  const named = at < 0 && first < 0 && typed !== '' ? rows.slice(0, end).findLastIndex(row => isUser(row) && row.text.includes(command)) : -1
+  const start = at >= 0 ? at : named >= 0 ? named : call
+  const turn = newest(rows.slice(at >= 0 && typed !== '' ? start + 1 : start, end).flatMap(parts), TURN_CHARS)
   const earlierParts = rows.slice(0, start).flatMap(parts)
   const earlier = stepped(earlierParts, RECORD_CHARS - turn.size)
   const request = typed === '' ? '(no typed prompt: a background task notice started this turn)' : cut(quote(typed), REQUEST_CHARS)
@@ -147,36 +159,55 @@ export const register: Register = on => {
   // Ids of the main-agent tool calls since the turn started.
   let ids = new Set<string>()
   let isReviewed = false
-  // A turn goes back at most once, with every finding at once: each extra send-back made the agent rewrite its whole answer again.
+  // A paused answer that asks the user was reviewed since the last wake: one such review per wake.
+  let isPauseReviewed = false
+  // A turn goes back at most once per stretch, with every finding at once: each extra send-back made the agent rewrite its whole answer again.
+  // A stretch runs from the turn's start, a wake, or a paused send-back to the next of these.
   // isSent knows its own send-back (intent-guard's reaches this hook as a block from below); stop_hook_active also marks an engine nudge
   // (brief mode, a reply gate, a /goal check-in) and a managed-settings hook's block, so it is not read.
   let isSent = false
   let isEdited = false
   let isAskWanted = false
   let isListWanted = false
+  // A task notice, not a typed prompt, started the turn: the agent acts on a background task's result, with or without a tool call.
+  let isWoken = false
   // The working tree before the turn's first Bash call. undefined: no Bash call yet this turn; null: the snapshot failed.
   let baseline: string | null | undefined
   // The last Stop paused on a subagent or workflow still in flight; the task notice that wakes the session continues the turn.
   let isPaused = false
+  // The answer of the last Stop that was not a pause, and its value when this turn started: a woken turn opens after that row.
+  let lastAnswer = ''
+  let previous = ''
 
   on('turn.start', ($, e, next) => {
     // A subagent's start raises its own turn.start; it is part of the main turn, not a new one.
     if (e.agentId !== undefined) return next(e)
     // A send-back continues inside the same turn with no turn.start.
     // Only the wake of a paused turn (empty text or the task notice) continues the turn; an interrupt raises no Stop.
-    // A typed prompt, or an idle task notice after an ended turn, starts a new one. After a reload the continuation stays unstarted.
+    // A typed prompt, or an idle task notice after an ended turn, starts a new one. After a reload the wake starts a woken turn of its own.
     const isContinuation = isPaused && (e.text === '' || e.text.startsWith('<task-notification>'))
     isPaused = false
-    if (isContinuation) return next(e)
+    if (isContinuation) {
+      // The answer after the wake is new work, not a rewrite of a sent-back answer: it gets its own review and send-back.
+      isSent = false
+      isReviewed = false
+      isPauseReviewed = false
+      return next(e)
+    }
     isStarted = true
     // A task notice is no typed prompt: record() then opens the turn at the notice row and says no prompt started it.
-    request = e.text.startsWith('<task-notification>') ? '' : e.text
+    // An empty start that continues nothing is an idle notice after an interrupted send-back, or a wake after a reload.
+    isWoken = e.text === '' || e.text.startsWith('<task-notification>')
+    request = isWoken ? '' : e.text
+    previous = lastAnswer
     ids = new Set()
     isReviewed = false
+    isPauseReviewed = false
     isSent = false
     isEdited = false
-    isAskWanted = asksToAsk(e.text)
-    isListWanted = LIST_WANTED.test(e.text)
+    // A notice carries a background task's output, not the user's words.
+    isAskWanted = !isWoken && asksToAsk(e.text)
+    isListWanted = !isWoken && LIST_WANTED.test(e.text)
     baseline = undefined
     return next(e)
   })
@@ -207,22 +238,27 @@ export const register: Register = on => {
     // A subagent or workflow still in flight wakes the session when it ends: check the turn then, with its request.
     // A background shell task does not count: a server never ends, and the turn would never be checked.
     isPaused = (e.background_tasks ?? []).some(task => task.type === 'subagent' || task.type === 'workflow')
-    if (isPaused || isSent) return below
+    if (!isPaused) lastAnswer = message
+    // A paused answer that asks the user gets the review now, since the user may answer it before the wake; the report's format checks wait for the next answer that is not paused.
+    if (isPaused ? isPauseReviewed || !asksUser(message) : isSent) return below
     const isChanged = async () => {
       if (isEdited) return true
       if (typeof baseline !== 'string') return false
       const now = await snapshot($).catch(() => undefined)
       return now !== undefined && now !== baseline
     }
-    const checks = await findings(message, { isActive: ids.size > 0, isAskWanted, isListWanted, isChanged })
-    // The review runs once per turn, only when the turn used tools and has its request.
+    const isActive = ids.size > 0 || isWoken
+    const checks = isPaused ? [] : await findings(message, { isActive, isAskWanted, isListWanted, isChanged })
+    // A woken or chat turn can ask the user without a tool call, so asking alone also earns the review.
     let review: string | undefined
-    if (isStarted && !isReviewed && ids.size > 0) {
+    if (isStarted && (isPaused || !isReviewed) && (ids.size > 0 || asksUser(message))) {
       const model = (await $.settings.read()).advisorModel
       if (typeof model === 'string' && model !== '') {
-        isReviewed = true
+        // A paused answer's review does not stand in for the review of the answer that ends the turn.
+        if (isPaused) isPauseReviewed = true
+        else isReviewed = true
         // A failed review must not drop the format checks' findings.
-        review = await reviewTurn($, model, request, ids, message, checks).catch((error: unknown) => {
+        review = await reviewTurn($, model, request, ids, message, checks, previous, isPaused).catch((error: unknown) => {
           $.ui.log(`stop-review: no review (${String(error)})`)
           return undefined
         })
@@ -230,20 +266,23 @@ export const register: Register = on => {
     }
     const sent = review === undefined ? checks : [review, ...checks]
     if (sent.length === 0) {
+      if (isPaused) return below
       // This answer passed, so a later Stop in the turn (a re-delivery nudge, a /goal check-in) needs `Checked:` only for later changes.
       // The tree is re-read now, so a background job's later writes still count as changes.
       isEdited = false
       baseline = typeof baseline === 'string' ? ((await snapshot($).catch(() => undefined)) ?? null) : undefined
       return below
     }
-    isSent = true
+    // A paused send-back holds only the review and ends the stretch: the next answer that is not paused gets its own checks, review, and send-back.
+    isSent = !isPaused
+    if (isPaused) isReviewed = false
     return { ...below, block: [...sent, FINAL].join('\n\n') }
   }).catch(($, e, next) => next(e))
 }
 
 // The advisor's review of the turn; undefined when it passes or cannot run.
 // A function declaration at the top of the file: the engine follows $ only into one.
-async function reviewTurn($: EngineInterface, model: string, request: string, ids: ReadonlySet<string>, answer: string, checks: readonly string[]) {
+async function reviewTurn($: EngineInterface, model: string, request: string, ids: ReadonlySet<string>, answer: string, checks: readonly string[], previous: string, isPaused: boolean) {
   const home = await $.env.get('HOME')
   const rules = home ? await $.fs.read(`${home}/AGENTS.md`).catch(() => '') : ''
   // The prompt holds no rules of its own, so a review without ~/AGENTS.md would judge against nothing.
@@ -251,13 +290,14 @@ async function reviewTurn($: EngineInterface, model: string, request: string, id
     $.ui.log('stop-review: ~/AGENTS.md is unreadable, no review')
     return undefined
   }
-  const prompt = record(await $.session.messages(), request, ids, answer)
+  const prompt = record(await $.session.messages(), request, ids, answer, previous)
   // The format checks' findings already go back with this review, so the reviewer spends its lines on other breaks.
   if (checks.length > 0) prompt.push({ text: `\n\n# Already sent back by the format checks; do not repeat these\n${checks.join('\n\n')}` })
   // The intent card (`,task`, ~/AGENTS.md §3 step 0) lets the reviewer judge the answer against the user's goal, not only the rules.
   const session = await $.session.id().catch(() => '')
   const card = await $.process.run([',task', 'card', 'show', '--session', session], { timeoutMs: 15000 }).catch(() => undefined)
   if (card?.exitCode === 0 && card.stdout.startsWith('Goal:')) prompt.push({ text: `\n\n# Intent card\n${quote(card.stdout.trim())}` })
+  if (isPaused) prompt.push({ text: '\n\n# Paused\nA subagent or workflow is still running, so this answer is not final: judge only what it asks the user and what it claims so far.' })
   const procedures = await Promise.all(PROCEDURES.map(path => $.fs.read(`${home}/${path}`).catch(() => '')))
   const sop = [rules, ...procedures.filter(text => text !== '')].join('\n\n')
   $.ui.status(`stop-review: ${model} is reviewing the turn`)
@@ -286,7 +326,7 @@ async function reviewTurn($: EngineInterface, model: string, request: string, id
     `stop-review: ${model} reviewed this turn, with the conversation as context, and raised:\n` +
     concerns.map(concern => `- ${concern}`).join('\n') +
     `\nCheck each one against the files. Fix it now when the fix is ${STEP}. ` +
-    'Put one that is the user\'s decision (§1) under `Decision needed:` with your pick, an out-of-scope defect under `Proposed:`, ' +
+    `Put one that needs the user's judgment (§1) under \`Decision needed:\` with your pick, ${PROPOSED}, ` +
     'and one you cannot do now under `Open:` with its blocker; or reject it with a reason. It saw only cut tool output, not the files.'
   )
 }

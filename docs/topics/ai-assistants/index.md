@@ -39,7 +39,7 @@ The [global operating rules](../../../home/readonly_AGENTS.md) define the exact 
 
 - **Inline by default.** Subagents handle broad read-only searches and independent reviews. Reviews required by a risky code or instruction change use two fresh reviewers in parallel.
 - **Static verification.** Run affected unit and static checks once on the finished change, under time limits. Use source reads and isolated local runs for evidence. Live checks require the user's request, a hard timeout, and a copy when they would change external state or overwrite user data.
-- **Fix before finishing.** Resolve every supported issue in scope, including low-severity findings. Review fixes and continue until a full review round is clean. Report evidence, assumptions, out-of-scope proposals, and blockers; complete available in-scope work and cleanup before reporting.
+- **Fix before finishing.** Resolve every supported issue in the request's scope and every defect in the change's impact, including low-severity findings. Review fixes and continue until a full review round is clean. Before reporting, finish every doable step in scope or the change's impact, and cleanup; then report evidence, assumptions, proposals, and blockers.
 
 - **On-demand memory.** `,ai-kb search` when it can help; `,ai-kb remember` only for verified, reusable gotchas, or `--supersedes` to retire a stale capsule.
 - **Intent card.** Before its first edit the agent writes the task's goal, reading, `Done when` items, and scope; hooks in every harness check each iteration against it ([Staying on the goal](staying-on-goal.md)).

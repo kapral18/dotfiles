@@ -25,7 +25,8 @@
   },
   "modelSettings": {
     "claude-opus-5-5": {
-      "effortLevel": "medium"
+      "effortLevel": "medium",
+      "autoCompactWindow": 600000
     }
   },
   "skipDangerousModePermissionPrompt": true,

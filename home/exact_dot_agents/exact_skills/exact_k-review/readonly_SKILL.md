@@ -53,11 +53,14 @@ An explicitly requested draft review uses the same depth as a ready PR.
   Compare with base: `~/.agents/skills/k-review/references/shared_rules.md` Base-Branch Context Gate.
 - Judge with `~/.agents/skills/k-review/references/judging_core.md`.
   Load the extra lens files only when `judging_core.md` names their trigger.
-- Also check hygiene: redundancy (name both locations), verbosity with real reading cost, the same contract expressed inconsistently, and gaps (missing consumers, docs, generated outputs, tests).
+- De-slop the change: load `~/.agents/skills/k-code-quality/SKILL.md` and apply its De-slop section; for duplication, name both locations.
+- Also check for one contract expressed inconsistently in two places, and for gaps (missing consumers, docs, generated outputs, tests).
 - Reuse checks already run on this snapshot; do not rerun them. Run a check only when a finding depends on it.
 - Treat every finding as a hypothesis until a source read, repro, or failing check supports it. Drop unsupported findings.
   Keep a material unverified one as `verification_needed` with the missing observation.
-- Merge findings with the same cause. Do not invent cleanup findings outside the change.
+- Merge findings with the same cause.
+  Do not invent cleanup findings outside the change; for a change you may edit, also report defects in its impact (`~/AGENTS.md` §3 step 1),
+  collecting its impact list with `k-behavior-map` (before a change) when none exists.
 
 Each finding: `[critical|high|medium|low] file:line — trigger → consequence — evidence — smallest fix`.
 
@@ -85,9 +88,10 @@ Use when `~/AGENTS.md` §3 step 5 requires a review of a finished change, or whe
    Exclude pre-existing hunks and untracked files unless the user included them.
    Use saved originals or edit records to separate them; do not guess.
    Include the task's behavior-map entry ids (`,behavior-map show <id>`) and memory writes. Otherwise, review the change the user named.
+   For a change within write scope (`authorship.md`), include the change's impact as `~/AGENTS.md` §3 step 1 defines it.
    Add the user's request in their words, the intent in one line, the checks already run with their results, and your `Assumptions:`.
 2. Launch two fresh reviewers in parallel using Reviewer launch above.
-   Pass both only the same scope, request, intent, check results, assumptions, and `Open:` items;
+   Pass both only the same scope, change's impact (if any; a narrowed round gets none), request, intent, check results, assumptions, and `Open:` items;
    a later full round, or a verify-again run, also gets every finding fixed, rejected, or proposed so far.
    Tell the reviewers of a narrowed later round (`review_fixes.md` step 7) that it is narrowed and which files it covers.
 3. Merge the findings. Check each finding against source yourself. Reject unsupported ones with a one-line reason.
@@ -99,7 +103,7 @@ Use when `~/AGENTS.md` §3 step 5 requires a review of a finished change, or whe
    List each reviewed path the task deleted in the baseline's `.k-review-deleted.txt`.
    That copy is the baseline for a later §3 step 5 review in the same task. Keep it until the task ends; `k-cleanup` does not delete it.
    A handoff note records its path.
-6. Report the review scope, fixed findings with evidence, rejected findings with reasons, `Open:` items with their blockers, `Proposed:` out-of-scope changes, and the rounds trend (`review_fixes.md` step 8).
+6. Report the review scope, fixed findings with evidence, rejected findings with reasons, `Open:` items with their blockers, `Proposed:` items (`~/AGENTS.md` §3 step 8), and the rounds trend (`review_fixes.md` step 8).
 
 Run full rounds without asking until `review_fixes.md` says to stop.
 
