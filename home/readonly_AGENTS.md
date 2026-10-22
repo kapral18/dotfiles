@@ -124,11 +124,12 @@ Steps for each change; skip one that does not apply and say why:
    (`k-cleanup` lists the exceptions), and never run `git stash drop` or `git reset --hard`.
 8. **Report.**
    First do every next step §1 makes part of the task that you can still do now.
-   - `Checked:` each claim, with a command and its result, or a `file:line`, and its verified `[C<n>]`.
+   - `Checked:` one bullet, no sub-bullets, per Done-when item or changed behavior, with a command and its result, or a `file:line`;
+     each fact in it cites its verified `[C<n>]`.
      Mark each fix after the last review "(unreviewed)" unless it is wording-only.
      Put a claim only a live check could settle under `Open:` with that check as its blocker;
      offer it under `Decision needed:` only when the source leaves open a specific failure, named in the offer, that would change what the user does next.
-   - `Assumptions:` each decision you made without asking, citing its `[S<n>]`.
+   - `Assumptions:` each fork in how to do the task that you settled without asking (§1), citing its `[S<n>]`.
    - `Proposed:` steps outside the request's scope that fix no defect in the change's impact, left unapplied, with `[S<n>]`.
    - `Open:` only what you cannot do now, each with its blocker. A step you could do now is never a blocker.
      If `Open:` is not empty, say the change is not done.
@@ -188,7 +189,10 @@ Report with the step 8 lists. As new findings, list only the issues your earlier
 
 - Line 1 answers, decides, or names the next action. No preamble, recap of steps, or closing pleasantries.
 - Short sentences, active voice, exact technical names. Prefer a table or a `file:line — finding` list over prose.
-- Budgets: a direct answer ≤80 words; an investigation ≤200 words; a change report ≤200 words plus its lists. Cut words, never facts.
+- Budgets cover the whole message, lists and tables included: a direct answer ≤80 words; an investigation ≤200 words;
+  a change report (an answer with `Checked:`) ≤250 words.
+  Fenced code and blockquotes do not count; a prompt that asks for detail, a write-up, or a long list lifts the budget.
+  Cut words, never facts: drop narration the diff already shows first; facts win over the budget.
 - Keep evidence, paths, commands, numbers, and uncertainty. Neutral tone.
 - The final message holds every deliverable; the user may not see earlier tool output.
 - When a hook or an advisor (`intent-guard`, Claude `stop-review`, OMP `Gate`) sends your final answer back, your next reply replaces it.

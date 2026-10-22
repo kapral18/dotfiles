@@ -180,9 +180,11 @@ export const register: Register = on => {
     isPauseReviewed = false
     isSent = false
     isEdited = false
-    // A notice carries a background task's output, not the user's words.
-    isAskWanted = !isWoken && asksToAsk(e.text)
-    isListWanted = !isWoken && LIST_WANTED.test(e.text)
+    // A notice carries a background task's output, not the user's words: a woken turn answers the last typed prompt, so it keeps that prompt's asks.
+    if (!isWoken) {
+      isAskWanted = asksToAsk(e.text)
+      isListWanted = LIST_WANTED.test(e.text)
+    }
     baseline = undefined
     return next(e)
   })

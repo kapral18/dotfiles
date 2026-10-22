@@ -65,8 +65,8 @@ This adds no stop; the Fix procedure owns the stopping rule.
    When a round runs over, or two rounds in a row find the same kind of problem, write one line before the next round:
    what cost the time, and what the next round does differently.
 8. Mark each fix after the last review that is not wording-only "(unreviewed)" in `Checked:`, and list any finding you could not fix under `Open:` with its blocker.
-   Report what was fixed, rejected, proposed, and left open, and the rounds as a trend:
-   `Rounds: <n> (<findings per round>; <total minutes>)`, with minutes from those timings, never estimated.
+   Report fixed findings as a count, each rejected one with a one-line reason, proposed and open items, and the rounds as a trend:
+   `Rounds: <n> (<findings per round>; <total minutes>)` on one line, with minutes from those timings, never estimated; no per-round table.
 
 After two attempts at the same failure without new evidence, stop editing and investigate read-only or report the blocker.
 Commit, push, reply, resolve, and publish only as `~/AGENTS.md` §5 allows.

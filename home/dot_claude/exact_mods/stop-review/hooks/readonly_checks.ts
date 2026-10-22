@@ -1,7 +1,7 @@
 import type { EngineInterface } from 'claude-code'
 
 // The final answer's format checks: a `Checked:` list after a change, no work parked under a heading the report has no
-// list for, and no question to the user outside `Decision needed:`. They need no model, so they run without an advisorModel.
+// list for, no question to the user outside `Decision needed:`, and the §8 word budget. They need no model, so they run without an advisorModel.
 
 // Edits here are not part of the user's change.
 export const IGNORED = /^(\/private)?\/(tmp|var\/folders)\/|\/\.claude\/(plans|projects)\//
@@ -32,6 +32,9 @@ const DEFERRED =
 // or a prompt that names the heading itself (`a "Known gaps:" list`, `"Next steps" section`).
 export const LIST_WANTED =
   /(?:^|[.?!;:]\s*|\b(?:please|and|then|also|just|can you|could you)\s+)(?:list|show(?: me)?|give me|tell me)\b[^.?!\n]{0,30}\b(?:next steps?|gaps|remaining|left|to-?dos?|follow[- ]?ups?)\b|\bwhat(?:['’]s| is| are)\s+(?:next|left|remaining|missing)\b|\bwhat remains\b|\bhand[- ]?off\b|(?:["'“‘`]\s*(?:\*\*)?(?:known gaps|not done|not yet done|(?:still|left) to do|remaining(?: work| steps| items)?|next(?: steps?)?|follow[- ]?ups?|to-?dos?|unverified|not verified|pending|deferred)\b|\b(?:known gaps|next steps?|follow[- ]?ups?|to-?dos?|unverified|not verified|deferred)[:"'”’`*]*\s+(?:list|section|heading|block)\b)/i
+// ~/AGENTS.md §8 budgets, lists and tables included: a change report, else an investigation.
+const CHANGE_BUDGET = 250
+const BUDGET = 200
 // The working tree's state: changed paths, a hash of the tracked diff, and a hash of untracked contents.
 const SNAPSHOT =
   'git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 3\n' +
@@ -57,8 +60,17 @@ const UNVERIFIED = 'a claim only a live check could settle under `Open:` with th
 // so the one send-back ends with the work done rather than reworded.
 const MESSAGE =
   'Files changed this turn, and the final message has no `Checked:` list. Run any check §3 steps 3-4 call for that the change still needs, ' +
-  'then list each claim under `Checked:` with its command and result, or a `file:line`, and verified `[C<n>]`; ' +
+  'then list one item per Done-when item or changed behavior under `Checked:` with its command and result, or a `file:line`, and each fact\'s verified `[C<n>]`; ' +
   'put a claim only a live check could settle under `Open:` with that check as its blocker (~/AGENTS.md §3 step 8).'
+
+// A word holds a letter or digit, so table rules and list bullets do not count.
+const words = (text: string) => text.split(/\s+/).filter(token => /[\p{L}\p{N}]/u.test(token)).length
+
+const overBudget = (count: number, budget: number) =>
+  `The final message is ${count} words; ~/AGENTS.md §8 caps this answer at ${budget}, lists and tables included. ` +
+  'Cut it to fit: group `Checked:` items by Done-when item or behavior, drop narration the diff already shows, ' +
+  'and keep every fact the user needs to act (evidence, paths, numbers, `Open:` and `Decision needed:` items); facts win over the budget. ' +
+  'If the user\'s prompt asked for detail, a write-up, or a long list, keep the answer as it is.'
 
 const QUESTION =
   `The final message ends with a question outside \`Decision needed:\`. If its answer is ${STEP}, do it now. ` +
@@ -78,22 +90,103 @@ export async function snapshot($: EngineInterface) {
   return run.exitCode === 0 ? run.stdout : undefined
 }
 
-// Use the same quote/fence boundary as ,task's evidence.report_items, including an unclosed fence.
+type Container = { kind: 'quote' } | { kind: 'list'; indent: number; isEmpty: boolean }
+const fenceMarker = (text: string) => text.match(/^ {0,3}(`{3,}|~{3,})(.*)$/)
+const opensFence = (marker: RegExpMatchArray | null) => marker !== null && (marker[1][0] !== '`' || !marker[2].includes('`'))
+const listMarker = (text: string) => text.match(/^( {0,3}(?:[-+*]|\d{1,9}[.)]))( +|$)/)
+const thematicBreak = (text: string) => /^ {0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/.test(text)
+const isBlank = (text: string) => /^ *$/.test(text)
+const HTML_BLOCK = /^ {0,3}<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?:[ \t]|\/?>|$)/i
+const htmlBlockEnd = (text: string, isParagraph: boolean): RegExp | undefined => {
+  if (/^ {0,3}<!--/.test(text)) return /-->/
+  if (/^ {0,3}<\?/.test(text)) return /\?>/
+  if (/^ {0,3}<!\[CDATA\[/.test(text)) return /\]\]>/
+  if (/^ {0,3}<![A-Z]/.test(text)) return />/
+  const raw = text.match(/^ {0,3}<(pre|script|style|textarea)(?:[ \t>]|$)/i)
+  if (raw) return new RegExp(`</${raw[1]}>`, 'i')
+  if (HTML_BLOCK.test(text)) return /^ *$/
+  if (!isParagraph && /^ {0,3}(?:<\/[A-Za-z][A-Za-z0-9-]*[ \t]*>|<[A-Za-z][A-Za-z0-9-]*(?:[ \t]+[A-Za-z_:][\w.:-]*(?:[ \t]*=[ \t]*(?:[^"'=<>` \t]+|'[^']*'|"[^"]*"))?)*[ \t]*\/?>)[ \t]*$/.test(text)) return /^ *$/
+  return undefined
+}
+// Matched paragraphs have stricter list interruption rules than unmatched containers.
+const interruptsParagraph = (text: string) =>
+  isBlank(text) || opensFence(fenceMarker(text)) || thematicBreak(text) || htmlBlockEnd(text, true) !== undefined ||
+  /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|0{0,8}1[.)])[ \t]+[^ \t])/.test(text)
+
+const continueContainers = (line: string, containers: Container[]) => {
+  let text = line
+  let matched = 0
+  for (const container of containers) {
+    if (container.kind === 'quote') {
+      const quote = text.match(/^ {0,3}> ?/)
+      if (!quote) break
+      text = text.slice(quote[0].length)
+    } else if (isBlank(text)) {
+      if (container.isEmpty) break
+    } else {
+      if (text.match(/^ */)![0].length < container.indent) break
+      text = text.slice(container.indent)
+      container.isEmpty = false
+    }
+    matched++
+  }
+  return { text, matched }
+}
+
+const openContainers = (line: string, containers: Container[]) => {
+  let text = line
+  for (;;) {
+    const quote = text.match(/^ {0,3}> ?/)
+    if (quote) {
+      containers.push({ kind: 'quote' })
+      text = text.slice(quote[0].length)
+      continue
+    }
+    const list = listMarker(text)
+    if (!list || thematicBreak(text)) return text
+    // Empty items use one padding space; five or more spaces leave the rest as content indentation.
+    const indent = list[1].length + (list[2].length > 4 || list[0].length === text.length ? 1 : list[2].length)
+    containers.push({ kind: 'list', indent, isEmpty: list[0].length === text.length })
+    text = text.slice(indent)
+  }
+}
+
+// Keep original prose lines for report/list checks, but parse container prefixes before recognizing exempt blocks.
 const prose = (message: string) => {
+  const containers: Container[] = []
   let fence = ''
+  let html: RegExp | undefined
+  let isParagraph = false
   const lines: string[] = []
   for (const line of message.split('\n')) {
-    const text = line.trim()
-    if (text.startsWith('>')) continue
-    const marker = line.replace(/\r$/, '').match(/^ {0,3}(`{3,}|~{3,})(.*)$/)
+    const expanded = line.replace(/\r$/, '').split('\t').reduce((text, part, index) => text + (index ? ' '.repeat(4 - text.length % 4) : '') + part, '')
+    const continued = continueContainers(expanded, containers)
+    const isLazy = continued.matched < containers.length && isParagraph && !listMarker(continued.text) && !interruptsParagraph(continued.text)
+    if (!isLazy && continued.matched < containers.length) {
+      containers.length = continued.matched
+      fence = ''
+      html = undefined
+      isParagraph = false
+    }
+    const depth = containers.length
+    const text = fence || html || isLazy || (isParagraph && !interruptsParagraph(continued.text)) ? continued.text : openContainers(continued.text, containers)
+    if (containers.length !== depth) isParagraph = false
+    const marker = fenceMarker(text)
     if (fence) {
       if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && /^[ \t]*$/.test(marker[2])) fence = ''
       continue
     }
-    if (marker && (marker[1][0] !== '`' || !marker[2].includes('`'))) {
-      fence = marker[1]
+    if (!html && !isLazy && opensFence(marker)) {
+      fence = marker![1]
+      isParagraph = false
       continue
     }
+    if (!html && !isLazy) html = htmlBlockEnd(text, isParagraph)
+    const isHtml = html !== undefined
+    if (html?.test(text)) html = undefined
+    const isSetext = !isLazy && isParagraph && /^ {0,3}(?:=+|-+)[ \t]*$/.test(text)
+    isParagraph = !isHtml && !isBlank(text) && !isSetext && !interruptsParagraph(text) && (isParagraph || !/^ {4}/.test(text))
+    if (containers.some(container => container.kind === 'quote')) continue
     // A report label may itself be a list item; keep it out of the trailing-list scan.
     lines.push(line.replace(/^[ \t]*[-*+][ \t]+(?=(?:\*\*|__)?(?:Decision needed|Open|Proposed)(?::|\*\*:|__:))/, ''))
   }
@@ -146,10 +239,17 @@ export type Turn = {
 // The messages for what the final answer breaks, in report order.
 export const findings = async (message: string, turn: Turn) => {
   const messages: string[] = []
-  if (!CHECKED.test(prose(message)) && (await turn.isChanged())) messages.push(MESSAGE)
+  const isReport = CHECKED.test(prose(message))
+  const isUnreported = !isReport && (await turn.isChanged())
+  if (isUnreported) messages.push(MESSAGE)
   const deferred = turn.isActive && !turn.isListWanted ? DEFERRED.exec(prose(message)) : null
   if (deferred) messages.push(deferral(deferred[0].trim()))
   const isOpenItem = REPORT_LIST.test(listHeader(message) ?? '')
   if (turn.isActive && !turn.isAskWanted && !marksDecision(message) && !isOpenItem && endsWithQuestion(message)) messages.push(QUESTION)
+  if (turn.isActive) {
+    const budget = isReport || isUnreported ? CHANGE_BUDGET : BUDGET
+    const count = words(prose(message))
+    if (count > budget) messages.push(overBudget(count, budget))
+  }
   return messages
 }

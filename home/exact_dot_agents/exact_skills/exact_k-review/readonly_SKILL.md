@@ -103,7 +103,7 @@ Use when `~/AGENTS.md` §3 step 5 requires a review of a finished change, or whe
    List each reviewed path the task deleted in the baseline's `.k-review-deleted.txt`.
    That copy is the baseline for a later §3 step 5 review in the same task. Keep it until the task ends; `k-cleanup` does not delete it.
    A handoff note records its path.
-6. Report the review scope, fixed findings with evidence, rejected findings with reasons, `Open:` items with their blockers, `Proposed:` items (`~/AGENTS.md` §3 step 8), and the rounds trend (`review_fixes.md` step 8).
+6. Report the review scope, the count of fixed findings, rejected findings with one-line reasons, `Open:` items with their blockers, `Proposed:` items (`~/AGENTS.md` §3 step 8), and the rounds trend (`review_fixes.md` step 8).
 
 Run full rounds without asking until `review_fixes.md` says to stop.
 

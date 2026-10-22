@@ -497,3 +497,151 @@ test('after an answer passes, a background job\'s later write still counts as a 
   // A /goal check-in continues the turn after the job wrote its output.
   expect((await $.classic.Stop(stop('The build finished.', true))).block).toMatch(/no `Checked:` list/)
 })
+
+// `n` words of prose, one word per line so no line reads as a question or a heading.
+const filler = (n: number) => Array.from({ length: n }, (_, i) => `word${i}`).join('\n')
+
+test('sends back an answer over the §8 word budget: 250 for a change report, 200 otherwise, lists and tables included', async ($, on) => {
+  engine(on)
+  await $.turn.start({ text: 'fix it', turnId: 't1' })
+  await $.tool.call(edit('/repo/a.ts'))
+  expect((await $.classic.Stop(stop(`Done.\n\nChecked:\n- tests pass [C1]\n${filler(246)}`))).block).toMatch(/is 251 words; .*caps this answer at 250/)
+  await $.turn.start({ text: 'fix it', turnId: 't2' })
+  await $.tool.call(edit('/repo/a.ts'))
+  expect((await $.classic.Stop(stop(`Done.\n\nChecked:\n- tests pass [C1]\n${filler(245)}`))).block).toBeUndefined()
+  await $.turn.start({ text: 'why is it slow', turnId: 't3' })
+  await $.tool.call({ tool: 'Read', file_path: '/repo/a.ts' })
+  expect((await $.classic.Stop(stop(`| a | b |\n| --- | --- |\n${filler(199)}`))).block).toMatch(/is 201 words; .*caps this answer at 200/)
+})
+
+test('the word budget skips fenced drafts, quotes, and tool-free answers; a prompt for detail is left to the agent', async ($, on) => {
+  engine(on)
+  await $.turn.start({ text: 'draft the PR body', turnId: 't1' })
+  await $.tool.call({ tool: 'Read', file_path: '/repo/a.ts' })
+  expect((await $.classic.Stop(stop(`Draft:\n\n\`\`\`md\n${filler(400)}\n\`\`\`\n\n> ${filler(50).replace(/\n/g, ' ')}`))).block).toBeUndefined()
+  await $.turn.start({ text: 'explain it', turnId: 't2' })
+  expect((await $.classic.Stop(stop(filler(400)))).block).toBeUndefined()
+  await $.turn.start({ text: 'explain the flow in detail', turnId: 't3' })
+  await $.tool.call({ tool: 'Read', file_path: '/repo/a.ts' })
+  expect((await $.classic.Stop(stop(filler(400)))).block).toMatch(/is 400 words; .*keep the answer as it is/s)
+})
+
+// §8 exempts Markdown blocks, including their list containers and lazy quote continuations.
+for (const [name, answer] of [
+  ['a list contains an indented fence', `- Example:\n\n    \`\`\`ts\n    ${filler(300).replace(/\n/g, '\n    ')}\n    \`\`\``],
+  ['nested lists contain a tilde fence', `- Outer\n  1. Example:\n\n      ~~~\n      ${filler(300).replace(/\n/g, '\n      ')}\n      ~~~`],
+  ['a fence opens on a list marker', `- \`\`\`ts\n  ${filler(300).replace(/\n/g, '\n  ')}\n  \`\`\``],
+  ['a blockquote has lazy paragraph continuations', `> Quoted.\n${filler(300)}`],
+  ['a lazy quote continuation resembles a setext underline', `> Quoted.\n===\n${filler(300)}`],
+  ['a list contains a lazily continued blockquote', `- Quote:\n\n  > Quoted.\n  ${filler(300).replace(/\n/g, '\n  ')}`],
+]) {
+  test(`WHEN ${name} SHOULD exclude its words from the budget`, async ($, on) => {
+    engine(on)
+    await $.turn.start({ text: 'explain', turnId: 't1' })
+    await $.tool.call({ tool: 'Read', file_path: '/repo/a.ts' })
+    expect((await $.classic.Stop(stop(answer))).block).toBeUndefined()
+  })
+}
+
+for (const [name, answer] of [
+  ['a raw HTML closing tag contains whitespace', '> <script>\n> </script >\n> Paragraph.\nShould I push?'],
+  ['a valid self-closing block tag starts HTML', '> <div/>\nShould I push?'],
+  ['a quoted HTML block contains a non-ASCII space line', '> <div>\n> \u00a0\n> Paragraph.\nShould I push?'],
+  ['an unquoted HTML attribute has a non-ASCII value', '> <a x=\u00a0>\nShould I push?'],
+  ['an empty bullet has trailing spaces before a fence', '-   \n  ```\nShould I push?'],
+  ['an empty ordered item has trailing spaces before a fence', '1.   \n   ```\nShould I push?'],
+  ['an empty bullet has tab padding before a fence', '-\t\n  ```\nShould I push?'],
+  ['a nonempty item continues after a blank line', '- Item\n\n  ```\nShould I push?'],
+  ['an empty sibling list item ends a quoted paragraph', '> - Item\n> -\nShould I push?'],
+  ['an empty list marker ends a quote', '> Quoted.\n-\nShould I push?'],
+  ['an empty ordered list marker ends a quote', '> Quoted.\n2.\nShould I push?'],
+  ['an ordered list starting at two ends a quote', '> Quoted.\n2. Should I push?'],
+  ['an ordered marker continues a paragraph', 'Intro\n2. > Should I push?'],
+  ['a leading-zero ordered list interrupts a quote', '> Quoted.\n01. Should I push?'],
+  ['a quoted HTML block has content', '> <div>\n> html\nShould I push?'],
+  ['a quoted HTML custom element starts a block', '> <custom-tag>\nShould I push?'],
+  ['a quoted complete HTML tag starts a block', '> <a>\nShould I push?'],
+  ['a quoted HTML comment has content', '> <!--\n> comment\nShould I push?'],
+  ['a quoted processing instruction has content', '> <?\n> instruction\nShould I push?'],
+  ['a quoted CDATA block has content', '> <![CDATA[\n> data\nShould I push?'],
+  ['a quoted declaration has content', '> <!DOCTYPE\n> declaration\nShould I push?'],
+  ['a quoted raw HTML tag has content', '> <script>\n> script\nShould I push?'],
+  ['a quoted HTML attribute contains a closing angle', '> <a title=">">\nShould I push?'],
+]) {
+  test(`WHEN ${name} SHOULD check the outside question`, async ($, on) => {
+    engine(on)
+    await $.turn.start({ text: 'explain', turnId: 't1' })
+    await $.tool.call({ tool: 'Read', file_path: '/repo/a.ts' })
+    expect((await $.classic.Stop(stop(answer))).block).toMatch(/ends with a question/)
+  })
+}
+
+for (const [name, answer] of [
+  ['a quoted HTML block ends at a blank line', `> <div>\n> html\n>\n> Paragraph.\n${filler(300)}`],
+  ['a quoted raw HTML block closes', `> <script>\n> code\n> </script>\n> Paragraph.\n${filler(300)}`],
+  ['a quoted HTML comment closes', `> <!-- comment -->\n> Paragraph.\n${filler(300)}`],
+  ['an empty multi-digit ordered item contains a fence', `10.   \n    \`\`\`\n    ${filler(300).replace(/\n/g, '\n    ')}\n    \`\`\``],
+  ['a blank line ends an empty item before a root fence', `- \n\n  \`\`\`\n${filler(300)}\n\`\`\``],
+  ['a malformed block tag has a slash after its name', `> <div/foo>\n${filler(300)}`],
+  ['a malformed closing block tag has a slash after its name', `> </div/foo>\n${filler(300)}`],
+  ['a malformed self-closing block tag has a space after its slash', `> <div/ >\n${filler(300)}`],
+  ['an HTML tag uses non-ASCII spacing', `> <a\u00a0b>\n${filler(300)}`],
+  ['a closing HTML tag uses non-ASCII spacing', `> </a\u00a0>\n${filler(300)}`],
+  ['a quoted paragraph contains a non-ASCII space line', `> Paragraph.\n\u00a0\n${filler(300)}`],
+  ['an invalid opening HTML tag is quoted paragraph text', `> <custom_tag>\n${filler(300)}`],
+  ['an invalid closing HTML tag is quoted paragraph text', `> </custom_tag>\n${filler(300)}`],
+  ['an HTML tag continues a quoted paragraph', `> Paragraph.\n> <a>\n${filler(300)}`],
+]) {
+  test(`WHEN ${name} SHOULD exclude the lazy quoted paragraph`, async ($, on) => {
+    engine(on)
+    await $.turn.start({ text: 'explain', turnId: 't1' })
+    await $.tool.call({ tool: 'Read', file_path: '/repo/a.ts' })
+    expect((await $.classic.Stop(stop(answer))).block).toBeUndefined()
+  })
+}
+
+test('WHEN a list contains a fenced Checked label SHOULD still require a real report', async ($, on) => {
+  engine(on)
+  await $.turn.start({ text: 'fix', turnId: 't1' })
+  await $.tool.call(edit('/repo/a.ts'))
+  expect((await $.classic.Stop(stop('- Example:\n\n    ```md\n    Checked:\n    - tests passed\n    ```'))).block).toMatch(/no `Checked:` list/)
+})
+
+test('WHEN a lazy blockquote ends with a question SHOULD leave the quoted question alone', async ($, on) => {
+  engine(on)
+  await $.turn.start({ text: 'draft', turnId: 't1' })
+  await $.tool.call({ tool: 'Read', file_path: '/repo/a.ts' })
+  expect((await $.classic.Stop(stop('Draft:\n\n> Could you check\nthe regression?'))).block).toBeUndefined()
+})
+
+for (const [name, answer] of [
+  ['a list fence ends by dedenting', `- \`\`\`\n  code\n${filler(201)}`],
+  ['a blank line ends a lazy blockquote', `> Quoted.\nlazy continuation\n\n${filler(201)}`],
+  ['a heading interrupts a lazy blockquote', `> Quoted.\n# Heading\n${filler(200)}`],
+  ['a quoted fence has no lazy continuation', `> \`\`\`\n> code\n${filler(201)}`],
+]) {
+  test(`WHEN ${name} SHOULD count the following prose`, async ($, on) => {
+    engine(on)
+    await $.turn.start({ text: 'explain', turnId: 't1' })
+    await $.tool.call({ tool: 'Read', file_path: '/repo/a.ts' })
+    expect((await $.classic.Stop(stop(answer))).block).toMatch(/is 201 words; .*caps this answer at 200/)
+  })
+}
+
+test('a turn woken by a background job keeps the typed prompt\'s request for a list', async ($, on) => {
+  engine(on)
+  await $.turn.start({ text: 'run the benchmark and list the next steps', turnId: 't1' })
+  await $.tool.call({ tool: 'Read', file_path: '/repo/a.ts' })
+  expect((await $.classic.Stop(stop('Started the benchmark in the background.'))).block).toBeUndefined()
+  await $.turn.start({ text: '<task-notification>done</task-notification>', turnId: 't2' })
+  expect((await $.classic.Stop(stop('Benchmark done.\n\nNext steps:\n- tune the cache'))).block).toBeUndefined()
+})
+
+test('a change with no Checked: list gets the 250-word change budget, so 220 words only miss the list', async ($, on) => {
+  engine(on)
+  await $.turn.start({ text: 'fix it', turnId: 't1' })
+  await $.tool.call(edit('/repo/a.ts'))
+  const block = (await $.classic.Stop(stop(filler(220)))).block
+  expect(block).toMatch(/no `Checked:` list/)
+  expect(block).not.toMatch(/caps this answer/)
+})
