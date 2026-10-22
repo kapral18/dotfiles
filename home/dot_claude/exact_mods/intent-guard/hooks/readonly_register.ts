@@ -37,8 +37,9 @@ export const register: Register = on => {
       return next(note ? { ...e, context: [...(e.context ?? []), note] } : e)
     }
     // Only what a person typed: a task notice or a peer's message is no correction and must not reset the stop check.
+    // What passes is the user's own words, and is marked so for the evidence ledger.
     if (e.command !== undefined || e.isMeta === true || !isTyped(e.origin)) return next(e)
-    const { context } = await task($, 'prompt', { text: e.text })
+    const { context } = await task($, 'prompt', { text: e.text, origin: 'human' })
     return next(context ? { ...e, context: [...(e.context ?? []), context] } : e)
   }).catch(($, e, next) => next(e))
 

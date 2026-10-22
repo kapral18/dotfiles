@@ -33,6 +33,13 @@ export default function (pi: ExtensionAPI) {
     if (context) return { message: { customType: "intent-guard", content: context, display: false } }
   })
 
+  // Only typed text is the user's words: OMP raises `input` for the TUI and RPC, never for a synthetic prompt
+  // (the auto-continue after compaction) or an extension's sendUserMessage.
+  pi.on("input", async (event, ctx) => {
+    if (ctx.agent.kind === "sub" || event.source === "extension") return
+    await task("user", { text: event.text }, ctx)
+  })
+
   // The first file edit without a card is refused once; the step is counted after the call.
   pi.on("tool_call", async (event, ctx) => {
     if (ctx.agent.kind === "sub") return

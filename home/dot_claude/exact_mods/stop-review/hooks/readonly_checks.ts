@@ -6,7 +6,7 @@ import type { EngineInterface } from 'claude-code'
 // Edits here are not part of the user's change.
 export const IGNORED = /^(\/private)?\/(tmp|var\/folders)\/|\/\.claude\/(plans|projects)\//
 // A `Checked` header line, bold or not, with or without a colon. A sentence that starts with "Checked" is not one.
-const CHECKED = /^[\s>*_#-]*Checked(?:\*\*|__)?(?:[ \t]*\([^)\n]*\))?(?::|[ \t]*$)/m
+const CHECKED = /^[\s>*_#+-]*Checked(?:\*\*|__)?(?:[ \t]*\([^)\n]*\))?(?::|[ \t]*$)/m
 const ASK_ME = /\bask(?:ing)? (?:me|us)\b/gi
 // What ends the text before "ask me" when it refuses: a negation up to three words back ("don't even need to ask me"),
 // or stop/quit/avoid up to two words back, not across and/then/to/but/or/just/instead.
@@ -51,14 +51,14 @@ export const PROPOSED =
   'an item outside the request\'s scope that fixes no defect in the change\'s impact (§3 steps 1 and 8) under `Proposed:`'
 
 // Where ~/AGENTS.md §3 step 8 puts a live check it does not let the agent offer.
-const UNVERIFIED = 'a live check §3 step 8 does not let you offer as an `(unverified: …)` mark under `Checked:`'
+const UNVERIFIED = 'a claim only a live check could settle under `Open:` with that check as its blocker (§3 step 8)'
 
 // Each message states what the check found, what to do now, and the ~/AGENTS.md rule it follows, with the limits that rule sets on acting,
 // so the one send-back ends with the work done rather than reworded.
 const MESSAGE =
   'Files changed this turn, and the final message has no `Checked:` list. Run any check §3 steps 3-4 call for that the change still needs, ' +
-  'then list each claim under `Checked:` with its command and result, or a `file:line`, ' +
-  'marking a claim only a live check could settle `(unverified: …)` (~/AGENTS.md §3 step 8).'
+  'then list each claim under `Checked:` with its command and result, or a `file:line`, and verified `[C<n>]`; ' +
+  'put a claim only a live check could settle under `Open:` with that check as its blocker (~/AGENTS.md §3 step 8).'
 
 const QUESTION =
   `The final message ends with a question outside \`Decision needed:\`. If its answer is ${STEP}, do it now. ` +
@@ -78,7 +78,27 @@ export async function snapshot($: EngineInterface) {
   return run.exitCode === 0 ? run.stdout : undefined
 }
 
-const prose = (message: string) => message.replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, '').replace(/^[ \t]*>.*$/gm, '').trim()
+// Use the same quote/fence boundary as ,task's evidence.report_items, including an unclosed fence.
+const prose = (message: string) => {
+  let fence = ''
+  const lines: string[] = []
+  for (const line of message.split('\n')) {
+    const text = line.trim()
+    if (text.startsWith('>')) continue
+    const marker = line.replace(/\r$/, '').match(/^ {0,3}(`{3,}|~{3,})(.*)$/)
+    if (fence) {
+      if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && /^[ \t]*$/.test(marker[2])) fence = ''
+      continue
+    }
+    if (marker && (marker[1][0] !== '`' || !marker[2].includes('`'))) {
+      fence = marker[1]
+      continue
+    }
+    // A report label may itself be a list item; keep it out of the trailing-list scan.
+    lines.push(line.replace(/^[ \t]*[-*+][ \t]+(?=(?:\*\*|__)?(?:Decision needed|Open|Proposed)(?::|\*\*:|__:))/, ''))
+  }
+  return lines.join('\n').trim()
+}
 
 const endsWithQuestion = (message: string) => {
   const lines = prose(message).split('\n')
@@ -126,7 +146,7 @@ export type Turn = {
 // The messages for what the final answer breaks, in report order.
 export const findings = async (message: string, turn: Turn) => {
   const messages: string[] = []
-  if (!CHECKED.test(message) && (await turn.isChanged())) messages.push(MESSAGE)
+  if (!CHECKED.test(prose(message)) && (await turn.isChanged())) messages.push(MESSAGE)
   const deferred = turn.isActive && !turn.isListWanted ? DEFERRED.exec(prose(message)) : null
   if (deferred) messages.push(deferral(deferred[0].trim()))
   const isOpenItem = REPORT_LIST.test(listHeader(message) ?? '')

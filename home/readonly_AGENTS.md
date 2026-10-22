@@ -26,7 +26,7 @@ Project instructions may add rules.
   At a fork in how to do the task, take the option you expect the user to agree with and list it under `Assumptions:`;
   if you expect none, it is a dilemma: ask.
   Never offer an option you argued against.
-  Put a real question last, under `Decision needed:`, with your pick. Do not act on that decision until the user answers.
+  Put a real question last, under `Decision needed:`, with your pick and its `[S<n>]`. Do not act on that decision until the user answers.
 
 ## 2. Truth and evidence
 
@@ -39,6 +39,12 @@ Project instructions may add rules.
   When "it worked" and "my premise was wrong" look the same, check the premise first.
 - Evidence from before a later change to the same code does not support a claim about that code.
 - Truncated or previewed output is an index. Read the full artifact before you count, review, or quote it.
+- Record claims with `,task claim add "<claim>" --file <path>:<line> --text "<exact line>"`,
+  `--quote "<exact Claude tool output>"`, or `--unknown "<reason>"`; show them with `,task card show`.
+  A matching source proves provenance, not the claim. Never use your own echo or another model's report as corroboration.
+  Record decisions with `,task stance set <key> "<value>" --because C<n>` or `--user "<verbatim user words>"`.
+  A reversal needs evidence produced, or user words stated, after the previous stance; tone is never a change of intent.
+  Resolve stored findings with `,task finding resolve F<n> --fixed C<n>` or `--rejected C<n>`.
 - User insistence is not evidence.
   Never pander: do not flatter, concede an error, reverse a conclusion, or promise a change merely to appease a user or reviewer.
   Recheck a challenged claim; explain the supported rationale or uncertainty before proposing a reversal.
@@ -61,7 +67,7 @@ Steps for each change; skip one that does not apply and say why:
    Before the task's first edit, write its card: `,task card set <<'CARD'` with `Goal:` (the outcome the user wants, in their words),
    `Reading:` (your interpretation, including what they left unsaid and where the ask may miss the goal), `Done when:` (items you can prove), `Scope:` (paths or globs the goal needs),
    `Not doing:`, then `CARD`. Pass `--session <id>` when a hook names it.
-   Mark each item with `,task check D<n> --evidence "<command and result>"`, or `,task block D<n> --reason "..."`
+   Mark each item with `,task check D<n> --claim C<n>`, or `,task block D<n> --reason "..."`
    and list it under `Open:` with its blocker, or under `Decision needed:` when it waits on the user.
    Before editing a path outside `Scope:` that the goal or a defect in the change's impact needs, run `,task scope add <path> --reason "..."`;
    anything else goes under `Proposed:`.
@@ -118,11 +124,12 @@ Steps for each change; skip one that does not apply and say why:
    (`k-cleanup` lists the exceptions), and never run `git stash drop` or `git reset --hard`.
 8. **Report.**
    First do every next step §1 makes part of the task that you can still do now.
-   - `Checked:` each claim, with a command and its result, or a `file:line`.
+   - `Checked:` each claim, with a command and its result, or a `file:line`, and its verified `[C<n>]`.
      Mark each fix after the last review "(unreviewed)" unless it is wording-only.
-     Mark a claim only a live check could settle `(unverified: only <that check> shows …)`, and offer that check under `Decision needed:` only when the source leaves open a specific failure, named in the offer, that would change what the user does next.
-   - `Assumptions:` each decision you made without asking.
-   - `Proposed:` steps outside the request's scope that fix no defect in the change's impact, left unapplied.
+     Put a claim only a live check could settle under `Open:` with that check as its blocker;
+     offer it under `Decision needed:` only when the source leaves open a specific failure, named in the offer, that would change what the user does next.
+   - `Assumptions:` each decision you made without asking, citing its `[S<n>]`.
+   - `Proposed:` steps outside the request's scope that fix no defect in the change's impact, left unapplied, with `[S<n>]`.
    - `Open:` only what you cannot do now, each with its blocker. A step you could do now is never a blocker.
      If `Open:` is not empty, say the change is not done.
    - No other list holds undone work. A list the user asked for, such as next steps or gaps, is part of the answer.

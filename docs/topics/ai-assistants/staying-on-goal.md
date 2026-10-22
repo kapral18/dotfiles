@@ -23,14 +23,39 @@ Not doing: PDF export, column picker
 
 `,task` numbers the `Done when` items (`D1`, `D2`, …) and stores session-keyed cards in `cards.json` per worktree under `~/.local/share/agent-tasks/<worktree>-<hash>/` (override with `AGENT_TASK_DIR`).
 Each session retains its own card and turn state, even when several sessions share a worktree. Storage updates hold a worktree lock across reading and writing.
-Card commands, `check`, `block`, `reopen`, `status`, `scope`, and `correct` select `--session <id>`, then `AGENT_TASK_SESSION`, then the only recently active session. With several active sessions they require an explicit selection; hooks name the id in their notes. `card clear` removes only the selected card and turn state.
+Card commands, `claim`, `stance`, `finding`, `check`, `block`, `reopen`, `status`, `scope`, and `correct` select `--session <id>`, then `AGENT_TASK_SESSION`, then the only recently active session. With several active sessions they require an explicit selection; hooks name the id in their notes. `card clear` removes only the selected card and turn state.
 Subagents are left alone: OMP subagents and advisors, OpenCode child sessions, and Claude subagent tool calls never touch the card.
 Rewriting the card under the same goal keeps the status of items whose text did not change; a new goal reopens every item, records the old goal, and the card shows only the latest earlier goal.
 Hooks inject the latest five scope changes and count the rest; `card show` and scope checks use them all.
 A new goal archives the old goal's scope changes as a record (`card show --json`); `card set` lists the archived paths so the agent re-adds the ones the new goal still needs.
 `card set` warns when the agent-written part (Goal, Reading, Done when, Scope, Not doing) passes 2048 bytes; the card is saved anyway, and evidence notes and history lines do not count.
 Scope entries preserve spaces and resolve symlinks. Use one path per line when a path contains a comma or semicolon.
-The agent marks items with `,task check D1 --evidence "<command and result>"` or `,task block D2 --reason "..."`, and records a path the goal or a defect in the change's impact needs beyond the scope with `,task scope add <path> --reason "..."`.
+The agent marks items with `,task check D1 --claim C1` or `,task block D2 --reason "..."`, and records a path the goal or a defect in the change's impact needs beyond the scope with `,task scope add <path> --reason "..."`.
+
+## Evidence and decisions
+
+Each card keeps claims (`C<n>`), stance history (`S<n>`) and review findings (`F<n>`). Card rewrites retain these records, including when the goal changes. Clearing the card removes them.
+
+```sh
+,task claim add "The source defines the export flag" --file src/export.py:12 --text 'EXPORT_ENABLED = True'
+,task check D1 --claim C1
+,task stance set export-format "Keep CSV" --because C1
+,task finding resolve F1 --rejected C1
+```
+
+The example line is illustrative; use the exact current line.
+
+- `--file <path>:<line> --text "<line>"` hashes the whole file. The claim fails once the file changes or disappears, so register a new claim after a change. Symlinks are read through the named path. File claims work in every harness.
+- `--quote "<output>"` matches a Bash, Read, Grep or Glob result in the selected Claude session's local transcript under `CLAUDE_CONFIG_DIR/projects` (default `~/.claude/projects`). The match covers text beyond the judge's head/tail preview and evidence from before compaction, but not output the tool itself truncated. Rewound branches do not count. In a parallel tool batch every call and result counts, though only the result that finished last continues the ancestry. Other tools are excluded because they can return model reports or omit the operation behind them; use a file claim for their source content. A Bash call whose command text mentions `,task` is excluded too, even a plain source read; use a file claim or `--unknown` instead. Read and Grep inputs and Bash descriptions do not trigger that exclusion. An admitted result can still hold model-written or false text.
+- `--unknown "<reason>"` records a gap. It cannot complete a Done-when item.
+
+Changing a stance requires a verified claim whose source is newer than the previous stance, or newer verbatim user words (`--user`). Re-registering old output does not make it new. Claude words must come from a human-origin transcript row. Elsewhere only text a person typed counts: Codex's `UserPromptSubmit`, and in Pi and OMP an `input` event whose source is not `extension` (`,task hook user`). A synthetic prompt such as OMP's auto-continue after compaction, or an extension's `sendUserMessage`, never counts. OpenCode records no user words: its prompt hook also gets a command's expanded template, so `--user` has nothing to match there. Repeating the same key, value and valid reason returns the existing stance. A different verified reason appends a refresh even when the value stays the same; only a change of value requires newer evidence.
+
+Claude's Stop hook rechecks cited sources and checked Done-when items. Each `Checked:` item needs `[C<n>]`; each `Assumptions:`, `Proposed:` and `Decision needed:` item needs its current `[S<n>]`. Quoted and fenced examples cannot stand in for a report. A bare report heading is incomplete; empty lists marked `none` need no citation. Free prose is outside this gate. Older checked items with only free-text evidence must be rechecked with a claim; `check --evidence` is removed.
+
+The judge receives the card, claims and provenance results, stance history, stored findings, and the current turn. Earlier raw chat is omitted. Findings retain their exact anchor and concern: a different concern at the same line remains distinct. A fixed or rejected repeat is suppressed while its resolution claim is valid, unless it quotes tool evidence newer than that resolution. This is exact matching, not semantic deduplication; the judge is instructed to reuse the stored wording for the same issue.
+
+Matching proves a quote or line exists, not that it supports the claim; the judge still decides that. The Stop hook still fails open and sends a turn back at most once per stretch, so the ledger is a provenance check and review aid, not a guarantee against pandering. Only Claude enforces answer citations; the CLI works in every harness.
 
 ## When the user is wrong
 
@@ -67,8 +92,8 @@ When `,task` is missing or fails, every hook lets the session go on unguarded.
 | Harness     | Adapter                                                                  | Prompt                                                                                   | Edit                                          | Zoom-out                       | Compaction                                   | Stop                                                |
 | ----------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------ | -------------------------------------------- | --------------------------------------------------- |
 | Claude Code | `intent-guard` mod ([Claude Code](tool-configs/claude.md#mods))          | `prompt.submit` context                                                                  | `tool.call` deny or result context            | `tool.call` result context     | `session.compact` instructions               | `classic.Stop` block                                |
-| Pi          | `~/.pi/agent/extensions/intent-guard.ts`                                 | `before_agent_start` message                                                             | `tool_call` block                             | `tool_result` content          | flag only; the next tool call shows the card | `agent_before_settle` continue                      |
-| OMP         | `~/.omp/agent/extensions/intent-guard.ts`                                | `before_agent_start` message                                                             | `tool_call` block                             | `tool_result` context          | `session.compacting` context                 | `session_stop` continue                             |
+| Pi          | `~/.pi/agent/extensions/intent-guard.ts`                                 | `before_agent_start` message; `input` records the user's words                           | `tool_call` block                             | `tool_result` content          | flag only; the next tool call shows the card | `agent_before_settle` continue                      |
+| OMP         | `~/.omp/agent/extensions/intent-guard.ts`                                | `before_agent_start` message; `input` records the user's words                           | `tool_call` block                             | `tool_result` context          | `session.compacting` context                 | `session_stop` continue                             |
 | Codex       | `[[hooks.*]]` in `~/.codex/config.toml`, each running `,task hook codex` | `UserPromptSubmit`                                                                       | `PreToolUse` edit refusal and shell snapshots | `PostToolUse` context          | `SessionStart` (`compact`) context           | `Stop` `decision: block`                            |
 | OpenCode    | `~/.config/opencode/plugins/intent-guard.ts` (2.x plugin API)            | `session` `prompt` hook; the card is pinned as a system part on each request of the turn | `tool` `execute.before` throws                | `execute.after` result content | `compaction` system part                     | a follow-up prompt on `session.execution.succeeded` |
 
@@ -77,7 +102,7 @@ OMP background Bash/Eval snapshots survive prompts until a terminal `tool_execut
 Claude background Bash snapshots record writes at handoff and survive until a terminal task notification or `GetTask` result. Running check-ins leave them pending; typed text cannot impersonate a completion notice. Headless commands marked to end at the final response are also sampled at Stop, since they send no completion notice; their snapshots expire at the next prompt.
 OpenCode has no blocking stop hook, so its plugin sends one follow-up prompt when a run ends with an item open; that prompt skips the prompt hook, so the 3-send-back guard still holds.
 Codex runs a config hook only after it is trusted once in `/hooks`; `inject_mcp_into_codex_toml.py` keeps the trust hashes across applies.
-The model reviewers judge the answer against the card first: Claude's `stop-review` gets it from `,task card show --session <id>`, and OMP's `Gate` reads it from the prompt context the extension adds.
+The model reviewers judge the answer against the card first: Claude's `stop-review` gets it from `,task hook evidence`, and OMP's `Gate` reads it from the prompt context the extension adds.
 
 ## Preferences and the steering log
 

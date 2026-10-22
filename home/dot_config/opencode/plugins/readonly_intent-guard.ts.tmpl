@@ -18,7 +18,8 @@ export default Plugin.define({
     const guard = createIntentGuard("opencode", exec)
     const task = (event: string, input: Record<string, unknown>, sessionID: string) =>
       guard(event, input, { cwd: ctx.location.directory, sessionManager: { getSessionId: () => sessionID } })
-    // The card from the last typed prompt, pinned as a system part on each request of that turn.
+    // The card from the last prompt, pinned as a system part on each request of that turn.
+    // The hook also gets a command's expanded template (a config command, /review, an MCP prompt), so its text is never marked as the user's words.
     const pinned = new Map<string, string>()
     // A subagent runs in a child session; only top-level sessions keep a card.
     const children = new Map<string, Promise<boolean>>()

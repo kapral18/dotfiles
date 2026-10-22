@@ -50,6 +50,7 @@ test('attaches the card to a typed prompt and leaves slash commands alone', asyn
   const entered = await $.prompt.submit({ text: 'add the button', asUser: true })
   expect(entered.context).toEqual(['Intent card for this task'])
   expect(calls[0]?.input.text).toBe('add the button')
+  expect(calls[0]?.input.origin).toBe('human')
 })
 
 test('WHEN Bash returns a background task SHOULD retain its snapshot', async ($, on) => {

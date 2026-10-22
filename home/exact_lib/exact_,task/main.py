@@ -29,6 +29,8 @@ import tempfile
 import time
 from pathlib import Path
 
+import evidence
+
 ZOOM_EVERY = 25
 # A session that prompted within this many seconds may still be writing a card here.
 RECENT = 6 * 3600
@@ -275,6 +277,10 @@ def render(card: dict, *, full: bool = True, notes: bool = True, all_changes: bo
             lines.append(f"Earlier goal: {old}")
         for text in card.get("corrections", []):
             lines.append(f"User correction (verbatim): {text}")
+        if all_changes:
+            for group in ("claims", "stances", "findings"):
+                for entry in card.get(group, []):
+                    lines.append(f"{entry['id']}: " + json.dumps(entry, ensure_ascii=False))
     return "\n".join(lines)
 
 
@@ -393,9 +399,20 @@ CARD_RULE = (
 )
 
 
+def remember_words(task: Task, session: str, text: str) -> None:
+    """Keep words a person typed, for `stance set --user` where no Claude transcript exists."""
+    task.state.setdefault("user_messages", {}).setdefault(session, []).append(
+        {"id": f"prompt-{time.time_ns()}", "kind": "user", "time": time.time(), "text": text}
+    )
+
+
 def hook_prompt(task: Task, data: dict, harness: str) -> dict:
     session = task.session(data.get("session"))
     text = data.get("text") or ""
+    # Only words a person typed are evidence. The adapter marks those, so a synthetic
+    # prompt (an auto-continue after compaction, a plan, a reminder) never becomes the user's words.
+    if text and data.get("origin") == "human":
+        remember_words(task, session, text)
     sessions = {sid: seen for sid, seen in (task.state.get("sessions") or {}).items() if seen >= time.time() - RECENT}
     first = session not in sessions
     sessions[session] = time.time()
@@ -576,7 +593,7 @@ def hook_stop(task: Task, data: dict, harness: str) -> dict:
             "or fixes a defect in the change's impact (§3 step 1); or a §3 step 7 cleanup k-cleanup allows; "
             "never a §5 action §5 does not allow, a live check §3 step 4 keeps for the user's ask, "
             "or a step the user asked you to ask about first), then mark it with "
-            '`,task check <id> --evidence "<command and result>"`. '
+            "`,task check <id> --claim C<n>` using a verified claim. "
             "For one you cannot do now (it waits on a user decision or a blocker), "
             'run `,task block <id> --reason "..."` and list it under `Open:` or `Decision needed:` with that id.'
         )
@@ -590,7 +607,44 @@ def hook_stop(task: Task, data: dict, harness: str) -> dict:
     return {"block": "\n".join(lines)}
 
 
-HOOKS = {"prompt": hook_prompt, "tool": hook_tool, "compact": hook_compact, "stop": hook_stop}
+def evidence_records(task: Task) -> list[dict]:
+    records = evidence.observations(task.session_id)
+    # Claude's transcript carries each prompt's origin; the other harnesses' adapters
+    # mark the prompts a person typed, and only those were kept.
+    if not records:
+        records = task.state.get("user_messages", {}).get(task.session_id, [])
+    return records
+
+
+def hook_evidence(task: Task, data: dict, harness: str) -> dict:
+    card = require_card(task)
+    records = evidence_records(task)
+    concerns = evidence.remember_findings(card, data.get("findings", []), records)
+    task.save_card()
+    return {
+        "card": evidence.context(card, records),
+        "findings": concerns,
+        "problems": evidence.check_answer(card, data.get("answer", ""), records),
+    }
+
+
+def hook_user(task: Task, data: dict, harness: str) -> dict:
+    """The user's own words from Pi's and OMP's `input` event, the one that tells typed text from an extension's."""
+    text = data.get("text") or ""
+    if text:
+        remember_words(task, task.session(data.get("session")), text)
+        task.save_state()
+    return {}
+
+
+HOOKS = {
+    "prompt": hook_prompt,
+    "tool": hook_tool,
+    "compact": hook_compact,
+    "stop": hook_stop,
+    "evidence": hook_evidence,
+    "user": hook_user,
+}
 
 
 def codex_event(data: dict) -> tuple[str, dict]:
@@ -598,7 +652,8 @@ def codex_event(data: dict) -> tuple[str, dict]:
     name = data.get("hook_event_name", "")
     session = str(data.get("session_id") or "")
     if name == "UserPromptSubmit":
-        return "prompt", {"session": session, "text": data.get("prompt", "")}
+        # Codex runs this hook only for the user's own input (core hook_runtime: TurnInput::UserInput).
+        return "prompt", {"session": session, "text": data.get("prompt", ""), "origin": "human"}
     if name == "SessionStart":
         return ("compact" if data.get("source") == "compact" else "start"), {"session": session}
     if name in ("PreToolUse", "PostToolUse"):
@@ -699,6 +754,8 @@ def cmd_card_set(args: argparse.Namespace) -> int:
             prior = by_text.get(item["text"])
             if prior:
                 item.update(status=prior["status"], note=prior.get("note", ""))
+                if "claim" in prior:
+                    item["claim"] = prior["claim"]
     # A new goal archives the old goal's scope changes as a record; the new goal records its own.
     archived = old.get("scope_changes", []) if goal_changed else []
     card = {
@@ -714,6 +771,7 @@ def cmd_card_set(args: argparse.Namespace) -> int:
         "earlier_scope_changes": (old.get("earlier_scope_changes", []) if old else []) + archived,
         "corrections": old.get("corrections", []) if old else [],
         "goal_history": (old.get("goal_history", []) if old else []) + ([old["goal"]] if goal_changed else []),
+        **{key: old.get(key, []) if old else [] for key in ("claims", "stances", "findings")},
     }
     if archived:
         print(
@@ -758,6 +816,7 @@ def cmd_card_clear(args: argparse.Namespace) -> int:
     task.cards.pop(task.session_id, None)
     write_json(task.cards_path, task.cards)
     task.state.get("turns", {}).pop(task.session_id, None)
+    task.state.get("user_messages", {}).pop(task.session_id, None)
     task.save_state()
     return 0
 
@@ -768,6 +827,12 @@ def set_item(args: argparse.Namespace, status: str, note: str) -> int:
     wanted = args.id.upper()
     for item in card["done"]:
         if item["id"] == wanted:
+            if status == "checked":
+                claim, _ = evidence.verified_claim(card, args.claim, evidence_records(task))
+                item["claim"] = claim["id"]
+                note = f"[{claim['id']}] {claim['text']}"
+            else:
+                item.pop("claim", None)
             item.update(status=status, note=note)
             card["updated"] = now()
             task.save_card()
@@ -777,7 +842,28 @@ def set_item(args: argparse.Namespace, status: str, note: str) -> int:
 
 
 def cmd_check(args: argparse.Namespace) -> int:
-    return set_item(args, "checked", args.evidence)
+    return set_item(args, "checked", "")
+
+
+def cmd_ledger(args: argparse.Namespace) -> int:
+    task = Task(Path.cwd(), args.session)
+    card = require_card(task)
+    records = evidence_records(task)
+    if args.command == "claim":
+        entry = evidence.add_claim(card, args, records)
+    elif args.command == "stance":
+        entry = evidence.set_stance(card, args, records)
+    else:
+        entry = evidence.resolve_finding(
+            card,
+            args.id,
+            args.fixed or args.rejected,
+            "fixed" if args.fixed else "rejected",
+            records,
+        )
+    task.save_card()
+    print(json.dumps(entry, ensure_ascii=False))
+    return 0
 
 
 def cmd_block(args: argparse.Namespace) -> int:
@@ -891,8 +977,18 @@ def build_parser() -> argparse.ArgumentParser:
     card_clear.set_defaults(func=cmd_card_clear)
 
     for name, func, label, help_text in (
-        ("check", cmd_check, "--evidence", "mark a Done-when item met, with its evidence"),
-        ("block", cmd_block, "--reason", "mark a Done-when item blocked, with the blocker"),
+        (
+            "check",
+            cmd_check,
+            "--claim",
+            "mark a Done-when item met, with a verified claim",
+        ),
+        (
+            "block",
+            cmd_block,
+            "--reason",
+            "mark a Done-when item blocked, with the blocker",
+        ),
     ):
         item = sub.add_parser(name, help=help_text)
         item.add_argument("id", help="item id, e.g. D1")
@@ -906,6 +1002,34 @@ def build_parser() -> argparse.ArgumentParser:
     status = sub.add_parser("status", help="list open Done-when items (exit 1 while any is open)")
     status.add_argument("--session", help=SESSION_HELP)
     status.set_defaults(func=cmd_status)
+
+    claim = sub.add_parser("claim", help="record a claim and its source").add_subparsers(required=True)
+    add = claim.add_parser("add")
+    add.add_argument("text", help="factual claim")
+    source = add.add_mutually_exclusive_group(required=True)
+    source.add_argument("--quote", help="exact text in this Claude session's tool result")
+    source.add_argument("--file", help="path:line for a current source line")
+    source.add_argument("--unknown", help="why the claim cannot be verified")
+    add.add_argument("--text", dest="line_text", help="exact line for --file")
+    add.add_argument("--session", help=SESSION_HELP)
+    add.set_defaults(func=cmd_ledger)
+    stance = sub.add_parser("stance", help="record a decision and its reason").add_subparsers(required=True)
+    set_stance = stance.add_parser("set")
+    set_stance.add_argument("key")
+    set_stance.add_argument("value")
+    reason = set_stance.add_mutually_exclusive_group(required=True)
+    reason.add_argument("--because", help="verified claim ID")
+    reason.add_argument("--user", help="verbatim user words")
+    set_stance.add_argument("--session", help=SESSION_HELP)
+    set_stance.set_defaults(func=cmd_ledger)
+    finding = sub.add_parser("finding", help="resolve a stored review finding").add_subparsers(required=True)
+    close = finding.add_parser("resolve")
+    close.add_argument("id")
+    resolution = close.add_mutually_exclusive_group(required=True)
+    resolution.add_argument("--fixed", help="verified claim ID proving the fix")
+    resolution.add_argument("--rejected", help="verified claim ID refuting the finding")
+    close.add_argument("--session", help=SESSION_HELP)
+    close.set_defaults(func=cmd_ledger)
 
     scope = sub.add_parser("scope", help="extend or check the card's scope").add_subparsers(dest="scope", required=True)
     scope_add = scope.add_parser(
@@ -965,7 +1089,11 @@ def main(argv: list[str] | None = None) -> int:
     directory.mkdir(parents=True, exist_ok=True)
     with (directory / ".lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        return args.func(args)
+        try:
+            return args.func(args)
+        except (ValueError, OSError) as error:
+            print(f",task: {error}", file=sys.stderr)
+            return 1
 
 
 if __name__ == "__main__":

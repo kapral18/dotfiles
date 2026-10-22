@@ -85,6 +85,14 @@ describe("pi adapter", () => {
     expect(await fire("before_agent_start", { messageType: "custom", message: {} })).toBeUndefined()
   })
 
+  it("records typed input as the user's words and nothing an extension sends", async () => {
+    const { calls, fire } = await load("pi")
+    expect(await fire("input", { text: "from an extension", source: "extension" })).toBeUndefined()
+    expect(calls).toEqual([])
+    for (const source of ["interactive", "rpc"]) await fire("input", { text: `keep CSV via ${source}`, source })
+    expect(calls.map(({ event, input }) => [event, input.text])).toEqual([["user", "keep CSV via interactive"], ["user", "keep CSV via rpc"]])
+  })
+
   it("blocks an uncarded edit before it runs and counts the step after", async () => {
     const { calls, fire } = await load("pi", { tool: { deny: "no intent card", note: "zoom out" } })
     await fire("tool_call", { toolName: "bash", toolCallId: "shell-1", input: { command: "ls" } })
@@ -178,6 +186,18 @@ describe("omp adapter", () => {
     expect(await fire("before_agent_start", { prompt: "open items" })).toBeUndefined()
     expect(calls).toHaveLength(2)
   })
+
+  it("records typed input as the user's words, never a synthetic prompt or an extension's", async () => {
+    const { calls, fire } = await load("omp")
+    // before_agent_start carries no authorship, so its prompt goes to the card hook unmarked.
+    await fire("before_agent_start", { prompt: "Resume the user's latest intent." })
+    expect(calls[0]).toEqual({ event: "prompt", input: { text: "Resume the user's latest intent.", cwd: "/repo", session: "s1" }, cwd: "/repo" })
+    await fire("input", { text: "from an extension", source: "extension" })
+    await fire("input", { text: "keep CSV", source: "interactive" }, "sub")
+    expect(calls).toHaveLength(1)
+    for (const source of ["interactive", "rpc"]) await fire("input", { text: `keep CSV via ${source}`, source })
+    expect(calls.slice(1).map(({ event, input }) => [event, input.text])).toEqual([["user", "keep CSV via interactive"], ["user", "keep CSV via rpc"]])
+  })
 })
 
 describe("opencode adapter", () => {
@@ -225,6 +245,8 @@ describe("opencode adapter", () => {
     expect(request.system).toEqual([{ type: "text", text: "Intent card" }])
     await expect(hooks.get("tool.execute.before")!({ tool: "edit", sessionID: "s1", input: { path: "src/a.ts" } })).rejects.toThrow("no intent card")
     expect(calls()[0]).toContain("hook prompt --harness opencode --input")
+    // A command's expanded template reaches this hook too, so the text is never marked as the user's words.
+    expect(calls()[0]).not.toContain('"origin"')
   })
 
   it("appends the note to the tool result and follows up a run with open items", async () => {

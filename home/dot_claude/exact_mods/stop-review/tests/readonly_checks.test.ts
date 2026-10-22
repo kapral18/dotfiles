@@ -30,10 +30,11 @@ test('sends a turn that edited files back once when Checked: is missing', async 
 
 test('accepts a bold Checked header without a colon, but not a sentence that starts with Checked', async ($, on) => {
   engine(on)
-  await $.turn.start({ text: 'fix it', turnId: 't1' })
-  await $.tool.call(edit('/repo/a.ts'))
-  expect((await $.classic.Stop(stop('Done.\n\n**Checked**\n- tests pass'))).block).toBeUndefined()
-  expect((await $.classic.Stop(stop('Done.\n\n**Checked** (3 items):\n- tests pass'))).block).toBeUndefined()
+  for (const header of ['**Checked**', '**Checked** (3 items):', '+ Checked:']) {
+    await $.turn.start({ text: 'fix it', turnId: header })
+    await $.tool.call(edit('/repo/a.ts'))
+    expect((await $.classic.Stop(stop(`Done.\n\n${header}\n  - tests pass [C1]`))).block).toBeUndefined()
+  }
   await $.turn.start({ text: 'again', turnId: 't2' })
   await $.tool.call(edit('/repo/a.ts'))
   expect((await $.classic.Stop(stop('Done.\n\nChecked it by hand.'))).block).toMatch(/no `Checked:` list/)
@@ -47,6 +48,16 @@ test('passes a turn without changes, or with only scratch, plan, or refused edit
   await $.tool.call(edit('/Users/u/.claude/plans/p.md'))
   await $.tool.call(edit('/repo/denied.ts'))
   expect((await $.classic.Stop(stop('Answer.'))).block).toBeUndefined()
+})
+
+test('requires a Checked report outside quoted or fenced examples', async ($, on) => {
+  engine(on)
+  const examples = ['> Checked:\n> - tests passed', '```\nChecked:\n- tests passed\n```', '~~~\nChecked:\n- tests passed', '````markdown\n```\nChecked: none\n```\n````', '~~~\n~~~ language\nChecked: none\n~~~~', '```\n    ```\nChecked: none\n```']
+  for (const [i, answer] of examples.entries()) {
+    await $.turn.start({ text: 'fix it', turnId: `example-${i}` })
+    await $.tool.call(edit('/repo/a.ts'))
+    expect((await $.classic.Stop(stop(answer))).block).toMatch(/no `Checked:` list/)
+  }
 })
 
 test('catches a change made through Bash by comparing working-tree snapshots', async ($, on) => {
@@ -232,6 +243,41 @@ test('leaves a question marked as the user\'s decision', async ($, on) => {
     await $.tool.call(bash('ls'))
     expect((await $.classic.Stop(stop(reply))).block, reply).toBeUndefined()
   }
+})
+
+test('WHEN a decision label is a list item SHOULD keep its question', async ($, on) => {
+  toolEngine(on)
+  await $.turn.start({ text: 'draft the comment', turnId: 't1' })
+  await $.tool.call(bash('ls'))
+  expect((await $.classic.Stop(stop('+ Decision needed:\n  - [S1] Post the comment?'))).block).toBeUndefined()
+})
+
+test('WHEN an Open label is a list item SHOULD keep its question', async ($, on) => {
+  toolEngine(on)
+  await $.turn.start({ text: 'fix it', turnId: 't1' })
+  await $.tool.call(bash('ls'))
+  expect((await $.classic.Stop(stop('+ Open:\n  - Does it work on Linux?'))).block).toBeUndefined()
+})
+
+test('WHEN a Proposed label is a list item SHOULD keep its question', async ($, on) => {
+  toolEngine(on)
+  await $.turn.start({ text: 'fix it', turnId: 't1' })
+  await $.tool.call(bash('ls'))
+  expect((await $.classic.Stop(stop('+ Proposed:\n  - [S1] Would a separate parser help?'))).block).toBeUndefined()
+})
+
+test('WHEN a report label is indented after prose SHOULD keep its open question', async ($, on) => {
+  toolEngine(on)
+  await $.turn.start({ text: 'fix it', turnId: 't1' })
+  await $.tool.call(bash('ls'))
+  expect((await $.classic.Stop(stop('Done.\n\n  + Open:\n    - Does it work on Linux?'))).block).toBeUndefined()
+})
+
+test('WHEN a list decision label says none SHOULD reject an unrelated question', async ($, on) => {
+  toolEngine(on)
+  await $.turn.start({ text: 'fix it', turnId: 't1' })
+  await $.tool.call(bash('ls'))
+  expect((await $.classic.Stop(stop('+ Decision needed: none.\n\n- Want me to push?'))).block).toMatch(/ends with a question/)
 })
 
 test('leaves a quoted question in a requested draft alone', async ($, on) => {

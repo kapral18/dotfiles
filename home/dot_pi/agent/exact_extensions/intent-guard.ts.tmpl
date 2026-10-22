@@ -5,7 +5,13 @@ import { createIntentGuard, isShellTool, lastAnswer, writePaths } from "{{ .chez
 export default function (pi: ExtensionAPI) {
   const task = createIntentGuard("pi", (command, args, options) => pi.exec(command, args, options))
 
-  // The card, preferences, and correction notes ride with each typed prompt.
+  // Only typed text is the user's words: Pi marks an extension's sendUserMessage with source `extension`.
+  pi.on("input", async (event, ctx) => {
+    if (event.source === "extension") return
+    await task("user", { text: event.text }, ctx)
+  })
+
+  // The card, preferences, and correction notes ride with each user prompt, typed or sent by an extension.
   pi.on("before_agent_start", async (event, ctx) => {
     if (event.messageType !== "user") return
     const { context } = await task("prompt", { text: event.prompt }, ctx)

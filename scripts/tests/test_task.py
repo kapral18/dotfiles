@@ -10,6 +10,7 @@ import sys
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -34,9 +35,12 @@ class TestTask(unittest.TestCase):
         self.store = base / "store"
         self.repo = base / "work"
         self.repo.mkdir()
+        self.proof = base / "proof.txt"
+        self.proof.write_text("readme\n")
         self.env = {k: v for k, v in os.environ.items() if k != "AGENT_TASK_SESSION" and not k.startswith("GIT_CONFIG")}
         self.env.update(
             AGENT_TASK_DIR=str(self.store),
+            CLAUDE_CONFIG_DIR=str(base / "claude"),
             GIT_CEILING_DIRECTORIES=self.tmp.name,
             GIT_CONFIG_GLOBAL=os.devnull,
             GIT_CONFIG_NOSYSTEM="1",
@@ -74,6 +78,400 @@ class TestTask(unittest.TestCase):
         self.hook("prompt", text="add an export button")
         return self.run_task("card", "set", stdin=text)
 
+    def claim(self, text="README contains readme", session="s1"):
+        result = self.run_task(
+            "claim",
+            "add",
+            text,
+            "--file",
+            f"{self.proof}:1",
+            "--text",
+            "readme",
+            "--session",
+            session,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)["id"]
+
+    def mark(self, item, text="ran it", session="s1"):
+        claim = self.claim(text, session)
+        return self.run_task("check", item, "--claim", claim, "--session", session)
+
+    def transcript_row(self, role, content, *, origin=None, stamp=None, **fields):
+        path = Path(self.env["CLAUDE_CONFIG_DIR"]) / "projects" / "fixture" / "s1.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        previous = [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+        row = {
+            "type": role,
+            "sessionId": "s1",
+            "uuid": f"row-{len(previous)}",
+            "parentUuid": previous[-1]["uuid"] if previous else None,
+            "timestamp": stamp or datetime.now(timezone.utc).isoformat(),
+            "message": {"content": content},
+        }
+        if origin:
+            row["origin"] = {"kind": origin}
+        row.update(fields)
+        with path.open("a") as stream:
+            stream.write(json.dumps(row) + "\n")
+        return row["uuid"]
+
+    def tool_output(self, output, stamp=None, *, tool="Bash", tool_input=None):
+        self.transcript_row(
+            "assistant",
+            [
+                {
+                    "type": "tool_use",
+                    "id": "probe",
+                    "name": tool,
+                    "input": tool_input if tool_input is not None else {"command": "timeout 10 verify-fixture"},
+                }
+            ],
+            stamp=stamp,
+        )
+        self.transcript_row(
+            "user",
+            [{"type": "tool_result", "tool_use_id": "probe", "content": output}],
+            stamp=stamp,
+        )
+
+    def test_SHOULD_verify_a_long_tool_quote_without_accepting_chat_as_evidence(self):
+        self.set_card()
+        self.transcript_row("user", "invented proof", origin="human")
+        self.transcript_row("assistant", "invented proof")
+        self.tool_output("prefix" * 2000 + "the result is 17" + "suffix" * 2000)
+        actual = self.run_task("claim", "add", "result is 17", "--quote", "the result is 17")
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+        self.assertEqual(self.run_task("check", "D1", "--claim", "C1").returncode, 0)
+        refused = self.run_task("claim", "add", "invented", "--quote", "invented proof")
+        self.assertNotEqual(refused.returncode, 0)
+
+    def test_SHOULD_keep_read_tool_results_without_accepting_shell_ledger_echoes(self):
+        self.set_card()
+        cases = [
+            ("Bash", {"command": "cat source.py", "description": "Read ,task source"}, True),
+            ("Bash", {"command": "rg -e -- --pre=/nonexistent/probe_ledger,task fixture"}, False),
+            ("Read", {"file_path": "/home/u/lib/,task/main.py"}, True),
+            ("Grep", {"pattern": ",task", "path": "docs"}, True),
+            ("Glob", {"pattern": "**/,task/*.py"}, True),
+            ("Bash", {"command": "cat /home/u/lib/,task/main.py"}, False),
+            ("Bash", {"command": "rg ',task' card"}, False),
+            ("Bash", {"command": "rg ';' ~/bin/,task"}, False),
+            ("Bash", {"command": "rg '|' ~/bin/,task"}, False),
+            ("Bash", {"command": "cat <<'EOF'\n,task card show\nEOF\n"}, False),
+            ("Bash", {"command": "cat /tmp/évidence.txt /home/u/lib/,task/main.py"}, False),
+            ("Bash", {"command": ",task card show"}, False),
+            ("Bash", {"command": "'/home/u/bin/,task' claim add proof --unknown missing"}, False),
+            ("Bash", {"command": "timeout 10 ,task card show"}, False),
+            ("Bash", {"command": "env -u AGENT_TASK_SESSION ,task card show"}, False),
+            ("Bash", {"command": "pwd && ,task card show"}, False),
+            ("Bash", {"command": "pwd\n,task card show"}, False),
+            ("Bash", {"command": "bash -c ',task card show'"}, False),
+            ("Bash", {"command": "zsh -lc 'cat /home/u/lib/,task/main.py'"}, False),
+            ("Bash", {"command": "bash --norc -c ',task card show'"}, False),
+            ("Bash", {"command": "bash -c '\"$0\" card show' ,task"}, False),
+            ("Bash", {"command": "env --split-string=',task card show' cat"}, False),
+            ("Bash", {"command": "rg -- '--pre=,task' file"}, False),
+            ("Bash", {"command": "if true; then ,task card show; fi"}, False),
+            ("Bash", {"command": 'cat "$(,task card show)"'}, False),
+            ("Bash", {"command": "python3 /home/u/lib/,task/main.py card show"}, False),
+            ("Bash", {"command": "env -S ',task card show'"}, False),
+            ("Bash", {"command": "eval ',task card show'"}, False),
+            ("Bash", {"command": "cat ',task"}, False),
+            ("Bash", {"command": "printf ',task\\n' | xargs"}, False),
+            ("Bash", {"command": "rg --pre ,task pattern file"}, False),
+            ("Bash", {"command": "verify-fixture /home/u/lib/,task/main.py"}, False),
+            ("Agent", {"prompt": "verify this source"}, False),
+            ("Task", {"prompt": "verify this source"}, False),
+        ]
+        for index, (tool, tool_input, accepted) in enumerate(cases):
+            with self.subTest(tool=tool, tool_input=tool_input):
+                output = f"source result {index}"
+                self.tool_output(output, tool=tool, tool_input=tool_input)
+                actual = self.run_task("claim", "add", output, "--quote", output)
+                self.assertEqual(actual.returncode == 0, accepted, actual.stderr)
+
+    def test_SHOULD_reject_unadmitted_tools_even_for_stored_claims(self):
+        self.set_card()
+        cases = [
+            ("Agent", {"prompt": "review"}),
+            ("Task", {"prompt": "review"}),
+            ("Skill", {"skill": "review"}),
+            ("GetTask", {"taskId": "background-job"}),
+            ("WebSearch", {"query": "fixture"}),
+            ("WebFetch", {"url": "https://example.invalid", "prompt": "summarize"}),
+            ("mcp__fixture__report", {"query": "fixture"}),
+        ]
+        for tool, tool_input in cases:
+            output = f"unsupported {tool} proof"
+            self.tool_output(output, tool=tool, tool_input=tool_input)
+            with self.subTest(tool=tool, stage="registration"):
+                self.assertNotEqual(self.run_task("claim", "add", output, "--quote", output).returncode, 0)
+            # A quote persisted before the exclusion must fail revalidation too.
+            transcript = Path(self.env["CLAUDE_CONFIG_DIR"]) / "projects" / "fixture" / "s1.jsonl"
+            source = json.loads(transcript.read_text().splitlines()[-1])["uuid"]
+            path = next(self.store.rglob("cards.json"))
+            cards = json.loads(path.read_text())
+            cards["s1"]["claims"] = [
+                {
+                    "id": "C1",
+                    "text": output,
+                    "created": datetime.now(timezone.utc).timestamp(),
+                    "source": {"kind": "quote", "text": output, "id": source},
+                }
+            ]
+            path.write_text(json.dumps(cards))
+            with self.subTest(tool=tool, stage="stored citation"):
+                result = self.hook("evidence", answer="Checked:\n- supported [C1]")
+                self.assertFalse(result["card"]["claims"][0]["verified"])
+                self.assertTrue(result["problems"])
+
+    def test_SHOULD_reject_stale_deleted_and_retargeted_file_claims(self):
+        self.set_card()
+        target = self.repo / "évidence.txt"
+        target.write_text("proof\n")
+        (self.repo / "alias").symlink_to(target)
+        actual = self.run_task("claim", "add", "proof exists", "--file", "alias:1", "--text", "proof")
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+        target.unlink()
+        self.assertNotEqual(self.run_task("check", "D1", "--claim", "C1").returncode, 0)
+        target.write_text("proof\nother content\n")
+        self.assertNotEqual(self.run_task("check", "D1", "--claim", "C1").returncode, 0)
+        refreshed = self.run_task("claim", "add", "proof exists", "--file", "alias:1", "--text", "proof")
+        self.assertEqual(refreshed.returncode, 0, refreshed.stderr)
+        self.assertEqual(self.run_task("check", "D1", "--claim", "C2").returncode, 0)
+
+    def test_SHOULD_refuse_empty_sources_and_unknown_claims_as_completion(self):
+        self.set_card()
+        empty = self.run_task("claim", "add", "x", "--quote", "")
+        self.assertNotEqual(empty.returncode, 0)
+        actual = self.run_task("claim", "add", "test passed", "--unknown", "test did not run")
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+        self.assertNotEqual(self.run_task("check", "D1", "--claim", "C1").returncode, 0)
+        self.assertIn("D1", self.run_task("status").stdout)
+
+    def test_SHOULD_refuse_relabelled_old_evidence_for_a_stance_reversal(self):
+        self.set_card()
+        self.tool_output("old result", "2020-01-01T00:00:00+00:00")
+        self.run_task("claim", "add", "original reason", "--quote", "old result")
+        first = self.run_task("stance", "set", "proposal", "keep it", "--because", "C1")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.run_task("claim", "add", "new label", "--quote", "old result")
+        refused = self.run_task("stance", "set", "proposal", "drop it", "--because", "C2")
+        self.assertNotEqual(refused.returncode, 0)
+        card = json.loads(self.run_task("card", "show", "--json").stdout)
+        self.assertEqual([s["value"] for s in card["stances"]], ["keep it"])
+
+    def test_SHOULD_accept_new_evidence_and_keep_stance_history_on_card_rewrite(self):
+        self.set_card()
+        first = self.claim()
+        self.run_task("stance", "set", "proposal", "keep it", "--because", first)
+        self.tool_output("new result")
+        self.run_task("claim", "add", "new reason", "--quote", "new result")
+        actual = self.run_task("stance", "set", "proposal", "drop it", "--because", "C2")
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+        self.run_task("card", "set", stdin=CARD.replace("Add the export button", "Add export"))
+        card = json.loads(self.run_task("card", "show", "--json").stdout)
+        self.assertEqual([s["value"] for s in card["stances"]], ["keep it", "drop it"])
+
+    def test_SHOULD_require_new_human_words_for_a_user_driven_reversal(self):
+        self.set_card()
+        self.transcript_row("user", "keep it", origin="human")
+        self.assertEqual(
+            self.run_task("stance", "set", "proposal", "keep", "--user", "keep it").returncode,
+            0,
+        )
+        self.transcript_row("user", "drop it", origin="hook")
+        refused = self.run_task("stance", "set", "proposal", "drop", "--user", "drop it")
+        self.assertNotEqual(refused.returncode, 0)
+        self.transcript_row("user", "drop it", origin="human")
+        actual = self.run_task("stance", "set", "proposal", "drop", "--user", "drop it")
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+
+    def test_SHOULD_refresh_a_stance_reason_without_changing_its_value(self):
+        self.set_card()
+        claim = self.claim()
+        first = self.run_task("stance", "set", "proposal", "keep", "--because", claim)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        same = self.run_task("stance", "set", "proposal", "keep", "--because", claim)
+        self.assertEqual(json.loads(same.stdout)["id"], "S1")
+        self.proof.write_text("readme\nnew evidence\n")
+        stale = self.run_task("stance", "set", "proposal", "keep", "--because", claim)
+        self.assertNotEqual(stale.returncode, 0)
+        refreshed = self.run_task("stance", "set", "proposal", "keep", "--because", self.claim())
+        self.assertEqual(refreshed.returncode, 0, refreshed.stderr)
+        self.assertEqual(json.loads(refreshed.stdout)["id"], "S2")
+        self.assertEqual(self.hook("evidence", answer="Assumptions:\n- keep [S2]")["problems"], [])
+
+    def test_SHOULD_keep_evidence_across_compaction_without_accepting_a_rewound_branch(self):
+        self.set_card()
+        human = self.transcript_row("user", "keep CSV", origin="human")
+        self.tool_output("abandoned result")
+        self.transcript_row("user", "continue from here", origin="human", parentUuid=human)
+        self.tool_output("verified result")
+        claim = self.run_task("claim", "add", "the probe passed", "--quote", "verified result")
+        self.assertEqual(claim.returncode, 0, claim.stderr)
+        self.assertEqual(self.run_task("stance", "set", "format", "CSV", "--user", "keep CSV").returncode, 0)
+        candidate = {"anchor": "answer:probe", "concern": "probe failed"}
+        self.hook("evidence", findings=[candidate])
+        self.assertEqual(self.run_task("finding", "resolve", "F1", "--rejected", "C1").returncode, 0)
+        preserved = self.transcript_row("assistant", "last retained answer")
+        # The retained attachment can first appear after the boundary, pointing at
+        # the summary; preservedSegment still points into the original ancestry.
+        self.transcript_row(
+            "system",
+            [],
+            parentUuid=None,
+            subtype="compact_boundary",
+            logicalParentUuid="retained",
+            compactMetadata={"preservedSegment": {"headUuid": preserved, "tailUuid": "retained"}},
+        )
+        self.transcript_row("user", "untrusted summary", isCompactSummary=True)
+        self.transcript_row("attachment", [], uuid="retained")
+        tail = self.transcript_row("assistant", "after first compact")
+        self.transcript_row("system", [], parentUuid=None, subtype="compact_boundary", logicalParentUuid=tail)
+        self.transcript_row("user", "another summary", isCompactSummary=True)
+        result = self.hook(
+            "evidence", answer="Checked:\n- probe passed [C1]\nAssumptions:\n- CSV [S1]", findings=[candidate]
+        )
+        self.assertEqual(result["problems"], [])
+        self.assertEqual(result["findings"], [])
+        self.assertNotEqual(self.run_task("claim", "add", "wrong branch", "--quote", "abandoned result").returncode, 0)
+
+    def test_SHOULD_keep_every_result_of_a_parallel_tool_batch(self):
+        self.set_card()
+        # Claude writes one row per call of a batch, chained in issue order, hangs each
+        # result off its own call and continues from the result that finished last.
+        calls = []
+        for name in ("one", "two", "three"):
+            content = [{"type": "tool_use", "id": name, "name": "Read", "input": {"file_path": f"{name}.py"}}]
+            calls.append(self.transcript_row("assistant", content, message={"id": "batch", "content": content}))
+        for index in (0, 2, 1):
+            result = [
+                {"type": "tool_result", "tool_use_id": ("one", "two", "three")[index], "content": f"result {index}"}
+            ]
+            self.transcript_row("user", result, parentUuid=calls[index])
+        self.transcript_row("assistant", "all files read")
+        for index in range(3):
+            with self.subTest(index=index):
+                actual = self.run_task("claim", "add", f"result {index}", "--quote", f"result {index}")
+                self.assertEqual(actual.returncode, 0, actual.stderr)
+        answer = "Checked:\n- one [C1]\n- two [C2]\n- three [C3]"
+        self.assertEqual(self.hook("evidence", answer=answer)["problems"], [])
+
+    def test_SHOULD_refuse_a_rewound_prompt_that_hangs_off_a_kept_answer(self):
+        self.set_card()
+        answer = self.transcript_row("assistant", "which format?", message={"id": "m1", "content": "which format?"})
+        self.transcript_row("user", "drop CSV", origin="human", parentUuid=answer)
+        self.transcript_row("user", "keep CSV", origin="human", parentUuid=answer)
+        self.transcript_row("assistant", "keeping CSV", message={"id": "m2", "content": "keeping CSV"})
+        self.assertNotEqual(self.run_task("stance", "set", "format", "drop", "--user", "drop CSV").returncode, 0)
+        kept = self.run_task("stance", "set", "format", "keep", "--user", "keep CSV")
+        self.assertEqual(kept.returncode, 0, kept.stderr)
+
+    def test_SHOULD_take_user_words_only_from_prompts_an_adapter_marked_as_typed(self):
+        self.set_card()
+        self.hook("prompt", text="drop it")
+        self.assertNotEqual(self.run_task("stance", "set", "proposal", "drop", "--user", "drop it").returncode, 0)
+        self.hook("prompt", text="keep it", origin="human")
+        kept = self.run_task("stance", "set", "proposal", "keep", "--user", "keep it")
+        self.assertEqual(kept.returncode, 0, kept.stderr)
+        # Pi and OMP send typed text from their `input` event.
+        self.hook("user", text="drop it")
+        dropped = self.run_task("stance", "set", "proposal", "drop", "--user", "drop it")
+        self.assertEqual(dropped.returncode, 0, dropped.stderr)
+
+    def test_SHOULD_check_citations_under_each_accepted_report_heading(self):
+        self.set_card()
+        self.claim()
+        for heading in (
+            "Checked:",
+            "**Checked:**",
+            "**Checked**",
+            "**Checked** (3 items):",
+            "__Checked__ (source)",
+            "## Checked (source):",
+            "+ Checked:",
+        ):
+            with self.subTest(heading=heading):
+                self.assertEqual(self.hook("evidence", answer=f"{heading}\n- supported [C1]")["problems"], [])
+                self.assertTrue(self.hook("evidence", answer=f"{heading}\n- missing citation")["problems"])
+                self.assertTrue(self.hook("evidence", answer=f"{heading}\n- nonexistent [C99]")["problems"])
+
+    def test_SHOULD_check_stance_citations_under_plus_prefixed_headings(self):
+        self.set_card()
+        for section in ("Assumptions", "Proposed", "Decision needed"):
+            with self.subTest(section=section):
+                self.assertTrue(self.hook("evidence", answer=f"+ {section}:\n  - missing citation")["problems"])
+                self.assertIn(
+                    "unknown S99", self.hook("evidence", answer=f"+ {section}:\n  - decision [S99]")["problems"]
+                )
+
+    def test_SHOULD_require_a_report_item_beyond_quoted_or_fenced_examples(self):
+        self.set_card()
+        for body in ("", "> - tests passed", "```\n- tests passed\n```", "~~~\n- tests passed"):
+            with self.subTest(body=body):
+                self.assertTrue(self.hook("evidence", answer=f"Checked:\n{body}")["problems"])
+        self.assertTrue(self.hook("evidence", answer="Checked:\n\nAssumptions: none")["problems"])
+        self.assertEqual(self.hook("evidence", answer="Checked: none")["problems"], [])
+        self.assertEqual(self.hook("evidence", answer="> Checked:\n> - quoted example [C99]")["problems"], [])
+
+    def test_SHOULD_verify_user_quote_line_endings_as_they_were_accepted(self):
+        self.set_card()
+        self.transcript_row("user", "keep\nCSV", origin="human")
+        stance = self.run_task("stance", "set", "format", "CSV", "--user", "keep\r\nCSV")
+        self.assertEqual(stance.returncode, 0, stance.stderr)
+        self.assertEqual(self.hook("evidence", answer="Assumptions:\n- keep CSV [S1]")["problems"], [])
+
+    def test_SHOULD_ignore_only_properly_delimited_code_examples(self):
+        self.set_card()
+        for opening, inner, closing in (
+            ("````markdown", "```", "````"),
+            ("~~~", "~~~ language", "~~~~"),
+            ("```", "    ```", "```"),
+            ("```", "~~~", "```"),
+        ):
+            example = f"{opening}\n{inner}\nChecked: example [C99]\n{closing}"
+            with self.subTest(example=example):
+                self.assertEqual(self.hook("evidence", answer=example)["problems"], [])
+                self.assertTrue(self.hook("evidence", answer=example + "\nChecked: real claim [C99]")["problems"])
+
+    def test_SHOULD_remember_resolutions_without_hiding_a_different_finding_on_the_same_line(
+        self,
+    ):
+        self.set_card()
+        candidate = {"anchor": "README.md:1", "concern": "missing heading"}
+        self.hook("evidence", findings=[candidate])
+        claim = self.claim()
+        self.assertEqual(self.run_task("finding", "resolve", "F1", "--rejected", claim).returncode, 0)
+        actual = self.hook(
+            "evidence",
+            findings=[candidate, {"anchor": "README.md:1", "concern": "wrong link"}],
+        )
+        self.assertEqual([f["concern"] for f in actual["findings"]], ["wrong link"])
+        self.assertEqual(actual["card"]["findings"][0]["status"], "rejected")
+
+    def test_SHOULD_reopen_a_resolved_finding_only_with_newer_tool_evidence(self):
+        self.set_card()
+        candidate = {"anchor": "answer:tests passed", "concern": "test failed"}
+        self.hook("evidence", findings=[candidate])
+        self.run_task("finding", "resolve", "F1", "--fixed", self.claim())
+        self.tool_output("regression found")
+        actual = self.hook("evidence", findings=[{**candidate, "quote": "regression found"}])
+        self.assertEqual([f["id"] for f in actual["findings"]], ["F2"])
+
+    def test_SHOULD_require_valid_citations_per_report_item_and_recheck_completion(
+        self,
+    ):
+        self.set_card()
+        self.mark("D1")
+        answer = "Checked:\n- source matches [C1]\n- another claim\nAssumptions:\n- a decision [S99]"
+        actual = self.hook("evidence", answer=answer)
+        self.assertEqual(len(actual["problems"]), 2)
+        self.proof.write_text("changed\n")
+        stale = self.hook("evidence", answer="Checked:\n- source matches [C1]")
+        self.assertTrue(any("D1" in p for p in stale["problems"]))
+
     def test_SHOULD_number_done_items_and_refuse_a_card_without_scope(self):
         saved = self.set_card()
         self.assertEqual(saved.returncode, 0, saved.stderr)
@@ -100,7 +498,7 @@ class TestTask(unittest.TestCase):
         (self.repo / "docs").mkdir()
         (self.repo / "docs" / "x.md").write_text("x\n")
         for item in ("D1", "D2"):
-            self.run_task("check", item, "--evidence", "ran it")
+            self.mark(item)
         block = self.hook("stop", answer="done")["block"]
         self.assertIn("docs/x.md", block)
 
@@ -112,7 +510,7 @@ class TestTask(unittest.TestCase):
         self.set_card()
         self.hook("tool", tool="Edit", paths=["src/app.py"])
         for item in ("D1", "D2"):
-            self.run_task("check", item, "--evidence", "ran it")
+            self.mark(item)
         self.assertEqual(self.hook("stop", answer="done"), {})
 
     def test_SHOULD_hold_a_turn_to_its_card_when_a_shell_command_did_the_writing(self):
@@ -137,8 +535,8 @@ class TestTask(unittest.TestCase):
 
     def test_SHOULD_refuse_to_mark_another_sessions_card(self):
         self.set_card()
-        self.assertEqual(self.run_task("check", "D1", "--evidence", "ran it", "--session", "s1").returncode, 0)
-        other = self.run_task("check", "D2", "--evidence", "ran it", "--session", "s2")
+        self.assertEqual(self.mark("D1", session="s1").returncode, 0)
+        other = self.run_task("check", "D2", "--claim", "C1", "--session", "s2")
         self.assertIn("no card for session s2", other.stderr)
         self.assertIn("D2", self.run_task("status", "--session", "s1").stdout)
 
@@ -146,7 +544,9 @@ class TestTask(unittest.TestCase):
         saved = self.set_card(CARD.replace("- the button downloads a CSV", "- D1 the button downloads a CSV"))
         self.assertIn("- [ ] D1: the button downloads a CSV", saved.stdout)
 
-    def test_SHOULD_send_the_stop_back_while_items_are_open_and_give_up_on_a_repeat(self):
+    def test_SHOULD_send_the_stop_back_while_items_are_open_and_give_up_on_a_repeat(
+        self,
+    ):
         self.set_card()
         self.hook("tool", tool="Edit", paths=["src/app.py"])
         block = self.hook("stop", answer="all done")["block"]
@@ -155,7 +555,7 @@ class TestTask(unittest.TestCase):
 
         self.hook("prompt", text="continue")
         self.hook("tool", tool="Edit", paths=["src/app.py"])
-        self.run_task("check", "D1", "--evidence", "clicked it")
+        self.mark("D1", "clicked it")
         self.assertIn("D2", self.hook("stop", answer="x")["block"])
         self.run_task("block", "D2", "--reason", "no test runner here")
         self.assertEqual(self.hook("stop", answer="x"), {})
@@ -172,13 +572,13 @@ class TestTask(unittest.TestCase):
 
     def test_SHOULD_keep_item_status_when_the_card_is_rewritten(self):
         self.set_card()
-        self.run_task("check", "D1", "--evidence", "clicked it")
+        self.mark("D1", "clicked it")
         rewritten = self.run_task("card", "set", stdin=CARD.replace("on the report page", "on the summary page"))
-        self.assertIn("- [x] D1: the button downloads a CSV — clicked it", rewritten.stdout)
+        self.assertIn("- [x] D1: the button downloads a CSV — [C1] clicked it", rewritten.stdout)
 
     def test_SHOULD_reopen_items_when_the_goal_changes(self):
         self.set_card()
-        self.run_task("check", "D1", "--evidence", "clicked it")
+        self.mark("D1", "clicked it")
         # Evidence for one goal does not prove another.
         moved = self.run_task("card", "set", stdin=CARD.replace("Add the export button", "Add CSV and XLSX export"))
         self.assertIn("- [ ] D1: the button downloads a CSV", moved.stdout)
@@ -199,11 +599,13 @@ class TestTask(unittest.TestCase):
         self.assertEqual(self.hook("tool", tool="Edit", paths=["docs/page0.md"]), {})
         self.assertEqual(self.run_task("card", "show").stdout.count("Scope change: "), 30)
 
-    def test_SHOULD_measure_the_size_limit_on_the_agent_text_and_say_the_card_saved(self):
+    def test_SHOULD_measure_the_size_limit_on_the_agent_text_and_say_the_card_saved(
+        self,
+    ):
         self.set_card()
         self.add_scope_changes(30)
         for item in ("D1", "D2"):
-            self.run_task("check", item, "--evidence", "ran the export and opened the file " * 40)
+            self.mark(item, "ran the export and opened the file " * 40)
         rewritten = self.run_task("card", "set", stdin=CARD)
         self.assertEqual(rewritten.returncode, 0, rewritten.stderr)
         self.assertNotIn("bytes", rewritten.stderr)
@@ -273,6 +675,8 @@ class TestTask(unittest.TestCase):
         base = {"session_id": "s1", "cwd": str(self.repo)}
         prompt = self.hook("codex", **base, hook_event_name="UserPromptSubmit", prompt="go")
         self.assertIn("Goal:", prompt["hookSpecificOutput"]["additionalContext"])
+        # Codex runs UserPromptSubmit only for the user's own input, so the prompt is the user's words.
+        self.assertEqual(self.run_task("stance", "set", "start", "now", "--user", "go").returncode, 0)
 
         patch = "*** Begin Patch\n*** Update File: lib/other.py\n@@\n"
         post = self.hook(
@@ -302,10 +706,10 @@ class TestTask(unittest.TestCase):
     def test_SHOULD_exit_nonzero_from_status_while_items_are_open(self):
         self.set_card()
         self.assertEqual(self.run_task("status").returncode, 1)
-        self.run_task("check", "d1", "--evidence", "ok")
+        self.mark("d1", "ok")
         self.run_task("block", "D2", "--reason", "later")
         self.assertEqual(self.run_task("status").returncode, 0)
-        self.assertEqual(self.run_task("check", "D9", "--evidence", "x").returncode, 1)
+        self.assertEqual(self.run_task("check", "D9", "--claim", "C1").returncode, 1)
 
     def test_SHOULD_not_hold_a_turn_that_wrote_nothing_to_the_card(self):
         self.set_card()
@@ -322,7 +726,7 @@ class TestTask(unittest.TestCase):
         (self.repo / "stray.txt").write_text("written by a Bash command\n")
         self.hook("tool", tool="Bash", phase="after", call_id="stray")
         for item in ("D1", "D2"):
-            self.run_task("check", item, "--evidence", "ran it")
+            self.mark(item)
         block = self.hook("stop", answer="done")["block"]
         self.assertIn("stray.txt", block)
         self.assertNotIn("notes.txt", block)
@@ -409,14 +813,14 @@ class TestTask(unittest.TestCase):
     def test_SHOULD_resolve_environment_session_for_item_updates(self):
         self.set_card()
         self.env["AGENT_TASK_SESSION"] = "other"
-        result = self.run_task("check", "D1", "--evidence", "wrong session")
+        result = self.run_task("check", "D1", "--claim", "C1")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("D1", self.run_task("status", "--session", "s1").stdout)
 
     def test_SHOULD_refuse_ambiguous_mutations_without_a_session(self):
         self.set_card()
         self.hook("prompt", session="s2", text="other task")
-        result = self.run_task("check", "D1", "--evidence", "ambiguous")
+        result = self.run_task("check", "D1", "--claim", "C1")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("--session", result.stderr)
 
