@@ -1,3 +1,40 @@
+local function preview_binary(plugin)
+  return plugin.dir .. "/app/bin/markdown-preview-" .. vim.fn["mkdp#util#get_platform"]()
+end
+
+local function preview_version(binary)
+  if vim.fn.executable(binary) ~= 1 then
+    return nil
+  end
+  local result = vim.system({ "timeout", "--signal=KILL", "5", binary, "--version" }, { text = true }):wait()
+  if result.code == 0 and result.signal == 0 then
+    return vim.trim(result.stdout)
+  end
+end
+
+local function build_preview(plugin)
+  local version = vim.json.decode(table.concat(vim.fn.readfile(plugin.dir .. "/package.json"), "\n")).version
+  local binary = preview_binary(plugin)
+  if preview_version(binary) == version then
+    return
+  end
+  local result = vim
+    .system({ "timeout", "--signal=KILL", "120", "bash", "./install.sh", "v" .. version }, {
+      cwd = plugin.dir .. "/app",
+      text = true,
+    })
+    :wait()
+  if result.code ~= 0 or result.signal ~= 0 or preview_version(binary) ~= version then
+    error(
+      ("Markdown preview installation failed (exit %d, signal %d): %s"):format(
+        result.code,
+        result.signal,
+        result.stderr ~= "" and result.stderr or result.stdout
+      )
+    )
+  end
+end
+
 vim.filetype.add({
   pattern = {
     [".*%.mdx"] = "markdown",
@@ -102,9 +139,14 @@ return {
     "iamcco/markdown-preview.nvim",
     version = false,
     cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
-    build = function()
-      pcall(vim.cmd.packadd, "markdown-preview.nvim")
-      vim.fn["mkdp#util#install"]()
+    build = build_preview,
+    init = function()
+      vim.g.mkdp_filetypes = { "markdown", "mdx" }
+    end,
+    config = function(plugin)
+      if vim.fn.executable(preview_binary(plugin)) ~= 1 then
+        build_preview(plugin)
+      end
     end,
     ft = { "markdown", "mdx" },
     keys = {
@@ -112,7 +154,7 @@ return {
         "<leader>cp",
         "<cmd>MarkdownPreviewToggle<cr>",
         desc = "Markdown Preview",
-        ft = "markdown",
+        ft = { "markdown", "mdx" },
       },
     },
   },
