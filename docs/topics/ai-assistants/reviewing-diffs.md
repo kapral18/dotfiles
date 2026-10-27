@@ -6,6 +6,16 @@ sidebar_position: 13
 
 Two tools cover this loop: [`tuicr`](https://github.com/agavra/tuicr) for a GitHub-style pass with exported structured markdown after the agent finishes, and [`lgtm`](https://github.com/kunkka19xx/lgtm) for a live pane beside the agent that re-renders as it writes and sends `#id path:line` references into the agent's input box.
 
+## Independent agent reviews
+
+`k-review` runs two fresh reviewers against the same request, [acceptance snapshot](staying-on-goal.md#review-acceptance), and code scope. One focuses on completion claims; the other focuses on regressions and scope. Either can report any supported defect in the authorized scope or impact, including defects discovered in later rounds and regressions introduced by fixes.
+
+Each reviewer assesses the source before reading the earlier findings and dispositions from a separate history file, then reconciles them before returning. The history preserves finding IDs, original triggers, and evidence for fixes or rejections. A prior verdict does not prove a fix; new evidence can reopen it.
+
+Results include evidence and pass, fail, or unverified for each applicable criterion and claimed fix. Fix evidence addresses the original failure. A missing row or material verification gap does not establish completion. Findings identify the requirement, preserved invariant, or authorized impact they violate; unrelated new behavior remains a proposal.
+
+Rounds remain unbounded. A clean fix-diff or narrowed review cannot end the loop: it returns to a review of the whole scope. The same discovery and scope rules apply in every round. These instructions and deterministic snapshot checks establish the review contract; they do not guarantee model adherence or prove behavior that requires a live check.
+
 ## tuicr
 
 [`tuicr`](https://github.com/agavra/tuicr) is the user-facing half of the agent loop.

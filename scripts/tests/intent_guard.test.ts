@@ -268,14 +268,23 @@ describe("opencode adapter", () => {
     expect(() => calls()).toThrow()
   })
 
-  it("pairs shell errors with the before snapshot but does not mark failed direct edits", async () => {
+  it("WHEN a shell fails SHOULD settle its snapshot", async () => {
     const { hooks, calls, cleanup } = await setup({})
     const shell = { tool: "shell", sessionID: "s1", id: "shell-42", input: {} }
     await hooks.get("tool.execute.before")!(shell)
     await hooks.get("tool.execute.after")!({ ...shell, status: "error", error: "exit 1" })
-    await hooks.get("tool.execute.after")!({ tool: "edit", sessionID: "s1", id: "edit-43", status: "error", input: { path: "src/a.ts" } })
     const payloads = calls().map((line) => JSON.parse(line.split(" --input ")[1]))
     expect(payloads.map((input) => [input.call_id, input.phase])).toEqual([["shell-42", "before"], ["shell-42", "after"]])
+    await cleanup()
+  })
+
+  it("WHEN a direct write fails SHOULD settle its snapshot", async () => {
+    const { hooks, calls, cleanup } = await setup({})
+    const edit = { tool: "edit", sessionID: "s1", id: "edit-43", input: { path: "src/a.ts" } }
+    await hooks.get("tool.execute.before")!(edit)
+    await hooks.get("tool.execute.after")!({ ...edit, status: "error", error: "write failed" })
+    const payloads = calls().map((line) => JSON.parse(line.split(" --input ")[1]))
+    expect(payloads.map((input) => [input.call_id, input.phase])).toEqual([["edit-43", "before"], ["edit-43", "after"]])
     await cleanup()
   })
 })

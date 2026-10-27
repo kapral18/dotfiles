@@ -40,6 +40,10 @@ The [review skill](../../../home/exact_dot_agents/exact_skills/exact_k-review/re
 
 `k-light-review` is the inline variant for small, self-authored, low-risk changes. `k-code-quality` and its test, web, and React skills apply the corresponding standards while editing. Its De-slop section applies to every file type, beyond the patterns its rules name.
 
+Review queues reuse verified evidence only while its source and check inputs still match the saved snapshot, including local uncommitted and untracked files. Changed inputs refresh only the affected evidence and checks. A saved PR discussion must have been read completely before it can support a conclusion.
+
+`k-diagnosing-bugs` puts an unresolved runtime criterion under `Open:` with the missing evidence or check as its blocker. The evidence ledger excludes quoted and fenced examples, including fences inside lists, from report-citation checks.
+
 ## Catalog
 
 | Skill                      | Use                                                                                                                                                                                                                                                                                                      | Invocation |

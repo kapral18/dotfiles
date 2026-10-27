@@ -37,7 +37,10 @@ This adds no stop; the Fix procedure owns the stopping rule.
 4. Outside Verify mode, read the fix diff once. Repair a problem it reveals within Fix Scope and rerun affected checks, then stop.
 5. In Verify mode, form the fix diff with `diff -uN <copy> <file>` for each touched file; `-N` includes new files.
    Launch one reviewer using the Reviewer launch procedure in `~/.agents/skills/k-review/SKILL.md`; it reviews only this fix diff.
-   Give it the user's request in their words, the findings being fixed, rerun checks, `Open:` items, and rejected and proposed findings.
+   Checkpoint acceptance with `,task review --session <id>` as in Verify mode.
+   Give the reviewer the request, acceptance snapshot, original failure cases being fixed, rerun checks, and `Open:` items.
+   Give earlier findings and dispositions through the separate history file: assess source first, then reconcile before returning.
+   Require a fix result with evidence for each original trigger; reconcile new supported defects too.
    Skip this review only for wording-only fixes (typos, reflow, a rename with no change in meaning).
 6. In steps 6 to 8, a finding counts only when this task fixes it (Step back first);
    one listed under `Proposed:` does not continue the loop.
@@ -53,13 +56,15 @@ This adds no stop; the Fix procedure owns the stopping rule.
    A reviewer repeating a finding you rejected is not a returned cause: reject it again, unless it names new evidence;
    then check it like any finding.
 7. If this round's two full reviewers found a supported medium or higher finding, run another full round without asking:
-   two fresh reviewers given every finding fixed, rejected, or proposed so far, reporting only new ones.
+   two fresh reviewers using the complementary focuses and source-first/history-reconciliation packet in Verify mode, reporting only new findings or resolved findings contradicted by new evidence.
    A later full round is narrowed: it reviews what the fixes since the last full round touched and their consumers.
    Once a narrowed round finds no new supported medium or higher finding, a full round covers the whole Verify scope.
    Fix its findings with steps 1 to 6.
    A clean fix-diff review or a clean narrowed round does not end the loop; a clean full round on the whole scope does.
    No count of reviews or rounds stops the loop, and it never pauses to ask whether to continue.
-   The loop ends when a full round on the whole scope finds no new supported medium or higher finding; fix its lows.
+   The loop ends when a full round on the whole scope finds no new supported medium or higher finding and supplies passing evidence for the applicable criteria and claimed fixes; fix its lows.
+   A material unverified result stays `Open:` with its blocker; missing reviewer coverage is returned to that reviewer for completion, not treated as clean.
+   Neither checklist membership nor a reviewer's focus may exclude a new supported defect in scope or impact.
    Keep rounds short: aim for about 3 minutes per reviewer and 5 per round. Time a round from launch to results with `date +%s`
    just before the launch and when the results arrive, and a reviewer with the duration the harness reports, if any.
    When a round runs over, or two rounds in a row find the same kind of problem, write one line before the next round:

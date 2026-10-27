@@ -48,10 +48,12 @@ Take `<n>` from this session's `,gh-prw --number` output, never from memory or a
 Record:
 
 - identity: `pr: <owner/repo>#<n>` or `local: <base>..<head>`, `base_sha`, `head_sha`, `snapshot_at`, `discussion_at`
-- per finding or thread: id, author type (`human`|`bot`), severity, `file:line`, one-line description, status (`open`|`fixed`|`dismissed`|`resolved`|`awaiting-approval`), and evidence
+- per finding or thread: id, author type (`human`|`bot`), severity, `file:line`, one-line description, status (`open`|`fixed`|`dismissed`|`resolved`|`awaiting-approval`), and evidence with source fingerprints
 - checks run: command, result, head SHA
 - open PR-body obligations and the current queue position
 
 On a later turn, read the queue first and continue from it.
-A fact the queue records with an anchor is trusted unless Drift reports its artifact changed.
+Queue assertions are leads. Reuse verified evidence and check results only while their relevant source and inputs match the saved snapshot,
+including local uncommitted and untracked files; an unchanged HEAD alone is insufficient.
+Re-read changed anchors and rerun only affected checks. An unchanged snapshot needs no repeated review or check.
 When the user switches harness or session, save the queue summary with `,handoff save <topic>` (see `k-handoff`).

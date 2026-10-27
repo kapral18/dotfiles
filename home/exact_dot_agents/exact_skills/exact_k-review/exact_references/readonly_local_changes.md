@@ -42,4 +42,4 @@ Local ownership never authorizes commit or push.
 Scope and base identity, anchored findings, fixes applied (if any) with check results, and unresolved evidence gaps.
 
 When the user asks for one finding at a time, present one per turn from the queue (`shared_rules.md` Review Queue);
-do not rerun review or checks to present the next one.
+reuse its evidence only while the relevant snapshot is unchanged, as that section requires.

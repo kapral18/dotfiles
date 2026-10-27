@@ -90,11 +90,25 @@ Use when `~/AGENTS.md` §3 step 5 requires a review of a finished change, or whe
    Include the task's behavior-map entry ids (`,behavior-map show <id>`) and memory writes. Otherwise, review the change the user named.
    For a change within write scope (`authorship.md`), include the change's impact as `~/AGENTS.md` §3 step 1 defines it.
    Add the user's request in their words, the intent in one line, the checks already run with their results, and your `Assumptions:`.
+   Use the task's intent card; when a requested review has none, write one for that review's request and scope.
+   Before each round, run `,task review --session <id>` and save its JSON with the review baseline.
+   It checkpoints acceptance, not a verdict.
+   If acceptance changed, inspect the difference and rerun with `--reason "<user change or source evidence>"`;
+   the first snapshot stays intact and the revision is explicit. Cite criteria as version/ID.
 2. Launch two fresh reviewers in parallel using Reviewer launch above.
-   Pass both only the same scope, change's impact (if any; a narrowed round gets none), request, intent, check results, assumptions, and `Open:` items;
-   a later full round, or a verify-again run, also gets every finding fixed, rejected, or proposed so far.
+   Pass both the same scope, change's impact (if any; a narrowed round gets none), request, acceptance snapshot, intent, check results, assumptions, and `Open:` items.
+   Assign one completion claims and the other regressions and scope.
+   Either MUST report any supported defect in the assigned scope or authorized impact; the focuses never partition what they may find.
+   Put previous findings and dispositions in a separate history file, not the initial packet.
+   Give its path: each reviewer assesses source first, then reads and reconciles history before returning, within the same invocation.
+   Keep stable finding IDs, original triggers, resolution reasons and evidence in that history;
+   later full rounds and verify-again runs reconcile every finding fixed, rejected, or proposed so far.
    Tell the reviewers of a narrowed later round (`review_fixes.md` step 7) that it is narrowed and which files it covers.
-3. Merge the findings. Check each finding against source yourself. Reject unsupported ones with a one-line reason.
+3. Merge criterion/fix results and findings.
+   Require evidence for each applicable criterion and claimed fix; an absent row or material unverified result cannot clear that behavior.
+   Check each finding against source yourself. Reject unsupported ones with a one-line reason.
+   Criteria constrain scope expansion, not defect discovery: accept new supported defects in scope or impact in every round, including regressions introduced by fixes.
+   New behavior outside it stays a proposal.
 4. Apply supported findings within write scope using `~/.agents/skills/k-review/references/review_fixes.md`.
    Its Fix procedure (the Verify-mode steps) owns scratch copies, checks, fix-diff reviews, further full rounds, and stopping rules.
 5. Copy every file in the reviewed scope, as it stands after the fixes, into the baseline, even when nothing was fixed:

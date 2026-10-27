@@ -6,7 +6,7 @@ const edit = (file_path: string) => ({ tool: 'Edit', file_path, old_string: 'a',
 const stop = (last_assistant_message: string) => ({ stop_hook_active: false, last_assistant_message })
 
 // The engine beneath the plugin: `,task hook` answers each event from `answers`; every call is recorded.
-const engine = (on: On, answers: Record<string, unknown> = {}, below: { block?: string } = {}, toolResult: object = {}) => {
+const engine = (on: On, answers: Record<string, unknown> = {}, below: { block?: string } = {}, toolResult: object = {}, terminal: { deny?: string; isError?: boolean } = {}) => {
   const calls: { event: string; input: Record<string, unknown> }[] = []
   on('session.cwd', () => ({ value: '/repo' }))
   on('session.id', () => ({ value: 's1' }))
@@ -15,7 +15,7 @@ const engine = (on: On, answers: Record<string, unknown> = {}, below: { block?: 
     calls.push({ event, input: JSON.parse(json) as Record<string, unknown> })
     return { value: ran(JSON.stringify(answers[event] ?? {})) }
   })
-  on('tool.call', () => ({ result: toolResult as never }))
+  on('tool.call', () => terminal.deny ? { deny: terminal.deny } : { result: toolResult as never, isError: terminal.isError })
   on('classic.Stop', () => below)
   return calls
 }
@@ -32,6 +32,22 @@ test('adds the scope note to the edit result', async ($, on) => {
   const result = await $.tool.call(edit('/repo/docs/x.md'))
   expect(result.deny).toBeUndefined()
   expect(result.context).toEqual(['intent-guard: docs/x.md is outside'])
+})
+
+test('WHEN a direct write fails SHOULD settle its snapshot and preserve the error', async ($, on) => {
+  const calls = engine(on, { tool: { note: 'partial write is outside' } }, {}, {}, { isError: true })
+  const result = await $.tool.call(edit('/repo/notes.txt'))
+  expect(result.isError).toBe(true)
+  expect(calls.map(call => call.input.phase)).toEqual(['before', 'after'])
+  expect(calls[1]?.input.call_id).toBe(calls[0]?.input.call_id)
+  expect(result.context).toEqual(['partial write is outside'])
+})
+
+test('WHEN a later guard denies a direct write SHOULD settle its snapshot', async ($, on) => {
+  const calls = engine(on, {}, {}, {}, { deny: 'blocked below' })
+  const result = await $.tool.call(edit('/repo/notes.txt'))
+  expect(result.deny).toBe('blocked below')
+  expect(calls.map(call => call.input.phase)).toEqual(['before', 'after'])
 })
 
 test('counts other tool calls and adds the zoom-out note after they run', async ($, on) => {

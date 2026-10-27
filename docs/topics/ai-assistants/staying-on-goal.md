@@ -36,6 +36,22 @@ The agent marks items with `,task check D1 --claim C1` or `,task block D2 --reas
 
 Each card keeps claims (`C<n>`), stance history (`S<n>`) and review findings (`F<n>`). Card rewrites retain these records, including when the goal changes. Clearing the card removes them.
 
+### Review acceptance
+
+Before each independent review round, run:
+
+```sh
+,task review --session <id>
+```
+
+The command prints JSON containing versioned acceptance snapshots: goal, reading, criteria, scope and its extensions, exclusions, and user corrections. The first call records version 1. Completion statuses, claims, and review verdicts do not create acceptance versions.
+
+When those acceptance fields change, the command refuses to checkpoint until the caller supplies `--reason "<user change or source evidence>"`. The card edit remains saved; the previous review snapshot stays intact. Inspect `,task card show --json`, then supply the reason to append a new version. Repeating an unchanged checkpoint reuses its version.
+
+Reviewers cite criteria as `v1/D1`, so reordering or replacing a `D1` in a later card cannot silently change an earlier review's meaning. Card rewrites retain review history, including across goal changes; `card clear` removes it for that session. The command records the justification; it does not establish that the justification is true or authorize scope expansion.
+
+The [independent review procedure](reviewing-diffs.md#independent-agent-reviews) keeps finding discovery open within the authorized scope and impact. Acceptance snapshots are not a whitelist of reportable defects.
+
 ```sh
 ,task claim add "The source defines the export flag" --file src/export.py:12 --text 'EXPORT_ENABLED = True'
 ,task check D1 --claim C1
@@ -68,16 +84,16 @@ A zoom-out also asks whether the goal itself still looks right, and both reviewe
 
 ## What runs on each iteration
 
-| When                              | What happens                                                                                                                                                                         | Catches                       |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------- |
-| Each prompt                       | The card goes in with the prompt; the session's first prompt also gets saved preferences.                                                                                            | Lost intent after a long turn |
-| A prompt that corrects            | The text is added to the card as a verbatim correction and logged; the agent updates the card, flags a factual or method error the evidence shows, and saves a lasting preference.   | The same misreading again     |
-| First edit with no card           | Refused once per session, with the card format.                                                                                                                                      | Starting without a goal       |
-| Each file edit                    | A note when the path is outside `Scope:`.                                                                                                                                            | Scope creep                   |
-| Each shell or code execution call | The call's before/after snapshots detect created, changed, or deleted files, including existing untracked files, and flag paths outside `Scope:`. Read tools do not attribute edits. | Edits made through a shell    |
-| Every 25 tool calls               | A zoom-out note with the card: say in one line whether the work still serves the Goal.                                                                                               | Drift on long runs            |
-| Compaction                        | The summary keeps the card verbatim, with statuses and corrections; the next tool call zooms out.                                                                                    | Goal lost to the summary      |
-| Stop                              | Sent back while a `Done when` item is open or a file this turn changed is outside `Scope:` (pre-existing dirt and user edits between tool calls do not count).                       | Stopping early, quiet creep   |
+| When                              | What happens                                                                                                                                                                                 | Catches                       |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| Each prompt                       | The card goes in with the prompt; the session's first prompt also gets saved preferences.                                                                                                    | Lost intent after a long turn |
+| A prompt that corrects            | The text is added to the card as a verbatim correction and logged; the agent updates the card, flags a factual or method error the evidence shows, and saves a lasting preference.           | The same misreading again     |
+| First edit with no card           | Refused once per session, with the card format.                                                                                                                                              | Starting without a goal       |
+| Each file edit                    | A note when the path is outside `Scope:`.                                                                                                                                                    | Scope creep                   |
+| Each shell or code execution call | Before/after fingerprints detect file-state changes, including existing untracked files, and flag paths outside `Scope:`. Staging and timestamp-only changes to readable files do not count. | Edits made through a shell    |
+| Every 25 tool calls               | A zoom-out note with the card: say in one line whether the work still serves the Goal.                                                                                                       | Drift on long runs            |
+| Compaction                        | The summary keeps the card verbatim, with statuses and corrections; the next tool call zooms out.                                                                                            | Goal lost to the summary      |
+| Stop                              | Sent back while a `Done when` item is open or an unresolved file change is outside `Scope:`. Restoring a path's pre-edit state clears it, including pre-existing dirty content.              | Stopping early, quiet creep   |
 
 The stop check sends a turn back at most 3 times, and lets the stop through when the same items and files are still open after a send-back, so it cannot loop.
 A turn whose tools write nothing (a question, a status check) is not held to the open items, even with a card.
@@ -97,7 +113,7 @@ When `,task` is missing or fails, every hook lets the session go on unguarded.
 | Codex       | `[[hooks.*]]` in `~/.codex/config.toml`, each running `,task hook codex` | `UserPromptSubmit`                                                                       | `PreToolUse` edit refusal and shell snapshots | `PostToolUse` context          | `SessionStart` (`compact`) context           | `Stop` `decision: block`                            |
 | OpenCode    | `~/.config/opencode/plugins/intent-guard.ts` (2.x plugin API)            | `session` `prompt` hook; the card is pinned as a system part on each request of the turn | `tool` `execute.before` throws                | `execute.after` result content | `compaction` system part                     | a follow-up prompt on `session.execution.succeeded` |
 
-Pi, OMP, and OpenCode share `~/lib/shared/intent_guard.ts`; `~/bin/,task` launches `~/lib/,task/main.py`. OMP passes normalized hashline header paths; the core also checks `MV` destinations. Shell snapshots pair by tool-call ID. Concurrent user edits during a shell call cannot be distinguished from that command's writes.
+Pi, OMP, and OpenCode share `~/lib/shared/intent_guard.ts`; `~/bin/,task` launches `~/lib/,task/main.py`. OMP passes normalized hashline header paths; the core also checks `MV` destinations. Snapshots pair by tool-call ID. Each call establishes or refines baselines only from its own after/completion sample; capture order chooses the earliest completed sample, including background handoffs. Unfinished attempts cannot override another call’s baseline. Claude and OpenCode also sample failed direct attempts. In-flight snapshots from older formats are discarded on upgrade; cards and completed checks remain intact. Fingerprints include content, file type, permissions and symlink target; Git status discovers shell candidates, including a rename’s deleted source. An omitted tracked path has an unknown baseline; an omitted untracked path within the capture’s discovery domain starts absent. Capture-time exclusions preserve direct-edit baselines for ignored files, Git metadata, nested repositories and paths hidden by index flags, even if Git visibility later changes. Paths from the starting snapshot are rechecked even if they become clean. Direct edits capture their named paths and symlink referents before writing; directory symlinks resolve before `..`. Read failures preserve available metadata as a conservative fingerprint, so an unreadable file does not discard the rest of a snapshot. Stop compares attributed paths with their first pre-edit state, so restored edits clear and unresolved deletions remain flagged. Concurrent user edits during a shell call cannot be distinguished from that command's writes.
 OMP background Bash/Eval snapshots survive prompts until a terminal `tool_execution_update` reports completion, failure, or cancellation. That update records the writes; ordinary read calls do not.
 Claude background Bash snapshots record writes at handoff and survive until a terminal task notification or `GetTask` result. Running check-ins leave them pending; typed text cannot impersonate a completion notice. Headless commands marked to end at the final response are also sampled at Stop, since they send no completion notice; their snapshots expire at the next prompt.
 OpenCode has no blocking stop hook, so its plugin sends one follow-up prompt when a run ends with an item open; that prompt skips the prompt hook, so the 3-send-back guard still holds.

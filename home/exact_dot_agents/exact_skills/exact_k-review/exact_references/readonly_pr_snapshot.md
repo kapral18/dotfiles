@@ -17,8 +17,9 @@ Snapshot root: `/tmp/k-review/<owner>-<repo>-pr<number>/`, holding `manifest.jso
 - Diff and files: `diff.patch`, `files/<path>`, `base/<path>`, scoped as in Diff scope below.
 - Media and references: every attachment and every linked PR/issue the intake gate reads goes into the snapshot too (`media/`, `refs/`), per the two subsections below.
 - Write `manifest.json`; record `head_sha`, `base_sha`, `snapshot_at`, and `discussion_at` in the review queue (`~/.agents/skills/k-review/references/shared_rules.md` Review Queue).
-- Read the snapshot with targeted reads. Do not re-fetch with `gh` or `git show <head>:<path>` what the snapshot already holds.
-  The complete raw artifact is on disk, which satisfies the intake gate below without dumping JSON into context twice.
+- Read the complete body and discussion before relying on them; a saved unread artifact does not satisfy intake.
+  Reuse a completed read of the same snapshot, and use targeted source-file reads for code claims.
+  Do not re-fetch with `gh` or `git show <head>:<path>` what the snapshot already holds.
 
 ### Media
 

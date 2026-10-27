@@ -14,6 +14,28 @@ local row_count = 0
 local generation = 0
 local pending
 local cancel
+local launches = {}
+local shutting_down = false
+
+local function open(arguments, failure)
+  local task
+  task = hs.task.new("/usr/bin/open", function(code)
+    launches[task] = nil
+    if code ~= 0 and not shutting_down then
+      hs.alert.show(failure)
+    end
+  end, arguments)
+  if not task then
+    hs.alert.show(failure)
+    return
+  end
+  -- Keep each launcher alive independently of query cancellation and later selections.
+  launches[task] = true
+  if not task:start() then
+    launches[task] = nil
+    hs.alert.show(failure)
+  end
+end
 
 local function invalidate()
   generation = generation + 1
@@ -128,15 +150,18 @@ chooser = hs.chooser.new(function(choice)
   if choice.query then
     M.show(choice.query)
   elseif choice.url then
-    hs.urlevent.openURL(choice.url)
+    open({ "-u", choice.url }, "Could not open the selected URL")
   elseif choice.copy then
     if not hs.pasteboard.setContents(choice.copy) then
       hs.alert.show("Could not copy the selected text")
     end
   elseif choice.app then
-    if not hs.fs.attributes(choice.app, "mode") or not hs.application.launchOrFocus(choice.app) then
-      hs.alert.show("Application unavailable — reopen the panel to refresh")
+    local failure = "Application unavailable — reopen the panel to refresh"
+    if not hs.fs.attributes(choice.app, "mode") then
+      hs.alert.show(failure)
+      return
     end
+    open({ "-a", choice.app }, failure)
   end
 end)
 chooser:rows(8):width(55):placeholderText("Find apps, or use tr · gh · emoji · sym · ud")
@@ -191,10 +216,16 @@ end)
 
 local previous_shutdown = hs.shutdownCallback
 hs.shutdownCallback = function()
+  shutting_down = true
   invalidate()
   -- Native chooser GC clears callbacks without hiding the window.
   chooser:hide()
   panel_tap:stop()
+  for task in pairs(launches) do
+    if task:isRunning() then
+      task:terminate()
+    end
+  end
   if previous_shutdown then
     previous_shutdown()
   end

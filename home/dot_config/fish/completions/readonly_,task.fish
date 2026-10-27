@@ -1,4 +1,4 @@
-set -l __task_subcommands card check block reopen status scope correct pref steering hook claim stance finding
+set -l __task_subcommands card review check block reopen status scope correct pref steering hook claim stance finding
 
 function __task_items
     ,task card show 2>/dev/null | string replace -rf '^- \[.\] (D\d+): (.*)$' '$1\t$2'
@@ -7,6 +7,8 @@ end
 complete -c ,task -f
 complete -c ,task -s h -l help -d 'Show help'
 complete -c ,task -n "not __fish_seen_subcommand_from $__task_subcommands" -a card -d 'Write, show, or clear the intent card'
+complete -c ,task -n "not __fish_seen_subcommand_from $__task_subcommands" -a review -d 'Checkpoint review acceptance and print its history'
+complete -c ,task -n '__fish_seen_subcommand_from review' -l reason -x -d 'User change or evidence justifying revised acceptance'
 complete -c ,task -n "not __fish_seen_subcommand_from $__task_subcommands" -a check -d 'Mark a Done-when item met'
 complete -c ,task -n "not __fish_seen_subcommand_from $__task_subcommands" -a block -d 'Mark a Done-when item blocked'
 complete -c ,task -n "not __fish_seen_subcommand_from $__task_subcommands" -a reopen -d 'Mark a Done-when item open again'
@@ -33,7 +35,7 @@ complete -c ,task -n '__fish_seen_subcommand_from steering' -l recent -x -d 'Rec
 complete -c ,task -n '__fish_seen_subcommand_from hook; and not __fish_seen_subcommand_from prompt tool compact stop evidence user codex' -a 'prompt tool compact stop evidence user codex'
 complete -c ,task -n '__fish_seen_subcommand_from hook' -l harness -x -d 'Harness name'
 complete -c ,task -n '__fish_seen_subcommand_from hook' -l input -x -d 'JSON input'
-complete -c ,task -n '__fish_seen_subcommand_from check block reopen status scope correct' -l session -x -d 'Harness session id'
+complete -c ,task -n '__fish_seen_subcommand_from review check block reopen status scope correct' -l session -x -d 'Harness session id'
 
 complete -c ,task -n "not __fish_seen_subcommand_from $__task_subcommands" -a claim -d 'Record a factual claim and source'
 complete -c ,task -n "not __fish_seen_subcommand_from $__task_subcommands" -a stance -d 'Record a decision and its reason'

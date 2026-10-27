@@ -288,21 +288,135 @@ def remember_findings(card: dict, candidates: list[dict], records: list[dict]) -
     return kept
 
 
-def report_items(answer: str):
-    """Extract report prose, excluding fenced code; each bullet needs its own citation."""
-    section, item, fence, reported = None, "", None, False
-    for line in answer.splitlines():
-        stripped = line.strip()
-        if stripped.startswith(">"):
+_LIST = re.compile(r"^( {0,3}(?:[-+*]|\d{1,9}[.)]))( +|$)")
+_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+_HTML_BLOCK = re.compile(
+    r"^ {0,3}</?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|"
+    r"dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|"
+    r"iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|"
+    r"table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?:[ \t]|/?>|$)",
+    re.I,
+)
+
+
+def _html_end(text: str, paragraph: bool):
+    for opening, closing in ((r"<!--", r"-->"), (r"<\?", r"\?>"), (r"<!\[CDATA\[", r"\]\]>"), (r"<![A-Z]", r">")):
+        if re.match(r"^ {0,3}" + opening, text):
+            return re.compile(closing)
+    raw = re.match(r"^ {0,3}<(pre|script|style|textarea)(?:[ \t>]|$)", text, re.I)
+    if raw:
+        return re.compile(r"</" + raw[1] + ">", re.I)
+    if _HTML_BLOCK.match(text):
+        return re.compile(r"^ *$")
+    if not paragraph and re.match(
+        r"^ {0,3}(?:</[A-Za-z][A-Za-z0-9-]*[ \t]*>|<[A-Za-z][A-Za-z0-9-]*"
+        r"(?:[ \t]+[A-Za-z_:][\w.:-]*(?:[ \t]*=[ \t]*(?:[^\"'=<>` \t]+|'[^']*'|\"[^\"]*\"))?)*[ \t]*/?>)[ \t]*$",
+        text,
+    ):
+        return re.compile(r"^ *$")
+    return None
+
+
+def _opens_fence(marker):
+    return marker is not None and (marker[1][0] != "`" or "`" not in marker[2])
+
+
+def _thematic_break(text: str):
+    return re.match(r"^ {0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$", text) is not None
+
+
+def _interrupts_paragraph(text: str):
+    return (
+        not text.strip(" ")
+        or _opens_fence(_FENCE.match(text))
+        or _thematic_break(text)
+        or _html_end(text, True) is not None
+        or re.match(r"^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|0{0,8}1[.)])[ \t]+[^ \t])", text) is not None
+    )
+
+
+def _continue_containers(text: str, containers: list[tuple[int | None, bool]]):
+    # None denotes a quote; a list stores its content indent and whether it is empty.
+    matched = 0
+    for index, (indent, empty) in enumerate(containers):
+        if indent is None:
+            quote = re.match(r"^ {0,3}> ?", text)
+            if not quote:
+                break
+            text = text[quote.end() :]
+        elif not text.strip(" "):
+            if empty:
+                break
+        else:
+            if len(text) - len(text.lstrip(" ")) < indent:
+                break
+            text = text[indent:]
+            containers[index] = (indent, False)
+        matched += 1
+    return text, matched
+
+
+def _open_containers(text: str, containers: list[tuple[int | None, bool]]):
+    while True:
+        quote = re.match(r"^ {0,3}> ?", text)
+        if quote:
+            containers.append((None, False))
+            text = text[quote.end() :]
             continue
-        marker = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
+        item = _LIST.match(text)
+        if not item or _thematic_break(text):
+            return text
+        empty = item.end() == len(text)
+        indent = len(item[1]) + (1 if len(item[2]) > 4 or empty else len(item[2]))
+        containers.append((indent, empty))
+        text = text[indent:]
+
+
+def _report_prose(answer: str):
+    """Follow the Markdown containers used by stop-review's prose checks."""
+    containers: list[tuple[int | None, bool]] = []
+    fence, html, paragraph = None, None, False
+    for line in answer.splitlines():
+        text, matched = _continue_containers(line.expandtabs(4), containers)
+        lazy = matched < len(containers) and paragraph and not _LIST.match(text) and not _interrupts_paragraph(text)
+        if not lazy and matched < len(containers):
+            del containers[matched:]
+            fence, html, paragraph = None, None, False
+        depth = len(containers)
+        if not (fence or html or lazy or (paragraph and not _interrupts_paragraph(text))):
+            text = _open_containers(text, containers)
+        if len(containers) != depth:
+            paragraph = False
+        marker = _FENCE.match(text)
         if fence:
             if marker and marker[1][0] == fence[0] and len(marker[1]) >= len(fence) and not marker[2].strip(" \t"):
                 fence = None
             continue
-        if marker and (marker[1][0] != "`" or "`" not in marker[2]):
-            fence = marker[1]
+        if not html and not lazy and _opens_fence(marker):
+            fence, paragraph = marker[1], False
             continue
+        if not html and not lazy:
+            html = _html_end(text, paragraph)
+        is_html = html is not None
+        if html and html.search(text):
+            html = None
+        setext = not lazy and paragraph and re.match(r"^ {0,3}(?:=+|-+)[ \t]*$", text)
+        paragraph = (
+            not is_html
+            and bool(text.strip(" "))
+            and not setext
+            and not _interrupts_paragraph(text)
+            and (paragraph or not text.startswith("    "))
+        )
+        if not any(indent is None for indent, _ in containers):
+            yield line
+
+
+def report_items(answer: str):
+    """Extract report prose; each bullet needs its own citation."""
+    section, item, reported = None, "", False
+    for line in _report_prose(answer):
+        stripped = line.strip()
         match = re.match(
             r"^[\s*_#+-]*(Checked|Assumptions|Proposed|Decision needed|Open)(?:\*\*|__)?"
             r"(?:[ \t]*\([^)\n]*\))?(?::(?:\*\*|__)?\s*(.*)|[ \t]*)$",

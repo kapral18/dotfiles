@@ -118,6 +118,10 @@ GATES: tuple[Gate, ...] = (
 
 TEST_RULES: tuple[TestRule, ...] = (
     TestRule(
+        prefixes=("home/exact_lib/exact_,task/evidence.py",),
+        tests=("tests/test_task_evidence.py",),
+    ),
+    TestRule(
         prefixes=(
             "home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_markdown.lua",
             "scripts/tests/neovim_markdown_preview.lua",

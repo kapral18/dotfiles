@@ -67,7 +67,6 @@ export default Plugin.define({
     // Scope and zoom-out notes follow the result the model reads.
     await ctx.tool.hook("execute.after", async (event) => {
       if (await isChild(event.sessionID)) return
-      if (event.status !== "completed" && !isShellTool(event.tool)) return
       const input = (event.input ?? {}) as Record<string, unknown>
       const write = ["edit", "write", "patch"].includes(event.tool)
       const paths = write && typeof input.path === "string" ? [input.path] : []

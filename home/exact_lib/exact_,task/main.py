@@ -23,11 +23,13 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 import tempfile
 import time
 from pathlib import Path
+from typing import Iterable
 
 import evidence
 
@@ -41,6 +43,7 @@ MAX_CORRECTIONS = 5
 MAX_CONTINUES = 3
 CARD_SOFT_LIMIT = 2048
 SCOPE_CHANGES_SHOWN = 5
+SNAPSHOT_VERSION = 4
 SHELL_TOOLS = frozenset({"bash", "shell", "exec_command", "write_stdin", "python", "powershell", "eval"})
 WRITE_TOOLS = frozenset({"edit", "write", "multiedit", "notebookedit", "apply_patch", "applypatch", "patch"})
 SECTIONS = {
@@ -72,12 +75,16 @@ def root_dir() -> Path:
     return Path(override) if override else Path.home() / ".local/share/agent-tasks"
 
 
-def git(cwd: Path, *args: str) -> str | None:
+def run_git(cwd: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
     try:
-        run = subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True, timeout=15)
+        return subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True, timeout=15)
     except (OSError, subprocess.TimeoutExpired):
         return None
-    return run.stdout if run.returncode == 0 else None
+
+
+def git(cwd: Path, *args: str) -> str | None:
+    run = run_git(cwd, *args)
+    return run.stdout if run is not None and run.returncode == 0 else None
 
 
 def worktree_root(cwd: Path) -> Path | None:
@@ -147,7 +154,10 @@ class Task:
         recent = set(self.recent_sessions()) | {session}
         turns = {sid: value for sid, value in (self.state.get("turns") or {}).items() if sid in recent}
         self.state["turns"] = turns
-        return turns.setdefault(session, {})
+        turn = turns.setdefault(session, {})
+        if turn.get("snapshot_version") != SNAPSHOT_VERSION:
+            turn.update(snapshot_version=SNAPSHOT_VERSION, pending={}, background={}, until_stop={}, originals={})
+        return turn
 
     def recent_sessions(self) -> list[str]:
         """Sessions that prompted in this worktree within the last RECENT seconds."""
@@ -160,7 +170,7 @@ class Task:
 
     def relative(self, path: str) -> str:
         """A path as `git status` names it: relative to the worktree root when inside it."""
-        absolute = os.path.realpath(os.path.join(str(self.cwd), os.path.expanduser(path)))
+        absolute = resolve(self, path, follow=False)
         if self.root and (absolute == str(self.root) or absolute.startswith(str(self.root) + "/")):
             return os.path.relpath(absolute, self.root)
         return absolute
@@ -175,17 +185,36 @@ class Task:
     def dirty(self) -> list[str]:
         return [path for path, _ in self.status()]
 
-    def snapshot(self) -> dict[str, str]:
-        """Each dirty path's mtime and size, `U` marking an untracked one, to tell which a tool call changed."""
-        shot: dict[str, str] = {}
-        for path, code in self.status():
-            try:
-                st = os.stat(os.path.join(str(self.root), path))
-                mark = f"{st.st_mtime_ns}:{st.st_size}"
-            except OSError:
-                mark = "gone"
-            shot[path] = ("U" if code == "??" else "T") + mark
-        return shot
+    def snapshot(self, paths: Iterable[str] | None = None) -> dict[str, str]:
+        """Fingerprint file state, ignoring Git status and timestamps for readable files."""
+        base = self.root or self.cwd
+        return {path: file_state(base / path) for path in (self.dirty() if paths is None else paths)}
+
+    def shell_domain(self, files: dict[str, str]) -> dict | None:
+        """Freeze tracked names and discovery exclusions before a shell changes them."""
+        if not self.root:
+            return None
+        listed = git(self.root, "ls-files", "-v", "-f", "--stage", "-z")
+        ignored = git(self.root, "ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z")
+        metadata = git(self.root, "rev-parse", "--path-format=absolute", "--git-dir", "--git-common-dir")
+        if listed is None or ignored is None or metadata is None:
+            return None
+        excluded = {p for p in ignored.split("\0") if p} | {p for p in files if p.endswith("/")} | {".git/"}
+        tracked = set()
+        for entry in listed.split("\0"):
+            header, sep, path = entry.partition("\t")
+            if not sep:
+                continue
+            tracked.add(path)
+            if header[0] == "S" or header[0].islower():
+                excluded.add(path)
+            if header[2:8] == "160000":
+                excluded.add(path + "/")
+        for directory in metadata.splitlines():
+            relative = self.relative(directory)
+            if not os.path.isabs(relative):
+                excluded.add(relative.rstrip("/") + "/")
+        return {"excluded": sorted(excluded), "tracked": sorted(tracked)}
 
     def status(self) -> list[tuple[str, str]]:
         if not self.root:
@@ -202,6 +231,8 @@ class Task:
                 paths.append((entry[3:], entry[:2]))
                 if "R" in entry[:2] or "C" in entry[:2]:
                     i += 1
+                    if "R" in entry[:2] and i < len(tokens) and tokens[i]:
+                        paths.append((tokens[i], " D"))
             i += 1
         return paths
 
@@ -291,6 +322,29 @@ def open_items(card: dict) -> list[dict]:
 # --- scope -------------------------------------------------------------------
 
 
+def file_state(path: Path) -> str:
+    try:
+        info = path.lstat()
+    except (FileNotFoundError, NotADirectoryError):
+        return "gone"
+    except OSError as error:
+        return f"unreadable:{error.errno}"
+    try:
+        if stat.S_ISLNK(info.st_mode):
+            content = os.readlink(path)
+        elif stat.S_ISREG(info.st_mode):
+            digest = hashlib.sha256()
+            with path.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            content = digest.hexdigest()
+        else:
+            content = ""
+    except OSError as error:
+        content = f"unreadable:{error.errno}:{info.st_size}:{info.st_mtime_ns}:{info.st_ctime_ns}"
+    return f"{info.st_mode}:{content}"
+
+
 def scratch(path: str) -> bool:
     roots = ["/tmp/", "/private/tmp/", "/var/folders/", "/private/var/folders/", str(root_dir()) + "/"]
     tmpdir = os.environ.get("TMPDIR")
@@ -305,19 +359,27 @@ def inside(root: Path | None, absolute: str) -> bool:
     return bool(root) and (absolute == str(root) or absolute.startswith(str(root) + "/"))
 
 
-def resolve(task: Task, path: str) -> str:
-    """The absolute path with symlinks resolved, as git reports the worktree root."""
-    return os.path.realpath(os.path.join(str(task.cwd), os.path.expanduser(path)))
+def resolve(task: Task, path: str, *, follow: bool = True) -> str:
+    """Resolve directory aliases, optionally retaining a symlink entry itself."""
+    absolute = os.path.join(str(task.cwd), os.path.expanduser(path))
+    if follow:
+        return os.path.realpath(absolute)
+    return os.path.normpath(os.path.join(os.path.realpath(os.path.dirname(absolute)), os.path.basename(absolute)))
 
 
 def free(task: Task, path: str) -> bool:
     """Scratch space outside the worktree, which no card has to cover."""
     absolute = resolve(task, path)
-    return scratch(absolute) and not inside(task.root, absolute)
+    return (
+        scratch(absolute)
+        and not inside(task.root, absolute)
+        and not inside(task.root, resolve(task, path, follow=False))
+    )
 
 
 def in_scope(task: Task, path: str) -> bool:
     absolute = resolve(task, path)
+    named = resolve(task, path, follow=False)
     if free(task, path):
         return True
     card = task.card or {}
@@ -326,13 +388,16 @@ def in_scope(task: Task, path: str) -> bool:
         entry = raw.strip().strip("`")
         if entry in ("*", "**", "."):
             return True
-        target = os.path.realpath(os.path.join(str(task.root or task.cwd), os.path.expanduser(entry))).rstrip("/")
-        if absolute == target or absolute.startswith(target + "/") or fnmatch.fnmatch(absolute, target):
-            return True
+        entry_path = os.path.join(str(task.root or task.cwd), os.path.expanduser(entry))
+        targets = {resolve(task, entry_path), resolve(task, entry_path, follow=False)}
+        for target in targets:
+            target = target.rstrip("/")
+            if any(p == target or p.startswith(target + "/") or fnmatch.fnmatch(p, target) for p in (absolute, named)):
+                return True
         # `**/*.py` also covers `a.py` at the root.
         if entry.startswith("**/"):
             direct = os.path.join(str(task.root or task.cwd), entry[3:])
-            if fnmatch.fnmatch(absolute, direct):
+            if fnmatch.fnmatch(absolute, direct) or fnmatch.fnmatch(named, direct):
                 return True
     return False
 
@@ -420,7 +485,7 @@ def hook_prompt(task: Task, data: dict, harness: str) -> dict:
     turn = task.turn(session)
     compacted = turn.pop("compacted", False)
     # Shell snapshots belong to individual calls; a prompt starts a new turn's attribution.
-    turn.update(continues=0, last_unmet=None, steps=0, pending={}, until_stop={}, touched=[], wrote=False)
+    turn.update(continues=0, last_unmet=None, steps=0, pending={}, until_stop={}, touched=[], originals={}, wrote=False)
     parts: list[str] = []
     unowned = task.cards.get("unknown")
     if unowned and not task.card and session != "unknown":
@@ -464,6 +529,29 @@ def hook_prompt(task: Task, data: dict, harness: str) -> dict:
     return {"context": "\n\n".join(parts)} if parts else {}
 
 
+def capture(task: Task, turn: dict, files: dict[str, str], *, shell: bool) -> dict:
+    # The sequence survives prompts because background snapshots can outlive a turn.
+    turn["capture_seq"] = turn.get("capture_seq", 0) + 1
+    return {
+        "order": turn["capture_seq"],
+        "shell": shell,
+        "files": files,
+        "domain": task.shell_domain(files) if shell else None,
+    }
+
+
+def shell_covers(start: dict, path: str) -> bool:
+    domain = start["domain"]
+    return (
+        domain is not None
+        and not os.path.isabs(path)
+        and not any(
+            path == entry.rstrip("/") or (entry.endswith("/") and path.startswith(entry))
+            for entry in domain["excluded"]
+        )
+    )
+
+
 def hook_tool(task: Task, data: dict, harness: str) -> dict:
     session = task.session(data.get("session"))
     tool = (data.get("tool") or "").lower()
@@ -481,14 +569,25 @@ def hook_tool(task: Task, data: dict, harness: str) -> dict:
             task.save_state()
             rule = CARD_RULE.replace(",task card set", f",task card set --session {session}")
             return {"deny": f"intent-guard: no intent card for this task yet. {rule} Then retry this edit."}
-    if tool in SHELL_TOOLS:
+    if tool in SHELL_TOOLS or is_write:
         pending = turn.setdefault("pending", {})
         background = turn.setdefault("background", {})
         until_stop = turn.setdefault("until_stop", {})
         call_id = str(data.get("call_id") or tool)
         background_id = str(data.get("background_id") or call_id)
         if before:
-            pending[call_id] = task.snapshot()
+            pending[call_id] = capture(
+                task,
+                turn,
+                (
+                    task.snapshot()
+                    if tool in SHELL_TOOLS
+                    else task.snapshot(
+                        {task.relative(p) for p in paths} | {task.relative(resolve(task, p)) for p in paths}
+                    )
+                ),
+                shell=tool in SHELL_TOOLS,
+            )
         else:
             start = pending.pop(call_id, None)
             if start is None:
@@ -496,10 +595,24 @@ def hook_tool(task: Task, data: dict, harness: str) -> dict:
             if start is None:
                 start = until_stop.pop(background_id, None)
             if start is not None:
-                shot = task.snapshot()
-                paths = [str(task.root / p) for p in start.keys() | shot.keys() if start.get(p) != shot.get(p)]
+                files = start["files"]
+                originals = turn.setdefault("originals", {})
+                candidates = set(task.dirty()) if start["shell"] else {task.relative(p) for p in paths}
+                if start["shell"]:
+                    candidates = {p for p in candidates | originals.keys() if shell_covers(start, p)}
+                shot = task.snapshot(files.keys() | candidates)
+                tracked = set(start["domain"]["tracked"]) if start["shell"] and start["domain"] else set()
+                before_states = {p: files.get(p, None if p in tracked else "gone") for p in shot}
+                changed = {p for p in shot if before_states[p] != shot[p]}
+                for path in changed | (originals.keys() & shot.keys()):
+                    previous = originals.get(path)
+                    if previous is None or start["order"] < previous["order"]:
+                        originals[path] = {"order": start["order"], "state": before_states[path]}
+                paths = [str((task.root or task.cwd) / p) for p in sorted(changed)]
                 if data.get("background"):
-                    (until_stop if data.get("until_stop") else background)[background_id] = shot
+                    (until_stop if data.get("until_stop") else background)[background_id] = capture(
+                        task, turn, shot, shell=True
+                    )
     if not before and paths and (is_write or tool in SHELL_TOOLS):
         touched = [p for p in paths if not free(task, p)]
         if touched:
@@ -565,12 +678,19 @@ def hook_stop(task: Task, data: dict, harness: str) -> dict:
         return {}
     now_dirty = task.dirty()
     touched = set(turn.get("touched") or [])
+    originals = {p: saved["state"] for p, saved in turn.get("originals", {}).items()}
     # A turn whose tools wrote nothing (a question, a status check) is not held to the card's open items.
     if not turn.get("wrote"):
         return {}
     unmet = open_items(card)
     # Only files observed in this turn's edits count; a user edit between calls is left alone.
-    outside = [p for p in now_dirty if p in touched and not in_scope(task, os.path.join(str(task.root), p))]
+    base = task.root or task.cwd
+    outside = [
+        p
+        for p in sorted(touched)
+        if not in_scope(task, str(base / p))
+        and (file_state(base / p) != originals[p] if originals.get(p) is not None else p in now_dirty)
+    ]
     if not unmet and not outside:
         turn.update(continues=0, last_unmet=None)
         task.save_state()
@@ -771,6 +891,7 @@ def cmd_card_set(args: argparse.Namespace) -> int:
         "earlier_scope_changes": (old.get("earlier_scope_changes", []) if old else []) + archived,
         "corrections": old.get("corrections", []) if old else [],
         "goal_history": (old.get("goal_history", []) if old else []) + ([old["goal"]] if goal_changed else []),
+        "reviews": old.get("reviews", []) if old else [],
         **{key: old.get(key, []) if old else [] for key in ("claims", "stances", "findings")},
     }
     if archived:
@@ -818,6 +939,35 @@ def cmd_card_clear(args: argparse.Namespace) -> int:
     task.state.get("turns", {}).pop(task.session_id, None)
     task.state.get("user_messages", {}).pop(task.session_id, None)
     task.save_state()
+    return 0
+
+
+def cmd_review(args: argparse.Namespace) -> int:
+    """Checkpoint acceptance separately from completion claims and review verdicts."""
+    task = Task(Path.cwd(), args.session)
+    card = require_card(task, args.session)
+    acceptance = {
+        key: card.get(key, []) for key in ("goal", "reading", "scope", "not_doing", "scope_changes", "corrections")
+    }
+    acceptance["done"] = [{"id": item["id"], "text": item["text"]} for item in card["done"]]
+    reviews = card.setdefault("reviews", [])
+    changed = not reviews or reviews[-1]["acceptance"] != acceptance
+    reason = (args.reason or "").strip()
+    if changed and reviews and not reason:
+        raise ValueError(
+            "review acceptance changed; rerun review --reason with the user change or evidence justifying it"
+        )
+    if changed:
+        reviews.append(
+            {
+                "version": len(reviews) + 1,
+                "created": now(),
+                "reason": reason or "Initial review",
+                "acceptance": acceptance,
+            }
+        )
+        task.save_card()
+    print(json.dumps(reviews, indent=2, ensure_ascii=False))
     return 0
 
 
@@ -975,6 +1125,11 @@ def build_parser() -> argparse.ArgumentParser:
     card_clear = card.add_parser("clear", help="drop this session's card and turn state")
     card_clear.add_argument("--session", help=SESSION_HELP)
     card_clear.set_defaults(func=cmd_card_clear)
+
+    review = sub.add_parser("review", help="checkpoint review acceptance; print its version history as JSON")
+    review.add_argument("--reason", help="user change or evidence justifying changed acceptance")
+    review.add_argument("--session", help=SESSION_HELP)
+    review.set_defaults(func=cmd_review)
 
     for name, func, label, help_text in (
         (

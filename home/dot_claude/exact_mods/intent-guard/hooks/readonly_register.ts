@@ -51,8 +51,8 @@ export const register: Register = on => {
     const { deny } = await task($, 'tool', { ...input, phase: 'before' })
     if (deny) return { deny }
     const ran = await next(e)
-    if (ran.deny !== undefined || ran.isError === true) return ran
     const { note } = await task($, 'tool', { ...input, phase: 'after' })
+    if (ran.deny !== undefined) return ran
     return note ? { ...ran, context: [...(ran.context ?? []), note] } : ran
   }).catch(($, e, next) => next(e))
 

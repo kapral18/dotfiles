@@ -51,6 +51,8 @@ The chooser's own key handling does nothing while another app is active (the
 usual case after the gesture).
 Activating a status-only row dismisses without taking an action. Copy actions do
 not paste into the previous app.
+App and browser launches run in background tasks, so activation releases the
+panel without waiting for the application to start. Launch failures show an alert.
 
 Application discovery refreshes on each opening. It scans `/Applications`,
 `/System/Applications`, `~/Applications`, CoreServices' Applications folder and
@@ -82,6 +84,12 @@ these codes are offered: `en`, `ru`, `nl`, `es`, `fr`, `hy`, `de`, `it`, `tr`,
 `id`, `vi`; others are rejected without a request. Text is sent to OpenRouter
 and its upstream provider.
 
+Results show the translation in its native script, with a Latin-script
+transliteration beneath it for an English reader. Text already in Latin script
+is not repeated. Enter copies only the translation, preserving its line breaks.
+The model returns both fields together; malformed or missing fields produce an
+error row.
+
 The API key comes from `pass show openrouter/api/token` on the first translation
 and stays only in Hammerspoon's memory until reload; a 401 response drops it so
 the next query reads `pass` again. A missing key, network failure, API error or
@@ -89,7 +97,7 @@ cut-off reply (`finish_reason` other than `stop`) appears as a non-selectable
 row, never as a copyable partial translation. Results from superseded queries
 are ignored. If the GPG passphrase is not cached, the first lookup opens
 pinentry, which takes focus and closes the panel; reopen it and retry once the
-passphrase is entered. In the final native check, all 13 non-English codes and
+passphrase is entered. Before transliteration was added, a native check found all 13 non-English codes and
 Armenian/Azerbaijani→English were correct; the first translation (including the
 `pass` read) took about 1.6 s, later ones about 0.8 s median. Requests ask
 OpenRouter to route by throughput: in 72 measured requests that stayed under

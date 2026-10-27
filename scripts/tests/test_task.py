@@ -78,6 +78,107 @@ class TestTask(unittest.TestCase):
         self.hook("prompt", text="add an export button")
         return self.run_task("card", "set", stdin=text)
 
+    def test_WHEN_review_starts_SHOULD_keep_an_acceptance_snapshot(self):
+        self.set_card()
+
+        actual = self.run_task("review", "--session", "s1")
+
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+        baseline = json.loads(actual.stdout)[0]
+        self.assertEqual(baseline["version"], 1)
+        self.assertEqual(baseline["acceptance"]["goal"], "Add the export button")
+        self.assertEqual(
+            baseline["acceptance"]["done"],
+            [{"id": "D1", "text": "the button downloads a CSV"}, {"id": "D2", "text": "tests cover the export"}],
+        )
+        stored = json.loads(self.run_task("card", "show", "--json").stdout)
+        self.assertEqual(stored["reviews"], [baseline])
+
+    def test_WHEN_only_completion_changes_SHOULD_reuse_the_review_version(self):
+        self.set_card()
+        baseline = self.run_task("review").stdout
+        self.mark("D1")
+        self.run_task("block", "D2", "--reason", "waiting for a dependency")
+
+        actual = self.run_task("review")
+
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+        self.assertEqual(json.loads(actual.stdout), json.loads(baseline))
+
+    def test_WHEN_acceptance_changes_without_a_reason_SHOULD_preserve_the_baseline(self):
+        self.set_card()
+        baseline = json.loads(self.run_task("review").stdout)
+        self.run_task("card", "set", stdin=CARD.replace("the button downloads a CSV", "the button downloads XLSX"))
+
+        actual = self.run_task("review", "--reason", " ")
+
+        self.assertEqual(actual.returncode, 1, actual.stderr)
+        self.assertIn("review acceptance changed", actual.stderr)
+        stored = json.loads(self.run_task("card", "show", "--json").stdout)
+        self.assertEqual(stored["reviews"], baseline)
+
+    def test_WHEN_a_revision_has_a_reason_SHOULD_keep_both_meanings_of_D1(self):
+        self.set_card()
+        self.run_task("review")
+        self.run_task("card", "set", stdin=CARD.replace("the button downloads a CSV", "the button downloads XLSX"))
+
+        actual = self.run_task("review", "--reason", "User changed the requested export format to XLSX")
+
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+        versions = json.loads(actual.stdout)
+        self.assertEqual(len(versions), 2)
+        self.assertEqual(versions[0]["acceptance"]["done"][0], {"id": "D1", "text": "the button downloads a CSV"})
+        self.assertEqual(versions[1]["version"], 2)
+        self.assertEqual(versions[1]["acceptance"]["done"][0], {"id": "D1", "text": "the button downloads XLSX"})
+        self.assertEqual(versions[1]["reason"], "User changed the requested export format to XLSX")
+
+    def test_WHEN_scope_changes_SHOULD_require_an_explicit_review_revision(self):
+        self.set_card()
+        self.run_task("review")
+        self.run_task("scope", "add", "éxport/link", "--reason", "A preserved caller needs the fix")
+
+        actual = self.run_task("review")
+
+        self.assertEqual(actual.returncode, 1, actual.stderr)
+        self.assertIn("--reason", actual.stderr)
+
+    def test_WHEN_the_goal_changes_SHOULD_keep_the_previous_review_contract(self):
+        self.set_card()
+        baseline = json.loads(self.run_task("review").stdout)
+        self.run_task("card", "set", stdin=CARD.replace("Add the export button", "Add the import button"))
+
+        actual = self.run_task("review")
+
+        self.assertEqual(actual.returncode, 1, actual.stderr)
+        stored = json.loads(self.run_task("card", "show", "--json").stdout)
+        self.assertEqual(stored["reviews"], baseline)
+
+    def test_WHEN_a_card_is_cleared_SHOULD_start_review_history_again(self):
+        self.set_card()
+        self.run_task("review")
+        self.run_task("card", "clear", "--session", "s1")
+        self.run_task("card", "set", "--session", "s1", stdin=CARD)
+
+        actual = self.run_task("review", "--session", "s1")
+
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+        self.assertEqual(len(json.loads(actual.stdout)), 1)
+        self.assertEqual(json.loads(actual.stdout)[0]["version"], 1)
+
+    def test_WHEN_sessions_share_a_worktree_SHOULD_keep_review_histories_separate(self):
+        self.set_card()
+        self.run_task("review", "--session", "s1")
+        self.hook("prompt", session="s2", text="another task")
+        self.run_task("card", "set", "--session", "s2", stdin=CARD.replace("export button", "import button"))
+
+        actual = self.run_task("review", "--session", "s2")
+
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+        self.assertEqual(len(json.loads(actual.stdout)), 1)
+        self.assertEqual(json.loads(actual.stdout)[0]["acceptance"]["goal"], "Add the import button")
+        first = json.loads(self.run_task("card", "show", "--json", "--session", "s1").stdout)
+        self.assertEqual(first["reviews"][0]["acceptance"]["goal"], "Add the export button")
+
     def claim(self, text="README contains readme", session="s1"):
         result = self.run_task(
             "claim",
@@ -848,6 +949,215 @@ class TestTask(unittest.TestCase):
         self.assertIn("new.py", result.get("note", ""))
         self.assertIn("D1", self.hook("stop", answer="done").get("block", ""))
 
+    def test_SHOULD_only_block_actual_changes_through_a_staging_and_restore_cycle(self):
+        target = self.repo / "éxport.txt"
+        target.write_text("original\n")
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+
+        self.hook("tool", tool="Bash", phase="before", call_id="stage")
+        subprocess.run(["git", "add", "éxport.txt"], cwd=self.repo, env=self.env, check=True)
+        self.assertEqual(self.hook("tool", tool="Bash", phase="after", call_id="stage"), {})
+        self.assertEqual(self.hook("stop", answer="done"), {})
+
+        self.hook("tool", tool="Bash", phase="before", call_id="unstage")
+        subprocess.run(["git", "reset", "-q", "HEAD", "--", "éxport.txt"], cwd=self.repo, env=self.env, check=True)
+        self.assertEqual(self.hook("tool", tool="Bash", phase="after", call_id="unstage"), {})
+
+        self.hook("tool", tool="Bash", phase="before", call_id="touch")
+        stamp = target.stat()
+        os.utime(target, ns=(stamp.st_atime_ns, stamp.st_mtime_ns + 1_000_000_000))
+        self.assertEqual(self.hook("tool", tool="Bash", phase="after", call_id="touch"), {})
+
+        self.hook("tool", tool="Bash", phase="before", call_id="edit")
+        stamp = target.stat()
+        target.write_text("modified\n")
+        os.utime(target, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+        actual = self.hook("tool", tool="Bash", phase="after", call_id="edit")
+        self.assertIn("éxport.txt", actual.get("note", ""))
+        self.assertIn("éxport.txt", self.hook("stop", answer="done").get("block", ""))
+
+        self.hook("tool", tool="Bash", phase="before", call_id="restore")
+        target.write_text("original\n")
+        self.hook("tool", tool="Bash", phase="after", call_id="restore")
+        self.assertEqual(self.run_task("card", "set", stdin=CARD).returncode, 0)
+        self.assertEqual(self.hook("stop", answer="done"), {})
+
+    def test_SHOULD_clear_a_direct_edit_restored_to_preexisting_dirty_content_at_stop(self):
+        target = self.repo / "README.md"
+        target.write_text("the user's preexisting change\n")
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Edit", paths=["README.md"], phase="before", call_id="edit")
+        target.write_text("the agent's change\n")
+        actual = self.hook("tool", tool="Edit", paths=["README.md"], phase="after", call_id="edit")
+        self.assertIn("README.md", actual.get("note", ""))
+
+        target.write_text("the user's preexisting change\n")
+
+        self.assertEqual(self.hook("stop", answer="restored"), {})
+
+    def test_SHOULD_block_deletion_until_an_untracked_file_is_restored(self):
+        target = self.repo / "notes.txt"
+        target.write_text("preexisting\n")
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Bash", phase="before", call_id="delete")
+        target.unlink()
+        self.hook("tool", tool="Bash", phase="after", call_id="delete")
+        self.assertIn("notes.txt", self.hook("stop", answer="done").get("block", ""))
+
+        self.hook("tool", tool="Write", paths=["notes.txt"], phase="before", call_id="readd")
+        target.write_text("preexisting\n")
+        self.hook("tool", tool="Write", paths=["notes.txt"], phase="after", call_id="readd")
+
+        self.assertEqual(self.run_task("card", "set", stdin=CARD).returncode, 0)
+        self.assertEqual(self.hook("stop", answer="restored"), {})
+
+    def test_SHOULD_block_a_clean_tracked_deletion_until_restored(self):
+        target = self.repo / "README.md"
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Bash", phase="before", call_id="delete")
+
+        target.unlink()
+
+        actual = self.hook("tool", tool="Bash", phase="after", call_id="delete")
+        self.assertIn("README.md", actual.get("note", ""))
+        self.assertIn("README.md", self.hook("stop", answer="done").get("block", ""))
+
+        self.hook("tool", tool="Write", paths=["README.md"], phase="before", call_id="restore")
+        target.write_text("readme\n")
+        self.hook("tool", tool="Write", paths=["README.md"], phase="after", call_id="restore")
+        self.assertEqual(self.run_task("card", "set", stdin=CARD).returncode, 0)
+        self.assertEqual(self.hook("stop", answer="restored"), {})
+
+    def test_SHOULD_ignore_a_commit_that_leaves_existing_file_contents_unchanged(self):
+        target = self.repo / "notes.txt"
+        target.write_text("preexisting\n")
+        self.set_card()
+        self.hook("tool", tool="Bash", phase="before", call_id="commit")
+        subprocess.run(["git", "add", "notes.txt"], cwd=self.repo, env=self.env, check=True)
+        subprocess.run(
+            ["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "fixture"],
+            cwd=self.repo,
+            env=self.env,
+            check=True,
+        )
+
+        self.assertEqual(self.hook("tool", tool="Bash", phase="after", call_id="commit"), {})
+        self.assertEqual(self.hook("stop", answer="no file edit"), {})
+
+    def test_SHOULD_detect_permission_changes_without_a_timestamp_change(self):
+        target = self.repo / "notes.txt"
+        target.write_text("preexisting\n")
+        target.chmod(0o644)
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Bash", phase="before", call_id="chmod")
+
+        target.chmod(0o600)
+
+        actual = self.hook("tool", tool="Bash", phase="after", call_id="chmod")
+        self.assertIn("notes.txt", actual.get("note", ""))
+        self.assertIn("notes.txt", self.hook("stop", answer="done").get("block", ""))
+
+    def test_SHOULD_attribute_a_change_that_makes_a_dirty_file_unreadable(self):
+        target = self.repo / "notes.txt"
+        target.write_text("preexisting\n")
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Bash", phase="before", call_id="chmod")
+
+        target.chmod(0)
+
+        actual = self.hook("tool", tool="Bash", phase="after", call_id="chmod")
+        self.assertIn("notes.txt", actual.get("note", ""))
+        self.assertIn("notes.txt", self.hook("stop", answer="done").get("block", ""))
+
+    def test_SHOULD_keep_tracking_other_writes_with_an_unreadable_dirty_file(self):
+        target = self.repo / "unreadable.txt"
+        target.write_text("preexisting\n")
+        target.chmod(0)
+        self.set_card()
+        self.hook("tool", tool="Bash", phase="before", call_id="write")
+
+        (self.repo / "notes.txt").write_text("new\n")
+
+        actual = self.hook("tool", tool="Bash", phase="after", call_id="write")
+        self.assertIn("notes.txt", actual.get("note", ""))
+        self.assertNotIn("unreadable.txt", actual.get("note", ""))
+
+    def test_SHOULD_track_symlink_retargeting_instead_of_following_its_target(self):
+        other = Path(self.tmp.name) / "other.txt"
+        other.write_bytes(self.proof.read_bytes())
+        stamp = self.proof.stat()
+        os.utime(other, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+        link = self.repo / "alias"
+        link.symlink_to(self.proof)
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Bash", phase="before", call_id="retarget")
+
+        link.unlink()
+        link.symlink_to(other)
+
+        actual = self.hook("tool", tool="Bash", phase="after", call_id="retarget")
+        self.assertIn("alias", actual.get("note", ""))
+        self.assertIn("alias", self.hook("stop", answer="done").get("block", ""))
+
+    def test_SHOULD_detect_replacing_a_symlink_with_a_file_of_the_same_contents(self):
+        link = self.repo / "alias"
+        link.symlink_to(self.proof)
+        stamp = self.proof.stat()
+        self.set_card()
+        self.hook("tool", tool="Bash", phase="before", call_id="replace")
+
+        link.unlink()
+        link.write_bytes(self.proof.read_bytes())
+        os.utime(link, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+
+        actual = self.hook("tool", tool="Bash", phase="after", call_id="replace")
+        self.assertIn("alias", actual.get("note", ""))
+
+    def test_SHOULD_attribute_a_direct_edit_through_a_symlink_to_its_target(self):
+        (self.repo / "src").mkdir()
+        (self.repo / "src/alias").symlink_to(self.repo / "README.md")
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Edit", paths=["src/alias"], phase="before", call_id="edit")
+
+        (self.repo / "README.md").write_text("edited through src/alias\n")
+
+        actual = self.hook("tool", tool="Edit", paths=["src/alias"], phase="after", call_id="edit")
+        self.assertIn("README.md", actual.get("note", ""))
+        self.assertIn("README.md", self.hook("stop", answer="done").get("block", ""))
+
+    def test_SHOULD_resolve_symlink_parents_before_dot_dot_in_direct_edits(self):
+        (self.repo / "outside/nested").mkdir(parents=True)
+        (self.repo / "src").mkdir()
+        (self.repo / "src/link").symlink_to("../outside/nested", target_is_directory=True)
+        target = self.repo / "outside/target.txt"
+        target.write_text("preexisting\n")
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Edit", paths=["src/link/../target.txt"], phase="before", call_id="edit")
+
+        target.write_text("edited\n")
+
+        actual = self.hook("tool", tool="Edit", paths=["src/link/../target.txt"], phase="after", call_id="edit")
+        self.assertIn("outside/target.txt", actual.get("note", ""))
+        self.assertIn("outside/target.txt", self.hook("stop", answer="done").get("block", ""))
+
     def test_SHOULD_parse_omp_hashline_targets_and_move_destinations(self):
         self.hook("prompt", text="edit")
         patch = "*** Begin Patch\n[src/a.py#abcd]\nPUT 1.=1:\n+new\nMV docs/new name.py\n*** End Patch"
@@ -877,6 +1187,347 @@ class TestTask(unittest.TestCase):
         self.hook("tool", tool="Bash", phase="after", call_id="one")
         (self.repo / "later.py").write_text("command two changed it")
         self.assertIn("later.py", self.hook("tool", tool="Bash", phase="after", call_id="two")["note"])
+
+    def test_SHOULD_restore_the_earliest_overlapping_shell_state_regardless_of_completion_order(self):
+        for restored, should_block in (("A", False), ("B", True)):
+            with self.subTest(restored=restored):
+                target = self.repo / "notes.txt"
+                target.write_text("A")
+                self.set_card()
+                self.mark("D1")
+                self.mark("D2")
+                self.hook("tool", tool="Bash", phase="before", call_id="long")
+                target.write_text("B")
+                self.hook("tool", tool="Bash", phase="before", call_id="short")
+                target.write_text("C")
+                self.hook("tool", tool="Bash", phase="after", call_id="short")
+                self.hook("tool", tool="Bash", phase="after", call_id="long")
+
+                target.write_text(restored)
+
+                actual = self.hook("stop", answer="restored")
+                self.assertEqual(bool(actual.get("block")), should_block, actual)
+
+    def test_SHOULD_ignore_an_unfinished_failed_capture_when_later_edits_restore(self):
+        target = self.repo / "notes.txt"
+        target.write_text("A")
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Edit", paths=["notes.txt"], phase="before", call_id="failed")
+        target.write_text("B")
+        self.hook("tool", tool="Bash", phase="before", call_id="successful")
+        target.write_text("C")
+        self.hook("tool", tool="Bash", phase="after", call_id="successful")
+
+        target.write_text("B")
+
+        self.assertEqual(self.hook("stop", answer="restored"), {})
+
+    def test_SHOULD_refine_a_baseline_when_an_earlier_completed_call_already_sees_restored_content(self):
+        target = self.repo / "notes.txt"
+        target.write_text("A")
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Bash", phase="before", call_id="long")
+        target.write_text("B")
+        self.hook("tool", tool="Edit", paths=["notes.txt"], phase="before", call_id="short")
+        target.write_text("C")
+        self.hook("tool", tool="Edit", paths=["notes.txt"], phase="after", call_id="short")
+
+        target.write_text("A")
+        self.hook("tool", tool="Bash", phase="after", call_id="long")
+
+        self.assertEqual(self.hook("stop", answer="restored"), {})
+
+    def test_SHOULD_restore_the_earliest_background_state_when_a_direct_edit_completes_first(self):
+        for restored, should_block in (("A", False), ("B", True)):
+            with self.subTest(restored=restored):
+                target = self.repo / "notes.txt"
+                target.write_text("A")
+                self.set_card()
+                self.mark("D1")
+                self.mark("D2")
+                self.hook("tool", tool="Bash", phase="before", call_id="background")
+                self.hook("tool", tool="Bash", phase="after", call_id="background", background=True)
+                target.write_text("B")
+                self.hook("tool", tool="Edit", paths=["notes.txt"], phase="before", call_id="direct")
+                target.write_text("C")
+                self.hook("tool", tool="Edit", paths=["notes.txt"], phase="after", call_id="direct")
+                self.hook("tool", tool="Bash", phase="complete", call_id="background")
+
+                target.write_text(restored)
+
+                actual = self.hook("stop", answer="restored")
+                self.assertEqual(bool(actual.get("block")), should_block, actual)
+
+    def test_SHOULD_keep_a_clean_shell_baseline_unknown_when_a_later_capture_observes_edits(self):
+        for restored, should_block in (("readme\n", False), ("B", True)):
+            with self.subTest(restored=restored):
+                target = self.repo / "README.md"
+                target.write_text("readme\n")
+                self.set_card()
+                self.mark("D1")
+                self.mark("D2")
+                self.hook("tool", tool="Bash", phase="before", call_id="long")
+                target.write_text("B")
+                self.hook("tool", tool="Edit", paths=["README.md"], phase="before", call_id="short")
+                target.write_text("C")
+                self.hook("tool", tool="Edit", paths=["README.md"], phase="after", call_id="short")
+                self.hook("tool", tool="Bash", phase="after", call_id="long")
+
+                target.write_text(restored)
+
+                actual = self.hook("stop", answer="restored")
+                self.assertEqual(bool(actual.get("block")), should_block, actual)
+
+    def test_SHOULD_keep_an_absent_shell_baseline_unknown_when_a_later_capture_observes_a_new_file(self):
+        target = self.repo / "notes.txt"
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Bash", phase="before", call_id="long")
+        target.write_text("B")
+        self.hook("tool", tool="Edit", paths=["notes.txt"], phase="before", call_id="short")
+        target.write_text("C")
+        self.hook("tool", tool="Edit", paths=["notes.txt"], phase="after", call_id="short")
+        self.hook("tool", tool="Bash", phase="after", call_id="long")
+
+        target.unlink()
+
+        self.assertEqual(self.hook("stop", answer="restored"), {})
+        target.write_text("B")
+        self.assertIn("notes.txt", self.hook("stop", answer="intermediate").get("block", ""))
+
+    def test_SHOULD_preserve_direct_baselines_for_ignored_files_during_a_shell_call(self):
+        (self.repo / ".gitignore").write_text("notes.txt\n")
+        target = self.repo / "notes.txt"
+        target.write_text("A")
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Bash", phase="before", call_id="long")
+        self.hook("tool", tool="Edit", paths=["notes.txt"], phase="before", call_id="direct")
+
+        target.write_text("B")
+
+        self.hook("tool", tool="Edit", paths=["notes.txt"], phase="after", call_id="direct")
+        self.hook("tool", tool="Bash", phase="after", call_id="long")
+        self.assertIn("notes.txt", self.hook("stop", answer="changed").get("block", ""))
+        target.write_text("A")
+        self.assertEqual(self.run_task("card", "set", stdin=CARD).returncode, 0)
+        self.assertEqual(self.hook("stop", answer="restored"), {})
+
+    def test_SHOULD_retain_direct_creation_of_an_initially_absent_ignored_file(self):
+        (self.repo / ".gitignore").write_text("notes.txt\n")
+        target = self.repo / "notes.txt"
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Bash", phase="before", call_id="long")
+        self.hook("tool", tool="Write", paths=["notes.txt"], phase="before", call_id="direct")
+        target.write_text("new content")
+        self.hook("tool", tool="Write", paths=["notes.txt"], phase="after", call_id="direct")
+
+        self.hook("tool", tool="Bash", phase="after", call_id="long")
+
+        self.assertIn("notes.txt", self.hook("stop", answer="changed").get("block", ""))
+        target.unlink()
+        self.assertEqual(self.run_task("card", "set", stdin=CARD).returncode, 0)
+        self.assertEqual(self.hook("stop", answer="restored"), {})
+
+    def test_SHOULD_preserve_direct_baselines_for_git_metadata_during_a_shell_call(self):
+        target = self.repo / ".git/config"
+        original = target.read_text()
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Bash", phase="before", call_id="long")
+        self.hook("tool", tool="Edit", paths=[".git/config"], phase="before", call_id="direct")
+
+        target.write_text(original + "\n[probe]\n    flag = true\n")
+
+        self.hook("tool", tool="Edit", paths=[".git/config"], phase="after", call_id="direct")
+        self.hook("tool", tool="Bash", phase="after", call_id="long")
+        self.assertIn(".git/config", self.hook("stop", answer="changed").get("block", ""))
+        target.write_text(original)
+        self.assertEqual(self.run_task("card", "set", stdin=CARD).returncode, 0)
+        self.assertEqual(self.hook("stop", answer="restored"), {})
+
+    def test_SHOULD_preserve_direct_baselines_for_index_flags_that_hide_worktree_changes(self):
+        for flag in ("--assume-unchanged", "--skip-worktree"):
+            with self.subTest(flag=flag):
+                target = self.repo / "README.md"
+                target.write_text("readme\n")
+                subprocess.run(
+                    ["git", "update-index", "--no-assume-unchanged", "README.md"],
+                    cwd=self.repo,
+                    env=self.env,
+                    check=True,
+                )
+                subprocess.run(
+                    ["git", "update-index", "--no-skip-worktree", "README.md"], cwd=self.repo, env=self.env, check=True
+                )
+                subprocess.run(["git", "update-index", flag, "README.md"], cwd=self.repo, env=self.env, check=True)
+                self.set_card()
+                self.mark("D1")
+                self.mark("D2")
+                self.hook("tool", tool="Bash", phase="before", call_id="long")
+                self.hook("tool", tool="Edit", paths=["README.md"], phase="before", call_id="direct")
+
+                target.write_text("unresolved direct edit\n")
+
+                self.hook("tool", tool="Edit", paths=["README.md"], phase="after", call_id="direct")
+                self.hook("tool", tool="Bash", phase="after", call_id="long")
+                self.assertIn("README.md", self.hook("stop", answer="changed").get("block", ""))
+                target.write_text("readme\n")
+                self.assertEqual(self.run_task("card", "set", stdin=CARD).returncode, 0)
+                self.assertEqual(self.hook("stop", answer="restored"), {})
+
+    def test_SHOULD_keep_capture_time_baselines_when_index_visibility_changes(self):
+        for flag, clear in (("--assume-unchanged", "--no-assume-unchanged"), ("--skip-worktree", "--no-skip-worktree")):
+            with self.subTest(flag=flag):
+                subprocess.run(
+                    ["git", "update-index", "--no-assume-unchanged", "README.md"],
+                    cwd=self.repo,
+                    env=self.env,
+                    check=True,
+                )
+                subprocess.run(
+                    ["git", "update-index", "--no-skip-worktree", "README.md"], cwd=self.repo, env=self.env, check=True
+                )
+                target = self.repo / "README.md"
+                target.write_text("A")
+                subprocess.run(["git", "update-index", flag, "README.md"], cwd=self.repo, env=self.env, check=True)
+                self.set_card()
+                self.mark("D1")
+                self.mark("D2")
+                self.hook("tool", tool="Bash", phase="before", call_id="long")
+                self.hook("tool", tool="Edit", paths=["README.md"], phase="before", call_id="direct")
+                target.write_text("B")
+                self.hook("tool", tool="Edit", paths=["README.md"], phase="after", call_id="direct")
+
+                subprocess.run(["git", "update-index", clear, "README.md"], cwd=self.repo, env=self.env, check=True)
+                self.hook("tool", tool="Bash", phase="after", call_id="long")
+                target.write_text("A")
+
+                self.assertEqual(self.hook("stop", answer="restored"), {})
+
+    def test_SHOULD_keep_capture_time_baselines_when_ignored_content_becomes_visible(self):
+        ignore = self.repo / ".gitignore"
+        ignore.write_text("notes.txt\n")
+        target = self.repo / "notes.txt"
+        target.write_text("A")
+        self.set_card(CARD.replace("src/, tests/*.py", "src/, tests/*.py, .gitignore"))
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Bash", phase="before", call_id="long")
+        self.hook("tool", tool="Edit", paths=["notes.txt"], phase="before", call_id="direct")
+        target.write_text("B")
+        self.hook("tool", tool="Edit", paths=["notes.txt"], phase="after", call_id="direct")
+
+        ignore.write_text("")
+        self.hook("tool", tool="Bash", phase="after", call_id="long")
+        target.write_text("A")
+
+        self.assertEqual(self.hook("stop", answer="restored"), {})
+
+    def test_SHOULD_discard_captures_without_frozen_discovery_exclusions(self):
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Bash", phase="before", call_id="old")
+        state_path = next(self.store.glob("*/state.json"))
+        state = json.loads(state_path.read_text())
+        turn = state["turns"]["s1"]
+        turn["snapshot_version"] = 3
+        turn["pending"]["old"]["excluded"] = turn["pending"]["old"].pop("domain")["excluded"]
+        turn["background"]["old-background"] = dict(turn["pending"]["old"])
+        state_path.write_text(json.dumps(state))
+
+        self.assertEqual(self.hook("tool", tool="Bash", phase="after", call_id="old"), {})
+        self.assertEqual(self.hook("stop", answer="unchanged"), {})
+        state = json.loads(state_path.read_text())
+        self.assertNotIn("old-background", state["turns"]["s1"]["background"])
+        card = json.loads(self.run_task("card", "show", "--json").stdout)
+        self.assertEqual([item["status"] for item in card["done"]], ["checked", "checked"])
+
+    def test_SHOULD_include_a_staged_rename_source_in_scope_checks(self):
+        target = self.repo / "outside.txt"
+        target.write_text("A")
+        subprocess.run(["git", "add", "outside.txt"], cwd=self.repo, env=self.env, check=True)
+        subprocess.run(
+            ["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "fixture"],
+            cwd=self.repo,
+            env=self.env,
+            check=True,
+        )
+        (self.repo / "src").mkdir()
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Bash", phase="before", call_id="move")
+
+        subprocess.run(["git", "mv", "outside.txt", "src/moved.txt"], cwd=self.repo, env=self.env, check=True)
+
+        actual = self.hook("tool", tool="Bash", phase="after", call_id="move")
+        self.assertIn("outside.txt", actual.get("note", ""))
+        self.assertIn("outside.txt", self.hook("stop", answer="done").get("block", ""))
+
+    def test_SHOULD_ignore_staging_a_preexisting_rename_without_content_changes(self):
+        (self.repo / "renamed.md").write_bytes((self.repo / "README.md").read_bytes())
+        (self.repo / "README.md").unlink()
+        self.set_card()
+        self.hook("tool", tool="Bash", phase="before", call_id="stage")
+
+        subprocess.run(["git", "add", "--all"], cwd=self.repo, env=self.env, check=True)
+
+        self.assertEqual(self.hook("tool", tool="Bash", phase="after", call_id="stage"), {})
+        self.assertEqual(self.hook("stop", answer="no content changes"), {})
+
+    def test_SHOULD_discard_old_snapshot_formats_without_losing_the_card(self):
+        target = self.repo / "notes.txt"
+        target.write_text("A")
+        self.set_card()
+        self.mark("D1")
+        state_path = next(self.store.glob("*/state.json"))
+        state = json.loads(state_path.read_text())
+        turn = state["turns"]["s1"]
+        turn.pop("snapshot_version", None)
+        turn["pending"] = {"old-call": {"notes.txt": "U1:1"}}
+        turn["background"] = {"old-job": {"notes.txt": "U1:1"}}
+        state_path.write_text(json.dumps(state))
+        self.hook("tool", tool="Bash", phase="before", call_id="new-call")
+
+        target.write_text("B")
+
+        actual = self.hook("tool", tool="Bash", phase="after", call_id="new-call")
+        self.assertIn("notes.txt", actual.get("note", ""))
+        card = json.loads(self.run_task("card", "show", "--json").stdout)
+        self.assertEqual(card["done"][0]["status"], "checked")
+
+    def test_SHOULD_upgrade_versioned_scalar_baselines_without_losing_completed_checks(self):
+        target = self.repo / "notes.txt"
+        target.write_text("A")
+        self.set_card()
+        self.mark("D1")
+        self.mark("D2")
+        self.hook("tool", tool="Edit", paths=["notes.txt"], phase="before", call_id="old")
+        target.write_text("B")
+        self.hook("tool", tool="Edit", paths=["notes.txt"], phase="after", call_id="old")
+        state_path = next(self.store.glob("*/state.json"))
+        state = json.loads(state_path.read_text())
+        turn = state["turns"]["s1"]
+        turn["snapshot_version"] = 1
+        turn["originals"] = {path: saved["state"] for path, saved in turn["originals"].items()}
+        state_path.write_text(json.dumps(state))
+
+        actual = self.hook("stop", answer="still changed")
+
+        self.assertIn("notes.txt", actual.get("block", ""))
+        card = json.loads(self.run_task("card", "show", "--json").stdout)
+        self.assertEqual([item["status"] for item in card["done"]], ["checked", "checked"])
 
     def test_SHOULD_detect_untracked_deletion_and_readdition(self):
         self.set_card()

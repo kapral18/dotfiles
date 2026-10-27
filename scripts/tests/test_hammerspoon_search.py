@@ -34,6 +34,7 @@ LUA = lua_interpreter()
 # module handles query parsing, ranking, state invalidation and selection.
 HARNESS = r"""
 local requests, timers, opened, tasks, copied, launched, posts, panel_taps = {}, {}, {}, {}, {}, {}, {}, {}
+local alerts, task_failure = {}, nil
 local files = {
   ['/Applications'] = { mode = 'directory', entries = { 'Safari.app', 'Safari Technology Preview.app', 'Utilities' } },
   ['/Applications/Safari.app'] = { mode = 'directory' },
@@ -164,11 +165,20 @@ hs = {
   },
   pasteboard = { setContents = function(text) copied[#copied + 1] = text; return true end },
   application = { launchOrFocus = function(path) launched[#launched + 1] = path; return true end },
-  alert = { show = function() end },
+  alert = { show = function(text) alerts[#alerts + 1] = text end },
   task = { new = function(path, callback, stream, arguments)
     if type(stream) == 'table' then arguments, stream = stream, nil end
-    local task = { callback = callback, stream = stream, arguments = arguments, running = false, inputs = {} }
-    function task:start() self.running = true; return self end
+    if task_failure == 'new' then return nil end
+    local task = { path = path, callback = callback, stream = stream, arguments = arguments, running = false, inputs = {} }
+    function task:start()
+      if task_failure == 'start' then return false end
+      self.running = true
+      if self.path == '/usr/bin/open' then
+        if self.arguments[1] == '-a' then launched[#launched + 1] = self.arguments[2]
+        else opened[#opened + 1] = self.arguments[2] end
+      end
+      return self
+    end
     function task:isRunning() return self.running end
     function task:terminate()
       self.running = false
@@ -224,8 +234,10 @@ local function chatReply(index, status, data)
   payloads[body] = data
   posts[index].callback(status, body)
 end
-local function answer(text)
-  return { choices = { { message = { content = text } } } }
+local function answer(text, transliteration)
+  local body = 'translation:' .. tostring(text)
+  payloads[body] = { translation = text, transliteration = transliteration or text }
+  return { choices = { { message = { content = body } } } }
 end
 local function findChoice(key, value)
   for _, choice in ipairs(chooser.items) do
@@ -281,6 +293,112 @@ class TestHammerspoonSearch(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_should_release_the_chooser_while_the_selected_app_is_still_starting(self):
+        self.run_lua(r"""
+app.show()
+typeQuery('Safari')
+chooser:select(1)
+equal(chooser.visible, false)
+equal(#tasks, 1)
+equal(tasks[1].path, '/usr/bin/open')
+equal(tasks[1].arguments[1], '-a')
+equal(tasks[1].arguments[2], '/Applications/Safari.app')
+equal(tasks[1].running, true)
+app.show()
+assert(press('ctrl', 'j'))
+equal(chooser:selectedRow(), 2)
+equal(tasks[1].running, true)
+""")
+
+    def test_should_show_the_translations_latin_reading_below_its_native_script(self):
+        self.run_lua(r"""
+app.show()
+typeQuery('tr ja Hello'); tick()
+passReply(1, 0, 'sk-test\n')
+chatReply(1, 200, answer('こんにちは', 'Konnichiwa'))
+equal(chooser.items[1].text, 'こんにちは')
+assert(chooser.items[1].subText:find('Konnichiwa', 1, true), chooser.items[1].subText)
+chooser:select(1)
+equal(copied[1], 'こんにちは')
+""")
+
+    def test_should_report_app_dispatch_failures_without_replacing_a_reopened_panel(self):
+        for failure in ("new", "start", "exit"):
+            with self.subTest(failure=failure):
+                self.run_lua(f"""
+app.show()
+typeQuery('Safari')
+task_failure = '{failure}'
+chooser:select(1)
+app.show()
+typeQuery('Café')
+{'passReply(1, 1, "")' if failure == "exit" else ""}
+equal(alerts[1], 'Application unavailable — reopen the panel to refresh')
+equal(chooser.items[1].text, 'Café')
+""")
+
+    def test_should_keep_repeated_app_launches_independent_of_new_searches(self):
+        self.run_lua(r"""
+app.show()
+typeQuery('Safari'); chooser:select(1)
+app.show()
+typeQuery('Safari'); chooser:select(1)
+equal(tasks[1].running, true)
+equal(tasks[2].running, true)
+passReply(2, 0, '')
+equal(tasks[1].running, true)
+passReply(1, 0, '')
+equal(#launched, 2)
+equal(#alerts, 0)
+""")
+
+    def test_should_stop_pending_launchers_silently_on_shutdown(self):
+        self.run_lua(r"""
+app.show()
+typeQuery('Safari'); chooser:select(1)
+shutdown()
+equal(tasks[1].terminated, true)
+equal(#alerts, 0)
+""")
+
+    def test_should_open_a_result_url_literally_without_waiting_for_the_browser(self):
+        self.run_lua(r"""
+app.show()
+typeQuery('ud café & tea'); tick()
+respond(1, { 'café & tea' })
+chooser:select(1)
+equal(chooser.visible, false)
+equal(tasks[1].path, '/usr/bin/open')
+equal(tasks[1].arguments[1], '-u')
+equal(tasks[1].arguments[2], 'https://www.urbandictionary.com/define.php?term=caf%C3%A9%20%26%20tea')
+equal(#tasks[1].arguments, 2)
+equal(tasks[1].running, true)
+passReply(1, 1, '')
+equal(alerts[1], 'Could not open the selected URL')
+""")
+
+    def test_should_reject_missing_or_malformed_translation_fields(self):
+        for fields in (
+            "nil",
+            "'plain text'",
+            "{ translation = 'Привет' }",
+            "{ translation = 'Привет', transliteration = 12 }",
+            "{ translation = 'Привет', transliteration = '  ' }",
+            "{ translation = {}, transliteration = 'Privet' }",
+            "{ translation = '  ', transliteration = 'Privet' }",
+        ):
+            with self.subTest(fields=fields):
+                self.run_lua(f"""
+app.show()
+typeQuery('tr ru Hello'); tick()
+passReply(1, 0, 'sk-test\\n')
+payloads.invalid_translation = {fields}
+chatReply(1, 200, {{ choices = {{ {{ message = {{ content = 'invalid_translation' }} }} }} }})
+equal(chooser.items[1].valid, false)
+chooser:select(1)
+equal(#copied, 0)
+""")
+
     def test_should_read_the_key_once_and_copy_the_newest_translation(self):
         self.run_lua(r"""
 app.show()
@@ -290,6 +408,7 @@ passReply(1, 0, 'sk-test\n')
 local first = chatRequest(1)
 equal(first.messages[2].content, 'Hello')
 assert(first.messages[1].content:find('Russian', 1, true), 'target language missing from the prompt')
+assert(first.messages[1].content:find('"transliteration"', 1, true), 'Latin reading missing from the prompt')
 equal(posts[1].headers.Authorization, 'Bearer sk-test')
 -- Translated text must never reach a tool-enabled request; pass needs both Homebrew prefixes.
 equal(first.tools, nil)
@@ -302,6 +421,7 @@ equal(chooser.items[1].text, 'Привет')
 typeQuery('tr de Hello'); tick()
 equal(#tasks, 1)
 chatReply(2, 200, answer('Hallo'))
+assert(not chooser.items[1].subText:find('Hallo', 1, true), 'Latin-script output was repeated')
 chooser:select(1)
 equal(copied[1], 'Hallo')
 """)
@@ -387,7 +507,10 @@ assert(added:find('into Portuguese', 1, true) and added:find('The text is in Ukr
                 "Translation failed: The Internet connection appears to be offline.",
             ),
             "malformed body": ("posts[1].callback(200, 'not json')", "Translation failed: empty or unreadable reply"),
-            "blank content": ("chatReply(1, 200, answer('  '))", "Translation failed: empty or unreadable reply"),
+            "blank content": (
+                "chatReply(1, 200, { choices = { { message = { content = '  ' } } } })",
+                "Translation failed: empty or unreadable reply",
+            ),
             "cut off": (
                 "chatReply(1, 200, { choices = { { message = { content = 'partial tra' }, finish_reason = 'length' } } })",
                 "Translation failed: incomplete output (length)",
@@ -420,8 +543,9 @@ equal(chatRequest(1).messages[2].content, 'Hello')
 app.show()
 typeQuery('tr ru Hello'); tick()
 passReply(1, 0, 'sk-test\n')
-chatReply(1, 200, answer('Строка один\nСтрока два'))
+chatReply(1, 200, answer('Строка один\nСтрока два', 'Stroka odin\nStroka dva'))
 equal(chooser.items[1].text, 'Строка один Строка два')
+assert(chooser.items[1].subText:find('Stroka odin Stroka dva', 1, true), chooser.items[1].subText)
 chooser:select(1)
 equal(copied[1], 'Строка один\nСтрока два')
 """)
