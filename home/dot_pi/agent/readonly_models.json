@@ -3,7 +3,7 @@
   "providers": {
     "github-copilot": {
       "modelOverrides": {
-        "gpt-6-astra": {
+        "gpt-6.1-sol": {
           "contextWindow": 272000
         }
       }
@@ -64,7 +64,7 @@
             }
           }
         },
-        "openai/gpt-6-astra": {
+        "openai/gpt-6.1-sol": {
           "compat": {
             "openRouterRouting": {
               "only": ["openai/flex"]

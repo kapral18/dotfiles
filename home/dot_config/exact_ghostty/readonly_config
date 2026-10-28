@@ -10,6 +10,6 @@ cursor-style                  = block
 cursor-style-blink            = false
 cursor-opacity                = 0.96
 copy-on-select                = clipboard
-shell-integration-features    = cursor,sudo,no-title
+shell-integration-features    = cursor,sudo,no-title,ssh-env,ssh-terminfo
 confirm-close-surface         = false
 quit-after-last-window-closed = true

@@ -12,6 +12,22 @@ Default terminal emulator config:
 
 - [`home/dot_config/exact_ghostty/readonly_config`](../../../home/dot_config/exact_ghostty/readonly_config)
 
+### Ghostty 1.4
+
+Native Ghostty shells enable `ssh-env` and `ssh-terminfo`. Running `ssh` uses Ghostty's `+ssh` integration to install its bundled terminfo on the remote host and forward terminal environment variables. Successful installs are cached per host and port; failed installs fall back to `xterm-256color`. Environment forwarding depends on the remote server's `AcceptEnv` settings.
+
+Tmux panes keep their own `xterm-256color` identity and ordinary `ssh`. Ghostty's native shell integration is injected into the shell it launches, not every shell inside tmux. Do not alias `ssh` globally to `ghostty +ssh`: that wrapper selects `xterm-ghostty`, which describes Ghostty rather than tmux.
+
+These 1.4 improvements work through the defaults:
+
+- Compressed scrollback with a 50 MB limit per Ghostty terminal. Tmux's separate 10,000-line history stays unchanged.
+- Kitty graphics animation and relative placements, plus faster image handling. Tmux already enables passthrough; applications still need to support it.
+- Kitty clipboard support for images and other formats. Reads and writes follow the existing `clipboard-read` and `clipboard-write` settings.
+
+The explicit `copy-on-select = clipboard` still copies selections to the system clipboard on macOS. `Cmd+Up` and `Cmd+Down` jump between native shell prompts; `Cmd+Home` and `Cmd+End` scroll to the ends of the history. Configuration help is available with `ghostty +explain-config <key>`.
+
+See the [Ghostty 1.4.0 release notes](https://ghostty.org/docs/install/release-notes/1-4-0).
+
 ## Bat (better `cat`)
 
 - Config: [`home/dot_config/exact_bat/readonly_config`](../../../home/dot_config/exact_bat/readonly_config)

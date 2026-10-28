@@ -20,7 +20,7 @@ Interactive shells route `codex` through `~/bin/,codex`, which injects the local
 
 ### Codex settings
 
-`model = "gpt-6-astra"`, `model_reasoning_effort = "xhigh"`, `tui.auto_recap = false`, `features.memories = false` (`,ai-kb` is the only durable store).
+`model = "gpt-6.1-sol"`, `model_reasoning_effort = "ultra"`, `tui.auto_recap = false`, `features.memories = false` (`,ai-kb` is the only durable store).
 Codex discovers shared skills under `~/.agents/skills`. `k-review`'s Verify mode uses fresh native agents with the shared reviewer prompt; other modes stay inline. See [Subagents](../subagents.md).
 
 Policy: `approval_policy = "on-request"`, `sandbox_mode = "danger-full-access"`.
@@ -82,9 +82,9 @@ Key settings:
 
 | Setting                                                | Value                                                                                                                                                                                                                              |
 | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `modelRoles`                                           | `default`/`slow`/`plan`: `anthropic/claude-opus-5-5:medium`; `task`/`smol`/`vision`: `anthropic/claude-sonnet-5-5:medium`; `tiny`/`commit`/`web`: `anthropic/claude-haiku-5-5:medium`; `advisor`: `openai-codex/gpt-6-astra:xhigh` |
+| `modelRoles`                                           | `default`/`slow`/`plan`: `anthropic/claude-opus-5-5:medium`; `task`/`smol`/`vision`: `anthropic/claude-sonnet-5-5:medium`; `tiny`/`commit`/`web`: `anthropic/claude-haiku-5-5:medium`; `advisor`: `openai-codex/gpt-6.1-sol:xhigh` |
 | `modelProviderOrder`                                   | `anthropic`, `openai-codex`, `openrouter`, `openai`                                                                                                                                                                                |
-| `advisor.enabled`                                      | `true`; the Astra advisor uses a different model family from the Opus root; `advisor.syncBacklog: "1"` (a string; a bare number reads as `off`)                                                                                    |
+| `advisor.enabled`                                      | `true`; the Sol advisor uses a different model family from the Opus root; `advisor.syncBacklog: "1"` (a string; a bare number reads as `off`)                                                                                      |
 | `task.agentAdvisor.task`                               | `"off"`; child advisors stay disabled                                                                                                                                                                                              |
 | `memory.backend`, `autolearn.enabled`, `recap.enabled` | `off`, `false`, `false`                                                                                                                                                                                                            |
 | `task.maxRecursionDepth`                               | `1` (children cannot spawn)                                                                                                                                                                                                        |

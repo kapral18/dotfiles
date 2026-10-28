@@ -1,8 +1,7 @@
 /** Session-local short/long working-context selection for Pi. */
 
 const ENTRY_TYPE = "gpt-context-mode"
-// Astra's standard-price input boundary. For GPT catalogs without tier metadata,
-// this is a conservative working budget, not a claim about their billing.
+// API fallback when the catalog omits long-context pricing thresholds.
 const DEFAULT_SHORT_WINDOW = 272_000
 type Mode = "short" | "long"
 
@@ -53,6 +52,7 @@ function capacityOf(native: ContextModel): number {
 
 function shortWindow(native: ContextModel, capacity: number): number | undefined {
   const current = positive(native.contextWindow) ? native.contextWindow : capacity
+  if (native.provider === "openai-codex") return current
   const thresholds = [
     native.cost?.longContext?.inputThreshold,
     ...(native.cost?.tiers ?? []).map((tier) => tier.inputTokensAbove),
@@ -94,7 +94,7 @@ export function createContextMode<M extends ContextModel>(
     const capacity = capacityOf(native)
     if (!capacity) return
     const short = shortWindow(native, capacity)
-    if (!short || short >= capacity) return
+    if (!short || (short >= capacity && model.contextWindow === capacity)) return
     const stored = savedMode(ctx.sessionManager.getBranch(), model)
     const mode = requested ?? stored ?? defaultMode(model, native, short)
     return { model, native, mode, window: mode === "long" ? capacity : short, stored }

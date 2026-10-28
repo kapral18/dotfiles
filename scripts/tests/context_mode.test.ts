@@ -101,6 +101,46 @@ describe("WHEN applying GPT-only defaults", () => {
     expect(h.current.contextWindow).toBe(200_000)
   })
 
+  it("SHOULD use the subscription default for short and the advertised maximum for long", async () => {
+    for (const cost of [
+      { input: 2 },
+      { input: 2, longContext: { inputThreshold: 272_000 }, tiers: [{ inputTokensAbove: 272_000 }] },
+    ]) {
+      const native = { ...model("gpt-6.1-sol", "openai-codex", 500_000), maxContextWindow: 872_000, cost }
+      const h = harness(native)
+
+      await h.policy.apply(h.ctx)
+      expect(h.current.contextWindow).toBe(500_000)
+      await h.policy.command("long", h.ctx)
+      expect(h.current.contextWindow).toBe(872_000)
+      h.switch(native)
+      await createContextMode(h.select, h.append).apply(h.ctx)
+      expect(h.current.contextWindow).toBe(872_000)
+      await h.policy.command("short", h.ctx)
+      expect(h.current.contextWindow).toBe(500_000)
+      expect(native.contextWindow).toBe(500_000)
+    }
+  })
+
+  it("SHOULD restore a capped subscription model when the catalog exposes only its native window", async () => {
+    const native = model("gpt-6.1-sol", "openai-codex", 500_000)
+    const h = harness(native)
+    h.switch({ ...native, contextWindow: 272_000 })
+    h.catalog.set("openai-codex/gpt-6.1-sol", native)
+    h.entries = [{
+      type: "custom", customType: "gpt-context-mode",
+      data: { provider: "openai-codex", model: "gpt-6.1-sol", mode: "short" },
+    }]
+
+    await h.policy.apply(h.ctx)
+
+    expect(h.current.contextWindow).toBe(500_000)
+    expect(h.current.id).toBe("gpt-6.1-sol")
+    expect(h.current.provider).toBe("openai-codex")
+    expect(native.contextWindow).toBe(500_000)
+    expect(h.entries).toHaveLength(1)
+  })
+
   it("SHOULD leave an unknown window unchanged", async () => {
     const h = harness(model("gpt-6-astra", "fixture", 0))
     await h.policy.command("long", h.ctx)

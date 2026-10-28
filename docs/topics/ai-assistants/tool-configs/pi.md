@@ -25,7 +25,7 @@ Settings and models are set directly in the files below; extensions provide the 
 
 | Area            | Value                                                                                                                            |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Default model   | `openai-codex` / `gpt-6-astra`, thinking `xhigh`                                                                                 |
+| Default model   | `openai-codex` / `gpt-6.1-sol`, thinking `xhigh`                                                                                 |
 | Extra providers | `openrouter` and `llama-cpp` in `models.json`; see [llama.cpp](../llama-cpp/index.md)                                            |
 | Tools           | `defaultTools: ["+codemode", "+find", "+grep", "+ls"]`                                                                           |
 | Compaction      | `reserveTokens` 16384, `keepRecentTokens` 80000 (raised from Pi's 20000 to keep more recent context verbatim)                    |
@@ -67,10 +67,11 @@ The shared Codex/Claude task ledger, acceptance snapshots and unbounded independ
 ### Working-context selection
 
 GPT models default to short; other eligible families keep the native window until `/context-mode short`.
-A model is eligible only when it has a short window below native capacity (from `cost.tiers[].inputTokensAbove`; GPT without tier data uses 272,000 tokens).
+For `openai-codex` subscription models, short uses the catalog's native default: GPT-6.1 Sol has 500,000 tokens. API pricing tiers and the 272,000-token fallback do not reduce that window.
+Other providers use pricing thresholds from the catalog (`cost.tiers[].inputTokensAbove` or `cost.longContext.inputThreshold`); GPT without tier data uses 272,000 tokens.
 The choice is a session entry: it follows the branch and survives resume.
 Switching to short is refused when history already exceeds the short window; run `/compact` first.
-If the catalog exposes no larger capacity, `long` leaves the model unchanged; it does not infer an API limit.
+Long uses the catalog's advertised maximum. If the catalog exposes no larger capacity, the policy restores its native window when a prior cap reduced it; it does not infer an API limit.
 
 ## Subagents
 
